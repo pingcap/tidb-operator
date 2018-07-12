@@ -21,17 +21,17 @@ import (
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/new-operator/pkg/client/informers/externalversions/pingcap.com/v1"
+	informers "github.com/pingcap/tidb-operator/new-operator/pkg/client/informers/externalversions"
 	listers "github.com/pingcap/tidb-operator/new-operator/pkg/client/listers/pingcap.com/v1"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/new-operator/pkg/util/label"
+	mm "github.com/pingcap/tidb-operator/new-operator/pkg/controller/tidbcluster/membermanager"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	appsinformers "k8s.io/client-go/informers/apps/v1beta1"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -69,8 +69,8 @@ type Controller struct {
 func NewController(
 	kubeCli kubernetes.Interface,
 	cli versioned.Interface,
-	tcInformer informers.TidbClusterInformer,
-	setInformer appsinformers.StatefulSetInformer,
+	informerFactory informers.SharedInformerFactory,
+	kubeInformerFactory kubeinformers.SharedInformerFactory,
 ) *Controller {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
@@ -78,16 +78,18 @@ func NewController(
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "tidbcluster"})
 
+	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
+	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
+
 	tcc := &Controller{
 		kubeClient: kubeCli,
 		cli:        cli,
 		control: NewDefaultTidbClusterControl(
-			controller.NewRealStatefuSetControl(
-				kubeCli,
-				setInformer.Lister(),
-				recorder,
-			),
 			NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
+			mm.NewPDMemberManager(
+				controller.NewRealStatefuSetControl(kubeCli, recorder),
+				setInformer.Lister(),
+			),
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
@@ -181,16 +183,11 @@ func (tcc *Controller) sync(key string) error {
 		return err
 	}
 
-	sets, err := tcc.getStatefulSetsForTidbCluster(tc)
-	if err != nil {
-		return err
-	}
-
-	return tcc.syncTidbCluster(tc.DeepCopy(), sets)
+	return tcc.syncTidbCluster(tc.DeepCopy())
 }
 
-func (tcc *Controller) syncTidbCluster(tc *v1.TidbCluster, sets []*apps.StatefulSet) error {
-	return tcc.control.UpdateTidbCluster(tc.DeepCopy(), sets)
+func (tcc *Controller) syncTidbCluster(tc *v1.TidbCluster) error {
+	return tcc.control.UpdateTidbCluster(tc)
 }
 
 // enqueueTidbCluster enqueues the given tidbcluster in the work queue.
@@ -275,15 +272,6 @@ func (tcc *Controller) deleteStatefulSet(obj interface{}) {
 	}
 	glog.V(4).Infof("StatefulSet %s/%s deleted through %v.", ns, setName, utilruntime.GetCaller())
 	tcc.enqueueTidbCluster(tc)
-}
-
-func (tcc *Controller) getStatefulSetsForTidbCluster(tc *v1.TidbCluster) ([]*apps.StatefulSet, error) {
-	selector, err := label.New().Cluster(tc.Name).Selector()
-	if err != nil {
-		return nil, err
-	}
-
-	return tcc.setLister.StatefulSets(tc.Namespace).List(selector)
 }
 
 // resolveControllerRef returns the controller referenced by a ControllerRef,

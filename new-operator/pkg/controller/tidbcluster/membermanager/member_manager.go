@@ -11,4 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tidbcluster
+package membermanager
+
+import "github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
+
+// MemberManager implements the logic for syncing all TidbCluster members.
+type MemberManager interface {
+	// Sync	implements the logic for syncing all TidbCluster members.
+	Sync(*v1.TidbCluster) error
+}

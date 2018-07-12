@@ -28,10 +28,10 @@ type TidbCluster struct {
 	metav1.ObjectMeta `json:"metadata"`
 
 	// Spec defines the behavior of a tidb cluster
-	Spec ClusterSpec `json:"spec"`
+	Spec TidbClusterSpec `json:"spec"`
 
 	// Most recently observed status of the tidb cluster
-	Status ClusterStatus `json:"status"`
+	Status TidbClusterStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -44,8 +44,8 @@ type TidbClusterList struct {
 	Items []TidbCluster `json:"items"`
 }
 
-// ClusterSpec describes the attributes that a user creates on a tidb cluster
-type ClusterSpec struct {
+// TidbClusterSpec describes the attributes that a user creates on a tidb cluster
+type TidbClusterSpec struct {
 	PD   PDSpec   `json:"pd,omitempty"`
 	TiDB TiDBSpec `json:"tidb,omitempty"`
 	TiKV TiKVSpec `json:"tikv,omitempty"`
@@ -73,8 +73,8 @@ type ClusterSpec struct {
 	RetentionDuration string `json:"retentionDuration,omitempty"`
 }
 
-// ClusterStatus represents the current status of a tidb cluster.
-type ClusterStatus struct {
+// TidbClusterStatus represents the current status of a tidb cluster.
+type TidbClusterStatus struct {
 	PDStatus   PDStatus   `json:"pdStatus,omitempty"`
 	TiKVStatus TiKVStatus `json:"tikvStatus,omitempty"`
 	TiDBStatus TiDBStatus `json:"tidbStatus,omitempty"`
@@ -166,9 +166,10 @@ type MonitorSpec struct {
 
 // ContainerSpec is the container spec of a pod
 type ContainerSpec struct {
-	Image    string               `json:"image"`
-	Requests *ResourceRequirement `json:"requests,omitempty"`
-	Limits   *ResourceRequirement `json:"limits,omitempty"`
+	Image            string               `json:"image"`
+	Requests         *ResourceRequirement `json:"requests,omitempty"`
+	Limits           *ResourceRequirement `json:"limits,omitempty"`
+	StorageClassName string               `json:"storageClassName,omitempty"`
 }
 
 // Service represent service type used in TidbCluster

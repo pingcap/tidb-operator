@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/new-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/new-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/controller"
+	mm "github.com/pingcap/tidb-operator/new-operator/pkg/controller/tidbcluster/membermanager"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -212,24 +213,29 @@ func alwaysReady() bool { return true }
 func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1().TidbClusters()
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
+	informerFactory := informers.NewSharedInformerFactory(cli, 0)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+
+	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
+	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
 	tcc := NewController(
 		kubeCli,
 		cli,
-		tcInformer,
-		setInformer,
+		informerFactory,
+		kubeInformerFactory,
 	)
 	tcc.tcListerSynced = alwaysReady
 	tcc.setListerSynced = alwaysReady
 	recorder := record.NewFakeRecorder(10)
 	tcc.control = NewDefaultTidbClusterControl(
-		controller.NewRealStatefuSetControl(
-			kubeCli,
-			setInformer.Lister(),
-			recorder,
-		),
 		NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
+		mm.NewPDMemberManager(
+			controller.NewRealStatefuSetControl(
+				kubeCli,
+				recorder,
+			),
+			setInformer.Lister(),
+		),
 		recorder,
 	)
 
@@ -243,11 +249,11 @@ func newTidbCluster() *v1.TidbCluster {
 			APIVersion: "pingcap.com/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-cluster",
+			Name:      "test-pd",
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 		},
-		Spec: v1.ClusterSpec{
+		Spec: v1.TidbClusterSpec{
 			PD: v1.PDSpec{
 				ContainerSpec: v1.ContainerSpec{
 					Image: "pd-test-image",

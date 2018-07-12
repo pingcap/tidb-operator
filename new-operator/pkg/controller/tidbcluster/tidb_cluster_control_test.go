@@ -23,8 +23,8 @@ import (
 	tcinformers "github.com/pingcap/tidb-operator/new-operator/pkg/client/informers/externalversions/pingcap.com/v1"
 	v1listers "github.com/pingcap/tidb-operator/new-operator/pkg/client/listers/pingcap.com/v1"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/controller"
+	mm "github.com/pingcap/tidb-operator/new-operator/pkg/controller/tidbcluster/membermanager"
 	apps "k8s.io/api/apps/v1beta1"
-	"k8s.io/apimachinery/pkg/labels"
 	kubeinformers "k8s.io/client-go/informers"
 	appsinformers "k8s.io/client-go/informers/apps/v1beta1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -55,19 +55,15 @@ func newFakeTidbClusterControl() (ControlInterface, *fakeStatefulSetControl, Sta
 
 	setControl := newFakeStatefulSetControl(setInformer, tcInformer)
 	statusUpdater := newFakeTidbClusterStatusUpdater(tcInformer)
-	control := NewDefaultTidbClusterControl(setControl, statusUpdater, recorder)
+	pdMemberManager := mm.NewPDMemberManager(setControl, setInformer.Lister())
+	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, recorder)
 
 	return control, setControl, statusUpdater
 }
 
 func syncTidbClusterControl(tc *v1.TidbCluster, setControl *fakeStatefulSetControl, control ControlInterface) error {
 	for tc.Status.PDStatus.StatefulSet.Name == "" {
-		sets, err := setControl.setLister.List(labels.Everything())
-		if err != nil {
-			return err
-		}
-
-		err = control.UpdateTidbCluster(tc, sets)
+		err := control.UpdateTidbCluster(tc)
 		if err != nil {
 			return err
 		}
@@ -118,7 +114,7 @@ func newFakeTidbClusterStatusUpdater(tcInformer tcinformers.TidbClusterInformer)
 	}
 }
 
-func (tsu *fakeTidbClusterStatusUpdater) UpdateTidbClusterStatus(tc *v1.TidbCluster, status *v1.ClusterStatus) error {
+func (tsu *fakeTidbClusterStatusUpdater) UpdateTidbClusterStatus(tc *v1.TidbCluster, status *v1.TidbClusterStatus) error {
 	tc.Status = *status
 	return tsu.tcIndexer.Update(tc)
 }

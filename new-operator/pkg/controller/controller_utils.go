@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tidbcluster
+package controller
 
 import (
 	"fmt"
@@ -23,11 +23,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// controllerKind contains the schema.GroupVersionKind for this controller type.
+var controllerKind = v1.SchemeGroupVersion.WithKind("TidbCluster")
+
 const (
 	defaultPushgatewayImage = "prom/pushgateway:v0.3.1"
 )
 
-func getOwnerRef(tc *v1.TidbCluster) metav1.OwnerReference {
+// GetOwnerRef returns TidbCluster's OwnerReference
+func GetOwnerRef(tc *v1.TidbCluster) metav1.OwnerReference {
 	controller := true
 	blockOwnerDeletion := true
 	return metav1.OwnerReference{
@@ -40,8 +44,9 @@ func getOwnerRef(tc *v1.TidbCluster) metav1.OwnerReference {
 	}
 }
 
+// TiKVCapacity returns string resource requirement,
 // tikv uses GB, TB as unit suffix, but it actually means GiB, TiB
-func tikvCapacity(limits *v1.ResourceRequirement) string {
+func TiKVCapacity(limits *v1.ResourceRequirement) string {
 	defaultArgs := "0"
 	if limits == nil {
 		return defaultArgs
@@ -59,33 +64,40 @@ func tikvCapacity(limits *v1.ResourceRequirement) string {
 	return fmt.Sprintf("%dGB", int(float64(i)/math.Pow(2, 30)))
 }
 
-func getPushgatewayImage(cluster *v1.TidbCluster) string {
+// GetPushgatewayImage returns TidbCluster's pushgateway image
+func GetPushgatewayImage(cluster *v1.TidbCluster) string {
 	if img, ok := cluster.Annotations["pushgateway-image"]; ok && img != "" {
 		return img
 	}
 	return defaultPushgatewayImage
 }
 
-func pdSvcName(clusterName string) string {
+// PDSvcName returns pd service name
+func PDSvcName(clusterName string) string {
 	return fmt.Sprintf("%s-pd", clusterName)
 }
 
-func pdClientSvcName(clusterName string) string {
+// PDClientSvcName returns pd client service name
+func PDClientSvcName(clusterName string) string {
 	return fmt.Sprintf("%s-pd-client", clusterName)
 }
 
-func tikvSvcName(clusterName string) string {
+// TiKVSvcName returns tikv service name
+func TiKVSvcName(clusterName string) string {
 	return fmt.Sprintf("%s-tikv", clusterName)
 }
 
-func pdSetNameFor(tc *v1.TidbCluster) string {
-	return fmt.Sprintf("%s-pdset", tc.GetName())
+// PDSetName returns pd's statefulset name
+func PDSetName(clusterName string) string {
+	return fmt.Sprintf("%s-pd", clusterName)
 }
 
-func tidbSetNameFor(tc *v1.TidbCluster) string {
-	return fmt.Sprintf("%s-tidbset", tc.GetName())
+// TiKVSetName returns pd's statefulset name
+func TiKVSetName(clusterName string) string {
+	return fmt.Sprintf("%s-tikv", clusterName)
 }
 
-func tikvSetNameFor(tc *v1.TidbCluster) string {
-	return fmt.Sprintf("%s-tikvset", tc.GetName())
+// TiDBSetName returns pd's statefulset name
+func TiDBSetName(clusterName string) string {
+	return fmt.Sprintf("%s-tidb", clusterName)
 }

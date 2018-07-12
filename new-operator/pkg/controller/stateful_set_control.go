@@ -21,7 +21,6 @@ import (
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/listers/apps/v1beta1"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -36,18 +35,15 @@ type StatefulSetControlInterface interface {
 }
 
 type defaultStatefulSetControl struct {
-	kubeCli   kubernetes.Interface
-	setLister v1beta1.StatefulSetLister
-	recorder  record.EventRecorder
+	kubeCli  kubernetes.Interface
+	recorder record.EventRecorder
 }
 
 // NewRealStatefuSetControl returns a defaultStatefulSetControl
 func NewRealStatefuSetControl(kubeCli kubernetes.Interface,
-	setLister v1beta1.StatefulSetLister,
 	recorder record.EventRecorder) *defaultStatefulSetControl {
 	return &defaultStatefulSetControl{
 		kubeCli,
-		setLister,
 		recorder,
 	}
 }
