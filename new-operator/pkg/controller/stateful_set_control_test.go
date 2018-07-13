@@ -12,3 +12,154 @@
 // limitations under the License.
 
 package controller
+
+import (
+	"errors"
+	"testing"
+
+	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/fake"
+	appslisters "k8s.io/client-go/listers/apps/v1beta1"
+	core "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
+)
+
+func TestStatefulSetControlCreatesStatefulSets(t *testing.T) {
+	g := NewGomegaWithT(t)
+	recorder := record.NewFakeRecorder(10)
+	tc := newTidbCluster()
+	set := newStatefulSet(tc, "pd")
+	fakeClient := &fake.Clientset{}
+	control := NewRealStatefuSetControl(fakeClient, nil, recorder)
+	fakeClient.AddReactor("create", "statefulsets", func(action core.Action) (bool, runtime.Object, error) {
+		create := action.(core.CreateAction)
+		return true, create.GetObject(), nil
+	})
+	err := control.CreateStatefulSet(tc, set)
+	g.Expect(err).To(Succeed())
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(1))
+	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
+}
+
+func TestStatefulSetControlCreatesStatefulSetExists(t *testing.T) {
+	g := NewGomegaWithT(t)
+	recorder := record.NewFakeRecorder(10)
+	tc := newTidbCluster()
+	set := newStatefulSet(tc, "pd")
+	fakeClient := &fake.Clientset{}
+	control := NewRealStatefuSetControl(fakeClient, nil, recorder)
+	fakeClient.AddReactor("create", "statefulsets", func(action core.Action) (bool, runtime.Object, error) {
+		return true, set, apierrors.NewAlreadyExists(action.GetResource().GroupResource(), set.Name)
+	})
+	err := control.CreateStatefulSet(tc, set)
+	g.Expect(apierrors.IsAlreadyExists(err)).To(Equal(true))
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(0))
+}
+
+func TestStatefulSetControlCreatesStatefulSetFailed(t *testing.T) {
+	g := NewGomegaWithT(t)
+	recorder := record.NewFakeRecorder(10)
+	tc := newTidbCluster()
+	set := newStatefulSet(tc, "pd")
+	fakeClient := &fake.Clientset{}
+	control := NewRealStatefuSetControl(fakeClient, nil, recorder)
+	fakeClient.AddReactor("create", "statefulsets", func(action core.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
+	})
+	err := control.CreateStatefulSet(tc, set)
+	g.Expect(err).To(HaveOccurred())
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(1))
+	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeWarning))
+}
+
+func TestStatefulSetControlUpdateStatefulSet(t *testing.T) {
+	g := NewGomegaWithT(t)
+	recorder := record.NewFakeRecorder(10)
+	tc := newTidbCluster()
+	set := newStatefulSet(tc, "pd")
+	fakeClient := &fake.Clientset{}
+	control := NewRealStatefuSetControl(fakeClient, nil, recorder)
+	fakeClient.AddReactor("update", "statefulsets", func(action core.Action) (bool, runtime.Object, error) {
+		return true, nil, nil
+	})
+	err := control.UpdateStatefulSet(tc, set)
+	g.Expect(err).To(Succeed())
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(1))
+	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
+}
+
+func TestStatefulSetControlUpdateStatefulSetConflictSuccess(t *testing.T) {
+	g := NewGomegaWithT(t)
+	recorder := record.NewFakeRecorder(10)
+	tc := newTidbCluster()
+	set := newStatefulSet(tc, "pd")
+	fakeClient := &fake.Clientset{}
+	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	oldSet := newStatefulSet(tc, "pd")
+	err := indexer.Add(oldSet)
+	g.Expect(err).To(Succeed())
+	setLister := appslisters.NewStatefulSetLister(indexer)
+	control := NewRealStatefuSetControl(fakeClient, setLister, recorder)
+	conflict := false
+	fakeClient.AddReactor("update", "statefulsets", func(action core.Action) (bool, runtime.Object, error) {
+		update := action.(core.UpdateAction)
+		if !conflict {
+			conflict = true
+			return true, update.GetObject(), apierrors.NewConflict(action.GetResource().GroupResource(), set.Name, errors.New("conflict"))
+		}
+		return true, update.GetObject(), nil
+	})
+	err = control.UpdateStatefulSet(tc, set)
+	g.Expect(err).To(Succeed())
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(1))
+	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
+}
+
+func TestStatefulSetControlDeleteStatefulSet(t *testing.T) {
+	g := NewGomegaWithT(t)
+	recorder := record.NewFakeRecorder(10)
+	tc := newTidbCluster()
+	set := newStatefulSet(tc, "pd")
+	fakeClient := &fake.Clientset{}
+	control := NewRealStatefuSetControl(fakeClient, nil, recorder)
+	fakeClient.AddReactor("delete", "statefulsets", func(action core.Action) (bool, runtime.Object, error) {
+		return true, nil, nil
+	})
+	err := control.DeleteStatefulSet(tc, set)
+	g.Expect(err).To(Succeed())
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(1))
+	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
+}
+
+func TestStatefulSetControlDeleteStatefulSetFailed(t *testing.T) {
+	g := NewGomegaWithT(t)
+	recorder := record.NewFakeRecorder(10)
+	tc := newTidbCluster()
+	set := newStatefulSet(tc, "pd")
+	fakeClient := &fake.Clientset{}
+	control := NewRealStatefuSetControl(fakeClient, nil, recorder)
+	fakeClient.AddReactor("delete", "statefulsets", func(action core.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
+	})
+	err := control.DeleteStatefulSet(tc, set)
+	g.Expect(err).To(HaveOccurred())
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(1))
+	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeWarning))
+}

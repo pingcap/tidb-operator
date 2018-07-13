@@ -87,7 +87,7 @@ func NewController(
 		control: NewDefaultTidbClusterControl(
 			NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
 			mm.NewPDMemberManager(
-				controller.NewRealStatefuSetControl(kubeCli, recorder),
+				controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder),
 				setInformer.Lister(),
 			),
 			recorder,

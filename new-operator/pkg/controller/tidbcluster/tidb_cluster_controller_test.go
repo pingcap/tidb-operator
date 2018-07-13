@@ -232,6 +232,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 		mm.NewPDMemberManager(
 			controller.NewRealStatefuSetControl(
 				kubeCli,
+				setInformer.Lister(),
 				recorder,
 			),
 			setInformer.Lister(),

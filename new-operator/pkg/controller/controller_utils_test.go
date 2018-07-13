@@ -12,3 +12,91 @@
 // limitations under the License.
 
 package controller
+
+import (
+	"fmt"
+
+	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
+	apps "k8s.io/api/apps/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/cache"
+)
+
+type fakeIndexer struct {
+	cache.Indexer
+	getError error
+}
+
+func (f *fakeIndexer) GetByKey(key string) (interface{}, bool, error) {
+	return nil, false, f.getError
+}
+
+func collectEvents(source <-chan string) []string {
+	done := false
+	events := make([]string, 0)
+	for !done {
+		select {
+		case event := <-source:
+			events = append(events, event)
+		default:
+			done = true
+		}
+	}
+	return events
+}
+
+func newTidbCluster() *v1.TidbCluster {
+	tc := &v1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: metav1.NamespaceDefault,
+		},
+	}
+	return tc
+}
+
+func newSecret(tc *v1.TidbCluster, name string) *corev1.Secret {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      GetName(tc.Name, "image"),
+			Namespace: metav1.NamespaceDefault,
+		},
+	}
+	return secret
+}
+
+func newService(tc *v1.TidbCluster, name string) *corev1.Service {
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      GetName(tc.Name, "pd"),
+			Namespace: metav1.NamespaceDefault,
+		},
+	}
+	return svc
+}
+
+func newStatefulSet(tc *v1.TidbCluster, name string) *apps.StatefulSet {
+	set := &apps.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      GetName(tc.Name, "pd"),
+			Namespace: metav1.NamespaceDefault,
+		},
+	}
+	return set
+}
+
+func newDeployment(tc *v1.TidbCluster, name string) *apps.Deployment {
+	deploy := &apps.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      GetName(tc.Name, "monitor"),
+			Namespace: metav1.NamespaceDefault,
+		},
+	}
+	return deploy
+}
+
+// GetName concatenate tidb cluster name and member name, used for controller managed resource name
+func GetName(tcName string, name string) string {
+	return fmt.Sprintf("%s-%s", tcName, name)
+}
