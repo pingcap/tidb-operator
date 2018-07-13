@@ -167,7 +167,7 @@ func (tcc *Controller) processNextWorkItem() bool {
 func (tcc *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
-		glog.V(4).Infof("Finished syncing TidbCluster %q (%v)", key, time.Now().Sub(startTime))
+		glog.V(4).Infof("Finished syncing TidbCluster %q (%v)", key, time.Since(startTime))
 	}()
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)

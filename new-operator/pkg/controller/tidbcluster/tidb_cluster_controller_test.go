@@ -79,7 +79,7 @@ func TestTidbClusterControllerAddStatefuSet(t *testing.T) {
 			name: "have deletionTimestamp",
 			modifySet: func(tc *v1.TidbCluster) *apps.StatefulSet {
 				set := newStatefuSet(tc)
-				set.DeletionTimestamp = &metav1.Time{time.Now().Add(30 * time.Second)}
+				set.DeletionTimestamp = &metav1.Time{Time: time.Now().Add(30 * time.Second)}
 				return set
 			},
 			addTidbClusterToIndexer: true,

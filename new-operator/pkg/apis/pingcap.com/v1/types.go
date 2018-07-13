@@ -111,11 +111,11 @@ const (
 	// StateGracefulDeleted represents graceful deleted cluster state
 	// In this state, tidb-operator will delete all resources belonging to this cluster except this object and all its PD/TiKV PVs
 	// This state can only be changed from ReallyNormal() manually by user
-	StateGracefulDeleted = "GracefulDeleted"
+	StateGracefulDeleted ClusterState = "GracefulDeleted"
 
 	// StateRestore represents restore cluster state
 	// This state can only be changed from ReallyGracefulDeleted() by user, or be changed to StateNormal by tidb-operator
-	StateRestore = "Restore"
+	StateRestore ClusterState = "Restore"
 )
 
 // PDSpec contains details of PD member

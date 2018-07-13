@@ -14,15 +14,14 @@
 package tidbcluster
 
 import (
-	"time"
-
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
 	mm "github.com/pingcap/tidb-operator/new-operator/pkg/controller/tidbcluster/membermanager"
 	"k8s.io/client-go/tools/record"
 )
 
 const (
-	pdConnTimeout = 2 * time.Second
+// unused
+// pdConnTimeout = 2 * time.Second
 )
 
 // ControlInterface implements the control logic for updating TidbClusters and their children StatefulSets.
