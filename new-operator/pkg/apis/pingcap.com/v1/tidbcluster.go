@@ -11,13 +11,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package membermanager
+package v1
 
-import "github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
+import "fmt"
 
-// MemberManager implements the logic for syncing all TidbCluster members.
-type MemberManager interface {
-	// Sync	implements the logic for syncing all TidbCluster members.
-	// Implements can only modify the status of TidbCluster.
-	Sync(*v1.TidbCluster) error
+// ConfigMapName returns TidbCluster's configMap name
+func (tc *TidbCluster) ConfigMapName() string {
+	return fmt.Sprintf("%s-config", tc.Name)
+}
+
+func (mt MemberType) String() string {
+	return string(mt)
 }

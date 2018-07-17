@@ -18,12 +18,16 @@ import (
 	"strings"
 
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
+	tcinformers "github.com/pingcap/tidb-operator/new-operator/pkg/client/informers/externalversions/pingcap.com/v1"
+	v1listers "github.com/pingcap/tidb-operator/new-operator/pkg/client/listers/pingcap.com/v1"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	appsinformers "k8s.io/client-go/informers/apps/v1beta1"
 	"k8s.io/client-go/kubernetes"
 	appslisters "k8s.io/client-go/listers/apps/v1beta1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 )
@@ -104,3 +108,74 @@ func (sc *realStatefulSetControl) recordStatefulSetEvent(verb string, tc *v1.Tid
 }
 
 var _ StatefulSetControlInterface = &realStatefulSetControl{}
+
+// FakeStatefulSetControl is a fake StatefulSetControlInterface
+type FakeStatefulSetControl struct {
+	SetLister                appslisters.StatefulSetLister
+	SetIndexer               cache.Indexer
+	TcLister                 v1listers.TidbClusterLister
+	TcIndexer                cache.Indexer
+	createStatefulSetTracker requestTracker
+	updateStatefulSetTracker requestTracker
+	deleteStatefulSetTracker requestTracker
+}
+
+// NewFakeStatefulSetControl returns a FakeStatefulSetControl
+func NewFakeStatefulSetControl(setInformer appsinformers.StatefulSetInformer, tcInformer tcinformers.TidbClusterInformer) *FakeStatefulSetControl {
+	return &FakeStatefulSetControl{
+		setInformer.Lister(),
+		setInformer.Informer().GetIndexer(),
+		tcInformer.Lister(),
+		tcInformer.Informer().GetIndexer(),
+		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
+	}
+}
+
+// SetCreateStatefulSetError sets the error attributes of createStatefulSetTracker
+func (ssc *FakeStatefulSetControl) SetCreateStatefulSetError(err error, after int) {
+	ssc.createStatefulSetTracker.err = err
+	ssc.createStatefulSetTracker.after = after
+}
+
+// SetUpdateStatefulSetError sets the error attributes of updateStatefulSetTracker
+func (ssc *FakeStatefulSetControl) SetUpdateStatefulSetError(err error, after int) {
+	ssc.updateStatefulSetTracker.err = err
+	ssc.updateStatefulSetTracker.after = after
+}
+
+// SetDeleteStatefulSetError sets the error attributes of deleteStatefulSetTracker
+func (ssc *FakeStatefulSetControl) SetDeleteStatefulSetError(err error, after int) {
+	ssc.deleteStatefulSetTracker.err = err
+	ssc.deleteStatefulSetTracker.after = after
+}
+
+// CreateStatefulSet adds the statefulset to SetIndexer
+func (ssc *FakeStatefulSetControl) CreateStatefulSet(tc *v1.TidbCluster, set *apps.StatefulSet) error {
+	defer ssc.createStatefulSetTracker.inc()
+	if ssc.createStatefulSetTracker.errorReady() {
+		defer ssc.createStatefulSetTracker.reset()
+		return ssc.createStatefulSetTracker.err
+	}
+
+	return ssc.SetIndexer.Add(set)
+}
+
+// UpdateStatefulSet updates the statefulset of SetIndexer
+func (ssc *FakeStatefulSetControl) UpdateStatefulSet(tc *v1.TidbCluster, set *apps.StatefulSet) error {
+	defer ssc.updateStatefulSetTracker.inc()
+	if ssc.updateStatefulSetTracker.errorReady() {
+		defer ssc.updateStatefulSetTracker.reset()
+		return ssc.updateStatefulSetTracker.err
+	}
+
+	return ssc.SetIndexer.Update(set)
+}
+
+// DeleteStatefulSet deletes the statefulset of SetIndexer
+func (ssc *FakeStatefulSetControl) DeleteStatefulSet(tc *v1.TidbCluster, set *apps.StatefulSet) error {
+	return nil
+}
+
+var _ StatefulSetControlInterface = &FakeStatefulSetControl{}

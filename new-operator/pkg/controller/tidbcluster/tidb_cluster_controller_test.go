@@ -217,6 +217,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
+	svcInformer := kubeInformerFactory.Core().V1().Services()
 	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
 	tcc := NewController(
 		kubeCli,
@@ -235,7 +236,13 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 				setInformer.Lister(),
 				recorder,
 			),
+			controller.NewRealServiceControl(
+				kubeCli,
+				svcInformer.Lister(),
+				recorder,
+			),
 			setInformer.Lister(),
+			svcInformer.Lister(),
 		),
 		recorder,
 	)
@@ -270,7 +277,6 @@ func newTidbCluster() *v1.TidbCluster {
 					Image: "tikv-test-image",
 				},
 			},
-			Service: "ClusterIP",
 		},
 	}
 }
@@ -291,7 +297,7 @@ func newStatefuSet(tc *v1.TidbCluster) *apps.StatefulSet {
 			ResourceVersion: "1",
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: func() *int32 { i := int32(tc.Spec.PD.Size); return &i }(),
+			Replicas: &tc.Spec.PD.Replicas,
 		},
 	}
 }

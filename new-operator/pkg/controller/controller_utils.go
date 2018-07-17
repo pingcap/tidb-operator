@@ -19,6 +19,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -42,6 +43,23 @@ func GetOwnerRef(tc *v1.TidbCluster) metav1.OwnerReference {
 		Controller:         &controller,
 		BlockOwnerDeletion: &blockOwnerDeletion,
 	}
+}
+
+// GetServiceType returns member's service type
+func GetServiceType(services []v1.Service, serviceName string) corev1.ServiceType {
+	for _, svc := range services {
+		if svc.Name == serviceName {
+			switch svc.Type {
+			case "NodePort":
+				return corev1.ServiceTypeNodePort
+			case "LoadBalancer":
+				return corev1.ServiceTypeLoadBalancer
+			default:
+				return corev1.ServiceTypeClusterIP
+			}
+		}
+	}
+	return corev1.ServiceTypeClusterIP
 }
 
 // TiKVCapacity returns string resource requirement,
@@ -77,9 +95,9 @@ func PDSvcName(clusterName string) string {
 	return fmt.Sprintf("%s-pd", clusterName)
 }
 
-// PDClientSvcName returns pd client service name
-func PDClientSvcName(clusterName string) string {
-	return fmt.Sprintf("%s-pd-client", clusterName)
+// PDPeerSvcName returns pd peer service name
+func PDPeerSvcName(clusterName string) string {
+	return fmt.Sprintf("%s-pd-peer", clusterName)
 }
 
 // TiKVSvcName returns tikv service name
@@ -100,4 +118,24 @@ func TiKVSetName(clusterName string) string {
 // TiDBSetName returns pd's statefulset name
 func TiDBSetName(clusterName string) string {
 	return fmt.Sprintf("%s-tidb", clusterName)
+}
+
+// requestTracker is used by unit test for mocking request error
+type requestTracker struct {
+	requests int
+	err      error
+	after    int
+}
+
+func (rt *requestTracker) errorReady() bool {
+	return rt.err != nil && rt.requests >= rt.after
+}
+
+func (rt *requestTracker) inc() {
+	rt.requests++
+}
+
+func (rt *requestTracker) reset() {
+	rt.err = nil
+	rt.after = 0
 }

@@ -80,6 +80,7 @@ func NewController(
 
 	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
+	svcInformer := kubeInformerFactory.Core().V1().Services()
 
 	tcc := &Controller{
 		kubeClient: kubeCli,
@@ -88,7 +89,9 @@ func NewController(
 			NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
 			mm.NewPDMemberManager(
 				controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder),
+				controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder),
 				setInformer.Lister(),
+				svcInformer.Lister(),
 			),
 			recorder,
 		),
