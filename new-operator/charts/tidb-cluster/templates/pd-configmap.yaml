@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ .Values.clusterName }}-pd
+data:
+  startup-script: |-
+    #!/bin/sh
+
+    # This script is used to start pd containers in kubernetes cluster
+
+    # Use DownwardAPIVolumeFiles to store informations of the cluster:
+    # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+    #
+    #   runmode="normal/debug"
+    #
+    ANNOTATIONS="/etc/podinfo/annotations"
+    # get statefulset ordinal index for current pod
+    ORDINAL=$(hostname | awk -F '-' '{print $NF}')
+
+    if [[ ! -f "${ANNOTATIONS}" ]]
+    then
+        echo "${ANNOTATIONS} does't exist, exiting."
+        exit 1
+    fi
+    source ${ANNOTATIONS} 2>/dev/null
+
+    if [[ X$runmode == Xdebug ]]
+    then
+    	echo "entering debug mode."
+    	tail -f /dev/null
+    fi
+
+    ARGS="--data-dir=/var/lib/pd \
+    --name=${HOSTNAME} \
+    --peer-urls=http://0.0.0.0:2380 \
+    --advertise-peer-urls=http://${HOSTNAME}.${SERVICE_NAME}.${NAMESPACE}.svc:2380 \
+    --client-urls=http://0.0.0.0:2379 \
+    --advertise-client-urls=http://${HOSTNAME}.${SERVICE_NAME}.${NAMESPACE}.svc:2379 \
+    --config=/etc/pd/pd.toml \
+    "
+
+    if [[ ${ORDINAL} == "0" ]]
+    then
+        ARGS="${ARGS}--initial-cluster=${HOSTNAME}=http://${HOSTNAME}.${SERVICE_NAME}.${NAMESPACE}.svc:2380"
+    else
+        ARGS="${ARGS}--join="
+        TOP=$((ORDINAL-1))
+        for i in $(seq 0 ${TOP});
+        do
+            ARGS="${ARGS}http://${STATEFULSET_NAME}-${i}.${SERVICE_NAME}.${NAMESPACE}.svc:2380"
+            if [[ ${i} -lt ${TOP} ]]
+            then
+                ARGS="${ARGS},"
+            fi
+        done
+    fi
+
+    echo "starting pd-server ..."
+    echo "/pd-server ${ARGS}"
+    exec /pd-server ${ARGS}
+  config-file: |-
+    # ...

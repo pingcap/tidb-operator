@@ -13,13 +13,6 @@
 
 package v1
 
-import "fmt"
-
-// ConfigMapName returns TidbCluster's configMap name
-func (tc *TidbCluster) ConfigMapName() string {
-	return fmt.Sprintf("%s-config", tc.Name)
-}
-
 func (mt MemberType) String() string {
 	return string(mt)
 }

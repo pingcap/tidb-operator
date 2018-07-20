@@ -90,33 +90,23 @@ func GetPushgatewayImage(cluster *v1.TidbCluster) string {
 	return defaultPushgatewayImage
 }
 
-// PDSvcName returns pd service name
-func PDSvcName(clusterName string) string {
+// PDMemberName returns pd member name
+func PDMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-pd", clusterName)
 }
 
-// PDPeerSvcName returns pd peer service name
-func PDPeerSvcName(clusterName string) string {
+// PDPeerMemberName returns pd peer service name
+func PDPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-pd-peer", clusterName)
 }
 
-// TiKVSvcName returns tikv service name
-func TiKVSvcName(clusterName string) string {
+// TiKVMemberName returns tikv member name
+func TiKVMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tikv", clusterName)
 }
 
-// PDSetName returns pd's statefulset name
-func PDSetName(clusterName string) string {
-	return fmt.Sprintf("%s-pd", clusterName)
-}
-
-// TiKVSetName returns pd's statefulset name
-func TiKVSetName(clusterName string) string {
-	return fmt.Sprintf("%s-tikv", clusterName)
-}
-
-// TiDBSetName returns pd's statefulset name
-func TiDBSetName(clusterName string) string {
+// TiDBMemberName returns pd member name
+func TiDBMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tidb", clusterName)
 }
 

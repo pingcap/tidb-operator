@@ -71,7 +71,7 @@ func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1.TidbCluster) erro
 	tcName := tc.GetName()
 
 	newSvc := pmm.getNewPDServiceForTidbCluster(tc)
-	oldSvc, err := pmm.svcLister.Services(ns).Get(controller.PDSvcName(tcName))
+	oldSvc, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
 	if errors.IsNotFound(err) {
 		return pmm.svcControl.CreateService(tc, newSvc)
 	}
@@ -93,7 +93,7 @@ func (pmm *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1.TidbClust
 	tcName := tc.GetName()
 
 	newSvc := pmm.getNewPDHeadlessServiceForTidbCluster(tc)
-	oldSvc, err := pmm.svcLister.Services(ns).Get(controller.PDPeerSvcName(tcName))
+	oldSvc, err := pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
 	if errors.IsNotFound(err) {
 		return pmm.svcControl.CreateService(tc, newSvc)
 	}
@@ -119,7 +119,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1.TidbCluster) 
 		return err
 	}
 
-	oldPDSet, err := pmm.setLister.StatefulSets(ns).Get(controller.PDSetName(tcName))
+	oldPDSet, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = pmm.setControl.CreateStatefulSet(tc, newPDSet)
 		if err != nil {
@@ -148,7 +148,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1.TidbCluster) 
 func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1.TidbCluster) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
-	svcName := controller.PDSvcName(tcName)
+	svcName := controller.PDMemberName(tcName)
 	pdLabel := label.New().Cluster(tcName).PD().Labels()
 
 	return &corev1.Service{
@@ -176,7 +176,7 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1.TidbCluster) *c
 func (pmm *pdMemberManager) getNewPDHeadlessServiceForTidbCluster(tc *v1.TidbCluster) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
-	svcName := controller.PDPeerSvcName(tcName)
+	svcName := controller.PDPeerMemberName(tcName)
 	pdLabel := label.New().Cluster(tcName).PD().Labels()
 
 	return &corev1.Service{
@@ -209,6 +209,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 		{Name: "timezone", ReadOnly: true, MountPath: "/etc/localtime"},
 		{Name: "annotations", ReadOnly: true, MountPath: "/etc/podinfo"},
 		{Name: "config", ReadOnly: true, MountPath: "/etc/pd"},
+		{Name: "start-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 		{Name: "pd", MountPath: "/var/lib/pd"},
 	}
 	vols := []corev1.Volume{
@@ -226,8 +227,16 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 		{Name: "config",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: tc.ConfigMapName()},
-					Items:                []corev1.KeyToPath{{Key: "pd-config", Path: "pd.toml"}},
+					LocalObjectReference: corev1.LocalObjectReference{Name: controller.PDMemberName(tcName)},
+					Items:                []corev1.KeyToPath{{Key: "config-file", Path: "pd.toml"}},
+				},
+			},
+		},
+		{Name: "start-script",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: controller.PDMemberName(tcName)},
+					Items:                []corev1.KeyToPath{{Key: "start-script", Path: "pd_start_script.sh"}},
 				},
 			},
 		},
@@ -243,10 +252,11 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 		}
 	}
 	pdLabel := label.New().Cluster(tcName).PD()
+	setName := controller.PDMemberName(tcName)
 
 	pdSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            controller.PDSetName(tcName),
+			Name:            setName,
 			Namespace:       ns,
 			Labels:          pdLabel.Labels(),
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
@@ -269,7 +279,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 						{
 							Name:    v1.PDMemberType.String(),
 							Image:   tc.Spec.PD.Image,
-							Command: []string{"/entrypoint.sh"},
+							Command: []string{"/bin/sh", "-c", "source /usr/local/bin/pd_start_script.sh"},
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "server",
@@ -291,15 +301,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 							Resources:    util.ResourceRequirement(tc.Spec.PD.ContainerSpec),
 							Env: []corev1.EnvVar{
 								{
-									Name: "MY_POD_NAME",
-									ValueFrom: &corev1.EnvVarSource{
-										FieldRef: &corev1.ObjectFieldSelector{
-											FieldPath: "metadata.name",
-										},
-									},
-								},
-								{
-									Name: "MY_NAMESPACE",
+									Name: "NAMESPACE",
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{
 											FieldPath: "metadata.namespace",
@@ -307,8 +309,12 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 									},
 								},
 								{
-									Name:  "MY_SERVICE_NAME",
-									Value: controller.PDSvcName(tcName),
+									Name:  "SERVICE_NAME",
+									Value: controller.PDMemberName(tcName),
+								},
+								{
+									Name:  "STATEFULSET_NAME",
+									Value: setName,
 								},
 							},
 						},
@@ -335,7 +341,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 					},
 				},
 			},
-			ServiceName:         controller.PDSvcName(tcName),
+			ServiceName:         controller.PDMemberName(tcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 		},

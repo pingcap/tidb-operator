@@ -78,7 +78,7 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 
 		g.Expect(tc.Spec).To(Equal(oldSpec))
 
-		svc1, err := pmm.svcLister.Services(ns).Get(controller.PDSvcName(tcName))
+		svc1, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
 		if test.pdSvcCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(svc1).NotTo(Equal(nil))
@@ -86,7 +86,7 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			expectErrIsNotFound(g, err)
 		}
 
-		svc2, err := pmm.svcLister.Services(ns).Get(controller.PDPeerSvcName(tcName))
+		svc2, err := pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
 		if test.pdPeerSvcCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(svc2).NotTo(Equal(nil))
@@ -94,7 +94,7 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			expectErrIsNotFound(g, err)
 		}
 
-		tc1, err := pmm.setLister.StatefulSets(ns).Get(controller.PDSetName(tcName))
+		tc1, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 		if test.setCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(tc1).NotTo(Equal(nil))
@@ -192,11 +192,11 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		err := pmm.Sync(tc)
 		g.Expect(err).NotTo(HaveOccurred())
 
-		_, err = pmm.svcLister.Services(ns).Get(controller.PDSvcName(tcName))
+		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = pmm.svcLister.Services(ns).Get(controller.PDPeerSvcName(tcName))
+		_, err = pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = pmm.setLister.StatefulSets(ns).Get(controller.PDSetName(tcName))
+		_, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		tc1 := tc.DeepCopy()
@@ -220,15 +220,15 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		if test.expectPDServieFn != nil {
-			svc, err := pmm.svcLister.Services(ns).Get(controller.PDSvcName(tcName))
+			svc, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
 			test.expectPDServieFn(g, svc, err)
 		}
 		if test.expectPDPeerServieFn != nil {
-			svc, err := pmm.svcLister.Services(ns).Get(controller.PDPeerSvcName(tcName))
+			svc, err := pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
 			test.expectPDPeerServieFn(g, svc, err)
 		}
 		if test.expectStatefulSetFn != nil {
-			set, err := pmm.setLister.StatefulSets(ns).Get(controller.PDSetName(tcName))
+			set, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 			test.expectStatefulSetFn(g, set, err)
 		}
 	}
