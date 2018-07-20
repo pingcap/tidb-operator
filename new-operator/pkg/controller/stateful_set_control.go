@@ -159,6 +159,9 @@ func (ssc *FakeStatefulSetControl) CreateStatefulSet(tc *v1.TidbCluster, set *ap
 		return ssc.createStatefulSetTracker.err
 	}
 
+	observedGeneration := int64(1)
+	set.Status.ObservedGeneration = &observedGeneration
+
 	return ssc.SetIndexer.Add(set)
 }
 
@@ -169,7 +172,8 @@ func (ssc *FakeStatefulSetControl) UpdateStatefulSet(tc *v1.TidbCluster, set *ap
 		defer ssc.updateStatefulSetTracker.reset()
 		return ssc.updateStatefulSetTracker.err
 	}
-
+	observedGeneration := *set.Status.ObservedGeneration + 1
+	set.Status.ObservedGeneration = &observedGeneration
 	return ssc.SetIndexer.Update(set)
 }
 

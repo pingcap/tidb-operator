@@ -81,18 +81,23 @@ func NewController(
 	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
+	deploymentInformer := kubeInformerFactory.Apps().V1beta1().Deployments()
 
+	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
+	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
+	deploymentControl := controller.NewRealDeploymentControl(kubeCli, deploymentInformer.Lister(), recorder)
 	tcc := &Controller{
 		kubeClient: kubeCli,
 		cli:        cli,
 		control: NewDefaultTidbClusterControl(
 			NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
 			mm.NewPDMemberManager(
-				controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder),
-				controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder),
+				setControl,
+				svcControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 			),
+			mm.NewMonitorMemberManager(deploymentControl, svcControl, deploymentInformer.Lister(), svcInformer.Lister()),
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(

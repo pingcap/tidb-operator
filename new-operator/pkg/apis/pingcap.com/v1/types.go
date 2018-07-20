@@ -95,9 +95,10 @@ type TidbClusterSpec struct {
 
 // TidbClusterStatus represents the current status of a tidb cluster.
 type TidbClusterStatus struct {
-	PD   PDStatus   `json:"pd,omitempty"`
-	TiKV TiKVStatus `json:"tikv,omitempty"`
-	TiDB TiDBStatus `json:"tidb,omitempty"`
+	PD      PDStatus      `json:"pd,omitempty"`
+	TiKV    TiKVStatus    `json:"tikv,omitempty"`
+	TiDB    TiDBStatus    `json:"tidb,omitempty"`
+	Monitor MonitorStatus `json:"monitor,omitempty"`
 }
 
 // PDSpec contains details of PD member
@@ -136,6 +137,7 @@ type MonitorSpec struct {
 	NodeSelector         map[string]string `json:"nodeSelector,omitempty"`
 	NodeSelectorRequired bool              `json:"nodeSelectorRequired,omitempty"`
 	RetentionDays        int32             `json:"retentionDays,omitempty"`
+	ServiceAccount       string            `json:"serviceAccount,omitempty"`
 }
 
 // ContainerSpec is the container spec of a pod
@@ -191,6 +193,11 @@ type TiDBMember struct {
 type TiKVStatus struct {
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	Stores      map[string]TiKVStores   `json:"stores,omitempty"`
+}
+
+// MonitorStatus is Monitor status
+type MonitorStatus struct {
+	Deployment *apps.DeploymentStatus `json:"deployment,omitempty"`
 }
 
 // TiKVStores is either Up/Down/Offline, namely it's in-cluster status

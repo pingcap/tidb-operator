@@ -18,12 +18,16 @@ import (
 	"strings"
 
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
+	tcinformers "github.com/pingcap/tidb-operator/new-operator/pkg/client/informers/externalversions/pingcap.com/v1"
+	v1listers "github.com/pingcap/tidb-operator/new-operator/pkg/client/listers/pingcap.com/v1"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	appsinformers "k8s.io/client-go/informers/apps/v1beta1"
 	"k8s.io/client-go/kubernetes"
 	appslisters "k8s.io/client-go/listers/apps/v1beta1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 )
@@ -99,3 +103,78 @@ func (dc *realDeploymentControl) recordDeploymentEvent(verb string, tc *v1.TidbC
 }
 
 var _ DeploymentControlInterface = &realDeploymentControl{}
+
+// FakeDeploymentControl is a fake DeploymentControlInterface
+type FakeDeploymentControl struct {
+	DeploymentLister        appslisters.DeploymentLister
+	DeploymentIndexer       cache.Indexer
+	TcLister                v1listers.TidbClusterLister
+	TcIndexer               cache.Indexer
+	createDeploymentTracker requestTracker
+	updateDeploymentTracker requestTracker
+	deleteDeploymentTracker requestTracker
+}
+
+// NewFakeDeploymentControl returns a FakeDeploymentControl
+func NewFakeDeploymentControl(deploymentInformer appsinformers.DeploymentInformer, tcInformer tcinformers.TidbClusterInformer) *FakeDeploymentControl {
+	return &FakeDeploymentControl{
+		deploymentInformer.Lister(),
+		deploymentInformer.Informer().GetIndexer(),
+		tcInformer.Lister(),
+		tcInformer.Informer().GetIndexer(),
+		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
+	}
+}
+
+// SetCreateDeploymentError sets the error attributes of createDeploymentTracker
+func (fdc *FakeDeploymentControl) SetCreateDeploymentError(err error, after int) {
+	fdc.createDeploymentTracker.err = err
+	fdc.createDeploymentTracker.after = after
+}
+
+// SetUpdateDeploymentError sets the error attributes of updateDeploymentTracker
+func (fdc *FakeDeploymentControl) SetUpdateDeploymentError(err error, after int) {
+	fdc.updateDeploymentTracker.err = err
+	fdc.updateDeploymentTracker.after = after
+}
+
+// SetDeleteDeploymentError sets the error attributes of deleteDeploymentTracker
+func (fdc *FakeDeploymentControl) SetDeleteDeploymentError(err error, after int) {
+	fdc.deleteDeploymentTracker.err = err
+	fdc.deleteDeploymentTracker.after = after
+}
+
+// CreateDeployment adds the deployment to DeploymentIndexer
+func (fdc *FakeDeploymentControl) CreateDeployment(tc *v1.TidbCluster, deployment *apps.Deployment) error {
+	defer fdc.createDeploymentTracker.inc()
+	if fdc.createDeploymentTracker.errorReady() {
+		defer fdc.createDeploymentTracker.reset()
+		return fdc.createDeploymentTracker.err
+	}
+
+	deployment.Status.ObservedGeneration = 1
+
+	return fdc.DeploymentIndexer.Add(deployment)
+}
+
+// UpdateDeployment updates the deployment of DeploymentIndexer
+func (fdc *FakeDeploymentControl) UpdateDeployment(tc *v1.TidbCluster, deployment *apps.Deployment) error {
+	defer fdc.updateDeploymentTracker.inc()
+	if fdc.updateDeploymentTracker.errorReady() {
+		defer fdc.updateDeploymentTracker.reset()
+		return fdc.updateDeploymentTracker.err
+	}
+
+	deployment.Status.ObservedGeneration = deployment.Status.ObservedGeneration + 1
+
+	return fdc.DeploymentIndexer.Update(deployment)
+}
+
+// DeleteDeployment deletes the deployment of DeploymentIndexer
+func (fdc *FakeDeploymentControl) DeleteDeployment(tc *v1.TidbCluster, deployment *apps.Deployment) error {
+	return nil
+}
+
+var _ DeploymentControlInterface = &FakeDeploymentControl{}

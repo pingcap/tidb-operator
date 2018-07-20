@@ -219,6 +219,8 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
 	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
+	deploymentInformer := kubeInformerFactory.Apps().V1beta1().Deployments()
+
 	tcc := NewController(
 		kubeCli,
 		cli,
@@ -228,6 +230,12 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	tcc.tcListerSynced = alwaysReady
 	tcc.setListerSynced = alwaysReady
 	recorder := record.NewFakeRecorder(10)
+
+	svcControl := controller.NewRealServiceControl(
+		kubeCli,
+		svcInformer.Lister(),
+		recorder,
+	)
 	tcc.control = NewDefaultTidbClusterControl(
 		NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
 		mm.NewPDMemberManager(
@@ -236,14 +244,14 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 				setInformer.Lister(),
 				recorder,
 			),
-			controller.NewRealServiceControl(
-				kubeCli,
-				svcInformer.Lister(),
-				recorder,
-			),
+			svcControl,
 			setInformer.Lister(),
 			svcInformer.Lister(),
 		),
+		mm.NewMonitorMemberManager(
+			controller.NewRealDeploymentControl(kubeCli, deploymentInformer.Lister(), recorder),
+			svcControl,
+			deploymentInformer.Lister(), svcInformer.Lister()),
 		recorder,
 	)
 
@@ -275,6 +283,14 @@ func newTidbCluster() *v1.TidbCluster {
 			TiDB: v1.TiDBSpec{
 				ContainerSpec: v1.ContainerSpec{
 					Image: "tikv-test-image",
+				},
+			},
+			Monitor: &v1.MonitorSpec{
+				Prometheus: v1.ContainerSpec{
+					Image: "prometheus-test",
+				},
+				Grafana: &v1.ContainerSpec{
+					Image: "grafana",
 				},
 			},
 		},

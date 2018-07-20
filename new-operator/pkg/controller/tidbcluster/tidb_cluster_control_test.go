@@ -48,14 +48,17 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
+	deploymentInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().Deployments()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1().TidbClusters()
 	recorder := record.NewFakeRecorder(10)
 
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
+	deploymentControl := controller.NewFakeDeploymentControl(deploymentInformer, tcInformer)
 	statusUpdater := newFakeTidbClusterStatusUpdater(tcInformer)
 	pdMemberManager := mm.NewPDMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
-	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, recorder)
+	monitorMemberManager := mm.NewMonitorMemberManager(deploymentControl, svcControl, deploymentInformer.Lister(), svcInformer.Lister())
+	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, monitorMemberManager, recorder)
 
 	return control, setControl, statusUpdater
 }

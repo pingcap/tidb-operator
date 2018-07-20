@@ -61,6 +61,9 @@ const (
 	TiDBLabelVal string = "tidb"
 	// TiKVLabelVal is TiKV label value
 	TiKVLabelVal string = "tikv"
+	// MonitorLabelVal is Monitor label value
+	MonitorLabelVal string = "monitor"
+
 	// ClusterLabelVal is cluster label value
 	ClusterLabelVal string = "tidbCluster"
 
@@ -133,6 +136,12 @@ func (l Label) TiKV() Label {
 	return l
 }
 
+// Monitor assigns monitor to app key in label
+func (l Label) Monitor() Label {
+	l.App(MonitorLabelVal)
+	return l
+}
+
 // IsTiKV returns whether label is a TiKV
 func (l Label) IsTiKV() bool {
 	return l[AppLabelKey] == TiKVLabelVal
@@ -141,6 +150,11 @@ func (l Label) IsTiKV() bool {
 // IsTiDB returns whether label is a TiDB
 func (l Label) IsTiDB() bool {
 	return l[AppLabelKey] == TiDBLabelVal
+}
+
+// Monitor returns whether label is a Monitor
+func (l Label) IsMonitor() bool {
+	return l[AppLabelKey] == MonitorLabelVal
 }
 
 // Selector gets labels.Selector from label

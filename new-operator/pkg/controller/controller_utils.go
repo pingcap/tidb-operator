@@ -110,6 +110,16 @@ func TiDBMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tidb", clusterName)
 }
 
+// MonitorSvcName return monitor's svc name
+func MonitorSvcName(clusterName string) string {
+	return fmt.Sprintf("%s-monitor", clusterName)
+}
+
+// MonitorDeploymentName return monitor's deployment name
+func MonitorDeploymentName(clusterName string) string {
+	return fmt.Sprintf("%s-monitor", clusterName)
+}
+
 // requestTracker is used by unit test for mocking request error
 type requestTracker struct {
 	requests int

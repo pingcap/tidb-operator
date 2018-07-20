@@ -14,8 +14,11 @@
 package tidbcluster
 
 import (
+	"reflect"
+
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
 	mm "github.com/pingcap/tidb-operator/new-operator/pkg/controller/tidbcluster/membermanager"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -37,30 +40,40 @@ type ControlInterface interface {
 func NewDefaultTidbClusterControl(
 	statusUpdater StatusUpdaterInterface,
 	pdMemberManager mm.MemberManager,
+	monitorMemberManager mm.MemberManager,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		statusUpdater,
 		pdMemberManager,
+		monitorMemberManager,
 		recorder,
 	}
 }
 
 type defaultTidbClusterControl struct {
-	statusUpdater   StatusUpdaterInterface
-	pdMemberManager mm.MemberManager
-	recorder        record.EventRecorder
+	statusUpdater        StatusUpdaterInterface
+	pdMemberManager      mm.MemberManager
+	monitorMemberManager mm.MemberManager
+	recorder             record.EventRecorder
 }
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
 func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1.TidbCluster) error {
 	// perform the main update function and get the status
+	var errs []error
+	oldStatus := tc.Status.DeepCopy()
 	err := tcc.updateTidbCluster(tc)
 	if err != nil {
-		return err
+		errs = append(errs, err)
 	}
-
-	// update the tidbCluster's status
-	return tcc.updateTidbClusterStatus(tc, &tc.Status)
+	if !reflect.DeepEqual(tc.Status, oldStatus) {
+		// update the tidbCluster's status
+		err2 := tcc.updateTidbClusterStatus(tc, &tc.Status)
+		if err2 != nil {
+			errs = append(errs, err2)
+		}
+	}
+	return errorutils.NewAggregate(errs)
 }
 
 func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1.TidbCluster) error {
@@ -82,11 +95,11 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1.TidbCluster) erro
 	// 	return err
 	// }
 
-	// // Monitor
-	// err = tcc.monitorMemberManager.Sync(tc)
-	// if err != nil {
-	//	return err
-	// }
+	// Monitor
+	err = tcc.monitorMemberManager.Sync(tc)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

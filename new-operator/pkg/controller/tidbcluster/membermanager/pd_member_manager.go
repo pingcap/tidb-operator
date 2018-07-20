@@ -132,6 +132,8 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1.TidbCluster) 
 		return err
 	}
 
+	tc.Status.PD.StatefulSet = &oldPDSet.Status
+
 	if !reflect.DeepEqual(oldPDSet.Spec, newPDSet.Spec) {
 		set := *oldPDSet
 		set.Spec = newPDSet.Spec
@@ -139,7 +141,6 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1.TidbCluster) 
 		if err != nil {
 			return err
 		}
-		tc.Status.PD.StatefulSet = &oldPDSet.Status
 	}
 
 	return nil
