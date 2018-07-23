@@ -2,7 +2,6 @@ package membermanager
 
 import (
 	"fmt"
-
 	"reflect"
 
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
@@ -63,7 +62,7 @@ func (mmm *monitorMemberManager) syncMonitorServices(tc *v1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	clusterName := tc.GetName()
 
-	svcName := controller.MonitorSvcName(clusterName)
+	svcName := controller.MonitorMemberName(clusterName)
 	newSvc := mmm.getNewMonitorService(tc)
 	oldSvc, err := mmm.serviceLister.Services(ns).Get(svcName)
 	if apierrors.IsNotFound(err) {
@@ -86,7 +85,7 @@ func (mmm *monitorMemberManager) syncMonitorServices(tc *v1.TidbCluster) error {
 func (mmm *monitorMemberManager) getNewMonitorService(tc *v1.TidbCluster) *corev1.Service {
 	ns := tc.GetNamespace()
 	clusterName := tc.GetName()
-	svcName := controller.MonitorSvcName(clusterName)
+	svcName := controller.MonitorMemberName(clusterName)
 	svcLabel := label.New().Cluster(clusterName).Monitor().Labels()
 	servicePorts := []corev1.ServicePort{
 		{
@@ -127,7 +126,7 @@ func (mmm *monitorMemberManager) syncMonitorDeployment(tc *v1.TidbCluster) error
 
 	newDeployment := mmm.getNewMonitorDeployment(tc)
 
-	deploymentName := controller.MonitorDeploymentName(clusterName)
+	deploymentName := controller.MonitorMemberName(clusterName)
 	oldDeployment, err := mmm.deploymentLister.Deployments(ns).Get(deploymentName)
 	if apierrors.IsNotFound(err) {
 		err = mmm.deploymentControl.CreateDeployment(tc, newDeployment)
@@ -156,7 +155,7 @@ func (mmm *monitorMemberManager) syncMonitorDeployment(tc *v1.TidbCluster) error
 func (mmm *monitorMemberManager) getNewMonitorDeployment(tc *v1.TidbCluster) *apps.Deployment {
 	ns := tc.GetNamespace()
 	clusterName := tc.GetName()
-	deploymentName := controller.MonitorDeploymentName(clusterName)
+	deploymentName := controller.MonitorMemberName(clusterName)
 	deploymentLabel := label.New().Cluster(clusterName).Monitor().Labels()
 
 	var reserveDays int32 = defaultPromRetentionDays

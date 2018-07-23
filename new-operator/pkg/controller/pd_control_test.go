@@ -14,17 +14,14 @@
 package controller
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
-	"testing"
-
 	"net/http"
 	"net/http/httptest"
-
-	"encoding/json"
+	"testing"
 	"time"
-
-	"fmt"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"

@@ -15,7 +15,6 @@ package tidbcluster
 
 import (
 	"fmt"
-
 	"time"
 
 	"github.com/golang/glog"
@@ -81,11 +80,11 @@ func NewController(
 	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
-	deploymentInformer := kubeInformerFactory.Apps().V1beta1().Deployments()
+	deployInformer := kubeInformerFactory.Apps().V1beta1().Deployments()
 
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
-	deploymentControl := controller.NewRealDeploymentControl(kubeCli, deploymentInformer.Lister(), recorder)
+	deployControl := controller.NewRealDeploymentControl(kubeCli, deployInformer.Lister(), recorder)
 	tcc := &Controller{
 		kubeClient: kubeCli,
 		cli:        cli,
@@ -97,7 +96,24 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 			),
-			mm.NewMonitorMemberManager(deploymentControl, svcControl, deploymentInformer.Lister(), svcInformer.Lister()),
+			mm.NewMonitorMemberManager(
+				deployControl,
+				svcControl,
+				deployInformer.Lister(),
+				svcInformer.Lister(),
+			),
+			mm.NewTiDBMemberManager(
+				setControl,
+				svcControl,
+				setInformer.Lister(),
+				svcInformer.Lister(),
+			),
+			mm.NewPriTiDBMemberManager(
+				deployControl,
+				svcControl,
+				deployInformer.Lister(),
+				svcInformer.Lister(),
+			),
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(

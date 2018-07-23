@@ -31,6 +31,9 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
+// ExternalTrafficPolicy denotes if this Service desires to route external traffic to node-local or cluster-wide endpoints.
+var ExternalTrafficPolicy string
+
 // ServiceControlInterface manages Services used in TidbCluster
 type ServiceControlInterface interface {
 	CreateService(*v1.TidbCluster, *corev1.Service) error

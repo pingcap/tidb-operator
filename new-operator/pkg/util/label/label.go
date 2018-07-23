@@ -152,7 +152,7 @@ func (l Label) IsTiDB() bool {
 	return l[AppLabelKey] == TiDBLabelVal
 }
 
-// Monitor returns whether label is a Monitor
+// IsMonitor returns whether label is a Monitor
 func (l Label) IsMonitor() bool {
 	return l[AppLabelKey] == MonitorLabelVal
 }

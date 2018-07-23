@@ -17,19 +17,18 @@ import (
 	"fmt"
 	"reflect"
 
-	apps "k8s.io/api/apps/v1beta1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/listers/apps/v1beta1"
-	corelisters "k8s.io/client-go/listers/core/v1"
-
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/util/label"
+	apps "k8s.io/api/apps/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/listers/apps/v1beta1"
+	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 type pdMemberManager struct {

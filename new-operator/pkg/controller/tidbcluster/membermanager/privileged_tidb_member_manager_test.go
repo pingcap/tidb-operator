@@ -18,7 +18,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
-func TestMonitorMemberManagerCreate(t *testing.T) {
+func TestPrivilegedTiDBMemberManagerCreate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                    string
@@ -32,30 +32,30 @@ func TestMonitorMemberManagerCreate(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
-		tc := newMonitorTidbCluster()
+		tc := newPrivilegedTidbCluster()
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
 		if test.prepare != nil {
 			test.prepare(tc)
 		}
 
-		mmm, fakeDeploymentControl, fakeSvcControl := newFakeMonitorMemberManager()
+		ptmm, fakeDeployControl, fakeSvcControl := newFakePrivilegedTidbMemberManager()
 
 		if test.errWhenCreateDeployment {
-			fakeDeploymentControl.SetCreateDeploymentError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+			fakeDeployControl.SetCreateDeploymentError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 		if test.errWhenCreateService {
 			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
-		err := mmm.Sync(tc)
+		err := ptmm.Sync(tc)
 		if test.err {
 			g.Expect(err).To(HaveOccurred())
 		} else {
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 
-		deployment, err := mmm.deploymentLister.Deployments(ns).Get(controller.MonitorMemberName(tcName))
+		deployment, err := ptmm.deployLister.Deployments(ns).Get(controller.PriTiDBMemberName(tcName))
 		if test.deploymentCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(deployment).NotTo(Equal(nil))
@@ -63,7 +63,7 @@ func TestMonitorMemberManagerCreate(t *testing.T) {
 			expectErrIsNotFound(g, err)
 		}
 
-		svc, err := mmm.serviceLister.Services(ns).Get(controller.MonitorMemberName(tcName))
+		svc, err := ptmm.svcLister.Services(ns).Get(controller.PriTiDBMemberName(tcName))
 		if test.serviceCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(svc).NotTo(Equal(nil))
@@ -87,21 +87,21 @@ func TestMonitorMemberManagerCreate(t *testing.T) {
 			serviceCreated:          true,
 		},
 		{
-			name:                    "error when create deployment",
+			name:                    "error when create privileged tidb deployment",
 			prepare:                 nil,
 			errWhenCreateDeployment: true,
 			errWhenCreateService:    false,
 			err:                     true,
 			deploymentCreated:       false,
-			serviceCreated:          false,
+			serviceCreated:          true,
 		},
 		{
-			name:                    "error when create service",
+			name:                    "error when create privileged tidb service",
 			prepare:                 nil,
 			errWhenCreateDeployment: false,
 			errWhenCreateService:    true,
 			err:                     true,
-			deploymentCreated:       true,
+			deploymentCreated:       false,
 			serviceCreated:          false,
 		},
 	}
@@ -111,7 +111,7 @@ func TestMonitorMemberManagerCreate(t *testing.T) {
 	}
 }
 
-func TestMonitorMemberManagerUpdate(t *testing.T) {
+func TestPrivilegedTiDBMemberManagerUpdate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                    string
@@ -125,32 +125,31 @@ func TestMonitorMemberManagerUpdate(t *testing.T) {
 	}
 
 	testFn := func(test testcase, t *testing.T) {
-		mmm, fakeDeploymentControl, fakeServiceControl := newFakeMonitorMemberManager()
+		ptmm, fakeDeployControl, fakeSvcControl := newFakePrivilegedTidbMemberManager()
 
-		tc := newMonitorTidbCluster()
+		tc := newPrivilegedTidbCluster()
 		ns := tc.GetNamespace()
 		clusterName := tc.GetName()
 
-		err := mmm.Sync(tc)
+		err := ptmm.Sync(tc)
 		g.Expect(err).NotTo(HaveOccurred())
 
-		_, err = mmm.serviceLister.Services(ns).Get(controller.MonitorMemberName(clusterName))
+		_, err = ptmm.svcLister.Services(ns).Get(controller.PriTiDBMemberName(clusterName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = mmm.deploymentLister.Deployments(ns).Get(controller.MonitorMemberName(clusterName))
+		_, err = ptmm.deployLister.Deployments(ns).Get(controller.PriTiDBMemberName(clusterName))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		if test.modify != nil {
 			test.modify(tc)
 		}
 		if test.errWhenUpdateService {
-			fakeServiceControl.SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("Api Update error")), 0)
+			fakeSvcControl.SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("Api Update error")), 0)
 		}
 		if test.errWhenUpdateDeployment {
-			fakeDeploymentControl.SetUpdateDeploymentError(errors.NewInternalError(fmt.Errorf("Api Update error")), 0)
+			fakeDeployControl.SetUpdateDeploymentError(errors.NewInternalError(fmt.Errorf("Api Update error")), 0)
 		}
 
-		err = mmm.Sync(tc)
-
+		err = ptmm.Sync(tc)
 		if test.err {
 			g.Expect(err).To(HaveOccurred())
 		} else {
@@ -158,22 +157,23 @@ func TestMonitorMemberManagerUpdate(t *testing.T) {
 		}
 
 		if test.exceptDeploymentFn != nil {
-			deployment, err := mmm.deploymentLister.Deployments(ns).Get(controller.MonitorMemberName(clusterName))
+			deployment, err := ptmm.deployLister.Deployments(ns).Get(controller.PriTiDBMemberName(clusterName))
 			test.exceptDeploymentFn(g, deployment, err)
 		}
 
 		if test.exceptServiceFn != nil {
-			service, err := mmm.serviceLister.Services(ns).Get(controller.MonitorMemberName(clusterName))
+			service, err := ptmm.svcLister.Services(ns).Get(controller.PriTiDBMemberName(clusterName))
 			test.exceptServiceFn(g, service, err)
 		}
 
 		if test.errWhenUpdateService {
-			fakeServiceControl.SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("Api Update error")), 0)
+			fakeSvcControl.SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("Api Update error")), 0)
 		}
 		if test.errWhenUpdateDeployment {
-			fakeDeploymentControl.SetUpdateDeploymentError(errors.NewInternalError(fmt.Errorf("Api Update error")), 0)
+			fakeDeployControl.SetUpdateDeploymentError(errors.NewInternalError(fmt.Errorf("Api Update error")), 0)
 		}
-		mmm.Sync(tc)
+
+		ptmm.Sync(tc)
 		if test.expectTidbClusterFn != nil {
 			test.expectTidbClusterFn(g, tc)
 		}
@@ -183,8 +183,10 @@ func TestMonitorMemberManagerUpdate(t *testing.T) {
 		{
 			name: "normal",
 			modify: func(tc *v1.TidbCluster) {
-				tc.Spec.Monitor.Prometheus.Image = "prometheus:new"
-				tc.Spec.Monitor.Grafana = nil
+				tc.Spec.PrivilegedTiDB.Image = "privileged-tidb:new"
+				tc.Spec.Services = []v1.Service{
+					{Name: v1.PriTiDBMemberType.String(), Type: string(corev1.ServiceTypeNodePort)},
+				}
 			},
 			errWhenUpdateDeployment: false,
 			errWhenUpdateService:    false,
@@ -192,25 +194,23 @@ func TestMonitorMemberManagerUpdate(t *testing.T) {
 			exceptDeploymentFn: func(g *GomegaWithT, deployment *apps.Deployment, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, container := range deployment.Spec.Template.Spec.Containers {
-					if container.Name == "prometheus" {
-						g.Expect(container.Image).To(Equal("prometheus:new"))
+					if container.Name == v1.PriTiDBMemberType.String() {
+						g.Expect(container.Image).To(Equal("privileged-tidb:new"))
 					}
 				}
 			},
 			exceptServiceFn: func(g *GomegaWithT, service *corev1.Service, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(len(service.Spec.Ports)).To(Equal(1))
+				g.Expect(service.Spec.Type).To(Equal(corev1.ServiceTypeNodePort))
 			},
-
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1.TidbCluster) {
-				g.Expect(tc.Status.Monitor.Deployment.ObservedGeneration).Should(BeNumerically(">", int64(1)))
+				g.Expect(tc.Status.PrivilegedTiDB.Deployment.ObservedGeneration).To(Equal(int64(2)))
 			},
 		},
 		{
-			name: "err when deployment update",
+			name: "err when privileged tidb deployment update",
 			modify: func(tc *v1.TidbCluster) {
-				tc.Spec.Monitor.Prometheus.Image = "prometheus:new"
-				tc.Spec.Monitor.Grafana = nil
+				tc.Spec.PrivilegedTiDB.Image = "privileged-tidb:new"
 			},
 			errWhenUpdateDeployment: true,
 			errWhenUpdateService:    false,
@@ -218,42 +218,33 @@ func TestMonitorMemberManagerUpdate(t *testing.T) {
 			exceptDeploymentFn: func(g *GomegaWithT, deployment *apps.Deployment, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, container := range deployment.Spec.Template.Spec.Containers {
-					if container.Name == "prometheus" {
-						g.Expect(container.Image).NotTo(Equal("prometheus:new"))
+					if container.Name == v1.PriTiDBMemberType.String() {
+						g.Expect(container.Image).NotTo(Equal("privileged-tidb:new"))
 					}
 				}
 			},
-			exceptServiceFn: func(g *GomegaWithT, service *corev1.Service, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(len(service.Spec.Ports)).To(Equal(2))
-			},
+			exceptServiceFn: nil,
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1.TidbCluster) {
-				g.Expect(tc.Status.Monitor.Deployment.ObservedGeneration).To(Equal(int64(1)))
+				g.Expect(tc.Status.PrivilegedTiDB.Deployment.ObservedGeneration).To(Equal(int64(1)))
 			},
 		},
 		{
-			name: "err when service update",
+			name: "err when privileged tidb service update",
 			modify: func(tc *v1.TidbCluster) {
-				tc.Spec.Monitor.Prometheus.Image = "prometheus:new"
-				tc.Spec.Monitor.Grafana = nil
+				tc.Spec.Services = []v1.Service{
+					{Name: v1.PriTiDBMemberType.String(), Type: string(corev1.ServiceTypeNodePort)},
+				}
 			},
 			errWhenUpdateDeployment: false,
 			errWhenUpdateService:    true,
 			err:                     true,
-			exceptDeploymentFn: func(g *GomegaWithT, deployment *apps.Deployment, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, container := range deployment.Spec.Template.Spec.Containers {
-					if container.Name == "prometheus" {
-						g.Expect(container.Image).To(Equal("prometheus:new"))
-					}
-				}
-			},
+			exceptDeploymentFn:      nil,
 			exceptServiceFn: func(g *GomegaWithT, service *corev1.Service, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(len(service.Spec.Ports)).To(Equal(2))
+				g.Expect(service.Spec.Type).To(Equal(corev1.ServiceTypeClusterIP))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1.TidbCluster) {
-				g.Expect(tc.Status.Monitor.Deployment.ObservedGeneration).To(Equal(int64(2)))
+				g.Expect(tc.Status.PrivilegedTiDB.Deployment.ObservedGeneration).To(Equal(int64(0)))
 			},
 		},
 	}
@@ -263,25 +254,24 @@ func TestMonitorMemberManagerUpdate(t *testing.T) {
 	}
 }
 
-func newFakeMonitorMemberManager() (*monitorMemberManager, *controller.FakeDeploymentControl, *controller.FakeServiceControl) {
+func newFakePrivilegedTidbMemberManager() (*priTidbMemberManager, *controller.FakeDeploymentControl, *controller.FakeServiceControl) {
 	fakeCli := fake.NewSimpleClientset()
 	fakeKubeCli := kubefake.NewSimpleClientset()
 
-	deploymentInformer := kubeinformers.NewSharedInformerFactory(fakeKubeCli, 0).Apps().V1beta1().Deployments()
+	deployInformer := kubeinformers.NewSharedInformerFactory(fakeKubeCli, 0).Apps().V1beta1().Deployments()
 	svcInformer := kubeinformers.NewSharedInformerFactory(fakeKubeCli, 0).Core().V1().Services()
 	tcInformer := informers.NewSharedInformerFactory(fakeCli, 0).Pingcap().V1().TidbClusters()
-	deploymentControl := controller.NewFakeDeploymentControl(deploymentInformer, tcInformer)
+	deployControl := controller.NewFakeDeploymentControl(deployInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
 
-	return &monitorMemberManager{
-		deploymentControl: deploymentControl,
-		serviceControl:    svcControl,
-		deploymentLister:  deploymentInformer.Lister(),
-		serviceLister:     svcInformer.Lister(),
-	}, deploymentControl, svcControl
+	return &priTidbMemberManager{
+		deployControl: deployControl,
+		svcControl:    svcControl,
+		deployLister:  deployInformer.Lister(),
+		svcLister:     svcInformer.Lister(),
+	}, deployControl, svcControl
 }
-
-func newMonitorTidbCluster() *v1.TidbCluster {
+func newPrivilegedTidbCluster() *v1.TidbCluster {
 	return &v1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
@@ -293,17 +283,15 @@ func newMonitorTidbCluster() *v1.TidbCluster {
 			UID:       types.UID("test"),
 		},
 		Spec: v1.TidbClusterSpec{
-			Monitor: &v1.MonitorSpec{
-				Prometheus: v1.ContainerSpec{
-					Image: "prometheus:v1.0",
+			PrivilegedTiDB: &v1.PrivilegedTiDBSpec{
+				ContainerSpec: v1.ContainerSpec{
+					Image: v1.PriTiDBMemberType.String(),
 					Requests: &v1.ResourceRequirement{
 						CPU:    "100m",
 						Memory: "2Gi",
 					},
 				},
-				Grafana: &v1.ContainerSpec{
-					Image: "grafana:v1.0",
-				},
+				Replicas: 1,
 			},
 		},
 	}

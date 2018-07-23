@@ -41,11 +41,15 @@ func NewDefaultTidbClusterControl(
 	statusUpdater StatusUpdaterInterface,
 	pdMemberManager mm.MemberManager,
 	monitorMemberManager mm.MemberManager,
+	tidbMemberManager mm.MemberManager,
+	priTidbMemberManager mm.MemberManager,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		statusUpdater,
 		pdMemberManager,
 		monitorMemberManager,
+		tidbMemberManager,
+		priTidbMemberManager,
 		recorder,
 	}
 }
@@ -54,6 +58,8 @@ type defaultTidbClusterControl struct {
 	statusUpdater        StatusUpdaterInterface
 	pdMemberManager      mm.MemberManager
 	monitorMemberManager mm.MemberManager
+	tidbMemberManager    mm.MemberManager
+	priTidbMemberManager mm.MemberManager
 	recorder             record.EventRecorder
 }
 

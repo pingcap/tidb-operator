@@ -105,18 +105,18 @@ func TiKVMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tikv", clusterName)
 }
 
-// TiDBMemberName returns pd member name
+// TiDBMemberName returns tidb member name
 func TiDBMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tidb", clusterName)
 }
 
-// MonitorSvcName return monitor's svc name
-func MonitorSvcName(clusterName string) string {
-	return fmt.Sprintf("%s-monitor", clusterName)
+// PriTiDBMemberName returns privileged tidb member name
+func PriTiDBMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-privileged-tidb", clusterName)
 }
 
-// MonitorDeploymentName return monitor's deployment name
-func MonitorDeploymentName(clusterName string) string {
+// MonitorMemberName returns monitor member name
+func MonitorMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-monitor", clusterName)
 }
 

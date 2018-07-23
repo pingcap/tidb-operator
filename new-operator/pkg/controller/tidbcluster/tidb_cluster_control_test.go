@@ -48,17 +48,19 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	deploymentInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().Deployments()
+	deployInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().Deployments()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1().TidbClusters()
 	recorder := record.NewFakeRecorder(10)
 
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
-	deploymentControl := controller.NewFakeDeploymentControl(deploymentInformer, tcInformer)
+	deployControl := controller.NewFakeDeploymentControl(deployInformer, tcInformer)
 	statusUpdater := newFakeTidbClusterStatusUpdater(tcInformer)
 	pdMemberManager := mm.NewPDMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
-	monitorMemberManager := mm.NewMonitorMemberManager(deploymentControl, svcControl, deploymentInformer.Lister(), svcInformer.Lister())
-	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, monitorMemberManager, recorder)
+	monitorMemberManager := mm.NewMonitorMemberManager(deployControl, svcControl, deployInformer.Lister(), svcInformer.Lister())
+	tidbMemberManager := mm.NewTiDBMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
+	priTidbMemberManager := mm.NewPriTiDBMemberManager(deployControl, svcControl, deployInformer.Lister(), svcInformer.Lister())
+	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, monitorMemberManager, tidbMemberManager, priTidbMemberManager, recorder)
 
 	return control, setControl, statusUpdater
 }

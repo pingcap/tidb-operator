@@ -19,7 +19,6 @@ import (
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/client/clientset/versioned"
 	v1listers "github.com/pingcap/tidb-operator/new-operator/pkg/client/listers/pingcap.com/v1"
-
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/util/retry"
 )

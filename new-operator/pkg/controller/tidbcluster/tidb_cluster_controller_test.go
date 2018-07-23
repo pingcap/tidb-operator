@@ -15,7 +15,6 @@ package tidbcluster
 
 import (
 	"testing"
-
 	"time"
 
 	. "github.com/onsi/gomega"
@@ -219,7 +218,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
 	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
-	deploymentInformer := kubeInformerFactory.Apps().V1beta1().Deployments()
+	deployInformer := kubeInformerFactory.Apps().V1beta1().Deployments()
 
 	tcc := NewController(
 		kubeCli,
@@ -249,9 +248,35 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			svcInformer.Lister(),
 		),
 		mm.NewMonitorMemberManager(
-			controller.NewRealDeploymentControl(kubeCli, deploymentInformer.Lister(), recorder),
+			controller.NewRealDeploymentControl(
+				kubeCli,
+				deployInformer.Lister(),
+				recorder,
+			),
 			svcControl,
-			deploymentInformer.Lister(), svcInformer.Lister()),
+			deployInformer.Lister(),
+			svcInformer.Lister(),
+		),
+		mm.NewTiDBMemberManager(
+			controller.NewRealStatefuSetControl(
+				kubeCli,
+				setInformer.Lister(),
+				recorder,
+			),
+			svcControl,
+			setInformer.Lister(),
+			svcInformer.Lister(),
+		),
+		mm.NewPriTiDBMemberManager(
+			controller.NewRealDeploymentControl(
+				kubeCli,
+				deployInformer.Lister(),
+				recorder,
+			),
+			svcControl,
+			deployInformer.Lister(),
+			svcInformer.Lister(),
+		),
 		recorder,
 	)
 

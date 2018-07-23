@@ -31,9 +31,6 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
-// controllerKind contains the schema.GroupVersionKind for this controller type.
-var controllerKind = v1.SchemeGroupVersion.WithKind("TidbCluster")
-
 func TestPDMemberManagerSyncCreate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
@@ -49,7 +46,7 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
-		tc := newTidbCluster()
+		tc := newTidbClusterForPD()
 		ns := tc.Namespace
 		tcName := tc.Name
 		oldSpec := tc.Spec
@@ -183,7 +180,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
-		tc := newTidbCluster()
+		tc := newTidbClusterForPD()
 		ns := tc.Namespace
 		tcName := tc.Name
 
@@ -324,7 +321,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	}, setControl, svcControl
 }
 
-func newTidbCluster() *v1.TidbCluster {
+func newTidbClusterForPD() *v1.TidbCluster {
 	return &v1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
