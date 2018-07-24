@@ -278,11 +278,6 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 			(*out)[key] = val
 		}
 	}
-	if in.Binlog != nil {
-		in, out := &in.Binlog, &out.Binlog
-		*out = new(ContainerSpec)
-		(*in).DeepCopyInto(*out)
-	}
 	return
 }
 

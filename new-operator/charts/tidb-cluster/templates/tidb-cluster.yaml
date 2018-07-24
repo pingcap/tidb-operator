@@ -1,0 +1,30 @@
+apiVersion: pingcap.com/v1
+kind: TidbCluster
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ .Values.clusterName }}
+spec:
+  pd:
+    replicas: {{ .Values.pd.replicas }}
+    image: {{ .Values.pd.image }}
+  {{- if .Values.pd.resources }}
+{{ toYaml .Values.pd.resources | indent 4 }}
+  {{- end }}
+  {{- if .Values.pd.nodeSelector }}
+    nodeSelector:
+{{ toYaml .Values.pd.nodeSelector | indent 6 }}
+  {{- end }}
+    nodeSelectorRequired: {{ .Values.nodeSelectorRequired }}
+  tidb:
+    replicas: {{ .Values.tidb.replicas }}
+    image: {{ .Values.tidb.image }}
+  {{- if .Values.tidb.resources }}
+{{ toYaml .Values.tidb.resources | indent 4 }}
+  {{- end }}
+  {{- if .Values.tidb.nodeSelector }}
+    nodeSelector:
+{{ toYaml .Values.tidb.nodeSelector | indent 6 }}
+  {{- end }}
+    nodeSelectorRequired: {{ .Values.nodeSelectorRequired }}
+  services:
+{{ toYaml .Values.services | indent 4 }}

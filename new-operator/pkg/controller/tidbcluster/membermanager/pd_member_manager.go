@@ -209,7 +209,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 		{Name: "timezone", ReadOnly: true, MountPath: "/etc/localtime"},
 		{Name: "annotations", ReadOnly: true, MountPath: "/etc/podinfo"},
 		{Name: "config", ReadOnly: true, MountPath: "/etc/pd"},
-		{Name: "start-script", ReadOnly: true, MountPath: "/usr/local/bin"},
+		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 		{Name: "pd", MountPath: "/var/lib/pd"},
 	}
 	vols := []corev1.Volume{
@@ -232,11 +232,11 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 				},
 			},
 		},
-		{Name: "start-script",
+		{Name: "startup-script",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{Name: controller.PDMemberName(tcName)},
-					Items:                []corev1.KeyToPath{{Key: "start-script", Path: "pd_start_script.sh"}},
+					Items:                []corev1.KeyToPath{{Key: "startup-script", Path: "pd_start_script.sh"}},
 				},
 			},
 		},
@@ -279,7 +279,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 						{
 							Name:    v1.PDMemberType.String(),
 							Image:   tc.Spec.PD.Image,
-							Command: []string{"/bin/sh", "-c", "source /usr/local/bin/pd_start_script.sh"},
+							Command: []string{"/bin/sh", "/usr/local/bin/pd_start_script.sh"},
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "server",

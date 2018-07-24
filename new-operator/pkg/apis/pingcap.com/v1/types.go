@@ -42,9 +42,6 @@ const (
 	// PriTiDBMemberType is privileged tidb container type
 	PriTiDBMemberType MemberType = "privileged-tidb"
 
-	// BinlogMemberType is tidb binlog container type
-	BinlogMemberType MemberType = "tidb-binlog"
-
 	// TiKVMemberType is tikv container type
 	TiKVMemberType MemberType = "tikv"
 
@@ -126,7 +123,6 @@ type TiDBSpec struct {
 	NodeSelector         map[string]string `json:"nodeSelector,omitempty"`
 	NodeSelectorRequired bool              `json:"nodeSelectorRequired,omitempty"`
 	StorageClassName     string            `json:"storageClassName,omitempty"`
-	Binlog               *ContainerSpec    `json:"binlog,omitempty"`
 }
 
 // TiKVSpec contains details of PD member
