@@ -57,10 +57,11 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	deployControl := controller.NewFakeDeploymentControl(deployInformer, tcInformer)
 	statusUpdater := newFakeTidbClusterStatusUpdater(tcInformer)
 	pdMemberManager := mm.NewPDMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
+	tikvMemberManager := mm.NewTiKVMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
 	monitorMemberManager := mm.NewMonitorMemberManager(deployControl, svcControl, deployInformer.Lister(), svcInformer.Lister())
 	tidbMemberManager := mm.NewTiDBMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
 	priTidbMemberManager := mm.NewPriTiDBMemberManager(deployControl, svcControl, deployInformer.Lister(), svcInformer.Lister())
-	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, monitorMemberManager, tidbMemberManager, priTidbMemberManager, recorder)
+	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, tikvMemberManager, monitorMemberManager, tidbMemberManager, priTidbMemberManager, recorder)
 
 	return control, setControl, statusUpdater
 }

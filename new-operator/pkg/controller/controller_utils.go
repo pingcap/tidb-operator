@@ -82,6 +82,18 @@ func TiKVCapacity(limits *v1.ResourceRequirement) string {
 	return fmt.Sprintf("%dGB", int(float64(i)/math.Pow(2, 30)))
 }
 
+// DefaultPushGatewayRequest for the TiKV sidecar
+func DefaultPushGatewayRequest() corev1.ResourceRequirements {
+	rr := corev1.ResourceRequirements{}
+	rr.Requests = make(map[corev1.ResourceName]resource.Quantity)
+	rr.Limits = make(map[corev1.ResourceName]resource.Quantity)
+	rr.Requests[corev1.ResourceCPU] = resource.MustParse("50m")
+	rr.Requests[corev1.ResourceMemory] = resource.MustParse("50Mi")
+	rr.Limits[corev1.ResourceCPU] = resource.MustParse("100m")
+	rr.Limits[corev1.ResourceMemory] = resource.MustParse("100Mi")
+	return rr
+}
+
 // GetPushgatewayImage returns TidbCluster's pushgateway image
 func GetPushgatewayImage(cluster *v1.TidbCluster) string {
 	if img, ok := cluster.Annotations["pushgateway-image"]; ok && img != "" {

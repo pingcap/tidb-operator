@@ -235,14 +235,21 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 		svcInformer.Lister(),
 		recorder,
 	)
+	setControl := controller.NewRealStatefuSetControl(
+		kubeCli,
+		setInformer.Lister(),
+		recorder,
+	)
 	tcc.control = NewDefaultTidbClusterControl(
 		NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
 		mm.NewPDMemberManager(
-			controller.NewRealStatefuSetControl(
-				kubeCli,
-				setInformer.Lister(),
-				recorder,
-			),
+			setControl,
+			svcControl,
+			setInformer.Lister(),
+			svcInformer.Lister(),
+		),
+		mm.NewTiKVMemberManager(
+			setControl,
 			svcControl,
 			setInformer.Lister(),
 			svcInformer.Lister(),

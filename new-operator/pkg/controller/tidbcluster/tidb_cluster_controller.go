@@ -96,12 +96,13 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 			),
-			mm.NewMonitorMemberManager(
-				deployControl,
+			mm.NewTiKVMemberManager(
+				setControl,
 				svcControl,
-				deployInformer.Lister(),
+				setInformer.Lister(),
 				svcInformer.Lister(),
 			),
+			mm.NewMonitorMemberManager(deployControl, svcControl, deployInformer.Lister(), svcInformer.Lister()),
 			mm.NewTiDBMemberManager(
 				setControl,
 				svcControl,

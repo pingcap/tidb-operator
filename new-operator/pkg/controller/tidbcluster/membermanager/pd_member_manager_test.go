@@ -345,6 +345,18 @@ func newTidbClusterForPD() *v1.TidbCluster {
 				Replicas:         3,
 				StorageClassName: "my-storage-class",
 			},
+			TiKV: v1.TiKVSpec{
+				ContainerSpec: v1.ContainerSpec{
+					Image: "image",
+					Requests: &v1.ResourceRequirement{
+						CPU:     "1",
+						Memory:  "2Gi",
+						Storage: "100Gi",
+					},
+				},
+				Replicas:         3,
+				StorageClassName: "my-storage-class",
+			},
 		},
 	}
 }

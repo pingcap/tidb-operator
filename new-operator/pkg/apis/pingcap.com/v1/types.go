@@ -82,9 +82,10 @@ type TidbClusterList struct {
 
 // TidbClusterSpec describes the attributes that a user creates on a tidb cluster
 type TidbClusterSpec struct {
-	PD   PDSpec   `json:"pd,omitempty"`
-	TiDB TiDBSpec `json:"tidb,omitempty"`
-	TiKV TiKVSpec `json:"tikv,omitempty"`
+	PD              PDSpec              `json:"pd,omitempty"`
+	TiDB            TiDBSpec            `json:"tidb,omitempty"`
+	TiKV            TiKVSpec            `json:"tikv,omitempty"`
+	TiKVPromGateway TiKVPromGatewaySpec `json:"tikvPromGateway,omitempty"`
 	// Monitor can be nil to disable monitor
 	// if user want to deploy monitor outside of tidb-operator
 	Monitor *MonitorSpec `json:"monitor,omitempty"`
@@ -135,6 +136,11 @@ type TiKVSpec struct {
 	NodeSelector         map[string]string `json:"nodeSelector,omitempty"`
 	NodeSelectorRequired bool              `json:"nodeSelectorRequired,omitempty"`
 	StorageClassName     string            `json:"storageClassName,omitempty"`
+}
+
+// TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
+type TiKVPromGatewaySpec struct {
+	ContainerSpec
 }
 
 // PrivilegedTiDBSpec is used for database management on cloud without password

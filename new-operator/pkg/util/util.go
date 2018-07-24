@@ -117,10 +117,22 @@ func AffinityForNodeSelector(namespace string, required bool, antiLabels, select
 }
 
 // ResourceRequirement creates ResourceRequirements for MemberSpec
-func ResourceRequirement(spec v1.ContainerSpec) corev1.ResourceRequirements {
+// Optionally pass in a default value
+func ResourceRequirement(spec v1.ContainerSpec, defaultRequests ...corev1.ResourceRequirements) corev1.ResourceRequirements {
 	rr := corev1.ResourceRequirements{}
-	if spec.Requests != nil {
+	if len(defaultRequests) > 0 {
+		defaultRequest := defaultRequests[0]
 		rr.Requests = make(map[corev1.ResourceName]resource.Quantity)
+		rr.Requests[corev1.ResourceCPU] = defaultRequest.Requests[corev1.ResourceCPU]
+		rr.Requests[corev1.ResourceMemory] = defaultRequest.Requests[corev1.ResourceMemory]
+		rr.Limits = make(map[corev1.ResourceName]resource.Quantity)
+		rr.Limits[corev1.ResourceCPU] = defaultRequest.Limits[corev1.ResourceCPU]
+		rr.Limits[corev1.ResourceMemory] = defaultRequest.Limits[corev1.ResourceMemory]
+	}
+	if spec.Requests != nil {
+		if rr.Requests == nil {
+			rr.Requests = make(map[corev1.ResourceName]resource.Quantity)
+		}
 		if q, err := resource.ParseQuantity(spec.Requests.CPU); err != nil {
 			glog.Errorf("failed to parse CPU resource %s to quantity: %v", spec.Requests.CPU, err)
 		} else {
@@ -133,7 +145,9 @@ func ResourceRequirement(spec v1.ContainerSpec) corev1.ResourceRequirements {
 		}
 	}
 	if spec.Limits != nil {
-		rr.Limits = make(map[corev1.ResourceName]resource.Quantity)
+		if rr.Limits == nil {
+			rr.Limits = make(map[corev1.ResourceName]resource.Quantity)
+		}
 		if q, err := resource.ParseQuantity(spec.Limits.CPU); err != nil {
 			glog.Errorf("failed to parse CPU resource %s to quantity: %v", spec.Limits.CPU, err)
 		} else {
