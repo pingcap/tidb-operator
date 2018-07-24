@@ -117,6 +117,11 @@ func TiKVMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tikv", clusterName)
 }
 
+// TiKVPeerMemberName returns tikv peer service name
+func TiKVPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tikv-peer", clusterName)
+}
+
 // TiDBMemberName returns tidb member name
 func TiDBMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tidb", clusterName)

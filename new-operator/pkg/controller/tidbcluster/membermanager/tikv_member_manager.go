@@ -61,19 +61,8 @@ func statusUpdateTiKV(tc *v1.TidbCluster, status *apps.StatefulSetStatus) {
 
 func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster, service SvcConfig) (*apps.StatefulSet, error) {
 	ns := tc.GetNamespace()
-	clusterName := tc.GetName()
-	tcName := tc.Name
-
-	cmds := []string{
-		"/entrypoint.sh",
-	}
-	args := []string{
-		fmt.Sprintf("--pd=%s-pd:2379", clusterName),
-		"--addr=0.0.0.0:20160",
-		fmt.Sprintf("--advertise-addr=$(MY_POD_NAME).%s-tikv-peer.%s.svc:20160", clusterName, ns),
-		"--data-dir=/var/lib/tidb/tikv",
-		"--capacity=" + controller.TiKVCapacity(tc.Spec.TiKV.Limits),
-	}
+	tcName := tc.GetName()
+	tikvConfigMap := controller.TiKVMemberName(tcName)
 	tzMount, tzVolume := timezoneMountVolume()
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
@@ -81,17 +70,26 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster, service SvcConfig) (*apps.S
 		annMount,
 		{Name: "tikv", MountPath: "/var/lib/tikv"},
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tikv"},
+		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
 	vols := []corev1.Volume{
 		tzVolume,
 		annVolume,
-		{Name: "config",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: controller.TiKVMemberName(tcName)},
-					Items:                []corev1.KeyToPath{{Key: "config-file", Path: "tikv.toml"}},
+		{Name: "config", VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: tikvConfigMap,
 				},
-			},
+				Items: []corev1.KeyToPath{{Key: "config-file", Path: "tikv.toml"}},
+			}},
+		},
+		{Name: "startup-script", VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: tikvConfigMap,
+				},
+				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tikv_start_script.sh"}},
+			}},
 		},
 	}
 
@@ -108,12 +106,14 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster, service SvcConfig) (*apps.S
 
 	tikvLabel := label.New().Cluster(tcName).TiKV()
 	setName := controller.TiKVMemberName(tcName)
+	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
+	headlessSvcName := controller.TiKVPeerMemberName(tcName)
 
 	tikvset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
 			Namespace:       ns,
-			Labels:          label.New().Cluster(clusterName).TiKV(),
+			Labels:          label.New().Cluster(tcName).TiKV(),
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
@@ -124,15 +124,14 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster, service SvcConfig) (*apps.S
 					Affinity: util.AffinityForNodeSelector(
 						ns,
 						tc.Spec.TiKV.NodeSelectorRequired,
-						label.New().Cluster(clusterName).TiKV(),
+						label.New().Cluster(tcName).TiKV(),
 						tc.Spec.TiKV.NodeSelector,
 					),
 					Containers: []corev1.Container{
 						{
 							Name:    v1.TiKVMemberType.String(),
 							Image:   tc.Spec.TiKV.Image,
-							Command: cmds,
-							Args:    args,
+							Command: []string{"/bin/sh", "/usr/local/bin/tikv_start_script.sh"},
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "server",
@@ -142,7 +141,7 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster, service SvcConfig) (*apps.S
 							},
 							VolumeMounts: volMounts,
 							Resources:    util.ResourceRequirement(tc.Spec.TiKV.ContainerSpec),
-							Env:          envVars(setName, controller.TiKVMemberName(tcName)),
+							Env:          envVars(tcName, headlessSvcName, capacity),
 						},
 						{
 							Name:  v1.PushGatewayMemberType.String(),

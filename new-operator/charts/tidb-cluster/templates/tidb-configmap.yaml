@@ -31,6 +31,7 @@ data:
     	tail -f /dev/null
     fi
 
+    echo "start tidb-server for cluster: ${CLUSTER_NAME} ..."
     exec /tidb-server
         --store=tikv \
         --host=0.0.0.0 \

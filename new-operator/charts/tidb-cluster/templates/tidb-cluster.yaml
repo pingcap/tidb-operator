@@ -7,12 +7,29 @@ spec:
   pd:
     replicas: {{ .Values.pd.replicas }}
     image: {{ .Values.pd.image }}
+  {{- if .Values.pd.storageClassName }}
+    storageClassName: {{ .Values.pd.storageClassName }}
+  {{- end }}
   {{- if .Values.pd.resources }}
 {{ toYaml .Values.pd.resources | indent 4 }}
   {{- end }}
   {{- if .Values.pd.nodeSelector }}
     nodeSelector:
 {{ toYaml .Values.pd.nodeSelector | indent 6 }}
+  {{- end }}
+    nodeSelectorRequired: {{ .Values.nodeSelectorRequired }}
+  tikv:
+    replicas: {{ .Values.tikv.replicas }}
+    image: {{ .Values.tikv.image }}
+  {{- if .Values.tikv.storageClassName }}
+    storageClassName: {{ .Values.tikv.storageClassName }}
+  {{- end }}
+  {{- if .Values.tikv.resources }}
+{{ toYaml .Values.tikv.resources | indent 4 }}
+  {{- end }}
+  {{- if .Values.tikv.nodeSelector }}
+    nodeSelector:
+{{ toYaml .Values.tikv.nodeSelector | indent 6 }}
   {{- end }}
     nodeSelectorRequired: {{ .Values.nodeSelectorRequired }}
   tidb:

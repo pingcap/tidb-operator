@@ -15,7 +15,12 @@ services:
 pd:
   replicas: 3
   image: uhub.ucloud.cn/pingcap/pd:v2.0.4
-  logLevel: info
+  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+  # different classes might map to quality-of-service levels, or to backup policies,
+  # or to arbitrary policies determined by the cluster administrators.
+  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
+  # storageClassName: pingcap-nfs
+
   # maxStoreDownTime is how long a store will be considered `down` when disconnected
   # if a store is considered `down`, the regions will be migrated to other stores
   maxStoreDownTime: 1h
@@ -38,10 +43,35 @@ pd:
     # # region is comma separated region list
     # region: cn-bj1
 
+tikv:
+  replicas: 3
+  image: uhub.ucloud.cn/pingcap/tikv:v2.0.4
+  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+  # different classes might map to quality-of-service levels, or to backup policies,
+  # or to arbitrary policies determined by the cluster administrators.
+  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
+  # storageClassName: pingcap-nfs
+
+  # syncLog is a bool value to enable or disable syc-log for raftstore, default is true
+  # enable this can prevent data loss when power failure
+  syncLog: true
+  resources: {}
+    # limits:
+    #   cpu: 16000m
+    #   memory: 32Gi
+    #   storage: 300Gi
+    # requests:
+    #   cpu: 12000m
+    #   memory: 24Gi
+    #   storage: 300Gi
+  nodeSelector: {}
+    # kind: tikv
+    # zone: cn-bj1-01,cn-bj1-02
+    # region: cn-bj1
+
 tidb:
   replicas: 2
   image: uhub.ucloud.cn/pingcap/tidb:v2.0.4
-  logLevel: info
   resources: {}
     # limits:
     #   cpu: 16000m

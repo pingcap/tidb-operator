@@ -182,7 +182,7 @@ func (ssmm *StateSvcMemberManager) getNewServiceForTidbCluster(tc *v1.TidbCluste
 	return svc
 }
 
-func envVars(setName string, memberName string) []corev1.EnvVar {
+func envVars(tcName, headlessSvcName, capacity string) []corev1.EnvVar {
 	return []corev1.EnvVar{
 		{
 			Name: "NAMESPACE",
@@ -193,12 +193,16 @@ func envVars(setName string, memberName string) []corev1.EnvVar {
 			},
 		},
 		{
-			Name:  "SERVICE_NAME",
-			Value: memberName,
+			Name:  "CLUSTER_NAME",
+			Value: tcName,
 		},
 		{
-			Name:  "STATEFULSET_NAME",
-			Value: setName,
+			Name:  "HEADLESS_SERVICE_NAME",
+			Value: headlessSvcName,
+		},
+		{
+			Name:  "CAPACITY",
+			Value: capacity,
 		},
 	}
 }
