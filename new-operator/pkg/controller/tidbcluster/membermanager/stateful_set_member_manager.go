@@ -52,11 +52,10 @@ type SvcConfig struct {
 // The rest is configuration that differs for each stateful service
 type StateSvcMemberManager struct {
 	StateSvcControlList
-	Set                     SvcConfig
-	Headless                []SvcConfig
+	SvcList                 []SvcConfig
 	MemberType              v1.MemberType
 	StatusUpdate            func(*v1.TidbCluster, *apps.StatefulSetStatus)
-	GetNewSetForTidbCluster func(*v1.TidbCluster, SvcConfig) (*apps.StatefulSet, error)
+	GetNewSetForTidbCluster func(*v1.TidbCluster) (*apps.StatefulSet, error)
 }
 
 var _ MemberManager = (*StateSvcMemberManager)(nil)
@@ -71,19 +70,11 @@ func NewStateSvcControlList(setControl controller.StatefulSetControlInterface,
 
 // Sync fulfills the MemberManager interface
 func (ssmm *StateSvcMemberManager) Sync(tc *v1.TidbCluster) error {
-	if err := ssmm.syncServiceForTidbCluster(tc, ssmm.Set); err != nil {
-		return err
-	}
-
-	if ssmm.Headless != nil {
-		for _, headless := range ssmm.Headless {
-			headless.Headless = true
-			if err := ssmm.syncServiceForTidbCluster(tc, headless); err != nil {
-				return err
-			}
+	for _, svc := range ssmm.SvcList {
+		if err := ssmm.syncServiceForTidbCluster(tc, svc); err != nil {
+			return err
 		}
 	}
-
 	if err := ssmm.syncStatefulSetForTidbCluster(tc); err != nil {
 		return err
 	}
@@ -117,12 +108,12 @@ func (ssmm *StateSvcMemberManager) syncStatefulSetForTidbCluster(tc *v1.TidbClus
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newSet, err := ssmm.GetNewSetForTidbCluster(tc, ssmm.Set)
+	newSet, err := ssmm.GetNewSetForTidbCluster(tc)
 	if err != nil {
 		return err
 	}
 
-	oldSet, err := ssmm.setLister.StatefulSets(ns).Get(ssmm.Set.MemberName(tcName))
+	oldSet, err := ssmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = ssmm.setControl.CreateStatefulSet(tc, newSet)
 		if err != nil {
@@ -208,7 +199,7 @@ func envVars(tcName, headlessSvcName, capacity string) []corev1.EnvVar {
 }
 
 func timezoneMountVolume() (corev1.VolumeMount, corev1.Volume) {
-	return corev1.VolumeMount{Name: "tikv", MountPath: "/var/lib/tikv"},
+	return corev1.VolumeMount{Name: "timezone", MountPath: "/etc/localtime"},
 		corev1.Volume{
 			Name:         "timezone",
 			VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/etc/localtime"}},

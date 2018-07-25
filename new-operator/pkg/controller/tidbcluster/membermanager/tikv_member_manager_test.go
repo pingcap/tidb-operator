@@ -37,7 +37,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 		errWhenCreateStatefulSet bool
 		errWhenCreateService     bool
 		err                      bool
-		svcCreated               bool
+		peerSvcCreate            bool
 		setCreated               bool
 	}
 
@@ -68,10 +68,10 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 
 		g.Expect(tc.Spec).To(Equal(oldSpec), test.name)
 
-		svc1, err := pmm.svcLister.Services(ns).Get(controller.TiKVMemberName(tcName))
-		if test.svcCreated {
+		svc, err := pmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
+		if test.peerSvcCreate {
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(svc1).NotTo(Equal(nil))
+			g.Expect(svc).NotTo(Equal(nil))
 		} else {
 			expectErrIsNotFound(g, err)
 		}
@@ -92,7 +92,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet: false,
 			errWhenCreateService:     false,
 			err:                      false,
-			svcCreated:               true,
+			peerSvcCreate:            true,
 			setCreated:               true,
 		},
 		{
@@ -103,7 +103,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet: false,
 			errWhenCreateService:     false,
 			err:                      true,
-			svcCreated:               true,
+			peerSvcCreate:            true,
 			setCreated:               false,
 		},
 		{
@@ -112,16 +112,16 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet: true,
 			errWhenCreateService:     false,
 			err:                      true,
-			svcCreated:               true,
+			peerSvcCreate:            true,
 			setCreated:               false,
 		},
 		{
-			name:                     "error when create tikv service",
+			name:                     "error when create tikv peer service",
 			prepare:                  nil,
 			errWhenCreateStatefulSet: false,
 			errWhenCreateService:     true,
 			err:                      true,
-			svcCreated:               false,
+			peerSvcCreate:            false,
 			setCreated:               false,
 		},
 	}
@@ -153,7 +153,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		err := pmm.Sync(tc)
 		g.Expect(err).NotTo(HaveOccurred())
 
-		_, err = pmm.svcLister.Services(ns).Get(controller.TiKVMemberName(tcName))
+		_, err = pmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
 		_, err = pmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
@@ -176,7 +176,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		if test.expectServiceFn != nil {
-			svc, err := pmm.svcLister.Services(ns).Get(controller.TiKVMemberName(tcName))
+			svc, err := pmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
 			test.expectServiceFn(g, svc, err)
 		}
 		if test.expectStatefulSetFn != nil {
@@ -190,17 +190,11 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			name: "normal",
 			modify: func(tc *v1.TidbCluster) {
 				tc.Spec.TiKV.Replicas = 5
-				tc.Spec.Services = []v1.Service{
-					{Name: "tikv", Type: string(corev1.ServiceTypeNodePort)},
-				}
 			},
 			errWhenUpdateStatefulSet: false,
 			errWhenUpdateService:     false,
 			err:                      false,
-			expectServiceFn: func(g *GomegaWithT, svc *corev1.Service, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(svc.Spec.Type).To(Equal(corev1.ServiceTypeNodePort))
-			},
+			expectServiceFn:          nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
@@ -213,19 +207,6 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			},
 			errWhenUpdateStatefulSet: false,
 			errWhenUpdateService:     false,
-			err:                      true,
-			expectServiceFn:          nil,
-			expectStatefulSetFn:      nil,
-		},
-		{
-			name: "error when update tikv service",
-			modify: func(tc *v1.TidbCluster) {
-				tc.Spec.Services = []v1.Service{
-					{Name: "tikv", Type: string(corev1.ServiceTypeNodePort)},
-				}
-			},
-			errWhenUpdateStatefulSet: false,
-			errWhenUpdateService:     true,
 			err:                      true,
 			expectServiceFn:          nil,
 			expectStatefulSetFn:      nil,

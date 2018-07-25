@@ -42,14 +42,16 @@ func NewTiKVMemberManager(setControl controller.StatefulSetControlInterface,
 	svcLister corelisters.ServiceLister) *TikvMemberManager {
 	return &TikvMemberManager{StateSvcMemberManager{
 		StateSvcControlList: NewStateSvcControlList(setControl, svcControl, setLister, svcLister),
-		Set: SvcConfig{
-			Name:       "server",
-			Port:       20160,
-			SvcLabel:   func(l label.Label) label.Label { return l.TiKV() },
-			MemberName: controller.TiKVMemberName,
+		MemberType:          v1.TiKVMemberType,
+		SvcList: []SvcConfig{
+			{
+				Name:       "peer",
+				Port:       20160,
+				Headless:   true,
+				SvcLabel:   func(l label.Label) label.Label { return l.TiKV() },
+				MemberName: controller.TiKVPeerMemberName,
+			},
 		},
-		MemberType:              v1.TiKVMemberType,
-		Headless:                nil,
 		StatusUpdate:            statusUpdateTiKV,
 		GetNewSetForTidbCluster: getNewSetForTidbClusterTiKV,
 	}}
@@ -59,7 +61,7 @@ func statusUpdateTiKV(tc *v1.TidbCluster, status *apps.StatefulSetStatus) {
 	tc.Status.TiKV.StatefulSet = status
 }
 
-func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster, service SvcConfig) (*apps.StatefulSet, error) {
+func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster) (*apps.StatefulSet, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	tikvConfigMap := controller.TiKVMemberName(tcName)
@@ -165,7 +167,7 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster, service SvcConfig) (*apps.S
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				volumeClaimTemplate(q, "tikv", func() *string { str := tc.Spec.TiKV.StorageClassName; return &str }()),
 			},
-			ServiceName:         controller.TiKVMemberName(tcName),
+			ServiceName:         headlessSvcName,
 			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 		},
