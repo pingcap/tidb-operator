@@ -78,6 +78,8 @@ func pdClientURL(namespace, clusterName string) string {
 
 // PDClient provider pd server's api
 type PDClient interface {
+	// GetHealth return the PD's health info
+	GetHealth() (*HealthInfo, error)
 	// GetConfig returns PD's config
 	GetConfig() (*server.Config, error)
 	// GetCluster return used when syncing pod labels.
@@ -107,6 +109,7 @@ type PDClient interface {
 }
 
 var (
+	healthPrefix     = "health"
 	membersPrefix    = "pd/api/v1/members"
 	storesPrefix     = "pd/api/v1/stores"
 	storePrefix      = "pd/api/v1/store"
@@ -131,6 +134,19 @@ func NewPDClient(url string, timeout time.Duration) PDClient {
 
 // following struct definitions are copied from github.com/pingcap/pd/server/api/store
 // these are not exported by that package
+
+// HealthInfo define PD's healthy info
+type HealthInfo struct {
+	Healths []MemberHealth
+}
+
+// MemberHealth define a pd member's healthy info
+type MemberHealth struct {
+	Name       string   `json:"name"`
+	MemberID   uint64   `json:"member_id"`
+	ClientUrls []string `json:"client_urls"`
+	Health     bool     `json:"health"`
+}
 
 // MetaStore is TiKV store status defined in protobuf
 type MetaStore struct {
@@ -180,16 +196,32 @@ type schedulerInfo struct {
 	StoreID uint64 `json:"store_id"`
 }
 
+func (pc *pdClient) GetHealth() (*HealthInfo, error) {
+	apiURL := fmt.Sprintf("%s/%s", pc.url, healthPrefix)
+	body, err := pc.getBodyOK(apiURL)
+	if err != nil {
+		return nil, err
+	}
+	healths := []MemberHealth{}
+	err = json.Unmarshal(body, &healths)
+	if err != nil {
+		return nil, err
+	}
+	return &HealthInfo{
+		healths,
+	}, nil
+}
+
 func (pc *pdClient) GetConfig() (*server.Config, error) {
 	apiURL := fmt.Sprintf("%s/%s", pc.url, configPrefix)
 	body, err := pc.getBodyOK(apiURL)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, err
 	}
 	config := &server.Config{}
 	err = json.Unmarshal(body, config)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, err
 	}
 	return config, nil
 }
@@ -198,12 +230,12 @@ func (pc *pdClient) GetCluster() (*metapb.Cluster, error) {
 	apiURL := fmt.Sprintf("%s/%s", pc.url, clusterIDPrefix)
 	body, err := pc.getBodyOK(apiURL)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, err
 	}
 	cluster := &metapb.Cluster{}
 	err = json.Unmarshal(body, cluster)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, err
 	}
 	return cluster, nil
 }
@@ -212,12 +244,12 @@ func (pc *pdClient) GetMembers() (*MembersInfo, error) {
 	apiURL := fmt.Sprintf("%s/%s", pc.url, membersPrefix)
 	body, err := pc.getBodyOK(apiURL)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, err
 	}
 	members := &MembersInfo{}
 	err = json.Unmarshal(body, members)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, err
 	}
 	return members, nil
 }
@@ -231,7 +263,7 @@ func (pc *pdClient) GetStores() (*StoresInfo, error) {
 	storesInfo := &StoresInfo{}
 	err = json.Unmarshal(body, storesInfo)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, err
 	}
 	return storesInfo, nil
 }
@@ -240,12 +272,12 @@ func (pc *pdClient) GetTombStoneStores() (*StoresInfo, error) {
 	apiURL := fmt.Sprintf("%s/%s?state=%d", pc.url, storesPrefix, metapb.StoreState_Tombstone)
 	body, err := pc.getBodyOK(apiURL)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, err
 	}
 	storesInfo := &StoresInfo{}
 	err = json.Unmarshal(body, storesInfo)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, err
 	}
 	return storesInfo, nil
 }
@@ -254,12 +286,12 @@ func (pc *pdClient) GetStore(storeID uint64) (*StoreInfo, error) {
 	apiURL := fmt.Sprintf("%s/%s/%d", pc.url, storePrefix, storeID)
 	body, err := pc.getBodyOK(apiURL)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, err
 	}
 	storeInfo := &StoreInfo{}
 	err = json.Unmarshal(body, storeInfo)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, err
 	}
 	return storeInfo, nil
 }
@@ -268,11 +300,11 @@ func (pc *pdClient) DeleteStore(storeID uint64) error {
 	apiURL := fmt.Sprintf("%s/%s/%d", pc.url, storePrefix, storeID)
 	req, err := http.NewRequest("DELETE", apiURL, nil)
 	if err != nil {
-		return errors.Trace(err)
+		return err
 	}
 	res, err := pc.httpClient.Do(req)
 	if err != nil {
-		return errors.Trace(err)
+		return err
 	}
 	defer DeferClose(res.Body, &err)
 
@@ -282,7 +314,7 @@ func (pc *pdClient) DeleteStore(storeID uint64) error {
 	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return errors.Trace(err)
+		return err
 	}
 
 	// FIXME: We should not rely on error text
@@ -300,11 +332,11 @@ func (pc *pdClient) DeleteMemberByID(memberID uint64) error {
 	apiURL := fmt.Sprintf("%s/%s/id/%d", pc.url, membersPrefix, memberID)
 	req, err := http.NewRequest("DELETE", apiURL, nil)
 	if err != nil {
-		return errors.Trace(err)
+		return err
 	}
 	res, err := pc.httpClient.Do(req)
 	if err != nil {
-		return errors.Trace(err)
+		return err
 	}
 	defer DeferClose(res.Body, &err)
 	if res.StatusCode == http.StatusOK {
@@ -319,11 +351,11 @@ func (pc *pdClient) DeleteMember(name string) error {
 	apiURL := fmt.Sprintf("%s/%s/name/%s", pc.url, membersPrefix, name)
 	req, err := http.NewRequest("DELETE", apiURL, nil)
 	if err != nil {
-		return errors.Trace(err)
+		return err
 	}
 	res, err := pc.httpClient.Do(req)
 	if err != nil {
-		return errors.Trace(err)
+		return err
 	}
 	defer DeferClose(res.Body, &err)
 	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
@@ -358,11 +390,11 @@ func (pc *pdClient) BeginEvictLeader(storeID uint64) error {
 	apiURL := fmt.Sprintf("%s/%s", pc.url, schedulersPrefix)
 	data, err := json.Marshal(leaderEvictInfo)
 	if err != nil {
-		return errors.Trace(err)
+		return err
 	}
 	res, err := http.Post(apiURL, "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		return errors.Trace(err)
+		return err
 	}
 	defer DeferClose(res.Body, &err)
 	if res.StatusCode == http.StatusOK {
@@ -377,11 +409,11 @@ func (pc *pdClient) EndEvictLeader(storeID uint64) error {
 	apiURL := fmt.Sprintf("%s/%s/%s", pc.url, schedulersPrefix, getLeaderEvictSchedulerStr(storeID))
 	req, err := http.NewRequest("DELETE", apiURL, nil)
 	if err != nil {
-		return errors.Trace(err)
+		return err
 	}
 	res, err := pc.httpClient.Do(req)
 	if err != nil {
-		return errors.Trace(err)
+		return err
 	}
 	defer DeferClose(res.Body, &err)
 	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
@@ -395,17 +427,17 @@ func (pc *pdClient) EndEvictLeader(storeID uint64) error {
 func (pc *pdClient) getBodyOK(apiURL string) ([]byte, error) {
 	res, err := pc.httpClient.Get(apiURL)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, err
 	}
 	if res.StatusCode >= 400 {
 		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v", res.StatusCode))
-		return nil, errors.Trace(errMsg)
+		return nil, errMsg
 	}
 
 	defer DeferClose(res.Body, &err)
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, err
 	}
 	return body, err
 }
@@ -422,7 +454,7 @@ func getLeaderEvictSchedulerStr(storeID uint64) string {
 // This is designed to be used in a defer statement.
 func DeferClose(c io.Closer, err *error) {
 	if cerr := c.Close(); cerr != nil && *err == nil {
-		*err = errors.Trace(cerr, 2)
+		*err = cerr
 	}
 }
 
@@ -431,9 +463,212 @@ func DeferClose(c io.Closer, err *error) {
 func readErrorBody(body io.Reader) (err error) {
 	bodyBytes, err := ioutil.ReadAll(body)
 	if err != nil {
-		err = errors.Trace(err, 2)
+		return err
 	} else {
-		err = errors.Errorf(string(bodyBytes))
+		return errors.Errorf(string(bodyBytes))
 	}
-	return err
+}
+
+type FakePDControl struct {
+	defaultPDControl
+}
+
+func NewFakePDControl() *FakePDControl {
+	return &FakePDControl{
+		defaultPDControl{pdClients: map[string]PDClient{}},
+	}
+}
+
+func (fpc *FakePDControl) SetPDClient(tc *v1.TidbCluster, pdclient PDClient) {
+	fpc.defaultPDControl.pdClients[pdClientKey(tc.Namespace, tc.Name)] = pdclient
+}
+
+type ActionType string
+
+const (
+	GetHealthActionType          ActionType = "GetHealth"
+	GetConfigActionType          ActionType = "GetConfig"
+	GetClusterActionType         ActionType = "GetCluster"
+	GetMembersActionType         ActionType = "GetMembers"
+	GetStoresActionType          ActionType = "GetStores"
+	GetTombStoneStoresActionType ActionType = "GetTombStoneStores"
+	GetStoreActionType           ActionType = "GetStore"
+	DeleteStoreActionType        ActionType = "DeleteStore"
+	DeleteMemberByIDActionType   ActionType = "DeleteMemberByID"
+	DeleteMemberActionType       ActionType = "DeleteMember "
+	SetStoreLabelsActionType     ActionType = "SetStoreLabels"
+	BeginEvictLeaderActionType   ActionType = "BeginEvictLeader"
+	EndEvictLeaderActionType     ActionType = "EndEvictLeader"
+)
+
+type NotFoundReaction struct {
+	actionType ActionType
+}
+
+func (nfr *NotFoundReaction) Error() string {
+	return fmt.Sprintf("not found %s reaction,please add the reaction", nfr.actionType)
+}
+
+func NewNotFoundReaction(actionType ActionType) error {
+	return &NotFoundReaction{actionType: actionType}
+}
+
+type Action struct {
+	ID     uint64
+	Name   string
+	Labels map[string]string
+}
+
+type Reaction func(action *Action) (interface{}, error)
+
+type FakePDClient struct {
+	reactions map[ActionType]Reaction
+}
+
+func NewFakePDClient() *FakePDClient {
+	return &FakePDClient{reactions: map[ActionType]Reaction{}}
+}
+
+func (pc *FakePDClient) AddReaction(actionType ActionType, reaction Reaction) {
+	pc.reactions[actionType] = reaction
+}
+
+func (pc *FakePDClient) GetHealth() (*HealthInfo, error) {
+	if reaction, ok := pc.reactions[GetHealthActionType]; ok {
+		action := &Action{}
+		result, err := reaction(action)
+		if err != nil {
+			return nil, err
+		}
+		return result.(*HealthInfo), nil
+	}
+	return nil, NewNotFoundReaction(GetHealthActionType)
+}
+func (pc *FakePDClient) GetConfig() (*server.Config, error) {
+	if reaction, ok := pc.reactions[GetConfigActionType]; ok {
+		action := &Action{}
+		result, err := reaction(action)
+		if err != nil {
+			return nil, err
+		}
+		return result.(*server.Config), nil
+	}
+	return nil, NewNotFoundReaction(GetConfigActionType)
+}
+
+func (pc *FakePDClient) GetCluster() (*metapb.Cluster, error) {
+	if reaction, ok := pc.reactions[GetClusterActionType]; ok {
+		action := &Action{}
+		result, err := reaction(action)
+		if err != nil {
+			return nil, err
+		}
+		return result.(*metapb.Cluster), nil
+	}
+	return nil, NewNotFoundReaction(GetClusterActionType)
+}
+
+func (pc *FakePDClient) GetMembers() (*MembersInfo, error) {
+	if reaction, ok := pc.reactions[GetMembersActionType]; ok {
+		action := &Action{}
+		result, err := reaction(action)
+		if err != nil {
+			return nil, err
+		}
+		return result.(*MembersInfo), nil
+	}
+	return nil, NewNotFoundReaction(GetMembersActionType)
+}
+
+func (pc *FakePDClient) GetStores() (*StoresInfo, error) {
+	if reaction, ok := pc.reactions[GetStoresActionType]; ok {
+		action := &Action{}
+		result, err := reaction(action)
+		if err != nil {
+			return nil, err
+		}
+		return result.(*StoresInfo), nil
+	}
+	return nil, NewNotFoundReaction(GetStoresActionType)
+}
+
+func (pc *FakePDClient) GetTombStoneStores() (*StoresInfo, error) {
+	if reaction, ok := pc.reactions[GetTombStoneStoresActionType]; ok {
+		action := &Action{}
+		result, err := reaction(action)
+		if err != nil {
+			return nil, err
+		}
+		return result.(*StoresInfo), nil
+	}
+	return nil, NewNotFoundReaction(GetTombStoneStoresActionType)
+}
+
+func (pc *FakePDClient) GetStore(id uint64) (*StoreInfo, error) {
+	if reaction, ok := pc.reactions[GetStoreActionType]; ok {
+		action := &Action{
+			ID: id,
+		}
+		result, err := reaction(action)
+		if err != nil {
+			return nil, err
+		}
+		return result.(*StoreInfo), nil
+	}
+	return nil, NewNotFoundReaction(GetStoresActionType)
+}
+
+func (pc *FakePDClient) DeleteStore(id uint64) error {
+	if reaction, ok := pc.reactions[DeleteStoreActionType]; ok {
+		action := &Action{ID: id}
+		_, err := reaction(action)
+		return err
+	}
+	return nil
+}
+
+func (pc *FakePDClient) DeleteMemberByID(id uint64) error {
+	if reaction, ok := pc.reactions[DeleteMemberByIDActionType]; ok {
+		action := &Action{ID: id}
+		_, err := reaction(action)
+		return err
+	}
+	return nil
+}
+
+func (pc *FakePDClient) DeleteMember(name string) error {
+	if reaction, ok := pc.reactions[DeleteMemberActionType]; ok {
+		action := &Action{Name: name}
+		_, err := reaction(action)
+		return err
+	}
+	return nil
+}
+
+// SetStoreLabels sets TiKV labels
+func (pc *FakePDClient) SetStoreLabels(storeID uint64, labels map[string]string) (bool, error) {
+	if reaction, ok := pc.reactions[SetStoreLabelsActionType]; ok {
+		action := &Action{ID: storeID, Labels: labels}
+		result, err := reaction(action)
+		return result.(bool), err
+	}
+	return true, nil
+}
+
+func (pc *FakePDClient) BeginEvictLeader(storeID uint64) error {
+	if reaction, ok := pc.reactions[BeginEvictLeaderActionType]; ok {
+		action := &Action{ID: storeID}
+		_, err := reaction(action)
+		return err
+	}
+	return nil
+}
+
+func (pc *FakePDClient) EndEvictLeader(storeID uint64) error {
+	if reaction, ok := pc.reactions[EndEvictLeaderActionType]; ok {
+		action := &Action{ID: storeID}
+		_, err := reaction(action)
+		return err
+	}
+	return nil
 }

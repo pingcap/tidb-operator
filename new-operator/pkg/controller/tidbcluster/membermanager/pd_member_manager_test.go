@@ -54,7 +54,9 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			test.prepare(tc)
 		}
 
-		pmm, fakeSetControl, fakeSvcControl := newFakePDMemberManager()
+		pmm, fakeSetControl, fakeSvcControl, fakePDControl := newFakePDMemberManager()
+		pdClient := controller.NewFakePDClient()
+		fakePDControl.SetPDClient(tc, pdClient)
 
 		if test.errWhenCreateStatefulSet {
 			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
@@ -102,8 +104,9 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 
 	tests := []testcase{
 		{
-			name:                       "normal",
-			prepare:                    nil,
+			name:    "normal",
+			prepare: nil,
+
 			errWhenCreateStatefulSet:   false,
 			errWhenCreatePDService:     false,
 			errWhenCreatePDPeerService: false,
@@ -170,13 +173,16 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 	type testcase struct {
 		name                       string
 		modify                     func(cluster *v1.TidbCluster)
+		pdHealth                   *controller.HealthInfo
 		errWhenUpdateStatefulSet   bool
 		errWhenUpdatePDService     bool
 		errWhenUpdatePDPeerService bool
+		errWhenGetPDHealth         bool
 		err                        bool
-		expectPDServieFn           func(*GomegaWithT, *corev1.Service, error)
-		expectPDPeerServieFn       func(*GomegaWithT, *corev1.Service, error)
+		expectPDServiceFn          func(*GomegaWithT, *corev1.Service, error)
+		expectPDPeerServiceFn      func(*GomegaWithT, *corev1.Service, error)
 		expectStatefulSetFn        func(*GomegaWithT, *apps.StatefulSet, error)
+		expectTidbClusterFn        func(*GomegaWithT, *v1.TidbCluster)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -184,7 +190,18 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		ns := tc.Namespace
 		tcName := tc.Name
 
-		pmm, fakeSetControl, fakeSvcControl := newFakePDMemberManager()
+		pmm, fakeSetControl, fakeSvcControl, fakePDControl := newFakePDMemberManager()
+		pdClient := controller.NewFakePDClient()
+		fakePDControl.SetPDClient(tc, pdClient)
+		if test.errWhenGetPDHealth {
+			pdClient.AddReaction(controller.GetHealthActionType, func(action *controller.Action) (interface{}, error) {
+				return nil, fmt.Errorf("failed to get health of pd cluster")
+			})
+		} else {
+			pdClient.AddReaction(controller.GetHealthActionType, func(action *controller.Action) (interface{}, error) {
+				return test.pdHealth, nil
+			})
+		}
 
 		err := pmm.Sync(tc)
 		g.Expect(err).NotTo(HaveOccurred())
@@ -216,17 +233,20 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 
-		if test.expectPDServieFn != nil {
+		if test.expectPDServiceFn != nil {
 			svc, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
-			test.expectPDServieFn(g, svc, err)
+			test.expectPDServiceFn(g, svc, err)
 		}
-		if test.expectPDPeerServieFn != nil {
+		if test.expectPDPeerServiceFn != nil {
 			svc, err := pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
-			test.expectPDPeerServieFn(g, svc, err)
+			test.expectPDPeerServiceFn(g, svc, err)
 		}
 		if test.expectStatefulSetFn != nil {
 			set, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 			test.expectStatefulSetFn(g, set, err)
+		}
+		if test.expectTidbClusterFn != nil {
+			test.expectTidbClusterFn(g, tc1)
 		}
 	}
 
@@ -239,18 +259,32 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 					{Name: "pd", Type: string(corev1.ServiceTypeNodePort)},
 				}
 			},
+			pdHealth: &controller.HealthInfo{Healths: []controller.MemberHealth{
+				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
+				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
+				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
+			}},
 			errWhenUpdateStatefulSet:   false,
 			errWhenUpdatePDService:     false,
 			errWhenUpdatePDPeerService: false,
-			err: false,
-			expectPDServieFn: func(g *GomegaWithT, svc *corev1.Service, err error) {
+			errWhenGetPDHealth:         false,
+			err:                        false,
+			expectPDServiceFn: func(g *GomegaWithT, svc *corev1.Service, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(svc.Spec.Type).To(Equal(corev1.ServiceTypeNodePort))
 			},
-			expectPDPeerServieFn: nil,
+			expectPDPeerServiceFn: nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
+			},
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1.TidbCluster) {
+				g.Expect(*tc.Status.PD.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
+				g.Expect(tc.Status.PD.Members).To(Equal(map[string]v1.PDMember{
+					"pd1": v1.PDMember{Name: "pd1", ID: "1", ClientURL: "http://pd1:2379", Health: true},
+					"pd2": v1.PDMember{Name: "pd2", ID: "2", ClientURL: "http://pd2:2379", Health: true},
+					"pd3": v1.PDMember{Name: "pd3", ID: "3", ClientURL: "http://pd3:2379", Health: false},
+				}))
 			},
 		},
 		{
@@ -258,13 +292,18 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			modify: func(tc *v1.TidbCluster) {
 				tc.Spec.PD.Requests.Storage = "100xxxxi"
 			},
+			pdHealth: &controller.HealthInfo{Healths: []controller.MemberHealth{
+				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
+				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
+				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
+			}},
 			errWhenUpdateStatefulSet:   false,
 			errWhenUpdatePDService:     false,
 			errWhenUpdatePDPeerService: false,
-			err:                  true,
-			expectPDServieFn:     nil,
-			expectPDPeerServieFn: nil,
-			expectStatefulSetFn:  nil,
+			err:                   true,
+			expectPDServiceFn:     nil,
+			expectPDPeerServiceFn: nil,
+			expectStatefulSetFn:   nil,
 		},
 		{
 			name: "error when update pd service",
@@ -273,28 +312,63 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 					{Name: "pd", Type: string(corev1.ServiceTypeNodePort)},
 				}
 			},
+			pdHealth: &controller.HealthInfo{Healths: []controller.MemberHealth{
+				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
+				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
+				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
+			}},
 			errWhenUpdateStatefulSet:   false,
 			errWhenUpdatePDService:     true,
 			errWhenUpdatePDPeerService: false,
-			err:                  true,
-			expectPDServieFn:     nil,
-			expectPDPeerServieFn: nil,
-			expectStatefulSetFn:  nil,
+			err:                   true,
+			expectPDServiceFn:     nil,
+			expectPDPeerServiceFn: nil,
+			expectStatefulSetFn:   nil,
 		},
 		{
 			name: "error when update statefulset",
 			modify: func(tc *v1.TidbCluster) {
 				tc.Spec.PD.Replicas = 5
 			},
+			pdHealth: &controller.HealthInfo{Healths: []controller.MemberHealth{
+				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
+				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
+				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
+			}},
 			errWhenUpdateStatefulSet:   true,
 			errWhenUpdatePDService:     false,
 			errWhenUpdatePDPeerService: false,
-			err:                  true,
-			expectPDServieFn:     nil,
-			expectPDPeerServieFn: nil,
+			err:                   true,
+			expectPDServiceFn:     nil,
+			expectPDPeerServiceFn: nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(3))
+			},
+		},
+		{
+			name: "error when sync pd status",
+			modify: func(tc *v1.TidbCluster) {
+				tc.Spec.PD.Replicas = 5
+			},
+			pdHealth: &controller.HealthInfo{Healths: []controller.MemberHealth{
+				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
+				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
+				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
+			}},
+			errWhenUpdateStatefulSet:   false,
+			errWhenUpdatePDService:     false,
+			errWhenUpdatePDPeerService: false,
+			errWhenGetPDHealth:         true,
+			err:                        true,
+			expectPDServiceFn:          nil,
+			expectPDPeerServiceFn:      nil,
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(int(*set.Spec.Replicas)).To(Equal(3))
+			},
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1.TidbCluster) {
+				g.Expect(tc.Status.PD.Members).To(BeNil())
 			},
 		},
 	}
@@ -304,7 +378,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 	}
 }
 
-func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetControl, *controller.FakeServiceControl) {
+func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetControl, *controller.FakeServiceControl, *controller.FakePDControl) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
@@ -312,13 +386,15 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1().TidbClusters()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
+	pdControl := controller.NewFakePDControl()
 
 	return &pdMemberManager{
+		pdControl,
 		setControl,
 		svcControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
-	}, setControl, svcControl
+	}, setControl, svcControl, pdControl
 }
 
 func newTidbClusterForPD() *v1.TidbCluster {

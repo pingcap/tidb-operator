@@ -194,8 +194,9 @@ type PDMember struct {
 	Name string `json:"name"`
 	// member id is actually a uint64, but apimachinery's json only treats numbers as int64/float64
 	// so uint64 may overflow int64 and thus convert to float64
-	ID string `json:"id"`
-	IP string `json:"ip"`
+	ID        string `json:"id"`
+	ClientURL string `json:"clientURL"`
+	Health    bool   `json:"health"`
 }
 
 // TiDBStatus is TiDB status

@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/util"
@@ -32,6 +33,7 @@ import (
 )
 
 type pdMemberManager struct {
+	pdControl  controller.PDControlInterface
 	setControl controller.StatefulSetControlInterface
 	svcControl controller.ServiceControlInterface
 	setLister  v1beta1.StatefulSetLister
@@ -39,11 +41,11 @@ type pdMemberManager struct {
 }
 
 // NewPDMemberManager returns a *pdMemberManager
-func NewPDMemberManager(setControl controller.StatefulSetControlInterface,
+func NewPDMemberManager(pdControl controller.PDControlInterface, setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	setLister v1beta1.StatefulSetLister,
 	svcLister corelisters.ServiceLister) MemberManager {
-	return &pdMemberManager{setControl, svcControl, setLister, svcLister}
+	return &pdMemberManager{pdControl, setControl, svcControl, setLister, svcLister}
 }
 
 func (pmm *pdMemberManager) Sync(tc *v1.TidbCluster) error {
@@ -131,7 +133,10 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1.TidbCluster) 
 		return err
 	}
 
-	tc.Status.PD.StatefulSet = &oldPDSet.Status
+	err = pmm.syncTidbClusterStatus(tc, oldPDSet)
+	if err != nil {
+		return err
+	}
 
 	if !reflect.DeepEqual(oldPDSet.Spec, newPDSet.Spec) {
 		set := *oldPDSet
@@ -141,6 +146,47 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1.TidbCluster) 
 			return err
 		}
 	}
+
+	return nil
+}
+
+func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1.TidbCluster, set *apps.StatefulSet) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	tc.Status.PD.StatefulSet = &set.Status
+
+	pdClient := pmm.pdControl.GetPDClient(tc)
+	healthInfo, err := pdClient.GetHealth()
+	if err != nil {
+		return err
+	}
+	pdStatus := map[string]v1.PDMember{}
+	for _, memberHealth := range healthInfo.Healths {
+		id := memberHealth.MemberID
+		memberID := fmt.Sprintf("%d", id)
+		var clientURL string
+		if len(memberHealth.ClientUrls) > 0 {
+			clientURL = memberHealth.ClientUrls[0]
+		}
+		name := memberHealth.Name
+		if len(name) == 0 {
+			glog.Warningf("PD member: [%d] don't have a name, and can't get it from clientUrls: [%s], memberHealth Info: [%v] in [%s/%s]",
+				id, memberHealth.ClientUrls, memberHealth, ns, tcName)
+			continue
+		}
+
+		status := v1.PDMember{
+			Name:      name,
+			ID:        memberID,
+			ClientURL: clientURL,
+			Health:    memberHealth.Health,
+		}
+
+		pdStatus[name] = status
+	}
+
+	tc.Status.PD.Members = pdStatus
 
 	return nil
 }

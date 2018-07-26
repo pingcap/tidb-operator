@@ -34,7 +34,20 @@ func TestTidbClusterControl(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
 
-	control, setControl, _ := newFakeTidbClusterControl()
+	pdClient := controller.NewFakePDClient()
+	pdClient.AddReaction(controller.GetHealthActionType, func(action *controller.Action) (interface{}, error) {
+		return &controller.HealthInfo{
+			Healths: []controller.MemberHealth{
+				{Name: "pd1", MemberID: 1, ClientUrls: []string{"http://pd1:2379"}, Health: true},
+				{Name: "pd2", MemberID: 2, ClientUrls: []string{"http://pd2:2379"}, Health: true},
+				{Name: "pd3", MemberID: 3, ClientUrls: []string{"http://pd3:2379"}, Health: false},
+			},
+		}, nil
+	})
+
+	control, setControl, _, pdControl := newFakeTidbClusterControl()
+	pdControl.SetPDClient(tc, pdClient)
+
 	err := syncTidbClusterControl(tc, setControl, control)
 	g.Expect(err).NotTo(HaveOccurred())
 
@@ -43,7 +56,7 @@ func TestTidbClusterControl(t *testing.T) {
 	g.Expect(newTC.Status.PD.StatefulSet).NotTo(Equal(nil))
 }
 
-func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetControl, StatusUpdaterInterface) {
+func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetControl, StatusUpdaterInterface, *controller.FakePDControl) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
@@ -52,18 +65,20 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1().TidbClusters()
 	recorder := record.NewFakeRecorder(10)
 
+	pdControl := controller.NewFakePDControl()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
 	deployControl := controller.NewFakeDeploymentControl(deployInformer, tcInformer)
 	statusUpdater := newFakeTidbClusterStatusUpdater(tcInformer)
-	pdMemberManager := mm.NewPDMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
+
+	pdMemberManager := mm.NewPDMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
 	tikvMemberManager := mm.NewTiKVMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
 	monitorMemberManager := mm.NewMonitorMemberManager(deployControl, svcControl, deployInformer.Lister(), svcInformer.Lister())
 	tidbMemberManager := mm.NewTiDBMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
 	priTidbMemberManager := mm.NewPriTiDBMemberManager(deployControl, svcControl, deployInformer.Lister(), svcInformer.Lister())
 	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, tikvMemberManager, monitorMemberManager, tidbMemberManager, priTidbMemberManager, recorder)
 
-	return control, setControl, statusUpdater
+	return control, setControl, statusUpdater, pdControl
 }
 
 func syncTidbClusterControl(tc *v1.TidbCluster, setControl *controller.FakeStatefulSetControl, control ControlInterface) error {

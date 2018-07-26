@@ -39,6 +39,47 @@ func getClientServer(h func(http.ResponseWriter, *http.Request)) *httptest.Serve
 	return srv
 }
 
+func TestHealth(t *testing.T) {
+	g := NewGomegaWithT(t)
+	healths := []MemberHealth{
+		{Name: "pd1", MemberID: 1, Health: false},
+		{Name: "pd2", MemberID: 2, Health: true},
+		{Name: "pd3", MemberID: 3, Health: true},
+	}
+	healthsBytes, err := json.Marshal(healths)
+	g.Expect(err).NotTo(HaveOccurred())
+
+	tcs := []struct {
+		caseName string
+		path     string
+		method   string
+		resp     []byte
+		want     []MemberHealth
+	}{{
+		caseName: "GetHealth",
+		path:     fmt.Sprintf("/%s", healthPrefix),
+		method:   "GET",
+		resp:     healthsBytes,
+		want:     healths,
+	}}
+
+	for _, tc := range tcs {
+		svc := getClientServer(func(w http.ResponseWriter, request *http.Request) {
+			g.Expect(request.Method).To(Equal(tc.method), "check method")
+			g.Expect(request.URL.Path).To(Equal(tc.path), "check url")
+
+			w.Header().Set("Content-Type", ContentTypeJSON)
+			w.Write(tc.resp)
+		})
+		defer svc.Close()
+
+		pdClient := NewPDClient(svc.URL, timeout)
+		result, err := pdClient.GetHealth()
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(result).To(Equal(&HealthInfo{healths}))
+	}
+}
+
 func TestGetConfig(t *testing.T) {
 	g := NewGomegaWithT(t)
 	config := &server.Config{

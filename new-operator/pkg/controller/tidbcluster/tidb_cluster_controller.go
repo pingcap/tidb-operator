@@ -82,6 +82,7 @@ func NewController(
 	svcInformer := kubeInformerFactory.Core().V1().Services()
 	deployInformer := kubeInformerFactory.Apps().V1beta1().Deployments()
 
+	pdControl := controller.NewDefaultPDControl()
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
 	deployControl := controller.NewRealDeploymentControl(kubeCli, deployInformer.Lister(), recorder)
@@ -91,6 +92,7 @@ func NewController(
 		control: NewDefaultTidbClusterControl(
 			NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
 			mm.NewPDMemberManager(
+				pdControl,
 				setControl,
 				svcControl,
 				setInformer.Lister(),

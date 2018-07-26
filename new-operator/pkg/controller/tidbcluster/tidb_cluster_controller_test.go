@@ -230,6 +230,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	tcc.setListerSynced = alwaysReady
 	recorder := record.NewFakeRecorder(10)
 
+	pdControl := controller.NewDefaultPDControl()
 	svcControl := controller.NewRealServiceControl(
 		kubeCli,
 		svcInformer.Lister(),
@@ -243,6 +244,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	tcc.control = NewDefaultTidbClusterControl(
 		NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
 		mm.NewPDMemberManager(
+			pdControl,
 			setControl,
 			svcControl,
 			setInformer.Lister(),
