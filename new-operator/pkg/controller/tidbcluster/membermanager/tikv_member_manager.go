@@ -110,6 +110,10 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster) (*apps.StatefulSet, error) 
 	setName := controller.TiKVMemberName(tcName)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
+	storageClassName := tc.Spec.TiKV.StorageClassName
+	if storageClassName == "" {
+		storageClassName = controller.DefaultStorageClassName
+	}
 
 	tikvset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -122,6 +126,9 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster) (*apps.StatefulSet, error) 
 			Replicas: func() *int32 { r := tc.Spec.TiKV.Replicas; return &r }(),
 			Selector: tikvLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: tikvLabel.Labels(),
+				},
 				Spec: corev1.PodSpec{
 					Affinity: util.AffinityForNodeSelector(
 						ns,
@@ -165,7 +172,7 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster) (*apps.StatefulSet, error) 
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				volumeClaimTemplate(q, "tikv", func() *string { str := tc.Spec.TiKV.StorageClassName; return &str }()),
+				volumeClaimTemplate(q, "tikv", &storageClassName),
 			},
 			ServiceName:         headlessSvcName,
 			PodManagementPolicy: apps.ParallelPodManagement,

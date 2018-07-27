@@ -34,21 +34,21 @@ data:
     ARGS="--data-dir=/var/lib/pd \
     --name=${HOSTNAME} \
     --peer-urls=http://0.0.0.0:2380 \
-    --advertise-peer-urls=http://${HOSTNAME}.${SERVICE_NAME}.${NAMESPACE}.svc:2380 \
+    --advertise-peer-urls=http://${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc:2380 \
     --client-urls=http://0.0.0.0:2379 \
-    --advertise-client-urls=http://${HOSTNAME}.${SERVICE_NAME}.${NAMESPACE}.svc:2379 \
+    --advertise-client-urls=http://${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc:2379 \
     --config=/etc/pd/pd.toml \
     "
 
     if [[ ${ORDINAL} == "0" ]]
     then
-        ARGS="${ARGS}--initial-cluster=${HOSTNAME}=http://${HOSTNAME}.${SERVICE_NAME}.${NAMESPACE}.svc:2380"
+        ARGS="${ARGS}--initial-cluster=${HOSTNAME}=http://${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc:2380"
     else
         ARGS="${ARGS}--join="
         TOP=$((ORDINAL-1))
         for i in $(seq 0 ${TOP});
         do
-            ARGS="${ARGS}http://${STATEFULSET_NAME}-${i}.${SERVICE_NAME}.${NAMESPACE}.svc:2380"
+            ARGS="${ARGS}http://${SET_NAME}-${i}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc:2380"
             if [[ ${i} -lt ${TOP} ]]
             then
                 ARGS="${ARGS},"

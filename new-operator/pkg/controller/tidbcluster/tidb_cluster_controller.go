@@ -32,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	appslisters "k8s.io/client-go/listers/apps/v1beta1"
 	"k8s.io/client-go/tools/cache"
@@ -75,17 +74,15 @@ func NewController(
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "tidbcluster"})
+	recorder := eventBroadcaster.NewRecorder(v1.Scheme, corev1.EventSource{Component: "tidbcluster"})
 
 	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
-	deployInformer := kubeInformerFactory.Apps().V1beta1().Deployments()
 
 	pdControl := controller.NewDefaultPDControl()
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
-	deployControl := controller.NewRealDeploymentControl(kubeCli, deployInformer.Lister(), recorder)
 	tcc := &Controller{
 		kubeClient: kubeCli,
 		cli:        cli,
@@ -104,17 +101,10 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 			),
-			mm.NewMonitorMemberManager(deployControl, svcControl, deployInformer.Lister(), svcInformer.Lister()),
 			mm.NewTiDBMemberManager(
 				setControl,
 				svcControl,
 				setInformer.Lister(),
-				svcInformer.Lister(),
-			),
-			mm.NewPriTiDBMemberManager(
-				deployControl,
-				svcControl,
-				deployInformer.Lister(),
 				svcInformer.Lister(),
 			),
 			recorder,
@@ -153,8 +143,8 @@ func (tcc *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer tcc.queue.ShutDown()
 
-	glog.Infof("Starting tidbcluster controller")
-	defer glog.Infof("Shutting down tidbcluster controller")
+	glog.Info("Starting tidbcluster controller")
+	defer glog.Info("Shutting down tidbcluster controller")
 
 	if !cache.WaitForCacheSync(stopCh, tcc.tcListerSynced, tcc.setListerSynced) {
 		return

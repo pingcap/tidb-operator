@@ -98,6 +98,8 @@ func (ssmm *StateSvcMemberManager) syncServiceForTidbCluster(tc *v1.TidbCluster,
 	if !reflect.DeepEqual(oldSvc.Spec, newSvc.Spec) {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
+		// TODO add unit test
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		return ssmm.svcControl.UpdateService(tc, &svc)
 	}
 

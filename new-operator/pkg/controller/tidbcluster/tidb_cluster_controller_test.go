@@ -218,7 +218,6 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
 	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
-	deployInformer := kubeInformerFactory.Apps().V1beta1().Deployments()
 
 	tcc := NewController(
 		kubeCli,
@@ -256,16 +255,6 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			setInformer.Lister(),
 			svcInformer.Lister(),
 		),
-		mm.NewMonitorMemberManager(
-			controller.NewRealDeploymentControl(
-				kubeCli,
-				deployInformer.Lister(),
-				recorder,
-			),
-			svcControl,
-			deployInformer.Lister(),
-			svcInformer.Lister(),
-		),
 		mm.NewTiDBMemberManager(
 			controller.NewRealStatefuSetControl(
 				kubeCli,
@@ -274,16 +263,6 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			),
 			svcControl,
 			setInformer.Lister(),
-			svcInformer.Lister(),
-		),
-		mm.NewPriTiDBMemberManager(
-			controller.NewRealDeploymentControl(
-				kubeCli,
-				deployInformer.Lister(),
-				recorder,
-			),
-			svcControl,
-			deployInformer.Lister(),
 			svcInformer.Lister(),
 		),
 		recorder,
@@ -317,14 +296,6 @@ func newTidbCluster() *v1.TidbCluster {
 			TiDB: v1.TiDBSpec{
 				ContainerSpec: v1.ContainerSpec{
 					Image: "tikv-test-image",
-				},
-			},
-			Monitor: &v1.MonitorSpec{
-				Prometheus: v1.ContainerSpec{
-					Image: "prometheus-test",
-				},
-				Grafana: &v1.ContainerSpec{
-					Image: "grafana",
 				},
 			},
 		},

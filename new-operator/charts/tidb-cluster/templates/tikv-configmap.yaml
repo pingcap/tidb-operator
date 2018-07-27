@@ -15,8 +15,6 @@ data:
     #   runmode="normal/debug"
     #
     ANNOTATIONS="/etc/podinfo/annotations"
-    # get statefulset ordinal index for current pod
-    ORDINAL=$(echo ${HOSTNAME} | awk -F '-' '{print $NF}')
 
     if [[ ! -f "${ANNOTATIONS}" ]]
     then
@@ -31,13 +29,17 @@ data:
     	tail -f /dev/null
     fi
 
-    echo "starting tikv-server for cluster: ${CLUSTER_NAME}, headless service: ${HEADLESS_SERVICE_NAME}, capacity: ${CAPACITY}"
-    exec /tikv-server
-        --pd=${CLUSTER_NAME}-pd:2379 \
-        --advertise-addr=${HOSTNAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
-        --data-dir=/var/lib/tidb/tikv \
-        --capacity=${CAPACITY} \
-        --config=/etc/tikv/tikv.toml
+    ARGS="--pd=${CLUSTER_NAME}-pd:2379 \
+    --advertise-addr=${HOSTNAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
+    --addr=0.0.0.0:20160 \
+    --data-dir=/var/lib/tikv \
+    --capacity=${CAPACITY} \
+    --config=/etc/tikv/tikv.toml
+    "
+
+    echo "starting tikv-server ..."
+    echo "/tikv-server ${ARGS}"
+    exec /tikv-server ${ARGS}
 
   config-file: |-
     # TiKV config template

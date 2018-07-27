@@ -39,9 +39,6 @@ const (
 	// TiDBMemberType is tidb container type
 	TiDBMemberType MemberType = "tidb"
 
-	// PriTiDBMemberType is privileged tidb container type
-	PriTiDBMemberType MemberType = "privileged-tidb"
-
 	// TiKVMemberType is tikv container type
 	TiKVMemberType MemberType = "tikv"
 
@@ -83,28 +80,15 @@ type TidbClusterSpec struct {
 	TiDB            TiDBSpec            `json:"tidb,omitempty"`
 	TiKV            TiKVSpec            `json:"tikv,omitempty"`
 	TiKVPromGateway TiKVPromGatewaySpec `json:"tikvPromGateway,omitempty"`
-	// Monitor can be nil to disable monitor
-	// if user want to deploy monitor outside of tidb-operator
-	Monitor *MonitorSpec `json:"monitor,omitempty"`
-	// PrivilegedTiDB is used for database management on cloud without password
-	// this is useful if user forget password or backup database etc
-	// this can be disabled if it's nil
-	PrivilegedTiDB *PrivilegedTiDBSpec `json:"privilegedTidb,omitempty"`
 	// Services list non-headless services type used in TidbCluster
 	Services []Service `json:"services,omitempty"`
-	// ConfigMap is the ConfigMap name of tidb-cluster config
-	ConfigMap string `json:"configMap,omitempty"`
-	// Paused represents cluster is paused
-	Paused bool `json:"paused,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
 type TidbClusterStatus struct {
-	PD             PDStatus             `json:"pd,omitempty"`
-	TiKV           TiKVStatus           `json:"tikv,omitempty"`
-	TiDB           TiDBStatus           `json:"tidb,omitempty"`
-	Monitor        MonitorStatus        `json:"monitor,omitempty"`
-	PrivilegedTiDB PrivilegedTiDBStatus `json:"privilegedTidb,omitempty"`
+	PD   PDStatus   `json:"pd,omitempty"`
+	TiKV TiKVStatus `json:"tikv,omitempty"`
+	TiDB TiDBStatus `json:"tidb,omitempty"`
 }
 
 // PDSpec contains details of PD member
@@ -137,27 +121,6 @@ type TiKVSpec struct {
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
 type TiKVPromGatewaySpec struct {
 	ContainerSpec
-}
-
-// PrivilegedTiDBSpec is used for database management on cloud without password
-// this is useful if user forget password or backup database etc
-// this can be disabled if it's nil
-type PrivilegedTiDBSpec struct {
-	ContainerSpec
-	Replicas             int32             `json:"replicas"`
-	NodeSelector         map[string]string `json:"nodeSelector,omitempty"`
-	NodeSelectorRequired bool              `json:"nodeSelectorRequired,omitempty"`
-}
-
-// MonitorSpec is the monitor component of TidbCluster
-type MonitorSpec struct {
-	Prometheus           ContainerSpec     `json:"prometheus,omitempty"`
-	Grafana              *ContainerSpec    `json:"grafana,omitempty"`
-	DashboardInstaller   *ContainerSpec    `json:"dashboardInstaller,omitempty"`
-	NodeSelector         map[string]string `json:"nodeSelector,omitempty"`
-	NodeSelectorRequired bool              `json:"nodeSelectorRequired,omitempty"`
-	RetentionDays        int32             `json:"retentionDays,omitempty"`
-	ServiceAccount       string            `json:"serviceAccount,omitempty"`
 }
 
 // ContainerSpec is the container spec of a pod
@@ -205,11 +168,6 @@ type TiDBStatus struct {
 	Members     map[string]TiDBMember   `json:"members,omitempty"`
 }
 
-// PrivilegedTiDBStatus is privileged TiDB status
-type PrivilegedTiDBStatus struct {
-	Deployment *apps.DeploymentStatus `json:"deployment,omitempty"`
-}
-
 // TiDBMember is TiDB member
 type TiDBMember struct {
 	IP string `json:"ip"`
@@ -219,11 +177,6 @@ type TiDBMember struct {
 type TiKVStatus struct {
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	Stores      map[string]TiKVStores   `json:"stores,omitempty"`
-}
-
-// MonitorStatus is Monitor status
-type MonitorStatus struct {
-	Deployment *apps.DeploymentStatus `json:"deployment,omitempty"`
 }
 
 // TiKVStores is either Up/Down/Offline, namely it's in-cluster status

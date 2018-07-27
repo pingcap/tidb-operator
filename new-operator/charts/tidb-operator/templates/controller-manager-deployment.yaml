@@ -1,0 +1,43 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: tidb-controller-manager
+  labels:
+    app: tidb-operator
+spec:
+  replicas: {{ .Values.controllerManager.replicas }}
+  selector:
+    matchLabels:
+      app: tidb-operator
+      name: tidb-controller-manager
+  template:
+    metadata:
+      labels:
+        app: tidb-operator
+        name: tidb-controller-manager
+    spec:
+    {{- if .Values.rbac.create }}
+      serviceAccount: tidb-controller-manager
+    {{- end }}
+      containers:
+      - name: tidb-operator
+        image: {{ .Values.operatorImage }}
+        resources:
+{{ toYaml .Values.controllerManager.resources | indent 12 }}
+        command:
+          - /usr/local/bin/tidb-controller-manager
+          - -default-storage-class-name={{ .Values.defaultStorageClassName }}
+          - -v={{ .Values.controllerManager.logLevel }}
+        env:
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        volumeMounts:
+          - name: timezone
+            mountPath: /etc/localtime
+      volumes:
+      - name: timezone
+        hostPath:
+          path: /etc/localtime

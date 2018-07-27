@@ -15,8 +15,6 @@ data:
     #   runmode="normal/debug"
     #
     ANNOTATIONS="/etc/podinfo/annotations"
-    # get statefulset ordinal index for current pod
-    ORDINAL=$(echo ${HOSTNAME} | awk -F '-' '{print $NF}')
 
     if [[ ! -f "${ANNOTATIONS}" ]]
     then
@@ -31,12 +29,15 @@ data:
     	tail -f /dev/null
     fi
 
-    echo "start tidb-server for cluster: ${CLUSTER_NAME} ..."
-    exec /tidb-server
-        --store=tikv \
-        --host=0.0.0.0 \
-        --path=${CLUSTER_NAME}-pd:2379 \
-        --config=/etc/tidb/tidb.toml
+    ARGS="--store=tikv \
+    --host=0.0.0.0 \
+    --path=${CLUSTER_NAME}-pd:2379 \
+    --config=/etc/tidb/tidb.toml
+    "
+
+    echo "start tidb-server ..."
+    echo "/tidb-server ${ARGS}"
+    exec /tidb-server ${ARGS}
 
   config-file: |-
     # TiDB Configuration.

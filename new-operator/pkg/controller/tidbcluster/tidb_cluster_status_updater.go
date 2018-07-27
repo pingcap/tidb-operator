@@ -52,7 +52,7 @@ func (tcs *realTidbClusterStatusUpdater) UpdateTidbClusterStatus(
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		tc.Status = *status
-		_, updateErr := tcs.cli.PingcapV1().TidbClusters(ns).UpdateStatus(tc)
+		_, updateErr := tcs.cli.PingcapV1().TidbClusters(ns).Update(tc)
 		if updateErr == nil {
 			return nil
 		}

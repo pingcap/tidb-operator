@@ -4,6 +4,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
   name: {{ .Values.clusterName }}
 spec:
+  services:
+{{ toYaml .Values.services | indent 4 }}
   pd:
     replicas: {{ .Values.pd.replicas }}
     image: {{ .Values.pd.image }}
@@ -17,7 +19,7 @@ spec:
     nodeSelector:
 {{ toYaml .Values.pd.nodeSelector | indent 6 }}
   {{- end }}
-    nodeSelectorRequired: {{ .Values.nodeSelectorRequired }}
+    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}
   tikv:
     replicas: {{ .Values.tikv.replicas }}
     image: {{ .Values.tikv.image }}
@@ -31,7 +33,7 @@ spec:
     nodeSelector:
 {{ toYaml .Values.tikv.nodeSelector | indent 6 }}
   {{- end }}
-    nodeSelectorRequired: {{ .Values.nodeSelectorRequired }}
+    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}
   tidb:
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}
@@ -42,6 +44,4 @@ spec:
     nodeSelector:
 {{ toYaml .Values.tidb.nodeSelector | indent 6 }}
   {{- end }}
-    nodeSelectorRequired: {{ .Values.nodeSelectorRequired }}
-  services:
-{{ toYaml .Values.services | indent 4 }}
+    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}

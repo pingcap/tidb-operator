@@ -75,6 +75,8 @@ func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1.TidbCluster) 
 	if !reflect.DeepEqual(oldSvc.Spec, newSvc.Spec) {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
+		// TODO add unit test
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		return tmm.svcControl.UpdateService(tc, &svc)
 	}
 
@@ -212,7 +214,7 @@ func getTiDBVolumes(tcName string) []corev1.Volume {
 			DownwardAPI: &corev1.DownwardAPIVolumeSource{
 				Items: []corev1.DownwardAPIVolumeFile{
 					{
-						Path:     "labels",
+						Path:     "annotations",
 						FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.annotations"},
 					},
 				},

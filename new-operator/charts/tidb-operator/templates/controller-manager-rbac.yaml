@@ -1,0 +1,40 @@
+{{- if .Values.rbac.create }}
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: {{ .Release.Namespace }}:tidb-controller-manager
+rules:
+- apiGroups: [""]
+  resources:
+    - services
+    - events
+  verbs: ["*"]
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["create", "get", "update"]
+- apiGroups: ["apps"]
+  resources: ["statefulsets"]
+  verbs: ["*"]
+- apiGroups: ["pingcap.com"]
+  resources: ["tidbclusters"]
+  verbs: ["*"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: {{ .Release.Namespace }}:tidb-controller-manager
+subjects:
+- kind: ServiceAccount
+  name: tidb-controller-manager
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ .Release.Namespace }}:tidb-controller-manager
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: tidb-controller-manager
+{{- end }}

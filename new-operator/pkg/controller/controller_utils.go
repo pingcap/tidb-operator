@@ -24,8 +24,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// controllerKind contains the schema.GroupVersionKind for this controller type.
-var controllerKind = v1.SchemeGroupVersion.WithKind("TidbCluster")
+var (
+	// controllerKind contains the schema.GroupVersionKind for this controller type.
+	controllerKind = v1.SchemeGroupVersion.WithKind("TidbCluster")
+	// DefaultStorageClassName is the default storageClassName
+	DefaultStorageClassName string
+)
 
 const (
 	defaultPushgatewayImage = "prom/pushgateway:v0.3.1"

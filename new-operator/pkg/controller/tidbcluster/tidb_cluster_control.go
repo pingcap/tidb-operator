@@ -41,29 +41,23 @@ func NewDefaultTidbClusterControl(
 	statusUpdater StatusUpdaterInterface,
 	pdMemberManager mm.MemberManager,
 	tikvMemberManager mm.MemberManager,
-	monitorMemberManager mm.MemberManager,
 	tidbMemberManager mm.MemberManager,
-	priTidbMemberManager mm.MemberManager,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		statusUpdater,
 		pdMemberManager,
 		tikvMemberManager,
-		monitorMemberManager,
 		tidbMemberManager,
-		priTidbMemberManager,
 		recorder,
 	}
 }
 
 type defaultTidbClusterControl struct {
-	statusUpdater        StatusUpdaterInterface
-	pdMemberManager      mm.MemberManager
-	tikvMemberManager    mm.MemberManager
-	monitorMemberManager mm.MemberManager
-	tidbMemberManager    mm.MemberManager
-	priTidbMemberManager mm.MemberManager
-	recorder             record.EventRecorder
+	statusUpdater     StatusUpdaterInterface
+	pdMemberManager   mm.MemberManager
+	tikvMemberManager mm.MemberManager
+	tidbMemberManager mm.MemberManager
+	recorder          record.EventRecorder
 }
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
@@ -92,20 +86,14 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1.TidbCluster) erro
 		return err
 	}
 
-	// // TiKV
-	// err = tcc.tikvMemberManager.Sync(tc)
-	// if err != nil {
-	// 	return err
-	// }
+	// TiKV
+	err = tcc.tikvMemberManager.Sync(tc)
+	if err != nil {
+		return err
+	}
 
-	// // TiDB
-	// err = tcc.tidbMemberManager.Sync(tc)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// Monitor
-	err = tcc.monitorMemberManager.Sync(tc)
+	// TiDB
+	err = tcc.tidbMemberManager.Sync(tc)
 	if err != nil {
 		return err
 	}

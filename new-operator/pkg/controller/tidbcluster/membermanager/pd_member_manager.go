@@ -83,6 +83,8 @@ func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1.TidbCluster) erro
 	if !reflect.DeepEqual(oldSvc.Spec, newSvc.Spec) {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
+		// TODO add unit test
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		return pmm.svcControl.UpdateService(tc, &svc)
 	}
 
@@ -105,6 +107,8 @@ func (pmm *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1.TidbClust
 	if !reflect.DeepEqual(oldSvc.Spec, newSvc.Spec) {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
+		// TODO add unit test
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		return pmm.svcControl.UpdateService(tc, &svc)
 	}
 
@@ -299,6 +303,10 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 	}
 	pdLabel := label.New().Cluster(tcName).PD()
 	setName := controller.PDMemberName(tcName)
+	storageClassName := tc.Spec.PD.StorageClassName
+	if storageClassName == "" {
+		storageClassName = controller.DefaultStorageClassName
+	}
 
 	pdSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -355,11 +363,11 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 									},
 								},
 								{
-									Name:  "SERVICE_NAME",
-									Value: controller.PDMemberName(tcName),
+									Name:  "PEER_SERVICE_NAME",
+									Value: controller.PDPeerMemberName(tcName),
 								},
 								{
-									Name:  "STATEFULSET_NAME",
+									Name:  "SET_NAME",
 									Value: setName,
 								},
 							},
@@ -378,7 +386,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 						AccessModes: []corev1.PersistentVolumeAccessMode{
 							corev1.ReadWriteOnce,
 						},
-						StorageClassName: func() *string { str := tc.Spec.PD.StorageClassName; return &str }(),
+						StorageClassName: &storageClassName,
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
 								corev1.ResourceStorage: q,
@@ -387,7 +395,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 					},
 				},
 			},
-			ServiceName:         controller.PDMemberName(tcName),
+			ServiceName:         controller.PDPeerMemberName(tcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 		},

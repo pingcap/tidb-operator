@@ -20,12 +20,15 @@ import (
 )
 
 var (
-	// SchemeBuilder builds a scheme of TiDB types
-	SchemeBuilder      = runtime.NewSchemeBuilder(addKnownTypes)
+	// SchemeBuilder and AddToScheme will stay in k8s.io/kubernetes.
+	SchemeBuilder      runtime.SchemeBuilder
 	localSchemeBuilder = &SchemeBuilder
-	// AddToScheme is a function to add TiDB types to a scheme.
-	AddToScheme = SchemeBuilder.AddToScheme
-	groupName   = "pingcap.com"
+	// AddToScheme applies all the stored functions to the scheme.
+	AddToScheme = localSchemeBuilder.AddToScheme
+	// Scheme is the scheme instance of operator
+	Scheme *runtime.Scheme
+
+	groupName = "pingcap.com"
 )
 
 // SchemeGroupVersion is group version used to register these objects
@@ -45,6 +48,7 @@ func Resource(resource string) schema.GroupResource {
 
 // Adds the list of known types to api.Scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
+	Scheme = scheme
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&TidbCluster{},
 		&TidbClusterList{},

@@ -1,0 +1,6 @@
+1. Make sure tidb-operator components are running
+   kubectl get pods --namespace {{ .Release.Namespace }} -l app=tidb-operator
+2. Make sure TidbCluster CRDs are created
+   kubectl get customresourcedefinitions
+3. Modify tidb-cluster/values.yaml and create a TiDB cluster by installing tidb-cluster charts
+   helm install tidb-cluster

@@ -4,6 +4,8 @@
 
 clusterName: demo-cluster
 
+# nodeSelectorRequired: true
+
 # services is the service list to expose, default is ClusterIP
 # can be ClusterIP | NodePort | LoadBalancer
 services:
@@ -15,6 +17,7 @@ services:
 pd:
   replicas: 3
   image: uhub.ucloud.cn/pingcap/pd:v2.0.4
+  logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -26,6 +29,7 @@ pd:
   maxStoreDownTime: 1h
   # maxReplicas is the number of replicas for each region
   maxReplicas: 3
+  # storageClassName: pingcap-nfs
   resources: {}
     # limits:
     #   cpu: 8000m
@@ -33,7 +37,7 @@ pd:
     # requests:
     #   cpu: 4000m
     #   memory: 4Gi
-    #   storage: 1Gi
+    #   storage: 10Mi
   # nodeSelector is used for scheduling pod,
   # if nodeSelectorRequired is true, all the following labels must be matched
   nodeSelector: {}
@@ -46,6 +50,7 @@ pd:
 tikv:
   replicas: 3
   image: uhub.ucloud.cn/pingcap/tikv:v2.0.4
+  logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -63,15 +68,27 @@ tikv:
     # requests:
     #   cpu: 12000m
     #   memory: 24Gi
-    #   storage: 300Gi
+    #   storage: 10Mi
   nodeSelector: {}
     # kind: tikv
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
+tikvPromGateway:
+  image: prom/pushgateway:v0.3.1
+  # limits:
+  #   cpu: 100m
+  #   memory: 100Mi
+  #   storage: 100Mi
+  # requests:
+  #   cpu: 50m
+  #   memory: 50Mi
+  #   storage: 50Mi
 
 tidb:
   replicas: 2
   image: uhub.ucloud.cn/pingcap/tidb:v2.0.4
+  logLevel: info
+  # storageClassName: pingcap-nfs
   resources: {}
     # limits:
     #   cpu: 16000m

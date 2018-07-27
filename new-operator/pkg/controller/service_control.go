@@ -74,7 +74,7 @@ func (sc *realServiceControl) UpdateService(tc *v1.TidbCluster, svc *corev1.Serv
 		if updated, err := sc.svcLister.Services(tc.Namespace).Get(svc.Name); err != nil {
 			svc = updated.DeepCopy()
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated Secret %s/%s from lister: %v", tc.Namespace, svc.Name, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated Service %s/%s from lister: %v", tc.Namespace, svc.Name, err))
 		}
 		return updateErr
 	})
