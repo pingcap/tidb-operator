@@ -1,0 +1,88 @@
+{{- if .Values.privilegedTidb.create }}
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ .Values.clusterName }}-privileged-tidb
+  labels:
+    app: {{ .Values.clusterName }}-privileged-tidb
+spec:
+  replicas: {{ .Values.privilegedTidb.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.clusterName }}-privileged-tidb
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.clusterName }}-privileged-tidb
+    spec:
+    {{- if .Values.privilegedTidb.nodeSelector }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+            {{- range $key, $val := .Values.privilegedTidb.nodeSelector }}
+              {{- $valList := splitList "," $val }}
+              - key: {{ $key }}
+                operator: In
+                values:
+              {{- range $kl, $vl := $valList }}
+                - {{ $vl }}
+              {{- end }}
+            {{- end }}
+    {{- end }}
+      containers:
+      - name: privileged-tidb
+        image: {{ .Values.privilegedTidb.image }}
+      {{- if .Values.privilegedTidb.resources }}
+        resources:
+{{ toYaml .Values.privilegedTidb.resources | indent 10 }}
+      {{- end }}
+        command:
+        - /bin/sh
+        - /usr/local/bin/privileged_tidb_start_script.sh
+        ports:
+        - name: mysql-client
+          containerPort: 4000
+          protocol: TCP
+        env:
+        - name: CLUSTER_NAME
+          value: {{ .Values.clusterName }}
+        volumeMounts:
+        - name: timezone
+          readOnly: true
+          mountPath: /etc/localtime
+        - name: config
+          readOnly: true
+          mountPath: /etc/tidb
+        - name: annotations
+          readOnly: true
+          mountPath: /etc/podinfo
+        - name: startup-script
+          readOnly: true
+          mountPath: /usr/local/bin
+      restartPolicy: Always
+      volumes:
+      - name: timezone
+        hostPath:
+          path: /etc/localtime
+      - name: config
+        configMap:
+          name: {{ .Values.clusterName }}-privileged-tidb
+          items:
+          - key: config-file
+            path: tidb.toml
+      - name: annotations
+        downwardAPI:
+          items:
+          - path: annotations
+            fieldRef:
+              fieldPath: metadata.annotations
+      - name: startup-script
+        configMap:
+          name: {{ .Values.clusterName }}-privileged-tidb
+          items:
+          - key: startup-script
+            path: privileged_tidb_start_script.sh
+{{- end }}

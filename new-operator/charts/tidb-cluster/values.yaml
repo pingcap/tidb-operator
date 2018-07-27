@@ -100,3 +100,25 @@ tidb:
     # kind: tidb
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
+
+privilegedTidb:
+  # Whether to deploy privileged tidb
+  create: false
+  replicas: 1
+  image: uhub.ucloud.cn/pingcap/tidb:v2.0.4
+  resources: {}
+  #  limits:
+  #    cpu: 16000m
+  #    memory: 16Gi
+  #  requests:
+  #    cpu: 12000m
+  #    memory: 12Gi
+  nodeSelector: {}
+  #  kind: privileged-tidb
+  #  zone: cn-bj1-01,cn-bj1-02
+  #  region: cn-bj1
+  service:
+    # type is privileged tidb service type, can be ClusterIP, NodePort, LoadBalancer
+    type: ClusterIP
+    # nodePort is optional and only used when type is NodePort
+    # nodePort: 33333

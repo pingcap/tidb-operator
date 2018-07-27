@@ -1,0 +1,23 @@
+{{- if .Values.privilegedTidb.create }}
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ .Values.clusterName }}-privileged-tidb
+  labels:
+    app: {{ .Values.clusterName }}-privileged-tidb
+spec:
+  type: {{ .Values.privilegedTidb.service.type }}
+  ports:
+  - name: mysql-client
+    port: 4000
+    targetPort: 4000
+    protocol: TCP
+{{- if (.Values.privilegedTidb.service.type) and eq .Values.privilegedTidb.service.type "NodePort" }}
+  {{- if .Values.privilegedTidb.service.nodePort }}
+    nodePort: {{ .Values.service.nodePort }}
+  {{- end }}
+{{- end }}
+  selector:
+    app: {{ .Values.clusterName }}-privileged-tidb
+{{- end }}
