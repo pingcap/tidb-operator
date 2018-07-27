@@ -16,8 +16,10 @@ package tidbcluster
 import (
 	"reflect"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
 	mm "github.com/pingcap/tidb-operator/new-operator/pkg/controller/tidbcluster/membermanager"
+	"github.com/pingcap/tidb-operator/new-operator/pkg/util"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 )
@@ -86,11 +88,22 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1.TidbCluster) erro
 		return err
 	}
 
+	if !tcc.IsPDAvailable(tc) {
+		glog.Infof("tidbcluster: [%s/%s]'s pd cluster is not running.", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	// TiKV
 	err = tcc.tikvMemberManager.Sync(tc)
 	if err != nil {
 		return err
 	}
+
+	// Wait tikv status sync
+	//if !tcc.IsTiKVAvailable(tc) {
+	//	glog.Infof("tidbcluster: [%s/%s]'s tikv cluster is not running.", tc.GetNamespace(), tc.GetName())
+	//	return nil
+	//}
 
 	// TiDB
 	err = tcc.tidbMemberManager.Sync(tc)
@@ -105,4 +118,52 @@ func (tcc *defaultTidbClusterControl) updateTidbClusterStatus(tc *v1.TidbCluster
 	tc = tc.DeepCopy()
 	status = status.DeepCopy()
 	return tcc.statusUpdater.UpdateTidbClusterStatus(tc, status)
+}
+
+func (tcc *defaultTidbClusterControl) IsPDAvailable(tc *v1.TidbCluster) bool {
+	lowerLimit := tc.Spec.PD.Replicas/2 + 1
+	if int32(len(tc.Status.PD.Members)) < lowerLimit {
+		return false
+	}
+
+	var availableNum int32
+	for _, pdMember := range tc.Status.PD.Members {
+		if pdMember.Health {
+			availableNum++
+		}
+	}
+
+	if availableNum < lowerLimit {
+		return false
+	}
+
+	if tc.Status.PD.StatefulSet.ReadyReplicas < lowerLimit {
+		return false
+	}
+
+	return true
+}
+
+func (tcc *defaultTidbClusterControl) IsTiKVAvailable(tc *v1.TidbCluster) bool {
+	var lowerLimit int32 = 1
+	if int32(len(tc.Status.TiKV.Stores)) < lowerLimit {
+		return false
+	}
+
+	var availableNum int32
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.State == util.StoreUpState {
+			availableNum++
+		}
+	}
+
+	if availableNum < lowerLimit {
+		return false
+	}
+
+	if tc.Status.TiKV.StatefulSet.ReadyReplicas < lowerLimit {
+		return false
+	}
+
+	return true
 }

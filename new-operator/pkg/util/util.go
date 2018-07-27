@@ -21,6 +21,15 @@ var (
 	}
 )
 
+const (
+	// StoreUpState is state when tikv store is normal
+	StoreUpState = "Up"
+	// StoreOfflineState is state when tikv store is offline
+	StoreOfflineState = "Offline"
+	// StoreDownState is state when tikv store is down
+	StoreDownState = "Down"
+)
+
 // AntiAffinityForPod creates a PodAntiAffinity with antiLabels
 func AntiAffinityForPod(namespace string, antiLabels map[string]string) *corev1.PodAntiAffinity {
 	terms := []corev1.WeightedPodAffinityTerm{}

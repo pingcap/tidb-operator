@@ -93,13 +93,13 @@ func (sc *realServiceControl) recordServiceEvent(verb string, tc *v1.TidbCluster
 	svcName := svc.Name
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s Service %s in TidbCluster %s failed error: %s",
-			strings.ToLower(verb), svcName, tcName, err)
+		msg := fmt.Sprintf("%s Service %s in TidbCluster %s successful",
+			strings.ToLower(verb), svcName, tcName)
 		sc.recorder.Event(tc, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s Service %s in TidbCluster %s successful",
-			strings.ToLower(verb), svcName, tcName)
+		msg := fmt.Sprintf("%s Service %s in TidbCluster %s failed error: %s",
+			strings.ToLower(verb), svcName, tcName, err)
 		sc.recorder.Event(tc, corev1.EventTypeWarning, reason, msg)
 	}
 }
