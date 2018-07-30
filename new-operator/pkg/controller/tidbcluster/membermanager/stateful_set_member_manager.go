@@ -54,7 +54,7 @@ type StateSvcMemberManager struct {
 	StateSvcControlList
 	SvcList                 []SvcConfig
 	MemberType              v1.MemberType
-	StatusUpdate            func(*v1.TidbCluster, *apps.StatefulSetStatus)
+	StatusUpdate            func(*v1.TidbCluster, *apps.StatefulSetStatus) error
 	GetNewSetForTidbCluster func(*v1.TidbCluster) (*apps.StatefulSet, error)
 }
 
@@ -121,14 +121,15 @@ func (ssmm *StateSvcMemberManager) syncStatefulSetForTidbCluster(tc *v1.TidbClus
 		if err != nil {
 			return err
 		}
-		ssmm.StatusUpdate(tc, &apps.StatefulSetStatus{})
-		return nil
+		return ssmm.StatusUpdate(tc, &apps.StatefulSetStatus{})
 	}
 	if err != nil {
 		return err
 	}
 
-	ssmm.StatusUpdate(tc, &oldSet.Status)
+	if err = ssmm.StatusUpdate(tc, &oldSet.Status); err != nil {
+		return err
+	}
 
 	if !reflect.DeepEqual(oldSet.Spec, newSet.Spec) {
 		set := *oldSet
@@ -148,7 +149,7 @@ func (ssmm *StateSvcMemberManager) getNewServiceForTidbCluster(tc *v1.TidbCluste
 	svcName := svcConfig.MemberName(tcName)
 	svcLabel := svcConfig.SvcLabel(label.New().Cluster(tcName)).Labels()
 
-	svc := &corev1.Service{
+	svc := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
@@ -172,7 +173,7 @@ func (ssmm *StateSvcMemberManager) getNewServiceForTidbCluster(tc *v1.TidbCluste
 	} else {
 		svc.Spec.Type = controller.GetServiceType(tc.Spec.Services, ssmm.MemberType.String())
 	}
-	return svc
+	return &svc
 }
 
 func envVars(tcName, headlessSvcName, capacity string) []corev1.EnvVar {

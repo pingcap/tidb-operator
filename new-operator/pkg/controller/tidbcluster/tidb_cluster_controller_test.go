@@ -250,6 +250,8 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			svcInformer.Lister(),
 		),
 		mm.NewTiKVMemberManager(
+			kubeCli,
+			pdControl,
 			setControl,
 			svcControl,
 			setInformer.Lister(),
@@ -295,7 +297,7 @@ func newTidbCluster() *v1.TidbCluster {
 			},
 			TiDB: v1.TiDBSpec{
 				ContainerSpec: v1.ContainerSpec{
-					Image: "tikv-test-image",
+					Image: "tidb-test-image",
 				},
 			},
 		},

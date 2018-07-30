@@ -411,7 +411,7 @@ func newTidbClusterForPD() *v1.TidbCluster {
 		Spec: v1.TidbClusterSpec{
 			PD: v1.PDSpec{
 				ContainerSpec: v1.ContainerSpec{
-					Image: "image",
+					Image: "pd-test-image",
 					Requests: &v1.ResourceRequirement{
 						CPU:     "1",
 						Memory:  "2Gi",
@@ -423,7 +423,7 @@ func newTidbClusterForPD() *v1.TidbCluster {
 			},
 			TiKV: v1.TiKVSpec{
 				ContainerSpec: v1.ContainerSpec{
-					Image: "image",
+					Image: "tikv-test-image",
 					Requests: &v1.ResourceRequirement{
 						CPU:     "1",
 						Memory:  "2Gi",

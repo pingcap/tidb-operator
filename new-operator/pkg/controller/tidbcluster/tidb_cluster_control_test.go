@@ -70,7 +70,7 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	statusUpdater := newFakeTidbClusterStatusUpdater(tcInformer)
 
 	pdMemberManager := mm.NewPDMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
-	tikvMemberManager := mm.NewTiKVMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
+	tikvMemberManager := mm.NewTiKVMemberManager(kubeCli, pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
 	tidbMemberManager := mm.NewTiDBMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
 	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, tikvMemberManager, tidbMemberManager, recorder)
 

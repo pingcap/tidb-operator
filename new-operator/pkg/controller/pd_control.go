@@ -506,11 +506,7 @@ type NotFoundReaction struct {
 }
 
 func (nfr *NotFoundReaction) Error() string {
-	return fmt.Sprintf("not found %s reaction,please add the reaction", nfr.actionType)
-}
-
-func NewNotFoundReaction(actionType ActionType) error {
-	return &NotFoundReaction{actionType: actionType}
+	return fmt.Sprintf("not found %s reaction. Please add the reaction", nfr.actionType)
 }
 
 type Action struct {
@@ -533,89 +529,81 @@ func (pc *FakePDClient) AddReaction(actionType ActionType, reaction Reaction) {
 	pc.reactions[actionType] = reaction
 }
 
-func (pc *FakePDClient) GetHealth() (*HealthInfo, error) {
-	if reaction, ok := pc.reactions[GetHealthActionType]; ok {
-		action := &Action{}
+// fakeAPI is a small helper for fake API calls
+func (pc *FakePDClient) fakeApi(actionType ActionType, action *Action) (interface{}, error) {
+	if reaction, ok := pc.reactions[actionType]; ok {
 		result, err := reaction(action)
 		if err != nil {
 			return nil, err
 		}
-		return result.(*HealthInfo), nil
+		return result, nil
 	}
-	return nil, NewNotFoundReaction(GetHealthActionType)
+	return nil, &NotFoundReaction{actionType}
 }
-func (pc *FakePDClient) GetConfig() (*server.Config, error) {
-	if reaction, ok := pc.reactions[GetConfigActionType]; ok {
-		action := &Action{}
-		result, err := reaction(action)
-		if err != nil {
-			return nil, err
-		}
-		return result.(*server.Config), nil
+
+func (pc *FakePDClient) GetHealth() (*HealthInfo, error) {
+	action := &Action{}
+	result, err := pc.fakeApi(GetHealthActionType, action)
+	if err != nil {
+		return nil, err
 	}
-	return nil, NewNotFoundReaction(GetConfigActionType)
+	return result.(*HealthInfo), nil
+}
+
+func (pc *FakePDClient) GetConfig() (*server.Config, error) {
+	action := &Action{}
+	result, err := pc.fakeApi(GetConfigActionType, action)
+	if err != nil {
+		return nil, err
+	}
+	return result.(*server.Config), nil
 }
 
 func (pc *FakePDClient) GetCluster() (*metapb.Cluster, error) {
-	if reaction, ok := pc.reactions[GetClusterActionType]; ok {
-		action := &Action{}
-		result, err := reaction(action)
-		if err != nil {
-			return nil, err
-		}
-		return result.(*metapb.Cluster), nil
+	action := &Action{}
+	result, err := pc.fakeApi(GetClusterActionType, action)
+	if err != nil {
+		return nil, err
 	}
-	return nil, NewNotFoundReaction(GetClusterActionType)
+	return result.(*metapb.Cluster), nil
 }
 
 func (pc *FakePDClient) GetMembers() (*MembersInfo, error) {
-	if reaction, ok := pc.reactions[GetMembersActionType]; ok {
-		action := &Action{}
-		result, err := reaction(action)
-		if err != nil {
-			return nil, err
-		}
-		return result.(*MembersInfo), nil
+	action := &Action{}
+	result, err := pc.fakeApi(GetMembersActionType, action)
+	if err != nil {
+		return nil, err
 	}
-	return nil, NewNotFoundReaction(GetMembersActionType)
+	return result.(*MembersInfo), nil
 }
 
 func (pc *FakePDClient) GetStores() (*StoresInfo, error) {
-	if reaction, ok := pc.reactions[GetStoresActionType]; ok {
-		action := &Action{}
-		result, err := reaction(action)
-		if err != nil {
-			return nil, err
-		}
-		return result.(*StoresInfo), nil
+	action := &Action{}
+	result, err := pc.fakeApi(GetStoresActionType, action)
+	if err != nil {
+		return nil, err
 	}
-	return nil, NewNotFoundReaction(GetStoresActionType)
+	return result.(*StoresInfo), nil
 }
 
 func (pc *FakePDClient) GetTombStoneStores() (*StoresInfo, error) {
-	if reaction, ok := pc.reactions[GetTombStoneStoresActionType]; ok {
-		action := &Action{}
-		result, err := reaction(action)
-		if err != nil {
-			return nil, err
-		}
-		return result.(*StoresInfo), nil
+	action := &Action{}
+	result, err := pc.fakeApi(GetTombStoneStoresActionType, action)
+	if err != nil {
+		return nil, err
 	}
-	return nil, NewNotFoundReaction(GetTombStoneStoresActionType)
+	return result.(*StoresInfo), nil
 }
 
 func (pc *FakePDClient) GetStore(id uint64) (*StoreInfo, error) {
-	if reaction, ok := pc.reactions[GetStoreActionType]; ok {
-		action := &Action{
-			ID: id,
-		}
-		result, err := reaction(action)
-		if err != nil {
-			return nil, err
-		}
-		return result.(*StoreInfo), nil
+	action := &Action{
+		ID: id,
 	}
-	return nil, NewNotFoundReaction(GetStoresActionType)
+	result, err := pc.fakeApi(GetStoreActionType, action)
+	if err != nil {
+		return nil, err
+	}
+	return result.(*StoreInfo), nil
 }
 
 func (pc *FakePDClient) DeleteStore(id uint64) error {

@@ -96,6 +96,8 @@ func NewController(
 				svcInformer.Lister(),
 			),
 			mm.NewTiKVMemberManager(
+				kubeCli,
+				pdControl,
 				setControl,
 				svcControl,
 				setInformer.Lister(),
