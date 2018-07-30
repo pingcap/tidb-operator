@@ -1,0 +1,110 @@
+{{- if .Values.monitor.create }}
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ .Values.clusterName }}-prometheus
+  labels:
+    app: {{ .Values.clusterName }}-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.clusterName }}-monitor
+      name: {{ .Values.clusterName }}-prometheus
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.clusterName }}-monitor
+        name: {{ .Values.clusterName }}-prometheus
+    spec:
+    {{- if .Values.rbac.create }}
+      serviceAccount: {{ .Values.clusterName }}-monitor
+    {{- end }}
+    {{- if .Values.monitor.nodeSelector }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+            {{- range $key, $val := .Values.monitor.nodeSelector }}
+              {{- $valList := splitList "," $val }}
+              - key: {{ $key }}
+                operator: In
+                values:
+              {{- range $kl, $vl := $valList }}
+                - {{ $vl }}
+              {{- end }}
+            {{- end }}
+    {{- end }}
+      containers:
+      - name: prometheus
+        image: {{ .Values.monitor.prometheus.image }}
+        resources:
+{{ toYaml .Values.monitor.prometheus.resources | indent 12 }}
+        command:
+        - /bin/prometheus
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --storage.tsdb.path=/prometheus
+        - --storage.tsdb.retention={{ .Values.monitor.prometheus.reserveDays }}d
+        ports:
+        - name: prometheus
+          containerPort: 9090
+          protocol: TCP
+        volumeMounts:
+          - name: timezone
+            mountPath: /etc/localtime
+          - name: prometheus-config
+            mountPath: /etc/prometheus
+            readOnly: true
+          - name: prometheus-data
+            mountPath: /prometheus
+      - name: grafana
+        image: {{ .Values.monitor.grafana.image }}
+        resources:
+{{ toYaml .Values.monitor.grafana.resources | indent 12 }}
+        ports:
+        - name: grafana
+          containerPort: 3000
+          protocol: TCP
+        env:
+        - name: GF_PATHS_DATA
+          value: /data
+        - name: GF_SECURITY_ADMIN_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.clusterName }}-grafana-secret
+              key: username
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.clusterName }}-grafana-secret
+              key: password
+        volumeMounts:
+          - name: timezone
+            mountPath: /etc/localtime
+          - name: grafana-data
+            mountPath: /data
+      volumes:
+      - name: timezone
+        hostPath:
+          path: /etc/localtime
+      - name: prometheus-data
+        emptyDir: {}
+      - name: grafana-data
+        emptyDir: {}
+      - name: prometheus-config
+        configMap:
+          name: {{ .Values.clusterName }}-monitor-configmap
+          items:
+          - key: prometheus-config
+            path: prometheus.yml
+          - key: alert-rules-config
+            path: alert.rules
+      - name: grafana-config
+        configMap:
+          name: {{ .Values.clusterName }}-monitor-configmap
+          items:
+          - key: grafana-config
+            path: grafana.ini
+{{- end }}

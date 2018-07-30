@@ -2,6 +2,9 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+rbac:
+  create: true
+
 clusterName: demo-cluster
 
 # nodeSelectorRequired: true
@@ -101,6 +104,42 @@ tidb:
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
 
+monitor:
+  create: true
+  dashboardInstaller:
+    image: uhub.ucloud.cn/pingcap/tidb-dashboard-installer:v1.0.7
+  grafana:
+    image: uhub.ucloud.cn/pingcap/grafana:4.2.0
+    resources: {}
+      # limits:
+      #   cpu: 8000m
+      #   memory: 8Gi
+      # requests:
+      #   cpu: 4000m
+      #   memory: 4Gi
+    username: admin
+    password: admin
+    service:
+      type: NodePort
+    grafanaUrl: http://localhost:3000
+  prometheus:
+    image: uhub.ucloud.cn/pingcap/prometheus:v2.0.0
+    resources: {}
+      # limits:
+      #   cpu: 8000m
+      #   memory: 8Gi
+      # requests:
+      #   cpu: 4000m
+      #   memory: 4Gi
+    service:
+      type: NodePort
+    reserveDays: 12
+    # alertmanagerURL: ""
+  nodeSelector: {}
+    # kind: monitor
+    # zone: cn-bj1-01,cn-bj1-02
+    # region: cn-bj1
+
 privilegedTidb:
   # Whether to deploy privileged tidb
   create: false
@@ -122,3 +161,7 @@ privilegedTidb:
     type: ClusterIP
     # nodePort is optional and only used when type is NodePort
     # nodePort: 33333
+
+metaInstance: "{{ $labels.instance }}"
+metaType: "{{ $labels.type }}"
+metaValue: "{{ $value }}"

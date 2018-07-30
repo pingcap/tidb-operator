@@ -1,0 +1,34 @@
+{{- if .Values.monitor.create }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ .Values.clusterName }}-configure-grafana
+  labels:
+    app: {{ .Values.clusterName }}-monitor
+spec:
+  template:
+    metadata:
+      name: {{ .Values.clusterName }}-configure-grafana
+    spec:
+      restartPolicy: OnFailure
+    {{- if .Values.rbac.create }}
+      serviceAccount: {{ .Values.clusterName }}-monitor
+    {{- end }}
+      containers:
+      - name: tidb-dashboard-installer
+        image: {{ .Values.monitor.dashboardInstaller.image }}
+        args:
+          - {{ .Values.clusterName }}-grafana:3000
+        env:
+          - name: GRAFANA_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.clusterName }}-grafana-secret
+                key: username
+          - name: GRAFANA_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.clusterName }}-grafana-secret
+                key: password
+{{- end }}

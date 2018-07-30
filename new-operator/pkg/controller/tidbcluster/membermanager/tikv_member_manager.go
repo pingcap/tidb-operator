@@ -154,7 +154,8 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster) (*apps.StatefulSet, error) 
 			Selector: tikvLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: tikvLabel.Labels(),
+					Labels:      tikvLabel.Labels(),
+					Annotations: controller.AnnProm(),
 				},
 				Spec: corev1.PodSpec{
 					Affinity: util.AffinityForNodeSelector(

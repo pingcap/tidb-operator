@@ -320,7 +320,8 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 			Selector: pdLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: pdLabel.Labels(),
+					Labels:      pdLabel.Labels(),
+					Annotations: controller.AnnProm(),
 				},
 				Spec: corev1.PodSpec{
 					Affinity: util.AffinityForNodeSelector(

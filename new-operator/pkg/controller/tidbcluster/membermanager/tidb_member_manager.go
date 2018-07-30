@@ -172,7 +172,8 @@ func getNewTiDBSetForTidbCluster(tc *v1.TidbCluster) *apps.StatefulSet {
 			Selector: tidbLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: tidbLabel.Labels(),
+					Labels:      tidbLabel.Labels(),
+					Annotations: controller.AnnProm(),
 				},
 				Spec: corev1.PodSpec{
 					Affinity: util.AffinityForNodeSelector(

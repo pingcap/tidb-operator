@@ -141,6 +141,15 @@ func MonitorMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-monitor", clusterName)
 }
 
+// AnnProm adds annotations for prometheus scraping metrics
+// port is determined by container port in pod spec with name metrics
+func AnnProm() map[string]string {
+	ann := make(map[string]string)
+	ann["prometheus.io/scrape"] = "true"
+	ann["prometheus.io/path"] = "/metrics"
+	return ann
+}
+
 // requestTracker is used by unit test for mocking request error
 type requestTracker struct {
 	requests int
