@@ -16,6 +16,7 @@ package membermanager
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
@@ -31,6 +32,8 @@ import (
 	"k8s.io/client-go/listers/apps/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
+
+const defaultReplicas = 3
 
 type pdMemberManager struct {
 	pdControl  controller.PDControlInterface
@@ -119,13 +122,12 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1.TidbCluster) 
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newPDSet, err := pmm.getNewPDSetForTidbCluster(tc)
-	if err != nil {
-		return err
-	}
-
 	oldPDSet, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 	if errors.IsNotFound(err) {
+		newPDSet, err := pmm.getNewPDSetForTidbCluster(tc, nil)
+		if err != nil {
+			return err
+		}
 		err = pmm.setControl.CreateStatefulSet(tc, newPDSet)
 		if err != nil {
 			return err
@@ -133,6 +135,10 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1.TidbCluster) 
 		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
 	}
+	if err != nil {
+		return err
+	}
+	newPDSet, err := pmm.getNewPDSetForTidbCluster(tc, oldPDSet.GetAnnotations())
 	if err != nil {
 		return err
 	}
@@ -251,7 +257,7 @@ func (pmm *pdMemberManager) getNewPDHeadlessServiceForTidbCluster(tc *v1.TidbClu
 	}
 }
 
-func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps.StatefulSet, error) {
+func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster, annotations map[string]string) (*apps.StatefulSet, error) {
 	ns := tc.Namespace
 	tcName := tc.Name
 
@@ -308,11 +314,27 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 		storageClassName = controller.DefaultStorageClassName
 	}
 
+	var initialReplicas int
+	if annotations == nil {
+		initialReplicas = int(tc.Spec.PD.Replicas)
+		annotations = map[string]string{
+			label.AnnInitialPDReplicas: fmt.Sprintf("%d", initialReplicas),
+		}
+	} else {
+		initialReplicas, err = strconv.Atoi(annotations[label.AnnInitialPDReplicas])
+		if err != nil {
+			// This should not happen, initial-replicas must be consistent in the cluster lifecycle
+			initialReplicas = defaultReplicas
+			glog.Warningf("can not find initial-pd-replicas from previous statefulset, use default %d", defaultReplicas)
+		}
+	}
+
 	pdSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
 			Namespace:       ns,
 			Labels:          pdLabel.Labels(),
+			Annotations:     annotations,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
@@ -370,6 +392,10 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster) (*apps
 								{
 									Name:  "SET_NAME",
 									Value: setName,
+								},
+								{
+									Name:  "INITIAL_REPLICAS",
+									Value: fmt.Sprintf("%d", initialReplicas),
 								},
 							},
 						},

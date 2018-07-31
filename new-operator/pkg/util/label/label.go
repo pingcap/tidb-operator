@@ -40,6 +40,9 @@ const (
 	// AnnBackupDirlKey is backup dir label key
 	AnnBackupDirlKey = "cluster.pingcap.com/tidbClusterBackupDir"
 
+	// AnnInitialPDReplicas is cluster initial-pd-replicas annotation
+	AnnInitialPDReplicas = "cluster.pingcap.com/initial-pd-replicas"
+
 	// AnnPodNameKey is podName annotations key
 	AnnPodNameKey string = "volume.pingcap.com/podName"
 
