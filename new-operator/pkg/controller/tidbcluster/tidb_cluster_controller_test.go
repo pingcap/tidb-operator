@@ -218,6 +218,8 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
 	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
+	podInformer := kubeInformerFactory.Core().V1().Pods()
+	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 
 	tcc := NewController(
 		kubeCli,
@@ -250,12 +252,13 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			svcInformer.Lister(),
 		),
 		mm.NewTiKVMemberManager(
-			kubeCli,
 			pdControl,
 			setControl,
 			svcControl,
 			setInformer.Lister(),
 			svcInformer.Lister(),
+			podInformer.Lister(),
+			nodeInformer.Lister(),
 		),
 		mm.NewTiDBMemberManager(
 			controller.NewRealStatefuSetControl(

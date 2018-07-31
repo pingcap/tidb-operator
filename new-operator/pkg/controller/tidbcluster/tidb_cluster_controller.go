@@ -79,6 +79,8 @@ func NewController(
 	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
+	podInformer := kubeInformerFactory.Core().V1().Pods()
+	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 
 	pdControl := controller.NewDefaultPDControl()
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
@@ -96,12 +98,13 @@ func NewController(
 				svcInformer.Lister(),
 			),
 			mm.NewTiKVMemberManager(
-				kubeCli,
 				pdControl,
 				setControl,
 				svcControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
+				podInformer.Lister(),
+				nodeInformer.Lister(),
 			),
 			mm.NewTiDBMemberManager(
 				setControl,

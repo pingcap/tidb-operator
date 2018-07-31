@@ -10,6 +10,11 @@ rules:
     - events
   verbs: ["*"]
 - apiGroups: [""]
+  resources:
+    - pods
+    - nodes
+  verbs: ["get","list","watch"]
+- apiGroups: [""]
   resources: ["endpoints"]
   verbs: ["create", "get", "update"]
 - apiGroups: [""]

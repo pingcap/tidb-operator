@@ -63,6 +63,8 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1().TidbClusters()
 	recorder := record.NewFakeRecorder(10)
+	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
+	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
 
 	pdControl := controller.NewFakePDControl()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
@@ -70,7 +72,7 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	statusUpdater := newFakeTidbClusterStatusUpdater(tcInformer)
 
 	pdMemberManager := mm.NewPDMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
-	tikvMemberManager := mm.NewTiKVMemberManager(kubeCli, pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
+	tikvMemberManager := mm.NewTiKVMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), podInformer.Lister(), nodeInformer.Lister())
 	tidbMemberManager := mm.NewTiDBMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
 	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, tikvMemberManager, tidbMemberManager, recorder)
 

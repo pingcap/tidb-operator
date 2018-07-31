@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/util"
@@ -28,8 +29,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/listers/apps/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/kubernetes/pkg/kubelet/apis"
@@ -40,46 +39,46 @@ import (
 // embedding rather as opposed to just newtyping automatically extends the MemberManager interface.
 type TikvMemberManager struct {
 	StateSvcMemberManager
-	pdControl controller.PDControlInterface
-	kubeCli   kubernetes.Interface
+	pdControl  controller.PDControlInterface
+	podLister  corelisters.PodLister
+	nodeLister corelisters.NodeLister
 }
 
 var _ MemberManager = (*TikvMemberManager)(nil)
 
 // NewTiKVMemberManager returns a *tikvMemberManager
-func NewTiKVMemberManager(kubeCli kubernetes.Interface, pdControl controller.PDControlInterface,
+func NewTiKVMemberManager(pdControl controller.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	setLister v1beta1.StatefulSetLister,
-	svcLister corelisters.ServiceLister) *TikvMemberManager {
+	svcLister corelisters.ServiceLister,
+	podLister corelisters.PodLister,
+	nodeLister corelisters.NodeLister) *TikvMemberManager {
 
-	kvmm := TikvMemberManager{pdControl: pdControl, kubeCli: kubeCli, StateSvcMemberManager: StateSvcMemberManager{
-		StateSvcControlList: NewStateSvcControlList(setControl, svcControl, setLister, svcLister),
-		MemberType:          v1.TiKVMemberType,
-		SvcList: []SvcConfig{
-			{
-				Name:       "client",
-				Port:       20160,
-				Headless:   false,
-				SvcLabel:   func(l label.Label) label.Label { return l.TiKV() },
-				MemberName: controller.TiKVMemberName,
+	kvmm := TikvMemberManager{
+		pdControl:  pdControl,
+		podLister:  podLister,
+		nodeLister: nodeLister,
+		StateSvcMemberManager: StateSvcMemberManager{
+			StateSvcControlList: NewStateSvcControlList(setControl, svcControl, setLister, svcLister),
+			MemberType:          v1.TiKVMemberType,
+			SvcList: []SvcConfig{
+				{
+					Name:       "peer",
+					Port:       20160,
+					Headless:   true,
+					SvcLabel:   func(l label.Label) label.Label { return l.TiKV() },
+					MemberName: controller.TiKVPeerMemberName,
+				},
 			},
-			{
-				Name:       "peer",
-				Port:       20160,
-				Headless:   true,
-				SvcLabel:   func(l label.Label) label.Label { return l.TiKV() },
-				MemberName: controller.TiKVPeerMemberName,
-			},
+			GetNewSetForTidbCluster: getNewSetForTidbClusterTiKV,
 		},
-		GetNewSetForTidbCluster: getNewSetForTidbClusterTiKV,
-	}}
+	}
 
 	kvmm.StatusUpdate = func(tc *v1.TidbCluster, status *apps.StatefulSetStatus) error {
 		tc.Status.TiKV.StatefulSet = status
 		return kvmm.syncTidbClusterStatus(tc)
 	}
-
 	return &kvmm
 }
 
@@ -224,109 +223,107 @@ func (ssmm *TikvMemberManager) syncTidbClusterStatus(tc *v1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
+	previousStores := tc.Status.TiKV.Stores
+	tikvStores := v1.TiKVStores{
+		CurrentStores:   map[string]v1.TiKVStore{},
+		TombStoneStores: map[string]v1.TiKVStore{},
+	}
+
 	pdCli := ssmm.pdControl.GetPDClient(tc)
+
 	// This only returns Up/Down/Offline stores
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
 		glog.Errorf("failed to get stores from PD for TidbCluster: [%s/%s], %v", ns, tcName, err)
 		return err
 	}
-
-	tombstoneStoresInfo, err := pdCli.GetTombStoneStores()
-	if err != nil {
-		glog.Errorf("failed to get tombstone stores from PD for TidbCluster: [%s/%s], %v", ns, tcName, err)
-		return err
-	}
-
-	stores := append(storesInfo.Stores, tombstoneStoresInfo.Stores...)
-
-	if len(stores) == 0 {
-		glog.V(2).Infof("pdCli.GetStores and pdCli.GetTombStoneStores both return nil in [%s/%s]", ns, tcName)
-		return nil
-	}
-
-	stateSet, err := ssmm.getStateSet(tc)
-	if err != nil {
-		return err
-	}
-
-	listOptions := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(stateSet.Spec.Selector.MatchLabels).String(),
-	}
-	podList, err := ssmm.kubeCli.CoreV1().Pods(ns).List(listOptions)
-	if err != nil {
-		glog.Errorf("failed to list TiKV pods %v %v", listOptions, err)
-		return err
-	}
-
-	previousStores := tc.Status.TiKV.Stores
-	tikvStores := make(map[string]v1.TiKVStores)
-
-	for _, store := range stores {
-		var podName string
-		if store.Store == nil || store.Status == nil {
+	for _, store := range storesInfo.Stores {
+		status := ssmm.getTiKVStore(store)
+		if status == nil {
 			continue
 		}
 
-		storeID := fmt.Sprintf("%d", store.Store.GetId())
-		ip := strings.Split(store.Store.GetAddress(), ":")[0]
-		status := v1.TiKVStores{
-			ID:                storeID,
-			IP:                ip,
-			State:             store.Store.StateName,
-			LastHeartbeatTime: metav1.Time{Time: store.Status.LastHeartbeatTS},
-		}
-
-		var tikvPod *corev1.Pod
-		for _, pod := range podList.Items {
-			pn := pod.GetName()
-			if _, ok := tikvStores[pn]; ok {
-				continue
-			}
-
-			domainName := fmt.Sprintf("%s.%s.%s.svc", pod.Spec.Hostname, pod.Spec.Subdomain, pod.GetNamespace())
-			if domainName == ip {
-				tikvPod = &pod
-				break
-			}
-		}
-
-		if tikvPod == nil {
-			continue
-		}
-
-		podName = tikvPod.GetName()
-		err = ssmm.setStoreLabelsForPod(&pdCli, store, tikvPod)
+		err = ssmm.setStoreLabelsForTiKV(pdCli, store, ns, status.PodName)
 		if err != nil {
-			glog.Errorf("failed to setStoreLabelsForPod: [%s/%s], %v", ns, podName, err)
+			glog.Errorf("failed to setStoreLabelsForPod: [%s/%s], %v", ns, status.PodName, err)
 			return err
 		}
 
 		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
 		if status.LastHeartbeatTime.IsZero() {
-			if oldStatus, ok := previousStores[podName]; ok {
-				glog.Warningf("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", podName, oldStatus.LastHeartbeatTime)
+			if oldStatus, ok := previousStores.CurrentStores[status.ID]; ok {
+				glog.Warningf("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStatus.LastHeartbeatTime)
 				status.LastHeartbeatTime = oldStatus.LastHeartbeatTime
 			}
 		}
 
-		tikvStores[podName] = status
+		tikvStores.CurrentStores[status.ID] = *status
 	}
 
-	if !reflect.DeepEqual(tikvStores, previousStores) {
-		tc.Status.TiKV.Stores = tikvStores
-		err := ssmm.setControl.UpdateStatefulSet(tc, stateSet)
+	//this returns all tombstone stores
+	tombstoneStoresInfo, err := pdCli.GetTombStoneStores()
+	if err != nil {
+		glog.Errorf("failed to get tombstone stores from PD for TidbCluster: [%s/%s], %v", ns, tcName, err)
+		return err
+	}
+	for _, store := range tombstoneStoresInfo.Stores {
+		status := ssmm.getTiKVStore(store)
+		if status == nil {
+			continue
+		}
+
+		tikvStores.TombStoneStores[status.ID] = *status
+	}
+
+	tc.Status.TiKV.Stores = tikvStores
+	return nil
+}
+
+func (ssmm *TikvMemberManager) getTiKVStore(store *controller.StoreInfo) *v1.TiKVStore {
+	if store.Store == nil || store.Status == nil {
+		return nil
+	}
+	storeID := fmt.Sprintf("%d", store.Store.GetId())
+	ip := strings.Split(store.Store.GetAddress(), ":")[0]
+	podName := strings.Split(ip, ".")[0]
+
+	return &v1.TiKVStore{
+		ID:                storeID,
+		PodName:           podName,
+		IP:                ip,
+		State:             store.Store.StateName,
+		LastHeartbeatTime: metav1.Time{Time: store.Status.LastHeartbeatTS},
+	}
+}
+
+func (ssmm *TikvMemberManager) setStoreLabelsForTiKV(pdClient controller.PDClient, store *controller.StoreInfo, ns, podName string) error {
+	pod, err := ssmm.podLister.Pods(ns).Get(podName)
+	if err != nil {
+		return err
+	}
+
+	nodeName := pod.Spec.NodeName
+	ls, err := ssmm.getNodeLabels(nodeName)
+	if err != nil {
+		glog.Errorf("Node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
+		return err
+	}
+
+	glog.V(2).Infof("Pod: [%s/%s] is on node: [%s]. Node: [%s]'s labels: %v", ns, podName, nodeName, nodeName, ls)
+	if !storeLabelsEqualNodeLabels(store.Store.Labels, ls) {
+		updated, err := pdClient.SetStoreLabels(store.Store.Id, ls)
 		if err != nil {
-			glog.Errorf("failed to update TidbSet: [%s/%s], %v", ns, tcName, err)
 			return err
 		}
+		if updated {
+			glog.Infof("Pod: [%s/%s] set labels successfully,labels: %v ", ns, podName, nodeName, ls)
+		}
 	}
-
 	return nil
 }
 
 func (ssmm *TikvMemberManager) getNodeLabels(nodeName string) (map[string]string, error) {
-	node, err := ssmm.kubeCli.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+	node, err := ssmm.nodeLister.Get(nodeName)
 	if err != nil {
 		return nil, err
 	}
@@ -349,22 +346,16 @@ func (ssmm *TikvMemberManager) getNodeLabels(nodeName string) (map[string]string
 	return nil, errors.Errorf("labels not found")
 }
 
-func (ssmm *TikvMemberManager) setStoreLabelsForPod(pdAPI *controller.PDClient, store *controller.StoreInfo, pod *corev1.Pod) error {
-	podName := pod.GetName()
-	podNamespace := pod.GetNamespace()
-	nodeName := pod.Spec.NodeName
-	ls, err := ssmm.getNodeLabels(nodeName)
-	if err != nil {
-		glog.Errorf("Node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, podNamespace, podName)
-		return err
+// storeLabelsEqualNodeLabels compares store labels with node labels
+// for historic reasons, PD stores TiKV labels as []*StoreLabel which is a key-value pair slice
+func storeLabelsEqualNodeLabels(storeLabels []*metapb.StoreLabel, nodeLabels map[string]string) bool {
+	ls := map[string]string{}
+	for _, label := range storeLabels {
+		key := label.GetKey()
+		if _, ok := nodeLabels[key]; ok {
+			val := label.GetValue()
+			ls[key] = val
+		}
 	}
-	glog.V(2).Infof("Pod: [%s/%s] is on node: [%s]. Node: [%s]'s labels: %v", podNamespace, podName, nodeName, nodeName, ls)
-	updated, err := (*pdAPI).SetStoreLabels(store.Store.Id, ls)
-	if err != nil {
-		return err
-	}
-	if updated {
-		glog.Infof("Pod: [%s/%s] set labels successfully,labels: %v ", podNamespace, podName, nodeName, ls)
-	}
-	return nil
+	return reflect.DeepEqual(ls, nodeLabels)
 }

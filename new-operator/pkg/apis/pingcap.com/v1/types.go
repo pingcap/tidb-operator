@@ -176,14 +176,20 @@ type TiDBMember struct {
 // TiKVStatus is TiKV status
 type TiKVStatus struct {
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
-	Stores      map[string]TiKVStores   `json:"stores,omitempty"`
+	Stores      TiKVStores              `json:"stores,omitempty"`
 }
 
-// TiKVStores is either Up/Down/Offline, namely it's in-cluster status
-// when status changed from Offline to Tombstone, we delete it
+// TiKVStores is all TiKV Stores, contain stores which state are tombstone
 type TiKVStores struct {
+	CurrentStores   map[string]TiKVStore `json:"currentStores,omitempty"`
+	TombStoneStores map[string]TiKVStore `json:"tombStoneStores,omitempty"`
+}
+
+// TiKVStores is either Up/Down/Offline/Tombstone
+type TiKVStore struct {
 	// store id is also uint64, due to the same reason as pd id, we store id as string
 	ID                string      `json:"id"`
+	PodName           string      `json:"podName"`
 	IP                string      `json:"ip"`
 	State             string      `json:"state"`
 	LastHeartbeatTime metav1.Time `json:"lastHeartbeatTime"`

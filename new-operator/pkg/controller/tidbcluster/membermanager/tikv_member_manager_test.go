@@ -18,7 +18,6 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/new-operator/pkg/client/informers/externalversions"
@@ -36,11 +35,9 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 		name                         string
 		prepare                      func(cluster *v1.TidbCluster)
 		errWhenCreateStatefulSet     bool
-		errWhenCreateTiKVService     bool
 		errWhenCreateTiKVPeerService bool
 		errWhenGetStores             bool
 		err                          bool
-		tikvSvcCreated               bool
 		tikvPeerSvcCreated           bool
 		setCreated                   bool
 		pdStores                     *controller.StoresInfo
@@ -77,11 +74,8 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 		if test.errWhenCreateStatefulSet {
 			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
-		if test.errWhenCreateTiKVService {
-			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
-		}
 		if test.errWhenCreateTiKVPeerService {
-			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 1)
+			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
 		err := pmm.Sync(tc)
@@ -93,18 +87,10 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 
 		g.Expect(tc.Spec).To(Equal(oldSpec))
 
-		svc1, err := pmm.svcLister.Services(ns).Get(controller.TiKVMemberName(tcName))
-		if test.tikvSvcCreated {
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(svc1).NotTo(Equal(nil))
-		} else {
-			expectErrIsNotFound(g, err)
-		}
-
-		svc2, err := pmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
+		svc, err := pmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
 		if test.tikvPeerSvcCreated {
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(svc2).NotTo(Equal(nil))
+			g.Expect(svc).NotTo(Equal(nil))
 		} else {
 			expectErrIsNotFound(g, err)
 		}
@@ -124,10 +110,8 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			prepare: nil,
 
 			errWhenCreateStatefulSet:     false,
-			errWhenCreateTiKVService:     false,
 			errWhenCreateTiKVPeerService: false,
 			err:                false,
-			tikvSvcCreated:     true,
 			tikvPeerSvcCreated: true,
 			setCreated:         true,
 			pdStores:           &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
@@ -139,10 +123,8 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 				tc.Spec.TiKV.Requests.Storage = "100xxxxi"
 			},
 			errWhenCreateStatefulSet:     false,
-			errWhenCreateTiKVService:     false,
 			errWhenCreateTiKVPeerService: false,
 			err:                true,
-			tikvSvcCreated:     true,
 			tikvPeerSvcCreated: true,
 			setCreated:         false,
 			pdStores:           &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
@@ -152,24 +134,9 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			name:                         "error when create statefulset",
 			prepare:                      nil,
 			errWhenCreateStatefulSet:     true,
-			errWhenCreateTiKVService:     false,
 			errWhenCreateTiKVPeerService: false,
 			err:                true,
-			tikvSvcCreated:     true,
 			tikvPeerSvcCreated: true,
-			setCreated:         false,
-			pdStores:           &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
-			tombstoneStores:    &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
-		},
-		{
-			name:                         "error when create tikv service",
-			prepare:                      nil,
-			errWhenCreateStatefulSet:     false,
-			errWhenCreateTiKVService:     true,
-			errWhenCreateTiKVPeerService: false,
-			err:                true,
-			tikvSvcCreated:     false,
-			tikvPeerSvcCreated: false,
 			setCreated:         false,
 			pdStores:           &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			tombstoneStores:    &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
@@ -178,10 +145,8 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			name:                         "error when create tikv peer service",
 			prepare:                      nil,
 			errWhenCreateStatefulSet:     false,
-			errWhenCreateTiKVService:     false,
 			errWhenCreateTiKVPeerService: true,
 			err:                true,
-			tikvSvcCreated:     true,
 			tikvPeerSvcCreated: false,
 			setCreated:         false,
 			pdStores:           &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
@@ -202,17 +167,16 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		pdStores                     *controller.StoresInfo
 		tombstoneStores              *controller.StoresInfo
 		errWhenUpdateStatefulSet     bool
-		errWhenUpdateTiKVService     bool
 		errWhenUpdateTiKVPeerService bool
 		errWhenGetStores             bool
 		err                          bool
-		expectPDServiceFn            func(*GomegaWithT, *corev1.Service, error)
-		expectPDPeerServiceFn        func(*GomegaWithT, *corev1.Service, error)
+		expectTiKVPeerServiceFn      func(*GomegaWithT, *corev1.Service, error)
 		expectStatefulSetFn          func(*GomegaWithT, *apps.StatefulSet, error)
 		expectTidbClusterFn          func(*GomegaWithT, *v1.TidbCluster)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
+
 		tc := newTidbClusterForPD()
 		ns := tc.Namespace
 		tcName := tc.Name
@@ -236,8 +200,6 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 
 		err := pmm.Sync(tc)
 
-		_, err = pmm.svcLister.Services(ns).Get(controller.TiKVMemberName(tcName))
-		g.Expect(err).NotTo(HaveOccurred())
 		_, err = pmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
 		_, err = pmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
@@ -246,11 +208,8 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		tc1 := tc.DeepCopy()
 		test.modify(tc1)
 
-		if test.errWhenUpdateTiKVService {
-			fakeSvcControl.SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
-		}
 		if test.errWhenUpdateTiKVPeerService {
-			fakeSvcControl.SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 1)
+			fakeSvcControl.SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 		if test.errWhenUpdateStatefulSet {
 			fakeSetControl.SetUpdateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
@@ -263,13 +222,9 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 
-		if test.expectPDServiceFn != nil {
-			svc, err := pmm.svcLister.Services(ns).Get(controller.TiKVMemberName(tcName))
-			test.expectPDServiceFn(g, svc, err)
-		}
-		if test.expectPDPeerServiceFn != nil {
+		if test.expectTiKVPeerServiceFn != nil {
 			svc, err := pmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
-			test.expectPDPeerServiceFn(g, svc, err)
+			test.expectTiKVPeerServiceFn(g, svc, err)
 		}
 		if test.expectStatefulSetFn != nil {
 			set, err := pmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
@@ -289,34 +244,24 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 					{Name: "tikv", Type: string(corev1.ServiceTypeNodePort)},
 				}
 			},
-			pdStores: &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{
-				{Status: &controller.StoreStatus{},
-					Store: &controller.MetaStore{
-						StateName: "ok",
-						Store:     &metapb.Store{Id: 1, Address: "here", State: metapb.StoreState_Up, Labels: nil},
-					}},
-				{Status: &controller.StoreStatus{}, Store: &controller.MetaStore{}},
-			}},
-			tombstoneStores: &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{
-				{Status: &controller.StoreStatus{}, Store: &controller.MetaStore{}},
-			}},
+			// TODO add unit test for status sync
+			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
+			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			errWhenUpdateStatefulSet:     false,
-			errWhenUpdateTiKVService:     false,
 			errWhenUpdateTiKVPeerService: false,
 			errWhenGetStores:             false,
 			err:                          false,
-			expectPDServiceFn: func(g *GomegaWithT, svc *corev1.Service, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(svc.Spec.Type).To(Equal(corev1.ServiceTypeNodePort))
-			},
-			expectPDPeerServiceFn: nil,
+			expectTiKVPeerServiceFn: nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1.TidbCluster) {
-				g.Expect(*tc.Status.TiKV.StatefulSet.ObservedGeneration).To(Equal(int64(2)))
-				expectedStores := map[string]v1.TiKVStores{}
+				g.Expect(*tc.Status.TiKV.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
+				expectedStores := v1.TiKVStores{
+					CurrentStores:   map[string]v1.TiKVStore{},
+					TombStoneStores: map[string]v1.TiKVStore{},
+				}
 				g.Expect(tc.Status.TiKV.Stores).To(Equal(expectedStores))
 			},
 		},
@@ -328,29 +273,10 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			errWhenUpdateStatefulSet:     false,
-			errWhenUpdateTiKVService:     false,
 			errWhenUpdateTiKVPeerService: false,
-			err:                   true,
-			expectPDServiceFn:     nil,
-			expectPDPeerServiceFn: nil,
-			expectStatefulSetFn:   nil,
-		},
-		{
-			name: "error when update tikv service",
-			modify: func(tc *v1.TidbCluster) {
-				tc.Spec.Services = []v1.Service{
-					{Name: "tikv", Type: string(corev1.ServiceTypeNodePort)},
-				}
-			},
-			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
-			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
-			errWhenUpdateStatefulSet:     false,
-			errWhenUpdateTiKVService:     true,
-			errWhenUpdateTiKVPeerService: false,
-			err:                   true,
-			expectPDServiceFn:     nil,
-			expectPDPeerServiceFn: nil,
-			expectStatefulSetFn:   nil,
+			err: true,
+			expectTiKVPeerServiceFn: nil,
+			expectStatefulSetFn:     nil,
 		},
 		{
 			name: "error when update statefulset",
@@ -360,11 +286,9 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			errWhenUpdateStatefulSet:     true,
-			errWhenUpdateTiKVService:     false,
 			errWhenUpdateTiKVPeerService: false,
-			err:                   true,
-			expectPDServiceFn:     nil,
-			expectPDPeerServiceFn: nil,
+			err: true,
+			expectTiKVPeerServiceFn: nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(3))
@@ -378,18 +302,17 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			errWhenUpdateStatefulSet:     false,
-			errWhenUpdateTiKVService:     false,
 			errWhenUpdateTiKVPeerService: false,
 			errWhenGetStores:             true,
 			err:                          true,
-			expectPDServiceFn:            nil,
-			expectPDPeerServiceFn:        nil,
+			expectTiKVPeerServiceFn: nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(3))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1.TidbCluster) {
-				g.Expect(tc.Status.TiKV.Stores).To(BeNil())
+				expectedStores := v1.TiKVStores{}
+				g.Expect(tc.Status.TiKV.Stores).To(Equal(expectedStores))
 			},
 		},
 	}
@@ -412,13 +335,16 @@ func newFakeTiKVMemberManager(tc *v1.TidbCluster) (
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1().TidbClusters()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
+	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
+	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
 
 	return NewTiKVMemberManager(
-		kubeCli,
 		pdControl,
 		setControl,
 		svcControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
+		podInformer.Lister(),
+		nodeInformer.Lister(),
 	), setControl, svcControl, pdClient
 }

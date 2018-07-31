@@ -146,12 +146,12 @@ func (tcc *defaultTidbClusterControl) IsPDAvailable(tc *v1.TidbCluster) bool {
 
 func (tcc *defaultTidbClusterControl) IsTiKVAvailable(tc *v1.TidbCluster) bool {
 	var lowerLimit int32 = 1
-	if int32(len(tc.Status.TiKV.Stores)) < lowerLimit {
+	if int32(len(tc.Status.TiKV.Stores.CurrentStores)) < lowerLimit {
 		return false
 	}
 
 	var availableNum int32
-	for _, store := range tc.Status.TiKV.Stores {
+	for _, store := range tc.Status.TiKV.Stores.CurrentStores {
 		if store.State == util.StoreUpState {
 			availableNum++
 		}
