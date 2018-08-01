@@ -20,4 +20,4 @@ controller-manager:
 	$(GO) build -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
 
 test:
-	@ CGO_ENABLED=0 go test ./pkg/controller/... -v -cover && echo success
+	@ CGO_ENABLED=0 go test ./pkg/... -v -cover && echo success

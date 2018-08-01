@@ -16,6 +16,8 @@ package v1
 import (
 	apps "k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -81,7 +83,8 @@ type TidbClusterSpec struct {
 	TiKV            TiKVSpec            `json:"tikv,omitempty"`
 	TiKVPromGateway TiKVPromGatewaySpec `json:"tikvPromGateway,omitempty"`
 	// Services list non-headless services type used in TidbCluster
-	Services []Service `json:"services,omitempty"`
+	Services        []Service                            `json:"services,omitempty"`
+	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.

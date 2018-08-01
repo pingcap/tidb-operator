@@ -24,6 +24,8 @@ import (
 	listers "github.com/pingcap/tidb-operator/new-operator/pkg/client/listers/pingcap.com/v1"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/new-operator/pkg/controller/tidbcluster/membermanager"
+	"github.com/pingcap/tidb-operator/new-operator/pkg/manager/meta"
+	"github.com/pingcap/tidb-operator/new-operator/pkg/util/label"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -34,6 +36,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	appslisters "k8s.io/client-go/listers/apps/v1beta1"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -59,6 +62,10 @@ type Controller struct {
 	setLister appslisters.StatefulSetLister
 	// setListerSynced returns true if the statefulset shared informer has synced at least once
 	setListerSynced cache.InformerSynced
+	// pvcLister is able to list/get pvcs from a shared informer's store
+	pvcLister corelisters.PersistentVolumeClaimLister
+	// pvcListerSynced returns true if the pvc shared informer has synced at least once
+	pvcListerSynced cache.InformerSynced
 	// tidbclusters that need to be synced.
 	queue workqueue.RateLimitingInterface
 }
@@ -79,12 +86,16 @@ func NewController(
 	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
+	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
+	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 
 	pdControl := controller.NewDefaultPDControl()
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
+	pvControl := controller.NewRealPVControl(kubeCli, pvInformer.Lister(), recorder)
+
 	tcc := &Controller{
 		kubeClient: kubeCli,
 		cli:        cli,
@@ -111,6 +122,11 @@ func NewController(
 				svcControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
+			),
+			meta.NewReclaimPolicyManager(
+				pvcInformer.Lister(),
+				pvInformer.Lister(),
+				pvControl,
 			),
 			recorder,
 		),
@@ -139,6 +155,16 @@ func NewController(
 	})
 	tcc.setLister = setInformer.Lister()
 	tcc.setListerSynced = setInformer.Informer().HasSynced
+
+	pvcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: tcc.addPVC,
+		UpdateFunc: func(old, cur interface{}) {
+			tcc.updatePVC(old, cur)
+		},
+		DeleteFunc: tcc.deletePVC,
+	})
+	tcc.pvcLister = pvcInformer.Lister()
+	tcc.pvcListerSynced = pvcInformer.Informer().HasSynced
 
 	return tcc
 }
@@ -296,6 +322,80 @@ func (tcc *Controller) deleteStatefulSet(obj interface{}) {
 	tcc.enqueueTidbCluster(tc)
 }
 
+// addPVC adds the tidbcluster for the pvc to the sync queue
+func (tcc *Controller) addPVC(obj interface{}) {
+	pvc := obj.(*corev1.PersistentVolumeClaim)
+	ns := pvc.GetNamespace()
+	pvcName := pvc.GetName()
+
+	if pvc.DeletionTimestamp != nil {
+		// on a restart of the controller manager, it's possible a new pvc shows up in a state that
+		// is already pending deletion. Prevent the pvc from being a creation observation.
+		tcc.deletePVC(pvc)
+		return
+	}
+
+	tc := tcc.resolveTidbClusterFromPVC(ns, pvc)
+	if tc == nil {
+		return
+	}
+
+	glog.V(4).Infof("PVC %s/%s created, TidbCluster: %s/%s", ns, pvcName, ns, tc.Name)
+	tcc.enqueueTidbCluster(tc)
+}
+
+// updatePVC adds the tidbcluster for the current and old pvcs to the sync queue.
+func (tcc *Controller) updatePVC(old, cur interface{}) {
+	curPVC := cur.(*corev1.PersistentVolumeClaim)
+	oldPVC := old.(*corev1.PersistentVolumeClaim)
+	ns := curPVC.GetNamespace()
+	pvcName := curPVC.GetName()
+	if curPVC.ResourceVersion == oldPVC.ResourceVersion {
+		// Periodic resync will send update events for all known pvcs.
+		// Two different versions of the same pvc will always have different RVs.
+		return
+	}
+
+	tc := tcc.resolveTidbClusterFromPVC(ns, curPVC)
+	if tc == nil {
+		return
+	}
+
+	glog.V(4).Infof("PVC %s/%s updated, %+v -> %+v.", ns, pvcName, oldPVC.Spec, curPVC.Spec)
+	tcc.enqueueTidbCluster(tc)
+}
+
+// deletePVC adds the tidbcluster for the pvc to the sync queue
+func (tcc *Controller) deletePVC(obj interface{}) {
+	pvc, ok := obj.(*corev1.PersistentVolumeClaim)
+	ns := pvc.GetNamespace()
+	pvcName := pvc.GetName()
+
+	// When a delete is dropped, the relist will notice a pvc in the store not
+	// in the list, leading to the insertion of a tombstone object which contains
+	// the deleted key/value.
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %+v", obj))
+			return
+		}
+		pvc, ok = tombstone.Obj.(*corev1.PersistentVolumeClaim)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a pvc %+v", obj))
+			return
+		}
+	}
+
+	tc := tcc.resolveTidbClusterFromPVC(ns, pvc)
+	if tc == nil {
+		return
+	}
+
+	glog.V(4).Infof("PVC %s/%s deleted through %v.", ns, pvcName, utilruntime.GetCaller())
+	tcc.enqueueTidbCluster(tc)
+}
+
 // resolveControllerRef returns the controller referenced by a ControllerRef,
 // or nil if the ControllerRef could not be resolved to a matching controller
 // of the correct Kind.
@@ -319,5 +419,19 @@ func (tcc *Controller) resolveControllerRef(namespace string, set *apps.Stateful
 		// ControllerRef points to.
 		return nil
 	}
+	return tc
+}
+
+func (tcc *Controller) resolveTidbClusterFromPVC(ns string, pvc *corev1.PersistentVolumeClaim) *v1.TidbCluster {
+	if !label.Label(pvc.Labels).IsOperator() {
+		return nil
+	}
+
+	tcName := pvc.Labels[label.ClusterLabelKey]
+	tc, err := tcc.tcLister.TidbClusters(ns).Get(tcName)
+	if err != nil {
+		return nil
+	}
+
 	return tc
 }

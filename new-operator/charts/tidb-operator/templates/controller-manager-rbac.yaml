@@ -13,15 +13,19 @@ rules:
   resources:
     - pods
     - nodes
-  verbs: ["get","list","watch"]
+  verbs: ["get", "list", "watch"]
 - apiGroups: [""]
   resources: ["endpoints"]
   verbs: ["create", "get", "update"]
 - apiGroups: [""]
-  resources:
-    - pods
-    - nodes
-  verbs: ["list", "get"]
+  resources: ["endpoints"]
+  verbs: ["create", "get", "update"]
+- apiGroups: [""]
+  resources: ["persistentvolumes"]
+  verbs: ["get", "list", "watch", "patch"]
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "watch"]
 - apiGroups: ["apps"]
   resources: ["statefulsets"]
   verbs: ["*"]

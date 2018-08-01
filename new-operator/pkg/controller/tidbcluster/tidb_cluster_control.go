@@ -19,6 +19,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
 	mm "github.com/pingcap/tidb-operator/new-operator/pkg/controller/tidbcluster/membermanager"
+	"github.com/pingcap/tidb-operator/new-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/util"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
@@ -44,22 +45,25 @@ func NewDefaultTidbClusterControl(
 	pdMemberManager mm.MemberManager,
 	tikvMemberManager mm.MemberManager,
 	tidbMemberManager mm.MemberManager,
+	reclaimPolicyManager manager.Manager,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		statusUpdater,
 		pdMemberManager,
 		tikvMemberManager,
 		tidbMemberManager,
+		reclaimPolicyManager,
 		recorder,
 	}
 }
 
 type defaultTidbClusterControl struct {
-	statusUpdater     StatusUpdaterInterface
-	pdMemberManager   mm.MemberManager
-	tikvMemberManager mm.MemberManager
-	tidbMemberManager mm.MemberManager
-	recorder          record.EventRecorder
+	statusUpdater        StatusUpdaterInterface
+	pdMemberManager      mm.MemberManager
+	tikvMemberManager    mm.MemberManager
+	tidbMemberManager    mm.MemberManager
+	reclaimPolicyManager manager.Manager
+	recorder             record.EventRecorder
 }
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
@@ -107,6 +111,12 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1.TidbCluster) erro
 
 	// TiDB
 	err = tcc.tidbMemberManager.Sync(tc)
+	if err != nil {
+		return err
+	}
+
+	// ReclaimPolicyManager
+	err = tcc.reclaimPolicyManager.Sync(tc)
 	if err != nil {
 		return err
 	}

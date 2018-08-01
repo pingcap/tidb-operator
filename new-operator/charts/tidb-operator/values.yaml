@@ -3,9 +3,9 @@ rbac:
   create: true
 
 # operatorImage is TiDB Operator image
-operatorImage: localhost:5000/pingcap/tidb-operator:latest
+operatorImage: pingcap/tidb-operator:latest
 
-defaultStorageClassName: pingcap-nfs
+defaultStorageClassName: standard
 
 controllerManager:
   logLevel: 2

@@ -24,6 +24,7 @@ import (
 	v1listers "github.com/pingcap/tidb-operator/new-operator/pkg/client/listers/pingcap.com/v1"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/new-operator/pkg/controller/tidbcluster/membermanager"
+	"github.com/pingcap/tidb-operator/new-operator/pkg/manager/meta"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
@@ -62,6 +63,8 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1().TidbClusters()
+	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
+	pvInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumes()
 	recorder := record.NewFakeRecorder(10)
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
@@ -69,12 +72,14 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	pdControl := controller.NewFakePDControl()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
+	pvControl := controller.NewRealPVControl(kubeCli, pvInformer.Lister(), recorder)
 	statusUpdater := newFakeTidbClusterStatusUpdater(tcInformer)
 
 	pdMemberManager := mm.NewPDMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
 	tikvMemberManager := mm.NewTiKVMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), podInformer.Lister(), nodeInformer.Lister())
 	tidbMemberManager := mm.NewTiDBMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
-	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, tikvMemberManager, tidbMemberManager, recorder)
+	reclaimPolicyManager := meta.NewReclaimPolicyManager(pvcInformer.Lister(), pvInformer.Lister(), pvControl)
+	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, tikvMemberManager, tidbMemberManager, reclaimPolicyManager, recorder)
 
 	return control, setControl, statusUpdater, pdControl
 }

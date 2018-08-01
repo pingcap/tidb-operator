@@ -4,6 +4,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   name: {{ .Values.clusterName }}
 spec:
+  pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
   services:
 {{ toYaml .Values.services | indent 4 }}
   pd:

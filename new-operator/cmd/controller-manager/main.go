@@ -51,7 +51,7 @@ func init() {
 	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.IntVar(&workers, "workers", 5, "The number of workers that are allowed to sync concurrently. Larger number = more responsive management, but more CPU (and network) load")
-	flag.StringVar(&controller.DefaultStorageClassName, "default-storage-class-name", "pingcap-nfs", "Default storage class name")
+	flag.StringVar(&controller.DefaultStorageClassName, "default-storage-class-name", "standard", "Default storage class name")
 
 	flag.Parse()
 }

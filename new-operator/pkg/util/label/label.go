@@ -33,31 +33,12 @@ const (
 	StoreIDLabelKey string = "cluster.pingcap.com/storeId"
 	// MemberIDLabelKey is member id label key
 	MemberIDLabelKey string = "cluster.pingcap.com/memberId"
-	// BackupNameLabelKey is TidbClusterBackup name label key
-	BackupNameLabelKey = "cluster.pingcap.com/tidbClusterBackup"
-	// BackupTypeLabelKey is bakcup type label key
-	BackupTypeLabelKey = "cluster.pingcap.com/tidbClusterBackupType"
-	// AnnBackupDirlKey is backup dir label key
-	AnnBackupDirlKey = "cluster.pingcap.com/tidbClusterBackupDir"
-
 	// AnnInitialPDReplicas is cluster initial-pd-replicas annotation
 	AnnInitialPDReplicas = "cluster.pingcap.com/initial-pd-replicas"
-
 	// AnnPodNameKey is podName annotations key
 	AnnPodNameKey string = "volume.pingcap.com/podName"
-
-	// AnnShouldDeletedPD is the PD name that should be deleted from PD
-	AnnShouldDeletedPD string = "cluster.pingcap.com/should-deleted-pdname"
-
-	// AnnShouldDeletedTiKV is the TiKV name that should be deleted from PD
-	AnnShouldDeletedTiKV string = "cluster.pingcap.com/should-deleted-tikvname"
-
 	// AnnPaused is the annotation that the object is paused
 	AnnPaused string = "cluster.pingcap.com/paused"
-
-	// AnnGracefulUpgradeTiKVStartTime is the time when to evict leaders from the store
-	AnnGracefulUpgradeTiKVStartTime string = "cluster.pingcap.com/graceful-upgrade-tikv-time"
-
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value
@@ -66,14 +47,8 @@ const (
 	TiKVLabelVal string = "tikv"
 	// MonitorLabelVal is Monitor label value
 	MonitorLabelVal string = "monitor"
-
 	// ClusterLabelVal is cluster label value
 	ClusterLabelVal string = "tidbCluster"
-
-	// FullBakcupTypeLabelValue is full bakcup type label value
-	FullBakcupTypeLabelValue string = "full"
-	// PhysicalBackupTypeLabelValue is physical backup type label value
-	PhysicalBackupTypeLabelValue string = "physical"
 )
 
 // Label is the label field in metadata
@@ -158,6 +133,11 @@ func (l Label) IsTiDB() bool {
 // IsMonitor returns whether label is a Monitor
 func (l Label) IsMonitor() bool {
 	return l[AppLabelKey] == MonitorLabelVal
+}
+
+// IsOperator returns whether label is a operator
+func (l Label) IsOperator() bool {
+	return l[OwnerLabelKey] == ClusterLabelVal
 }
 
 // Selector gets labels.Selector from label

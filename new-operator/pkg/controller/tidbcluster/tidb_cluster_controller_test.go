@@ -23,6 +23,7 @@ import (
 	informers "github.com/pingcap/tidb-operator/new-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/new-operator/pkg/controller/tidbcluster/membermanager"
+	"github.com/pingcap/tidb-operator/new-operator/pkg/manager/meta"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -207,6 +208,176 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 	}
 }
 
+func TestTidbClusterControllerAddPVC(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name                    string
+		modifyPVC               func(*v1.TidbCluster) *corev1.PersistentVolumeClaim
+		addTidbClusterToIndexer bool
+		expectedLen             int
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		tc := newTidbCluster()
+		pvc := test.modifyPVC(tc)
+
+		tcc, tcIndexer, _ := newFakeTidbClusterController()
+
+		if test.addTidbClusterToIndexer {
+			err := tcIndexer.Add(tc)
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+		tcc.addPVC(pvc)
+		g.Expect(tcc.queue.Len()).To(Equal(test.expectedLen))
+	}
+
+	tests := []testcase{
+		{
+			name: "normal",
+			modifyPVC: func(tc *v1.TidbCluster) *corev1.PersistentVolumeClaim {
+				return newPVC(tc)
+			},
+			addTidbClusterToIndexer: true,
+			expectedLen:             1,
+		},
+		{
+			name: "have deletionTimestamp",
+			modifyPVC: func(tc *v1.TidbCluster) *corev1.PersistentVolumeClaim {
+				pvc := newPVC(tc)
+				pvc.DeletionTimestamp = &metav1.Time{Time: time.Now().Add(30 * time.Second)}
+				return pvc
+			},
+			addTidbClusterToIndexer: true,
+			expectedLen:             1,
+		},
+		{
+			name: "without label",
+			modifyPVC: func(tc *v1.TidbCluster) *corev1.PersistentVolumeClaim {
+				pvc := newPVC(tc)
+				pvc.Labels = nil
+				return pvc
+			},
+			addTidbClusterToIndexer: true,
+			expectedLen:             0,
+		},
+		{
+			name: "without tidbcluster",
+			modifyPVC: func(tc *v1.TidbCluster) *corev1.PersistentVolumeClaim {
+				return newPVC(tc)
+			},
+			addTidbClusterToIndexer: false,
+			expectedLen:             0,
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
+func TestTidbClusterControllerUpdatePVC(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name                    string
+		initial                 func() *v1.TidbCluster
+		initialPVC              func(*v1.TidbCluster) *corev1.PersistentVolumeClaim
+		updatePVC               func(*corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim
+		addTidbClusterToIndexer bool
+		expectedLen             int
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+		tc := test.initial()
+		pvc1 := test.initialPVC(tc)
+		pvc2 := test.updatePVC(pvc1)
+
+		tcc, tcIndexer, _ := newFakeTidbClusterController()
+
+		if test.addTidbClusterToIndexer {
+			err := tcIndexer.Add(tc)
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+		tcc.updatePVC(pvc1, pvc2)
+		g.Expect(tcc.queue.Len()).To(Equal(test.expectedLen))
+	}
+
+	tests := []testcase{
+		{
+			name: "normal",
+			initial: func() *v1.TidbCluster {
+				return newTidbCluster()
+			},
+			initialPVC: func(tc *v1.TidbCluster) *corev1.PersistentVolumeClaim {
+				return newPVC(tc)
+			},
+			updatePVC: func(pvc1 *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
+				pvc2 := *pvc1
+				pvc2.ResourceVersion = "1000"
+				pvc2.Spec.VolumeName = "pv-1"
+				return &pvc2
+			},
+			addTidbClusterToIndexer: true,
+			expectedLen:             1,
+		},
+		{
+			name: "same resouceVersion",
+			initial: func() *v1.TidbCluster {
+				return newTidbCluster()
+			},
+			initialPVC: func(tc *v1.TidbCluster) *corev1.PersistentVolumeClaim {
+				return newPVC(tc)
+			},
+			updatePVC: func(pvc1 *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
+				pvc2 := *pvc1
+				return &pvc2
+			},
+			addTidbClusterToIndexer: true,
+			expectedLen:             0,
+		},
+		{
+			name: "without label",
+			initial: func() *v1.TidbCluster {
+				return newTidbCluster()
+			},
+			initialPVC: func(tc *v1.TidbCluster) *corev1.PersistentVolumeClaim {
+				return newPVC(tc)
+			},
+			updatePVC: func(pvc1 *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
+				pvc2 := *pvc1
+				pvc2.ResourceVersion = "1000"
+				pvc2.Labels = nil
+				return &pvc2
+			},
+			addTidbClusterToIndexer: true,
+			expectedLen:             0,
+		},
+		{
+			name: "without tidbcluster",
+			initial: func() *v1.TidbCluster {
+				return newTidbCluster()
+			},
+			initialPVC: func(tc *v1.TidbCluster) *corev1.PersistentVolumeClaim {
+				return newPVC(tc)
+			},
+			updatePVC: func(pvc1 *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
+				pvc2 := *pvc1
+				pvc2.ResourceVersion = "1000"
+				pvc2.Spec.VolumeName = "pv-1"
+				return &pvc2
+			},
+			addTidbClusterToIndexer: false,
+			expectedLen:             0,
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
+// TODO add deleteStatefulSet and delete PVC specs
+
 func alwaysReady() bool { return true }
 
 func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) {
@@ -217,6 +388,8 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
+	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
+	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
 	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
@@ -242,6 +415,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 		setInformer.Lister(),
 		recorder,
 	)
+	pvControl := controller.NewRealPVControl(kubeCli, pvInformer.Lister(), recorder)
 	tcc.control = NewDefaultTidbClusterControl(
 		NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
 		mm.NewPDMemberManager(
@@ -269,6 +443,11 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			svcControl,
 			setInformer.Lister(),
 			svcInformer.Lister(),
+		),
+		meta.NewReclaimPolicyManager(
+			pvcInformer.Lister(),
+			pvInformer.Lister(),
+			pvControl,
 		),
 		recorder,
 	)
@@ -324,6 +503,26 @@ func newStatefuSet(tc *v1.TidbCluster) *apps.StatefulSet {
 		},
 		Spec: apps.StatefulSetSpec{
 			Replicas: &tc.Spec.PD.Replicas,
+		},
+	}
+}
+
+func newPVC(tc *v1.TidbCluster) *corev1.PersistentVolumeClaim {
+	return &corev1.PersistentVolumeClaim{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "PersistentVolumeClaim",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "test-pvc",
+			Namespace:       corev1.NamespaceDefault,
+			UID:             types.UID("test"),
+			ResourceVersion: "1",
+			Labels: map[string]string{
+				"cluster.pingcap.com/app":         "pd",
+				"cluster.pingcap.com/owner":       "tidbCluster",
+				"cluster.pingcap.com/tidbCluster": tc.GetName(),
+			},
 		},
 	}
 }
