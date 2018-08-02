@@ -16,6 +16,7 @@ package membermanager
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/golang/glog"
@@ -54,7 +55,6 @@ func NewTiKVMemberManager(pdControl controller.PDControlInterface,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	nodeLister corelisters.NodeLister) *TikvMemberManager {
-
 	kvmm := TikvMemberManager{
 		pdControl:  pdControl,
 		podLister:  podLister,
@@ -62,6 +62,7 @@ func NewTiKVMemberManager(pdControl controller.PDControlInterface,
 		StateSvcMemberManager: StateSvcMemberManager{
 			StateSvcControlList: NewStateSvcControlList(setControl, svcControl, setLister, svcLister),
 			MemberType:          v1.TiKVMemberType,
+			pdctl:               pdControl,
 			SvcList: []SvcConfig{
 				{
 					Name:       "peer",
@@ -72,6 +73,8 @@ func NewTiKVMemberManager(pdControl controller.PDControlInterface,
 				},
 			},
 			GetNewSetForTidbCluster: getNewSetForTidbClusterTiKV,
+			needReduce:              needReduce,
+			removeOneMember:         removeOneMember,
 		},
 	}
 
@@ -207,6 +210,50 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster) (*apps.StatefulSet, error) 
 		},
 	}
 	return tikvset, nil
+}
+
+func needReduce(tc *v1.TidbCluster, oldReplicas int32) bool {
+	return tc.Spec.TiKV.Replicas < oldReplicas
+}
+
+// remove tikv store from cluster, return nil only when store status becomes tombstone
+func removeOneMember(pdctl controller.PDControlInterface, tc *v1.TidbCluster, ordinal int32) error {
+	name := fmt.Sprintf("%s-tikv-%d", tc.Name, ordinal)
+	var state string
+	var id uint64
+	var err error
+	for _, store := range tc.Status.TiKV.Stores.CurrentStores {
+		if store.PodName == name {
+			state = store.State
+			id, err = strconv.ParseUint(store.ID, 10, 64)
+			if err != nil {
+				return err
+			}
+			if state != util.StoreOfflineState {
+				if err := pdctl.GetPDClient(tc).DeleteStore(id); err != nil {
+					return err
+				}
+			}
+			return fmt.Errorf("TiKV %s store %d  still in cluster, state: %s", name, id, state)
+		}
+	}
+	for _, store := range tc.Status.TiKV.Stores.TombStoneStores {
+		if store.PodName == name {
+			state = store.State
+			id, err = strconv.ParseUint(store.ID, 10, 64)
+			if err != nil {
+				return err
+			}
+			// TODO: double check if store is really not in Up/Offline/Down state
+			glog.Infof("TiKV %s store %d becomes tombstone", name, id)
+			return nil
+		}
+	}
+
+	// store not found in TidbCluster status,
+	// this can happen when TiKV joins cluster but we haven't synced its status
+	// so return error to wait another round for safety
+	return fmt.Errorf("TiKV %s not found in cluster", name)
 }
 
 func (ssmm *TikvMemberManager) getStateSet(tc *v1.TidbCluster) (*apps.StatefulSet, error) {

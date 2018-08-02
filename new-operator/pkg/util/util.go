@@ -28,6 +28,8 @@ const (
 	StoreOfflineState = "Offline"
 	// StoreDownState is state when tikv store is down
 	StoreDownState = "Down"
+	// StoreTombstoneState is state when tikv store is tombstone
+	StoreTombstoneState = "Tombstone"
 )
 
 // AntiAffinityForPod creates a PodAntiAffinity with antiLabels

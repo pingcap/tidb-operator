@@ -16,14 +16,13 @@ package membermanager
 import (
 	"reflect"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/util/label"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/listers/apps/v1beta1"
@@ -54,8 +53,11 @@ type StateSvcMemberManager struct {
 	StateSvcControlList
 	SvcList                 []SvcConfig
 	MemberType              v1.MemberType
+	pdctl                   controller.PDControlInterface
 	StatusUpdate            func(*v1.TidbCluster, *apps.StatefulSetStatus) error
 	GetNewSetForTidbCluster func(*v1.TidbCluster) (*apps.StatefulSet, error)
+	needReduce              func(*v1.TidbCluster, int32) bool
+	removeOneMember         func(controller.PDControlInterface, *v1.TidbCluster, int32) error
 }
 
 var _ MemberManager = (*StateSvcMemberManager)(nil)
@@ -116,6 +118,9 @@ func (ssmm *StateSvcMemberManager) syncStatefulSetForTidbCluster(tc *v1.TidbClus
 	}
 
 	oldSet, err := ssmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
 	if errors.IsNotFound(err) {
 		err = ssmm.setControl.CreateStatefulSet(tc, newSet)
 		if err != nil {
@@ -123,21 +128,26 @@ func (ssmm *StateSvcMemberManager) syncStatefulSetForTidbCluster(tc *v1.TidbClus
 		}
 		return ssmm.StatusUpdate(tc, &apps.StatefulSetStatus{})
 	}
-	if err != nil {
-		return err
-	}
 
 	if err = ssmm.StatusUpdate(tc, &oldSet.Status); err != nil {
 		return err
 	}
 
+	if ssmm.needReduce(tc, *oldSet.Spec.Replicas) {
+		ordinal := *oldSet.Spec.Replicas - 1
+		if err := ssmm.removeOneMember(ssmm.pdctl, tc, ordinal); err != nil {
+			return err
+		}
+		set := *oldSet
+		replicas := *oldSet.Spec.Replicas - 1 // we can only remove one member at a time
+		set.Spec.Replicas = &replicas
+		return ssmm.setControl.UpdateStatefulSet(tc, &set)
+	}
+
 	if !reflect.DeepEqual(oldSet.Spec, newSet.Spec) {
 		set := *oldSet
 		set.Spec = newSet.Spec
-		err := ssmm.setControl.UpdateStatefulSet(tc, &set)
-		if err != nil {
-			return err
-		}
+		return ssmm.setControl.UpdateStatefulSet(tc, &set)
 	}
 
 	return nil

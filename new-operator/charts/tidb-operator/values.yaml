@@ -4,6 +4,7 @@ rbac:
 
 # operatorImage is TiDB Operator image
 operatorImage: pingcap/tidb-operator:latest
+imagePullPolicy: IfNotPresent
 
 defaultStorageClassName: standard
 
@@ -17,4 +18,3 @@ controllerManager:
     requests:
       cpu: 80m
       memory: 50Mi
-

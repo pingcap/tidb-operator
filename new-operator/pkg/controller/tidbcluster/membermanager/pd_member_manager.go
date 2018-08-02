@@ -123,38 +123,45 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1.TidbCluster) 
 	tcName := tc.GetName()
 
 	oldPDSet, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
 	if errors.IsNotFound(err) {
 		newPDSet, err := pmm.getNewPDSetForTidbCluster(tc, nil)
 		if err != nil {
 			return err
 		}
-		err = pmm.setControl.CreateStatefulSet(tc, newPDSet)
-		if err != nil {
+		if err := pmm.setControl.CreateStatefulSet(tc, newPDSet); err != nil {
 			return err
 		}
 		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
-	}
-	if err != nil {
-		return err
 	}
 	newPDSet, err := pmm.getNewPDSetForTidbCluster(tc, oldPDSet.GetAnnotations())
 	if err != nil {
 		return err
 	}
 
-	err = pmm.syncTidbClusterStatus(tc, oldPDSet)
-	if err != nil {
+	if err := pmm.syncTidbClusterStatus(tc, oldPDSet); err != nil {
 		return err
+	}
+
+	if pmm.needReduce(tc, *oldPDSet.Spec.Replicas) {
+		// We need remove member from cluster before reducing statefulset replicas
+		ordinal := *oldPDSet.Spec.Replicas - 1
+		if err := pmm.removeOneMember(tc, ordinal); err != nil {
+			return err
+		}
+		set := *oldPDSet
+		replicas := *oldPDSet.Spec.Replicas - 1 // we can only remove one member at a time
+		set.Spec.Replicas = &replicas
+		return pmm.setControl.UpdateStatefulSet(tc, &set)
 	}
 
 	if !reflect.DeepEqual(oldPDSet.Spec, newPDSet.Spec) {
 		set := *oldPDSet
 		set.Spec = newPDSet.Spec
-		err := pmm.setControl.UpdateStatefulSet(tc, &set)
-		if err != nil {
-			return err
-		}
+		return pmm.setControl.UpdateStatefulSet(tc, &set)
 	}
 
 	return nil
@@ -428,4 +435,13 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster, annota
 		},
 	}
 	return pdSet, nil
+}
+
+func (pmm *pdMemberManager) needReduce(tc *v1.TidbCluster, oldReplicas int32) bool {
+	return tc.Spec.PD.Replicas < oldReplicas
+}
+
+func (pmm *pdMemberManager) removeOneMember(tc *v1.TidbCluster, ordinal int32) error {
+	memberName := fmt.Sprintf("%s-pd-%d", tc.Name, ordinal)
+	return pmm.pdControl.GetPDClient(tc).DeleteMember(memberName)
 }

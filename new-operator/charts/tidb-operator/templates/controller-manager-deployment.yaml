@@ -23,6 +23,7 @@ spec:
       containers:
       - name: tidb-operator
         image: {{ .Values.operatorImage }}
+        imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
         resources:
 {{ toYaml .Values.controllerManager.resources | indent 12 }}
         command:
