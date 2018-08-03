@@ -34,7 +34,7 @@ pd:
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
   # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
-  storageClassName: standard
+  storageClassName: local-storage
 
   # maxStoreDownTime is how long a store will be considered `down` when disconnected
   # if a store is considered `down`, the regions will be migrated to other stores
@@ -66,7 +66,7 @@ tikv:
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
   # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
-  storageClassName: standard
+  storageClassName: local-storage
 
   # syncLog is a bool value to enable or disable syc-log for raftstore, default is true
   # enable this can prevent data loss when power failure

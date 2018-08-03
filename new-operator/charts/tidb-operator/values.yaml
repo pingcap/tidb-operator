@@ -11,7 +11,7 @@ localtime: true
 operatorImage: pingcap/tidb-operator:latest
 imagePullPolicy: IfNotPresent
 
-defaultStorageClassName: standard
+defaultStorageClassName: local-storage
 
 controllerManager:
   logLevel: 2
