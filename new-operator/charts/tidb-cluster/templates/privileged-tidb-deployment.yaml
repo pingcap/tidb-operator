@@ -50,9 +50,11 @@ spec:
         - name: CLUSTER_NAME
           value: {{ .Values.clusterName }}
         volumeMounts:
+        {{- if .Values.localtime }}
         - name: timezone
           readOnly: true
           mountPath: /etc/localtime
+        {{- end }}
         - name: config
           readOnly: true
           mountPath: /etc/tidb
@@ -64,9 +66,11 @@ spec:
           mountPath: /usr/local/bin
       restartPolicy: Always
       volumes:
+      {{- if .Values.localtime }}
       - name: timezone
         hostPath:
           path: /etc/localtime
+      {{- end }}
       - name: config
         configMap:
           name: {{ .Values.clusterName }}-privileged-tidb

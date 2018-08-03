@@ -94,17 +94,15 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster) (*apps.StatefulSet, error) 
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	tikvConfigMap := controller.TiKVMemberName(tcName)
-	tzMount, tzVolume := timezoneMountVolume()
+
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
-		tzMount,
 		annMount,
 		{Name: "tikv", MountPath: "/var/lib/tikv"},
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tikv"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
 	vols := []corev1.Volume{
-		tzVolume,
 		annVolume,
 		{Name: "config", VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -122,6 +120,13 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster) (*apps.StatefulSet, error) 
 				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tikv_start_script.sh"}},
 			}},
 		},
+	}
+	pgwVolMounts := []corev1.VolumeMount{} // pushgateway volumeMounts
+	if tc.Spec.Localtime {
+		tzMount, tzVolume := timezoneMountVolume()
+		volMounts = append(volMounts, tzMount)
+		vols = append(vols, tzVolume)
+		pgwVolMounts = []corev1.VolumeMount{tzMount}
 	}
 
 	var q resource.Quantity
@@ -192,7 +197,7 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster) (*apps.StatefulSet, error) 
 									Protocol:      corev1.ProtocolTCP,
 								},
 							},
-							VolumeMounts: []corev1.VolumeMount{tzMount},
+							VolumeMounts: pgwVolMounts,
 							Resources: util.ResourceRequirement(tc.Spec.TiKVPromGateway.ContainerSpec,
 								controller.DefaultPushGatewayRequest()),
 						},

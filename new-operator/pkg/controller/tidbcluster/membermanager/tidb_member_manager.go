@@ -154,10 +154,40 @@ func getNewTiDBServiceForTidbCluster(tc *v1.TidbCluster) *corev1.Service {
 func getNewTiDBSetForTidbCluster(tc *v1.TidbCluster) *apps.StatefulSet {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+	tidbConfigMap := controller.TiDBMemberName(tcName)
 
-	containers := []corev1.Container{
-		getTiDBContainer(tc),
+	annMount, annVolume := annotationsMountVolume()
+	volMounts := []corev1.VolumeMount{
+		annMount,
+		{Name: "config", ReadOnly: true, MountPath: "/etc/tidb"},
+		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
+	vols := []corev1.Volume{
+		annVolume,
+		{Name: "config", VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: tidbConfigMap,
+				},
+				Items: []corev1.KeyToPath{{Key: "config-file", Path: "tidb.toml"}},
+			}},
+		},
+		{Name: "startup-script", VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: tidbConfigMap,
+				},
+				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tidb_start_script.sh"}},
+			}},
+		},
+	}
+
+	if tc.Spec.Localtime {
+		tzMount, tzVolume := timezoneMountVolume()
+		volMounts = append(volMounts, tzMount)
+		vols = append(vols, tzVolume)
+	}
+
 	tidbLabel := label.New().Cluster(tcName).TiDB()
 
 	tidbSet := &apps.StatefulSet{
@@ -182,9 +212,40 @@ func getNewTiDBSetForTidbCluster(tc *v1.TidbCluster) *apps.StatefulSet {
 						label.New().Cluster(tcName).TiDB(),
 						tc.Spec.TiDB.NodeSelector,
 					),
-					Containers:    containers,
+					Containers: []corev1.Container{
+						{
+							Name:    v1.TiDBMemberType.String(),
+							Image:   tc.Spec.TiDB.Image,
+							Command: []string{"/bin/sh", "/usr/local/bin/tidb_start_script.sh"},
+							Ports: []corev1.ContainerPort{
+								{
+									Name:          "server",
+									ContainerPort: int32(4000),
+									Protocol:      corev1.ProtocolTCP,
+								},
+								{
+									Name:          "status", // pprof, status, metrics
+									ContainerPort: int32(10080),
+									Protocol:      corev1.ProtocolTCP,
+								},
+								{
+									Name:          "metrics", // This is used for metrics pull
+									ContainerPort: int32(10080),
+									Protocol:      corev1.ProtocolTCP,
+								},
+							},
+							VolumeMounts: volMounts,
+							Resources:    util.ResourceRequirement(tc.Spec.TiDB.ContainerSpec),
+							Env: []corev1.EnvVar{
+								{
+									Name:  "CLUSTER_NAME",
+									Value: tc.GetName(),
+								},
+							},
+						},
+					},
 					RestartPolicy: corev1.RestartPolicyAlways,
-					Volumes:       getTiDBVolumes(tcName),
+					Volumes:       vols,
 				},
 			},
 			ServiceName:         controller.TiDBMemberName(tcName),
@@ -193,80 +254,4 @@ func getNewTiDBSetForTidbCluster(tc *v1.TidbCluster) *apps.StatefulSet {
 		},
 	}
 	return tidbSet
-}
-
-func getTiDBVolumes(tcName string) []corev1.Volume {
-	tidbConfigMap := controller.TiDBMemberName(tcName)
-	return []corev1.Volume{
-		{Name: "timezone", VolumeSource: corev1.VolumeSource{
-			HostPath: &corev1.HostPathVolumeSource{
-				Path: "/etc/localtime",
-			}},
-		},
-		{Name: "config", VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: tidbConfigMap,
-				},
-				Items: []corev1.KeyToPath{{Key: "config-file", Path: "tidb.toml"}},
-			}},
-		},
-		{Name: "annotations", VolumeSource: corev1.VolumeSource{
-			DownwardAPI: &corev1.DownwardAPIVolumeSource{
-				Items: []corev1.DownwardAPIVolumeFile{
-					{
-						Path:     "annotations",
-						FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.annotations"},
-					},
-				},
-			}},
-		},
-		{Name: "startup-script", VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: tidbConfigMap,
-				},
-				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tidb_start_script.sh"}},
-			}},
-		},
-	}
-}
-
-func getTiDBContainer(tc *v1.TidbCluster) corev1.Container {
-	volMounts := []corev1.VolumeMount{
-		{Name: "timezone", ReadOnly: true, MountPath: "/etc/localtime"},
-		{Name: "config", ReadOnly: true, MountPath: "/etc/tidb"},
-		{Name: "annotations", ReadOnly: true, MountPath: "/etc/podinfo"},
-		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
-	}
-	return corev1.Container{
-		Name:    v1.TiDBMemberType.String(),
-		Image:   tc.Spec.TiDB.Image,
-		Command: []string{"/bin/sh", "/usr/local/bin/tidb_start_script.sh"},
-		Ports: []corev1.ContainerPort{
-			{
-				Name:          "server",
-				ContainerPort: int32(4000),
-				Protocol:      corev1.ProtocolTCP,
-			},
-			{
-				Name:          "status", // pprof, status, metrics
-				ContainerPort: int32(10080),
-				Protocol:      corev1.ProtocolTCP,
-			},
-			{
-				Name:          "metrics", // This is used for metrics pull
-				ContainerPort: int32(10080),
-				Protocol:      corev1.ProtocolTCP,
-			},
-		},
-		VolumeMounts: volMounts,
-		Resources:    util.ResourceRequirement(tc.Spec.TiDB.ContainerSpec),
-		Env: []corev1.EnvVar{
-			{
-				Name:  "CLUSTER_NAME",
-				Value: tc.GetName(),
-			},
-		},
-	}
 }

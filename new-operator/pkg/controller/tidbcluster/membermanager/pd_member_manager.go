@@ -267,42 +267,43 @@ func (pmm *pdMemberManager) getNewPDHeadlessServiceForTidbCluster(tc *v1.TidbClu
 func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster, annotations map[string]string) (*apps.StatefulSet, error) {
 	ns := tc.Namespace
 	tcName := tc.Name
+	pdConfigMap := controller.PDMemberName(tcName)
 
+	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
-		{Name: "timezone", ReadOnly: true, MountPath: "/etc/localtime"},
-		{Name: "annotations", ReadOnly: true, MountPath: "/etc/podinfo"},
+		annMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/pd"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 		{Name: "pd", MountPath: "/var/lib/pd"},
 	}
 	vols := []corev1.Volume{
-		{Name: "timezone", VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/etc/localtime"}}},
-		{Name: "annotations", VolumeSource: corev1.VolumeSource{
-			DownwardAPI: &corev1.DownwardAPIVolumeSource{
-				Items: []corev1.DownwardAPIVolumeFile{
-					{
-						Path:     "annotations",
-						FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.annotations"},
-					},
-				},
-			},
-		}},
+		annVolume,
 		{Name: "config",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: controller.PDMemberName(tcName)},
-					Items:                []corev1.KeyToPath{{Key: "config-file", Path: "pd.toml"}},
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: pdConfigMap,
+					},
+					Items: []corev1.KeyToPath{{Key: "config-file", Path: "pd.toml"}},
 				},
 			},
 		},
 		{Name: "startup-script",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: controller.PDMemberName(tcName)},
-					Items:                []corev1.KeyToPath{{Key: "startup-script", Path: "pd_start_script.sh"}},
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: pdConfigMap,
+					},
+					Items: []corev1.KeyToPath{{Key: "startup-script", Path: "pd_start_script.sh"}},
 				},
 			},
 		},
+	}
+
+	if tc.Spec.Localtime {
+		tzMount, tzVolume := timezoneMountVolume()
+		volMounts = append(volMounts, tzMount)
+		vols = append(vols, tzVolume)
 	}
 
 	var q resource.Quantity

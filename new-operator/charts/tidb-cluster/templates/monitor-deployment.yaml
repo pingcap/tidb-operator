@@ -3,7 +3,7 @@ apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
   namespace: {{ .Release.Namespace }}
-  name: {{ .Values.clusterName }}-prometheus
+  name: {{ .Values.clusterName }}-monitor
   labels:
     app: {{ .Values.clusterName }}-monitor
 spec:
@@ -52,8 +52,10 @@ spec:
           containerPort: 9090
           protocol: TCP
         volumeMounts:
+          {{- if .Values.localtime }}
           - name: timezone
             mountPath: /etc/localtime
+          {{- end }}
           - name: prometheus-config
             mountPath: /etc/prometheus
             readOnly: true
@@ -81,14 +83,19 @@ spec:
               name: {{ .Values.clusterName }}-grafana-secret
               key: password
         volumeMounts:
+          {{- if .Values.localtime }}
           - name: timezone
+            readOnly: true
             mountPath: /etc/localtime
+          {{- end }}
           - name: grafana-data
             mountPath: /data
       volumes:
+      {{- if .Values.localtime }}
       - name: timezone
         hostPath:
           path: /etc/localtime
+      {{- end }}
       - name: prometheus-data
         emptyDir: {}
       - name: grafana-data
