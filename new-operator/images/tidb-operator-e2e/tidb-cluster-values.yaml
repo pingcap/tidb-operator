@@ -1,0 +1,167 @@
+# Default values for tidb-cluster.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+rbac:
+  create: true
+
+clusterName: demo-cluster
+
+# nodeSelectorRequired: true
+
+# default reclaim policy of a PV
+pvReclaimPolicy: Retain
+
+# services is the service list to expose, default is ClusterIP
+# can be ClusterIP | NodePort | LoadBalancer
+services:
+  - name: pd
+    type: ClusterIP
+  - name: tidb
+    type: NodePort
+
+pd:
+  replicas: 3
+  image: pingcap/pd:v2.0.4
+  logLevel: info
+  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+  # different classes might map to quality-of-service levels, or to backup policies,
+  # or to arbitrary policies determined by the cluster administrators.
+  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
+  storageClassName: standard
+
+  # maxStoreDownTime is how long a store will be considered `down` when disconnected
+  # if a store is considered `down`, the regions will be migrated to other stores
+  maxStoreDownTime: 1h
+  # maxReplicas is the number of replicas for each region
+  maxReplicas: 3
+  resources:
+    # limits:
+    #   cpu: 8000m
+    #   memory: 8Gi
+    requests:
+      # cpu: 4000m
+      # memory: 4Gi
+      storage: 1Gi
+  # nodeSelector is used for scheduling pod,
+  # if nodeSelectorRequired is true, all the following labels must be matched
+  nodeSelector: {}
+    # kind: pd
+    # # zone is comma separated availability zone list
+    # zone: cn-bj1-01,cn-bj1-02
+    # # region is comma separated region list
+    # region: cn-bj1
+
+tikv:
+  replicas: 3
+  image: pingcap/tikv:v2.0.4
+  logLevel: info
+  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+  # different classes might map to quality-of-service levels, or to backup policies,
+  # or to arbitrary policies determined by the cluster administrators.
+  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
+  storageClassName: standard
+
+  # syncLog is a bool value to enable or disable syc-log for raftstore, default is true
+  # enable this can prevent data loss when power failure
+  syncLog: true
+  resources:
+    # limits:
+    #   cpu: 16000m
+    #   memory: 32Gi
+    #   storage: 300Gi
+    requests:
+      # cpu: 4000m
+      # memory: 4Gi
+      storage: 10Gi
+  nodeSelector: {}
+    # kind: tikv
+    # zone: cn-bj1-01,cn-bj1-02
+    # region: cn-bj1
+tikvPromGateway:
+  image: prom/pushgateway:v0.3.1
+  # limits:
+  #   cpu: 100m
+  #   memory: 100Mi
+  # requests:
+  #   cpu: 50m
+  #   memory: 50Mi
+
+tidb:
+  replicas: 2
+  image: pingcap/tidb:v2.0.4
+  logLevel: info
+  resources: {}
+    # limits:
+    #   cpu: 16000m
+    #   memory: 16Gi
+    # requests:
+    #   cpu: 12000m
+    #   memory: 12Gi
+  nodeSelector: {}
+    # kind: tidb
+    # zone: cn-bj1-01,cn-bj1-02
+    # region: cn-bj1
+
+monitor:
+  create: true
+  dashboardInstaller:
+    image: pingcap/tidb-dashboard-installer:v1.0.7
+  grafana:
+    image: grafana/grafana:4.2.0
+    resources: {}
+      # limits:
+      #   cpu: 8000m
+      #   memory: 8Gi
+      # requests:
+      #   cpu: 4000m
+      #   memory: 4Gi
+    username: admin
+    password: admin
+    service:
+      type: NodePort
+    grafanaUrl: http://localhost:3000
+  prometheus:
+    image: prom/prometheus:v2.0.0
+    resources: {}
+      # limits:
+      #   cpu: 8000m
+      #   memory: 8Gi
+      # requests:
+      #   cpu: 4000m
+      #   memory: 4Gi
+    service:
+      type: NodePort
+    reserveDays: 12
+    # alertmanagerURL: ""
+  nodeSelector: {}
+    # kind: monitor
+    # zone: cn-bj1-01,cn-bj1-02
+    # region: cn-bj1
+
+privilegedTidb:
+  # Whether to deploy privileged tidb
+  create: false
+  replicas: 1
+  image: pingcap/tidb:v2.0.4
+  resources: {}
+  #  limits:
+  #    cpu: 16000m
+  #    memory: 16Gi
+  #  requests:
+  #    cpu: 12000m
+  #    memory: 12Gi
+  nodeSelector: {}
+  #  kind: privileged-tidb
+  #  zone: cn-bj1-01,cn-bj1-02
+  #  region: cn-bj1
+  service:
+    # type is privileged tidb service type, can be ClusterIP, NodePort, LoadBalancer
+    type: ClusterIP
+    # nodePort is optional and only used when type is NodePort
+    # nodePort: 33333
+
+metaInstance: "{{ $labels.instance }}"
+metaType: "{{ $labels.type }}"
+metaValue: "{{ $value }}"
+
