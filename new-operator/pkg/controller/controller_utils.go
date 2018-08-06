@@ -29,6 +29,8 @@ var (
 	controllerKind = v1.SchemeGroupVersion.WithKind("TidbCluster")
 	// DefaultStorageClassName is the default storageClassName
 	DefaultStorageClassName string
+	// ClusterScoped controls whether operator should manage kubernetes cluster wide TiDB clusters
+	ClusterScoped bool
 )
 
 const (

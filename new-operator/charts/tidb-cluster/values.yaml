@@ -77,8 +77,8 @@ tikv:
     #   memory: 32Gi
     #   storage: 300Gi
     requests:
-      # cpu: 4000m
-      # memory: 4Gi
+      # cpu: 12000m
+      # memory: 24Gi
       storage: 10Gi
   nodeSelector: {}
     # kind: tikv

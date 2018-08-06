@@ -29,6 +29,7 @@ spec:
         command:
           - /usr/local/bin/tidb-controller-manager
           - -default-storage-class-name={{ .Values.defaultStorageClassName }}
+          - -cluster-scoped={{ .Values.clusterScoped }}
           - -v={{ .Values.controllerManager.logLevel }}
         env:
           - name: NAMESPACE

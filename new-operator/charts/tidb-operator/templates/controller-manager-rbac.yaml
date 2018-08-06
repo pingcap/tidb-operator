@@ -1,4 +1,5 @@
 {{- if .Values.rbac.create }}
+{{- if .Values.clusterScoped }}
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
@@ -14,9 +15,6 @@ rules:
     - pods
     - nodes
   verbs: ["get", "list", "watch"]
-- apiGroups: [""]
-  resources: ["endpoints"]
-  verbs: ["create", "get", "update"]
 - apiGroups: [""]
   resources: ["endpoints"]
   verbs: ["create", "get", "update"]
@@ -45,6 +43,48 @@ roleRef:
   kind: ClusterRole
   name: {{ .Release.Namespace }}:tidb-controller-manager
   apiGroup: rbac.authorization.k8s.io
+{{- else }}
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: tidb-controller-manager
+  namespace: {{ .Release.Namespace }}
+rules:
+- apiGroups: [""]
+  resources:
+    - services
+    - events
+  verbs: ["*"]
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["create", "get", "update"]
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["statefulsets"]
+  verbs: ["*"]
+- apiGroups: ["pingcap.com"]
+  resources: ["tidbclusters"]
+  verbs: ["*"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: tidb-controller-manager
+  namespace: {{ .Release.Namespace }}
+subjects:
+- kind: ServiceAccount
+  name: tidb-controller-manager
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: tidb-controller-manager
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
 ---
 kind: ServiceAccount
 apiVersion: v1

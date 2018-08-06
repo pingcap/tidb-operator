@@ -13,6 +13,9 @@ imagePullPolicy: IfNotPresent
 
 defaultStorageClassName: local-storage
 
+# clusterScoped is whether tidb-operator should manage kubernetes cluster wide tidb clusters
+clusterScoped: true
+
 controllerManager:
   logLevel: 2
   replicas: 1

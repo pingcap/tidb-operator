@@ -51,6 +51,7 @@ func init() {
 	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.IntVar(&workers, "workers", 5, "The number of workers that are allowed to sync concurrently. Larger number = more responsive management, but more CPU (and network) load")
+	flag.BoolVar(&controller.ClusterScoped, "cluster-scoped", true, "Whether tidb-operator should manage kubernetes cluster wide TiDB Clusters")
 	flag.StringVar(&controller.DefaultStorageClassName, "default-storage-class-name", "standard", "Default storage class name")
 
 	flag.Parse()
@@ -88,8 +89,16 @@ func main() {
 	if err != nil {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
-	informerFactory := informers.NewSharedInformerFactory(cli, resyncDuration)
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, resyncDuration)
+
+	var informerFactory informers.SharedInformerFactory
+	var kubeInformerFactory kubeinformers.SharedInformerFactory
+	if controller.ClusterScoped {
+		informerFactory = informers.NewSharedInformerFactory(cli, resyncDuration)
+		kubeInformerFactory = kubeinformers.NewSharedInformerFactory(kubeCli, resyncDuration)
+	} else {
+		informerFactory = informers.NewFilteredSharedInformerFactory(cli, resyncDuration, ns, nil)
+		kubeInformerFactory = kubeinformers.NewFilteredSharedInformerFactory(kubeCli, resyncDuration, ns, nil)
+	}
 
 	rl := resourcelock.EndpointsLock{
 		EndpointsMeta: metav1.ObjectMeta{
