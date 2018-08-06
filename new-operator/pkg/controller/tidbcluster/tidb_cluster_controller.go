@@ -94,7 +94,7 @@ func NewController(
 	pdControl := controller.NewDefaultPDControl()
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
-	pvControl := controller.NewRealPVControl(kubeCli, pvInformer.Lister(), recorder)
+	pvControl := controller.NewRealPVControl(kubeCli, recorder)
 
 	tcc := &Controller{
 		kubeClient: kubeCli,

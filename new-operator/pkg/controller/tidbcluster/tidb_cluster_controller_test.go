@@ -415,7 +415,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 		setInformer.Lister(),
 		recorder,
 	)
-	pvControl := controller.NewRealPVControl(kubeCli, pvInformer.Lister(), recorder)
+	pvControl := controller.NewRealPVControl(kubeCli, recorder)
 	tcc.control = NewDefaultTidbClusterControl(
 		NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
 		mm.NewPDMemberManager(

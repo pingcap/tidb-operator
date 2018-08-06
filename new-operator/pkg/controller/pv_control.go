@@ -35,15 +35,13 @@ type PVControlInterface interface {
 
 type realPVControl struct {
 	kubeCli  kubernetes.Interface
-	pvLister corelisters.PersistentVolumeLister
 	recorder record.EventRecorder
 }
 
 // NewRealPVControl creates a new PVControlInterface
-func NewRealPVControl(kubeCli kubernetes.Interface, pvLister corelisters.PersistentVolumeLister, recorder record.EventRecorder) PVControlInterface {
+func NewRealPVControl(kubeCli kubernetes.Interface, recorder record.EventRecorder) PVControlInterface {
 	return &realPVControl{
 		kubeCli,
-		pvLister,
 		recorder,
 	}
 }
@@ -56,7 +54,7 @@ func (rpc *realPVControl) PatchPVReclaimPolicy(tc *v1.TidbCluster, pv *corev1.Pe
 		_, err := rpc.kubeCli.CoreV1().PersistentVolumes().Patch(pvName, types.StrategicMergePatchType, patchBytes)
 		return err
 	})
-	rpc.recordPVEvent("update", tc, pvName, err)
+	rpc.recordPVEvent("patch", tc, pvName, err)
 	return err
 }
 

@@ -72,7 +72,7 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	pdControl := controller.NewFakePDControl()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
-	pvControl := controller.NewRealPVControl(kubeCli, pvInformer.Lister(), recorder)
+	pvControl := controller.NewRealPVControl(kubeCli, recorder)
 	statusUpdater := newFakeTidbClusterStatusUpdater(tcInformer)
 
 	pdMemberManager := mm.NewPDMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
