@@ -1,0 +1,67 @@
+required = [
+    "k8s.io/code-generator/cmd/client-gen",
+    "k8s.io/code-generator/cmd/deepcopy-gen",
+    "k8s.io/code-generator/cmd/informer-gen",
+    "k8s.io/code-generator/cmd/lister-gen",
+    "k8s.io/code-generator/cmd/defaulter-gen"
+]
+
+[[override]]
+    name = "k8s.io/apiextensions-apiserver"
+    version = "kubernetes-1.10.2"
+
+[[override]]
+    name = "github.com/docker/distribution"
+    # This is what kubernetes uses
+    revision = "edc3ab29cdff8694dd6feb85cfeb4b5f1b38ed9c"
+
+[[override]]
+    name = "github.com/coreos/etcd"
+    # sync with pd dependency
+    revision = "2b3aa7e1d49dd8484138c95ac9ab7dfc8e1e7dc0"
+
+[[override]]
+    name = "github.com/coreos/bbolt"
+    version = "v1.3.1-coreos.6"
+
+[[override]]
+    name = "google.golang.org/grpc"
+    source = "https://github.com/grpc/grpc-go.git"
+    version = "=v1.12.0"
+
+[[override]]
+    name = "github.com/pingcap/kvproto"
+    # sync with pd dependency
+    revision = "b7ba8ea1c0b4915d333a146eb0e674fb5b33854f"
+
+[[override]]
+  name = "gopkg.in/fsnotify.v1"
+  source = "https://github.com/fsnotify/fsnotify.git"
+
+[[constraint]]
+    name = "github.com/pingcap/pd"
+    version = "v2.1.0-beta"
+
+[[constraint]]
+    name = "k8s.io/kubernetes"
+    version = "=v1.10.2"
+
+[[constraint]]
+    name = "k8s.io/api"
+    version = "kubernetes-1.10.2"
+
+[[constraint]]
+    name = "k8s.io/apimachinery"
+    version = "kubernetes-1.10.2"
+
+[[constraint]]
+    name = "k8s.io/code-generator"
+    version = "kubernetes-1.10.2"
+
+[[constraint]]
+    name = "k8s.io/client-go"
+    version = "kubernetes-1.10.2"
+
+[[constraint]]
+    name = "github.com/go-sql-driver/mysql"
+    version = "v1.4.0"
