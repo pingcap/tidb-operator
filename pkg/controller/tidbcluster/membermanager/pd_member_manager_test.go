@@ -178,6 +178,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		errWhenUpdatePDService     bool
 		errWhenUpdatePDPeerService bool
 		errWhenGetPDHealth         bool
+		statusChange               func(*apps.StatefulSet)
 		err                        bool
 		expectPDServiceFn          func(*GomegaWithT, *corev1.Service, error)
 		expectPDPeerServiceFn      func(*GomegaWithT, *corev1.Service, error)
@@ -201,6 +202,18 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			pdClient.AddReaction(controller.GetHealthActionType, func(action *controller.Action) (interface{}, error) {
 				return test.pdHealth, nil
 			})
+		}
+
+		if test.statusChange == nil {
+			fakeSetControl.SetStatusChange(func(set *apps.StatefulSet) {
+				set.Status.Replicas = *set.Spec.Replicas
+				set.Status.CurrentRevision = "pd-1"
+				set.Status.UpdateRevision = "pd-1"
+				observedGeneration := int64(1)
+				set.Status.ObservedGeneration = &observedGeneration
+			})
+		} else {
+			fakeSetControl.SetStatusChange(test.statusChange)
 		}
 
 		err := pmm.Sync(tc)
@@ -279,6 +292,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1.TidbCluster) {
+				g.Expect(tc.Status.PD.Phase).To(Equal(v1.Normal))
 				g.Expect(*tc.Status.PD.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
 				g.Expect(tc.Status.PD.Members).To(Equal(map[string]v1.PDMember{
 					"pd1": v1.PDMember{Name: "pd1", ID: "1", ClientURL: "http://pd1:2379", Health: true},
@@ -351,11 +365,6 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			modify: func(tc *v1.TidbCluster) {
 				tc.Spec.PD.Replicas = 5
 			},
-			pdHealth: &controller.HealthInfo{Healths: []controller.MemberHealth{
-				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
-				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
-				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
-			}},
 			errWhenUpdateStatefulSet:   false,
 			errWhenUpdatePDService:     false,
 			errWhenUpdatePDPeerService: false,
@@ -374,7 +383,9 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 	}
 
 	for i := range tests {
+		t.Logf("begin: %s", tests[i].name)
 		testFn(&tests[i], t)
+		t.Logf("end: %s", tests[i].name)
 	}
 }
 
@@ -434,6 +445,101 @@ func newTidbClusterForPD() *v1.TidbCluster {
 				StorageClassName: "my-storage-class",
 			},
 		},
+	}
+}
+
+func TestPDMemberManagerUpgrade(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name                string
+		modify              func(cluster *v1.TidbCluster)
+		pdHealth            *controller.HealthInfo
+		err                 bool
+		statusChange        func(*apps.StatefulSet)
+		expectStatefulSetFn func(*GomegaWithT, *apps.StatefulSet, error)
+		expectTidbClusterFn func(*GomegaWithT, *v1.TidbCluster)
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		tc := newTidbClusterForPD()
+		ns := tc.Namespace
+		tcName := tc.Name
+
+		pmm, fakeSetControl, _, fakePDControl := newFakePDMemberManager()
+		pdClient := controller.NewFakePDClient()
+		fakePDControl.SetPDClient(tc, pdClient)
+
+		pdClient.AddReaction(controller.GetHealthActionType, func(action *controller.Action) (interface{}, error) {
+			return test.pdHealth, nil
+		})
+
+		fakeSetControl.SetStatusChange(test.statusChange)
+
+		err := pmm.Sync(tc)
+		g.Expect(err).NotTo(HaveOccurred())
+
+		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
+		g.Expect(err).NotTo(HaveOccurred())
+		_, err = pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
+		g.Expect(err).NotTo(HaveOccurred())
+		_, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+		g.Expect(err).NotTo(HaveOccurred())
+
+		tc1 := tc.DeepCopy()
+		test.modify(tc1)
+
+		err = pmm.Sync(tc1)
+		if test.err {
+			g.Expect(err).To(HaveOccurred())
+		} else {
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+
+		if test.expectStatefulSetFn != nil {
+			set, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+			test.expectStatefulSetFn(g, set, err)
+		}
+		if test.expectTidbClusterFn != nil {
+			test.expectTidbClusterFn(g, tc1)
+		}
+	}
+	tests := []testcase{
+		{
+			name: "upgrade successful",
+			modify: func(cluster *v1.TidbCluster) {
+				cluster.Spec.PD.Image = "pd-test-image:v2"
+			},
+			pdHealth: &controller.HealthInfo{Healths: []controller.MemberHealth{
+				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
+				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
+				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
+			}},
+			err: false,
+			statusChange: func(set *apps.StatefulSet) {
+				set.Status.Replicas = *set.Spec.Replicas
+				set.Status.CurrentRevision = "pd-1"
+				set.Status.UpdateRevision = "pd-1"
+				observedGeneration := int64(1)
+				set.Status.ObservedGeneration = &observedGeneration
+			},
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(set.Spec.Template.Spec.Containers[0].Image).To(Equal("pd-test-image:v2"))
+			},
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1.TidbCluster) {
+				g.Expect(tc.Status.PD.Phase).To(Equal(v1.Upgrade))
+				g.Expect(tc.Status.PD.Members).To(Equal(map[string]v1.PDMember{
+					"pd1": v1.PDMember{Name: "pd1", ID: "1", ClientURL: "http://pd1:2379", Health: true},
+					"pd2": v1.PDMember{Name: "pd2", ID: "2", ClientURL: "http://pd2:2379", Health: true},
+					"pd3": v1.PDMember{Name: "pd3", ID: "3", ClientURL: "http://pd3:2379", Health: false},
+				}))
+			},
+		},
+	}
+	for i := range tests {
+		t.Logf("begin: %s", tests[i].name)
+		testFn(&tests[i], t)
+		t.Logf("end: %s", tests[i].name)
 	}
 }
 

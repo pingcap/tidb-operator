@@ -118,6 +118,7 @@ type FakeStatefulSetControl struct {
 	createStatefulSetTracker requestTracker
 	updateStatefulSetTracker requestTracker
 	deleteStatefulSetTracker requestTracker
+	statusChange             func(set *apps.StatefulSet)
 }
 
 // NewFakeStatefulSetControl returns a FakeStatefulSetControl
@@ -130,6 +131,7 @@ func NewFakeStatefulSetControl(setInformer appsinformers.StatefulSetInformer, tc
 		requestTracker{0, nil, 0},
 		requestTracker{0, nil, 0},
 		requestTracker{0, nil, 0},
+		nil,
 	}
 }
 
@@ -151,29 +153,44 @@ func (ssc *FakeStatefulSetControl) SetDeleteStatefulSetError(err error, after in
 	ssc.deleteStatefulSetTracker.after = after
 }
 
+func (ssc *FakeStatefulSetControl) SetStatusChange(fn func(*apps.StatefulSet)) {
+	ssc.statusChange = fn
+}
+
 // CreateStatefulSet adds the statefulset to SetIndexer
 func (ssc *FakeStatefulSetControl) CreateStatefulSet(tc *v1.TidbCluster, set *apps.StatefulSet) error {
-	defer ssc.createStatefulSetTracker.inc()
+	defer func() {
+		ssc.createStatefulSetTracker.inc()
+		ssc.statusChange = nil
+	}()
+
 	if ssc.createStatefulSetTracker.errorReady() {
 		defer ssc.createStatefulSetTracker.reset()
 		return ssc.createStatefulSetTracker.err
 	}
 
-	observedGeneration := int64(1)
-	set.Status.ObservedGeneration = &observedGeneration
+	if ssc.statusChange != nil {
+		ssc.statusChange(set)
+	}
 
 	return ssc.SetIndexer.Add(set)
 }
 
 // UpdateStatefulSet updates the statefulset of SetIndexer
 func (ssc *FakeStatefulSetControl) UpdateStatefulSet(tc *v1.TidbCluster, set *apps.StatefulSet) error {
-	defer ssc.updateStatefulSetTracker.inc()
+	defer func() {
+		ssc.updateStatefulSetTracker.inc()
+		ssc.statusChange = nil
+	}()
+
 	if ssc.updateStatefulSetTracker.errorReady() {
 		defer ssc.updateStatefulSetTracker.reset()
 		return ssc.updateStatefulSetTracker.err
 	}
-	observedGeneration := *set.Status.ObservedGeneration + 1
-	set.Status.ObservedGeneration = &observedGeneration
+
+	if ssc.statusChange != nil {
+		ssc.statusChange(set)
+	}
 	return ssc.SetIndexer.Update(set)
 }
 

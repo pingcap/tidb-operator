@@ -63,7 +63,7 @@ func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1.TidbCluster) 
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newSvc := getNewTiDBServiceForTidbCluster(tc)
+	newSvc := tmm.getNewTiDBServiceForTidbCluster(tc)
 	oldSvc, err := tmm.svcLister.Services(ns).Get(controller.TiDBMemberName(tcName))
 	if errors.IsNotFound(err) {
 		return tmm.svcControl.CreateService(tc, newSvc)
@@ -87,10 +87,10 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1.TidbClust
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newTiDBSet := getNewTiDBSetForTidbCluster(tc)
-
+	newTiDBSet := tmm.getNewTiDBSetForTidbCluster(tc)
 	oldTiDBSet, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 	if errors.IsNotFound(err) {
+		controller.SetLastApplyConfigAnnotation(newTiDBSet)
 		err = tmm.setControl.CreateStatefulSet(tc, newTiDBSet)
 		if err != nil {
 			return err
@@ -102,18 +102,33 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1.TidbClust
 		return err
 	}
 
-	tc.Status.TiDB.StatefulSet = &oldTiDBSet.Status
+	if err = tmm.syncTidbClusterStatus(tc, oldTiDBSet); err != nil {
+		return err
+	}
 
-	if !reflect.DeepEqual(oldTiDBSet.Spec, newTiDBSet.Spec) {
+	if err = tmm.upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
+		return err
+	}
+
+	if err = tmm.scaleDown(tc, oldTiDBSet, newTiDBSet); err != nil {
+		return err
+	}
+
+	same, err := controller.EqualStatefulSet(*oldTiDBSet, *newTiDBSet)
+	if err != nil {
+		return err
+	}
+	if !same {
 		set := *oldTiDBSet
 		set.Spec = newTiDBSet.Spec
+		controller.SetLastApplyConfigAnnotation(&set)
 		return tmm.setControl.UpdateStatefulSet(tc, &set)
 	}
 
 	return nil
 }
 
-func getNewTiDBServiceForTidbCluster(tc *v1.TidbCluster) *corev1.Service {
+func (tmm *tidbMemberManager) getNewTiDBServiceForTidbCluster(tc *v1.TidbCluster) *corev1.Service {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	svcName := controller.TiDBMemberName(tcName)
@@ -151,7 +166,7 @@ func getNewTiDBServiceForTidbCluster(tc *v1.TidbCluster) *corev1.Service {
 	return tidbSvc
 }
 
-func getNewTiDBSetForTidbCluster(tc *v1.TidbCluster) *apps.StatefulSet {
+func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1.TidbCluster) *apps.StatefulSet {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	tidbConfigMap := controller.TiDBMemberName(tcName)
@@ -254,4 +269,52 @@ func getNewTiDBSetForTidbCluster(tc *v1.TidbCluster) *apps.StatefulSet {
 		},
 	}
 	return tidbSet
+}
+
+func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1.TidbCluster, set *apps.StatefulSet) error {
+	tc.Status.TiDB.StatefulSet = &set.Status
+	return nil
+}
+
+func (tmm *tidbMemberManager) upgrade(tc *v1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	if oldSet.Status.CurrentRevision == oldSet.Status.UpdateRevision {
+		tc.Status.TiDB.Phase = v1.Normal
+	}
+
+	upgrade, err := tmm.needUpgrade(tc, newSet, oldSet)
+	if err != nil {
+		return err
+	}
+	if upgrade {
+		tc.Status.TiDB.Phase = v1.Upgrade
+	}
+
+	if tc.Status.TiDB.Phase != v1.Upgrade {
+		_, podSpec, err := controller.GetLastApplyConfig(oldSet)
+		if err != nil {
+			return err
+		}
+		newSet.Spec.Template.Spec = *podSpec
+	}
+	return nil
+}
+
+func (tmm *tidbMemberManager) scaleDown(tc *v1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	return nil
+}
+
+func (tmm *tidbMemberManager) needUpgrade(tc *v1.TidbCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) (bool, error) {
+	if tc.Status.PD.Phase == v1.Upgrade {
+		return false, nil
+	}
+
+	if tc.Status.TiKV.Phase == v1.Upgrade {
+		return false, nil
+	}
+
+	same, err := controller.EqualTemplate(newSet.Spec.Template, oldSet.Spec.Template)
+	if err != nil {
+		return false, err
+	}
+	return !same, nil
 }

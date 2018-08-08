@@ -53,7 +53,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			test.prepare(tc)
 		}
 
-		pmm, fakeSetControl, fakeSvcControl, pdClient := newFakeTiKVMemberManager(tc)
+		tkmm, fakeSetControl, fakeSvcControl, pdClient := newFakeTiKVMemberManager(tc)
 
 		if test.errWhenGetStores {
 			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
@@ -78,7 +78,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
-		err := pmm.Sync(tc)
+		err := tkmm.Sync(tc)
 		if test.err {
 			g.Expect(err).To(HaveOccurred())
 		} else {
@@ -87,7 +87,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 
 		g.Expect(tc.Spec).To(Equal(oldSpec))
 
-		svc, err := pmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
+		svc, err := tkmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
 		if test.tikvPeerSvcCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(svc).NotTo(Equal(nil))
@@ -95,7 +95,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			expectErrIsNotFound(g, err)
 		}
 
-		tc1, err := pmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
+		tc1, err := tkmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
 		if test.setCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(tc1).NotTo(Equal(nil))
@@ -169,6 +169,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		errWhenUpdateStatefulSet     bool
 		errWhenUpdateTiKVPeerService bool
 		errWhenGetStores             bool
+		statusChange                 func(*apps.StatefulSet)
 		err                          bool
 		expectTiKVPeerServiceFn      func(*GomegaWithT, *corev1.Service, error)
 		expectStatefulSetFn          func(*GomegaWithT, *apps.StatefulSet, error)
@@ -181,7 +182,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		ns := tc.Namespace
 		tcName := tc.Name
 
-		pmm, fakeSetControl, fakeSvcControl, pdClient := newFakeTiKVMemberManager(tc)
+		tkmm, fakeSetControl, fakeSvcControl, pdClient := newFakeTiKVMemberManager(tc)
 		if test.errWhenGetStores {
 			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
 				return nil, fmt.Errorf("failed to get stores from pd cluster")
@@ -198,11 +199,23 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			})
 		}
 
-		err := pmm.Sync(tc)
+		if test.statusChange == nil {
+			fakeSetControl.SetStatusChange(func(set *apps.StatefulSet) {
+				set.Status.Replicas = *set.Spec.Replicas
+				set.Status.CurrentRevision = "pd-1"
+				set.Status.UpdateRevision = "pd-1"
+				observedGeneration := int64(1)
+				set.Status.ObservedGeneration = &observedGeneration
+			})
+		} else {
+			fakeSetControl.SetStatusChange(test.statusChange)
+		}
 
-		_, err = pmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
+		err := tkmm.Sync(tc)
+
+		_, err = tkmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = pmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
+		_, err = tkmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		tc1 := tc.DeepCopy()
@@ -215,7 +228,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			fakeSetControl.SetUpdateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
-		err = pmm.Sync(tc1)
+		err = tkmm.Sync(tc1)
 		if test.err {
 			g.Expect(err).To(HaveOccurred())
 		} else {
@@ -223,11 +236,11 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		if test.expectTiKVPeerServiceFn != nil {
-			svc, err := pmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
+			svc, err := tkmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
 			test.expectTiKVPeerServiceFn(g, svc, err)
 		}
 		if test.expectStatefulSetFn != nil {
-			set, err := pmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
+			set, err := tkmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
 			test.expectStatefulSetFn(g, set, err)
 		}
 		if test.expectTidbClusterFn != nil {
@@ -243,6 +256,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 				tc.Spec.Services = []v1.Service{
 					{Name: "tikv", Type: string(corev1.ServiceTypeNodePort)},
 				}
+				tc.Status.PD.Phase = v1.Normal
 			},
 			// TODO add unit test for status sync
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
@@ -269,6 +283,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			name: "tidbcluster's storage format is wrong",
 			modify: func(tc *v1.TidbCluster) {
 				tc.Spec.TiKV.Requests.Storage = "100xxxxi"
+				tc.Status.PD.Phase = v1.Normal
 			},
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
@@ -282,6 +297,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			name: "error when update statefulset",
 			modify: func(tc *v1.TidbCluster) {
 				tc.Spec.TiKV.Replicas = 5
+				tc.Status.PD.Phase = v1.Normal
 			},
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
@@ -298,6 +314,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			name: "error when sync tikv status",
 			modify: func(tc *v1.TidbCluster) {
 				tc.Spec.TiKV.Replicas = 5
+				tc.Status.PD.Phase = v1.Normal
 			},
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
@@ -318,12 +335,14 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 	}
 
 	for i := range tests {
+		t.Logf("begin: %s", tests[i].name)
 		testFn(&tests[i], t)
+		t.Logf("end: %s", tests[i].name)
 	}
 }
 
 func newFakeTiKVMemberManager(tc *v1.TidbCluster) (
-	*TikvMemberManager, *controller.FakeStatefulSetControl,
+	*tikvMemberManager, *controller.FakeStatefulSetControl,
 	*controller.FakeServiceControl, *controller.FakePDClient) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
@@ -338,13 +357,13 @@ func newFakeTiKVMemberManager(tc *v1.TidbCluster) (
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
 
-	return NewTiKVMemberManager(
-		pdControl,
-		setControl,
-		svcControl,
-		setInformer.Lister(),
-		svcInformer.Lister(),
-		podInformer.Lister(),
-		nodeInformer.Lister(),
-	), setControl, svcControl, pdClient
+	return &tikvMemberManager{
+		pdControl:  pdControl,
+		podLister:  podInformer.Lister(),
+		nodeLister: nodeInformer.Lister(),
+		setControl: setControl,
+		svcControl: svcControl,
+		setLister:  setInformer.Lister(),
+		svcLister:  svcInformer.Lister(),
+	}, setControl, svcControl, pdClient
 }
