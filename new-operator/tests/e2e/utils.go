@@ -16,13 +16,14 @@ package e2e
 import (
 	"fmt"
 	"os/exec"
-
-	"time"
-
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/new-operator/pkg/util/label"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 )
@@ -33,6 +34,8 @@ const (
 	operatorNs       = "pingcap"
 	operatorHelmName = "tidb-operator"
 	clusterName      = "demo-cluster"
+	testTableName    = "demo"
+	testTableVal     = "demo"
 )
 
 var (
@@ -90,6 +93,7 @@ func installOperator() error {
 		return err
 	}
 
+	By("When create a TiDB cluster")
 	_, err = execCmd(fmt.Sprintf(
 		"helm install /charts/tidb-cluster -f /tidb-cluster-values.yaml -n %s --namespace=%s",
 		helmName,
@@ -98,7 +102,43 @@ func installOperator() error {
 		return err
 	}
 
+	monitorRestartCount()
+
 	return nil
+}
+
+func monitorRestartCount() {
+	maxRestartCount := int32(3)
+
+	go func() {
+		defer GinkgoRecover()
+		for {
+			select {
+			case <-time.After(5 * time.Second):
+				labelSelector := label.New().Cluster(clusterName)
+				podList, err := kubeCli.CoreV1().Pods(ns).List(
+					metav1.ListOptions{
+						LabelSelector: labels.SelectorFromSet(
+							labelSelector.Labels(),
+						).String(),
+					},
+				)
+				if err != nil {
+					continue
+				}
+
+				for _, pod := range podList.Items {
+					for _, cs := range pod.Status.ContainerStatuses {
+						if cs.RestartCount > maxRestartCount {
+							Fail(fmt.Sprintf("POD: %s/%s's container: %s's restartCount is greater than: %d",
+								pod.GetNamespace(), pod.GetName(), cs.Name, maxRestartCount))
+							return
+						}
+					}
+				}
+			}
+		}
+	}()
 }
 
 func execCmd(cmdStr string) (string, error) {

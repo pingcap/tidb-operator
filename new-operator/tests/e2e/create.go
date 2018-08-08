@@ -14,8 +14,11 @@
 package e2e
 
 import (
+	"database/sql"
+	"fmt"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
@@ -28,12 +31,20 @@ import (
 )
 
 func testCreate() {
-	By("All members should running")
-	err := wait.Poll(5*time.Second, 5*time.Minute, allRunning)
+	By("Then all members should running")
+	err := wait.Poll(5*time.Second, 5*time.Minute, allMembersRunning)
+	Expect(err).NotTo(HaveOccurred())
+
+	By("When create a table and add some data to this table")
+	err = wait.Poll(5*time.Second, 5*time.Minute, addDataToCluster)
+	Expect(err).NotTo(HaveOccurred())
+
+	By("Then the data is correct")
+	err = wait.Poll(5*time.Second, 5*time.Minute, dataIsCorrect)
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func allRunning() (bool, error) {
+func allMembersRunning() (bool, error) {
 	tc, err := cli.PingcapV1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 	if err != nil {
 		return false, nil
@@ -62,6 +73,58 @@ func allRunning() (bool, error) {
 	// TODO meta information synced
 
 	return true, nil
+}
+
+func addDataToCluster() (bool, error) {
+	db, err := sql.Open("mysql", fmt.Sprintf("root:@(%s-tidb.%s:4000)/test?charset=utf8", clusterName, ns))
+	if err != nil {
+		logf("can't open connection to mysql: %v", err)
+		return false, nil
+	}
+	defer db.Close()
+
+	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s (name VARCHAR(64))", testTableName))
+	if err != nil {
+		logf("can't create table to mysql: %v", err)
+		return false, nil
+	}
+
+	_, err = db.Exec(fmt.Sprintf("INSERT INTO %s VALUES (?)", testTableName), testTableVal)
+	if err != nil {
+		logf("can't insert data to mysql: %v", err)
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func dataIsCorrect() (bool, error) {
+	db, err := sql.Open("mysql", fmt.Sprintf("root:@(%s-tidb.%s:4000)/test?charset=utf8", clusterName, ns))
+	if err != nil {
+		return false, nil
+	}
+
+	rows, err := db.Query(fmt.Sprintf("SELECT * FROM %s", testTableName))
+	if err != nil {
+		logf(err.Error())
+		return false, nil
+	}
+
+	for rows.Next() {
+		var v string
+		err := rows.Scan(&v)
+		if err != nil {
+			logf(err.Error())
+		}
+
+		if v == testTableVal {
+			return true, nil
+		}
+
+		return true, fmt.Errorf("val should equal: %s", testTableVal)
+	}
+
+	return false, nil
 }
 
 func pdMemberRunning(tc *v1.TidbCluster) (bool, error) {
