@@ -1,6 +1,7 @@
 package util
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/golang/glog"
@@ -34,10 +35,15 @@ const (
 
 // AntiAffinityForPod creates a PodAntiAffinity with antiLabels
 func AntiAffinityForPod(namespace string, antiLabels map[string]string) *corev1.PodAntiAffinity {
+	keys := []string{}
+	for key := range topologySchedulingWeight {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys) // we must use sorted selector, otherwise affinity may vary causing new statefulset generated and pod recreated
 	terms := []corev1.WeightedPodAffinityTerm{}
-	for key, weight := range topologySchedulingWeight {
+	for _, key := range keys {
 		term := corev1.WeightedPodAffinityTerm{
-			Weight: weight,
+			Weight: topologySchedulingWeight[key],
 			PodAffinityTerm: corev1.PodAffinityTerm{
 				LabelSelector: &metav1.LabelSelector{MatchLabels: antiLabels},
 				TopologyKey:   key,
@@ -62,14 +68,21 @@ func AffinityForNodeSelector(namespace string, required bool, antiLabels, select
 	if antiLabels != nil {
 		affinity.PodAntiAffinity = AntiAffinityForPod(namespace, antiLabels)
 	}
+
+	keys := []string{}
+	for key := range selector {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys) // we must use sorted selector, otherwise affinity may vary causing new statefulset generated and pod recreated
+
 	requiredTerms := []corev1.NodeSelectorTerm{}
 	if required { // all nodeSelectors are required
 		var exps []corev1.NodeSelectorRequirement
-		for key, val := range selector {
+		for _, key := range keys {
 			requirement := corev1.NodeSelectorRequirement{
 				Key:      key,
 				Operator: corev1.NodeSelectorOpIn,
-				Values:   strings.Split(val, ","),
+				Values:   strings.Split(selector[key], ","),
 			}
 			// NodeSelectorRequirement in the same MatchExpressions are ANDed otherwise ORed
 			exps = append(exps, requirement)
@@ -85,13 +98,13 @@ func AffinityForNodeSelector(namespace string, required bool, antiLabels, select
 
 	preferredTerms := []corev1.PreferredSchedulingTerm{}
 	exps := []corev1.NodeSelectorRequirement{}
-	for key, val := range selector {
+	for _, key := range keys {
 		// region,zone,rack,host are preferred labels, others are must match labels
 		if weight, ok := topologySchedulingWeight[key]; ok {
-			if val == "" {
+			if selector[key] == "" {
 				continue
 			}
-			values := strings.Split(val, ",")
+			values := strings.Split(selector[key], ",")
 			t := corev1.PreferredSchedulingTerm{
 				Weight: weight,
 				Preference: corev1.NodeSelectorTerm{
@@ -109,7 +122,7 @@ func AffinityForNodeSelector(namespace string, required bool, antiLabels, select
 			requirement := corev1.NodeSelectorRequirement{
 				Key:      key,
 				Operator: corev1.NodeSelectorOpIn,
-				Values:   []string{val},
+				Values:   []string{selector[key]},
 			}
 			// NodeSelectorRequirement in the same MatchExpressions are ANDed otherwise ORed
 			exps = append(exps, requirement)
