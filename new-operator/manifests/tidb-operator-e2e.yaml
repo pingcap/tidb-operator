@@ -27,6 +27,7 @@ spec:
   containers:
   - name: tidb-operator-e2e
     image: pingcap/tidb-operator-e2e:latest
+    imagePullPolicy: Always
     env:
     - name: GINKGO_NODES
       value: "1"

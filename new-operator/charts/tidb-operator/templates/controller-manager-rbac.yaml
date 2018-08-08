@@ -11,19 +11,23 @@ rules:
     - events
   verbs: ["*"]
 - apiGroups: [""]
-  resources:
-    - pods
-    - nodes
+  resources: ["nodes"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
   resources: ["endpoints"]
   verbs: ["create", "get", "update"]
 - apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["create", "get", "update"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch","update"]
+- apiGroups: [""]
   resources: ["persistentvolumes"]
-  verbs: ["get", "list", "watch", "patch"]
+  verbs: ["get", "list", "watch", "patch","update"]
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
-  verbs: ["get", "list", "watch"]
+  verbs: ["get", "list", "watch", "update"]
 - apiGroups: ["apps"]
   resources: ["statefulsets"]
   verbs: ["*"]

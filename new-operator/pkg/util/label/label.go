@@ -135,11 +135,6 @@ func (l Label) IsMonitor() bool {
 	return l[AppLabelKey] == MonitorLabelVal
 }
 
-// IsOperator returns whether label is a operator
-func (l Label) IsOperator() bool {
-	return l[OwnerLabelKey] == ClusterLabelVal
-}
-
 // Selector gets labels.Selector from label
 func (l Label) Selector() (labels.Selector, error) {
 	return metav1.LabelSelectorAsSelector(l.LabelSelector())

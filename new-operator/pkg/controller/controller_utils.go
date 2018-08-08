@@ -152,6 +152,13 @@ func AnnProm() map[string]string {
 	return ann
 }
 
+// setIfNotEmpty set the value into map when value in not empty
+func setIfNotEmpty(container map[string]string, key, value string) {
+	if value != "" {
+		container[key] = value
+	}
+}
+
 // requestTracker is used by unit test for mocking request error
 type requestTracker struct {
 	requests int

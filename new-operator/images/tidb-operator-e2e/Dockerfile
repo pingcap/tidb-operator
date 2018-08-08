@@ -1,6 +1,9 @@
 # Builder image
 FROM golang:1.10-alpine AS builder
 
+# Uncomment these lines to hack the repositories
+# RUN echo "https://mirrors.tuna.tsinghua.edu.cn/alpine/v3.3/main" > /etc/apk/repositories  && \
+#    echo "https://mirrors.tuna.tsinghua.edu.cn/alpine/v3.5/community" >> /etc/apk/repositories
 RUN apk update && apk add --no-cache git
 RUN go get github.com/onsi/ginkgo/ginkgo
 
@@ -12,7 +15,7 @@ ENV HELM_VERSION=v2.9.1
 
 # Uncomment these lines to hack the repositories
 # RUN echo "https://mirrors.tuna.tsinghua.edu.cn/alpine/v3.3/main" > /etc/apk/repositories  && \
-#     echo "https://mirrors.tuna.tsinghua.edu.cn/alpine/v3.5/community" >> /etc/apk/repositories
+#    echo "https://mirrors.tuna.tsinghua.edu.cn/alpine/v3.5/community" >> /etc/apk/repositories
 
 RUN apk update && apk add --no-cache ca-certificates curl
 

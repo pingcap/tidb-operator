@@ -274,7 +274,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster, annota
 		annMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/pd"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
-		{Name: "pd", MountPath: "/var/lib/pd"},
+		{Name: v1.PDMemberType.String(), MountPath: "/var/lib/pd"},
 	}
 	vols := []corev1.Volume{
 		annVolume,
@@ -415,7 +415,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster, annota
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pd",
+						Name: v1.PDMemberType.String(),
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
 						AccessModes: []corev1.PersistentVolumeAccessMode{

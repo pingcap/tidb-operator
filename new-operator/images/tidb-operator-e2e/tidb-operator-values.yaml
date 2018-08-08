@@ -4,7 +4,7 @@ rbac:
 
 # operatorImage is TiDB Operator image
 operatorImage: pingcap/tidb-operator:latest
-
+imagePullPolicy: Always
 defaultStorageClassName: standard
 
 controllerManager:

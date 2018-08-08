@@ -46,6 +46,7 @@ func NewDefaultTidbClusterControl(
 	tikvMemberManager mm.MemberManager,
 	tidbMemberManager mm.MemberManager,
 	reclaimPolicyManager manager.Manager,
+	metaManager manager.Manager,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		statusUpdater,
@@ -53,6 +54,7 @@ func NewDefaultTidbClusterControl(
 		tikvMemberManager,
 		tidbMemberManager,
 		reclaimPolicyManager,
+		metaManager,
 		recorder,
 	}
 }
@@ -63,6 +65,7 @@ type defaultTidbClusterControl struct {
 	tikvMemberManager    mm.MemberManager
 	tidbMemberManager    mm.MemberManager
 	reclaimPolicyManager manager.Manager
+	metaManager          manager.Manager
 	recorder             record.EventRecorder
 }
 
@@ -117,6 +120,12 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1.TidbCluster) erro
 
 	// ReclaimPolicyManager
 	err = tcc.reclaimPolicyManager.Sync(tc)
+	if err != nil {
+		return err
+	}
+
+	// MetaManager
+	err = tcc.metaManager.Sync(tc)
 	if err != nil {
 		return err
 	}

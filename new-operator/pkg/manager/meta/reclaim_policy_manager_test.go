@@ -21,6 +21,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/apis/pingcap.com/v1"
 	"github.com/pingcap/tidb-operator/new-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/new-operator/pkg/util/label"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,9 +43,9 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
-		tc := newTidbClusterForRPM()
+		tc := newTidbClusterForMeta()
 		pv1 := newPV()
-		pvc1 := newPVC(tc, pv1)
+		pvc1 := newPVC(tc)
 
 		if !test.pvcHasLabels {
 			pvc1.Labels = nil
@@ -72,6 +73,10 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 			pv, err := rpm.pvLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pv.Spec.PersistentVolumeReclaimPolicy).To(Equal(corev1.PersistentVolumeReclaimRetain))
+		} else {
+			pv, err := rpm.pvLister.Get(pv1.Name)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(pv.Spec.PersistentVolumeReclaimPolicy).To(Equal(corev1.PersistentVolumeReclaimDelete))
 		}
 	}
 
@@ -111,7 +116,7 @@ func newFakeReclaimPolicyManager() (*reclaimPolicyManager, *controller.FakePVCon
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
 
-	pvControl := controller.NewFakePVControl(pvInformer)
+	pvControl := controller.NewFakePVControl(pvInformer, pvcInformer)
 
 	return &reclaimPolicyManager{
 		pvcInformer.Lister(),
@@ -120,14 +125,14 @@ func newFakeReclaimPolicyManager() (*reclaimPolicyManager, *controller.FakePVCon
 	}, pvControl, pvcInformer.Informer().GetIndexer(), pvInformer.Informer().GetIndexer()
 }
 
-func newTidbClusterForRPM() *v1.TidbCluster {
+func newTidbClusterForMeta() *v1.TidbCluster {
 	return &v1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
 			APIVersion: "pingcap.com/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
+			Name:      controller.TestClusterName,
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 		},
@@ -150,11 +155,18 @@ func newPV() *corev1.PersistentVolume {
 		},
 		Spec: corev1.PersistentVolumeSpec{
 			PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimDelete,
+			ClaimRef: &corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "PersistentVolumeClaim",
+				Name:       "pvc-1",
+				Namespace:  corev1.NamespaceDefault,
+				UID:        types.UID("test"),
+			},
 		},
 	}
 }
 
-func newPVC(tc *v1.TidbCluster, pv *corev1.PersistentVolume) *corev1.PersistentVolumeClaim {
+func newPVC(tc *v1.TidbCluster) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",
@@ -165,9 +177,9 @@ func newPVC(tc *v1.TidbCluster, pv *corev1.PersistentVolume) *corev1.PersistentV
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 			Labels: map[string]string{
-				"cluster.pingcap.com/app":         "tikv",
-				"cluster.pingcap.com/owner":       "tidbCluster",
-				"cluster.pingcap.com/tidbCluster": tc.Name,
+				label.AppLabelKey:     controller.TestAppName,
+				label.OwnerLabelKey:   controller.TestOwnerName,
+				label.ClusterLabelKey: tc.GetName(),
 			},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{

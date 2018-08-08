@@ -72,14 +72,17 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	pdControl := controller.NewFakePDControl()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
-	pvControl := controller.NewRealPVControl(kubeCli, recorder)
+	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), recorder)
+	pvcControl := controller.NewRealPVCControl(kubeCli, recorder)
+	podControl := controller.NewRealPodControl(kubeCli, pdControl, recorder)
 	statusUpdater := newFakeTidbClusterStatusUpdater(tcInformer)
 
 	pdMemberManager := mm.NewPDMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
 	tikvMemberManager := mm.NewTiKVMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), podInformer.Lister(), nodeInformer.Lister())
 	tidbMemberManager := mm.NewTiDBMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
 	reclaimPolicyManager := meta.NewReclaimPolicyManager(pvcInformer.Lister(), pvInformer.Lister(), pvControl)
-	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, tikvMemberManager, tidbMemberManager, reclaimPolicyManager, recorder)
+	metaManager := meta.NewMetaManager(pvcInformer.Lister(), pvcControl, pvInformer.Lister(), pvControl, podInformer.Lister(), podControl)
+	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, tikvMemberManager, tidbMemberManager, reclaimPolicyManager, metaManager, recorder)
 
 	return control, setControl, statusUpdater, pdControl
 }
