@@ -47,7 +47,7 @@ func clearOperator() error {
 	_, err := execCmd(`kubectl get pv --output=name | xargs -I {} \
 		kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`)
 	if err != nil {
-		return err
+		logf(err.Error())
 	}
 
 	_, err = execCmd(fmt.Sprintf("helm del --purge %s", helmName))
