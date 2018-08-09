@@ -1,126 +1,180 @@
-A guide to
+# Building TiDB Operator from source code
 
-  * Developing source code changes.
-  * Setting up a Kubernetes environment on your laptop
+## Go
+TiDB Operator is written in [Go](https://golang.org). If you don't have a Go development environment, please [set one up](https://golang.org/doc/code.html).
 
-# Development of source code
+The version of GO should be 1.9 or above.
 
-Locally install tool dependencies using [retool](https://github.com/twitchtv/retool). just `retool` will be globally installed.
+After installation, you'll need `GOPATH` defined, and `PATH` modified to access your Go binaries.
 
-    make setup
+A common setup is the following but you could always google a setup for your own flavor.
 
-Run lints and tests
+```sh
+$ export GOPATH=$HOME/go
+$ export PATH=$PATH:$GOPATH/bin
+```
 
-    make && make check && make test
+## Dependency management
 
-This and e2e tests are automatically ran on our Jenkins CI server.
-Additionally, you can run some slower, more extensive linters.
+TiDB Operator uses [retool](https://github.com/twitchtv/retool) to manage Go related tools.
 
-    make lint-slow
+```sh
+$ go get -u github.com/twitchtv/retool
+```
 
+## Workflow
 
-# Environment
+### Step 1: Fork TiDB Operator on GitHub
 
-## GO
+1. visit https://github.com/pingcap/tidb-operator
+2. Click `Fork` button (top right) to establish a cloud-based fork.
 
-To build tidb-operator, Golang compiler version >= 1.9 is required.
+### Step 2: Clone fork to local machine
 
-## Kubernetes
+Per Go's [workspace instructions](https://golang.org/doc/code.html#Workspaces), place TiDB Operator code on your
+`GOPATH` using the following cloning procedure.
 
-First we need to run a Kubernetes cluster. `minikube` is the popular option for that. However, minikube only creates one Kubernetes node. To run TiDB, we need multiple Kubernetes nodes. There are a few options for this, but we have found a way to make DinD (Docker in Docker) work.
+Define a local working directory:
 
-DinD (Docker in Docker) allows running the docker daemon inside a top-level docker container. This means the top-level container to simulate a Kubernetes node and have containers launched inside it. The kubeadm-dind-cluster project starts multiple docker containers as a k8s nodes on a standalone machine through DinD, and then start a k8s cluster by using docker to start k8s components on these nodes.
+```sh
+$ working_dir=$GOPATH/src/github.com/pingcap
+```
 
+Set `user` to match your github profile name:
 
-### Prepare local DinD kubernetes cluster
+```sh
+$ user={your github profile name}
+```
 
-#### Install kubectl
+Create your clone:
 
-TiDB Operator has been tested with Kubernetes v1.10, but newer versions may work.
+```sh
+$ mkdir -p $working_dir
+$ cd $working_dir
+$ git clone git@github.com:$user/tidb-operator.git
+```
 
-	wget https://storage.googleapis.com/kubernetes-release/release/v1.10.0/bin/darwin/amd64/kubectl
-	chmod +x kubectl
-	sudo mv kubectl /usr/local/bin
+Set your clone to track upstream repository.
 
-Configure kubectl auto completion for bash:
+```sh
+$ cd $working_dir/tidb-operator
+$ git remote add upstream git@github.com:pingcap/tidb-operator.git
+```
 
-    echo "source <(kubectl completion bash)" >> $HOME/.bash_profile && source $HOME/.bash_profile
+Since you don't have write access to upstream repo, you should disable pushing to upstream master
 
-or zsh:
+```sh
+$ git remote set-url --push upstream no_push
+$ git remote -v
+```
 
-    echo "source <(kubectl completion zsh)" >> $HOME/.zshrc && source $HOME/.zshrc
+The output should look like:
 
-#### Bring up the DinD K8s
+```
+origin    git@github.com:$(user)/tidb-operator.git (fetch)
+origin    git@github.com:$(user)/tidb-operator.git (push)
+upstream  https://github.com/pingcap/tidb-operator (fetch)
+upstream  no_push (push)
+```
 
-We use [kubeadm-dind-cluster](https://github.com/kubernetes-sigs/kubeadm-dind-cluster) to bring up a local DinD K8s cluster.
+### Step 3: Branch
 
-	wget https://cdn.rawgit.com/kubernetes-sigs/kubeadm-dind-cluster/master/fixed/dind-cluster-v1.10.sh
-	chmod +x dind-cluster-v1.10.sh
-	NUM_NODES=4 ./dind-cluster-v1.10.sh up
+Get your local master up to date:
 
-*Note*: If you can't bring up DinD K8s using above method due to GFW network in China. You can try the following method (the Docker images used are pulled from [UCloud Docker Registry](https://docs.ucloud.cn/compute/uhub/index)):
+```sh
+$ cd $working_dir/tidb-operator
+$ git fetch upstream
+$ git checkout master
+$ git rebase upstream/master
+```
 
-	git clone https://github.com/pingcap/kubeadm-dind-cluster.git
-	cd kubeadm-dind-cluster
-	NUM_NODES=4 ../kubeadm-dind-cluster/tools/multi_k8s_dind_cluster_manager.sh rebuild e2e-v1.10
+Branch from master:
 
-Ensure the DinD cluster works:
+```sh
+$ git checkout -b myfeature
+```
 
-    kubectl get node,componentstatus
-    kubectl get pod -n kube-system
-    # view http://localhost:8080/ui in your browser
+### Step 4: Develop
 
-#### Install K8s package manager [Helm](https://helm.sh)
+#### Edit the code
 
-We'll use Helm to install tidb-operator and tidb-cluster on K8s. Use following command to install helm.
+You can now edit the code on the `myfeature` branch.
 
-	export os=linux  # change `linux` to `darwin` if you use MacOS
-	wget https://storage.googleapis.com/kubernetes-helm/helm-v2.9.1-${os}-amd64.tar.gz
-	tar xzf helm-v2.9.1-${os}-amd64.tar.gz
-	sudo mv ${os}-amd64/helm /usr/local/bin
+#### Run unit tests
 
-#### Setup Local Persistent Volumes
+Before run your code in a real kubernetes cluster, you should make sure all unit tests pass.
 
-We'll use [LocalPersistentVolume](https://kubernetes.io/docs/concepts/storage/volumes/#local) to persistent PD/TiKV data. The [local persistent volume provisioner](https://github.com/kubernetes-incubator/external-storage/tree/master/local-volume) doesn't work right in DinD, we need to modify its deployment. And it doesn't support [dynamic provision](https://github.com/kubernetes/community/pull/1914) yet, we need to manually mount disks or directory to mount points. It's a little tricky so we provide some [scripts](../manifests/local-dind) to help setup the development environment.
+```sh
+$ make test
+```
 
-    cd /path/to/tidb-operator # go to tidb-operator source directory
-    ./manifests/local-dind/pv-hosts.sh
-	kubectl apply -f manifests/local-dind/local-volume-provisioner.yaml
+#### Run e2e tests
 
+For e2e tests, we recommend DinD K8s environment, follow [this guide](./local-dind-tutorial.md) to spin up a local DinD K8s cluster.
 
-### Deploying and testing TiDB clusters
+You should also deploy a registry in DinD, so you can push and use your docker images in DinD K8s.
 
-Now we've setup a Kubernetes cluster, we can now run tidb operator as per the [README](../README.md) against your local k8s cluster.
+```sh
+$ ./manifests/local-dind/deploy-registry.sh
+$ kubectl port-forward svc/registry-proxy 5000:5000 --namespace=kube-system
+```
 
+Then you can build and push Docker images to DinD registry.
 
-# Local Deploy of source code changes
+```sh
+$ make docker-push
+$ make e2e-docker-push
+```
 
-## Setup
+After Docker images are pushed to DinD Docker registry. You can run e2e tests:
 
-As per the README, edit `./charts/tidb-operator/values.yaml`.
+```sh
+$ kubectl apply -f manifests/tidb-operator-e2e.yaml
+```
 
-## Lifecycle
+### Step 5: Keep your branch in sync
 
-Make a change to code. Write tests and test it with `make test`. To deploy to your laptop run:
+While on your myfeature branch, run the following commands:
 
-    make dind-reload
+```sh
+$ git fetch upstream
+$ git rebase upstream/master
+```
 
-If you haven't already, install the cluster chart.
+### Step 6: Commit
 
-Now connect to the tidb cluster
+Commit your changes.
 
-    make dind-mysql
+```sh
+$ git commit
+```
 
-## Troubleshooting
+Likely you'll go back and edit/build/test some more than `commit --amend`
+in a few cycles.
 
-If a pod is pending for a long time, check pod and pvc status
+### Step 7: Push
 
-	kubectl describe pod <pod-name> -n <ns>
-	kubectl describe pvc <pvc-name> -n <ns>
+When ready to review (or just to establish an offsite backup or your work),
+push your branch to your fork on `github.com`:
 
+```sh
+$ git push -f origin myfeature
+```
 
-# Source code
+### Step 8: Create a pull request
 
-## Generation
+1. Visit your fork at https://github.com/$user/tidb-operator (replace `$user` obviously).
+2. Click the `Compare & pull request` button next to your `myfeature` branch.
 
-Code under `pkg/client` is generated by `./hack/codegen.sh'.
+### Step 9: Get a code review
+
+Once your pull request has been opened, it will be assigned to at least two
+reviewers. Those reviewers will do a thorough code review, looking for
+correctness, bugs, opportunities for improvement, documentation and comments,
+and style.
+
+Commit changes made in response to review comments to the same branch on your
+fork.
+
+Very small PRs are easy to review. Very large PRs are very difficult to
+review.
