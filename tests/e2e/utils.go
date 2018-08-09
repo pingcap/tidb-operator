@@ -29,13 +29,13 @@ import (
 )
 
 const (
-	ns               = "e2e"
-	helmName         = "tidb-cluster"
-	operatorNs       = "pingcap"
-	operatorHelmName = "tidb-operator"
+	ns               = "tidb-cluster-e2e"
+	helmName         = "tidb-cluster-e2e"
+	operatorNs       = "tidb-operator-e2e"
+	operatorHelmName = "tidb-operator-e2e"
 	clusterName      = "demo-cluster"
-	testTableName    = "demo"
-	testTableVal     = "demo"
+	testTableName    = "demo_table"
+	testTableVal     = "demo_val"
 )
 
 var (
@@ -44,8 +44,9 @@ var (
 )
 
 func clearOperator() error {
-	_, err := execCmd(`kubectl get pv --output=name | xargs -I {} \
-		kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`)
+	_, err := execCmd(fmt.Sprintf(`kubectl get pv -l %s=%s,%s=%s --output=name | xargs -I {} \
+		kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`,
+		label.NamespaceLabelKey, ns, label.ClusterLabelKey, clusterName))
 	if err != nil {
 		logf(err.Error())
 	}
