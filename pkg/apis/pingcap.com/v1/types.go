@@ -55,9 +55,9 @@ const (
 type MemberPhase string
 
 const (
-	// Normal define the normal state
+	// Normal represents normal state of TiDB cluster.
 	Normal MemberPhase = "Normal"
-	// Upgrade define the upgrade state
+	// Upgrade define the upgrade state of TiDB cluster.
 	Upgrade MemberPhase = "Upgrade"
 )
 

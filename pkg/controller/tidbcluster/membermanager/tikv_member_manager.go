@@ -133,7 +133,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1.TidbCluster)
 		return err
 	}
 	if errors.IsNotFound(err) {
-		controller.SetLastApplyConfigAnnotation(newSet)
+		controller.SetLastAppliedConfigAnnotation(newSet)
 		err = tkmm.setControl.CreateStatefulSet(tc, newSet)
 		if err != nil {
 			return err
@@ -161,7 +161,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1.TidbCluster)
 	if !same {
 		set := *oldSet
 		set.Spec = newSet.Spec
-		controller.SetLastApplyConfigAnnotation(&set)
+		controller.SetLastAppliedConfigAnnotation(&set)
 		return tkmm.setControl.UpdateStatefulSet(tc, &set)
 	}
 
@@ -386,7 +386,7 @@ func (tkmm *tikvMemberManager) upgrade(tc *v1.TidbCluster, oldSet *apps.Stateful
 	if upgrade {
 		tc.Status.TiKV.Phase = v1.Upgrade
 	} else {
-		_, podSpec, err := controller.GetLastApplyConfig(oldSet)
+		_, podSpec, err := controller.GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
 		}

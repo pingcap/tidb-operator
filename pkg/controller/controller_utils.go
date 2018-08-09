@@ -38,8 +38,10 @@ var (
 )
 
 const (
+	// defaultPushgatewayImage is default image of pushgateway
 	defaultPushgatewayImage = "prom/pushgateway:v0.3.1"
 
+	// LastAppliedConfigAnnotation is annotation key of last applied configuration
 	LastAppliedConfigAnnotation = "pingcap.com/last-applied-configuration"
 )
 
@@ -185,8 +187,9 @@ func (rt *requestTracker) reset() {
 	rt.after = 0
 }
 
-func SetLastApplyConfigAnnotation(set *apps.StatefulSet) error {
-	setApply, err := Encode(set.Spec)
+// SetLastAppliedConfigAnnotation set last applied config info to Statefulset's annotation
+func SetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
+	setApply, err := encode(set.Spec)
 	if err != nil {
 		return err
 	}
@@ -195,7 +198,7 @@ func SetLastApplyConfigAnnotation(set *apps.StatefulSet) error {
 	}
 	set.Annotations[LastAppliedConfigAnnotation] = setApply
 
-	templateApply, err := Encode(set.Spec.Template.Spec)
+	templateApply, err := encode(set.Spec.Template.Spec)
 	if err != nil {
 		return err
 	}
@@ -206,7 +209,8 @@ func SetLastApplyConfigAnnotation(set *apps.StatefulSet) error {
 	return nil
 }
 
-func GetLastApplyConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1.PodSpec, error) {
+// GetLastAppliedConfig get last applied config info from Statefulset's annotation
+func GetLastAppliedConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1.PodSpec, error) {
 	specAppliedConfig, ok := set.Annotations[LastAppliedConfigAnnotation]
 	if !ok {
 		return nil, nil, fmt.Errorf("statefulset:[%s/%s] not found spec's apply config", set.GetNamespace(), set.GetName())
@@ -230,7 +234,7 @@ func GetLastApplyConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1.P
 	return spec, podSpec, nil
 }
 
-func Encode(obj interface{}) (string, error) {
+func encode(obj interface{}) (string, error) {
 	b, err := json.Marshal(obj)
 	if err != nil {
 		return "", err
@@ -238,6 +242,7 @@ func Encode(obj interface{}) (string, error) {
 	return string(b), nil
 }
 
+// EqualStatefulSet compare the new Statefulset's spec with old Statefulset's last applied config
 func EqualStatefulSet(new apps.StatefulSet, old apps.StatefulSet) (bool, error) {
 	oldConfig := apps.StatefulSetSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
@@ -251,6 +256,7 @@ func EqualStatefulSet(new apps.StatefulSet, old apps.StatefulSet) (bool, error) 
 	return false, nil
 }
 
+// EqualTemplate compare the new podTemplateSpec's spec with old podTemplateSpec's last applied config
 func EqualTemplate(new corev1.PodTemplateSpec, old corev1.PodTemplateSpec) (bool, error) {
 	oldConfig := corev1.PodSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {

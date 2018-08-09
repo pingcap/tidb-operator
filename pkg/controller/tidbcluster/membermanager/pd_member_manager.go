@@ -134,7 +134,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1.TidbCluster) 
 	}
 	if errors.IsNotFound(err) {
 		pmm.setInitialReplicas(nil, newPDSet)
-		controller.SetLastApplyConfigAnnotation(newPDSet)
+		controller.SetLastAppliedConfigAnnotation(newPDSet)
 		if err := pmm.setControl.CreateStatefulSet(tc, newPDSet); err != nil {
 			return err
 		}
@@ -148,13 +148,11 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1.TidbCluster) 
 		return err
 	}
 
-	err = pmm.upgrade(tc, oldPDSet, newPDSet)
-	if err != nil {
+	if err = pmm.upgrade(tc, oldPDSet, newPDSet); err!=nil{
 		return err
 	}
 
-	err = pmm.scaleDown(tc, oldPDSet, newPDSet)
-	if err != nil {
+	if err = pmm.scaleDown(tc, oldPDSet, newPDSet); err!=nil{
 		return err
 	}
 
@@ -165,7 +163,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1.TidbCluster) 
 	if !same {
 		set := *oldPDSet
 		set.Spec = newPDSet.Spec
-		controller.SetLastApplyConfigAnnotation(&set)
+		controller.SetLastAppliedConfigAnnotation(&set)
 		return pmm.setControl.UpdateStatefulSet(tc, &set)
 	}
 

@@ -16,7 +16,7 @@ package membermanager
 import corev1 "k8s.io/api/core/v1"
 
 func timezoneMountVolume() (corev1.VolumeMount, corev1.Volume) {
-	return corev1.VolumeMount{Name: "timezone", MountPath: "/etc/localtime"},
+	return corev1.VolumeMount{Name: "timezone", MountPath: "/etc/localtime", ReadOnly: true},
 		corev1.Volume{
 			Name:         "timezone",
 			VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/etc/localtime"}},
