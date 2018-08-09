@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1
+package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,7 +32,7 @@ var (
 )
 
 // SchemeGroupVersion is group version used to register these objects
-var SchemeGroupVersion = schema.GroupVersion{Group: groupName, Version: "v1"}
+var SchemeGroupVersion = schema.GroupVersion{Group: groupName, Version: "v1alpha1"}
 
 func init() {
 	// We only register manually written functions here. The registration of the

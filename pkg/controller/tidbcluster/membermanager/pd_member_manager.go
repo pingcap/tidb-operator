@@ -19,7 +19,7 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/util/label"
@@ -51,7 +51,7 @@ func NewPDMemberManager(pdControl controller.PDControlInterface, setControl cont
 	return &pdMemberManager{pdControl, setControl, svcControl, setLister, svcLister}
 }
 
-func (pmm *pdMemberManager) Sync(tc *v1.TidbCluster) error {
+func (pmm *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	// Sync PD Service
 	if err := pmm.syncPDServiceForTidbCluster(tc); err != nil {
 		return err
@@ -70,7 +70,7 @@ func (pmm *pdMemberManager) Sync(tc *v1.TidbCluster) error {
 	return nil
 }
 
-func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1.TidbCluster) error {
+func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -94,7 +94,7 @@ func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1.TidbCluster) erro
 	return nil
 }
 
-func (pmm *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1.TidbCluster) error {
+func (pmm *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -118,7 +118,7 @@ func (pmm *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1.TidbClust
 	return nil
 }
 
-func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1.TidbCluster) error {
+func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -167,7 +167,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1.TidbCluster) 
 	return nil
 }
 
-func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1.TidbCluster, set *apps.StatefulSet) error {
+func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -178,7 +178,7 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1.TidbCluster, set *apps.
 	if err != nil {
 		return err
 	}
-	pdStatus := map[string]v1.PDMember{}
+	pdStatus := map[string]v1alpha1.PDMember{}
 	for _, memberHealth := range healthInfo.Healths {
 		id := memberHealth.MemberID
 		memberID := fmt.Sprintf("%d", id)
@@ -193,7 +193,7 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1.TidbCluster, set *apps.
 			continue
 		}
 
-		status := v1.PDMember{
+		status := v1alpha1.PDMember{
 			Name:      name,
 			ID:        memberID,
 			ClientURL: clientURL,
@@ -208,7 +208,7 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1.TidbCluster, set *apps.
 	return nil
 }
 
-func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1.TidbCluster) *corev1.Service {
+func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
 	svcName := controller.PDMemberName(tcName)
@@ -222,7 +222,7 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1.TidbCluster) *c
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: corev1.ServiceSpec{
-			Type: controller.GetServiceType(tc.Spec.Services, v1.PDMemberType.String()),
+			Type: controller.GetServiceType(tc.Spec.Services, v1alpha1.PDMemberType.String()),
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "client",
@@ -236,7 +236,7 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1.TidbCluster) *c
 	}
 }
 
-func (pmm *pdMemberManager) getNewPDHeadlessServiceForTidbCluster(tc *v1.TidbCluster) *corev1.Service {
+func (pmm *pdMemberManager) getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
 	svcName := controller.PDPeerMemberName(tcName)
@@ -264,7 +264,7 @@ func (pmm *pdMemberManager) getNewPDHeadlessServiceForTidbCluster(tc *v1.TidbClu
 	}
 }
 
-func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster, annotations map[string]string) (*apps.StatefulSet, error) {
+func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, annotations map[string]string) (*apps.StatefulSet, error) {
 	ns := tc.Namespace
 	tcName := tc.Name
 	pdConfigMap := controller.PDMemberName(tcName)
@@ -274,7 +274,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster, annota
 		annMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/pd"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
-		{Name: v1.PDMemberType.String(), MountPath: "/var/lib/pd"},
+		{Name: v1alpha1.PDMemberType.String(), MountPath: "/var/lib/pd"},
 	}
 	vols := []corev1.Volume{
 		annVolume,
@@ -362,7 +362,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster, annota
 					),
 					Containers: []corev1.Container{
 						{
-							Name:    v1.PDMemberType.String(),
+							Name:    v1alpha1.PDMemberType.String(),
 							Image:   tc.Spec.PD.Image,
 							Command: []string{"/bin/sh", "/usr/local/bin/pd_start_script.sh"},
 							Ports: []corev1.ContainerPort{
@@ -415,7 +415,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster, annota
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: v1.PDMemberType.String(),
+						Name: v1alpha1.PDMemberType.String(),
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
 						AccessModes: []corev1.PersistentVolumeAccessMode{
@@ -438,11 +438,11 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1.TidbCluster, annota
 	return pdSet, nil
 }
 
-func (pmm *pdMemberManager) needReduce(tc *v1.TidbCluster, oldReplicas int32) bool {
+func (pmm *pdMemberManager) needReduce(tc *v1alpha1.TidbCluster, oldReplicas int32) bool {
 	return tc.Spec.PD.Replicas < oldReplicas
 }
 
-func (pmm *pdMemberManager) removeOneMember(tc *v1.TidbCluster, ordinal int32) error {
+func (pmm *pdMemberManager) removeOneMember(tc *v1alpha1.TidbCluster, ordinal int32) error {
 	memberName := fmt.Sprintf("%s-pd-%d", tc.Name, ordinal)
 	return pmm.pdControl.GetPDClient(tc).DeleteMember(memberName)
 }

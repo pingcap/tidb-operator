@@ -19,4 +19,4 @@ cd ${scriptdir}/../vendor/k8s.io/code-generator && ./generate-groups.sh \
   deepcopy,client,lister,informer \
   github.com/pingcap/tidb-operator/pkg/client \
   github.com/pingcap/tidb-operator/pkg/apis \
-  "pingcap.com:v1"
+  "pingcap.com:v1alpha1"

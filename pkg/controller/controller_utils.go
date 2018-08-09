@@ -18,7 +18,7 @@ import (
 	"math"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,7 +26,7 @@ import (
 
 var (
 	// controllerKind contains the schema.GroupVersionKind for this controller type.
-	controllerKind = v1.SchemeGroupVersion.WithKind("TidbCluster")
+	controllerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbCluster")
 	// DefaultStorageClassName is the default storageClassName
 	DefaultStorageClassName string
 	// ClusterScoped controls whether operator should manage kubernetes cluster wide TiDB clusters
@@ -38,7 +38,7 @@ const (
 )
 
 // GetOwnerRef returns TidbCluster's OwnerReference
-func GetOwnerRef(tc *v1.TidbCluster) metav1.OwnerReference {
+func GetOwnerRef(tc *v1alpha1.TidbCluster) metav1.OwnerReference {
 	controller := true
 	blockOwnerDeletion := true
 	return metav1.OwnerReference{
@@ -52,7 +52,7 @@ func GetOwnerRef(tc *v1.TidbCluster) metav1.OwnerReference {
 }
 
 // GetServiceType returns member's service type
-func GetServiceType(services []v1.Service, serviceName string) corev1.ServiceType {
+func GetServiceType(services []v1alpha1.Service, serviceName string) corev1.ServiceType {
 	for _, svc := range services {
 		if svc.Name == serviceName {
 			switch svc.Type {
@@ -70,7 +70,7 @@ func GetServiceType(services []v1.Service, serviceName string) corev1.ServiceTyp
 
 // TiKVCapacity returns string resource requirement,
 // tikv uses GB, TB as unit suffix, but it actually means GiB, TiB
-func TiKVCapacity(limits *v1.ResourceRequirement) string {
+func TiKVCapacity(limits *v1alpha1.ResourceRequirement) string {
 	defaultArgs := "0"
 	if limits == nil {
 		return defaultArgs
@@ -101,7 +101,7 @@ func DefaultPushGatewayRequest() corev1.ResourceRequirements {
 }
 
 // GetPushgatewayImage returns TidbCluster's pushgateway image
-func GetPushgatewayImage(cluster *v1.TidbCluster) string {
+func GetPushgatewayImage(cluster *v1alpha1.TidbCluster) string {
 	if img, ok := cluster.Annotations["pushgateway-image"]; ok && img != "" {
 		return img
 	}

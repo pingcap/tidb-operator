@@ -21,7 +21,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/util/label"
@@ -60,7 +60,7 @@ func NewTiKVMemberManager(pdControl controller.PDControlInterface,
 		nodeLister: nodeLister,
 		StateSvcMemberManager: StateSvcMemberManager{
 			StateSvcControlList: NewStateSvcControlList(setControl, svcControl, setLister, svcLister),
-			MemberType:          v1.TiKVMemberType,
+			MemberType:          v1alpha1.TiKVMemberType,
 			pdctl:               pdControl,
 			SvcList: []SvcConfig{
 				{
@@ -77,19 +77,19 @@ func NewTiKVMemberManager(pdControl controller.PDControlInterface,
 		},
 	}
 
-	kvmm.StatusUpdate = func(tc *v1.TidbCluster, status *apps.StatefulSetStatus) error {
+	kvmm.StatusUpdate = func(tc *v1alpha1.TidbCluster, status *apps.StatefulSetStatus) error {
 		tc.Status.TiKV.StatefulSet = status
 		return kvmm.syncTidbClusterStatus(tc)
 	}
 	return &kvmm
 }
 
-func labelTiKV(tc *v1.TidbCluster) label.Label {
+func labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
 	tcName := tc.GetName()
 	return label.New().Cluster(tcName).TiKV()
 }
 
-func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster) (*apps.StatefulSet, error) {
+func getNewSetForTidbClusterTiKV(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	tikvConfigMap := controller.TiKVMemberName(tcName)
@@ -97,7 +97,7 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster) (*apps.StatefulSet, error) 
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
 		annMount,
-		{Name: v1.TiKVMemberType.String(), MountPath: "/var/lib/tikv"},
+		{Name: v1alpha1.TiKVMemberType.String(), MountPath: "/var/lib/tikv"},
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tikv"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
@@ -172,7 +172,7 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster) (*apps.StatefulSet, error) 
 					),
 					Containers: []corev1.Container{
 						{
-							Name:    v1.TiKVMemberType.String(),
+							Name:    v1alpha1.TiKVMemberType.String(),
 							Image:   tc.Spec.TiKV.Image,
 							Command: []string{"/bin/sh", "/usr/local/bin/tikv_start_script.sh"},
 							Ports: []corev1.ContainerPort{
@@ -187,7 +187,7 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster) (*apps.StatefulSet, error) 
 							Env:          envVars(tcName, headlessSvcName, capacity),
 						},
 						{
-							Name:  v1.PushGatewayMemberType.String(),
+							Name:  v1alpha1.PushGatewayMemberType.String(),
 							Image: controller.GetPushgatewayImage(tc),
 							Ports: []corev1.ContainerPort{
 								{
@@ -206,7 +206,7 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster) (*apps.StatefulSet, error) 
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				volumeClaimTemplate(q, v1.TiKVMemberType.String(), &storageClassName),
+				volumeClaimTemplate(q, v1alpha1.TiKVMemberType.String(), &storageClassName),
 			},
 			ServiceName:         headlessSvcName,
 			PodManagementPolicy: apps.ParallelPodManagement,
@@ -216,12 +216,12 @@ func getNewSetForTidbClusterTiKV(tc *v1.TidbCluster) (*apps.StatefulSet, error) 
 	return tikvset, nil
 }
 
-func needReduce(tc *v1.TidbCluster, oldReplicas int32) bool {
+func needReduce(tc *v1alpha1.TidbCluster, oldReplicas int32) bool {
 	return tc.Spec.TiKV.Replicas < oldReplicas
 }
 
 // remove tikv store from cluster, return nil only when store status becomes tombstone
-func removeOneMember(pdctl controller.PDControlInterface, tc *v1.TidbCluster, ordinal int32) error {
+func removeOneMember(pdctl controller.PDControlInterface, tc *v1alpha1.TidbCluster, ordinal int32) error {
 	name := fmt.Sprintf("%s-tikv-%d", tc.Name, ordinal)
 	var state string
 	var id uint64
@@ -260,7 +260,7 @@ func removeOneMember(pdctl controller.PDControlInterface, tc *v1.TidbCluster, or
 	return fmt.Errorf("TiKV %s not found in cluster", name)
 }
 
-func (ssmm *TikvMemberManager) getStateSet(tc *v1.TidbCluster) (*apps.StatefulSet, error) {
+func (ssmm *TikvMemberManager) getStateSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
 	tcName := tc.GetName()
 	setName := controller.TiKVMemberName(tcName)
 	stateSet, err := (ssmm.setLister).StatefulSets(tc.Namespace).Get(setName)
@@ -270,14 +270,14 @@ func (ssmm *TikvMemberManager) getStateSet(tc *v1.TidbCluster) (*apps.StatefulSe
 	return stateSet, nil
 }
 
-func (ssmm *TikvMemberManager) syncTidbClusterStatus(tc *v1.TidbCluster) error {
+func (ssmm *TikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
 	previousStores := tc.Status.TiKV.Stores
-	tikvStores := v1.TiKVStores{
-		CurrentStores:   map[string]v1.TiKVStore{},
-		TombStoneStores: map[string]v1.TiKVStore{},
+	tikvStores := v1alpha1.TiKVStores{
+		CurrentStores:   map[string]v1alpha1.TiKVStore{},
+		TombStoneStores: map[string]v1alpha1.TiKVStore{},
 	}
 
 	pdCli := ssmm.pdControl.GetPDClient(tc)
@@ -330,7 +330,7 @@ func (ssmm *TikvMemberManager) syncTidbClusterStatus(tc *v1.TidbCluster) error {
 	return nil
 }
 
-func (ssmm *TikvMemberManager) getTiKVStore(store *controller.StoreInfo) *v1.TiKVStore {
+func (ssmm *TikvMemberManager) getTiKVStore(store *controller.StoreInfo) *v1alpha1.TiKVStore {
 	if store.Store == nil || store.Status == nil {
 		return nil
 	}
@@ -338,7 +338,7 @@ func (ssmm *TikvMemberManager) getTiKVStore(store *controller.StoreInfo) *v1.TiK
 	ip := strings.Split(store.Store.GetAddress(), ":")[0]
 	podName := strings.Split(ip, ".")[0]
 
-	return &v1.TiKVStore{
+	return &v1alpha1.TiKVStore{
 		ID:                storeID,
 		PodName:           podName,
 		IP:                ip,

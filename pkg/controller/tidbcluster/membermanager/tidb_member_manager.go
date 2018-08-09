@@ -16,7 +16,7 @@ package membermanager
 import (
 	"reflect"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/util/label"
@@ -49,7 +49,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	}
 }
 
-func (tmm *tidbMemberManager) Sync(tc *v1.TidbCluster) error {
+func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	// Sync TiDB Service
 	if err := tmm.syncTiDBServiceForTidbCluster(tc); err != nil {
 		return err
@@ -59,7 +59,7 @@ func (tmm *tidbMemberManager) Sync(tc *v1.TidbCluster) error {
 	return tmm.syncTiDBStatefulSetForTidbCluster(tc)
 }
 
-func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1.TidbCluster) error {
+func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -83,7 +83,7 @@ func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1.TidbCluster) 
 	return nil
 }
 
-func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1.TidbCluster) error {
+func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -113,7 +113,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1.TidbClust
 	return nil
 }
 
-func getNewTiDBServiceForTidbCluster(tc *v1.TidbCluster) *corev1.Service {
+func getNewTiDBServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	svcName := controller.TiDBMemberName(tcName)
@@ -127,7 +127,7 @@ func getNewTiDBServiceForTidbCluster(tc *v1.TidbCluster) *corev1.Service {
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: corev1.ServiceSpec{
-			Type: controller.GetServiceType(tc.Spec.Services, v1.TiDBMemberType.String()),
+			Type: controller.GetServiceType(tc.Spec.Services, v1alpha1.TiDBMemberType.String()),
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "mysql-client",
@@ -151,7 +151,7 @@ func getNewTiDBServiceForTidbCluster(tc *v1.TidbCluster) *corev1.Service {
 	return tidbSvc
 }
 
-func getNewTiDBSetForTidbCluster(tc *v1.TidbCluster) *apps.StatefulSet {
+func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	tidbConfigMap := controller.TiDBMemberName(tcName)
@@ -214,7 +214,7 @@ func getNewTiDBSetForTidbCluster(tc *v1.TidbCluster) *apps.StatefulSet {
 					),
 					Containers: []corev1.Container{
 						{
-							Name:    v1.TiDBMemberType.String(),
+							Name:    v1alpha1.TiDBMemberType.String(),
 							Image:   tc.Spec.TiDB.Image,
 							Command: []string{"/bin/sh", "/usr/local/bin/tidb_start_script.sh"},
 							Ports: []corev1.ContainerPort{

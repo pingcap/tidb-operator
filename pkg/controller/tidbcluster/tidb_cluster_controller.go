@@ -18,10 +18,10 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/pkg/controller/tidbcluster/membermanager"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
@@ -41,7 +41,7 @@ import (
 )
 
 // controllerKind contains the schema.GroupVersionKind for this controller type.
-var controllerKind = v1.SchemeGroupVersion.WithKind("TidbCluster")
+var controllerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbCluster")
 
 // Controller controls tidbclusters.
 type Controller struct {
@@ -75,9 +75,9 @@ func NewController(
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1.Scheme, corev1.EventSource{Component: "tidbcluster"})
+	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidbcluster"})
 
-	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
+	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
@@ -228,7 +228,7 @@ func (tcc *Controller) sync(key string) error {
 	return tcc.syncTidbCluster(tc.DeepCopy())
 }
 
-func (tcc *Controller) syncTidbCluster(tc *v1.TidbCluster) error {
+func (tcc *Controller) syncTidbCluster(tc *v1alpha1.TidbCluster) error {
 	return tcc.control.UpdateTidbCluster(tc)
 }
 
@@ -319,7 +319,7 @@ func (tcc *Controller) deleteStatefulSet(obj interface{}) {
 // resolveTidbClusterFromSet returns the TidbCluster by a StatefulSet,
 // or nil if the StatefulSet could not be resolved to a matching TidbCluster
 // of the correct Kind.
-func (tcc *Controller) resolveTidbClusterFromSet(namespace string, set *apps.StatefulSet) *v1.TidbCluster {
+func (tcc *Controller) resolveTidbClusterFromSet(namespace string, set *apps.StatefulSet) *v1alpha1.TidbCluster {
 	controllerRef := metav1.GetControllerOf(set)
 	if controllerRef == nil {
 		return nil
