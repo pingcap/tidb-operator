@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util/label"
 	corev1 "k8s.io/api/core/v1"
@@ -125,18 +125,18 @@ func newFakeReclaimPolicyManager() (*reclaimPolicyManager, *controller.FakePVCon
 	}, pvControl, pvcInformer.Informer().GetIndexer(), pvInformer.Informer().GetIndexer()
 }
 
-func newTidbClusterForMeta() *v1.TidbCluster {
-	return &v1.TidbCluster{
+func newTidbClusterForMeta() *v1alpha1.TidbCluster {
+	return &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
-			APIVersion: "pingcap.com/v1",
+			APIVersion: "pingcap.com/v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      controller.TestClusterName,
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 		},
-		Spec: v1.TidbClusterSpec{
+		Spec: v1alpha1.TidbClusterSpec{
 			PVReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
 		},
 	}
@@ -166,7 +166,7 @@ func newPV() *corev1.PersistentVolume {
 	}
 }
 
-func newPVC(tc *v1.TidbCluster) *corev1.PersistentVolumeClaim {
+func newPVC(tc *v1alpha1.TidbCluster) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",

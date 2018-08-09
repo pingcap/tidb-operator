@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util/label"
 	corev1 "k8s.io/api/core/v1"
@@ -65,7 +65,7 @@ func TestMetaManagerSync(t *testing.T) {
 		}
 
 		if !test.podRefPvc {
-			pod1.Spec = newPodSpec(v1.TiDBMemberType.String(), pvc1.GetName())
+			pod1.Spec = newPodSpec(v1alpha1.TiDBMemberType.String(), pvc1.GetName())
 		}
 
 		nmm, fakePodControl, fakePVCControl, fakePVControl, podIndexer, pvcIndexer, pvIndexer := newFakeMetaManager()
@@ -380,7 +380,7 @@ func pvMetaInfoMatchDesire(ns string, pv *corev1.PersistentVolume) bool {
 		pv.Annotations[label.AnnPodNameKey] == controller.TestPodName
 }
 
-func newPod(tc *v1.TidbCluster) *corev1.Pod {
+func newPod(tc *v1alpha1.TidbCluster) *corev1.Pod {
 	return &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -396,7 +396,7 @@ func newPod(tc *v1.TidbCluster) *corev1.Pod {
 				label.ClusterLabelKey: tc.GetName(),
 			},
 		},
-		Spec: newPodSpec(v1.PDMemberType.String(), "pvc-1"),
+		Spec: newPodSpec(v1alpha1.PDMemberType.String(), "pvc-1"),
 	}
 }
 

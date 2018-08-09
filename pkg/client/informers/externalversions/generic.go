@@ -21,7 +21,7 @@ package externalversions
 import (
 	"fmt"
 
-	v1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	v1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -52,9 +52,9 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=pingcap.com, Version=v1
-	case v1.SchemeGroupVersion.WithResource("tidbclusters"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Pingcap().V1().TidbClusters().Informer()}, nil
+	// Group=pingcap.com, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("tidbclusters"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Pingcap().V1alpha1().TidbClusters().Informer()}, nil
 
 	}
 
