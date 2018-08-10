@@ -18,7 +18,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util/label"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -33,8 +33,8 @@ import (
 
 // PVControlInterface manages PVs used in TidbCluster
 type PVControlInterface interface {
-	PatchPVReclaimPolicy(*v1.TidbCluster, *corev1.PersistentVolume, corev1.PersistentVolumeReclaimPolicy) error
-	UpdateMetaInfo(*v1.TidbCluster, *corev1.PersistentVolume) error
+	PatchPVReclaimPolicy(*v1alpha1.TidbCluster, *corev1.PersistentVolume, corev1.PersistentVolumeReclaimPolicy) error
+	UpdateMetaInfo(*v1alpha1.TidbCluster, *corev1.PersistentVolume) error
 }
 
 type realPVControl struct {
@@ -56,7 +56,7 @@ func NewRealPVControl(
 	}
 }
 
-func (rpc *realPVControl) PatchPVReclaimPolicy(tc *v1.TidbCluster, pv *corev1.PersistentVolume, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
+func (rpc *realPVControl) PatchPVReclaimPolicy(tc *v1alpha1.TidbCluster, pv *corev1.PersistentVolume, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
 	pvName := pv.GetName()
 	patchBytes := []byte(fmt.Sprintf(`{"spec":{"persistentVolumeReclaimPolicy":"%s"}}`, reclaimPolicy))
 
@@ -68,7 +68,7 @@ func (rpc *realPVControl) PatchPVReclaimPolicy(tc *v1.TidbCluster, pv *corev1.Pe
 	return err
 }
 
-func (rpc *realPVControl) UpdateMetaInfo(tc *v1.TidbCluster, pv *corev1.PersistentVolume) error {
+func (rpc *realPVControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pv *corev1.PersistentVolume) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -137,7 +137,7 @@ func (rpc *realPVControl) UpdateMetaInfo(tc *v1.TidbCluster, pv *corev1.Persiste
 	return err
 }
 
-func (rpc *realPVControl) recordPVEvent(verb string, tc *v1.TidbCluster, pvName string, err error) {
+func (rpc *realPVControl) recordPVEvent(verb string, tc *v1alpha1.TidbCluster, pvName string, err error) {
 	tcName := tc.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
@@ -177,7 +177,7 @@ func (fpc *FakePVControl) SetUpdatePVError(err error, after int) {
 }
 
 // PatchPVReclaimPolicy patchs the reclaim policy of PV
-func (fpc *FakePVControl) PatchPVReclaimPolicy(tc *v1.TidbCluster, pv *corev1.PersistentVolume, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
+func (fpc *FakePVControl) PatchPVReclaimPolicy(tc *v1alpha1.TidbCluster, pv *corev1.PersistentVolume, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
 	defer fpc.updatePVTracker.inc()
 	if fpc.updatePVTracker.errorReady() {
 		defer fpc.updatePVTracker.reset()
@@ -189,7 +189,7 @@ func (fpc *FakePVControl) PatchPVReclaimPolicy(tc *v1.TidbCluster, pv *corev1.Pe
 }
 
 // UpdateMetaInfo update the meta info of pv
-func (fpc *FakePVControl) UpdateMetaInfo(tc *v1.TidbCluster, pv *corev1.PersistentVolume) error {
+func (fpc *FakePVControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pv *corev1.PersistentVolume) error {
 	defer fpc.updatePVTracker.inc()
 	if fpc.updatePVTracker.errorReady() {
 		defer fpc.updatePVTracker.reset()

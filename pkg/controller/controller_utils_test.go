@@ -16,7 +16,7 @@ package controller
 import (
 	"fmt"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,8 +46,8 @@ func collectEvents(source <-chan string) []string {
 	return events
 }
 
-func newTidbCluster() *v1.TidbCluster {
-	tc := &v1.TidbCluster{
+func newTidbCluster() *v1alpha1.TidbCluster {
+	tc := &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo",
 			Namespace: metav1.NamespaceDefault,
@@ -56,7 +56,7 @@ func newTidbCluster() *v1.TidbCluster {
 	return tc
 }
 
-func newSecret(tc *v1.TidbCluster, name string) *corev1.Secret {
+func newSecret(tc *v1alpha1.TidbCluster, name string) *corev1.Secret {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      GetName(tc.Name, "image"),
@@ -66,7 +66,7 @@ func newSecret(tc *v1.TidbCluster, name string) *corev1.Secret {
 	return secret
 }
 
-func newService(tc *v1.TidbCluster, name string) *corev1.Service {
+func newService(tc *v1alpha1.TidbCluster, name string) *corev1.Service {
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      GetName(tc.Name, "pd"),
@@ -76,7 +76,7 @@ func newService(tc *v1.TidbCluster, name string) *corev1.Service {
 	return svc
 }
 
-func newStatefulSet(tc *v1.TidbCluster, name string) *apps.StatefulSet {
+func newStatefulSet(tc *v1alpha1.TidbCluster, name string) *apps.StatefulSet {
 	set := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      GetName(tc.Name, "pd"),
@@ -86,7 +86,7 @@ func newStatefulSet(tc *v1.TidbCluster, name string) *apps.StatefulSet {
 	return set
 }
 
-func newDeployment(tc *v1.TidbCluster, name string) *apps.Deployment {
+func newDeployment(tc *v1alpha1.TidbCluster, name string) *apps.Deployment {
 	deploy := &apps.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      GetName(tc.Name, "monitor"),

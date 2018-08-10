@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1
+package v1alpha1
 
 func (mt MemberType) String() string {
 	return string(mt)
