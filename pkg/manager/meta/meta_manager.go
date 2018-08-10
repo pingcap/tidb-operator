@@ -16,7 +16,7 @@ package meta
 import (
 	"errors"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util/label"
@@ -54,7 +54,7 @@ func NewMetaManager(
 	}
 }
 
-func (pmm *metaManager) Sync(tc *v1.TidbCluster) error {
+func (pmm *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 	tcName := tc.GetName()
 
 	l, err := label.New().Cluster(tcName).Selector()
@@ -99,7 +99,7 @@ func (pmm *metaManager) resolvePVCFromPod(pod *corev1.Pod) (*corev1.PersistentVo
 	var pvcName string
 	for _, vol := range pod.Spec.Volumes {
 		switch vol.Name {
-		case v1.PDMemberType.String(), v1.TiKVMemberType.String():
+		case v1alpha1.PDMemberType.String(), v1alpha1.TiKVMemberType.String():
 			if vol.PersistentVolumeClaim != nil {
 				pvcName = vol.PersistentVolumeClaim.ClaimName
 				break

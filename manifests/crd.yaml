@@ -7,7 +7,7 @@ spec:
   # group name to use for REST API: /apis/<group>/<version>
   group: pingcap.com
   # list of versions supported by this CustomResourceDefinition
-  version: v1
+  version: v1alpha1
   # either Namespaced or Cluster
   scope: Namespaced
   names:

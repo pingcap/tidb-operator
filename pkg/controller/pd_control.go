@@ -28,7 +28,7 @@ import (
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/pd/pkg/typeutil"
 	"github.com/pingcap/pd/server"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 )
 
 const (
@@ -38,7 +38,7 @@ const (
 // PDControlInterface is an interface that knows how to manage and get tidb cluster's PD client
 type PDControlInterface interface {
 	// GetPDClient provide PDClient of the tidb cluster.
-	GetPDClient(tc *v1.TidbCluster) PDClient
+	GetPDClient(tc *v1alpha1.TidbCluster) PDClient
 }
 
 // defaultPDControl is the default implementation of PDControlInterface.
@@ -53,7 +53,7 @@ func NewDefaultPDControl() PDControlInterface {
 }
 
 // GetPDClient provide a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
-func (pdc *defaultPDControl) GetPDClient(tc *v1.TidbCluster) PDClient {
+func (pdc *defaultPDControl) GetPDClient(tc *v1alpha1.TidbCluster) PDClient {
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
 	namespace := tc.GetNamespace()
@@ -478,7 +478,7 @@ func NewFakePDControl() *FakePDControl {
 	}
 }
 
-func (fpc *FakePDControl) SetPDClient(tc *v1.TidbCluster, pdclient PDClient) {
+func (fpc *FakePDControl) SetPDClient(tc *v1alpha1.TidbCluster, pdclient PDClient) {
 	fpc.defaultPDControl.pdClients[pdClientKey(tc.Namespace, tc.Name)] = pdclient
 }
 
