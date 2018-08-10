@@ -17,7 +17,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
-	"github.com/pingcap/tidb-operator/pkg/util/label"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 

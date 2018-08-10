@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package membermanager
+package member
 
 import (
 	"fmt"
@@ -23,7 +23,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	"github.com/pingcap/tidb-operator/pkg/util/label"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/manager"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -48,7 +49,7 @@ type pdMemberManager struct {
 func NewPDMemberManager(pdControl controller.PDControlInterface, setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	setLister v1beta1.StatefulSetLister,
-	svcLister corelisters.ServiceLister) MemberManager {
+	svcLister corelisters.ServiceLister) manager.Manager {
 	return &pdMemberManager{pdControl, setControl, svcControl, setLister, svcLister}
 }
 

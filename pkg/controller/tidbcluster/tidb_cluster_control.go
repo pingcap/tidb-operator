@@ -18,7 +18,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	mm "github.com/pingcap/tidb-operator/pkg/controller/tidbcluster/membermanager"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -42,9 +41,9 @@ type ControlInterface interface {
 // implements the documented semantics for TidbClusters.
 func NewDefaultTidbClusterControl(
 	statusUpdater StatusUpdaterInterface,
-	pdMemberManager mm.MemberManager,
-	tikvMemberManager mm.MemberManager,
-	tidbMemberManager mm.MemberManager,
+	pdMemberManager manager.Manager,
+	tikvMemberManager manager.Manager,
+	tidbMemberManager manager.Manager,
 	reclaimPolicyManager manager.Manager,
 	metaManager manager.Manager,
 	recorder record.EventRecorder) ControlInterface {
@@ -61,9 +60,9 @@ func NewDefaultTidbClusterControl(
 
 type defaultTidbClusterControl struct {
 	statusUpdater        StatusUpdaterInterface
-	pdMemberManager      mm.MemberManager
-	tikvMemberManager    mm.MemberManager
-	tidbMemberManager    mm.MemberManager
+	pdMemberManager      manager.Manager
+	tikvMemberManager    manager.Manager
+	tidbMemberManager    manager.Manager
 	reclaimPolicyManager manager.Manager
 	metaManager          manager.Manager
 	recorder             record.EventRecorder
