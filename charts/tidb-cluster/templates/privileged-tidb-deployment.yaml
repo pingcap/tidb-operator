@@ -2,19 +2,26 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  namespace: {{ .Release.Namespace }}
-  name: {{ .Values.clusterName }}-privileged-tidb
+  name: {{ template "tidb-cluster.privileged-tidb.fullname" . }}
   labels:
-    app: {{ .Values.clusterName }}-privileged-tidb
+    app: {{ template "tidb-cluster.name" . }}
+    component: privileged-tidb
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 spec:
   replicas: {{ .Values.privilegedTidb.replicas }}
   selector:
     matchLabels:
-      app: {{ .Values.clusterName }}-privileged-tidb
+      app: {{ template "tidb-cluster.name" . }}
+      component: privileged-tidb
+      release: {{ .Release.Name }}-{{ .Chart.Version }}
   template:
     metadata:
       labels:
-        app: {{ .Values.clusterName }}-privileged-tidb
+        app: {{ template "tidb-cluster.name" . }}
+        component: privileged-tidb
+        release: {{ .Release.Name }}-{{ .Chart.Version }}
     spec:
     {{- if .Values.privilegedTidb.nodeSelector }}
       affinity:
@@ -48,7 +55,7 @@ spec:
           protocol: TCP
         env:
         - name: CLUSTER_NAME
-          value: {{ .Values.clusterName }}
+          value: {{ template "tidb-cluster.fullname" . }}
         volumeMounts:
         {{- if .Values.localtime }}
         - name: timezone
@@ -73,7 +80,7 @@ spec:
       {{- end }}
       - name: config
         configMap:
-          name: {{ .Values.clusterName }}-privileged-tidb
+          name: {{ template "tidb-cluster.privileged-tidb.fullname" . }}
           items:
           - key: config-file
             path: tidb.toml
@@ -85,7 +92,7 @@ spec:
               fieldPath: metadata.annotations
       - name: startup-script
         configMap:
-          name: {{ .Values.clusterName }}-privileged-tidb
+          name: {{ template "tidb-cluster.privileged-tidb.fullname" . }}
           items:
           - key: startup-script
             path: privileged_tidb_start_script.sh

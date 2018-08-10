@@ -2,8 +2,13 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  namespace: {{ .Release.Namespace }}
-  name: {{ .Values.clusterName }}-privileged-tidb
+  name: {{ template "tidb-cluster.privileged-tidb.fullname" . }}
+  labels:
+    app: {{ template "tidb-cluster.name" . }}
+    component: privileged-tidb
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 data:
   startup-script: |-
     #!/bin/sh

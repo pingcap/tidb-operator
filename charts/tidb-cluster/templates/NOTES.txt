@@ -1,7 +1,7 @@
 1. Watch tidb-cluster up and running
-   watch kubectl get pods --namespace {{ .Release.Namespace }} -l cluster.pingcap.com/tidbCluster={{ .Values.clusterName }} -o wide
+   watch kubectl get pods --namespace {{ .Release.Namespace }} -l cluster.pingcap.com/tidbCluster={{ template "tidb-cluster.fullname" . }} -o wide
 2. List services in the tidb-cluster
-   kubectl get services --namespace {{ .Release.Namespace }} -l cluster.pingcap.com/tidbCluster={{ .Values.clusterName }}
+   kubectl get services --namespace {{ .Release.Namespace }} -l cluster.pingcap.com/tidbCluster={{ template "tidb-cluster.fullname" . }}
 3. Access tidb-cluster using MySQL client
-   export TIDB_SVC_IP=$(kubectl get svc -n {{ .Release.Namespace }} {{ .Values.clusterName }}-tidb -o jsonpath='{.spec.clusterIP}')
+   export TIDB_SVC_IP=$(kubectl get svc -n {{ .Release.Namespace }} {{ template "tidb-cluster.fullname" . }}-tidb -o jsonpath='{.spec.clusterIP}')
    mysql -h $TIDB_SVC_IP -P 4000 -u root -D test

@@ -2,33 +2,39 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  namespace: {{ .Release.Namespace }}
-  name: {{ .Values.clusterName }}-configure-grafana
+  name: {{ template "tidb-cluster.monitor-configurator.fullname" . }}
   labels:
-    app: {{ .Values.clusterName }}-monitor
+    app: {{ template "tidb-cluster.name" . }}
+    component: monitor-configurator
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 spec:
   template:
     metadata:
-      name: {{ .Values.clusterName }}-configure-grafana
+      labels:
+        app: {{ template "tidb-cluster.name" . }}
+        component: monitor-configurator
+        release: {{ .Release.Name }}-{{ .Chart.Version }}
     spec:
       restartPolicy: OnFailure
     {{- if .Values.rbac.create }}
-      serviceAccount: {{ .Values.clusterName }}-monitor
+      serviceAccount: {{ template "tidb-cluster.monitor.fullname" . }}
     {{- end }}
       containers:
       - name: tidb-dashboard-installer
         image: {{ .Values.monitor.dashboardInstaller.image }}
         args:
-          - {{ .Values.clusterName }}-grafana:3000
+          - {{ template "tidb-cluster.grafana.fullname" . }}:3000
         env:
           - name: GRAFANA_USERNAME
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.clusterName }}-grafana-secret
+                name: {{ template "tidb-cluster.monitor.fullname" . }}
                 key: username
           - name: GRAFANA_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.clusterName }}-grafana-secret
+                name: {{ template "tidb-cluster.monitor.fullname" . }}
                 key: password
 {{- end }}

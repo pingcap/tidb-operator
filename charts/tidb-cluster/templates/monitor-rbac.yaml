@@ -1,31 +1,47 @@
 {{- if .Values.monitor.create }}
 {{- if .Values.rbac.create }}
-kind: ClusterRole
+kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ .Release.Namespace }}:{{ .Values.clusterName }}-monitor
+  name: {{ template "tidb-cluster.monitor.fullname" . }}
+  labels:
+    app: {{ template "tidb-cluster.name" . }}
+    component: monitor
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 rules:
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get", "watch", "list"]
 ---
-kind: ClusterRoleBinding
+kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ .Release.Namespace }}:{{ .Values.clusterName }}-monitor
+  name: {{ template "tidb-cluster.monitor.fullname" . }}
+  labels:
+    app: {{ template "tidb-cluster.name" . }}
+    component: monitor
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 subjects:
 - kind: ServiceAccount
-  name: {{ .Values.clusterName }}-monitor
-  namespace: {{ .Release.Namespace }}
+  name: {{ template "tidb-cluster.monitor.fullname" . }}
 roleRef:
-  kind: ClusterRole
-  name: {{ .Release.Namespace }}:{{ .Values.clusterName }}-monitor
+  kind: Role
+  name: {{ template "tidb-cluster.monitor.fullname" . }}
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  namespace: {{ .Release.Namespace }}
-  name: {{ .Values.clusterName }}-monitor
+  name: {{ template "tidb-cluster.monitor.fullname" . }}
+  labels:
+    app: {{ template "tidb-cluster.name" . }}
+    component: monitor
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 {{- end }}
 {{- end }}

@@ -6,7 +6,7 @@ rbac:
 # if localtime is false, container timezone would be UTC+0
 # localtime should be set to false if the K8s environment doesn't have /etc/localtime
 # on host, e.g. Docker for Mac, Minikube, DinD
-localtime: true
+localtime: false
 # operatorImage is TiDB Operator image
 operatorImage: pingcap/tidb-operator:latest
 imagePullPolicy: IfNotPresent

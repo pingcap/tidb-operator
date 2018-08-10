@@ -2,10 +2,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Release.Namespace }}
-  name: {{ .Values.clusterName }}-privileged-tidb
+  name: {{ template "tidb-cluster.privileged-tidb.fullname" . }}
   labels:
-    app: {{ .Values.clusterName }}-privileged-tidb
+    app: {{ template "tidb-cluster.name" . }}
+    component: privileged-tidb
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 spec:
   type: {{ .Values.privilegedTidb.service.type }}
   ports:
@@ -19,5 +22,7 @@ spec:
   {{- end }}
 {{- end }}
   selector:
-    app: {{ .Values.clusterName }}-privileged-tidb
+    app: {{ template "tidb-cluster.name" . }}
+    component: privileged-tidb
+    release: {{ .Release.Name }}-{{ .Chart.Version }}
 {{- end }}

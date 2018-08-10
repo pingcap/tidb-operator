@@ -3,7 +3,13 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ .Release.Namespace }}:tidb-controller-manager
+  name: {{ .Release.Namespace }}:{{ template "tidb-operator.fullname" . }}
+  labels:
+    app: {{ template "tidb-operator.name" . }}
+    component: controller-manager
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 rules:
 - apiGroups: [""]
   resources:
@@ -38,21 +44,32 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ .Release.Namespace }}:tidb-controller-manager
+  name: {{ .Release.Namespace }}:{{ template "tidb-operator.fullname" . }}
+  labels:
+    app: {{ template "tidb-operator.name" . }}
+    component: controller-manager
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 subjects:
 - kind: ServiceAccount
-  name: tidb-controller-manager
+  name: {{ template "tidb-operator.fullname" . }}
   namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
-  name: {{ .Release.Namespace }}:tidb-controller-manager
+  name: {{ .Release.Namespace }}:{{ template "tidb-operator.fullname" . }}
   apiGroup: rbac.authorization.k8s.io
 {{- else }}
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: tidb-controller-manager
-  namespace: {{ .Release.Namespace }}
+  name: {{ template "tidb-operator.fullname" . }}
+  labels:
+    app: {{ template "tidb-operator.name" . }}
+    component: controller-manager
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 rules:
 - apiGroups: [""]
   resources:
@@ -78,21 +95,30 @@ rules:
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: tidb-controller-manager
-  namespace: {{ .Release.Namespace }}
+  name: {{ template "tidb-operator.fullname" . }}
+  labels:
+    app: {{ template "tidb-operator.name" . }}
+    component: controller-manager
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 subjects:
 - kind: ServiceAccount
-  name: tidb-controller-manager
-  namespace: {{ .Release.Namespace }}
+  name: {{ template "tidb-operator.fullname" . }}
 roleRef:
   kind: Role
-  name: tidb-controller-manager
+  name: {{ template "tidb-operator.fullname" . }}
   apiGroup: rbac.authorization.k8s.io
 {{- end }}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  namespace: {{ .Release.Namespace }}
-  name: tidb-controller-manager
+  name: {{ template "tidb-operator.fullname" . }}
+  labels:
+    app: {{ template "tidb-operator.name" . }}
+    component: controller-manager
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 {{- end }}
