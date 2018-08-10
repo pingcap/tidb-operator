@@ -51,6 +51,16 @@ const (
 	UnknownMemberType MemberType = "unknown"
 )
 
+// MemberPhase is the current state of member
+type MemberPhase string
+
+const (
+	// Normal represents normal state of TiDB cluster.
+	Normal MemberPhase = "Normal"
+	// Upgrade represents the upgrade state of TiDB cluster.
+	Upgrade MemberPhase = "Upgrade"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -152,6 +162,7 @@ type ResourceRequirement struct {
 
 // PDStatus is PD status
 type PDStatus struct {
+	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	Members     map[string]PDMember     `json:"members,omitempty"`
 }
@@ -168,6 +179,7 @@ type PDMember struct {
 
 // TiDBStatus is TiDB status
 type TiDBStatus struct {
+	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	Members     map[string]TiDBMember   `json:"members,omitempty"`
 }
@@ -179,6 +191,7 @@ type TiDBMember struct {
 
 // TiKVStatus is TiKV status
 type TiKVStatus struct {
+	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	Stores      TiKVStores              `json:"stores,omitempty"`
 }
