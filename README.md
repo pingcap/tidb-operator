@@ -7,23 +7,23 @@ TiDB Operator manages [TiDB](https://github.com/pingcap/tidb) clusters on [Kuber
 
 ## Features
 
-- __Safely scaling TiDB cluster__
+- __Safely scaling the TiDB cluster__
 
-    TiDB Operator empowers horizontal scalability of TiDB on the cloud.
+    TiDB Operator empowers TiDB with horizontal scalability on the cloud.
 
-- __Rolling upgrade TiDB cluster__
+- __Rolling update of the TiDB cluster__
 
-    Graceful rolling upgrade TiDB cluster in order, making zero-downtime of TiDB cluster.
+    Gracefully perform rolling updates for the TiDB cluster in order, achieving zero-downtime of the TiDB cluster.
 
 - __Multi-tenant support__
 
-    Users can deploy and manage multiple TiDB cluster on a single Kubernetes easily.
+    Users can deploy and manage multiple TiDB clusters on a single Kubernetes cluster easily.
 
-- __Auto fail-over__ (WIP)
+- __Automatic failover__ (WIP)
 
-    TiDB Operator will automatically do fail-over for your TiDB cluster when node failures.
+    TiDB Operator automatically performs failover for your TiDB cluster when node failures occur.
 
-- __Support Kubernetes package manager__
+- __Kubernetes package manager support__
 
     By embracing Kubernetes package manager [Helm](https://helm.sh), users can easily deploy TiDB clusters with only one command.
 

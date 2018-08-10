@@ -1,13 +1,13 @@
 # Building TiDB Operator from source code
 
 ## Go
-TiDB Operator is written in [Go](https://golang.org). If you don't have a Go development environment, please [set one up](https://golang.org/doc/code.html).
+TiDB Operator is written in [Go](https://golang.org). If you don't have a Go development environment, [set one up](https://golang.org/doc/code.html).
 
-The version of GO should be 1.9 or above.
+The version of Go should be 1.9 or later.
 
-After installation, you'll need `GOPATH` defined, and `PATH` modified to access your Go binaries.
+After Go is installed, you need to define `GOPATH` and modify `PATH` modified to access your Go binaries.
 
-A common setup is the following but you could always google a setup for your own flavor.
+You can configure them as follows, or you can Google a setup as you like.
 
 ```sh
 $ export GOPATH=$HOME/go
@@ -61,7 +61,7 @@ $ cd $working_dir/tidb-operator
 $ git remote add upstream git@github.com:pingcap/tidb-operator.git
 ```
 
-Since you don't have write access to upstream repo, you should disable pushing to upstream master
+Since you don't have write access to the upstream repository, you need to disable pushing to upstream master:
 
 ```sh
 $ git remote set-url --push upstream no_push
@@ -102,7 +102,7 @@ You can now edit the code on the `myfeature` branch.
 
 #### Run unit tests
 
-Before run your code in a real kubernetes cluster, you should make sure all unit tests pass.
+Before running your code in a real Kubernetes cluster, make sure it passes all unit tests.
 
 ```sh
 $ make test
@@ -110,23 +110,23 @@ $ make test
 
 #### Run e2e tests
 
-For e2e tests, we recommend DinD K8s environment, follow [this guide](./local-dind-tutorial.md) to spin up a local DinD K8s cluster.
+For e2e tests, we recommend DinD K8s environment. Follow [this guide](./local-dind-tutorial.md) to spin up a local DinD K8s cluster.
 
-You should also deploy a registry in DinD, so you can push and use your docker images in DinD K8s.
+You should also deploy a registry in DinD, so you can push and use your Docker images in DinD K8s.
 
 ```sh
 $ ./manifests/local-dind/deploy-registry.sh
 $ kubectl port-forward svc/registry-proxy 5000:5000 --namespace=kube-system
 ```
 
-Then you can build and push Docker images to DinD registry.
+Then you can build and push Docker images to the DinD registry.
 
 ```sh
 $ make docker-push
 $ make e2e-docker-push
 ```
 
-After Docker images are pushed to DinD Docker registry. You can run e2e tests:
+After Docker images are pushed to the DinD Docker registry, run e2e tests:
 
 ```sh
 $ kubectl apply -f manifests/tidb-operator-e2e.yaml
@@ -134,7 +134,7 @@ $ kubectl apply -f manifests/tidb-operator-e2e.yaml
 
 ### Step 5: Keep your branch in sync
 
-While on your myfeature branch, run the following commands:
+While on your `myfeature` branch, run the following commands:
 
 ```sh
 $ git fetch upstream
@@ -154,7 +154,7 @@ in a few cycles.
 
 ### Step 7: Push
 
-When ready to review (or just to establish an offsite backup or your work),
+When your commit is ready for review (or just to establish an offsite backup of your work),
 push your branch to your fork on `github.com`:
 
 ```sh

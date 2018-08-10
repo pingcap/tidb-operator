@@ -1,56 +1,57 @@
+# Deploy TiDB to Kubernetes on your laptop
+
 This document describes how to deploy a TiDB cluster to Kubernetes on your laptop for development or testing.
 
 Docker in Docker (DinD) runs Docker containers as virtual machines and runs another layer of Docker containers inside the first layer of Docker containers. [kubeadm-dind-cluster](https://github.com/kubernetes-sigs/kubeadm-dind-cluster) uses this technology to run the Kubernetes cluster in Docker containers.
 
-# Prerequisites
+## Prerequisites
 
 Before deploying a TiDB cluster to Kubernetes, make sure the following requirements are satisfied:
 
 * [Docker](https://docs.docker.com/install/) 17.03 or later
 * [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl) 1.10 or later
 
-# Deploy a Kubernetes cluster using DinD
+## Step 1: Deploy a Kubernetes cluster using DinD
 
 1. Use DinD to install and deploy a multiple-node Kubernetes cluster:
 
-```sh
-$ wget https://cdn.rawgit.com/kubernetes-sigs/kubeadm-dind-cluster/master/fixed/dind-cluster-v1.10.sh
-$ chmod +x dind-cluster-v1.10.sh
-$ NUM_NODES=4 ./dind-cluster-v1.10.sh up
-```
+    ```sh
+    $ wget https://cdn.rawgit.com/kubernetes-sigs/kubeadm-dind-cluster/master/fixed/dind-cluster-v1.10.sh
+    $ chmod +x dind-cluster-v1.10.sh
+    $ NUM_NODES=4 ./dind-cluster-v1.10.sh up
+    ```
 
-*Note*: If you fail to pull the Docker images due to GFW, you can try the following method (the Docker images used are pulled from [UCloud Docker Registry](https://docs.ucloud.cn/compute/uhub/index)):
+    **Note:** If you fail to pull the Docker images due to GFW, you can try the following method (the Docker images used are pulled from [UCloud Docker Registry](https://docs.ucloud.cn/compute/uhub/index)):
 
-```sh
-$ git clone https://github.com/pingcap/kubeadm-dind-cluster
-$ cd kubeadm-dind-cluster
-$ NUM_NODES=4 tools/multi_k8s_dind_cluster_manager.sh rebuild e2e-v1.10
-```
+    ```sh
+    $ git clone https://github.com/pingcap/kubeadm-dind-cluster
+    $ cd kubeadm-dind-cluster
+    $ NUM_NODES=4 tools/multi_k8s_dind_cluster_manager.sh rebuild e2e-v1.10
+    ```
 
-2. After the DinD cluster bootstrap is done, use the following command to verify the kubernetes cluster is up and running:
+2. After the DinD cluster bootstrap is done, use the following command to verify the Kubernetes cluster is up and running:
 
-```sh
-$ kubectl get node,componentstatus
-$ kubectl get po -n kube-system
-```
+    ```sh
+    $ kubectl get node,componentstatus
+    $ kubectl get po -n kube-system
+    ```
 
-3. Now the cluster is up and running, we need to install Kubernetes package manager [Helm](https://helm.sh) into the cluster.
-Later we'll use Helm to deploy and manage TiDB Operator and TiDB clusters.
+3. Now the cluster is up and running, we need to install the Kubernetes package manager [Helm](https://helm.sh) into the cluster, which is used to deploy and manage TiDB Operator and TiDB clusters later.
 
-```sh
-$ export os=linux # change `linux` to `darwin` if you use macOS
-$ wget https://storage.googleapis.com/kubernetes-helm/helm-v2.9.1-${os}-amd64.tar.gz
-$ tar xzf helm-v2.9.1-${os}-amd64.tar.gz
-$ sudo mv ${os}-amd64/helm /usr/local/bin
-$ kubectl apply -f manifests/tiller-rbac.yaml
-$ helm init --service-account=tiller --upgrade
-```
+    ```sh
+    $ os=linux # change `linux` to `darwin` if you use macOS
+    $ wget https://storage.googleapis.com/kubernetes-helm/helm-v2.9.1-${os}-amd64.tar.gz
+    $ tar xzf helm-v2.9.1-${os}-amd64.tar.gz
+    $ sudo mv ${os}-amd64/helm /usr/local/bin
+    $ kubectl apply -f manifests/tiller-rbac.yaml
+    $ helm init --service-account=tiller --upgrade
+    ```
 
-*Note*: If the tiller pod fail to start due to image pull failure because of GFW, you can replace the last command with `helm init --service-account=tiller --upgrade --tiller-image=uhub.ucloud.cn/pingcap/tiller:v2.9.1`
+    **Note:** If the tiller pod fails to start due to image pull failure because of GFW, you can replace the last command with `helm init --service-account=tiller --upgrade --tiller-image=uhub.ucloud.cn/pingcap/tiller:v2.9.1`
 
-# Setup local volumes
+## Step 2: Configure local volumes
 
-We'll use [LocalPersistentVolume](https://kubernetes.io/docs/concepts/storage/volumes/#local) to persistent PD/TiKV data. The [local persistent volume provisioner](https://github.com/kubernetes-incubator/external-storage/tree/master/local-volume) doesn't work out of the box in DinD, we need to modify its deployment. And it doesn't support [dynamic provision](https://github.com/kubernetes/community/pull/1914) yet, we need to manually mount disks or directories to mount points. It's a little tricky so we provide some [scripts](../manifests/local-dind) to help setup the development environment.
+[LocalPersistentVolume](https://kubernetes.io/docs/concepts/storage/volumes/#local) is used to persist the PD/TiKV data. The [local persistent volume provisioner](https://github.com/kubernetes-incubator/external-storage/tree/master/local-volume) doesn't work out of the box in DinD, so you need to modify its deployment. And it doesn't support [dynamic provision](https://github.com/kubernetes/community/pull/1914) yet, so you need to manually mount disks or directories to mount points. To simplify this operation, there are some [scripts](../manifests/local-dind) to help configure the development environment.
 
 ```sh
 $ # create directories for local volumes
@@ -63,7 +64,7 @@ $ # verify pv created
 $ kubectl get pv
 ```
 
-# Install tidb-operator in DinD K8s
+## Step 3: Install tidb-operator in DinD K8s
 
 ```sh
 $ kubectl apply -f manifests/crd.yaml
@@ -82,7 +83,7 @@ NAME                                       READY     STATUS    RESTARTS   AGE
 tidb-controller-manager-3999554014-1h171   1/1       Running   0          1m
 ```
 
-# Deploy TiDB clusters in DinD K8s
+## Step 4: Deploy TiDB clusters in DinD K8s
 
 ```sh
 $ helm install charts/tidb-cluster --name=tidb-cluster --namespace=tidb
@@ -129,25 +130,25 @@ demo-cluster-tikv-1                        2/2       Running     0          1m
 demo-cluster-tikv-2                        2/2       Running     0          1m
 ```
 
-To access TiDB cluster, we have to use `kubectl port-forward` to expose the services to host.
+To access the TiDB cluster, use `kubectl port-forward` to expose the services to host.
 
-* Access TiDB using MySQL client
+* Access TiDB using the MySQL client
 
-```sh
-$ kubectl port-forward svc/demo-cluster-tidb 4000:4000 --namespace=tidb
-$ mysql -h 127.0.0.1 -P 4000 -u root
-```
+    ```sh
+    $ kubectl port-forward svc/demo-cluster-tidb 4000:4000 --namespace=tidb
+    $ mysql -h 127.0.0.1 -P 4000 -u root
+    ```
 
-* View monitor dashboard
+* View the monitor dashboard
 
-```sh
-$ kubectl port-forward svc/demo-cluster-grafana 3000:3000 --namespace=tidb
-$ # then view the Grafana dashboard at http://localhost:3000 in your web browser
-```
+    ```sh
+    $ kubectl port-forward svc/demo-cluster-grafana 3000:3000 --namespace=tidb
+    $ # then view the Grafana dashboard at http://localhost:3000 in your web browser
+    ```
 
 ## Scale the TiDB cluster
 
-First configure charts/tidb-cluster/values.yaml file, for example to change the number of TiKV `replicas` to 5 and TiDB `replicas` to 3. Then run the following command.
+First configure the `charts/tidb-cluster/values.yaml` file, for example, change the number of TiKV `replicas` to 5 and TiDB `replicas` to 3. Then run the following command:
 
 ```sh
 helm upgrade tidb-cluster charts/tidb-cluster --namespace=tidb
@@ -155,7 +156,7 @@ helm upgrade tidb-cluster charts/tidb-cluster --namespace=tidb
 
 ## Upgrade the TiDB cluster
 
-First configure charts/tidb-cluster/values.yaml file, for example to change PD/TiKV/TiDB `image` version from v2.0.4 to v2.0.5. Then run the following command.
+First configure the `charts/tidb-cluster/values.yaml` file, for example, changing PD/TiKV/TiDB `image` version from v2.0.4 to v2.0.5. Then run the following command:
 
 ```sh
 helm upgrade tidb-cluster charts/tidb-cluster --namespace=tidb
