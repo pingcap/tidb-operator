@@ -471,7 +471,7 @@ func (pmm *pdMemberManager) setInitialReplicas(oldSet *apps.StatefulSet, newSet 
 		initialReplicas = oldInitialReplicas
 
 		// If new pd statefulset replica is smaller than existing statefulset annotation replica,
-		// we should reset it to new statefulset replica. This happens when pd has bees scaled down.
+		// we should reset it to new statefulset replica. This happens when pd has been scaled down.
 		if initialReplicas > int(*newSet.Spec.Replicas) {
 			initialReplicas = int(*newSet.Spec.Replicas)
 		}
