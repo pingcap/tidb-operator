@@ -72,7 +72,12 @@ func (rpc *realPVControl) UpdateMetaInfo(tc *v1.TidbCluster, pv *corev1.Persiste
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	pvLabels := pv.GetLabels()
+	if pv.Annotations == nil {
+		pv.Annotations = make(map[string]string)
+	}
+	if pv.Labels == nil {
+		pv.Labels = make(map[string]string)
+	}
 	pvName := pv.GetName()
 	pvcRef := pv.Spec.ClaimRef
 	if pvcRef == nil {
@@ -91,34 +96,30 @@ func (rpc *realPVControl) UpdateMetaInfo(tc *v1.TidbCluster, pv *corev1.Persiste
 		return nil
 	}
 
-	pvcLabels := pvc.GetLabels()
 	app := pvc.Labels[label.AppLabelKey]
 	podName := pvc.Annotations[label.AnnPodNameKey]
-	clusterID := pvcLabels[label.ClusterIDLabelKey]
-	memberID := pvcLabels[label.MemberIDLabelKey]
-	storeID := pvcLabels[label.StoreIDLabelKey]
+	clusterID := pvc.Labels[label.ClusterIDLabelKey]
+	memberID := pvc.Labels[label.MemberIDLabelKey]
+	storeID := pvc.Labels[label.StoreIDLabelKey]
 
-	if pv.Annotations == nil {
-		pv.Annotations = make(map[string]string)
-	}
-	if pvLabels[label.NamespaceLabelKey] == ns &&
-		pvLabels[label.AppLabelKey] == app &&
-		pvLabels[label.ClusterIDLabelKey] == clusterID &&
-		pvLabels[label.MemberIDLabelKey] == memberID &&
-		pvLabels[label.StoreIDLabelKey] == storeID &&
+	if pv.Labels[label.NamespaceLabelKey] == ns &&
+		pv.Labels[label.AppLabelKey] == app &&
+		pv.Labels[label.ClusterIDLabelKey] == clusterID &&
+		pv.Labels[label.MemberIDLabelKey] == memberID &&
+		pv.Labels[label.StoreIDLabelKey] == storeID &&
 		pv.Annotations[label.AnnPodNameKey] == podName {
 		glog.V(4).Infof("pv %s already has labels and annotations synced, skipping. TidbCluster: %s/%s", pvName, ns, tcName)
 		return nil
 	}
 
-	pvLabels[label.NamespaceLabelKey] = ns
-	pvLabels[label.OwnerLabelKey] = pvcLabels[label.OwnerLabelKey]
-	pvLabels[label.ClusterLabelKey] = pvcLabels[label.ClusterLabelKey]
+	pv.Labels[label.NamespaceLabelKey] = ns
+	pv.Labels[label.OwnerLabelKey] = pvc.Labels[label.OwnerLabelKey]
+	pv.Labels[label.ClusterLabelKey] = pvc.Labels[label.ClusterLabelKey]
 
-	setIfNotEmpty(pvLabels, label.AppLabelKey, app)
-	setIfNotEmpty(pvLabels, label.ClusterIDLabelKey, clusterID)
-	setIfNotEmpty(pvLabels, label.MemberIDLabelKey, memberID)
-	setIfNotEmpty(pvLabels, label.StoreIDLabelKey, storeID)
+	setIfNotEmpty(pv.Labels, label.AppLabelKey, app)
+	setIfNotEmpty(pv.Labels, label.ClusterIDLabelKey, clusterID)
+	setIfNotEmpty(pv.Labels, label.MemberIDLabelKey, memberID)
+	setIfNotEmpty(pv.Labels, label.StoreIDLabelKey, storeID)
 	setIfNotEmpty(pv.Annotations, label.AnnPodNameKey, podName)
 
 	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
