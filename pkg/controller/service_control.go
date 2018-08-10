@@ -17,9 +17,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
-	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1"
-	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
+	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -36,9 +36,9 @@ var ExternalTrafficPolicy string
 
 // ServiceControlInterface manages Services used in TidbCluster
 type ServiceControlInterface interface {
-	CreateService(*v1.TidbCluster, *corev1.Service) error
-	UpdateService(*v1.TidbCluster, *corev1.Service) error
-	DeleteService(*v1.TidbCluster, *corev1.Service) error
+	CreateService(*v1alpha1.TidbCluster, *corev1.Service) error
+	UpdateService(*v1alpha1.TidbCluster, *corev1.Service) error
+	DeleteService(*v1alpha1.TidbCluster, *corev1.Service) error
 }
 
 type realServiceControl struct {
@@ -56,7 +56,7 @@ func NewRealServiceControl(kubeCli kubernetes.Interface, svcLister corelisters.S
 	}
 }
 
-func (sc *realServiceControl) CreateService(tc *v1.TidbCluster, svc *corev1.Service) error {
+func (sc *realServiceControl) CreateService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
 	_, err := sc.kubeCli.CoreV1().Services(tc.Namespace).Create(svc)
 	if apierrors.IsAlreadyExists(err) {
 		return err
@@ -65,7 +65,7 @@ func (sc *realServiceControl) CreateService(tc *v1.TidbCluster, svc *corev1.Serv
 	return err
 }
 
-func (sc *realServiceControl) UpdateService(tc *v1.TidbCluster, svc *corev1.Service) error {
+func (sc *realServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		_, updateErr := sc.kubeCli.CoreV1().Services(tc.Namespace).Update(svc)
 		if updateErr == nil {
@@ -82,13 +82,13 @@ func (sc *realServiceControl) UpdateService(tc *v1.TidbCluster, svc *corev1.Serv
 	return err
 }
 
-func (sc *realServiceControl) DeleteService(tc *v1.TidbCluster, svc *corev1.Service) error {
+func (sc *realServiceControl) DeleteService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
 	err := sc.kubeCli.CoreV1().Services(tc.Namespace).Delete(svc.Name, nil)
 	sc.recordServiceEvent("delete", tc, svc, err)
 	return err
 }
 
-func (sc *realServiceControl) recordServiceEvent(verb string, tc *v1.TidbCluster, svc *corev1.Service, err error) {
+func (sc *realServiceControl) recordServiceEvent(verb string, tc *v1alpha1.TidbCluster, svc *corev1.Service, err error) {
 	tcName := tc.Name
 	svcName := svc.Name
 	if err == nil {
@@ -149,7 +149,7 @@ func (ssc *FakeServiceControl) SetDeleteServiceError(err error, after int) {
 }
 
 // CreateService adds the service to SvcIndexer
-func (ssc *FakeServiceControl) CreateService(tc *v1.TidbCluster, svc *corev1.Service) error {
+func (ssc *FakeServiceControl) CreateService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
 	defer ssc.createServiceTracker.inc()
 	if ssc.createServiceTracker.errorReady() {
 		defer ssc.createServiceTracker.reset()
@@ -160,7 +160,7 @@ func (ssc *FakeServiceControl) CreateService(tc *v1.TidbCluster, svc *corev1.Ser
 }
 
 // UpdateService updates the service of SvcIndexer
-func (ssc *FakeServiceControl) UpdateService(tc *v1.TidbCluster, svc *corev1.Service) error {
+func (ssc *FakeServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
 	defer ssc.updateServiceTracker.inc()
 	if ssc.updateServiceTracker.errorReady() {
 		defer ssc.updateServiceTracker.reset()
@@ -171,7 +171,7 @@ func (ssc *FakeServiceControl) UpdateService(tc *v1.TidbCluster, svc *corev1.Ser
 }
 
 // DeleteService deletes the service of SvcIndexer
-func (ssc *FakeServiceControl) DeleteService(tc *v1.TidbCluster, svc *corev1.Service) error {
+func (ssc *FakeServiceControl) DeleteService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
 	return nil
 }
 

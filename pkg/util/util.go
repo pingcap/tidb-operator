@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -142,7 +142,7 @@ func AffinityForNodeSelector(namespace string, required bool, antiLabels, select
 
 // ResourceRequirement creates ResourceRequirements for MemberSpec
 // Optionally pass in a default value
-func ResourceRequirement(spec v1.ContainerSpec, defaultRequests ...corev1.ResourceRequirements) corev1.ResourceRequirements {
+func ResourceRequirement(spec v1alpha1.ContainerSpec, defaultRequests ...corev1.ResourceRequirements) corev1.ResourceRequirements {
 	rr := corev1.ResourceRequirements{}
 	if len(defaultRequests) > 0 {
 		defaultRequest := defaultRequests[0]

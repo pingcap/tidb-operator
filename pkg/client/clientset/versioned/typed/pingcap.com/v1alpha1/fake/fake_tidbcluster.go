@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	pingcapcomv1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	v1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -30,29 +30,29 @@ import (
 
 // FakeTidbClusters implements TidbClusterInterface
 type FakeTidbClusters struct {
-	Fake *FakePingcapV1
+	Fake *FakePingcapV1alpha1
 	ns   string
 }
 
-var tidbclustersResource = schema.GroupVersionResource{Group: "pingcap.com", Version: "v1", Resource: "tidbclusters"}
+var tidbclustersResource = schema.GroupVersionResource{Group: "pingcap.com", Version: "v1alpha1", Resource: "tidbclusters"}
 
-var tidbclustersKind = schema.GroupVersionKind{Group: "pingcap.com", Version: "v1", Kind: "TidbCluster"}
+var tidbclustersKind = schema.GroupVersionKind{Group: "pingcap.com", Version: "v1alpha1", Kind: "TidbCluster"}
 
 // Get takes name of the tidbCluster, and returns the corresponding tidbCluster object, and an error if there is any.
-func (c *FakeTidbClusters) Get(name string, options v1.GetOptions) (result *pingcapcomv1.TidbCluster, err error) {
+func (c *FakeTidbClusters) Get(name string, options v1.GetOptions) (result *v1alpha1.TidbCluster, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(tidbclustersResource, c.ns, name), &pingcapcomv1.TidbCluster{})
+		Invokes(testing.NewGetAction(tidbclustersResource, c.ns, name), &v1alpha1.TidbCluster{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*pingcapcomv1.TidbCluster), err
+	return obj.(*v1alpha1.TidbCluster), err
 }
 
 // List takes label and field selectors, and returns the list of TidbClusters that match those selectors.
-func (c *FakeTidbClusters) List(opts v1.ListOptions) (result *pingcapcomv1.TidbClusterList, err error) {
+func (c *FakeTidbClusters) List(opts v1.ListOptions) (result *v1alpha1.TidbClusterList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(tidbclustersResource, tidbclustersKind, c.ns, opts), &pingcapcomv1.TidbClusterList{})
+		Invokes(testing.NewListAction(tidbclustersResource, tidbclustersKind, c.ns, opts), &v1alpha1.TidbClusterList{})
 
 	if obj == nil {
 		return nil, err
@@ -62,8 +62,8 @@ func (c *FakeTidbClusters) List(opts v1.ListOptions) (result *pingcapcomv1.TidbC
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &pingcapcomv1.TidbClusterList{}
-	for _, item := range obj.(*pingcapcomv1.TidbClusterList).Items {
+	list := &v1alpha1.TidbClusterList{}
+	for _, item := range obj.(*v1alpha1.TidbClusterList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -79,43 +79,43 @@ func (c *FakeTidbClusters) Watch(opts v1.ListOptions) (watch.Interface, error) {
 }
 
 // Create takes the representation of a tidbCluster and creates it.  Returns the server's representation of the tidbCluster, and an error, if there is any.
-func (c *FakeTidbClusters) Create(tidbCluster *pingcapcomv1.TidbCluster) (result *pingcapcomv1.TidbCluster, err error) {
+func (c *FakeTidbClusters) Create(tidbCluster *v1alpha1.TidbCluster) (result *v1alpha1.TidbCluster, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(tidbclustersResource, c.ns, tidbCluster), &pingcapcomv1.TidbCluster{})
+		Invokes(testing.NewCreateAction(tidbclustersResource, c.ns, tidbCluster), &v1alpha1.TidbCluster{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*pingcapcomv1.TidbCluster), err
+	return obj.(*v1alpha1.TidbCluster), err
 }
 
 // Update takes the representation of a tidbCluster and updates it. Returns the server's representation of the tidbCluster, and an error, if there is any.
-func (c *FakeTidbClusters) Update(tidbCluster *pingcapcomv1.TidbCluster) (result *pingcapcomv1.TidbCluster, err error) {
+func (c *FakeTidbClusters) Update(tidbCluster *v1alpha1.TidbCluster) (result *v1alpha1.TidbCluster, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(tidbclustersResource, c.ns, tidbCluster), &pingcapcomv1.TidbCluster{})
+		Invokes(testing.NewUpdateAction(tidbclustersResource, c.ns, tidbCluster), &v1alpha1.TidbCluster{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*pingcapcomv1.TidbCluster), err
+	return obj.(*v1alpha1.TidbCluster), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTidbClusters) UpdateStatus(tidbCluster *pingcapcomv1.TidbCluster) (*pingcapcomv1.TidbCluster, error) {
+func (c *FakeTidbClusters) UpdateStatus(tidbCluster *v1alpha1.TidbCluster) (*v1alpha1.TidbCluster, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(tidbclustersResource, "status", c.ns, tidbCluster), &pingcapcomv1.TidbCluster{})
+		Invokes(testing.NewUpdateSubresourceAction(tidbclustersResource, "status", c.ns, tidbCluster), &v1alpha1.TidbCluster{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*pingcapcomv1.TidbCluster), err
+	return obj.(*v1alpha1.TidbCluster), err
 }
 
 // Delete takes name of the tidbCluster and deletes it. Returns an error if one occurs.
 func (c *FakeTidbClusters) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(tidbclustersResource, c.ns, name), &pingcapcomv1.TidbCluster{})
+		Invokes(testing.NewDeleteAction(tidbclustersResource, c.ns, name), &v1alpha1.TidbCluster{})
 
 	return err
 }
@@ -124,17 +124,17 @@ func (c *FakeTidbClusters) Delete(name string, options *v1.DeleteOptions) error 
 func (c *FakeTidbClusters) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(tidbclustersResource, c.ns, listOptions)
 
-	_, err := c.Fake.Invokes(action, &pingcapcomv1.TidbClusterList{})
+	_, err := c.Fake.Invokes(action, &v1alpha1.TidbClusterList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched tidbCluster.
-func (c *FakeTidbClusters) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *pingcapcomv1.TidbCluster, err error) {
+func (c *FakeTidbClusters) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.TidbCluster, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(tidbclustersResource, c.ns, name, data, subresources...), &pingcapcomv1.TidbCluster{})
+		Invokes(testing.NewPatchSubresourceAction(tidbclustersResource, c.ns, name, data, subresources...), &v1alpha1.TidbCluster{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*pingcapcomv1.TidbCluster), err
+	return obj.(*v1alpha1.TidbCluster), err
 }

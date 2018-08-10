@@ -13,11 +13,11 @@
 
 package membermanager
 
-import "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+import "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 
 // MemberManager implements the logic for syncing all TidbCluster members.
 type MemberManager interface {
 	// Sync	implements the logic for syncing all TidbCluster members.
 	// Implements can only modify the status of TidbCluster.
-	Sync(*v1.TidbCluster) error
+	Sync(*v1alpha1.TidbCluster) error
 }
