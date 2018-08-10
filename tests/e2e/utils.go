@@ -21,7 +21,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/util/label"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
