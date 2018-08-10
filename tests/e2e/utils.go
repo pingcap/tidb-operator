@@ -71,7 +71,7 @@ func clearOperator() error {
 		if err != nil || result != "" {
 			return false, nil
 		}
-		result, _ = execCmd(fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s 2>/dev/null|grep Release", label.NamespaceLabelKey, ns, label.ClusterLabelKey, clusterName))
+		result, _ = execCmd(fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s 2>/dev/null|grep Released", label.NamespaceLabelKey, ns, label.ClusterLabelKey, clusterName))
 		if result != "" {
 			return false, nil
 		}
