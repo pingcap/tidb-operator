@@ -21,7 +21,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/util/label"
@@ -45,7 +45,7 @@ func testCreate() {
 }
 
 func allMembersRunning() (bool, error) {
-	tc, err := cli.PingcapV1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
+	tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 	if err != nil {
 		return false, nil
 	}
@@ -127,7 +127,7 @@ func dataIsCorrect() (bool, error) {
 	return false, nil
 }
 
-func pdMemberRunning(tc *v1.TidbCluster) (bool, error) {
+func pdMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 	pdSetName := controller.PDMemberName(clusterName)
 	pdSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(pdSetName, metav1.GetOptions{})
 	if err != nil {
@@ -175,7 +175,7 @@ func pdMemberRunning(tc *v1.TidbCluster) (bool, error) {
 	return true, nil
 }
 
-func tikvMemberRunning(tc *v1.TidbCluster) (bool, error) {
+func tikvMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 	tikvSetName := controller.TiKVMemberName(clusterName)
 
 	tikvSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
@@ -219,7 +219,7 @@ func tikvMemberRunning(tc *v1.TidbCluster) (bool, error) {
 	return true, nil
 }
 
-func tidbMemberRunning(tc *v1.TidbCluster) (bool, error) {
+func tidbMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 	tidbSetName := controller.TiDBMemberName(clusterName)
 	tidbSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
@@ -249,7 +249,7 @@ func tidbMemberRunning(tc *v1.TidbCluster) (bool, error) {
 	return true, nil
 }
 
-func reclaimPolicySynced(tc *v1.TidbCluster) (bool, error) {
+func reclaimPolicySynced(tc *v1alpha1.TidbCluster) (bool, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	labelSelector := label.New().Cluster(tcName)

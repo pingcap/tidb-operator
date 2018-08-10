@@ -16,7 +16,7 @@ package membermanager
 import (
 	"reflect"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util/label"
 	apps "k8s.io/api/apps/v1beta1"
@@ -52,12 +52,12 @@ type SvcConfig struct {
 type StateSvcMemberManager struct {
 	StateSvcControlList
 	SvcList                 []SvcConfig
-	MemberType              v1.MemberType
+	MemberType              v1alpha1.MemberType
 	pdctl                   controller.PDControlInterface
-	StatusUpdate            func(*v1.TidbCluster, *apps.StatefulSetStatus) error
-	GetNewSetForTidbCluster func(*v1.TidbCluster) (*apps.StatefulSet, error)
-	needReduce              func(*v1.TidbCluster, int32) bool
-	removeOneMember         func(controller.PDControlInterface, *v1.TidbCluster, int32) error
+	StatusUpdate            func(*v1alpha1.TidbCluster, *apps.StatefulSetStatus) error
+	GetNewSetForTidbCluster func(*v1alpha1.TidbCluster) (*apps.StatefulSet, error)
+	needReduce              func(*v1alpha1.TidbCluster, int32) bool
+	removeOneMember         func(controller.PDControlInterface, *v1alpha1.TidbCluster, int32) error
 }
 
 var _ MemberManager = (*StateSvcMemberManager)(nil)
@@ -71,7 +71,7 @@ func NewStateSvcControlList(setControl controller.StatefulSetControlInterface,
 }
 
 // Sync fulfills the MemberManager interface
-func (ssmm *StateSvcMemberManager) Sync(tc *v1.TidbCluster) error {
+func (ssmm *StateSvcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	for _, svc := range ssmm.SvcList {
 		if err := ssmm.syncServiceForTidbCluster(tc, svc); err != nil {
 			return err
@@ -84,7 +84,7 @@ func (ssmm *StateSvcMemberManager) Sync(tc *v1.TidbCluster) error {
 	return nil
 }
 
-func (ssmm *StateSvcMemberManager) syncServiceForTidbCluster(tc *v1.TidbCluster, svcConfig SvcConfig) error {
+func (ssmm *StateSvcMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -108,7 +108,7 @@ func (ssmm *StateSvcMemberManager) syncServiceForTidbCluster(tc *v1.TidbCluster,
 	return nil
 }
 
-func (ssmm *StateSvcMemberManager) syncStatefulSetForTidbCluster(tc *v1.TidbCluster) error {
+func (ssmm *StateSvcMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -153,7 +153,7 @@ func (ssmm *StateSvcMemberManager) syncStatefulSetForTidbCluster(tc *v1.TidbClus
 	return nil
 }
 
-func (ssmm *StateSvcMemberManager) getNewServiceForTidbCluster(tc *v1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
+func (ssmm *StateSvcMemberManager) getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
 	svcName := svcConfig.MemberName(tcName)

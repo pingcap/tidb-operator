@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -35,7 +35,7 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                       string
-		prepare                    func(cluster *v1.TidbCluster)
+		prepare                    func(cluster *v1alpha1.TidbCluster)
 		errWhenCreateStatefulSet   bool
 		errWhenCreatePDService     bool
 		errWhenCreatePDPeerService bool
@@ -117,7 +117,7 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 		},
 		{
 			name: "tidbcluster's storage format is wrong",
-			prepare: func(tc *v1.TidbCluster) {
+			prepare: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PD.Requests.Storage = "100xxxxi"
 			},
 			errWhenCreateStatefulSet:   false,
@@ -172,7 +172,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                       string
-		modify                     func(cluster *v1.TidbCluster)
+		modify                     func(cluster *v1alpha1.TidbCluster)
 		pdHealth                   *controller.HealthInfo
 		errWhenUpdateStatefulSet   bool
 		errWhenUpdatePDService     bool
@@ -182,7 +182,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		expectPDServiceFn          func(*GomegaWithT, *corev1.Service, error)
 		expectPDPeerServiceFn      func(*GomegaWithT, *corev1.Service, error)
 		expectStatefulSetFn        func(*GomegaWithT, *apps.StatefulSet, error)
-		expectTidbClusterFn        func(*GomegaWithT, *v1.TidbCluster)
+		expectTidbClusterFn        func(*GomegaWithT, *v1alpha1.TidbCluster)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -253,9 +253,9 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 	tests := []testcase{
 		{
 			name: "normal",
-			modify: func(tc *v1.TidbCluster) {
+			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PD.Replicas = 5
-				tc.Spec.Services = []v1.Service{
+				tc.Spec.Services = []v1alpha1.Service{
 					{Name: "pd", Type: string(corev1.ServiceTypeNodePort)},
 				}
 			},
@@ -278,18 +278,18 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
 			},
-			expectTidbClusterFn: func(g *GomegaWithT, tc *v1.TidbCluster) {
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(*tc.Status.PD.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
-				g.Expect(tc.Status.PD.Members).To(Equal(map[string]v1.PDMember{
-					"pd1": v1.PDMember{Name: "pd1", ID: "1", ClientURL: "http://pd1:2379", Health: true},
-					"pd2": v1.PDMember{Name: "pd2", ID: "2", ClientURL: "http://pd2:2379", Health: true},
-					"pd3": v1.PDMember{Name: "pd3", ID: "3", ClientURL: "http://pd3:2379", Health: false},
+				g.Expect(tc.Status.PD.Members).To(Equal(map[string]v1alpha1.PDMember{
+					"pd1": v1alpha1.PDMember{Name: "pd1", ID: "1", ClientURL: "http://pd1:2379", Health: true},
+					"pd2": v1alpha1.PDMember{Name: "pd2", ID: "2", ClientURL: "http://pd2:2379", Health: true},
+					"pd3": v1alpha1.PDMember{Name: "pd3", ID: "3", ClientURL: "http://pd3:2379", Health: false},
 				}))
 			},
 		},
 		{
 			name: "tidbcluster's storage format is wrong",
-			modify: func(tc *v1.TidbCluster) {
+			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PD.Requests.Storage = "100xxxxi"
 			},
 			pdHealth: &controller.HealthInfo{Healths: []controller.MemberHealth{
@@ -307,8 +307,8 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		},
 		{
 			name: "error when update pd service",
-			modify: func(tc *v1.TidbCluster) {
-				tc.Spec.Services = []v1.Service{
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.Services = []v1alpha1.Service{
 					{Name: "pd", Type: string(corev1.ServiceTypeNodePort)},
 				}
 			},
@@ -327,7 +327,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		},
 		{
 			name: "error when update statefulset",
-			modify: func(tc *v1.TidbCluster) {
+			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PD.Replicas = 5
 			},
 			pdHealth: &controller.HealthInfo{Healths: []controller.MemberHealth{
@@ -348,7 +348,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		},
 		{
 			name: "error when sync pd status",
-			modify: func(tc *v1.TidbCluster) {
+			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PD.Replicas = 5
 			},
 			pdHealth: &controller.HealthInfo{Healths: []controller.MemberHealth{
@@ -367,7 +367,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(3))
 			},
-			expectTidbClusterFn: func(g *GomegaWithT, tc *v1.TidbCluster) {
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.PD.Members).To(BeNil())
 			},
 		},
@@ -383,7 +383,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1().TidbClusters()
+	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
 	pdControl := controller.NewFakePDControl()
@@ -397,22 +397,22 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	}, setControl, svcControl, pdControl
 }
 
-func newTidbClusterForPD() *v1.TidbCluster {
-	return &v1.TidbCluster{
+func newTidbClusterForPD() *v1alpha1.TidbCluster {
+	return &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
-			APIVersion: "pingcap.com/v1",
+			APIVersion: "pingcap.com/v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 		},
-		Spec: v1.TidbClusterSpec{
-			PD: v1.PDSpec{
-				ContainerSpec: v1.ContainerSpec{
+		Spec: v1alpha1.TidbClusterSpec{
+			PD: v1alpha1.PDSpec{
+				ContainerSpec: v1alpha1.ContainerSpec{
 					Image: "pd-test-image",
-					Requests: &v1.ResourceRequirement{
+					Requests: &v1alpha1.ResourceRequirement{
 						CPU:     "1",
 						Memory:  "2Gi",
 						Storage: "100Gi",
@@ -421,10 +421,10 @@ func newTidbClusterForPD() *v1.TidbCluster {
 				Replicas:         3,
 				StorageClassName: "my-storage-class",
 			},
-			TiKV: v1.TiKVSpec{
-				ContainerSpec: v1.ContainerSpec{
+			TiKV: v1alpha1.TiKVSpec{
+				ContainerSpec: v1alpha1.ContainerSpec{
 					Image: "tikv-test-image",
-					Requests: &v1.ResourceRequirement{
+					Requests: &v1alpha1.ResourceRequirement{
 						CPU:     "1",
 						Memory:  "2Gi",
 						Storage: "100Gi",
