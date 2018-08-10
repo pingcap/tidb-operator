@@ -1,10 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tidb-operator-e2e
+---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: tidb-operator-e2e
 subjects:
 - kind: ServiceAccount
-  namespace: pingcap
+  namespace: tidb-operator-e2e
   name: tidb-operator-e2e
 roleRef:
   kind: ClusterRole
@@ -14,13 +19,13 @@ roleRef:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  namespace: pingcap
+  namespace: tidb-operator-e2e
   name: tidb-operator-e2e
 ---
 apiVersion: v1
 kind: Pod
 metadata:
-  namespace: pingcap
+  namespace: tidb-operator-e2e
   name: tidb-operator-e2e
 spec:
   serviceAccount: tidb-operator-e2e
