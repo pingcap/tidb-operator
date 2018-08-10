@@ -16,9 +16,9 @@ package tidbcluster
 import (
 	"fmt"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1"
+	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/util/retry"
 )
@@ -28,7 +28,7 @@ import (
 type StatusUpdaterInterface interface {
 	// UpdateTidbClusterStatus sets the tidbCluster's Status to status. Implementations are required to retry on conflicts,
 	// but fail on other errors. If the returned error is nil tidbCluster's Status has been successfully set to status.
-	UpdateTidbClusterStatus(*v1.TidbCluster, *v1.TidbClusterStatus) error
+	UpdateTidbClusterStatus(*v1alpha1.TidbCluster, *v1alpha1.TidbClusterStatus) error
 }
 
 // NewRealTidbClusterStatusUpdater returns a StatusUpdaterInterface that updates the Status of a TidbCluster,
@@ -45,14 +45,14 @@ type realTidbClusterStatusUpdater struct {
 }
 
 func (tcs *realTidbClusterStatusUpdater) UpdateTidbClusterStatus(
-	tc *v1.TidbCluster,
-	status *v1.TidbClusterStatus) error {
+	tc *v1alpha1.TidbCluster,
+	status *v1alpha1.TidbClusterStatus) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		tc.Status = *status
-		_, updateErr := tcs.cli.PingcapV1().TidbClusters(ns).Update(tc)
+		_, updateErr := tcs.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 		if updateErr == nil {
 			return nil
 		}

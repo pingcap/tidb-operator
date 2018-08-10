@@ -18,7 +18,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util/label"
 	corev1 "k8s.io/api/core/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
@@ -30,7 +30,7 @@ import (
 
 // PVCControlInterface manages PVCs used in TidbCluster
 type PVCControlInterface interface {
-	UpdateMetaInfo(*v1.TidbCluster, *corev1.PersistentVolumeClaim, *corev1.Pod) error
+	UpdateMetaInfo(*v1alpha1.TidbCluster, *corev1.PersistentVolumeClaim, *corev1.Pod) error
 }
 
 type realPVCControl struct {
@@ -49,7 +49,7 @@ func NewRealPVCControl(
 	}
 }
 
-func (rpc *realPVCControl) UpdateMetaInfo(tc *v1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) error {
+func (rpc *realPVCControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	pvcName := pvc.GetName()
@@ -102,7 +102,7 @@ func (rpc *realPVCControl) UpdateMetaInfo(tc *v1.TidbCluster, pvc *corev1.Persis
 	return nil
 }
 
-func (rpc *realPVCControl) recordPVCEvent(verb string, tc *v1.TidbCluster, pvcName string, err error) {
+func (rpc *realPVCControl) recordPVCEvent(verb string, tc *v1alpha1.TidbCluster, pvcName string, err error) {
 	tcName := tc.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
@@ -140,7 +140,7 @@ func (fpc *FakePVCControl) SetUpdatePVCError(err error, after int) {
 }
 
 // UpdateMetaInfo update the meta info of pvc
-func (fpc *FakePVCControl) UpdateMetaInfo(tc *v1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) error {
+func (fpc *FakePVCControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) error {
 	defer fpc.updatePVCTracker.inc()
 	if fpc.updatePVCTracker.errorReady() {
 		defer fpc.updatePVCTracker.reset()

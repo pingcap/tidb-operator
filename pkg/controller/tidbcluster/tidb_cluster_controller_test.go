@@ -18,7 +18,7 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -47,7 +47,7 @@ func TestTidbClusterControllerAddStatefuSet(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                    string
-		modifySet               func(*v1.TidbCluster) *apps.StatefulSet
+		modifySet               func(*v1alpha1.TidbCluster) *apps.StatefulSet
 		addTidbClusterToIndexer bool
 		expectedLen             int
 	}
@@ -69,7 +69,7 @@ func TestTidbClusterControllerAddStatefuSet(t *testing.T) {
 	tests := []testcase{
 		{
 			name: "normal",
-			modifySet: func(tc *v1.TidbCluster) *apps.StatefulSet {
+			modifySet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 				return newStatefuSet(tc)
 			},
 			addTidbClusterToIndexer: true,
@@ -77,7 +77,7 @@ func TestTidbClusterControllerAddStatefuSet(t *testing.T) {
 		},
 		{
 			name: "have deletionTimestamp",
-			modifySet: func(tc *v1.TidbCluster) *apps.StatefulSet {
+			modifySet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 				set := newStatefuSet(tc)
 				set.DeletionTimestamp = &metav1.Time{Time: time.Now().Add(30 * time.Second)}
 				return set
@@ -87,7 +87,7 @@ func TestTidbClusterControllerAddStatefuSet(t *testing.T) {
 		},
 		{
 			name: "without controllerRef",
-			modifySet: func(tc *v1.TidbCluster) *apps.StatefulSet {
+			modifySet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 				set := newStatefuSet(tc)
 				set.OwnerReferences = nil
 				return set
@@ -97,7 +97,7 @@ func TestTidbClusterControllerAddStatefuSet(t *testing.T) {
 		},
 		{
 			name: "without tidbcluster",
-			modifySet: func(tc *v1.TidbCluster) *apps.StatefulSet {
+			modifySet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 				return newStatefuSet(tc)
 			},
 			addTidbClusterToIndexer: false,
@@ -114,8 +114,8 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                    string
-		initial                 func() *v1.TidbCluster
-		initialSet              func(*v1.TidbCluster) *apps.StatefulSet
+		initial                 func() *v1alpha1.TidbCluster
+		initialSet              func(*v1alpha1.TidbCluster) *apps.StatefulSet
 		updateSet               func(*apps.StatefulSet) *apps.StatefulSet
 		addTidbClusterToIndexer bool
 		expectedLen             int
@@ -139,10 +139,10 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 	tests := []testcase{
 		{
 			name: "normal",
-			initial: func() *v1.TidbCluster {
+			initial: func() *v1alpha1.TidbCluster {
 				return newTidbCluster()
 			},
-			initialSet: func(tc *v1.TidbCluster) *apps.StatefulSet {
+			initialSet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 				return newStatefuSet(tc)
 			},
 			updateSet: func(set1 *apps.StatefulSet) *apps.StatefulSet {
@@ -155,10 +155,10 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 		},
 		{
 			name: "same resouceVersion",
-			initial: func() *v1.TidbCluster {
+			initial: func() *v1alpha1.TidbCluster {
 				return newTidbCluster()
 			},
-			initialSet: func(tc *v1.TidbCluster) *apps.StatefulSet {
+			initialSet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 				return newStatefuSet(tc)
 			},
 			updateSet: func(set1 *apps.StatefulSet) *apps.StatefulSet {
@@ -170,10 +170,10 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 		},
 		{
 			name: "without controllerRef",
-			initial: func() *v1.TidbCluster {
+			initial: func() *v1alpha1.TidbCluster {
 				return newTidbCluster()
 			},
-			initialSet: func(tc *v1.TidbCluster) *apps.StatefulSet {
+			initialSet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 				return newStatefuSet(tc)
 			},
 			updateSet: func(set1 *apps.StatefulSet) *apps.StatefulSet {
@@ -187,10 +187,10 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 		},
 		{
 			name: "without tidbcluster",
-			initial: func() *v1.TidbCluster {
+			initial: func() *v1alpha1.TidbCluster {
 				return newTidbCluster()
 			},
-			initialSet: func(tc *v1.TidbCluster) *apps.StatefulSet {
+			initialSet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 				return newStatefuSet(tc)
 			},
 			updateSet: func(set1 *apps.StatefulSet) *apps.StatefulSet {
@@ -220,7 +220,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	svcInformer := kubeInformerFactory.Core().V1().Services()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
-	tcInformer := informerFactory.Pingcap().V1().TidbClusters()
+	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 
@@ -295,30 +295,30 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	return tcc, tcInformer.Informer().GetIndexer(), setInformer.Informer().GetIndexer()
 }
 
-func newTidbCluster() *v1.TidbCluster {
-	return &v1.TidbCluster{
+func newTidbCluster() *v1alpha1.TidbCluster {
+	return &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
-			APIVersion: "pingcap.com/v1",
+			APIVersion: "pingcap.com/v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pd",
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 		},
-		Spec: v1.TidbClusterSpec{
-			PD: v1.PDSpec{
-				ContainerSpec: v1.ContainerSpec{
+		Spec: v1alpha1.TidbClusterSpec{
+			PD: v1alpha1.PDSpec{
+				ContainerSpec: v1alpha1.ContainerSpec{
 					Image: "pd-test-image",
 				},
 			},
-			TiKV: v1.TiKVSpec{
-				ContainerSpec: v1.ContainerSpec{
+			TiKV: v1alpha1.TiKVSpec{
+				ContainerSpec: v1alpha1.ContainerSpec{
 					Image: "tikv-test-image",
 				},
 			},
-			TiDB: v1.TiDBSpec{
-				ContainerSpec: v1.ContainerSpec{
+			TiDB: v1alpha1.TiDBSpec{
+				ContainerSpec: v1alpha1.ContainerSpec{
 					Image: "tidb-test-image",
 				},
 			},
@@ -326,7 +326,7 @@ func newTidbCluster() *v1.TidbCluster {
 	}
 }
 
-func newStatefuSet(tc *v1.TidbCluster) *apps.StatefulSet {
+func newStatefuSet(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 	return &apps.StatefulSet{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "StatefulSet",
