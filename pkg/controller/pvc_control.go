@@ -54,13 +54,12 @@ func (rpc *realPVCControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pvc *corev1.
 	tcName := tc.GetName()
 	pvcName := pvc.GetName()
 	podName := pod.GetName()
-	podLabels := pod.GetLabels()
 
-	app := podLabels[label.AppLabelKey]
-	clusterID := podLabels[label.ClusterIDLabelKey]
-	storeID := podLabels[label.StoreIDLabelKey]
-	memberID := podLabels[label.MemberIDLabelKey]
-	owner := podLabels[label.OwnerLabelKey]
+	app := pod.Labels[label.AppLabelKey]
+	clusterID := pod.Labels[label.ClusterIDLabelKey]
+	storeID := pod.Labels[label.StoreIDLabelKey]
+	memberID := pod.Labels[label.MemberIDLabelKey]
+	owner := pod.Labels[label.OwnerLabelKey]
 
 	if pvc.Annotations == nil {
 		pvc.Annotations = make(map[string]string)
