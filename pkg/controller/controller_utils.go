@@ -248,7 +248,7 @@ func EqualStatefulSet(new apps.StatefulSet, old apps.StatefulSet) (bool, error) 
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
 		if err != nil {
-			glog.Error(err)
+			glog.Errorf("unmarshal Statefulset: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
 			return false, err
 		}
 		return apiequality.Semantic.DeepEqual(oldConfig, new.Spec), nil
@@ -262,7 +262,7 @@ func EqualTemplate(new corev1.PodTemplateSpec, old corev1.PodTemplateSpec) (bool
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
 		if err != nil {
-			glog.Error(err)
+			glog.Errorf("unmarshal PodTemplate: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
 			return false, err
 		}
 		return apiequality.Semantic.DeepEqual(oldConfig, new.Spec), nil
