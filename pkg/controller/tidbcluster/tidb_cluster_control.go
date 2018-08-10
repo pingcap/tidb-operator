@@ -107,10 +107,10 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	}
 
 	// Wait tikv status sync
-	//if !tcc.IsTiKVAvailable(tc) {
-	//	glog.Infof("tidbcluster: [%s/%s]'s tikv cluster is not running.", tc.GetNamespace(), tc.GetName())
-	//	return nil
-	//}
+	if !tcc.IsTiKVAvailable(tc) {
+		glog.Infof("tidbcluster: [%s/%s]'s tikv cluster is not running.", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
 
 	// TiDB
 	err = tcc.tidbMemberManager.Sync(tc)

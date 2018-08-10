@@ -129,6 +129,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		modify                   func(cluster *v1alpha1.TidbCluster)
 		errWhenUpdateStatefulSet bool
 		errWhenUpdateTiDBService bool
+		statusChange             func(*apps.StatefulSet)
 		err                      bool
 		expectTiDBServieFn       func(*GomegaWithT, *corev1.Service, error)
 		expectStatefulSetFn      func(*GomegaWithT, *apps.StatefulSet, error)
@@ -140,6 +141,10 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		tcName := tc.GetName()
 
 		tmm, fakeSetControl, fakeSvcControl := newFakeTiDBMemberManager()
+
+		if test.statusChange != nil {
+			fakeSetControl.SetStatusChange(test.statusChange)
+		}
 
 		err := tmm.Sync(tc)
 		g.Expect(err).NotTo(HaveOccurred())
@@ -184,6 +189,8 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Spec.Services = []v1alpha1.Service{
 					{Name: "tidb", Type: string(corev1.ServiceTypeNodePort)},
 				}
+				tc.Status.PD.Phase = v1alpha1.Normal
+				tc.Status.TiKV.Phase = v1alpha1.Normal
 			},
 			errWhenUpdateStatefulSet: false,
 			errWhenUpdateTiDBService: false,
@@ -203,6 +210,8 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Spec.Services = []v1alpha1.Service{
 					{Name: v1alpha1.TiDBMemberType.String(), Type: string(corev1.ServiceTypeNodePort)},
 				}
+				tc.Status.PD.Phase = v1alpha1.Normal
+				tc.Status.TiKV.Phase = v1alpha1.Normal
 			},
 			errWhenUpdateStatefulSet: false,
 			errWhenUpdateTiDBService: true,
@@ -217,6 +226,8 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 			name: "error when update statefulset",
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiDB.Replicas = 5
+				tc.Status.PD.Phase = v1alpha1.Normal
+				tc.Status.TiKV.Phase = v1alpha1.Normal
 			},
 			errWhenUpdateStatefulSet: true,
 			errWhenUpdateTiDBService: false,
