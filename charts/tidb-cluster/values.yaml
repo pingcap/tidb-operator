@@ -11,7 +11,7 @@ rbac:
 # on host, e.g. Docker for Mac, Minikube, DinD
 localtime: true
 
-clusterName: demo-cluster
+clusterName: demo
 
 # nodeSelectorRequired: true
 

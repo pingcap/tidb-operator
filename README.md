@@ -65,43 +65,43 @@ Wait a few minutes to get all TiDB components running:
 
     $ kubectl get tidbcluster -n tidb
     NAME           AGE
-    demo-cluster   13h
+    demo   13h
 
     $ kubectl get statefulset -n tidb
     NAME                DESIRED   CURRENT   AGE
-    demo-cluster-pd     3         3         13h
-    demo-cluster-tidb   2         2         13h
-    demo-cluster-tikv   3         3         13h
+    demo-pd     3         3         13h
+    demo-tidb   2         2         13h
+    demo-tikv   3         3         13h
 
     $ kubectl get service -n tidb
     NAME                      TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                          AGE
-    demo-cluster-grafana      NodePort    10.105.174.22    <none>        3000:31479/TCP                   14m
-    demo-cluster-pd           ClusterIP   10.101.138.121   <none>        2379/TCP                         11m
-    demo-cluster-pd-peer      ClusterIP   None             <none>        2380/TCP                         11m
-    demo-cluster-prometheus   NodePort    10.108.106.219   <none>        9090:32303/TCP                   14m
-    demo-cluster-tidb         NodePort    10.104.195.140   <none>        4000:31155/TCP,10080:30595/TCP   11m
-    demo-cluster-tikv-peer    ClusterIP   None             <none>        20160/TCP                        11m
+    demo-grafana      NodePort    10.105.174.22    <none>        3000:31479/TCP                   14m
+    demo-pd           ClusterIP   10.101.138.121   <none>        2379/TCP                         11m
+    demo-pd-peer      ClusterIP   None             <none>        2380/TCP                         11m
+    demo-prometheus   NodePort    10.108.106.219   <none>        9090:32303/TCP                   14m
+    demo-tidb         NodePort    10.104.195.140   <none>        4000:31155/TCP,10080:30595/TCP   11m
+    demo-tikv-peer    ClusterIP   None             <none>        20160/TCP                        11m
 
     $ kubectl get configmap -n tidb
     NAME                             DATA      AGE
-    demo-cluster-monitor-configmap   3         12h
-    demo-cluster-pd                  2         12h
-    demo-cluster-tidb                2         12h
-    demo-cluster-tikv                2         12h
+    demo-monitor-configmap   3         12h
+    demo-pd                  2         12h
+    demo-tidb                2         12h
+    demo-tikv                2         12h
 
 
     $ kubectl get pod -n tidb
     NAME                                       READY     STATUS      RESTARTS   AGE
-    demo-cluster-configure-grafana-724x5       0/1       Completed   0          13h
-    demo-cluster-pd-0                          1/1       Running     0          13h
-    demo-cluster-pd-1                          1/1       Running     0          13h
-    demo-cluster-pd-2                          1/1       Running     0          13h
-    demo-cluster-prometheus-6fd9b54dcf-b7q9w   2/2       Running     0          13h
-    demo-cluster-tidb-0                        1/1       Running     0          13h
-    demo-cluster-tidb-1                        1/1       Running     0          13h
-    demo-cluster-tikv-0                        2/2       Running     0          13h
-    demo-cluster-tikv-1                        2/2       Running     0          13h
-    demo-cluster-tikv-2                        2/2       Running     0          13h
+    demo-configure-grafana-724x5       0/1       Completed   0          13h
+    demo-pd-0                          1/1       Running     0          13h
+    demo-pd-1                          1/1       Running     0          13h
+    demo-pd-2                          1/1       Running     0          13h
+    demo-prometheus-6fd9b54dcf-b7q9w   2/2       Running     0          13h
+    demo-tidb-0                        1/1       Running     0          13h
+    demo-tidb-1                        1/1       Running     0          13h
+    demo-tikv-0                        2/2       Running     0          13h
+    demo-tikv-1                        2/2       Running     0          13h
+    demo-tikv-2                        2/2       Running     0          13h
 
 
 
