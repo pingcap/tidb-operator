@@ -17,9 +17,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
-	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1"
-	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
+	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -35,11 +35,11 @@ import (
 // StatefulSetControlInterface defines the interface that uses to create, update, and delete StatefulSets,
 type StatefulSetControlInterface interface {
 	// CreateStatefulSet creates a StatefulSet in a TidbCluster.
-	CreateStatefulSet(*v1.TidbCluster, *apps.StatefulSet) error
+	CreateStatefulSet(*v1alpha1.TidbCluster, *apps.StatefulSet) error
 	// UpdateStatefulSet updates a StatefulSet in a TidbCluster.
-	UpdateStatefulSet(*v1.TidbCluster, *apps.StatefulSet) error
+	UpdateStatefulSet(*v1alpha1.TidbCluster, *apps.StatefulSet) error
 	// DeleteStatefulSet deletes a StatefulSet in a TidbCluster.
-	DeleteStatefulSet(*v1.TidbCluster, *apps.StatefulSet) error
+	DeleteStatefulSet(*v1alpha1.TidbCluster, *apps.StatefulSet) error
 }
 
 type realStatefulSetControl struct {
@@ -54,7 +54,7 @@ func NewRealStatefuSetControl(kubeCli kubernetes.Interface, setLister appslister
 }
 
 // CreateStatefulSet create a StatefulSet in a TidbCluster.
-func (sc *realStatefulSetControl) CreateStatefulSet(tc *v1.TidbCluster, set *apps.StatefulSet) error {
+func (sc *realStatefulSetControl) CreateStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	_, err := sc.kubeCli.AppsV1beta1().StatefulSets(tc.Namespace).Create(set)
 	// sink already exists errors
 	if apierrors.IsAlreadyExists(err) {
@@ -65,7 +65,7 @@ func (sc *realStatefulSetControl) CreateStatefulSet(tc *v1.TidbCluster, set *app
 }
 
 // UpdateStatefulSet update a StatefulSet in a TidbCluster.
-func (sc *realStatefulSetControl) UpdateStatefulSet(tc *v1.TidbCluster, set *apps.StatefulSet) error {
+func (sc *realStatefulSetControl) UpdateStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		// TODO: verify if StatefulSet identity(name, namespace, labels) matches TidbCluster
 		_, updateErr := sc.kubeCli.AppsV1beta1().StatefulSets(tc.Namespace).Update(set)
@@ -85,13 +85,13 @@ func (sc *realStatefulSetControl) UpdateStatefulSet(tc *v1.TidbCluster, set *app
 }
 
 // DeleteStatefulSet delete a StatefulSet in a TidbCluster.
-func (sc *realStatefulSetControl) DeleteStatefulSet(tc *v1.TidbCluster, set *apps.StatefulSet) error {
+func (sc *realStatefulSetControl) DeleteStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	err := sc.kubeCli.AppsV1beta1().StatefulSets(tc.Namespace).Delete(set.Name, nil)
 	sc.recordStatefulSetEvent("delete", tc, set, err)
 	return err
 }
 
-func (sc *realStatefulSetControl) recordStatefulSetEvent(verb string, tc *v1.TidbCluster, set *apps.StatefulSet, err error) {
+func (sc *realStatefulSetControl) recordStatefulSetEvent(verb string, tc *v1alpha1.TidbCluster, set *apps.StatefulSet, err error) {
 	tcName := tc.Name
 	setName := set.Name
 	if err == nil {
@@ -158,7 +158,7 @@ func (ssc *FakeStatefulSetControl) SetStatusChange(fn func(*apps.StatefulSet)) {
 }
 
 // CreateStatefulSet adds the statefulset to SetIndexer
-func (ssc *FakeStatefulSetControl) CreateStatefulSet(tc *v1.TidbCluster, set *apps.StatefulSet) error {
+func (ssc *FakeStatefulSetControl) CreateStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	defer func() {
 		ssc.createStatefulSetTracker.inc()
 		ssc.statusChange = nil
@@ -177,7 +177,7 @@ func (ssc *FakeStatefulSetControl) CreateStatefulSet(tc *v1.TidbCluster, set *ap
 }
 
 // UpdateStatefulSet updates the statefulset of SetIndexer
-func (ssc *FakeStatefulSetControl) UpdateStatefulSet(tc *v1.TidbCluster, set *apps.StatefulSet) error {
+func (ssc *FakeStatefulSetControl) UpdateStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	defer func() {
 		ssc.updateStatefulSetTracker.inc()
 		ssc.statusChange = nil
@@ -195,7 +195,7 @@ func (ssc *FakeStatefulSetControl) UpdateStatefulSet(tc *v1.TidbCluster, set *ap
 }
 
 // DeleteStatefulSet deletes the statefulset of SetIndexer
-func (ssc *FakeStatefulSetControl) DeleteStatefulSet(tc *v1.TidbCluster, set *apps.StatefulSet) error {
+func (ssc *FakeStatefulSetControl) DeleteStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	return nil
 }
 

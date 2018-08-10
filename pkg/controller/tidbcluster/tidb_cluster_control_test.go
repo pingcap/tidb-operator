@@ -17,11 +17,11 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1"
-	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1"
+	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
+	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/pkg/controller/tidbcluster/membermanager"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
@@ -62,7 +62,7 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1().TidbClusters()
+	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
 	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
 	pvInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumes()
 	recorder := record.NewFakeRecorder(10)
@@ -87,7 +87,7 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	return control, setControl, statusUpdater, pdControl
 }
 
-func syncTidbClusterControl(tc *v1.TidbCluster, setControl *controller.FakeStatefulSetControl, control ControlInterface) error {
+func syncTidbClusterControl(tc *v1alpha1.TidbCluster, setControl *controller.FakeStatefulSetControl, control ControlInterface) error {
 	for tc.Status.PD.StatefulSet == nil {
 		err := control.UpdateTidbCluster(tc)
 		if err != nil {
@@ -110,7 +110,7 @@ func newFakeTidbClusterStatusUpdater(tcInformer tcinformers.TidbClusterInformer)
 	}
 }
 
-func (tsu *fakeTidbClusterStatusUpdater) UpdateTidbClusterStatus(tc *v1.TidbCluster, status *v1.TidbClusterStatus) error {
+func (tsu *fakeTidbClusterStatusUpdater) UpdateTidbClusterStatus(tc *v1alpha1.TidbCluster, status *v1alpha1.TidbClusterStatus) error {
 	tc.Status = *status
 	return tsu.tcIndexer.Update(tc)
 }

@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util/label"
 	corev1 "k8s.io/api/core/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
@@ -31,7 +31,7 @@ import (
 
 // PodControlInterface manages Pods used in TidbCluster
 type PodControlInterface interface {
-	UpdateMetaInfo(*v1.TidbCluster, *corev1.Pod) error
+	UpdateMetaInfo(*v1alpha1.TidbCluster, *corev1.Pod) error
 }
 
 type realPodControl struct {
@@ -53,7 +53,7 @@ func NewRealPodControl(
 	}
 }
 
-func (rpc *realPodControl) UpdateMetaInfo(tc *v1.TidbCluster, pod *corev1.Pod) error {
+func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
 	ns := pod.GetNamespace()
 	podName := pod.GetName()
 	labels := pod.GetLabels()
@@ -130,7 +130,7 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1.TidbCluster, pod *corev1.Pod) e
 	return err
 }
 
-func (rpc *realPodControl) recordPodEvent(verb string, tc *v1.TidbCluster, podName string, err error) {
+func (rpc *realPodControl) recordPodEvent(verb string, tc *v1alpha1.TidbCluster, podName string, err error) {
 	tcName := tc.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
@@ -202,7 +202,7 @@ func (fpc *FakePodControl) SetGetStoreError(err error, after int) {
 }
 
 // UpdateMetaInfo update the meta info of Pod
-func (fpc *FakePodControl) UpdateMetaInfo(tc *v1.TidbCluster, pod *corev1.Pod) error {
+func (fpc *FakePodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
 	defer fpc.updatePodTracker.inc()
 	if fpc.updatePodTracker.errorReady() {
 		defer fpc.updatePodTracker.reset()

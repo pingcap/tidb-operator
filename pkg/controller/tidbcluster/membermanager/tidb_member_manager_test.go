@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -35,7 +35,7 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                     string
-		prepare                  func(cluster *v1.TidbCluster)
+		prepare                  func(cluster *v1alpha1.TidbCluster)
 		errWhenCreateStatefulSet bool
 		errWhenCreateTiDBService bool
 		err                      bool
@@ -126,7 +126,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                     string
-		modify                   func(cluster *v1.TidbCluster)
+		modify                   func(cluster *v1alpha1.TidbCluster)
 		errWhenUpdateStatefulSet bool
 		errWhenUpdateTiDBService bool
 		statusChange             func(*apps.StatefulSet)
@@ -184,9 +184,9 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 	tests := []testcase{
 		{
 			name: "normal",
-			modify: func(tc *v1.TidbCluster) {
+			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiDB.Replicas = 5
-				tc.Spec.Services = []v1.Service{
+				tc.Spec.Services = []v1alpha1.Service{
 					{Name: "tidb", Type: string(corev1.ServiceTypeNodePort)},
 				}
 				tc.Status.PD.Phase = v1.Normal
@@ -206,9 +206,9 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		},
 		{
 			name: "error when update tidb service",
-			modify: func(tc *v1.TidbCluster) {
-				tc.Spec.Services = []v1.Service{
-					{Name: v1.TiDBMemberType.String(), Type: string(corev1.ServiceTypeNodePort)},
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.Services = []v1alpha1.Service{
+					{Name: v1alpha1.TiDBMemberType.String(), Type: string(corev1.ServiceTypeNodePort)},
 				}
 				tc.Status.PD.Phase = v1.Normal
 				tc.Status.TiKV.Phase = v1.Normal
@@ -224,7 +224,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		},
 		{
 			name: "error when update statefulset",
-			modify: func(tc *v1.TidbCluster) {
+			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiDB.Replicas = 5
 				tc.Status.PD.Phase = v1.Normal
 				tc.Status.TiKV.Phase = v1.Normal
@@ -250,7 +250,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1().TidbClusters()
+	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
 
@@ -262,22 +262,22 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	}, setControl, svcControl
 }
 
-func newTidbClusterForTiDB() *v1.TidbCluster {
-	return &v1.TidbCluster{
+func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
+	return &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
-			APIVersion: "pingcap.com/v1",
+			APIVersion: "pingcap.com/v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 		},
-		Spec: v1.TidbClusterSpec{
-			TiDB: v1.TiDBSpec{
-				ContainerSpec: v1.ContainerSpec{
-					Image: v1.TiDBMemberType.String(),
-					Requests: &v1.ResourceRequirement{
+		Spec: v1alpha1.TidbClusterSpec{
+			TiDB: v1alpha1.TiDBSpec{
+				ContainerSpec: v1alpha1.ContainerSpec{
+					Image: v1alpha1.TiDBMemberType.String(),
+					Requests: &v1alpha1.ResourceRequirement{
 						CPU:    "1",
 						Memory: "2Gi",
 					},

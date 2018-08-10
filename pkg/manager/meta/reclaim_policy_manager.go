@@ -14,7 +14,7 @@
 package meta
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util/label"
@@ -38,7 +38,7 @@ func NewReclaimPolicyManager(pvcLister corelisters.PersistentVolumeClaimLister,
 	}
 }
 
-func (rpm *reclaimPolicyManager) Sync(tc *v1.TidbCluster) error {
+func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
 	tcName := tc.GetName()
 
 	l, err := label.New().Cluster(tcName).Selector()

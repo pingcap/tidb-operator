@@ -17,7 +17,7 @@ import (
 	"reflect"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	mm "github.com/pingcap/tidb-operator/pkg/controller/tidbcluster/membermanager"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -35,7 +35,7 @@ const (
 // Currently, there is only one implementation.
 type ControlInterface interface {
 	// UpdateTidbCluster implements the control logic for StatefulSet creation, update, and deletion
-	UpdateTidbCluster(*v1.TidbCluster) error
+	UpdateTidbCluster(*v1alpha1.TidbCluster) error
 }
 
 // NewDefaultTidbClusterControl returns a new instance of the default implementation TidbClusterControlInterface that
@@ -70,7 +70,7 @@ type defaultTidbClusterControl struct {
 }
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
-func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1.TidbCluster) error {
+func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) error {
 	// perform the main update function and get the status
 	var errs []error
 	oldStatus := tc.Status.DeepCopy()
@@ -88,7 +88,7 @@ func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1.TidbCluster) erro
 	return errorutils.NewAggregate(errs)
 }
 
-func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1.TidbCluster) error {
+func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) error {
 	// PD
 	err := tcc.pdMemberManager.Sync(tc)
 	if err != nil {
@@ -133,13 +133,13 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1.TidbCluster) erro
 	return nil
 }
 
-func (tcc *defaultTidbClusterControl) updateTidbClusterStatus(tc *v1.TidbCluster, status *v1.TidbClusterStatus) error {
+func (tcc *defaultTidbClusterControl) updateTidbClusterStatus(tc *v1alpha1.TidbCluster, status *v1alpha1.TidbClusterStatus) error {
 	tc = tc.DeepCopy()
 	status = status.DeepCopy()
 	return tcc.statusUpdater.UpdateTidbClusterStatus(tc, status)
 }
 
-func (tcc *defaultTidbClusterControl) IsPDAvailable(tc *v1.TidbCluster) bool {
+func (tcc *defaultTidbClusterControl) IsPDAvailable(tc *v1alpha1.TidbCluster) bool {
 	lowerLimit := tc.Spec.PD.Replicas/2 + 1
 	if int32(len(tc.Status.PD.Members)) < lowerLimit {
 		return false
@@ -163,7 +163,7 @@ func (tcc *defaultTidbClusterControl) IsPDAvailable(tc *v1.TidbCluster) bool {
 	return true
 }
 
-func (tcc *defaultTidbClusterControl) IsTiKVAvailable(tc *v1.TidbCluster) bool {
+func (tcc *defaultTidbClusterControl) IsTiKVAvailable(tc *v1alpha1.TidbCluster) bool {
 	var lowerLimit int32 = 1
 	if int32(len(tc.Status.TiKV.Stores.CurrentStores)) < lowerLimit {
 		return false

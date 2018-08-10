@@ -16,7 +16,7 @@ package membermanager
 import (
 	"reflect"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/util/label"
@@ -49,7 +49,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	}
 }
 
-func (tmm *tidbMemberManager) Sync(tc *v1.TidbCluster) error {
+func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	// Sync TiDB Service
 	if err := tmm.syncTiDBServiceForTidbCluster(tc); err != nil {
 		return err
@@ -59,7 +59,7 @@ func (tmm *tidbMemberManager) Sync(tc *v1.TidbCluster) error {
 	return tmm.syncTiDBStatefulSetForTidbCluster(tc)
 }
 
-func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1.TidbCluster) error {
+func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -83,7 +83,7 @@ func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1.TidbCluster) 
 	return nil
 }
 
-func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1.TidbCluster) error {
+func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -124,7 +124,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1.TidbClust
 	return nil
 }
 
-func (tmm *tidbMemberManager) getNewTiDBServiceForTidbCluster(tc *v1.TidbCluster) *corev1.Service {
+func (tmm *tidbMemberManager) getNewTiDBServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	svcName := controller.TiDBMemberName(tcName)
@@ -138,7 +138,7 @@ func (tmm *tidbMemberManager) getNewTiDBServiceForTidbCluster(tc *v1.TidbCluster
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: corev1.ServiceSpec{
-			Type: controller.GetServiceType(tc.Spec.Services, v1.TiDBMemberType.String()),
+			Type: controller.GetServiceType(tc.Spec.Services, v1alpha1.TiDBMemberType.String()),
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "mysql-client",
@@ -162,7 +162,7 @@ func (tmm *tidbMemberManager) getNewTiDBServiceForTidbCluster(tc *v1.TidbCluster
 	return tidbSvc
 }
 
-func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1.TidbCluster) *apps.StatefulSet {
+func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	tidbConfigMap := controller.TiDBMemberName(tcName)
@@ -225,7 +225,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1.TidbCluster) *a
 					),
 					Containers: []corev1.Container{
 						{
-							Name:    v1.TiDBMemberType.String(),
+							Name:    v1alpha1.TiDBMemberType.String(),
 							Image:   tc.Spec.TiDB.Image,
 							Command: []string{"/bin/sh", "/usr/local/bin/tidb_start_script.sh"},
 							Ports: []corev1.ContainerPort{
@@ -267,14 +267,14 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1.TidbCluster) *a
 	return tidbSet
 }
 
-func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1.TidbCluster, set *apps.StatefulSet) error {
+func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	tc.Status.TiDB.StatefulSet = &set.Status
 	return nil
 }
 
-func (tmm *tidbMemberManager) upgrade(tc *v1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (tmm *tidbMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	if oldSet.Status.CurrentRevision == oldSet.Status.UpdateRevision {
-		tc.Status.TiDB.Phase = v1.Normal
+		tc.Status.TiDB.Phase = v1alpha1.Normal
 	}
 
 	upgrade, err := tmm.needUpgrade(tc, newSet, oldSet)
@@ -282,10 +282,10 @@ func (tmm *tidbMemberManager) upgrade(tc *v1.TidbCluster, oldSet *apps.StatefulS
 		return err
 	}
 	if upgrade {
-		tc.Status.TiDB.Phase = v1.Upgrade
+		tc.Status.TiDB.Phase = v1alpha1.Upgrade
 	}
 
-	if tc.Status.TiDB.Phase != v1.Upgrade {
+	if tc.Status.TiDB.Phase != v1alpha1.Upgrade {
 		_, podSpec, err := controller.GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
@@ -295,12 +295,12 @@ func (tmm *tidbMemberManager) upgrade(tc *v1.TidbCluster, oldSet *apps.StatefulS
 	return nil
 }
 
-func (tmm *tidbMemberManager) needUpgrade(tc *v1.TidbCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) (bool, error) {
-	if tc.Status.PD.Phase == v1.Upgrade {
+func (tmm *tidbMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) (bool, error) {
+	if tc.Status.PD.Phase == v1alpha1.Upgrade {
 		return false, nil
 	}
 
-	if tc.Status.TiKV.Phase == v1.Upgrade {
+	if tc.Status.TiKV.Phase == v1alpha1.Upgrade {
 		return false, nil
 	}
 

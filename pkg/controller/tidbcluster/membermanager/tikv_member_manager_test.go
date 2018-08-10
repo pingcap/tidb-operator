@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -33,7 +33,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                         string
-		prepare                      func(cluster *v1.TidbCluster)
+		prepare                      func(cluster *v1alpha1.TidbCluster)
 		errWhenCreateStatefulSet     bool
 		errWhenCreateTiKVPeerService bool
 		errWhenGetStores             bool
@@ -119,7 +119,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 		},
 		{
 			name: "tidbcluster's storage format is wrong",
-			prepare: func(tc *v1.TidbCluster) {
+			prepare: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiKV.Requests.Storage = "100xxxxi"
 			},
 			errWhenCreateStatefulSet:     false,
@@ -163,7 +163,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                         string
-		modify                       func(cluster *v1.TidbCluster)
+		modify                       func(cluster *v1alpha1.TidbCluster)
 		pdStores                     *controller.StoresInfo
 		tombstoneStores              *controller.StoresInfo
 		errWhenUpdateStatefulSet     bool
@@ -173,7 +173,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		err                          bool
 		expectTiKVPeerServiceFn      func(*GomegaWithT, *corev1.Service, error)
 		expectStatefulSetFn          func(*GomegaWithT, *apps.StatefulSet, error)
-		expectTidbClusterFn          func(*GomegaWithT, *v1.TidbCluster)
+		expectTidbClusterFn          func(*GomegaWithT, *v1alpha1.TidbCluster)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -251,12 +251,12 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 	tests := []testcase{
 		{
 			name: "normal",
-			modify: func(tc *v1.TidbCluster) {
+			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiKV.Replicas = 5
-				tc.Spec.Services = []v1.Service{
+				tc.Spec.Services = []v1alpha1.Service{
 					{Name: "tikv", Type: string(corev1.ServiceTypeNodePort)},
 				}
-				tc.Status.PD.Phase = v1.Normal
+				tc.Status.PD.Phase = v1alpha1.Normal
 			},
 			// TODO add unit test for status sync
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
@@ -270,20 +270,20 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
 			},
-			expectTidbClusterFn: func(g *GomegaWithT, tc *v1.TidbCluster) {
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(*tc.Status.TiKV.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
-				expectedStores := v1.TiKVStores{
-					CurrentStores:   map[string]v1.TiKVStore{},
-					TombStoneStores: map[string]v1.TiKVStore{},
+				expectedStores := v1alpha1.TiKVStores{
+					CurrentStores:   map[string]v1alpha1.TiKVStore{},
+					TombStoneStores: map[string]v1alpha1.TiKVStore{},
 				}
 				g.Expect(tc.Status.TiKV.Stores).To(Equal(expectedStores))
 			},
 		},
 		{
 			name: "tidbcluster's storage format is wrong",
-			modify: func(tc *v1.TidbCluster) {
+			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiKV.Requests.Storage = "100xxxxi"
-				tc.Status.PD.Phase = v1.Normal
+				tc.Status.PD.Phase = v1alpha1.Normal
 			},
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
@@ -295,9 +295,9 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		},
 		{
 			name: "error when update statefulset",
-			modify: func(tc *v1.TidbCluster) {
+			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiKV.Replicas = 5
-				tc.Status.PD.Phase = v1.Normal
+				tc.Status.PD.Phase = v1alpha1.Normal
 			},
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
@@ -312,9 +312,9 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		},
 		{
 			name: "error when sync tikv status",
-			modify: func(tc *v1.TidbCluster) {
+			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiKV.Replicas = 5
-				tc.Status.PD.Phase = v1.Normal
+				tc.Status.PD.Phase = v1alpha1.Normal
 			},
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
@@ -327,8 +327,8 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(3))
 			},
-			expectTidbClusterFn: func(g *GomegaWithT, tc *v1.TidbCluster) {
-				expectedStores := v1.TiKVStores{}
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				expectedStores := v1alpha1.TiKVStores{}
 				g.Expect(tc.Status.TiKV.Stores).To(Equal(expectedStores))
 			},
 		},
@@ -341,7 +341,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 	}
 }
 
-func newFakeTiKVMemberManager(tc *v1.TidbCluster) (
+func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	*tikvMemberManager, *controller.FakeStatefulSetControl,
 	*controller.FakeServiceControl, *controller.FakePDClient) {
 	cli := fake.NewSimpleClientset()
@@ -351,7 +351,7 @@ func newFakeTiKVMemberManager(tc *v1.TidbCluster) (
 	pdControl.SetPDClient(tc, pdClient)
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1().TidbClusters()
+	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
