@@ -5,13 +5,15 @@
 rbac:
   create: true
 
+# clusterName is the TiDB cluster name, it is required and should be unique
+# if multiple clusters are deployed in the same namespace.
+clusterName: demo
+
 # localtime determines whether containers timezone should be the same as k8s node
 # if localtime is false, container timezone would be UTC+0
 # localtime should be set to false if the K8s environment doesn't have /etc/localtime
 # on host, e.g. Docker for Mac, Minikube, DinD
-localtime: true
-
-clusterName: demo-cluster
+localtime: false
 
 # nodeSelectorRequired: true
 
