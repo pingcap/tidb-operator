@@ -6,6 +6,10 @@ LDFLAGS += -X "github.com/pingcap/tidb-operator/version.GitSHA=$(shell git rev-p
 
 DOCKER_REGISTRY := $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY),localhost:5000)
 
+PACKAGES := go list ./...
+PACKAGE_DIRECTORIES := $(PACKAGES) | sed 's|github.com/pingcap/tidb-operator/||'
+FAIL_ON_STDOUT := awk '{ print } END { if (NR > 0) { exit 1 } }'
+
 default: build
 
 docker-push: docker
@@ -34,3 +38,31 @@ e2e-build:
 
 test:
 	@ CGO_ENABLED=0 go test ./pkg/... -v -cover && echo success
+
+check-all: static lint
+	@echo "checking"
+
+check-setup:
+	@which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
+	@retool sync
+
+check: check-setup check-all
+
+static:
+	@ # Not running vet and fmt through metalinter becauase it ends up looking at vendor
+	gofmt -s -l $$($(PACKAGE_DIRECTORIES)) 2>&1 | $(FAIL_ON_STDOUT)
+	retool do govet --shadow $$($(PACKAGE_DIRECTORIES)) 2>&1 | $(FAIL_ON_STDOUT)
+
+	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all --deadline 120s \
+	  --enable misspell \
+	  --enable megacheck \
+	  --enable ineffassign \
+	  --enable errcheck \
+	  $$($(PACKAGE_DIRECTORIES))
+
+lint:
+	@echo "linting"
+	CGO_ENABLED=0 retool do revive -formatter friendly -config revive.toml $$($(PACKAGES))
+
+check-gosec:
+	CGO_ENABLED=0 retool do gosec $$($(PACKAGE_DIRECTORIES))
