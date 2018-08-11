@@ -2,8 +2,13 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  namespace: {{ .Release.Namespace }}
-  name: {{ .Values.clusterName }}-monitor-configmap
+  name: {{ .Values.clusterName }}-monitor
+  labels:
+    app: {{ template "tidb-cluster.name" . }}
+    component: monitor
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 data:
   prometheus-config: |-
     global:

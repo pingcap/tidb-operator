@@ -1,21 +1,26 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  namespace: {{ .Release.Namespace }}
   name: tidb-controller-manager
   labels:
-    app: tidb-operator
+    app: {{ template "tidb-operator.name" . }}
+    component: controller-manager
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 spec:
   replicas: {{ .Values.controllerManager.replicas }}
   selector:
     matchLabels:
-      app: tidb-operator
-      name: tidb-controller-manager
+      app: {{ template "tidb-operator.name" . }}
+      component: controller-manager
+      release: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: tidb-operator
-        name: tidb-controller-manager
+        app: {{ template "tidb-operator.name" . }}
+        component: controller-manager
+        release: {{ .Release.Name }}
     spec:
     {{- if .Values.rbac.create }}
       serviceAccount: tidb-controller-manager
