@@ -1,4 +1,4 @@
-# Building TiDB Operator from source code
+# Building TiDB Operator from Source Code
 
 ## Go
 TiDB Operator is written in [Go](https://golang.org). If you don't have a Go development environment, [set one up](https://golang.org/doc/code.html).
@@ -110,9 +110,9 @@ $ make test
 
 #### Run e2e tests
 
-For e2e tests, we recommend DinD K8s environment. Follow [this guide](./local-dind-tutorial.md) to spin up a local DinD K8s cluster.
+For e2e tests, we recommend DinD Kubernetes environment. Follow [this guide](./local-dind-tutorial.md) to spin up a local DinD Kubernetes cluster.
 
-You should also deploy a registry in DinD, so you can push and use your Docker images in DinD K8s.
+You should also deploy a registry in DinD, so you can push and use your Docker images in DinD Kubernetes.
 
 ```sh
 $ ./manifests/local-dind/deploy-registry.sh

@@ -1,4 +1,4 @@
-# Deploy TiDB to Kubernetes on your laptop
+# Deploy TiDB to Kubernetes on Your Laptop
 
 This document describes how to deploy a TiDB cluster to Kubernetes on your laptop for development or testing.
 
@@ -11,6 +11,8 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 * [Docker](https://docs.docker.com/install/) 17.03 or later
 * [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl) 1.10 or later
 
+> **Note:** The outputs of different versions of `kubectl` might be slightly different.
+
 ## Step 1: Deploy a Kubernetes cluster using DinD
 
 1. Use DinD to install and deploy a multiple-node Kubernetes cluster:
@@ -21,7 +23,7 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
     $ NUM_NODES=4 ./dind-cluster-v1.10.sh up
     ```
 
-    **Note:** If you fail to pull the Docker images due to GFW, you can try the following method (the Docker images used are pulled from [UCloud Docker Registry](https://docs.ucloud.cn/compute/uhub/index)):
+    > **Note:** If you fail to pull the Docker images due to GFW, you can try the following method (the Docker images used are pulled from [UCloud Docker Registry](https://docs.ucloud.cn/compute/uhub/index)):
 
     ```sh
     $ git clone https://github.com/pingcap/kubeadm-dind-cluster
@@ -36,18 +38,22 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
     $ kubectl get po -n kube-system
     ```
 
-3. Now the cluster is up and running, we need to install the Kubernetes package manager [Helm](https://helm.sh) into the cluster, which is used to deploy and manage TiDB Operator and TiDB clusters later.
+3. Now the cluster is up and running, you need to install the Kubernetes package manager [Helm](https://helm.sh) into the cluster, which is used to deploy and manage TiDB Operator and TiDB clusters later.
 
     ```sh
     $ os=linux # change `linux` to `darwin` if you use macOS
-    $ wget https://storage.googleapis.com/kubernetes-helm/helm-v2.9.1-${os}-amd64.tar.gz
+    $ wget "https://storage.googleapis.com/kubernetes-helm/helm-v2.9.1-${os}-amd64.tar.gz"
     $ tar xzf helm-v2.9.1-${os}-amd64.tar.gz
     $ sudo mv ${os}-amd64/helm /usr/local/bin
+
+    $ git clone git@github.com:pingcap/tidb-operator.git
+    $ cd tidb-operator
     $ kubectl apply -f manifests/tiller-rbac.yaml
     $ helm init --service-account=tiller --upgrade
+    $ helm version # verify the Helm server is running
     ```
 
-    **Note:** If the tiller pod fails to start due to image pull failure because of GFW, you can replace the last command with `helm init --service-account=tiller --upgrade --tiller-image=uhub.ucloud.cn/pingcap/tiller:v2.9.1`
+    > **Note:** If the tiller pod fails to start due to image pull failure because of GFW, you can replace the last command with `helm init --service-account=tiller --upgrade --tiller-image=uhub.ucloud.cn/pingcap/tiller:v2.9.1`
 
 ## Step 2: Configure local volumes
 
@@ -64,7 +70,7 @@ $ # verify pv created
 $ kubectl get pv
 ```
 
-## Step 3: Install tidb-operator in DinD K8s
+## Step 3: Install tidb-operator in the DinD Kubernetes cluster
 
 ```sh
 $ kubectl apply -f manifests/crd.yaml
@@ -74,77 +80,89 @@ $ kubectl get customresourcedefinitions
 NAME                             AGE
 tidbclusters.pingcap.com         1m
 
-$ # Install TiDB Operator into K8s
+$ # Install TiDB Operator into Kubernetes
 $ helm install charts/tidb-operator --name=tidb-operator --namespace=pingcap
 
 $ # wait operator running
 $ kubectl get po -n pingcap -l app=tidb-operator
 NAME                                       READY     STATUS    RESTARTS   AGE
-tidb-controller-manager-3999554014-1h171   1/1       Running   0          1m
+tidb-controller-manager-5cd94748c7-jlvfs   1/1       Running   0          1m
 ```
 
-## Step 4: Deploy TiDB clusters in DinD K8s
+## Step 4: Deploy TiDB clusters in the DinD Kubernetes cluster
 
 ```sh
 $ helm install charts/tidb-cluster --name=tidb-cluster --namespace=tidb
 
 $ # wait a few minutes to get all TiDB components created and ready
 $ kubectl get tidbcluster -n tidb
-NAME           AGE
-demo-cluster   1m
+NAME      AGE
+demo      3m
 
 $ kubectl get statefulset -n tidb
-NAME                DESIRED   CURRENT   AGE
-demo-cluster-pd     3         3         1m
-demo-cluster-tidb   2         2         1m
-demo-cluster-tikv   3         3         1m
+NAME        DESIRED   CURRENT   AGE
+demo-pd     3         3         1m
+demo-tidb   2         2         1m
+demo-tikv   3         3         1m
 
 $ kubectl get service -n tidb
-NAME                      TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                          AGE
-demo-cluster-grafana      NodePort    10.105.174.22    <none>        3000:31479/TCP                   1m
-demo-cluster-pd           ClusterIP   10.101.138.121   <none>        2379/TCP                         1m
-demo-cluster-pd-peer      ClusterIP   None             <none>        2380/TCP                         1m
-demo-cluster-prometheus   NodePort    10.108.106.219   <none>        9090:32303/TCP                   1m
-demo-cluster-tidb         NodePort    10.104.195.140   <none>        4000:31155/TCP,10080:30595/TCP   1m
-demo-cluster-tikv-peer    ClusterIP   None             <none>        20160/TCP                        1m
+NAME              TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                          AGE
+demo-grafana      NodePort    10.111.80.73     <none>        3000:32503/TCP                   1m
+demo-pd           ClusterIP   10.110.192.154   <none>        2379/TCP                         1m
+demo-pd-peer      ClusterIP   None             <none>        2380/TCP                         1m
+demo-prometheus   NodePort    10.104.97.84     <none>        9090:32448/TCP                   1m
+demo-tidb         NodePort    10.102.165.13    <none>        4000:32714/TCP,10080:32680/TCP   1m
+demo-tikv-peer    ClusterIP   None             <none>        20160/TCP                        1m
 
 $ kubectl get configmap -n tidb
-NAME                             DATA      AGE
-demo-cluster-monitor-configmap   3         1m
-demo-cluster-pd                  2         1m
-demo-cluster-tidb                2         1m
-demo-cluster-tikv                2         1m
-
+NAME           DATA      AGE
+demo-monitor   3         1m
+demo-pd        2         1m
+demo-tidb      2         1m
+demo-tikv      2         1m
 
 $ kubectl get pod -n tidb
-NAME                                       READY     STATUS      RESTARTS   AGE
-demo-cluster-configure-grafana-724x5       0/1       Completed   0          1m
-demo-cluster-pd-0                          1/1       Running     0          1m
-demo-cluster-pd-1                          1/1       Running     0          1m
-demo-cluster-pd-2                          1/1       Running     0          1m
-demo-cluster-prometheus-6fd9b54dcf-b7q9w   2/2       Running     0          1m
-demo-cluster-tidb-0                        1/1       Running     0          1m
-demo-cluster-tidb-1                        1/1       Running     0          1m
-demo-cluster-tikv-0                        2/2       Running     0          1m
-demo-cluster-tikv-1                        2/2       Running     0          1m
-demo-cluster-tikv-2                        2/2       Running     0          1m
+NAME                              READY     STATUS      RESTARTS   AGE
+demo-monitor-58745cf54f-gb8kd     2/2       Running     0          1m
+demo-monitor-configurator-stvw6   0/1       Completed   0          1m
+demo-pd-0                         1/1       Running     0          1m
+demo-pd-1                         1/1       Running     0          1m
+demo-pd-2                         1/1       Running     0          1m
+demo-tidb-0                       1/1       Running     0          1m
+demo-tidb-1                       1/1       Running     0          1m
+demo-tikv-0                       2/2       Running     0          1m
+demo-tikv-1                       2/2       Running     0          1m
+demo-tikv-2                       2/2       Running     0          1m
 ```
 
 To access the TiDB cluster, use `kubectl port-forward` to expose the services to host.
 
 * Access TiDB using the MySQL client
 
-    ```sh
-    $ kubectl port-forward svc/demo-cluster-tidb 4000:4000 --namespace=tidb
-    $ mysql -h 127.0.0.1 -P 4000 -u root
-    ```
+    1. Use `kubectl` to forward the host machine port to the TiDB service port:
+
+        ```sh
+        $ kubectl port-forward svc/demo-tidb 4000:4000 --namespace=tidb
+        ```
+
+    2. To connect to TiDB using the MySQL client, open a new terminal tab or window and run the following command:
+
+        ```sh
+        $ mysql -h 127.0.0.1 -P 4000 -u root
+        ```
 
 * View the monitor dashboard
 
-    ```sh
-    $ kubectl port-forward svc/demo-cluster-grafana 3000:3000 --namespace=tidb
-    $ # then view the Grafana dashboard at http://localhost:3000 in your web browser
-    ```
+    1. Use `kubectl` to forward the host machine port to the Grafana service port:
+
+        ```sh
+        $ kubectl port-forward svc/demo-grafana 3000:3000 --namespace=tidb
+        ```
+
+    2. Open your web browser at http://localhost:3000 to access the Grafana monitoring interface.
+
+        * Default username: admin
+        * Default password: admin
 
 ## Scale the TiDB cluster
 
@@ -154,10 +172,35 @@ First configure the `charts/tidb-cluster/values.yaml` file, for example, change 
 helm upgrade tidb-cluster charts/tidb-cluster --namespace=tidb
 ```
 
+> **Note:** Scale down TiKV needs to migrate data, so the scaling down time depends on your existing data.
+
 ## Upgrade the TiDB cluster
 
 First configure the `charts/tidb-cluster/values.yaml` file, for example, changing PD/TiKV/TiDB `image` version from v2.0.4 to v2.0.5. Then run the following command:
 
 ```sh
 helm upgrade tidb-cluster charts/tidb-cluster --namespace=tidb
+```
+
+## Destroy the TiDB cluster
+
+When you're done with your test, use following commands to destroy the TiDB cluster:
+
+```sh
+$ helm delete tidb-cluster --purge
+```
+
+> **Note:** This only deletes running pods and other resources, the data is persisted. If you don't need the data anymore, run the following commands to cleanup the data. (Be careful, this permanently delete the data).
+
+```sh
+$ kubectl get pv -l cluster.pingcap.com/namespace=tidb -o name | xargs -i kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+$ kubectl delete pvc --namespace tidb --all
+```
+
+## Destroy the DinD Kubernetes cluster
+
+Change to the directory where you put dind-cluster-v1.10.sh
+
+```sh
+$ ./dind-cluster-v1.10.sh clean
 ```
