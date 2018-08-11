@@ -1,8 +1,13 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
-  namespace: {{ .Release.Namespace }}
   name: {{ .Values.clusterName }}
+  labels:
+    app: {{ template "tidb-cluster.name" . }}
+    component: tidb-cluster
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 spec:
   pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
   localtime: {{ .Values.localtime }}

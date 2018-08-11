@@ -2,14 +2,20 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  namespace: {{ .Release.Namespace }}
-  name: {{ .Values.clusterName }}-configure-grafana
+  name: {{ .Values.clusterName }}-monitor-configurator
   labels:
-    app: {{ .Values.clusterName }}-monitor
+    app: {{ template "tidb-cluster.name" . }}
+    component: monitor-configurator
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 spec:
   template:
     metadata:
-      name: {{ .Values.clusterName }}-configure-grafana
+      labels:
+        app: {{ template "tidb-cluster.name" . }}
+        component: monitor-configurator
+        release: {{ .Release.Name }}
     spec:
       restartPolicy: OnFailure
     {{- if .Values.rbac.create }}
@@ -24,11 +30,11 @@ spec:
           - name: GRAFANA_USERNAME
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.clusterName }}-grafana-secret
+                name: {{ .Values.clusterName }}-monitor
                 key: username
           - name: GRAFANA_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.clusterName }}-grafana-secret
+                name: {{ .Values.clusterName }}-monitor
                 key: password
 {{- end }}
