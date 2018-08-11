@@ -2,19 +2,26 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  namespace: {{ .Release.Namespace }}
   name: {{ .Values.clusterName }}-privileged-tidb
   labels:
-    app: {{ .Values.clusterName }}-privileged-tidb
+    app: {{ template "tidb-cluster.name" . }}
+    component: privileged-tidb
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 spec:
   replicas: {{ .Values.privilegedTidb.replicas }}
   selector:
     matchLabels:
-      app: {{ .Values.clusterName }}-privileged-tidb
+      app: {{ template "tidb-cluster.name" . }}
+      component: privileged-tidb
+      release: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: {{ .Values.clusterName }}-privileged-tidb
+        app: {{ template "tidb-cluster.name" . }}
+        component: privileged-tidb
+        release: {{ .Release.Name }}
     spec:
     {{- if .Values.privilegedTidb.nodeSelector }}
       affinity:

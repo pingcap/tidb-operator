@@ -4,6 +4,12 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: {{ .Release.Namespace }}:tidb-controller-manager
+  labels:
+    app: {{ template "tidb-operator.name" . }}
+    component: controller-manager
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 rules:
 - apiGroups: [""]
   resources:
@@ -39,6 +45,12 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: {{ .Release.Namespace }}:tidb-controller-manager
+  labels:
+    app: {{ template "tidb-operator.name" . }}
+    component: controller-manager
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 subjects:
 - kind: ServiceAccount
   name: tidb-controller-manager
@@ -52,7 +64,12 @@ kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: tidb-controller-manager
-  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "tidb-operator.name" . }}
+    component: controller-manager
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 rules:
 - apiGroups: [""]
   resources:
@@ -79,11 +96,15 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: tidb-controller-manager
-  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "tidb-operator.name" . }}
+    component: controller-manager
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 subjects:
 - kind: ServiceAccount
   name: tidb-controller-manager
-  namespace: {{ .Release.Namespace }}
 roleRef:
   kind: Role
   name: tidb-controller-manager
@@ -93,6 +114,11 @@ roleRef:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  namespace: {{ .Release.Namespace }}
   name: tidb-controller-manager
+  labels:
+    app: {{ template "tidb-operator.name" . }}
+    component: controller-manager
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 {{- end }}
