@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ template "tidb-cluster.pd.fullname" . }}
+  name: {{ .Values.clusterName }}-pd
   labels:
     app: {{ template "tidb-cluster.name" . }}
     component: pd

@@ -1,7 +1,7 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: {{ template "tidb-operator.fullname" . }}
+  name: tidb-controller-manager
   labels:
     app: {{ template "tidb-operator.name" . }}
     component: controller-manager
@@ -23,7 +23,7 @@ spec:
         release: {{ .Release.Name }}
     spec:
     {{- if .Values.rbac.create }}
-      serviceAccount: {{ template "tidb-operator.fullname" . }}
+      serviceAccount: tidb-controller-manager
     {{- end }}
       containers:
       - name: tidb-operator

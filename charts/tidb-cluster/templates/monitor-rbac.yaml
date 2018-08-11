@@ -3,7 +3,7 @@
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ template "tidb-cluster.monitor.fullname" . }}
+  name: {{ .Values.clusterName}}-monitor
   labels:
     app: {{ template "tidb-cluster.name" . }}
     component: monitor
@@ -18,7 +18,7 @@ rules:
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ template "tidb-cluster.monitor.fullname" . }}
+  name: {{ .Values.clusterName }}-monitor
   labels:
     app: {{ template "tidb-cluster.name" . }}
     component: monitor
@@ -27,16 +27,16 @@ metadata:
     heritage: {{ .Release.Service }}
 subjects:
 - kind: ServiceAccount
-  name: {{ template "tidb-cluster.monitor.fullname" . }}
+  name: {{ .Values.clusterName }}-monitor
 roleRef:
   kind: Role
-  name: {{ template "tidb-cluster.monitor.fullname" . }}
+  name: {{ .Values.clusterName }}-monitor
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: {{ template "tidb-cluster.monitor.fullname" . }}
+  name: {{ .Values.clusterName }}-monitor
   labels:
     app: {{ template "tidb-cluster.name" . }}
     component: monitor

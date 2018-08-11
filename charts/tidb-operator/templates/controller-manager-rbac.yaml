@@ -3,7 +3,7 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ .Release.Namespace }}:{{ template "tidb-operator.fullname" . }}
+  name: {{ .Release.Namespace }}:tidb-controller-manager
   labels:
     app: {{ template "tidb-operator.name" . }}
     component: controller-manager
@@ -44,7 +44,7 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ .Release.Namespace }}:{{ template "tidb-operator.fullname" . }}
+  name: {{ .Release.Namespace }}:tidb-controller-manager
   labels:
     app: {{ template "tidb-operator.name" . }}
     component: controller-manager
@@ -53,17 +53,17 @@ metadata:
     heritage: {{ .Release.Service }}
 subjects:
 - kind: ServiceAccount
-  name: {{ template "tidb-operator.fullname" . }}
+  name: tidb-controller-manager
   namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
-  name: {{ .Release.Namespace }}:{{ template "tidb-operator.fullname" . }}
+  name: {{ .Release.Namespace }}:tidb-controller-manager
   apiGroup: rbac.authorization.k8s.io
 {{- else }}
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ template "tidb-operator.fullname" . }}
+  name: tidb-controller-manager
   labels:
     app: {{ template "tidb-operator.name" . }}
     component: controller-manager
@@ -95,7 +95,7 @@ rules:
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ template "tidb-operator.fullname" . }}
+  name: tidb-controller-manager
   labels:
     app: {{ template "tidb-operator.name" . }}
     component: controller-manager
@@ -104,17 +104,17 @@ metadata:
     heritage: {{ .Release.Service }}
 subjects:
 - kind: ServiceAccount
-  name: {{ template "tidb-operator.fullname" . }}
+  name: tidb-controller-manager
 roleRef:
   kind: Role
-  name: {{ template "tidb-operator.fullname" . }}
+  name: tidb-controller-manager
   apiGroup: rbac.authorization.k8s.io
 {{- end }}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: {{ template "tidb-operator.fullname" . }}
+  name: tidb-controller-manager
   labels:
     app: {{ template "tidb-operator.name" . }}
     component: controller-manager

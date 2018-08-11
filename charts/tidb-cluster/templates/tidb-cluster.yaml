@@ -1,7 +1,7 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
-  name: {{ template "tidb-cluster.fullname" . }}
+  name: {{ .Values.clusterName }}
   labels:
     app: {{ template "tidb-cluster.name" . }}
     component: tidb-cluster

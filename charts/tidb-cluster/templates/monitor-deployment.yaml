@@ -2,7 +2,7 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: {{ template "tidb-cluster.monitor.fullname" . }}
+  name: {{ .Values.clusterName }}-monitor
   labels:
     app: {{ template "tidb-cluster.name" . }}
     component: monitor
@@ -24,7 +24,7 @@ spec:
         release: {{ .Release.Name }}-{{ .Chart.Version }}
     spec:
     {{- if .Values.rbac.create }}
-      serviceAccount: {{ template "tidb-cluster.monitor.fullname" . }}
+      serviceAccount: {{ .Values.clusterName }}-monitor
     {{- end }}
     {{- if .Values.monitor.nodeSelector }}
       affinity:
@@ -84,12 +84,12 @@ spec:
         - name: GF_SECURITY_ADMIN_USER
           valueFrom:
             secretKeyRef:
-              name: {{ template "tidb-cluster.monitor.fullname" . }}
+              name: {{ .Values.clusterName }}-monitor
               key: username
         - name: GF_SECURITY_ADMIN_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: {{ template "tidb-cluster.monitor.fullname" . }}
+              name: {{ .Values.clusterName }}-monitor
               key: password
         volumeMounts:
           {{- if .Values.localtime }}
@@ -111,7 +111,7 @@ spec:
         emptyDir: {}
       - name: prometheus-config
         configMap:
-          name: {{ template "tidb-cluster.monitor.fullname" . }}
+          name: {{ .Values.clusterName }}-monitor
           items:
           - key: prometheus-config
             path: prometheus.yml
@@ -119,7 +119,7 @@ spec:
             path: alert.rules
       - name: grafana-config
         configMap:
-          name: {{ template "tidb-cluster.monitor.fullname" . }}
+          name: {{ .Values.clusterName }}-monitor
           items:
           - key: grafana-config
             path: grafana.ini

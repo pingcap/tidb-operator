@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ template "tidb-cluster.privileged-tidb.fullname" . }}
+  name: {{ .Values.clusterName }}-privileged-tidb
   labels:
     app: {{ template "tidb-cluster.name" . }}
     component: privileged-tidb

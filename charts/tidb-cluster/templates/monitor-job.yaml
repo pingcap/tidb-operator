@@ -2,7 +2,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ template "tidb-cluster.monitor-configurator.fullname" . }}
+  name: {{ .Values.clusterName }}-monitor-configurator
   labels:
     app: {{ template "tidb-cluster.name" . }}
     component: monitor-configurator
@@ -19,22 +19,22 @@ spec:
     spec:
       restartPolicy: OnFailure
     {{- if .Values.rbac.create }}
-      serviceAccount: {{ template "tidb-cluster.monitor.fullname" . }}
+      serviceAccount: {{ .Values.clusterName }}-monitor
     {{- end }}
       containers:
       - name: tidb-dashboard-installer
         image: {{ .Values.monitor.dashboardInstaller.image }}
         args:
-          - {{ template "tidb-cluster.grafana.fullname" . }}:3000
+          - {{ .Values.clusterName }}-grafana:3000
         env:
           - name: GRAFANA_USERNAME
             valueFrom:
               secretKeyRef:
-                name: {{ template "tidb-cluster.monitor.fullname" . }}
+                name: {{ .Values.clusterName }}-monitor
                 key: username
           - name: GRAFANA_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: {{ template "tidb-cluster.monitor.fullname" . }}
+                name: {{ .Values.clusterName }}-monitor
                 key: password
 {{- end }}

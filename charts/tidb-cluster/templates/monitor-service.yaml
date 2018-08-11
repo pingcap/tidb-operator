@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "tidb-cluster.grafana.fullname" . }}
+  name: {{ .Values.clusterName }}-grafana
   labels:
     app: {{ template "tidb-cluster.name" . }}
     component: monitor
@@ -24,7 +24,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "tidb-cluster.prometheus.fullname" . }}
+  name: {{ .Values.clusterName }}-prometheus
   labels:
     app: {{ template "tidb-cluster.name" . }}
     component: monitor
