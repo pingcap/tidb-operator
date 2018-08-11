@@ -24,5 +24,5 @@ spec:
   selector:
     app: {{ template "tidb-cluster.name" . }}
     component: privileged-tidb
-    release: {{ .Release.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
 {{- end }}

@@ -19,7 +19,7 @@ spec:
   selector:
     app: {{ template "tidb-cluster.name" . }}
     component: monitor
-    release: {{ .Release.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
 ---
 apiVersion: v1
 kind: Service
@@ -41,5 +41,5 @@ spec:
   selector:
     app: {{ template "tidb-cluster.name" . }}
     component: monitor
-    release: {{ .Release.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
 {{- end }}

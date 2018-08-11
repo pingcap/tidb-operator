@@ -15,7 +15,7 @@ spec:
       labels:
         app: {{ template "tidb-cluster.name" . }}
         component: monitor-configurator
-        release: {{ .Release.Name }}-{{ .Chart.Version }}
+        release: {{ .Release.Name }}
     spec:
       restartPolicy: OnFailure
     {{- if .Values.rbac.create }}

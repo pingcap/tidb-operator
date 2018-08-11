@@ -15,13 +15,13 @@ spec:
     matchLabels:
       app: {{ template "tidb-cluster.name" . }}
       component: monitor
-      release: {{ .Release.Name }}-{{ .Chart.Version }}
+      release: {{ .Release.Name }}
   template:
     metadata:
       labels:
         app: {{ template "tidb-cluster.name" . }}
         component: monitor
-        release: {{ .Release.Name }}-{{ .Chart.Version }}
+        release: {{ .Release.Name }}
     spec:
     {{- if .Values.rbac.create }}
       serviceAccount: {{ .Values.clusterName }}-monitor
