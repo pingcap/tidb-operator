@@ -7,14 +7,12 @@ def tidbClusterReplace(file) {
 	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image: pingcap/tidb-dashboard-installer:.*", "image: localhost:5000/pingcap/tidb-dashboard-installer:v1.0.7")
 	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image: grafana/grafana:.*", "image: localhost:5000/pingcap/grafana:4.2.0")
 	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image: prom/prometheus:.*", "image: localhost:5000/pingcap/prometheus:v2.0.0")
-	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("storageClassName: standard", "storageClassName: local-storage")
 	writeFile file: file, text: "${DST_E2E_FILE_CONTENT}"
 }
 
 def operatorReplace(file, tag) {
 	def SRC_E2E_FILE_CONTENT = readFile file: file
 	def DST_E2E_FILE_CONTENT = SRC_E2E_FILE_CONTENT.replaceAll("operatorImage: pingcap/tidb-operator:.*", "operatorImage: ${tag}")
-	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("defaultStorageClassName: standard", "defaultStorageClassName: local-storage")
 	writeFile file: file, text: "${DST_E2E_FILE_CONTENT}"
 }
 
@@ -101,10 +99,6 @@ __EOF__
 
 				stage('start run operator e2e test'){
 					def ns = "tidb-operator-e2e"
-					def operator_yaml = "manifests/tidb-operator-e2e.yaml"
-					def src_file_content = readFile file: "${operator_yaml}"
-					def dst_file_content = src_file_content.replaceAll("image:.*", "image: ${E2E_IMAGE}")
-					writeFile file: "${operator_yaml}", text: "${dst_file_content}"
 
 					ansiColor('xterm') {
 					sh """
