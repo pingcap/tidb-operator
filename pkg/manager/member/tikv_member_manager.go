@@ -377,7 +377,7 @@ func (tkmm *tikvMemberManager) labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
 
 func (tkmm *tikvMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	if oldSet.Status.CurrentRevision == oldSet.Status.UpdateRevision {
-		tc.Status.TiKV.Phase = v1alpha1.Normal
+		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 	}
 
 	upgrade, err := tkmm.needUpgrade(tc, newSet, oldSet)
@@ -385,7 +385,7 @@ func (tkmm *tikvMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 		return err
 	}
 	if upgrade {
-		tc.Status.TiKV.Phase = v1alpha1.Upgrade
+		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 	} else {
 		_, podSpec, err := controller.GetLastAppliedConfig(oldSet)
 		if err != nil {
@@ -398,7 +398,7 @@ func (tkmm *tikvMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 
 func (tkmm *tikvMemberManager) scaleDown(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	// can not scale tikv when it is upgrading
-	if tc.Status.TiKV.Phase == v1alpha1.Upgrade {
+	if tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
 		newSet.Spec.Replicas = oldSet.Spec.Replicas
 		glog.Infof("the TidbCluster: [%s/%s]'s tikv is upgrading,can not scale until upgrade have completed", tc.GetNamespace(), tc.GetName())
 		return nil
@@ -418,7 +418,7 @@ func (tkmm *tikvMemberManager) scaleDown(tc *v1alpha1.TidbCluster, oldSet *apps.
 }
 
 func (tkmm *tikvMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) (bool, error) {
-	if tc.Status.PD.Phase == v1alpha1.Upgrade {
+	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
 		return false, nil
 	}
 	same, err := controller.EqualTemplate(newSet.Spec.Template, oldSet.Spec.Template)
