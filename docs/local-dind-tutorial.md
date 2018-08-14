@@ -26,17 +26,18 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 1. Use DinD to install and deploy a multiple-node Kubernetes cluster:
 
     ```sh
-    $ wget https://cdn.rawgit.com/kubernetes-sigs/kubeadm-dind-cluster/master/fixed/dind-cluster-v1.10.sh
-    $ chmod +x dind-cluster-v1.10.sh
-    $ CNI_PLUGIN=flannel NUM_NODES=4 ./dind-cluster-v1.10.sh up
+    $ wget https://cdn.rawgit.com/kubernetes-sigs/kubeadm-dind-cluster/64a2befa65ce23475158b65793e56d4bc1ae0a79/fixed/dind-cluster-v1.11.sh
+    $ chmod +x dind-cluster-v1.11.sh
+    $ CNI_PLUGIN="flannel" NUM_NODES=4 ./dind-cluster-v1.11.sh up
     ```
 
+    > **Note:** `CNI_PLUGIN=flannel` prevents issues with restarting docker. However, if you have network issues preventing tidb startup, you can re-create the cluster without setting `CNI_PLUGIN`.
     > **Note:** If you fail to pull the Docker images due to the firewall, you can try the following method (the Docker images used are pulled from [UCloud Docker Registry](https://docs.ucloud.cn/compute/uhub/index)):
 
     ```sh
     $ git clone https://github.com/pingcap/kubeadm-dind-cluster
     $ cd kubeadm-dind-cluster
-    $ NUM_NODES=4 tools/multi_k8s_dind_cluster_manager.sh rebuild e2e-v1.10
+    $ NUM_NODES=4 tools/multi_k8s_dind_cluster_manager.sh rebuild e2e-v1.11
     ```
 
 2. After the DinD cluster bootstrap is done, use the following command to verify the Kubernetes cluster is up and running:
@@ -225,8 +226,19 @@ $ kubectl delete pvc --namespace tidb --all
 
 ## Destroy the DinD Kubernetes cluster
 
-If you do not need the DinD Kubernetes cluster anymore, change to the directory where you put `dind-cluster-v1.10.sh` and run the following command:
+If you do not need the DinD Kubernetes cluster anymore, change to the directory where you put `dind-cluster-v1.11.sh` and run the following command:
 
 ```sh
-$ ./dind-cluster-v1.10.sh clean
+$ ./dind-cluster-v1.11.sh clean
+```
+
+## Re-start Kubernetes cluster and the TiDB Operator and Cluster
+
+Once you have a working DinD setup, you can follow this workflow:
+
+```sh
+$ ./dind-cluster-v1.11.sh down
+# Run the up command the same way you did previously
+$ NUM_NODES=4 CNI_PLUGIN=flannel ./dind-cluster-v1.11.sh up
+$ hack/dind-run-operators.sh
 ```
