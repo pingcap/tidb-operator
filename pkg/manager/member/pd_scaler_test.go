@@ -21,15 +21,21 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeinformers "k8s.io/client-go/informers"
+	kubefake "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/cache"
 )
 
 func TestPDScalerScaleIn(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name            string
-		modify          func(*apps.StatefulSet) *apps.StatefulSet
 		pdUpgrading     bool
+		hasPVC          bool
+		pvcUpdateErr    bool
 		deleteMemberErr bool
 		err             bool
 		changed         bool
@@ -47,7 +53,13 @@ func TestPDScalerScaleIn(t *testing.T) {
 		newSet := oldSet.DeepCopy()
 		newSet.Spec.Replicas = int32Pointer(3)
 
-		scaler, pdControl := newFakePDScaler()
+		scaler, pdControl, pvcIndexer, pvcControl := newFakePDScaler()
+
+		if test.hasPVC {
+			pvc := newPVCForStatefulSet(oldSet)
+			pvcIndexer.Add(pvc)
+		}
+
 		pdClient := controller.NewFakePDClient()
 		pdControl.SetPDClient(tc, pdClient)
 
@@ -55,6 +67,9 @@ func TestPDScalerScaleIn(t *testing.T) {
 			pdClient.AddReaction(controller.DeleteMemberActionType, func(action *controller.Action) (interface{}, error) {
 				return nil, fmt.Errorf("error")
 			})
+		}
+		if test.pvcUpdateErr {
+			pvcControl.SetUpdatePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
 		err := scaler.ScaleIn(tc, oldSet, newSet)
@@ -72,6 +87,8 @@ func TestPDScalerScaleIn(t *testing.T) {
 		{
 			name:            "normal",
 			pdUpgrading:     false,
+			hasPVC:          true,
+			pvcUpdateErr:    false,
 			deleteMemberErr: false,
 			err:             false,
 			changed:         true,
@@ -79,14 +96,36 @@ func TestPDScalerScaleIn(t *testing.T) {
 		{
 			name:            "pd is upgrading",
 			pdUpgrading:     true,
+			hasPVC:          true,
+			pvcUpdateErr:    false,
 			deleteMemberErr: false,
 			err:             false,
 			changed:         false,
 		},
 		{
 			name:            "error when delete member",
+			hasPVC:          true,
+			pvcUpdateErr:    false,
 			pdUpgrading:     false,
 			deleteMemberErr: true,
+			err:             true,
+			changed:         false,
+		},
+		{
+			name:            "cache don't have pvc",
+			pdUpgrading:     false,
+			hasPVC:          false,
+			pvcUpdateErr:    false,
+			deleteMemberErr: false,
+			err:             true,
+			changed:         false,
+		},
+		{
+			name:            "error when update pvc",
+			pdUpgrading:     false,
+			hasPVC:          true,
+			pvcUpdateErr:    true,
+			deleteMemberErr: false,
 			err:             true,
 			changed:         false,
 		},
@@ -97,15 +136,22 @@ func TestPDScalerScaleIn(t *testing.T) {
 	}
 }
 
-func newFakePDScaler() (*pdScaler, *controller.FakePDControl) {
+func newFakePDScaler() (*pdScaler, *controller.FakePDControl, cache.Indexer, *controller.FakePVCControl) {
+	kubeCli := kubefake.NewSimpleClientset()
+
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	pdControl := controller.NewFakePDControl()
-	return &pdScaler{pdControl}, pdControl
+	pvcControl := controller.NewFakePVCControl(pvcInformer)
+
+	return &pdScaler{pdControl, pvcInformer.Lister(), pvcControl},
+		pdControl, pvcInformer.Informer().GetIndexer(), pvcControl
 }
 
 func newStatefulSetForPDScaleIn() *apps.StatefulSet {
 	set := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pd-scale-down",
+			Name:      "scaler",
 			Namespace: metav1.NamespaceDefault,
 		},
 		Spec: apps.StatefulSetSpec{
@@ -113,6 +159,15 @@ func newStatefulSetForPDScaleIn() *apps.StatefulSet {
 		},
 	}
 	return set
+}
+
+func newPVCForStatefulSet(set *apps.StatefulSet) *corev1.PersistentVolumeClaim {
+	return &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("pd-%s-%d", set.GetName(), int(*set.Spec.Replicas)-1),
+			Namespace: metav1.NamespaceDefault,
+		},
+	}
 }
 
 func int32Pointer(num int) *int32 {
