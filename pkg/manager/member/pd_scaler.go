@@ -16,18 +16,26 @@ package member
 import (
 	"fmt"
 
+	"time"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1beta1"
+	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 type pdScaler struct {
-	pdControl controller.PDControlInterface
+	pdControl  controller.PDControlInterface
+	pvcLister  corelisters.PersistentVolumeClaimLister
+	pvcControl controller.PVCControlInterface
 }
 
 // NewPDScaler returns a Scaler
-func NewPDScaler(pdControl controller.PDControlInterface) Scaler {
-	return &pdScaler{pdControl}
+func NewPDScaler(pdControl controller.PDControlInterface,
+	pvcLister corelisters.PersistentVolumeClaimLister,
+	pvcControl controller.PVCControlInterface) Scaler {
+	return &pdScaler{pdControl, pvcLister, pvcControl}
 }
 
 func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
@@ -42,19 +50,34 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		return nil
 	}
 
+	ns := tc.GetNamespace()
 	ordinal := *oldSet.Spec.Replicas - 1
 	memberName := fmt.Sprintf("%s-pd-%d", tc.GetName(), ordinal)
+	setName := oldSet.GetName()
 	if err := psd.pdControl.GetPDClient(tc).DeleteMember(memberName); err != nil {
 		// for unit test
 		*newSet.Spec.Replicas = *oldSet.Spec.Replicas
 		return err
 	}
 
+	pvcName := fmt.Sprintf("%s-%s-%d", v1alpha1.PDMemberType, setName, ordinal)
+	pvc, err := psd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
+	if err != nil {
+		return err
+	}
+
+	if pvc.Annotations == nil {
+		pvc.Annotations = map[string]string{}
+	}
+	pvc.Annotations[label.AnnPVCDeferDeletion] = time.Now().Format(time.RFC3339)
+	err = psd.pvcControl.UpdatePVC(tc, pvc)
+	if err != nil {
+		return err
+	}
+
 	*newSet.Spec.Replicas = ordinal
 	return nil
 }
-
-var _ Scaler = &pdScaler{}
 
 type fakePDScaler struct{}
 
@@ -70,5 +93,3 @@ func (fsd *fakePDScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 func (fsd *fakePDScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	return nil
 }
-
-var _ Scaler = &fakePDScaler{}
