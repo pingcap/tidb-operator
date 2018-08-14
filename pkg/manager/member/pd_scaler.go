@@ -30,13 +30,13 @@ func NewPDScaler(pdControl controller.PDControlInterface) *pdScaler {
 	return &pdScaler{pdControl}
 }
 
-func (psd *pdScaler) ScaleUp(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	return nil
 }
 
 // We need remove member from cluster before reducing statefulset replicas
 // only remove one member at a time when scale down
-func (psd *pdScaler) ScaleDown(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	if tc.PDUpgrading() {
 		*newSet.Spec.Replicas = *oldSet.Spec.Replicas
 		return nil
@@ -54,16 +54,20 @@ func (psd *pdScaler) ScaleDown(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	return nil
 }
 
+var _ Scaler = &pdScaler{}
+
 type fakePDScaler struct{}
 
 func NewFakePDScaler() *fakePDScaler {
 	return &fakePDScaler{}
 }
 
-func (fsd *fakePDScaler) ScaleUp(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (fsd *fakePDScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	return nil
 }
 
-func (fsd *fakePDScaler) ScaleDown(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (fsd *fakePDScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	return nil
 }
+
+var _ Scaler = &fakePDScaler{}
