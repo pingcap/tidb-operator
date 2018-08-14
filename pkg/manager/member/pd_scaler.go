@@ -54,6 +54,8 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	return nil
 }
 
+var _ Scaler = &pdScaler{}
+
 type fakePDScaler struct{}
 
 // NewFakePDScaler returns a fake Scaler
@@ -68,3 +70,5 @@ func (fsd *fakePDScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 func (fsd *fakePDScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	return nil
 }
+
+var _ Scaler = &fakePDScaler{}
