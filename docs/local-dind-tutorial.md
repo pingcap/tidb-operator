@@ -41,7 +41,7 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 3. Now the cluster is up and running, you need to install the Kubernetes package manager [Helm](https://helm.sh) into the cluster, which is used to deploy and manage TiDB Operator and TiDB clusters later.
 
     ```sh
-    $ os=linux # change `linux` to `darwin` if you use macOS
+    $ os=`uname -s| tr '[:upper:]' '[:lower:]'`
     $ wget "https://storage.googleapis.com/kubernetes-helm/helm-v2.9.1-${os}-amd64.tar.gz"
     $ tar xzf helm-v2.9.1-${os}-amd64.tar.gz
     $ sudo mv ${os}-amd64/helm /usr/local/bin
