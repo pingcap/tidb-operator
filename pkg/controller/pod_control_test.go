@@ -64,7 +64,7 @@ func TestPodControlUpdateMetaInfoSuccess(t *testing.T) {
 					Store: &MetaStore{
 						Store: &metapb.Store{
 							Id:      333,
-							Address: "pod-1.web",
+							Address: fmt.Sprintf("%s.web", TestPodName),
 						},
 					},
 				},
@@ -112,7 +112,7 @@ func TestPodControlUpdateMetaInfoGetClusterFailed(t *testing.T) {
 					Store: &MetaStore{
 						Store: &metapb.Store{
 							Id:      333,
-							Address: "pod-1.web",
+							Address: fmt.Sprintf("%s.web", TestPodName),
 						},
 					},
 				},
@@ -155,7 +155,7 @@ func TestPodControlUpdateMetaInfoGetMemberFailed(t *testing.T) {
 					Store: &MetaStore{
 						Store: &metapb.Store{
 							Id:      333,
-							Address: "pod-1.web",
+							Address: fmt.Sprintf("%s.web", TestPodName),
 						},
 					},
 				},
@@ -296,7 +296,7 @@ func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 					Store: &MetaStore{
 						Store: &metapb.Store{
 							Id:      333,
-							Address: "pod-1.web",
+							Address: fmt.Sprintf("%s.web", TestPodName),
 						},
 					},
 				},
