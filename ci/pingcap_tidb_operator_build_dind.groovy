@@ -99,6 +99,7 @@ __EOF__
 
 				stage('start run operator e2e test'){
 					def ns = "tidb-operator-e2e"
+					def operator_yaml = "manifests/tidb-operator-e2e.yaml"
 
 					ansiColor('xterm') {
 					sh """
