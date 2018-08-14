@@ -24,7 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestPDScalerScaleDown(t *testing.T) {
+func TestPDScalerScaleIn(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name            string
@@ -43,7 +43,7 @@ func TestPDScalerScaleDown(t *testing.T) {
 			tc.Status.PD.Phase = v1alpha1.UpgradePhase
 		}
 
-		oldSet := newStatefulSetForPDScaleDown()
+		oldSet := newStatefulSetForPDScaleIn()
 		newSet := oldSet.DeepCopy()
 		newSet.Spec.Replicas = int32Pointer(3)
 
@@ -102,7 +102,7 @@ func newFakePDScaler() (*pdScaler, *controller.FakePDControl) {
 	return &pdScaler{pdControl}, pdControl
 }
 
-func newStatefulSetForPDScaleDown() *apps.StatefulSet {
+func newStatefulSetForPDScaleIn() *apps.StatefulSet {
 	set := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pd-scale-down",
