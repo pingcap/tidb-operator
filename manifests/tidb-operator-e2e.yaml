@@ -27,7 +27,7 @@ spec:
   serviceAccount: tidb-operator-e2e
   containers:
   - name: tidb-operator-e2e
-    image: pingcap/tidb-operator-e2e:latest
+    image: 127.0.0.1:5000/pingcap/tidb-operator-e2e:latest
     imagePullPolicy: Always
     env:
     - name: GINKGO_NODES
