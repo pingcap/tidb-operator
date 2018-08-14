@@ -398,7 +398,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
 	pdControl := controller.NewFakePDControl()
-	pdScaleDowner := NewFakePDScaler()
+	pdScaler := NewFakePDScaler()
 
 	return &pdMemberManager{
 		pdControl,
@@ -406,7 +406,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 		svcControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
-		pdScaleDowner,
+		pdScaler,
 	}, setControl, svcControl, pdControl
 }
 
