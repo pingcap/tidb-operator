@@ -26,17 +26,15 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 )
 
 func TestPVControlPatchPVReclaimPolicySuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
-	pvcInformer, recorder := newFakeRecorderAndPVCInformer()
+	fakeClient, pvcInformer, recorder := newFakeRecorderAndPVCInformer()
 	tc := newTidbCluster()
 	pv := newPV()
-	fakeClient := &fake.Clientset{}
 	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), recorder)
 	fakeClient.AddReactor("patch", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, nil
@@ -51,10 +49,9 @@ func TestPVControlPatchPVReclaimPolicySuccess(t *testing.T) {
 
 func TestPVControlPatchPVReclaimPolicyFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
-	pvcInformer, recorder := newFakeRecorderAndPVCInformer()
+	fakeClient, pvcInformer, recorder := newFakeRecorderAndPVCInformer()
 	tc := newTidbCluster()
 	pv := newPV()
-	fakeClient := &fake.Clientset{}
 	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), recorder)
 	fakeClient.AddReactor("patch", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
@@ -69,10 +66,9 @@ func TestPVControlPatchPVReclaimPolicyFailed(t *testing.T) {
 
 func TestPVControlPatchPVReclaimPolicyConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
-	pvcInformer, recorder := newFakeRecorderAndPVCInformer()
+	fakeClient, pvcInformer, recorder := newFakeRecorderAndPVCInformer()
 	tc := newTidbCluster()
 	pv := newPV()
-	fakeClient := &fake.Clientset{}
 	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), recorder)
 
 	conflict := false
@@ -91,18 +87,109 @@ func TestPVControlPatchPVReclaimPolicyConflictSuccess(t *testing.T) {
 	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
-func newFakeRecorderAndPVCInformer() (coreinformers.PersistentVolumeClaimInformer, *record.FakeRecorder) {
-	kubeCli := kubefake.NewSimpleClientset()
-	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
+func TestPVControlUpdateMetaInfoSuccess(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tc := newTidbCluster()
+	pv := newPV()
+	pvc := newPVC(tc)
+	fakeClient, pvcInformer, recorder := newFakeRecorderAndPVCInformer()
+	pvcInformer.Informer().GetIndexer().Add(pvc)
+	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), recorder)
+	fakeClient.AddReactor("get", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
+		return true, nil, nil
+	})
+	fakeClient.AddReactor("update", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
+		return true, nil, nil
+	})
+	err := control.UpdateMetaInfo(tc, pv)
+	g.Expect(err).To(Succeed())
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(1))
+	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
+}
+
+func TestPVControlUpdateMetaInfoUpdatePVFailed(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tc := newTidbCluster()
+	pv := newPV()
+	pvc := newPVC(tc)
+	fakeClient, pvcInformer, recorder := newFakeRecorderAndPVCInformer()
+	pvcInformer.Informer().GetIndexer().Add(pvc)
+	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), recorder)
+	fakeClient.AddReactor("get", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
+		return true, nil, nil
+	})
+	fakeClient.AddReactor("update", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
+	})
+	err := control.UpdateMetaInfo(tc, pv)
+	g.Expect(err).To(HaveOccurred())
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(1))
+	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeWarning))
+}
+
+func TestPVControlUpdateMetaInfoGetPVCFailed(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tc := newTidbCluster()
+	pv := newPV()
+	fakeClient, pvcInformer, recorder := newFakeRecorderAndPVCInformer()
+	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), recorder)
+	fakeClient.AddReactor("get", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewNotFound(action.GetResource().GroupResource(), action.GetResource().Resource)
+	})
+	fakeClient.AddReactor("update", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
+		return true, nil, nil
+	})
+	err := control.UpdateMetaInfo(tc, pv)
+	g.Expect(err).To(Succeed())
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(0))
+}
+
+func TestPVControlUpdateMetaInfoConflictSuccess(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tc := newTidbCluster()
+	pv := newPV()
+	pvc := newPVC(tc)
+	fakeClient, pvcInformer, recorder := newFakeRecorderAndPVCInformer()
+	pvcInformer.Informer().GetIndexer().Add(pvc)
+	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), recorder)
+	fakeClient.AddReactor("get", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
+		return true, nil, nil
+	})
+	conflict := true
+	fakeClient.AddReactor("update", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
+		update := action.(core.UpdateAction)
+		if !conflict {
+			conflict = true
+			return true, update.GetObject(), apierrors.NewConflict(action.GetResource().GroupResource(), pv.Name, errors.New("conflict"))
+		}
+		return true, update.GetObject(), nil
+	})
+	err := control.UpdateMetaInfo(tc, pv)
+	g.Expect(err).To(Succeed())
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(1))
+	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
+}
+
+func newFakeRecorderAndPVCInformer() (*fake.Clientset, coreinformers.PersistentVolumeClaimInformer, *record.FakeRecorder) {
+	fakeClient := &fake.Clientset{}
+	pvcInformer := kubeinformers.NewSharedInformerFactory(fakeClient, 0).Core().V1().PersistentVolumeClaims()
 	recorder := record.NewFakeRecorder(10)
-	return pvcInformer, recorder
+	return fakeClient, pvcInformer, recorder
 }
 
 func newPV() *corev1.PersistentVolume {
 	return &corev1.PersistentVolume{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolume",
-			APIVersion: "v1",
+			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pv-1",
@@ -111,6 +198,13 @@ func newPV() *corev1.PersistentVolume {
 		},
 		Spec: corev1.PersistentVolumeSpec{
 			PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimDelete,
+			ClaimRef: &corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "PersistentVolumeClaim",
+				Name:       "pvc-1",
+				Namespace:  corev1.NamespaceDefault,
+				UID:        types.UID("test"),
+			},
 		},
 	}
 }
