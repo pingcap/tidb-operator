@@ -18,10 +18,10 @@ import (
 	apps "k8s.io/api/apps/v1beta1"
 )
 
-// Scaler implements the logic for scaling up or scaling down the cluster.
+// Scaler implements the logic for scaling out or scaling in the cluster.
 type Scaler interface {
-	// ScaleUp scales up the cluster
-	ScaleUp(*v1alpha1.TidbCluster, *apps.StatefulSet, *apps.StatefulSet) error
-	// ScaleDown scales down the cluster
-	ScaleDown(*v1alpha1.TidbCluster, *apps.StatefulSet, *apps.StatefulSet) error
+	// ScaleOut scales out the cluster
+	ScaleOut(*v1alpha1.TidbCluster, *apps.StatefulSet, *apps.StatefulSet) error
+	// ScaleIn scales in the cluster
+	ScaleIn(*v1alpha1.TidbCluster, *apps.StatefulSet, *apps.StatefulSet) error
 }

@@ -57,7 +57,7 @@ func TestPDScalerScaleDown(t *testing.T) {
 			})
 		}
 
-		err := scaler.ScaleDown(tc, oldSet, newSet)
+		err := scaler.ScaleIn(tc, oldSet, newSet)
 		if test.err {
 			g.Expect(err).To(HaveOccurred())
 		}
