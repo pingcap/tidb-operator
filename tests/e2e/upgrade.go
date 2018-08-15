@@ -14,12 +14,16 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
+const (
+	upgradeVersion = "v2.0.0"
+)
+
 func testUpgrade() {
-	By("Then start upgrade to new version")
+	By("When upgrade TiDB cluster to newer version")
 	err := wait.Poll(5*time.Second, 5*time.Minute, upgrade)
 	Expect(err).NotTo(HaveOccurred())
 
-	By("Then members should upgrade by order: pd ==> tikv ==> tidb")
+	By("Then members should be upgrade in order: pd ==> tikv ==> tidb")
 	err = wait.Poll(5*time.Second, 10*time.Minute, memberUpgraded)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -39,9 +43,9 @@ func upgrade() (bool, error) {
 		return false, err
 	}
 
-	tc.Spec.PD.Image = strings.Replace(tc.Spec.PD.Image, getImageTag(tc.Spec.PD.Image), "v2.0.0", -1)
-	tc.Spec.TiKV.Image = strings.Replace(tc.Spec.TiKV.Image, getImageTag(tc.Spec.TiKV.Image), "v2.0.0", -1)
-	tc.Spec.TiDB.Image = strings.Replace(tc.Spec.TiDB.Image, getImageTag(tc.Spec.TiDB.Image), "v2.0.0", -1)
+	tc.Spec.PD.Image = strings.Replace(tc.Spec.PD.Image, getImageTag(tc.Spec.PD.Image), upgradeVersion, -1)
+	tc.Spec.TiKV.Image = strings.Replace(tc.Spec.TiKV.Image, getImageTag(tc.Spec.TiKV.Image), upgradeVersion, -1)
+	tc.Spec.TiDB.Image = strings.Replace(tc.Spec.TiDB.Image, getImageTag(tc.Spec.TiDB.Image), upgradeVersion, -1)
 
 	_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 	if err != nil {
