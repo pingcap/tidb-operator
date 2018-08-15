@@ -44,7 +44,7 @@ func annotationsMountVolume() (corev1.VolumeMount, corev1.Volume) {
 	return m, v
 }
 
-// statefulSetInNormal confirm whether the statefulSet is normal state
+// statefulSetInNormal confirms whether the statefulSet is normal phase
 func statefulSetInNormal(set *apps.StatefulSet) bool {
 	return set.Status.CurrentRevision == set.Status.UpdateRevision && set.Generation <= *set.Status.ObservedGeneration
 }

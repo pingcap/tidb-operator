@@ -8,7 +8,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -31,7 +30,7 @@ func testUpgrade() {
 	err = wait.Poll(5*time.Second, 5*time.Minute, allMembersRunning)
 	Expect(err).NotTo(HaveOccurred())
 
-	By("Then the data is correct")
+	By("And the data is correct")
 	err = wait.Poll(5*time.Second, 5*time.Minute, dataIsCorrect)
 	Expect(err).NotTo(HaveOccurred())
 }
@@ -39,7 +38,7 @@ func testUpgrade() {
 func upgrade() (bool, error) {
 	tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 	if err != nil {
-		logf("failed to upgrade tidbcluster, error: %v", err)
+		logf("failed to get tidbcluster, error: %v", err)
 		return false, err
 	}
 
@@ -49,7 +48,7 @@ func upgrade() (bool, error) {
 
 	_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 	if err != nil {
-		logf("failed to upgrade tidbcluster, error: %v", err)
+		logf("failed to update tidbcluster, error: %v", err)
 		return false, err
 	}
 
@@ -99,49 +98,26 @@ func memberUpgraded() (bool, error) {
 	} else if tc.Status.TiKV.Phase == v1alpha1.Upgrade {
 		logf("tikv is upgrading")
 		Expect(tc.Status.TiDB.Phase).NotTo(Equal(v1alpha1.Upgrade))
+		Expect(imageUpgraded(tc, v1alpha1.PDMemberType, pdSet)).To(BeTrue())
 		Expect(imageUpgraded(tc, v1alpha1.TiKVMemberType, tikvSet)).To(BeTrue())
 		Expect(imageUpgraded(tc, v1alpha1.TiDBMemberType, tidbSet)).To(BeFalse())
-		upgraded, err := podsUpgraded(tc, v1alpha1.PDMemberType, pdSet)
-		if err != nil {
-			logf("check pd's pods upgraded failed: %v", err)
-			return false, nil
-		}
-		Expect(upgraded).To(BeTrue())
+		Expect(podsUpgraded(pdSet)).To(BeTrue())
+		return false, nil
 	} else if tc.Status.TiDB.Phase == v1alpha1.Upgrade {
 		logf("tidb is upgrading")
+		Expect(imageUpgraded(tc, v1alpha1.PDMemberType, pdSet)).To(BeTrue())
+		Expect(imageUpgraded(tc, v1alpha1.TiKVMemberType, tikvSet)).To(BeTrue())
 		Expect(imageUpgraded(tc, v1alpha1.TiDBMemberType, tidbSet)).To(BeTrue())
-		upgraded, err := podsUpgraded(tc, v1alpha1.PDMemberType, pdSet)
-		if err != nil {
-			logf("check pd's pods upgraded failed: %v", err)
-			return false, nil
-		}
-		Expect(upgraded).To(BeTrue())
-		upgraded, err = podsUpgraded(tc, v1alpha1.TiKVMemberType, tikvSet)
-		if err != nil {
-			logf("check tikv's pods upgraded failed: %v", err)
-			return false, nil
-		}
-		Expect(upgraded).To(BeTrue())
+		Expect(podsUpgraded(pdSet)).To(BeTrue())
+		Expect(podsUpgraded(tikvSet)).To(BeTrue())
 		return false, nil
 	} else {
-		upgraded, err := podsUpgraded(tc, v1alpha1.PDMemberType, pdSet)
-		if err != nil {
-			logf("check pd's pods upgraded failed: %v", err)
-			return false, nil
-		}
-		Expect(upgraded).To(BeTrue())
-		upgraded, err = podsUpgraded(tc, v1alpha1.TiKVMemberType, tikvSet)
-		if err != nil {
-			logf("check tikv's pods upgraded failed: %v", err)
-			return false, nil
-		}
-		Expect(upgraded).To(BeTrue())
-		upgraded, err = podsUpgraded(tc, v1alpha1.TiDBMemberType, tidbSet)
-		if err != nil {
-			logf("check tikv's pods upgraded failed: %v", err)
-			return false, nil
-		}
-		Expect(upgraded).To(BeTrue())
+		Expect(imageUpgraded(tc, v1alpha1.PDMemberType, pdSet)).To(BeTrue())
+		Expect(imageUpgraded(tc, v1alpha1.TiKVMemberType, tikvSet)).To(BeTrue())
+		Expect(imageUpgraded(tc, v1alpha1.TiDBMemberType, tidbSet)).To(BeTrue())
+		Expect(podsUpgraded(pdSet)).To(BeTrue())
+		Expect(podsUpgraded(tikvSet)).To(BeTrue())
+		Expect(podsUpgraded(tidbSet)).To(BeTrue())
 		return true, nil
 	}
 	return false, nil
@@ -158,27 +134,8 @@ func imageUpgraded(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, set
 	return false
 }
 
-func podsUpgraded(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, set *apps.StatefulSet) (bool, error) {
-	selector, err := label.New().Cluster(tc.GetName()).PD().Selector()
-	if err != nil {
-		return false, err
-	}
-	pods, err := kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return false, err
-	}
-
-	for _, pod := range pods.Items {
-		for _, container := range pod.Spec.Containers {
-			if container.Image == memberType.String() {
-				if container.Image != getImage(tc, memberType) {
-					return false, nil
-				}
-			}
-		}
-	}
-
-	return true, nil
+func podsUpgraded(set *apps.StatefulSet) bool {
+	return set.Generation <= *set.Status.ObservedGeneration && set.Status.CurrentRevision == set.Status.UpdateRevision
 }
 
 func getImage(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) string {
