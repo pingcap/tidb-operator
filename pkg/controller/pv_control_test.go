@@ -161,7 +161,7 @@ func TestPVControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	fakeClient.AddReactor("get", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, nil
 	})
-	conflict := true
+	conflict := false
 	fakeClient.AddReactor("update", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
 		update := action.(core.UpdateAction)
 		if !conflict {
