@@ -13,7 +13,10 @@
 
 package member
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	apps "k8s.io/api/apps/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+)
 
 func timezoneMountVolume() (corev1.VolumeMount, corev1.Volume) {
 	return corev1.VolumeMount{Name: "timezone", MountPath: "/etc/localtime", ReadOnly: true},
@@ -39,4 +42,9 @@ func annotationsMountVolume() (corev1.VolumeMount, corev1.Volume) {
 		},
 	}
 	return m, v
+}
+
+// statefulSetInNormal confirm whether the statefulSet is normal state
+func statefulSetInNormal(set *apps.StatefulSet) bool {
+	return set.Status.CurrentRevision == set.Status.UpdateRevision && set.Generation <= *set.Status.ObservedGeneration
 }

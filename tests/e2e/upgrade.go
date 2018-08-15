@@ -20,7 +20,7 @@ func testUpgrade() {
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Then members should upgrade by order: pd ==> tikv ==> tidb")
-	err = wait.Poll(5*time.Second, 5*time.Minute, memberUpgraded)
+	err = wait.Poll(5*time.Second, 10*time.Minute, memberUpgraded)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Then all members should running")
@@ -58,6 +58,7 @@ func memberUpgraded() (bool, error) {
 		logf("failed to get tidbcluster: [%s], error: %v", clusterName, err)
 		return false, err
 	}
+
 	pdSetName := controller.PDMemberName(tc.GetName())
 	pdSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(pdSetName, metav1.GetOptions{})
 	if err != nil {
@@ -84,6 +85,7 @@ func memberUpgraded() (bool, error) {
 	}
 
 	if tc.Status.PD.Phase == v1alpha1.Upgrade {
+		logf("pd is upgrading")
 		Expect(tc.Status.TiKV.Phase).NotTo(Equal(v1alpha1.Upgrade))
 		Expect(tc.Status.TiDB.Phase).NotTo(Equal(v1alpha1.Upgrade))
 		Expect(imageUpgraded(tc, v1alpha1.PDMemberType, pdSet)).To(BeTrue())
@@ -91,6 +93,7 @@ func memberUpgraded() (bool, error) {
 		Expect(imageUpgraded(tc, v1alpha1.TiDBMemberType, tidbSet)).To(BeFalse())
 		return false, nil
 	} else if tc.Status.TiKV.Phase == v1alpha1.Upgrade {
+		logf("tikv is upgrading")
 		Expect(tc.Status.TiDB.Phase).NotTo(Equal(v1alpha1.Upgrade))
 		Expect(imageUpgraded(tc, v1alpha1.TiKVMemberType, tikvSet)).To(BeTrue())
 		Expect(imageUpgraded(tc, v1alpha1.TiDBMemberType, tidbSet)).To(BeFalse())
@@ -101,6 +104,7 @@ func memberUpgraded() (bool, error) {
 		}
 		Expect(upgraded).To(BeTrue())
 	} else if tc.Status.TiDB.Phase == v1alpha1.Upgrade {
+		logf("tidb is upgrading")
 		Expect(imageUpgraded(tc, v1alpha1.TiDBMemberType, tidbSet)).To(BeTrue())
 		upgraded, err := podsUpgraded(tc, v1alpha1.PDMemberType, pdSet)
 		if err != nil {

@@ -22,9 +22,9 @@ import (
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -424,9 +424,10 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 }
 
 func (pmm *pdMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	if oldSet.Status.CurrentRevision == oldSet.Status.UpdateRevision {
+	if statefulSetInNormal(oldSet) {
 		tc.Status.PD.Phase = v1alpha1.Normal
 	}
+
 	upgrade, err := pmm.needUpgrade(tc, newSet, oldSet)
 	if err != nil {
 		return err
