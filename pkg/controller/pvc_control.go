@@ -91,7 +91,7 @@ func (rpc *realPVCControl) UpdatePVC(tc *v1alpha1.TidbCluster, pvc *corev1.Persi
 		return updateErr
 	})
 	rpc.recordPVCEvent("update", tc, pvcName, err)
-	return nil
+	return err
 }
 
 func (rpc *realPVCControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) error {
@@ -191,7 +191,7 @@ func (fpc *FakePVCControl) SetDeletePVCError(err error, after int) {
 	fpc.deletePVCTracker.after = after
 }
 
-// DeletePVC delete the pvc
+// DeletePVC deletes the pvc
 func (fpc *FakePVCControl) DeletePVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) error {
 	defer fpc.deletePVCTracker.inc()
 	if fpc.deletePVCTracker.errorReady() {
@@ -202,7 +202,7 @@ func (fpc *FakePVCControl) DeletePVC(tc *v1alpha1.TidbCluster, pvc *corev1.Persi
 	return fpc.PVCIndexer.Delete(pvc)
 }
 
-// Update update the annotation, labels and spec of pvc
+// Update updates the annotation, labels and spec of pvc
 func (fpc *FakePVCControl) UpdatePVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) error {
 	defer fpc.updatePVCTracker.inc()
 	if fpc.updatePVCTracker.errorReady() {
@@ -213,7 +213,7 @@ func (fpc *FakePVCControl) UpdatePVC(tc *v1alpha1.TidbCluster, pvc *corev1.Persi
 	return fpc.PVCIndexer.Update(pvc)
 }
 
-// UpdateMetaInfo update the meta info of pvc
+// UpdateMetaInfo updates the meta info of pvc
 func (fpc *FakePVCControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) error {
 	defer fpc.updatePVCTracker.inc()
 	if fpc.updatePVCTracker.errorReady() {

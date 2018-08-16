@@ -16,7 +16,6 @@ package member
 import (
 	"fmt"
 	"testing"
-
 	"time"
 
 	. "github.com/onsi/gomega"
@@ -62,7 +61,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 		pvc.Name = fmt.Sprintf("pd-%s-%d", oldSet.GetName(), int(*oldSet.Spec.Replicas)+1)
 		if test.hasDeferAnn {
 			pvc.Annotations = map[string]string{}
-			pvc.Annotations[label.AnnPVCDeferDeletion] = time.Now().Format(time.RFC3339)
+			pvc.Annotations[label.AnnPVCDeferDeleting] = time.Now().Format(time.RFC3339)
 		}
 		if test.hasPVC {
 			pvcIndexer.Add(pvc)

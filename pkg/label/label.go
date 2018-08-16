@@ -37,8 +37,8 @@ const (
 	AnnInitialPDReplicas = "cluster.pingcap.com/initial-pd-replicas"
 	// AnnPodNameKey is podName annotations key
 	AnnPodNameKey string = "volume.pingcap.com/podName"
-	// AnnPVCDeferDeletion is pvc defer deletion key
-	AnnPVCDeferDeletion = "cluster.pingcap.com/pvc-defer-deletion"
+	// AnnPVCDeferDeleting is pvc defer deletion key
+	AnnPVCDeferDeleting = "cluster.pingcap.com/pvc-defer-deleting"
 	// AnnPaused is the annotation that the object is paused
 	AnnPaused string = "cluster.pingcap.com/paused"
 	// PDLabelVal is PD label value
