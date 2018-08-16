@@ -256,7 +256,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 				tc.Spec.Services = []v1alpha1.Service{
 					{Name: "tikv", Type: string(corev1.ServiceTypeNodePort)},
 				}
-				tc.Status.PD.Phase = v1alpha1.Normal
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
 			},
 			// TODO add unit test for status sync
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
@@ -283,7 +283,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			name: "tidbcluster's storage format is wrong",
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiKV.Requests.Storage = "100xxxxi"
-				tc.Status.PD.Phase = v1alpha1.Normal
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
 			},
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
@@ -297,7 +297,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			name: "error when update statefulset",
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiKV.Replicas = 5
-				tc.Status.PD.Phase = v1alpha1.Normal
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
 			},
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
@@ -314,7 +314,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			name: "error when sync tikv status",
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiKV.Replicas = 5
-				tc.Status.PD.Phase = v1alpha1.Normal
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
 			},
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
