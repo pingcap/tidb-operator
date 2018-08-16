@@ -65,7 +65,7 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 		increaseReplicas(newSet, oldSet)
 		return nil
 	}
-	if _, ok := pvc.Annotations[label.AnnPVCDeferDeletion]; !ok {
+	if _, ok := pvc.Annotations[label.AnnPVCDeferDeleting]; !ok {
 		increaseReplicas(newSet, oldSet)
 		return nil
 	}
@@ -109,7 +109,7 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	if pvc.Annotations == nil {
 		pvc.Annotations = map[string]string{}
 	}
-	pvc.Annotations[label.AnnPVCDeferDeletion] = time.Now().Format(time.RFC3339)
+	pvc.Annotations[label.AnnPVCDeferDeleting] = time.Now().Format(time.RFC3339)
 
 	err = psd.pvcControl.UpdatePVC(tc, pvc)
 	if err != nil {
