@@ -121,7 +121,8 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		_, err := rpc.kubeCli.CoreV1().Pods(ns).Update(pod)
 		if err != nil {
-			return fmt.Errorf("failed to update pod %s/%s with cluster labels %v, TidbCluster: %s, err: %v", ns, podName, labels, tcName, err)
+			glog.Errorf("failed to update pod %s/%s with cluster labels %v, TidbCluster: %s, err: %v", ns, podName, labels, tcName, err)
+			return err
 		}
 		glog.V(4).Infof("update pod %s/%s with cluster labels %v successfully, TidbCluster: %s", ns, podName, labels, tcName)
 		return nil

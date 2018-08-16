@@ -189,8 +189,8 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Spec.Services = []v1alpha1.Service{
 					{Name: "tidb", Type: string(corev1.ServiceTypeNodePort)},
 				}
-				tc.Status.PD.Phase = v1alpha1.Normal
-				tc.Status.TiKV.Phase = v1alpha1.Normal
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: false,
 			errWhenUpdateTiDBService: false,
@@ -210,8 +210,8 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Spec.Services = []v1alpha1.Service{
 					{Name: v1alpha1.TiDBMemberType.String(), Type: string(corev1.ServiceTypeNodePort)},
 				}
-				tc.Status.PD.Phase = v1alpha1.Normal
-				tc.Status.TiKV.Phase = v1alpha1.Normal
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: false,
 			errWhenUpdateTiDBService: true,
@@ -226,8 +226,8 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 			name: "error when update statefulset",
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiDB.Replicas = 5
-				tc.Status.PD.Phase = v1alpha1.Normal
-				tc.Status.TiKV.Phase = v1alpha1.Normal
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: true,
 			errWhenUpdateTiDBService: false,

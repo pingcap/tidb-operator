@@ -292,7 +292,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.Normal))
+				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.NormalPhase))
 				g.Expect(*tc.Status.PD.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
 				g.Expect(tc.Status.PD.Members).To(Equal(map[string]v1alpha1.PDMember{
 					"pd1": v1alpha1.PDMember{Name: "pd1", ID: "1", ClientURL: "http://pd1:2379", Health: true},
@@ -398,6 +398,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
 	pdControl := controller.NewFakePDControl()
+	pdScaler := NewFakePDScaler()
 
 	return &pdMemberManager{
 		pdControl,
@@ -405,6 +406,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 		svcControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
+		pdScaler,
 	}, setControl, svcControl, pdControl
 }
 
@@ -527,7 +529,7 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 				g.Expect(set.Spec.Template.Spec.Containers[0].Image).To(Equal("pd-test-image:v2"))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.Upgrade))
+				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
 				g.Expect(tc.Status.PD.Members).To(Equal(map[string]v1alpha1.PDMember{
 					"pd1": v1alpha1.PDMember{Name: "pd1", ID: "1", ClientURL: "http://pd1:2379", Health: true},
 					"pd2": v1alpha1.PDMember{Name: "pd2", ID: "2", ClientURL: "http://pd2:2379", Health: true},
