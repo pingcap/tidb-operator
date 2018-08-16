@@ -106,9 +106,10 @@ tidb:
 monitor:
   create: true
   dashboardInstaller:
-    image: pingcap/tidb-dashboard-installer:v1.0.7
+    image: pingcap/tidb-dashboard-installer:v2.0.0
   grafana:
-    image: grafana/grafana:4.2.0
+    image: grafana/grafana:4.6.3
+    logLevel: info
     resources: {}
       # limits:
       #   cpu: 8000m
@@ -122,7 +123,8 @@ monitor:
       type: NodePort
     grafanaUrl: http://localhost:3000
   prometheus:
-    image: prom/prometheus:v2.0.0
+    image: prom/prometheus:v2.2.1
+    logLevel: info
     resources: {}
       # limits:
       #   cpu: 8000m
@@ -144,6 +146,7 @@ privilegedTidb:
   create: false
   replicas: 1
   image: pingcap/tidb:v2.0.4
+  logLevel: info
   resources: {}
   #  limits:
   #    cpu: 16000m
@@ -164,4 +167,3 @@ privilegedTidb:
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"
 metaValue: "{{ $value }}"
-
