@@ -378,6 +378,8 @@ func (tkmm *tikvMemberManager) labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
 func (tkmm *tikvMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	if statefulSetInNormal(oldSet) {
 		tc.Status.TiKV.Phase = v1alpha1.Normal
+	} else {
+		tc.Status.TiKV.Phase = v1alpha1.Upgrade
 	}
 
 	upgrade, err := tkmm.needUpgrade(tc, newSet, oldSet)

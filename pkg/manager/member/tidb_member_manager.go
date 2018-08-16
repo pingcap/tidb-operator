@@ -276,6 +276,8 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 func (tmm *tidbMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	if statefulSetInNormal(oldSet) {
 		tc.Status.TiDB.Phase = v1alpha1.Normal
+	} else {
+		tc.Status.TiDB.Phase = v1alpha1.Upgrade
 	}
 
 	upgrade, err := tmm.needUpgrade(tc, newSet, oldSet)
