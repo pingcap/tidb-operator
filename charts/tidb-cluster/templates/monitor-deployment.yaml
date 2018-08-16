@@ -51,6 +51,7 @@ spec:
         {{- end }}
         command:
         - /bin/prometheus
+        - --log.level={{ .Values.monitor.prometheus.logLevel }}
         - --config.file=/etc/prometheus/prometheus.yml
         - --storage.tsdb.path=/prometheus
         - --storage.tsdb.retention={{ .Values.monitor.prometheus.reserveDays }}d

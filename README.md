@@ -2,9 +2,9 @@
 
 [![Build Status](https://internal.pingcap.net/jenkins/job/build_tidb_operator_master/badge/icon)](https://internal.pingcap.net/jenkins/job/build_tidb_operator_master)
 
-TiDB Operator manages [TiDB](https://github.com/pingcap/tidb) clusters on [Kubernetes](https://kubernetes.io) and automates tasks related to operating a TiDB cluster. It makes TiDB a truly cloud native database.
+TiDB Operator manages [TiDB](https://github.com/pingcap/tidb) clusters on [Kubernetes](https://kubernetes.io) and automates tasks related to operating a TiDB cluster. It makes TiDB a truly cloud-native database.
 
-> **Warning:** Currently, TiDB Operator is NOT ready for production. Some features are missing. Use at your own risk.
+> **Warning:** Currently, TiDB Operator is work in progress [WIP] and is NOT ready for production. Use at your own risk.
 
 ## Features
 
@@ -38,11 +38,11 @@ Read the [Roadmap](./ROADMAP.md).
 
 ## Quick start
 
-Read the [local-dind-tutorial](./docs/local-dind-tutorial.md).
+Read the [Deploy TiDB using Kubernetes on Your Laptop for development and testing](./docs/local-dind-tutorial.md).
 
 ## Contributing
 
-Contributions are welcomed and greatly appreciated. See [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for details on submitting patches and the contribution workflow.
+Contributions are welcome and greatly appreciated. See [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for details on submitting patches and the contribution workflow.
 
 ## License
 
