@@ -15,15 +15,17 @@ package member
 
 import (
 	"fmt"
-
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1beta1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
+
+// TODO add e2e test specs
 
 type pdScaler struct {
 	pdControl  controller.PDControlInterface
@@ -39,30 +41,68 @@ func NewPDScaler(pdControl controller.PDControlInterface,
 }
 
 func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	ns := tc.GetNamespace()
+	ordinal := *oldSet.Spec.Replicas + 1
+	setName := oldSet.GetName()
+
+	if tc.PDUpgrading() {
+		resetReplicas(newSet, oldSet)
+		return nil
+	}
+
+	pvcName := fmt.Sprintf("%s-%s-%d", v1alpha1.PDMemberType, setName, ordinal)
+	pvc, err := psd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
+	if errors.IsNotFound(err) {
+		increaseReplicas(newSet, oldSet)
+		return nil
+	}
+	if err != nil {
+		resetReplicas(newSet, oldSet)
+		return err
+	}
+
+	if pvc.Annotations == nil {
+		increaseReplicas(newSet, oldSet)
+		return nil
+	}
+	if _, ok := pvc.Annotations[label.AnnPVCDeferDeletion]; !ok {
+		increaseReplicas(newSet, oldSet)
+		return nil
+	}
+
+	err = psd.pvcControl.DeletePVC(tc, pvc)
+	if err != nil {
+		resetReplicas(newSet, oldSet)
+		return err
+	}
+
+	increaseReplicas(newSet, oldSet)
 	return nil
 }
 
 // We need remove member from cluster before reducing statefulset replicas
 // only remove one member at a time when scale down
 func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	if tc.PDUpgrading() {
-		*newSet.Spec.Replicas = *oldSet.Spec.Replicas
-		return nil
-	}
-
 	ns := tc.GetNamespace()
 	ordinal := *oldSet.Spec.Replicas - 1
 	memberName := fmt.Sprintf("%s-pd-%d", tc.GetName(), ordinal)
 	setName := oldSet.GetName()
-	if err := psd.pdControl.GetPDClient(tc).DeleteMember(memberName); err != nil {
-		// for unit test
-		*newSet.Spec.Replicas = *oldSet.Spec.Replicas
+
+	if tc.PDUpgrading() {
+		resetReplicas(newSet, oldSet)
+		return nil
+	}
+
+	err := psd.pdControl.GetPDClient(tc).DeleteMember(memberName)
+	if err != nil {
+		resetReplicas(newSet, oldSet)
 		return err
 	}
 
 	pvcName := fmt.Sprintf("%s-%s-%d", v1alpha1.PDMemberType, setName, ordinal)
 	pvc, err := psd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil {
+		resetReplicas(newSet, oldSet)
 		return err
 	}
 
@@ -70,12 +110,14 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		pvc.Annotations = map[string]string{}
 	}
 	pvc.Annotations[label.AnnPVCDeferDeletion] = time.Now().Format(time.RFC3339)
+
 	err = psd.pvcControl.UpdatePVC(tc, pvc)
 	if err != nil {
+		resetReplicas(newSet, oldSet)
 		return err
 	}
 
-	*newSet.Spec.Replicas = ordinal
+	decreaseReplicas(newSet, oldSet)
 	return nil
 }
 

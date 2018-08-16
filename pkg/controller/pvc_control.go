@@ -30,10 +30,13 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
+// TODO add unit tests
+
 // PVCControlInterface manages PVCs used in TidbCluster
 type PVCControlInterface interface {
 	UpdateMetaInfo(*v1alpha1.TidbCluster, *corev1.PersistentVolumeClaim, *corev1.Pod) error
 	UpdatePVC(*v1alpha1.TidbCluster, *corev1.PersistentVolumeClaim) error
+	DeletePVC(*v1alpha1.TidbCluster, *corev1.PersistentVolumeClaim) error
 }
 
 type realPVCControl struct {
@@ -52,6 +55,13 @@ func NewRealPVCControl(
 		recorder:  recorder,
 		pvcLister: pvcLister,
 	}
+}
+
+func (rpc *realPVCControl) DeletePVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) error {
+	pvcName := pvc.GetName()
+	err := rpc.kubeCli.CoreV1().PersistentVolumeClaims(tc.GetNamespace()).Delete(pvcName, nil)
+	rpc.recordPVCEvent("delete", tc, pvcName, err)
+	return err
 }
 
 func (rpc *realPVCControl) UpdatePVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) error {
@@ -157,12 +167,14 @@ var _ PVCControlInterface = &realPVCControl{}
 type FakePVCControl struct {
 	PVCIndexer       cache.Indexer
 	updatePVCTracker requestTracker
+	deletePVCTracker requestTracker
 }
 
 // NewFakePVCControl returns a FakePVCControl
 func NewFakePVCControl(pvcInformer coreinformers.PersistentVolumeClaimInformer) *FakePVCControl {
 	return &FakePVCControl{
 		pvcInformer.Informer().GetIndexer(),
+		requestTracker{0, nil, 0},
 		requestTracker{0, nil, 0},
 	}
 }
@@ -171,6 +183,23 @@ func NewFakePVCControl(pvcInformer coreinformers.PersistentVolumeClaimInformer) 
 func (fpc *FakePVCControl) SetUpdatePVCError(err error, after int) {
 	fpc.updatePVCTracker.err = err
 	fpc.updatePVCTracker.after = after
+}
+
+// SetDeletePVCError sets the error attributes of deletePVCTracker
+func (fpc *FakePVCControl) SetDeletePVCError(err error, after int) {
+	fpc.deletePVCTracker.err = err
+	fpc.deletePVCTracker.after = after
+}
+
+// DeletePVC delete the pvc
+func (fpc *FakePVCControl) DeletePVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) error {
+	defer fpc.deletePVCTracker.inc()
+	if fpc.deletePVCTracker.errorReady() {
+		defer fpc.deletePVCTracker.reset()
+		return fpc.deletePVCTracker.err
+	}
+
+	return fpc.PVCIndexer.Delete(pvc)
 }
 
 // Update update the annotation, labels and spec of pvc
