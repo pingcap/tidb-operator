@@ -11,12 +11,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1alpha1
+package member
 
-func (mt MemberType) String() string {
-	return string(mt)
-}
+import (
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	apps "k8s.io/api/apps/v1beta1"
+)
 
-func (tc TidbCluster) PDUpgrading() bool {
-	return tc.Status.PD.Phase == UpgradePhase
+// Scaler implements the logic for scaling out or scaling in the cluster.
+type Scaler interface {
+	// ScaleOut scales out the cluster
+	ScaleOut(*v1alpha1.TidbCluster, *apps.StatefulSet, *apps.StatefulSet) error
+	// ScaleIn scales in the cluster
+	ScaleIn(*v1alpha1.TidbCluster, *apps.StatefulSet, *apps.StatefulSet) error
 }
