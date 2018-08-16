@@ -25,8 +25,8 @@ type pdScaler struct {
 	pdControl controller.PDControlInterface
 }
 
-// NewPDScaler returns a *pdScaler
-func NewPDScaler(pdControl controller.PDControlInterface) *pdScaler {
+// NewPDScaler returns a Scaler
+func NewPDScaler(pdControl controller.PDControlInterface) Scaler {
 	return &pdScaler{pdControl}
 }
 
@@ -54,11 +54,10 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	return nil
 }
 
-var _ Scaler = &pdScaler{}
-
 type fakePDScaler struct{}
 
-func NewFakePDScaler() *fakePDScaler {
+// NewFakePDScaler returns a fake Scaler
+func NewFakePDScaler() Scaler {
 	return &fakePDScaler{}
 }
 
@@ -69,5 +68,3 @@ func (fsd *fakePDScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 func (fsd *fakePDScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	return nil
 }
-
-var _ Scaler = &fakePDScaler{}
