@@ -98,7 +98,7 @@ func (rpc *realPVCControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pvc *corev1.
 		return nil
 	})
 	rpc.recordPVCEvent("update", tc, pvcName, err)
-	return nil
+	return err
 }
 
 func (rpc *realPVCControl) recordPVCEvent(verb string, tc *v1alpha1.TidbCluster, pvcName string, err error) {

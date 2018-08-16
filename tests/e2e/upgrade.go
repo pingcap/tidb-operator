@@ -86,19 +86,19 @@ func memberUpgraded() (bool, error) {
 	if !imageUpgraded(tc, v1alpha1.PDMemberType, pdSet) {
 		return false, nil
 	}
-	if tc.Status.PD.Phase == v1alpha1.Upgrade {
+	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
 		logf("pd is upgrading")
-		Expect(tc.Status.TiKV.Phase).NotTo(Equal(v1alpha1.Upgrade))
-		Expect(tc.Status.TiDB.Phase).NotTo(Equal(v1alpha1.Upgrade))
+		Expect(tc.Status.TiKV.Phase).NotTo(Equal(v1alpha1.UpgradePhase))
+		Expect(tc.Status.TiDB.Phase).NotTo(Equal(v1alpha1.UpgradePhase))
 		Expect(imageUpgraded(tc, v1alpha1.PDMemberType, pdSet)).To(BeTrue())
 		if !podsUpgraded(pdSet) {
 			Expect(imageUpgraded(tc, v1alpha1.TiKVMemberType, tikvSet)).To(BeFalse())
 			Expect(imageUpgraded(tc, v1alpha1.TiDBMemberType, tidbSet)).To(BeFalse())
 		}
 		return false, nil
-	} else if tc.Status.TiKV.Phase == v1alpha1.Upgrade {
+	} else if tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
 		logf("tikv is upgrading")
-		Expect(tc.Status.TiDB.Phase).NotTo(Equal(v1alpha1.Upgrade))
+		Expect(tc.Status.TiDB.Phase).NotTo(Equal(v1alpha1.UpgradePhase))
 		Expect(imageUpgraded(tc, v1alpha1.PDMemberType, pdSet)).To(BeTrue())
 		Expect(podsUpgraded(pdSet)).To(BeTrue())
 		Expect(imageUpgraded(tc, v1alpha1.TiKVMemberType, tikvSet)).To(BeTrue())
@@ -106,7 +106,7 @@ func memberUpgraded() (bool, error) {
 			Expect(imageUpgraded(tc, v1alpha1.TiDBMemberType, tidbSet)).To(BeFalse())
 		}
 		return false, nil
-	} else if tc.Status.TiDB.Phase == v1alpha1.Upgrade {
+	} else if tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
 		logf("tidb is upgrading")
 		Expect(imageUpgraded(tc, v1alpha1.PDMemberType, pdSet)).To(BeTrue())
 		Expect(podsUpgraded(pdSet)).To(BeTrue())
