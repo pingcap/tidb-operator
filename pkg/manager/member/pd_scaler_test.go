@@ -17,9 +17,12 @@ import (
 	"fmt"
 	"testing"
 
+	"time"
+
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -28,6 +31,103 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 )
+
+func TestPDScalerScaleOut(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name         string
+		pdUpgrading  bool
+		hasPVC       bool
+		hasDeferAnn  bool
+		pvcDeleteErr bool
+		err          bool
+		changed      bool
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+		tc := newTidbClusterForPD()
+
+		if test.pdUpgrading {
+			tc.Status.PD.Phase = v1alpha1.UpgradePhase
+		}
+
+		oldSet := newStatefulSetForPDScale()
+		newSet := oldSet.DeepCopy()
+		newSet.Spec.Replicas = int32Pointer(7)
+
+		scaler, _, pvcIndexer, pvcControl := newFakePDScaler()
+
+		pvc := newPVCForStatefulSet(oldSet)
+		pvc.Name = fmt.Sprintf("pd-%s-%d", oldSet.GetName(), int(*oldSet.Spec.Replicas)+1)
+		if test.hasDeferAnn {
+			pvc.Annotations = map[string]string{}
+			pvc.Annotations[label.AnnPVCDeferDeletion] = time.Now().Format(time.RFC3339)
+		}
+		if test.hasPVC {
+			pvcIndexer.Add(pvc)
+		}
+
+		if test.pvcDeleteErr {
+			pvcControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+
+		err := scaler.ScaleOut(tc, oldSet, newSet)
+		if test.err {
+			g.Expect(err).To(HaveOccurred())
+		} else {
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+		if test.changed {
+			g.Expect(int(*newSet.Spec.Replicas)).To(Equal(6))
+		} else {
+			g.Expect(int(*newSet.Spec.Replicas)).To(Equal(5))
+		}
+	}
+
+	tests := []testcase{
+		{
+			name:         "normal",
+			pdUpgrading:  false,
+			hasPVC:       true,
+			hasDeferAnn:  false,
+			pvcDeleteErr: false,
+			err:          false,
+			changed:      true,
+		},
+		{
+			name:         "pd is upgrading",
+			pdUpgrading:  true,
+			hasPVC:       true,
+			hasDeferAnn:  false,
+			pvcDeleteErr: false,
+			err:          false,
+			changed:      false,
+		},
+		{
+			name:         "cache don't have pvc",
+			pdUpgrading:  false,
+			hasPVC:       false,
+			hasDeferAnn:  false,
+			pvcDeleteErr: false,
+			err:          false,
+			changed:      true,
+		},
+		{
+			name:         "pvc annotations defer deletion is not nil, pvc delete failed",
+			pdUpgrading:  false,
+			hasPVC:       true,
+			hasDeferAnn:  true,
+			pvcDeleteErr: true,
+			err:          true,
+			changed:      false,
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
 
 func TestPDScalerScaleIn(t *testing.T) {
 	g := NewGomegaWithT(t)
@@ -49,7 +149,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 			tc.Status.PD.Phase = v1alpha1.UpgradePhase
 		}
 
-		oldSet := newStatefulSetForPDScaleIn()
+		oldSet := newStatefulSetForPDScale()
 		newSet := oldSet.DeepCopy()
 		newSet.Spec.Replicas = int32Pointer(3)
 
@@ -75,6 +175,8 @@ func TestPDScalerScaleIn(t *testing.T) {
 		err := scaler.ScaleIn(tc, oldSet, newSet)
 		if test.err {
 			g.Expect(err).To(HaveOccurred())
+		} else {
+			g.Expect(err).NotTo(HaveOccurred())
 		}
 		if test.changed {
 			g.Expect(int(*newSet.Spec.Replicas)).To(Equal(4))
@@ -148,7 +250,7 @@ func newFakePDScaler() (*pdScaler, *controller.FakePDControl, cache.Indexer, *co
 		pdControl, pvcInformer.Informer().GetIndexer(), pvcControl
 }
 
-func newStatefulSetForPDScaleIn() *apps.StatefulSet {
+func newStatefulSetForPDScale() *apps.StatefulSet {
 	set := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "scaler",

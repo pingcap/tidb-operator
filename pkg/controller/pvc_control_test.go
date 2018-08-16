@@ -25,7 +25,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 )
@@ -35,8 +37,8 @@ func TestPVCControlUpdateMetaInfoSuccess(t *testing.T) {
 	tc := newTidbCluster()
 	pvc := newPVC(tc)
 	pod := newPod(tc)
-	fakeClient, recorder := newFakeClientAndRecorder()
-	control := NewRealPVCControl(fakeClient, recorder)
+	fakeClient, pvcLister, recorder := newFakeClientAndRecorder()
+	control := NewRealPVCControl(fakeClient, recorder, pvcLister)
 	fakeClient.AddReactor("update", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, nil
 	})
@@ -53,8 +55,8 @@ func TestPVCControlUpdateMetaInfoFailed(t *testing.T) {
 	tc := newTidbCluster()
 	pvc := newPVC(tc)
 	pod := newPod(tc)
-	fakeClient, recorder := newFakeClientAndRecorder()
-	control := NewRealPVCControl(fakeClient, recorder)
+	fakeClient, pvcLister, recorder := newFakeClientAndRecorder()
+	control := NewRealPVCControl(fakeClient, recorder, pvcLister)
 	fakeClient.AddReactor("update", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})
@@ -71,8 +73,8 @@ func TestPVCControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	tc := newTidbCluster()
 	pvc := newPVC(tc)
 	pod := newPod(tc)
-	fakeClient, recorder := newFakeClientAndRecorder()
-	control := NewRealPVCControl(fakeClient, recorder)
+	fakeClient, pvcLister, recorder := newFakeClientAndRecorder()
+	control := NewRealPVCControl(fakeClient, recorder, pvcLister)
 	conflict := false
 	fakeClient.AddReactor("update", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
 		update := action.(core.UpdateAction)
@@ -90,10 +92,11 @@ func TestPVCControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
-func newFakeClientAndRecorder() (*fake.Clientset, *record.FakeRecorder) {
-	fakeClient := &fake.Clientset{}
+func newFakeClientAndRecorder() (*fake.Clientset, corelisters.PersistentVolumeClaimLister, *record.FakeRecorder) {
+	kubeCli := &fake.Clientset{}
 	recorder := record.NewFakeRecorder(10)
-	return fakeClient, recorder
+	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
+	return kubeCli, pvcInformer.Lister(), recorder
 }
 
 func newPVC(tc *v1alpha1.TidbCluster) *corev1.PersistentVolumeClaim {
