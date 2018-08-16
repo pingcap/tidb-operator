@@ -376,11 +376,6 @@ func (tkmm *tikvMemberManager) labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
 }
 
 func (tkmm *tikvMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	if statefulSetInNormal(oldSet) {
-		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-	} else {
-		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-	}
 
 	upgrade, err := tkmm.needUpgrade(tc, newSet, oldSet)
 	if err != nil {
@@ -543,6 +538,13 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	}
 
 	tc.Status.TiKV.Stores = tikvStores
+
+	if statefulSetInNormal(set) {
+		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+	} else {
+		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+	}
+
 	return nil
 }
 

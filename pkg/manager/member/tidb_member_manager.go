@@ -270,15 +270,16 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 
 func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	tc.Status.TiDB.StatefulSet = &set.Status
-	return nil
-}
 
-func (tmm *tidbMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	if statefulSetInNormal(oldSet) {
+	if statefulSetInNormal(set) {
 		tc.Status.TiDB.Phase = v1alpha1.NormalPhase
 	} else {
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
 	}
+	return nil
+}
+
+func (tmm *tidbMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 
 	upgrade, err := tmm.needUpgrade(tc, newSet, oldSet)
 	if err != nil {
@@ -286,9 +287,7 @@ func (tmm *tidbMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 	}
 	if upgrade {
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
-	}
-
-	if tc.Status.TiDB.Phase != v1alpha1.UpgradePhase {
+	} else {
 		_, podSpec, err := controller.GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err

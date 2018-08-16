@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	upgradeVersion = "v2.0.0"
+	upgradeVersion = "v2.0.5"
 )
 
 func testUpgrade() {
