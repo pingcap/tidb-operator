@@ -1,6 +1,6 @@
 ---
 title: Deploy TiDB to Kubernetes on Google Cloud
-summary: Use Ansible to deploy a TiDB cluster.
+summary: Tutorial for deploying TiDB on Google Cloud using Kubernetes.
 category: operations
 ---
 
@@ -99,7 +99,6 @@ Now we can watch our cluster come up
 
 Now lets connect to our MySQL database. This will connect from within the Kubernetes cluster.
 
-	kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-cluster-tidb -n tidb --output json | jq -r '.spe
-c.clusterIP')
+	kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-cluster-tidb -n tidb --output json | jq -r '.spec.clusterIP')
 
 Now you are up and running with a distribute MySQL database!
