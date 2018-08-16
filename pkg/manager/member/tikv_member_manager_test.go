@@ -307,7 +307,6 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			expectTiKVPeerServiceFn: nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(int(*set.Spec.Replicas)).To(Equal(3))
 			},
 		},
 		{

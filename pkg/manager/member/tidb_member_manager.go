@@ -18,9 +18,9 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -111,13 +111,14 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return err
 	}
 
-	same, err := controller.EqualStatefulSet(*oldTiDBSet, *newTiDBSet)
+	equal, err := controller.EqualStatefulSet(*oldTiDBSet, *newTiDBSet)
 	if err != nil {
 		return err
 	}
-	if !same {
+	if !equal {
 		set := *oldTiDBSet
-		set.Spec = newTiDBSet.Spec
+		set.Spec.Template = newTiDBSet.Spec.Template
+		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
 		controller.SetLastAppliedConfigAnnotation(&set)
 		return tmm.setControl.UpdateStatefulSet(tc, &set)
 	}
