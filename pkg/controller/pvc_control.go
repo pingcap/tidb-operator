@@ -58,8 +58,14 @@ func NewRealPVCControl(
 }
 
 func (rpc *realPVCControl) DeletePVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
 	pvcName := pvc.GetName()
 	err := rpc.kubeCli.CoreV1().PersistentVolumeClaims(tc.GetNamespace()).Delete(pvcName, nil)
+	if err != nil {
+		glog.Errorf("failed to delete PVC: [%s/%s], TidbCluster: %s, %v", ns, pvcName, tcName, err)
+	}
+	glog.V(4).Infof("delete PVC: [%s/%s] successfully, TidbCluster: %s", ns, pvcName, tcName)
 	rpc.recordPVCEvent("delete", tc, pvcName, err)
 	return err
 }

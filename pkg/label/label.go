@@ -33,8 +33,6 @@ const (
 	StoreIDLabelKey string = "cluster.pingcap.com/storeId"
 	// MemberIDLabelKey is member id label key
 	MemberIDLabelKey string = "cluster.pingcap.com/memberId"
-	// AnnInitialPDReplicas is cluster initial-pd-replicas annotation
-	AnnInitialPDReplicas = "cluster.pingcap.com/initial-pd-replicas"
 	// AnnPodNameKey is podName annotations key
 	AnnPodNameKey string = "volume.pingcap.com/podName"
 	// AnnPVCDeferDeleting is pvc defer deletion key
