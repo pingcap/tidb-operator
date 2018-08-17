@@ -138,17 +138,10 @@ func scaledCorrectly() (bool, error) {
 	if len(podUIDsBeforeScale) == len(podUIDs) {
 		return false, fmt.Errorf("the length of pods before scale equals the length of pods after scale")
 	}
-	if len(podUIDsBeforeScale) > len(podUIDs) {
-		for podName, uidAfter := range podUIDs {
-			if uidBefore, ok := podUIDsBeforeScale[podName]; ok && uidBefore != uidAfter {
-				return false, fmt.Errorf("pod: [%s] have be recreated", podName)
-			}
-		}
-	} else {
-		for podName, uidBefore := range podUIDsBeforeScale {
-			if uidAfter, ok := podUIDs[podName]; ok && uidBefore != uidAfter {
-				return false, fmt.Errorf("pod: [%s] have be recreated", podName)
-			}
+
+	for podName, uidAfter := range podUIDs {
+		if uidBefore, ok := podUIDsBeforeScale[podName]; ok && uidBefore != uidAfter {
+			return false, fmt.Errorf("pod: [%s] have be recreated", podName)
 		}
 	}
 
@@ -206,39 +199,15 @@ func scaleInSecurely() (bool, error) {
 func getPodsUID() (map[string]types.UID, error) {
 	result := map[string]types.UID{}
 
-	selector, err := label.New().Cluster(clusterName).PD().Selector()
+	selector, err := label.New().Cluster(clusterName).Selector()
 	if err != nil {
 		return nil, err
 	}
-	pdPods, err := kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
+	pods, err := kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		return nil, err
 	}
-	for _, pod := range pdPods.Items {
-		result[pod.GetName()] = pod.GetUID()
-	}
-
-	selector, err = label.New().Cluster(clusterName).TiKV().Selector()
-	if err != nil {
-		return nil, err
-	}
-	tikvPods, err := kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return nil, err
-	}
-	for _, pod := range tikvPods.Items {
-		result[pod.GetName()] = pod.GetUID()
-	}
-
-	selector, err = label.New().Cluster(clusterName).TiDB().Selector()
-	if err != nil {
-		return nil, err
-	}
-	tidbPods, err := kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return nil, err
-	}
-	for _, pod := range tidbPods.Items {
+	for _, pod := range pods.Items {
 		result[pod.GetName()] = pod.GetUID()
 	}
 

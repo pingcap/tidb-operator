@@ -79,7 +79,7 @@ func memberUpgraded() (bool, error) {
 	tidbSetName := controller.TiDBMemberName(clusterName)
 	tidbSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
-		logf("failed to get tikvSet statefulset: [%s], error: %v", tidbSetName, err)
+		logf("failed to get tidbSet statefulset: [%s], error: %v", tidbSetName, err)
 		return false, nil
 	}
 
