@@ -123,11 +123,20 @@ Now we can watch our TiDB cluster come up:
 
 ## Connecting to TiDB
 
-Now lets connect to our MySQL database. This will connect from within the Kubernetes cluster:
+Now lets connect to our MySQL database. This will connect to the clustered service IP address within the Kubernetes cluster:
 
 	kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb --output json | jq -r '.spec.clusterIP')
 
-Now you are up and running with a distributed MySQL database!
+For debugging purposes, you can also establish a tunnel between an individual TiDB pod and your Google Cloud Shell.  For example:
+
+	kubectl -n tidb port-forward demo-tidb-0 4000:4000 &
+
+From your Google shell:
+
+	sudo apt-get install -y mysql-client
+	mysql -h 127.0.0.1 -u root -P 4000
+
+Congratulations, you are now up and running with a distributed MySQL database!
 
 ## Shutting down the Kubernetes Cluster
 
