@@ -36,13 +36,13 @@ For more detailed information, please review the [Quickstart](https://cloud.goog
 
 First create a project that this demo will be ran in.
 
-	gcloud projects create tidb-demo
+	gcloud projects create MY_NEW_PROJECT_NAME
 
 Before you can create a cluster, you must [enable Kubernetes for your project in the console.](https://console.cloud.google.com/projectselector/kubernetes?_ga=2.78459869.-833158988.1529036412)
 
 Now set your gcloud to use this project:
 
-	gcloud config set project tidb-demo
+	gcloud config set project MY_NEW_PROJECT_NAME
 
 Set it to use a [zone](https://cloud.google.com/compute/docs/regions-zones/)
 
@@ -54,14 +54,14 @@ Now create the kubernetes cluster.
 
 This could take more than a minute to complete. Now is a good time to do some stretches and refill your beverage.
 
-When the cluster is completed, default gcloud to use it.
+When the Kubernetes cluster is completed, default gcloud to use it.
 
 	gcloud config set container/cluster tidb
 
 
 ## Running TiDB
 
-Now we have a cluster! Verify that kubectl can connect to it and that it has three machines running.
+Now we have a Kubernetes cluster! Verify that kubectl can connect to it and that it has three machines running.
 
 	kubectl get nodes
 
@@ -104,11 +104,12 @@ Now we can watch our cluster come up
 
 Now lets connect to our MySQL database. This will connect from within the Kubernetes cluster.
 
-	kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-cluster-tidb -n tidb --output json | jq -r '.spec.clusterIP')
+	kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb --output json | jq -r '.spec.clusterIP')
 
-Now you are up and running with a distribute MySQL database!
-
+Now you are up and running with a distributed MySQL database!
 
 ## Cleanup
+
+Once you have finished experimenting, you can delete the Kubernetes cluster with:
 
 	gcloud container clusters delete tidb
