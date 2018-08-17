@@ -39,7 +39,7 @@ This step defaults gcloud to your prefered project and [zone](https://cloud.goog
 	gcloud config set compute/zone us-west1-a
 	
 
-### Launch a three node Kubernetes cluster
+## Launch a three node Kubernetes cluster
 
 It's now time to launch a 3 node kubernetes cluster! The following command launches a 3 node cluster of `n1-standard-1` machines.
 
