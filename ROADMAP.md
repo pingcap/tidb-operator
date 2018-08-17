@@ -7,9 +7,9 @@ This document defines the roadmap for TiDB Operator development.
 - [x] Monitor deployment support
 - [x] Helm charts support
 - [x] Basic Network PV/Local PV support
-- [ ] Safely scale TiDB cluster
+- [ ] Safely scale the TiDB cluster
 - [x] Upgrade the TiDB cluster in order
-- [x] Stop TiDB process without terminating Pod
+- [x] Stop the TiDB process without terminating Pod
 - [x] Synchronize cluster meta info to POD/PV/PVC labels
 - [x] Basic unit tests & E2E tests
 - [ ] Tutorials for GKE, local DinD
