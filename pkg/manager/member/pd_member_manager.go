@@ -217,6 +217,12 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 
 	tc.Status.PD.Members = pdStatus
 
+	if statefulSetInNormal(set) {
+		tc.Status.PD.Phase = v1alpha1.NormalPhase
+	} else {
+		tc.Status.PD.Phase = v1alpha1.UpgradePhase
+	}
+
 	return nil
 }
 
@@ -432,9 +438,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 }
 
 func (pmm *pdMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	if oldSet.Status.CurrentRevision == oldSet.Status.UpdateRevision {
-		tc.Status.PD.Phase = v1alpha1.NormalPhase
-	}
+
 	upgrade, err := pmm.needUpgrade(tc, newSet, oldSet)
 	if err != nil {
 		return err
