@@ -6,35 +6,34 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 const (
-	pdScaleNum   = 2
-	tikvScaleNum = 2
-	tidbScaleNum = 1
+	pdScaleOutTo   = 5
+	tikvScaleOutTo = 5
+	tidbScaleOutTo = 3
+	pdScaleInTo    = 3
+	tikvScaleInTo  = 3
+	tidbScaleInTo  = 2
 )
 
-var pdPodUIDsBeforeScale map[string]types.UID
-var tikvPodUIDsBeforeScale map[string]types.UID
-var tidbPodUIDsBeforeScale map[string]types.UID
+var podUIDsBeforeScale map[string]types.UID
 
 func testScale() {
-	By("When scale out TiDB cluster")
+	By(fmt.Sprintf("When scale out TiDB cluster: pd ==> [%d], tikv ==> [%d], tidb ==> [%d]", pdScaleOutTo, tikvScaleOutTo, tidbScaleOutTo))
 	err := wait.Poll(5*time.Second, 5*time.Minute, scaleOut)
 	Expect(err).NotTo(HaveOccurred())
 
-	By("Then all members should running")
-	err = wait.Poll(5*time.Second, 5*time.Minute, allMembersRunning)
+	By("Then TiDB cluster should scale out successfully")
+	err = wait.Poll(5*time.Second, 5*time.Minute, scaled)
 	Expect(err).NotTo(HaveOccurred())
 
-	By("Then should be scaled out correctly")
+	By("And should scaled out correctly")
 	err = wait.Poll(5*time.Second, 5*time.Minute, scaledCorrectly)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -42,26 +41,25 @@ func testScale() {
 	err = wait.Poll(5*time.Second, 5*time.Minute, dataIsCorrect)
 	Expect(err).NotTo(HaveOccurred())
 
-	By("When scale in TiDB cluster")
+	By(fmt.Sprintf("When scale in TiDB cluster: pd ==> [%d], tikv ==> [%d], tidb ==> [%d]", pdScaleInTo, tikvScaleInTo, tidbScaleInTo))
 	err = wait.Poll(5*time.Second, 5*time.Minute, scaleIn)
 	Expect(err).NotTo(HaveOccurred())
 
-	By("then scale in TiDB cluster securely")
+	By("Then TiDB cluster scale in securely")
 	err = wait.Poll(5*time.Second, 5*time.Minute, scaleInSecurely)
 	Expect(err).NotTo(HaveOccurred())
 
-	By("Then all members should running")
-	err = wait.Poll(5*time.Second, 5*time.Minute, allMembersRunning)
+	By("And should scale in successfully")
+	err = wait.Poll(5*time.Second, 5*time.Minute, scaled)
 	Expect(err).NotTo(HaveOccurred())
 
-	By("Then should be scaled in correctly")
+	By("And should be scaled in correctly")
 	err = wait.Poll(5*time.Second, 5*time.Minute, scaledCorrectly)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("And the data is correct")
 	err = wait.Poll(5*time.Second, 5*time.Minute, dataIsCorrect)
 	Expect(err).NotTo(HaveOccurred())
-
 }
 
 func scaleOut() (bool, error) {
@@ -70,22 +68,14 @@ func scaleOut() (bool, error) {
 		logf("failed to get tidbcluster when scale out tidbcluster, error: %v", err)
 		return false, nil
 	}
-	pdPodUIDsBeforeScale, err = getPodsUID(v1alpha1.PDMemberType)
-	if err != nil {
-		return false, nil
-	}
-	tikvPodUIDsBeforeScale, err = getPodsUID(v1alpha1.TiKVMemberType)
-	if err != nil {
-		return false, nil
-	}
-	tidbPodUIDsBeforeScale, err = getPodsUID(v1alpha1.TiDBMemberType)
+	podUIDsBeforeScale, err = getPodsUID()
 	if err != nil {
 		return false, nil
 	}
 
-	tc.Spec.PD.Replicas = tc.Spec.PD.Replicas + pdScaleNum
-	tc.Spec.TiKV.Replicas = tc.Spec.TiKV.Replicas + tikvScaleNum
-	tc.Spec.TiDB.Replicas = tc.Spec.TiDB.Replicas + tidbScaleNum
+	tc.Spec.PD.Replicas = pdScaleOutTo
+	tc.Spec.TiKV.Replicas = tikvScaleOutTo
+	tc.Spec.TiDB.Replicas = tidbScaleOutTo
 
 	_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 	if err != nil {
@@ -96,6 +86,10 @@ func scaleOut() (bool, error) {
 	return true, nil
 }
 
+func scaled() (bool, error) {
+	return allMembersRunning()
+}
+
 func scaleIn() (bool, error) {
 	tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 	if err != nil {
@@ -103,32 +97,27 @@ func scaleIn() (bool, error) {
 		return false, nil
 	}
 
-	if tc.Spec.PD.Replicas <= pdScaleNum {
-		return true, fmt.Errorf("the tidbcluster's pd replicas less then pdScaleNum: [%d]", pdScaleNum)
+	if tc.Spec.PD.Replicas <= pdScaleInTo {
+		return true, fmt.Errorf("the tidbcluster's pd replicas less then pdScaleInTo: [%d]", pdScaleInTo)
 	}
-	if tc.Spec.TiKV.Replicas <= tikvScaleNum {
-		return true, fmt.Errorf("the tidbcluster's tikv replicas less then tikvScaleNum: [%d]", tikvScaleNum)
+	if tc.Spec.TiKV.Replicas <= tikvScaleInTo {
+		return true, fmt.Errorf("the tidbcluster's tikv replicas less then tikvScaleInTo: [%d]", tikvScaleInTo)
 	}
-	if tc.Spec.TiDB.Replicas <= tidbScaleNum {
-		return true, fmt.Errorf("the tidbcluster's tidb replicas less then tikvScaleNum: [%d]", tidbScaleNum)
+	if tc.Spec.TiDB.Replicas <= tidbScaleInTo {
+		return true, fmt.Errorf("the tidbcluster's tidb replicas less then tidbScaleInTo: [%d]", tidbScaleInTo)
 	}
 
-	pdPodUIDsBeforeScale, err = getPodsUID(v1alpha1.PDMemberType)
+	podUIDsBeforeScale, err = getPodsUID()
 	if err != nil {
 		return false, nil
 	}
-	tikvPodUIDsBeforeScale, err = getPodsUID(v1alpha1.TiKVMemberType)
-	if err != nil {
-		return false, nil
-	}
-	tidbPodUIDsBeforeScale, err = getPodsUID(v1alpha1.TiDBMemberType)
 	if err != nil {
 		return false, nil
 	}
 
-	tc.Spec.PD.Replicas = tc.Spec.PD.Replicas - pdScaleNum
-	tc.Spec.TiKV.Replicas = tc.Spec.TiKV.Replicas - tikvScaleNum
-	tc.Spec.TiDB.Replicas = tc.Spec.TiDB.Replicas - tidbScaleNum
+	tc.Spec.PD.Replicas = pdScaleInTo
+	tc.Spec.TiKV.Replicas = tikvScaleInTo
+	tc.Spec.TiDB.Replicas = tidbScaleInTo
 
 	_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 	if err != nil {
@@ -140,72 +129,25 @@ func scaleIn() (bool, error) {
 }
 
 func scaledCorrectly() (bool, error) {
-
-	pdUIDs, err := getPodsUID(v1alpha1.PDMemberType)
+	podUIDs, err := getPodsUID()
 	if err != nil {
-		logf("failed to get pd pod uids")
+		logf("failed to get pd pods's uid, error: %v", err)
 		return false, nil
 	}
 
-	if len(pdPodUIDsBeforeScale) == len(pdUIDs) {
-		return false, fmt.Errorf("")
+	if len(podUIDsBeforeScale) == len(podUIDs) {
+		return false, fmt.Errorf("the length of pods before scale equals the length of pods after scale")
 	}
-	if len(pdPodUIDsBeforeScale) > len(pdUIDs) {
-		for podName, uid_now := range pdUIDs {
-			if uid_before, ok := pdPodUIDsBeforeScale[podName]; ok && uid_before != uid_now {
-				return false, fmt.Errorf("pod: [%s] have be recreate", podName)
+	if len(podUIDsBeforeScale) > len(podUIDs) {
+		for podName, uidAfter := range podUIDs {
+			if uidBefore, ok := podUIDsBeforeScale[podName]; ok && uidBefore != uidAfter {
+				return false, fmt.Errorf("pod: [%s] have be recreated", podName)
 			}
 		}
 	} else {
-		for podName, uid_before := range pdPodUIDsBeforeScale {
-			if uid_now, ok := pdUIDs[podName]; ok && uid_before != uid_now {
-				return false, fmt.Errorf("pod: [%s] have be recreate", podName)
-			}
-		}
-	}
-
-	tikvUIDs, err := getPodsUID(v1alpha1.TiKVMemberType)
-	if err != nil {
-		logf("failed to get tikv pod uids")
-		return false, nil
-	}
-
-	if len(tikvPodUIDsBeforeScale) == len(tikvUIDs) {
-		return false, fmt.Errorf("")
-	}
-	if len(tikvPodUIDsBeforeScale) > len(tikvUIDs) {
-		for podName, uid_now := range tikvUIDs {
-			if uid_before, ok := tikvPodUIDsBeforeScale[podName]; ok && uid_before != uid_now {
-				return false, fmt.Errorf("pod: [%s] have be recreate", podName)
-			}
-		}
-	} else {
-		for podName, uid_before := range tikvPodUIDsBeforeScale {
-			if uid_now, ok := tikvUIDs[podName]; ok && uid_before != uid_now {
-				return false, fmt.Errorf("pod: [%s] have be recreate", podName)
-			}
-		}
-	}
-
-	tidbUIDs, err := getPodsUID(v1alpha1.TiDBMemberType)
-	if err != nil {
-		logf("failed to get tidb pod uids")
-		return false, nil
-	}
-
-	if len(tidbPodUIDsBeforeScale) == len(tidbUIDs) {
-		return false, fmt.Errorf("the length of pods before scale equals pods after scale")
-	}
-	if len(tidbPodUIDsBeforeScale) > len(tidbUIDs) {
-		for podName, uid_now := range tidbUIDs {
-			if uid_before, ok := tidbPodUIDsBeforeScale[podName]; ok && uid_before != uid_now {
-				return false, fmt.Errorf("pod: [%s] have be recreate", podName)
-			}
-		}
-	} else {
-		for podName, uid_before := range tidbPodUIDsBeforeScale {
-			if uid_now, ok := tidbUIDs[podName]; ok && uid_before != uid_now {
-				return false, fmt.Errorf("pod: [%s] have be recreate", podName)
+		for podName, uidBefore := range podUIDsBeforeScale {
+			if uidAfter, ok := podUIDs[podName]; ok && uidBefore != uidAfter {
+				return false, fmt.Errorf("pod: [%s] have be recreated", podName)
 			}
 		}
 	}
@@ -213,7 +155,7 @@ func scaledCorrectly() (bool, error) {
 	return true, nil
 }
 
-// scaleInSecurity confirm member scale in securely
+// scaleInSecurity confirms member scale in securely
 func scaleInSecurely() (bool, error) {
 	tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 	if err != nil {
@@ -243,7 +185,7 @@ func scaleInSecurely() (bool, error) {
 	}
 
 	if len(tc.Status.TiKV.Stores.CurrentStores) > int(*tikvSet.Spec.Replicas) {
-		return false, fmt.Errorf("the tc.Status.PD.Members length less then pdSet.Spec.Replicas")
+		return false, fmt.Errorf("the pdSet.Spec.Replicas may reduce before tikv complete offline")
 	}
 
 	if !(tc.Spec.PD.Replicas == pdSet.Status.ReadyReplicas && pdSet.Status.Replicas == pdSet.Status.ReadyReplicas) {
@@ -261,32 +203,42 @@ func scaleInSecurely() (bool, error) {
 	return true, nil
 }
 
-func getPodsUID(memberType v1alpha1.MemberType) (map[string]types.UID, error) {
-	var l label.Label
-	switch memberType {
-	case v1alpha1.PDMemberType:
-		l = label.New().Cluster(clusterName).PD()
-		break
-	case v1alpha1.TiKVMemberType:
-		l = label.New().Cluster(clusterName).TiKV()
-		break
-	case v1alpha1.TiDBMemberType:
-		l = label.New().Cluster(clusterName).TiDB()
-		break
-	}
-
-	selector, err := l.Selector()
-	if err != nil {
-		return nil, err
-	}
-
-	pods, err := kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return nil, err
-	}
-
+func getPodsUID() (map[string]types.UID, error) {
 	result := map[string]types.UID{}
-	for _, pod := range pods.Items {
+
+	selector, err := label.New().Cluster(clusterName).PD().Selector()
+	if err != nil {
+		return nil, err
+	}
+	pdPods, err := kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return nil, err
+	}
+	for _, pod := range pdPods.Items {
+		result[pod.GetName()] = pod.GetUID()
+	}
+
+	selector, err = label.New().Cluster(clusterName).TiKV().Selector()
+	if err != nil {
+		return nil, err
+	}
+	tikvPods, err := kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return nil, err
+	}
+	for _, pod := range tikvPods.Items {
+		result[pod.GetName()] = pod.GetUID()
+	}
+
+	selector, err = label.New().Cluster(clusterName).TiDB().Selector()
+	if err != nil {
+		return nil, err
+	}
+	tidbPods, err := kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return nil, err
+	}
+	for _, pod := range tidbPods.Items {
 		result[pod.GetName()] = pod.GetUID()
 	}
 
