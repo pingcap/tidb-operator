@@ -17,14 +17,12 @@ import (
 	"fmt"
 	"reflect"
 
-	"strconv"
-
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -43,14 +41,24 @@ type pdMemberManager struct {
 	svcControl controller.ServiceControlInterface
 	setLister  v1beta1.StatefulSetLister
 	svcLister  corelisters.ServiceLister
+	pdScaler   Scaler
 }
 
 // NewPDMemberManager returns a *pdMemberManager
-func NewPDMemberManager(pdControl controller.PDControlInterface, setControl controller.StatefulSetControlInterface,
+func NewPDMemberManager(pdControl controller.PDControlInterface,
+	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	setLister v1beta1.StatefulSetLister,
-	svcLister corelisters.ServiceLister) manager.Manager {
-	return &pdMemberManager{pdControl, setControl, svcControl, setLister, svcLister}
+	svcLister corelisters.ServiceLister,
+	pdScaler Scaler,
+) manager.Manager {
+	return &pdMemberManager{
+		pdControl,
+		setControl,
+		svcControl,
+		setLister,
+		svcLister,
+		pdScaler}
 }
 
 func (pmm *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
@@ -134,7 +142,6 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		return err
 	}
 	if errors.IsNotFound(err) {
-		pmm.setInitialReplicas(nil, newPDSet)
 		controller.SetLastAppliedConfigAnnotation(newPDSet)
 		if err := pmm.setControl.CreateStatefulSet(tc, newPDSet); err != nil {
 			return err
@@ -142,8 +149,6 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
 	}
-
-	pmm.setInitialReplicas(oldPDSet, newPDSet)
 
 	if err := pmm.syncTidbClusterStatus(tc, oldPDSet); err != nil {
 		return err
@@ -153,17 +158,20 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		return err
 	}
 
-	if err = pmm.scaleDown(tc, oldPDSet, newPDSet); err != nil {
-		return err
+	if *newPDSet.Spec.Replicas < *oldPDSet.Spec.Replicas {
+		if err := pmm.pdScaler.ScaleIn(tc, oldPDSet, newPDSet); err != nil {
+			return err
+		}
 	}
 
-	same, err := controller.EqualStatefulSet(*newPDSet, *oldPDSet)
+	euqal, err := controller.EqualStatefulSet(*newPDSet, *oldPDSet)
 	if err != nil {
 		return err
 	}
-	if !same {
+	if !euqal {
 		set := *oldPDSet
-		set.Spec = newPDSet.Spec
+		set.Spec.Template = newPDSet.Spec.Template
+		*set.Spec.Replicas = *newPDSet.Spec.Replicas
 		controller.SetLastAppliedConfigAnnotation(&set)
 		return pmm.setControl.UpdateStatefulSet(tc, &set)
 	}
@@ -208,6 +216,12 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	}
 
 	tc.Status.PD.Members = pdStatus
+
+	if statefulSetInNormal(set) {
+		tc.Status.PD.Phase = v1alpha1.NormalPhase
+	} else {
+		tc.Status.PD.Phase = v1alpha1.UpgradePhase
+	}
 
 	return nil
 }
@@ -415,7 +429,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 				},
 			},
 			ServiceName:         controller.PDPeerMemberName(tcName),
-			PodManagementPolicy: apps.ParallelPodManagement,
+			PodManagementPolicy: apps.OrderedReadyPodManagement,
 			UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 		},
 	}
@@ -424,70 +438,15 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 }
 
 func (pmm *pdMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	if oldSet.Status.CurrentRevision == oldSet.Status.UpdateRevision {
-		tc.Status.PD.Phase = v1alpha1.Normal
-	}
+
 	upgrade, err := pmm.needUpgrade(tc, newSet, oldSet)
 	if err != nil {
 		return err
 	}
 	if upgrade {
-		tc.Status.PD.Phase = v1alpha1.Upgrade
+		tc.Status.PD.Phase = v1alpha1.UpgradePhase
 	}
 	return nil
-}
-
-func (pmm *pdMemberManager) scaleDown(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	// can not scale pd when pd is upgrading
-	if tc.Status.PD.Phase == v1alpha1.Upgrade {
-		newSet.Spec.Replicas = oldSet.Spec.Replicas
-		glog.Infof("the TidbCluster:[%s/%s]'s pd is upgrading,can not scale until upgrade have completed", tc.GetNamespace(), tc.GetName())
-		return nil
-	}
-
-	// we can only remove one member at a time when scale down
-	if pmm.needReduce(tc, *oldSet.Spec.Replicas) {
-		// We need remove member from cluster before reducing statefulset replicas
-		ordinal := *oldSet.Spec.Replicas - 1
-		if err := pmm.removeOneMember(tc, ordinal); err != nil {
-			return err
-		}
-		newSet.Spec.Replicas = &ordinal
-	}
-
-	return nil
-}
-
-func (pmm *pdMemberManager) setInitialReplicas(oldSet *apps.StatefulSet, newSet *apps.StatefulSet) {
-	var initialReplicas int
-	if oldSet == nil {
-		initialReplicas = int(*newSet.Spec.Replicas)
-	} else {
-		oldInitialReplicas, err := strconv.Atoi(oldSet.GetAnnotations()[label.AnnInitialPDReplicas])
-		if err != nil {
-			// This should not happen, initial-replicas must be consistent in the cluster lifecycle
-			initialReplicas = defaultReplicas
-			glog.Warningf("can not find initial-pd-replicas from previous statefulset, use default %d", defaultReplicas)
-		}
-		initialReplicas = oldInitialReplicas
-
-		// If new pd statefulset replica is smaller than existing statefulset annotation replica,
-		// we should reset it to new statefulset replica. This happens when pd has been scaled down.
-		if initialReplicas > int(*newSet.Spec.Replicas) {
-			initialReplicas = int(*newSet.Spec.Replicas)
-		}
-	}
-
-	if newSet.Annotations == nil {
-		newSet.Annotations = map[string]string{}
-	}
-	newSet.Annotations[label.AnnInitialPDReplicas] = fmt.Sprintf("%d", initialReplicas)
-
-	for i, container := range newSet.Spec.Template.Spec.Containers {
-		if container.Name == v1alpha1.PDMemberType.String() {
-			newSet.Spec.Template.Spec.Containers[i].Env = append(newSet.Spec.Template.Spec.Containers[i].Env, corev1.EnvVar{Name: "INITIAL_REPLICAS", Value: fmt.Sprintf("%d", initialReplicas)})
-		}
-	}
 }
 
 func (pmm *pdMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) (bool, error) {
@@ -496,13 +455,4 @@ func (pmm *pdMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *apps.S
 		return false, err
 	}
 	return !same, nil
-}
-
-func (pmm *pdMemberManager) needReduce(tc *v1alpha1.TidbCluster, oldReplicas int32) bool {
-	return tc.Spec.PD.Replicas < oldReplicas
-}
-
-func (pmm *pdMemberManager) removeOneMember(tc *v1alpha1.TidbCluster, ordinal int32) error {
-	memberName := fmt.Sprintf("%s-pd-%d", tc.Name, ordinal)
-	return pmm.pdControl.GetPDClient(tc).DeleteMember(memberName)
 }

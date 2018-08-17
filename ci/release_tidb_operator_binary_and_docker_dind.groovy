@@ -19,7 +19,7 @@ def call(BUILD_BRANCH, RELEASE_TAG) {
 
 				stage('Push tidb-operator Docker Image'){
 					withDockerServer([uri: "${env.DOCKER_HOST}"]) {
-						docker.build("uhub.ucloud.cn/pingcap/tidb-operator:${RELEASE_TAG}", "images/tidb-operator").push()
+						docker.build("uhub.service.ucloud.cn/pingcap/tidb-operator:${RELEASE_TAG}", "images/tidb-operator").push()
 						docker.build("pingcap/tidb-operator:${RELEASE_TAG}", "images/tidb-operator").push()
 					}
 				}

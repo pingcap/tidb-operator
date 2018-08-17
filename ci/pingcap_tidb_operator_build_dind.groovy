@@ -1,18 +1,18 @@
 def tidbClusterReplace(file) {
 	def SRC_E2E_FILE_CONTENT = readFile file: file
-	def DST_E2E_FILE_CONTENT = SRC_E2E_FILE_CONTENT.replaceAll("image: pingcap/pd:.*", "image: localhost:5000/pingcap/pd:v2.0.4")
-	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image: pingcap/tidb:.*", "image: localhost:5000/pingcap/tidb:v2.0.4")
-	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image: pingcap/tikv:.*", "image: localhost:5000/pingcap/tikv:v2.0.4")
-	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image: prom/pushgateway:.*", "image: localhost:5000/pingcap/pushgateway:v0.3.1")
-	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image: pingcap/tidb-dashboard-installer:.*", "image: localhost:5000/pingcap/tidb-dashboard-installer:v1.0.7")
-	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image: grafana/grafana:.*", "image: localhost:5000/pingcap/grafana:4.2.0")
-	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image: prom/prometheus:.*", "image: localhost:5000/pingcap/prometheus:v2.0.0")
+	def DST_E2E_FILE_CONTENT = SRC_E2E_FILE_CONTENT.replaceAll("image:.*pingcap/pd", "image: localhost:5000/pingcap/pd")
+	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image:.*pingcap/tidb", "image: localhost:5000/pingcap/tidb")
+	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image:.*pingcap/tikv", "image: localhost:5000/pingcap/tikv")
+	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image:.*prom/pushgateway", "image: localhost:5000/pingcap/pushgateway")
+	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image:.*pingcap/tidb-dashboard-installer", "image: localhost:5000/pingcap/tidb-dashboard-installer")
+	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image:.*grafana/grafana", "image: localhost:5000/pingcap/grafana")
+	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image:.*prom/prometheus", "image: localhost:5000/pingcap/prometheus")
 	writeFile file: file, text: "${DST_E2E_FILE_CONTENT}"
 }
 
 def operatorReplace(file, tag) {
 	def SRC_E2E_FILE_CONTENT = readFile file: file
-	def DST_E2E_FILE_CONTENT = SRC_E2E_FILE_CONTENT.replaceAll("operatorImage: pingcap/tidb-operator:.*", "operatorImage: ${tag}")
+	def DST_E2E_FILE_CONTENT = SRC_E2E_FILE_CONTENT.replaceAll("operatorImage:.*", "operatorImage: ${tag}")
 	writeFile file: file, text: "${DST_E2E_FILE_CONTENT}"
 }
 

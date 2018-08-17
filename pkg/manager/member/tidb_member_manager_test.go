@@ -142,7 +142,15 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 
 		tmm, fakeSetControl, fakeSvcControl := newFakeTiDBMemberManager()
 
-		if test.statusChange != nil {
+		if test.statusChange == nil {
+			fakeSetControl.SetStatusChange(func(set *apps.StatefulSet) {
+				set.Status.Replicas = *set.Spec.Replicas
+				set.Status.CurrentRevision = "tidb-1"
+				set.Status.UpdateRevision = "tidb-1"
+				observedGeneration := int64(1)
+				set.Status.ObservedGeneration = &observedGeneration
+			})
+		} else {
 			fakeSetControl.SetStatusChange(test.statusChange)
 		}
 
@@ -189,8 +197,8 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Spec.Services = []v1alpha1.Service{
 					{Name: "tidb", Type: string(corev1.ServiceTypeNodePort)},
 				}
-				tc.Status.PD.Phase = v1alpha1.Normal
-				tc.Status.TiKV.Phase = v1alpha1.Normal
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: false,
 			errWhenUpdateTiDBService: false,
@@ -210,8 +218,8 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Spec.Services = []v1alpha1.Service{
 					{Name: v1alpha1.TiDBMemberType.String(), Type: string(corev1.ServiceTypeNodePort)},
 				}
-				tc.Status.PD.Phase = v1alpha1.Normal
-				tc.Status.TiKV.Phase = v1alpha1.Normal
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: false,
 			errWhenUpdateTiDBService: true,
@@ -226,8 +234,8 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 			name: "error when update statefulset",
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiDB.Replicas = 5
-				tc.Status.PD.Phase = v1alpha1.Normal
-				tc.Status.TiKV.Phase = v1alpha1.Normal
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: true,
 			errWhenUpdateTiDBService: false,
@@ -235,7 +243,6 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 			expectTiDBServieFn: nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(int(*set.Spec.Replicas)).To(Equal(3))
 			},
 		},
 	}
