@@ -18,9 +18,9 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -111,13 +111,14 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return err
 	}
 
-	same, err := controller.EqualStatefulSet(*oldTiDBSet, *newTiDBSet)
+	equal, err := controller.EqualStatefulSet(*oldTiDBSet, *newTiDBSet)
 	if err != nil {
 		return err
 	}
-	if !same {
+	if !equal {
 		set := *oldTiDBSet
-		set.Spec = newTiDBSet.Spec
+		set.Spec.Template = newTiDBSet.Spec.Template
+		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
 		controller.SetLastAppliedConfigAnnotation(&set)
 		return tmm.setControl.UpdateStatefulSet(tc, &set)
 	}
@@ -275,7 +276,7 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 
 func (tmm *tidbMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	if oldSet.Status.CurrentRevision == oldSet.Status.UpdateRevision {
-		tc.Status.TiDB.Phase = v1alpha1.Normal
+		tc.Status.TiDB.Phase = v1alpha1.NormalPhase
 	}
 
 	upgrade, err := tmm.needUpgrade(tc, newSet, oldSet)
@@ -283,10 +284,10 @@ func (tmm *tidbMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 		return err
 	}
 	if upgrade {
-		tc.Status.TiDB.Phase = v1alpha1.Upgrade
+		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
 	}
 
-	if tc.Status.TiDB.Phase != v1alpha1.Upgrade {
+	if tc.Status.TiDB.Phase != v1alpha1.UpgradePhase {
 		_, podSpec, err := controller.GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
@@ -297,11 +298,11 @@ func (tmm *tidbMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 }
 
 func (tmm *tidbMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) (bool, error) {
-	if tc.Status.PD.Phase == v1alpha1.Upgrade {
+	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
 		return false, nil
 	}
 
-	if tc.Status.TiKV.Phase == v1alpha1.Upgrade {
+	if tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
 		return false, nil
 	}
 

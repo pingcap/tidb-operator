@@ -55,10 +55,10 @@ const (
 type MemberPhase string
 
 const (
-	// Normal represents normal state of TiDB cluster.
-	Normal MemberPhase = "Normal"
-	// Upgrade represents the upgrade state of TiDB cluster.
-	Upgrade MemberPhase = "Upgrade"
+	// NormalPhase represents normal state of TiDB cluster.
+	NormalPhase MemberPhase = "Normal"
+	// UpgradePhase represents the upgrade state of TiDB cluster.
+	UpgradePhase MemberPhase = "Upgrade"
 )
 
 // +genclient
