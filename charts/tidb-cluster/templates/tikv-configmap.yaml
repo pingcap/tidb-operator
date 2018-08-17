@@ -61,6 +61,34 @@ data:
     # file to store log, write to stderr if it's empty.
     # log-file = ""
 
+    [readpool.storage]
+    # size of thread pool for high-priority operations
+    # high-concurrency = 4
+    # size of thread pool for normal-priority operations
+    # normal-concurrency = 4
+    # size of thread pool for low-priority operations
+    # low-concurrency = 4
+    # max running high-priority operations, reject if exceed
+    # max-tasks-high = 8000
+    # max running normal-priority operations, reject if exceed
+    # max-tasks-normal = 8000
+    # max running low-priority operations, reject if exceed
+    # max-tasks-low = 8000
+    # size of stack size for each thread pool
+    # stack-size = "10MB"
+
+    [readpool.coprocessor]
+    # Notice: if CPU_NUM > 8, default thread pool size for coprocessors
+    # will be set to CPU_NUM * 0.8.
+
+    # high-concurrency = 8
+    # normal-concurrency = 8
+    # low-concurrency = 8
+    # max-tasks-high = 16000
+    # max-tasks-normal = 16000
+    # max-tasks-low = 16000
+    # stack-size = "10MB"
+
     [server]
     # set listening address.
     # addr = "127.0.0.1:20160"
@@ -71,6 +99,8 @@ data:
     # maximum number of messages can be processed in one tick.
     # messages-per-tick = 4096
 
+    # compression type for grpc channel, available values are no, deflate and gzip.
+    # grpc-compression-type = "no"
     # size of thread pool for grpc server.
     # grpc-concurrency = 4
     # The number of max concurrent streams/requests on a client connection.
@@ -80,14 +110,23 @@ data:
     # Amount to read ahead on individual grpc streams.
     # grpc-stream-initial-window-size = "2MB"
 
-    # size of thread pool for endpoint task, should less than total cpu cores.
-    # end-point-concurrency = 8
+    # How many snapshots can be sent concurrently.
+    # concurrent-send-snap-limit = 32
+    # How many snapshots can be recv concurrently.
+    # concurrent-recv-snap-limit = 32
 
     # max count of tasks being handled, new tasks will be rejected.
     # end-point-max-tasks = 2000
 
-    # stack size of endpoint, complicated tasks may involve very deep recursion.
-    # end-point-stack-size = "10MB"
+    # max recursion level allowed when decoding dag expression
+    # end-point-recursion-limit = 1000
+
+    # max time to handle coprocessor request before timeout
+    # end-point-request-max-handle-duration = "60s"
+
+    # the max bytes that snapshot can be written to disk in one second,
+    # should be set based on your disk performance
+    # snap-max-write-bytes-per-sec = "100MB"
 
     # set attributes about this server, e.g. { zone = "us-west-1", disk = "ssd" }.
     # labels = {}
@@ -146,11 +185,6 @@ data:
     # Store heartbeat tick interval for reporting to pd.
     # pd-store-heartbeat-tick-interval = "10s"
 
-    # When the region's size exceeds region-max-size, we will split the region
-    # into two which the left region's size will be region-split-size or a little
-    # bit smaller.
-    # region-max-size = "144MB"
-    # region-split-size = "96MB"
     # When region size changes exceeds region-split-check-diff, we should check
     # whether the region should be split or not.
     # region-split-check-diff = "6MB"
@@ -176,10 +210,11 @@ data:
     # max-peer-down-duration = "5m"
 
     # Interval to check whether start manual compaction for a region,
-    # 0 is the default value, means disable manual compaction.
     # region-compact-check-interval = "5m"
-    # When delete keys of a region exceeds the size, a compaction will be started.
-    # region-compact-delete-keys-count = 1000000
+    # Number of regions for each time to check.
+    # region-compact-check-step = 100
+    # The minimum number of delete tombstones to trigger manual compaction.
+    # region-compact-min-tombstones = 10000
     # Interval to check whether should start a manual compaction for lock column family,
     # if written bytes reach lock-cf-compact-threshold for lock column family, will fire
     # a manual compaction for lock column family.
@@ -188,6 +223,26 @@ data:
 
     # Interval (s) to check region whether the data are consistent.
     # consistency-check-interval = 0
+
+    # Use delete range to drop a large number of continuous keys.
+    # use-delete-range = false
+
+    # delay time before deleting a stale peer
+    # clean-stale-peer-delay = "10m"
+
+    # Interval to cleanup import sst files.
+    # cleanup-import-sst-interval = "10m"
+
+    [coprocessor]
+    # When it is true, it will try to split a region with table prefix if
+    # that region crosses tables. It is recommended to turn off this option
+    # if there will be a large number of tables created.
+    # split-region-on-table = true
+    # When the region's size exceeds region-max-size, we will split the region
+    # into two which the left region's size will be region-split-size or a little
+    # bit smaller.
+    # region-max-size = "144MB"
+    # region-split-size = "96MB"
 
     [rocksdb]
     # Maximum number of concurrent background jobs (compactions and flushes)
@@ -250,9 +305,6 @@ data:
     # rocksdb max total wal size
     # max-total-wal-size = "4GB"
 
-    # rocksdb writable file max buffer size
-    # writable-file-max-buffer-size = "1MB"
-
     # Rocksdb Statistics provides cumulative stats over time.
     # Turn statistics on will introduce about 5%-10% overhead for RocksDB,
     # but it is worthy to know the internal status of RocksDB.
@@ -282,11 +334,12 @@ data:
     # Enable or disable the pipelined write
     # enable-pipelined-write = true
 
-    # set backup path, if not set, use "backup" under store path.
-    # backup-dir = "/tmp/tikv/store/backup"
+    # Allows OS to incrementally sync files to disk while they are being
+    # written, asynchronously, in the background.
+    # bytes-per-sync = "0MB"
 
     # Allows OS to incrementally sync WAL to disk while it is being written.
-    # wal-bytes-per-sync = 0
+    # wal-bytes-per-sync = "0KB"
 
     # Column Family default used to store actual data of the database.
     [rocksdb.defaultcf]
@@ -371,6 +424,9 @@ data:
     # 16     =>  00.78 %
     # read-amp-bytes-per-bit = 0
 
+    # Pick target size of each level dynamically.
+    # dynamic-level-bytes = false
+
     # Options for Column Family write
     # Column Family write used to store commit informations in MVCC model
     [rocksdb.writecf]
@@ -391,6 +447,7 @@ data:
     # pin-l0-filter-and-index-blocks = true
     # compaction-pri = 3
     # read-amp-bytes-per-bit = 0
+    # dynamic-level-bytes = false
 
     [rocksdb.lockcf]
     # compression-per-level = ["no", "no", "no", "no", "no", "no", "no"]
@@ -408,13 +465,13 @@ data:
     # pin-l0-filter-and-index-blocks = true
     # compaction-pri = 0
     # read-amp-bytes-per-bit = 0
+    # dynamic-level-bytes = false
 
     [raftdb]
     # max-sub-compactions = 1
     # max-open-files = 40960
     # max-manifest-file-size = "20MB"
     # create-if-missing = true
-    # writable-file-max-buffer-size = "1MB"
 
     # enable-statistics = true
     # stats-dump-period = "10m"
@@ -424,6 +481,8 @@ data:
     # use-direct-io-for-flush-and-compaction = false
     # enable-pipelined-write = true
     # allow-concurrent-memtable-write = false
+    # bytes-per-sync = "0MB"
+    # wal-bytes-per-sync = "0KB"
 
     [raftdb.defaultcf]
     # compression-per-level = ["no", "no", "lz4", "lz4", "lz4", "zstd", "zstd"]
@@ -443,4 +502,18 @@ data:
     # pin-l0-filter-and-index-blocks = true
     # compaction-pri = 0
     # read-amp-bytes-per-bit = 0
-    # wal-bytes-per-sync = 0
+    # dynamic-level-bytes = false
+
+    [security]
+    # set the path for certificates. Empty string means disabling secure connectoins.
+    # ca-path = ""
+    # cert-path = ""
+    # key-path = ""
+
+    [import]
+    # the directory to store importing kv data.
+    # import-dir = "/tmp/tikv/import"
+    # number of threads to handle RPC requests.
+    # num-threads = 8
+    # stream channel window size, stream will be blocked on channel full.
+    # stream-channel-window = 128

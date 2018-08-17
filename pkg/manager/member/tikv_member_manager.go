@@ -155,13 +155,14 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 
-	same, err := controller.EqualStatefulSet(*newSet, *oldSet)
+	equal, err := controller.EqualStatefulSet(*newSet, *oldSet)
 	if err != nil {
 		return err
 	}
-	if !same {
+	if !equal {
 		set := *oldSet
-		set.Spec = newSet.Spec
+		set.Spec.Template = newSet.Spec.Template
+		*set.Spec.Replicas = *newSet.Spec.Replicas
 		controller.SetLastAppliedConfigAnnotation(&set)
 		return tkmm.setControl.UpdateStatefulSet(tc, &set)
 	}

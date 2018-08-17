@@ -111,13 +111,14 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return err
 	}
 
-	same, err := controller.EqualStatefulSet(*oldTiDBSet, *newTiDBSet)
+	equal, err := controller.EqualStatefulSet(*oldTiDBSet, *newTiDBSet)
 	if err != nil {
 		return err
 	}
-	if !same {
+	if !equal {
 		set := *oldTiDBSet
-		set.Spec = newTiDBSet.Spec
+		set.Spec.Template = newTiDBSet.Spec.Template
+		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
 		controller.SetLastAppliedConfigAnnotation(&set)
 		return tmm.setControl.UpdateStatefulSet(tc, &set)
 	}
