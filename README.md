@@ -40,6 +40,19 @@ Read the [Roadmap](./ROADMAP.md).
 
 Read the [Deploy TiDB using Kubernetes on Your Laptop for development and testing](./docs/local-dind-tutorial.md).
 
+[![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.png)](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/pingcap/tidb-operator)
+<!--
+[![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.png)](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/pingcap/tidb-operator&tutorial=docs/google-kubernetes-tutorial.md)
+-->
+
+If you have any issues with this button, you can download the file as markdown and open it:
+
+```sh
+git clone https://github.com/pingcap/tidb-operator
+cd tidb-operator
+teachme docs/google-kubernetes-tutorial.md
+```
+
 ## Contributing
 
 Contributions are welcome and greatly appreciated. See [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for details on submitting patches and the contribution workflow.
