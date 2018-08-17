@@ -66,6 +66,11 @@ Now we have a cluster! Verify that kubectl can connect to it and that it has thr
 	kubectl get nodes
 
 We can install TiDB with helm charts. Maske sure [helm is installed](https://github.com/helm/helm#install) on your platform.
+Note that in Google Cloud Shell, system installs do not persist across shell sessions. You can put helm in your home directory:
+
+	mkdir -p ~/bin
+	cp /usr/local/bin/helm ~/bin
+	echo 'PATH="$PATH:$HOME/bin"' >> ~/.bashrc
 
 We can get the TiDB helm charts from the source repository.
 
