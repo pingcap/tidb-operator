@@ -83,7 +83,6 @@ func (rpc *realPVCControl) UpdatePVC(tc *v1alpha1.TidbCluster, pvc *corev1.Persi
 			pvc = updated.DeepCopy()
 			pvc.Annotations = pvcDup.Annotations
 			pvc.Labels = pvcDup.Labels
-			pvc.Spec = pvcDup.Spec
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated PVC %s/%s from lister: %v", ns, pvcName, err))
 		}
