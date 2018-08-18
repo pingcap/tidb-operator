@@ -19,7 +19,7 @@ This tutorial takes you through these steps:
 
 ## Select a Project
 
-Please select a project before proceeding.  The approximate cost for running the compute resources in this tutorial is $75/month.
+Please select a project before proceeding.  The approximate cost for running the compute resources in this tutorial is 10 cents/hour.
 
 <walkthrough-project-billing-setup key="project-id">
 </walkthrough-project-billing-setup>
