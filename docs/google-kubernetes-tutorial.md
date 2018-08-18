@@ -112,7 +112,7 @@ It will take a few minutes to launch.  You can monitor the progress with:
 
 	watch kubectl get pods --namespace tidb -o wide
 
-When you see `Running`, it's time to proceed forward!
+When you see all pods `Running`, it's time to proceed forward!
 
 ## Connecting to TiDB
 
