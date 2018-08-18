@@ -37,7 +37,6 @@ This step defaults gcloud to your prefered project and [zone](https://cloud.goog
 
 	gcloud config set project {{project-id}} &&
 	gcloud config set compute/zone us-west1-a
-	
 
 ## Launch a three node Kubernetes cluster
 
@@ -117,7 +116,11 @@ When you see `Running`, it's time to proceed forward!
 
 ## Connecting to TiDB
 
-Now lets connect to our MySQL database. This will connect to the clustered service IP address within the Kubernetes cluster:
+There can be a small delay between the pod being up and running, and the service being available.  When you see `demo-tidb` appear, the service is ready to connect to:
+
+	watch "kubectl get svc -n tidb"
+
+You can connect to the clustered service within the Kubernetes cluster:
 
 	kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb --output json | jq -r '.spec.clusterIP')
 
