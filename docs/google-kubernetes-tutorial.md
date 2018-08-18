@@ -82,7 +82,7 @@ Helm will also need a couple of permissions to work properly:
 	kubectl apply -f ./manifests/tiller-rbac.yaml &&
 	helm init --service-account tiller --upgrade
 
-It takes a minute for helm to initialize its server component (tiller):
+It takes a minute for helm to initialize `tiller`, its server component:
 
 	watch "kubectl get pods --namespace kube-system | grep tiller"
 
@@ -100,7 +100,7 @@ We can watch the operator come up with:
 
 	watch kubectl get pods --namespace tidb-admin -o wide
 
-When you see `Running`, hit `Control + C` and proceed to launch a TiDB cluster!
+When you see `Running`, `Control + C` and proceed to launch a TiDB cluster!
 
 ## Deploy your first TiDB Cluster
 
@@ -126,11 +126,11 @@ You can connect to the clustered service within the Kubernetes cluster:
 
 	kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb --output json | jq -r '.spec.clusterIP')
 
-For debugging purposes, you can also establish a tunnel between an individual TiDB pod and your Google Cloud Shell.  For example:
+For debugging purposes, you can also establish a tunnel between an individual TiDB pod and your Cloud Shell.  For example:
 
 	kubectl -n tidb port-forward demo-tidb-0 4000:4000 &
 
-From your Google shell:
+From your Cloud Shell:
 
 	sudo apt-get install -y mysql-client &&
 	mysql -h 127.0.0.1 -u root -P 4000
