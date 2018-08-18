@@ -83,10 +83,11 @@ Helm will also need a couple of permissions to work properly:
 	kubectl apply -f manifests/tiller-rbac.yaml &&
 	helm init --service-account tiller --upgrade
 
-It takes a minute for helm to initialize its server component (tiller).  When you see `Running`, it's time to proceed to the next step:
+It takes a minute for helm to initialize its server component (tiller):
 
 	watch "kubectl get pods --namespace kube-system | grep tiller"
-        
+
+When you see `Running`, it's time to proceed to the next step!
 
 ## Deploy TiDB Operator
 
