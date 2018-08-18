@@ -24,11 +24,11 @@ Please select a project before proceeding.  The approximate cost for running the
 <walkthrough-project-billing-setup key="project-id">
 </walkthrough-project-billing-setup>
 
-## Enable Kubernetes API
+## Enable API Acess
 
-This project will require use of the Kubernetes API.  Please enable it before proceeding.
+This project will require use of the Compute and Container APIs.  Please enable them before proceeding:
 
-<walkthrough-enable-apis apis="container.googleapis.com">
+<walkthrough-enable-apis apis="container.googleapis.com,compute.googleapis.com">
 </walkthrough-enable-apis>
 
 ## Configure gcloud Defaults
