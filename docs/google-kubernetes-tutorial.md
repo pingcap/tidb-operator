@@ -126,7 +126,7 @@ You can connect to the clustered service within the Kubernetes cluster:
 
 	kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb --output json | jq -r '.spec.clusterIP')
 
-For debugging purposes, you can also establish a tunnel between an individual TiDB pod and your Cloud Shell.  For example:
+For debugging purposes, you can also establish a tunnel between an individual TiDB pod and your Cloud Shell.  It is important to note that this will not survive if the pod `demo-tidb-0` fails our your Google Shell restarts.  For example:
 
 	kubectl -n tidb port-forward demo-tidb-0 4000:4000 &
 
