@@ -92,6 +92,7 @@ func NewController(
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder)
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, recorder)
 	pdScaler := mm.NewPDScaler(pdControl)
+	tikvScaler := mm.NewTiKVScaler(pdControl)
 
 	tcc := &Controller{
 		kubeClient: kubeCli,
@@ -114,6 +115,7 @@ func NewController(
 				svcInformer.Lister(),
 				podInformer.Lister(),
 				nodeInformer.Lister(),
+				tikvScaler,
 			),
 			mm.NewTiDBMemberManager(
 				setControl,

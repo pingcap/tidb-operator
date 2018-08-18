@@ -77,9 +77,10 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, recorder)
 	statusUpdater := newFakeTidbClusterStatusUpdater(tcInformer)
 	pdScaler := mm.NewFakePDScaler()
+	tikvScaler := mm.NewFakeTiKVScaler()
 
 	pdMemberManager := mm.NewPDMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), pdScaler)
-	tikvMemberManager := mm.NewTiKVMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), podInformer.Lister(), nodeInformer.Lister())
+	tikvMemberManager := mm.NewTiKVMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), podInformer.Lister(), nodeInformer.Lister(), tikvScaler)
 	tidbMemberManager := mm.NewTiDBMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
 	reclaimPolicyManager := meta.NewReclaimPolicyManager(pvcInformer.Lister(), pvInformer.Lister(), pvControl)
 	metaManager := meta.NewMetaManager(pvcInformer.Lister(), pvcControl, pvInformer.Lister(), pvControl, podInformer.Lister(), podControl)

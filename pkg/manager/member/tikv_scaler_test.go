@@ -11,16 +11,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1alpha1
-
-func (mt MemberType) String() string {
-	return string(mt)
-}
-
-func (tc TidbCluster) PDUpgrading() bool {
-	return tc.Status.PD.Phase == UpgradePhase
-}
-
-func (tc TidbCluster) TiKVUpgrading() bool {
-	return tc.Status.TiKV.Phase == UpgradePhase
-}
+package member

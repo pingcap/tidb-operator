@@ -25,3 +25,13 @@ type Scaler interface {
 	// ScaleIn scales in the cluster
 	ScaleIn(*v1alpha1.TidbCluster, *apps.StatefulSet, *apps.StatefulSet) error
 }
+
+func resetReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
+	*newSet.Spec.Replicas = *oldSet.Spec.Replicas
+}
+func increaseReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
+	*newSet.Spec.Replicas = *oldSet.Spec.Replicas + 1
+}
+func decreaseReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
+	*newSet.Spec.Replicas = *oldSet.Spec.Replicas - 1
+}

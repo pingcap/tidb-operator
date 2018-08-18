@@ -16,7 +16,6 @@ package member
 import (
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/golang/glog"
@@ -46,6 +45,7 @@ type tikvMemberManager struct {
 	svcLister  corelisters.ServiceLister
 	podLister  corelisters.PodLister
 	nodeLister corelisters.NodeLister
+	tikvScaler Scaler
 }
 
 // NewTiKVMemberManager returns a *tikvMemberManager
@@ -55,7 +55,8 @@ func NewTiKVMemberManager(pdControl controller.PDControlInterface,
 	setLister v1beta1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
-	nodeLister corelisters.NodeLister) manager.Manager {
+	nodeLister corelisters.NodeLister,
+	tikvScaler Scaler) manager.Manager {
 	kvmm := tikvMemberManager{
 		pdControl:  pdControl,
 		podLister:  podLister,
@@ -64,6 +65,7 @@ func NewTiKVMemberManager(pdControl controller.PDControlInterface,
 		svcControl: svcControl,
 		setLister:  setLister,
 		svcLister:  svcLister,
+		tikvScaler: tikvScaler,
 	}
 	return &kvmm
 }
@@ -151,8 +153,16 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 
-	if err = tkmm.scaleDown(tc, oldSet, newSet); err != nil {
-		return err
+	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
+		if err := tkmm.tikvScaler.ScaleOut(tc, oldSet, newSet); err != nil {
+			return err
+		}
+	}
+
+	if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
+		if err := tkmm.tikvScaler.ScaleIn(tc, oldSet, newSet); err != nil {
+			return err
+		}
 	}
 
 	equal, err := controller.EqualStatefulSet(*newSet, *oldSet)
@@ -394,27 +404,6 @@ func (tkmm *tikvMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 	return nil
 }
 
-func (tkmm *tikvMemberManager) scaleDown(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	// can not scale tikv when it is upgrading
-	if tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-		newSet.Spec.Replicas = oldSet.Spec.Replicas
-		glog.Infof("the TidbCluster: [%s/%s]'s tikv is upgrading,can not scale until upgrade have completed", tc.GetNamespace(), tc.GetName())
-		return nil
-	}
-
-	// we can only remove one member at a time when scale down
-	if tkmm.needReduce(tc, *oldSet.Spec.Replicas) {
-		// We need remove member from cluster before reducing statefulset replicas
-		ordinal := *oldSet.Spec.Replicas - 1
-		if err := tkmm.removeOneMember(tc, ordinal); err != nil {
-			return err
-		}
-		newSet.Spec.Replicas = &ordinal
-	}
-
-	return nil
-}
-
 func (tkmm *tikvMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) (bool, error) {
 	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
 		return false, nil
@@ -428,46 +417,6 @@ func (tkmm *tikvMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *app
 
 func (tkmm *tikvMemberManager) needReduce(tc *v1alpha1.TidbCluster, oldReplicas int32) bool {
 	return tc.Spec.TiKV.Replicas < oldReplicas
-}
-
-// remove tikv store from cluster, return nil only when store status becomes tombstone
-func (tkmm *tikvMemberManager) removeOneMember(tc *v1alpha1.TidbCluster, ordinal int32) error {
-	name := fmt.Sprintf("%s-tikv-%d", tc.Name, ordinal)
-	var state string
-	var id uint64
-	var err error
-	for _, store := range tc.Status.TiKV.Stores.CurrentStores {
-		if store.PodName == name {
-			state = store.State
-			id, err = strconv.ParseUint(store.ID, 10, 64)
-			if err != nil {
-				return err
-			}
-			if state != util.StoreOfflineState {
-				if err := tkmm.pdControl.GetPDClient(tc).DeleteStore(id); err != nil {
-					return err
-				}
-			}
-			return fmt.Errorf("TiKV %s store %d  still in cluster, state: %s", name, id, state)
-		}
-	}
-	for _, store := range tc.Status.TiKV.Stores.TombStoneStores {
-		if store.PodName == name {
-			state = store.State
-			id, err = strconv.ParseUint(store.ID, 10, 64)
-			if err != nil {
-				return err
-			}
-			// TODO: double check if store is really not in Up/Offline/Down state
-			glog.Infof("TiKV %s store %d becomes tombstone", name, id)
-			return nil
-		}
-	}
-
-	// store not found in TidbCluster status,
-	// this can happen when TiKV joins cluster but we haven't synced its status
-	// so return error to wait another round for safety
-	return fmt.Errorf("TiKV %s not found in cluster", name)
 }
 
 func (tkmm *tikvMemberManager) getStateSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {

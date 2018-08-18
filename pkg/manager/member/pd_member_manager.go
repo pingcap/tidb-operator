@@ -50,8 +50,7 @@ func NewPDMemberManager(pdControl controller.PDControlInterface,
 	svcControl controller.ServiceControlInterface,
 	setLister v1beta1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
-	pdScaler Scaler,
-) manager.Manager {
+	pdScaler Scaler) manager.Manager {
 	return &pdMemberManager{
 		pdControl,
 		setControl,
