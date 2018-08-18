@@ -86,7 +86,7 @@ It takes a minute for helm to initialize its server component (tiller):
 
 	watch "kubectl get pods --namespace kube-system | grep tiller"
 
-When you see `Running`, it's time to proceed to the next step!
+When you see `Running`, it's time to hit `Control + C` and proceed to the next step!
 
 ## Deploy TiDB Operator
 
@@ -100,7 +100,7 @@ We can watch the operator come up with:
 
 	watch kubectl get pods --namespace tidb-admin -o wide
 
-If you see `Running`, the next step is to launch a TiDB cluster!
+When you see `Running`, hit `Control + C` and proceed to launch a TiDB cluster!
 
 ## Deploy your first TiDB Cluster
 
@@ -112,13 +112,15 @@ It will take a few minutes to launch.  You can monitor the progress with:
 
 	watch kubectl get pods --namespace tidb -o wide
 
-When you see all pods `Running`, it's time to proceed forward!
+When you see all pods `Running`, it's time to `Control + C` and proceed forward!
 
 ## Connecting to TiDB
 
-There can be a small delay between the pod being up and running, and the service being available.  When you see `demo-tidb` appear, the service is ready to connect to:
+There can be a small delay between the pod being up and running, and the service being available.  You can watch list services available with:
 
 	watch "kubectl get svc -n tidb"
+
+When you see `demo-tidb` appear, you can `Control + C`.  The service is ready to connect to!
 
 You can connect to the clustered service within the Kubernetes cluster:
 
