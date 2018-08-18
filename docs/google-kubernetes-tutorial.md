@@ -55,7 +55,7 @@ The last step is to verify that `kubectl` can connect to the cluster, and all th
 
 	kubectl get nodes
 
-If you see `ready` for all nodes, congratulations!  You've setup your first Kubernetes cluster.
+If you see `Ready` for all nodes, congratulations!  You've setup your first Kubernetes cluster.
 
 ## Installing Helm
 
