@@ -79,7 +79,7 @@ Copy `helm` to a local directory:
 Helm will also need a couple of permissions to work properly:
 
 	kubectl create serviceaccount tiller --namespace kube-system &&
-	kubectl apply -f manifests/tiller-rbac.yaml &&
+	kubectl apply -f ./manifests/tiller-rbac.yaml &&
 	helm init --service-account tiller --upgrade
 
 It takes a minute for helm to initialize its server component (tiller):
@@ -93,8 +93,8 @@ When you see `Running`, it's time to proceed to the next step!
 The first TiDB component we are going to install is the TiDB Operator, using a Helm Chart.  The TiDB Operator is the management system that works with Kubernetes to bootstrap your TiDB cluster and keep it running. This step assumes you are in the `tidb-operator` working directory:
 
 	kubectl apply -f ./manifests/crd.yaml &&
-	kubectl apply -f manifests/gke-storage.yml &&
-	helm install charts/tidb-operator -n tidb-admin --namespace=tidb-admin
+	kubectl apply -f ./manifests/gke-storage.yml &&
+	helm install ./charts/tidb-operator -n tidb-admin --namespace=tidb-admin
 
 We can watch the operator come up with:
 
@@ -106,7 +106,7 @@ If you see `Running`, the next step is to launch a TiDB cluster!
 
 Now with a single command we can bring-up a full TiDB cluster:
 
-	helm install charts/tidb-cluster -n tidb --namespace=tidb
+	helm install ./charts/tidb-cluster -n tidb --namespace=tidb
 
 It will take a few minutes to launch.  You can monitor the progress with:
 
