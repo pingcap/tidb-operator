@@ -26,7 +26,7 @@ Please select a project before proceeding.  The approximate cost for running the
 
 ## Enable API Acess
 
-This project will require use of the Compute and Container APIs.  Please enable them before proceeding:
+This tutorial will require use of the Compute and Container APIs.  Please enable them before proceeding:
 
 <walkthrough-enable-apis apis="container.googleapis.com,compute.googleapis.com">
 </walkthrough-enable-apis>
