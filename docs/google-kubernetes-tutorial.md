@@ -10,10 +10,10 @@ category: operations
 
 This tutorial takes you through these steps:
 
-- Creating a new Google Cloud Project (optional)
 - Launching a new 3 node Kubernetes cluster (optional)
 - Installing the Helm package manager for Kubernetes
-- Deploying TiDB to your Kubernetes cluster
+- Deploying the TiDB Operator
+- Deploying your first TiDB cluster
 - Connecting to TiDB
 - Shutting down down the Kubernetes cluster (optional)
 
