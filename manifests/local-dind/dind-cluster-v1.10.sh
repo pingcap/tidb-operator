@@ -1887,8 +1887,6 @@ case "${1:-}" in
     ;;
   clean)
     dind::clean
-    dind::step "Start to remove dir ${PROJECT_ROOT}/data"
-    [[ -d "${PROJECT_ROOT}/data" ]] && rm -rf "${PROJECT_ROOT}/data"
     ;;
   *)
     echo "usage:" >&2
