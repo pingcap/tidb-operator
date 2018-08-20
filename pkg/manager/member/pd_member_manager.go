@@ -158,6 +158,12 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		return err
 	}
 
+	if *newPDSet.Spec.Replicas > *oldPDSet.Spec.Replicas {
+		if err := pmm.pdScaler.ScaleOut(tc, oldPDSet, newPDSet); err != nil {
+			return err
+		}
+	}
+
 	if *newPDSet.Spec.Replicas < *oldPDSet.Spec.Replicas {
 		if err := pmm.pdScaler.ScaleIn(tc, oldPDSet, newPDSet); err != nil {
 			return err
