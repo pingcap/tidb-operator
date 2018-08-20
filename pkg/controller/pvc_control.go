@@ -21,32 +21,82 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 )
 
+// TODO add unit tests
+
 // PVCControlInterface manages PVCs used in TidbCluster
 type PVCControlInterface interface {
 	UpdateMetaInfo(*v1alpha1.TidbCluster, *corev1.PersistentVolumeClaim, *corev1.Pod) error
+	UpdatePVC(*v1alpha1.TidbCluster, *corev1.PersistentVolumeClaim) error
+	DeletePVC(*v1alpha1.TidbCluster, *corev1.PersistentVolumeClaim) error
 }
 
 type realPVCControl struct {
-	kubeCli  kubernetes.Interface
-	recorder record.EventRecorder
+	kubeCli   kubernetes.Interface
+	recorder  record.EventRecorder
+	pvcLister corelisters.PersistentVolumeClaimLister
 }
 
 // NewRealPVCControl creates a new PVCControlInterface
 func NewRealPVCControl(
 	kubeCli kubernetes.Interface,
 	recorder record.EventRecorder,
-) PVCControlInterface {
+	pvcLister corelisters.PersistentVolumeClaimLister) PVCControlInterface {
 	return &realPVCControl{
-		kubeCli:  kubeCli,
-		recorder: recorder,
+		kubeCli:   kubeCli,
+		recorder:  recorder,
+		pvcLister: pvcLister,
 	}
+}
+
+func (rpc *realPVCControl) DeletePVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	pvcName := pvc.GetName()
+	err := rpc.kubeCli.CoreV1().PersistentVolumeClaims(tc.GetNamespace()).Delete(pvcName, nil)
+	if err != nil {
+		glog.Errorf("failed to delete PVC: [%s/%s], TidbCluster: %s, %v", ns, pvcName, tcName, err)
+	}
+	glog.V(4).Infof("delete PVC: [%s/%s] successfully, TidbCluster: %s", ns, pvcName, tcName)
+	rpc.recordPVCEvent("delete", tc, pvcName, err)
+	return err
+}
+
+func (rpc *realPVCControl) UpdatePVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	pvcName := pvc.GetName()
+	pvcDup := pvc.DeepCopy()
+
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		_, updateErr := rpc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Update(pvc)
+		if updateErr == nil {
+			glog.V(4).Infof("update PVC: [%s/%s] successfully, TidbCluster: %s", ns, pvcName, tcName)
+			return nil
+		}
+		glog.Errorf("failed to update PVC: [%s/%s], TidbCluster: %s, error: %v", ns, pvcName, tcName, updateErr)
+
+		if updated, err := rpc.pvcLister.PersistentVolumeClaims(ns).Get(pvcName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			pvc = updated.DeepCopy()
+			pvc.Annotations = pvcDup.Annotations
+			pvc.Labels = pvcDup.Labels
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated PVC %s/%s from lister: %v", ns, pvcName, err))
+		}
+
+		return updateErr
+	})
+	rpc.recordPVCEvent("update", tc, pvcName, err)
+	return err
 }
 
 func (rpc *realPVCControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) error {
@@ -122,12 +172,14 @@ var _ PVCControlInterface = &realPVCControl{}
 type FakePVCControl struct {
 	PVCIndexer       cache.Indexer
 	updatePVCTracker requestTracker
+	deletePVCTracker requestTracker
 }
 
 // NewFakePVCControl returns a FakePVCControl
 func NewFakePVCControl(pvcInformer coreinformers.PersistentVolumeClaimInformer) *FakePVCControl {
 	return &FakePVCControl{
 		pvcInformer.Informer().GetIndexer(),
+		requestTracker{0, nil, 0},
 		requestTracker{0, nil, 0},
 	}
 }
@@ -138,7 +190,35 @@ func (fpc *FakePVCControl) SetUpdatePVCError(err error, after int) {
 	fpc.updatePVCTracker.after = after
 }
 
-// UpdateMetaInfo update the meta info of pvc
+// SetDeletePVCError sets the error attributes of deletePVCTracker
+func (fpc *FakePVCControl) SetDeletePVCError(err error, after int) {
+	fpc.deletePVCTracker.err = err
+	fpc.deletePVCTracker.after = after
+}
+
+// DeletePVC deletes the pvc
+func (fpc *FakePVCControl) DeletePVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) error {
+	defer fpc.deletePVCTracker.inc()
+	if fpc.deletePVCTracker.errorReady() {
+		defer fpc.deletePVCTracker.reset()
+		return fpc.deletePVCTracker.err
+	}
+
+	return fpc.PVCIndexer.Delete(pvc)
+}
+
+// Update updates the annotation, labels and spec of pvc
+func (fpc *FakePVCControl) UpdatePVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) error {
+	defer fpc.updatePVCTracker.inc()
+	if fpc.updatePVCTracker.errorReady() {
+		defer fpc.updatePVCTracker.reset()
+		return fpc.updatePVCTracker.err
+	}
+
+	return fpc.PVCIndexer.Update(pvc)
+}
+
+// UpdateMetaInfo updates the meta info of pvc
 func (fpc *FakePVCControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) error {
 	defer fpc.updatePVCTracker.inc()
 	if fpc.updatePVCTracker.errorReady() {
