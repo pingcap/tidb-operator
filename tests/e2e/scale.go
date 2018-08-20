@@ -60,6 +60,23 @@ func testScale() {
 	By("And the data is correct")
 	err = wait.Poll(5*time.Second, 5*time.Minute, dataIsCorrect)
 	Expect(err).NotTo(HaveOccurred())
+
+	By(fmt.Sprintf("When scale out TiDB cluster one more time: pd ==> [%d], tikv ==> [%d], tidb ==> [%d]", pdScaleOutTo, tikvScaleOutTo, tidbScaleOutTo))
+	err = wait.Poll(5*time.Second, 5*time.Minute, scaleOut)
+	Expect(err).NotTo(HaveOccurred())
+
+	By("Then TiDB cluster should scale out successfully")
+	err = wait.Poll(5*time.Second, 5*time.Minute, scaled)
+	Expect(err).NotTo(HaveOccurred())
+
+	By("And should scaled out correctly")
+	err = wait.Poll(5*time.Second, 5*time.Minute, scaledCorrectly)
+	Expect(err).NotTo(HaveOccurred())
+
+	By("And the data is correct")
+	err = wait.Poll(5*time.Second, 5*time.Minute, dataIsCorrect)
+	Expect(err).NotTo(HaveOccurred())
+
 }
 
 func scaleOut() (bool, error) {
@@ -156,13 +173,6 @@ func scaleInSecurely() (bool, error) {
 		return false, nil
 	}
 
-	pdSetName := controller.PDMemberName(clusterName)
-	pdSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(pdSetName, metav1.GetOptions{})
-	if err != nil {
-		logf("failed to get pd statefulset: [%s], error: %v", pdSetName, err)
-		return false, nil
-	}
-
 	tikvSetName := controller.TiKVMemberName(clusterName)
 	tikvSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
 	if err != nil {
@@ -170,30 +180,23 @@ func scaleInSecurely() (bool, error) {
 		return false, nil
 	}
 
-	tidbSetName := controller.TiDBMemberName(clusterName)
-	tidbSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
+	pdClient := controller.NewDefaultPDControl().GetPDClient(tc)
+	stores, err := pdClient.GetStores()
 	if err != nil {
-		logf("failed to get tikvSet statefulset: [%s], error: %v", tidbSetName, err)
+		logf("pdClient.GetStores failed,error: %v", err)
 		return false, nil
 	}
-
-	if len(tc.Status.TiKV.Stores.CurrentStores) > int(*tikvSet.Spec.Replicas) {
-		return false, fmt.Errorf("the pdSet.Spec.Replicas may reduce before tikv complete offline")
+	if len(stores.Stores) > int(*tikvSet.Spec.Replicas) {
+		logf("stores.Stores: %v", stores.Stores)
+		logf("tikvSet.Spec.Replicas: %d", *tikvSet.Spec.Replicas)
+		return false, fmt.Errorf("the tikvSet.Spec.Replicas may reduce before tikv complete offline")
 	}
 
-	if !(tc.Spec.PD.Replicas == pdSet.Status.ReadyReplicas && pdSet.Status.Replicas == pdSet.Status.ReadyReplicas) {
-		return false, nil
+	if *tikvSet.Spec.Replicas == tc.Spec.TiKV.Replicas {
+		return true, nil
 	}
 
-	if !(tc.Spec.TiKV.Replicas == tikvSet.Status.ReadyReplicas && tikvSet.Status.Replicas == tikvSet.Status.ReadyReplicas) {
-		return false, nil
-	}
-
-	if !(tc.Spec.TiDB.Replicas == tidbSet.Status.ReadyReplicas && tidbSet.Status.Replicas == tidbSet.Status.ReadyReplicas) {
-		return false, nil
-	}
-
-	return true, nil
+	return false, nil
 }
 
 func getPodsUID() (map[string]types.UID, error) {

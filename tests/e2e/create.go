@@ -23,8 +23,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -142,6 +142,12 @@ func pdMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 		return false, nil
 	}
 
+	if *pdSet.Spec.Replicas != tc.Spec.PD.Replicas {
+		logf("pdSet.Spec.Replicas(%d) != tc.Spec.PD.Replicas(%d)",
+			*pdSet.Spec.Replicas, tc.Spec.PD.Replicas)
+		return false, nil
+	}
+
 	if pdSet.Status.ReadyReplicas != tc.Spec.PD.Replicas {
 		logf("pdSet.Status.ReadyReplicas(%d) != %d",
 			pdSet.Status.ReadyReplicas, tc.Spec.PD.Replicas)
@@ -151,6 +157,12 @@ func pdMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 	if len(tc.Status.PD.Members) != int(tc.Spec.PD.Replicas) {
 		logf("tc.Status.PD.Members count(%d) != %d",
 			len(tc.Status.PD.Members), tc.Spec.PD.Replicas)
+		return false, nil
+	}
+
+	if pdSet.Status.ReadyReplicas != pdSet.Status.Replicas {
+		logf("pdSet.Status.ReadyReplicas(%d) != pdSet.Status.Replicas(%d)",
+			pdSet.Status.ReadyReplicas, pdSet.Status.Replicas)
 		return false, nil
 	}
 
@@ -191,6 +203,12 @@ func tikvMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 		return false, nil
 	}
 
+	if *tikvSet.Spec.Replicas != tc.Spec.TiKV.Replicas {
+		logf("tikvSet.Spec.Replicas(%d) != tc.Spec.TiKV.Replicas(%d)",
+			tikvSet.Spec.Replicas, tc.Spec.TiKV.Replicas)
+		return false, nil
+	}
+
 	if tikvSet.Status.ReadyReplicas != tc.Spec.TiKV.Replicas {
 		logf("tikvSet.Status.ReadyReplicas(%d) != %d",
 			tikvSet.Status.ReadyReplicas, tc.Spec.TiKV.Replicas)
@@ -200,6 +218,12 @@ func tikvMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 	if len(tc.Status.TiKV.Stores.CurrentStores) != int(tc.Spec.TiKV.Replicas) {
 		logf("tc.Status.TiKV.Stores.CurrentStores count(%d) != %d",
 			len(tc.Status.TiKV.Stores.CurrentStores), tc.Spec.TiKV.Replicas)
+		return false, nil
+	}
+
+	if tikvSet.Status.ReadyReplicas != tikvSet.Status.Replicas {
+		logf("tikvSet.Status.ReadyReplicas(%d) != tikvSet.Status.Replicas(%d)",
+			tikvSet.Status.ReadyReplicas, tikvSet.Status.Replicas)
 		return false, nil
 	}
 
@@ -234,9 +258,21 @@ func tidbMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 		return false, nil
 	}
 
+	if *tidbSet.Spec.Replicas != tc.Spec.TiDB.Replicas {
+		logf("tidbSet.Spec.Replicas(%d) != tc.Spec.TiDB.Replicas(%d)",
+			tidbSet.Spec.Replicas, tc.Spec.TiDB.Replicas)
+		return false, nil
+	}
+
 	if tidbSet.Status.ReadyReplicas != tc.Spec.TiDB.Replicas {
 		logf("tidbSet.Status.ReadyReplicas(%d) != %d",
 			tidbSet.Status.ReadyReplicas, tc.Spec.TiDB.Replicas)
+		return false, nil
+	}
+
+	if tidbSet.Status.ReadyReplicas != tidbSet.Status.Replicas {
+		logf("tidbSet.Status.ReadyReplicas(%d) != tidbSet.Status.Replicas(%d)",
+			tidbSet.Status.ReadyReplicas, tidbSet.Status.Replicas)
 		return false, nil
 	}
 
