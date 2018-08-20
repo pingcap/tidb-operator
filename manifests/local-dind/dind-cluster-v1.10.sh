@@ -169,6 +169,7 @@ function dind::net-name {
 
 function dind::extract-ipv4-subnet() {
   # If only one subnet, there may be a leading space in list of subnets
+  local old_ifs=$IFS
   local trimmed="$( echo "$1" | sed -e 's/^[[:space:]]*//')"
   IFS=' ' subnets=( "${trimmed}" )
   for subnet in "${subnets[@]}"; do
@@ -178,6 +179,7 @@ function dind::extract-ipv4-subnet() {
     IFS='/' parts=( $subnet )
     DIND_SUBNET="${parts[0]}"
     DIND_SUBNET_SIZE="${parts[1]}"
+    IFS=${old_ifs}
     return
   done
   echo "ERROR: Unable to extract subnet for $( dind::net-name ) - aborting..."
@@ -1796,13 +1798,47 @@ function dind::custom-docker-opts {
   fi
 }
 
+function dind::wait-specific-app-ready {
+  local app=${1}
+  dind::step "Waiting for ${app}"
+  local app_ready
+  local n=3
+  local ntries=600
+  while true; do
+    dind::kill-failed-pods
+    if dind::component-ready app=${app}; then
+      app_ready=y
+    else
+      app_ready=
+    fi
+    if [[ ${app_ready} ]]; then
+      if ((--n == 0)); then
+        echo "[done]" >&2
+        break
+      fi
+    else
+      n=3
+    fi
+    if ((--ntries == 0)); then
+      echo "Error waiting for ${app}" >&2
+      exit 1
+    fi
+    echo -n "." >&2
+    sleep 1
+  done
+
+  dind::step "Bringing up ${app}"
+}
+
 function dind::run_registry {
     dind::step "Deploying docker registry"
     if [[ -n ${KUBE_REPO_PREFIX} ]];then
-        REGISTRY_IMAGE=${KUBE_REPO_PREFIX}/registry:2
+        registry_image=${KUBE_REPO_PREFIX}/registry:2
+        replace_repo_prefix=${KUBE_REPO_PREFIX//\//\\/}
     fi
-    docker exec $(dind::master-name) docker run -d --restart=always -v /registry:/var/lib/registry -p5001:5000 --name=registry ${REGISTRY_IMAGE:-registry:2}
-    sed "s/10.192.0.2/$(dind::master-ip)/g" ${DIND_ROOT}/registry-proxy-deployment.yaml| ${kubectl} apply -f -
+    docker exec $(dind::master-name) docker run -d --restart=always -v /registry:/var/lib/registry -p5001:5000 --name=registry ${registry_image:-registry:2}
+    sed -e "s/10.192.0.2/$(dind::master-ip)/g" -e "s/docker.io/${replace_repo_prefix}/g" ${DIND_ROOT}/registry-proxy-deployment.yaml| ${kubectl} apply -f -
+    dind::wait-specific-app-ready registry-proxy
 }
 
 function dind::run_tiller {
@@ -1815,20 +1851,20 @@ function dind::run_tiller {
             helm init
         fi
     fi
+    dind::wait-specific-app-ready helm
 }
 
 function dind::run_local_volume_provisioner {
    [[ ! -e ${DIND_ROOT}/local-volume-provisioner.yaml ]] && return
    dind::step "Deploying local volume provisioner"
-   local ctx
-   ctx="$(dind::context-name)"
    if [[ -n "${KUBE_REPO_PREFIX}" ]];then
-     awk -v src=quay.io/external_storage -v dst=${KUBE_REPO_PREFIX} '{gsub(src,dst, $0);print}' "${DIND_ROOT}/local-volume-provisioner.yaml"|"${kubectl}" --context "$ctx" apply -f -
+     awk -v src=quay.io/external_storage -v dst=${KUBE_REPO_PREFIX} '{gsub(src,dst, $0);print}' "${DIND_ROOT}/local-volume-provisioner.yaml"|"${kubectl}" apply -f -
    else
-     "${kubectl}" --context "$ctx" apply --validate=false -f "${DIND_ROOT}/local-volume-provisioner.yaml"
+     "${kubectl}" apply -f "${DIND_ROOT}/local-volume-provisioner.yaml"
    fi
    dind::step "Start to create mount points for every kube node"
    dind::create_mount_point
+   dind::wait-specific-app-ready local-volume-provisioner
 }
 
 function dind::create_mount_point {
@@ -1844,11 +1880,9 @@ function dind::create_mount_point {
 function dind::create_e2e_env {
    [[ ! -e ${DIND_ROOT}/../crd.yaml ]] && return
    dind::step "Create TidbCluster CRD object"
-   local ctx
-   ctx="$(dind::context-name)"
-  "${kubectl}" --context "$ctx" apply -f ${DIND_ROOT}/../crd.yaml
+  "${kubectl}" apply -f ${DIND_ROOT}/../crd.yaml
    dind::step "Create e2e test namespace"
-  "${kubectl}" --context "$ctx" create ns tidb-operator-e2e 2>/dev/null || true
+  "${kubectl}" create ns tidb-operator-e2e 2>/dev/null || true
 }
 
 function dind::stop {
