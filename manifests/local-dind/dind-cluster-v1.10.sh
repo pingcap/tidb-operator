@@ -1836,7 +1836,7 @@ function dind::create_mount_point {
         for pv_num in $(seq 0 ${PV_NUMS});do
            src="/data/local-pv${pv_num}"
            mount_point="/mnt/disks/vol${pv_num}"
-           docker exec "${node}" /bin/bash -c "mkdir -p ${src} ${mount_point} && mount --bind ${src} ${mount_point}"
+           docker exec "${node}" /bin/bash -c "mkdir -p ${src} ${mount_point} && mount --bind ${src} ${mount_point} && echo ${src} ${mount_point} none bind 0 0 >>/etc/fstab"
         done
     done
 }
