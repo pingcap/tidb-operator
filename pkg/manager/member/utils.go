@@ -48,3 +48,15 @@ func annotationsMountVolume() (corev1.VolumeMount, corev1.Volume) {
 func statefulSetInNormal(set *apps.StatefulSet) bool {
 	return set.Status.CurrentRevision == set.Status.UpdateRevision && set.Generation <= *set.Status.ObservedGeneration
 }
+
+func resetReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
+	*newSet.Spec.Replicas = *oldSet.Spec.Replicas
+}
+
+func increaseReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
+	*newSet.Spec.Replicas = *oldSet.Spec.Replicas + 1
+}
+
+func decreaseReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
+	*newSet.Spec.Replicas = *oldSet.Spec.Replicas - 1
+}
