@@ -804,12 +804,14 @@ function dind::run {
     opts+=(-p 127.0.0.1:${REGISTRY_PORT}:5001)
   fi
 
-  ####### mount local dir to kube nodes other than kube-master #######
+  ####### mount local dir to kube nodes #######
   if  [[ "${container_name}" != ${master_name} ]]; then
     mkdir -p ${PROJECT_ROOT}/data/${container_name}
     opts+=(-v ${PROJECT_ROOT}/data/${container_name}:/data)
+  else
+    mkdir -p ${PROJECT_ROOT}/data/${container_name}/registry
+    opts+=(-v ${PROJECT_ROOT}/data/${container_name}/registry:/registry)
   fi
-
   opts+=(${sys_volume_args[@]+"${sys_volume_args[@]}"})
 
   dind::step "Starting DIND container:" "${container_name}"
@@ -1883,79 +1885,17 @@ case "${1:-}" in
   start)
     dind::start
     ;;
-  down)
-    dind::down
-    ;;
-  init)
-    shift
-    dind::prepare-sys-mounts
-    dind::ensure-kubectl
-    dind::init "$@"
-    ;;
-  join)
-    shift
-    dind::prepare-sys-mounts
-    dind::ensure-kubectl
-    dind::join "$(dind::create-node-container)" "$@"
-    ;;
-  # bare)
-  #   shift
-  #   dind::bare "$@"
-  #   ;;
-  snapshot)
-    shift
-    dind::snapshot
-    ;;
-  restore)
-    shift
-    dind::restore
-    ;;
   clean)
     dind::clean
-    ;;
-  copy-image)
-    dind::copy-image "$@"
-    ;;
-  e2e)
-    shift
-    dind::run-e2e "$@"
-    ;;
-  e2e-serial)
-    shift
-    dind::run-e2e-serial "$@"
-    ;;
-  dump)
-    dind::dump
-    ;;
-  dump64)
-    dind::dump64
-    ;;
-  split-dump)
-    dind::split-dump
-    ;;
-  split-dump64)
-    dind::split-dump64
-    ;;
-  apiserver-port)
-    dind::apiserver-port
+    dind::step "Start to remove dir ${PROJECT_ROOT}/data"
+    [[ -d "${PROJECT_ROOT}/data" ]] && rm -rf "${PROJECT_ROOT}/data"
     ;;
   *)
     echo "usage:" >&2
     echo "  $0 up" >&2
-    echo "  $0 stop" >&2
-    echo "  $0 start" >&2
-    echo "  $0 down" >&2
-    echo "  $0 init kubeadm-args..." >&2
-    echo "  $0 join kubeadm-args..." >&2
-    # echo "  $0 bare container_name [docker_options...]"
     echo "  $0 clean"
-    echo "  $0 copy-image [image_name]" >&2
-    echo "  $0 e2e [test-name-substring]" >&2
-    echo "  $0 e2e-serial [test-name-substring]" >&2
-    echo "  $0 dump" >&2
-    echo "  $0 dump64" >&2
-    echo "  $0 split-dump" >&2
-    echo "  $0 split-dump64" >&2
+    echo "  $0 start" >&2
+    echo "  $0 stop" >&2
     exit 1
     ;;
 esac
