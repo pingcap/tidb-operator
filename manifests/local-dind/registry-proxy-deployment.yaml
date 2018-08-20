@@ -71,7 +71,7 @@ spec:
         effect: "NoSchedule"
       containers:
         - name: nginx
-          image: nginx:1.15-alpine
+          image: docker.io/nginx:1.15-alpine
           ports:
           - containerPort: 5000
           volumeMounts:
