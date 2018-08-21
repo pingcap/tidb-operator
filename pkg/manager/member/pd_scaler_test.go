@@ -57,14 +57,19 @@ func TestPDScalerScaleOut(t *testing.T) {
 
 		scaler, _, pvcIndexer, pvcControl := newFakePDScaler()
 
-		pvc := newPVCForStatefulSet(oldSet)
-		pvc.Name = fmt.Sprintf("pd-%s-%d", oldSet.GetName(), int(*oldSet.Spec.Replicas)+1)
+		pvc1 := newPVCForStatefulSet(oldSet, v1alpha1.PDMemberType)
+		pvc2 := pvc1.DeepCopy()
+		pvc1.Name = ordinalPVCName(v1alpha1.PDMemberType, oldSet.GetName(), *oldSet.Spec.Replicas)
+		pvc2.Name = ordinalPVCName(v1alpha1.PDMemberType, oldSet.GetName(), *oldSet.Spec.Replicas+1)
 		if test.hasDeferAnn {
-			pvc.Annotations = map[string]string{}
-			pvc.Annotations[label.AnnPVCDeferDeleting] = time.Now().Format(time.RFC3339)
+			pvc1.Annotations = map[string]string{}
+			pvc1.Annotations[label.AnnPVCDeferDeleting] = time.Now().Format(time.RFC3339)
+			pvc2.Annotations = map[string]string{}
+			pvc2.Annotations[label.AnnPVCDeferDeleting] = time.Now().Format(time.RFC3339)
 		}
 		if test.hasPVC {
-			pvcIndexer.Add(pvc)
+			pvcIndexer.Add(pvc1)
+			pvcIndexer.Add(pvc2)
 		}
 
 		if test.pvcDeleteErr {
@@ -155,7 +160,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 		scaler, pdControl, pvcIndexer, pvcControl := newFakePDScaler()
 
 		if test.hasPVC {
-			pvc := newPVCForStatefulSet(oldSet)
+			pvc := newPVCForStatefulSet(oldSet, v1alpha1.PDMemberType)
 			pvcIndexer.Add(pvc)
 		}
 
@@ -245,7 +250,7 @@ func newFakePDScaler() (*pdScaler, *controller.FakePDControl, cache.Indexer, *co
 	pdControl := controller.NewFakePDControl()
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
 
-	return &pdScaler{pdControl, pvcInformer.Lister(), pvcControl},
+	return &pdScaler{generalScaler{pdControl, pvcInformer.Lister(), pvcControl}},
 		pdControl, pvcInformer.Informer().GetIndexer(), pvcControl
 }
 
@@ -262,10 +267,10 @@ func newStatefulSetForPDScale() *apps.StatefulSet {
 	return set
 }
 
-func newPVCForStatefulSet(set *apps.StatefulSet) *corev1.PersistentVolumeClaim {
+func newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("pd-%s-%d", set.GetName(), int(*set.Spec.Replicas)-1),
+			Name:      ordinalPVCName(memberType, set.GetName(), *set.Spec.Replicas-1),
 			Namespace: metav1.NamespaceDefault,
 		},
 	}

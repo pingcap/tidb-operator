@@ -21,56 +21,29 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1beta1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 // TODO add e2e test specs
 
 type pdScaler struct {
-	pdControl  controller.PDControlInterface
-	pvcLister  corelisters.PersistentVolumeClaimLister
-	pvcControl controller.PVCControlInterface
+	generalScaler
 }
 
 // NewPDScaler returns a Scaler
 func NewPDScaler(pdControl controller.PDControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pvcControl controller.PVCControlInterface) Scaler {
-	return &pdScaler{pdControl, pvcLister, pvcControl}
+	return &pdScaler{generalScaler{pdControl, pvcLister, pvcControl}}
 }
 
 func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	ns := tc.GetNamespace()
-	ordinal := *oldSet.Spec.Replicas + 1
-	setName := oldSet.GetName()
-
 	if tc.PDUpgrading() {
 		resetReplicas(newSet, oldSet)
 		return nil
 	}
 
-	pvcName := fmt.Sprintf("%s-%s-%d", v1alpha1.PDMemberType, setName, ordinal)
-	pvc, err := psd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
-	if errors.IsNotFound(err) {
-		increaseReplicas(newSet, oldSet)
-		return nil
-	}
-	if err != nil {
-		resetReplicas(newSet, oldSet)
-		return err
-	}
-
-	if pvc.Annotations == nil {
-		increaseReplicas(newSet, oldSet)
-		return nil
-	}
-	if _, ok := pvc.Annotations[label.AnnPVCDeferDeleting]; !ok {
-		increaseReplicas(newSet, oldSet)
-		return nil
-	}
-
-	err = psd.pvcControl.DeletePVC(tc, pvc)
+	err := psd.deleteAllDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.PDMemberType, *oldSet.Spec.Replicas, *newSet.Spec.Replicas)
 	if err != nil {
 		resetReplicas(newSet, oldSet)
 		return err
@@ -99,7 +72,7 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		return err
 	}
 
-	pvcName := fmt.Sprintf("%s-%s-%d", v1alpha1.PDMemberType, setName, ordinal)
+	pvcName := ordinalPVCName(v1alpha1.PDMemberType, setName, ordinal)
 	pvc, err := psd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil {
 		resetReplicas(newSet, oldSet)
@@ -129,9 +102,11 @@ func NewFakePDScaler() Scaler {
 }
 
 func (fsd *fakePDScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	increaseReplicas(newSet, oldSet)
 	return nil
 }
 
 func (fsd *fakePDScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	decreaseReplicas(newSet, oldSet)
 	return nil
 }
