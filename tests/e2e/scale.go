@@ -46,7 +46,7 @@ func testScale() {
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Then TiDB cluster scale in securely")
-	err = wait.Poll(5*time.Second, 5*time.Minute, scaleInSecurely)
+	err = wait.Poll(5*time.Second, 5*time.Minute, scaleInSafely)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("And should scale in successfully")
@@ -165,8 +165,8 @@ func scaledCorrectly() (bool, error) {
 	return true, nil
 }
 
-// scaleInSecurity confirms member scale in securely
-func scaleInSecurely() (bool, error) {
+// scaleInSafely confirms member scale in safely
+func scaleInSafely() (bool, error) {
 	tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 	if err != nil {
 		logf("failed to get tidbcluster when scale in tidbcluster, error: %v", err)
