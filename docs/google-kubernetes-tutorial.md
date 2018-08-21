@@ -10,7 +10,7 @@ category: operations
 
 This tutorial is designed to be [run in Google Cloud Shell](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/pingcap/tidb-operator).  It takes you through these steps:
 
-- Launching a new 3 node Kubernetes cluster (optional)
+- Launching a new 3-node Kubernetes cluster (optional)
 - Installing the Helm package manager for Kubernetes
 - Deploying the TiDB Operator
 - Deploying your first TiDB cluster
@@ -38,9 +38,9 @@ This step defaults gcloud to your prefered project and [zone](https://cloud.goog
 	gcloud config set project {{project-id}} &&
 	gcloud config set compute/zone us-west1-a
 
-## Launch a three node Kubernetes cluster
+## Launch a 3-node Kubernetes cluster
 
-It's now time to launch a 3 node kubernetes cluster! The following command launches a 3 node cluster of `n1-standard-1` machines.
+It's now time to launch a 3-node kubernetes cluster! The following command launches a 3-node cluster of `n1-standard-1` machines.
 
 It will take a few minutes to complete:
 
