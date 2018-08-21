@@ -39,7 +39,7 @@ func upgrade() (bool, error) {
 	tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 	if err != nil {
 		logf("failed to get tidbcluster, error: %v", err)
-		return false, err
+		return false, nil
 	}
 
 	tc.Spec.PD.Image = strings.Replace(tc.Spec.PD.Image, getImageTag(tc.Spec.PD.Image), upgradeVersion, -1)
@@ -49,7 +49,7 @@ func upgrade() (bool, error) {
 	_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 	if err != nil {
 		logf("failed to update tidbcluster, error: %v", err)
-		return false, err
+		return false, nil
 	}
 
 	return true, nil
@@ -59,28 +59,28 @@ func memberUpgraded() (bool, error) {
 	tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 	if err != nil {
 		logf("failed to get tidbcluster: [%s], error: %v", clusterName, err)
-		return false, err
+		return false, nil
 	}
 
 	pdSetName := controller.PDMemberName(clusterName)
 	pdSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(pdSetName, metav1.GetOptions{})
 	if err != nil {
 		logf("failed to get pd statefulset: [%s], error: %v", pdSetName, err)
-		return false, err
+		return false, nil
 	}
 
 	tikvSetName := controller.TiKVMemberName(clusterName)
 	tikvSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
 	if err != nil {
-		logf("failed to get tikvSet statefulset: [%s], error: %v", pdSetName, err)
-		return false, err
+		logf("failed to get tikvSet statefulset: [%s], error: %v", tikvSetName, err)
+		return false, nil
 	}
 
 	tidbSetName := controller.TiDBMemberName(clusterName)
 	tidbSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
-		logf("failed to get tikvSet statefulset: [%s], error: %v", pdSetName, err)
-		return false, err
+		logf("failed to get tidbSet statefulset: [%s], error: %v", tidbSetName, err)
+		return false, nil
 	}
 
 	if !imageUpgraded(tc, v1alpha1.PDMemberType, pdSet) {
