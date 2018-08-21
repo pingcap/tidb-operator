@@ -1274,7 +1274,7 @@ function dind::wait-for-ready {
   dind::retry "${kubectl}" --context "$ctx" scale deployment --replicas=1 -n kube-system ${DNS_SERVICE}
   dind::retry "${kubectl}" --context "$ctx" scale deployment --replicas=1 -n kube-system kubernetes-dashboard
 
-  ntries=200
+  ntries=600
   while ! dind::component-ready k8s-app=kube-dns || ! dind::component-ready k8s-app=kubernetes-dashboard; do
     if ((--ntries == 0)); then
       echo "Error bringing up ${DNS_SERVICE} and kubernetes-dashboard" >&2
