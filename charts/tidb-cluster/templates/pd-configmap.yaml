@@ -20,7 +20,7 @@ data:
     #   runmode="normal/debug"
     #
 
-    set -euo pipefail
+    set -uo pipefail
     ANNOTATIONS="/etc/podinfo/annotations"
     # get statefulset ordinal index for current pod
     ORDINAL=$(echo ${HOSTNAME} | awk -F '-' '{print $NF}')
@@ -35,9 +35,25 @@ data:
     runmode=${runmode:-normal}
     if [[ X${runmode} == Xdebug ]]
     then
-    	echo "entering debug mode."
-    	tail -f /dev/null
+        echo "entering debug mode."
+        tail -f /dev/null
     fi
+
+    elapseTime=0
+    period=1
+    threshold=30
+    while true;do
+        nslookup ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc 2>/dev/null
+        [[ $? -eq 0 ]] && break
+        echo "nslookup domain ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc failed"
+        sleep ${period}
+        elapseTime=$(( elapseTime+period ))
+        if [[ ${elapseTime} -ge ${threshold} ]];then
+            echo "nslookup domain ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc timeout"
+            break
+        fi
+    done
+    echo "nslookup domain ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc success"
 
     ARGS="--data-dir=/var/lib/pd \
     --name=${HOSTNAME} \

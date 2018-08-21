@@ -19,7 +19,7 @@ data:
     #
     #   runmode="normal/debug"
     #
-    set -euo pipefail
+    set -uo pipefail
     ANNOTATIONS="/etc/podinfo/annotations"
 
     if [[ ! -f "${ANNOTATIONS}" ]]
