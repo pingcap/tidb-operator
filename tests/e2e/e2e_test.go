@@ -59,5 +59,8 @@ var _ = Describe("Smoke", func() {
 	It("should upgarde a tidb cluster", func() {
 		testUpgrade()
 	})
+	It("should scale in/out a tidb cluster", func() {
+		testScale()
+	})
 
 })
