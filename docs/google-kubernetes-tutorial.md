@@ -19,7 +19,9 @@ This tutorial is designed to be [run in Google Cloud Shell](https://console.clou
 
 ## Select a Project
 
-Please select a project before proceeding.  The approximate cost for running the compute resources in this tutorial is 10 cents/hour.
+This tutorial launches a 3-node Kubernetes cluster of n1-standard-1 machines.  Pricing information can be [found here](https://cloud.google.com/compute/pricing).
+
+Please select a project before proceeding:
 
 <walkthrough-project-billing-setup key="project-id">
 </walkthrough-project-billing-setup>
