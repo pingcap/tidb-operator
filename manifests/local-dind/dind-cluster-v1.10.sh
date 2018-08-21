@@ -1832,12 +1832,13 @@ function dind::wait-specific-app-ready {
 
 function dind::run_registry {
     dind::step "Deploying docker registry"
+    local replace_repo_prefix
     if [[ -n ${KUBE_REPO_PREFIX} ]];then
         registry_image=${KUBE_REPO_PREFIX}/registry:2
-        replace_repo_prefix=${KUBE_REPO_PREFIX//\//\\/}
+        replace_repo_prefix=${KUBE_REPO_PREFIX//\//\\/}\\/
     fi
     docker exec $(dind::master-name) docker run -d --restart=always -v /registry:/var/lib/registry -p5001:5000 --name=registry ${registry_image:-registry:2}
-    sed -e "s/10.192.0.2/$(dind::master-ip)/g" -e "s/docker.io/${replace_repo_prefix}/g" ${DIND_ROOT}/registry-proxy-deployment.yaml| ${kubectl} apply -f -
+    sed -e "s/10.192.0.2/$(dind::master-ip)/g" -e "s/docker.io\//${replace_repo_prefix}/g" ${DIND_ROOT}/registry-proxy-deployment.yaml| ${kubectl} apply -f -
     dind::wait-specific-app-ready registry-proxy
 }
 
