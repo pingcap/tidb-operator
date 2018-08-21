@@ -64,7 +64,6 @@ data:
         done
     fi
 
-    until nslookup ${HOSTNAME}; do echo "try to resolving ${HOSTNAME}"; sleep 1; done
     echo "starting pd-server ..."
     echo "/pd-server ${ARGS}"
     exec /pd-server ${ARGS}

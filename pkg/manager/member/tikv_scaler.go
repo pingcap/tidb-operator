@@ -16,7 +16,6 @@ package member
 import (
 	"fmt"
 	"strconv"
-
 	"time"
 
 	"github.com/golang/glog"
@@ -25,52 +24,27 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1beta1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 type tikvScaler struct {
-	pdControl  controller.PDControlInterface
-	pvcLister  corelisters.PersistentVolumeClaimLister
-	pvcControl controller.PVCControlInterface
+	generalScaler
 }
 
 // NewTiKVScaler returns a tikv Scaler
 func NewTiKVScaler(pdControl controller.PDControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pvcControl controller.PVCControlInterface) Scaler {
-	return &tikvScaler{pdControl, pvcLister, pvcControl}
+	return &tikvScaler{generalScaler{pdControl, pvcLister, pvcControl}}
 }
 
 func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	ns := tc.GetNamespace()
-	ordinal := *oldSet.Spec.Replicas + 1
-	setName := oldSet.GetName()
-
 	if tc.TiKVUpgrading() {
 		resetReplicas(newSet, oldSet)
 		return nil
 	}
 
-	pvcName := fmt.Sprintf("%s-%s-%d", v1alpha1.TiKVMemberType, setName, ordinal)
-	pvc, err := tsd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
-	if errors.IsNotFound(err) {
-		increaseReplicas(newSet, oldSet)
-		return nil
-	}
-	if err != nil {
-		resetReplicas(newSet, oldSet)
-		return err
-	}
-	if pvc.Annotations == nil {
-		increaseReplicas(newSet, oldSet)
-		return nil
-	}
-	if _, ok := pvc.Annotations[label.AnnPVCDeferDeleting]; !ok {
-		increaseReplicas(newSet, oldSet)
-		return nil
-	}
-	err = tsd.pvcControl.DeletePVC(tc, pvc)
+	err := tsd.deleteAllDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiKVMemberType, *oldSet.Spec.Replicas, *newSet.Spec.Replicas)
 	if err != nil {
 		resetReplicas(newSet, oldSet)
 		return err
@@ -96,7 +70,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	}
 
 	// We need remove member from cluster before reducing statefulset replicas
-	podName := fmt.Sprintf("%s-%s-%d", tc.Name, v1alpha1.TiKVMemberType, ordinal)
+	podName := ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
 	for _, store := range tc.Status.TiKV.Stores.CurrentStores {
 		if store.PodName == podName {
 			state := store.State
@@ -124,8 +98,9 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			}
 
 			// TODO: double check if store is really not in Up/Offline/Down state
+			glog.Infof("TiKV %s/%s store %d becomes tombstone", ns, podName, id)
 
-			pvcName := fmt.Sprintf("%s-%s-%d", v1alpha1.TiKVMemberType, setName, ordinal)
+			pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
 			pvc, err := tsd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 			if err != nil {
 				resetReplicas(newSet, oldSet)
@@ -142,7 +117,6 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			}
 
 			decreaseReplicas(newSet, oldSet)
-			glog.Infof("TiKV %s/%s store %d becomes tombstone", ns, podName, id)
 			return nil
 		}
 	}
@@ -162,9 +136,11 @@ func NewFakeTiKVScaler() Scaler {
 }
 
 func (fsd *fakeTiKVScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	increaseReplicas(newSet, oldSet)
 	return nil
 }
 
 func (fsd *fakeTiKVScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	decreaseReplicas(newSet, oldSet)
 	return nil
 }

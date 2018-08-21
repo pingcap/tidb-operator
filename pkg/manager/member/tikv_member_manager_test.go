@@ -268,7 +268,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			expectTiKVPeerServiceFn: nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
+				g.Expect(int(*set.Spec.Replicas)).To(Equal(4))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(*tc.Status.TiKV.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
@@ -355,6 +355,7 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
+	tikvScaler := NewFakeTiKVScaler()
 
 	return &tikvMemberManager{
 		pdControl:  pdControl,
@@ -364,5 +365,6 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 		svcControl: svcControl,
 		setLister:  setInformer.Lister(),
 		svcLister:  svcInformer.Lister(),
+		tikvScaler: tikvScaler,
 	}, setControl, svcControl, pdClient
 }
