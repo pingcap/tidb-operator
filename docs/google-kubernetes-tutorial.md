@@ -1,5 +1,5 @@
 ---
-title: Deploy TiDB to Kubernetes on Google Cloud
+title: Deploy TiDB, a distributed MySQL compatible database, to Kubernetes on Google Cloud
 summary: Tutorial for deploying TiDB on Google Cloud using Kubernetes.
 category: operations
 ---
