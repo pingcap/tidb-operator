@@ -45,12 +45,12 @@ data:
     while true;do
         nslookup ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc 2>/dev/null
         [[ $? -eq 0 ]] && break
-        echo "nslookup domain ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc failed"
+        echo "nslookup domain ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc failed" >&2
         sleep ${period}
         elapseTime=$(( elapseTime+period ))
         if [[ ${elapseTime} -ge ${threshold} ]];then
-            echo "nslookup domain ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc timeout"
-            break
+            echo "nslookup domain ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc timeout" >&2
+            exit 1
         fi
     done
     echo "nslookup domain ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc success"
