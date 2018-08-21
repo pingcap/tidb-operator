@@ -5,6 +5,7 @@ images/tidb-operator-e2e/tidb-cluster/
 images/tidb-operator-e2e/tidb-operator/
 *.tar
 tmp/
+data/
 .idea
 
 # ginkgo test coverage
