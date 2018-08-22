@@ -8,7 +8,7 @@ category: operations
 
 ## Introduction
 
-This tutorial is designed to be [run in Google Cloud Shell](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/pingcap/tidb-operator).  It takes you through these steps:
+This tutorial is designed to be [run in Google Cloud Shell](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/pingcap/tidb-operator&tutorial=docs/google-kubernetes-tutorial.md).  It takes you through these steps:
 
 - Launching a new 3-node Kubernetes cluster (optional)
 - Installing the Helm package manager for Kubernetes
