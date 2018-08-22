@@ -105,17 +105,23 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 	newSvc := tkmm.getNewServiceForTidbCluster(tc, svcConfig)
 	oldSvc, err := tkmm.svcLister.Services(ns).Get(svcConfig.MemberName(tcName))
 	if errors.IsNotFound(err) {
+		SetServiceLastAppliedConfigAnnotation(newSvc)
 		return tkmm.svcControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
 		return err
 	}
 
-	if !reflect.DeepEqual(oldSvc.Spec, newSvc.Spec) {
+	equal, err := EqualService(newSvc, oldSvc)
+	if err != nil {
+		return err
+	}
+	if !equal {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
 		// TODO add unit test
 		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+		SetServiceLastAppliedConfigAnnotation(newSvc)
 		return tkmm.svcControl.UpdateService(tc, &svc)
 	}
 
@@ -136,7 +142,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 	if errors.IsNotFound(err) {
-		controller.SetLastAppliedConfigAnnotation(newSet)
+		SetLastAppliedConfigAnnotation(newSet)
 		err = tkmm.setControl.CreateStatefulSet(tc, newSet)
 		if err != nil {
 			return err
@@ -165,7 +171,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		}
 	}
 
-	equal, err := controller.EqualStatefulSet(*newSet, *oldSet)
+	equal, err := EqualStatefulSet(*newSet, *oldSet)
 	if err != nil {
 		return err
 	}
@@ -173,7 +179,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		set := *oldSet
 		set.Spec.Template = newSet.Spec.Template
 		*set.Spec.Replicas = *newSet.Spec.Replicas
-		controller.SetLastAppliedConfigAnnotation(&set)
+		SetLastAppliedConfigAnnotation(&set)
 		return tkmm.setControl.UpdateStatefulSet(tc, &set)
 	}
 
@@ -395,7 +401,7 @@ func (tkmm *tikvMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 	if upgrade {
 		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 	} else {
-		_, podSpec, err := controller.GetLastAppliedConfig(oldSet)
+		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
 		}
@@ -408,7 +414,7 @@ func (tkmm *tikvMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *app
 	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
 		return false, nil
 	}
-	same, err := controller.EqualTemplate(newSet.Spec.Template, oldSet.Spec.Template)
+	same, err := EqualTemplate(newSet.Spec.Template, oldSet.Spec.Template)
 	if err != nil {
 		return false, err
 	}
