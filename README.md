@@ -38,7 +38,9 @@ Read the [Roadmap](./ROADMAP.md).
 
 ## Quick start
 
-Read the [Deploy TiDB using Kubernetes on Your Laptop for development and testing](./docs/local-dind-tutorial.md).
+Read the [Deploy TiDB using Kubernetes on Your Laptop for development and testing](./docs/local-dind-tutorial.md), or follow a [tutorial](./docs/google-kubernetes-tutorial.md) to launch in Google Kubernetes Engine:
+
+[![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.png)](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/pingcap/tidb-operator&tutorial=docs/google-kubernetes-tutorial.md)
 
 ## Contributing
 
