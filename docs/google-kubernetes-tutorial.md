@@ -106,7 +106,7 @@ When you see `Running`, `Control + C` and proceed to launch a TiDB cluster!
 
 Now with a single command we can bring-up a full TiDB cluster:
 
-	helm install ./charts/tidb-cluster -n tidb --namespace=tidb -set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd
+	helm install ./charts/tidb-cluster -n tidb --namespace=tidb --set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd
 
 It will take a few minutes to launch.  You can monitor the progress with:
 
