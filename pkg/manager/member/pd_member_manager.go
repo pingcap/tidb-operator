@@ -85,7 +85,10 @@ func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 	newSvc := pmm.getNewPDServiceForTidbCluster(tc)
 	oldSvc, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
 	if errors.IsNotFound(err) {
-		SetServiceLastAppliedConfigAnnotation(newSvc)
+		err = SetServiceLastAppliedConfigAnnotation(newSvc)
+		if err != nil {
+			return err
+		}
 		return pmm.svcControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
@@ -101,7 +104,10 @@ func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 		svc.Spec = newSvc.Spec
 		// TODO add unit test
 		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		SetServiceLastAppliedConfigAnnotation(&svc)
+		err = SetServiceLastAppliedConfigAnnotation(&svc)
+		if err != nil {
+			return err
+		}
 		return pmm.svcControl.UpdateService(tc, &svc)
 	}
 
@@ -115,7 +121,10 @@ func (pmm *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1alpha1.Tid
 	newSvc := pmm.getNewPDHeadlessServiceForTidbCluster(tc)
 	oldSvc, err := pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
 	if errors.IsNotFound(err) {
-		SetServiceLastAppliedConfigAnnotation(newSvc)
+		err = SetServiceLastAppliedConfigAnnotation(newSvc)
+		if err != nil {
+			return err
+		}
 		return pmm.svcControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
@@ -131,7 +140,10 @@ func (pmm *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1alpha1.Tid
 		svc.Spec = newSvc.Spec
 		// TODO add unit test
 		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		SetServiceLastAppliedConfigAnnotation(newSvc)
+		err = SetServiceLastAppliedConfigAnnotation(newSvc)
+		if err != nil {
+			return err
+		}
 		return pmm.svcControl.UpdateService(tc, &svc)
 	}
 
@@ -152,7 +164,10 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		return err
 	}
 	if errors.IsNotFound(err) {
-		SetLastAppliedConfigAnnotation(newPDSet)
+		err = SetLastAppliedConfigAnnotation(newPDSet)
+		if err != nil {
+			return err
+		}
 		if err := pmm.setControl.CreateStatefulSet(tc, newPDSet); err != nil {
 			return err
 		}
@@ -188,7 +203,10 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		set := *oldPDSet
 		set.Spec.Template = newPDSet.Spec.Template
 		*set.Spec.Replicas = *newPDSet.Spec.Replicas
-		SetLastAppliedConfigAnnotation(&set)
+		err = SetLastAppliedConfigAnnotation(&set)
+		if err != nil {
+			return err
+		}
 		return pmm.setControl.UpdateStatefulSet(tc, &set)
 	}
 

@@ -105,7 +105,10 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 	newSvc := tkmm.getNewServiceForTidbCluster(tc, svcConfig)
 	oldSvc, err := tkmm.svcLister.Services(ns).Get(svcConfig.MemberName(tcName))
 	if errors.IsNotFound(err) {
-		SetServiceLastAppliedConfigAnnotation(newSvc)
+		err = SetServiceLastAppliedConfigAnnotation(newSvc)
+		if err != nil {
+			return err
+		}
 		return tkmm.svcControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
@@ -121,7 +124,10 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 		svc.Spec = newSvc.Spec
 		// TODO add unit test
 		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		SetServiceLastAppliedConfigAnnotation(newSvc)
+		err = SetServiceLastAppliedConfigAnnotation(newSvc)
+		if err != nil {
+			return err
+		}
 		return tkmm.svcControl.UpdateService(tc, &svc)
 	}
 
@@ -142,7 +148,10 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 	if errors.IsNotFound(err) {
-		SetLastAppliedConfigAnnotation(newSet)
+		err = SetLastAppliedConfigAnnotation(newSet)
+		if err != nil {
+			return err
+		}
 		err = tkmm.setControl.CreateStatefulSet(tc, newSet)
 		if err != nil {
 			return err
@@ -179,7 +188,10 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		set := *oldSet
 		set.Spec.Template = newSet.Spec.Template
 		*set.Spec.Replicas = *newSet.Spec.Replicas
-		SetLastAppliedConfigAnnotation(&set)
+		err = SetLastAppliedConfigAnnotation(&set)
+		if err != nil {
+			return err
+		}
 		return tkmm.setControl.UpdateStatefulSet(tc, &set)
 	}
 
