@@ -142,6 +142,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	}
 	if errors.IsNotFound(err) {
 		controller.SetLastAppliedConfigAnnotation(newPDSet)
+		newPDSet.Spec.Replicas = func()*int32 { var i int32 = 1; return &i }();
 		if err := pmm.setControl.CreateStatefulSet(tc, newPDSet); err != nil {
 			return err
 		}
