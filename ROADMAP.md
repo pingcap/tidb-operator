@@ -12,7 +12,7 @@ This document defines the roadmap for TiDB Operator development.
 - [x] Stop the TiDB process without terminating Pod
 - [x] Synchronize cluster meta info to POD/PV/PVC labels
 - [x] Basic unit tests & E2E tests
-- [ ] Tutorials for GKE, local DinD
+- [x] Tutorials for GKE, local DinD
 
 ## v0.2.0: (2018-09-10)
 - [ ] Automatic failover for network PV
