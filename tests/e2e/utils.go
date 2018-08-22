@@ -44,14 +44,7 @@ var (
 )
 
 func clearOperator() error {
-	_, err := execCmd(fmt.Sprintf(`kubectl get pv -l %s=%s,%s=%s --output=name | xargs -I {} \
-		kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`,
-		label.NamespaceLabelKey, ns, label.ClusterLabelKey, clusterName))
-	if err != nil {
-		logf(err.Error())
-	}
-
-	_, err = execCmd(fmt.Sprintf("helm del --purge %s", helmName))
+	_, err := execCmd(fmt.Sprintf("helm del --purge %s", helmName))
 	if err != nil && isNotFound(err) {
 		return err
 	}
@@ -70,6 +63,12 @@ func clearOperator() error {
 		result, err := execCmd(fmt.Sprintf("kubectl get po --output=name -n %s", ns))
 		if err != nil || result != "" {
 			return false, nil
+		}
+		_, err = execCmd(fmt.Sprintf(`kubectl get pv -l %s=%s,%s=%s --output=name | xargs -I {} \
+		kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`,
+			label.NamespaceLabelKey, ns, label.ClusterLabelKey, clusterName))
+		if err != nil {
+			logf(err.Error())
 		}
 		result, _ = execCmd(fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s 2>/dev/null|grep Released", label.NamespaceLabelKey, ns, label.ClusterLabelKey, clusterName))
 		if result != "" {

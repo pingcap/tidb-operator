@@ -35,6 +35,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name         string
+		update func(cluster *v1alpha1.TidbCluster)
 		pdUpgrading  bool
 		hasPVC       bool
 		hasDeferAnn  bool
@@ -46,6 +47,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 		tc := newTidbClusterForPD()
+		test.update(tc)
 
 		if test.pdUpgrading {
 			tc.Status.PD.Phase = v1alpha1.UpgradePhase
@@ -92,6 +94,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 	tests := []testcase{
 		{
 			name:         "normal",
+			update: normalPDMember,
 			pdUpgrading:  false,
 			hasPVC:       true,
 			hasDeferAnn:  false,
@@ -101,6 +104,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 		},
 		{
 			name:         "pd is upgrading",
+			update: normalPDMember,
 			pdUpgrading:  true,
 			hasPVC:       true,
 			hasDeferAnn:  false,
@@ -110,6 +114,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 		},
 		{
 			name:         "cache don't have pvc",
+			update: normalPDMember,
 			pdUpgrading:  false,
 			hasPVC:       false,
 			hasDeferAnn:  false,
@@ -119,10 +124,37 @@ func TestPDScalerScaleOut(t *testing.T) {
 		},
 		{
 			name:         "pvc annotations defer deletion is not nil, pvc delete failed",
+			update: normalPDMember,
 			pdUpgrading:  false,
 			hasPVC:       true,
 			hasDeferAnn:  true,
 			pvcDeleteErr: true,
+			err:          true,
+			changed:      false,
+		},
+		{
+			name:         "don't have members",
+			update: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Members = nil
+			},
+			pdUpgrading:  false,
+			hasPVC:       true,
+			hasDeferAnn:  true,
+			pvcDeleteErr: false,
+			err:          true,
+			changed:      false,
+		},
+		{
+			name:         "pd member not health",
+			update: func(tc *v1alpha1.TidbCluster) {
+				tcName := tc.GetName()
+				member1 := tc.Status.PD.Members[ordinalPodName(v1alpha1.PDMemberType, tcName, 1)]
+				member1.Health= false
+			},
+			pdUpgrading:  false,
+			hasPVC:       true,
+			hasDeferAnn:  true,
+			pvcDeleteErr: false,
 			err:          true,
 			changed:      false,
 		},
@@ -279,4 +311,15 @@ func newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType)
 func int32Pointer(num int) *int32 {
 	i := int32(num)
 	return &i
+}
+
+func normalPDMember(tc *v1alpha1.TidbCluster) {
+	tcName := tc.GetName()
+	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
+		ordinalPodName(v1alpha1.PDMemberType, tcName, 0): v1alpha1.PDMember{Health: true},
+		ordinalPodName(v1alpha1.PDMemberType, tcName, 1): v1alpha1.PDMember{Health: true},
+		ordinalPodName(v1alpha1.PDMemberType, tcName, 2): v1alpha1.PDMember{Health: true},
+		ordinalPodName(v1alpha1.PDMemberType, tcName, 3): v1alpha1.PDMember{Health: true},
+		ordinalPodName(v1alpha1.PDMemberType, tcName, 4): v1alpha1.PDMember{Health: true},
+	}
 }

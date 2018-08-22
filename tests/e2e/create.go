@@ -205,7 +205,7 @@ func tikvMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 
 	if *tikvSet.Spec.Replicas != tc.Spec.TiKV.Replicas {
 		logf("tikvSet.Spec.Replicas(%d) != tc.Spec.TiKV.Replicas(%d)",
-			tikvSet.Spec.Replicas, tc.Spec.TiKV.Replicas)
+			*tikvSet.Spec.Replicas, tc.Spec.TiKV.Replicas)
 		return false, nil
 	}
 
@@ -260,7 +260,7 @@ func tidbMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 
 	if *tidbSet.Spec.Replicas != tc.Spec.TiDB.Replicas {
 		logf("tidbSet.Spec.Replicas(%d) != tc.Spec.TiDB.Replicas(%d)",
-			tidbSet.Spec.Replicas, tc.Spec.TiDB.Replicas)
+			*tidbSet.Spec.Replicas, tc.Spec.TiDB.Replicas)
 		return false, nil
 	}
 

@@ -38,6 +38,8 @@ func NewPDScaler(pdControl controller.PDControlInterface,
 }
 
 func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
 	if tc.PDUpgrading() {
 		resetReplicas(newSet, oldSet)
 		return nil
@@ -47,6 +49,15 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 	if err != nil {
 		resetReplicas(newSet, oldSet)
 		return err
+	}
+
+	var i int32 = 0
+	for ; i<*oldSet.Spec.Replicas; i++ {
+		podName := ordinalPodName(v1alpha1.PDMemberType, tcName, i)
+		if member, ok := tc.Status.PD.Members[podName]; !ok || !member.Health {
+			resetReplicas(newSet, oldSet)
+			return fmt.Errorf("%s/%s is not ready, can't scale out now", ns, podName)
+		}
 	}
 
 	increaseReplicas(newSet, oldSet)

@@ -99,5 +99,5 @@ func ordinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int3
 }
 
 func ordinalPodName(memberType v1alpha1.MemberType, tcName string, ordinal int32) string {
-	return fmt.Sprintf("%s-%s-%d", tcName, v1alpha1.TiKVMemberType, ordinal)
+	return fmt.Sprintf("%s-%s-%d", tcName, memberType, ordinal)
 }
