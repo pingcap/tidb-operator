@@ -14,8 +14,6 @@
 package member
 
 import (
-	"reflect"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -67,17 +65,29 @@ func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1alpha1.TidbClu
 	newSvc := tmm.getNewTiDBServiceForTidbCluster(tc)
 	oldSvc, err := tmm.svcLister.Services(ns).Get(controller.TiDBMemberName(tcName))
 	if errors.IsNotFound(err) {
+		err = SetServiceLastAppliedConfigAnnotation(newSvc)
+		if err != nil {
+			return err
+		}
 		return tmm.svcControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
 		return err
 	}
 
-	if !reflect.DeepEqual(oldSvc.Spec, newSvc.Spec) {
+	equal, err := EqualService(newSvc, oldSvc)
+	if err != nil {
+		return err
+	}
+	if !equal {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
 		// TODO add unit test
 		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+		err = SetServiceLastAppliedConfigAnnotation(newSvc)
+		if err != nil {
+			return err
+		}
 		return tmm.svcControl.UpdateService(tc, &svc)
 	}
 
@@ -91,7 +101,10 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	newTiDBSet := tmm.getNewTiDBSetForTidbCluster(tc)
 	oldTiDBSet, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 	if errors.IsNotFound(err) {
-		controller.SetLastAppliedConfigAnnotation(newTiDBSet)
+		err = SetLastAppliedConfigAnnotation(newTiDBSet)
+		if err != nil {
+			return err
+		}
 		err = tmm.setControl.CreateStatefulSet(tc, newTiDBSet)
 		if err != nil {
 			return err
@@ -111,7 +124,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return err
 	}
 
-	equal, err := controller.EqualStatefulSet(*oldTiDBSet, *newTiDBSet)
+	equal, err := EqualStatefulSet(*oldTiDBSet, *newTiDBSet)
 	if err != nil {
 		return err
 	}
@@ -119,7 +132,10 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		set := *oldTiDBSet
 		set.Spec.Template = newTiDBSet.Spec.Template
 		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
-		controller.SetLastAppliedConfigAnnotation(&set)
+		err = SetLastAppliedConfigAnnotation(&set)
+		if err != nil {
+			return err
+		}
 		return tmm.setControl.UpdateStatefulSet(tc, &set)
 	}
 
@@ -289,7 +305,7 @@ func (tmm *tidbMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 	if upgrade {
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
 	} else {
-		_, podSpec, err := controller.GetLastAppliedConfig(oldSet)
+		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
 		}
@@ -307,7 +323,7 @@ func (tmm *tidbMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *apps
 		return false, nil
 	}
 
-	same, err := controller.EqualTemplate(newSet.Spec.Template, oldSet.Spec.Template)
+	same, err := EqualTemplate(newSet.Spec.Template, oldSet.Spec.Template)
 	if err != nil {
 		return false, err
 	}
