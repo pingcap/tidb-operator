@@ -107,6 +107,7 @@ __EOF__
 					period=5
 					threshold=300
 					kubectl delete -f ${operator_yaml} || true
+					sleep 5
 					kubectl create -f ${operator_yaml}
 					while true
 					do
