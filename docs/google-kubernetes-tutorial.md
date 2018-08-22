@@ -26,7 +26,7 @@ Please select a project before proceeding:
 <walkthrough-project-billing-setup key="project-id">
 </walkthrough-project-billing-setup>
 
-## Enable API Acess
+## Enable API Access
 
 This tutorial will require use of the Compute and Container APIs.  Please enable them before proceeding:
 
