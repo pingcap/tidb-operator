@@ -55,7 +55,11 @@ func NewRealStatefuSetControl(kubeCli kubernetes.Interface, setLister appslister
 
 // CreateStatefulSet create a StatefulSet in a TidbCluster.
 func (sc *realStatefulSetControl) CreateStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
-	_, err := sc.kubeCli.AppsV1beta1().StatefulSets(tc.Namespace).Create(set)
+	err := setStatefulSetLastAppliedConfigAnnotation(set)
+	if err != nil {
+		return err
+	}
+	_, err = sc.kubeCli.AppsV1beta1().StatefulSets(tc.Namespace).Create(set)
 	// sink already exists errors
 	if apierrors.IsAlreadyExists(err) {
 		return err
@@ -67,6 +71,10 @@ func (sc *realStatefulSetControl) CreateStatefulSet(tc *v1alpha1.TidbCluster, se
 // UpdateStatefulSet update a StatefulSet in a TidbCluster.
 func (sc *realStatefulSetControl) UpdateStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		err := setStatefulSetLastAppliedConfigAnnotation(set)
+		if err != nil {
+			return err
+		}
 		// TODO: verify if StatefulSet identity(name, namespace, labels) matches TidbCluster
 		_, updateErr := sc.kubeCli.AppsV1beta1().StatefulSets(tc.Namespace).Update(set)
 		if updateErr == nil {
@@ -105,6 +113,28 @@ func (sc *realStatefulSetControl) recordStatefulSetEvent(verb string, tc *v1alph
 			strings.ToLower(verb), setName, tcName, err)
 		sc.recorder.Event(tc, corev1.EventTypeWarning, reason, message)
 	}
+}
+
+//  setStatefulSetLastAppliedConfigAnnotation set last applied config info to Statefulset's annotation
+func setStatefulSetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
+	setApply, err := encode(set.Spec)
+	if err != nil {
+		return err
+	}
+	if set.Annotations == nil {
+		set.Annotations = map[string]string{}
+	}
+	set.Annotations[LastAppliedConfigAnnotation] = setApply
+
+	templateApply, err := encode(set.Spec.Template.Spec)
+	if err != nil {
+		return err
+	}
+	if set.Spec.Template.Annotations == nil {
+		set.Spec.Template.Annotations = map[string]string{}
+	}
+	set.Spec.Template.Annotations[LastAppliedConfigAnnotation] = templateApply
+	return nil
 }
 
 var _ StatefulSetControlInterface = &realStatefulSetControl{}
@@ -173,6 +203,10 @@ func (ssc *FakeStatefulSetControl) CreateStatefulSet(tc *v1alpha1.TidbCluster, s
 		ssc.statusChange(set)
 	}
 
+	err := setStatefulSetLastAppliedConfigAnnotation(set)
+	if err != nil {
+		return err
+	}
 	return ssc.SetIndexer.Add(set)
 }
 
@@ -190,6 +224,11 @@ func (ssc *FakeStatefulSetControl) UpdateStatefulSet(tc *v1alpha1.TidbCluster, s
 
 	if ssc.statusChange != nil {
 		ssc.statusChange(set)
+	}
+
+	err := setStatefulSetLastAppliedConfigAnnotation(set)
+	if err != nil {
+		return err
 	}
 	return ssc.SetIndexer.Update(set)
 }

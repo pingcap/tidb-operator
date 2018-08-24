@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 
@@ -36,6 +37,9 @@ var (
 const (
 	// defaultPushgatewayImage is default image of pushgateway
 	defaultPushgatewayImage = "prom/pushgateway:v0.3.1"
+
+	// LastAppliedConfigAnnotation is annotation key of last applied configuration
+	LastAppliedConfigAnnotation = "pingcap.com/last-applied-configuration"
 )
 
 // GetOwnerRef returns TidbCluster's OwnerReference
@@ -178,4 +182,12 @@ func (rt *requestTracker) inc() {
 func (rt *requestTracker) reset() {
 	rt.err = nil
 	rt.after = 0
+}
+
+func encode(obj interface{}) (string, error) {
+	b, err := json.Marshal(obj)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }

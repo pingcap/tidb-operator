@@ -65,10 +65,6 @@ func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1alpha1.TidbClu
 	newSvc := tmm.getNewTiDBServiceForTidbCluster(tc)
 	oldSvc, err := tmm.svcLister.Services(ns).Get(controller.TiDBMemberName(tcName))
 	if errors.IsNotFound(err) {
-		err = SetServiceLastAppliedConfigAnnotation(newSvc)
-		if err != nil {
-			return err
-		}
 		return tmm.svcControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
@@ -84,10 +80,6 @@ func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1alpha1.TidbClu
 		svc.Spec = newSvc.Spec
 		// TODO add unit test
 		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		err = SetServiceLastAppliedConfigAnnotation(newSvc)
-		if err != nil {
-			return err
-		}
 		return tmm.svcControl.UpdateService(tc, &svc)
 	}
 
@@ -101,10 +93,6 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	newTiDBSet := tmm.getNewTiDBSetForTidbCluster(tc)
 	oldTiDBSet, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 	if errors.IsNotFound(err) {
-		err = SetLastAppliedConfigAnnotation(newTiDBSet)
-		if err != nil {
-			return err
-		}
 		err = tmm.setControl.CreateStatefulSet(tc, newTiDBSet)
 		if err != nil {
 			return err
@@ -132,10 +120,6 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		set := *oldTiDBSet
 		set.Spec.Template = newTiDBSet.Spec.Template
 		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
-		err = SetLastAppliedConfigAnnotation(&set)
-		if err != nil {
-			return err
-		}
 		return tmm.setControl.UpdateStatefulSet(tc, &set)
 	}
 

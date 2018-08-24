@@ -57,7 +57,11 @@ func NewRealServiceControl(kubeCli kubernetes.Interface, svcLister corelisters.S
 }
 
 func (sc *realServiceControl) CreateService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
-	_, err := sc.kubeCli.CoreV1().Services(tc.Namespace).Create(svc)
+	err := setServiceLastAppliedConfigAnnotation(svc)
+	if err != nil {
+		return err
+	}
+	_, err = sc.kubeCli.CoreV1().Services(tc.Namespace).Create(svc)
 	if apierrors.IsAlreadyExists(err) {
 		return err
 	}
@@ -67,6 +71,10 @@ func (sc *realServiceControl) CreateService(tc *v1alpha1.TidbCluster, svc *corev
 
 func (sc *realServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		err := setServiceLastAppliedConfigAnnotation(svc)
+		if err != nil {
+			return err
+		}
 		_, updateErr := sc.kubeCli.CoreV1().Services(tc.Namespace).Update(svc)
 		if updateErr == nil {
 			return nil
@@ -102,6 +110,19 @@ func (sc *realServiceControl) recordServiceEvent(verb string, tc *v1alpha1.TidbC
 			strings.ToLower(verb), svcName, tcName, err)
 		sc.recorder.Event(tc, corev1.EventTypeWarning, reason, msg)
 	}
+}
+
+// setServiceLastAppliedConfigAnnotation set last applied config info to Service's annotation
+func setServiceLastAppliedConfigAnnotation(svc *corev1.Service) error {
+	svcApply, err := encode(svc.Spec)
+	if err != nil {
+		return err
+	}
+	if svc.Annotations == nil {
+		svc.Annotations = map[string]string{}
+	}
+	svc.Annotations[LastAppliedConfigAnnotation] = svcApply
+	return nil
 }
 
 var _ ServiceControlInterface = &realServiceControl{}
@@ -156,6 +177,10 @@ func (ssc *FakeServiceControl) CreateService(tc *v1alpha1.TidbCluster, svc *core
 		return ssc.createServiceTracker.err
 	}
 
+	err := setServiceLastAppliedConfigAnnotation(svc)
+	if err != nil {
+		return err
+	}
 	return ssc.SvcIndexer.Add(svc)
 }
 
@@ -167,6 +192,10 @@ func (ssc *FakeServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *core
 		return ssc.updateServiceTracker.err
 	}
 
+	err := setServiceLastAppliedConfigAnnotation(svc)
+	if err != nil {
+		return err
+	}
 	return ssc.SvcIndexer.Update(svc)
 }
 
