@@ -300,7 +300,7 @@ BUILD_KUBEADM="${BUILD_KUBEADM:-}"
 BUILD_HYPERKUBE="${BUILD_HYPERKUBE:-}"
 KUBEADM_SOURCE="${KUBEADM_SOURCE-}"
 HYPERKUBE_SOURCE="${HYPERKUBE_SOURCE-}"
-NUM_NODES=${NUM_NODES:-2}
+NUM_NODES=${NUM_NODES:-3}
 EXTRA_PORTS="${EXTRA_PORTS:-}"
 LOCAL_KUBECTL_VERSION=${LOCAL_KUBECTL_VERSION:-}
 KUBECTL_DIR="${KUBECTL_DIR:-${HOME}/.kubeadm-dind-cluster}"
@@ -311,7 +311,6 @@ DIND_NO_PARALLEL_E2E="${DIND_NO_PARALLEL_E2E:-}"
 DNS_SERVICE="${DNS_SERVICE:-kube-dns}"
 APISERVER_PORT="${APISERVER_PORT:-8080}"
 REGISTRY_PORT="${REGISTRY_PORT:-5000}"
-TILLER_VERSION="${TILLER_VERSION:-v2.9.1}"
 PV_NUMS="${PV_NUMS:-4}"
 
 DIND_CA_CERT_URL="${DIND_CA_CERT_URL:-}"
@@ -1845,8 +1844,9 @@ function dind::run_tiller {
     dind::step "Deploying tiller"
     hash helm 2>/dev/null
     if [[ $? -eq 0 ]];then
+	helm_version=$(helm version -c --template '{{.Client.SemVer}}')
         if [[ -n ${KUBE_REPO_PREFIX} ]];then
-            helm init --tiller-image ${KUBE_REPO_PREFIX}/tiller:${TILLER_VERSION}
+            helm init --tiller-image ${KUBE_REPO_PREFIX}/tiller:${helm_version}
         else
             helm init
         fi
@@ -1906,10 +1906,10 @@ case "${1:-}" in
       docker pull "${DIND_IMAGE}" >&2
     fi
     dind::prepare-sys-mounts
-    dind::ensure-kubectl
+    # dind::ensure-kubectl       # users must install kubectl themselves
     dind::up
     dind::run_registry
-    dind::run_tiller
+    dind::run_tiller		# users must install helm themselves
     dind::run_local_volume_provisioner
     dind::create_e2e_env
     ;;
