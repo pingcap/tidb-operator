@@ -59,6 +59,13 @@ pd:
     # zone: cn-bj1-01,cn-bj1-02
     # # region is comma separated region list
     # region: cn-bj1
+  # Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  # refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+  tolerations: {}
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb
+  #   effect: "NoSchedule"
 
 tikv:
   replicas: 3
@@ -86,6 +93,12 @@ tikv:
     # kind: tikv
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
+  tolerations: {}
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb
+  #   effect: "NoSchedule"
+
 tikvPromGateway:
   image: prom/pushgateway:v0.3.1
   # limits:
@@ -110,6 +123,11 @@ tidb:
     # kind: tidb
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
+  tolerations: {}
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb
+  #   effect: "NoSchedule"
 
 monitor:
   create: true
@@ -148,6 +166,11 @@ monitor:
     # kind: monitor
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
+  tolerations: {}
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb
+  #   effect: "NoSchedule"
 
 privilegedTidb:
   # Whether to deploy privileged tidb
@@ -166,6 +189,11 @@ privilegedTidb:
   #  kind: privileged-tidb
   #  zone: cn-bj1-01,cn-bj1-02
   #  region: cn-bj1
+  tolerations: {}
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb
+  #   effect: "NoSchedule"
   service:
     # type is privileged tidb service type, can be ClusterIP, NodePort, LoadBalancer
     type: ClusterIP

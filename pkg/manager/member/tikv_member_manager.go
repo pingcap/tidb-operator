@@ -343,6 +343,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 						},
 					},
 					RestartPolicy: corev1.RestartPolicyAlways,
+					Tolerations:   tc.Spec.TiKV.Tolerations,
 					Volumes:       vols,
 				},
 			},

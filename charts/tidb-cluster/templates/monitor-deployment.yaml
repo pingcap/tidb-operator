@@ -124,4 +124,8 @@ spec:
           items:
           - key: grafana-config
             path: grafana.ini
+    {{- if .Values.monitor.tolerations }}
+      tolerations:
+{{ toYaml .Values.monitor.tolerations | indent 6 }}
+    {{- end }}
 {{- end }}

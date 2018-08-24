@@ -96,4 +96,8 @@ spec:
           items:
           - key: startup-script
             path: privileged_tidb_start_script.sh
+    {{- if .Values.privilegedTidb.tolerations }}
+      tolerations:
+{{ toYaml .Values.privilegedTidb.tolerations | indent 6 }}
+    {{- end }}
 {{- end }}
