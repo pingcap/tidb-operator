@@ -13,6 +13,9 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
     > **Note:** For macOS, you need to allocate 2+ CPU and 4G+ Memory to Docker. For details, see [Docker for Mac configuration](https://docs.docker.com/docker-for-mac/#advanced).
 
 - [Docker](https://docs.docker.com/install/): 17.03 or later
+
+    > **Note:** [Legacy Docker Toolbox](https://docs.docker.com/toolbox/toolbox_install_mac/) users must migrate to [Docker for Mac](https://store.docker.com/editions/community/docker-ce-desktop-mac), DinD cannot run on Docker Toolbox and Docker Machine.
+
 - [Helm Client](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client): 2.8.2 or later
 - [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl): 1.10 or later
 
