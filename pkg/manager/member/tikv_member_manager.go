@@ -115,7 +115,7 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 		return err
 	}
 
-	equal, err := EqualService(newSvc, oldSvc)
+	equal, err := equalService(newSvc, oldSvc)
 	if err != nil {
 		return err
 	}
@@ -180,11 +180,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		}
 	}
 
-	equal, err := EqualStatefulSet(*newSet, *oldSet)
-	if err != nil {
-		return err
-	}
-	if !equal {
+	if !equalStatefulSet(*newSet, *oldSet) {
 		set := *oldSet
 		set.Spec.Template = newSet.Spec.Template
 		*set.Spec.Replicas = *newSet.Spec.Replicas
@@ -405,12 +401,7 @@ func (tkmm *tikvMemberManager) labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
 }
 
 func (tkmm *tikvMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-
-	upgrade, err := tkmm.needUpgrade(tc, newSet, oldSet)
-	if err != nil {
-		return err
-	}
-	if upgrade {
+	if tkmm.needUpgrade(tc, newSet, oldSet) {
 		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 	} else {
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
@@ -422,15 +413,11 @@ func (tkmm *tikvMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 	return nil
 }
 
-func (tkmm *tikvMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) (bool, error) {
+func (tkmm *tikvMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) bool {
 	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
-		return false, nil
+		return false
 	}
-	same, err := EqualTemplate(newSet.Spec.Template, oldSet.Spec.Template)
-	if err != nil {
-		return false, err
-	}
-	return !same, nil
+	return !equalTemplate(newSet.Spec.Template, oldSet.Spec.Template)
 }
 
 func (tkmm *tikvMemberManager) needReduce(tc *v1alpha1.TidbCluster, oldReplicas int32) bool {
