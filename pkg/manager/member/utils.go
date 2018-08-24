@@ -116,31 +116,31 @@ func encode(obj interface{}) (string, error) {
 }
 
 // EqualStatefulSet compare the new Statefulset's spec with old Statefulset's last applied config
-func EqualStatefulSet(new apps.StatefulSet, old apps.StatefulSet) (bool, error) {
+func EqualStatefulSet(new apps.StatefulSet, old apps.StatefulSet) bool {
 	oldConfig := apps.StatefulSetSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
 		if err != nil {
 			glog.Errorf("unmarshal Statefulset: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
-			return false, err
+			return false
 		}
-		return apiequality.Semantic.DeepEqual(oldConfig, new.Spec), nil
+		return apiequality.Semantic.DeepEqual(oldConfig, new.Spec)
 	}
-	return false, nil
+	return false
 }
 
 // EqualTemplate compare the new podTemplateSpec's spec with old podTemplateSpec's last applied config
-func EqualTemplate(new corev1.PodTemplateSpec, old corev1.PodTemplateSpec) (bool, error) {
+func EqualTemplate(new corev1.PodTemplateSpec, old corev1.PodTemplateSpec) bool {
 	oldConfig := corev1.PodSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
 		if err != nil {
 			glog.Errorf("unmarshal PodTemplate: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
-			return false, err
+			return false
 		}
-		return apiequality.Semantic.DeepEqual(oldConfig, new.Spec), nil
+		return apiequality.Semantic.DeepEqual(oldConfig, new.Spec)
 	}
-	return false, nil
+	return false
 }
 
 // SetServiceLastAppliedConfigAnnotation set last applied config info to Service's annotation
