@@ -2,7 +2,7 @@
 
 This document describes how to deploy a TiDB cluster to Kubernetes on your laptop (Linux or macOS) for development or testing.
 
-[Docker in Docker](https://hub.docker.com/_/docker/) (DinD) runs Docker containers as virtual machines and runs another layer of Docker containers inside the first layer of Docker containers. [kubeadm-dind-cluster](https://github.com/kubernetes-sigs/kubeadm-dind-cluster) uses this technology to run the Kubernetes cluster in Docker containers. TiDB Operator uses a modified DinD script to manage DinD Kubernetes cluster.
+[Docker in Docker](https://hub.docker.com/_/docker/) (DinD) runs Docker containers as virtual machines and runs another layer of Docker containers inside the first layer of Docker containers. [kubeadm-dind-cluster](https://github.com/kubernetes-sigs/kubeadm-dind-cluster) uses this technology to run the Kubernetes cluster in Docker containers. TiDB Operator uses a modified DinD script to manage the DinD Kubernetes cluster.
 
 ## Prerequisites
 
@@ -14,7 +14,7 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 
 - [Docker](https://docs.docker.com/install/): 17.03 or later
 
-    > **Note:** [Legacy Docker Toolbox](https://docs.docker.com/toolbox/toolbox_install_mac/) users must migrate to [Docker for Mac](https://store.docker.com/editions/community/docker-ce-desktop-mac), DinD cannot run on Docker Toolbox and Docker Machine.
+    > **Note:** [Legacy Docker Toolbox](https://docs.docker.com/toolbox/toolbox_install_mac/) users must migrate to [Docker for Mac](https://store.docker.com/editions/community/docker-ce-desktop-mac) by uninstalling Legacy Docker Toolbox and installing Docker for Mac, because DinD cannot run on Docker Toolbox and Docker Machine.
 
 - [Helm Client](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client): 2.8.2 or later
 - [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl): 1.10 or later
@@ -29,7 +29,7 @@ $ cd tidb-operator
 $ manifests/local-dind/dind-cluster-v1.10.sh up
 ```
 
-> **Note:** If the cluster fails to pull Docker images during the startup due to the firewall, you can set environment `KUBE_REPO_PREFIX` to `uhub.ucloud.cn/pingcap` before running script `dind-cluster-v1.10.sh` like this (the Docker images used are pulled from [UCloud Docker Registry](https://docs.ucloud.cn/compute/uhub/index)):
+> **Note:** If the cluster fails to pull Docker images during the startup due to the firewall, you can set the environment variable `KUBE_REPO_PREFIX` to `uhub.ucloud.cn/pingcap` before running the script `dind-cluster-v1.10.sh` as follows (the Docker images used are pulled from [UCloud Docker Registry](https://docs.ucloud.cn/compute/uhub/index)):
 
 ```
 $ KUBE_REPO_PREFIX=uhub.ucloud.cn/pingcap manifests/local-dind/dind-cluster-v1.10.sh up
@@ -173,14 +173,20 @@ $ kubectl get pv -l cluster.pingcap.com/namespace=tidb -o name | xargs -I {} kub
 $ kubectl delete pvc --namespace tidb --all
 ```
 
-## Stop and Re-start Kubernetes cluster
+## Stop and Re-start the Kubernetes cluster
 
-Once you have a working DinD setup, you can follow this workflow:
+* If you want to stop the DinD Kubernetes cluster, run the following command:
 
-```sh
-$ manifests/local-dind/dind-cluster-v1.10.sh stop
-$ manifests/local-dind/dind-cluster-v1.10.sh start
-```
+    ```sh
+    $ manifests/local-dind/dind-cluster-v1.10.sh stop
+
+    ```
+
+* If you want to restart the DinD Kubernetes after you stop it, run the following command:
+
+    ```
+    $ manifests/local-dind/dind-cluster-v1.10.sh start
+    ```
 
 ## Destroy the DinD Kubernetes cluster
 
@@ -192,4 +198,4 @@ $ sudo rm -rf data/kube-node-*
 $ manifests/local-dind/dind-cluster-v1.10.sh up
 ```
 
-> **Warning:** You must remember to clean the data after you destroy the DinD Kubernetes, otherwise when you bring it up again and the existing data would case TiDB clusters fail to start.
+> **Warning:** You must clean the data after you destroy the DinD Kubernetes cluster, otherwise the TiDB cluster would fail to start when you bring it up again.
