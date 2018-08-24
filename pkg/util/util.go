@@ -157,14 +157,14 @@ func ResourceRequirement(spec v1alpha1.ContainerSpec, defaultRequests ...corev1.
 		if rr.Requests == nil {
 			rr.Requests = make(map[corev1.ResourceName]resource.Quantity)
 		}
-		if spec.Requests.CPU != nil {
+		if spec.Requests.CPU != "" {
 			if q, err := resource.ParseQuantity(spec.Requests.CPU); err != nil {
 				glog.Errorf("failed to parse CPU resource %s to quantity: %v", spec.Requests.CPU, err)
 			} else {
 				rr.Requests[corev1.ResourceCPU] = q
 			}
 		}
-		if spec.Requests.Memory != nil {
+		if spec.Requests.Memory != "" {
 			if q, err := resource.ParseQuantity(spec.Requests.Memory); err != nil {
 				glog.Errorf("failed to parse memory resource %s to quantity: %v", spec.Requests.Memory, err)
 			} else {
@@ -176,14 +176,14 @@ func ResourceRequirement(spec v1alpha1.ContainerSpec, defaultRequests ...corev1.
 		if rr.Limits == nil {
 			rr.Limits = make(map[corev1.ResourceName]resource.Quantity)
 		}
-		if spec.Limits.CPU != nil {
+		if spec.Limits.CPU != "" {
 			if q, err := resource.ParseQuantity(spec.Limits.CPU); err != nil {
 				glog.Errorf("failed to parse CPU resource %s to quantity: %v", spec.Limits.CPU, err)
 			} else {
 				rr.Limits[corev1.ResourceCPU] = q
 			}
 		}
-		if spec.Limits.Memory != nil {
+		if spec.Limits.Memory != "" {
 			if q, err := resource.ParseQuantity(spec.Limits.Memory); err != nil {
 				glog.Errorf("failed to parse memory resource %s to quantity: %v", spec.Limits.Memory, err)
 			} else {
