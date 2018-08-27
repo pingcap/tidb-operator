@@ -73,7 +73,7 @@ func GetServiceType(services []v1alpha1.Service, serviceName string) corev1.Serv
 // tikv uses GB, TB as unit suffix, but it actually means GiB, TiB
 func TiKVCapacity(limits *v1alpha1.ResourceRequirement) string {
 	defaultArgs := "0"
-	if limits == nil {
+	if limits == nil || limits.Storage == ""{
 		return defaultArgs
 	}
 	q, err := resource.ParseQuantity(limits.Storage)
