@@ -29,22 +29,25 @@ import (
 )
 
 type tidbMemberManager struct {
-	setControl controller.StatefulSetControlInterface
-	svcControl controller.ServiceControlInterface
-	setLister  v1beta1.StatefulSetLister
-	svcLister  corelisters.ServiceLister
+	setControl   controller.StatefulSetControlInterface
+	svcControl   controller.ServiceControlInterface
+	setLister    v1beta1.StatefulSetLister
+	svcLister    corelisters.ServiceLister
+	tidbUpgrader Upgrader
 }
 
 // NewTiDBMemberManager returns a *tidbMemberManager
 func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	setLister v1beta1.StatefulSetLister,
-	svcLister corelisters.ServiceLister) manager.Manager {
+	svcLister corelisters.ServiceLister,
+	tidbUpgrader Upgrader) manager.Manager {
 	return &tidbMemberManager{
-		setControl: setControl,
-		svcControl: svcControl,
-		setLister:  setLister,
-		svcLister:  svcLister,
+		setControl:   setControl,
+		svcControl:   svcControl,
+		setLister:    setLister,
+		svcLister:    svcLister,
+		tidbUpgrader: tidbUpgrader,
 	}
 }
 
@@ -120,15 +123,13 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return err
 	}
 
-	if err = tmm.upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
-		return err
+	if !EqualTemplate(newTiDBSet.Spec.Template, oldTiDBSet.Spec.Template) {
+		if err = tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
+			return err
+		}
 	}
 
-	equal, err := EqualStatefulSet(*oldTiDBSet, *newTiDBSet)
-	if err != nil {
-		return err
-	}
-	if !equal {
+	if !EqualStatefulSet(*oldTiDBSet, *newTiDBSet) {
 		set := *oldTiDBSet
 		set.Spec.Template = newTiDBSet.Spec.Template
 		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
@@ -294,38 +295,4 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
 	}
 	return nil
-}
-
-func (tmm *tidbMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-
-	upgrade, err := tmm.needUpgrade(tc, newSet, oldSet)
-	if err != nil {
-		return err
-	}
-	if upgrade {
-		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
-	} else {
-		_, podSpec, err := GetLastAppliedConfig(oldSet)
-		if err != nil {
-			return err
-		}
-		newSet.Spec.Template.Spec = *podSpec
-	}
-	return nil
-}
-
-func (tmm *tidbMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) (bool, error) {
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
-		return false, nil
-	}
-
-	if tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-		return false, nil
-	}
-
-	same, err := EqualTemplate(newSet.Spec.Template, oldSet.Spec.Template)
-	if err != nil {
-		return false, err
-	}
-	return !same, nil
 }

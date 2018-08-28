@@ -260,12 +260,14 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
+	tidbUpgrader := NewFakeTiDBUpgrader()
 
 	return &tidbMemberManager{
 		setControl,
 		svcControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
+		tidbUpgrader,
 	}, setControl, svcControl
 }
 

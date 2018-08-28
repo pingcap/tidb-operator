@@ -94,6 +94,8 @@ func NewController(
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	pdUpgrader := mm.NewPDUpgrader()
+	tikvUpgrader := mm.NewTiKVUpgrader()
+	tidbUpgrader := mm.NewTiDBUpgrader()
 
 	tcc := &Controller{
 		kubeClient: kubeCli,
@@ -118,12 +120,14 @@ func NewController(
 				podInformer.Lister(),
 				nodeInformer.Lister(),
 				tikvScaler,
+				tikvUpgrader,
 			),
 			mm.NewTiDBMemberManager(
 				setControl,
 				svcControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
+				tidbUpgrader,
 			),
 			meta.NewReclaimPolicyManager(
 				pvcInformer.Lister(),
