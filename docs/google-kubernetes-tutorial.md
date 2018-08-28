@@ -8,34 +8,34 @@ category: operations
 
 ## Introduction
 
-This tutorial is designed to be [run in Google Cloud Shell](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/pingcap/tidb-operator&tutorial=docs/google-kubernetes-tutorial.md).  It takes you through these steps:
+This tutorial is designed to be [run in Google Cloud Shell](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/pingcap/tidb-operator&tutorial=docs/google-kubernetes-tutorial.md). It takes you through these steps:
 
-- Launching a new 3-node Kubernetes cluster (optional)
-- Installing the Helm package manager for Kubernetes
-- Deploying the TiDB Operator
-- Deploying your first TiDB cluster
-- Connecting to TiDB
-- Shutting down down the Kubernetes cluster (optional)
+- Launch a new 3-node Kubernetes cluster (optional)
+- Install the Helm package manager for Kubernetes
+- Deploy the TiDB Operator
+- Deploy your first TiDB cluster
+- Connect to TiDB
+- Shut down the Kubernetes cluster (optional)
 
-## Select a Project
+## Select a project
 
-This tutorial launches a 3-node Kubernetes cluster of n1-standard-1 machines.  Pricing information can be [found here](https://cloud.google.com/compute/pricing).
+This tutorial launches a 3-node Kubernetes cluster of `n1-standard-1` machines. Pricing information can be [found here](https://cloud.google.com/compute/pricing).
 
 Please select a project before proceeding:
 
 <walkthrough-project-billing-setup key="project-id">
 </walkthrough-project-billing-setup>
 
-## Enable API Access
+## Enable API access
 
-This tutorial will require use of the Compute and Container APIs.  Please enable them before proceeding:
+This tutorial will require use of the Compute and Container APIs. Please enable them before proceeding:
 
 <walkthrough-enable-apis apis="container.googleapis.com,compute.googleapis.com">
 </walkthrough-enable-apis>
 
-## Configure gcloud Defaults
+## Configure gcloud defaults
 
-This step defaults gcloud to your prefered project and [zone](https://cloud.google.com/compute/docs/regions-zones/), which will simplify the commands used for the rest of this tutorial:
+This step defaults gcloud to your preferred project and [zone](https://cloud.google.com/compute/docs/regions-zones/), which will simplify the commands used for the rest of this tutorial:
 
 	gcloud config set project {{project-id}} &&
 	gcloud config set compute/zone us-west1-a
@@ -56,11 +56,11 @@ The last step is to verify that `kubectl` can connect to the cluster, and all th
 
 	kubectl get nodes
 
-If you see `Ready` for all nodes, congratulations!  You've setup your first Kubernetes cluster.
+If you see `Ready` for all nodes, congratulations! You've setup your first Kubernetes cluster.
 
-## Installing Helm
+## Install Helm
 
-Helm is the package manager for Kubernetes, and is what allows us to install all of the distributed components of TiDB in a single step.  Helm requires both a server-side and a client-side component to be installed.
+Helm is the package manager for Kubernetes, and is what allows us to install all of the distributed components of TiDB in a single step. Helm requires both a server-side and a client-side component to be installed.
 
 Download the `helm` installer:
 
@@ -90,7 +90,7 @@ When you see `Running`, it's time to hit `Control + C` and proceed to the next s
 
 ## Deploy TiDB Operator
 
-The first TiDB component we are going to install is the TiDB Operator, using a Helm Chart.  The TiDB Operator is the management system that works with Kubernetes to bootstrap your TiDB cluster and keep it running. This step assumes you are in the `tidb-operator` working directory:
+The first TiDB component we are going to install is the TiDB Operator, using a Helm Chart. TiDB Operator is the management system that works with Kubernetes to bootstrap your TiDB cluster and keep it running. This step assumes you are in the `tidb-operator` working directory:
 
 	kubectl apply -f ./manifests/crd.yaml &&
 	kubectl apply -f ./manifests/gke-storage.yml &&
@@ -102,42 +102,56 @@ We can watch the operator come up with:
 
 When you see `Running`, `Control + C` and proceed to launch a TiDB cluster!
 
-## Deploy your first TiDB Cluster
+## Deploy your first TiDB cluster
 
 Now with a single command we can bring-up a full TiDB cluster:
 
 	helm install ./charts/tidb-cluster -n tidb --namespace=tidb --set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd
 
-It will take a few minutes to launch.  You can monitor the progress with:
+It will take a few minutes to launch. You can monitor the progress with:
 
 	watch kubectl get pods --namespace tidb -o wide
 
-When you see all pods `Running`, it's time to `Control + C` and proceed forward!
+The TiDB cluster includes 2 TiDB pods, 3 TiKV pods, and 3 PD pods. When you see all pods `Running`, it's time to `Control + C` and proceed forward!
 
-## Connecting to TiDB
+## Connect to TiDB
 
-There can be a small delay between the pod being up and running, and the service being available.  You can watch list services available with:
+There can be a small delay between the pod being up and running, and the service being available. You can watch list services available with:
 
 	watch "kubectl get svc -n tidb"
 
-When you see `demo-tidb` appear, you can `Control + C`.  The service is ready to connect to!
+When you see `demo-tidb` appear, you can `Control + C`. The service is ready to connect to!
 
 You can connect to the clustered service within the Kubernetes cluster:
 
 	kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb --output json | jq -r '.spec.clusterIP')
 
-You can also establish a tunnel between an individual pod and your Cloud Shell. This is recommended only for debugging purposes since the tunnel will not automatically be transferred if `demo-tidb-0` fails, or your Cloud Shell restarts. To establish a tunnel:
+Congratulations, you are now up and running with a distributed TiDB database compatible with MySQL!
 
-	kubectl -n tidb port-forward demo-tidb-0 4000:4000 &
+If you like, you can check your connection to TiDB:
+
+	select tidb_version();
+
+In addition to connecting to TiDB within the Kubernetes cluster, you can also establish a tunnel between an individual pod and your Cloud Shell. This is recommended only for debugging purposes, because the tunnel will not automatically be transferred if `demo-tidb-0` fails, or your Cloud Shell restarts. To establish a tunnel:
+
+	kubectl -n tidb port-forward svc/demo-tidb 4000:4000 &
 
 From your Cloud Shell:
 
 	sudo apt-get install -y mysql-client &&
 	mysql -h 127.0.0.1 -u root -P 4000
 
-Congratulations, you are now up and running with a distributed MySQL database!
+## Scale out the TiDB cluster
 
-## Shutting down the Kubernetes Cluster
+With a single command we can easily scale out the TiDB cluster. To scale out TiKV:
+
+	helm upgrade tidb charts/tidb-cluster --set tikv.replicas=5
+
+Now the number of TiKV pods is increased from the default 3 to 5. You can check it with:
+
+	kubectl get po -n tidb
+
+## Shut down the Kubernetes cluster
 
 Once you have finished experimenting, you can delete the Kubernetes cluster with:
 
