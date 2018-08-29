@@ -70,7 +70,8 @@ func NewController(
 	cli versioned.Interface,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
-) *Controller {
+	autoFailover bool,
+	pdFailoverPeriod time.Duration) *Controller {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
@@ -85,6 +86,7 @@ func NewController(
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 
+	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
 	pdControl := controller.NewDefaultPDControl()
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
@@ -93,12 +95,13 @@ func NewController(
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, recorder)
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl)
+	pdFailover := mm.NewPDFailover(cli, tcControl, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister())
 
 	tcc := &Controller{
 		kubeClient: kubeCli,
 		cli:        cli,
 		control: NewDefaultTidbClusterControl(
-			NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
+			tcControl,
 			mm.NewPDMemberManager(
 				pdControl,
 				setControl,
@@ -106,6 +109,8 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				pdScaler,
+				autoFailover,
+				pdFailover,
 			),
 			mm.NewTiKVMemberManager(
 				pdControl,

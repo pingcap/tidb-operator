@@ -31,7 +31,9 @@ import (
 
 // PodControlInterface manages Pods used in TidbCluster
 type PodControlInterface interface {
+	// TODO change this to UpdatePod
 	UpdateMetaInfo(*v1alpha1.TidbCluster, *corev1.Pod) error
+	DeletePod(*v1alpha1.TidbCluster, *corev1.Pod) error
 }
 
 type realPodControl struct {
@@ -131,6 +133,20 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 	return err
 }
 
+func (rpc *realPodControl) DeletePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	podName := pod.GetName()
+	err := rpc.kubeCli.CoreV1().Pods(ns).Delete(podName, nil)
+	if err != nil {
+		glog.Errorf("failed to delete Pod: [%s/%s], TidbCluster: %s, %v", ns, podName, tcName, err)
+	} else {
+		glog.V(4).Infof("delete Pod: [%s/%s] successfully, TidbCluster: %s", ns, podName, tcName)
+	}
+	rpc.recordPodEvent("delete", tc, podName, err)
+	return err
+}
+
 func (rpc *realPodControl) recordPodEvent(verb string, tc *v1alpha1.TidbCluster, podName string, err error) {
 	tcName := tc.GetName()
 	if err == nil {
@@ -162,6 +178,7 @@ var (
 type FakePodControl struct {
 	PodIndexer        cache.Indexer
 	updatePodTracker  requestTracker
+	deletePodTracker  requestTracker
 	getClusterTracker requestTracker
 	getMemberTracker  requestTracker
 	getStoreTracker   requestTracker
@@ -175,6 +192,7 @@ func NewFakePodControl(podInformer coreinformers.PodInformer) *FakePodControl {
 		requestTracker{0, nil, 0},
 		requestTracker{0, nil, 0},
 		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
 	}
 }
 
@@ -182,6 +200,12 @@ func NewFakePodControl(podInformer coreinformers.PodInformer) *FakePodControl {
 func (fpc *FakePodControl) SetUpdatePodError(err error, after int) {
 	fpc.updatePodTracker.err = err
 	fpc.updatePodTracker.after = after
+}
+
+// SetDeletePodError sets the error attributes of deletePodTracker
+func (fpc *FakePodControl) SetDeletePodError(err error, after int) {
+	fpc.deletePodTracker.err = err
+	fpc.deletePodTracker.after = after
 }
 
 // SetGetClusterError sets the error attributes of getClusterTracker
@@ -235,6 +259,16 @@ func (fpc *FakePodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 	setIfNotEmpty(pod.Labels, label.MemberIDLabelKey, TestMemberId)
 	setIfNotEmpty(pod.Labels, label.StoreIDLabelKey, TestStoreId)
 	return fpc.PodIndexer.Update(pod)
+}
+
+func (fpc *FakePodControl) DeletePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+	defer fpc.deletePodTracker.inc()
+	if fpc.deletePodTracker.errorReady() {
+		defer fpc.deletePodTracker.reset()
+		return fpc.deletePodTracker.err
+	}
+
+	return fpc.PodIndexer.Delete(pod)
 }
 
 var _ PodControlInterface = &FakePodControl{}

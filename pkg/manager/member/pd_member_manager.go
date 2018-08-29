@@ -35,12 +35,14 @@ import (
 const defaultReplicas = 3
 
 type pdMemberManager struct {
-	pdControl  controller.PDControlInterface
-	setControl controller.StatefulSetControlInterface
-	svcControl controller.ServiceControlInterface
-	setLister  v1beta1.StatefulSetLister
-	svcLister  corelisters.ServiceLister
-	pdScaler   Scaler
+	pdControl    controller.PDControlInterface
+	setControl   controller.StatefulSetControlInterface
+	svcControl   controller.ServiceControlInterface
+	setLister    v1beta1.StatefulSetLister
+	svcLister    corelisters.ServiceLister
+	pdScaler     Scaler
+	autoFailover bool
+	pdFailover   Failover
 }
 
 // NewPDMemberManager returns a *pdMemberManager
@@ -49,14 +51,18 @@ func NewPDMemberManager(pdControl controller.PDControlInterface,
 	svcControl controller.ServiceControlInterface,
 	setLister v1beta1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
-	pdScaler Scaler) manager.Manager {
+	pdScaler Scaler,
+	autoFailover bool,
+	pdFailover Failover) manager.Manager {
 	return &pdMemberManager{
 		pdControl,
 		setControl,
 		svcControl,
 		setLister,
 		svcLister,
-		pdScaler}
+		pdScaler,
+		autoFailover,
+		pdFailover}
 }
 
 func (pmm *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
@@ -164,7 +170,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		return err
 	}
 	if errors.IsNotFound(err) {
-		newPDSet.Spec.Replicas = func()*int32 { var i int32 = 1; return &i }();
+		newPDSet.Spec.Replicas = func() *int32 { var i int32 = 1; return &i }()
 		err = SetLastAppliedConfigAnnotation(newPDSet)
 		if err != nil {
 			return err
@@ -189,10 +195,21 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 			return err
 		}
 	}
-
 	if *newPDSet.Spec.Replicas < *oldPDSet.Spec.Replicas {
 		if err := pmm.pdScaler.ScaleIn(tc, oldPDSet, newPDSet); err != nil {
 			return err
+		}
+	}
+
+	if pmm.autoFailover {
+		if allPDMembersAreReady(tc) {
+			if tc.Status.PD.FailureMembers != nil {
+				pmm.pdFailover.Recovery(tc)
+			}
+		} else if int(tc.Spec.PD.Replicas) == int(tc.Status.PD.StatefulSet.Replicas) {
+			if err := pmm.pdFailover.Failover(tc); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -200,6 +217,8 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	if err != nil {
 		return err
 	}
+	// TODO equal is false every time
+	// FIXME !!!
 	if !euqal {
 		set := *oldPDSet
 		set.Spec.Template = newPDSet.Spec.Template
@@ -245,6 +264,14 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 			ID:        memberID,
 			ClientURL: clientURL,
 			Health:    memberHealth.Health,
+		}
+
+		oldPDMember, exist := tc.Status.PD.Members[name]
+		if exist {
+			status.LastTransitionTime = oldPDMember.LastTransitionTime
+		}
+		if !exist || status.Health != oldPDMember.Health {
+			status.LastTransitionTime = metav1.Now()
 		}
 
 		pdStatus[name] = status

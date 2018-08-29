@@ -37,7 +37,7 @@ e2e-build:
 	$(GOENV) ginkgo build tests/e2e
 
 test:
-	@ CGO_ENABLED=0 go test ./pkg/... -v -cover && echo success
+	@ CGO_ENABLED=0 go test ./pkg/... -v -cover && echo "\nUnit tests run successfully!"
 
 check-all: static lint
 	@echo "checking"

@@ -18,8 +18,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/manager"
 	corev1 "k8s.io/api/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
@@ -74,8 +74,8 @@ func (pmm *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 		}
 		// update meta info for pvc
 		pvc, err := pmm.resolvePVCFromPod(pod)
-		if err != nil {
-			return err
+		if pvc == nil {
+			return nil
 		}
 		err = pmm.pvcControl.UpdateMetaInfo(tc, pvc, pod)
 		if err != nil {
@@ -104,6 +104,8 @@ func (pmm *metaManager) resolvePVCFromPod(pod *corev1.Pod) (*corev1.PersistentVo
 				pvcName = vol.PersistentVolumeClaim.ClaimName
 				break
 			}
+		case v1alpha1.TiDBMemberType.String():
+			return nil, nil
 		}
 	}
 	if len(pvcName) == 0 {

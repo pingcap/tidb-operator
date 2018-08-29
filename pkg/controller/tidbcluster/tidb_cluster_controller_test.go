@@ -223,12 +223,15 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
+	autoFailover := true
 
 	tcc := NewController(
 		kubeCli,
 		cli,
 		informerFactory,
 		kubeInformerFactory,
+		autoFailover,
+		5*time.Minute,
 	)
 	tcc.tcListerSynced = alwaysReady
 	tcc.setListerSynced = alwaysReady
@@ -250,9 +253,10 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, recorder)
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl)
+	pdFailover := mm.NewFakePDFailover()
 
 	tcc.control = NewDefaultTidbClusterControl(
-		NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
+		controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder),
 		mm.NewPDMemberManager(
 			pdControl,
 			setControl,
@@ -260,6 +264,8 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			setInformer.Lister(),
 			svcInformer.Lister(),
 			pdScaler,
+			autoFailover,
+			pdFailover,
 		),
 		mm.NewTiKVMemberManager(
 			pdControl,

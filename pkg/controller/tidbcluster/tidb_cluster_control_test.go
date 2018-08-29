@@ -20,14 +20,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
-	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -46,7 +43,7 @@ func TestTidbClusterControl(t *testing.T) {
 		}, nil
 	})
 
-	control, setControl, _, pdControl := newFakeTidbClusterControl()
+	control, setControl, pdControl := newFakeTidbClusterControl()
 	pdControl.SetPDClient(tc, pdClient)
 
 	err := syncTidbClusterControl(tc, setControl, control)
@@ -57,7 +54,7 @@ func TestTidbClusterControl(t *testing.T) {
 	g.Expect(newTC.Status.PD.StatefulSet).NotTo(Equal(nil))
 }
 
-func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetControl, StatusUpdaterInterface, *controller.FakePDControl) {
+func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetControl, *controller.FakePDControl) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
@@ -75,18 +72,20 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), recorder)
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, recorder)
-	statusUpdater := newFakeTidbClusterStatusUpdater(tcInformer)
+	tcControl := controller.NewFakeTidbClusterControl(tcInformer)
 	pdScaler := mm.NewFakePDScaler()
 	tikvScaler := mm.NewFakeTiKVScaler()
+	autoFailover := true
+	pdFailover := mm.NewFakePDFailover()
 
-	pdMemberManager := mm.NewPDMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), pdScaler)
+	pdMemberManager := mm.NewPDMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), pdScaler, autoFailover, pdFailover)
 	tikvMemberManager := mm.NewTiKVMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), podInformer.Lister(), nodeInformer.Lister(), tikvScaler)
 	tidbMemberManager := mm.NewTiDBMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
 	reclaimPolicyManager := meta.NewReclaimPolicyManager(pvcInformer.Lister(), pvInformer.Lister(), pvControl)
 	metaManager := meta.NewMetaManager(pvcInformer.Lister(), pvcControl, pvInformer.Lister(), pvControl, podInformer.Lister(), podControl)
-	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, tikvMemberManager, tidbMemberManager, reclaimPolicyManager, metaManager, recorder)
+	control := NewDefaultTidbClusterControl(tcControl, pdMemberManager, tikvMemberManager, tidbMemberManager, reclaimPolicyManager, metaManager, recorder)
 
-	return control, setControl, statusUpdater, pdControl
+	return control, setControl, pdControl
 }
 
 func syncTidbClusterControl(tc *v1alpha1.TidbCluster, setControl *controller.FakeStatefulSetControl, control ControlInterface) error {
@@ -99,22 +98,3 @@ func syncTidbClusterControl(tc *v1alpha1.TidbCluster, setControl *controller.Fak
 
 	return nil
 }
-
-type fakeTidbClusterStatusUpdater struct {
-	tcLister  v1listers.TidbClusterLister
-	tcIndexer cache.Indexer
-}
-
-func newFakeTidbClusterStatusUpdater(tcInformer tcinformers.TidbClusterInformer) *fakeTidbClusterStatusUpdater {
-	return &fakeTidbClusterStatusUpdater{
-		tcInformer.Lister(),
-		tcInformer.Informer().GetIndexer(),
-	}
-}
-
-func (tsu *fakeTidbClusterStatusUpdater) UpdateTidbClusterStatus(tc *v1alpha1.TidbCluster, status *v1alpha1.TidbClusterStatus) error {
-	tc.Status = *status
-	return tsu.tcIndexer.Update(tc)
-}
-
-var _ StatusUpdaterInterface = &fakeTidbClusterStatusUpdater{}
