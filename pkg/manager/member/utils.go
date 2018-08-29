@@ -115,8 +115,8 @@ func encode(obj interface{}) (string, error) {
 	return string(b), nil
 }
 
-// equalStatefulSet compares the new Statefulset's spec with old Statefulset's last applied config
-func equalStatefulSet(new apps.StatefulSet, old apps.StatefulSet) bool {
+// statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
+func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 	oldConfig := apps.StatefulSetSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
@@ -129,8 +129,8 @@ func equalStatefulSet(new apps.StatefulSet, old apps.StatefulSet) bool {
 	return false
 }
 
-// equalTemplate compares the new podTemplateSpec's spec with old podTemplateSpec's last applied config
-func equalTemplate(new corev1.PodTemplateSpec, old corev1.PodTemplateSpec) bool {
+// templateEqual compares the new podTemplateSpec's spec with old podTemplateSpec's last applied config
+func templateEqual(new corev1.PodTemplateSpec, old corev1.PodTemplateSpec) bool {
 	oldConfig := corev1.PodSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
@@ -156,8 +156,8 @@ func SetServiceLastAppliedConfigAnnotation(svc *corev1.Service) error {
 	return nil
 }
 
-// equalService compares the new Service's spec with old Service's last applied config
-func equalService(new, old *corev1.Service) (bool, error) {
+// serviceEqual compares the new Service's spec with old Service's last applied config
+func serviceEqual(new, old *corev1.Service) (bool, error) {
 	oldSpec := corev1.ServiceSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldSpec)

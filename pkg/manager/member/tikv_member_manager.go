@@ -115,7 +115,7 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 		return err
 	}
 
-	equal, err := equalService(newSvc, oldSvc)
+	equal, err := serviceEqual(newSvc, oldSvc)
 	if err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		}
 	}
 
-	if !equalStatefulSet(*newSet, *oldSet) {
+	if !statefulSetEqual(*newSet, *oldSet) {
 		set := *oldSet
 		set.Spec.Template = newSet.Spec.Template
 		*set.Spec.Replicas = *newSet.Spec.Replicas
@@ -417,7 +417,7 @@ func (tkmm *tikvMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *app
 	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
 		return false
 	}
-	return !equalTemplate(newSet.Spec.Template, oldSet.Spec.Template)
+	return !templateEqual(newSet.Spec.Template, oldSet.Spec.Template)
 }
 
 func (tkmm *tikvMemberManager) needReduce(tc *v1alpha1.TidbCluster, oldReplicas int32) bool {

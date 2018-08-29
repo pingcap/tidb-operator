@@ -98,7 +98,7 @@ func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 		return err
 	}
 
-	equal, err := equalService(newSvc, oldSvc)
+	equal, err := serviceEqual(newSvc, oldSvc)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (pmm *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1alpha1.Tid
 		return err
 	}
 
-	equal, err := equalService(newSvc, oldSvc)
+	equal, err := serviceEqual(newSvc, oldSvc)
 	if err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		return err
 	}
 
-	if !equalTemplate(newPDSet.Spec.Template, oldPDSet.Spec.Template) {
+	if !templateEqual(newPDSet.Spec.Template, oldPDSet.Spec.Template) {
 		if err := pmm.pdUpgrader.Upgrade(tc, oldPDSet, newPDSet); err != nil {
 			return err
 		}
@@ -201,7 +201,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		}
 	}
 
-	if !equalStatefulSet(*newPDSet, *oldPDSet) {
+	if !statefulSetEqual(*newPDSet, *oldPDSet) {
 		set := *oldPDSet
 		set.Spec.Template = newPDSet.Spec.Template
 		*set.Spec.Replicas = *newPDSet.Spec.Replicas

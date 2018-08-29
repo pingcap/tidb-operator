@@ -75,7 +75,7 @@ func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1alpha1.TidbClu
 		return err
 	}
 
-	equal, err := equalService(newSvc, oldSvc)
+	equal, err := serviceEqual(newSvc, oldSvc)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	if err != nil {
 		return err
 	}
-	if !equalStatefulSet(*oldTiDBSet, *newTiDBSet) {
+	if !statefulSetEqual(*oldTiDBSet, *newTiDBSet) {
 		set := *oldTiDBSet
 		set.Spec.Template = newTiDBSet.Spec.Template
 		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
@@ -317,5 +317,5 @@ func (tmm *tidbMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *apps
 		return false
 	}
 
-	return !equalTemplate(newSet.Spec.Template, oldSet.Spec.Template)
+	return !templateEqual(newSet.Spec.Template, oldSet.Spec.Template)
 }
