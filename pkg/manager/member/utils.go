@@ -115,7 +115,7 @@ func encode(obj interface{}) (string, error) {
 	return string(b), nil
 }
 
-// equalStatefulSet compare the new Statefulset's spec with old Statefulset's last applied config
+// equalStatefulSet compares the new Statefulset's spec with old Statefulset's last applied config
 func equalStatefulSet(new apps.StatefulSet, old apps.StatefulSet) bool {
 	oldConfig := apps.StatefulSetSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
@@ -129,7 +129,7 @@ func equalStatefulSet(new apps.StatefulSet, old apps.StatefulSet) bool {
 	return false
 }
 
-// equalTemplate compare the new podTemplateSpec's spec with old podTemplateSpec's last applied config
+// equalTemplate compares the new podTemplateSpec's spec with old podTemplateSpec's last applied config
 func equalTemplate(new corev1.PodTemplateSpec, old corev1.PodTemplateSpec) bool {
 	oldConfig := corev1.PodSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
@@ -156,7 +156,7 @@ func SetServiceLastAppliedConfigAnnotation(svc *corev1.Service) error {
 	return nil
 }
 
-// equalService compare the new Service's spec with old Service's last applied config
+// equalService compares the new Service's spec with old Service's last applied config
 func equalService(new, old *corev1.Service) (bool, error) {
 	oldSpec := corev1.ServiceSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {

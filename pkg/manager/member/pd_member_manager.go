@@ -184,7 +184,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	}
 
 	if !equalTemplate(newPDSet.Spec.Template, oldPDSet.Spec.Template) {
-		if err = pmm.pdUpgrader.Upgrade(tc, oldPDSet, newPDSet); err != nil {
+		if err := pmm.pdUpgrader.Upgrade(tc, oldPDSet, newPDSet); err != nil {
 			return err
 		}
 	}
