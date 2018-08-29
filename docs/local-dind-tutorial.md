@@ -2,7 +2,7 @@
 
 This document describes how to deploy a TiDB cluster to Kubernetes on your laptop (Linux or macOS) for development or testing.
 
-[Docker in Docker](https://hub.docker.com/_/docker/) (DinD) runs Docker containers as virtual machines and runs another layer of Docker containers inside the first layer of Docker containers. [kubeadm-dind-cluster](https://github.com/kubernetes-sigs/kubeadm-dind-cluster) uses this technology to run the Kubernetes cluster in Docker containers.
+[Docker in Docker](https://hub.docker.com/_/docker/) (DinD) runs Docker containers as virtual machines and runs another layer of Docker containers inside the first layer of Docker containers. [kubeadm-dind-cluster](https://github.com/kubernetes-sigs/kubeadm-dind-cluster) uses this technology to run the Kubernetes cluster in Docker containers. TiDB Operator uses a modified DinD script to manage the DinD Kubernetes cluster.
 
 ## Prerequisites
 
@@ -13,80 +13,29 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
     > **Note:** For macOS, you need to allocate 2+ CPU and 4G+ Memory to Docker. For details, see [Docker for Mac configuration](https://docs.docker.com/docker-for-mac/#advanced).
 
 - [Docker](https://docs.docker.com/install/): 17.03 or later
-- [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl) 1.10 or later
+
+    > **Note:** [Legacy Docker Toolbox](https://docs.docker.com/toolbox/toolbox_install_mac/) users must migrate to [Docker for Mac](https://store.docker.com/editions/community/docker-ce-desktop-mac) by uninstalling Legacy Docker Toolbox and installing Docker for Mac, because DinD cannot run on Docker Toolbox and Docker Machine.
+
+- [Helm Client](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client): 2.8.2 or later
+- [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl): 1.10 or later
 
     > **Note:** The outputs of different versions of `kubectl` might be slightly different.
 
-- `md5sha1sum`
-    - For Linux, `md5sha1sum` is already installed by default.
-    - For macOS, make sure `md5sha1sum` is installed. If not, run `brew install md5sha1sum` to install it.
-
 ## Step 1: Deploy a Kubernetes cluster using DinD
 
-1. Use DinD to install and deploy a multiple-node Kubernetes cluster:
-
-    ```sh
-    $ wget https://cdn.rawgit.com/kubernetes-sigs/kubeadm-dind-cluster/64a2befa65ce23475158b65793e56d4bc1ae0a79/fixed/dind-cluster-v1.10.sh
-    $ chmod +x dind-cluster-v1.10.sh
-    $ CNI_PLUGIN="flannel" NUM_NODES=4 ./dind-cluster-v1.10.sh up
-    ```
-
-    > **Note:** `CNI_PLUGIN=flannel` prevents issues with restarting docker. However, if you have network issues preventing tidb startup, you can re-create the cluster without setting `CNI_PLUGIN`.
-    > **Note:** If you fail to pull the Docker images due to the firewall, you can try the following method (the Docker images used are pulled from [UCloud Docker Registry](https://docs.ucloud.cn/compute/uhub/index)):
-
-    ```sh
-    $ git clone https://github.com/pingcap/kubeadm-dind-cluster
-    $ cd kubeadm-dind-cluster
-    $ NUM_NODES=4 tools/multi_k8s_dind_cluster_manager.sh rebuild e2e-v1.10
-    ```
-
-2. After the DinD cluster bootstrap is done, use the following command to verify the Kubernetes cluster is up and running:
-
-    ```sh
-    $ kubectl get node,componentstatus
-    $ kubectl get po -n kube-system
-    ```
-
-3. Now the cluster is up and running, you need to install the Kubernetes package manager [Helm](https://helm.sh) into the cluster, which is used to deploy and manage TiDB Operator and TiDB clusters later.
-
-    ```sh
-    $ os=`uname -s| tr '[:upper:]' '[:lower:]'`
-    $ wget "https://storage.googleapis.com/kubernetes-helm/helm-v2.9.1-${os}-amd64.tar.gz"
-    $ tar xzf helm-v2.9.1-${os}-amd64.tar.gz
-    $ sudo mv ${os}-amd64/helm /usr/local/bin
-
-    $ git clone https://github.com/pingcap/tidb-operator
-    $ cd tidb-operator
-    $ kubectl apply -f manifests/tiller-rbac.yaml
-    $ helm init --service-account=tiller --upgrade
-    $ kubectl get po -n kube-system | grep tiller # verify Tiller is running
-    $ helm version # verify the Helm server is running
-    ```
-
-    > **Note:** If the tiller pod fails to start due to image pull failure because of the firewall, you can replace `helm init --service-account=tiller --upgrade` with the following command:
-    
-    ```
-    helm init --service-account=tiller --upgrade --tiller-image=uhub.ucloud.cn/pingcap/tiller:v2.9.1
-    ```
-
-## Step 2: Configure local volumes
-
-[LocalPersistentVolume](https://kubernetes.io/docs/concepts/storage/volumes/#local) is used to persist the PD/TiKV data. The [local persistent volume provisioner](https://github.com/kubernetes-incubator/external-storage/tree/master/local-volume) doesn't work out of the box in DinD, so you need to modify its deployment. And it doesn't support [dynamic provision](https://github.com/kubernetes/community/pull/1914) yet, so you need to manually mount disks or directories to mount points.
-
-To simplify this operation, use the following [scripts](../manifests/local-dind) to help configure the development environment:
-
 ```sh
-$ # create directories for local volumes
-$ ./manifests/local-dind/pv-hosts.sh
-$ # deploy local volume provisioner
-$ kubectl apply -f manifests/local-dind/local-volume-provisioner.yaml
-$ # wait local-volume-provisioner pods running
-$ kubectl get po -n kube-system -l app=local-volume-provisioner
-$ # verify pv created
-$ kubectl get pv
+$ git clone https://github.com/pingcap/tidb-operator
+$ cd tidb-operator
+$ manifests/local-dind/dind-cluster-v1.10.sh up
 ```
 
-## Step 3: Install TiDB Operator in the DinD Kubernetes cluster
+> **Note:** If the cluster fails to pull Docker images during the startup due to the firewall, you can set the environment variable `KUBE_REPO_PREFIX` to `uhub.ucloud.cn/pingcap` before running the script `dind-cluster-v1.10.sh` as follows (the Docker images used are pulled from [UCloud Docker Registry](https://docs.ucloud.cn/compute/uhub/index)):
+
+```
+$ KUBE_REPO_PREFIX=uhub.ucloud.cn/pingcap manifests/local-dind/dind-cluster-v1.10.sh up
+```
+
+## Step 2: Install TiDB Operator in the DinD Kubernetes cluster
 
 ```sh
 $ kubectl apply -f manifests/crd.yaml
@@ -97,15 +46,15 @@ NAME                             AGE
 tidbclusters.pingcap.com         1m
 
 $ # Install TiDB Operator into Kubernetes
-$ helm install charts/tidb-operator --name=tidb-operator --namespace=pingcap
+$ helm install charts/tidb-operator --name=tidb-operator --namespace=tidb-admin
 
 $ # wait operator running
-$ kubectl get po -n pingcap -l app=tidb-operator
+$ kubectl get po -n tidb-admin -l app=tidb-operator
 NAME                                       READY     STATUS    RESTARTS   AGE
 tidb-controller-manager-5cd94748c7-jlvfs   1/1       Running   0          1m
 ```
 
-## Step 4: Deploy a TiDB cluster in the DinD Kubernetes cluster
+## Step 3: Deploy a TiDB cluster in the DinD Kubernetes cluster
 
 ```sh
 $ helm install charts/tidb-cluster --name=tidb-cluster --namespace=tidb
@@ -224,21 +173,29 @@ $ kubectl get pv -l cluster.pingcap.com/namespace=tidb -o name | xargs -I {} kub
 $ kubectl delete pvc --namespace tidb --all
 ```
 
+## Stop and Re-start the Kubernetes cluster
+
+* If you want to stop the DinD Kubernetes cluster, run the following command:
+
+    ```sh
+    $ manifests/local-dind/dind-cluster-v1.10.sh stop
+
+    ```
+
+* If you want to restart the DinD Kubernetes after you stop it, run the following command:
+
+    ```
+    $ manifests/local-dind/dind-cluster-v1.10.sh start
+    ```
+
 ## Destroy the DinD Kubernetes cluster
 
-If you do not need the DinD Kubernetes cluster anymore, change to the directory where you put `dind-cluster-v1.10.sh` and run the following command:
+If you want to clean up the DinD Kubernetes cluster and bring up a new cluster, run the following commands:
 
 ```sh
-$ ./dind-cluster-v1.10.sh clean
+$ manifests/local-dind/dind-cluster-v1.10.sh clean
+$ sudo rm -rf data/kube-node-*
+$ manifests/local-dind/dind-cluster-v1.10.sh up
 ```
 
-## Re-start Kubernetes cluster and the TiDB Operator and Cluster
-
-Once you have a working DinD setup, you can follow this workflow:
-
-```sh
-$ ./dind-cluster-v1.10.sh down
-# Run the up command the same way you did previously
-$ NUM_NODES=4 CNI_PLUGIN=flannel ./dind-cluster-v1.10.sh up
-$ hack/dind-run-operators.sh
-```
+> **Warning:** You must clean the data after you destroy the DinD Kubernetes cluster, otherwise the TiDB cluster would fail to start when you bring it up again.

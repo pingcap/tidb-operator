@@ -273,6 +273,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 						},
 					},
 					RestartPolicy: corev1.RestartPolicyAlways,
+					Tolerations:   tc.Spec.TiDB.Tolerations,
 					Volumes:       vols,
 				},
 			},
