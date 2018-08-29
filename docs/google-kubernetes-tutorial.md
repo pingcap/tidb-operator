@@ -135,7 +135,7 @@ If you like, you can check your connection to TiDB:
 
 In addition to connecting to TiDB within the Kubernetes cluster, you can also establish a tunnel between the TiDB service and your Cloud Shell. This is recommended only for debugging purposes, because the tunnel will not automatically be transferred if your Cloud Shell restarts. To establish a tunnel:
 
-	kubectl -n tidb port-forward svc/demo-tidb 4000:4000 &
+	kubectl -n tidb port-forward demo-tidb-0 4000:4000 &
 
 From your Cloud Shell:
 
