@@ -14,7 +14,8 @@ This tutorial is designed to be [run in Google Cloud Shell](https://console.clou
 - Install the Helm package manager for Kubernetes
 - Deploy the TiDB Operator
 - Deploy your first TiDB cluster
-- Connect to TiDB
+- Connect to the TiDB cluster
+- Scale out the TiDB cluster
 - Shut down the Kubernetes cluster (optional)
 
 ## Select a project
@@ -114,7 +115,7 @@ It will take a few minutes to launch. You can monitor the progress with:
 
 The TiDB cluster includes 2 TiDB pods, 3 TiKV pods, and 3 PD pods. When you see all pods `Running`, it's time to `Control + C` and proceed forward!
 
-## Connect to TiDB
+## Connect to the TiDB cluster
 
 There can be a small delay between the pod being up and running, and the service being available. You can watch list services available with:
 
@@ -132,7 +133,7 @@ If you like, you can check your connection to TiDB:
 
 	select tidb_version();
 
-In addition to connecting to TiDB within the Kubernetes cluster, you can also establish a tunnel between an individual pod and your Cloud Shell. This is recommended only for debugging purposes, because the tunnel will not automatically be transferred if `demo-tidb-0` fails, or your Cloud Shell restarts. To establish a tunnel:
+In addition to connecting to TiDB within the Kubernetes cluster, you can also establish a tunnel between the TiDB service and your Cloud Shell. This is recommended only for debugging purposes, because the tunnel will not automatically be transferred if your Cloud Shell restarts. To establish a tunnel:
 
 	kubectl -n tidb port-forward svc/demo-tidb 4000:4000 &
 
@@ -145,7 +146,7 @@ From your Cloud Shell:
 
 With a single command we can easily scale out the TiDB cluster. To scale out TiKV:
 
-	helm upgrade tidb charts/tidb-cluster --set tikv.replicas=5
+	helm upgrade tidb charts/tidb-cluster --set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd,tikv.replicas=5
 
 Now the number of TiKV pods is increased from the default 3 to 5. You can check it with:
 
