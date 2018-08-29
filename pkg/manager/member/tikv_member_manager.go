@@ -494,10 +494,10 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 
 	tc.Status.TiKV.Stores = tikvStores
 
-	if statefulSetInNormal(set) {
-		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-	} else {
+	if statefulSetIsUpgrading(set) {
 		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+	} else {
+		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 	}
 
 	return nil

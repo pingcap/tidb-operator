@@ -55,9 +55,15 @@ func annotationsMountVolume() (corev1.VolumeMount, corev1.Volume) {
 	return m, v
 }
 
-// statefulSetInNormal confirms whether the statefulSet is normal phase
-func statefulSetInNormal(set *apps.StatefulSet) bool {
-	return set.Status.CurrentRevision == set.Status.UpdateRevision && set.Generation <= *set.Status.ObservedGeneration
+// statefulSetIsUpgrading confirms whether the statefulSet is upgrading phase
+func statefulSetIsUpgrading(set *apps.StatefulSet) bool {
+	if set.Status.CurrentRevision != set.Status.UpdateRevision {
+		return true
+	}
+	if set.Generation > *set.Status.ObservedGeneration && *set.Spec.Replicas == set.Status.Replicas {
+		return true
+	}
+	return false
 }
 
 // SetLastAppliedConfigAnnotation set last applied config info to Statefulset's annotation

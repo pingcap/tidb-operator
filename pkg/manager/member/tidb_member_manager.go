@@ -287,10 +287,10 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	tc.Status.TiDB.StatefulSet = &set.Status
 
-	if statefulSetInNormal(set) {
-		tc.Status.TiDB.Phase = v1alpha1.NormalPhase
-	} else {
+	if statefulSetIsUpgrading(set) {
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
+	} else {
+		tc.Status.TiDB.Phase = v1alpha1.NormalPhase
 	}
 	return nil
 }

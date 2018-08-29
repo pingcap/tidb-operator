@@ -253,10 +253,10 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 
 	tc.Status.PD.Members = pdStatus
 
-	if statefulSetInNormal(set) {
-		tc.Status.PD.Phase = v1alpha1.NormalPhase
-	} else {
+	if statefulSetIsUpgrading(set) {
 		tc.Status.PD.Phase = v1alpha1.UpgradePhase
+	} else {
+		tc.Status.PD.Phase = v1alpha1.NormalPhase
 	}
 
 	return nil
