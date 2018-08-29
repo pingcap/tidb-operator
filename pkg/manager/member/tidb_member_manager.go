@@ -75,7 +75,7 @@ func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1alpha1.TidbClu
 		return err
 	}
 
-	equal, err := EqualService(newSvc, oldSvc)
+	equal, err := serviceEqual(newSvc, oldSvc)
 	if err != nil {
 		return err
 	}
@@ -124,11 +124,10 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return err
 	}
 
-	equal, err := EqualStatefulSet(*oldTiDBSet, *newTiDBSet)
 	if err != nil {
 		return err
 	}
-	if !equal {
+	if !statefulSetEqual(*oldTiDBSet, *newTiDBSet) {
 		set := *oldTiDBSet
 		set.Spec.Template = newTiDBSet.Spec.Template
 		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
@@ -289,21 +288,16 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	tc.Status.TiDB.StatefulSet = &set.Status
 
-	if statefulSetInNormal(set) {
-		tc.Status.TiDB.Phase = v1alpha1.NormalPhase
-	} else {
+	if statefulSetIsUpgrading(set) {
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
+	} else {
+		tc.Status.TiDB.Phase = v1alpha1.NormalPhase
 	}
 	return nil
 }
 
 func (tmm *tidbMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-
-	upgrade, err := tmm.needUpgrade(tc, newSet, oldSet)
-	if err != nil {
-		return err
-	}
-	if upgrade {
+	if tmm.needUpgrade(tc, newSet, oldSet) {
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
 	} else {
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
@@ -315,18 +309,14 @@ func (tmm *tidbMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 	return nil
 }
 
-func (tmm *tidbMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) (bool, error) {
+func (tmm *tidbMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) bool {
 	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
-		return false, nil
+		return false
 	}
 
 	if tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-		return false, nil
+		return false
 	}
 
-	same, err := EqualTemplate(newSet.Spec.Template, oldSet.Spec.Template)
-	if err != nil {
-		return false, err
-	}
-	return !same, nil
+	return !templateEqual(newSet.Spec.Template, oldSet.Spec.Template)
 }
