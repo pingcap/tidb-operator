@@ -108,28 +108,31 @@ type TidbClusterStatus struct {
 // PDSpec contains details of PD member
 type PDSpec struct {
 	ContainerSpec
-	Replicas             int32             `json:"replicas"`
-	NodeSelector         map[string]string `json:"nodeSelector,omitempty"`
-	NodeSelectorRequired bool              `json:"nodeSelectorRequired,omitempty"`
-	StorageClassName     string            `json:"storageClassName,omitempty"`
+	Replicas             int32               `json:"replicas"`
+	NodeSelector         map[string]string   `json:"nodeSelector,omitempty"`
+	NodeSelectorRequired bool                `json:"nodeSelectorRequired,omitempty"`
+	StorageClassName     string              `json:"storageClassName,omitempty"`
+	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
 // TiDBSpec contains details of PD member
 type TiDBSpec struct {
 	ContainerSpec
-	Replicas             int32             `json:"replicas"`
-	NodeSelector         map[string]string `json:"nodeSelector,omitempty"`
-	NodeSelectorRequired bool              `json:"nodeSelectorRequired,omitempty"`
-	StorageClassName     string            `json:"storageClassName,omitempty"`
+	Replicas             int32               `json:"replicas"`
+	NodeSelector         map[string]string   `json:"nodeSelector,omitempty"`
+	NodeSelectorRequired bool                `json:"nodeSelectorRequired,omitempty"`
+	StorageClassName     string              `json:"storageClassName,omitempty"`
+	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
 // TiKVSpec contains details of PD member
 type TiKVSpec struct {
 	ContainerSpec
-	Replicas             int32             `json:"replicas"`
-	NodeSelector         map[string]string `json:"nodeSelector,omitempty"`
-	NodeSelectorRequired bool              `json:"nodeSelectorRequired,omitempty"`
-	StorageClassName     string            `json:"storageClassName,omitempty"`
+	Replicas             int32               `json:"replicas"`
+	NodeSelector         map[string]string   `json:"nodeSelector,omitempty"`
+	NodeSelectorRequired bool                `json:"nodeSelectorRequired,omitempty"`
+	StorageClassName     string              `json:"storageClassName,omitempty"`
+	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec

@@ -55,9 +55,15 @@ func annotationsMountVolume() (corev1.VolumeMount, corev1.Volume) {
 	return m, v
 }
 
-// statefulSetInNormal confirms whether the statefulSet is normal phase
-func statefulSetInNormal(set *apps.StatefulSet) bool {
-	return set.Status.CurrentRevision == set.Status.UpdateRevision && set.Generation <= *set.Status.ObservedGeneration
+// statefulSetIsUpgrading confirms whether the statefulSet is upgrading phase
+func statefulSetIsUpgrading(set *apps.StatefulSet) bool {
+	if set.Status.CurrentRevision != set.Status.UpdateRevision {
+		return true
+	}
+	if set.Generation > *set.Status.ObservedGeneration && *set.Spec.Replicas == set.Status.Replicas {
+		return true
+	}
+	return false
 }
 
 // SetLastAppliedConfigAnnotation set last applied config info to Statefulset's annotation
@@ -115,8 +121,8 @@ func encode(obj interface{}) (string, error) {
 	return string(b), nil
 }
 
-// EqualStatefulSet compare the new Statefulset's spec with old Statefulset's last applied config
-func EqualStatefulSet(new apps.StatefulSet, old apps.StatefulSet) bool {
+// statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
+func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 	oldConfig := apps.StatefulSetSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
@@ -129,8 +135,8 @@ func EqualStatefulSet(new apps.StatefulSet, old apps.StatefulSet) bool {
 	return false
 }
 
-// EqualTemplate compare the new podTemplateSpec's spec with old podTemplateSpec's last applied config
-func EqualTemplate(new corev1.PodTemplateSpec, old corev1.PodTemplateSpec) bool {
+// templateEqual compares the new podTemplateSpec's spec with old podTemplateSpec's last applied config
+func templateEqual(new corev1.PodTemplateSpec, old corev1.PodTemplateSpec) bool {
 	oldConfig := corev1.PodSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
@@ -156,8 +162,8 @@ func SetServiceLastAppliedConfigAnnotation(svc *corev1.Service) error {
 	return nil
 }
 
-// EqualService compare the new Service's spec with old Service's last applied config
-func EqualService(new, old *corev1.Service) (bool, error) {
+// serviceEqual compares the new Service's spec with old Service's last applied config
+func serviceEqual(new, old *corev1.Service) (bool, error) {
 	oldSpec := corev1.ServiceSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldSpec)

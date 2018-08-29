@@ -112,14 +112,7 @@ $ make test
 
 For e2e tests, we recommend DinD Kubernetes environment. Follow [this guide](./local-dind-tutorial.md) to spin up a local DinD Kubernetes cluster.
 
-You should also deploy a registry in DinD, so you can push and use your Docker images in DinD Kubernetes.
-
-```sh
-$ ./manifests/local-dind/deploy-registry.sh
-$ kubectl port-forward svc/registry-proxy 5000:5000 --namespace=kube-system
-```
-
-Then you can build and push Docker images to the DinD registry.
+Then you can build and push Docker images to the DinD Docker registry. The DinD Docker registry is available as `localhost:5000` both on the host machine and inside the DinD.
 
 ```sh
 $ make docker-push

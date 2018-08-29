@@ -233,8 +233,8 @@ if [[ ${IP_MODE} = "ipv6" ]]; then
     DEFAULT_POD_NETWORK_CIDR="fd00:10:20::/72"
     USE_HAIRPIN="${USE_HAIRPIN:-true}"  # Default is to use hairpin for IPv6
     if [[ ${DIND_ALLOW_AAAA_USE} && ${GCE_HOSTED} ]]; then
-	echo "ERROR! GCE does not support use of IPv6 for external addresses - aborting."
-	exit 1
+        echo "ERROR! GCE does not support use of IPv6 for external addresses - aborting."
+        exit 1
     fi
 else
     dind::find-or-create-ipv4-dind-subnet
@@ -245,11 +245,11 @@ else
     DEFAULT_POD_NETWORK_CIDR="10.244.0.0/16"
     USE_HAIRPIN="${USE_HAIRPIN:-false}"  # Disabled for IPv4, as issue with Virtlet networking
     if [[ ${DIND_ALLOW_AAAA_USE} ]]; then
-	echo "WARNING! The DIND_ALLOW_AAAA_USE option is for IPv6 mode - ignoring setting."
-	DIND_ALLOW_AAAA_USE=
+        echo "WARNING! The DIND_ALLOW_AAAA_USE option is for IPv6 mode - ignoring setting."
+        DIND_ALLOW_AAAA_USE=
     fi
     if [[ ${CNI_PLUGIN} = "calico" || ${CNI_PLUGIN} = "calico-kdd" ]]; then
-	DEFAULT_POD_NETWORK_CIDR="192.168.0.0/16"
+        DEFAULT_POD_NETWORK_CIDR="192.168.0.0/16"
     fi
 fi
 dns_prefix="$(echo ${SERVICE_CIDR} | sed 's,/.*,,')"
@@ -277,12 +277,12 @@ if [[ ${IP_MODE} = "ipv6" ]]; then
 
     # Will be replacing lowest byte with node ID, so pull off last byte and colon
     if [[ ${num_colons} -gt ${need_zero_pads} ]]; then
-	POD_NET_PREFIX=${POD_NET_PREFIX::-3}
+        POD_NET_PREFIX=${POD_NET_PREFIX::-3}
     fi
     # Add in zeros to pad 16 bits at a time, up to the padding needed, which is
     # need_zero_pads - num_colons.
     while [ ${num_colons} -lt ${need_zero_pads} ]; do
-	POD_NET_PREFIX+="0:"
+        POD_NET_PREFIX+="0:"
         num_colons+=1
     done
 elif [[ ${CNI_PLUGIN} = "bridge" || ${CNI_PLUGIN} = "ptp" ]]; then # IPv4, bridge or ptp
@@ -300,7 +300,7 @@ BUILD_KUBEADM="${BUILD_KUBEADM:-}"
 BUILD_HYPERKUBE="${BUILD_HYPERKUBE:-}"
 KUBEADM_SOURCE="${KUBEADM_SOURCE-}"
 HYPERKUBE_SOURCE="${HYPERKUBE_SOURCE-}"
-NUM_NODES=${NUM_NODES:-2}
+NUM_NODES=${NUM_NODES:-3}
 EXTRA_PORTS="${EXTRA_PORTS:-}"
 LOCAL_KUBECTL_VERSION=${LOCAL_KUBECTL_VERSION:-}
 KUBECTL_DIR="${KUBECTL_DIR:-${HOME}/.kubeadm-dind-cluster}"
@@ -311,7 +311,6 @@ DIND_NO_PARALLEL_E2E="${DIND_NO_PARALLEL_E2E:-}"
 DNS_SERVICE="${DNS_SERVICE:-kube-dns}"
 APISERVER_PORT="${APISERVER_PORT:-8080}"
 REGISTRY_PORT="${REGISTRY_PORT:-5000}"
-TILLER_VERSION="${TILLER_VERSION:-v2.9.1}"
 PV_NUMS="${PV_NUMS:-4}"
 
 DIND_CA_CERT_URL="${DIND_CA_CERT_URL:-}"
@@ -685,16 +684,16 @@ function dind::ensure-volume {
 function dind::ensure-dns {
     if [[ ${IP_MODE} = "ipv6" ]]; then
         if ! docker inspect bind9 >&/dev/null; then
-	    local force_dns64_for=""
-	    if [[ ! ${DIND_ALLOW_AAAA_USE} ]]; then
-		# Normally, if have an AAAA record, it is used. This clause tells
-		# bind9 to do ignore AAAA records for the specified networks
-		# and/or addresses and lookup A records and synthesize new AAAA
-		# records. In this case, we select "any" networks that have AAAA
-		# records meaning we ALWAYS use A records and do NAT64.
-	        force_dns64_for="exclude { any; };"
-	    fi
-	    read -r -d '' bind9_conf <<BIND9_EOF
+            local force_dns64_for=""
+            if [[ ! ${DIND_ALLOW_AAAA_USE} ]]; then
+                # Normally, if have an AAAA record, it is used. This clause tells
+                # bind9 to do ignore AAAA records for the specified networks
+                # and/or addresses and lookup A records and synthesize new AAAA
+                # records. In this case, we select "any" networks that have AAAA
+                # records meaning we ALWAYS use A records and do NAT64.
+                force_dns64_for="exclude { any; };"
+            fi
+            read -r -d '' bind9_conf <<BIND9_EOF
 options {
     directory "/var/bind";
     allow-query { any; };
@@ -708,14 +707,14 @@ options {
     };
 };
 BIND9_EOF
-	    docker run -d --name bind9 --hostname bind9 --net "$(dind::net-name)" --label "dind-support" \
-		   --sysctl net.ipv6.conf.all.disable_ipv6=0 --sysctl net.ipv6.conf.all.forwarding=1 \
-		   --privileged=true --ip6 ${dns_server} --dns ${dns_server} \
-		   -e bind9_conf="${bind9_conf}" \
-		   resystit/bind9:latest /bin/sh -c 'echo "${bind9_conf}" >/named.conf && named -c /named.conf -g -u named' >/dev/null
-	    ipv4_addr="$(docker exec bind9 ip addr list eth0 | grep "inet" | awk '$1 == "inet" {print $2}')"
-	    docker exec bind9 ip addr del ${ipv4_addr} dev eth0
-	    docker exec bind9 ip -6 route add ${DNS64_PREFIX_CIDR} via ${LOCAL_NAT64_SERVER}
+            docker run -d --name bind9 --hostname bind9 --net "$(dind::net-name)" --label "dind-support" \
+                   --sysctl net.ipv6.conf.all.disable_ipv6=0 --sysctl net.ipv6.conf.all.forwarding=1 \
+                   --privileged=true --ip6 ${dns_server} --dns ${dns_server} \
+                   -e bind9_conf="${bind9_conf}" \
+                   resystit/bind9:latest /bin/sh -c 'echo "${bind9_conf}" >/named.conf && named -c /named.conf -g -u named' >/dev/null
+            ipv4_addr="$(docker exec bind9 ip addr list eth0 | grep "inet" | awk '$1 == "inet" {print $2}')"
+            docker exec bind9 ip addr del ${ipv4_addr} dev eth0
+            docker exec bind9 ip -6 route add ${DNS64_PREFIX_CIDR} via ${LOCAL_NAT64_SERVER}
         fi
     fi
 }
@@ -724,16 +723,16 @@ function dind::ensure-nat {
     if [[  ${IP_MODE} = "ipv6" ]]; then
         if ! docker ps | grep tayga >&/dev/null; then
             docker run -d --name tayga --hostname tayga --net "$(dind::net-name)" --label "dind-support" \
-		   --sysctl net.ipv6.conf.all.disable_ipv6=0 --sysctl net.ipv6.conf.all.forwarding=1 \
-		   --privileged=true --ip ${NAT64_V4_SUBNET_PREFIX}.0.200 --ip6 ${LOCAL_NAT64_SERVER} --dns ${REMOTE_DNS64_V4SERVER} --dns ${dns_server} \
-		   -e TAYGA_CONF_PREFIX=${DNS64_PREFIX_CIDR} -e TAYGA_CONF_IPV4_ADDR=${NAT64_V4_SUBNET_PREFIX}.0.200 \
-		   -e TAYGA_CONF_DYNAMIC_POOL=${NAT64_V4_SUBNET_PREFIX}.0.128/25 danehans/tayga:latest >/dev/null
-	    # Need to check/create, as "clean" may remove route
-	    local route="$(ip route | egrep "^${NAT64_V4_SUBNET_PREFIX}.0.128/25")"
-	    if [[ -z "${route}" ]]; then
-	        docker run --net=host --rm --privileged ${busybox_image} ip route add ${NAT64_V4_SUBNET_PREFIX}.0.128/25 via ${NAT64_V4_SUBNET_PREFIX}.0.200
-	    fi
-	fi
+                   --sysctl net.ipv6.conf.all.disable_ipv6=0 --sysctl net.ipv6.conf.all.forwarding=1 \
+                   --privileged=true --ip ${NAT64_V4_SUBNET_PREFIX}.0.200 --ip6 ${LOCAL_NAT64_SERVER} --dns ${REMOTE_DNS64_V4SERVER} --dns ${dns_server} \
+                   -e TAYGA_CONF_PREFIX=${DNS64_PREFIX_CIDR} -e TAYGA_CONF_IPV4_ADDR=${NAT64_V4_SUBNET_PREFIX}.0.200 \
+                   -e TAYGA_CONF_DYNAMIC_POOL=${NAT64_V4_SUBNET_PREFIX}.0.128/25 danehans/tayga:latest >/dev/null
+            # Need to check/create, as "clean" may remove route
+            local route="$(ip route | egrep "^${NAT64_V4_SUBNET_PREFIX}.0.128/25")"
+            if [[ -z "${route}" ]]; then
+                docker run --net=host --rm --privileged ${busybox_image} ip route add ${NAT64_V4_SUBNET_PREFIX}.0.128/25 via ${NAT64_V4_SUBNET_PREFIX}.0.200
+            fi
+        fi
     fi
 }
 
@@ -768,13 +767,13 @@ function dind::run {
 
       # For prefix, if node ID will be in the upper byte, push it over
       if [[ $((${POD_NET_SIZE} % 16)) -ne 0 ]]; then
-	  node_id=$(printf "%02x00\n" "${node_id}")
+          node_id=$(printf "%02x00\n" "${node_id}")
       else
-	  if [[ "${POD_NET_PREFIX: -1}" = ":" ]]; then
-	      node_id=$(printf "%x\n" "${node_id}")
-	  else
-	      node_id=$(printf "%02x\n" "${node_id}")  # In lower byte, so ensure two chars
-	  fi
+          if [[ "${POD_NET_PREFIX: -1}" = ":" ]]; then
+              node_id=$(printf "%x\n" "${node_id}")
+          else
+              node_id=$(printf "%02x\n" "${node_id}")  # In lower byte, so ensure two chars
+          fi
       fi
   fi
 
@@ -833,7 +832,7 @@ function dind::run {
 
   # Start the new container.
   docker run \
-	 -e IP_MODE="${IP_MODE}" \
+         -e IP_MODE="${IP_MODE}" \
          -e KUBEADM_SOURCE="${KUBEADM_SOURCE}" \
          -e HYPERKUBE_SOURCE="${HYPERKUBE_SOURCE}" \
          -d --privileged \
@@ -1173,11 +1172,11 @@ function dind::create-static-routes {
         dest="${POD_NET_PREFIX}${id}.0/24"
         gw=`docker exec ${dest_node} ip addr show eth0 | grep -w inet | awk '{ print $2 }' | sed 's,/.*,,'`
       else
-	instance=$(printf "%02x" ${id})
-	if [[ $((${POD_NET_SIZE} % 16)) -ne 0 ]]; then
-	  instance+="00" # Move node ID to upper byte
-	fi
-	dest="${POD_NET_PREFIX}${instance}::/${POD_NET_SIZE}"
+        instance=$(printf "%02x" ${id})
+        if [[ $((${POD_NET_SIZE} % 16)) -ne 0 ]]; then
+          instance+="00" # Move node ID to upper byte
+        fi
+        dest="${POD_NET_PREFIX}${instance}::/${POD_NET_SIZE}"
         gw=`docker exec ${dest_node} ip addr show eth0 | grep -w inet6 | grep -i global | head -1 | awk '{ print $2 }' | sed 's,/.*,,'`
       fi
       docker exec "${node}" ip route add "${dest}" via "${gw}"
@@ -1845,8 +1844,9 @@ function dind::run_tiller {
     dind::step "Deploying tiller"
     hash helm 2>/dev/null
     if [[ $? -eq 0 ]];then
+        helm_version=$(helm version -c --template '{{.Client.SemVer}}')
         if [[ -n ${KUBE_REPO_PREFIX} ]];then
-            helm init --tiller-image ${KUBE_REPO_PREFIX}/tiller:${TILLER_VERSION}
+            helm init --tiller-image ${KUBE_REPO_PREFIX}/tiller:${helm_version}
         else
             helm init
         fi
@@ -1906,10 +1906,10 @@ case "${1:-}" in
       docker pull "${DIND_IMAGE}" >&2
     fi
     dind::prepare-sys-mounts
-    dind::ensure-kubectl
+    # dind::ensure-kubectl       # users must install kubectl themselves
     dind::up
     dind::run_registry
-    dind::run_tiller
+    dind::run_tiller            # users must install helm themselves
     dind::run_local_volume_provisioner
     dind::create_e2e_env
     ;;

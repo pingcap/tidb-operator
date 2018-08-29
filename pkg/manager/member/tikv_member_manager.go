@@ -118,7 +118,7 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 		return err
 	}
 
-	equal, err := EqualService(newSvc, oldSvc)
+	equal, err := serviceEqual(newSvc, oldSvc)
 	if err != nil {
 		return err
 	}
@@ -167,7 +167,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 
-	if !EqualTemplate(newSet.Spec.Template, oldSet.Spec.Template) {
+	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
 		if err = tkmm.tikvUpgrader.Upgrade(tc, oldSet, newSet); err != nil {
 			return err
 		}
@@ -185,7 +185,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		}
 	}
 
-	if !EqualStatefulSet(*newSet, *oldSet) {
+	if !statefulSetEqual(*newSet, *oldSet) {
 		set := *oldSet
 		set.Spec.Template = newSet.Spec.Template
 		*set.Spec.Replicas = *newSet.Spec.Replicas
@@ -344,6 +344,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 						},
 					},
 					RestartPolicy: corev1.RestartPolicyAlways,
+					Tolerations:   tc.Spec.TiKV.Tolerations,
 					Volumes:       vols,
 				},
 			},
@@ -479,10 +480,10 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 
 	tc.Status.TiKV.Stores = tikvStores
 
-	if statefulSetInNormal(set) {
-		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-	} else {
+	if statefulSetIsUpgrading(set) {
 		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+	} else {
+		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 	}
 
 	return nil

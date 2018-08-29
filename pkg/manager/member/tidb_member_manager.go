@@ -78,7 +78,7 @@ func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1alpha1.TidbClu
 		return err
 	}
 
-	equal, err := EqualService(newSvc, oldSvc)
+	equal, err := serviceEqual(newSvc, oldSvc)
 	if err != nil {
 		return err
 	}
@@ -123,13 +123,13 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return err
 	}
 
-	if !EqualTemplate(newTiDBSet.Spec.Template, oldTiDBSet.Spec.Template) {
+	if !templateEqual(newTiDBSet.Spec.Template, oldTiDBSet.Spec.Template) {
 		if err = tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
 			return err
 		}
 	}
 
-	if !EqualStatefulSet(*oldTiDBSet, *newTiDBSet) {
+	if !statefulSetEqual(*oldTiDBSet, *newTiDBSet) {
 		set := *oldTiDBSet
 		set.Spec.Template = newTiDBSet.Spec.Template
 		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
@@ -275,6 +275,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 						},
 					},
 					RestartPolicy: corev1.RestartPolicyAlways,
+					Tolerations:   tc.Spec.TiDB.Tolerations,
 					Volumes:       vols,
 				},
 			},
@@ -289,10 +290,10 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	tc.Status.TiDB.StatefulSet = &set.Status
 
-	if statefulSetInNormal(set) {
-		tc.Status.TiDB.Phase = v1alpha1.NormalPhase
-	} else {
+	if statefulSetIsUpgrading(set) {
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
+	} else {
+		tc.Status.TiDB.Phase = v1alpha1.NormalPhase
 	}
 	return nil
 }
