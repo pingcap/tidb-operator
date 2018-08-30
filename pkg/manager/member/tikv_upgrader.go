@@ -20,7 +20,7 @@ import (
 
 type tikvUpgrader struct{}
 
-// NewTiKVUpgrader return a tikv Upgrader
+// NewTiKVUpgrader returns a tikv Upgrader
 func NewTiKVUpgrader() Upgrader {
 	return &tikvUpgrader{}
 }
@@ -40,7 +40,7 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 
 type fakeTiKVUpgrader struct{}
 
-// NewFakeTiKVUpgrader return a fake tikv upgrader
+// NewFakeTiKVUpgrader returns a fake tikv upgrader
 func NewFakeTiKVUpgrader() Upgrader {
 	return &fakeTiKVUpgrader{}
 }

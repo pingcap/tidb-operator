@@ -30,7 +30,8 @@ func (pu *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 	return nil
 }
 
-type fakePDUpgrader struct{}
+type fakePDUpgrader struct {
+}
 
 // NewFakePDUpgrader returns a fakePDUpgrader
 func NewFakePDUpgrader() Upgrader {

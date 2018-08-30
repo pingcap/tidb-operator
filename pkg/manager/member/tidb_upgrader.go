@@ -20,7 +20,7 @@ import (
 
 type tidbUpgrader struct{}
 
-// NewTiDBUpgrader return a tidb Upgrader
+// NewTiDBUpgrader returns a tidb Upgrader
 func NewTiDBUpgrader() Upgrader {
 	return &tidbUpgrader{}
 }
@@ -40,7 +40,7 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 
 type fakeTiDBUpgrader struct{}
 
-// NewFakeTiDBUpgrader return a fake tidb upgrader
+// NewFakeTiDBUpgrader returns a fake tidb upgrader
 func NewFakeTiDBUpgrader() Upgrader {
 	return &fakeTiDBUpgrader{}
 }
