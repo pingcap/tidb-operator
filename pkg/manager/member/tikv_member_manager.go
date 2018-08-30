@@ -168,7 +168,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	}
 
 	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
-		if err = tkmm.tikvUpgrader.Upgrade(tc, oldSet, newSet); err != nil {
+		if err := tkmm.tikvUpgrader.Upgrade(tc, oldSet, newSet); err != nil {
 			return err
 		}
 	}
@@ -526,7 +526,7 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(pdClient controller.PDClien
 			return err
 		}
 		if updated {
-			glog.Infof("Pod: [%s/%s] set labels successfully,labels: %v ", ns, podName, nodeName, ls)
+			glog.Infof("Pod: [%s/%s] set labels successfully,labels: %v ", ns, podName, ls)
 		}
 	}
 	return nil

@@ -45,6 +45,7 @@ func TestTiKVUpgrader_Upgrade(t *testing.T) {
 		newSet := oldSet.DeepCopy()
 		SetLastAppliedConfigAnnotation(oldSet)
 		newSet.Spec.Template.Spec.Containers[0].Image = "tikv-test-images:v2"
+
 		err := upgrader.Upgrade(tc, oldSet, newSet)
 		g.Expect(err).NotTo(HaveOccurred())
 		if test.pdUpgrading {

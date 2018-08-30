@@ -124,7 +124,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	}
 
 	if !templateEqual(newTiDBSet.Spec.Template, oldTiDBSet.Spec.Template) {
-		if err = tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
+		if err := tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
 			return err
 		}
 	}
