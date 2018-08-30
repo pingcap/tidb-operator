@@ -28,9 +28,10 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcase struct {
-		name          string
-		pdUpgrading   bool
-		tikvUpgrading bool
+		name                    string
+		pdUpgrading             bool
+		tikvUpgrading           bool
+		getLastAppliedConfigErr bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -49,10 +50,20 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 		}
 		oldSet := newStatefulSetForTiDBUpgrader()
 		newSet := oldSet.DeepCopy()
-		SetLastAppliedConfigAnnotation(oldSet)
+		if test.getLastAppliedConfigErr {
+			oldSet.SetAnnotations(map[string]string{LastAppliedConfigAnnotation: "fake apply config"})
+		} else {
+			SetLastAppliedConfigAnnotation(oldSet)
+		}
 		newSet.Spec.Template.Spec.Containers[0].Image = "tidb-test-images:v2"
 
 		err := upgrader.Upgrade(tc, oldSet, newSet)
+		if test.getLastAppliedConfigErr {
+			g.Expect(err).To(HaveOccurred())
+			g.Expect(tc.Status.TiDB.Phase).NotTo(Equal(v1alpha1.UpgradePhase))
+			return
+		}
+
 		g.Expect(err).NotTo(HaveOccurred())
 		if test.pdUpgrading || test.tikvUpgrading {
 			g.Expect(newSet.Spec.Template.Spec).To(Equal(oldSet.Spec.Template.Spec))
@@ -63,9 +74,10 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 	}
 
 	tests := []*testcase{
-		{name: "pd is upgrading", pdUpgrading: true, tikvUpgrading: false},
-		{name: "tikv is upgrading", pdUpgrading: false, tikvUpgrading: true},
-		{name: "normal", pdUpgrading: false, tikvUpgrading: false},
+		{name: "normal", pdUpgrading: false, tikvUpgrading: false, getLastAppliedConfigErr: false},
+		{name: "pd is upgrading", pdUpgrading: true, tikvUpgrading: false, getLastAppliedConfigErr: false},
+		{name: "tikv is upgrading", pdUpgrading: false, tikvUpgrading: true, getLastAppliedConfigErr: false},
+		{name: "get apply config error", pdUpgrading: true, tikvUpgrading: false, getLastAppliedConfigErr: true},
 	}
 
 	for _, test := range tests {
