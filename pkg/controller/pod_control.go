@@ -22,8 +22,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
@@ -34,11 +36,13 @@ type PodControlInterface interface {
 	// TODO change this to UpdatePod
 	UpdateMetaInfo(*v1alpha1.TidbCluster, *corev1.Pod) error
 	DeletePod(*v1alpha1.TidbCluster, *corev1.Pod) error
+	UpdatePod(*v1alpha1.TidbCluster, *corev1.Pod) error
 }
 
 type realPodControl struct {
 	kubeCli   kubernetes.Interface
 	pdControl PDControlInterface
+	podLister corelisters.PodLister
 	recorder  record.EventRecorder
 }
 
@@ -46,13 +50,41 @@ type realPodControl struct {
 func NewRealPodControl(
 	kubeCli kubernetes.Interface,
 	pdControl PDControlInterface,
+	podLister corelisters.PodLister,
 	recorder record.EventRecorder,
 ) PodControlInterface {
 	return &realPodControl{
 		kubeCli:   kubeCli,
 		pdControl: pdControl,
+		podLister: podLister,
 		recorder:  recorder,
 	}
+}
+
+func (rpc *realPodControl) UpdatePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+	ns := tc.GetNamespace()
+	podName := pod.GetName()
+
+	// don't wait due to limited number of clients, but backoff after the default number of steps
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		_, updateErr := rpc.kubeCli.CoreV1().Pods(ns).Update(pod)
+		if updateErr == nil {
+			glog.Infof("Pod: [%s/%s] updated successfully", ns, podName)
+			return nil
+		}
+		glog.Errorf("failed to update Pod: [%s/%s], error: %v", ns, podName, updateErr)
+
+		if updated, err := rpc.podLister.Pods(ns).Get(podName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			pod = updated.DeepCopy()
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated Pod %s/%s from lister: %v", ns, podName, err))
+		}
+
+		return updateErr
+	})
+	rpc.recordPodEvent("update", tc, podName, err)
+	return err
 }
 
 func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
@@ -269,6 +301,16 @@ func (fpc *FakePodControl) DeletePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) 
 	}
 
 	return fpc.PodIndexer.Delete(pod)
+}
+
+func (fpc *FakePodControl) UpdatePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+	defer fpc.updatePodTracker.inc()
+	if fpc.updatePodTracker.errorReady() {
+		defer fpc.updatePodTracker.reset()
+		return fpc.updatePodTracker.err
+	}
+
+	return fpc.PodIndexer.Update(pod)
 }
 
 var _ PodControlInterface = &FakePodControl{}

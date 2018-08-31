@@ -392,9 +392,12 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
+	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
+	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
+	podControl := controller.NewFakePodControl(podInformer)
 	pdControl := controller.NewFakePDControl()
 	pdScaler := NewFakePDScaler()
 	autoFailover := true
@@ -406,6 +409,9 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 		svcControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
+		podInformer.Lister(),
+		podControl,
+		pvcInformer.Lister(),
 		pdScaler,
 		autoFailover,
 		pdFailover,

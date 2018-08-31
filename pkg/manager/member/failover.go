@@ -76,10 +76,7 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			healthCount++
 		}
 	}
-	if healthCount < int(tc.Status.PD.StatefulSet.Replicas/2+1) {
-		return fmt.Errorf("TidbCluster: %s/%s's pd cluster is not health: %d/%d, can't failover",
-			ns, tcName, healthCount, tc.Spec.PD.Replicas)
-	}
+	inQuorum := healthCount > int(tc.Spec.PD.Replicas/2)
 
 	notDeletedCount := 0
 	for _, failureMember := range tc.Status.PD.FailureMembers {
@@ -93,6 +90,10 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		deadline := pdMember.LastTransitionTime.Add(pf.pdFailoverPeriod)
 		_, exist := tc.Status.PD.FailureMembers[podName]
 		if !pdMember.Health && time.Now().After(deadline) && !exist && notDeletedCount == 0 {
+			if !inQuorum {
+				return fmt.Errorf("TidbCluster: %s/%s's pd cluster is not health: %d/%d, can't failover",
+					ns, tcName, healthCount, tc.Spec.PD.Replicas)
+			}
 			err := pf.markThisMemberAsFailure(tc, pdMember)
 			if err != nil {
 				return err

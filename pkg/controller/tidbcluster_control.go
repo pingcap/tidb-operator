@@ -66,7 +66,7 @@ func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) (
 		var updateErr error
 		updateTC, updateErr = rtc.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 		if updateErr == nil {
-			glog.V(4).Infof("TidbCluster: [%s/%s] updated successfully", ns, tcName)
+			glog.Infof("TidbCluster: [%s/%s] updated successfully", ns, tcName)
 			return nil
 		}
 		glog.Errorf("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, updateErr)
