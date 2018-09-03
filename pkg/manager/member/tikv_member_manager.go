@@ -38,14 +38,15 @@ import (
 
 // tikvMemberManager implements manager.Manager.
 type tikvMemberManager struct {
-	setControl controller.StatefulSetControlInterface
-	svcControl controller.ServiceControlInterface
-	pdControl  controller.PDControlInterface
-	setLister  v1beta1.StatefulSetLister
-	svcLister  corelisters.ServiceLister
-	podLister  corelisters.PodLister
-	nodeLister corelisters.NodeLister
-	tikvScaler Scaler
+	setControl   controller.StatefulSetControlInterface
+	svcControl   controller.ServiceControlInterface
+	pdControl    controller.PDControlInterface
+	setLister    v1beta1.StatefulSetLister
+	svcLister    corelisters.ServiceLister
+	podLister    corelisters.PodLister
+	nodeLister   corelisters.NodeLister
+	tikvScaler   Scaler
+	tikvUpgrader Upgrader
 }
 
 // NewTiKVMemberManager returns a *tikvMemberManager
@@ -56,16 +57,18 @@ func NewTiKVMemberManager(pdControl controller.PDControlInterface,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	nodeLister corelisters.NodeLister,
-	tikvScaler Scaler) manager.Manager {
+	tikvScaler Scaler,
+	tikvUpgrader Upgrader) manager.Manager {
 	kvmm := tikvMemberManager{
-		pdControl:  pdControl,
-		podLister:  podLister,
-		nodeLister: nodeLister,
-		setControl: setControl,
-		svcControl: svcControl,
-		setLister:  setLister,
-		svcLister:  svcLister,
-		tikvScaler: tikvScaler,
+		pdControl:    pdControl,
+		podLister:    podLister,
+		nodeLister:   nodeLister,
+		setControl:   setControl,
+		svcControl:   svcControl,
+		setLister:    setLister,
+		svcLister:    svcLister,
+		tikvScaler:   tikvScaler,
+		tikvUpgrader: tikvUpgrader,
 	}
 	return &kvmm
 }
@@ -164,8 +167,10 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 
-	if err = tkmm.upgrade(tc, oldSet, newSet); err != nil {
-		return err
+	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
+		if err := tkmm.tikvUpgrader.Upgrade(tc, oldSet, newSet); err != nil {
+			return err
+		}
 	}
 
 	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
@@ -399,26 +404,6 @@ func (tkmm *tikvMemberManager) volumeClaimTemplate(q resource.Quantity, metaName
 func (tkmm *tikvMemberManager) labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
 	tcName := tc.GetName()
 	return label.New().Cluster(tcName).TiKV()
-}
-
-func (tkmm *tikvMemberManager) upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	if tkmm.needUpgrade(tc, newSet, oldSet) {
-		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-	} else {
-		_, podSpec, err := GetLastAppliedConfig(oldSet)
-		if err != nil {
-			return err
-		}
-		newSet.Spec.Template.Spec = *podSpec
-	}
-	return nil
-}
-
-func (tkmm *tikvMemberManager) needUpgrade(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) bool {
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
-		return false
-	}
-	return !templateEqual(newSet.Spec.Template, oldSet.Spec.Template)
 }
 
 func (tkmm *tikvMemberManager) needReduce(tc *v1alpha1.TidbCluster, oldReplicas int32) bool {

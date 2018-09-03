@@ -251,6 +251,8 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	pdUpgrade := mm.NewPDUpgrader()
+	tikvUpgrader := mm.NewTiKVUpgrader()
+	tidbUpgrader := mm.NewTiDBUpgrader()
 
 	tcc.control = NewDefaultTidbClusterControl(
 		NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
@@ -272,6 +274,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			podInformer.Lister(),
 			nodeInformer.Lister(),
 			tikvScaler,
+			tikvUpgrader,
 		),
 		mm.NewTiDBMemberManager(
 			controller.NewRealStatefuSetControl(
@@ -282,6 +285,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			svcControl,
 			setInformer.Lister(),
 			svcInformer.Lister(),
+			tidbUpgrader,
 		),
 		meta.NewReclaimPolicyManager(
 			pvcInformer.Lister(),
