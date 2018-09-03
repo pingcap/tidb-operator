@@ -402,6 +402,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	pdScaler := NewFakePDScaler()
 	autoFailover := true
 	pdFailover := NewFakePDFailover()
+	pdUpgrader := NewFakePDUpgrader()
 
 	return &pdMemberManager{
 		pdControl,
@@ -413,6 +414,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 		podControl,
 		pvcInformer.Lister(),
 		pdScaler,
+		pdUpgrader,
 		autoFailover,
 		pdFailover,
 	}, setControl, svcControl, pdControl

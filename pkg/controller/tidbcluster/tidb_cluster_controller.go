@@ -96,6 +96,7 @@ func NewController(
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	pdFailover := mm.NewPDFailover(cli, tcControl, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister())
+	pdUpgrader := mm.NewPDUpgrader()
 
 	tcc := &Controller{
 		kubeClient: kubeCli,
@@ -112,6 +113,7 @@ func NewController(
 				podControl,
 				pvcInformer.Lister(),
 				pdScaler,
+				pdUpgrader,
 				autoFailover,
 				pdFailover,
 			),
