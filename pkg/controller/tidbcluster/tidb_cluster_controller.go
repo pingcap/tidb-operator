@@ -70,6 +70,8 @@ func NewController(
 	cli versioned.Interface,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
+	autoFailover bool,
+	tidbFailoverPeriod time.Duration,
 ) *Controller {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
@@ -85,7 +87,9 @@ func NewController(
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 
+	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
 	pdControl := controller.NewDefaultPDControl()
+	tidbControl := controller.NewDefaultTiDBControl()
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), recorder)
@@ -96,6 +100,7 @@ func NewController(
 	pdUpgrader := mm.NewPDUpgrader()
 	tikvUpgrader := mm.NewTiKVUpgrader()
 	tidbUpgrader := mm.NewTiDBUpgrader()
+	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod, tcControl)
 
 	tcc := &Controller{
 		kubeClient: kubeCli,
@@ -125,9 +130,12 @@ func NewController(
 			mm.NewTiDBMemberManager(
 				setControl,
 				svcControl,
+				tidbControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				tidbUpgrader,
+				autoFailover,
+				tidbFailover,
 			),
 			meta.NewReclaimPolicyManager(
 				pvcInformer.Lister(),

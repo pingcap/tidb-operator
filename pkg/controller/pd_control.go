@@ -37,7 +37,7 @@ const (
 
 // PDControlInterface is an interface that knows how to manage and get tidb cluster's PD client
 type PDControlInterface interface {
-	// GetPDClient provide PDClient of the tidb cluster.
+	// GetPDClient provides PDClient of the tidb cluster.
 	GetPDClient(tc *v1alpha1.TidbCluster) PDClient
 }
 
@@ -47,12 +47,12 @@ type defaultPDControl struct {
 	pdClients map[string]PDClient
 }
 
-// NewDefaultPDControl return a defaultPDControl instance
+// NewDefaultPDControl returns a defaultPDControl instance
 func NewDefaultPDControl() PDControlInterface {
 	return &defaultPDControl{pdClients: map[string]PDClient{}}
 }
 
-// GetPDClient provide a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
+// GetPDClient provides a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
 func (pdc *defaultPDControl) GetPDClient(tc *v1alpha1.TidbCluster) PDClient {
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
@@ -65,23 +65,23 @@ func (pdc *defaultPDControl) GetPDClient(tc *v1alpha1.TidbCluster) PDClient {
 	return pdc.pdClients[key]
 }
 
-// pdClientKey return the pd client key
+// pdClientKey returns the pd client key
 func pdClientKey(namespace, clusterName string) string {
 	return fmt.Sprintf("%s.%s", clusterName, namespace)
 }
 
-// pdClientUrl build the url of pd client
+// pdClientUrl builds the url of pd client
 func pdClientURL(namespace, clusterName string) string {
 	return fmt.Sprintf("http://%s-pd.%s:2379", clusterName, namespace)
 }
 
-// PDClient provider pd server's api
+// PDClient provides pd server's api
 type PDClient interface {
-	// GetHealth return the PD's health info
+	// GetHealth returns the PD's health info
 	GetHealth() (*HealthInfo, error)
 	// GetConfig returns PD's config
 	GetConfig() (*server.Config, error)
-	// GetCluster return used when syncing pod labels.
+	// GetCluster returns used when syncing pod labels.
 	GetCluster() (*metapb.Cluster, error)
 	// GetMembers returns all PD members from cluster
 	GetMembers() (*MembersInfo, error)
@@ -96,9 +96,9 @@ type PDClient interface {
 	SetStoreLabels(storeID uint64, labels map[string]string) (bool, error)
 	// DeleteStore deletes a TiKV store from cluster
 	DeleteStore(storeID uint64) error
-	// DeleteMember delete a PD member from cluster
+	// DeleteMember deletes a PD member from cluster
 	DeleteMember(name string) error
-	// DeleteMemberByID delete a PD member from cluster
+	// DeleteMemberByID deletes a PD member from cluster
 	DeleteMemberByID(memberID uint64) error
 	// BeginEvictLeader initiates leader eviction for a storeID.
 	// This is used when upgrading a pod.
@@ -123,7 +123,7 @@ type pdClient struct {
 	httpClient *http.Client
 }
 
-// NewPDClient return a new PDClient
+// NewPDClient returns a new PDClient
 func NewPDClient(url string, timeout time.Duration) PDClient {
 	return &pdClient{
 		url:        url,
@@ -307,7 +307,7 @@ func (pc *pdClient) DeleteStore(storeID uint64) error {
 	}
 	defer DeferClose(res.Body, &err)
 
-	// Remove an offline store should return http.StatusOK
+	// Remove an offline store should returns http.StatusOK
 	if res.StatusCode == http.StatusOK {
 		return nil
 	}
@@ -317,7 +317,7 @@ func (pc *pdClient) DeleteStore(storeID uint64) error {
 	}
 
 	// FIXME: We should not rely on error text
-	// Remove a tombstone store should return "store has been removed"
+	// Remove a tombstone store should returns "store has been removed"
 	bodyStr := string(body)
 	if strings.Contains(bodyStr, "store has been removed") {
 		return nil

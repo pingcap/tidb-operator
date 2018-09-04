@@ -70,6 +70,7 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
 
 	pdControl := controller.NewFakePDControl()
+	tidbControl := controller.NewFakeTiDBControl()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), recorder)
@@ -81,10 +82,12 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	pdUpgrader := mm.NewFakePDUpgrader()
 	tikvUpgrader := mm.NewFakeTiKVUpgrader()
 	tidbUpgrader := mm.NewFakeTiDBUpgrader()
+	autoFailover := true
+	tidbFailover := mm.NewFakeTiDBFailover()
 
 	pdMemberManager := mm.NewPDMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), pdScaler, pdUpgrader)
 	tikvMemberManager := mm.NewTiKVMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), podInformer.Lister(), nodeInformer.Lister(), tikvScaler, tikvUpgrader)
-	tidbMemberManager := mm.NewTiDBMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), tidbUpgrader)
+	tidbMemberManager := mm.NewTiDBMemberManager(setControl, svcControl, tidbControl, setInformer.Lister(), svcInformer.Lister(), tidbUpgrader, autoFailover, tidbFailover)
 	reclaimPolicyManager := meta.NewReclaimPolicyManager(pvcInformer.Lister(), pvInformer.Lister(), pvControl)
 	metaManager := meta.NewMetaManager(pvcInformer.Lister(), pvcControl, pvInformer.Lister(), pvControl, podInformer.Lister(), podControl)
 	control := NewDefaultTidbClusterControl(statusUpdater, pdMemberManager, tikvMemberManager, tidbMemberManager, reclaimPolicyManager, metaManager, recorder)

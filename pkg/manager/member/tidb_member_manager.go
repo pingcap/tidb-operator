@@ -14,6 +14,8 @@
 package member
 
 import (
+	"time"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -28,32 +30,50 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
+const (
+	timeout = time.Second
+)
+
 type tidbMemberManager struct {
 	setControl   controller.StatefulSetControlInterface
 	svcControl   controller.ServiceControlInterface
+	tidbControl  controller.TiDBControlInterface
 	setLister    v1beta1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
 	tidbUpgrader Upgrader
+	autoFailover bool
+	tidbFailover Failover
 }
 
 // NewTiDBMemberManager returns a *tidbMemberManager
 func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
+	tidbControl controller.TiDBControlInterface,
 	setLister v1beta1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
-	tidbUpgrader Upgrader) manager.Manager {
+	tidbUpgrader Upgrader,
+	autoFailover bool,
+	tidbFailover Failover) manager.Manager {
 	return &tidbMemberManager{
 		setControl:   setControl,
 		svcControl:   svcControl,
+		tidbControl:  tidbControl,
 		setLister:    setLister,
 		svcLister:    svcLister,
 		tidbUpgrader: tidbUpgrader,
+		autoFailover: autoFailover,
+		tidbFailover: tidbFailover,
 	}
 }
 
 func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	// Sync TiDB Service
 	if err := tmm.syncTiDBServiceForTidbCluster(tc); err != nil {
+		return err
+	}
+
+	// Sync TiDB Headless Service
+	if err := tmm.syncTiDBHeadlessServiceForTidbCluster(tc); err != nil {
 		return err
 	}
 
@@ -67,6 +87,42 @@ func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1alpha1.TidbClu
 
 	newSvc := tmm.getNewTiDBServiceForTidbCluster(tc)
 	oldSvc, err := tmm.svcLister.Services(ns).Get(controller.TiDBMemberName(tcName))
+	if errors.IsNotFound(err) {
+		err = SetServiceLastAppliedConfigAnnotation(newSvc)
+		if err != nil {
+			return err
+		}
+		return tmm.svcControl.CreateService(tc, newSvc)
+	}
+	if err != nil {
+		return err
+	}
+
+	equal, err := serviceEqual(newSvc, oldSvc)
+	if err != nil {
+		return err
+	}
+	if !equal {
+		svc := *oldSvc
+		svc.Spec = newSvc.Spec
+		// TODO add unit test
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+		err = SetServiceLastAppliedConfigAnnotation(newSvc)
+		if err != nil {
+			return err
+		}
+		return tmm.svcControl.UpdateService(tc, &svc)
+	}
+
+	return nil
+}
+
+func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	newSvc := tmm.getNewTiDBHeadlessServiceForTidbCluster(tc)
+	oldSvc, err := tmm.svcLister.Services(ns).Get(controller.TiDBPeerMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
@@ -129,6 +185,17 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		}
 	}
 
+	if tmm.autoFailover && int(tc.Spec.TiDB.Replicas) == len(tc.Status.TiDB.Members) {
+		if allTiDBMembersAreReady(tc) {
+			tmm.tidbFailover.Recover(tc)
+		} else {
+			err := tmm.tidbFailover.Failover(tc)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	if !statefulSetEqual(*oldTiDBSet, *newTiDBSet) {
 		set := *oldTiDBSet
 		set.Spec.Template = newTiDBSet.Spec.Template
@@ -165,6 +232,32 @@ func (tmm *tidbMemberManager) getNewTiDBServiceForTidbCluster(tc *v1alpha1.TidbC
 					TargetPort: intstr.FromInt(4000),
 					Protocol:   corev1.ProtocolTCP,
 				},
+			},
+			Selector: tidbLabel,
+		},
+	}
+	if tidbSvc.Spec.Type == corev1.ServiceTypeNodePort || tidbSvc.Spec.Type == corev1.ServiceTypeLoadBalancer {
+		tidbSvc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyType(controller.ExternalTrafficPolicy)
+	}
+	return tidbSvc
+}
+
+func (tmm *tidbMemberManager) getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
+	ns := tc.Namespace
+	tcName := tc.Name
+	svcName := controller.TiDBPeerMemberName(tcName)
+	tidbLabel := label.New().Cluster(tcName).TiDB().Labels()
+
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            svcName,
+			Namespace:       ns,
+			Labels:          tidbLabel,
+			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+		},
+		Spec: corev1.ServiceSpec{
+			ClusterIP: "None",
+			Ports: []corev1.ServicePort{
 				{
 					Name:       "status",
 					Port:       10080,
@@ -175,10 +268,6 @@ func (tmm *tidbMemberManager) getNewTiDBServiceForTidbCluster(tc *v1alpha1.TidbC
 			Selector: tidbLabel,
 		},
 	}
-	if tidbSvc.Spec.Type == corev1.ServiceTypeNodePort || tidbSvc.Spec.Type == corev1.ServiceTypeLoadBalancer {
-		tidbSvc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyType(controller.ExternalTrafficPolicy)
-	}
-	return tidbSvc
 }
 
 func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
@@ -279,7 +368,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 					Volumes:       vols,
 				},
 			},
-			ServiceName:         controller.TiDBMemberName(tcName),
+			ServiceName:         controller.TiDBPeerMemberName(tcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 		},
@@ -289,6 +378,24 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 
 func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	tc.Status.TiDB.StatefulSet = &set.Status
+
+	tidbStatus := map[string]v1alpha1.TiDBMember{}
+	tidbHealth := tmm.tidbControl.GetHealth(tc)
+	for name, health := range tidbHealth {
+		newTidbMember := v1alpha1.TiDBMember{
+			Name:   name,
+			Health: health,
+		}
+		oldTidbMember, exist := tc.Status.TiDB.Members[name]
+		if exist {
+			newTidbMember.LastTransitionTime = oldTidbMember.LastTransitionTime
+		}
+		if !exist || oldTidbMember.Health != newTidbMember.Health {
+			newTidbMember.LastTransitionTime = metav1.Now()
+		}
+		tidbStatus[name] = newTidbMember
+	}
+	tc.Status.TiDB.Members = tidbStatus
 
 	if statefulSetIsUpgrading(set) {
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase

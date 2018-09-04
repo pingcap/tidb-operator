@@ -261,13 +261,18 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
 	tidbUpgrader := NewFakeTiDBUpgrader()
+	tidbFailover := NewFakeTiDBFailover()
+	tidbControl := controller.NewFakeTiDBControl()
 
 	return &tidbMemberManager{
 		setControl,
 		svcControl,
+		tidbControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
 		tidbUpgrader,
+		true,
+		tidbFailover,
 	}, setControl, svcControl
 }
 

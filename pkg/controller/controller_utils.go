@@ -73,7 +73,7 @@ func GetServiceType(services []v1alpha1.Service, serviceName string) corev1.Serv
 // tikv uses GB, TB as unit suffix, but it actually means GiB, TiB
 func TiKVCapacity(limits *v1alpha1.ResourceRequirement) string {
 	defaultArgs := "0"
-	if limits == nil || limits.Storage == ""{
+	if limits == nil || limits.Storage == "" {
 		return defaultArgs
 	}
 	q, err := resource.ParseQuantity(limits.Storage)
@@ -132,6 +132,11 @@ func TiKVPeerMemberName(clusterName string) string {
 // TiDBMemberName returns tidb member name
 func TiDBMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tidb", clusterName)
+}
+
+// TiDBPeerMemberName returns tidb peer service name
+func TiDBPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tidb-peer", clusterName)
 }
 
 // PriTiDBMemberName returns privileged tidb member name
