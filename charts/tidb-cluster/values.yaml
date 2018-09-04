@@ -30,7 +30,7 @@ services:
 
 pd:
   replicas: 3
-  image: uhub.ucloud.cn/pingcap/pd:v2.0.4
+  image: pingcap/pd:v2.0.4
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -40,7 +40,7 @@ pd:
 
   # maxStoreDownTime is how long a store will be considered `down` when disconnected
   # if a store is considered `down`, the regions will be migrated to other stores
-  maxStoreDownTime: 1m
+  maxStoreDownTime: 1h
   # maxReplicas is the number of replicas for each region
   maxReplicas: 3
   resources:
@@ -69,7 +69,7 @@ pd:
 
 tikv:
   replicas: 3
-  image: uhub.ucloud.cn/pingcap/tikv:v2.0.4
+  image: pingcap/tikv:v2.0.4
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -110,7 +110,7 @@ tikvPromGateway:
 
 tidb:
   replicas: 2
-  image: uhub.ucloud.cn/pingcap/tidb:v2.0.4
+  image: pingcap/tidb:v2.0.4
   logLevel: info
   resources: {}
     # limits:

@@ -8,8 +8,8 @@ rbac:
 # on host, e.g. Docker for Mac, Minikube, DinD
 localtime: false
 # operatorImage is TiDB Operator image
-operatorImage: localhost:5000/pingcap/tidb-operator:latest
-imagePullPolicy: Always
+operatorImage: pingcap/tidb-operator:latest
+imagePullPolicy: IfNotPresent
 
 defaultStorageClassName: local-storage
 
@@ -27,4 +27,4 @@ controllerManager:
       cpu: 80m
       memory: 50Mi
   # autoFailover is whether tidb-operator should auto failover when failure occurs
-  autoFailover: true
+  autoFailover: false
