@@ -110,10 +110,10 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:   false,
 			errWhenCreatePDService:     false,
 			errWhenCreatePDPeerService: false,
-			err:              false,
-			pdSvcCreated:     true,
-			pdPeerSvcCreated: true,
-			setCreated:       true,
+			err:                        false,
+			pdSvcCreated:               true,
+			pdPeerSvcCreated:           true,
+			setCreated:                 true,
 		},
 		{
 			name: "tidbcluster's storage format is wrong",
@@ -123,10 +123,10 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:   false,
 			errWhenCreatePDService:     false,
 			errWhenCreatePDPeerService: false,
-			err:              true,
-			pdSvcCreated:     true,
-			pdPeerSvcCreated: true,
-			setCreated:       false,
+			err:                        true,
+			pdSvcCreated:               true,
+			pdPeerSvcCreated:           true,
+			setCreated:                 false,
 		},
 		{
 			name:                       "error when create statefulset",
@@ -134,10 +134,10 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:   true,
 			errWhenCreatePDService:     false,
 			errWhenCreatePDPeerService: false,
-			err:              true,
-			pdSvcCreated:     true,
-			pdPeerSvcCreated: true,
-			setCreated:       false,
+			err:                        true,
+			pdSvcCreated:               true,
+			pdPeerSvcCreated:           true,
+			setCreated:                 false,
 		},
 		{
 			name:                       "error when create pd service",
@@ -145,10 +145,10 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:   false,
 			errWhenCreatePDService:     true,
 			errWhenCreatePDPeerService: false,
-			err:              true,
-			pdSvcCreated:     false,
-			pdPeerSvcCreated: false,
-			setCreated:       false,
+			err:                        true,
+			pdSvcCreated:               false,
+			pdPeerSvcCreated:           false,
+			setCreated:                 false,
 		},
 		{
 			name:                       "error when create pd peer service",
@@ -156,10 +156,10 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:   false,
 			errWhenCreatePDService:     false,
 			errWhenCreatePDPeerService: true,
-			err:              true,
-			pdSvcCreated:     true,
-			pdPeerSvcCreated: false,
-			setCreated:       false,
+			err:                        true,
+			pdSvcCreated:               true,
+			pdPeerSvcCreated:           false,
+			setCreated:                 false,
 		},
 	}
 
@@ -295,9 +295,9 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.NormalPhase))
 				g.Expect(*tc.Status.PD.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
 				g.Expect(tc.Status.PD.Members).To(Equal(map[string]v1alpha1.PDMember{
-					"pd1": v1alpha1.PDMember{Name: "pd1", ID: "1", ClientURL: "http://pd1:2379", Health: true},
-					"pd2": v1alpha1.PDMember{Name: "pd2", ID: "2", ClientURL: "http://pd2:2379", Health: true},
-					"pd3": v1alpha1.PDMember{Name: "pd3", ID: "3", ClientURL: "http://pd3:2379", Health: false},
+					"pd1": {Name: "pd1", ID: "1", ClientURL: "http://pd1:2379", Health: true},
+					"pd2": {Name: "pd2", ID: "2", ClientURL: "http://pd2:2379", Health: true},
+					"pd3": {Name: "pd3", ID: "3", ClientURL: "http://pd3:2379", Health: false},
 				}))
 			},
 		},
@@ -314,10 +314,10 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			errWhenUpdateStatefulSet:   false,
 			errWhenUpdatePDService:     false,
 			errWhenUpdatePDPeerService: false,
-			err:                   true,
-			expectPDServiceFn:     nil,
-			expectPDPeerServiceFn: nil,
-			expectStatefulSetFn:   nil,
+			err:                        true,
+			expectPDServiceFn:          nil,
+			expectPDPeerServiceFn:      nil,
+			expectStatefulSetFn:        nil,
 		},
 		{
 			name: "error when update pd service",
@@ -334,10 +334,10 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			errWhenUpdateStatefulSet:   false,
 			errWhenUpdatePDService:     true,
 			errWhenUpdatePDPeerService: false,
-			err:                   true,
-			expectPDServiceFn:     nil,
-			expectPDPeerServiceFn: nil,
-			expectStatefulSetFn:   nil,
+			err:                        true,
+			expectPDServiceFn:          nil,
+			expectPDPeerServiceFn:      nil,
+			expectStatefulSetFn:        nil,
 		},
 		{
 			name: "error when update statefulset",
@@ -352,9 +352,9 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			errWhenUpdateStatefulSet:   true,
 			errWhenUpdatePDService:     false,
 			errWhenUpdatePDPeerService: false,
-			err:                   true,
-			expectPDServiceFn:     nil,
-			expectPDPeerServiceFn: nil,
+			err:                        true,
+			expectPDServiceFn:          nil,
+			expectPDPeerServiceFn:      nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
@@ -532,9 +532,9 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
 				g.Expect(tc.Status.PD.Members).To(Equal(map[string]v1alpha1.PDMember{
-					"pd1": v1alpha1.PDMember{Name: "pd1", ID: "1", ClientURL: "http://pd1:2379", Health: true},
-					"pd2": v1alpha1.PDMember{Name: "pd2", ID: "2", ClientURL: "http://pd2:2379", Health: true},
-					"pd3": v1alpha1.PDMember{Name: "pd3", ID: "3", ClientURL: "http://pd3:2379", Health: false},
+					"pd1": {Name: "pd1", ID: "1", ClientURL: "http://pd1:2379", Health: true},
+					"pd2": {Name: "pd2", ID: "2", ClientURL: "http://pd2:2379", Health: true},
+					"pd3": {Name: "pd3", ID: "3", ClientURL: "http://pd3:2379", Health: false},
 				}))
 			},
 		},

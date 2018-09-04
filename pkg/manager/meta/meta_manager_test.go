@@ -354,18 +354,18 @@ func newFakeMetaManager() (
 }
 
 func podMetaInfoMatchDesire(pod *corev1.Pod) bool {
-	return pod.Labels[label.ClusterIDLabelKey] == controller.TestClusterId &&
-		pod.Labels[label.MemberIDLabelKey] == controller.TestMemberId &&
-		pod.Labels[label.StoreIDLabelKey] == controller.TestStoreId
+	return pod.Labels[label.ClusterIDLabelKey] == controller.TestClusterID &&
+		pod.Labels[label.MemberIDLabelKey] == controller.TestMemberID &&
+		pod.Labels[label.StoreIDLabelKey] == controller.TestStoreID
 }
 
 func pvcMetaInfoMatchDesire(pvc *corev1.PersistentVolumeClaim) bool {
 	return pvc.Labels[label.AppLabelKey] == controller.TestAppName &&
 		pvc.Labels[label.OwnerLabelKey] == controller.TestOwnerName &&
 		pvc.Labels[label.ClusterLabelKey] == controller.TestClusterName &&
-		pvc.Labels[label.ClusterIDLabelKey] == controller.TestClusterId &&
-		pvc.Labels[label.MemberIDLabelKey] == controller.TestMemberId &&
-		pvc.Labels[label.StoreIDLabelKey] == controller.TestStoreId &&
+		pvc.Labels[label.ClusterIDLabelKey] == controller.TestClusterID &&
+		pvc.Labels[label.MemberIDLabelKey] == controller.TestMemberID &&
+		pvc.Labels[label.StoreIDLabelKey] == controller.TestStoreID &&
 		pvc.Annotations[label.AnnPodNameKey] == controller.TestPodName
 }
 
@@ -374,9 +374,9 @@ func pvMetaInfoMatchDesire(ns string, pv *corev1.PersistentVolume) bool {
 		pv.Labels[label.OwnerLabelKey] == controller.TestOwnerName &&
 		pv.Labels[label.ClusterLabelKey] == controller.TestClusterName &&
 		pv.Labels[label.AppLabelKey] == controller.TestAppName &&
-		pv.Labels[label.ClusterIDLabelKey] == controller.TestClusterId &&
-		pv.Labels[label.MemberIDLabelKey] == controller.TestMemberId &&
-		pv.Labels[label.StoreIDLabelKey] == controller.TestStoreId &&
+		pv.Labels[label.ClusterIDLabelKey] == controller.TestClusterID &&
+		pv.Labels[label.MemberIDLabelKey] == controller.TestMemberID &&
+		pv.Labels[label.StoreIDLabelKey] == controller.TestStoreID &&
 		pv.Annotations[label.AnnPodNameKey] == controller.TestPodName
 }
 

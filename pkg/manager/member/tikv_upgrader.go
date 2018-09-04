@@ -45,7 +45,7 @@ func NewFakeTiKVUpgrader() Upgrader {
 	return &fakeTiKVUpgrader{}
 }
 
-func (tku *fakeTiKVUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (tku *fakeTiKVUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
 	tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 	return nil
 }
