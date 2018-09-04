@@ -6,7 +6,7 @@ LDFLAGS += -X "github.com/pingcap/tidb-operator/version.GitSHA=$(shell git rev-p
 
 DOCKER_REGISTRY := $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY),localhost:5000)
 
-PACKAGE_LIST := go list ./... | grep -vE "vendor" | grep -vE "pkg/client"
+PACKAGE_LIST := go list ./... | grep -vE "vendor" | grep -vE "pkg/client" | grep -vE "zz_generated"
 PACKAGES := $$($(PACKAGE_LIST))
 PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
 FILES := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go")
