@@ -14,12 +14,11 @@
 package tidbcluster
 
 import (
-	"reflect"
-
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 )
@@ -77,7 +76,7 @@ func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster
 	if err != nil {
 		errs = append(errs, err)
 	}
-	if !reflect.DeepEqual(tc.Status, oldStatus) {
+	if !apiequality.Semantic.DeepEqual(&tc.Status, oldStatus) {
 		// update the tidbCluster's status
 		err2 := tcc.updateTidbClusterStatus(tc, &tc.Status)
 		if err2 != nil {
