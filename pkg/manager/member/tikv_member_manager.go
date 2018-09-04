@@ -189,7 +189,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	if tkmm.autoFailover {
 		if allTiKVStoressAreReady(tc) {
 			if tc.Status.TiKV.FailureStores != nil {
-				tkmm.tikvFailover.Recovery(tc)
+				tkmm.tikvFailover.Recover(tc)
 			}
 		} else if int(tc.Spec.TiKV.Replicas) == int(tc.Status.TiKV.StatefulSet.Replicas) {
 			if err := tkmm.tikvFailover.Failover(tc); err != nil {
@@ -489,6 +489,14 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 				glog.Warningf("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStatus.LastHeartbeatTime)
 				status.LastHeartbeatTime = oldStatus.LastHeartbeatTime
 			}
+		}
+
+		oldStore, exist := previousStores[status.ID]
+		if exist {
+			status.LastTransitionTime = oldStore.LastTransitionTime
+		}
+		if !exist || status.State != oldStore.State {
+			status.LastTransitionTime = metav1.Now()
 		}
 
 		stores[status.ID] = *status

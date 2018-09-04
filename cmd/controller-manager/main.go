@@ -40,6 +40,7 @@ import (
 var (
 	printVersion   bool
 	workers        int
+	autoFailover   bool
 	leaseDuration  = 15 * time.Second
 	renewDuration  = 5 * time.Second
 	retryPeriod    = 3 * time.Second
@@ -53,6 +54,7 @@ func init() {
 	flag.IntVar(&workers, "workers", 5, "The number of workers that are allowed to sync concurrently. Larger number = more responsive management, but more CPU (and network) load")
 	flag.BoolVar(&controller.ClusterScoped, "cluster-scoped", true, "Whether tidb-operator should manage kubernetes cluster wide TiDB Clusters")
 	flag.StringVar(&controller.DefaultStorageClassName, "default-storage-class-name", "standard", "Default storage class name")
+	flag.BoolVar(&autoFailover, "auto-failover", false, "Auto failover")
 
 	flag.Parse()
 }
@@ -112,7 +114,7 @@ func main() {
 		},
 	}
 
-	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover)
 	stop := make(chan struct{})
 	defer close(stop)
 	go informerFactory.Start(stop)

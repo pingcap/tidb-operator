@@ -30,7 +30,7 @@ services:
 
 pd:
   replicas: 3
-  image: pingcap/pd:v2.0.4
+  image: uhub.ucloud.cn/pingcap/pd:v2.0.4
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -69,7 +69,7 @@ pd:
 
 tikv:
   replicas: 3
-  image: pingcap/tikv:v2.0.4
+  image: uhub.ucloud.cn/pingcap/tikv:v2.0.4
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -110,7 +110,7 @@ tikvPromGateway:
 
 tidb:
   replicas: 2
-  image: pingcap/tidb:v2.0.4
+  image: uhub.ucloud.cn/pingcap/tidb:v2.0.4
   logLevel: info
   resources: {}
     # limits:

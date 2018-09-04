@@ -79,7 +79,6 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	pdScaler := mm.NewFakePDScaler()
 	tikvScaler := mm.NewFakeTiKVScaler()
 	pdUpgrader := mm.NewFakePDUpgrader()
-	// TODO use args
 	autoFailover := true
 	tikvFailover := mm.NewFakeTiKVFailover()
 

@@ -23,7 +23,7 @@ import (
 // Failover implements the logic for pd/tikv/tidb's failover and recovery.
 type Failover interface {
 	Failover(*v1alpha1.TidbCluster) error
-	Recovery(*v1alpha1.TidbCluster)
+	Recover(*v1alpha1.TidbCluster)
 }
 
 type tikvFailover struct {
@@ -31,8 +31,8 @@ type tikvFailover struct {
 }
 
 // NewTiKVFailover returns a tikv Failover
-func NewTiKVFailover() Failover {
-	return &tikvFailover{}
+func NewTiKVFailover(pdControl controller.PDControlInterface) Failover {
+	return &tikvFailover{pdControl}
 }
 
 func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
@@ -41,14 +41,21 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 
-	for podName, store := range tc.Status.TiKV.Stores {
+	for storeID, store := range tc.Status.TiKV.Stores {
+		podName := store.PodName
 		deadline := store.LastTransitionTime.Add(cfg.Schedule.MaxStoreDownTime.Duration)
-		_, exist := tc.Status.TiKV.FailureStores[podName]
+		exist := false
+		for _, failureStore := range tc.Status.TiKV.FailureStores {
+			if failureStore.PodName == podName {
+				exist = true
+				break
+			}
+		}
 		if store.State == v1alpha1.TiKVStateDown && time.Now().After(deadline) && !exist {
 			if tc.Status.TiKV.FailureStores == nil {
 				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
 			}
-			tc.Status.TiKV.FailureStores[podName] = v1alpha1.TiKVFailureStore{
+			tc.Status.TiKV.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
 				PodName:  podName,
 				StoreID:  store.ID,
 				Replicas: tc.Spec.TiKV.Replicas,
@@ -60,7 +67,7 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (tf *tikvFailover) Recovery(tc *v1alpha1.TidbCluster) {
+func (tf *tikvFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiKV.FailureStores = nil
 }
 
@@ -85,6 +92,6 @@ func NewFakeTiKVFailover() Failover {
 func (ftf *fakeTiKVFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
-func (ftf *fakeTiKVFailover) Recovery(tc *v1alpha1.TidbCluster) {
+func (ftf *fakeTiKVFailover) Recover(tc *v1alpha1.TidbCluster) {
 	return
 }

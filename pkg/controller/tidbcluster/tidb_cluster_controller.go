@@ -70,6 +70,7 @@ func NewController(
 	cli versioned.Interface,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
+	autoFailover bool,
 ) *Controller {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
@@ -94,9 +95,7 @@ func NewController(
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	pdUpgrader := mm.NewPDUpgrader()
-	// TODO use args
-	autoFailover := true
-	tikvFailover := mm.NewTiKVFailover()
+	tikvFailover := mm.NewTiKVFailover(pdControl)
 
 	tcc := &Controller{
 		kubeClient: kubeCli,

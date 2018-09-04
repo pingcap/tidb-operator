@@ -70,12 +70,14 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			name: "normal",
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
-					"tikv-1": v1alpha1.TiKVStore{
+					"1": v1alpha1.TiKVStore{
 						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-1",
 						LastTransitionTime: metav1.Time{time.Now().Add(-70 * time.Minute)},
 					},
-					"tikv-2": v1alpha1.TiKVStore{
+					"2": v1alpha1.TiKVStore{
 						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-2",
 						LastTransitionTime: metav1.Time{time.Now().Add(-61 * time.Minute)},
 					},
 				}
@@ -99,7 +101,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			name: "tikv state is not Down",
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
-					"tikv-1": v1alpha1.TiKVStore{State: v1alpha1.TiKVStateUp},
+					"1": v1alpha1.TiKVStore{State: v1alpha1.TiKVStateUp, PodName: "tikv-1"},
 				}
 			},
 			getCfgErr: false,
@@ -112,8 +114,9 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			name: "deadline not exceed",
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
-					"tikv-1": v1alpha1.TiKVStore{
+					"1": v1alpha1.TiKVStore{
 						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-1",
 						LastTransitionTime: metav1.Time{time.Now().Add(-30 * time.Minute)},
 					},
 				}
@@ -128,14 +131,16 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			name: "exist in failureStores",
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
-					"tikv-1": v1alpha1.TiKVStore{
+					"1": v1alpha1.TiKVStore{
 						State:              v1alpha1.TiKVStateDown,
-						LastTransitionTime: metav1.Time{time.Now().Add(-30 * time.Minute)},
+						PodName:            "tikv-1",
+						LastTransitionTime: metav1.Time{time.Now().Add(-70 * time.Minute)},
 					},
 				}
 				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{
-					"tikv-1": v1alpha1.TiKVFailureStore{
+					"1": v1alpha1.TiKVFailureStore{
 						PodName: "tikv-1",
+						StoreID: "1",
 					},
 				}
 			},
@@ -151,7 +156,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 	}
 }
 
-func TestTiKVFailoverRecovery(t *testing.T) {
+func TestTiKVFailoverRecover(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcase struct {
@@ -162,7 +167,7 @@ func TestTiKVFailoverRecovery(t *testing.T) {
 		t.Log(test.name)
 		tc := newTidbClusterForPD()
 		tikvFailover, _ := newFakeTiKVFailover()
-		tikvFailover.Recovery(tc)
+		tikvFailover.Recover(tc)
 		test.expectFn(tc)
 	}
 	tests := []testcase{
