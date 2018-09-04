@@ -26,11 +26,13 @@ import (
 
 func TestPDUpgrader_Upgrade(t *testing.T) {
 	g := NewGomegaWithT(t)
+
 	upgrader := newPDUpgrader()
 	tc := newTidbClusterForPDUpgrader()
 	oldSet := newStatefulSetForPDUpgrader()
 	newSet := oldSet.DeepCopy()
 	newSet.Spec.Template.Spec.Containers[0].Image = "pd-test-images:v2"
+
 	err := upgrader.Upgrade(tc, oldSet, newSet)
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
