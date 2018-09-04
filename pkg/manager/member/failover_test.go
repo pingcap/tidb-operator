@@ -154,6 +154,28 @@ func TestPDFailoverFailover(t *testing.T) {
 			},
 		},
 		{
+			name: "has one not ready member, lastTransitionTime is zero",
+			update: func(tc *v1alpha1.TidbCluster) {
+				oneNotReadyMember(tc)
+				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+				pd1 := tc.Status.PD.Members[pd1Name]
+				pd1.LastTransitionTime = metav1.Time{}
+				tc.Status.PD.Members[pd1Name] = pd1
+			},
+			hasPVC: true,
+			hasPV:  true,
+			hasPod: true,
+			podWithDeletionTimestamp: false,
+			delMemberFailed:          false,
+			delPodFailed:             false,
+			delPVCFailed:             false,
+			tcUpdateFailed:           false,
+			errExpectFn:              errExpectNil,
+			expectFn: func(tc *v1alpha1.TidbCluster) {
+				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
+			},
+		},
+		{
 			name:   "has one not ready member, and exceed deadline, update TidbCluster success",
 			update: oneNotReadyMember,
 			hasPVC: true,

@@ -97,6 +97,9 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	if notDeletedCount == 0 {
 		// mark a peer as failure
 		for podName, pdMember := range tc.Status.PD.Members {
+			if pdMember.LastTransitionTime.IsZero() {
+				continue
+			}
 			deadline := pdMember.LastTransitionTime.Add(pf.pdFailoverPeriod)
 			_, exist := tc.Status.PD.FailureMembers[podName]
 			if !pdMember.Health && time.Now().After(deadline) && !exist {
