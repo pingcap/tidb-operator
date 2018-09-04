@@ -101,8 +101,8 @@ func (pmm *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		firstPodCopy := firstPod.DeepCopy()
 
 		if firstPodCopy.Annotations[label.Bootstrapping] == "" {
-			pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), 1)
-			_, err := pmm.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
+			nextPVCName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), 1)
+			_, err := pmm.pvcLister.PersistentVolumeClaims(ns).Get(nextPVCName)
 			if err != nil && !errors.IsNotFound(err) {
 				return err
 			}
@@ -250,17 +250,16 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	if pmm.autoFailover {
 		if allPDMembersAreReady(tc) {
 			if tc.Status.PD.FailureMembers != nil {
-				pmm.pdFailover.Recovery(tc)
+				pmm.pdFailover.Recover(tc)
 			}
-		} else if int(tc.Spec.PD.Replicas) == int(tc.Status.PD.StatefulSet.Replicas) {
+		} else if tc.Spec.PD.Replicas == tc.Status.PD.StatefulSet.Replicas {
 			if err := pmm.pdFailover.Failover(tc); err != nil {
 				return err
 			}
 		}
 	}
 
-	// TODO equal is false every time
-	// FIXME !!!
+	// TODO FIXME equal is false every time
 	if !statefulSetEqual(*newPDSet, *oldPDSet) {
 		set := *oldPDSet
 		set.Spec.Template = newPDSet.Spec.Template

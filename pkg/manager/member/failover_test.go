@@ -340,12 +340,12 @@ func TestPDFailoverRecovery(t *testing.T) {
 		test.update(tc)
 
 		pdFailover, _, _, _, _, _, _, _ := newFakePDFailover()
-		pdFailover.Recovery(tc)
+		pdFailover.Recover(tc)
 		test.expectFn(tc)
 	}
 	tests := []testcase{
 		{
-			name: "user don't modify the replicas",
+			name: "two failure member, user don't modify the replicas",
 			update: func(tc *v1alpha1.TidbCluster) {
 				twoFailureMembers(tc)
 				tc.Spec.PD.Replicas = 5
@@ -356,7 +356,18 @@ func TestPDFailoverRecovery(t *testing.T) {
 			},
 		},
 		{
-			name: "user increase the replicas",
+			name: "two failure member, user modify the replicas to 4",
+			update: func(tc *v1alpha1.TidbCluster) {
+				twoFailureMembers(tc)
+				tc.Spec.PD.Replicas = 4
+			},
+			expectFn: func(tc *v1alpha1.TidbCluster) {
+				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(4))
+				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+			},
+		},
+		{
+			name: "two failure member, user increase the replicas",
 			update: func(tc *v1alpha1.TidbCluster) {
 				twoFailureMembers(tc)
 				tc.Spec.PD.Replicas = 7
@@ -367,9 +378,42 @@ func TestPDFailoverRecovery(t *testing.T) {
 			},
 		},
 		{
-			name: "user decrease the replicas",
+			name: "two failure member, user decrease the replicas",
 			update: func(tc *v1alpha1.TidbCluster) {
 				twoFailureMembers(tc)
+				tc.Spec.PD.Replicas = 1
+			},
+			expectFn: func(tc *v1alpha1.TidbCluster) {
+				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(1))
+				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+			},
+		},
+		{
+			name: "one failure member, user don't modify the replicas",
+			update: func(tc *v1alpha1.TidbCluster) {
+				oneFailureMember(tc)
+				tc.Spec.PD.Replicas = 4
+			},
+			expectFn: func(tc *v1alpha1.TidbCluster) {
+				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+			},
+		},
+		{
+			name: "two failure member, user increase the replicas",
+			update: func(tc *v1alpha1.TidbCluster) {
+				oneFailureMember(tc)
+				tc.Spec.PD.Replicas = 5
+			},
+			expectFn: func(tc *v1alpha1.TidbCluster) {
+				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(5))
+				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+			},
+		},
+		{
+			name: "two failure member, user decrease the replicas",
+			update: func(tc *v1alpha1.TidbCluster) {
+				oneFailureMember(tc)
 				tc.Spec.PD.Replicas = 1
 			},
 			expectFn: func(tc *v1alpha1.TidbCluster) {

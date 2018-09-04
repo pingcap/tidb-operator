@@ -29,7 +29,7 @@ import (
 // Failover implements the logic for pd/tikv/tidb's failover and recovery.
 type Failover interface {
 	Failover(*v1alpha1.TidbCluster) error
-	Recovery(*v1alpha1.TidbCluster)
+	Recover(*v1alpha1.TidbCluster)
 }
 
 type pdFailover struct {
@@ -77,7 +77,14 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 	inQuorum := healthCount > int(tc.Spec.PD.Replicas/2)
+	if !inQuorum {
+		return fmt.Errorf("TidbCluster: %s/%s's pd cluster is not health: %d/%d, can't failover",
+			ns, tcName, healthCount, tc.Spec.PD.Replicas)
+	}
 
+	if tc.Status.PD.FailureMembers == nil {
+		tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{}
+	}
 	notDeletedCount := 0
 	for _, failureMember := range tc.Status.PD.FailureMembers {
 		if !failureMember.MemberDeleted {
@@ -85,20 +92,19 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-	// mark a peer as failure
-	for podName, pdMember := range tc.Status.PD.Members {
-		deadline := pdMember.LastTransitionTime.Add(pf.pdFailoverPeriod)
-		_, exist := tc.Status.PD.FailureMembers[podName]
-		if !pdMember.Health && time.Now().After(deadline) && !exist && notDeletedCount == 0 {
-			if !inQuorum {
-				return fmt.Errorf("TidbCluster: %s/%s's pd cluster is not health: %d/%d, can't failover",
-					ns, tcName, healthCount, tc.Spec.PD.Replicas)
+	// we can only failover one at a time
+	if notDeletedCount == 0 {
+		// mark a peer as failure
+		for podName, pdMember := range tc.Status.PD.Members {
+			deadline := pdMember.LastTransitionTime.Add(pf.pdFailoverPeriod)
+			_, exist := tc.Status.PD.FailureMembers[podName]
+			if !pdMember.Health && time.Now().After(deadline) && !exist {
+				err := pf.markThisMemberAsFailure(tc, pdMember)
+				if err != nil {
+					return err
+				}
+				break
 			}
-			err := pf.markThisMemberAsFailure(tc, pdMember)
-			if err != nil {
-				return err
-			}
-			break
 		}
 	}
 
@@ -116,9 +122,10 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-	// try to delete the PVC and Pod of this PD peer over and over,
-	// let StatefulSet create the new PD peer with the same ordinal,
-	// but not use the tombstone PV
+	// The order of old PVC deleting and the new Pod creating is not guaranteed by Kubernetes.
+	// If new Pod is created before old PVC deleted, new Pod will reuse old PVC.
+	// So we must try to delete the PVC and Pod of this PD peer over and over,
+	// and let StatefulSet create the new PD peer with the same ordinal, but don't use the tombstone PV
 	for podName, failureMember := range tc.Status.PD.FailureMembers {
 		if !failureMember.MemberDeleted {
 			continue
@@ -177,28 +184,25 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (pf *pdFailover) Recovery(tc *v1alpha1.TidbCluster) {
+func (pf *pdFailover) Recover(tc *v1alpha1.TidbCluster) {
 	defer func() {
 		tc.Status.PD.FailureMembers = nil
 	}()
 
-	modified := true
-	minReplicas := tc.Spec.PD.Replicas
+	maxReplicas := int32(0)
+	minReplicas := int32(0)
 	for _, failureMember := range tc.Status.PD.FailureMembers {
-		if failureMember.Replicas+1 == tc.Spec.PD.Replicas {
-			modified = false
+		if minReplicas == int32(0) {
+			minReplicas = failureMember.Replicas
 		}
-
-		if failureMember.Replicas < minReplicas {
+		if failureMember.Replicas > maxReplicas {
+			maxReplicas = failureMember.Replicas
+		} else if failureMember.Replicas < minReplicas {
 			minReplicas = failureMember.Replicas
 		}
 	}
 
-	// if user modify the TidbCluster's PD replicas, don't need recovery
-	if modified {
-		return
-	}
-	if minReplicas != tc.Spec.PD.Replicas {
+	if maxReplicas+1 == tc.Spec.PD.Replicas {
 		tc.Spec.PD.Replicas = minReplicas
 	}
 }
@@ -233,6 +237,7 @@ func (pf *pdFailover) markThisMemberAsFailure(tc *v1alpha1.TidbCluster, pdMember
 		MemberDeleted: false,
 	}
 
+	// we must update TidbCluster immediately before delete member, or data may not be consistent
 	tc, err = pf.tcControl.UpdateTidbCluster(tc)
 	return err
 }
@@ -272,6 +277,6 @@ func (fpf *fakePDFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (fpf *fakePDFailover) Recovery(tc *v1alpha1.TidbCluster) {
+func (fpf *fakePDFailover) Recover(tc *v1alpha1.TidbCluster) {
 	return
 }

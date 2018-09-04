@@ -84,6 +84,7 @@ data:
     --config=/etc/pd/pd.toml \
     "
 
+    replicas=${replicas:-3}
     if [[ ${ORDINAL} -eq 0 && ${bootstrapping:-} == "true" ]]
     then
         ARGS="${ARGS}--initial-cluster=${HOSTNAME}=http://${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc:2380"
