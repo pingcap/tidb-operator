@@ -32,6 +32,7 @@ type Failover interface {
 	Recover(*v1alpha1.TidbCluster)
 }
 
+// TODO add maxFailoverCount
 type pdFailover struct {
 	cli              versioned.Interface
 	tcControl        controller.TidbClusterControlInterface
@@ -136,6 +137,10 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			tc.Spec.PD.Replicas = failureMember.Replicas + 1
 		}
 
+		pod, err := pf.podLister.Pods(ns).Get(podName)
+		if err != nil && !errors.IsNotFound(err) {
+			return err
+		}
 		ordinal, err := getOrdinalFromPodName(podName)
 		if err != nil {
 			return err
@@ -143,8 +148,12 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), ordinal)
 		pvc, err := pf.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 		if errors.IsNotFound(err) {
-			// pvc deleted, pod should be deleted already:
-			// https://kubernetes.io/docs/concepts/storage/persistent-volumes/#storage-object-in-use-protection
+			if pod != nil && pod.DeletionTimestamp == nil {
+				err := pf.podControl.DeletePod(tc, pod)
+				if err != nil {
+					return err
+				}
+			}
 			continue
 		}
 		if err != nil {
@@ -163,10 +172,6 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			continue
 		}
 
-		pod, err := pf.podLister.Pods(ns).Get(podName)
-		if err != nil && !errors.IsNotFound(err) {
-			return err
-		}
 		if pod != nil && pod.DeletionTimestamp == nil {
 			err := pf.podControl.DeletePod(tc, pod)
 			if err != nil {
