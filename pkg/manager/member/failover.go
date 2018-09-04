@@ -43,6 +43,9 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 
 	for storeID, store := range tc.Status.TiKV.Stores {
 		podName := store.PodName
+		if store.LastTransitionTime.IsZero() {
+			continue
+		}
 		deadline := store.LastTransitionTime.Add(cfg.Schedule.MaxStoreDownTime.Duration)
 		exist := false
 		for _, failureStore := range tc.Status.TiKV.FailureStores {

@@ -128,6 +128,22 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			},
 		},
 		{
+			name: "lastTransitionTime is zero",
+			update: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+					"1": v1alpha1.TiKVStore{
+						State:   v1alpha1.TiKVStateDown,
+						PodName: "tikv-1",
+					},
+				}
+			},
+			getCfgErr: false,
+			err:       false,
+			expectFn: func(tc *v1alpha1.TidbCluster) {
+				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
+			},
+		},
+		{
 			name: "exist in failureStores",
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
