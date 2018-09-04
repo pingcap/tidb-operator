@@ -71,7 +71,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 
 	// We need remove member from cluster before reducing statefulset replicas
 	podName := ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
-	for _, store := range tc.Status.TiKV.Stores.CurrentStores {
+	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
 			state := store.State
 			id, err := strconv.ParseUint(store.ID, 10, 64)
@@ -89,7 +89,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			return fmt.Errorf("TiKV %s/%s store %d  still in cluster, state: %s", ns, podName, id, state)
 		}
 	}
-	for _, store := range tc.Status.TiKV.Stores.TombStoneStores {
+	for _, store := range tc.Status.TiKV.TombstoneStores {
 		if store.PodName == podName {
 			id, err := strconv.ParseUint(store.ID, 10, 64)
 			if err != nil {

@@ -79,9 +79,12 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	pdScaler := mm.NewFakePDScaler()
 	tikvScaler := mm.NewFakeTiKVScaler()
 	pdUpgrader := mm.NewFakePDUpgrader()
+	// TODO use args
+	autoFailover := true
+	tikvFailover := mm.NewFakeTiKVFailover()
 
 	pdMemberManager := mm.NewPDMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), pdScaler, pdUpgrader)
-	tikvMemberManager := mm.NewTiKVMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), podInformer.Lister(), nodeInformer.Lister(), tikvScaler)
+	tikvMemberManager := mm.NewTiKVMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), podInformer.Lister(), nodeInformer.Lister(), autoFailover, tikvFailover, tikvScaler)
 	tidbMemberManager := mm.NewTiDBMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister())
 	reclaimPolicyManager := meta.NewReclaimPolicyManager(pvcInformer.Lister(), pvInformer.Lister(), pvControl)
 	metaManager := meta.NewMetaManager(pvcInformer.Lister(), pvcControl, pvInformer.Lister(), pvControl, podInformer.Lister(), podControl)

@@ -251,6 +251,9 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	pdUpgrade := mm.NewPDUpgrader()
+	// TODO use arge
+	autoFailover := true
+	tikvFailover := mm.NewTiKVFailover()
 
 	tcc.control = NewDefaultTidbClusterControl(
 		NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
@@ -271,6 +274,8 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			svcInformer.Lister(),
 			podInformer.Lister(),
 			nodeInformer.Lister(),
+			autoFailover,
+			tikvFailover,
 			tikvScaler,
 		),
 		mm.NewTiDBMemberManager(

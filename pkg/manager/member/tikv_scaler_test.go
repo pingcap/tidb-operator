@@ -215,7 +215,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			tikvUpgrading: false,
 			storeFun: func(tc *v1alpha1.TidbCluster) {
 				normalStoreFun(tc)
-				tc.Status.TiKV.Stores = v1alpha1.TiKVStores{}
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
 			},
 			delStoreErr:  false,
 			hasPVC:       true,
@@ -228,9 +228,9 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			tikvUpgrading: false,
 			storeFun: func(tc *v1alpha1.TidbCluster) {
 				normalStoreFun(tc)
-				store := tc.Status.TiKV.Stores.CurrentStores["1"]
+				store := tc.Status.TiKV.Stores["1"]
 				store.PodName = "xxx"
-				tc.Status.TiKV.Stores.CurrentStores["1"] = store
+				tc.Status.TiKV.Stores["1"] = store
 			},
 			delStoreErr:  false,
 			hasPVC:       true,
@@ -243,9 +243,9 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			tikvUpgrading: false,
 			storeFun: func(tc *v1alpha1.TidbCluster) {
 				normalStoreFun(tc)
-				store := tc.Status.TiKV.Stores.CurrentStores["1"]
+				store := tc.Status.TiKV.Stores["1"]
 				store.ID = "not integer"
-				tc.Status.TiKV.Stores.CurrentStores["1"] = store
+				tc.Status.TiKV.Stores["1"] = store
 			},
 			delStoreErr:  false,
 			hasPVC:       true,
@@ -258,9 +258,9 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			tikvUpgrading: false,
 			storeFun: func(tc *v1alpha1.TidbCluster) {
 				normalStoreFun(tc)
-				store := tc.Status.TiKV.Stores.CurrentStores["1"]
+				store := tc.Status.TiKV.Stores["1"]
 				store.State = util.StoreOfflineState
-				tc.Status.TiKV.Stores.CurrentStores["1"] = store
+				tc.Status.TiKV.Stores["1"] = store
 			},
 			delStoreErr:  false,
 			hasPVC:       true,
@@ -293,9 +293,9 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			tikvUpgrading: false,
 			storeFun: func(tc *v1alpha1.TidbCluster) {
 				tombstoneStoreFun(tc)
-				store := tc.Status.TiKV.Stores.TombStoneStores["1"]
+				store := tc.Status.TiKV.TombstoneStores["1"]
 				store.ID = "not integer"
-				tc.Status.TiKV.Stores.TombStoneStores["1"] = store
+				tc.Status.TiKV.TombstoneStores["1"] = store
 			},
 			delStoreErr:  false,
 			hasPVC:       true,
@@ -343,25 +343,21 @@ func newFakeTiKVScaler() (*tikvScaler, *controller.FakePDControl, cache.Indexer,
 }
 
 func normalStoreFun(tc *v1alpha1.TidbCluster) {
-	tc.Status.TiKV.Stores = v1alpha1.TiKVStores{
-		CurrentStores: map[string]v1alpha1.TiKVStore{
-			"1": v1alpha1.TiKVStore{
-				ID:      "1",
-				PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 4),
-				State:   util.StoreUpState,
-			},
+	tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+		"1": v1alpha1.TiKVStore{
+			ID:      "1",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 4),
+			State:   util.StoreUpState,
 		},
 	}
 }
 
 func tombstoneStoreFun(tc *v1alpha1.TidbCluster) {
-	tc.Status.TiKV.Stores = v1alpha1.TiKVStores{
-		TombStoneStores: map[string]v1alpha1.TiKVStore{
-			"1": v1alpha1.TiKVStore{
-				ID:      "1",
-				PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 4),
-				State:   util.StoreTombstoneState,
-			},
+	tc.Status.TiKV.TombstoneStores = map[string]v1alpha1.TiKVStore{
+		"1": v1alpha1.TiKVStore{
+			ID:      "1",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 4),
+			State:   util.StoreTombstoneState,
 		},
 	}
 }

@@ -215,9 +215,9 @@ func tikvMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 		return false, nil
 	}
 
-	if len(tc.Status.TiKV.Stores.CurrentStores) != int(tc.Spec.TiKV.Replicas) {
-		logf("tc.Status.TiKV.Stores.CurrentStores count(%d) != %d",
-			len(tc.Status.TiKV.Stores.CurrentStores), tc.Spec.TiKV.Replicas)
+	if len(tc.Status.TiKV.Stores) != int(tc.Spec.TiKV.Replicas) {
+		logf("tc.Status.TiKV.Stores.count(%d) != %d",
+			len(tc.Status.TiKV.Stores), tc.Spec.TiKV.Replicas)
 		return false, nil
 	}
 
@@ -227,7 +227,7 @@ func tikvMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 		return false, nil
 	}
 
-	for _, store := range tc.Status.TiKV.Stores.CurrentStores {
+	for _, store := range tc.Status.TiKV.Stores {
 		if store.State != util.StoreUpState {
 			logf("store(%s) state != %s", store.ID, util.StoreUpState)
 			return false, nil
