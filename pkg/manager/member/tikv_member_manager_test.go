@@ -352,15 +352,17 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
 	tikvScaler := NewFakeTiKVScaler()
+	tikvUpgrader := NewFakeTiKVUpgrader()
 
 	return &tikvMemberManager{
-		pdControl:  pdControl,
-		podLister:  podInformer.Lister(),
-		nodeLister: nodeInformer.Lister(),
-		setControl: setControl,
-		svcControl: svcControl,
-		setLister:  setInformer.Lister(),
-		svcLister:  svcInformer.Lister(),
-		tikvScaler: tikvScaler,
+		pdControl:    pdControl,
+		podLister:    podInformer.Lister(),
+		nodeLister:   nodeInformer.Lister(),
+		setControl:   setControl,
+		svcControl:   svcControl,
+		setLister:    setInformer.Lister(),
+		svcLister:    svcInformer.Lister(),
+		tikvScaler:   tikvScaler,
+		tikvUpgrader: tikvUpgrader,
 	}, setControl, svcControl, pdClient
 }
