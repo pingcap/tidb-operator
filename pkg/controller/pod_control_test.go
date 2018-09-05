@@ -167,7 +167,7 @@ func TestPodControlUpdateMetaInfoGetMemberFailed(t *testing.T) {
 	fakeClient.AddReactor("update", "pods", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, nil
 	})
-	pod.Labels[label.AppLabelKey] = label.PDLabelVal
+	pod.Labels[label.ComponentLabelKey] = label.PDLabelVal
 	err := control.UpdateMetaInfo(tc, pod)
 	g.Expect(err).To(HaveOccurred())
 
@@ -206,7 +206,7 @@ func TestPodControlUpdateMetaInfoGetStoreFailed(t *testing.T) {
 	fakeClient.AddReactor("update", "pods", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, nil
 	})
-	pod.Labels[label.AppLabelKey] = label.TiKVLabelVal
+	pod.Labels[label.ComponentLabelKey] = label.TiKVLabelVal
 	err := control.UpdateMetaInfo(tc, pod)
 	g.Expect(err).To(HaveOccurred())
 
@@ -340,9 +340,9 @@ func newPod(tc *v1alpha1.TidbCluster) *corev1.Pod {
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 			Labels: map[string]string{
-				label.AppLabelKey:     TestAppName,
-				label.OwnerLabelKey:   TestOwnerName,
-				label.ClusterLabelKey: tc.GetName(),
+				label.ComponentLabelKey: TestComponentName,
+				label.ManagedByLabelKey: TestManagedByName,
+				label.InstanceLabelKey:  tc.GetName(),
 			},
 		},
 		Spec: newPodSpec(v1alpha1.PDMemberType.String(), "pvc-1"),

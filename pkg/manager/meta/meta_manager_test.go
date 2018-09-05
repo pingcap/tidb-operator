@@ -135,6 +135,7 @@ func TestMetaManagerSync(t *testing.T) {
 		if test.podChanged {
 			pod, err := nmm.podLister.Pods(ns).Get(pod1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
+			t.Log(pod.Labels)
 			g.Expect(podMetaInfoMatchDesire(pod)).To(Equal(true))
 		} else {
 			pod, err := nmm.podLister.Pods(ns).Get(pod1.Name)
@@ -360,9 +361,9 @@ func podMetaInfoMatchDesire(pod *corev1.Pod) bool {
 }
 
 func pvcMetaInfoMatchDesire(pvc *corev1.PersistentVolumeClaim) bool {
-	return pvc.Labels[label.AppLabelKey] == controller.TestAppName &&
-		pvc.Labels[label.OwnerLabelKey] == controller.TestOwnerName &&
-		pvc.Labels[label.ClusterLabelKey] == controller.TestClusterName &&
+	return pvc.Labels[label.ComponentLabelKey] == controller.TestComponentName &&
+		pvc.Labels[label.ManagedByLabelKey] == controller.TestManagedByName &&
+		pvc.Labels[label.InstanceLabelKey] == controller.TestClusterName &&
 		pvc.Labels[label.ClusterIDLabelKey] == controller.TestClusterId &&
 		pvc.Labels[label.MemberIDLabelKey] == controller.TestMemberId &&
 		pvc.Labels[label.StoreIDLabelKey] == controller.TestStoreId &&
@@ -371,9 +372,9 @@ func pvcMetaInfoMatchDesire(pvc *corev1.PersistentVolumeClaim) bool {
 
 func pvMetaInfoMatchDesire(ns string, pv *corev1.PersistentVolume) bool {
 	return pv.Labels[label.NamespaceLabelKey] == ns &&
-		pv.Labels[label.OwnerLabelKey] == controller.TestOwnerName &&
-		pv.Labels[label.ClusterLabelKey] == controller.TestClusterName &&
-		pv.Labels[label.AppLabelKey] == controller.TestAppName &&
+		pv.Labels[label.ManagedByLabelKey] == controller.TestManagedByName &&
+		pv.Labels[label.InstanceLabelKey] == controller.TestClusterName &&
+		pv.Labels[label.ComponentLabelKey] == controller.TestComponentName &&
 		pv.Labels[label.ClusterIDLabelKey] == controller.TestClusterId &&
 		pv.Labels[label.MemberIDLabelKey] == controller.TestMemberId &&
 		pv.Labels[label.StoreIDLabelKey] == controller.TestStoreId &&
@@ -391,9 +392,9 @@ func newPod(tc *v1alpha1.TidbCluster) *corev1.Pod {
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 			Labels: map[string]string{
-				label.AppLabelKey:     controller.TestAppName,
-				label.OwnerLabelKey:   controller.TestOwnerName,
-				label.ClusterLabelKey: tc.GetName(),
+				label.ComponentLabelKey: controller.TestComponentName,
+				label.ManagedByLabelKey: controller.TestManagedByName,
+				label.InstanceLabelKey:  tc.GetName(),
 			},
 		},
 		Spec: newPodSpec(v1alpha1.PDMemberType.String(), "pvc-1"),

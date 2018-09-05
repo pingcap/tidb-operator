@@ -177,9 +177,9 @@ func newPVC(tc *v1alpha1.TidbCluster) *corev1.PersistentVolumeClaim {
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 			Labels: map[string]string{
-				label.AppLabelKey:     controller.TestAppName,
-				label.OwnerLabelKey:   controller.TestOwnerName,
-				label.ClusterLabelKey: tc.GetName(),
+				label.ComponentLabelKey: controller.TestComponentName,
+				label.ManagedByLabelKey: controller.TestManagedByName,
+				label.InstanceLabelKey:  tc.GetName(),
 			},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
