@@ -47,10 +47,11 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 
 			dir("${PROJECT_DIR}"){
 				stage('run unit test and build tidb-operator && e2e test binary'){
-					git credentialsId: "${CREDENTIALS_ID}", url: "${BUILD_URL}", branch: "${BUILD_BRANCH}"
+					checkout([$class: 'GitSCM', branches: [[name: "${BUILD_BRANCH}"]], userRemoteConfigs:[[url: "${BUILD_URL}", credentialsId: "${CREDENTIALS_ID}"]]])
 					GITHASH = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
 					sh """
 					export GOPATH=${WORKSPACE}/go:$GOPATH
+					make check
 					make test
 					make
 					make e2e-build

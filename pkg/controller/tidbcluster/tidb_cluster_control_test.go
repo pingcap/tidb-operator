@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
@@ -55,6 +56,19 @@ func TestTidbClusterControl(t *testing.T) {
 	newTC, err := setControl.TcLister.TidbClusters(tc.Namespace).Get(tc.Name)
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(newTC.Status.PD.StatefulSet).NotTo(Equal(nil))
+}
+
+func TestTidbClusterStatusEquality(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tcStatus := v1alpha1.TidbClusterStatus{}
+
+	tcStatusCopy := tcStatus.DeepCopy()
+	tcStatusCopy.PD = v1alpha1.PDStatus{}
+	g.Expect(apiequality.Semantic.DeepEqual(&tcStatus, tcStatusCopy)).To(Equal(true))
+
+	tcStatusCopy = tcStatus.DeepCopy()
+	tcStatusCopy.PD.Phase = v1alpha1.NormalPhase
+	g.Expect(apiequality.Semantic.DeepEqual(&tcStatus, tcStatusCopy)).To(Equal(false))
 }
 
 func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetControl, StatusUpdaterInterface, *controller.FakePDControl) {
@@ -92,7 +106,7 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	return control, setControl, statusUpdater, pdControl
 }
 
-func syncTidbClusterControl(tc *v1alpha1.TidbCluster, setControl *controller.FakeStatefulSetControl, control ControlInterface) error {
+func syncTidbClusterControl(tc *v1alpha1.TidbCluster, _ *controller.FakeStatefulSetControl, control ControlInterface) error {
 	for tc.Status.PD.StatefulSet == nil {
 		err := control.UpdateTidbCluster(tc)
 		if err != nil {

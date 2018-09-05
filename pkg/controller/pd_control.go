@@ -463,9 +463,8 @@ func readErrorBody(body io.Reader) (err error) {
 	bodyBytes, err := ioutil.ReadAll(body)
 	if err != nil {
 		return err
-	} else {
-		return fmt.Errorf(string(bodyBytes))
 	}
+	return fmt.Errorf(string(bodyBytes))
 }
 
 type FakePDControl struct {
@@ -529,7 +528,7 @@ func (pc *FakePDClient) AddReaction(actionType ActionType, reaction Reaction) {
 }
 
 // fakeAPI is a small helper for fake API calls
-func (pc *FakePDClient) fakeApi(actionType ActionType, action *Action) (interface{}, error) {
+func (pc *FakePDClient) fakeAPI(actionType ActionType, action *Action) (interface{}, error) {
 	if reaction, ok := pc.reactions[actionType]; ok {
 		result, err := reaction(action)
 		if err != nil {
@@ -542,7 +541,7 @@ func (pc *FakePDClient) fakeApi(actionType ActionType, action *Action) (interfac
 
 func (pc *FakePDClient) GetHealth() (*HealthInfo, error) {
 	action := &Action{}
-	result, err := pc.fakeApi(GetHealthActionType, action)
+	result, err := pc.fakeAPI(GetHealthActionType, action)
 	if err != nil {
 		return nil, err
 	}
@@ -551,7 +550,7 @@ func (pc *FakePDClient) GetHealth() (*HealthInfo, error) {
 
 func (pc *FakePDClient) GetConfig() (*server.Config, error) {
 	action := &Action{}
-	result, err := pc.fakeApi(GetConfigActionType, action)
+	result, err := pc.fakeAPI(GetConfigActionType, action)
 	if err != nil {
 		return nil, err
 	}
@@ -560,7 +559,7 @@ func (pc *FakePDClient) GetConfig() (*server.Config, error) {
 
 func (pc *FakePDClient) GetCluster() (*metapb.Cluster, error) {
 	action := &Action{}
-	result, err := pc.fakeApi(GetClusterActionType, action)
+	result, err := pc.fakeAPI(GetClusterActionType, action)
 	if err != nil {
 		return nil, err
 	}
@@ -569,7 +568,7 @@ func (pc *FakePDClient) GetCluster() (*metapb.Cluster, error) {
 
 func (pc *FakePDClient) GetMembers() (*MembersInfo, error) {
 	action := &Action{}
-	result, err := pc.fakeApi(GetMembersActionType, action)
+	result, err := pc.fakeAPI(GetMembersActionType, action)
 	if err != nil {
 		return nil, err
 	}
@@ -578,7 +577,7 @@ func (pc *FakePDClient) GetMembers() (*MembersInfo, error) {
 
 func (pc *FakePDClient) GetStores() (*StoresInfo, error) {
 	action := &Action{}
-	result, err := pc.fakeApi(GetStoresActionType, action)
+	result, err := pc.fakeAPI(GetStoresActionType, action)
 	if err != nil {
 		return nil, err
 	}
@@ -587,7 +586,7 @@ func (pc *FakePDClient) GetStores() (*StoresInfo, error) {
 
 func (pc *FakePDClient) GetTombStoneStores() (*StoresInfo, error) {
 	action := &Action{}
-	result, err := pc.fakeApi(GetTombStoneStoresActionType, action)
+	result, err := pc.fakeAPI(GetTombStoneStoresActionType, action)
 	if err != nil {
 		return nil, err
 	}
@@ -598,7 +597,7 @@ func (pc *FakePDClient) GetStore(id uint64) (*StoreInfo, error) {
 	action := &Action{
 		ID: id,
 	}
-	result, err := pc.fakeApi(GetStoreActionType, action)
+	result, err := pc.fakeAPI(GetStoreActionType, action)
 	if err != nil {
 		return nil, err
 	}

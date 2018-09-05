@@ -28,7 +28,7 @@ type fakeIndexer struct {
 	getError error
 }
 
-func (f *fakeIndexer) GetByKey(key string) (interface{}, bool, error) {
+func (f *fakeIndexer) GetByKey(_ string) (interface{}, bool, error) {
 	return nil, false, f.getError
 }
 
@@ -56,17 +56,7 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 	return tc
 }
 
-func newSecret(tc *v1alpha1.TidbCluster, name string) *corev1.Secret {
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      GetName(tc.Name, "image"),
-			Namespace: metav1.NamespaceDefault,
-		},
-	}
-	return secret
-}
-
-func newService(tc *v1alpha1.TidbCluster, name string) *corev1.Service {
+func newService(tc *v1alpha1.TidbCluster, _ string) *corev1.Service {
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      GetName(tc.Name, "pd"),
@@ -76,7 +66,7 @@ func newService(tc *v1alpha1.TidbCluster, name string) *corev1.Service {
 	return svc
 }
 
-func newStatefulSet(tc *v1alpha1.TidbCluster, name string) *apps.StatefulSet {
+func newStatefulSet(tc *v1alpha1.TidbCluster, _ string) *apps.StatefulSet {
 	set := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      GetName(tc.Name, "pd"),
@@ -84,16 +74,6 @@ func newStatefulSet(tc *v1alpha1.TidbCluster, name string) *apps.StatefulSet {
 		},
 	}
 	return set
-}
-
-func newDeployment(tc *v1alpha1.TidbCluster, name string) *apps.Deployment {
-	deploy := &apps.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      GetName(tc.Name, "monitor"),
-			Namespace: metav1.NamespaceDefault,
-		},
-	}
-	return deploy
 }
 
 // GetName concatenate tidb cluster name and member name, used for controller managed resource name

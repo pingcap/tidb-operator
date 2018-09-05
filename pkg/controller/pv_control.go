@@ -181,7 +181,7 @@ func (fpc *FakePVControl) SetUpdatePVError(err error, after int) {
 }
 
 // PatchPVReclaimPolicy patchs the reclaim policy of PV
-func (fpc *FakePVControl) PatchPVReclaimPolicy(tc *v1alpha1.TidbCluster, pv *corev1.PersistentVolume, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
+func (fpc *FakePVControl) PatchPVReclaimPolicy(_ *v1alpha1.TidbCluster, pv *corev1.PersistentVolume, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
 	defer fpc.updatePVTracker.inc()
 	if fpc.updatePVTracker.errorReady() {
 		defer fpc.updatePVTracker.reset()

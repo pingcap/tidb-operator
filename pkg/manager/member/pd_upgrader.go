@@ -25,7 +25,7 @@ func NewPDUpgrader() Upgrader {
 	return &pdUpgrader{}
 }
 
-func (pu *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (pu *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
 	tc.Status.PD.Phase = v1alpha1.UpgradePhase
 	return nil
 }
@@ -37,7 +37,7 @@ func NewFakePDUpgrader() Upgrader {
 	return &fakePDUpgrader{}
 }
 
-func (fpu *fakePDUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (fpu *fakePDUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
 	tc.Status.PD.Phase = v1alpha1.UpgradePhase
 	return nil
 }
