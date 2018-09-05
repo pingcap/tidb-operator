@@ -77,7 +77,7 @@ func TestPDFailoverFailover(t *testing.T) {
 		if test.hasPod {
 			pod := newPodForPDFailover(tc, v1alpha1.PDMemberType, 1)
 			if test.podWithDeletionTimestamp {
-				pod.DeletionTimestamp = &metav1.Time{time.Now()}
+				pod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 			}
 			podIndexer.Add(pod)
 		}
@@ -137,7 +137,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				oneNotReadyMember(tc)
 				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
 				pd1 := tc.Status.PD.Members[pd1Name]
-				pd1.LastTransitionTime = metav1.Time{time.Now().Add(-2 * time.Minute)}
+				pd1.LastTransitionTime = metav1.Time{Time: time.Now().Add(-2 * time.Minute)}
 				tc.Status.PD.Members[pd1Name] = pd1
 			},
 			hasPVC: true,
@@ -549,11 +549,11 @@ func oneFailureMember(tc *v1alpha1.TidbCluster) {
 	pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
 	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
-		pd0: v1alpha1.PDMember{Name: pd0, ID: "0", Health: true},
-		pd2: v1alpha1.PDMember{Name: pd2, ID: "2", Health: true},
+		pd0: {Name: pd0, ID: "0", Health: true},
+		pd2: {Name: pd2, ID: "2", Health: true},
 	}
 	tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{
-		pd1: v1alpha1.PDFailureMember{Replicas: 3, PVUID: "uid-1"},
+		pd1: {Replicas: 3, PVUID: "uid-1"},
 	}
 }
 
@@ -562,11 +562,11 @@ func twoFailureMembers(tc *v1alpha1.TidbCluster) {
 	pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
 	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
-		pd2: v1alpha1.PDMember{Name: pd2, ID: "2", Health: true},
+		pd2: {Name: pd2, ID: "2", Health: true},
 	}
 	tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{
-		pd0: v1alpha1.PDFailureMember{Replicas: 3},
-		pd1: v1alpha1.PDFailureMember{Replicas: 4},
+		pd0: {Replicas: 3},
+		pd1: {Replicas: 4},
 	}
 }
 
@@ -575,9 +575,9 @@ func oneNotReadyMember(tc *v1alpha1.TidbCluster) {
 	pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
 	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
-		pd0: v1alpha1.PDMember{Name: pd0, ID: "0", Health: true},
-		pd1: v1alpha1.PDMember{Name: pd1, ID: "1", Health: false, LastTransitionTime: metav1.Time{time.Now().Add(-10 * time.Minute)}},
-		pd2: v1alpha1.PDMember{Name: pd2, ID: "2", Health: true},
+		pd0: {Name: pd0, ID: "0", Health: true},
+		pd1: {Name: pd1, ID: "1", Health: false, LastTransitionTime: metav1.Time{Time: time.Now().Add(-10 * time.Minute)}},
+		pd2: {Name: pd2, ID: "2", Health: true},
 	}
 }
 
@@ -586,9 +586,9 @@ func allMembersReady(tc *v1alpha1.TidbCluster) {
 	pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
 	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
-		pd0: v1alpha1.PDMember{Name: pd0, ID: "0", Health: true},
-		pd1: v1alpha1.PDMember{Name: pd1, ID: "1", Health: true},
-		pd2: v1alpha1.PDMember{Name: pd2, ID: "2", Health: true},
+		pd0: {Name: pd0, ID: "0", Health: true},
+		pd1: {Name: pd1, ID: "1", Health: true},
+		pd2: {Name: pd2, ID: "2", Health: true},
 	}
 }
 
@@ -597,9 +597,9 @@ func twoMembersNotReady(tc *v1alpha1.TidbCluster) {
 	pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
 	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
-		pd0: v1alpha1.PDMember{Name: pd0, ID: "0", Health: false},
-		pd1: v1alpha1.PDMember{Name: pd1, ID: "1", Health: false},
-		pd2: v1alpha1.PDMember{Name: pd2, ID: "2", Health: true},
+		pd0: {Name: pd0, ID: "0", Health: false},
+		pd1: {Name: pd1, ID: "1", Health: false},
+		pd2: {Name: pd2, ID: "2", Health: true},
 	}
 }
 
