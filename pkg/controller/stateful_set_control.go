@@ -158,7 +158,7 @@ func (ssc *FakeStatefulSetControl) SetStatusChange(fn func(*apps.StatefulSet)) {
 }
 
 // CreateStatefulSet adds the statefulset to SetIndexer
-func (ssc *FakeStatefulSetControl) CreateStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+func (ssc *FakeStatefulSetControl) CreateStatefulSet(_ *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	defer func() {
 		ssc.createStatefulSetTracker.inc()
 		ssc.statusChange = nil
@@ -177,7 +177,7 @@ func (ssc *FakeStatefulSetControl) CreateStatefulSet(tc *v1alpha1.TidbCluster, s
 }
 
 // UpdateStatefulSet updates the statefulset of SetIndexer
-func (ssc *FakeStatefulSetControl) UpdateStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+func (ssc *FakeStatefulSetControl) UpdateStatefulSet(_ *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	defer func() {
 		ssc.updateStatefulSetTracker.inc()
 		ssc.statusChange = nil
@@ -195,7 +195,7 @@ func (ssc *FakeStatefulSetControl) UpdateStatefulSet(tc *v1alpha1.TidbCluster, s
 }
 
 // DeleteStatefulSet deletes the statefulset of SetIndexer
-func (ssc *FakeStatefulSetControl) DeleteStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+func (ssc *FakeStatefulSetControl) DeleteStatefulSet(_ *v1alpha1.TidbCluster, _ *apps.StatefulSet) error {
 	return nil
 }
 

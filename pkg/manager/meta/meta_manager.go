@@ -18,13 +18,13 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/manager"
 	corev1 "k8s.io/api/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
-var PVCNotFound = errors.New("PVC is not found")
+var errPVCNotFound = errors.New("PVC is not found")
 
 type metaManager struct {
 	pvcLister  corelisters.PersistentVolumeClaimLister
@@ -107,7 +107,7 @@ func (pmm *metaManager) resolvePVCFromPod(pod *corev1.Pod) (*corev1.PersistentVo
 		}
 	}
 	if len(pvcName) == 0 {
-		return nil, PVCNotFound
+		return nil, errPVCNotFound
 	}
 
 	pvc, err := pmm.pvcLister.PersistentVolumeClaims(pod.Namespace).Get(pvcName)
