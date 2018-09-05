@@ -108,7 +108,7 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	return control, setControl, statusUpdater, pdControl
 }
 
-func syncTidbClusterControl(tc *v1alpha1.TidbCluster, setControl *controller.FakeStatefulSetControl, control ControlInterface) error {
+func syncTidbClusterControl(tc *v1alpha1.TidbCluster, _ *controller.FakeStatefulSetControl, control ControlInterface) error {
 	for tc.Status.PD.StatefulSet == nil {
 		err := control.UpdateTidbCluster(tc)
 		if err != nil {

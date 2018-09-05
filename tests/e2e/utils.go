@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo" // revive:disable:dot-imports
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
