@@ -207,7 +207,11 @@ func (tcc *Controller) processNextWorkItem() bool {
 	}
 	defer tcc.queue.Done(key)
 	if err := tcc.sync(key.(string)); err != nil {
-		utilruntime.HandleError(fmt.Errorf("Error syncing TidbCluster %v, requeuing: %v", key.(string), err))
+		if controller.IsRequeueError(err) {
+			glog.Infof("TidbCluster: %v, still need sync: %v, requeuing", key.(string), err)
+		} else {
+			utilruntime.HandleError(fmt.Errorf("TidbCluster: %v, sync failed %v, requeuing", key.(string), err))
+		}
 		tcc.queue.AddRateLimited(key)
 	} else {
 		tcc.queue.Forget(key)
