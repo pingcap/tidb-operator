@@ -45,7 +45,7 @@ func NewFakeTiDBUpgrader() Upgrader {
 	return &fakeTiDBUpgrader{}
 }
 
-func (ftdu *fakeTiDBUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (ftdu *fakeTiDBUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
 	tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
 	return nil
 }

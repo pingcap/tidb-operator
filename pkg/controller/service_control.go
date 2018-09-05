@@ -149,7 +149,7 @@ func (ssc *FakeServiceControl) SetDeleteServiceError(err error, after int) {
 }
 
 // CreateService adds the service to SvcIndexer
-func (ssc *FakeServiceControl) CreateService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
+func (ssc *FakeServiceControl) CreateService(_ *v1alpha1.TidbCluster, svc *corev1.Service) error {
 	defer ssc.createServiceTracker.inc()
 	if ssc.createServiceTracker.errorReady() {
 		defer ssc.createServiceTracker.reset()
@@ -160,7 +160,7 @@ func (ssc *FakeServiceControl) CreateService(tc *v1alpha1.TidbCluster, svc *core
 }
 
 // UpdateService updates the service of SvcIndexer
-func (ssc *FakeServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
+func (ssc *FakeServiceControl) UpdateService(_ *v1alpha1.TidbCluster, svc *corev1.Service) error {
 	defer ssc.updateServiceTracker.inc()
 	if ssc.updateServiceTracker.errorReady() {
 		defer ssc.updateServiceTracker.reset()
@@ -171,7 +171,7 @@ func (ssc *FakeServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *core
 }
 
 // DeleteService deletes the service of SvcIndexer
-func (ssc *FakeServiceControl) DeleteService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
+func (ssc *FakeServiceControl) DeleteService(_ *v1alpha1.TidbCluster, _ *corev1.Service) error {
 	return nil
 }
 
