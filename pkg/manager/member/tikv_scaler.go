@@ -135,12 +135,12 @@ func NewFakeTiKVScaler() Scaler {
 	return &fakeTiKVScaler{}
 }
 
-func (fsd *fakeTiKVScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (fsd *fakeTiKVScaler) ScaleOut(_ *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	increaseReplicas(newSet, oldSet)
 	return nil
 }
 
-func (fsd *fakeTiKVScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (fsd *fakeTiKVScaler) ScaleIn(_ *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	decreaseReplicas(newSet, oldSet)
 	return nil
 }

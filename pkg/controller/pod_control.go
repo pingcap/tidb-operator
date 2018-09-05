@@ -149,9 +149,9 @@ func (rpc *realPodControl) recordPodEvent(verb string, tc *v1alpha1.TidbCluster,
 var _ PodControlInterface = &realPodControl{}
 
 var (
-	TestStoreId     string = "000"
-	TestMemberId    string = "111"
-	TestClusterId   string = "222"
+	TestStoreID     string = "000"
+	TestMemberID    string = "111"
+	TestClusterID   string = "222"
 	TestAppName     string = "tikv"
 	TestPodName     string = "pod-1"
 	TestOwnerName   string = "tidbCluster"
@@ -203,7 +203,7 @@ func (fpc *FakePodControl) SetGetStoreError(err error, after int) {
 }
 
 // UpdateMetaInfo update the meta info of Pod
-func (fpc *FakePodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+func (fpc *FakePodControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pod *corev1.Pod) error {
 	defer fpc.updatePodTracker.inc()
 	if fpc.updatePodTracker.errorReady() {
 		defer fpc.updatePodTracker.reset()
@@ -231,9 +231,9 @@ func (fpc *FakePodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 	setIfNotEmpty(pod.Labels, label.AppLabelKey, TestAppName)
 	setIfNotEmpty(pod.Labels, label.OwnerLabelKey, TestOwnerName)
 	setIfNotEmpty(pod.Labels, label.ClusterLabelKey, TestClusterName)
-	setIfNotEmpty(pod.Labels, label.ClusterIDLabelKey, TestClusterId)
-	setIfNotEmpty(pod.Labels, label.MemberIDLabelKey, TestMemberId)
-	setIfNotEmpty(pod.Labels, label.StoreIDLabelKey, TestStoreId)
+	setIfNotEmpty(pod.Labels, label.ClusterIDLabelKey, TestClusterID)
+	setIfNotEmpty(pod.Labels, label.MemberIDLabelKey, TestMemberID)
+	setIfNotEmpty(pod.Labels, label.StoreIDLabelKey, TestStoreID)
 	return fpc.PodIndexer.Update(pod)
 }
 

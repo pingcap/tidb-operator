@@ -74,11 +74,7 @@ func (pmm *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 
 	// Sync PD StatefulSet
-	if err := pmm.syncPDStatefulSetForTidbCluster(tc); err != nil {
-		return err
-	}
-
-	return nil
+	return pmm.syncPDStatefulSetForTidbCluster(tc)
 }
 
 func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {

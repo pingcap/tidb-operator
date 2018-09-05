@@ -6,8 +6,10 @@ LDFLAGS += -X "github.com/pingcap/tidb-operator/version.GitSHA=$(shell git rev-p
 
 DOCKER_REGISTRY := $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY),localhost:5000)
 
-PACKAGES := go list ./...
-PACKAGE_DIRECTORIES := $(PACKAGES) | sed 's|github.com/pingcap/tidb-operator/||'
+PACKAGE_LIST := go list ./... | grep -vE "vendor" | grep -vE "pkg/client" | grep -vE "zz_generated"
+PACKAGES := $$($(PACKAGE_LIST))
+PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
+FILES := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go")
 FAIL_ON_STDOUT := awk '{ print } END { if (NR > 0) { exit 1 } }'
 
 default: build
@@ -37,32 +39,54 @@ e2e-build:
 	$(GOENV) ginkgo build tests/e2e
 
 test:
-	@ CGO_ENABLED=0 go test ./pkg/... -v -cover && echo success
+	@echo "run unit tests"
+	@$(GO) test ./pkg/... -v -cover && echo success
 
-check-all: static lint
-	@echo "checking"
+check-all: lint check-static check-shadow check-gosec megacheck errcheck
 
 check-setup:
 	@which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
 	@retool sync
 
-check: check-setup check-all
+check: check-setup lint check-static
 
-static:
+check-static:
 	@ # Not running vet and fmt through metalinter becauase it ends up looking at vendor
-	gofmt -s -l $$($(PACKAGE_DIRECTORIES)) 2>&1 | $(FAIL_ON_STDOUT)
-	retool do govet --shadow $$($(PACKAGE_DIRECTORIES)) 2>&1 | $(FAIL_ON_STDOUT)
-
-	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all --deadline 120s \
+	@echo "gofmt checking"
+	gofmt -s -l -w $(FILES) 2>&1| $(FAIL_ON_STDOUT)
+	@echo "govet checking"
+	retool do govet -all $$($(PACKAGE_DIRECTORIES)) 2>&1
+	@echo "mispell and ineffassign checking"
+	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all \
 	  --enable misspell \
-	  --enable megacheck \
 	  --enable ineffassign \
+	  $$($(PACKAGE_DIRECTORIES))
+
+# TODO: megacheck is too slow currently
+megacheck:
+	@echo "gometalinter megacheck"
+	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all --deadline 120s \
+	  --enable megacheck \
+	  $$($(PACKAGE_DIRECTORIES))
+
+# TODO: errcheck is too slow currently
+errcheck:
+	@echo "gometalinter errcheck"
+	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all --deadline 120s \
 	  --enable errcheck \
 	  $$($(PACKAGE_DIRECTORIES))
+
+# TODO: shadow check fails at the moment
+check-shadow:
+	@echo "govet shadow checking"
+	retool do govet -shadow $$($(PACKAGE_DIRECTORIES))
 
 lint:
 	@echo "linting"
 	CGO_ENABLED=0 retool do revive -formatter friendly -config revive.toml $$($(PACKAGES))
 
 check-gosec:
+	@echo "security checking"
 	CGO_ENABLED=0 retool do gosec $$($(PACKAGE_DIRECTORIES))
+
+.PHONY: check check-all build e2e-build
