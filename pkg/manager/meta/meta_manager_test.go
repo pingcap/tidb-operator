@@ -209,8 +209,8 @@ func TestMetaManagerSync(t *testing.T) {
 			pvcUpdateErr:  false,
 			pvUpdateErr:   false,
 			podChanged:    true,
-			pvcChanged:    true,
-			pvChanged:     true,
+			pvcChanged:    false,
+			pvChanged:     false,
 		},
 		{
 			name:          "the volume name of the pod is not tikv and pd",
@@ -392,6 +392,7 @@ func newPod(tc *v1alpha1.TidbCluster) *corev1.Pod {
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 			Labels: map[string]string{
+				label.NameLabelKey:      controller.TestName,
 				label.ComponentLabelKey: controller.TestComponentName,
 				label.ManagedByLabelKey: controller.TestManagedByName,
 				label.InstanceLabelKey:  tc.GetName(),
