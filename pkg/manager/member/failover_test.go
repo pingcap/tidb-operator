@@ -70,12 +70,12 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			name: "normal",
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
-					"1": v1alpha1.TiKVStore{
+					"1": {
 						State:              v1alpha1.TiKVStateDown,
 						PodName:            "tikv-1",
 						LastTransitionTime: metav1.Time{time.Now().Add(-70 * time.Minute)},
 					},
-					"2": v1alpha1.TiKVStore{
+					"2": {
 						State:              v1alpha1.TiKVStateDown,
 						PodName:            "tikv-2",
 						LastTransitionTime: metav1.Time{time.Now().Add(-61 * time.Minute)},
@@ -101,7 +101,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			name: "tikv state is not Down",
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
-					"1": v1alpha1.TiKVStore{State: v1alpha1.TiKVStateUp, PodName: "tikv-1"},
+					"1": {State: v1alpha1.TiKVStateUp, PodName: "tikv-1"},
 				}
 			},
 			getCfgErr: false,
@@ -114,7 +114,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			name: "deadline not exceed",
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
-					"1": v1alpha1.TiKVStore{
+					"1": {
 						State:              v1alpha1.TiKVStateDown,
 						PodName:            "tikv-1",
 						LastTransitionTime: metav1.Time{time.Now().Add(-30 * time.Minute)},
@@ -131,7 +131,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			name: "lastTransitionTime is zero",
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
-					"1": v1alpha1.TiKVStore{
+					"1": {
 						State:   v1alpha1.TiKVStateDown,
 						PodName: "tikv-1",
 					},
@@ -147,14 +147,14 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			name: "exist in failureStores",
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
-					"1": v1alpha1.TiKVStore{
+					"1": {
 						State:              v1alpha1.TiKVStateDown,
 						PodName:            "tikv-1",
 						LastTransitionTime: metav1.Time{time.Now().Add(-70 * time.Minute)},
 					},
 				}
 				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{
-					"1": v1alpha1.TiKVFailureStore{
+					"1": {
 						PodName: "tikv-1",
 						StoreID: "1",
 					},

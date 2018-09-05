@@ -344,7 +344,7 @@ func newFakeTiKVScaler() (*tikvScaler, *controller.FakePDControl, cache.Indexer,
 
 func normalStoreFun(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
-		"1": v1alpha1.TiKVStore{
+		"1": {
 			ID:      "1",
 			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 4),
 			State:   util.StoreUpState,
@@ -354,7 +354,7 @@ func normalStoreFun(tc *v1alpha1.TidbCluster) {
 
 func tombstoneStoreFun(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiKV.TombstoneStores = map[string]v1alpha1.TiKVStore{
-		"1": v1alpha1.TiKVStore{
+		"1": {
 			ID:      "1",
 			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 4),
 			State:   util.StoreTombstoneState,
