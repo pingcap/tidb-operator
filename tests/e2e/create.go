@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	_ "github.com/go-sql-driver/mysql" // init mysql driver
+	. "github.com/onsi/ginkgo"         // revive:disable:dot-imports
+	. "github.com/onsi/gomega"         // revive:disable:dot-imports
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
