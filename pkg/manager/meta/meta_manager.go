@@ -24,7 +24,7 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
-var PVCNotFound = errors.New("PVC is not found")
+var errPVCNotFound = errors.New("PVC is not found")
 
 type metaManager struct {
 	pvcLister  corelisters.PersistentVolumeClaimLister
@@ -111,7 +111,7 @@ func (pmm *metaManager) resolvePVCFromPod(pod *corev1.Pod) (*corev1.PersistentVo
 		}
 	}
 	if len(pvcName) == 0 {
-		return nil, PVCNotFound
+		return nil, errPVCNotFound
 	}
 
 	pvc, err := pmm.pvcLister.PersistentVolumeClaims(pod.Namespace).Get(pvcName)

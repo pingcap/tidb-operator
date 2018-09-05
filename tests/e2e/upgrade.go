@@ -17,8 +17,8 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo" // revive:disable:dot-imports
+	. "github.com/onsi/gomega" // revive:disable:dot-imports
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1beta1"
@@ -127,25 +127,24 @@ func memberUpgraded() (bool, error) {
 		Expect(podsUpgraded(tikvSet)).To(BeTrue())
 		Expect(imageUpgraded(tc, v1alpha1.TiDBMemberType, tidbSet)).To(BeTrue())
 		return false, nil
-	} else {
-		if !imageUpgraded(tc, v1alpha1.PDMemberType, pdSet) {
-			return false, nil
-		}
-		if !podsUpgraded(pdSet) {
-			return false, nil
-		}
-		if !imageUpgraded(tc, v1alpha1.TiKVMemberType, tikvSet) {
-			return false, nil
-		}
-		if !podsUpgraded(tikvSet) {
-			return false, nil
-		}
-		if !imageUpgraded(tc, v1alpha1.TiDBMemberType, tidbSet) {
-			return false, nil
-		}
-		return podsUpgraded(tidbSet), nil
 	}
-	return false, nil
+	if !imageUpgraded(tc, v1alpha1.PDMemberType, pdSet) {
+		return false, nil
+	}
+	if !podsUpgraded(pdSet) {
+		return false, nil
+	}
+	if !imageUpgraded(tc, v1alpha1.TiKVMemberType, tikvSet) {
+		return false, nil
+	}
+	if !podsUpgraded(tikvSet) {
+		return false, nil
+	}
+	if !imageUpgraded(tc, v1alpha1.TiDBMemberType, tidbSet) {
+		return false, nil
+	}
+	return podsUpgraded(tidbSet), nil
+
 }
 
 func imageUpgraded(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, set *apps.StatefulSet) bool {

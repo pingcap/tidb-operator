@@ -17,8 +17,8 @@ import (
 	"fmt"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo" // revive:disable:dot-imports
+	. "github.com/onsi/gomega" // revive:disable:dot-imports
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

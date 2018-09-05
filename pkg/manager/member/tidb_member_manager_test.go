@@ -93,27 +93,27 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			prepare:                  nil,
 			errWhenCreateStatefulSet: false,
 			errWhenCreateTiDBService: false,
-			err:            false,
-			tidbSvcCreated: true,
-			setCreated:     true,
+			err:                      false,
+			tidbSvcCreated:           true,
+			setCreated:               true,
 		},
 		{
 			name:                     "error when create statefulset",
 			prepare:                  nil,
 			errWhenCreateStatefulSet: true,
 			errWhenCreateTiDBService: false,
-			err:            true,
-			tidbSvcCreated: true,
-			setCreated:     false,
+			err:                      true,
+			tidbSvcCreated:           true,
+			setCreated:               false,
 		},
 		{
 			name:                     "error when create tidb service",
 			prepare:                  nil,
 			errWhenCreateStatefulSet: false,
 			errWhenCreateTiDBService: true,
-			err:            true,
-			tidbSvcCreated: false,
-			setCreated:     false,
+			err:                      true,
+			tidbSvcCreated:           false,
+			setCreated:               false,
 		},
 	}
 
@@ -202,7 +202,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 			},
 			errWhenUpdateStatefulSet: false,
 			errWhenUpdateTiDBService: false,
-			err: false,
+			err:                      false,
 			expectTiDBServieFn: func(g *GomegaWithT, svc *corev1.Service, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(svc.Spec.Type).To(Equal(corev1.ServiceTypeNodePort))
@@ -223,7 +223,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 			},
 			errWhenUpdateStatefulSet: false,
 			errWhenUpdateTiDBService: true,
-			err: true,
+			err:                      true,
 			expectTiDBServieFn: func(g *GomegaWithT, svc *corev1.Service, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(svc.Spec.Type).To(Equal(corev1.ServiceTypeClusterIP))
@@ -239,8 +239,8 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 			},
 			errWhenUpdateStatefulSet: true,
 			errWhenUpdateTiDBService: false,
-			err:                true,
-			expectTiDBServieFn: nil,
+			err:                      true,
+			expectTiDBServieFn:       nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
