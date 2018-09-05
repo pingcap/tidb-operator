@@ -210,7 +210,17 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		return err
 	}
 	if errors.IsNotFound(err) {
-		newPDSet.Spec.Replicas = func() *int32 { var i int32 = 1; return &i }()
+		pvcName := ordinalPVCName(v1alpha1.PDMemberType, newPDSet.GetName(), *newPDSet.Spec.Replicas-int32(1))
+		var newReplicas int32 = 1
+		pvc, err := pmm.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
+		if err != nil && !errors.IsNotFound(err) {
+			return err
+		}
+		// start all the pd members together, if this is a old cluster
+		if pvc != nil {
+			newReplicas = *newPDSet.Spec.Replicas
+		}
+		newPDSet.Spec.Replicas = func() *int32 { var i int32 = newReplicas; return &i }()
 		err = SetLastAppliedConfigAnnotation(newPDSet)
 		if err != nil {
 			return err
