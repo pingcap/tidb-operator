@@ -107,7 +107,8 @@ func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 		if err != nil {
 			return err
 		}
-		return pmm.svcControl.UpdateService(tc, &svc)
+		_, err = pmm.svcControl.UpdateService(tc, &svc)
+		return err
 	}
 
 	return nil
@@ -143,7 +144,8 @@ func (pmm *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1alpha1.Tid
 		if err != nil {
 			return err
 		}
-		return pmm.svcControl.UpdateService(tc, &svc)
+		_, err = pmm.svcControl.UpdateService(tc, &svc)
+		return err
 	}
 
 	return nil
@@ -201,11 +203,12 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		set := *oldPDSet
 		set.Spec.Template = newPDSet.Spec.Template
 		*set.Spec.Replicas = *newPDSet.Spec.Replicas
-		err = SetLastAppliedConfigAnnotation(&set)
+		err := SetLastAppliedConfigAnnotation(&set)
 		if err != nil {
 			return err
 		}
-		return pmm.setControl.UpdateStatefulSet(tc, &set)
+		_, err = pmm.setControl.UpdateStatefulSet(tc, &set)
+		return err
 	}
 
 	return nil

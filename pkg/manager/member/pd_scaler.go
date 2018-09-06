@@ -95,7 +95,7 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	}
 	pvc.Annotations[label.AnnPVCDeferDeleting] = time.Now().Format(time.RFC3339)
 
-	err = psd.pvcControl.UpdatePVC(tc, pvc)
+	_, err = psd.pvcControl.UpdatePVC(tc, pvc)
 	if err != nil {
 		resetReplicas(newSet, oldSet)
 		return err

@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
 	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
@@ -37,7 +38,7 @@ var ExternalTrafficPolicy string
 // ServiceControlInterface manages Services used in TidbCluster
 type ServiceControlInterface interface {
 	CreateService(*v1alpha1.TidbCluster, *corev1.Service) error
-	UpdateService(*v1alpha1.TidbCluster, *corev1.Service) error
+	UpdateService(*v1alpha1.TidbCluster, *corev1.Service) (*corev1.Service, error)
 	DeleteService(*v1alpha1.TidbCluster, *corev1.Service) error
 }
 
@@ -65,21 +66,32 @@ func (sc *realServiceControl) CreateService(tc *v1alpha1.TidbCluster, svc *corev
 	return err
 }
 
-func (sc *realServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
+func (sc *realServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev1.Service) (*corev1.Service, error) {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	svcName := svc.GetName()
+	svcSpec := svc.Spec.DeepCopy()
+
+	var updateSvc *corev1.Service
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		_, updateErr := sc.kubeCli.CoreV1().Services(tc.Namespace).Update(svc)
+		var updateErr error
+		updateSvc, updateErr = sc.kubeCli.CoreV1().Services(ns).Update(svc)
 		if updateErr == nil {
+			glog.V(4).Infof("update Service: [%s/%s] successfully, TidbCluster: %s", ns, svcName, tcName)
 			return nil
 		}
-		if updated, err := sc.svcLister.Services(tc.Namespace).Get(svc.Name); err != nil {
+
+		if updated, err := sc.svcLister.Services(tc.Namespace).Get(svcName); err != nil {
 			svc = updated.DeepCopy()
+			svc.Spec = *svcSpec
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated Service %s/%s from lister: %v", tc.Namespace, svc.Name, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated Service %s/%s from lister: %v", ns, svcName, err))
 		}
+
 		return updateErr
 	})
 	sc.recordServiceEvent("update", tc, svc, err)
-	return err
+	return updateSvc, err
 }
 
 func (sc *realServiceControl) DeleteService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
@@ -160,14 +172,14 @@ func (ssc *FakeServiceControl) CreateService(_ *v1alpha1.TidbCluster, svc *corev
 }
 
 // UpdateService updates the service of SvcIndexer
-func (ssc *FakeServiceControl) UpdateService(_ *v1alpha1.TidbCluster, svc *corev1.Service) error {
+func (ssc *FakeServiceControl) UpdateService(_ *v1alpha1.TidbCluster, svc *corev1.Service) (*corev1.Service, error) {
 	defer ssc.updateServiceTracker.inc()
 	if ssc.updateServiceTracker.errorReady() {
 		defer ssc.updateServiceTracker.reset()
-		return ssc.updateServiceTracker.err
+		return nil, ssc.updateServiceTracker.err
 	}
 
-	return ssc.SvcIndexer.Update(svc)
+	return svc, ssc.SvcIndexer.Update(svc)
 }
 
 // DeleteService deletes the service of SvcIndexer

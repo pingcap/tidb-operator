@@ -22,8 +22,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
@@ -31,12 +33,13 @@ import (
 
 // PodControlInterface manages Pods used in TidbCluster
 type PodControlInterface interface {
-	UpdateMetaInfo(*v1alpha1.TidbCluster, *corev1.Pod) error
+	UpdateMetaInfo(*v1alpha1.TidbCluster, *corev1.Pod) (*corev1.Pod, error)
 }
 
 type realPodControl struct {
 	kubeCli   kubernetes.Interface
 	pdControl PDControlInterface
+	podLister corelisters.PodLister
 	recorder  record.EventRecorder
 }
 
@@ -44,33 +47,35 @@ type realPodControl struct {
 func NewRealPodControl(
 	kubeCli kubernetes.Interface,
 	pdControl PDControlInterface,
+	podLister corelisters.PodLister,
 	recorder record.EventRecorder,
 ) PodControlInterface {
 	return &realPodControl{
 		kubeCli:   kubeCli,
 		pdControl: pdControl,
+		podLister: podLister,
 		recorder:  recorder,
 	}
 }
 
-func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Pod) (*corev1.Pod, error) {
 	ns := pod.GetNamespace()
 	podName := pod.GetName()
 	labels := pod.GetLabels()
 	tcName := tc.GetName()
 	var clusterID, storeID, memberID string
 	if labels == nil {
-		return fmt.Errorf("pod %s/%s has empty labels, TidbCluster: %s", ns, podName, tcName)
+		return pod, fmt.Errorf("pod %s/%s has empty labels, TidbCluster: %s", ns, podName, tcName)
 	}
 	_, ok := labels[label.ClusterLabelKey]
 	if !ok {
-		return fmt.Errorf("pod %s/%s doesn't have %s label, TidbCluster: %s", ns, podName, label.ClusterLabelKey, tcName)
+		return pod, fmt.Errorf("pod %s/%s doesn't have %s label, TidbCluster: %s", ns, podName, label.ClusterLabelKey, tcName)
 	}
 	pdClient := rpc.pdControl.GetPDClient(tc)
 	if labels[label.ClusterIDLabelKey] == "" {
 		cluster, err := pdClient.GetCluster()
 		if err != nil {
-			return fmt.Errorf("failed to get tidb cluster info from pd, TidbCluster: %s/%s, err: %v", ns, tcName, err)
+			return pod, fmt.Errorf("failed to get tidb cluster info from pd, TidbCluster: %s/%s, err: %v", ns, tcName, err)
 		}
 		clusterID = strconv.FormatUint(cluster.Id, 10)
 	}
@@ -82,7 +87,7 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 			// get member id
 			members, err := pdClient.GetMembers()
 			if err != nil {
-				return fmt.Errorf("failed to get pd members info from pd, TidbCluster: %s/%s, err: %v", ns, tcName, err)
+				return pod, fmt.Errorf("failed to get pd members info from pd, TidbCluster: %s/%s, err: %v", ns, tcName, err)
 			}
 			for _, member := range members.Members {
 				if member.GetName() == podName {
@@ -96,7 +101,7 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 			// get store id
 			stores, err := pdClient.GetStores()
 			if err != nil {
-				return fmt.Errorf("failed to get tikv stores info from pd, TidbCluster: %s/%s, err: %v", ns, tcName, err)
+				return pod, fmt.Errorf("failed to get tikv stores info from pd, TidbCluster: %s/%s, err: %v", ns, tcName, err)
 			}
 			for _, store := range stores.Stores {
 				addr := store.Store.GetAddress()
@@ -111,24 +116,35 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 		labels[label.MemberIDLabelKey] == memberID &&
 		labels[label.StoreIDLabelKey] == storeID {
 		glog.V(4).Infof("pod %s/%s already has cluster labels set, skipping. TidbCluster: %s", ns, podName, tcName)
-		return nil
+		return pod, nil
 	}
 	// labels is a pointer, modify labels will modify pod.Labels
 	setIfNotEmpty(labels, label.ClusterIDLabelKey, clusterID)
 	setIfNotEmpty(labels, label.MemberIDLabelKey, memberID)
 	setIfNotEmpty(labels, label.StoreIDLabelKey, storeID)
 
+	var updatePod *corev1.Pod
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		_, err := rpc.kubeCli.CoreV1().Pods(ns).Update(pod)
-		if err != nil {
-			glog.Errorf("failed to update pod %s/%s with cluster labels %v, TidbCluster: %s, err: %v", ns, podName, labels, tcName, err)
-			return err
+		var updateErr error
+		updatePod, updateErr = rpc.kubeCli.CoreV1().Pods(ns).Update(pod)
+		if updateErr == nil {
+			glog.V(4).Infof("update pod %s/%s with cluster labels %v successfully, TidbCluster: %s", ns, podName, labels, tcName)
+			return nil
 		}
-		glog.V(4).Infof("update pod %s/%s with cluster labels %v successfully, TidbCluster: %s", ns, podName, labels, tcName)
-		return nil
+		glog.Errorf("failed to update pod %s/%s with cluster labels %v, TidbCluster: %s, err: %v", ns, podName, labels, tcName, updateErr)
+
+		if updated, err := rpc.podLister.Pods(ns).Get(podName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			pod = updated.DeepCopy()
+			pod.Labels = labels
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated Pod %s/%s from lister: %v", ns, podName, err))
+		}
+		return updateErr
 	})
+
 	rpc.recordPodEvent("update", tc, podName, err)
-	return err
+	return updatePod, err
 }
 
 func (rpc *realPodControl) recordPodEvent(verb string, tc *v1alpha1.TidbCluster, podName string, err error) {
@@ -203,29 +219,29 @@ func (fpc *FakePodControl) SetGetStoreError(err error, after int) {
 }
 
 // UpdateMetaInfo update the meta info of Pod
-func (fpc *FakePodControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+func (fpc *FakePodControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pod *corev1.Pod) (*corev1.Pod, error) {
 	defer fpc.updatePodTracker.inc()
 	if fpc.updatePodTracker.errorReady() {
 		defer fpc.updatePodTracker.reset()
-		return fpc.updatePodTracker.err
+		return nil, fpc.updatePodTracker.err
 	}
 
 	defer fpc.getClusterTracker.inc()
 	if fpc.getClusterTracker.errorReady() {
 		defer fpc.getClusterTracker.reset()
-		return fpc.getClusterTracker.err
+		return nil, fpc.getClusterTracker.err
 	}
 
 	defer fpc.getMemberTracker.inc()
 	if fpc.getMemberTracker.errorReady() {
 		defer fpc.getMemberTracker.reset()
-		return fpc.getMemberTracker.err
+		return nil, fpc.getMemberTracker.err
 	}
 
 	defer fpc.getStoreTracker.inc()
 	if fpc.getStoreTracker.errorReady() {
 		defer fpc.getStoreTracker.reset()
-		return fpc.getStoreTracker.err
+		return nil, fpc.getStoreTracker.err
 	}
 
 	setIfNotEmpty(pod.Labels, label.AppLabelKey, TestAppName)
@@ -234,7 +250,7 @@ func (fpc *FakePodControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pod *corev1.P
 	setIfNotEmpty(pod.Labels, label.ClusterIDLabelKey, TestClusterID)
 	setIfNotEmpty(pod.Labels, label.MemberIDLabelKey, TestMemberID)
 	setIfNotEmpty(pod.Labels, label.StoreIDLabelKey, TestStoreID)
-	return fpc.PodIndexer.Update(pod)
+	return pod, fpc.PodIndexer.Update(pod)
 }
 
 var _ PodControlInterface = &FakePodControl{}
