@@ -135,7 +135,6 @@ func TestMetaManagerSync(t *testing.T) {
 		if test.podChanged {
 			pod, err := nmm.podLister.Pods(ns).Get(pod1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
-			t.Log(pod.Labels)
 			g.Expect(podMetaInfoMatchDesire(pod)).To(Equal(true))
 		} else {
 			pod, err := nmm.podLister.Pods(ns).Get(pod1.Name)
@@ -155,7 +154,6 @@ func TestMetaManagerSync(t *testing.T) {
 
 		if test.pvChanged {
 			g.Expect(err).NotTo(HaveOccurred())
-
 			pv, err := nmm.pvLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(true))
@@ -209,8 +207,8 @@ func TestMetaManagerSync(t *testing.T) {
 			pvcUpdateErr:  false,
 			pvUpdateErr:   false,
 			podChanged:    true,
-			pvcChanged:    false,
-			pvChanged:     false,
+			pvcChanged:    true,
+			pvChanged:     true,
 		},
 		{
 			name:          "the volume name of the pod is not tikv and pd",
@@ -361,10 +359,7 @@ func podMetaInfoMatchDesire(pod *corev1.Pod) bool {
 }
 
 func pvcMetaInfoMatchDesire(pvc *corev1.PersistentVolumeClaim) bool {
-	return pvc.Labels[label.ComponentLabelKey] == controller.TestComponentName &&
-		pvc.Labels[label.ManagedByLabelKey] == controller.TestManagedByName &&
-		pvc.Labels[label.InstanceLabelKey] == controller.TestClusterName &&
-		pvc.Labels[label.ClusterIDLabelKey] == controller.TestClusterID &&
+	return pvc.Labels[label.ClusterIDLabelKey] == controller.TestClusterID &&
 		pvc.Labels[label.MemberIDLabelKey] == controller.TestMemberID &&
 		pvc.Labels[label.StoreIDLabelKey] == controller.TestStoreID &&
 		pvc.Annotations[label.AnnPodNameKey] == controller.TestPodName
@@ -372,9 +367,6 @@ func pvcMetaInfoMatchDesire(pvc *corev1.PersistentVolumeClaim) bool {
 
 func pvMetaInfoMatchDesire(ns string, pv *corev1.PersistentVolume) bool {
 	return pv.Labels[label.NamespaceLabelKey] == ns &&
-		pv.Labels[label.ManagedByLabelKey] == controller.TestManagedByName &&
-		pv.Labels[label.InstanceLabelKey] == controller.TestClusterName &&
-		pv.Labels[label.ComponentLabelKey] == controller.TestComponentName &&
 		pv.Labels[label.ClusterIDLabelKey] == controller.TestClusterID &&
 		pv.Labels[label.MemberIDLabelKey] == controller.TestMemberID &&
 		pv.Labels[label.StoreIDLabelKey] == controller.TestStoreID &&
