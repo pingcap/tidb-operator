@@ -216,7 +216,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		if err != nil && !errors.IsNotFound(err) {
 			return err
 		}
-		// start all the pd members together, if this is a old cluster
+		// start all the pd members together, if this is an old cluster
 		if pvc != nil {
 			newReplicas = *newPDSet.Spec.Replicas
 		}
