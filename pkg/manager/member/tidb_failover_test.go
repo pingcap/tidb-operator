@@ -14,7 +14,6 @@
 package member
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -22,9 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -33,7 +29,6 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 	type testcase struct {
 		name        string
 		update      func(*v1alpha1.TidbCluster)
-		tcUpdateErr bool
 		errExpectFn func(*GomegaWithT, error)
 		expectFn    func(*GomegaWithT, *v1alpha1.TidbCluster)
 	}
@@ -41,12 +36,9 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Logf(test.name)
 		g := NewGomegaWithT(t)
-		tidbFailover, tcControl := newTiDBFailover()
+		tidbFailover := newTiDBFailover()
 		tc := newTidbClusterForTiDBFailover()
 		test.update(tc)
-		if test.tcUpdateErr {
-			tcControl.SetUpdateTidbClusterError(fmt.Errorf("update tidbcluster error"), 0)
-		}
 
 		err := tidbFailover.Failover(tc)
 		test.errExpectFn(g, err)
@@ -68,7 +60,6 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 					},
 				}
 			},
-			tcUpdateErr: false,
 			errExpectFn: func(t *GomegaWithT, err error) {
 				t.Expect(err).NotTo(HaveOccurred())
 			},
@@ -91,7 +82,6 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 					},
 				}
 			},
-			tcUpdateErr: false,
 			errExpectFn: func(t *GomegaWithT, err error) {
 				t.Expect(err).NotTo(HaveOccurred())
 			},
@@ -114,58 +104,12 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 					},
 				}
 			},
-			tcUpdateErr: false,
 			errExpectFn: func(t *GomegaWithT, err error) {
 				t.Expect(err).NotTo(HaveOccurred())
 			},
 			expectFn: func(t *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				t.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(1))
 				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(3))
-			},
-		},
-		{
-			name: "all tidb members are ready and error should happened when update tidbcluster",
-			update: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{
-					"failover-tidb-0": {
-						Name:   "failover-tidb-0",
-						Health: true,
-					},
-					"failover-tidb-1": {
-						Name:   "failover-tidb-1",
-						Health: true,
-					},
-				}
-			},
-			tcUpdateErr: true,
-			errExpectFn: func(t *GomegaWithT, err error) {
-				t.Expect(err).NotTo(HaveOccurred())
-			},
-			expectFn: func(t *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				t.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(0))
-				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
-			},
-		},
-		{
-			name: "one tidb member failed and error should happened when update tidbcluster",
-			update: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{
-					"failover-tidb-0": {
-						Name:   "failover-tidb-0",
-						Health: false,
-					},
-					"failover-tidb-1": {
-						Name:   "failover-tidb-1",
-						Health: true,
-					},
-				}
-			},
-			tcUpdateErr: true,
-			errExpectFn: func(t *GomegaWithT, err error) {
-				t.Expect(err).To(HaveOccurred())
-			},
-			expectFn: func(t *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
 			},
 		},
 	}
@@ -185,7 +129,7 @@ func TestFakeTiDBFailoverRecover(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 		g := NewGomegaWithT(t)
-		tidbFailover, _ := newTiDBFailover()
+		tidbFailover := newTiDBFailover()
 		tc := newTidbClusterForTiDBFailover()
 		test.update(tc)
 
@@ -210,6 +154,7 @@ func TestFakeTiDBFailoverRecover(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
+				g.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(0))
 			},
 		},
 		{
@@ -349,14 +294,10 @@ func TestFakeTiDBFailoverRecover(t *testing.T) {
 	for i := range tests {
 		testFn(&tests[i], t)
 	}
-
 }
 
-func newTiDBFailover() (Failover, *controller.FakeTidbClusterControl) {
-	cli := fake.NewSimpleClientset()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
-	tcControl := controller.NewFakeTidbClusterControl(tcInformer)
-	return &tidbFailover{tidbFailoverPeriod: time.Duration(5 * time.Minute), tcControl: tcControl}, tcControl
+func newTiDBFailover() Failover {
+	return &tidbFailover{tidbFailoverPeriod: time.Duration(5 * time.Minute)}
 }
 
 func newTidbClusterForTiDBFailover() *v1alpha1.TidbCluster {

@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 )
 
 // Failover implements the logic for pd/tikv/tidb's failover and recovery.
@@ -28,13 +27,12 @@ type Failover interface {
 
 type tidbFailover struct {
 	tidbFailoverPeriod time.Duration
-	tcControl          controller.TidbClusterControlInterface
 }
 
-func NewTiDBFailover(failoverPeriod time.Duration, tcControl controller.TidbClusterControlInterface) Failover {
+// NewTiDBFailover returns a tidbFailover instance
+func NewTiDBFailover(failoverPeriod time.Duration) Failover {
 	return &tidbFailover{
 		tidbFailoverPeriod: failoverPeriod,
-		tcControl:          tcControl,
 	}
 }
 
@@ -47,10 +45,7 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
 		deadline := tidbMember.LastTransitionTime.Add(tf.tidbFailoverPeriod)
 		if !tidbMember.Health && time.Now().After(deadline) && !exist {
-			err := tf.markThisMemberAsFailure(tc, tidbMember)
-			if err != nil {
-				return err
-			}
+			tc.Status.TiDB.FailureMembers[tidbMember.Name] = v1alpha1.TiDBFailureMember{PodName: tidbMember.Name, Replicas: tc.Spec.TiDB.Replicas}
 			break
 		}
 	}
@@ -92,13 +87,6 @@ func allTiDBMembersAreReady(tc *v1alpha1.TidbCluster) bool {
 		}
 	}
 	return true
-}
-
-func (tf *tidbFailover) markThisMemberAsFailure(tc *v1alpha1.TidbCluster, tidbMember v1alpha1.TiDBMember) error {
-	tc.Status.TiDB.FailureMembers[tidbMember.Name] = v1alpha1.TiDBFailureMember{PodName: tidbMember.Name, Replicas: tc.Spec.TiDB.Replicas}
-
-	tc, err := tf.tcControl.UpdateTidbCluster(tc)
-	return err
 }
 
 type fakeTiDBFailover struct{}

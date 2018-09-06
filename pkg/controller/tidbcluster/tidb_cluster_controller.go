@@ -87,7 +87,6 @@ func NewController(
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 
-	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
 	pdControl := controller.NewDefaultPDControl()
 	tidbControl := controller.NewDefaultTiDBControl()
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
@@ -100,7 +99,7 @@ func NewController(
 	pdUpgrader := mm.NewPDUpgrader()
 	tikvUpgrader := mm.NewTiKVUpgrader()
 	tidbUpgrader := mm.NewTiDBUpgrader()
-	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod, tcControl)
+	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod)
 
 	tcc := &Controller{
 		kubeClient: kubeCli,

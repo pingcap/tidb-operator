@@ -251,7 +251,6 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 		setInformer.Lister(),
 		recorder,
 	)
-	tcControl := controller.NewFakeTidbClusterControl(tcInformer)
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), recorder)
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, recorder)
@@ -260,7 +259,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	pdUpgrade := mm.NewPDUpgrader()
 	tikvUpgrader := mm.NewTiKVUpgrader()
 	tidbUpgrader := mm.NewTiDBUpgrader()
-	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod, tcControl)
+	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod)
 
 	tcc.control = NewDefaultTidbClusterControl(
 		NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
