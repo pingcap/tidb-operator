@@ -282,9 +282,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 				setInformer.Lister(),
 				recorder,
 			),
-			svcControl,
 			setInformer.Lister(),
-			svcInformer.Lister(),
 			tidbUpgrader,
 		),
 		meta.NewReclaimPolicyManager(
