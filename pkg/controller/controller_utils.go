@@ -103,7 +103,7 @@ func DefaultPushGatewayRequest() corev1.ResourceRequirements {
 
 // GetPushgatewayImage returns TidbCluster's pushgateway image
 func GetPushgatewayImage(cluster *v1alpha1.TidbCluster) string {
-	if img, ok := cluster.Annotations["pushgateway-image"]; ok && img != "" {
+	if img := cluster.Spec.TiKVPromGateway.Image; img != "" {
 		return img
 	}
 	return defaultPushgatewayImage
