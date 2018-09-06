@@ -16,8 +16,8 @@ package e2e
 import (
 	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo" // revive:disable:dot-imports
+	. "github.com/onsi/gomega" // revive:disable:dot-imports
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -56,7 +56,7 @@ var _ = Describe("Smoke", func() {
 	It("should create a tidb cluster", func() {
 		testCreate()
 	})
-	It("should upgarde a tidb cluster", func() {
+	It("should upgrade a tidb cluster", func() {
 		testUpgrade()
 	})
 	It("should scale in/out a tidb cluster", func() {

@@ -32,7 +32,7 @@ type defaultTiDBControl struct {
 	httpClient *http.Client
 }
 
-//  NewDefaultTiDBControl returns a defaultTiDBControl instance
+// NewDefaultTiDBControl returns a defaultTiDBControl instance
 func NewDefaultTiDBControl() TiDBControlInterface {
 	httpClient := &http.Client{Timeout: timeout}
 	return &defaultTiDBControl{httpClient: httpClient}
@@ -79,11 +79,12 @@ type FakeTiDBControl struct {
 	healthInfo map[string]bool
 }
 
-//  NewFakeTiDBControl returns a FakeTiDBControl instance
+// NewFakeTiDBControl returns a FakeTiDBControl instance
 func NewFakeTiDBControl() *FakeTiDBControl {
 	return &FakeTiDBControl{}
 }
 
+// SetHealth set health info for FakeTiDBControl
 func (ftd *FakeTiDBControl) SetHealth(healthInfo map[string]bool) {
 	ftd.healthInfo = healthInfo
 }

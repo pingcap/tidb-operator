@@ -212,6 +212,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		err := tkmm.Sync(tc)
+		g.Expect(err).NotTo(HaveOccurred())
 
 		_, err = tkmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
