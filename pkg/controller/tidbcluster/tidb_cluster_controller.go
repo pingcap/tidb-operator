@@ -71,7 +71,7 @@ func NewController(
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	autoFailover bool,
-) *Controller {
+	pdFailoverPeriod time.Duration) *Controller {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
@@ -86,14 +86,16 @@ func NewController(
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 
+	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
 	pdControl := controller.NewDefaultPDControl()
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), recorder)
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
-	podControl := controller.NewRealPodControl(kubeCli, pdControl, recorder)
+	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl)
+	pdFailover := mm.NewPDFailover(cli, tcControl, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister())
 	pdUpgrader := mm.NewPDUpgrader()
 	tikvFailover := mm.NewTiKVFailover(pdControl)
 	tikvUpgrader := mm.NewTiKVUpgrader()
@@ -103,15 +105,20 @@ func NewController(
 		kubeClient: kubeCli,
 		cli:        cli,
 		control: NewDefaultTidbClusterControl(
-			NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
+			tcControl,
 			mm.NewPDMemberManager(
 				pdControl,
 				setControl,
 				svcControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
+				podInformer.Lister(),
+				podControl,
+				pvcInformer.Lister(),
 				pdScaler,
 				pdUpgrader,
+				autoFailover,
+				pdFailover,
 			),
 			mm.NewTiKVMemberManager(
 				pdControl,

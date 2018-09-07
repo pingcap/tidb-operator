@@ -40,8 +40,8 @@ e2e-build:
 	$(GOENV) ginkgo build tests/e2e
 
 test:
-	@echo "run unit tests"
-	@$(GOTEST) ./pkg/... && echo success
+	@echo "Run unit tests"
+	@$(GOTEST) ./pkg/... && echo "\nUnit tests run successfully!"
 
 check-all: lint check-static check-shadow check-gosec megacheck errcheck
 

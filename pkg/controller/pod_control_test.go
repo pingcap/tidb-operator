@@ -28,7 +28,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 )
@@ -37,8 +40,8 @@ func TestPodControlUpdateMetaInfoSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
 	pod := newPod(tc)
-	fakeClient, pdControl, recorder := newFakeClientRecorderAndPDControl()
-	control := NewRealPodControl(fakeClient, pdControl, recorder)
+	fakeClient, pdControl, podLister, recorder := newFakeClientRecorderAndPDControl()
+	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
 	pdClient := NewFakePDClient()
 	pdControl.SetPDClient(tc, pdClient)
 	pdClient.AddReaction(GetClusterActionType, func(action *Action) (interface{}, error) {
@@ -88,8 +91,8 @@ func TestPodControlUpdateMetaInfoGetClusterFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
 	pod := newPod(tc)
-	fakeClient, pdControl, recorder := newFakeClientRecorderAndPDControl()
-	control := NewRealPodControl(fakeClient, pdControl, recorder)
+	fakeClient, pdControl, podLister, recorder := newFakeClientRecorderAndPDControl()
+	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
 	pdClient := NewFakePDClient()
 	pdControl.SetPDClient(tc, pdClient)
 	pdClient.AddReaction(GetClusterActionType, func(action *Action) (interface{}, error) {
@@ -135,8 +138,8 @@ func TestPodControlUpdateMetaInfoGetMemberFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
 	pod := newPod(tc)
-	fakeClient, pdControl, recorder := newFakeClientRecorderAndPDControl()
-	control := NewRealPodControl(fakeClient, pdControl, recorder)
+	fakeClient, pdControl, podLister, recorder := newFakeClientRecorderAndPDControl()
+	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
 	pdClient := NewFakePDClient()
 	pdControl.SetPDClient(tc, pdClient)
 	pdClient.AddReaction(GetClusterActionType, func(action *Action) (interface{}, error) {
@@ -179,8 +182,8 @@ func TestPodControlUpdateMetaInfoGetStoreFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
 	pod := newPod(tc)
-	fakeClient, pdControl, recorder := newFakeClientRecorderAndPDControl()
-	control := NewRealPodControl(fakeClient, pdControl, recorder)
+	fakeClient, pdControl, podLister, recorder := newFakeClientRecorderAndPDControl()
+	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
 	pdClient := NewFakePDClient()
 	pdControl.SetPDClient(tc, pdClient)
 	pdClient.AddReaction(GetClusterActionType, func(action *Action) (interface{}, error) {
@@ -218,8 +221,8 @@ func TestPodControlUpdateMetaInfoUpdatePodFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
 	pod := newPod(tc)
-	fakeClient, pdControl, recorder := newFakeClientRecorderAndPDControl()
-	control := NewRealPodControl(fakeClient, pdControl, recorder)
+	fakeClient, pdControl, podLister, recorder := newFakeClientRecorderAndPDControl()
+	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
 	pdClient := NewFakePDClient()
 	pdControl.SetPDClient(tc, pdClient)
 	pdClient.AddReaction(GetClusterActionType, func(action *Action) (interface{}, error) {
@@ -269,8 +272,8 @@ func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
 	pod := newPod(tc)
-	fakeClient, pdControl, recorder := newFakeClientRecorderAndPDControl()
-	control := NewRealPodControl(fakeClient, pdControl, recorder)
+	fakeClient, pdControl, podLister, recorder := newFakeClientRecorderAndPDControl()
+	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
 	pdClient := NewFakePDClient()
 	pdControl.SetPDClient(tc, pdClient)
 	pdClient.AddReaction(GetClusterActionType, func(action *Action) (interface{}, error) {
@@ -322,11 +325,13 @@ func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
-func newFakeClientRecorderAndPDControl() (*fake.Clientset, *FakePDControl, *record.FakeRecorder) {
+func newFakeClientRecorderAndPDControl() (*fake.Clientset, *FakePDControl, corelisters.PodLister, *record.FakeRecorder) {
 	fakeClient := &fake.Clientset{}
 	pdControl := NewFakePDControl()
+	kubeCli := kubefake.NewSimpleClientset()
+	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	recorder := record.NewFakeRecorder(10)
-	return fakeClient, pdControl, recorder
+	return fakeClient, pdControl, podInformer.Lister(), recorder
 }
 
 func newPod(tc *v1alpha1.TidbCluster) *corev1.Pod {

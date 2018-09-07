@@ -101,12 +101,13 @@ tikv:
 
 tikvPromGateway:
   image: prom/pushgateway:v0.3.1
-  # limits:
-  #   cpu: 100m
-  #   memory: 100Mi
-  # requests:
-  #   cpu: 50m
-  #   memory: 50Mi
+  resources: {}
+    # limits:
+    #   cpu: 100m
+    #   memory: 100Mi
+    # requests:
+    #   cpu: 50m
+    #   memory: 50Mi
 
 tidb:
   replicas: 2
