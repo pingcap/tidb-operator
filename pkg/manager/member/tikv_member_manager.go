@@ -192,11 +192,11 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	}
 
 	if tkmm.autoFailover {
-		if allTiKVStoressAreReady(tc) {
+		if allTiKVStoresAreReady(tc) {
 			if tc.Status.TiKV.FailureStores != nil {
 				tkmm.tikvFailover.Recover(tc)
 			}
-		} else if int(tc.Spec.TiKV.Replicas) == int(tc.Status.TiKV.StatefulSet.Replicas) {
+		} else if tc.Spec.TiKV.Replicas == tc.Status.TiKV.StatefulSet.Replicas {
 			if err := tkmm.tikvFailover.Failover(tc); err != nil {
 				return err
 			}

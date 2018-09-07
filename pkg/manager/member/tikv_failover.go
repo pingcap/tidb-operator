@@ -68,7 +68,7 @@ func (tf *tikvFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiKV.FailureStores = nil
 }
 
-func allTiKVStoressAreReady(tc *v1alpha1.TidbCluster) bool {
+func allTiKVStoresAreReady(tc *v1alpha1.TidbCluster) bool {
 	if int(tc.Spec.TiKV.Replicas) != len(tc.Status.TiKV.Stores) {
 		return false
 	}
@@ -87,10 +87,10 @@ func NewFakeTiKVFailover() Failover {
 	return &fakeTiKVFailover{}
 }
 
-func (ftf *fakeTiKVFailover) Failover(tc *v1alpha1.TidbCluster) error {
+func (ftf *fakeTiKVFailover) Failover(_ *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (ftf *fakeTiKVFailover) Recover(tc *v1alpha1.TidbCluster) {
+func (ftf *fakeTiKVFailover) Recover(_ *v1alpha1.TidbCluster) {
 	return
 }

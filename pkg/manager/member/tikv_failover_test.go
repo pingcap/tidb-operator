@@ -16,9 +16,6 @@ package member
 import (
 	"fmt"
 	"testing"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"time"
 
 	. "github.com/onsi/gomega"
@@ -26,6 +23,7 @@ import (
 	"github.com/pingcap/pd/server"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestTiKVFailoverFailover(t *testing.T) {
@@ -49,11 +47,10 @@ func TestTiKVFailoverFailover(t *testing.T) {
 		pdClient.AddReaction(controller.GetConfigActionType, func(action *controller.Action) (interface{}, error) {
 			if test.getCfgErr {
 				return nil, fmt.Errorf("get config failed")
-			} else {
-				return &server.Config{
-					Schedule: server.ScheduleConfig{MaxStoreDownTime: typeutil.Duration{Duration: 1 * time.Hour}},
-				}, nil
 			}
+			return &server.Config{
+				Schedule: server.ScheduleConfig{MaxStoreDownTime: typeutil.Duration{Duration: 1 * time.Hour}},
+			}, nil
 		})
 
 		err := tikvFailover.Failover(tc)
@@ -90,7 +87,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 		},
 		{
 			name:      "get config failed",
-			update:    func(tc *v1alpha1.TidbCluster) {},
+			update:    func(*v1alpha1.TidbCluster) {},
 			getCfgErr: true,
 			err:       true,
 			expectFn: func(tc *v1alpha1.TidbCluster) {

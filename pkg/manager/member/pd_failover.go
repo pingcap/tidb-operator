@@ -255,10 +255,10 @@ func NewFakePDFailover() Failover {
 	return &fakePDFailover{}
 }
 
-func (fpf *fakePDFailover) Failover(tc *v1alpha1.TidbCluster) error {
+func (fpf *fakePDFailover) Failover(_ *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (fpf *fakePDFailover) Recover(tc *v1alpha1.TidbCluster) {
+func (fpf *fakePDFailover) Recover(_ *v1alpha1.TidbCluster) {
 	return
 }
