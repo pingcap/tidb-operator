@@ -49,6 +49,10 @@ const (
 	MonitorLabelVal string = "monitor"
 	// ClusterLabelVal is cluster label value
 	ClusterLabelVal string = "tidbCluster"
+	// Bootstrapping is bootstrapping key
+	Bootstrapping string = "bootstrapping"
+	// Replicas is replicas key
+	Replicas string = "replicas"
 )
 
 // Label is the label field in metadata
