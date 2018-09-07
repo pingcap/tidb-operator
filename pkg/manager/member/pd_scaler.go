@@ -51,13 +51,19 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 		return err
 	}
 
-	var i int32
-	for ; i < *oldSet.Spec.Replicas; i++ {
+	var i int32 = 0
+	healthCount := 0
+	totalCount := *oldSet.Spec.Replicas
+	for ; i < totalCount; i++ {
 		podName := ordinalPodName(v1alpha1.PDMemberType, tcName, i)
-		if member, ok := tc.Status.PD.Members[podName]; !ok || !member.Health {
-			resetReplicas(newSet, oldSet)
-			return fmt.Errorf("%s/%s is not ready, can't scale out now", ns, podName)
+		if member, ok := tc.Status.PD.Members[podName]; ok && member.Health {
+			healthCount++
 		}
+	}
+	if healthCount < int(totalCount/2+1) {
+		resetReplicas(newSet, oldSet)
+		return fmt.Errorf("TidbCluster: %s/%s's pd %d/%d is not ready, can't scale out now",
+			ns, tcName, healthCount, totalCount)
 	}
 
 	increaseReplicas(newSet, oldSet)
