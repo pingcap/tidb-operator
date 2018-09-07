@@ -294,11 +294,10 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.NormalPhase))
 				g.Expect(*tc.Status.PD.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
-				g.Expect(tc.Status.PD.Members).To(Equal(map[string]v1alpha1.PDMember{
-					"pd1": {Name: "pd1", ID: "1", ClientURL: "http://pd1:2379", Health: true},
-					"pd2": {Name: "pd2", ID: "2", ClientURL: "http://pd2:2379", Health: true},
-					"pd3": {Name: "pd3", ID: "3", ClientURL: "http://pd3:2379", Health: false},
-				}))
+				g.Expect(len(tc.Status.PD.Members)).To(Equal(3))
+				g.Expect(tc.Status.PD.Members["pd1"].Health).To(Equal(true))
+				g.Expect(tc.Status.PD.Members["pd2"].Health).To(Equal(true))
+				g.Expect(tc.Status.PD.Members["pd3"].Health).To(Equal(false))
 			},
 		},
 		{
@@ -393,11 +392,16 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
+	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
+	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
+	podControl := controller.NewFakePodControl(podInformer)
 	pdControl := controller.NewFakePDControl()
 	pdScaler := NewFakePDScaler()
+	autoFailover := true
+	pdFailover := NewFakePDFailover()
 	pdUpgrader := NewFakePDUpgrader()
 
 	return &pdMemberManager{
@@ -406,8 +410,13 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 		svcControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
+		podInformer.Lister(),
+		podControl,
+		pvcInformer.Lister(),
 		pdScaler,
 		pdUpgrader,
+		autoFailover,
+		pdFailover,
 	}, setControl, svcControl, pdControl
 }
 
@@ -531,11 +540,10 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(tc.Status.PD.Members).To(Equal(map[string]v1alpha1.PDMember{
-					"pd1": {Name: "pd1", ID: "1", ClientURL: "http://pd1:2379", Health: true},
-					"pd2": {Name: "pd2", ID: "2", ClientURL: "http://pd2:2379", Health: true},
-					"pd3": {Name: "pd3", ID: "3", ClientURL: "http://pd3:2379", Health: false},
-				}))
+				g.Expect(len(tc.Status.PD.Members)).To(Equal(3))
+				g.Expect(tc.Status.PD.Members["pd1"].Health).To(Equal(true))
+				g.Expect(tc.Status.PD.Members["pd2"].Health).To(Equal(true))
+				g.Expect(tc.Status.PD.Members["pd3"].Health).To(Equal(false))
 			},
 		},
 	}
