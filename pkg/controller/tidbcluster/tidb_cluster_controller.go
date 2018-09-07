@@ -218,7 +218,7 @@ func (tcc *Controller) processNextWorkItem() bool {
 	defer tcc.queue.Done(key)
 	if err := tcc.sync(key.(string)); err != nil {
 		if reqErr := pingcaperrors.Find(err, func(e error) bool {
-			return controller.IsRequeueError(err)
+			return controller.IsRequeueError(e)
 		}); reqErr != nil {
 			glog.Infof("TidbCluster: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {

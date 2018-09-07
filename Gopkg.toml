@@ -69,3 +69,7 @@ required = [
 [[override]]
     name = "github.com/BurntSushi/toml"
     revision = "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005"
+
+[[constraint]]
+    name = "github.com/pingcap/errors"
+    revision = "f29524922bfee4bf03f9c426c716e639cac63ea9"

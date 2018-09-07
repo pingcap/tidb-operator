@@ -61,9 +61,8 @@ func TestPDFailoverFailover(t *testing.T) {
 		pdClient.AddReaction(controller.DeleteMemberActionType, func(action *controller.Action) (interface{}, error) {
 			if test.delMemberFailed {
 				return nil, fmt.Errorf("failed to delete member")
-			} else {
-				return nil, nil
 			}
+			return nil, nil
 		})
 
 		pvc := newPVCForPDFailover(tc, v1alpha1.PDMemberType, 1)
