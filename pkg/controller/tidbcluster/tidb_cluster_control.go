@@ -16,9 +16,11 @@ package tidbcluster
 import (
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -38,7 +40,7 @@ type ControlInterface interface {
 // NewDefaultTidbClusterControl returns a new instance of the default implementation TidbClusterControlInterface that
 // implements the documented semantics for TidbClusters.
 func NewDefaultTidbClusterControl(
-	statusUpdater StatusUpdaterInterface,
+	tcControl controller.TidbClusterControlInterface,
 	pdMemberManager manager.Manager,
 	tikvMemberManager manager.Manager,
 	tidbMemberManager manager.Manager,
@@ -46,7 +48,7 @@ func NewDefaultTidbClusterControl(
 	metaManager manager.Manager,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
-		statusUpdater,
+		tcControl,
 		pdMemberManager,
 		tikvMemberManager,
 		tidbMemberManager,
@@ -57,7 +59,7 @@ func NewDefaultTidbClusterControl(
 }
 
 type defaultTidbClusterControl struct {
-	statusUpdater        StatusUpdaterInterface
+	tcControl            controller.TidbClusterControlInterface
 	pdMemberManager      manager.Manager
 	tikvMemberManager    manager.Manager
 	tidbMemberManager    manager.Manager
@@ -69,16 +71,29 @@ type defaultTidbClusterControl struct {
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
 func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) error {
 	// perform the main update function and get the status
+	var errs []error
+
 	oldStatus := tc.Status.DeepCopy()
+	oldPDReplicas := tc.Spec.PD.Replicas
+	oldTiKVReplicas := tc.Spec.TiKV.Replicas
+	oldTiDBReplicas := tc.Spec.TiDB.Replicas
+
 	err := tcc.updateTidbCluster(tc)
 	if err != nil {
-		return err
+		errs = append(errs, err)
 	}
-	if !apiequality.Semantic.DeepEqual(&tc.Status, oldStatus) {
-		// update the tidbCluster's status
-		return tcc.updateTidbClusterStatus(tc, &tc.Status)
+
+	replicasChanged := tc.Spec.PD.Replicas != oldPDReplicas ||
+		tc.Spec.TiKV.Replicas != oldTiKVReplicas ||
+		tc.Spec.TiDB.Replicas != oldTiDBReplicas
+	if !apiequality.Semantic.DeepEqual(&tc.Status, oldStatus) || replicasChanged {
+		_, err2 := tcc.tcControl.UpdateTidbCluster(tc.DeepCopy())
+		if err2 != nil {
+			errs = append(errs, err2)
+		}
 	}
-	return nil
+
+	return errorutils.NewAggregate(errs)
 }
 
 func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) error {
@@ -124,12 +139,6 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	}
 
 	return nil
-}
-
-func (tcc *defaultTidbClusterControl) updateTidbClusterStatus(tc *v1alpha1.TidbCluster, status *v1alpha1.TidbClusterStatus) error {
-	tc = tc.DeepCopy()
-	status = status.DeepCopy()
-	return tcc.statusUpdater.UpdateTidbClusterStatus(tc, status)
 }
 
 func (tcc *defaultTidbClusterControl) IsPDAvailable(tc *v1alpha1.TidbCluster) bool {

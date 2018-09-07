@@ -35,13 +35,18 @@ import (
 const defaultReplicas = 3
 
 type pdMemberManager struct {
-	pdControl  controller.PDControlInterface
-	setControl controller.StatefulSetControlInterface
-	svcControl controller.ServiceControlInterface
-	setLister  v1beta1.StatefulSetLister
-	svcLister  corelisters.ServiceLister
-	pdScaler   Scaler
-	pdUpgrader Upgrader
+	pdControl    controller.PDControlInterface
+	setControl   controller.StatefulSetControlInterface
+	svcControl   controller.ServiceControlInterface
+	setLister    v1beta1.StatefulSetLister
+	svcLister    corelisters.ServiceLister
+	podLister    corelisters.PodLister
+	podControl   controller.PodControlInterface
+	pvcLister    corelisters.PersistentVolumeClaimLister
+	pdScaler     Scaler
+	pdUpgrader   Upgrader
+	autoFailover bool
+	pdFailover   Failover
 }
 
 // NewPDMemberManager returns a *pdMemberManager
@@ -50,16 +55,26 @@ func NewPDMemberManager(pdControl controller.PDControlInterface,
 	svcControl controller.ServiceControlInterface,
 	setLister v1beta1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
+	podLister corelisters.PodLister,
+	podControl controller.PodControlInterface,
+	pvcLister corelisters.PersistentVolumeClaimLister,
 	pdScaler Scaler,
-	pdUpgrader Upgrader) manager.Manager {
+	pdUpgrader Upgrader,
+	autoFailover bool,
+	pdFailover Failover) manager.Manager {
 	return &pdMemberManager{
 		pdControl,
 		setControl,
 		svcControl,
 		setLister,
 		svcLister,
+		podLister,
+		podControl,
+		pvcLister,
 		pdScaler,
-		pdUpgrader}
+		pdUpgrader,
+		autoFailover,
+		pdFailover}
 }
 
 func (pmm *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
@@ -71,6 +86,38 @@ func (pmm *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	// Sync PD Headless Service
 	if err := pmm.syncPDHeadlessServiceForTidbCluster(tc); err != nil {
 		return err
+	}
+
+	// TODO Move these to the back of syncStatus
+	// TODO unit tests
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	podName := ordinalPodName(v1alpha1.PDMemberType, tcName, 0)
+	firstPod, err := pmm.podLister.Pods(ns).Get(podName)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	if firstPod != nil {
+		firstPodCopy := firstPod.DeepCopy()
+
+		if firstPodCopy.Annotations[label.Bootstrapping] == "" {
+			nextPVCName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), 1)
+			_, err := pmm.pvcLister.PersistentVolumeClaims(ns).Get(nextPVCName)
+			if err != nil && !errors.IsNotFound(err) {
+				return err
+			}
+			if errors.IsNotFound(err) {
+				firstPodCopy.Annotations[label.Bootstrapping] = "true"
+			} else {
+				firstPodCopy.Annotations[label.Bootstrapping] = "false"
+			}
+			firstPodCopy.Annotations[label.Replicas] = fmt.Sprintf("%d", tc.Spec.PD.Replicas)
+
+			err = pmm.podControl.UpdatePod(tc, firstPodCopy)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	// Sync PD StatefulSet
@@ -163,7 +210,17 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		return err
 	}
 	if errors.IsNotFound(err) {
-		newPDSet.Spec.Replicas = func() *int32 { var i int32 = 1; return &i }()
+		pvcName := ordinalPVCName(v1alpha1.PDMemberType, newPDSet.GetName(), *newPDSet.Spec.Replicas-int32(1))
+		var newReplicas int32 = 1
+		pvc, err := pmm.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
+		if err != nil && !errors.IsNotFound(err) {
+			return err
+		}
+		// start all the pd members together, if this is an old cluster
+		if pvc != nil {
+			newReplicas = *newPDSet.Spec.Replicas
+		}
+		newPDSet.Spec.Replicas = func() *int32 { var i int32 = newReplicas; return &i }()
 		err = SetLastAppliedConfigAnnotation(newPDSet)
 		if err != nil {
 			return err
@@ -190,13 +247,25 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 			return err
 		}
 	}
-
 	if *newPDSet.Spec.Replicas < *oldPDSet.Spec.Replicas {
 		if err := pmm.pdScaler.ScaleIn(tc, oldPDSet, newPDSet); err != nil {
 			return err
 		}
 	}
 
+	if pmm.autoFailover {
+		if allPDMembersAreReady(tc) {
+			if tc.Status.PD.FailureMembers != nil {
+				pmm.pdFailover.Recover(tc)
+			}
+		} else if tc.Spec.PD.Replicas == tc.Status.PD.StatefulSet.Replicas {
+			if err := pmm.pdFailover.Failover(tc); err != nil {
+				return err
+			}
+		}
+	}
+
+	// TODO FIXME equal is false every time
 	if !statefulSetEqual(*newPDSet, *oldPDSet) {
 		set := *oldPDSet
 		set.Spec.Template = newPDSet.Spec.Template
@@ -242,6 +311,14 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 			ID:        memberID,
 			ClientURL: clientURL,
 			Health:    memberHealth.Health,
+		}
+
+		oldPDMember, exist := tc.Status.PD.Members[name]
+		if exist {
+			status.LastTransitionTime = oldPDMember.LastTransitionTime
+		}
+		if !exist || status.Health != oldPDMember.Health {
+			status.LastTransitionTime = metav1.Now()
 		}
 
 		pdStatus[name] = status
@@ -432,6 +509,10 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 									Value: controller.PDPeerMemberName(tcName),
 								},
 								{
+									Name:  "SERVICE_NAME",
+									Value: controller.PDMemberName(tcName),
+								},
+								{
 									Name:  "SET_NAME",
 									Value: setName,
 								},
@@ -462,7 +543,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 				},
 			},
 			ServiceName:         controller.PDPeerMemberName(tcName),
-			PodManagementPolicy: apps.OrderedReadyPodManagement,
+			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 		},
 	}

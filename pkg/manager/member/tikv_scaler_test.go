@@ -358,14 +358,6 @@ func tombstoneStoreFun(tc *v1alpha1.TidbCluster) {
 	}
 }
 
-func errExpectNil(g *GomegaWithT, err error) {
-	g.Expect(err).NotTo(HaveOccurred())
-}
-
-func errExpectNotNil(g *GomegaWithT, err error) {
-	g.Expect(err).To(HaveOccurred())
-}
-
 func errExpectRequeue(g *GomegaWithT, err error) {
 	g.Expect(controller.IsRequeueError(err)).To(Equal(true))
 }

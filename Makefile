@@ -41,7 +41,7 @@ e2e-build:
 
 test:
 	@echo "Run unit tests"
-	@$(GOTEST) ./pkg/... && echo success
+	@$(GOTEST) ./pkg/... && echo "\nUnit tests run successfully!"
 
 check-all: lint check-static check-shadow check-gosec megacheck errcheck
 
