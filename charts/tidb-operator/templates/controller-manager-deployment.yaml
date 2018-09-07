@@ -35,6 +35,8 @@ spec:
           - /usr/local/bin/tidb-controller-manager
           - -default-storage-class-name={{ .Values.defaultStorageClassName }}
           - -cluster-scoped={{ .Values.clusterScoped }}
+          - -auto-failover={{ .Values.controllerManager.autoFailover | default false }}
+          - -tidb-failover-period={{ .Values.controllerManager.tidbFailoverPeriod | default "5m" }}
           - -v={{ .Values.controllerManager.logLevel }}
         env:
           - name: NAMESPACE
