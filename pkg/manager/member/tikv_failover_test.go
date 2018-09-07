@@ -51,7 +51,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 				return nil, fmt.Errorf("get config failed")
 			} else {
 				return &server.Config{
-					Schedule: server.ScheduleConfig{MaxStoreDownTime: typeutil.Duration{1 * time.Hour}},
+					Schedule: server.ScheduleConfig{MaxStoreDownTime: typeutil.Duration{Duration: 1 * time.Hour}},
 				}, nil
 			}
 		})
@@ -73,12 +73,12 @@ func TestTiKVFailoverFailover(t *testing.T) {
 					"1": {
 						State:              v1alpha1.TiKVStateDown,
 						PodName:            "tikv-1",
-						LastTransitionTime: metav1.Time{time.Now().Add(-70 * time.Minute)},
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
 					},
 					"2": {
 						State:              v1alpha1.TiKVStateDown,
 						PodName:            "tikv-2",
-						LastTransitionTime: metav1.Time{time.Now().Add(-61 * time.Minute)},
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
 					},
 				}
 			},
@@ -117,7 +117,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 					"1": {
 						State:              v1alpha1.TiKVStateDown,
 						PodName:            "tikv-1",
-						LastTransitionTime: metav1.Time{time.Now().Add(-30 * time.Minute)},
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-30 * time.Minute)},
 					},
 				}
 			},
@@ -150,7 +150,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 					"1": {
 						State:              v1alpha1.TiKVStateDown,
 						PodName:            "tikv-1",
-						LastTransitionTime: metav1.Time{time.Now().Add(-70 * time.Minute)},
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
 					},
 				}
 				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{
