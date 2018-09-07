@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	pingcaperrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -216,7 +217,9 @@ func (tcc *Controller) processNextWorkItem() bool {
 	}
 	defer tcc.queue.Done(key)
 	if err := tcc.sync(key.(string)); err != nil {
-		if controller.IsRequeueError(err) {
+		if reqErr := pingcaperrors.Find(err, func(e error) bool {
+			return controller.IsRequeueError(err)
+		}); reqErr != nil {
 			glog.Infof("TidbCluster: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("TidbCluster: %v, sync failed %v, requeuing", key.(string), err))
