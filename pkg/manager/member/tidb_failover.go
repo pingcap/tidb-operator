@@ -80,13 +80,31 @@ func (tf *tidbFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiDB.FailureMembers = nil
 }
 
-func allTiDBMembersAreReady(tc *v1alpha1.TidbCluster) bool {
+func needRecover(tc *v1alpha1.TidbCluster) bool {
+	if int(tc.Spec.TiDB.Replicas) != len(tc.Status.TiDB.Members) {
+		return false
+	}
 	for _, tidbMember := range tc.Status.TiDB.Members {
 		if !tidbMember.Health {
 			return false
 		}
 	}
+	if tc.Status.TiDB.FailureMembers == nil || len(tc.Status.TiDB.FailureMembers) == 0 {
+		return false
+	}
 	return true
+}
+
+func needFailover(tc *v1alpha1.TidbCluster) bool {
+	if tc.Spec.TiDB.Replicas != tc.Status.TiDB.StatefulSet.Replicas {
+		return false
+	}
+	for _, tidbMember := range tc.Status.TiDB.Members {
+		if !tidbMember.Health {
+			return true
+		}
+	}
+	return false
 }
 
 type fakeTiDBFailover struct{}
