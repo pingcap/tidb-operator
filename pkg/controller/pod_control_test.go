@@ -331,11 +331,65 @@ func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
+func TestPodControlUpdatePod(t *testing.T) {
+	g := NewGomegaWithT(t)
+	recorder := record.NewFakeRecorder(10)
+	tc := newTidbCluster()
+	pod := newPod(tc)
+	pod.Annotations = map[string]string{"a": "b"}
+	pod.Labels = map[string]string{"a": "b"}
+	fakeClient, pdControl, podLister, _, recorder := newFakeClientRecorderAndPDControl()
+	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
+	fakeClient.AddReactor("update", "pods", func(action core.Action) (bool, runtime.Object, error) {
+		update := action.(core.UpdateAction)
+		return true, update.GetObject(), nil
+	})
+	updatePod, err := control.UpdatePod(tc, pod)
+	g.Expect(err).To(Succeed())
+	g.Expect(updatePod.Annotations["a"]).To(Equal("b"))
+	g.Expect(updatePod.Labels["a"]).To(Equal("b"))
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(1))
+	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
+}
+
+func TestPodControlUpdatePodConflictSuccess(t *testing.T) {
+	g := NewGomegaWithT(t)
+	recorder := record.NewFakeRecorder(10)
+	tc := newTidbCluster()
+	pod := newPod(tc)
+	pod.Annotations = map[string]string{"a": "b"}
+	pod.Labels = map[string]string{"a": "b"}
+	oldPod := newPod(tc)
+	fakeClient, pdControl, podLister, podIndexer, recorder := newFakeClientRecorderAndPDControl()
+	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
+	err := podIndexer.Add(oldPod)
+	g.Expect(err).To(Succeed())
+	conflict := false
+	fakeClient.AddReactor("update", "pods", func(action core.Action) (bool, runtime.Object, error) {
+		update := action.(core.UpdateAction)
+		if !conflict {
+			conflict = true
+			return true, oldPod, apierrors.NewConflict(action.GetResource().GroupResource(), pod.Name, errors.New("conflict"))
+		}
+		return true, update.GetObject(), nil
+	})
+	updatePod, err := control.UpdatePod(tc, pod)
+	g.Expect(err).To(Succeed())
+	g.Expect(updatePod.Annotations["a"]).To(Equal("b"))
+	g.Expect(updatePod.Labels["a"]).To(Equal("b"))
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(1))
+	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
+}
+
 func newFakeClientRecorderAndPDControl() (*fake.Clientset, *FakePDControl, corelisters.PodLister, cache.Indexer, *record.FakeRecorder) {
 	fakeClient := &fake.Clientset{}
 	pdControl := NewFakePDControl()
-	recorder := record.NewFakeRecorder(10)
 	kubeCli := kubefake.NewSimpleClientset()
+	recorder := record.NewFakeRecorder(10)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	return fakeClient, pdControl, podInformer.Lister(), podInformer.Informer().GetIndexer(), recorder

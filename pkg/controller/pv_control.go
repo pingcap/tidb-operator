@@ -130,13 +130,10 @@ func (rpc *realPVControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pv *corev1.Pe
 	ann := pv.GetAnnotations()
 	var updatePV *corev1.PersistentVolume
 	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		pv.Labels = labels
-		pv.Annotations = ann
 		var updateErr error
-
 		updatePV, updateErr = rpc.kubeCli.CoreV1().PersistentVolumes().Update(pv)
 		if updateErr == nil {
-			glog.V(4).Infof("PV: [%s] updated successfully, TidbCluster: %s/%s", pvName, ns, tcName)
+			glog.Infof("PV: [%s] updated successfully, TidbCluster: %s/%s", pvName, ns, tcName)
 			return nil
 		}
 		glog.Errorf("failed to update PV: [%s], TidbCluster %s/%s, error: %v", pvName, ns, tcName, err)
@@ -144,6 +141,8 @@ func (rpc *realPVControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pv *corev1.Pe
 		if updated, err := rpc.pvLister.Get(pvName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			pv = updated.DeepCopy()
+			pv.Labels = labels
+			pv.Annotations = ann
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated PV %s/%s from lister: %v", ns, pvName, err))
 		}

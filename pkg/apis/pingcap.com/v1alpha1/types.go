@@ -16,6 +16,7 @@ package v1alpha1
 import (
 	apps "k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -165,9 +166,10 @@ type ResourceRequirement struct {
 
 // PDStatus is PD status
 type PDStatus struct {
-	Phase       MemberPhase             `json:"phase,omitempty"`
-	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
-	Members     map[string]PDMember     `json:"members,omitempty"`
+	Phase          MemberPhase                `json:"phase,omitempty"`
+	StatefulSet    *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
+	Members        map[string]PDMember        `json:"members,omitempty"`
+	FailureMembers map[string]PDFailureMember `json:"failureMembers,omitempty"`
 }
 
 // PDMember is PD member
@@ -178,6 +180,17 @@ type PDMember struct {
 	ID        string `json:"id"`
 	ClientURL string `json:"clientURL"`
 	Health    bool   `json:"health"`
+	// Last time the health transitioned from one to another.
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
+// PDFailureMember is the pd failure member information
+type PDFailureMember struct {
+	PodName       string    `json:"podName,omitempty"`
+	MemberID      string    `json:"memberID,omitempty"`
+	PVUID         types.UID `json:"pvUID,omitempty"`
+	Replicas      int32     `json:"replicas,omitempty"`
+	MemberDeleted bool      `json:"memberDeleted,omitempty"`
 }
 
 // TiDBStatus is TiDB status

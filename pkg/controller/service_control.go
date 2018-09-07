@@ -77,7 +77,7 @@ func (sc *realServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev
 		var updateErr error
 		updateSvc, updateErr = sc.kubeCli.CoreV1().Services(ns).Update(svc)
 		if updateErr == nil {
-			glog.V(4).Infof("update Service: [%s/%s] successfully, TidbCluster: %s", ns, svcName, tcName)
+			glog.Infof("update Service: [%s/%s] successfully, TidbCluster: %s", ns, svcName, tcName)
 			return nil
 		}
 
