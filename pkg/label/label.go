@@ -32,7 +32,7 @@ const (
 	// InstanceLabelKey is Kubernetes recommended label key, it represents a unique name identifying the instance of an application
 	// It's the cluster name in our case
 	InstanceLabelKey string = "app.kubernetes.io/instance"
-  
+
 	// NamespaceLabelKey is label key used in PV for easy querying
 	NamespaceLabelKey string = "app.kubernetes.io/namespace"
 
@@ -46,12 +46,12 @@ const (
 	AnnPodNameKey string = "tidb.pingcap.com/pod-name"
 	// AnnPVCDeferDeleting is pvc defer deletion annotation key used in PVC for defer deleting PVC
 	AnnPVCDeferDeleting = "tidb.pingcap.com/pvc-defer-deleting"
-  // Bootstrapping is bootstrapping key
+	// Bootstrapping is bootstrapping key
 	Bootstrapping string = "bootstrapping"
 	// Replicas is replicas key
 	Replicas string = "replicas"
-  
-  // PDLabelVal is PD label value
+
+	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value
 	TiDBLabelVal string = "tidb"
