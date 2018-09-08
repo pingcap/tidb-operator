@@ -72,10 +72,15 @@ func (pmm *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 		if err != nil {
 			return err
 		}
+		if component := pod.Labels[label.ComponentLabelKey]; component != label.PDLabelVal && component != label.TiKVLabelVal {
+			// Skip syncing meta info for pod that doesn't use PV
+			// Currently only PD/TiKV uses PV
+			continue
+		}
 		// update meta info for pvc
-		pvc, _ := pmm.resolvePVCFromPod(pod)
-		if pvc == nil {
-			return nil
+		pvc, err := pmm.resolvePVCFromPod(pod)
+		if err != nil {
+			return err
 		}
 		err = pmm.pvcControl.UpdateMetaInfo(tc, pvc, pod)
 		if err != nil {
@@ -104,10 +109,8 @@ func (pmm *metaManager) resolvePVCFromPod(pod *corev1.Pod) (*corev1.PersistentVo
 				pvcName = vol.PersistentVolumeClaim.ClaimName
 				break
 			}
-		case v1alpha1.TiDBMemberType.String():
-			return nil, nil
 		default:
-			return nil, nil
+			continue
 		}
 	}
 	if len(pvcName) == 0 {
