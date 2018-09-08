@@ -295,7 +295,7 @@ func (fpc *FakePodControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pod *corev1.P
 	return fpc.PodIndexer.Update(pod)
 }
 
-func (fpc *FakePodControl) DeletePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+func (fpc *FakePodControl) DeletePod(_ *v1alpha1.TidbCluster, pod *corev1.Pod) error {
 	defer fpc.deletePodTracker.inc()
 	if fpc.deletePodTracker.errorReady() {
 		defer fpc.deletePodTracker.reset()
@@ -305,7 +305,7 @@ func (fpc *FakePodControl) DeletePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) 
 	return fpc.PodIndexer.Delete(pod)
 }
 
-func (fpc *FakePodControl) UpdatePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+func (fpc *FakePodControl) UpdatePod(_ *v1alpha1.TidbCluster, pod *corev1.Pod) error {
 	defer fpc.updatePodTracker.inc()
 	if fpc.updatePodTracker.errorReady() {
 		defer fpc.updatePodTracker.reset()
