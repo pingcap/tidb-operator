@@ -273,11 +273,8 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(*tc.Status.TiKV.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
-				expectedStores := v1alpha1.TiKVStores{
-					CurrentStores:   map[string]v1alpha1.TiKVStore{},
-					TombStoneStores: map[string]v1alpha1.TiKVStore{},
-				}
-				g.Expect(tc.Status.TiKV.Stores).To(Equal(expectedStores))
+				g.Expect(tc.Status.TiKV.Stores).To(Equal(map[string]v1alpha1.TiKVStore{}))
+				g.Expect(tc.Status.TiKV.TombstoneStores).To(Equal(map[string]v1alpha1.TiKVStore{}))
 			},
 		},
 		{
@@ -328,8 +325,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(3))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				expectedStores := v1alpha1.TiKVStores{}
-				g.Expect(tc.Status.TiKV.Stores).To(Equal(expectedStores))
+				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(0))
 			},
 		},
 	}

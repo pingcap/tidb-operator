@@ -45,6 +45,8 @@ type tikvMemberManager struct {
 	svcLister    corelisters.ServiceLister
 	podLister    corelisters.PodLister
 	nodeLister   corelisters.NodeLister
+	autoFailover bool
+	tikvFailover Failover
 	tikvScaler   Scaler
 	tikvUpgrader Upgrader
 }
@@ -57,6 +59,8 @@ func NewTiKVMemberManager(pdControl controller.PDControlInterface,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	nodeLister corelisters.NodeLister,
+	autoFailover bool,
+	tikvFailover Failover,
 	tikvScaler Scaler,
 	tikvUpgrader Upgrader) manager.Manager {
 	kvmm := tikvMemberManager{
@@ -67,6 +71,8 @@ func NewTiKVMemberManager(pdControl controller.PDControlInterface,
 		svcControl:   svcControl,
 		setLister:    setLister,
 		svcLister:    svcLister,
+		autoFailover: autoFailover,
+		tikvFailover: tikvFailover,
 		tikvScaler:   tikvScaler,
 		tikvUpgrader: tikvUpgrader,
 	}
@@ -182,6 +188,18 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
 		if err := tkmm.tikvScaler.ScaleIn(tc, oldSet, newSet); err != nil {
 			return err
+		}
+	}
+
+	if tkmm.autoFailover {
+		if allTiKVStoresAreReady(tc) {
+			if tc.Status.TiKV.FailureStores != nil {
+				tkmm.tikvFailover.Recover(tc)
+			}
+		} else if tc.Spec.TiKV.Replicas == tc.Status.TiKV.StatefulSet.Replicas {
+			if err := tkmm.tikvFailover.Failover(tc); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -427,10 +445,8 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	tc.Status.TiKV.StatefulSet = &set.Status
 
 	previousStores := tc.Status.TiKV.Stores
-	tikvStores := v1alpha1.TiKVStores{
-		CurrentStores:   map[string]v1alpha1.TiKVStore{},
-		TombStoneStores: map[string]v1alpha1.TiKVStore{},
-	}
+	stores := map[string]v1alpha1.TiKVStore{}
+	tombstoneStores := map[string]v1alpha1.TiKVStore{}
 
 	pdCli := tkmm.pdControl.GetPDClient(tc)
 
@@ -454,13 +470,21 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 
 		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
 		if status.LastHeartbeatTime.IsZero() {
-			if oldStatus, ok := previousStores.CurrentStores[status.ID]; ok {
+			if oldStatus, ok := previousStores[status.ID]; ok {
 				glog.Warningf("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStatus.LastHeartbeatTime)
 				status.LastHeartbeatTime = oldStatus.LastHeartbeatTime
 			}
 		}
 
-		tikvStores.CurrentStores[status.ID] = *status
+		oldStore, exist := previousStores[status.ID]
+		if exist {
+			status.LastTransitionTime = oldStore.LastTransitionTime
+		}
+		if !exist || status.State != oldStore.State {
+			status.LastTransitionTime = metav1.Now()
+		}
+
+		stores[status.ID] = *status
 	}
 
 	//this returns all tombstone stores
@@ -475,10 +499,11 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 			continue
 		}
 
-		tikvStores.TombStoneStores[status.ID] = *status
+		tombstoneStores[status.ID] = *status
 	}
 
-	tc.Status.TiKV.Stores = tikvStores
+	tc.Status.TiKV.Stores = stores
+	tc.Status.TiKV.TombstoneStores = tombstoneStores
 
 	if statefulSetIsUpgrading(set) {
 		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase

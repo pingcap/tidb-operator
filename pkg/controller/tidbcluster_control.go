@@ -57,12 +57,16 @@ func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) (
 
 	status := tc.Status.DeepCopy()
 	pdReplicas := tc.Spec.PD.Replicas
+	tikvReplicas := tc.Spec.TiKV.Replicas
+	tidbReplicas := tc.Spec.TiDB.Replicas
 	var updateTC *v1alpha1.TidbCluster
 
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		tc.Status = *status
 		tc.Spec.PD.Replicas = pdReplicas
+		tc.Spec.TiKV.Replicas = tikvReplicas
+		tc.Spec.TiDB.Replicas = tidbReplicas
 		var updateErr error
 		updateTC, updateErr = rtc.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 		if updateErr == nil {
