@@ -4,11 +4,11 @@ kind: Service
 metadata:
   name: {{ .Values.clusterName }}-grafana
   labels:
-    app: {{ template "tidb-cluster.name" . }}
-    component: monitor
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: monitor
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   ports:
   - name: grafana
@@ -17,20 +17,20 @@ spec:
     targetPort: 3000
   type: {{ .Values.monitor.grafana.service.type }}
   selector:
-    app: {{ template "tidb-cluster.name" . }}
-    component: monitor
-    release: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: monitor
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ .Values.clusterName }}-prometheus
   labels:
-    app: {{ template "tidb-cluster.name" . }}
-    component: monitor
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: monitor
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   ports:
   - name: prometheus
@@ -39,7 +39,7 @@ spec:
     targetPort: 9090
   type: {{ .Values.monitor.prometheus.service.type }}
   selector:
-    app: {{ template "tidb-cluster.name" . }}
-    component: monitor
-    release: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: monitor
 {{- end }}
