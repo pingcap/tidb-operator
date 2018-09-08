@@ -4,24 +4,24 @@ kind: Deployment
 metadata:
   name: {{ .Values.clusterName }}-monitor
   labels:
-    app: {{ template "tidb-cluster.name" . }}
-    component: monitor
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: monitor
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ template "tidb-cluster.name" . }}
-      component: monitor
-      release: {{ .Release.Name }}
+      app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+      app.kubernetes.io/instance: {{ .Values.clusterName }}
+      app.kubernetes.io/component: monitor
   template:
     metadata:
       labels:
-        app: {{ template "tidb-cluster.name" . }}
-        component: monitor
-        release: {{ .Release.Name }}
+        app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/component: monitor
     spec:
     {{- if .Values.rbac.create }}
       serviceAccount: {{ .Values.clusterName }}-monitor
