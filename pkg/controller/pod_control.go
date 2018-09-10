@@ -104,9 +104,9 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 	if labels == nil {
 		return pod, fmt.Errorf("pod %s/%s has empty labels, TidbCluster: %s", ns, podName, tcName)
 	}
-	_, ok := labels[label.ClusterLabelKey]
+	_, ok := labels[label.InstanceLabelKey]
 	if !ok {
-		return pod, fmt.Errorf("pod %s/%s doesn't have %s label, TidbCluster: %s", ns, podName, label.ClusterLabelKey, tcName)
+		return pod, fmt.Errorf("pod %s/%s doesn't have %s label, TidbCluster: %s", ns, podName, label.InstanceLabelKey, tcName)
 	}
 	pdClient := rpc.pdControl.GetPDClient(tc)
 	if labels[label.ClusterIDLabelKey] == "" {
@@ -117,8 +117,8 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 		clusterID = strconv.FormatUint(cluster.Id, 10)
 	}
 
-	app := labels[label.AppLabelKey]
-	switch app {
+	component := labels[label.ComponentLabelKey]
+	switch component {
 	case label.PDLabelVal:
 		if labels[label.MemberIDLabelKey] == "" {
 			// get member id
@@ -216,13 +216,14 @@ func (rpc *realPodControl) recordPodEvent(verb string, tc *v1alpha1.TidbCluster,
 var _ PodControlInterface = &realPodControl{}
 
 var (
-	TestStoreID     string = "000"
-	TestMemberID    string = "111"
-	TestClusterID   string = "222"
-	TestAppName     string = "tikv"
-	TestPodName     string = "pod-1"
-	TestOwnerName   string = "tidbCluster"
-	TestClusterName string = "test"
+	TestStoreID       string = "000"
+	TestMemberID      string = "111"
+	TestClusterID     string = "222"
+	TestName          string = "tidb-cluster"
+	TestComponentName string = "tikv"
+	TestPodName       string = "pod-1"
+	TestManagedByName string = "tidb-operator"
+	TestClusterName   string = "test"
 )
 
 // FakePodControl is a fake PodControlInterface
@@ -303,16 +304,17 @@ func (fpc *FakePodControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pod *corev1.P
 		return nil, fpc.getStoreTracker.err
 	}
 
-	setIfNotEmpty(pod.Labels, label.AppLabelKey, TestAppName)
-	setIfNotEmpty(pod.Labels, label.OwnerLabelKey, TestOwnerName)
-	setIfNotEmpty(pod.Labels, label.ClusterLabelKey, TestClusterName)
+	setIfNotEmpty(pod.Labels, label.NameLabelKey, TestName)
+	setIfNotEmpty(pod.Labels, label.ComponentLabelKey, TestComponentName)
+	setIfNotEmpty(pod.Labels, label.ManagedByLabelKey, TestManagedByName)
+	setIfNotEmpty(pod.Labels, label.InstanceLabelKey, TestClusterName)
 	setIfNotEmpty(pod.Labels, label.ClusterIDLabelKey, TestClusterID)
 	setIfNotEmpty(pod.Labels, label.MemberIDLabelKey, TestMemberID)
 	setIfNotEmpty(pod.Labels, label.StoreIDLabelKey, TestStoreID)
 	return pod, fpc.PodIndexer.Update(pod)
 }
 
-func (fpc *FakePodControl) DeletePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+func (fpc *FakePodControl) DeletePod(_ *v1alpha1.TidbCluster, pod *corev1.Pod) error {
 	defer fpc.deletePodTracker.inc()
 	if fpc.deletePodTracker.errorReady() {
 		defer fpc.deletePodTracker.reset()
@@ -322,7 +324,7 @@ func (fpc *FakePodControl) DeletePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) 
 	return fpc.PodIndexer.Delete(pod)
 }
 
-func (fpc *FakePodControl) UpdatePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) (*corev1.Pod, error) {
+func (fpc *FakePodControl) UpdatePod(_ *v1alpha1.TidbCluster, pod *corev1.Pod) (*corev1.Pod, error) {
 	defer fpc.updatePodTracker.inc()
 	if fpc.updatePodTracker.errorReady() {
 		defer fpc.updatePodTracker.reset()

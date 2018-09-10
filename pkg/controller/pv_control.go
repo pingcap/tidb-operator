@@ -100,14 +100,17 @@ func (rpc *realPVControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pv *corev1.Pe
 		return pv, nil
 	}
 
-	app := pvc.Labels[label.AppLabelKey]
+	component := pvc.Labels[label.ComponentLabelKey]
 	podName := pvc.Annotations[label.AnnPodNameKey]
 	clusterID := pvc.Labels[label.ClusterIDLabelKey]
 	memberID := pvc.Labels[label.MemberIDLabelKey]
 	storeID := pvc.Labels[label.StoreIDLabelKey]
 
 	if pv.Labels[label.NamespaceLabelKey] == ns &&
-		pv.Labels[label.AppLabelKey] == app &&
+		pv.Labels[label.ComponentLabelKey] == component &&
+		pv.Labels[label.NameLabelKey] == pvc.Labels[label.NameLabelKey] &&
+		pv.Labels[label.ManagedByLabelKey] == pvc.Labels[label.ManagedByLabelKey] &&
+		pv.Labels[label.InstanceLabelKey] == pvc.Labels[label.InstanceLabelKey] &&
 		pv.Labels[label.ClusterIDLabelKey] == clusterID &&
 		pv.Labels[label.MemberIDLabelKey] == memberID &&
 		pv.Labels[label.StoreIDLabelKey] == storeID &&
@@ -117,10 +120,11 @@ func (rpc *realPVControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pv *corev1.Pe
 	}
 
 	pv.Labels[label.NamespaceLabelKey] = ns
-	pv.Labels[label.OwnerLabelKey] = pvc.Labels[label.OwnerLabelKey]
-	pv.Labels[label.ClusterLabelKey] = pvc.Labels[label.ClusterLabelKey]
+	pv.Labels[label.ComponentLabelKey] = component
+	pv.Labels[label.NameLabelKey] = pvc.Labels[label.NameLabelKey]
+	pv.Labels[label.ManagedByLabelKey] = pvc.Labels[label.ManagedByLabelKey]
+	pv.Labels[label.InstanceLabelKey] = pvc.Labels[label.InstanceLabelKey]
 
-	setIfNotEmpty(pv.Labels, label.AppLabelKey, app)
 	setIfNotEmpty(pv.Labels, label.ClusterIDLabelKey, clusterID)
 	setIfNotEmpty(pv.Labels, label.MemberIDLabelKey, memberID)
 	setIfNotEmpty(pv.Labels, label.StoreIDLabelKey, storeID)
@@ -224,12 +228,11 @@ func (fpc *FakePVControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pv *corev1.Pe
 		pv.Annotations = make(map[string]string)
 	}
 	pv.Labels[label.NamespaceLabelKey] = ns
-	pv.Labels[label.OwnerLabelKey] = pvc.Labels[label.OwnerLabelKey]
-	pv.Labels[label.ClusterLabelKey] = pvc.Labels[label.ClusterLabelKey]
-	pv.Labels[label.OwnerLabelKey] = pvc.Labels[label.OwnerLabelKey]
-	pv.Labels[label.ClusterLabelKey] = pvc.Labels[label.ClusterLabelKey]
+	pv.Labels[label.NameLabelKey] = pvc.Labels[label.NameLabelKey]
+	pv.Labels[label.ManagedByLabelKey] = pvc.Labels[label.ManagedByLabelKey]
+	pv.Labels[label.InstanceLabelKey] = pvc.Labels[label.InstanceLabelKey]
+	pv.Labels[label.ComponentLabelKey] = pvc.Labels[label.ComponentLabelKey]
 
-	setIfNotEmpty(pv.Labels, label.AppLabelKey, pvc.Labels[label.AppLabelKey])
 	setIfNotEmpty(pv.Labels, label.ClusterIDLabelKey, pvc.Labels[label.ClusterIDLabelKey])
 	setIfNotEmpty(pv.Labels, label.MemberIDLabelKey, pvc.Labels[label.MemberIDLabelKey])
 	setIfNotEmpty(pv.Labels, label.StoreIDLabelKey, pvc.Labels[label.StoreIDLabelKey])

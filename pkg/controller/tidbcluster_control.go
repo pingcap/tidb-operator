@@ -57,6 +57,8 @@ func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) (
 
 	status := tc.Status.DeepCopy()
 	pdReplicas := tc.Spec.PD.Replicas
+	tikvReplicas := tc.Spec.TiKV.Replicas
+	tidbReplicas := tc.Spec.TiDB.Replicas
 	var updateTC *v1alpha1.TidbCluster
 
 	// don't wait due to limited number of clients, but backoff after the default number of steps
@@ -74,6 +76,8 @@ func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) (
 			tc = updated.DeepCopy()
 			tc.Status = *status
 			tc.Spec.PD.Replicas = pdReplicas
+			tc.Spec.TiKV.Replicas = tikvReplicas
+			tc.Spec.TiDB.Replicas = tidbReplicas
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated TidbCluster %s/%s from lister: %v", ns, tcName, err))
 		}

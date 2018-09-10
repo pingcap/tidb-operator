@@ -47,7 +47,7 @@ func TestPVCControlUpdateMetaInfoSuccess(t *testing.T) {
 	})
 	updatePVC, err := control.UpdateMetaInfo(tc, pvc, pod)
 	g.Expect(err).To(Succeed())
-	g.Expect(updatePVC.Labels[label.ClusterLabelKey]).To(Equal("demo"))
+	g.Expect(updatePVC.Annotations[label.AnnPodNameKey]).To(Equal(pod.GetName()))
 
 	events := collectEvents(recorder.Events)
 	g.Expect(events).To(HaveLen(1))
@@ -92,7 +92,7 @@ func TestPVCControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	})
 	updatePVC, err := control.UpdateMetaInfo(tc, pvc, pod)
 	g.Expect(err).To(Succeed())
-	g.Expect(updatePVC.Labels[label.ClusterLabelKey]).To(Equal("demo"))
+	g.Expect(updatePVC.Annotations[label.AnnPodNameKey]).To(Equal(pod.GetName()))
 
 	events := collectEvents(recorder.Events)
 	g.Expect(events).To(HaveLen(1))

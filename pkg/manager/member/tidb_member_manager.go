@@ -235,7 +235,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      tidbLabel.Labels(),
-					Annotations: controller.AnnProm(),
+					Annotations: controller.AnnProm(10080),
 				},
 				Spec: corev1.PodSpec{
 					Affinity: util.AffinityForNodeSelector(
@@ -257,11 +257,6 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 								},
 								{
 									Name:          "status", // pprof, status, metrics
-									ContainerPort: int32(10080),
-									Protocol:      corev1.ProtocolTCP,
-								},
-								{
-									Name:          "metrics", // This is used for metrics pull
 									ContainerPort: int32(10080),
 									Protocol:      corev1.ProtocolTCP,
 								},

@@ -108,11 +108,9 @@ func (rpc *realPVCControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pvc *corev1.
 	pvcName := pvc.GetName()
 	podName := pod.GetName()
 
-	app := pod.Labels[label.AppLabelKey]
 	clusterID := pod.Labels[label.ClusterIDLabelKey]
 	storeID := pod.Labels[label.StoreIDLabelKey]
 	memberID := pod.Labels[label.MemberIDLabelKey]
-	owner := pod.Labels[label.OwnerLabelKey]
 
 	if pvc.Annotations == nil {
 		pvc.Annotations = make(map[string]string)
@@ -122,10 +120,7 @@ func (rpc *realPVCControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pvc *corev1.
 		pvc.Labels = make(map[string]string)
 	}
 
-	if pvc.Labels[label.AppLabelKey] == app &&
-		pvc.Labels[label.OwnerLabelKey] == owner &&
-		pvc.Labels[label.ClusterLabelKey] == tcName &&
-		pvc.Labels[label.ClusterIDLabelKey] == clusterID &&
+	if pvc.Labels[label.ClusterIDLabelKey] == clusterID &&
 		pvc.Labels[label.MemberIDLabelKey] == memberID &&
 		pvc.Labels[label.StoreIDLabelKey] == storeID &&
 		pvc.Annotations[label.AnnPodNameKey] == podName {
@@ -133,9 +128,6 @@ func (rpc *realPVCControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pvc *corev1.
 		return pvc, nil
 	}
 
-	setIfNotEmpty(pvc.Labels, label.AppLabelKey, app)
-	setIfNotEmpty(pvc.Labels, label.OwnerLabelKey, owner)
-	setIfNotEmpty(pvc.Labels, label.ClusterLabelKey, tcName)
 	setIfNotEmpty(pvc.Labels, label.ClusterIDLabelKey, clusterID)
 	setIfNotEmpty(pvc.Labels, label.MemberIDLabelKey, memberID)
 	setIfNotEmpty(pvc.Labels, label.StoreIDLabelKey, storeID)
@@ -248,9 +240,6 @@ func (fpc *FakePVCControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pvc *corev1.P
 	if pvc.Annotations == nil {
 		pvc.Annotations = make(map[string]string)
 	}
-	setIfNotEmpty(pvc.Labels, label.AppLabelKey, pod.Labels[label.AppLabelKey])
-	setIfNotEmpty(pvc.Labels, label.OwnerLabelKey, pod.Labels[label.OwnerLabelKey])
-	setIfNotEmpty(pvc.Labels, label.ClusterLabelKey, pod.Labels[label.ClusterLabelKey])
 	setIfNotEmpty(pvc.Labels, label.ClusterIDLabelKey, pod.Labels[label.ClusterIDLabelKey])
 	setIfNotEmpty(pvc.Labels, label.MemberIDLabelKey, pod.Labels[label.MemberIDLabelKey])
 	setIfNotEmpty(pvc.Labels, label.StoreIDLabelKey, pod.Labels[label.StoreIDLabelKey])
