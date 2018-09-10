@@ -3,11 +3,11 @@ kind: ConfigMap
 metadata:
   name: {{ .Values.clusterName }}-pd
   labels:
-    app: {{ template "tidb-cluster.name" . }}
-    component: pd
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: pd
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 data:
   startup-script: |-
     #!/bin/sh
@@ -32,6 +32,9 @@ data:
     fi
     source ${ANNOTATIONS} 2>/dev/null
 
+    PEER_SERVICE_DOMAIN="${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc"
+    SERVICE_DOMAIN="${SERVICE_NAME}.${NAMESPACE}.svc"
+
     runmode=${runmode:-normal}
     if [[ X${runmode} == Xdebug ]]
     then
@@ -42,18 +45,35 @@ data:
     elapseTime=0
     period=1
     threshold=30
-    while true;do
-        nslookup ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc 2>/dev/null
-        [[ $? -eq 0 ]] && break
-        echo "nslookup domain ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc failed" >&2
+    while true; do
         sleep ${period}
         elapseTime=$(( elapseTime+period ))
-        if [[ ${elapseTime} -ge ${threshold} ]];then
-            echo "nslookup domain ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc timeout" >&2
+
+        if [[ ${elapseTime} -ge ${threshold} ]]
+        then
+            echo "waiting for pd cluster ready timeout" >&2
             exit 1
         fi
+
+        source ${ANNOTATIONS} 2>/dev/null
+        if nslookup ${PEER_SERVICE_DOMAIN} 2>/dev/null
+        then
+            echo "nslookup domain ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc success"
+
+            if [[ ${ORDINAL} -eq 0 ]]
+            then
+                [[ -z ${bootstrapping:-} ]] && continue
+                [[ ${bootstrapping} == "true" ]] && break
+            fi
+
+            [[ -d /var/lib/pd/member/wal ]] && break
+            wget -qO- ${SERVICE_DOMAIN}:2379/pd/api/v1/members 2>/dev/null
+            [[ $? -eq 0 ]] && break
+            echo "pd cluster is not ready now: ${SERVICE_DOMAIN}"
+        else
+            echo "nslookup domain ${PEER_SERVICE_DOMAIN} failed" >&2
+        fi
     done
-    echo "nslookup domain ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc success"
 
     ARGS="--data-dir=/var/lib/pd \
     --name=${HOSTNAME} \
@@ -64,14 +84,22 @@ data:
     --config=/etc/pd/pd.toml \
     "
 
-    if [[ ${ORDINAL} == "0" ]]
+    replicas=${replicas:-3}
+    if [[ ${ORDINAL} -eq 0 && ${bootstrapping:-} == "true" ]]
     then
         ARGS="${ARGS}--initial-cluster=${HOSTNAME}=http://${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc:2380"
     else
+        if [[ ${ORDINAL} -eq 0 ]]
+        then
+          TOP=$((replicas-1))
+        else
+          TOP=$((ORDINAL-1))
+        fi
+
         ARGS="${ARGS}--join="
-        TOP=$((ORDINAL-1))
         for i in $(seq 0 ${TOP});
         do
+            [[ ${i} -eq ${ORDINAL} ]] && continue
             ARGS="${ARGS}http://${SET_NAME}-${i}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc:2380"
             if [[ ${i} -lt ${TOP} ]]
             then

@@ -19,12 +19,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 )
 
-// Failover implements the logic for pd/tikv/tidb's failover and recovery.
-type Failover interface {
-	Failover(*v1alpha1.TidbCluster) error
-	Recover(*v1alpha1.TidbCluster)
-}
-
 type tidbFailover struct {
 	tidbFailoverPeriod time.Duration
 }

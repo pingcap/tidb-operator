@@ -16,6 +16,7 @@ package v1alpha1
 import (
 	apps "k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -24,11 +25,10 @@ const (
 	// AnnotationStorageSize is a storage size annotation key
 	AnnotationStorageSize string = "storage.pingcap.com/size"
 
-	// TiDBVolumeName is volume name for TiDB volume
-	TiDBVolumeName string = "tidb-volume"
-
 	// TiKVStateUp represents status of Up of TiKV
 	TiKVStateUp string = "Up"
+	// TiKVStateDown represents status of Down of TiKV
+	TiKVStateDown string = "Down"
 )
 
 // MemberType represents member type
@@ -165,9 +165,10 @@ type ResourceRequirement struct {
 
 // PDStatus is PD status
 type PDStatus struct {
-	Phase       MemberPhase             `json:"phase,omitempty"`
-	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
-	Members     map[string]PDMember     `json:"members,omitempty"`
+	Phase          MemberPhase                `json:"phase,omitempty"`
+	StatefulSet    *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
+	Members        map[string]PDMember        `json:"members,omitempty"`
+	FailureMembers map[string]PDFailureMember `json:"failureMembers,omitempty"`
 }
 
 // PDMember is PD member
@@ -178,6 +179,17 @@ type PDMember struct {
 	ID        string `json:"id"`
 	ClientURL string `json:"clientURL"`
 	Health    bool   `json:"health"`
+	// Last time the health transitioned from one to another.
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
+// PDFailureMember is the pd failure member information
+type PDFailureMember struct {
+	PodName       string    `json:"podName,omitempty"`
+	MemberID      string    `json:"memberID,omitempty"`
+	PVUID         types.UID `json:"pvUID,omitempty"`
+	Replicas      int32     `json:"replicas,omitempty"`
+	MemberDeleted bool      `json:"memberDeleted,omitempty"`
 }
 
 // TiDBStatus is TiDB status
@@ -204,15 +216,11 @@ type TiDBFailureMember struct {
 
 // TiKVStatus is TiKV status
 type TiKVStatus struct {
-	Phase       MemberPhase             `json:"phase,omitempty"`
-	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
-	Stores      TiKVStores              `json:"stores,omitempty"`
-}
-
-// TiKVStores is all TiKV Stores, contain stores which state are tombstone
-type TiKVStores struct {
-	CurrentStores   map[string]TiKVStore `json:"currentStores,omitempty"`
-	TombStoneStores map[string]TiKVStore `json:"tombStoneStores,omitempty"`
+	Phase           MemberPhase                 `json:"phase,omitempty"`
+	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
+	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
+	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
+	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
 }
 
 // TiKVStores is either Up/Down/Offline/Tombstone
@@ -223,4 +231,13 @@ type TiKVStore struct {
 	IP                string      `json:"ip"`
 	State             string      `json:"state"`
 	LastHeartbeatTime metav1.Time `json:"lastHeartbeatTime"`
+	// Last time the health transitioned from one to another.
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
+// TiKVFailureStore is the tikv failure store information
+type TiKVFailureStore struct {
+	PodName  string `json:"podName,omitempty"`
+	StoreID  string `json:"storeID,omitempty"`
+	Replicas int32  `json:"replicas,omitempty"`
 }

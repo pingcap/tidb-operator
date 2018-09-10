@@ -19,36 +19,44 @@ import (
 )
 
 const (
-	// ClusterLabelKey is cluster label key
-	ClusterLabelKey string = "cluster.pingcap.com/tidbCluster"
-	// NamespaceLabelKey is cluster label key
-	NamespaceLabelKey string = "cluster.pingcap.com/namespace"
-	// AppLabelKey is app label key
-	AppLabelKey string = "cluster.pingcap.com/app"
-	// OwnerLabelKey is owner label key
-	OwnerLabelKey string = "cluster.pingcap.com/owner"
+	// The following labels are recommended by kubernetes https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
+
+	// ManagedByLabelKey is Kubernetes recommended label key, it represents the tool being used to manage the operation of an application
+	// For resources managed by TiDB Operator, its value is always tidb-operator
+	ManagedByLabelKey string = "app.kubernetes.io/managed-by"
+	// ComponentLabelKey is Kubernetes recommended label key, it represents the component within the architecture
+	ComponentLabelKey string = "app.kubernetes.io/component"
+	// NameLabelKey is Kubernetes recommended label key, it represents the name of the application
+	// It should always be tidb-cluster in our case.
+	NameLabelKey string = "app.kubernetes.io/name"
+	// InstanceLabelKey is Kubernetes recommended label key, it represents a unique name identifying the instance of an application
+	// It's the cluster name in our case
+	InstanceLabelKey string = "app.kubernetes.io/instance"
+
+	// NamespaceLabelKey is label key used in PV for easy querying
+	NamespaceLabelKey string = "app.kubernetes.io/namespace"
+
 	// ClusterIDLabelKey is cluster id label key
-	ClusterIDLabelKey string = "cluster.pingcap.com/clusterId"
+	ClusterIDLabelKey string = "tidb.pingcap.com/cluster-id"
 	// StoreIDLabelKey is store id label key
-	StoreIDLabelKey string = "cluster.pingcap.com/storeId"
+	StoreIDLabelKey string = "tidb.pingcap.com/store-id"
 	// MemberIDLabelKey is member id label key
-	MemberIDLabelKey string = "cluster.pingcap.com/memberId"
-	// AnnPodNameKey is podName annotations key
-	AnnPodNameKey string = "volume.pingcap.com/podName"
-	// AnnPVCDeferDeleting is pvc defer deletion key
-	AnnPVCDeferDeleting = "cluster.pingcap.com/pvc-defer-deleting"
-	// AnnPaused is the annotation that the object is paused
-	AnnPaused string = "cluster.pingcap.com/paused"
+	MemberIDLabelKey string = "tidb.pingcap.com/member-id"
+	// AnnPodNameKey is pod name annotation key used in PV/PVC for synchronizing tidb cluster meta info
+	AnnPodNameKey string = "tidb.pingcap.com/pod-name"
+	// AnnPVCDeferDeleting is pvc defer deletion annotation key used in PVC for defer deleting PVC
+	AnnPVCDeferDeleting = "tidb.pingcap.com/pvc-defer-deleting"
+	// Bootstrapping is bootstrapping key
+	Bootstrapping string = "bootstrapping"
+	// Replicas is replicas key
+	Replicas string = "replicas"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value
 	TiDBLabelVal string = "tidb"
 	// TiKVLabelVal is TiKV label value
 	TiKVLabelVal string = "tikv"
-	// MonitorLabelVal is Monitor label value
-	MonitorLabelVal string = "monitor"
-	// ClusterLabelVal is cluster label value
-	ClusterLabelVal string = "tidbCluster"
 )
 
 // Label is the label field in metadata
@@ -56,7 +64,10 @@ type Label map[string]string
 
 // New initialize a new Label
 func New() Label {
-	return Label{OwnerLabelKey: ClusterLabelVal}
+	return Label{
+		NameLabelKey:      "tidb-cluster",
+		ManagedByLabelKey: "tidb-operator",
+	}
 }
 
 // ClusterListOptions returns a cluster ListOptions filter
@@ -70,7 +81,7 @@ func ClusterListOptions(clusterName string) metav1.ListOptions {
 
 // Cluster adds cluster kv pair to label
 func (l Label) Cluster(name string) Label {
-	l[ClusterLabelKey] = name
+	l[InstanceLabelKey] = name
 	return l
 }
 
@@ -80,59 +91,48 @@ func (l Label) Namespace(name string) Label {
 	return l
 }
 
-// App adds app kv pair to label
-func (l Label) App(name string) Label {
-	l[AppLabelKey] = name
+// Component adds component kv pair to label
+func (l Label) Component(name string) Label {
+	l[ComponentLabelKey] = name
 	return l
 }
 
-// AppType returns app type
-func (l Label) AppType() string {
-	return l[AppLabelKey]
+// ComponentType returns component type
+func (l Label) ComponentType() string {
+	return l[ComponentLabelKey]
 }
 
-// PD assigns pd to app key in label
+// PD assigns pd to component key in label
 func (l Label) PD() Label {
-	l.App(PDLabelVal)
+	l.Component(PDLabelVal)
 	return l
 }
 
 // IsPD returns whether label is a PD
 func (l Label) IsPD() bool {
-	return l[AppLabelKey] == PDLabelVal
+	return l[ComponentLabelKey] == PDLabelVal
 }
 
-// TiDB assigns tidb to app key in label
+// TiDB assigns tidb to component key in label
 func (l Label) TiDB() Label {
-	l.App(TiDBLabelVal)
+	l.Component(TiDBLabelVal)
 	return l
 }
 
-// TiKV assigns tikv to app key in label
+// TiKV assigns tikv to component key in label
 func (l Label) TiKV() Label {
-	l.App(TiKVLabelVal)
-	return l
-}
-
-// Monitor assigns monitor to app key in label
-func (l Label) Monitor() Label {
-	l.App(MonitorLabelVal)
+	l.Component(TiKVLabelVal)
 	return l
 }
 
 // IsTiKV returns whether label is a TiKV
 func (l Label) IsTiKV() bool {
-	return l[AppLabelKey] == TiKVLabelVal
+	return l[ComponentLabelKey] == TiKVLabelVal
 }
 
 // IsTiDB returns whether label is a TiDB
 func (l Label) IsTiDB() bool {
-	return l[AppLabelKey] == TiDBLabelVal
-}
-
-// IsMonitor returns whether label is a Monitor
-func (l Label) IsMonitor() bool {
-	return l[AppLabelKey] == MonitorLabelVal
+	return l[ComponentLabelKey] == TiDBLabelVal
 }
 
 // Selector gets labels.Selector from label

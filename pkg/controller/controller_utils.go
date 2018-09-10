@@ -103,7 +103,7 @@ func DefaultPushGatewayRequest() corev1.ResourceRequirements {
 
 // GetPushgatewayImage returns TidbCluster's pushgateway image
 func GetPushgatewayImage(cluster *v1alpha1.TidbCluster) string {
-	if img, ok := cluster.Annotations["pushgateway-image"]; ok && img != "" {
+	if img := cluster.Spec.TiKVPromGateway.Image; img != "" {
 		return img
 	}
 	return defaultPushgatewayImage
@@ -150,12 +150,12 @@ func MonitorMemberName(clusterName string) string {
 }
 
 // AnnProm adds annotations for prometheus scraping metrics
-// port is determined by container port in pod spec with name metrics
-func AnnProm() map[string]string {
-	ann := make(map[string]string)
-	ann["prometheus.io/scrape"] = "true"
-	ann["prometheus.io/path"] = "/metrics"
-	return ann
+func AnnProm(port int32) map[string]string {
+	return map[string]string{
+		"prometheus.io/scrape": "true",
+		"prometheus.io/path":   "/metrics",
+		"prometheus.io/port":   fmt.Sprintf("%d", port),
+	}
 }
 
 // setIfNotEmpty set the value into map when value in not empty

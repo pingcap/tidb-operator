@@ -3,24 +3,24 @@ kind: Deployment
 metadata:
   name: tidb-controller-manager
   labels:
-    app: {{ template "tidb-operator.name" . }}
-    component: controller-manager
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "tidb-operator.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: controller-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   replicas: {{ .Values.controllerManager.replicas }}
   selector:
     matchLabels:
-      app: {{ template "tidb-operator.name" . }}
-      component: controller-manager
-      release: {{ .Release.Name }}
+      app.kubernetes.io/name: {{ template "tidb-operator.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: controller-manager
   template:
     metadata:
       labels:
-        app: {{ template "tidb-operator.name" . }}
-        component: controller-manager
-        release: {{ .Release.Name }}
+        app.kubernetes.io/name: {{ template "tidb-operator.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: controller-manager
     spec:
     {{- if .Values.rbac.create }}
       serviceAccount: tidb-controller-manager
@@ -36,6 +36,7 @@ spec:
           - -default-storage-class-name={{ .Values.defaultStorageClassName }}
           - -cluster-scoped={{ .Values.clusterScoped }}
           - -auto-failover={{ .Values.controllerManager.autoFailover | default false }}
+          - -pd-failover-period={{ .Values.controllerManager.pdFailoverPeriod | default "5m" }}
           - -tidb-failover-period={{ .Values.controllerManager.tidbFailoverPeriod | default "5m" }}
           - -v={{ .Values.controllerManager.logLevel }}
         env:

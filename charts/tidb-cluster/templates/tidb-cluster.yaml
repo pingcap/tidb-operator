@@ -3,11 +3,11 @@ kind: TidbCluster
 metadata:
   name: {{ .Values.clusterName }}
   labels:
-    app: {{ template "tidb-cluster.name" . }}
-    component: tidb-cluster
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: tidb-cluster
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
   localtime: {{ .Values.localtime }}
@@ -48,6 +48,11 @@ spec:
   {{- if .Values.tikv.tolerations }}
     tolerations:
 {{ toYaml .Values.tikv.tolerations | indent 4 }}
+  {{- end }}
+  tikvPromGateway:
+    image: {{ .Values.tikvPromGateway.image }}
+  {{- if .Values.tikvPromGateway.resources }}
+{{ toYaml .Values.tikvPromGateway.resources | indent 4 }}
   {{- end }}
   tidb:
     replicas: {{ .Values.tidb.replicas }}

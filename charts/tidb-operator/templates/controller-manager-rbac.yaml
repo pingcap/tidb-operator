@@ -5,11 +5,11 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: {{ .Release.Namespace }}:tidb-controller-manager
   labels:
-    app: {{ template "tidb-operator.name" . }}
-    component: controller-manager
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "tidb-operator.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: controller-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 rules:
 - apiGroups: [""]
   resources:
@@ -23,11 +23,8 @@ rules:
   resources: ["endpoints"]
   verbs: ["create", "get", "update"]
 - apiGroups: [""]
-  resources: ["endpoints"]
-  verbs: ["create", "get", "update"]
-- apiGroups: [""]
   resources: ["pods"]
-  verbs: ["get", "list", "watch","update"]
+  verbs: ["get", "list", "watch","update", "delete"]
 - apiGroups: [""]
   resources: ["persistentvolumes"]
   verbs: ["get", "list", "watch", "patch","update"]
@@ -46,11 +43,11 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: {{ .Release.Namespace }}:tidb-controller-manager
   labels:
-    app: {{ template "tidb-operator.name" . }}
-    component: controller-manager
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "tidb-operator.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: controller-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 subjects:
 - kind: ServiceAccount
   name: tidb-controller-manager
@@ -65,11 +62,11 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: tidb-controller-manager
   labels:
-    app: {{ template "tidb-operator.name" . }}
-    component: controller-manager
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "tidb-operator.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: controller-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 rules:
 - apiGroups: [""]
   resources:
@@ -84,7 +81,7 @@ rules:
   verbs: ["get", "list", "watch", "update", "delete"]
 - apiGroups: [""]
   resources: ["pods"]
-  verbs: ["get", "list", "watch"]
+  verbs: ["get", "list", "watch","update", "delete"]
 - apiGroups: ["apps"]
   resources: ["statefulsets"]
   verbs: ["*"]
@@ -97,11 +94,11 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: tidb-controller-manager
   labels:
-    app: {{ template "tidb-operator.name" . }}
-    component: controller-manager
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "tidb-operator.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: controller-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 subjects:
 - kind: ServiceAccount
   name: tidb-controller-manager
@@ -116,9 +113,9 @@ apiVersion: v1
 metadata:
   name: tidb-controller-manager
   labels:
-    app: {{ template "tidb-operator.name" . }}
-    component: controller-manager
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "tidb-operator.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: controller-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 {{- end }}

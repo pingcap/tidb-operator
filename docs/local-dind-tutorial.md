@@ -58,7 +58,7 @@ tidb-controller-manager-5cd94748c7-jlvfs   1/1       Running   0          1m
 
 ```sh
 $ helm install charts/tidb-cluster --name=tidb-cluster --namespace=tidb
-$ watch kubectl get pods --namespace tidb -l cluster.pingcap.com/tidbCluster=demo -o wide
+$ watch kubectl get pods --namespace tidb -l app.kubernetes.io/instance=demo -o wide
 $ # wait a few minutes to get all TiDB components created and ready
 
 $ kubectl get tidbcluster -n tidb
@@ -169,7 +169,7 @@ $ helm delete tidb-cluster --purge
 > **Note:** This only deletes the running pods and other resources, the data is persisted. If you do not need the data anymore, run the following commands to clean up the data. (Be careful, this permanently deletes the data).
 
 ```sh
-$ kubectl get pv -l cluster.pingcap.com/namespace=tidb -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+$ kubectl get pv -l app.kubernetes.io/namespace=tidb -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
 $ kubectl delete pvc --namespace tidb --all
 ```
 

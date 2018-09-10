@@ -223,9 +223,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
-
 	autoFailover := true
-	tidbFailoverPeriod := time.Duration(time.Minute)
 
 	tcc := NewController(
 		kubeCli,
@@ -233,7 +231,8 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 		informerFactory,
 		kubeInformerFactory,
 		autoFailover,
-		tidbFailoverPeriod,
+		5*time.Minute,
+		5*time.Minute,
 	)
 	tcc.tcListerSynced = alwaysReady
 	tcc.setListerSynced = alwaysReady
@@ -253,24 +252,31 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	)
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), recorder)
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
-	podControl := controller.NewRealPodControl(kubeCli, pdControl, recorder)
+	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl)
-	pdUpgrade := mm.NewPDUpgrader()
+	tikvFailover := mm.NewTiKVFailover(pdControl)
+	pdFailover := mm.NewFakePDFailover()
+	pdUpgrader := mm.NewPDUpgrader()
 	tikvUpgrader := mm.NewTiKVUpgrader()
 	tidbUpgrader := mm.NewTiDBUpgrader()
-	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod)
+	tidbFailover := mm.NewFakeTiDBFailover()
 
 	tcc.control = NewDefaultTidbClusterControl(
-		NewRealTidbClusterStatusUpdater(cli, tcInformer.Lister()),
+		controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder),
 		mm.NewPDMemberManager(
 			pdControl,
 			setControl,
 			svcControl,
 			setInformer.Lister(),
 			svcInformer.Lister(),
+			podInformer.Lister(),
+			podControl,
+			pvcInformer.Lister(),
 			pdScaler,
-			pdUpgrade,
+			pdUpgrader,
+			autoFailover,
+			pdFailover,
 		),
 		mm.NewTiKVMemberManager(
 			pdControl,
@@ -280,6 +286,8 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			svcInformer.Lister(),
 			podInformer.Lister(),
 			nodeInformer.Lister(),
+			autoFailover,
+			tikvFailover,
 			tikvScaler,
 			tikvUpgrader,
 		),

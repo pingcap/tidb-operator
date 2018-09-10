@@ -1,5 +1,6 @@
-GOENV     := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=linux GOARCH=amd64
-GO        := $(GOENV) go
+GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+GO     := $(GOENV) go
+GOTEST := go test -v -cover
 
 LDFLAGS += -X "github.com/pingcap/tidb-operator/version.BuildTS=$(shell date -u '+%Y-%m-%d %I:%M:%S')"
 LDFLAGS += -X "github.com/pingcap/tidb-operator/version.GitSHA=$(shell git rev-parse HEAD)"
@@ -39,8 +40,8 @@ e2e-build:
 	$(GOENV) ginkgo build tests/e2e
 
 test:
-	@echo "run unit tests"
-	@$(GO) test ./pkg/... -v -cover && echo success
+	@echo "Run unit tests"
+	@$(GOTEST) ./pkg/... && echo "\nUnit tests run successfully!"
 
 check-all: lint check-static check-shadow check-gosec megacheck errcheck
 

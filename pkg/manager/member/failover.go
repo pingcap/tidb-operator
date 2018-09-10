@@ -11,4 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tidbcluster
+package member
+
+import "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+
+// Failover implements the logic for pd/tikv/tidb's failover and recovery.
+type Failover interface {
+	Failover(*v1alpha1.TidbCluster) error
+	Recover(*v1alpha1.TidbCluster)
+}

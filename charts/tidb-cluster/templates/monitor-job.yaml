@@ -4,18 +4,18 @@ kind: Job
 metadata:
   name: {{ .Values.clusterName }}-monitor-configurator
   labels:
-    app: {{ template "tidb-cluster.name" . }}
-    component: monitor-configurator
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: monitor-configurator
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   template:
     metadata:
       labels:
-        app: {{ template "tidb-cluster.name" . }}
-        component: monitor-configurator
-        release: {{ .Release.Name }}
+        app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/component: monitor-configurator
     spec:
       restartPolicy: OnFailure
     {{- if .Values.rbac.create }}

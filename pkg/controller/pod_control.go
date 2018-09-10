@@ -22,8 +22,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
@@ -31,12 +33,16 @@ import (
 
 // PodControlInterface manages Pods used in TidbCluster
 type PodControlInterface interface {
+	// TODO change this to UpdatePod
 	UpdateMetaInfo(*v1alpha1.TidbCluster, *corev1.Pod) error
+	DeletePod(*v1alpha1.TidbCluster, *corev1.Pod) error
+	UpdatePod(*v1alpha1.TidbCluster, *corev1.Pod) error
 }
 
 type realPodControl struct {
 	kubeCli   kubernetes.Interface
 	pdControl PDControlInterface
+	podLister corelisters.PodLister
 	recorder  record.EventRecorder
 }
 
@@ -44,13 +50,41 @@ type realPodControl struct {
 func NewRealPodControl(
 	kubeCli kubernetes.Interface,
 	pdControl PDControlInterface,
+	podLister corelisters.PodLister,
 	recorder record.EventRecorder,
 ) PodControlInterface {
 	return &realPodControl{
 		kubeCli:   kubeCli,
 		pdControl: pdControl,
+		podLister: podLister,
 		recorder:  recorder,
 	}
+}
+
+func (rpc *realPodControl) UpdatePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+	ns := tc.GetNamespace()
+	podName := pod.GetName()
+
+	// don't wait due to limited number of clients, but backoff after the default number of steps
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		_, updateErr := rpc.kubeCli.CoreV1().Pods(ns).Update(pod)
+		if updateErr == nil {
+			glog.Infof("Pod: [%s/%s] updated successfully", ns, podName)
+			return nil
+		}
+		glog.Errorf("failed to update Pod: [%s/%s], error: %v", ns, podName, updateErr)
+
+		if updated, err := rpc.podLister.Pods(ns).Get(podName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			pod = updated.DeepCopy()
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated Pod %s/%s from lister: %v", ns, podName, err))
+		}
+
+		return updateErr
+	})
+	rpc.recordPodEvent("update", tc, podName, err)
+	return err
 }
 
 func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
@@ -62,9 +96,9 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 	if labels == nil {
 		return fmt.Errorf("pod %s/%s has empty labels, TidbCluster: %s", ns, podName, tcName)
 	}
-	_, ok := labels[label.ClusterLabelKey]
+	_, ok := labels[label.InstanceLabelKey]
 	if !ok {
-		return fmt.Errorf("pod %s/%s doesn't have %s label, TidbCluster: %s", ns, podName, label.ClusterLabelKey, tcName)
+		return fmt.Errorf("pod %s/%s doesn't have %s label, TidbCluster: %s", ns, podName, label.InstanceLabelKey, tcName)
 	}
 	pdClient := rpc.pdControl.GetPDClient(tc)
 	if labels[label.ClusterIDLabelKey] == "" {
@@ -75,8 +109,8 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 		clusterID = strconv.FormatUint(cluster.Id, 10)
 	}
 
-	app := labels[label.AppLabelKey]
-	switch app {
+	component := labels[label.ComponentLabelKey]
+	switch component {
 	case label.PDLabelVal:
 		if labels[label.MemberIDLabelKey] == "" {
 			// get member id
@@ -131,6 +165,20 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 	return err
 }
 
+func (rpc *realPodControl) DeletePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	podName := pod.GetName()
+	err := rpc.kubeCli.CoreV1().Pods(ns).Delete(podName, nil)
+	if err != nil {
+		glog.Errorf("failed to delete Pod: [%s/%s], TidbCluster: %s, %v", ns, podName, tcName, err)
+	} else {
+		glog.V(4).Infof("delete Pod: [%s/%s] successfully, TidbCluster: %s", ns, podName, tcName)
+	}
+	rpc.recordPodEvent("delete", tc, podName, err)
+	return err
+}
+
 func (rpc *realPodControl) recordPodEvent(verb string, tc *v1alpha1.TidbCluster, podName string, err error) {
 	tcName := tc.GetName()
 	if err == nil {
@@ -149,19 +197,21 @@ func (rpc *realPodControl) recordPodEvent(verb string, tc *v1alpha1.TidbCluster,
 var _ PodControlInterface = &realPodControl{}
 
 var (
-	TestStoreID     string = "000"
-	TestMemberID    string = "111"
-	TestClusterID   string = "222"
-	TestAppName     string = "tikv"
-	TestPodName     string = "pod-1"
-	TestOwnerName   string = "tidbCluster"
-	TestClusterName string = "test"
+	TestStoreID       string = "000"
+	TestMemberID      string = "111"
+	TestClusterID     string = "222"
+	TestName          string = "tidb-cluster"
+	TestComponentName string = "tikv"
+	TestPodName       string = "pod-1"
+	TestManagedByName string = "tidb-operator"
+	TestClusterName   string = "test"
 )
 
 // FakePodControl is a fake PodControlInterface
 type FakePodControl struct {
 	PodIndexer        cache.Indexer
 	updatePodTracker  requestTracker
+	deletePodTracker  requestTracker
 	getClusterTracker requestTracker
 	getMemberTracker  requestTracker
 	getStoreTracker   requestTracker
@@ -175,6 +225,7 @@ func NewFakePodControl(podInformer coreinformers.PodInformer) *FakePodControl {
 		requestTracker{0, nil, 0},
 		requestTracker{0, nil, 0},
 		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
 	}
 }
 
@@ -182,6 +233,12 @@ func NewFakePodControl(podInformer coreinformers.PodInformer) *FakePodControl {
 func (fpc *FakePodControl) SetUpdatePodError(err error, after int) {
 	fpc.updatePodTracker.err = err
 	fpc.updatePodTracker.after = after
+}
+
+// SetDeletePodError sets the error attributes of deletePodTracker
+func (fpc *FakePodControl) SetDeletePodError(err error, after int) {
+	fpc.deletePodTracker.err = err
+	fpc.deletePodTracker.after = after
 }
 
 // SetGetClusterError sets the error attributes of getClusterTracker
@@ -228,12 +285,33 @@ func (fpc *FakePodControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pod *corev1.P
 		return fpc.getStoreTracker.err
 	}
 
-	setIfNotEmpty(pod.Labels, label.AppLabelKey, TestAppName)
-	setIfNotEmpty(pod.Labels, label.OwnerLabelKey, TestOwnerName)
-	setIfNotEmpty(pod.Labels, label.ClusterLabelKey, TestClusterName)
+	setIfNotEmpty(pod.Labels, label.NameLabelKey, TestName)
+	setIfNotEmpty(pod.Labels, label.ComponentLabelKey, TestComponentName)
+	setIfNotEmpty(pod.Labels, label.ManagedByLabelKey, TestManagedByName)
+	setIfNotEmpty(pod.Labels, label.InstanceLabelKey, TestClusterName)
 	setIfNotEmpty(pod.Labels, label.ClusterIDLabelKey, TestClusterID)
 	setIfNotEmpty(pod.Labels, label.MemberIDLabelKey, TestMemberID)
 	setIfNotEmpty(pod.Labels, label.StoreIDLabelKey, TestStoreID)
+	return fpc.PodIndexer.Update(pod)
+}
+
+func (fpc *FakePodControl) DeletePod(_ *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+	defer fpc.deletePodTracker.inc()
+	if fpc.deletePodTracker.errorReady() {
+		defer fpc.deletePodTracker.reset()
+		return fpc.deletePodTracker.err
+	}
+
+	return fpc.PodIndexer.Delete(pod)
+}
+
+func (fpc *FakePodControl) UpdatePod(_ *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+	defer fpc.updatePodTracker.inc()
+	if fpc.updatePodTracker.errorReady() {
+		defer fpc.updatePodTracker.reset()
+		return fpc.updatePodTracker.err
+	}
+
 	return fpc.PodIndexer.Update(pod)
 }
 
