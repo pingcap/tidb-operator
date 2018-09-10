@@ -37,9 +37,7 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 		name                     string
 		prepare                  func(cluster *v1alpha1.TidbCluster)
 		errWhenCreateStatefulSet bool
-		errWhenCreateTiDBService bool
 		err                      bool
-		tidbSvcCreated           bool
 		setCreated               bool
 	}
 
@@ -52,13 +50,10 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			test.prepare(tc)
 		}
 
-		tmm, fakeSetControl, fakeSvcControl := newFakeTiDBMemberManager()
+		tmm, fakeSetControl := newFakeTiDBMemberManager()
 
 		if test.errWhenCreateStatefulSet {
 			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
-		}
-		if test.errWhenCreateTiDBService {
-			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
 		err := tmm.Sync(tc)
@@ -69,14 +64,6 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 		}
 
 		g.Expect(tc.Spec).To(Equal(oldSpec))
-
-		svc, err := tmm.svcLister.Services(ns).Get(controller.TiDBMemberName(tcName))
-		if test.tidbSvcCreated {
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(svc).NotTo(Equal(nil))
-		} else {
-			expectErrIsNotFound(g, err)
-		}
 
 		tc1, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 		if test.setCreated {
@@ -92,28 +79,15 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			name:                     "normal",
 			prepare:                  nil,
 			errWhenCreateStatefulSet: false,
-			errWhenCreateTiDBService: false,
-			err:            false,
-			tidbSvcCreated: true,
-			setCreated:     true,
+			err:        false,
+			setCreated: true,
 		},
 		{
 			name:                     "error when create statefulset",
 			prepare:                  nil,
 			errWhenCreateStatefulSet: true,
-			errWhenCreateTiDBService: false,
-			err:            true,
-			tidbSvcCreated: true,
-			setCreated:     false,
-		},
-		{
-			name:                     "error when create tidb service",
-			prepare:                  nil,
-			errWhenCreateStatefulSet: false,
-			errWhenCreateTiDBService: true,
-			err:            true,
-			tidbSvcCreated: false,
-			setCreated:     false,
+			err:        true,
+			setCreated: false,
 		},
 	}
 
@@ -128,10 +102,8 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		name                     string
 		modify                   func(cluster *v1alpha1.TidbCluster)
 		errWhenUpdateStatefulSet bool
-		errWhenUpdateTiDBService bool
 		statusChange             func(*apps.StatefulSet)
 		err                      bool
-		expectTiDBServieFn       func(*GomegaWithT, *corev1.Service, error)
 		expectStatefulSetFn      func(*GomegaWithT, *apps.StatefulSet, error)
 	}
 
@@ -140,7 +112,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
 
-		tmm, fakeSetControl, fakeSvcControl := newFakeTiDBMemberManager()
+		tmm, fakeSetControl := newFakeTiDBMemberManager()
 
 		if test.statusChange == nil {
 			fakeSetControl.SetStatusChange(func(set *apps.StatefulSet) {
@@ -157,7 +129,6 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		err := tmm.Sync(tc)
 		g.Expect(err).NotTo(HaveOccurred())
 
-		_, err = tmm.svcLister.Services(ns).Get(controller.TiDBMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
 		_, err = tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
@@ -165,9 +136,6 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		tc1 := tc.DeepCopy()
 		test.modify(tc1)
 
-		if test.errWhenUpdateTiDBService {
-			fakeSvcControl.SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
-		}
 		if test.errWhenUpdateStatefulSet {
 			fakeSetControl.SetUpdateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
@@ -179,10 +147,6 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 
-		if test.expectTiDBServieFn != nil {
-			svc, err := tmm.svcLister.Services(ns).Get(controller.TiDBMemberName(tcName))
-			test.expectTiDBServieFn(g, svc, err)
-		}
 		if test.expectStatefulSetFn != nil {
 			set, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 			test.expectStatefulSetFn(g, set, err)
@@ -194,41 +158,15 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 			name: "normal",
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiDB.Replicas = 5
-				tc.Spec.Services = []v1alpha1.Service{
-					{Name: "tidb", Type: string(corev1.ServiceTypeNodePort)},
-				}
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: false,
-			errWhenUpdateTiDBService: false,
 			err: false,
-			expectTiDBServieFn: func(g *GomegaWithT, svc *corev1.Service, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(svc.Spec.Type).To(Equal(corev1.ServiceTypeNodePort))
-			},
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
 			},
-		},
-		{
-			name: "error when update tidb service",
-			modify: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.Services = []v1alpha1.Service{
-					{Name: v1alpha1.TiDBMemberType.String(), Type: string(corev1.ServiceTypeNodePort)},
-				}
-				tc.Status.PD.Phase = v1alpha1.NormalPhase
-				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-			},
-			errWhenUpdateStatefulSet: false,
-			errWhenUpdateTiDBService: true,
-			err: true,
-			expectTiDBServieFn: func(g *GomegaWithT, svc *corev1.Service, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(svc.Spec.Type).To(Equal(corev1.ServiceTypeClusterIP))
-			},
-			expectStatefulSetFn: nil,
 		},
 		{
 			name: "error when update statefulset",
@@ -238,9 +176,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: true,
-			errWhenUpdateTiDBService: false,
-			err:                true,
-			expectTiDBServieFn: nil,
+			err: true,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
@@ -252,23 +188,19 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 	}
 }
 
-func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSetControl, *controller.FakeServiceControl) {
+func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSetControl) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
-	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
 	tidbUpgrader := NewFakeTiDBUpgrader()
 
 	return &tidbMemberManager{
 		setControl,
-		svcControl,
 		setInformer.Lister(),
-		svcInformer.Lister(),
 		tidbUpgrader,
-	}, setControl, svcControl
+	}, setControl
 }
 
 func newTidbClusterForTiDB() *v1alpha1.TidbCluster {

@@ -25,76 +25,28 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/listers/apps/v1beta1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 type tidbMemberManager struct {
 	setControl   controller.StatefulSetControlInterface
-	svcControl   controller.ServiceControlInterface
 	setLister    v1beta1.StatefulSetLister
-	svcLister    corelisters.ServiceLister
 	tidbUpgrader Upgrader
 }
 
 // NewTiDBMemberManager returns a *tidbMemberManager
 func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
-	svcControl controller.ServiceControlInterface,
 	setLister v1beta1.StatefulSetLister,
-	svcLister corelisters.ServiceLister,
 	tidbUpgrader Upgrader) manager.Manager {
 	return &tidbMemberManager{
 		setControl:   setControl,
-		svcControl:   svcControl,
 		setLister:    setLister,
-		svcLister:    svcLister,
 		tidbUpgrader: tidbUpgrader,
 	}
 }
 
 func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
-	// Sync TiDB Service
-	if err := tmm.syncTiDBServiceForTidbCluster(tc); err != nil {
-		return err
-	}
-
 	// Sync Tidb StatefulSet
 	return tmm.syncTiDBStatefulSetForTidbCluster(tc)
-}
-
-func (tmm *tidbMemberManager) syncTiDBServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	newSvc := tmm.getNewTiDBServiceForTidbCluster(tc)
-	oldSvc, err := tmm.svcLister.Services(ns).Get(controller.TiDBMemberName(tcName))
-	if errors.IsNotFound(err) {
-		err = SetServiceLastAppliedConfigAnnotation(newSvc)
-		if err != nil {
-			return err
-		}
-		return tmm.svcControl.CreateService(tc, newSvc)
-	}
-	if err != nil {
-		return err
-	}
-
-	equal, err := serviceEqual(newSvc, oldSvc)
-	if err != nil {
-		return err
-	}
-	if !equal {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		// TODO add unit test
-		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		err = SetServiceLastAppliedConfigAnnotation(newSvc)
-		if err != nil {
-			return err
-		}
-		return tmm.svcControl.UpdateService(tc, &svc)
-	}
-
-	return nil
 }
 
 func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbCluster) error {

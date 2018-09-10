@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.clusterName }}-tidb
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: tidb
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+  {{- if .Values.tidb.service.annotations }}
+  annotations:
+{{ toYaml .Values.tidb.service.annotations | indent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.tidb.service.type }}
+  {{- if .Values.tidb.service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ .Values.tidb.service.externalTrafficPolicy }}
+  {{- end }}
+  ports:
+  - name: mysql-client
+    port: 4000
+    targetPort: 4000
+    protocol: TCP
+    {{- if .Values.tidb.service.mysqlNodePort }}
+    nodePort: {{ .Values.tidb.service.mysqlNodePort }}
+    {{- end }}
+  {{- if .Values.tidb.service.exposeStatus }}
+  - name: status
+    port: 10080
+    targetPort: 10080
+    protocol: TCP
+    {{- if .Values.tidb.service.statusNodePort }}
+    nodePort: {{ .Values.tidb.service.statusNodePort }}
+    {{- end }}
+  {{- end }}
+  selector:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: tidb
