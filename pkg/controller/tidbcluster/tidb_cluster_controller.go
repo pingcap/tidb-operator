@@ -135,9 +135,7 @@ func NewController(
 			),
 			mm.NewTiDBMemberManager(
 				setControl,
-				svcControl,
 				setInformer.Lister(),
-				svcInformer.Lister(),
 				tidbUpgrader,
 			),
 			meta.NewReclaimPolicyManager(

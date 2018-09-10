@@ -59,11 +59,12 @@ func upgrade() (bool, error) {
 	tc.Spec.TiKV.Image = strings.Replace(tc.Spec.TiKV.Image, getImageTag(tc.Spec.TiKV.Image), upgradeVersion, -1)
 	tc.Spec.TiDB.Image = strings.Replace(tc.Spec.TiDB.Image, getImageTag(tc.Spec.TiDB.Image), upgradeVersion, -1)
 
-	_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+	tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 	if err != nil {
 		logf("failed to update tidbcluster, error: %v", err)
 		return false, nil
 	}
+	logf("Images after upgraded: PD: %s, TiKV: %s, TiDB: %s", tc.Spec.PD.Image, tc.Spec.TiKV.Image, tc.Spec.TiDB.Image)
 
 	return true, nil
 }
