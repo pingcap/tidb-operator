@@ -87,7 +87,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			fakePVCControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 		if test.tcUpdateFailed {
-			fakeTCControl.SetUpdateTidbClusterError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+			fakeTCControl.SetUpdateTidbClusterError(errors.NewInternalError(fmt.Errorf("update tidbcluster failed")), 0)
 		}
 
 		err := pdFailover.Failover(tc)
@@ -266,7 +266,10 @@ func TestPDFailoverFailover(t *testing.T) {
 			delPodFailed:             false,
 			delPVCFailed:             false,
 			tcUpdateFailed:           true,
-			errExpectFn:              errExpectNotNil,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "update tidbcluster failed")).To(Equal(true))
+			},
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)

@@ -219,7 +219,8 @@ func (pf *pdFailover) markThisMemberAsFailure(tc *v1alpha1.TidbCluster, pdMember
 		MemberDeleted: false,
 	}
 	// we must update TidbCluster immediately before delete member, or data may not be consistent
-	// TODO use RequeueError instead: https://github.com/pingcap/tidb-operator/pull/80
+	// FIXME this realllllllllly can't update the `tc` var outside this method, so MUST use RequeueError instead:
+	// 		https://github.com/pingcap/tidb-operator/pull/80
 	tc, err = pf.tcControl.UpdateTidbCluster(tc)
 	return err
 }
