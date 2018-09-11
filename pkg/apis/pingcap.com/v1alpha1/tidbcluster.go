@@ -17,10 +17,44 @@ func (mt MemberType) String() string {
 	return string(mt)
 }
 
-func (tc TidbCluster) PDUpgrading() bool {
+func (tc *TidbCluster) PDUpgrading() bool {
 	return tc.Status.PD.Phase == UpgradePhase
 }
 
-func (tc TidbCluster) TiKVUpgrading() bool {
+func (tc *TidbCluster) TiKVUpgrading() bool {
 	return tc.Status.TiKV.Phase == UpgradePhase
+}
+
+func (tc *TidbCluster) PDAllPodsStarted() bool {
+	return tc.RealReplicas() == tc.Status.PD.StatefulSet.Replicas
+}
+
+func (tc *TidbCluster) PDAllMembersReady() bool {
+	if int(tc.RealReplicas()) != len(tc.Status.PD.Members) {
+		return false
+	}
+
+	for _, member := range tc.Status.PD.Members {
+		if !member.Health {
+			return false
+		}
+	}
+	return true
+}
+
+func (tc *TidbCluster) PDAutoFailovering() bool {
+	if len(tc.Status.PD.FailureMembers) == 0 {
+		return false
+	}
+
+	for _, failureMember := range tc.Status.PD.FailureMembers {
+		if !failureMember.MemberDeleted {
+			return true
+		}
+	}
+	return false
+}
+
+func (tc *TidbCluster) RealReplicas() int32 {
+	return tc.Spec.PD.Replicas + int32(len(tc.Status.PD.FailureMembers))
 }
