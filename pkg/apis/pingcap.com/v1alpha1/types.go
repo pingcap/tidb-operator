@@ -194,14 +194,24 @@ type PDFailureMember struct {
 
 // TiDBStatus is TiDB status
 type TiDBStatus struct {
-	Phase       MemberPhase             `json:"phase,omitempty"`
-	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
-	Members     map[string]TiDBMember   `json:"members,omitempty"`
+	Phase          MemberPhase                  `json:"phase,omitempty"`
+	StatefulSet    *apps.StatefulSetStatus      `json:"statefulSet,omitempty"`
+	Members        map[string]TiDBMember        `json:"members,omitempty"`
+	FailureMembers map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
 }
 
 // TiDBMember is TiDB member
 type TiDBMember struct {
-	IP string `json:"ip"`
+	Name   string `json:"name"`
+	Health bool   `json:"health"`
+	// Last time the health transitioned from one to another.
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
+// TiDBFailureMember is the tidb failure member information
+type TiDBFailureMember struct {
+	PodName  string `json:"podName,omitempty"`
+	Replicas int32  `json:"replicas,omitempty"`
 }
 
 // TiKVStatus is TiKV status

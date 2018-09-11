@@ -193,13 +193,22 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
+	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
+	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
 	tidbUpgrader := NewFakeTiDBUpgrader()
+	tidbFailover := NewFakeTiDBFailover()
+	tidbControl := controller.NewFakeTiDBControl()
 
 	return &tidbMemberManager{
 		setControl,
+		svcControl,
+		tidbControl,
 		setInformer.Lister(),
+		svcInformer.Lister(),
 		tidbUpgrader,
+		true,
+		tidbFailover,
 	}, setControl
 }
 

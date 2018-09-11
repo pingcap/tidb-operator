@@ -37,6 +37,7 @@ spec:
           - -cluster-scoped={{ .Values.clusterScoped }}
           - -auto-failover={{ .Values.controllerManager.autoFailover | default false }}
           - -pd-failover-period={{ .Values.controllerManager.pdFailoverPeriod | default "5m" }}
+          - -tidb-failover-period={{ .Values.controllerManager.tidbFailoverPeriod | default "5m" }}
           - -v={{ .Values.controllerManager.logLevel }}
         env:
           - name: NAMESPACE
