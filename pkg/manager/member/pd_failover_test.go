@@ -113,7 +113,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			},
 		},
 		{
-			name:   "two members are not ready",
+			name:   "two members are not ready, not in quorum",
 			update: twoMembersNotReady,
 			hasPVC: true,
 			hasPV:  true,
@@ -266,10 +266,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			delPodFailed:             false,
 			delPVCFailed:             false,
 			tcUpdateFailed:           true,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "failover ongoing")).NotTo(Equal(true))
-			},
+			errExpectFn:              errExpectNotNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
