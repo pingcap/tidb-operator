@@ -92,12 +92,13 @@ func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetC
 	autoFailover := true
 	pdFailover := mm.NewFakePDFailover()
 	pdUpgrader := mm.NewFakePDUpgrader()
+	tikvFailover := mm.NewFakeTiKVFailover()
 	tikvUpgrader := mm.NewFakeTiKVUpgrader()
 	tidbUpgrader := mm.NewFakeTiDBUpgrader()
 
 	pdMemberManager := mm.NewPDMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), podInformer.Lister(), podControl, pvcInformer.Lister(), pdScaler, pdUpgrader, autoFailover, pdFailover)
-	tikvMemberManager := mm.NewTiKVMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), podInformer.Lister(), nodeInformer.Lister(), tikvScaler, tikvUpgrader)
-	tidbMemberManager := mm.NewTiDBMemberManager(setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), tidbUpgrader)
+	tikvMemberManager := mm.NewTiKVMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), podInformer.Lister(), nodeInformer.Lister(), autoFailover, tikvFailover, tikvScaler, tikvUpgrader)
+	tidbMemberManager := mm.NewTiDBMemberManager(setControl, setInformer.Lister(), tidbUpgrader)
 	reclaimPolicyManager := meta.NewReclaimPolicyManager(pvcInformer.Lister(), pvInformer.Lister(), pvControl)
 	metaManager := meta.NewMetaManager(pvcInformer.Lister(), pvcControl, pvInformer.Lister(), pvControl, podInformer.Lister(), podControl)
 	control := NewDefaultTidbClusterControl(tcControl, pdMemberManager, tikvMemberManager, tidbMemberManager, reclaimPolicyManager, metaManager, recorder)

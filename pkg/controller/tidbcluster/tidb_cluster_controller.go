@@ -98,6 +98,7 @@ func NewController(
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	pdFailover := mm.NewPDFailover(cli, tcControl, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister())
 	pdUpgrader := mm.NewPDUpgrader()
+	tikvFailover := mm.NewTiKVFailover(pdControl)
 	tikvUpgrader := mm.NewTiKVUpgrader()
 	tidbUpgrader := mm.NewTiDBUpgrader()
 
@@ -128,14 +129,14 @@ func NewController(
 				svcInformer.Lister(),
 				podInformer.Lister(),
 				nodeInformer.Lister(),
+				autoFailover,
+				tikvFailover,
 				tikvScaler,
 				tikvUpgrader,
 			),
 			mm.NewTiDBMemberManager(
 				setControl,
-				svcControl,
 				setInformer.Lister(),
-				svcInformer.Lister(),
 				tidbUpgrader,
 			),
 			meta.NewReclaimPolicyManager(

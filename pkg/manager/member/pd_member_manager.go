@@ -462,7 +462,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      pdLabel.Labels(),
-					Annotations: controller.AnnProm(),
+					Annotations: controller.AnnProm(2379),
 				},
 				Spec: corev1.PodSpec{
 					Affinity: util.AffinityForNodeSelector(
@@ -484,11 +484,6 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 								},
 								{
 									Name:          "client",
-									ContainerPort: int32(2379),
-									Protocol:      corev1.ProtocolTCP,
-								},
-								{
-									Name:          "metrics", // This is for metrics pull
 									ContainerPort: int32(2379),
 									Protocol:      corev1.ProtocolTCP,
 								},

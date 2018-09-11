@@ -3,11 +3,11 @@ kind: ConfigMap
 metadata:
   name: {{ .Values.clusterName }}-tikv
   labels:
-    app: {{ template "tidb-cluster.name" . }}
-    component: tikv
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: tikv
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 data:
   startup-script: |-
     #!/bin/sh
