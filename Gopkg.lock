@@ -420,13 +420,6 @@
   revision = "53be0d36a84c2a886ca057d34b6aa4468df9ccb4"
 
 [[projects]]
-  digest = "1:87f2cc1fbefe74eba138951c04a355c7f675a4573c41a9db5b6ff99863ebd5f0"
-  name = "github.com/pingcap/errors"
-  packages = ["."]
-  pruneopts = ""
-  revision = "f29524922bfee4bf03f9c426c716e639cac63ea9"
-
-[[projects]]
   digest = "1:0217da809f7631b7c5682a4e7d41bc7356052dd72d9275870611b835f9e323a4"
   name = "github.com/pingcap/kvproto"
   packages = [
@@ -457,6 +450,15 @@
   pruneopts = ""
   revision = "3ddb13246707243f9d1c25d55a8bdcb57ff13cd5"
   version = "v2.1.0-beta"
+
+[[projects]]
+  digest = "1:f9526b57642018153ff8223fb8ac281ed73b877e5233742defe47d68792831dd"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = ""
+  revision = "9316aeb006f59424c65ff505c217f90c43d6445d"
+  source = "https://github.com/pingcap/errors.git"
+  version = "v0.9.0"
 
 [[projects]]
   digest = "1:981835985f655d1d380cc6aa7d9fa9ad7abfaf40c75da200fd40d864cd05a7c3"
@@ -1116,11 +1118,11 @@
     "github.com/golang/glog",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
-    "github.com/pingcap/errors",
     "github.com/pingcap/kvproto/pkg/metapb",
     "github.com/pingcap/kvproto/pkg/pdpb",
     "github.com/pingcap/pd/pkg/typeutil",
     "github.com/pingcap/pd/server",
+    "github.com/pkg/errors",
     "k8s.io/api/apps/v1beta1",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/equality",

@@ -13,24 +13,24 @@
 //
 // Adding context to an error
 //
-// The errors.Wrap function returns a new error that adds context to the
-// original error by recording a stack trace at the point Wrap is called,
+// The errors.Annotate function returns a new error that adds context to the
+// original error by recording a stack trace at the point Annotate is called,
 // and the supplied message. For example
 //
 //     _, err := ioutil.ReadAll(r)
 //     if err != nil {
-//             return errors.Wrap(err, "read failed")
+//             return errors.Annotate(err, "read failed")
 //     }
 //
-// If additional control is required the errors.WithStack and errors.WithMessage
-// functions destructure errors.Wrap into its component operations of annotating
+// If additional control is required the errors.AddStack and errors.WithMessage
+// functions destructure errors.Annotate into its component operations of annotating
 // an error with a stack trace and an a message, respectively.
 //
 // Retrieving the cause of an error
 //
-// Using errors.Wrap constructs a stack of errors, adding context to the
+// Using errors.Annotate constructs a stack of errors, adding context to the
 // preceding error. Depending on the nature of the error it may be necessary
-// to reverse the operation of errors.Wrap to retrieve the original error
+// to reverse the operation of errors.Annotate to retrieve the original error
 // for inspection. Any error value which implements this interface
 //
 //     type causer interface {
@@ -50,6 +50,7 @@
 //
 // causer interface is not exported by this package, but is considered a part
 // of stable public API.
+// errors.Unwrap is also available: this will retrieve the next error in the chain.
 //
 // Formatted printing of errors
 //
@@ -64,7 +65,7 @@
 //
 // Retrieving the stack trace of an error or wrapper
 //
-// New, Errorf, Wrap, and Wrapf record a stack trace at the point they are invoked.
+// New, Errorf, Annotate, and Annotatef record a stack trace at the point they are invoked.
 // This information can be retrieved with the StackTracer interface that returns
 // a StackTrace. Where errors.StackTrace is defined as
 //
@@ -81,6 +82,8 @@
 //     }
 //
 // See the documentation for Frame.Format for more details.
+//
+// errors.Find can be used to search for an error in the error chain.
 package errors
 
 import (
@@ -148,6 +151,8 @@ func (f *fundamental) Format(s fmt.State, verb rune) {
 
 // WithStack annotates err with a stack trace at the point WithStack was called.
 // If err is nil, WithStack returns nil.
+//
+// Deprecated: use AddStack
 func WithStack(err error) error {
 	if err == nil {
 		return nil
@@ -317,7 +322,8 @@ func Unwrap(err error) error {
 	return nil
 }
 
-// Find an error in the chain that matches a test function
+// Find an error in the chain that matches a test function.
+// returns nil if no error is found.
 func Find(origErr error, test func(error) bool) error {
 	var foundErr error
 	WalkDeep(origErr, func(err error) bool {

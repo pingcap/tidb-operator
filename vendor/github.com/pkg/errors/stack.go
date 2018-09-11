@@ -137,9 +137,13 @@ func (s *stack) StackTrace() StackTrace {
 }
 
 func callers() *stack {
+	return callersSkip(4)
+}
+
+func callersSkip(skip int) *stack {
 	const depth = 32
 	var pcs [depth]uintptr
-	n := runtime.Callers(3, pcs[:])
+	n := runtime.Callers(skip, pcs[:])
 	var st stack = pcs[0:n]
 	return &st
 }
@@ -150,4 +154,17 @@ func funcname(name string) string {
 	name = name[i+1:]
 	i = strings.Index(name, ".")
 	return name[i+1:]
+}
+
+// NewStack is for library implementers that want to generate a stack trace.
+// Normally you should insted use AddStack to get an error with a stack trace.
+//
+// The result of this function can be turned into a stack trace by calling .StackTrace()
+//
+// This function takes an argument for the number of stack frames to skip.
+// This avoids putting stack generation function calls like this one in the stack trace.
+// A value of 0 will give you the line that called NewStack(0)
+// A library author wrapping this in their own function will want to use a value of at least 1.
+func NewStack(skip int) StackTracer {
+	return callersSkip(skip + 3)
 }

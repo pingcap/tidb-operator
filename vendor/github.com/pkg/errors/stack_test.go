@@ -204,12 +204,12 @@ func TestStackTrace(t *testing.T) {
 	}
 }
 
+// This comment helps to maintain original line numbers
+// Perhaps this test is too fragile :)
 func stackTrace() StackTrace {
-	const depth = 8
-	var pcs [depth]uintptr
-	n := runtime.Callers(1, pcs[:])
-	var st stack = pcs[0:n]
-	return st.StackTrace()
+	return NewStack(0).StackTrace()
+	// This comment helps to maintain original line numbers
+	// Perhaps this test is too fragile :)
 }
 
 func TestStackTraceFormat(t *testing.T) {
@@ -273,5 +273,17 @@ func TestStackTraceFormat(t *testing.T) {
 
 	for i, tt := range tests {
 		testFormatRegexp(t, i, tt.StackTrace, tt.format, tt.want)
+	}
+}
+
+func TestNewStack(t *testing.T) {
+	got := NewStack(1).StackTrace()
+	want := NewStack(1).StackTrace()
+	if got[0] != want[0] {
+		t.Errorf("NewStack(remove NewStack): want: %v, got: %v", want, got)
+	}
+	gotFirst := fmt.Sprintf("%+v", got[0])[0:15]
+	if gotFirst != "testing.tRunner" {
+		t.Errorf("NewStack(): want: %v, got: %+v", "testing.tRunner", gotFirst)
 	}
 }
