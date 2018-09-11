@@ -30,3 +30,5 @@ controllerManager:
   autoFailover: false
   # pd failover period default(5m)
   pdFailoverPeriod: 5m
+  # tidb failover period default(5m)
+  tidbFailoverPeriod: 5m

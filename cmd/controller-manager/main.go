@@ -38,15 +38,16 @@ import (
 )
 
 var (
-	printVersion     bool
-	workers          int
-	pdFailoverPeriod time.Duration
-	autoFailover     bool
-	leaseDuration    = 15 * time.Second
-	renewDuration    = 5 * time.Second
-	retryPeriod      = 3 * time.Second
-	resyncDuration   = 30 * time.Second
-	waitDuration     = 5 * time.Second
+	printVersion       bool
+	workers            int
+	autoFailover       bool
+	pdFailoverPeriod   time.Duration
+	tidbFailoverPeriod time.Duration
+	leaseDuration      = 15 * time.Second
+	renewDuration      = 5 * time.Second
+	retryPeriod        = 3 * time.Second
+	resyncDuration     = 30 * time.Second
+	waitDuration       = 5 * time.Second
 )
 
 func init() {
@@ -57,6 +58,7 @@ func init() {
 	flag.StringVar(&controller.DefaultStorageClassName, "default-storage-class-name", "standard", "Default storage class name")
 	flag.BoolVar(&autoFailover, "auto-failover", false, "Auto failover")
 	flag.DurationVar(&pdFailoverPeriod, "pd-failover-period", time.Duration(5*time.Minute), "PD failover period default(5m)")
+	flag.DurationVar(&tidbFailoverPeriod, "tidb-failover-period", time.Duration(5*time.Minute), "TiDB failover period")
 
 	flag.Parse()
 }
@@ -116,7 +118,7 @@ func main() {
 		},
 	}
 
-	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod)
+	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tidbFailoverPeriod)
 	stop := make(chan struct{})
 	defer close(stop)
 	go informerFactory.Start(stop)
