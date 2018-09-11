@@ -134,6 +134,11 @@ func TiDBMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tidb", clusterName)
 }
 
+// TiDBPeerMemberName returns tidb peer service name
+func TiDBPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tidb-peer", clusterName)
+}
+
 // PriTiDBMemberName returns privileged tidb member name
 func PriTiDBMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-privileged-tidb", clusterName)
