@@ -37,7 +37,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 		hasPVC        bool
 		hasDeferAnn   bool
 		pvcDeleteErr  bool
-		err           bool
+		errExpectFn   func(*GomegaWithT, error)
 		changed       bool
 	}
 
@@ -75,11 +75,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 		}
 
 		err := scaler.ScaleOut(tc, oldSet, newSet)
-		if test.err {
-			g.Expect(err).To(HaveOccurred())
-		} else {
-			g.Expect(err).NotTo(HaveOccurred())
-		}
+		test.errExpectFn(g, err)
 		if test.changed {
 			g.Expect(int(*newSet.Spec.Replicas)).To(Equal(6))
 		} else {
@@ -94,7 +90,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 			hasPVC:        true,
 			hasDeferAnn:   false,
 			pvcDeleteErr:  false,
-			err:           false,
+			errExpectFn:   errExpectNil,
 			changed:       true,
 		},
 		{
@@ -103,7 +99,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 			hasPVC:        true,
 			hasDeferAnn:   false,
 			pvcDeleteErr:  false,
-			err:           false,
+			errExpectFn:   errExpectNil,
 			changed:       false,
 		},
 		{
@@ -112,7 +108,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 			hasPVC:        false,
 			hasDeferAnn:   false,
 			pvcDeleteErr:  false,
-			err:           false,
+			errExpectFn:   errExpectNil,
 			changed:       true,
 		},
 		{
@@ -121,7 +117,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 			hasPVC:        true,
 			hasDeferAnn:   true,
 			pvcDeleteErr:  true,
-			err:           true,
+			errExpectFn:   errExpectNotNil,
 			changed:       false,
 		},
 	}
@@ -140,7 +136,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		delStoreErr   bool
 		hasPVC        bool
 		pvcUpdateErr  bool
-		err           bool
+		errExpectFn   func(*GomegaWithT, error)
 		changed       bool
 	}
 
@@ -177,11 +173,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		}
 
 		err := scaler.ScaleIn(tc, oldSet, newSet)
-		if test.err {
-			g.Expect(err).To(HaveOccurred())
-		} else {
-			g.Expect(err).NotTo(HaveOccurred())
-		}
+		test.errExpectFn(g, err)
 		if test.changed {
 			g.Expect(int(*newSet.Spec.Replicas)).To(Equal(4))
 		} else {
@@ -197,7 +189,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			delStoreErr:   false,
 			hasPVC:        true,
 			pvcUpdateErr:  false,
-			err:           true,
+			errExpectFn:   errExpectNotNil,
 			changed:       false,
 		},
 		{
@@ -207,7 +199,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			delStoreErr:   false,
 			hasPVC:        true,
 			pvcUpdateErr:  false,
-			err:           false,
+			errExpectFn:   errExpectNil,
 			changed:       false,
 		},
 		{
@@ -220,7 +212,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			delStoreErr:  false,
 			hasPVC:       true,
 			pvcUpdateErr: false,
-			err:          true,
+			errExpectFn:  errExpectNotNil,
 			changed:      false,
 		},
 		{
@@ -235,7 +227,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			delStoreErr:  false,
 			hasPVC:       true,
 			pvcUpdateErr: false,
-			err:          true,
+			errExpectFn:  errExpectNotNil,
 			changed:      false,
 		},
 		{
@@ -250,7 +242,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			delStoreErr:  false,
 			hasPVC:       true,
 			pvcUpdateErr: false,
-			err:          true,
+			errExpectFn:  errExpectNotNil,
 			changed:      false,
 		},
 		{
@@ -265,7 +257,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			delStoreErr:  false,
 			hasPVC:       true,
 			pvcUpdateErr: false,
-			err:          true,
+			errExpectFn:  errExpectNotNil,
 			changed:      false,
 		},
 		{
@@ -275,7 +267,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			delStoreErr:   false,
 			hasPVC:        true,
 			pvcUpdateErr:  false,
-			err:           true,
+			errExpectFn:   errExpectRequeue,
 			changed:       false,
 		},
 		{
@@ -285,7 +277,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			delStoreErr:   false,
 			hasPVC:        true,
 			pvcUpdateErr:  false,
-			err:           false,
+			errExpectFn:   errExpectNil,
 			changed:       true,
 		},
 		{
@@ -300,7 +292,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			delStoreErr:  false,
 			hasPVC:       true,
 			pvcUpdateErr: false,
-			err:          true,
+			errExpectFn:  errExpectNotNil,
 			changed:      false,
 		},
 		{
@@ -310,7 +302,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			delStoreErr:   false,
 			hasPVC:        false,
 			pvcUpdateErr:  false,
-			err:           true,
+			errExpectFn:   errExpectNotNil,
 			changed:       false,
 		},
 		{
@@ -320,7 +312,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			delStoreErr:   false,
 			hasPVC:        true,
 			pvcUpdateErr:  true,
-			err:           true,
+			errExpectFn:   errExpectNotNil,
 			changed:       false,
 		},
 	}
@@ -360,4 +352,8 @@ func tombstoneStoreFun(tc *v1alpha1.TidbCluster) {
 			State:   util.StoreTombstoneState,
 		},
 	}
+}
+
+func errExpectRequeue(g *GomegaWithT, err error) {
+	g.Expect(controller.IsRequeueError(err)).To(Equal(true))
 }
