@@ -281,12 +281,6 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 		},
 	}
 	pgwVolMounts := []corev1.VolumeMount{} // pushgateway volumeMounts
-	if tc.Spec.Localtime {
-		tzMount, tzVolume := timezoneMountVolume()
-		volMounts = append(volMounts, tzMount)
-		vols = append(vols, tzVolume)
-		pgwVolMounts = []corev1.VolumeMount{tzMount}
-	}
 
 	var q resource.Quantity
 	var err error
@@ -344,7 +338,32 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 							},
 							VolumeMounts: volMounts,
 							Resources:    util.ResourceRequirement(tc.Spec.TiKV.ContainerSpec),
-							Env:          tkmm.envVars(tcName, headlessSvcName, capacity),
+							Env: []corev1.EnvVar{
+								{
+									Name: "NAMESPACE",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.namespace",
+										},
+									},
+								},
+								{
+									Name:  "CLUSTER_NAME",
+									Value: tcName,
+								},
+								{
+									Name:  "HEADLESS_SERVICE_NAME",
+									Value: headlessSvcName,
+								},
+								{
+									Name:  "CAPACITY",
+									Value: capacity,
+								},
+								{
+									Name:  "TZ",
+									Value: tc.Spec.Timezone,
+								},
+							},
 						},
 						{
 							Name:  v1alpha1.PushGatewayMemberType.String(),
@@ -359,6 +378,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 							VolumeMounts: pgwVolMounts,
 							Resources: util.ResourceRequirement(tc.Spec.TiKVPromGateway.ContainerSpec,
 								controller.DefaultPushGatewayRequest()),
+							Env: []corev1.EnvVar{{Name: "TZ", Value: tc.Spec.Timezone}}, // Note: `TZ` is unused in pushgateway image, we set it here just to keep consistency
 						},
 					},
 					RestartPolicy: corev1.RestartPolicyAlways,
@@ -375,31 +395,6 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 		},
 	}
 	return tikvset, nil
-}
-
-func (tkmm *tikvMemberManager) envVars(tcName, headlessSvcName, capacity string) []corev1.EnvVar {
-	return []corev1.EnvVar{
-		{
-			Name: "NAMESPACE",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
-				},
-			},
-		},
-		{
-			Name:  "CLUSTER_NAME",
-			Value: tcName,
-		},
-		{
-			Name:  "HEADLESS_SERVICE_NAME",
-			Value: headlessSvcName,
-		},
-		{
-			Name:  "CAPACITY",
-			Value: capacity,
-		},
-	}
 }
 
 func (tkmm *tikvMemberManager) volumeClaimTemplate(q resource.Quantity, metaName string, storageClassName *string) corev1.PersistentVolumeClaim {

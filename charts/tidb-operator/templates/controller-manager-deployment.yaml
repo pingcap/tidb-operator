@@ -44,14 +44,5 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-        {{- if .Values.localtime }}
-        volumeMounts:
-          - name: timezone
-            mountPath: /etc/localtime
-        {{- end }}
-      {{- if .Values.localtime }}
-      volumes:
-      - name: timezone
-        hostPath:
-          path: /etc/localtime
-      {{- end -}}
+          - name: TZ
+            value: {{ .Values.timezone | default "UTC" }}
