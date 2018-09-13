@@ -38,6 +38,26 @@ const (
 	defaultPushgatewayImage = "prom/pushgateway:v0.3.1"
 )
 
+// RequeueError is used to requeue the item, this error type should't be considered as a real error
+type RequeueError struct {
+	s string
+}
+
+func (re *RequeueError) Error() string {
+	return re.s
+}
+
+// RequeueErrorf returns a RequeueError
+func RequeueErrorf(format string, a ...interface{}) error {
+	return &RequeueError{fmt.Sprintf(format, a...)}
+}
+
+// IsRequeueError returns whether err is a RequeueError
+func IsRequeueError(err error) bool {
+	_, ok := err.(*RequeueError)
+	return ok
+}
+
 // GetOwnerRef returns TidbCluster's OwnerReference
 func GetOwnerRef(tc *v1alpha1.TidbCluster) metav1.OwnerReference {
 	controller := true
@@ -132,6 +152,11 @@ func TiKVPeerMemberName(clusterName string) string {
 // TiDBMemberName returns tidb member name
 func TiDBMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tidb", clusterName)
+}
+
+// TiDBPeerMemberName returns tidb peer service name
+func TiDBPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tidb-peer", clusterName)
 }
 
 // PriTiDBMemberName returns privileged tidb member name

@@ -546,7 +546,7 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(pdClient controller.PDClien
 		return err
 	}
 
-	glog.V(2).Infof("Pod: [%s/%s] is on node: [%s]. Node: [%s]'s labels: %v", ns, podName, nodeName, nodeName, ls)
+	glog.V(4).Infof("Pod: [%s/%s] is on node: [%s]. Node: [%s]'s labels: %v", ns, podName, nodeName, nodeName, ls)
 	if !tkmm.storeLabelsEqualNodeLabels(store.Store.Labels, ls) {
 		updated, err := pdClient.SetStoreLabels(store.Store.Id, ls)
 		if err != nil {

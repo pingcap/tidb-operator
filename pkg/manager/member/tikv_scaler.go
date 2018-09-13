@@ -86,7 +86,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 				}
 			}
 			resetReplicas(newSet, oldSet)
-			return fmt.Errorf("TiKV %s/%s store %d  still in cluster, state: %s", ns, podName, id, state)
+			return controller.RequeueErrorf("TiKV %s/%s store %d  still in cluster, state: %s", ns, podName, id, state)
 		}
 	}
 	for _, store := range tc.Status.TiKV.TombstoneStores {

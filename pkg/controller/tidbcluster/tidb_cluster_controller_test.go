@@ -232,12 +232,14 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 		kubeInformerFactory,
 		autoFailover,
 		5*time.Minute,
+		5*time.Minute,
 	)
 	tcc.tcListerSynced = alwaysReady
 	tcc.setListerSynced = alwaysReady
 	recorder := record.NewFakeRecorder(10)
 
 	pdControl := controller.NewFakePDControl()
+	tidbControl := controller.NewFakeTiDBControl()
 	svcControl := controller.NewRealServiceControl(
 		kubeCli,
 		svcInformer.Lister(),
@@ -258,6 +260,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	pdUpgrader := mm.NewPDUpgrader()
 	tikvUpgrader := mm.NewTiKVUpgrader()
 	tidbUpgrader := mm.NewTiDBUpgrader()
+	tidbFailover := mm.NewFakeTiDBFailover()
 
 	tcc.control = NewDefaultTidbClusterControl(
 		controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder),
@@ -295,9 +298,12 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 				recorder,
 			),
 			svcControl,
+			tidbControl,
 			setInformer.Lister(),
 			svcInformer.Lister(),
 			tidbUpgrader,
+			autoFailover,
+			tidbFailover,
 		),
 		meta.NewReclaimPolicyManager(
 			pvcInformer.Lister(),

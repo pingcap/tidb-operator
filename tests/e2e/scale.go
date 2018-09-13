@@ -107,11 +107,12 @@ func scaleOut() (bool, error) {
 	tc.Spec.TiKV.Replicas = tikvScaleOutTo
 	tc.Spec.TiDB.Replicas = tidbScaleOutTo
 
-	_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+	tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 	if err != nil {
 		logf("failed to update tidbcluster when scale out tidbcluster, error: %v", err)
 		return false, nil
 	}
+	logf("Replicas after scaled out: PD: %d , TiKV: %d, TiDB: %d", tc.Spec.PD.Replicas, tc.Spec.TiKV.Replicas, tc.Spec.TiDB.Replicas)
 
 	return true, nil
 }
@@ -149,11 +150,12 @@ func scaleIn() (bool, error) {
 	tc.Spec.TiKV.Replicas = tikvScaleInTo
 	tc.Spec.TiDB.Replicas = tidbScaleInTo
 
-	_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+	tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 	if err != nil {
 		logf("failed to update tidbcluster when scale in tidbcluster, error: %v", err)
 		return false, nil
 	}
+	logf("Replicas after scaled in: PD: %d , TiKV: %d, TiDB: %d", tc.Spec.PD.Replicas, tc.Spec.TiKV.Replicas, tc.Spec.TiDB.Replicas)
 
 	return true, nil
 }

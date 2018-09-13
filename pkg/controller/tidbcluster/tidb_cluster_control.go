@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -69,22 +70,30 @@ type defaultTidbClusterControl struct {
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
 func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) error {
+	// perform the main update function and get the status
+
 	oldStatus := tc.Status.DeepCopy()
 	oldPDReplicas := tc.Spec.PD.Replicas
+	oldTiKVReplicas := tc.Spec.TiKV.Replicas
+	oldTiDBReplicas := tc.Spec.TiDB.Replicas
 
+	var errs []error
 	err := tcc.updateTidbCluster(tc)
 	if err != nil {
-		return err
+		errs = append(errs, err)
 	}
 
-	if !apiequality.Semantic.DeepEqual(&tc.Status, oldStatus) || tc.Spec.PD.Replicas != oldPDReplicas {
-		tc, err = tcc.tcControl.UpdateTidbCluster(tc.DeepCopy())
+	replicasChanged := tc.Spec.PD.Replicas != oldPDReplicas ||
+		tc.Spec.TiKV.Replicas != oldTiKVReplicas ||
+		tc.Spec.TiDB.Replicas != oldTiDBReplicas
+	if !apiequality.Semantic.DeepEqual(&tc.Status, oldStatus) || replicasChanged {
+		_, err := tcc.tcControl.UpdateTidbCluster(tc.DeepCopy())
 		if err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
 
-	return nil
+	return errorutils.NewAggregate(errs)
 }
 
 func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) error {

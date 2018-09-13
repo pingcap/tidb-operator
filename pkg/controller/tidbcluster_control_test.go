@@ -52,13 +52,8 @@ func TestTidbClusterControlUpdateTidbClusterConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 	tc := newTidbCluster()
-	tc.Spec.PD.Replicas = int32(5)
 	fakeClient := &fake.Clientset{}
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
-	oldTC := newTidbCluster()
-	oldTC.Spec.PD.Replicas = int32(1)
-	err := indexer.Add(oldTC)
-	g.Expect(err).To(Succeed())
 	tcLister := listers.NewTidbClusterLister(indexer)
 	control := NewRealTidbClusterControl(fakeClient, tcLister, recorder)
 	conflict := false
@@ -66,13 +61,12 @@ func TestTidbClusterControlUpdateTidbClusterConflictSuccess(t *testing.T) {
 		update := action.(core.UpdateAction)
 		if !conflict {
 			conflict = true
-			return true, oldTC, apierrors.NewConflict(action.GetResource().GroupResource(), tc.Name, errors.New("conflict"))
+			return true, update.GetObject(), apierrors.NewConflict(action.GetResource().GroupResource(), tc.Name, errors.New("conflict"))
 		}
 		return true, update.GetObject(), nil
 	})
-	updateTC, err := control.UpdateTidbCluster(tc)
+	_, err := control.UpdateTidbCluster(tc)
 	g.Expect(err).To(Succeed())
-	g.Expect(updateTC.Spec.PD.Replicas).To(Equal(int32(5)))
 
 	events := collectEvents(recorder.Events)
 	g.Expect(events).To(HaveLen(1))
