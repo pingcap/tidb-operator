@@ -29,7 +29,6 @@ import (
 // TODO add maxFailoverCount
 type pdFailover struct {
 	cli              versioned.Interface
-	tcControl        controller.TidbClusterControlInterface
 	pdControl        controller.PDControlInterface
 	pdFailoverPeriod time.Duration
 	podLister        corelisters.PodLister
@@ -41,7 +40,6 @@ type pdFailover struct {
 
 // NewPDFailover returns a pd Failover
 func NewPDFailover(cli versioned.Interface,
-	tcControl controller.TidbClusterControlInterface,
 	pdControl controller.PDControlInterface,
 	pdFailoverPeriod time.Duration,
 	podLister corelisters.PodLister,
@@ -51,7 +49,6 @@ func NewPDFailover(cli versioned.Interface,
 	pvLister corelisters.PersistentVolumeLister) Failover {
 	return &pdFailover{
 		cli,
-		tcControl,
 		pdControl,
 		pdFailoverPeriod,
 		podLister,
@@ -100,7 +97,8 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 				if err != nil {
 					return err
 				}
-				break
+
+				return controller.RequeueErrorf("marking Pod: %s/%s pd member: %s as failure", ns, podName, pdMember.Name)
 			}
 		}
 	}
@@ -208,6 +206,7 @@ func (pf *pdFailover) markThisMemberAsFailure(tc *v1alpha1.TidbCluster, pdMember
 	if err != nil {
 		return err
 	}
+
 	if tc.Status.PD.FailureMembers == nil {
 		tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{}
 	}
@@ -218,11 +217,8 @@ func (pf *pdFailover) markThisMemberAsFailure(tc *v1alpha1.TidbCluster, pdMember
 		Replicas:      tc.Spec.PD.Replicas,
 		MemberDeleted: false,
 	}
-	// we must update TidbCluster immediately before delete member, or data may not be consistent
-	// FIXME this realllllllllly can't update the `tc` var outside this method, so MUST use RequeueError instead:
-	// 		https://github.com/pingcap/tidb-operator/pull/80
-	tc, err = pf.tcControl.UpdateTidbCluster(tc)
-	return err
+
+	return nil
 }
 
 func getOrdinalFromPodName(podName string) (int32, error) {

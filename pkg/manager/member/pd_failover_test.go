@@ -22,7 +22,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -45,7 +44,6 @@ func TestPDFailoverFailover(t *testing.T) {
 		delMemberFailed          bool
 		delPodFailed             bool
 		delPVCFailed             bool
-		tcUpdateFailed           bool
 		errExpectFn              func(*GomegaWithT, error)
 		expectFn                 func(*v1alpha1.TidbCluster)
 	}
@@ -54,7 +52,7 @@ func TestPDFailoverFailover(t *testing.T) {
 		tc := newTidbClusterForPD()
 		test.update(tc)
 
-		pdFailover, pvcIndexer, pvIndexer, podIndexer, fakePDControl, fakePodControl, fakePVCControl, fakeTCControl := newFakePDFailover()
+		pdFailover, pvcIndexer, pvIndexer, podIndexer, fakePDControl, fakePodControl, fakePVCControl := newFakePDFailover()
 		pdClient := controller.NewFakePDClient()
 		fakePDControl.SetPDClient(tc, pdClient)
 
@@ -86,9 +84,6 @@ func TestPDFailoverFailover(t *testing.T) {
 		if test.delPVCFailed {
 			fakePVCControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
-		if test.tcUpdateFailed {
-			fakeTCControl.SetUpdateTidbClusterError(errors.NewInternalError(fmt.Errorf("update tidbcluster failed")), 0)
-		}
 
 		err := pdFailover.Failover(tc)
 		test.errExpectFn(g, err)
@@ -105,7 +100,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
 			errExpectFn:              errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -122,7 +116,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "pd cluster is not health")).To(Equal(true))
@@ -142,7 +135,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
 			errExpectFn:              errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -170,7 +162,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
 			errExpectFn:              errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -178,7 +169,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			},
 		},
 		{
-			name: "has one not ready member, lastTransitionTime is zero",
+			name: "has one not ready member, and exceed deadline, lastTransitionTime is zero",
 			update: func(tc *v1alpha1.TidbCluster) {
 				oneNotReadyMember(tc)
 				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
@@ -193,7 +184,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
 			errExpectFn:              errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -210,7 +200,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
 			errExpectFn:              errExpectNotNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -227,7 +216,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
 			errExpectFn:              errExpectNotNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -235,7 +223,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			},
 		},
 		{
-			name:   "has one not ready member, and exceed deadline, update TidbCluster success",
+			name:   "has one not ready member, and exceed deadline, return requeue error",
 			update: oneNotReadyMember,
 			hasPVC: true,
 			hasPV:  true,
@@ -244,32 +232,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
-			errExpectFn:              errExpectNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
-				g.Expect(ok).To(Equal(true))
-				g.Expect(pd1.MemberDeleted).To(Equal(true))
-				g.Expect(int(pd1.Replicas)).To(Equal(3))
-			},
-		},
-		{
-			name:   "has one not ready member, and exceed deadline, update TidbCluster failed",
-			update: oneNotReadyMember,
-			hasPVC: true,
-			hasPV:  true,
-			hasPod: true,
-			podWithDeletionTimestamp: false,
-			delMemberFailed:          false,
-			delPodFailed:             false,
-			delPVCFailed:             false,
-			tcUpdateFailed:           true,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "update tidbcluster failed")).To(Equal(true))
-			},
+			errExpectFn:              errExpectRequeue,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
@@ -289,7 +252,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
 			errExpectFn:              errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -310,7 +272,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             true,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
 			errExpectFn:              errExpectNotNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -331,7 +292,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          true,
 			delPodFailed:             false,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
 			errExpectFn:              errExpectNotNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -351,7 +311,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
 			errExpectFn:              errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -371,7 +330,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
 			errExpectFn:              errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -391,7 +349,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             true,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
 			errExpectFn:              errExpectNotNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -411,7 +368,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
 			errExpectFn:              errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -437,7 +393,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
-			tcUpdateFailed:           false,
 			errExpectFn:              errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -457,7 +412,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             true,
-			tcUpdateFailed:           false,
 			errExpectFn:              errExpectNotNil,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -487,7 +441,7 @@ func TestPDFailoverRecovery(t *testing.T) {
 		tc := newTidbClusterForPD()
 		test.update(tc)
 
-		pdFailover, _, _, _, _, _, _, _ := newFakePDFailover()
+		pdFailover, _, _, _, _, _, _ := newFakePDFailover()
 		pdFailover.Recover(tc)
 		test.expectFn(tc)
 	}
@@ -576,22 +530,19 @@ func TestPDFailoverRecovery(t *testing.T) {
 	}
 }
 
-func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, cache.Indexer, *controller.FakePDControl, *controller.FakePodControl, *controller.FakePVCControl, *controller.FakeTidbClusterControl) {
+func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, cache.Indexer, *controller.FakePDControl, *controller.FakePodControl, *controller.FakePVCControl) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	pdControl := controller.NewFakePDControl()
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
 	podControl := controller.NewFakePodControl(podInformer)
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
-	tcControl := controller.NewFakeTidbClusterControl(tcInformer)
 
 	return &pdFailover{
 			cli,
-			tcControl,
 			pdControl,
 			5 * time.Minute,
 			podInformer.Lister(),
@@ -602,7 +553,7 @@ func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, cache.Index
 		pvcInformer.Informer().GetIndexer(),
 		pvInformer.Informer().GetIndexer(),
 		podInformer.Informer().GetIndexer(),
-		pdControl, podControl, pvcControl, tcControl
+		pdControl, podControl, pvcControl
 }
 
 func oneFailureMember(tc *v1alpha1.TidbCluster) {
