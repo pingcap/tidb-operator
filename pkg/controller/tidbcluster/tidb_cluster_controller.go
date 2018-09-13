@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
+	perrors "github.com/pkg/errors"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -226,7 +227,11 @@ func (tcc *Controller) processNextWorkItem() bool {
 	}
 	defer tcc.queue.Done(key)
 	if err := tcc.sync(key.(string)); err != nil {
-		utilruntime.HandleError(fmt.Errorf("Error syncing TidbCluster %v, requeuing: %v", key.(string), err))
+		if perrors.Find(err, controller.IsRequeueError) != nil {
+			glog.Infof("TidbCluster: %v, still need sync: %v, requeuing", key.(string), err)
+		} else {
+			utilruntime.HandleError(fmt.Errorf("TidbCluster: %v, sync failed %v, requeuing", key.(string), err))
+		}
 		tcc.queue.AddRateLimited(key)
 	} else {
 		tcc.queue.Forget(key)
