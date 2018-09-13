@@ -63,7 +63,7 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (tf *tikvFailover) Recover(tc *v1alpha1.TidbCluster) {
+func (tf *tikvFailover) Recover(_ *v1alpha1.TidbCluster) {
 	// Do nothing now
 }
 

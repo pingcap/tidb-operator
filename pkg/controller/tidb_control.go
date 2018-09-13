@@ -89,6 +89,6 @@ func (ftd *FakeTiDBControl) SetHealth(healthInfo map[string]bool) {
 	ftd.healthInfo = healthInfo
 }
 
-func (ftd *FakeTiDBControl) GetHealth(tc *v1alpha1.TidbCluster) map[string]bool {
+func (ftd *FakeTiDBControl) GetHealth(_ *v1alpha1.TidbCluster) map[string]bool {
 	return ftd.healthInfo
 }
