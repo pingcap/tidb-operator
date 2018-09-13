@@ -192,11 +192,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	}
 
 	if tkmm.autoFailover {
-		if allTiKVStoresAreReady(tc) {
-			if tc.Status.TiKV.FailureStores != nil {
-				tkmm.tikvFailover.Recover(tc)
-			}
-		} else if tc.Spec.TiKV.Replicas == tc.Status.TiKV.StatefulSet.Replicas {
+		if tc.TiKVAllPodsStarted() && !tc.TiKVAllStoresReady() {
 			if err := tkmm.tikvFailover.Failover(tc); err != nil {
 				return err
 			}
@@ -316,7 +312,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: func() *int32 { r := tc.Spec.TiKV.Replicas; return &r }(),
+			Replicas: func() *int32 { r := tc.TiKVRealReplicas(); return &r }(),
 			Selector: tikvLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{

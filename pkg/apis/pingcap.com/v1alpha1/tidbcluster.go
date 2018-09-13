@@ -26,11 +26,11 @@ func (tc *TidbCluster) TiKVUpgrading() bool {
 }
 
 func (tc *TidbCluster) PDAllPodsStarted() bool {
-	return tc.RealReplicas() == tc.Status.PD.StatefulSet.Replicas
+	return tc.PDRealReplicas() == tc.Status.PD.StatefulSet.Replicas
 }
 
 func (tc *TidbCluster) PDAllMembersReady() bool {
-	if int(tc.RealReplicas()) != len(tc.Status.PD.Members) {
+	if int(tc.PDRealReplicas()) != len(tc.Status.PD.Members) {
 		return false
 	}
 
@@ -55,6 +55,50 @@ func (tc *TidbCluster) PDAutoFailovering() bool {
 	return false
 }
 
-func (tc *TidbCluster) RealReplicas() int32 {
+func (tc *TidbCluster) PDRealReplicas() int32 {
 	return tc.Spec.PD.Replicas + int32(len(tc.Status.PD.FailureMembers))
+}
+
+func (tc *TidbCluster) TiKVAllPodsStarted() bool {
+	return tc.TiKVRealReplicas() == tc.Status.TiKV.StatefulSet.Replicas
+}
+
+func (tc *TidbCluster) TiKVAllStoresReady() bool {
+	if int(tc.TiKVRealReplicas()) != len(tc.Status.TiKV.Stores) {
+		return false
+	}
+
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.State != TiKVStateUp {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (tc *TidbCluster) TiKVRealReplicas() int32 {
+	return tc.Spec.TiKV.Replicas + int32(len(tc.Status.TiKV.FailureStores))
+}
+
+func (tc *TidbCluster) TiDBAllPodsStarted() bool {
+	return tc.TiDBRealReplicas() == tc.Status.TiDB.StatefulSet.Replicas
+}
+
+func (tc *TidbCluster) TiDBAllMembersReady() bool {
+	if int(tc.TiDBRealReplicas()) != len(tc.Status.TiDB.Members) {
+		return false
+	}
+
+	for _, member := range tc.Status.TiDB.Members {
+		if !member.Health {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (tc *TidbCluster) TiDBRealReplicas() int32 {
+	return tc.Spec.TiDB.Replicas + int32(len(tc.Status.TiDB.FailureMembers))
 }

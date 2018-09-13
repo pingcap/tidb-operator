@@ -44,61 +44,11 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-	// increase the replicas to add a new TiDB peer
-	for _, failureMember := range tc.Status.TiDB.FailureMembers {
-		if failureMember.Replicas+1 > tc.Spec.TiDB.Replicas {
-			tc.Spec.TiDB.Replicas = failureMember.Replicas + 1
-		}
-	}
-
 	return nil
 }
 
 func (tf *tidbFailover) Recover(tc *v1alpha1.TidbCluster) {
-	maxReplicas := int32(0)
-	minReplicas := int32(0)
-	for _, failureMember := range tc.Status.TiDB.FailureMembers {
-		if minReplicas == int32(0) {
-			minReplicas = failureMember.Replicas
-		}
-		if failureMember.Replicas > maxReplicas {
-			maxReplicas = failureMember.Replicas
-		} else if failureMember.Replicas < minReplicas {
-			minReplicas = failureMember.Replicas
-		}
-	}
-	if maxReplicas+1 == tc.Spec.TiDB.Replicas {
-		tc.Spec.TiDB.Replicas = minReplicas
-	}
-
 	tc.Status.TiDB.FailureMembers = nil
-}
-
-func needRecover(tc *v1alpha1.TidbCluster) bool {
-	if int(tc.Spec.TiDB.Replicas) != len(tc.Status.TiDB.Members) {
-		return false
-	}
-	for _, tidbMember := range tc.Status.TiDB.Members {
-		if !tidbMember.Health {
-			return false
-		}
-	}
-	if tc.Status.TiDB.FailureMembers == nil || len(tc.Status.TiDB.FailureMembers) == 0 {
-		return false
-	}
-	return true
-}
-
-func needFailover(tc *v1alpha1.TidbCluster) bool {
-	if tc.Spec.TiDB.Replicas != tc.Status.TiDB.StatefulSet.Replicas {
-		return false
-	}
-	for _, tidbMember := range tc.Status.TiDB.Members {
-		if !tidbMember.Health {
-			return true
-		}
-	}
-	return false
 }
 
 type fakeTiDBFailover struct{}
