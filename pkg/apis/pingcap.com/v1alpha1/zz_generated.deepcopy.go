@@ -131,6 +131,7 @@ func (in *PDStatus) DeepCopyInto(out *PDStatus) {
 			(*out)[key] = *val.DeepCopy()
 		}
 	}
+	in.Leader.DeepCopyInto(&out.Leader)
 	if in.FailureMembers != nil {
 		in, out := &in.FailureMembers, &out.FailureMembers
 		*out = make(map[string]PDFailureMember, len(*in))

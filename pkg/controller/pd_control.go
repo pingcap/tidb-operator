@@ -105,16 +105,22 @@ type PDClient interface {
 	BeginEvictLeader(storeID uint64) error
 	// EndEvictLeader is used at the end of pod upgrade.
 	EndEvictLeader(storeID uint64) error
+	// GetPDLeader returns pd leader
+	GetPDLeader() (*pdpb.Member, error)
+	// TransferPDLeader transfers pd leader to special member
+	TransferPDLeader(name string) error
 }
 
 var (
-	healthPrefix     = "pd/health"
-	membersPrefix    = "pd/api/v1/members"
-	storesPrefix     = "pd/api/v1/stores"
-	storePrefix      = "pd/api/v1/store"
-	configPrefix     = "pd/api/v1/config"
-	clusterIDPrefix  = "pd/api/v1/cluster"
-	schedulersPrefix = "pd/api/v1/schedulers"
+	healthPrefix           = "pd/health"
+	membersPrefix          = "pd/api/v1/members"
+	storesPrefix           = "pd/api/v1/stores"
+	storePrefix            = "pd/api/v1/store"
+	configPrefix           = "pd/api/v1/config"
+	clusterIDPrefix        = "pd/api/v1/cluster"
+	schedulersPrefix       = "pd/api/v1/schedulers"
+	pdLeaderPrefix         = "pd/api/v1/leader"
+	pdLeaderTransferPrefix = "pd/api/v1/leader/transfer"
 )
 
 // pdClient is default implementation of PDClient
@@ -423,6 +429,39 @@ func (pc *pdClient) EndEvictLeader(storeID uint64) error {
 	return err
 }
 
+func (pc *pdClient) GetPDLeader() (*pdpb.Member, error) {
+	apiURL := fmt.Sprintf("%s/%s", pc.url, pdLeaderPrefix)
+	body, err := pc.getBodyOK(apiURL)
+	if err != nil {
+		return nil, err
+	}
+	leader := &pdpb.Member{}
+	err = json.Unmarshal(body, leader)
+	if err != nil {
+		return nil, err
+	}
+	return leader, nil
+}
+
+func (pc *pdClient) TransferPDLeader(memberName string) error {
+	apiURL := fmt.Sprintf("%s/%s/%s", pc.url, pdLeaderTransferPrefix, memberName)
+	req, err := http.NewRequest("POST", apiURL, nil)
+	if err != nil {
+		return err
+	}
+	res, err := pc.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer DeferClose(res.Body, &err)
+	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	err2 := readErrorBody(res.Body)
+	err = fmt.Errorf("failed %v to transfer pd leader to %s,error: %v", res.StatusCode, memberName, err2)
+	return err
+}
+
 func (pc *pdClient) getBodyOK(apiURL string) ([]byte, error) {
 	res, err := pc.httpClient.Get(apiURL)
 	if err != nil {
@@ -497,6 +536,8 @@ const (
 	SetStoreLabelsActionType     ActionType = "SetStoreLabels"
 	BeginEvictLeaderActionType   ActionType = "BeginEvictLeader"
 	EndEvictLeaderActionType     ActionType = "EndEvictLeader"
+	GetPDLeaderActionType        ActionType = "GetPDLeader"
+	TransferPDLeaderActionType   ActionType = "TransferPDLeader"
 )
 
 type NotFoundReaction struct {
@@ -653,6 +694,24 @@ func (pc *FakePDClient) BeginEvictLeader(storeID uint64) error {
 func (pc *FakePDClient) EndEvictLeader(storeID uint64) error {
 	if reaction, ok := pc.reactions[EndEvictLeaderActionType]; ok {
 		action := &Action{ID: storeID}
+		_, err := reaction(action)
+		return err
+	}
+	return nil
+}
+
+func (pc *FakePDClient) GetPDLeader() (*pdpb.Member, error) {
+	if reaction, ok := pc.reactions[GetPDLeaderActionType]; ok {
+		action := &Action{}
+		result, err := reaction(action)
+		return result.(*pdpb.Member), err
+	}
+	return nil, nil
+}
+
+func (pc *FakePDClient) TransferPDLeader(memberName string) error {
+	if reaction, ok := pc.reactions[TransferPDLeaderActionType]; ok {
+		action := &Action{Name: memberName}
 		_, err := reaction(action)
 		return err
 	}
