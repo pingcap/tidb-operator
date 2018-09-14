@@ -32,10 +32,10 @@ import (
 
 func TestPVControlPatchPVReclaimPolicySuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
-	fakeClient, pvcInformer, recorder := newFakeRecorderAndPVCInformer()
+	fakeClient, pvcInformer, pvInformer, recorder := newFakeRecorderAndPVCInformer()
 	tc := newTidbCluster()
 	pv := newPV()
-	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), recorder)
+	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	fakeClient.AddReactor("patch", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, nil
 	})
@@ -49,10 +49,10 @@ func TestPVControlPatchPVReclaimPolicySuccess(t *testing.T) {
 
 func TestPVControlPatchPVReclaimPolicyFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
-	fakeClient, pvcInformer, recorder := newFakeRecorderAndPVCInformer()
+	fakeClient, pvcInformer, pvInformer, recorder := newFakeRecorderAndPVCInformer()
 	tc := newTidbCluster()
 	pv := newPV()
-	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), recorder)
+	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	fakeClient.AddReactor("patch", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})
@@ -66,10 +66,10 @@ func TestPVControlPatchPVReclaimPolicyFailed(t *testing.T) {
 
 func TestPVControlPatchPVReclaimPolicyConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
-	fakeClient, pvcInformer, recorder := newFakeRecorderAndPVCInformer()
+	fakeClient, pvcInformer, pvInformer, recorder := newFakeRecorderAndPVCInformer()
 	tc := newTidbCluster()
 	pv := newPV()
-	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), recorder)
+	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 
 	conflict := false
 	fakeClient.AddReactor("patch", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
@@ -91,18 +91,21 @@ func TestPVControlUpdateMetaInfoSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
 	pv := newPV()
+	pv.Annotations = map[string]string{"a": "b"}
 	pvc := newPVC(tc)
-	fakeClient, pvcInformer, recorder := newFakeRecorderAndPVCInformer()
+	fakeClient, pvcInformer, pvInformer, recorder := newFakeRecorderAndPVCInformer()
 	pvcInformer.Informer().GetIndexer().Add(pvc)
-	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), recorder)
+	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	fakeClient.AddReactor("get", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, nil
 	})
 	fakeClient.AddReactor("update", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
-		return true, nil, nil
+		update := action.(core.UpdateAction)
+		return true, update.GetObject(), nil
 	})
-	err := control.UpdateMetaInfo(tc, pv)
+	updatePV, err := control.UpdateMetaInfo(tc, pv)
 	g.Expect(err).To(Succeed())
+	g.Expect(updatePV.Annotations["a"]).To(Equal("b"))
 
 	events := collectEvents(recorder.Events)
 	g.Expect(events).To(HaveLen(1))
@@ -114,16 +117,16 @@ func TestPVControlUpdateMetaInfoUpdatePVFailed(t *testing.T) {
 	tc := newTidbCluster()
 	pv := newPV()
 	pvc := newPVC(tc)
-	fakeClient, pvcInformer, recorder := newFakeRecorderAndPVCInformer()
+	fakeClient, pvcInformer, pvInformer, recorder := newFakeRecorderAndPVCInformer()
 	pvcInformer.Informer().GetIndexer().Add(pvc)
-	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), recorder)
+	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	fakeClient.AddReactor("get", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, nil
 	})
 	fakeClient.AddReactor("update", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})
-	err := control.UpdateMetaInfo(tc, pv)
+	_, err := control.UpdateMetaInfo(tc, pv)
 	g.Expect(err).To(HaveOccurred())
 
 	events := collectEvents(recorder.Events)
@@ -135,15 +138,15 @@ func TestPVControlUpdateMetaInfoGetPVCFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
 	pv := newPV()
-	fakeClient, pvcInformer, recorder := newFakeRecorderAndPVCInformer()
-	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), recorder)
+	fakeClient, pvcInformer, pvInformer, recorder := newFakeRecorderAndPVCInformer()
+	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	fakeClient.AddReactor("get", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewNotFound(action.GetResource().GroupResource(), action.GetResource().Resource)
 	})
 	fakeClient.AddReactor("update", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, nil
 	})
-	err := control.UpdateMetaInfo(tc, pv)
+	_, err := control.UpdateMetaInfo(tc, pv)
 	g.Expect(err).To(Succeed())
 
 	events := collectEvents(recorder.Events)
@@ -154,10 +157,13 @@ func TestPVControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
 	pv := newPV()
+	pv.Annotations = map[string]string{"a": "b"}
+	oldPV := newPV()
 	pvc := newPVC(tc)
-	fakeClient, pvcInformer, recorder := newFakeRecorderAndPVCInformer()
+	fakeClient, pvcInformer, pvInformer, recorder := newFakeRecorderAndPVCInformer()
 	pvcInformer.Informer().GetIndexer().Add(pvc)
-	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), recorder)
+	pvInformer.Informer().GetIndexer().Add(oldPV)
+	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	fakeClient.AddReactor("get", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, nil
 	})
@@ -166,23 +172,26 @@ func TestPVControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 		update := action.(core.UpdateAction)
 		if !conflict {
 			conflict = true
-			return true, update.GetObject(), apierrors.NewConflict(action.GetResource().GroupResource(), pv.Name, errors.New("conflict"))
+			return true, oldPV, apierrors.NewConflict(action.GetResource().GroupResource(), pv.Name, errors.New("conflict"))
 		}
 		return true, update.GetObject(), nil
 	})
-	err := control.UpdateMetaInfo(tc, pv)
+	updatePV, err := control.UpdateMetaInfo(tc, pv)
 	g.Expect(err).To(Succeed())
+	g.Expect(updatePV.Annotations["a"]).To(Equal("b"))
 
 	events := collectEvents(recorder.Events)
 	g.Expect(events).To(HaveLen(1))
 	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
-func newFakeRecorderAndPVCInformer() (*fake.Clientset, coreinformers.PersistentVolumeClaimInformer, *record.FakeRecorder) {
+func newFakeRecorderAndPVCInformer() (*fake.Clientset, coreinformers.PersistentVolumeClaimInformer, coreinformers.PersistentVolumeInformer, *record.FakeRecorder) {
 	fakeClient := &fake.Clientset{}
-	pvcInformer := kubeinformers.NewSharedInformerFactory(fakeClient, 0).Core().V1().PersistentVolumeClaims()
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(fakeClient, 0)
+	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
+	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
 	recorder := record.NewFakeRecorder(10)
-	return fakeClient, pvcInformer, recorder
+	return fakeClient, pvcInformer, pvInformer, recorder
 }
 
 func newPV() *corev1.PersistentVolume {

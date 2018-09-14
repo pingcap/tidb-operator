@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
 	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
@@ -37,7 +38,7 @@ type StatefulSetControlInterface interface {
 	// CreateStatefulSet creates a StatefulSet in a TidbCluster.
 	CreateStatefulSet(*v1alpha1.TidbCluster, *apps.StatefulSet) error
 	// UpdateStatefulSet updates a StatefulSet in a TidbCluster.
-	UpdateStatefulSet(*v1alpha1.TidbCluster, *apps.StatefulSet) error
+	UpdateStatefulSet(*v1alpha1.TidbCluster, *apps.StatefulSet) (*apps.StatefulSet, error)
 	// DeleteStatefulSet deletes a StatefulSet in a TidbCluster.
 	DeleteStatefulSet(*v1alpha1.TidbCluster, *apps.StatefulSet) error
 }
@@ -65,23 +66,35 @@ func (sc *realStatefulSetControl) CreateStatefulSet(tc *v1alpha1.TidbCluster, se
 }
 
 // UpdateStatefulSet update a StatefulSet in a TidbCluster.
-func (sc *realStatefulSetControl) UpdateStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+func (sc *realStatefulSetControl) UpdateStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*apps.StatefulSet, error) {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	setName := set.GetName()
+	setSpec := set.Spec.DeepCopy()
+	var updatedSS *apps.StatefulSet
+
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		// TODO: verify if StatefulSet identity(name, namespace, labels) matches TidbCluster
-		_, updateErr := sc.kubeCli.AppsV1beta1().StatefulSets(tc.Namespace).Update(set)
+		var updateErr error
+		updatedSS, updateErr = sc.kubeCli.AppsV1beta1().StatefulSets(ns).Update(set)
 		if updateErr == nil {
+			glog.Infof("TidbCluster: [%s/%s]'s StatefulSet: [%s/%s] updated successfully", ns, tcName, ns, setName)
 			return nil
 		}
-		if updated, err := sc.setLister.StatefulSets(tc.Namespace).Get(set.Name); err != nil {
+		glog.Errorf("failed to update TidbCluster: [%s/%s]'s StatefulSet: [%s/%s], error: %v", ns, tcName, ns, setName, updateErr)
+
+		if updated, err := sc.setLister.StatefulSets(ns).Get(setName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			set = updated.DeepCopy()
+			set.Spec = *setSpec
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated StatefulSet %s/%s from lister: %v", tc.Namespace, set.Name, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated StatefulSet %s/%s from lister: %v", ns, setName, err))
 		}
 		return updateErr
 	})
+
 	sc.recordStatefulSetEvent("update", tc, set, err)
-	return err
+	return updatedSS, err
 }
 
 // DeleteStatefulSet delete a StatefulSet in a TidbCluster.
@@ -177,7 +190,7 @@ func (ssc *FakeStatefulSetControl) CreateStatefulSet(_ *v1alpha1.TidbCluster, se
 }
 
 // UpdateStatefulSet updates the statefulset of SetIndexer
-func (ssc *FakeStatefulSetControl) UpdateStatefulSet(_ *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+func (ssc *FakeStatefulSetControl) UpdateStatefulSet(_ *v1alpha1.TidbCluster, set *apps.StatefulSet) (*apps.StatefulSet, error) {
 	defer func() {
 		ssc.updateStatefulSetTracker.inc()
 		ssc.statusChange = nil
@@ -185,13 +198,13 @@ func (ssc *FakeStatefulSetControl) UpdateStatefulSet(_ *v1alpha1.TidbCluster, se
 
 	if ssc.updateStatefulSetTracker.errorReady() {
 		defer ssc.updateStatefulSetTracker.reset()
-		return ssc.updateStatefulSetTracker.err
+		return nil, ssc.updateStatefulSetTracker.err
 	}
 
 	if ssc.statusChange != nil {
 		ssc.statusChange(set)
 	}
-	return ssc.SetIndexer.Update(set)
+	return set, ssc.SetIndexer.Update(set)
 }
 
 // DeleteStatefulSet deletes the statefulset of SetIndexer
