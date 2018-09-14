@@ -68,7 +68,7 @@ func (pmm *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 	for _, pod := range pods {
 		// update meta info for pod
-		err := pmm.podControl.UpdateMetaInfo(tc, pod)
+		_, err := pmm.podControl.UpdateMetaInfo(tc, pod)
 		if err != nil {
 			return err
 		}
@@ -82,7 +82,7 @@ func (pmm *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 		if err != nil {
 			return err
 		}
-		err = pmm.pvcControl.UpdateMetaInfo(tc, pvc, pod)
+		_, err = pmm.pvcControl.UpdateMetaInfo(tc, pvc, pod)
 		if err != nil {
 			return err
 		}
@@ -91,7 +91,7 @@ func (pmm *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 		if err != nil {
 			return err
 		}
-		err = pmm.pvControl.UpdateMetaInfo(tc, pv)
+		_, err = pmm.pvControl.UpdateMetaInfo(tc, pv)
 		if err != nil {
 			return err
 		}

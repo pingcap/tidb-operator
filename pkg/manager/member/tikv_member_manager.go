@@ -137,7 +137,8 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 		if err != nil {
 			return err
 		}
-		return tkmm.svcControl.UpdateService(tc, &svc)
+		_, err = tkmm.svcControl.UpdateService(tc, &svc)
+		return err
 	}
 
 	return nil
@@ -207,11 +208,12 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		set := *oldSet
 		set.Spec.Template = newSet.Spec.Template
 		*set.Spec.Replicas = *newSet.Spec.Replicas
-		err = SetLastAppliedConfigAnnotation(&set)
+		err := SetLastAppliedConfigAnnotation(&set)
 		if err != nil {
 			return err
 		}
-		return tkmm.setControl.UpdateStatefulSet(tc, &set)
+		_, err = tkmm.setControl.UpdateStatefulSet(tc, &set)
+		return err
 	}
 
 	return nil
@@ -544,7 +546,7 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(pdClient controller.PDClien
 		return err
 	}
 
-	glog.V(2).Infof("Pod: [%s/%s] is on node: [%s]. Node: [%s]'s labels: %v", ns, podName, nodeName, nodeName, ls)
+	glog.V(4).Infof("Pod: [%s/%s] is on node: [%s]. Node: [%s]'s labels: %v", ns, podName, nodeName, nodeName, ls)
 	if !tkmm.storeLabelsEqualNodeLabels(store.Store.Labels, ls) {
 		updated, err := pdClient.SetStoreLabels(store.Store.Id, ls)
 		if err != nil {

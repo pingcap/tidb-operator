@@ -86,7 +86,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 				}
 			}
 			resetReplicas(newSet, oldSet)
-			return fmt.Errorf("TiKV %s/%s store %d  still in cluster, state: %s", ns, podName, id, state)
+			return controller.RequeueErrorf("TiKV %s/%s store %d  still in cluster, state: %s", ns, podName, id, state)
 		}
 	}
 	for _, store := range tc.Status.TiKV.TombstoneStores {
@@ -110,7 +110,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 				pvc.Annotations = map[string]string{}
 			}
 			pvc.Annotations[label.AnnPVCDeferDeleting] = time.Now().Format(time.RFC3339)
-			err = tsd.pvcControl.UpdatePVC(tc, pvc)
+			_, err = tsd.pvcControl.UpdatePVC(tc, pvc)
 			if err != nil {
 				resetReplicas(newSet, oldSet)
 				return err
