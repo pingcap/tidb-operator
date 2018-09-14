@@ -137,7 +137,8 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 		if err != nil {
 			return err
 		}
-		return tkmm.svcControl.UpdateService(tc, &svc)
+		_, err = tkmm.svcControl.UpdateService(tc, &svc)
+		return err
 	}
 
 	return nil
@@ -207,11 +208,12 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		set := *oldSet
 		set.Spec.Template = newSet.Spec.Template
 		*set.Spec.Replicas = *newSet.Spec.Replicas
-		err = SetLastAppliedConfigAnnotation(&set)
+		err := SetLastAppliedConfigAnnotation(&set)
 		if err != nil {
 			return err
 		}
-		return tkmm.setControl.UpdateStatefulSet(tc, &set)
+		_, err = tkmm.setControl.UpdateStatefulSet(tc, &set)
+		return err
 	}
 
 	return nil
