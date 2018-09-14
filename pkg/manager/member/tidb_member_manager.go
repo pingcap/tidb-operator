@@ -100,7 +100,8 @@ func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1
 		if err != nil {
 			return err
 		}
-		return tmm.svcControl.UpdateService(tc, &svc)
+		_, err = tmm.svcControl.UpdateService(tc, &svc)
+		return err
 	}
 
 	return nil
@@ -152,11 +153,12 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		set := *oldTiDBSet
 		set.Spec.Template = newTiDBSet.Spec.Template
 		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
-		err = SetLastAppliedConfigAnnotation(&set)
+		err := SetLastAppliedConfigAnnotation(&set)
 		if err != nil {
 			return err
 		}
-		return tmm.setControl.UpdateStatefulSet(tc, &set)
+		_, err = tmm.setControl.UpdateStatefulSet(tc, &set)
+		return err
 	}
 
 	return nil

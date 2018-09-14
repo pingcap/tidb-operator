@@ -29,6 +29,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	core "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -37,13 +38,16 @@ func TestPVCControlUpdateMetaInfoSuccess(t *testing.T) {
 	tc := newTidbCluster()
 	pvc := newPVC(tc)
 	pod := newPod(tc)
-	fakeClient, pvcLister, recorder := newFakeClientAndRecorder()
+	fakeClient, pvcLister, _, recorder := newFakeClientAndRecorder()
 	control := NewRealPVCControl(fakeClient, recorder, pvcLister)
+
 	fakeClient.AddReactor("update", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
-		return true, nil, nil
+		update := action.(core.UpdateAction)
+		return true, update.GetObject(), nil
 	})
-	err := control.UpdateMetaInfo(tc, pvc, pod)
+	updatePVC, err := control.UpdateMetaInfo(tc, pvc, pod)
 	g.Expect(err).To(Succeed())
+	g.Expect(updatePVC.Annotations[label.AnnPodNameKey]).To(Equal(pod.GetName()))
 
 	events := collectEvents(recorder.Events)
 	g.Expect(events).To(HaveLen(1))
@@ -55,12 +59,12 @@ func TestPVCControlUpdateMetaInfoFailed(t *testing.T) {
 	tc := newTidbCluster()
 	pvc := newPVC(tc)
 	pod := newPod(tc)
-	fakeClient, pvcLister, recorder := newFakeClientAndRecorder()
+	fakeClient, pvcLister, _, recorder := newFakeClientAndRecorder()
 	control := NewRealPVCControl(fakeClient, recorder, pvcLister)
 	fakeClient.AddReactor("update", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})
-	err := control.UpdateMetaInfo(tc, pvc, pod)
+	_, err := control.UpdateMetaInfo(tc, pvc, pod)
 	g.Expect(err).To(HaveOccurred())
 
 	events := collectEvents(recorder.Events)
@@ -72,31 +76,99 @@ func TestPVCControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
 	pvc := newPVC(tc)
+	oldPVC := newPVC(tc)
 	pod := newPod(tc)
-	fakeClient, pvcLister, recorder := newFakeClientAndRecorder()
+	fakeClient, pvcLister, pvcIndexer, recorder := newFakeClientAndRecorder()
+	pvcIndexer.Add(oldPVC)
 	control := NewRealPVCControl(fakeClient, recorder, pvcLister)
 	conflict := false
 	fakeClient.AddReactor("update", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
 		update := action.(core.UpdateAction)
 		if !conflict {
 			conflict = true
-			return true, update.GetObject(), apierrors.NewConflict(action.GetResource().GroupResource(), pvc.Name, errors.New("conflict"))
+			return true, oldPVC, apierrors.NewConflict(action.GetResource().GroupResource(), pvc.Name, errors.New("conflict"))
 		}
 		return true, update.GetObject(), nil
 	})
-	err := control.UpdateMetaInfo(tc, pvc, pod)
+	updatePVC, err := control.UpdateMetaInfo(tc, pvc, pod)
 	g.Expect(err).To(Succeed())
+	g.Expect(updatePVC.Annotations[label.AnnPodNameKey]).To(Equal(pod.GetName()))
 
 	events := collectEvents(recorder.Events)
 	g.Expect(events).To(HaveLen(1))
 	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
-func newFakeClientAndRecorder() (*fake.Clientset, corelisters.PersistentVolumeClaimLister, *record.FakeRecorder) {
+func TestPVCControlUpdatePVCSuccess(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tc := newTidbCluster()
+	pvc := newPVC(tc)
+	pvc.Annotations = map[string]string{"a": "b"}
+	fakeClient, pvcLister, _, recorder := newFakeClientAndRecorder()
+	control := NewRealPVCControl(fakeClient, recorder, pvcLister)
+
+	fakeClient.AddReactor("update", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
+		update := action.(core.UpdateAction)
+		return true, update.GetObject(), nil
+	})
+	updatePVC, err := control.UpdatePVC(tc, pvc)
+	g.Expect(err).To(Succeed())
+	g.Expect(updatePVC.Annotations["a"]).To(Equal("b"))
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(1))
+	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
+}
+
+func TestPVCControlUpdatePVCFailed(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tc := newTidbCluster()
+	pvc := newPVC(tc)
+	fakeClient, pvcLister, _, recorder := newFakeClientAndRecorder()
+	control := NewRealPVCControl(fakeClient, recorder, pvcLister)
+	fakeClient.AddReactor("update", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
+	})
+	_, err := control.UpdatePVC(tc, pvc)
+	g.Expect(err).To(HaveOccurred())
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(1))
+	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeWarning))
+}
+
+func TestPVCControlUpdatePVCConflictSuccess(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tc := newTidbCluster()
+	pvc := newPVC(tc)
+	pvc.Annotations = map[string]string{"a": "b"}
+	oldPVC := newPVC(tc)
+	fakeClient, pvcLister, pvcIndexer, recorder := newFakeClientAndRecorder()
+	pvcIndexer.Add(oldPVC)
+	control := NewRealPVCControl(fakeClient, recorder, pvcLister)
+	conflict := false
+	fakeClient.AddReactor("update", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
+		update := action.(core.UpdateAction)
+		if !conflict {
+			conflict = true
+			return true, oldPVC, apierrors.NewConflict(action.GetResource().GroupResource(), pvc.Name, errors.New("conflict"))
+		}
+		return true, update.GetObject(), nil
+	})
+	updatePVC, err := control.UpdatePVC(tc, pvc)
+	g.Expect(err).To(Succeed())
+	g.Expect(updatePVC.Annotations["a"]).To(Equal("b"))
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(1))
+	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
+}
+
+func newFakeClientAndRecorder() (*fake.Clientset, corelisters.PersistentVolumeClaimLister, cache.Indexer, *record.FakeRecorder) {
 	kubeCli := &fake.Clientset{}
 	recorder := record.NewFakeRecorder(10)
 	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
-	return kubeCli, pvcInformer.Lister(), recorder
+	return kubeCli, pvcInformer.Lister(), pvcInformer.Informer().GetIndexer(), recorder
 }
 
 func newPVC(tc *v1alpha1.TidbCluster) *corev1.PersistentVolumeClaim {
@@ -109,11 +181,6 @@ func newPVC(tc *v1alpha1.TidbCluster) *corev1.PersistentVolumeClaim {
 			Name:      "pvc-1",
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
-			Labels: map[string]string{
-				label.ComponentLabelKey: TestComponentName,
-				label.ManagedByLabelKey: TestManagedByName,
-				label.InstanceLabelKey:  tc.GetName(),
-			},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			VolumeName: "pv-1",
