@@ -107,7 +107,7 @@ type PDClient interface {
 	EndEvictLeader(storeID uint64) error
 	// GetPDLeader returns pd leader
 	GetPDLeader() (*pdpb.Member, error)
-	// TransferPDLeader transfers pd leader to special member
+	// TransferPDLeader transfers pd leader to specified member
 	TransferPDLeader(name string) error
 }
 

@@ -30,7 +30,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
-func TestPDUpgrader_Upgrade(t *testing.T) {
+func TestPDUpgraderUpgrade(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcase struct {
@@ -68,7 +68,7 @@ func TestPDUpgrader_Upgrade(t *testing.T) {
 		if test.changePods != nil {
 			test.changePods(pods)
 		}
-		for i, _ := range pods {
+		for i := range pods {
 			podInformer.Informer().GetIndexer().Add(pods[i])
 		}
 

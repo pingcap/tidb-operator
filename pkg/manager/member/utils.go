@@ -193,9 +193,9 @@ func getOrdinal(pod *corev1.Pod) int {
 	return ordinal
 }
 
-// ascendingOrdinal is a sort.Interface that Sorts a list of Pods based on the ordinals extracted
+// descendingOrdinal is a sort.Interface that Sorts a list of Pods based on the ordinals extracted
 // from the Pod. Pod's that have not been constructed by StatefulSet's have an ordinal of -1, and are therefore pushed
-// to the front of the list.
+// to the end of the list.
 type descendingOrdinal []*corev1.Pod
 
 func (ao descendingOrdinal) Len() int {

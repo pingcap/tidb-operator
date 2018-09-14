@@ -26,8 +26,10 @@ import (
 )
 
 const (
+	// ImagePullBackOff is the pod state of image pull failed
 	ImagePullBackOff = "ImagePullBackOff"
-	ErrImagePull     = "ErrImagePull"
+	// ErrImagePull is the pod state of image pull failed
+	ErrImagePull = "ErrImagePull"
 )
 
 type pdUpgrader struct {
