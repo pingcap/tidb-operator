@@ -1,4 +1,4 @@
-{{- if .Values.privilegedTidb.create }}
+{{- if .Values.privilegedTidb }}
 apiVersion: v1
 kind: Service
 metadata:
