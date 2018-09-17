@@ -329,8 +329,7 @@ func (pc *pdClient) DeleteStore(storeID uint64) error {
 		return nil
 	}
 
-	err = fmt.Errorf("failed to delete store %d: %v", storeID, string(body))
-	return err
+	return fmt.Errorf("failed to delete store %d: %v", storeID, string(body))
 }
 
 func (pc *pdClient) DeleteMemberByID(memberID uint64) error {
@@ -348,8 +347,7 @@ func (pc *pdClient) DeleteMemberByID(memberID uint64) error {
 		return nil
 	}
 	err2 := readErrorBody(res.Body)
-	err = fmt.Errorf("failed %v to delete member %d: %v", res.StatusCode, memberID, err2)
-	return err
+	return fmt.Errorf("failed %v to delete member %d: %v", res.StatusCode, memberID, err2)
 }
 
 func (pc *pdClient) DeleteMember(name string) error {
@@ -367,8 +365,7 @@ func (pc *pdClient) DeleteMember(name string) error {
 		return nil
 	}
 	err2 := readErrorBody(res.Body)
-	err = fmt.Errorf("failed %v to delete member %s: %v", res.StatusCode, name, err2)
-	return err
+	return fmt.Errorf("failed %v to delete member %s: %v", res.StatusCode, name, err2)
 }
 
 func (pc *pdClient) SetStoreLabels(storeID uint64, labels map[string]string) (bool, error) {
@@ -386,8 +383,7 @@ func (pc *pdClient) SetStoreLabels(storeID uint64, labels map[string]string) (bo
 		return true, nil
 	}
 	err2 := readErrorBody(res.Body)
-	err = fmt.Errorf("failed %v to set store labels: %v", res.StatusCode, err2)
-	return false, err
+	return false, fmt.Errorf("failed %v to set store labels: %v", res.StatusCode, err2)
 }
 
 func (pc *pdClient) BeginEvictLeader(storeID uint64) error {
@@ -406,8 +402,7 @@ func (pc *pdClient) BeginEvictLeader(storeID uint64) error {
 		return nil
 	}
 	err2 := readErrorBody(res.Body)
-	err = fmt.Errorf("failed %v to begin evict leader of store:[%d],error: %v", res.StatusCode, storeID, err2)
-	return err
+	return fmt.Errorf("failed %v to begin evict leader of store:[%d],error: %v", res.StatusCode, storeID, err2)
 }
 
 func (pc *pdClient) EndEvictLeader(storeID uint64) error {
@@ -425,8 +420,7 @@ func (pc *pdClient) EndEvictLeader(storeID uint64) error {
 		return nil
 	}
 	err2 := readErrorBody(res.Body)
-	err = fmt.Errorf("failed %v to end leader evict scheduler of store [%d],error:%v", res.StatusCode, storeID, err2)
-	return err
+	return fmt.Errorf("failed %v to end leader evict scheduler of store [%d],error:%v", res.StatusCode, storeID, err2)
 }
 
 func (pc *pdClient) GetPDLeader() (*pdpb.Member, error) {
@@ -458,8 +452,7 @@ func (pc *pdClient) TransferPDLeader(memberName string) error {
 		return nil
 	}
 	err2 := readErrorBody(res.Body)
-	err = fmt.Errorf("failed %v to transfer pd leader to %s,error: %v", res.StatusCode, memberName, err2)
-	return err
+	return fmt.Errorf("failed %v to transfer pd leader to %s,error: %v", res.StatusCode, memberName, err2)
 }
 
 func (pc *pdClient) getBodyOK(apiURL string) ([]byte, error) {

@@ -34,14 +34,15 @@ import (
 func TestPDScalerScaleOut(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name         string
-		update       func(cluster *v1alpha1.TidbCluster)
-		pdUpgrading  bool
-		hasPVC       bool
-		hasDeferAnn  bool
-		pvcDeleteErr bool
-		err          bool
-		changed      bool
+		name             string
+		update           func(cluster *v1alpha1.TidbCluster)
+		pdUpgrading      bool
+		hasPVC           bool
+		hasDeferAnn      bool
+		pvcDeleteErr     bool
+		statusSyncFailed bool
+		err              bool
+		changed          bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -78,6 +79,8 @@ func TestPDScalerScaleOut(t *testing.T) {
 			pvcControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
+		tc.Status.PD.SyncSuccess = !test.statusSyncFailed
+
 		err := scaler.ScaleOut(tc, oldSet, newSet)
 		if test.err {
 			g.Expect(err).To(HaveOccurred())
@@ -93,56 +96,61 @@ func TestPDScalerScaleOut(t *testing.T) {
 
 	tests := []testcase{
 		{
-			name:         "normal",
-			update:       normalPDMember,
-			pdUpgrading:  false,
-			hasPVC:       true,
-			hasDeferAnn:  false,
-			pvcDeleteErr: false,
-			err:          false,
-			changed:      true,
+			name:             "normal",
+			update:           normalPDMember,
+			pdUpgrading:      false,
+			hasPVC:           true,
+			hasDeferAnn:      false,
+			pvcDeleteErr:     false,
+			statusSyncFailed: false,
+			err:              false,
+			changed:          true,
 		},
 		{
-			name:         "pd is upgrading",
-			update:       normalPDMember,
-			pdUpgrading:  true,
-			hasPVC:       true,
-			hasDeferAnn:  false,
-			pvcDeleteErr: false,
-			err:          false,
-			changed:      false,
+			name:             "pd is upgrading",
+			update:           normalPDMember,
+			pdUpgrading:      true,
+			hasPVC:           true,
+			hasDeferAnn:      false,
+			pvcDeleteErr:     false,
+			statusSyncFailed: false,
+			err:              false,
+			changed:          false,
 		},
 		{
-			name:         "cache don't have pvc",
-			update:       normalPDMember,
-			pdUpgrading:  false,
-			hasPVC:       false,
-			hasDeferAnn:  false,
-			pvcDeleteErr: false,
-			err:          false,
-			changed:      true,
+			name:             "cache don't have pvc",
+			update:           normalPDMember,
+			pdUpgrading:      false,
+			hasPVC:           false,
+			hasDeferAnn:      false,
+			pvcDeleteErr:     false,
+			statusSyncFailed: false,
+			err:              false,
+			changed:          true,
 		},
 		{
-			name:         "pvc annotations defer deletion is not nil, pvc delete failed",
-			update:       normalPDMember,
-			pdUpgrading:  false,
-			hasPVC:       true,
-			hasDeferAnn:  true,
-			pvcDeleteErr: true,
-			err:          true,
-			changed:      false,
+			name:             "pvc annotations defer deletion is not nil, pvc delete failed",
+			update:           normalPDMember,
+			pdUpgrading:      false,
+			hasPVC:           true,
+			hasDeferAnn:      true,
+			pvcDeleteErr:     true,
+			statusSyncFailed: false,
+			err:              true,
+			changed:          false,
 		},
 		{
 			name: "don't have members",
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Members = nil
 			},
-			pdUpgrading:  false,
-			hasPVC:       true,
-			hasDeferAnn:  true,
-			pvcDeleteErr: false,
-			err:          true,
-			changed:      false,
+			pdUpgrading:      false,
+			hasPVC:           true,
+			hasDeferAnn:      true,
+			pvcDeleteErr:     false,
+			statusSyncFailed: false,
+			err:              true,
+			changed:          false,
 		},
 		{
 			name: "pd member not health",
@@ -151,12 +159,24 @@ func TestPDScalerScaleOut(t *testing.T) {
 				member1 := tc.Status.PD.Members[ordinalPodName(v1alpha1.PDMemberType, tcName, 1)]
 				member1.Health = false
 			},
-			pdUpgrading:  false,
-			hasPVC:       true,
-			hasDeferAnn:  true,
-			pvcDeleteErr: false,
-			err:          true,
-			changed:      false,
+			pdUpgrading:      false,
+			hasPVC:           true,
+			hasDeferAnn:      true,
+			pvcDeleteErr:     false,
+			statusSyncFailed: false,
+			err:              true,
+			changed:          false,
+		},
+		{
+			name:             "pd status sync failed",
+			update:           normalPDMember,
+			pdUpgrading:      false,
+			hasPVC:           true,
+			hasDeferAnn:      false,
+			pvcDeleteErr:     false,
+			statusSyncFailed: true,
+			err:              true,
+			changed:          false,
 		},
 	}
 
@@ -168,13 +188,14 @@ func TestPDScalerScaleOut(t *testing.T) {
 func TestPDScalerScaleIn(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name            string
-		pdUpgrading     bool
-		hasPVC          bool
-		pvcUpdateErr    bool
-		deleteMemberErr bool
-		err             bool
-		changed         bool
+		name             string
+		pdUpgrading      bool
+		hasPVC           bool
+		pvcUpdateErr     bool
+		deleteMemberErr  bool
+		statusSyncFailed bool
+		err              bool
+		changed          bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -208,6 +229,8 @@ func TestPDScalerScaleIn(t *testing.T) {
 			pvcControl.SetUpdatePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
+		tc.Status.PD.SyncSuccess = !test.statusSyncFailed
+
 		err := scaler.ScaleIn(tc, oldSet, newSet)
 		if test.err {
 			g.Expect(err).To(HaveOccurred())
@@ -223,49 +246,64 @@ func TestPDScalerScaleIn(t *testing.T) {
 
 	tests := []testcase{
 		{
-			name:            "normal",
-			pdUpgrading:     false,
-			hasPVC:          true,
-			pvcUpdateErr:    false,
-			deleteMemberErr: false,
-			err:             false,
-			changed:         true,
+			name:             "normal",
+			pdUpgrading:      false,
+			hasPVC:           true,
+			pvcUpdateErr:     false,
+			deleteMemberErr:  false,
+			statusSyncFailed: false,
+			err:              false,
+			changed:          true,
 		},
 		{
-			name:            "pd is upgrading",
-			pdUpgrading:     true,
-			hasPVC:          true,
-			pvcUpdateErr:    false,
-			deleteMemberErr: false,
-			err:             false,
-			changed:         false,
+			name:             "pd is upgrading",
+			pdUpgrading:      true,
+			hasPVC:           true,
+			pvcUpdateErr:     false,
+			deleteMemberErr:  false,
+			statusSyncFailed: false,
+			err:              false,
+			changed:          false,
 		},
 		{
-			name:            "error when delete member",
-			hasPVC:          true,
-			pvcUpdateErr:    false,
-			pdUpgrading:     false,
-			deleteMemberErr: true,
-			err:             true,
-			changed:         false,
+			name:             "error when delete member",
+			hasPVC:           true,
+			pvcUpdateErr:     false,
+			pdUpgrading:      false,
+			deleteMemberErr:  true,
+			statusSyncFailed: false,
+			err:              true,
+			changed:          false,
 		},
 		{
-			name:            "cache don't have pvc",
-			pdUpgrading:     false,
-			hasPVC:          false,
-			pvcUpdateErr:    false,
-			deleteMemberErr: false,
-			err:             true,
-			changed:         false,
+			name:             "cache don't have pvc",
+			pdUpgrading:      false,
+			hasPVC:           false,
+			pvcUpdateErr:     false,
+			deleteMemberErr:  false,
+			statusSyncFailed: false,
+			err:              true,
+			changed:          false,
 		},
 		{
-			name:            "error when update pvc",
-			pdUpgrading:     false,
-			hasPVC:          true,
-			pvcUpdateErr:    true,
-			deleteMemberErr: false,
-			err:             true,
-			changed:         false,
+			name:             "error when update pvc",
+			pdUpgrading:      false,
+			hasPVC:           true,
+			pvcUpdateErr:     true,
+			deleteMemberErr:  false,
+			statusSyncFailed: false,
+			err:              true,
+			changed:          false,
+		},
+		{
+			name:             "pd status sync failed",
+			pdUpgrading:      false,
+			hasPVC:           true,
+			pvcUpdateErr:     false,
+			deleteMemberErr:  false,
+			statusSyncFailed: true,
+			err:              true,
+			changed:          false,
 		},
 	}
 

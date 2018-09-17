@@ -64,6 +64,11 @@ func NewPDFailover(cli versioned.Interface,
 func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+
+	if !tc.Status.PD.SyncSuccess {
+		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed, can't failover", ns, tcName)
+	}
+
 	healthCount := 0
 	for _, pdMember := range tc.Status.PD.Members {
 		if pdMember.Health {

@@ -52,7 +52,7 @@ func NewPDUpgrader(pdControl controller.PDControlInterface,
 func (pu *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	tcName := tc.GetName()
 
-	if !tc.Status.PD.Health {
+	if !tc.Status.PD.SyncSuccess {
 		err := pu.forceUpgrade(tc, newSet)
 		if err == nil {
 			tc.Status.PD.Phase = v1alpha1.UpgradePhase
