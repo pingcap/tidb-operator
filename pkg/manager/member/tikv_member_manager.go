@@ -393,7 +393,12 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 			},
 			ServiceName:         headlessSvcName,
 			PodManagementPolicy: apps.ParallelPodManagement,
-			UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
+			UpdateStrategy: apps.StatefulSetUpdateStrategy{
+				Type: apps.RollingUpdateStatefulSetStrategyType,
+				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
+					Partition: func() *int32 { i := int32(tc.Spec.TiKV.Replicas); return &i }(),
+				},
+			},
 		},
 	}
 	return tikvset, nil
@@ -523,6 +528,7 @@ func (tkmm *tikvMemberManager) getTiKVStore(store *controller.StoreInfo) *v1alph
 		ID:                storeID,
 		PodName:           podName,
 		IP:                ip,
+		LeaderCount:       int32(store.Status.LeaderCount),
 		State:             store.Store.StateName,
 		LastHeartbeatTime: metav1.Time{Time: store.Status.LastHeartbeatTS},
 	}

@@ -16,6 +16,8 @@ package member
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strconv"
 
 	"github.com/golang/glog"
 	apps "k8s.io/api/apps/v1beta1"
@@ -174,4 +176,50 @@ func serviceEqual(new, old *corev1.Service) (bool, error) {
 		return apiequality.Semantic.DeepEqual(oldSpec, new.Spec), nil
 	}
 	return false, nil
+}
+
+// setUpgradePartition set statefulSet's rolling update partition
+func setUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int) {
+	ordinal := int32(upgradeOrdinal)
+	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &ordinal}
+}
+
+// statefulPodRegex is a regular expression that extracts the parent StatefulSet and ordinal from the Name of a Pod
+var statefulPodRegex = regexp.MustCompile("(.*)-([0-9]+)$")
+
+func getOrdinal(pod *corev1.Pod) (int, error) {
+	subMatches := statefulPodRegex.FindStringSubmatch(pod.Name)
+	if len(subMatches) < 3 {
+		return -1, fmt.Errorf("the pod name: [%s/%s] does not contain ordinal", pod.GetNamespace(), pod.GetName())
+	}
+	if i, err := strconv.ParseInt(subMatches[2], 10, 32); err == nil {
+		return int(i), nil
+	} else {
+		return -1, err
+	}
+}
+
+// descendingOrdinal is a sort.Interface that Sorts a list of Pods based on the ordinals extracted
+// from the Pod. Pod's that have not been constructed by StatefulSet's have an ordinal of -1, and are therefore pushed
+// to the end of the list.
+type descendingOrdinal []*corev1.Pod
+
+func (ao descendingOrdinal) Len() int {
+	return len(ao)
+}
+
+func (ao descendingOrdinal) Swap(i, j int) {
+	ao[i], ao[j] = ao[j], ao[i]
+}
+
+func (ao descendingOrdinal) Less(i, j int) bool {
+	ordinalI, err := getOrdinal(ao[i])
+	if err != nil {
+		return false
+	}
+	ordinalJ, err := getOrdinal(ao[j])
+	if err != nil {
+		return true
+	}
+	return ordinalI > ordinalJ
 }

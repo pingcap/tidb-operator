@@ -216,6 +216,7 @@ type TiDBFailureMember struct {
 
 // TiKVStatus is TiKV status
 type TiKVStatus struct {
+	SyncSuccess     bool                        `json:"syncSuccess,omitempty"`
 	Phase           MemberPhase                 `json:"phase,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
 	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
@@ -229,6 +230,7 @@ type TiKVStore struct {
 	ID                string      `json:"id"`
 	PodName           string      `json:"podName"`
 	IP                string      `json:"ip"`
+	LeaderCount       int32       `json:"leaderCount"`
 	State             string      `json:"state"`
 	LastHeartbeatTime metav1.Time `json:"lastHeartbeatTime"`
 	// Last time the health transitioned from one to another.

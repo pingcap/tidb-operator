@@ -32,7 +32,9 @@ import (
 )
 
 const (
-	timeout = 2 * time.Second
+	timeout           = 2 * time.Second
+	schedulerExisted  = "scheduler existed"
+	schedulerNotFound = "scheduler not found"
 )
 
 // PDControlInterface is an interface that knows how to manage and get tidb cluster's PD client
@@ -400,6 +402,9 @@ func (pc *pdClient) BeginEvictLeader(storeID uint64) error {
 		return nil
 	}
 	err2 := readErrorBody(res.Body)
+	if strings.Contains(err2.Error(), schedulerExisted) {
+		return nil
+	}
 	err = fmt.Errorf("failed %v to begin evict leader of store:[%d],error: %v", res.StatusCode, storeID, err2)
 	return err
 }
@@ -419,6 +424,9 @@ func (pc *pdClient) EndEvictLeader(storeID uint64) error {
 		return nil
 	}
 	err2 := readErrorBody(res.Body)
+	if strings.Contains(err2.Error(), schedulerNotFound) {
+		return nil
+	}
 	err = fmt.Errorf("failed %v to end leader evict scheduler of store [%d],error:%v", res.StatusCode, storeID, err2)
 	return err
 }
