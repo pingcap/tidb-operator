@@ -67,12 +67,16 @@ func (pu *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 		return err
 	}
 
+	ordinal, err := getOrdinal(upgradePod)
+	if err != nil {
+		return err
+	}
 	if tc.Status.PD.Leader.Name == upgradePod.GetName() {
-		pu.setUpgradePartition(newSet, getOrdinal(upgradePod)+1)
+		pu.setUpgradePartition(newSet, ordinal+1)
 		var targetName string
 		maxName := fmt.Sprintf("%s-%d", controller.PDMemberName(tcName), int(*newSet.Spec.Replicas)-1)
 		minName := fmt.Sprintf("%s-%d", controller.PDMemberName(tcName), 0)
-		if getOrdinal(upgradePod) == int(*newSet.Spec.Replicas)-1 {
+		if ordinal == int(*newSet.Spec.Replicas)-1 {
 			targetName = minName
 		} else {
 			targetName = maxName
@@ -82,7 +86,7 @@ func (pu *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 			return err
 		}
 	} else {
-		pu.setUpgradePartition(newSet, getOrdinal(upgradePod))
+		pu.setUpgradePartition(newSet, ordinal)
 	}
 	return nil
 }

@@ -181,16 +181,16 @@ func serviceEqual(new, old *corev1.Service) (bool, error) {
 // statefulPodRegex is a regular expression that extracts the parent StatefulSet and ordinal from the Name of a Pod
 var statefulPodRegex = regexp.MustCompile("(.*)-([0-9]+)$")
 
-func getOrdinal(pod *corev1.Pod) int {
-	ordinal := -1
+func getOrdinal(pod *corev1.Pod) (int, error) {
 	subMatches := statefulPodRegex.FindStringSubmatch(pod.Name)
 	if len(subMatches) < 3 {
-		return ordinal
+		return -1, fmt.Errorf("the pod name: [%s/%s] does not contain ordinal", pod.GetNamespace(), pod.GetName())
 	}
 	if i, err := strconv.ParseInt(subMatches[2], 10, 32); err == nil {
-		ordinal = int(i)
+		return int(i), nil
+	} else {
+		return -1, err
 	}
-	return ordinal
 }
 
 // descendingOrdinal is a sort.Interface that Sorts a list of Pods based on the ordinals extracted
@@ -207,5 +207,13 @@ func (ao descendingOrdinal) Swap(i, j int) {
 }
 
 func (ao descendingOrdinal) Less(i, j int) bool {
-	return getOrdinal(ao[i]) > getOrdinal(ao[j])
+	ordinalI, err := getOrdinal(ao[i])
+	if err != nil {
+		return false
+	}
+	ordinalJ, err := getOrdinal(ao[j])
+	if err != nil {
+		return true
+	}
+	return ordinalI > ordinalJ
 }
