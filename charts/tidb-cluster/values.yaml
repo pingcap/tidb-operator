@@ -9,13 +9,8 @@ rbac:
 # if multiple clusters are deployed in the same namespace.
 clusterName: demo
 
-# localtime determines whether containers timezone should be the same as k8s node
-# if localtime is false, container timezone would be UTC+0
-# localtime should be set to false if the K8s environment doesn't have /etc/localtime
-# on host, e.g. Docker for Mac, Minikube, DinD
-localtime: false
-
-# nodeSelectorRequired: true
+# timezone is the default system timzone for TiDB
+timezone: Asia/Shanghai
 
 # default reclaim policy of a PV
 pvReclaimPolicy: Retain
@@ -204,35 +199,6 @@ fullbackup:
   # user must set tidb cluster user and password
   user: root
   password:
-
-
-privilegedTidb:
-  # Whether to deploy privileged tidb
-  create: false
-  replicas: 1
-  image: pingcap/tidb:v2.0.4
-  logLevel: info
-  resources: {}
-  #  limits:
-  #    cpu: 16000m
-  #    memory: 16Gi
-  #  requests:
-  #    cpu: 12000m
-  #    memory: 12Gi
-  nodeSelector: {}
-  #  kind: privileged-tidb
-  #  zone: cn-bj1-01,cn-bj1-02
-  #  region: cn-bj1
-  tolerations: {}
-  # - key: node-role
-  #   operator: Equal
-  #   value: tidb
-  #   effect: "NoSchedule"
-  service:
-    # type is privileged tidb service type, can be ClusterIP, NodePort, LoadBalancer
-    type: ClusterIP
-    # nodePort is optional and only used when type is NodePort
-    # nodePort: 33333
 
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"
