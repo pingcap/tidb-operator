@@ -255,12 +255,6 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		},
 	}
 
-	if tc.Spec.Localtime {
-		tzMount, tzVolume := timezoneMountVolume()
-		volMounts = append(volMounts, tzMount)
-		vols = append(vols, tzVolume)
-	}
-
 	tidbLabel := label.New().Cluster(tcName).TiDB()
 	tidbSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -307,6 +301,10 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 								{
 									Name:  "CLUSTER_NAME",
 									Value: tc.GetName(),
+								},
+								{
+									Name:  "TZ",
+									Value: tc.Spec.Timezone,
 								},
 							},
 						},

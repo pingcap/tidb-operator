@@ -95,7 +95,7 @@ type TidbClusterSpec struct {
 	// Services list non-headless services type used in TidbCluster
 	Services        []Service                            `json:"services,omitempty"`
 	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
-	Localtime       bool                                 `json:"localtime,omitempty"`
+	Timezone        string                               `json:"timezone,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.

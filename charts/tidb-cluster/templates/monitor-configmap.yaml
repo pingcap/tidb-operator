@@ -14,12 +14,12 @@ data:
     global:
       scrape_interval: 15s
       evaluation_interval: 15s
-    {{- if .Values.alertmanagerURL }}
+    {{- if .Values.monitor.prometheus.alertmanagerURL }}
     alerting:
       alertmanagers:
       - static_configs:
         - targets:
-          - {{ .Values.alertmanagerURL }}
+          - {{ .Values.monitor.prometheus.alertmanagerURL }}
     {{- end }}
     scrape_configs:
       - job_name: 'tidb-cluster'

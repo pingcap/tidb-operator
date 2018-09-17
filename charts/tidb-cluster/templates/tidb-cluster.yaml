@@ -10,7 +10,7 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
-  localtime: {{ .Values.localtime }}
+  timezone: {{ .Values.timezone | default "UTC" }}
   services:
 {{ toYaml .Values.services | indent 4 }}
   pd:
