@@ -1,4 +1,4 @@
-{{- if .Values.privilegedTidb.create }}
+{{- if .Values.privilegedTidb }}
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
@@ -56,12 +56,9 @@ spec:
         env:
         - name: CLUSTER_NAME
           value: {{ .Values.clusterName }}
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
         volumeMounts:
-        {{- if .Values.localtime }}
-        - name: timezone
-          readOnly: true
-          mountPath: /etc/localtime
-        {{- end }}
         - name: config
           readOnly: true
           mountPath: /etc/tidb
@@ -73,11 +70,6 @@ spec:
           mountPath: /usr/local/bin
       restartPolicy: Always
       volumes:
-      {{- if .Values.localtime }}
-      - name: timezone
-        hostPath:
-          path: /etc/localtime
-      {{- end }}
       - name: config
         configMap:
           name: {{ .Values.clusterName }}-privileged-tidb

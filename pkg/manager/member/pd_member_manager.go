@@ -448,12 +448,6 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 		},
 	}
 
-	if tc.Spec.Localtime {
-		tzMount, tzVolume := timezoneMountVolume()
-		volMounts = append(volMounts, tzMount)
-		vols = append(vols, tzVolume)
-	}
-
 	var q resource.Quantity
 	var err error
 	if tc.Spec.PD.Requests != nil {
@@ -531,6 +525,10 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 								{
 									Name:  "SET_NAME",
 									Value: setName,
+								},
+								{
+									Name:  "TZ",
+									Value: tc.Spec.Timezone,
 								},
 							},
 						},
