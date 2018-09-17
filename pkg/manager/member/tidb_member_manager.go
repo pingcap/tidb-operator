@@ -151,7 +151,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		}
 	}
 
-	if !statefulSetEqual(*oldTiDBSet, *newTiDBSet) {
+	if !statefulSetEqual(*newTiDBSet, *oldTiDBSet) {
 		set := *oldTiDBSet
 		set.Spec.Template = newTiDBSet.Spec.Template
 		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
