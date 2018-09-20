@@ -50,20 +50,28 @@ func NewPDUpgrader(pdControl controller.PDControlInterface,
 }
 
 func (pu *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
 	if !tc.Status.PD.SyncSuccess {
-		err := pu.forceUpgrade(tc, newSet)
-		if err == nil {
-			tc.Status.PD.Phase = v1alpha1.UpgradePhase
+		force, err := pu.needForce(tc)
+		if err != nil {
+			return err
 		}
-		return err
+		if force {
+			tc.Status.PD.Phase = v1alpha1.UpgradePhase
+			setUpgradePartition(newSet, 0)
+			return nil
+		}
+
+		return fmt.Errorf("tidbcluster: [%s/%s]'s pd status sync failed,can not to be upgraded", ns, tcName)
 	}
 
 	tc.Status.PD.Phase = v1alpha1.UpgradePhase
+	setUpgradePartition(newSet, int(*oldSet.Spec.UpdateStrategy.RollingUpdate.Partition))
+
 	upgradePod, err := pu.findUpgradePod(tc)
 	if upgradePod == nil || err != nil {
-		newSet.Spec.UpdateStrategy.RollingUpdate = oldSet.Spec.UpdateStrategy.RollingUpdate
 		return err
 	}
 
@@ -72,7 +80,6 @@ func (pu *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 		return err
 	}
 	if tc.Status.PD.Leader.Name == upgradePod.GetName() {
-		pu.setUpgradePartition(newSet, ordinal+1)
 		var targetName string
 		maxName := fmt.Sprintf("%s-%d", controller.PDMemberName(tcName), int(*newSet.Spec.Replicas)-1)
 		minName := fmt.Sprintf("%s-%d", controller.PDMemberName(tcName), 0)
@@ -86,7 +93,7 @@ func (pu *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 			return err
 		}
 	} else {
-		pu.setUpgradePartition(newSet, ordinal)
+		setUpgradePartition(newSet, ordinal)
 	}
 	return nil
 }
@@ -118,20 +125,6 @@ func (pu *pdUpgrader) findUpgradePod(tc *v1alpha1.TidbCluster) (*corev1.Pod, err
 	return nil, nil
 }
 
-func (pu *pdUpgrader) forceUpgrade(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	force, err := pu.needForce(tc)
-	if err != nil {
-		return err
-	}
-	if force {
-		return pu.setUpgradePartition(newSet, 0)
-	}
-
-	return fmt.Errorf("tidbcluster: [%s/%s]'s pd is unhealthy,can not to be upgraded", ns, tcName)
-}
-
 func (pu *pdUpgrader) needForce(tc *v1alpha1.TidbCluster) (bool, error) {
 	selector, err := label.New().Cluster(tc.GetName()).PD().Selector()
 	if err != nil {
@@ -148,14 +141,7 @@ func (pu *pdUpgrader) needForce(tc *v1alpha1.TidbCluster) (bool, error) {
 			return false, fmt.Errorf("tidbcluster: [%s/%s]'s pod:[%s] have not label: %s", tc.GetNamespace(), tc.GetName(), pod.GetName(), apps.ControllerRevisionHashLabelKey)
 		}
 		if revisionHash == tc.Status.PD.StatefulSet.CurrentRevision {
-			for i := len(pod.Status.ContainerStatuses) - 1; i >= 0; i-- {
-				container := pod.Status.ContainerStatuses[i]
-				if container.State.Waiting != nil && container.State.Waiting.Reason != "" {
-					if container.State.Waiting.Reason == ErrImagePull || container.State.Waiting.Reason == ImagePullBackOff {
-						return true, nil
-					}
-				}
-			}
+			return imagePullFailed(pod), nil
 		}
 	}
 	return false, nil
@@ -165,11 +151,11 @@ func (pu *pdUpgrader) transferPDLeaderTo(tc *v1alpha1.TidbCluster, targetName st
 	return pu.pdControl.GetPDClient(tc).TransferPDLeader(targetName)
 }
 
-func (pu *pdUpgrader) setUpgradePartition(newSet *apps.StatefulSet, upgradeOrdinal int) error {
+/*
+func (pu *pdUpgrader) setUpgradePartition(newSet *apps.StatefulSet, upgradeOrdinal int) {
 	ordinal := int32(upgradeOrdinal)
 	newSet.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &ordinal}
-	return nil
-}
+}*/
 
 type fakePDUpgrader struct{}
 

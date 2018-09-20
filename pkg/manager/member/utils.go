@@ -133,7 +133,8 @@ func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 			return false
 		}
 		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
-			apiequality.Semantic.DeepEqual(oldConfig.Template, new.Spec.Template)
+			apiequality.Semantic.DeepEqual(oldConfig.Template, new.Spec.Template) &&
+			apiequality.Semantic.DeepEqual(oldConfig.UpdateStrategy, new.Spec.UpdateStrategy)
 	}
 	return false
 }
@@ -177,6 +178,23 @@ func serviceEqual(new, old *corev1.Service) (bool, error) {
 		return apiequality.Semantic.DeepEqual(oldSpec, new.Spec), nil
 	}
 	return false, nil
+}
+
+// setUpgradePartition set statefulSet's rolling update partition
+func setUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int) {
+	ordinal := int32(upgradeOrdinal)
+	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &ordinal}
+}
+func imagePullFailed(pod *corev1.Pod) bool {
+	for i := len(pod.Status.ContainerStatuses) - 1; i >= 0; i-- {
+		container := pod.Status.ContainerStatuses[i]
+		if container.State.Waiting != nil && container.State.Waiting.Reason != "" {
+			if container.State.Waiting.Reason == ErrImagePull || container.State.Waiting.Reason == ImagePullBackOff {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // statefulPodRegex is a regular expression that extracts the parent StatefulSet and ordinal from the Name of a Pod
