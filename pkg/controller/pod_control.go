@@ -100,7 +100,6 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 	podName := pod.GetName()
 	labels := pod.GetLabels()
 	tcName := tc.GetName()
-	var clusterID, storeID, memberID string
 	if labels == nil {
 		return pod, fmt.Errorf("pod %s/%s has empty labels, TidbCluster: %s", ns, podName, tcName)
 	}
@@ -108,6 +107,9 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 	if !ok {
 		return pod, fmt.Errorf("pod %s/%s doesn't have %s label, TidbCluster: %s", ns, podName, label.InstanceLabelKey, tcName)
 	}
+	clusterID := labels[label.ClusterIDLabelKey]
+	memberID := labels[label.MemberIDLabelKey]
+	storeID := labels[label.StoreIDLabelKey]
 	pdClient := rpc.pdControl.GetPDClient(tc)
 	if labels[label.ClusterIDLabelKey] == "" {
 		cluster, err := pdClient.GetCluster()
