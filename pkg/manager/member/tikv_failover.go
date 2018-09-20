@@ -57,27 +57,14 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 				StoreID:  store.ID,
 				Replicas: tc.Spec.TiKV.Replicas,
 			}
-			tc.Spec.TiKV.Replicas++
 		}
 	}
 
 	return nil
 }
 
-func (tf *tikvFailover) Recover(tc *v1alpha1.TidbCluster) {
-	tc.Status.TiKV.FailureStores = nil
-}
-
-func allTiKVStoresAreReady(tc *v1alpha1.TidbCluster) bool {
-	if int(tc.Spec.TiKV.Replicas) != len(tc.Status.TiKV.Stores) {
-		return false
-	}
-	for _, store := range tc.Status.TiKV.Stores {
-		if store.State != v1alpha1.TiKVStateUp {
-			return false
-		}
-	}
-	return true
+func (tf *tikvFailover) Recover(_ *v1alpha1.TidbCluster) {
+	// Do nothing now
 }
 
 type fakeTiKVFailover struct{}

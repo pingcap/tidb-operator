@@ -87,7 +87,7 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 			},
 			expectFn: func(t *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				t.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(1))
-				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(3))
+				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
 			},
 		},
 		{
@@ -109,7 +109,7 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 			},
 			expectFn: func(t *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				t.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(1))
-				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(3))
+				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
 			},
 		},
 	}
@@ -183,7 +183,7 @@ func TestFakeTiDBFailoverRecover(t *testing.T) {
 				}
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
+				g.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(0))
 			},
 		},
@@ -221,7 +221,7 @@ func TestFakeTiDBFailoverRecover(t *testing.T) {
 				}
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
+				g.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(4))
 				g.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(0))
 			},
 		},
