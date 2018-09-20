@@ -82,7 +82,8 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			getCfgErr: false,
 			err:       false,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
-				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(5))
+				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(2))
 			},
 		},
 		{
@@ -92,6 +93,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			err:       true,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(0))
 			},
 		},
 		{
@@ -105,6 +107,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			err:       false,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(0))
 			},
 		},
 		{
@@ -122,6 +125,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			err:       false,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(0))
 			},
 		},
 		{
@@ -138,6 +142,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			err:       false,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(0))
 			},
 		},
 		{
@@ -161,33 +166,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			err:       false,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
-			},
-		},
-	}
-	for i := range tests {
-		testFn(&tests[i], t)
-	}
-}
-
-func TestTiKVFailoverRecover(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	type testcase struct {
-		name     string
-		expectFn func(*v1alpha1.TidbCluster)
-	}
-	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
-		tc := newTidbClusterForPD()
-		tikvFailover, _ := newFakeTiKVFailover()
-		tikvFailover.Recover(tc)
-		test.expectFn(tc)
-	}
-	tests := []testcase{
-		{
-			name: "normal",
-			expectFn: func(tc *v1alpha1.TidbCluster) {
-				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(0))
+				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(1))
 			},
 		},
 	}
