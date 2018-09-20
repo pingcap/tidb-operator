@@ -99,10 +99,10 @@ func NewController(
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl)
-	pdFailover := mm.NewPDFailover(cli, tcControl, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister())
+	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister())
 	pdUpgrader := mm.NewPDUpgrader()
 	tikvFailover := mm.NewTiKVFailover(pdControl)
-	tikvUpgrader := mm.NewTiKVUpgrader()
+	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
 	tidbUpgrader := mm.NewTiDBUpgrader()
 	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod)
 

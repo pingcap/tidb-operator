@@ -49,6 +49,8 @@ func NewTiKVUpgrader(pdControl controller.PDControlInterface, podControl control
 }
 
 func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
 	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
@@ -56,6 +58,18 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 		}
 		newSet.Spec.Template.Spec = *podSpec
 		return nil
+	}
+
+	if !tc.Status.TiKV.SyncSuccess {
+		force, err := tku.needForce(tc)
+		if err != nil {
+			return err
+		}
+		if force {
+			setUpgradePartition(newSet, 0)
+			return nil
+		}
+		return fmt.Errorf("tidbcluster: [%s/%s]'s tikv status sync failed,can not to be upgraded", ns, tcName)
 	}
 
 	tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
@@ -71,7 +85,7 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 
 	storeIDStr, exist := upgradePod.Labels[label.StoreIDLabelKey]
 	if !exist {
-		return fmt.Errorf("Tidbcluster: [%s/%s]'s tikv Pod:[%s] does not contain storeID", tc.GetNamespace(), tc.GetName(), upgradePod.GetName())
+		return fmt.Errorf("Tidbcluster: [%s/%s]'s tikv Pod:[%s] does not contain storeID", ns, tcName, upgradePod.GetName())
 	}
 	upgradeOrdinal, err := getOrdinal(upgradePod)
 	if err != nil {
@@ -159,6 +173,28 @@ func (tku *tikvUpgrader) findUpgradePod(tc *v1alpha1.TidbCluster) (*corev1.Pod, 
 		}
 	}
 	return nil, nil
+}
+
+func (tku *tikvUpgrader) needForce(tc *v1alpha1.TidbCluster) (bool, error) {
+	selector, err := label.New().Cluster(tc.GetName()).TiKV().Selector()
+	if err != nil {
+		return false, err
+	}
+	pdPods, err := tku.podLister.Pods(tc.GetNamespace()).List(selector)
+	if err != nil {
+		return false, err
+	}
+	for _, pod := range pdPods {
+		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+		if !exist {
+			return false, fmt.Errorf("tidbcluster: [%s/%s]'s pod:[%s] have not label: %s", tc.GetNamespace(), tc.GetName(), pod.GetName(), apps.ControllerRevisionHashLabelKey)
+		}
+		if revisionHash == tc.Status.TiKV.StatefulSet.CurrentRevision {
+			return imagePullFailed(pod), nil
+		}
+	}
+	return false, nil
+
 }
 
 type fakeTiKVUpgrader struct{}

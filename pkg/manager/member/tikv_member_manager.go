@@ -193,11 +193,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	}
 
 	if tkmm.autoFailover {
-		if allTiKVStoresAreReady(tc) {
-			if tc.Status.TiKV.FailureStores != nil {
-				tkmm.tikvFailover.Recover(tc)
-			}
-		} else if tc.Spec.TiKV.Replicas == tc.Status.TiKV.StatefulSet.Replicas {
+		if tc.TiKVAllPodsStarted() && !tc.TiKVAllStoresReady() {
 			if err := tkmm.tikvFailover.Failover(tc); err != nil {
 				return err
 			}
@@ -312,7 +308,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: func() *int32 { r := tc.Spec.TiKV.Replicas; return &r }(),
+			Replicas: func() *int32 { r := tc.TiKVRealReplicas(); return &r }(),
 			Selector: tikvLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -473,7 +469,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
 		if status.LastHeartbeatTime.IsZero() {
 			if oldStatus, ok := previousStores[status.ID]; ok {
-				glog.Warningf("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStatus.LastHeartbeatTime)
+				glog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStatus.LastHeartbeatTime)
 				status.LastHeartbeatTime = oldStatus.LastHeartbeatTime
 			}
 		}
