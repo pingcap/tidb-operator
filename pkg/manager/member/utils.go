@@ -29,6 +29,10 @@ import (
 const (
 	// LastAppliedConfigAnnotation is annotation key of last applied configuration
 	LastAppliedConfigAnnotation = "pingcap.com/last-applied-configuration"
+	// ImagePullBackOff is the pod state of image pull failed
+	ImagePullBackOff = "ImagePullBackOff"
+	// ErrImagePull is the pod state of image pull failed
+	ErrImagePull = "ErrImagePull"
 )
 
 func timezoneMountVolume() (corev1.VolumeMount, corev1.Volume) {
@@ -132,7 +136,8 @@ func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 			glog.Errorf("unmarshal Statefulset: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
 			return false
 		}
-		return apiequality.Semantic.DeepEqual(oldConfig, new.Spec)
+		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
+			apiequality.Semantic.DeepEqual(oldConfig.Template, new.Spec.Template)
 	}
 	return false
 }
@@ -182,6 +187,18 @@ func serviceEqual(new, old *corev1.Service) (bool, error) {
 func setUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int) {
 	ordinal := int32(upgradeOrdinal)
 	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &ordinal}
+}
+
+func imagePullFailed(pod *corev1.Pod) bool {
+	for i := len(pod.Status.ContainerStatuses) - 1; i >= 0; i-- {
+		container := pod.Status.ContainerStatuses[i]
+		if container.State.Waiting != nil && container.State.Waiting.Reason != "" {
+			if container.State.Waiting.Reason == ErrImagePull || container.State.Waiting.Reason == ImagePullBackOff {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // statefulPodRegex is a regular expression that extracts the parent StatefulSet and ordinal from the Name of a Pod

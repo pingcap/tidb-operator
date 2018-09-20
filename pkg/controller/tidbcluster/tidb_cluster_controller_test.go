@@ -258,7 +258,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	tikvFailover := mm.NewTiKVFailover(pdControl)
 	pdFailover := mm.NewFakePDFailover()
 	pdUpgrader := mm.NewPDUpgrader()
-	tikvUpgrader := mm.NewTiKVUpgrader()
+	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
 	tidbUpgrader := mm.NewTiDBUpgrader()
 	tidbFailover := mm.NewFakeTiDBFailover()
 

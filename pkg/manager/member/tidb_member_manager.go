@@ -140,18 +140,16 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	}
 
 	if tmm.autoFailover {
-		if needRecover(tc) {
+		if tc.TiDBAllPodsStarted() && tc.TiDBAllMembersReady() && tc.Status.TiDB.FailureMembers != nil {
 			tmm.tidbFailover.Recover(tc)
-		}
-
-		if needFailover(tc) {
+		} else if tc.TiDBAllPodsStarted() && !tc.TiDBAllMembersReady() {
 			if err := tmm.tidbFailover.Failover(tc); err != nil {
 				return err
 			}
 		}
 	}
 
-	if !statefulSetEqual(*oldTiDBSet, *newTiDBSet) {
+	if !statefulSetEqual(*newTiDBSet, *oldTiDBSet) {
 		set := *oldTiDBSet
 		set.Spec.Template = newTiDBSet.Spec.Template
 		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
@@ -258,7 +256,6 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 	}
 
 	tidbLabel := label.New().Cluster(tcName).TiDB()
-
 	tidbSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            controller.TiDBMemberName(tcName),
@@ -267,7 +264,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: func() *int32 { r := tc.Spec.TiDB.Replicas; return &r }(),
+			Replicas: func() *int32 { r := tc.TiDBRealReplicas(); return &r }(),
 			Selector: tidbLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{

@@ -256,11 +256,9 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	}
 
 	if pmm.autoFailover {
-		if allPDMembersAreReady(tc) {
-			if tc.Status.PD.FailureMembers != nil {
-				pmm.pdFailover.Recover(tc)
-			}
-		} else if tc.Spec.PD.Replicas == tc.Status.PD.StatefulSet.Replicas {
+		if tc.PDAllPodsStarted() && tc.PDAllMembersReady() && tc.Status.PD.FailureMembers != nil {
+			pmm.pdFailover.Recover(tc)
+		} else if tc.PDAllPodsStarted() && !tc.PDAllMembersReady() || tc.PDAutoFailovering() {
 			if err := pmm.pdFailover.Failover(tc); err != nil {
 				return err
 			}
@@ -445,6 +443,12 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 	if storageClassName == "" {
 		storageClassName = controller.DefaultStorageClassName
 	}
+	failureReplicas := 0
+	for _, failureMember := range tc.Status.PD.FailureMembers {
+		if failureMember.MemberDeleted {
+			failureReplicas++
+		}
+	}
 
 	pdSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -454,7 +458,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: func() *int32 { r := tc.Spec.PD.Replicas; return &r }(),
+			Replicas: func() *int32 { r := tc.Spec.PD.Replicas + int32(failureReplicas); return &r }(),
 			Selector: pdLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
