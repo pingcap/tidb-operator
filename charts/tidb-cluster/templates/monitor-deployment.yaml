@@ -59,11 +59,11 @@ spec:
         - name: prometheus
           containerPort: 9090
           protocol: TCP
+        # `TZ` is unused in Prometheus Docker image, we set it here just to keep consistency
+        env:
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
         volumeMounts:
-          {{- if .Values.localtime }}
-          - name: timezone
-            mountPath: /etc/localtime
-          {{- end }}
           - name: prometheus-config
             mountPath: /etc/prometheus
             readOnly: true
@@ -92,20 +92,12 @@ spec:
             secretKeyRef:
               name: {{ .Values.clusterName }}-monitor
               key: password
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
         volumeMounts:
-          {{- if .Values.localtime }}
-          - name: timezone
-            readOnly: true
-            mountPath: /etc/localtime
-          {{- end }}
           - name: grafana-data
             mountPath: /data
       volumes:
-      {{- if .Values.localtime }}
-      - name: timezone
-        hostPath:
-          path: /etc/localtime
-      {{- end }}
       - name: prometheus-data
         emptyDir: {}
       - name: grafana-data
