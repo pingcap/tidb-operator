@@ -71,22 +71,15 @@ type defaultTidbClusterControl struct {
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
 func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) error {
 	// perform the main update function and get the status
-
 	oldStatus := tc.Status.DeepCopy()
-	oldPDReplicas := tc.Spec.PD.Replicas
-	oldTiKVReplicas := tc.Spec.TiKV.Replicas
-	oldTiDBReplicas := tc.Spec.TiDB.Replicas
-
 	var errs []error
+
 	err := tcc.updateTidbCluster(tc)
 	if err != nil {
 		errs = append(errs, err)
 	}
 
-	replicasChanged := tc.Spec.PD.Replicas != oldPDReplicas ||
-		tc.Spec.TiKV.Replicas != oldTiKVReplicas ||
-		tc.Spec.TiDB.Replicas != oldTiDBReplicas
-	if !apiequality.Semantic.DeepEqual(&tc.Status, oldStatus) || replicasChanged {
+	if !apiequality.Semantic.DeepEqual(&tc.Status, oldStatus) {
 		_, err := tcc.tcControl.UpdateTidbCluster(tc.DeepCopy())
 		if err != nil {
 			errs = append(errs, err)
