@@ -43,7 +43,7 @@ func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster) map[string]bo
 	ns := tc.GetNamespace()
 
 	result := map[string]bool{}
-	for i := 0; i < int(tc.Spec.TiDB.Replicas); i++ {
+	for i := 0; i < int(tc.TiDBRealReplicas()); i++ {
 		hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), i)
 		url := fmt.Sprintf("http://%s.%s-tidb-peer.%s:10080/status", hostName, tcName, ns)
 		_, err := tdc.getBodyOK(url)
@@ -89,6 +89,6 @@ func (ftd *FakeTiDBControl) SetHealth(healthInfo map[string]bool) {
 	ftd.healthInfo = healthInfo
 }
 
-func (ftd *FakeTiDBControl) GetHealth(tc *v1alpha1.TidbCluster) map[string]bool {
+func (ftd *FakeTiDBControl) GetHealth(_ *v1alpha1.TidbCluster) map[string]bool {
 	return ftd.healthInfo
 }

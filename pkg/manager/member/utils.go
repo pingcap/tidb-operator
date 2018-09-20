@@ -132,7 +132,8 @@ func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 			glog.Errorf("unmarshal Statefulset: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
 			return false
 		}
-		return apiequality.Semantic.DeepEqual(oldConfig, new.Spec)
+		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
+			apiequality.Semantic.DeepEqual(oldConfig.Template, new.Spec.Template)
 	}
 	return false
 }
