@@ -186,8 +186,8 @@ fullbackup:
   # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
   storageClassName: local-storage
   storage: 1000Gi
-  # full backup copies, default: 3
-  backupCopies: 3
+  # full backup history retention count, default: 3
+  retentionCount: 3
   # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#schedule
   schedule: "0 0 * * *"
   # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#suspend
@@ -197,10 +197,8 @@ fullbackup:
   failedJobsHistoryLimit: 1
   # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#starting-deadline
   startingDeadlineSeconds: 3600
-  # mydumper binary path
-  mydumperBin: /mydumper
   # https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
-  options: --rows=10000
+  options: "--rows=10000"
   # user must set tidb cluster user and password
   user: root
   password:

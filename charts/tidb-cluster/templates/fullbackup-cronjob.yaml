@@ -43,15 +43,15 @@ spec:
               mkdir -p /data/${dirname}/
               cp /savepoint-dir/savepoint /data/${dirname}/
 
-              {{ .Values.fullbackup.mydumperBin }} \
-                 --outputdir=/data/${dirname} \
-                 --host=`eval echo '${'$host'}'` \
-                 --port=4000 \
-                 --user={{ .Values.fullbackup.user }} \
-                 --password={{ .Values.fullbackup.password }} \
-                 {{ .Values.fullbackup.options }}
+              /mydumper \
+                --outputdir=/data/${dirname} \
+                --host=`eval echo '${'$host'}'` \
+                --port=4000 \
+                --user={{ .Values.fullbackup.user }} \
+                --password={{ .Values.fullbackup.password }} \
+                {{ .Values.fullbackup.options }}
 
-              cd /data; ls -t | sed '1,{{ .Values.fullbackup.backupCopies }}d' | xargs -i -n1 rm -r {}
+              cd /data; ls -t | sed '1,{{ .Values.fullbackup.retentionCount }}d' | xargs -i -n1 rm -r {}
             volumeMounts:
             - name: savepoint-dir
               mountPath: "/savepoint-dir"
