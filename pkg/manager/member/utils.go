@@ -137,7 +137,8 @@ func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 			return false
 		}
 		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
-			apiequality.Semantic.DeepEqual(oldConfig.Template, new.Spec.Template)
+			apiequality.Semantic.DeepEqual(oldConfig.Template, new.Spec.Template) &&
+			apiequality.Semantic.DeepEqual(oldConfig.UpdateStrategy, new.Spec.UpdateStrategy)
 	}
 	return false
 }

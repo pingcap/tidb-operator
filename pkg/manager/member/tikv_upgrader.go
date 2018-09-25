@@ -152,24 +152,29 @@ func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.T
 }
 
 func (tku *tikvUpgrader) findUpgradePod(tc *v1alpha1.TidbCluster) (*corev1.Pod, error) {
-	selector, err := label.New().Cluster(tc.GetName()).TiKV().Selector()
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	selector, err := label.New().Cluster(tcName).TiKV().Selector()
 	if err != nil {
 		return nil, err
 	}
-	pdPods, err := tku.podLister.Pods(tc.GetNamespace()).List(selector)
+	pdPods, err := tku.podLister.Pods(ns).List(selector)
 	if err != nil {
 		return nil, err
 	}
 	sort.Sort(descendingOrdinal(pdPods))
+
 	for _, pod := range pdPods {
+		podName := pod.GetName()
 		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
-			return nil, fmt.Errorf("Tidbcluster: [%s/%s]'s pod[%s] have not label: %s", tc.GetNamespace(), tc.GetName(), pod.GetName(), apps.ControllerRevisionHashLabelKey)
+			return nil, fmt.Errorf("Tidbcluster: [%s/%s]'s pod[%s] have not label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
 		}
-		storeID, exist := pod.Labels[label.StoreIDLabelKey]
-		if !exist {
-			return nil, fmt.Errorf("Tidbcluster: [%s/%s]'s pod[%s] have not label: %s", tc.GetNamespace(), tc.GetName(), pod.GetName(), label.StoreIDLabelKey)
+		storeID := tku.getStoreID(tc, podName)
+		if storeID == "" {
+			return nil, fmt.Errorf("Tidbcluster: [%s/%s]'s pod[%s] have not label: %s", ns, tcName, podName, label.StoreIDLabelKey)
 		}
+
 		if revisionHash == tc.Status.TiKV.StatefulSet.UpdateRevision {
 			if store, exist := tc.Status.TiKV.Stores[storeID]; exist {
 				if store.State == metapb.StoreState_name[int32(metapb.StoreState_Up)] {
@@ -185,25 +190,40 @@ func (tku *tikvUpgrader) findUpgradePod(tc *v1alpha1.TidbCluster) (*corev1.Pod, 
 }
 
 func (tku *tikvUpgrader) needForce(tc *v1alpha1.TidbCluster) (bool, error) {
-	selector, err := label.New().Cluster(tc.GetName()).TiKV().Selector()
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	selector, err := label.New().Cluster(ns).TiKV().Selector()
 	if err != nil {
 		return false, err
 	}
-	pdPods, err := tku.podLister.Pods(tc.GetNamespace()).List(selector)
+	pdPods, err := tku.podLister.Pods(ns).List(selector)
 	if err != nil {
 		return false, err
 	}
 	for _, pod := range pdPods {
 		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
-			return false, fmt.Errorf("Tidbcluster: [%s/%s]'s pod:[%s] have not label: %s", tc.GetNamespace(), tc.GetName(), pod.GetName(), apps.ControllerRevisionHashLabelKey)
+			return false, fmt.Errorf("Tidbcluster: [%s/%s]'s pod:[%s] have not label: %s", ns, tcName, pod.GetName(), apps.ControllerRevisionHashLabelKey)
 		}
 		if revisionHash == tc.Status.TiKV.StatefulSet.CurrentRevision {
 			return imagePullFailed(pod), nil
 		}
 	}
 	return false, nil
+}
 
+func (tku *tikvUpgrader) getStoreID(tc *v1alpha1.TidbCluster, podName string) string {
+	for storeID, store := range tc.Status.TiKV.Stores {
+		if store.PodName == podName {
+			return storeID
+		}
+	}
+	for storeID, store := range tc.Status.TiKV.TombstoneStores {
+		if store.PodName == podName {
+			return storeID
+		}
+	}
+	return ""
 }
 
 type fakeTiKVUpgrader struct{}
