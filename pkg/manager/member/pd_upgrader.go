@@ -41,20 +41,27 @@ func NewPDUpgrader(pdControl controller.PDControlInterface,
 }
 
 func (pu *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	force, err := pu.needForceUpgrade(tc)
+	if err != nil {
+		return err
+	}
+	if force {
+		return pu.forceUpgrade(tc, oldSet, newSet)
+	}
+
+	return pu.gracefulUpgrade(tc, oldSet, newSet)
+}
+
+func (pu *pdUpgrader) forceUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	tc.Status.PD.Phase = v1alpha1.UpgradePhase
+	setUpgradePartition(newSet, 0)
+	return nil
+}
+
+func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-
 	if !tc.Status.PD.SyncSuccess {
-		force, err := pu.needForce(tc)
-		if err != nil {
-			return err
-		}
-		if force {
-			tc.Status.PD.Phase = v1alpha1.UpgradePhase
-			setUpgradePartition(newSet, 0)
-			return nil
-		}
-
 		return fmt.Errorf("tidbcluster: [%s/%s]'s pd status sync failed,can not to be upgraded", ns, tcName)
 	}
 
@@ -92,16 +99,20 @@ func (pu *pdUpgrader) getUpgradeOrdinal(tc *v1alpha1.TidbCluster) (int32, error)
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if tc.Status.PD.StatefulSet.UpdatedReplicas+tc.Status.PD.StatefulSet.CurrentReplicas != tc.Status.PD.StatefulSet.Replicas ||
-		tc.Status.PD.StatefulSet.Replicas != tc.Status.PD.StatefulSet.ReadyReplicas ||
-		!tc.PDAllMembersReady() {
-		return -1, controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd members are not all ready", ns, tcName)
+	if tc.Status.PD.StatefulSet.UpdatedReplicas+tc.Status.PD.StatefulSet.CurrentReplicas != tc.Status.PD.StatefulSet.Replicas {
+		return -1, controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd is not ", ns, tcName)
+	}
+
+	for i := tc.Status.PD.StatefulSet.Replicas; i > tc.Status.PD.StatefulSet.CurrentReplicas; i-- {
+		if member, exist := tc.Status.PD.Members[pdPodName(tc, i-1)]; !exist || !member.Health {
+			return -1, controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded pods are not all ready", ns, tcName)
+		}
 	}
 
 	return tc.Status.PD.StatefulSet.CurrentReplicas - 1, nil
 }
 
-func (pu *pdUpgrader) needForce(tc *v1alpha1.TidbCluster) (bool, error) {
+func (pu *pdUpgrader) needForceUpgrade(tc *v1alpha1.TidbCluster) (bool, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	selector, err := label.New().Cluster(tcName).PD().Selector()
@@ -113,14 +124,21 @@ func (pu *pdUpgrader) needForce(tc *v1alpha1.TidbCluster) (bool, error) {
 		return false, err
 	}
 
+	imagePullFailedCount := 0
 	for _, pod := range pdPods {
 		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
 			return false, fmt.Errorf("tidbcluster: [%s/%s]'s pod:[%s] doesn't have label: %s", ns, tcName, pod.GetName(), apps.ControllerRevisionHashLabelKey)
 		}
 		if revisionHash == tc.Status.PD.StatefulSet.CurrentRevision {
-			return imagePullFailed(pod), nil
+			if imagePullFailed(pod) {
+				imagePullFailedCount++
+			}
 		}
+	}
+
+	if imagePullFailedCount >= int(tc.Status.PD.StatefulSet.Replicas)/2+1 {
+		return true, nil
 	}
 	return false, nil
 }

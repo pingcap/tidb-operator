@@ -3,7 +3,7 @@ rbac:
   create: true
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:latest
+operatorImage: 127.0.0.1:5000/pingcap/tidb-operator:latest
 imagePullPolicy: IfNotPresent
 
 defaultStorageClassName: local-storage

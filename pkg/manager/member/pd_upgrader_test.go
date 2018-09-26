@@ -106,7 +106,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			changePods:        nil,
 			transferLeaderErr: false,
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err.Error()).To(Equal("tidbcluster: [default/upgrader]'s pd members are not all ready"))
+				g.Expect(err.Error()).To(Equal("tidbcluster: [default/upgrader]'s upgraded pods are not all ready"))
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
@@ -145,7 +145,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: "pd sync status failed and need to force upgrade",
+			name: "force upgrade",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.SyncSuccess = false
 			},
