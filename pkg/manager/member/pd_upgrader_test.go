@@ -37,7 +37,6 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		name              string
 		changeFn          func(*v1alpha1.TidbCluster)
 		changePods        func(pods []*corev1.Pod)
-		findUpgradePodErr bool
 		transferLeaderErr bool
 		errExpectFn       func(*GomegaWithT, error)
 		expectFn          func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet)
@@ -107,7 +106,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			changePods:        nil,
 			transferLeaderErr: false,
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(err.Error()).To(Equal("tidbcluster: [default/upgrader]'s pd members are not all ready"))
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
@@ -237,6 +236,10 @@ func newStatefulSetForPDUpgrader() *apps.StatefulSet {
 		Status: apps.StatefulSetStatus{
 			CurrentRevision: "1",
 			UpdateRevision:  "2",
+			ReadyReplicas:   3,
+			Replicas:        3,
+			CurrentReplicas: 2,
+			UpdatedReplicas: 1,
 		},
 	}
 }
@@ -270,6 +273,10 @@ func newTidbClusterForPDUpgrader() *v1alpha1.TidbCluster {
 				StatefulSet: &apps.StatefulSetStatus{
 					CurrentRevision: "1",
 					UpdateRevision:  "2",
+					ReadyReplicas:   3,
+					Replicas:        3,
+					CurrentReplicas: 2,
+					UpdatedReplicas: 1,
 				},
 				Members: map[string]v1alpha1.PDMember{
 					podName0: {Name: podName0, Health: true},

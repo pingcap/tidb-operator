@@ -15,21 +15,12 @@ package member
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1beta1"
-	corev1 "k8s.io/api/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-)
-
-const (
-	// ImagePullBackOff is the pod state of image pull failed
-	ImagePullBackOff = "ImagePullBackOff"
-	// ErrImagePull is the pod state of image pull failed
-	ErrImagePull = "ErrImagePull"
 )
 
 type pdUpgrader struct {
@@ -68,25 +59,23 @@ func (pu *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 	}
 
 	tc.Status.PD.Phase = v1alpha1.UpgradePhase
-	setUpgradePartition(newSet, int(*oldSet.Spec.UpdateStrategy.RollingUpdate.Partition))
+	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 
-	upgradePod, err := pu.findUpgradePod(tc)
-	if upgradePod == nil || err != nil {
-		return err
+	if tc.Status.PD.StatefulSet.CurrentReplicas == 0 {
+		return nil
 	}
 
-	ordinal, err := getOrdinal(upgradePod)
+	ordinal, err := pu.getUpgradeOrdinal(tc)
 	if err != nil {
 		return err
 	}
-	if tc.Status.PD.Leader.Name == upgradePod.GetName() {
+	upgradePodName := pdPodName(tc, ordinal)
+	if tc.Status.PD.Leader.Name == upgradePodName {
 		var targetName string
-		maxName := fmt.Sprintf("%s-%d", controller.PDMemberName(tcName), int(*newSet.Spec.Replicas)-1)
-		minName := fmt.Sprintf("%s-%d", controller.PDMemberName(tcName), 0)
-		if ordinal == int(*newSet.Spec.Replicas)-1 {
-			targetName = minName
+		if ordinal == *newSet.Spec.Replicas-1 {
+			targetName = pdPodName(tc, 0)
 		} else {
-			targetName = maxName
+			targetName = pdPodName(tc, *newSet.Spec.Replicas-1)
 		}
 		err := pu.transferPDLeaderTo(tc, targetName)
 		if err != nil {
@@ -95,38 +84,21 @@ func (pu *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 	} else {
 		setUpgradePartition(newSet, ordinal)
 	}
+
 	return nil
 }
 
-func (pu *pdUpgrader) findUpgradePod(tc *v1alpha1.TidbCluster) (*corev1.Pod, error) {
+func (pu *pdUpgrader) getUpgradeOrdinal(tc *v1alpha1.TidbCluster) (int32, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	selector, err := label.New().Cluster(tcName).PD().Selector()
-	if err != nil {
-		return nil, err
+
+	if tc.Status.PD.StatefulSet.UpdatedReplicas+tc.Status.PD.StatefulSet.CurrentReplicas != tc.Status.PD.StatefulSet.Replicas ||
+		tc.Status.PD.StatefulSet.Replicas != tc.Status.PD.StatefulSet.ReadyReplicas ||
+		!tc.PDAllMembersReady() {
+		return -1, controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd members are not all ready", ns, tcName)
 	}
-	pdPods, err := pu.podLister.Pods(ns).List(selector)
-	if err != nil {
-		return nil, err
-	}
-	sort.Sort(descendingOrdinal(pdPods))
-	for _, pod := range pdPods {
-		podName := pod.GetName()
-		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
-		if !exist {
-			return nil, fmt.Errorf("tidbcluster: [%s/%s]'s pod[%s] doesn't have label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
-		}
-		if revisionHash == tc.Status.PD.StatefulSet.UpdateRevision {
-			member, exist := tc.Status.PD.Members[podName]
-			if !exist || !member.Health {
-				return nil, controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member[%s] is not health", ns, tcName, podName)
-			}
-			continue
-		} else {
-			return pod, nil
-		}
-	}
-	return nil, nil
+
+	return tc.Status.PD.StatefulSet.CurrentReplicas - 1, nil
 }
 
 func (pu *pdUpgrader) needForce(tc *v1alpha1.TidbCluster) (bool, error) {
