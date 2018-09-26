@@ -99,23 +99,27 @@ func (pu *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 }
 
 func (pu *pdUpgrader) findUpgradePod(tc *v1alpha1.TidbCluster) (*corev1.Pod, error) {
-	selector, err := label.New().Cluster(tc.GetName()).PD().Selector()
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	selector, err := label.New().Cluster(tcName).PD().Selector()
 	if err != nil {
 		return nil, err
 	}
-	pdPods, err := pu.podLister.Pods(tc.GetNamespace()).List(selector)
+	pdPods, err := pu.podLister.Pods(ns).List(selector)
 	if err != nil {
 		return nil, err
 	}
 	sort.Sort(descendingOrdinal(pdPods))
 	for _, pod := range pdPods {
+		podName := pod.GetName()
 		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
-			return nil, fmt.Errorf("tidbcluster: [%s/%s]'s pod[%s] have not label: %s", tc.GetNamespace(), tc.GetName(), pod.GetName(), apps.ControllerRevisionHashLabelKey)
+			return nil, fmt.Errorf("tidbcluster: [%s/%s]'s pod[%s] doesn't have label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
 		}
 		if revisionHash == tc.Status.PD.StatefulSet.UpdateRevision {
-			if !tc.Status.PD.Members[pod.GetName()].Health {
-				return nil, nil
+			member, exist := tc.Status.PD.Members[podName]
+			if !exist || !member.Health {
+				return nil, controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member[%s] is not health", ns, tcName, podName)
 			}
 			continue
 		} else {
@@ -126,11 +130,13 @@ func (pu *pdUpgrader) findUpgradePod(tc *v1alpha1.TidbCluster) (*corev1.Pod, err
 }
 
 func (pu *pdUpgrader) needForce(tc *v1alpha1.TidbCluster) (bool, error) {
-	selector, err := label.New().Cluster(tc.GetName()).PD().Selector()
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	selector, err := label.New().Cluster(tcName).PD().Selector()
 	if err != nil {
 		return false, err
 	}
-	pdPods, err := pu.podLister.Pods(tc.GetNamespace()).List(selector)
+	pdPods, err := pu.podLister.Pods(ns).List(selector)
 	if err != nil {
 		return false, err
 	}
@@ -138,7 +144,7 @@ func (pu *pdUpgrader) needForce(tc *v1alpha1.TidbCluster) (bool, error) {
 	for _, pod := range pdPods {
 		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
-			return false, fmt.Errorf("tidbcluster: [%s/%s]'s pod:[%s] have not label: %s", tc.GetNamespace(), tc.GetName(), pod.GetName(), apps.ControllerRevisionHashLabelKey)
+			return false, fmt.Errorf("tidbcluster: [%s/%s]'s pod:[%s] doesn't have label: %s", ns, tcName, pod.GetName(), apps.ControllerRevisionHashLabelKey)
 		}
 		if revisionHash == tc.Status.PD.StatefulSet.CurrentRevision {
 			return imagePullFailed(pod), nil
@@ -150,12 +156,6 @@ func (pu *pdUpgrader) needForce(tc *v1alpha1.TidbCluster) (bool, error) {
 func (pu *pdUpgrader) transferPDLeaderTo(tc *v1alpha1.TidbCluster, targetName string) error {
 	return pu.pdControl.GetPDClient(tc).TransferPDLeader(targetName)
 }
-
-/*
-func (pu *pdUpgrader) setUpgradePartition(newSet *apps.StatefulSet, upgradeOrdinal int) {
-	ordinal := int32(upgradeOrdinal)
-	newSet.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &ordinal}
-}*/
 
 type fakePDUpgrader struct{}
 
