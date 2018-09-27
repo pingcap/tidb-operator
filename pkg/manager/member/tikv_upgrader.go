@@ -15,7 +15,6 @@ package member
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
 	"time"
 
@@ -23,7 +22,6 @@ import (
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -68,67 +66,71 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-	setUpgradePartition(newSet, int(*oldSet.Spec.UpdateStrategy.RollingUpdate.Partition))
+	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 
-	upgradePod, err := tku.findUpgradePod(tc)
-	if upgradePod == nil || err != nil {
-		return err
+	if tc.Status.TiKV.StatefulSet.CurrentReplicas == 0 {
+		return nil
 	}
 
-	storeIDStr, exist := upgradePod.Labels[label.StoreIDLabelKey]
-	if !exist {
-		return fmt.Errorf("Tidbcluster: [%s/%s]'s tikv Pod:[%s] does not contain storeID", ns, tcName, upgradePod.GetName())
-	}
-	upgradeOrdinal, err := getOrdinal(upgradePod)
+	upgradeOrdinal, err := tku.getUpgradeOrdinal(tc)
 	if err != nil {
 		return err
 	}
 
-	if _, exist := tc.Status.TiKV.TombstoneStores[storeIDStr]; exist {
-		setUpgradePartition(newSet, upgradeOrdinal)
-		return nil
+	upgradePodName := tikvPodName(tc, upgradeOrdinal)
+	upgradePod, err := tku.podLister.Pods(ns).Get(upgradePodName)
+	if err != nil {
+		return err
 	}
 
-	if store, exist := tc.Status.TiKV.Stores[storeIDStr]; exist {
-		storeID, err := strconv.ParseUint(storeIDStr, 10, 64)
-		if err != nil {
-			return err
+	for _, store := range tc.Status.TiKV.TombstoneStores {
+		if store.PodName == upgradePodName {
+			setUpgradePartition(newSet, upgradeOrdinal)
+			return nil
 		}
-		_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
+	}
 
-		if tku.readyToUpgrade(upgradePod, store) {
-			err = tku.pdControl.GetPDClient(tc).EndEvictLeader(storeID)
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.PodName == upgradePodName {
+			storeID, err := strconv.ParseUint(store.ID, 10, 64)
 			if err != nil {
 				return err
 			}
-			if evicting {
-				delete(upgradePod.Annotations, EvictLeaderBeginTime)
+			_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
+
+			if tku.readyToUpgrade(upgradePod, store) {
+				err = tku.pdControl.GetPDClient(tc).EndEvictLeader(storeID)
+				if err != nil {
+					return err
+				}
+				if evicting {
+					delete(upgradePod.Annotations, EvictLeaderBeginTime)
+					_, err = tku.podControl.UpdatePod(tc, upgradePod)
+					if err != nil {
+						return err
+					}
+				}
+				setUpgradePartition(newSet, upgradeOrdinal)
+				return nil
+			}
+
+			if !evicting {
+				err = tku.pdControl.GetPDClient(tc).BeginEvictLeader(storeID)
+				if err != nil {
+					return err
+				}
+				// updete upgradePod
+				if upgradePod.Annotations == nil {
+					upgradePod.Annotations = map[string]string{}
+				}
+				upgradePod.Annotations[EvictLeaderBeginTime] = time.Now().Format(time.RFC3339)
 				_, err = tku.podControl.UpdatePod(tc, upgradePod)
 				if err != nil {
 					return err
 				}
+				return nil
 			}
-			setUpgradePartition(newSet, upgradeOrdinal)
-			return nil
 		}
-
-		if !evicting {
-			err = tku.pdControl.GetPDClient(tc).BeginEvictLeader(storeID)
-			if err != nil {
-				return err
-			}
-			// updete upgradePod
-			if upgradePod.Annotations == nil {
-				upgradePod.Annotations = map[string]string{}
-			}
-			upgradePod.Annotations[EvictLeaderBeginTime] = time.Now().Format(time.RFC3339)
-			_, err = tku.podControl.UpdatePod(tc, upgradePod)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-
 	}
 
 	return nil
@@ -151,79 +153,35 @@ func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.T
 	return false
 }
 
-func (tku *tikvUpgrader) findUpgradePod(tc *v1alpha1.TidbCluster) (*corev1.Pod, error) {
+func (tku *tikvUpgrader) getUpgradeOrdinal(tc *v1alpha1.TidbCluster) (int32, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	selector, err := label.New().Cluster(tcName).TiKV().Selector()
-	if err != nil {
-		return nil, err
-	}
-	pdPods, err := tku.podLister.Pods(ns).List(selector)
-	if err != nil {
-		return nil, err
-	}
-	sort.Sort(descendingOrdinal(pdPods))
 
-	for _, pod := range pdPods {
-		podName := pod.GetName()
-		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
-		if !exist {
-			return nil, fmt.Errorf("Tidbcluster: [%s/%s]'s pod[%s] have not label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
-		}
-		storeID := tku.getStoreID(tc, podName)
-		if storeID == "" {
-			return nil, fmt.Errorf("Tidbcluster: [%s/%s]'s pod[%s] have not label: %s", ns, tcName, podName, label.StoreIDLabelKey)
-		}
-
-		if revisionHash == tc.Status.TiKV.StatefulSet.UpdateRevision {
-			if store, exist := tc.Status.TiKV.Stores[storeID]; exist {
-				if store.State == metapb.StoreState_name[int32(metapb.StoreState_Up)] {
-					continue
-				}
-				return nil, nil
-			}
-		} else {
-			return pod, nil
+	if tc.Status.TiKV.StatefulSet.UpdatedReplicas+tc.Status.TiKV.StatefulSet.CurrentReplicas != tc.Status.TiKV.StatefulSet.Replicas {
+		return -1, controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pods are not all created", ns, tcName)
+	}
+	for i := tc.Status.TiKV.StatefulSet.Replicas; i > tc.Status.TiKV.StatefulSet.CurrentReplicas; i-- {
+		store := tku.getStoreByOrdinal(tc, i-1)
+		if store == nil || store.State != metapb.StoreState_name[int32(metapb.StoreState_Up)] {
+			return -1, controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pods are not all ready", ns, tcName)
 		}
 	}
-	return nil, nil
+	return tc.Status.TiKV.StatefulSet.CurrentReplicas - 1, nil
 }
 
-func (tku *tikvUpgrader) needForce(tc *v1alpha1.TidbCluster) (bool, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	selector, err := label.New().Cluster(ns).TiKV().Selector()
-	if err != nil {
-		return false, err
-	}
-	pdPods, err := tku.podLister.Pods(ns).List(selector)
-	if err != nil {
-		return false, err
-	}
-	for _, pod := range pdPods {
-		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
-		if !exist {
-			return false, fmt.Errorf("Tidbcluster: [%s/%s]'s pod:[%s] have not label: %s", ns, tcName, pod.GetName(), apps.ControllerRevisionHashLabelKey)
-		}
-		if revisionHash == tc.Status.TiKV.StatefulSet.CurrentRevision {
-			return imagePullFailed(pod), nil
-		}
-	}
-	return false, nil
-}
-
-func (tku *tikvUpgrader) getStoreID(tc *v1alpha1.TidbCluster, podName string) string {
-	for storeID, store := range tc.Status.TiKV.Stores {
+func (tku *tikvUpgrader) getStoreByOrdinal(tc *v1alpha1.TidbCluster, ordinal int32) *v1alpha1.TiKVStore {
+	podName := tikvPodName(tc, ordinal)
+	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
-			return storeID
+			return &store
 		}
 	}
-	for storeID, store := range tc.Status.TiKV.TombstoneStores {
+	for _, store := range tc.Status.TiKV.TombstoneStores {
 		if store.PodName == podName {
-			return storeID
+			return &store
 		}
 	}
-	return ""
+	return nil
 }
 
 type fakeTiKVUpgrader struct{}

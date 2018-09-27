@@ -32,7 +32,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
-func TestTiKVUpgrader_Upgrade(t *testing.T) {
+func TestTiKVUpgraderUpgrade(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcase struct {
@@ -145,6 +145,8 @@ func TestTiKVUpgrader_Upgrade(t *testing.T) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
+				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 				// set leader to 0
 				store := tc.Status.TiKV.Stores["2"]
 				store.LeaderCount = 0
@@ -172,7 +174,7 @@ func TestTiKVUpgrader_Upgrade(t *testing.T) {
 			},
 		},
 		{
-			name: "pd is upgrading and tikv can not upgrade ",
+			name: "tikv can not upgrade when pd is upgrading",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
@@ -221,6 +223,8 @@ func TestTiKVUpgrader_Upgrade(t *testing.T) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
+				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				SetLastAppliedConfigAnnotation(oldSet)
@@ -247,6 +251,8 @@ func TestTiKVUpgrader_Upgrade(t *testing.T) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
+				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				SetLastAppliedConfigAnnotation(oldSet)
@@ -278,6 +284,8 @@ func TestTiKVUpgrader_Upgrade(t *testing.T) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
+				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				SetLastAppliedConfigAnnotation(oldSet)
@@ -304,6 +312,8 @@ func TestTiKVUpgrader_Upgrade(t *testing.T) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
+				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				SetLastAppliedConfigAnnotation(oldSet)
@@ -336,6 +346,8 @@ func TestTiKVUpgrader_Upgrade(t *testing.T) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
+				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 				// set leader to 0
 				store := tc.Status.TiKV.Stores["2"]
 				store.LeaderCount = 0
@@ -372,6 +384,8 @@ func TestTiKVUpgrader_Upgrade(t *testing.T) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
+				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 				// set leader to 0
 				store := tc.Status.TiKV.Stores["2"]
 				tc.Status.TiKV.Stores["2"] = store
@@ -399,6 +413,8 @@ func TestTiKVUpgrader_Upgrade(t *testing.T) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
+				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 				// set leader to 0
 				store := tc.Status.TiKV.Stores["2"]
 				store.LeaderCount = 0
@@ -540,6 +556,8 @@ func newTidbClusterForTiKVUpgrader() *v1alpha1.TidbCluster {
 				Phase:       v1alpha1.UpgradePhase,
 				StatefulSet: &apps.StatefulSetStatus{
 					Replicas:        3,
+					CurrentReplicas: 3,
+					UpdatedReplicas: 0,
 					CurrentRevision: "1",
 					UpdateRevision:  "2",
 				},
