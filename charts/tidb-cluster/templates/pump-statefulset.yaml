@@ -1,0 +1,63 @@
+{{- if .Values.pump.create }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.clusterName }}-pump
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: pump
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+      app.kubernetes.io/instance: {{ .Values.clusterName }}
+      app.kubernetes.io/component: pump
+  serviceName: {{ .Values.clusterName }}-pump
+  replicas: {{ .Values.pump.replicas }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/component: pump
+    spec:
+      containers:
+      - name: pump
+        image: {{ .Values.pump.image }}
+        imagePullPolicy: {{ .Values.pump.imagePullPolicy }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -euo pipefail
+          /pump \
+          -L={{ .Values.pump.logLevel | default "info" }} \
+          -addr=0.0.0.0:{{ .Values.pump.port | default 8250 }} \
+          -advertise-addr=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-pump:{{ .Values.pump.port | default 8250 }} \
+          -data-dir=/data \
+          -enable-tolerant={{ .Values.pump.enableTolerant | default true }} \
+          -gc={{ .Values.pump.gc | default 7 }} \
+          -heartbeat-interval={{ .Values.pump.heartbeatInterval | default 2 }} \
+          -log-file= \
+          -metrics-addr={{ .Values.pump.metricsAddr }} \
+          -metrics-interval={{ .Values.pump.metricsInterval | default 15 }} \
+          -pd-urls=http://{{ .Values.clusterName }}-pd:2379
+        ports:
+        - containerPort: {{ .Values.pump.port | default 8250 }}
+          name: pump
+        volumeMounts:
+        - name: data
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: {{ .Values.pump.storageClassName }}
+      resources:
+        requests:
+          storage: {{ .Values.pump.storage }}
+{{- end }}

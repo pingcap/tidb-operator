@@ -42,6 +42,10 @@ data:
     --config=/etc/tidb/tidb.toml
     "
 
+{{- if .Values.binlogEnabled }}
+    ARGS="${ARGS} --enable-binlog=true"
+{{- end }}
+
     echo "start tidb-server ..."
     echo "/tidb-server ${ARGS}"
     exec /tidb-server ${ARGS}

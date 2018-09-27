@@ -1,0 +1,103 @@
+{{- if .Values.drainer.create }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.clusterName }}-drainer
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: drainer
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+      app.kubernetes.io/instance: {{ .Values.clusterName }}
+      app.kubernetes.io/component: drainer
+  serviceName: {{ .Values.clusterName }}-drainer
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/component: drainer
+    spec:
+      containers:
+      - name: drainer
+        image: {{ .Values.drainer.image }}
+        imagePullPolicy: {{ .Values.drainer.imagePullPolicy | default "IfNotPresent" }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -euo pipefail
+
+          domain=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-drainer
+
+          elapseTime=0
+          period=1
+          threshold=30
+          while true; do
+              sleep ${period}
+              elapseTime=$(( elapseTime+period ))
+
+              if [[ ${elapseTime} -ge ${threshold} ]]
+              then
+                  echo "waiting for drainer domain ready timeout" >&2
+                  exit 1
+              fi
+
+              if nslookup ${domain} 2>/dev/null
+              then
+                  echo "nslookup domain ${domain} success"
+                  break
+              else
+                  echo "nslookup domain ${domain} failed" >&2
+              fi
+          done
+
+          /drainer \
+          -L={{ .Values.drainer.logLevel | default "info" }} \
+          -addr=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-drainer:{{ .Values.drainer.port | default 8249 }} \
+          -c={{ .Values.drainer.c | default 1 }} \
+          -config=/etc/drainer/drainer.toml \
+          -data-dir=/data \
+          -dest-db-type={{ .Values.drainer.destDBType }} \
+          -detect-interval={{ .Values.drainer.detectInterval | default 10 }} \
+          -disable-detect={{ .Values.drainer.disableDetect | default false }} \
+          -disable-dispatch={{ .Values.drainer.disableDispatch | default false }} \
+          -ignore-schemas="{{ .Values.drainer.ignoreSchemas | default "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql,test" }}" \
+          -initial-commit-ts={{ .Values.drainer.initialCommitTs | default 0 }} \
+          -log-file= \
+          -metrics-addr={{ .Values.drainer.metricsAddr }} \
+          -metrics-interval={{ .Values.drainer.metricsInterval | default 15 }} \
+          -pd-urls=http://{{ .Values.clusterName }}-pd:2379 \
+          -safe-mode={{ .Values.drainer.safeMode | default false }} \
+          -txn-batch={{ .Values.drainer.txnBatch | default 1 }}
+        ports:
+        - containerPort: {{ .Values.drainer.port | default 8249 }}
+          name: drainer
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: config
+          mountPath: /etc/drainer
+      volumes:
+      - name: config
+        configMap:
+          name: {{ .Values.clusterName }}-drainer
+          items:
+          - key: drainer-config
+            path: drainer.toml
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: {{ .Values.drainer.storageClassName }}
+      resources:
+        requests:
+          storage: {{ .Values.drainer.storage }}
+{{- end }}
