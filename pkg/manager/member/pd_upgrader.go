@@ -100,12 +100,12 @@ func (pu *pdUpgrader) getUpgradeOrdinal(tc *v1alpha1.TidbCluster) (int32, error)
 	tcName := tc.GetName()
 
 	if tc.Status.PD.StatefulSet.UpdatedReplicas+tc.Status.PD.StatefulSet.CurrentReplicas != tc.Status.PD.StatefulSet.Replicas {
-		return -1, controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd is not ", ns, tcName)
+		return -1, controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd pods are not all created", ns, tcName)
 	}
 
 	for i := tc.Status.PD.StatefulSet.Replicas; i > tc.Status.PD.StatefulSet.CurrentReplicas; i-- {
 		if member, exist := tc.Status.PD.Members[pdPodName(tc, i-1)]; !exist || !member.Health {
-			return -1, controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded pods are not all ready", ns, tcName)
+			return -1, controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd upgraded pods are not all ready", ns, tcName)
 		}
 	}
 

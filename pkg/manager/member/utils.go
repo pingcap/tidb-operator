@@ -16,8 +16,6 @@ package member
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
-	"strconv"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
@@ -188,35 +186,17 @@ func serviceEqual(new, old *corev1.Service) (bool, error) {
 
 // setUpgradePartition set statefulSet's rolling update partition
 func setUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
-	ordinal := upgradeOrdinal
-	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &ordinal}
+	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &upgradeOrdinal}
 }
 
 func imagePullFailed(pod *corev1.Pod) bool {
-	for i := len(pod.Status.ContainerStatuses) - 1; i >= 0; i-- {
-		container := pod.Status.ContainerStatuses[i]
-		if container.State.Waiting != nil && container.State.Waiting.Reason != "" {
-			if container.State.Waiting.Reason == ImagePullBackOff || container.State.Waiting.Reason == ErrImagePull {
-				return true
-			}
+	for _, container := range pod.Status.ContainerStatuses {
+		if container.State.Waiting != nil && container.State.Waiting.Reason != "" &&
+			(container.State.Waiting.Reason == ImagePullBackOff || container.State.Waiting.Reason == ErrImagePull) {
+			return true
 		}
 	}
 	return false
-}
-
-// statefulPodRegex is a regular expression that extracts the parent StatefulSet and ordinal from the Name of a Pod
-var statefulPodRegex = regexp.MustCompile("(.*)-([0-9]+)$")
-
-func getOrdinal(pod *corev1.Pod) (int, error) {
-	subMatches := statefulPodRegex.FindStringSubmatch(pod.Name)
-	if len(subMatches) < 3 {
-		return -1, fmt.Errorf("the pod name: [%s/%s] does not contain ordinal", pod.GetNamespace(), pod.GetName())
-	}
-	if i, err := strconv.ParseInt(subMatches[2], 10, 32); err == nil {
-		return int(i), nil
-	} else {
-		return -1, err
-	}
 }
 
 func pdPodName(tc *v1alpha1.TidbCluster, ordinal int32) string {
