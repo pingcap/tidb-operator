@@ -50,8 +50,6 @@ spec:
                 --user={{ .Values.fullbackup.user }} \
                 --password={{ .Values.fullbackup.password }} \
                 {{ .Values.fullbackup.options }}
-
-              cd /data; ls -t | sed '1,{{ .Values.fullbackup.retentionCount }}d' | xargs -i -n1 rm -r {}
             volumeMounts:
             - name: savepoint-dir
               mountPath: "/savepoint-dir"

@@ -181,8 +181,6 @@ fullbackup:
   # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
   storageClassName: local-storage
   storage: 1000Gi
-  # full backup history retention count, default: 3
-  retentionCount: 3
   # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#schedule
   schedule: "0 0 * * *"
   # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#suspend
