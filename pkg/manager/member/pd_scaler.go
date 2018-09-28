@@ -51,7 +51,7 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 		return err
 	}
 
-	if !tc.Status.PD.SyncSuccess {
+	if !tc.Status.PD.Synced {
 		resetReplicas(newSet, oldSet)
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed,can't scale out now", ns, tcName)
 	}
@@ -89,7 +89,7 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		return nil
 	}
 
-	if !tc.Status.PD.SyncSuccess {
+	if !tc.Status.PD.Synced {
 		resetReplicas(newSet, oldSet)
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed,can't scale in now", ns, tcName)
 	}

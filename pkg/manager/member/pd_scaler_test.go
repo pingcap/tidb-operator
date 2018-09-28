@@ -79,7 +79,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 			pvcControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
-		tc.Status.PD.SyncSuccess = !test.statusSyncFailed
+		tc.Status.PD.Synced = !test.statusSyncFailed
 
 		err := scaler.ScaleOut(tc, oldSet, newSet)
 		if test.err {
@@ -229,7 +229,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 			pvcControl.SetUpdatePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
-		tc.Status.PD.SyncSuccess = !test.statusSyncFailed
+		tc.Status.PD.Synced = !test.statusSyncFailed
 
 		err := scaler.ScaleIn(tc, oldSet, newSet)
 		if test.err {

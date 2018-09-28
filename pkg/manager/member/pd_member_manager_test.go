@@ -374,7 +374,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(tc.Status.PD.SyncSuccess).To(BeFalse())
+				g.Expect(tc.Status.PD.Synced).To(BeFalse())
 				g.Expect(tc.Status.PD.Members).To(BeNil())
 			},
 		},

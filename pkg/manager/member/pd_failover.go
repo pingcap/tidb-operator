@@ -92,7 +92,7 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if !tc.Status.PD.SyncSuccess {
+	if !tc.Status.PD.Synced {
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed, can't failover", ns, tcName)
 	}
 

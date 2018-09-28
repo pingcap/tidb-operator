@@ -263,12 +263,12 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	pdClient := pmm.pdControl.GetPDClient(tc)
 	healthInfo, err := pdClient.GetHealth()
 	if err != nil {
-		tc.Status.PD.SyncSuccess = false
+		tc.Status.PD.Synced = false
 		return err
 	}
 	leader, err := pdClient.GetPDLeader()
 	if err != nil {
-		tc.Status.PD.SyncSuccess = false
+		tc.Status.PD.Synced = false
 		return err
 	}
 	pdStatus := map[string]v1alpha1.PDMember{}
@@ -304,7 +304,7 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		pdStatus[name] = status
 	}
 
-	tc.Status.PD.SyncSuccess = true
+	tc.Status.PD.Synced = true
 	tc.Status.PD.Members = pdStatus
 	tc.Status.PD.Leader = tc.Status.PD.Members[leader.GetName()]
 

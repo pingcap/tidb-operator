@@ -86,7 +86,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			fakePVCControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
-		tc.Status.PD.SyncSuccess = !test.statusSyncFailed
+		tc.Status.PD.Synced = !test.statusSyncFailed
 
 		err := pdFailover.Failover(tc)
 		test.errExpectFn(g, err)

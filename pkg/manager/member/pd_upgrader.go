@@ -61,7 +61,7 @@ func (pu *pdUpgrader) forceUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statef
 func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	if !tc.Status.PD.SyncSuccess {
+	if !tc.Status.PD.Synced {
 		return fmt.Errorf("tidbcluster: [%s/%s]'s pd status sync failed,can not to be upgraded", ns, tcName)
 	}
 
@@ -95,7 +95,7 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 		if err != nil {
 			return err
 		}
-		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is transfer leader to pd member: [%s]", ns, tcName, upgradePodName, targetName)
+		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is transferring leader to pd member: [%s]", ns, tcName, upgradePodName, targetName)
 	} else {
 		setUpgradePartition(newSet, ordinal)
 	}

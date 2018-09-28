@@ -165,7 +165,7 @@ type ResourceRequirement struct {
 
 // PDStatus is PD status
 type PDStatus struct {
-	SyncSuccess    bool                       `json:"syncSuccess,omitempty"`
+	Synced         bool                       `json:"synced,omitempty"`
 	Phase          MemberPhase                `json:"phase,omitempty"`
 	StatefulSet    *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
 	Members        map[string]PDMember        `json:"members,omitempty"`

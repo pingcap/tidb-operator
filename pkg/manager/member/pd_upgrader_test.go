@@ -85,7 +85,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		{
 			name: "normal upgrade",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.SyncSuccess = true
+				tc.Status.PD.Synced = true
 			},
 			changePods:        nil,
 			transferLeaderErr: false,
@@ -100,7 +100,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		{
 			name: "skip to wait all members health",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.SyncSuccess = true
+				tc.Status.PD.Synced = true
 				tc.Status.PD.Members[getPodName(2)] = v1alpha1.PDMember{Name: getPodName(2), Health: false}
 			},
 			changePods:        nil,
@@ -116,7 +116,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		{
 			name: "transfer leader",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.SyncSuccess = true
+				tc.Status.PD.Synced = true
 				tc.Status.PD.Leader = v1alpha1.PDMember{Name: getPodName(1), Health: true}
 			},
 			changePods:        nil,
@@ -132,7 +132,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		{
 			name: "pd sync failed",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.SyncSuccess = false
+				tc.Status.PD.Synced = false
 			},
 			changePods:        nil,
 			transferLeaderErr: false,
@@ -147,7 +147,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		{
 			name: "force upgrade",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.SyncSuccess = false
+				tc.Status.PD.Synced = false
 			},
 			changePods: func(pods []*corev1.Pod) {
 				pods[1].Status = corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{
@@ -177,7 +177,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		{
 			name: "error when transfer leader",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.SyncSuccess = true
+				tc.Status.PD.Synced = true
 				tc.Status.PD.Leader = v1alpha1.PDMember{Name: getPodName(1), Health: true}
 			},
 			changePods:        nil,
