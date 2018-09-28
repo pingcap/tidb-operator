@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/component: fullbackup
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
-  schedule: "{{ .Values.fullbackup.schedule }}"
+  schedule: {{ .Values.fullbackup.schedule | quote }}
   concurrencyPolicy: Forbid
   suspend: {{ .Values.fullbackup.suspend }}
   startingDeadlineSeconds: {{ .Values.fullbackup.startingDeadlineSeconds }}
