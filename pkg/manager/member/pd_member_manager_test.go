@@ -367,14 +367,14 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			errWhenUpdatePDService:     false,
 			errWhenUpdatePDPeerService: false,
 			errWhenGetPDHealth:         true,
-			err:                        true,
+			err:                        false,
 			expectPDServiceFn:          nil,
 			expectPDPeerServiceFn:      nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				// g.Expect(int(*set.Spec.Replicas)).To(Equal(3))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.PD.Synced).To(BeFalse())
 				g.Expect(tc.Status.PD.Members).To(BeNil())
 			},
 		},

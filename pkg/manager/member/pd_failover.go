@@ -58,9 +58,51 @@ func NewPDFailover(cli versioned.Interface,
 		pvLister}
 }
 
+func (pf *pdFailover) cleanOrphanPods(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	for _, pdMember := range tc.Status.PD.FailureMembers {
+		if !pdMember.MemberDeleted {
+			continue
+		}
+
+		podName := pdMember.PodName
+		ordinal, err := getOrdinalFromPodName(podName)
+		if err != nil {
+			return err
+		}
+		pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), ordinal)
+		_, err = pf.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
+		if errors.IsNotFound(err) {
+			pod, err := pf.podLister.Pods(ns).Get(podName)
+			if err == nil {
+				err = pf.podControl.DeletePod(tc, pod)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+
+	if !tc.Status.PD.Synced {
+		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed, can't failover", ns, tcName)
+	}
+
+	if tc.Status.PD.FailureMembers == nil {
+		tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{}
+	}
+	err := pf.cleanOrphanPods(tc)
+	if err != nil {
+		return err
+	}
 
 	healthCount := 0
 	for _, pdMember := range tc.Status.PD.Members {
@@ -74,9 +116,6 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			ns, tcName, healthCount, tc.PDRealReplicas(), tc.Spec.PD.Replicas, len(tc.Status.PD.FailureMembers))
 	}
 
-	if tc.Status.PD.FailureMembers == nil {
-		tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{}
-	}
 	notDeletedCount := 0
 	for _, pdMember := range tc.Status.PD.FailureMembers {
 		if !pdMember.MemberDeleted {
@@ -117,7 +156,7 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	}
 
 	// invoke deleteMember api to delete a member from the pd cluster
-	err := pf.pdControl.GetPDClient(tc).DeleteMember(failureMember.PodName)
+	err = pf.pdControl.GetPDClient(tc).DeleteMember(failureMember.PodName)
 	if err != nil {
 		return err
 	}
@@ -137,38 +176,32 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	}
 	pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), ordinal)
 	pvc, err := pf.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
-	if errors.IsNotFound(err) {
-		if pod != nil && pod.DeletionTimestamp == nil {
-			err := pf.podControl.DeletePod(tc, pod)
-			if err != nil {
-				return err
-			}
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+
+	if pvc != nil {
+		pv, err := pf.pvLister.Get(pvc.Spec.VolumeName)
+		if errors.IsNotFound(err) {
+			setMemberDeleted(tc, failurePodName)
+			return nil
 		}
-		setMemberDeleted(tc, failurePodName)
-		return nil
+		if err != nil {
+			return err
+		}
+		if string(pv.UID) != string(failureMember.PVUID) {
+			setMemberDeleted(tc, failurePodName)
+			return nil
+		}
 	}
-	if err != nil {
-		return err
-	}
-	pv, err := pf.pvLister.Get(pvc.Spec.VolumeName)
-	if errors.IsNotFound(err) {
-		setMemberDeleted(tc, failurePodName)
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	if string(pv.UID) != string(failureMember.PVUID) {
-		setMemberDeleted(tc, failurePodName)
-		return nil
-	}
+
 	if pod != nil && pod.DeletionTimestamp == nil {
 		err := pf.podControl.DeletePod(tc, pod)
 		if err != nil {
 			return err
 		}
 	}
-	if pvc.DeletionTimestamp == nil {
+	if pvc != nil && pvc.DeletionTimestamp == nil {
 		err = pf.pvcControl.DeletePVC(tc, pvc)
 		if err != nil {
 			return err
