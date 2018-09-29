@@ -180,7 +180,6 @@ pump:
   image: pingcap/tidb-binlog:new
   imagePullPolicy: IfNotPresent
   logLevel: info
-  port: 8250
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -204,7 +203,6 @@ drainer:
   image: pingcap/tidb-binlog:new
   imagePullPolicy: IfNotPresent
   logLevel: info
-  port: 8249
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -212,7 +210,7 @@ drainer:
   storageClassName: local-storage
   storage: 10Gi
   # parallel worker count (default 1)
-  c: 1
+  workerCount: 1
   # the interval time (in seconds) of detect pumps' status (default 10)
   detectInterval: 10
   # disbale detect causality

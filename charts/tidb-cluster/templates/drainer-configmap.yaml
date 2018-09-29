@@ -18,13 +18,13 @@ data:
     # addr = "127.0.0.1:8249"
 
     # the interval time (in seconds) of detect pumps' status
-    detect-interval = 10
+    detect-interval = {{ .Values.drainer.detectInterval | default 10 }}
 
     # drainer meta data directory path
-    data-dir = "data.drainer"
+    data-dir = "/data"
 
     # a comma separated list of PD endpoints
-    pd-urls = "http://127.0.0.1:2379"
+    pd-urls = "http://{{ .Values.clusterName }}-pd:2379"
 
     #[security]
     # Path of file that contains list of trusted SSL CAs for connection with cluster components.
@@ -38,18 +38,18 @@ data:
     [syncer]
 
     # disable sync these schema
-    ignore-schemas = "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql"
+    ignore-schemas = "{{ .Values.drainer.ignoreSchemas | default "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql,test" }}"
 
     # number of binlog events in a transaction batch
-    txn-batch = 1
+    txn-batch = {{ .Values.drainer.txnBatch | default 1 }}
 
     # work count to execute binlogs
-    worker-count = 1
+    worker-count = {{ .Values.drainer.workerCount | default 1 }}
 
-    disable-dispatch = false
+    disable-dispatch = {{ .Values.drainer.disableDispatch | default false }}
 
     # safe mode will split update to delete and insert
-    safe-mode = false
+    safe-mode = {{ .Values.drainer.safeMode | default false }}
 
     # downstream storage, equal to --dest-db-type
     # valid values are "mysql", "pb", "tidb", "flash", "kafka"

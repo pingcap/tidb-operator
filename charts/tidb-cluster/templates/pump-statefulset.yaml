@@ -19,6 +19,10 @@ spec:
   replicas: {{ .Values.pump.replicas }}
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8250"
       labels:
         app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
         app.kubernetes.io/instance: {{ .Values.clusterName }}
@@ -35,22 +39,27 @@ spec:
           set -euo pipefail
           /pump \
           -L={{ .Values.pump.logLevel | default "info" }} \
-          -addr=0.0.0.0:{{ .Values.pump.port | default 8250 }} \
-          -advertise-addr=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-pump:{{ .Values.pump.port | default 8250 }} \
-          -data-dir=/data \
+          -advertise-addr=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-pump:8250 \
+          -config=/etc/pump/pump.toml \
           -enable-tolerant={{ .Values.pump.enableTolerant | default true }} \
-          -gc={{ .Values.pump.gc | default 7 }} \
-          -heartbeat-interval={{ .Values.pump.heartbeatInterval | default 2 }} \
           -log-file= \
           -metrics-addr={{ .Values.pump.metricsAddr }} \
-          -metrics-interval={{ .Values.pump.metricsInterval | default 15 }} \
-          -pd-urls=http://{{ .Values.clusterName }}-pd:2379
+          -metrics-interval={{ .Values.pump.metricsInterval | default 15 }}
         ports:
-        - containerPort: {{ .Values.pump.port | default 8250 }}
+        - containerPort: 8250
           name: pump
         volumeMounts:
         - name: data
           mountPath: /data
+        - name: config
+          mountPath: /etc/pump
+      volumes:
+      - name: config
+        configMap:
+          name: {{ .Values.clusterName }}-pump
+          items:
+          - key: pump-config
+            path: pump.toml
   volumeClaimTemplates:
   - metadata:
       name: data

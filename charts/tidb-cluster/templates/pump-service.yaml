@@ -13,7 +13,7 @@ spec:
   clusterIP: None
   ports:
   - name: pump
-    port: {{ .Values.pump.port | default 8250 }}
+    port: 8250
   selector:
     app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}

@@ -19,6 +19,10 @@ spec:
   replicas: 1
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8249"
       labels:
         app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
         app.kubernetes.io/instance: {{ .Values.clusterName }}
@@ -60,24 +64,15 @@ spec:
 
           /drainer \
           -L={{ .Values.drainer.logLevel | default "info" }} \
-          -addr=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-drainer:{{ .Values.drainer.port | default 8249 }} \
-          -c={{ .Values.drainer.c | default 1 }} \
+          -addr=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-drainer:8249 \
           -config=/etc/drainer/drainer.toml \
-          -data-dir=/data \
-          -dest-db-type={{ .Values.drainer.destDBType }} \
-          -detect-interval={{ .Values.drainer.detectInterval | default 10 }} \
           -disable-detect={{ .Values.drainer.disableDetect | default false }} \
-          -disable-dispatch={{ .Values.drainer.disableDispatch | default false }} \
-          -ignore-schemas="{{ .Values.drainer.ignoreSchemas | default "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql,test" }}" \
           -initial-commit-ts={{ .Values.drainer.initialCommitTs | default 0 }} \
           -log-file= \
           -metrics-addr={{ .Values.drainer.metricsAddr }} \
-          -metrics-interval={{ .Values.drainer.metricsInterval | default 15 }} \
-          -pd-urls=http://{{ .Values.clusterName }}-pd:2379 \
-          -safe-mode={{ .Values.drainer.safeMode | default false }} \
-          -txn-batch={{ .Values.drainer.txnBatch | default 1 }}
+          -metrics-interval={{ .Values.drainer.metricsInterval | default 15 }}
         ports:
-        - containerPort: {{ .Values.drainer.port | default 8249 }}
+        - containerPort: 8249
           name: drainer
         volumeMounts:
         - name: data
