@@ -452,7 +452,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	// This only returns Up/Down/Offline stores
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
-		tc.Status.TiKV.SyncSuccess = false
+		tc.Status.TiKV.Synced = false
 		glog.Errorf("failed to get stores from PD for TidbCluster: [%s/%s], %v", ns, tcName, err)
 		return err
 	}
@@ -502,7 +502,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		tombstoneStores[status.ID] = *status
 	}
 
-	tc.Status.TiKV.SyncSuccess = true
+	tc.Status.TiKV.Synced = true
 	tc.Status.TiKV.Stores = stores
 	tc.Status.TiKV.TombstoneStores = tombstoneStores
 

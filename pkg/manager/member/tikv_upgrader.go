@@ -61,7 +61,7 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 		return nil
 	}
 
-	if !tc.Status.TiKV.SyncSuccess {
+	if !tc.Status.TiKV.Synced {
 		return fmt.Errorf("Tidbcluster: [%s/%s]'s tikv status sync failed,can not to be upgraded", ns, tcName)
 	}
 

@@ -114,7 +114,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.Synced = true
 				// set leader to 0
 				store := tc.Status.TiKV.Stores["3"]
 				store.LeaderCount = 0
@@ -144,7 +144,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 				// set leader to 0
@@ -178,7 +178,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.Synced = true
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				SetLastAppliedConfigAnnotation(oldSet)
@@ -200,7 +200,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.Synced = true
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				oldSet.SetAnnotations(map[string]string{LastAppliedConfigAnnotation: "fake apply config"})
@@ -222,7 +222,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
@@ -250,7 +250,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
@@ -283,7 +283,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
@@ -311,7 +311,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
@@ -345,7 +345,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 				// set leader to 0
@@ -383,7 +383,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 				// set leader to 0
@@ -412,7 +412,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-				tc.Status.TiKV.SyncSuccess = true
+				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 				// set leader to 0
@@ -552,8 +552,8 @@ func newTidbClusterForTiKVUpgrader() *v1alpha1.TidbCluster {
 		},
 		Status: v1alpha1.TidbClusterStatus{
 			TiKV: v1alpha1.TiKVStatus{
-				SyncSuccess: true,
-				Phase:       v1alpha1.UpgradePhase,
+				Synced: true,
+				Phase:  v1alpha1.UpgradePhase,
 				StatefulSet: &apps.StatefulSetStatus{
 					Replicas:        3,
 					CurrentReplicas: 3,
