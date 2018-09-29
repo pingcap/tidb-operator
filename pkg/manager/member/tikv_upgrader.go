@@ -69,14 +69,20 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 
 	if tc.Status.TiKV.StatefulSet.CurrentReplicas == 0 {
-		return nil
+		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv doesn't have old version pod to upgrade", ns, tcName)
 	}
 
-	upgradeOrdinal, err := tku.getUpgradeOrdinal(tc)
-	if err != nil {
-		return err
+	if tc.Status.TiKV.StatefulSet.UpdatedReplicas+tc.Status.TiKV.StatefulSet.CurrentReplicas != tc.Status.TiKV.StatefulSet.Replicas {
+		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pods are not all created", ns, tcName)
+	}
+	for i := tc.Status.TiKV.StatefulSet.Replicas; i > tc.Status.TiKV.StatefulSet.CurrentReplicas; i-- {
+		store := tku.getStoreByOrdinal(tc, i-1)
+		if store == nil || store.State != metapb.StoreState_name[int32(metapb.StoreState_Up)] {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pods are not all ready", ns, tcName)
+		}
 	}
 
+	upgradeOrdinal := tc.Status.TiKV.StatefulSet.CurrentReplicas - 1
 	upgradePodName := tikvPodName(tc, upgradeOrdinal)
 	upgradePod, err := tku.podLister.Pods(ns).Get(upgradePodName)
 	if err != nil {
@@ -151,22 +157,6 @@ func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.T
 		}
 	}
 	return false
-}
-
-func (tku *tikvUpgrader) getUpgradeOrdinal(tc *v1alpha1.TidbCluster) (int32, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	if tc.Status.TiKV.StatefulSet.UpdatedReplicas+tc.Status.TiKV.StatefulSet.CurrentReplicas != tc.Status.TiKV.StatefulSet.Replicas {
-		return -1, controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pods are not all created", ns, tcName)
-	}
-	for i := tc.Status.TiKV.StatefulSet.Replicas; i > tc.Status.TiKV.StatefulSet.CurrentReplicas; i-- {
-		store := tku.getStoreByOrdinal(tc, i-1)
-		if store == nil || store.State != metapb.StoreState_name[int32(metapb.StoreState_Up)] {
-			return -1, controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pods are not all ready", ns, tcName)
-		}
-	}
-	return tc.Status.TiKV.StatefulSet.CurrentReplicas - 1, nil
 }
 
 func (tku *tikvUpgrader) getStoreByOrdinal(tc *v1alpha1.TidbCluster, ordinal int32) *v1alpha1.TiKVStore {
