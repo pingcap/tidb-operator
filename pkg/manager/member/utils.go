@@ -18,6 +18,8 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 
@@ -27,6 +29,10 @@ import (
 const (
 	// LastAppliedConfigAnnotation is annotation key of last applied configuration
 	LastAppliedConfigAnnotation = "pingcap.com/last-applied-configuration"
+	// ImagePullBackOff is the pod state of image pull failed
+	ImagePullBackOff = "ImagePullBackOff"
+	// ErrImagePull is the pod state of image pull failed
+	ErrImagePull = "ErrImagePull"
 )
 
 func timezoneMountVolume() (corev1.VolumeMount, corev1.Volume) {
@@ -131,7 +137,8 @@ func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 			return false
 		}
 		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
-			apiequality.Semantic.DeepEqual(oldConfig.Template, new.Spec.Template)
+			apiequality.Semantic.DeepEqual(oldConfig.Template, new.Spec.Template) &&
+			apiequality.Semantic.DeepEqual(oldConfig.UpdateStrategy, new.Spec.UpdateStrategy)
 	}
 	return false
 }
@@ -175,4 +182,23 @@ func serviceEqual(new, old *corev1.Service) (bool, error) {
 		return apiequality.Semantic.DeepEqual(oldSpec, new.Spec), nil
 	}
 	return false, nil
+}
+
+// setUpgradePartition set statefulSet's rolling update partition
+func setUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
+	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &upgradeOrdinal}
+}
+
+func imagePullFailed(pod *corev1.Pod) bool {
+	for _, container := range pod.Status.ContainerStatuses {
+		if container.State.Waiting != nil && container.State.Waiting.Reason != "" &&
+			(container.State.Waiting.Reason == ImagePullBackOff || container.State.Waiting.Reason == ErrImagePull) {
+			return true
+		}
+	}
+	return false
+}
+
+func pdPodName(tc *v1alpha1.TidbCluster, ordinal int32) string {
+	return fmt.Sprintf("%s-%d", controller.PDMemberName(tc.GetName()), ordinal)
 }

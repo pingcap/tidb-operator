@@ -246,6 +246,26 @@ drainer:
     # kafkaAddrs: "127.0.0.1:9092"
     # kafkaVersion: "0.8.2.0"
 
+fullbackup:
+  create: false
+  binlogImage: pingcap/tidb-binlog:latest
+  mydumperImage: pingcap/tidb-enterprise-tools:latest
+  storage: 1000Gi
+  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#schedule
+  schedule: "0 0 * * *"
+  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#suspend
+  suspend: false
+  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#jobs-history-limits
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#starting-deadline
+  startingDeadlineSeconds: 3600
+  # https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
+  options: "--rows=10000"
+  # user must set tidb cluster user and password
+  user: root
+  password:
+
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"
 metaValue: "{{ $value }}"
