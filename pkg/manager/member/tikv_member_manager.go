@@ -393,7 +393,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: func() *int32 { i := int32(tc.Spec.TiKV.Replicas); return &i }(),
+					Partition: func() *int32 { r := tc.TiKVRealReplicas(); return &r }(),
 				},
 			},
 		},
