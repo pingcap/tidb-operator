@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1beta1"
@@ -72,12 +71,12 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv doesn't have old version pod to upgrade", ns, tcName)
 	}
 
-	if tc.Status.TiKV.StatefulSet.UpdatedReplicas+tc.Status.TiKV.StatefulSet.CurrentReplicas != tc.Status.TiKV.StatefulSet.Replicas {
+	if !tc.TiKVAllPodsStarted() {
 		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pods are not all created", ns, tcName)
 	}
 	for i := tc.Status.TiKV.StatefulSet.Replicas; i > tc.Status.TiKV.StatefulSet.CurrentReplicas; i-- {
 		store := tku.getStoreByOrdinal(tc, i-1)
-		if store == nil || store.State != metapb.StoreState_name[int32(metapb.StoreState_Up)] {
+		if store == nil || store.State != v1alpha1.TiKVStateUp {
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pods are not all ready", ns, tcName)
 		}
 	}
@@ -87,13 +86,6 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	upgradePod, err := tku.podLister.Pods(ns).Get(upgradePodName)
 	if err != nil {
 		return err
-	}
-
-	for _, store := range tc.Status.TiKV.TombstoneStores {
-		if store.PodName == upgradePodName {
-			setUpgradePartition(newSet, upgradeOrdinal)
-			return nil
-		}
 	}
 
 	for _, store := range tc.Status.TiKV.Stores {
