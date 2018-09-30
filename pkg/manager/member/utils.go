@@ -202,3 +202,7 @@ func imagePullFailed(pod *corev1.Pod) bool {
 func pdPodName(tc *v1alpha1.TidbCluster, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.PDMemberName(tc.GetName()), ordinal)
 }
+
+func tidbPodName(tc *v1alpha1.TidbCluster, ordinal int32) string {
+	return fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.GetName()), ordinal)
+}

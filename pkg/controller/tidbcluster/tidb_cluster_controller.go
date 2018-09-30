@@ -103,7 +103,7 @@ func NewController(
 	pdUpgrader := mm.NewPDUpgrader(pdControl, podControl, podInformer.Lister())
 	tikvFailover := mm.NewTiKVFailover(pdControl)
 	tikvUpgrader := mm.NewTiKVUpgrader()
-	tidbUpgrader := mm.NewTiDBUpgrader()
+	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl)
 	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod)
 
 	tcc := &Controller{
