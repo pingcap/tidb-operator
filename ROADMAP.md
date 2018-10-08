@@ -24,5 +24,5 @@ This document defines the roadmap for TiDB Operator development.
 - [x] Backup via Binlog
 - [x] Backup via Mydumper
 
-## v0.4.0: (2018-10-20)
+## v0.4.0: (2018-10-30)
 - [ ] Extend scheduler for better support local persistent volume
