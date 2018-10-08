@@ -15,13 +15,17 @@ This document defines the roadmap for TiDB Operator development.
 - [x] Tutorials for GKE, local DinD
 
 ## v0.2.0: (2018-09-10)
-- [ ] Automatic failover for network PV
-- [ ] Automatic failover for local PV
-- [ ] Customize the Load Balancer service parameters on public cloud
+- [x] Automatic failover for network PV
+- [x] Automatic failover for local PV
+- [x] Customize the Load Balancer service parameters on public cloud
 
 ## v0.3.0: (2018-09-30)
-- [ ] Gracefully upgrade PD/TiKV/TiDB: evict the Raft leader or DDL owner before upgrade
-- [ ] TiDB Cluster configuration version management
-- [ ] Backup via Binlog
-- [ ] Backup via Mydumper
-- [ ] Import data via TiDB Lightning
+- [x] Gracefully upgrade PD/TiKV/TiDB: evict the Raft leader or DDL owner before upgrade
+- [x] Backup via Binlog
+- [x] Backup via Mydumper
+
+## v0.4.0: (2018-10-20)
+- [ ] Extend scheduler for better support local persistent volume
+
+## v0.5.0: (2018-11-10)
+- [ ] Integrate TiSpark
