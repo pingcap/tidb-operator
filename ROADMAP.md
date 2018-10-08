@@ -26,6 +26,3 @@ This document defines the roadmap for TiDB Operator development.
 
 ## v0.4.0: (2018-10-20)
 - [ ] Extend scheduler for better support local persistent volume
-
-## v0.5.0: (2018-11-10)
-- [ ] Integrate TiSpark
