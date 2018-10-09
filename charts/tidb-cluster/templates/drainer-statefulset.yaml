@@ -1,4 +1,4 @@
-{{- if .Values.drainer.create }}
+{{- if .Values.binlog.drainer.create }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -30,8 +30,8 @@ spec:
     spec:
       containers:
       - name: drainer
-        image: {{ .Values.drainer.image }}
-        imagePullPolicy: {{ .Values.drainer.imagePullPolicy | default "IfNotPresent" }}
+        image: {{ .Values.binlog.drainer.image }}
+        imagePullPolicy: {{ .Values.binlog.drainer.imagePullPolicy | default "IfNotPresent" }}
         command:
         - /bin/sh
         - -c
@@ -63,14 +63,14 @@ spec:
           done
 
           /drainer \
-          -L={{ .Values.drainer.logLevel | default "info" }} \
+          -L={{ .Values.binlog.drainer.logLevel | default "info" }} \
           -addr=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-drainer:8249 \
           -config=/etc/drainer/drainer.toml \
-          -disable-detect={{ .Values.drainer.disableDetect | default false }} \
-          -initial-commit-ts={{ .Values.drainer.initialCommitTs | default 0 }} \
+          -disable-detect={{ .Values.binlog.drainer.disableDetect | default false }} \
+          -initial-commit-ts={{ .Values.binlog.drainer.initialCommitTs | default 0 }} \
           -log-file= \
-          -metrics-addr={{ .Values.drainer.metricsAddr }} \
-          -metrics-interval={{ .Values.drainer.metricsInterval | default 15 }}
+          -metrics-addr={{ .Values.binlog.drainer.metricsAddr }} \
+          -metrics-interval={{ .Values.binlog.drainer.metricsInterval | default 15 }}
         ports:
         - containerPort: 8249
           name: drainer
@@ -91,8 +91,8 @@ spec:
       name: data
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: {{ .Values.drainer.storageClassName }}
+      storageClassName: {{ .Values.binlog.drainer.storageClassName }}
       resources:
         requests:
-          storage: {{ .Values.drainer.storage }}
+          storage: {{ .Values.binlog.drainer.storage }}
 {{- end }}

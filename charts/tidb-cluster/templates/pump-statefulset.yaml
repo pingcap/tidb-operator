@@ -1,4 +1,4 @@
-{{- if .Values.pump.create }}
+{{- if .Values.binlog.pump.create }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -16,7 +16,7 @@ spec:
       app.kubernetes.io/instance: {{ .Values.clusterName }}
       app.kubernetes.io/component: pump
   serviceName: {{ .Values.clusterName }}-pump
-  replicas: {{ .Values.pump.replicas }}
+  replicas: {{ .Values.binlog.pump.replicas }}
   template:
     metadata:
       annotations:
@@ -30,21 +30,21 @@ spec:
     spec:
       containers:
       - name: pump
-        image: {{ .Values.pump.image }}
-        imagePullPolicy: {{ .Values.pump.imagePullPolicy }}
+        image: {{ .Values.binlog.pump.image }}
+        imagePullPolicy: {{ .Values.binlog.pump.imagePullPolicy }}
         command:
         - /bin/sh
         - -c
         - |
           set -euo pipefail
           /pump \
-          -L={{ .Values.pump.logLevel | default "info" }} \
+          -L={{ .Values.binlog.pump.logLevel | default "info" }} \
           -advertise-addr=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-pump:8250 \
           -config=/etc/pump/pump.toml \
-          -enable-tolerant={{ .Values.pump.enableTolerant | default true }} \
+          -enable-tolerant={{ .Values.binlog.pump.enableTolerant | default true }} \
           -log-file= \
-          -metrics-addr={{ .Values.pump.metricsAddr }} \
-          -metrics-interval={{ .Values.pump.metricsInterval | default 15 }}
+          -metrics-addr={{ .Values.binlog.pump.metricsAddr }} \
+          -metrics-interval={{ .Values.binlog.pump.metricsInterval | default 15 }}
         ports:
         - containerPort: 8250
           name: pump
@@ -65,8 +65,8 @@ spec:
       name: data
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: {{ .Values.pump.storageClassName }}
+      storageClassName: {{ .Values.binlog.pump.storageClassName }}
       resources:
         requests:
-          storage: {{ .Values.pump.storage }}
+          storage: {{ .Values.binlog.pump.storage }}
 {{- end }}

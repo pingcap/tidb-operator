@@ -1,4 +1,4 @@
-{{- if .Values.drainer.create }}
+{{- if .Values.binlog.drainer.create }}
 apiVersion: v1
 kind: Service
 metadata:

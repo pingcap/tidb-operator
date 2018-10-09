@@ -1,4 +1,4 @@
-{{- if .Values.pump.create }}
+{{- if .Values.binlog.pump.create }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -21,13 +21,13 @@ data:
 
     # a integer value to control expiry date of the binlog data, indicates for how long (in days) the binlog data would be stored.
     # must bigger than 0
-    gc = {{ .Values.pump.gc | default 7 }}
+    gc = {{ .Values.binlog.pump.gc | default 7 }}
 
     # path to the data directory of pump's data
     data-dir = "/data"
 
     # number of seconds between heartbeat ticks (in 2 seconds)
-    heartbeat-interval = {{ .Values.pump.heartbeatInterval | default 2 }}
+    heartbeat-interval = {{ .Values.binlog.pump.heartbeatInterval | default 2 }}
 
     # a comma separated list of PD endpoints
     pd-urls = "http://{{ .Values.clusterName }}-pd:2379"

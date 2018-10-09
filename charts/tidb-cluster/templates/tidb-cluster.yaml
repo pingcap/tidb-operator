@@ -69,3 +69,6 @@ spec:
     tolerations:
 {{ toYaml .Values.tidb.tolerations | indent 4 }}
   {{- end }}
+  {{- if .Values.binlog.pump.create }}
+    binlogEnabled: true
+  {{- end }}

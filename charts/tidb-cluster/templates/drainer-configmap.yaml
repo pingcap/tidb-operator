@@ -1,4 +1,4 @@
-{{- if .Values.drainer.create }}
+{{- if .Values.binlog.drainer.create }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -18,7 +18,7 @@ data:
     # addr = "127.0.0.1:8249"
 
     # the interval time (in seconds) of detect pumps' status
-    detect-interval = {{ .Values.drainer.detectInterval | default 10 }}
+    detect-interval = {{ .Values.binlog.drainer.detectInterval | default 10 }}
 
     # drainer meta data directory path
     data-dir = "/data"
@@ -38,22 +38,22 @@ data:
     [syncer]
 
     # disable sync these schema
-    ignore-schemas = "{{ .Values.drainer.ignoreSchemas | default "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql,test" }}"
+    ignore-schemas = "{{ .Values.binlog.drainer.ignoreSchemas | default "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql,test" }}"
 
     # number of binlog events in a transaction batch
-    txn-batch = {{ .Values.drainer.txnBatch | default 1 }}
+    txn-batch = {{ .Values.binlog.drainer.txnBatch | default 1 }}
 
     # work count to execute binlogs
-    worker-count = {{ .Values.drainer.workerCount | default 1 }}
+    worker-count = {{ .Values.binlog.drainer.workerCount | default 1 }}
 
-    disable-dispatch = {{ .Values.drainer.disableDispatch | default false }}
+    disable-dispatch = {{ .Values.binlog.drainer.disableDispatch | default false }}
 
     # safe mode will split update to delete and insert
-    safe-mode = {{ .Values.drainer.safeMode | default false }}
+    safe-mode = {{ .Values.binlog.drainer.safeMode | default false }}
 
     # downstream storage, equal to --dest-db-type
     # valid values are "mysql", "pb", "tidb", "flash", "kafka"
-    db-type = "{{ .Values.drainer.destDBType }}"
+    db-type = "{{ .Values.binlog.drainer.destDBType }}"
 
     ##replicate-do-db priority over replicate-do-table if have same db name
     ##and we support regex expression , start with '~' declare use regex expression.
@@ -67,19 +67,19 @@ data:
     #db-name ="test"
     #tbl-name = "~^a.*"
 
-{{- if eq .Values.drainer.destDBType "mysql" }}
+{{- if eq .Values.binlog.drainer.destDBType "mysql" }}
     # the downstream mysql protocol database
     [syncer.to]
-    host = "{{ .Values.drainer.mysql.host }}"
-    user = "{{ .Values.drainer.mysql.user }}"
-    password = "{{ .Values.drainer.mysql.password }}"
-    port = {{ .Values.drainer.mysql.port }}
+    host = "{{ .Values.binlog.drainer.mysql.host }}"
+    user = "{{ .Values.binlog.drainer.mysql.user }}"
+    password = "{{ .Values.binlog.drainer.mysql.password }}"
+    port = {{ .Values.binlog.drainer.mysql.port }}
     # Time and size limits for flash batch write
-    time-limit = "{{ .Values.drainer.mysql.timeLimit | default "30s" }}"
-    size-limit = "{{ .Values.drainer.mysql.sizeLimit | default "100000" }}"
+    time-limit = "{{ .Values.binlog.drainer.mysql.timeLimit | default "30s" }}"
+    size-limit = "{{ .Values.binlog.drainer.mysql.sizeLimit | default "100000" }}"
 {{- end }}
 
-{{- if eq .Values.drainer.destDBType "pb" }}
+{{- if eq .Values.binlog.drainer.destDBType "pb" }}
     # Uncomment this if you want to use pb or sql as db-type.
     # Compress compresses output file, like pb and sql file. Now it supports "gzip" algorithm only.
     # Values can be "gzip". Leave it empty to disable compression.
@@ -89,16 +89,16 @@ data:
 {{- end }}
 
 
-{{- if eq .Values.drainer.destDBType "kafka" }}
+{{- if eq .Values.binlog.drainer.destDBType "kafka" }}
     # when db-type is kafka, you can uncomment this to config the down stream kafka, it will be the globle config kafka default
     [syncer.to]
     # only need config one of zookeeper-addrs and kafka-addrs, will get kafka address if zookeeper-addrs is configed.
-    {{- if .Values.drainer.kafka.zookeeperAddrs }}
-    zookeeper-addrs = {{ .Values.drainer.kafka.zookeeperAddrs }}
+    {{- if .Values.binlog.drainer.kafka.zookeeperAddrs }}
+    zookeeper-addrs = {{ .Values.binlog.drainer.kafka.zookeeperAddrs }}
     {{- end }}
-    {{- if .Values.drainer.kafka.kafkaAddrs }}
-    kafka-addrs = {{ .Values.drainer.kafka.kafkaAddrs }}
+    {{- if .Values.binlog.drainer.kafka.kafkaAddrs }}
+    kafka-addrs = {{ .Values.binlog.drainer.kafka.kafkaAddrs }}
     {{- end }}
-    kafka-version = {{ .Values.drainer.kafka.kafkaVersion | default "0.8.2.0" }}
+    kafka-version = {{ .Values.binlog.drainer.kafka.kafkaVersion | default "0.8.2.0" }}
 {{- end }}
 {{- end }}

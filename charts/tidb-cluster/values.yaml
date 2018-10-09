@@ -15,9 +15,6 @@ timezone: Asia/Shanghai
 # default reclaim policy of a PV
 pvReclaimPolicy: Retain
 
-# enable tidb binlog
-binlogEnabled: false
-
 # services is the service list to expose, default is ClusterIP
 # can be ClusterIP | NodePort | LoadBalancer
 services:
@@ -199,77 +196,78 @@ fullbackup:
   user: root
   password:
 
-pump:
-  create: false
-  replicas: 1
-  image: pingcap/tidb-binlog:new
-  imagePullPolicy: IfNotPresent
-  logLevel: info
-  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
-  # different classes might map to quality-of-service levels, or to backup policies,
-  # or to arbitrary policies determined by the cluster administrators.
-  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
-  storageClassName: local-storage
-  storage: 10Gi
-  # after enable tolerant, pump wouldn't return error if it fails to write binlog (default true)
-  enableTolerant: true
-  # a integer value to control expiry date of the binlog data, indicates for how long (in days) the binlog data would be stored.
-  # must bigger than 0
-  gc: 7
-  # number of seconds between heartbeat ticks (in 2 seconds)
-  heartbeatInterval: 2
-  # prometheus pushgateway address, leaves it empty will disable prometheus push
-  metricsAddr: ""
-  # prometheus client push interval in second, set "0" to disable prometheus push (default 15)
-  metricsInterval: 15
+binlog:
+  pump:
+    create: false
+    replicas: 1
+    image: pingcap/tidb-binlog:new
+    imagePullPolicy: IfNotPresent
+    logLevel: info
+    # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+    # different classes might map to quality-of-service levels, or to backup policies,
+    # or to arbitrary policies determined by the cluster administrators.
+    # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
+    storageClassName: local-storage
+    storage: 10Gi
+    # after enable tolerant, pump wouldn't return error if it fails to write binlog (default true)
+    enableTolerant: true
+    # a integer value to control expiry date of the binlog data, indicates for how long (in days) the binlog data would be stored.
+    # must bigger than 0
+    gc: 7
+    # number of seconds between heartbeat ticks (in 2 seconds)
+    heartbeatInterval: 2
+    # prometheus pushgateway address, leaves it empty will disable prometheus push
+    metricsAddr: ""
+    # prometheus client push interval in second, set "0" to disable prometheus push (default 15)
+    metricsInterval: 15
 
-drainer:
-  create: false
-  image: pingcap/tidb-binlog:new
-  imagePullPolicy: IfNotPresent
-  logLevel: info
-  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
-  # different classes might map to quality-of-service levels, or to backup policies,
-  # or to arbitrary policies determined by the cluster administrators.
-  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
-  storageClassName: local-storage
-  storage: 10Gi
-  # parallel worker count (default 1)
-  workerCount: 1
-  # the interval time (in seconds) of detect pumps' status (default 10)
-  detectInterval: 10
-  # disbale detect causality
-  disableDetect: false
-  # disable dispatching sqls that in one same binlog; if set true, work-count and txn-batch would be useless
-  disableDispatch: false
-  # # disable sync these schema
-  ignoreSchemas: "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql,test"
-  # if drainer donesn't have checkpoint, use initial commitTS to initial checkpoint
-  initialCommitTs: 0
-  # prometheus pushgateway address, leaves it empty will disable prometheus push
-  metricsAddr: ""
-  # prometheus client push interval in second, set "0" to disable prometheus push (default 15)
-  metricsInterval: 15
-  # enable safe mode to make syncer reentrant
-  safeMode: false
-  # number of binlog events in a transaction batch (default 1)
-  txnBatch: 1
-  # downstream storage, equal to --dest-db-type
-  # valid values are "mysql", "pb", "kafka"
-  destDBType: mysql
-  mysql:
-    host: "127.0.0.1"
-    user: "root"
-    password: ""
-    port: 3306
-    # Time and size limits for flash batch write
-    timeLimit: "30s"
-    sizeLimit: "100000"
-  kafka: {}
-    # only need config one of zookeeper-addrs and kafka-addrs, will get kafka address if zookeeper-addrs is configed.
-    # zookeeperAddrs: "127.0.0.1:2181"
-    # kafkaAddrs: "127.0.0.1:9092"
-    # kafkaVersion: "0.8.2.0"
+  drainer:
+    create: false
+    image: pingcap/tidb-binlog:new
+    imagePullPolicy: IfNotPresent
+    logLevel: info
+    # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+    # different classes might map to quality-of-service levels, or to backup policies,
+    # or to arbitrary policies determined by the cluster administrators.
+    # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
+    storageClassName: local-storage
+    storage: 10Gi
+    # parallel worker count (default 1)
+    workerCount: 1
+    # the interval time (in seconds) of detect pumps' status (default 10)
+    detectInterval: 10
+    # disbale detect causality
+    disableDetect: false
+    # disable dispatching sqls that in one same binlog; if set true, work-count and txn-batch would be useless
+    disableDispatch: false
+    # # disable sync these schema
+    ignoreSchemas: "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql,test"
+    # if drainer donesn't have checkpoint, use initial commitTS to initial checkpoint
+    initialCommitTs: 0
+    # prometheus pushgateway address, leaves it empty will disable prometheus push
+    metricsAddr: ""
+    # prometheus client push interval in second, set "0" to disable prometheus push (default 15)
+    metricsInterval: 15
+    # enable safe mode to make syncer reentrant
+    safeMode: false
+    # number of binlog events in a transaction batch (default 1)
+    txnBatch: 1
+    # downstream storage, equal to --dest-db-type
+    # valid values are "mysql", "pb", "kafka"
+    destDBType: pb
+    mysql: {}
+      # host: "127.0.0.1"
+      # user: "root"
+      # password: ""
+      # port: 3306
+      # # Time and size limits for flash batch write
+      # timeLimit: "30s"
+      # sizeLimit: "100000"
+    kafka: {}
+      # only need config one of zookeeper-addrs and kafka-addrs, will get kafka address if zookeeper-addrs is configed.
+      # zookeeperAddrs: "127.0.0.1:2181"
+      # kafkaAddrs: "127.0.0.1:9092"
+      # kafkaVersion: "0.8.2.0"
 
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"

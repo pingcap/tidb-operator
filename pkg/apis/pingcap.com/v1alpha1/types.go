@@ -123,6 +123,7 @@ type TiDBSpec struct {
 	NodeSelectorRequired bool                `json:"nodeSelectorRequired,omitempty"`
 	StorageClassName     string              `json:"storageClassName,omitempty"`
 	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
+	BinlogEnabled        bool                `json:"binlogEnabled,omitempty"`
 }
 
 // TiKVSpec contains details of PD member
