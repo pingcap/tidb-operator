@@ -216,10 +216,6 @@ binlog:
     gc: 7
     # number of seconds between heartbeat ticks (in 2 seconds)
     heartbeatInterval: 2
-    # prometheus pushgateway address, leaves it empty will disable prometheus push
-    metricsAddr: ""
-    # prometheus client push interval in second, set "0" to disable prometheus push (default 15)
-    metricsInterval: 15
 
   drainer:
     create: false
@@ -244,10 +240,6 @@ binlog:
     ignoreSchemas: "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql,test"
     # if drainer donesn't have checkpoint, use initial commitTS to initial checkpoint
     initialCommitTs: 0
-    # prometheus pushgateway address, leaves it empty will disable prometheus push
-    metricsAddr: ""
-    # prometheus client push interval in second, set "0" to disable prometheus push (default 15)
-    metricsInterval: 15
     # enable safe mode to make syncer reentrant
     safeMode: false
     # number of binlog events in a transaction batch (default 1)

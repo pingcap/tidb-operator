@@ -68,9 +68,7 @@ spec:
           -config=/etc/drainer/drainer.toml \
           -disable-detect={{ .Values.binlog.drainer.disableDetect | default false }} \
           -initial-commit-ts={{ .Values.binlog.drainer.initialCommitTs | default 0 }} \
-          -log-file= \
-          -metrics-addr={{ .Values.binlog.drainer.metricsAddr }} \
-          -metrics-interval={{ .Values.binlog.drainer.metricsInterval | default 15 }}
+          -log-file=
         ports:
         - containerPort: 8249
           name: drainer
