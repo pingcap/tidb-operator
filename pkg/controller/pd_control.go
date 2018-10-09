@@ -107,6 +107,8 @@ type PDClient interface {
 	BeginEvictLeader(storeID uint64) error
 	// EndEvictLeader is used at the end of pod upgrade.
 	EndEvictLeader(storeID uint64) error
+	// GetEvictLeaderSchedulers gets schedulers of evict leader
+	GetEvictLeaderSchedulers() ([]string, error)
 	// GetPDLeader returns pd leader
 	GetPDLeader() (*pdpb.Member, error)
 	// TransferPDLeader transfers pd leader to specified member
@@ -431,6 +433,26 @@ func (pc *pdClient) EndEvictLeader(storeID uint64) error {
 	return fmt.Errorf("failed %v to end leader evict scheduler of store [%d],error:%v", res.StatusCode, storeID, err2)
 }
 
+func (pc *pdClient) GetEvictLeaderSchedulers() ([]string, error) {
+	apiURL := fmt.Sprintf("%s/%s", pc.url, schedulersPrefix)
+	body, err := pc.getBodyOK(apiURL)
+	if err != nil {
+		return nil, err
+	}
+	schedulers := []string{}
+	err = json.Unmarshal(body, &schedulers)
+	if err != nil {
+		return nil, err
+	}
+	evicts := []string{}
+	for _, scheduler := range schedulers {
+		if strings.HasPrefix(scheduler, "evict-leader-scheduler") {
+			evicts = append(evicts, scheduler)
+		}
+	}
+	return evicts, nil
+}
+
 func (pc *pdClient) GetPDLeader() (*pdpb.Member, error) {
 	apiURL := fmt.Sprintf("%s/%s", pc.url, pdLeaderPrefix)
 	body, err := pc.getBodyOK(apiURL)
@@ -524,21 +546,22 @@ func (fpc *FakePDControl) SetPDClient(tc *v1alpha1.TidbCluster, pdclient PDClien
 type ActionType string
 
 const (
-	GetHealthActionType          ActionType = "GetHealth"
-	GetConfigActionType          ActionType = "GetConfig"
-	GetClusterActionType         ActionType = "GetCluster"
-	GetMembersActionType         ActionType = "GetMembers"
-	GetStoresActionType          ActionType = "GetStores"
-	GetTombStoneStoresActionType ActionType = "GetTombStoneStores"
-	GetStoreActionType           ActionType = "GetStore"
-	DeleteStoreActionType        ActionType = "DeleteStore"
-	DeleteMemberByIDActionType   ActionType = "DeleteMemberByID"
-	DeleteMemberActionType       ActionType = "DeleteMember "
-	SetStoreLabelsActionType     ActionType = "SetStoreLabels"
-	BeginEvictLeaderActionType   ActionType = "BeginEvictLeader"
-	EndEvictLeaderActionType     ActionType = "EndEvictLeader"
-	GetPDLeaderActionType        ActionType = "GetPDLeader"
-	TransferPDLeaderActionType   ActionType = "TransferPDLeader"
+	GetHealthActionType                ActionType = "GetHealth"
+	GetConfigActionType                ActionType = "GetConfig"
+	GetClusterActionType               ActionType = "GetCluster"
+	GetMembersActionType               ActionType = "GetMembers"
+	GetStoresActionType                ActionType = "GetStores"
+	GetTombStoneStoresActionType       ActionType = "GetTombStoneStores"
+	GetStoreActionType                 ActionType = "GetStore"
+	DeleteStoreActionType              ActionType = "DeleteStore"
+	DeleteMemberByIDActionType         ActionType = "DeleteMemberByID"
+	DeleteMemberActionType             ActionType = "DeleteMember "
+	SetStoreLabelsActionType           ActionType = "SetStoreLabels"
+	BeginEvictLeaderActionType         ActionType = "BeginEvictLeader"
+	EndEvictLeaderActionType           ActionType = "EndEvictLeader"
+	GetEvictLeaderSchedulersActionType ActionType = "GetEvictLeaderSchedulers"
+	GetPDLeaderActionType              ActionType = "GetPDLeader"
+	TransferPDLeaderActionType         ActionType = "TransferPDLeader"
 )
 
 type NotFoundReaction struct {
@@ -699,6 +722,15 @@ func (pc *FakePDClient) EndEvictLeader(storeID uint64) error {
 		return err
 	}
 	return nil
+}
+
+func (pc *FakePDClient) GetEvictLeaderSchedulers() ([]string, error) {
+	if reaction, ok := pc.reactions[GetEvictLeaderSchedulersActionType]; ok {
+		action := &Action{}
+		result, err := reaction(action)
+		return result.([]string), err
+	}
+	return nil, nil
 }
 
 func (pc *FakePDClient) GetPDLeader() (*pdpb.Member, error) {

@@ -336,22 +336,16 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(1)))
-				_, exist := pods[getTiKVPodName(1)].Annotations[EvictLeaderBeginTime]
-				g.Expect(exist).To(BeFalse())
 			},
 		},
 		{
-			name: "end leader evict failed when leader count equals 0",
+			name: "end leader evict failed",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
-				// set leader to 0
-				store := tc.Status.TiKV.Stores["2"]
-				store.LeaderCount = 0
-				tc.Status.TiKV.Stores["2"] = store
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				SetLastAppliedConfigAnnotation(oldSet)
@@ -361,7 +355,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
-					if pod.GetName() == getTiKVPodName(1) {
+					if pod.GetName() == getTiKVPodName(2) {
 						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
@@ -374,8 +368,6 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
-				_, exist := pods[getTiKVPodName(1)].Annotations[EvictLeaderBeginTime]
-				g.Expect(exist).To(BeTrue())
 			},
 		},
 		{
@@ -408,17 +400,13 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: "update pod failed after end evict leaders on store[2]",
+			name: "update pod failed",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
-				// set leader to 0
-				store := tc.Status.TiKV.Stores["2"]
-				store.LeaderCount = 0
-				tc.Status.TiKV.Stores["2"] = store
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				SetLastAppliedConfigAnnotation(oldSet)
@@ -428,7 +416,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
-					if pod.GetName() == getTiKVPodName(1) {
+					if pod.GetName() == getTiKVPodName(2) {
 						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
@@ -603,6 +591,7 @@ func getTiKVPods(set *apps.StatefulSet) []*corev1.Pod {
 				Namespace: corev1.NamespaceDefault,
 				Labels:    l,
 			},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning},
 		})
 	}
 	return pods

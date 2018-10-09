@@ -498,7 +498,6 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		if status == nil {
 			continue
 		}
-
 		tombstoneStores[status.ID] = *status
 	}
 
@@ -506,7 +505,11 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	tc.Status.TiKV.Stores = stores
 	tc.Status.TiKV.TombstoneStores = tombstoneStores
 
-	if statefulSetIsUpgrading(set) {
+	exist, err := tkmm.evictSchedulerExists(tc)
+	if err != nil {
+		return err
+	}
+	if statefulSetIsUpgrading(set) || exist {
 		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 	} else {
 		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
@@ -595,4 +598,13 @@ func (tkmm *tikvMemberManager) storeLabelsEqualNodeLabels(storeLabels []*metapb.
 		}
 	}
 	return reflect.DeepEqual(ls, nodeLabels)
+}
+
+func (tkmm *tikvMemberManager) evictSchedulerExists(tc *v1alpha1.TidbCluster) (bool, error) {
+	evictLeaderSchedulers, err := tkmm.pdControl.GetPDClient(tc).GetEvictLeaderSchedulers()
+	if err != nil {
+		return false, err
+	}
+
+	return evictLeaderSchedulers != nil && len(evictLeaderSchedulers) > 0, nil
 }

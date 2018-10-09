@@ -27,8 +27,10 @@ import (
 )
 
 const (
+	// EvictLeaderBeginTime is the key of evict Leader begin time
 	EvictLeaderBeginTime = "evictLeaderBeginTime"
-	EvictLeaderTimeOut   = 3 * time.Minute
+	// EvictLeaderTimeout is the timeout limit of evict leader
+	EvictLeaderTimeout = 3 * time.Minute
 )
 
 type tikvUpgrader struct {
@@ -61,7 +63,7 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	if !tc.Status.TiKV.Synced {
-		return fmt.Errorf("Tidbcluster: [%s/%s]'s tikv status sync failed,can not to be upgraded", ns, tcName)
+		return fmt.Errorf("Tidbcluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
 	}
 
 	tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
@@ -71,13 +73,34 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv doesn't have old version pod to upgrade", ns, tcName)
 	}
 
+	if tc.Status.TiKV.StatefulSet.CurrentRevision == tc.Status.TiKV.StatefulSet.UpdateRevision {
+		tku.endEvictLeader(tc, 0)
+		return nil
+	}
+
 	if !tc.TiKVAllPodsStarted() {
 		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pods are not all created", ns, tcName)
 	}
 	for i := tc.Status.TiKV.StatefulSet.Replicas; i > tc.Status.TiKV.StatefulSet.CurrentReplicas; i-- {
 		store := tku.getStoreByOrdinal(tc, i-1)
+		if tc.Status.TiKV.StatefulSet.UpdatedReplicas != tc.Status.TiKV.StatefulSet.Replicas-tc.Status.TiKV.StatefulSet.CurrentReplicas {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgradedReplicas is not correct", ns, tcName)
+		}
+		podName := tikvPodName(tc, i-1)
+		pod, err := tku.podLister.Pods(ns).Get(podName)
+		if err != nil {
+			return err
+		}
+		if pod.Status.Phase != corev1.PodRunning {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pods are not all running", ns, tcName)
+		}
 		if store == nil || store.State != v1alpha1.TiKVStateUp {
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pods are not all ready", ns, tcName)
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv are not all ready", ns, tcName)
+		} else {
+			err := tku.endEvictLeader(tc, i-1)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -97,36 +120,12 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 			_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
 
 			if tku.readyToUpgrade(upgradePod, store) {
-				err = tku.pdControl.GetPDClient(tc).EndEvictLeader(storeID)
-				if err != nil {
-					return err
-				}
-				if evicting {
-					delete(upgradePod.Annotations, EvictLeaderBeginTime)
-					_, err = tku.podControl.UpdatePod(tc, upgradePod)
-					if err != nil {
-						return err
-					}
-				}
 				setUpgradePartition(newSet, upgradeOrdinal)
 				return nil
 			}
 
 			if !evicting {
-				err = tku.pdControl.GetPDClient(tc).BeginEvictLeader(storeID)
-				if err != nil {
-					return err
-				}
-				// updete upgradePod
-				if upgradePod.Annotations == nil {
-					upgradePod.Annotations = map[string]string{}
-				}
-				upgradePod.Annotations[EvictLeaderBeginTime] = time.Now().Format(time.RFC3339)
-				_, err = tku.podControl.UpdatePod(tc, upgradePod)
-				if err != nil {
-					return err
-				}
-				return nil
+				return tku.beginEvictLeader(tc, storeID, upgradePod)
 			}
 		}
 	}
@@ -144,11 +143,54 @@ func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.T
 			glog.Errorf("parse annotation:[%s] to time failed.", EvictLeaderBeginTime)
 			return false
 		}
-		if time.Now().After(evictLeaderBeginTime.Add(EvictLeaderTimeOut)) {
+		if time.Now().After(evictLeaderBeginTime.Add(EvictLeaderTimeout)) {
 			return true
 		}
 	}
 	return false
+}
+
+func (tku *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
+	err := tku.pdControl.GetPDClient(tc).BeginEvictLeader(storeID)
+	if err != nil {
+		return err
+	}
+	if pod.Annotations == nil {
+		pod.Annotations = map[string]string{}
+	}
+	pod.Annotations[EvictLeaderBeginTime] = time.Now().Format(time.RFC3339)
+	_, err = tku.podControl.UpdatePod(tc, pod)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32) error {
+	store := tku.getStoreByOrdinal(tc, ordinal)
+	storeID, err := strconv.ParseUint(store.ID, 10, 64)
+	if err != nil {
+		return err
+	}
+	upgradedPodName := tikvPodName(tc, ordinal)
+	upgradedPod, err := tku.podLister.Pods(tc.GetNamespace()).Get(upgradedPodName)
+	if err != nil {
+		return err
+	}
+	_, evicting := upgradedPod.Annotations[EvictLeaderBeginTime]
+	if evicting {
+		delete(upgradedPod.Annotations, EvictLeaderBeginTime)
+		_, err = tku.podControl.UpdatePod(tc, upgradedPod)
+		if err != nil {
+			return err
+		}
+	}
+	err = tku.pdControl.GetPDClient(tc).EndEvictLeader(storeID)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (tku *tikvUpgrader) getStoreByOrdinal(tc *v1alpha1.TidbCluster, ordinal int32) *v1alpha1.TiKVStore {
