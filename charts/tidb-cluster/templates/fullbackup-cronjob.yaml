@@ -52,7 +52,7 @@ spec:
                 {{ .Values.fullbackup.options }}
 
             {{- if .Values.fullbackup.gcp }}
-              /usr/local/bin/uploader \
+              uploader \
                 --cloud=gcp \
                 --bucket={{ .Values.fullbackup.gcp.bucket }} \
                 --backup-dir=/data/${dirname}
