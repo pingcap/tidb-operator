@@ -32,6 +32,10 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
+const (
+	upgradeTcName = "upgrader"
+)
+
 func TestTiKVUpgraderUpgrade(t *testing.T) {
 	g := NewGomegaWithT(t)
 
@@ -97,7 +101,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 
 		err := upgrader.Upgrade(tc, oldSet, newSet)
 		test.errExpectFn(g, err)
-		l, err := label.New().Cluster("upgrader").TiKV().Selector()
+		l, err := label.New().Cluster(upgradeTcName).TiKV().Selector()
 		g.Expect(err).NotTo(HaveOccurred())
 		tikvPods, err = podInformer.Lister().Pods(tc.Namespace).List(l)
 		g.Expect(err).NotTo(HaveOccurred())
@@ -133,8 +137,8 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.UpgradePhase))
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
-				if pods[getTiKVPodName(2)].Annotations != nil {
-					_, exist := pods[getTiKVPodName(2)].Annotations[EvictLeaderBeginTime]
+				if pods[tikvPodName(upgradeTcName, 2)].Annotations != nil {
+					_, exist := pods[tikvPodName(upgradeTcName, 2)].Annotations[EvictLeaderBeginTime]
 					g.Expect(exist).To(BeFalse())
 				}
 			},
@@ -167,8 +171,8 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(1)))
-				if pods[getTiKVPodName(1)].Annotations != nil {
-					_, exist := pods[getTiKVPodName(1)].Annotations[EvictLeaderBeginTime]
+				if pods[tikvPodName(upgradeTcName, 1)].Annotations != nil {
+					_, exist := pods[tikvPodName(upgradeTcName, 1)].Annotations[EvictLeaderBeginTime]
 					g.Expect(exist).To(BeFalse())
 				}
 			},
@@ -241,7 +245,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
-				_, exist := pods[getTiKVPodName(1)].Annotations[EvictLeaderBeginTime]
+				_, exist := pods[tikvPodName(upgradeTcName, 1)].Annotations[EvictLeaderBeginTime]
 				g.Expect(exist).To(BeTrue())
 			},
 		},
@@ -262,7 +266,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
-					if pod.GetName() == getTiKVPodName(1) {
+					if pod.GetName() == tikvPodName(upgradeTcName, 1) {
 						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
@@ -302,7 +306,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
-				_, exist := pods[getTiKVPodName(1)].Annotations[EvictLeaderBeginTime]
+				_, exist := pods[tikvPodName(upgradeTcName, 1)].Annotations[EvictLeaderBeginTime]
 				g.Expect(exist).To(BeFalse())
 			},
 		},
@@ -323,7 +327,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
-					if pod.GetName() == getTiKVPodName(1) {
+					if pod.GetName() == tikvPodName(upgradeTcName, 1) {
 						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Add(-5 * time.Minute).Format(time.RFC3339)}
 					}
 				}
@@ -355,7 +359,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
-					if pod.GetName() == getTiKVPodName(2) {
+					if pod.GetName() == tikvPodName(upgradeTcName, 2) {
 						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
@@ -416,7 +420,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
-					if pod.GetName() == getTiKVPodName(2) {
+					if pod.GetName() == tikvPodName(upgradeTcName, 2) {
 						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
@@ -456,7 +460,7 @@ func newStatefulSetForTiKVUpgrader() *apps.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "upgrader-tikv",
 			Namespace: metav1.NamespaceDefault,
-			Labels:    label.New().Cluster("upgrader").TiKV().Labels(),
+			Labels:    label.New().Cluster(upgradeTcName).TiKV().Labels(),
 		},
 		Spec: apps.StatefulSetSpec{
 			Replicas: int32Pointer(3),
@@ -482,7 +486,7 @@ func oldStatefulSetForTiKVUpgrader() *apps.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "upgrader-tikv",
 			Namespace: metav1.NamespaceDefault,
-			Labels:    label.New().Cluster("upgrader").TiKV().Labels(),
+			Labels:    label.New().Cluster(upgradeTcName).TiKV().Labels(),
 		},
 		Spec: apps.StatefulSetSpec{
 			Replicas: int32Pointer(3),
@@ -517,10 +521,10 @@ func newTidbClusterForTiKVUpgrader() *v1alpha1.TidbCluster {
 			APIVersion: "pingcap.com/v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "upgrader",
+			Name:      upgradeTcName,
 			Namespace: corev1.NamespaceDefault,
-			UID:       types.UID("upgrader"),
-			Labels:    label.New().Cluster("upgrader").TiKV().Labels(),
+			UID:       types.UID(upgradeTcName),
+			Labels:    label.New().Cluster(upgradeTcName).TiKV().Labels(),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: v1alpha1.PDSpec{
@@ -552,19 +556,19 @@ func newTidbClusterForTiKVUpgrader() *v1alpha1.TidbCluster {
 				Stores: map[string]v1alpha1.TiKVStore{
 					"1": {
 						ID:          "1",
-						PodName:     getTiKVPodName(0),
+						PodName:     tikvPodName(upgradeTcName, 0),
 						LeaderCount: 10,
 						State:       "Up",
 					},
 					"2": {
 						ID:          "2",
-						PodName:     getTiKVPodName(1),
+						PodName:     tikvPodName(upgradeTcName, 1),
 						LeaderCount: 10,
 						State:       "Up",
 					},
 					"3": {
 						ID:          "3",
-						PodName:     getTiKVPodName(2),
+						PodName:     tikvPodName(upgradeTcName, 2),
 						LeaderCount: 10,
 						State:       "Up",
 					},
@@ -577,7 +581,7 @@ func newTidbClusterForTiKVUpgrader() *v1alpha1.TidbCluster {
 func getTiKVPods(set *apps.StatefulSet) []*corev1.Pod {
 	pods := []*corev1.Pod{}
 	for i := 0; i < int(set.Status.Replicas); i++ {
-		l := label.New().Cluster("upgrader").TiKV().Labels()
+		l := label.New().Cluster(upgradeTcName).TiKV().Labels()
 		if i+1 <= int(set.Status.CurrentReplicas) {
 			l[apps.ControllerRevisionHashLabelKey] = set.Status.CurrentRevision
 		} else {
@@ -587,7 +591,7 @@ func getTiKVPods(set *apps.StatefulSet) []*corev1.Pod {
 		pods = append(pods, &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      getTiKVPodName(i),
+				Name:      tikvPodName(upgradeTcName, int32(i)),
 				Namespace: corev1.NamespaceDefault,
 				Labels:    l,
 			},
@@ -595,8 +599,4 @@ func getTiKVPods(set *apps.StatefulSet) []*corev1.Pod {
 		})
 	}
 	return pods
-}
-
-func getTiKVPodName(i int) string {
-	return fmt.Sprintf("%s-%d", controller.TiKVMemberName("upgrader"), i)
 }
