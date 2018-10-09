@@ -1,4 +1,10 @@
 # Default values for tidb-operator
+
+# clusterScoped is whether tidb-operator should manage kubernetes cluster wide tidb clusters
+# Also see rbac.create and controllerManager.serviceAccount
+clusterScoped: true
+
+# Also see clusterScoped and controllerManager.serviceAccount
 rbac:
   create: true
 
@@ -8,10 +14,10 @@ imagePullPolicy: IfNotPresent
 
 defaultStorageClassName: local-storage
 
-# clusterScoped is whether tidb-operator should manage kubernetes cluster wide tidb clusters
-clusterScoped: true
-
 controllerManager:
+  # If you turn on rbac.create, you likely also want to turn this on
+  # Also see rbac.create and clusterScoped
+  serviceAccount: tidb-controller-manager
   logLevel: 2
   replicas: 1
   resources:
