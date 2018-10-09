@@ -43,7 +43,7 @@ spec:
               mkdir -p /data/${dirname}/
               cp /savepoint-dir/savepoint /data/${dirname}/
 
-              /usr/bin/mydumper \
+              mydumper \
                 --outputdir=/data/${dirname} \
                 --host=`eval echo '${'$host'}'` \
                 --port=4000 \

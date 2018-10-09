@@ -200,7 +200,7 @@ fullbackup:
   gcp: {}
     # base64 format of the service account json file data
     # https://cloud.google.com/docs/authentication/production#obtaining_and_providing_service_account_credentials_manually
-    # and then: cat credentials.json | base64
+    # and then: cat credentials.json | base64 | tr -d '\n'
     # credentialsData: ""
     # bucket: ""
 
