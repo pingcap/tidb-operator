@@ -5,9 +5,12 @@
 rbac:
   create: true
 
-clusterName: demo-cluster
+# clusterName is the TiDB cluster name, it is required and should be unique
+# if multiple clusters are deployed in the same namespace.
+clusterName: demo
 
-# nodeSelectorRequired: true
+# timezone is the default system timzone for TiDB
+timezone: Asia/Shanghai
 
 # default reclaim policy of a PV
 pvReclaimPolicy: Retain
@@ -17,8 +20,6 @@ pvReclaimPolicy: Retain
 services:
   - name: pd
     type: ClusterIP
-  - name: tidb
-    type: NodePort
 
 pd:
   replicas: 3
@@ -51,6 +52,13 @@ pd:
     # zone: cn-bj1-01,cn-bj1-02
     # # region is comma separated region list
     # region: cn-bj1
+  # Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  # refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+  tolerations: {}
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb
+  #   effect: "NoSchedule"
 
 tikv:
   replicas: 3
@@ -71,21 +79,28 @@ tikv:
     #   memory: 32Gi
     #   storage: 300Gi
     requests:
-      # cpu: 4000m
-      # memory: 4Gi
+      # cpu: 12000m
+      # memory: 24Gi
       storage: 10Gi
   nodeSelector: {}
     # kind: tikv
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
+  tolerations: {}
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb
+  #   effect: "NoSchedule"
+
 tikvPromGateway:
   image: prom/pushgateway:v0.3.1
-  # limits:
-  #   cpu: 100m
-  #   memory: 100Mi
-  # requests:
-  #   cpu: 50m
-  #   memory: 50Mi
+  resources: {}
+    # limits:
+    #   cpu: 100m
+    #   memory: 100Mi
+    # requests:
+    #   cpu: 50m
+    #   memory: 50Mi
 
 tidb:
   replicas: 2
@@ -102,6 +117,16 @@ tidb:
     # kind: tidb
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
+  tolerations: {}
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb
+  #   effect: "NoSchedule"
+  service:
+    type: NodePort
+    exposeStatus: true
+    annotations: {}
+      # cloud.google.com/load-balancer-type: Internal
 
 monitor:
   create: true
@@ -140,30 +165,46 @@ monitor:
     # kind: monitor
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
+  tolerations: {}
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb
+  #   effect: "NoSchedule"
 
-privilegedTidb:
-  # Whether to deploy privileged tidb
+fullbackup:
   create: false
-  replicas: 1
-  image: pingcap/tidb:v2.0.4
-  logLevel: info
-  resources: {}
-  #  limits:
-  #    cpu: 16000m
-  #    memory: 16Gi
-  #  requests:
-  #    cpu: 12000m
-  #    memory: 12Gi
-  nodeSelector: {}
-  #  kind: privileged-tidb
-  #  zone: cn-bj1-01,cn-bj1-02
-  #  region: cn-bj1
-  service:
-    # type is privileged tidb service type, can be ClusterIP, NodePort, LoadBalancer
-    type: ClusterIP
-    # nodePort is optional and only used when type is NodePort
-    # nodePort: 33333
+  binlogImage: pingcap/tidb-binlog:latest
+  # https://github.com/tennix/tidb-cloud-backup
+  mydumperImage: tennix/tidb-cloud-backup:latest
+  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+  # different classes might map to quality-of-service levels, or to backup policies,
+  # or to arbitrary policies determined by the cluster administrators.
+  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
+  storageClassName: local-storage
+  storage: 1000Gi
+  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#schedule
+  schedule: "0 0 * * *"
+  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#suspend
+  suspend: false
+  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#jobs-history-limits
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#starting-deadline
+  startingDeadlineSeconds: 3600
+  # https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
+  options: "--chunk-filesize=100"
+  # user must set tidb cluster user and password
+  user: root
+  password:
+  # backup to gcp
+  gcp: {}
+    # base64 format of the service account json file data
+    # https://cloud.google.com/docs/authentication/production#obtaining_and_providing_service_account_credentials_manually
+    # and then: cat credentials.json | base64 | tr -d '\n'
+    # credentialsData: ""
+    # bucket: ""
 
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"
 metaValue: "{{ $value }}"
+
