@@ -130,6 +130,9 @@ tidb:
 
 monitor:
   create: true
+  persistent: false
+  storageClassName: local-storage
+  storage: 10Gi
   dashboardInstaller:
     image: pingcap/tidb-dashboard-installer:v2.0.0
   grafana:
