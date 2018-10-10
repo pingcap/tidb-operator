@@ -7,7 +7,7 @@ rbac:
 
 # clusterName is the TiDB cluster name, it is required and should be unique
 # if multiple clusters are deployed in the same namespace.
-clusterName: demo
+clusterName: demo-cluster
 
 # timezone is the default system timzone for TiDB
 timezone: Asia/Shanghai
