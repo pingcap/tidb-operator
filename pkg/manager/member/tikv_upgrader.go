@@ -160,11 +160,7 @@ func (tku *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint
 	}
 	pod.Annotations[EvictLeaderBeginTime] = time.Now().Format(time.RFC3339)
 	_, err = tku.podControl.UpdatePod(tc, pod)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32) error {
