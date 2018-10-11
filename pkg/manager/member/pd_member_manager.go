@@ -563,7 +563,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: func() *int32 { r := tc.Spec.PD.Replicas; return &r }(),
+					Partition: func() *int32 { r := tc.Spec.PD.Replicas + int32(failureReplicas); return &r }(),
 				}},
 		},
 	}

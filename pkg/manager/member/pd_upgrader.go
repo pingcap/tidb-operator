@@ -77,19 +77,19 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 	}
 
 	for i := tc.Status.PD.StatefulSet.Replicas; i > tc.Status.PD.StatefulSet.CurrentReplicas; i-- {
-		if member, exist := tc.Status.PD.Members[pdPodName(tc, i-1)]; !exist || !member.Health {
+		if member, exist := tc.Status.PD.Members[pdPodName(tcName, i-1)]; !exist || !member.Health {
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd upgraded pods are not all ready", ns, tcName)
 		}
 	}
 
 	ordinal := tc.Status.PD.StatefulSet.CurrentReplicas - 1
-	upgradePodName := pdPodName(tc, ordinal)
+	upgradePodName := pdPodName(tcName, ordinal)
 	if tc.Status.PD.Leader.Name == upgradePodName {
 		var targetName string
 		if ordinal == *newSet.Spec.Replicas-1 {
-			targetName = pdPodName(tc, 0)
+			targetName = pdPodName(tcName, 0)
 		} else {
-			targetName = pdPodName(tc, *newSet.Spec.Replicas-1)
+			targetName = pdPodName(tcName, *newSet.Spec.Replicas-1)
 		}
 		err := pu.transferPDLeaderTo(tc, targetName)
 		if err != nil {
