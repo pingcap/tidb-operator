@@ -64,11 +64,13 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	upgradeOrdinal := tc.Status.TiDB.StatefulSet.CurrentReplicas - 1
-	if member, exist := tc.Status.TiDB.Members[tidbPodName(tcName, upgradeOrdinal)]; exist && member.Health {
-		err := tdu.tidbControl.ResignDDLOwner(tc, upgradeOrdinal)
-		if err != nil && tc.Status.TiDB.ResignDDLOwnerFailCount < MaxResignDDLOwnerCount {
-			tc.Status.TiDB.ResignDDLOwnerFailCount++
-			return err
+	if tc.Spec.TiDB.Replicas > 1 {
+		if member, exist := tc.Status.TiDB.Members[tidbPodName(tcName, upgradeOrdinal)]; exist && member.Health {
+			err := tdu.tidbControl.ResignDDLOwner(tc, upgradeOrdinal)
+			if err != nil && tc.Status.TiDB.ResignDDLOwnerFailCount < MaxResignDDLOwnerCount {
+				tc.Status.TiDB.ResignDDLOwnerFailCount++
+				return err
+			}
 		}
 	}
 

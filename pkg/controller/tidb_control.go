@@ -22,6 +22,7 @@ import (
 )
 
 const (
+	// NotDDLOwnerError is the error message which was returned when the tidb node is not a ddl owner
 	NotDDLOwnerError = "This node is not a ddl owner, can't be resigned."
 )
 
@@ -29,7 +30,7 @@ const (
 type TiDBControlInterface interface {
 	// GetHealth returns tidb's health info
 	GetHealth(tc *v1alpha1.TidbCluster) map[string]bool
-	// ResignDDLOwner resign the ddl owner of tidb
+	// ResignDDLOwner resigns the ddl owner of tidb
 	ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int32) error
 }
 
@@ -51,7 +52,7 @@ func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster) map[string]bo
 	result := map[string]bool{}
 	for i := 0; i < int(tc.TiDBRealReplicas()); i++ {
 		hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), i)
-		url := fmt.Sprintf("http://%s.%s-tidb-peer.%s:10080/status", hostName, tcName, ns)
+		url := fmt.Sprintf("http://%s.%s.%s:10080/status", hostName, TiDBPeerMemberName(tcName), ns)
 		_, err := tdc.getBodyOK(url)
 		if err != nil {
 			result[hostName] = false
@@ -67,7 +68,7 @@ func (tdc *defaultTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal 
 	ns := tc.GetNamespace()
 
 	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
-	url := fmt.Sprintf("http://%s.%s-tidb-peer.%s:10080/ddl/owner/resign", hostName, tcName, ns)
+	url := fmt.Sprintf("http://%s.%s.%s:10080/ddl/owner/resign", hostName, TiDBPeerMemberName(tcName), ns)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return err
