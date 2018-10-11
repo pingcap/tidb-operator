@@ -43,6 +43,9 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 		upgrader, tidbControl := newTiDBUpgrader()
 		if test.resignDDLOwnerError {
 			tidbControl.SetResignDDLOwnerError(fmt.Errorf("resign DDL owner failed"))
+			tidbControl.NotDDLOwner(false)
+		} else {
+			tidbControl.NotDDLOwner(true)
 		}
 		tc := newTidbClusterForTiDBUpgrader()
 		if test.changeFn != nil {
@@ -139,7 +142,7 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 			errorExpect:             true,
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(1); return &i }())))
-				g.Expect(tc.Status.TiDB.ResignDDLOwnerFailCount).To(Equal(int32(1)))
+				g.Expect(tc.Status.TiDB.ResignDDLOwnerRetryCount).To(Equal(int32(1)))
 			},
 		},
 		{
@@ -147,14 +150,14 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-				tc.Status.TiDB.ResignDDLOwnerFailCount = 4
+				tc.Status.TiDB.ResignDDLOwnerRetryCount = 4
 			},
 			getLastAppliedConfigErr: false,
 			resignDDLOwnerError:     true,
 			errorExpect:             false,
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(0); return &i }())))
-				g.Expect(tc.Status.TiDB.ResignDDLOwnerFailCount).To(Equal(int32(0)))
+				g.Expect(tc.Status.TiDB.ResignDDLOwnerRetryCount).To(Equal(int32(0)))
 			},
 		},
 	}

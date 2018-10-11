@@ -66,15 +66,15 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	upgradeOrdinal := tc.Status.TiDB.StatefulSet.CurrentReplicas - 1
 	if tc.Spec.TiDB.Replicas > 1 {
 		if member, exist := tc.Status.TiDB.Members[tidbPodName(tcName, upgradeOrdinal)]; exist && member.Health {
-			err := tdu.tidbControl.ResignDDLOwner(tc, upgradeOrdinal)
-			if err != nil && tc.Status.TiDB.ResignDDLOwnerFailCount < MaxResignDDLOwnerCount {
-				tc.Status.TiDB.ResignDDLOwnerFailCount++
+			hasResign, err := tdu.tidbControl.ResignDDLOwner(tc, upgradeOrdinal)
+			if (!hasResign || err != nil) && tc.Status.TiDB.ResignDDLOwnerRetryCount < MaxResignDDLOwnerCount {
+				tc.Status.TiDB.ResignDDLOwnerRetryCount++
 				return err
 			}
 		}
 	}
 
-	tc.Status.TiDB.ResignDDLOwnerFailCount = 0
+	tc.Status.TiDB.ResignDDLOwnerRetryCount = 0
 	setUpgradePartition(newSet, upgradeOrdinal)
 	return nil
 }

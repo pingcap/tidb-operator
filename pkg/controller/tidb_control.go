@@ -30,8 +30,8 @@ const (
 type TiDBControlInterface interface {
 	// GetHealth returns tidb's health info
 	GetHealth(tc *v1alpha1.TidbCluster) map[string]bool
-	// ResignDDLOwner resigns the ddl owner of tidb
-	ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int32) error
+	// ResignDDLOwner resigns the ddl owner of tidb, if the tidb node is not a ddl owner returns (true,nil),else returns (false,err)
+	ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error)
 }
 
 // defaultTiDBControl is default implementation of TiDBControlInterface.
@@ -63,7 +63,7 @@ func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster) map[string]bo
 	return result
 }
 
-func (tdc *defaultTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int32) error {
+func (tdc *defaultTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 
@@ -71,21 +71,21 @@ func (tdc *defaultTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal 
 	url := fmt.Sprintf("http://%s.%s.%s:10080/ddl/owner/resign", hostName, TiDBPeerMemberName(tcName), ns)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
-		return err
+		return false, err
 	}
 	res, err := tdc.httpClient.Do(req)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer DeferClose(res.Body, &err)
 	if res.StatusCode == http.StatusOK {
-		return nil
+		return false, nil
 	}
 	err2 := readErrorBody(res.Body)
 	if err2.Error() == NotDDLOwnerError {
-		return nil
+		return true, nil
 	}
-	return err2
+	return false, err2
 }
 
 func (tdc *defaultTiDBControl) getBodyOK(apiURL string) ([]byte, error) {
@@ -110,6 +110,7 @@ func (tdc *defaultTiDBControl) getBodyOK(apiURL string) ([]byte, error) {
 type FakeTiDBControl struct {
 	healthInfo          map[string]bool
 	resignDDLOwnerError error
+	notDDLOwner         bool
 }
 
 // NewFakeTiDBControl returns a FakeTiDBControl instance
@@ -122,7 +123,12 @@ func (ftd *FakeTiDBControl) SetHealth(healthInfo map[string]bool) {
 	ftd.healthInfo = healthInfo
 }
 
-//  SetResignDDLOwner set error of resign ddl owner for FakeTiDBControl
+//  NotDDLOwner sets whether the tidb is the ddl owner
+func (ftd *FakeTiDBControl) NotDDLOwner(notDDLOwner bool) {
+	ftd.notDDLOwner = notDDLOwner
+}
+
+//  SetResignDDLOwner sets error of resign ddl owner for FakeTiDBControl
 func (ftd *FakeTiDBControl) SetResignDDLOwnerError(err error) {
 	ftd.resignDDLOwnerError = err
 }
@@ -131,6 +137,6 @@ func (ftd *FakeTiDBControl) GetHealth(_ *v1alpha1.TidbCluster) map[string]bool {
 	return ftd.healthInfo
 }
 
-func (ftd *FakeTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int32) error {
-	return ftd.resignDDLOwnerError
+func (ftd *FakeTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
+	return ftd.notDDLOwner, ftd.resignDDLOwnerError
 }
