@@ -58,13 +58,13 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	for i := tc.Status.TiDB.StatefulSet.Replicas; i > tc.Status.TiDB.StatefulSet.CurrentReplicas; i-- {
-		if member, exist := tc.Status.TiDB.Members[tidbPodName(tc, i-1)]; !exist || !member.Health {
+		if member, exist := tc.Status.TiDB.Members[tidbPodName(tcName, i-1)]; !exist || !member.Health {
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb upgraded pods are not all ready", ns, tcName)
 		}
 	}
 
 	upgradeOrdinal := tc.Status.TiDB.StatefulSet.CurrentReplicas - 1
-	if member, exist := tc.Status.TiDB.Members[tidbPodName(tc, upgradeOrdinal)]; exist && member.Health {
+	if member, exist := tc.Status.TiDB.Members[tidbPodName(tcName, upgradeOrdinal)]; exist && member.Health {
 		err := tdu.tidbControl.ResignDDLOwner(tc, upgradeOrdinal)
 		if err != nil && tc.Status.TiDB.ResignDDLOwnerFailCount < MaxResignDDLOwnerCount {
 			tc.Status.TiDB.ResignDDLOwnerFailCount++
