@@ -18,7 +18,6 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -199,6 +198,10 @@ func imagePullFailed(pod *corev1.Pod) bool {
 	return false
 }
 
-func pdPodName(tc *v1alpha1.TidbCluster, ordinal int32) string {
-	return fmt.Sprintf("%s-%d", controller.PDMemberName(tc.GetName()), ordinal)
+func tikvPodName(tcName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%d", controller.TiKVMemberName(tcName), ordinal)
+}
+
+func pdPodName(tcName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%d", controller.PDMemberName(tcName), ordinal)
 }
