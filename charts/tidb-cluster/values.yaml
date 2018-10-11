@@ -10,7 +10,7 @@ rbac:
 clusterName: demo
 
 # timezone is the default system timzone for TiDB
-timezone: Asia/Shanghai
+timezone: UTC
 
 # default reclaim policy of a PV
 pvReclaimPolicy: Retain
@@ -197,8 +197,8 @@ fullbackup:
   # https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
   options: "--chunk-filesize=100"
   # user must set tidb cluster user and password
-  user: root
-  password:
+  user: backup
+  password: "Password here ..."
   # backup to gcp
   gcp: {}
     # base64 format of the service account json file data
