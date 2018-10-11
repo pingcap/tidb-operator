@@ -48,7 +48,7 @@ spec:
                 --host=`eval echo '${'$host'}'` \
                 --port=4000 \
                 --user={{ .Values.fullbackup.user }} \
-                --password=${USER_PASSWORD} \
+                --password=${TIDB_PASSWORD} \
                 {{ .Values.fullbackup.options }}
 
             {{- if .Values.fullbackup.gcp }}
@@ -76,7 +76,7 @@ spec:
             - name: GOOGLE_APPLICATION_CREDENTIALS
               value: /gcp/credentials.json
           {{- end }}
-            - name: USER_PASSWORD
+            - name: TIDB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.clusterName }}-fullbackup-secret
