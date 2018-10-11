@@ -31,7 +31,7 @@ spec:
               mountPath: "/savepoint-dir"
           containers:
           - name: fullbackup
-            image: pingcap/tidb-enterprise-tools:latest
+            image: {{ .Values.fullbackup.mydumperImage }}
             command:
             - /bin/sh
             - -c
@@ -43,23 +43,44 @@ spec:
               mkdir -p /data/${dirname}/
               cp /savepoint-dir/savepoint /data/${dirname}/
 
-              /mydumper \
+              mydumper \
                 --outputdir=/data/${dirname} \
                 --host=`eval echo '${'$host'}'` \
                 --port=4000 \
                 --user={{ .Values.fullbackup.user }} \
-                --password={{ .Values.fullbackup.password }} \
+                --password=${TIDB_PASSWORD} \
                 {{ .Values.fullbackup.options }}
+
+            {{- if .Values.fullbackup.gcp }}
+              uploader \
+                --cloud=gcp \
+                --bucket={{ .Values.fullbackup.gcp.bucket }} \
+                --backup-dir=/data/${dirname}
+            {{- end }}
             volumeMounts:
             - name: savepoint-dir
               mountPath: "/savepoint-dir"
             - name: data
               mountPath: "/data"
+          {{- if .Values.fullbackup.gcp }}
+            - name: gcp-credentials
+              mountPath: "/gcp"
+              readOnly: true
+          {{- end }}
             ENV:
             - name: MY_POD_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+          {{- if .Values.fullbackup.gcp }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /gcp/credentials.json
+          {{- end }}
+            - name: TIDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.clusterName }}-fullbackup-secret
+                  key: user-password
           restartPolicy: OnFailure
           volumes:
           - name: savepoint-dir
@@ -67,4 +88,10 @@ spec:
           - name: data
             persistentVolumeClaim:
               claimName: {{ .Values.clusterName }}-fullbackup
+        {{- if .Values.fullbackup.gcp }}
+          - name: gcp-credentials
+            secret:
+              secretName: {{ .Values.clusterName }}-fullbackup-secret
+        {{- end }}
+
 {{- end }}
