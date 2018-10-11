@@ -42,6 +42,20 @@ spec:
               {{- end }}
             {{- end }}
     {{- end }}
+      initContainers:
+      - name: init-data
+        image: {{ .Values.monitor.prometheus.image }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          mkdir -p /data/prometheus /data/grafana
+          chmod 777 /data/prometheus /data/grafana
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: monitor-data
+          mountPath: /data
       containers:
       - name: prometheus
         image: {{ .Values.monitor.prometheus.image }}
@@ -53,7 +67,7 @@ spec:
         - /bin/prometheus
         - --log.level={{ .Values.monitor.prometheus.logLevel }}
         - --config.file=/etc/prometheus/prometheus.yml
-        - --storage.tsdb.path=/prometheus
+        - --storage.tsdb.path=/data/prometheus
         - --storage.tsdb.retention={{ .Values.monitor.prometheus.reserveDays }}d
         ports:
         - name: prometheus
@@ -67,8 +81,8 @@ spec:
           - name: prometheus-config
             mountPath: /etc/prometheus
             readOnly: true
-          - name: prometheus-data
-            mountPath: /prometheus
+          - name: monitor-data
+            mountPath: /data
       - name: grafana
         image: {{ .Values.monitor.grafana.image }}
         {{- if .Values.monitor.grafana.resources }}
@@ -81,7 +95,7 @@ spec:
           protocol: TCP
         env:
         - name: GF_PATHS_DATA
-          value: /data
+          value: /data/grafana
         - name: GF_SECURITY_ADMIN_USER
           valueFrom:
             secretKeyRef:
@@ -95,13 +109,16 @@ spec:
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
         volumeMounts:
-          - name: grafana-data
+          - name: monitor-data
             mountPath: /data
       volumes:
-      - name: prometheus-data
+      - name: monitor-data
+        {{- if .Values.monitor.persistent }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.clusterName }}-monitor
+        {{- else }}
         emptyDir: {}
-      - name: grafana-data
-        emptyDir: {}
+        {{- end }}
       - name: prometheus-config
         configMap:
           name: {{ .Values.clusterName }}-monitor

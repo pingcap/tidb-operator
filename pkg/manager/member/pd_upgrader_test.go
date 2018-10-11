@@ -101,7 +101,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			name: "skip to wait all members health",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Synced = true
-				tc.Status.PD.Members[getPodName(2)] = v1alpha1.PDMember{Name: getPodName(2), Health: false}
+				tc.Status.PD.Members[pdPodName(upgradeTcName, 2)] = v1alpha1.PDMember{Name: pdPodName(upgradeTcName, 2), Health: false}
 			},
 			changePods:        nil,
 			transferLeaderErr: false,
@@ -117,7 +117,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			name: "transfer leader",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Synced = true
-				tc.Status.PD.Leader = v1alpha1.PDMember{Name: getPodName(1), Health: true}
+				tc.Status.PD.Leader = v1alpha1.PDMember{Name: pdPodName(upgradeTcName, 1), Health: true}
 			},
 			changePods:        nil,
 			transferLeaderErr: false,
@@ -178,7 +178,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			name: "error when transfer leader",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Synced = true
-				tc.Status.PD.Leader = v1alpha1.PDMember{Name: getPodName(1), Health: true}
+				tc.Status.PD.Leader = v1alpha1.PDMember{Name: pdPodName(upgradeTcName, 1), Health: true}
 			},
 			changePods:        nil,
 			transferLeaderErr: true,
@@ -213,7 +213,7 @@ func newPDUpgrader() (Upgrader, *controller.FakePDControl, *controller.FakePodCo
 func newStatefulSetForPDUpgrader() *apps.StatefulSet {
 	return &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      controller.PDMemberName("upgrader"),
+			Name:      controller.PDMemberName(upgradeTcName),
 			Namespace: metav1.NamespaceDefault,
 		},
 		Spec: apps.StatefulSetSpec{
@@ -245,18 +245,18 @@ func newStatefulSetForPDUpgrader() *apps.StatefulSet {
 }
 
 func newTidbClusterForPDUpgrader() *v1alpha1.TidbCluster {
-	podName0 := getPodName(0)
-	podName1 := getPodName(1)
-	podName2 := getPodName(2)
+	podName0 := pdPodName(upgradeTcName, 0)
+	podName1 := pdPodName(upgradeTcName, 1)
+	podName2 := pdPodName(upgradeTcName, 2)
 	return &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
 			APIVersion: "pingcap.com/v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "upgrader",
+			Name:      upgradeTcName,
 			Namespace: corev1.NamespaceDefault,
-			UID:       types.UID("upgrader"),
+			UID:       types.UID(upgradeTcName),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: v1alpha1.PDSpec{
@@ -290,15 +290,15 @@ func newTidbClusterForPDUpgrader() *v1alpha1.TidbCluster {
 }
 
 func getPods() []*corev1.Pod {
-	lc := label.New().Cluster("upgrader").PD().Labels()
+	lc := label.New().Cluster(upgradeTcName).PD().Labels()
 	lc[apps.ControllerRevisionHashLabelKey] = "1"
-	lu := label.New().Cluster("upgrader").PD().Labels()
+	lu := label.New().Cluster(upgradeTcName).PD().Labels()
 	lu[apps.ControllerRevisionHashLabelKey] = "2"
 	pods := []*corev1.Pod{
 		{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      getPodName(0),
+				Name:      pdPodName(upgradeTcName, 0),
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lc,
 			},
@@ -306,7 +306,7 @@ func getPods() []*corev1.Pod {
 		{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      getPodName(1),
+				Name:      pdPodName(upgradeTcName, 1),
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lc,
 			},
@@ -314,15 +314,11 @@ func getPods() []*corev1.Pod {
 		{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      getPodName(2),
+				Name:      pdPodName(upgradeTcName, 2),
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lu,
 			},
 		},
 	}
 	return pods
-}
-
-func getPodName(i int) string {
-	return fmt.Sprintf("%s-%d", controller.PDMemberName("upgrader"), i)
 }
