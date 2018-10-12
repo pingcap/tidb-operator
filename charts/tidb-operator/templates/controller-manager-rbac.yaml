@@ -107,15 +107,17 @@ roleRef:
   name: tidb-controller-manager
   apiGroup: rbac.authorization.k8s.io
 {{- end }}
+{{- if .Values.controllerManager.serviceAccount }}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: tidb-controller-manager
+  name: {{ .Values.controllerManager.serviceAccount }}
   labels:
     app.kubernetes.io/name: {{ template "tidb-operator.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: controller-manager
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+{{- end }}
 {{- end }}
