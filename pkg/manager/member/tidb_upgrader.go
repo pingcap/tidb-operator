@@ -15,26 +15,67 @@ package member
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1beta1"
 )
 
-type tidbUpgrader struct{}
+const (
+	// MaxResignDDLOwnerCount is the max regign DDL owner count
+	MaxResignDDLOwnerCount = 3
+)
+
+type tidbUpgrader struct {
+	tidbControl controller.TiDBControlInterface
+}
 
 // NewTiDBUpgrader returns a tidb Upgrader
-func NewTiDBUpgrader() Upgrader {
-	return &tidbUpgrader{}
+func NewTiDBUpgrader(tidbControl controller.TiDBControlInterface) Upgrader {
+	return &tidbUpgrader{tidbControl: tidbControl}
 }
 
 func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
 	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
 		}
 		newSet.Spec.Template.Spec = *podSpec
-	} else {
-		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
+		return nil
 	}
+
+	tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
+	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
+
+	if tc.Status.TiDB.StatefulSet.CurrentReplicas == 0 {
+		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb doesn't have old version pod to upgrade", ns, tcName)
+	}
+
+	if !tc.TiDBAllPodsStarted() {
+		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb pods are not all created", ns, tcName)
+	}
+
+	for i := tc.Status.TiDB.StatefulSet.Replicas; i > tc.Status.TiDB.StatefulSet.CurrentReplicas; i-- {
+		if member, exist := tc.Status.TiDB.Members[tidbPodName(tcName, i-1)]; !exist || !member.Health {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb upgraded pods are not all ready", ns, tcName)
+		}
+	}
+
+	upgradeOrdinal := tc.Status.TiDB.StatefulSet.CurrentReplicas - 1
+	if tc.Spec.TiDB.Replicas > 1 {
+		if member, exist := tc.Status.TiDB.Members[tidbPodName(tcName, upgradeOrdinal)]; exist && member.Health {
+			hasResign, err := tdu.tidbControl.ResignDDLOwner(tc, upgradeOrdinal)
+			if (!hasResign || err != nil) && tc.Status.TiDB.ResignDDLOwnerRetryCount < MaxResignDDLOwnerCount {
+				tc.Status.TiDB.ResignDDLOwnerRetryCount++
+				return err
+			}
+		}
+	}
+
+	tc.Status.TiDB.ResignDDLOwnerRetryCount = 0
+	setUpgradePartition(newSet, upgradeOrdinal)
 	return nil
 }
 
