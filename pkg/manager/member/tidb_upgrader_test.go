@@ -14,10 +14,12 @@
 package member
 
 import (
+	"fmt"
 	"testing"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,24 +31,25 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 
 	type testcase struct {
 		name                    string
-		pdUpgrading             bool
-		tikvUpgrading           bool
+		changeFn                func(*v1alpha1.TidbCluster)
 		getLastAppliedConfigErr bool
+		resignDDLOwnerError     bool
+		errorExpect             bool
+		expectFn                func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
-		upgrader := newTiDBUpgrader()
-		tc := newTidbClusterForTiDBUpgrader()
-		if test.pdUpgrading {
-			tc.Status.PD.Phase = v1alpha1.UpgradePhase
+		upgrader, tidbControl := newTiDBUpgrader()
+		if test.resignDDLOwnerError {
+			tidbControl.SetResignDDLOwnerError(fmt.Errorf("resign DDL owner failed"))
+			tidbControl.NotDDLOwner(false)
 		} else {
-			tc.Status.PD.Phase = v1alpha1.NormalPhase
+			tidbControl.NotDDLOwner(true)
 		}
-		if test.tikvUpgrading {
-			tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-		} else {
-			tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+		tc := newTidbClusterForTiDBUpgrader()
+		if test.changeFn != nil {
+			test.changeFn(tc)
 		}
 		oldSet := newStatefulSetForTiDBUpgrader()
 		newSet := oldSet.DeepCopy()
@@ -58,26 +61,105 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 		newSet.Spec.Template.Spec.Containers[0].Image = "tidb-test-images:v2"
 
 		err := upgrader.Upgrade(tc, oldSet, newSet)
-		if test.getLastAppliedConfigErr {
+		if test.errorExpect {
 			g.Expect(err).To(HaveOccurred())
-			g.Expect(tc.Status.TiDB.Phase).NotTo(Equal(v1alpha1.UpgradePhase))
-			return
-		}
-
-		g.Expect(err).NotTo(HaveOccurred())
-		if test.pdUpgrading || test.tikvUpgrading {
-			g.Expect(newSet.Spec.Template.Spec).To(Equal(oldSet.Spec.Template.Spec))
-			g.Expect(tc.Status.TiDB.Phase).NotTo(Equal(v1alpha1.UpgradePhase))
 		} else {
-			g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.UpgradePhase))
+			g.Expect(err).NotTo(HaveOccurred())
 		}
+		test.expectFn(g, tc, newSet)
 	}
 
 	tests := []*testcase{
-		{name: "normal", pdUpgrading: false, tikvUpgrading: false, getLastAppliedConfigErr: false},
-		{name: "pd is upgrading", pdUpgrading: true, tikvUpgrading: false, getLastAppliedConfigErr: false},
-		{name: "tikv is upgrading", pdUpgrading: false, tikvUpgrading: true, getLastAppliedConfigErr: false},
-		{name: "get apply config error", pdUpgrading: true, tikvUpgrading: false, getLastAppliedConfigErr: true},
+		{
+			name: "normal",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+			},
+			getLastAppliedConfigErr: false,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(0); return &i }())))
+			},
+		},
+		{
+			name: "pd is upgrading",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.UpgradePhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+			},
+			getLastAppliedConfigErr: false,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(1); return &i }())))
+			},
+		},
+		{
+			name: "tikv is upgrading",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+			},
+			getLastAppliedConfigErr: false,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(1); return &i }())))
+			},
+		},
+		{
+			name: "get apply config error",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+			},
+			getLastAppliedConfigErr: true,
+			errorExpect:             true,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(1); return &i }())))
+			},
+		},
+		{
+			name: "upgraded pods are not ready",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+				tc.Status.TiDB.Members["upgrader-tidb-1"] = v1alpha1.TiDBMember{
+					Name:   "upgrader-tidb-1",
+					Health: false,
+				}
+			},
+			getLastAppliedConfigErr: false,
+			errorExpect:             true,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(1); return &i }())))
+			},
+		},
+		{
+			name: "resign DDL owner error",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+			},
+			getLastAppliedConfigErr: false,
+			resignDDLOwnerError:     true,
+			errorExpect:             true,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(1); return &i }())))
+				g.Expect(tc.Status.TiDB.ResignDDLOwnerRetryCount).To(Equal(int32(1)))
+			},
+		},
+		{
+			name: "resign DDL owner error count larger than MaxResignDDLOwnerCount",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+				tc.Status.TiDB.ResignDDLOwnerRetryCount = 4
+			},
+			getLastAppliedConfigErr: false,
+			resignDDLOwnerError:     true,
+			errorExpect:             false,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(0); return &i }())))
+				g.Expect(tc.Status.TiDB.ResignDDLOwnerRetryCount).To(Equal(int32(0)))
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -86,8 +168,9 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 
 }
 
-func newTiDBUpgrader() Upgrader {
-	return &tidbUpgrader{}
+func newTiDBUpgrader() (Upgrader, *controller.FakeTiDBControl) {
+	tidbControl := controller.NewFakeTiDBControl()
+	return &tidbUpgrader{tidbControl: tidbControl}, tidbControl
 }
 
 func newStatefulSetForTiDBUpgrader() *apps.StatefulSet {
@@ -108,6 +191,19 @@ func newStatefulSetForTiDBUpgrader() *apps.StatefulSet {
 					},
 				},
 			},
+			UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType,
+				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
+					Partition: int32Pointer(1),
+				},
+			},
+		},
+		Status: apps.StatefulSetStatus{
+			CurrentRevision: "1",
+			UpdateRevision:  "2",
+			ReadyReplicas:   2,
+			Replicas:        2,
+			CurrentReplicas: 1,
+			UpdatedReplicas: 1,
 		},
 	}
 }
@@ -144,6 +240,25 @@ func newTidbClusterForTiDBUpgrader() *v1alpha1.TidbCluster {
 				},
 				Replicas:         2,
 				StorageClassName: "my-storage-class",
+			},
+		},
+		Status: v1alpha1.TidbClusterStatus{
+			TiDB: v1alpha1.TiDBStatus{
+				StatefulSet: &apps.StatefulSetStatus{
+					CurrentReplicas: 1,
+					UpdatedReplicas: 1,
+					Replicas:        2,
+				},
+				Members: map[string]v1alpha1.TiDBMember{
+					"upgrader-tidb-0": {
+						Name:   "upgrader-tidb-0",
+						Health: true,
+					},
+					"upgrader-tidb-1": {
+						Name:   "upgrader-tidb-1",
+						Health: true,
+					},
+				},
 			},
 		},
 	}
