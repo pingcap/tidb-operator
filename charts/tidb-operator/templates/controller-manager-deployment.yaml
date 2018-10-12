@@ -22,8 +22,8 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: controller-manager
     spec:
-    {{- if .Values.rbac.create }}
-      serviceAccount: tidb-controller-manager
+    {{- if .Values.controllerManager.serviceAccount }}
+      serviceAccount: {{ .Values.controllerManager.serviceAccount }}
     {{- end }}
       containers:
       - name: tidb-operator
