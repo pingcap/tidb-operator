@@ -20,10 +20,14 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	kubeinformers "k8s.io/client-go/informers"
+	podinformers "k8s.io/client-go/informers/core/v1"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
 func TestTiDBUpgrader_Upgrade(t *testing.T) {
@@ -40,7 +44,7 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
-		upgrader, tidbControl := newTiDBUpgrader()
+		upgrader, tidbControl, podInformer := newTiDBUpgrader()
 		if test.resignDDLOwnerError {
 			tidbControl.SetResignDDLOwnerError(fmt.Errorf("resign DDL owner failed"))
 			tidbControl.NotDDLOwner(false)
@@ -51,6 +55,11 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 		if test.changeFn != nil {
 			test.changeFn(tc)
 		}
+		pods := getTiDBPods()
+		for _, pod := range pods {
+			podInformer.Informer().GetIndexer().Add(pod)
+		}
+
 		oldSet := newStatefulSetForTiDBUpgrader()
 		newSet := oldSet.DeepCopy()
 		if test.getLastAppliedConfigErr {
@@ -58,8 +67,6 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 		} else {
 			SetLastAppliedConfigAnnotation(oldSet)
 		}
-		newSet.Spec.Template.Spec.Containers[0].Image = "tidb-test-images:v2"
-
 		err := upgrader.Upgrade(tc, oldSet, newSet)
 		if test.errorExpect {
 			g.Expect(err).To(HaveOccurred())
@@ -168,9 +175,11 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 
 }
 
-func newTiDBUpgrader() (Upgrader, *controller.FakeTiDBControl) {
+func newTiDBUpgrader() (Upgrader, *controller.FakeTiDBControl, podinformers.PodInformer) {
+	kubeCli := kubefake.NewSimpleClientset()
 	tidbControl := controller.NewFakeTiDBControl()
-	return &tidbUpgrader{tidbControl: tidbControl}, tidbControl
+	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
+	return &tidbUpgrader{tidbControl: tidbControl, podLister: podInformer.Lister()}, tidbControl, podInformer
 }
 
 func newStatefulSetForTiDBUpgrader() *apps.StatefulSet {
@@ -247,6 +256,8 @@ func newTidbClusterForTiDBUpgrader() *v1alpha1.TidbCluster {
 				StatefulSet: &apps.StatefulSetStatus{
 					CurrentReplicas: 1,
 					UpdatedReplicas: 1,
+					CurrentRevision: "1",
+					UpdateRevision:  "2",
 					Replicas:        2,
 				},
 				Members: map[string]v1alpha1.TiDBMember{
@@ -262,4 +273,30 @@ func newTidbClusterForTiDBUpgrader() *v1alpha1.TidbCluster {
 			},
 		},
 	}
+}
+
+func getTiDBPods() []*corev1.Pod {
+	lc := label.New().Cluster(upgradeTcName).TiDB().Labels()
+	lc[apps.ControllerRevisionHashLabelKey] = "1"
+	lu := label.New().Cluster(upgradeTcName).TiDB().Labels()
+	lu[apps.ControllerRevisionHashLabelKey] = "2"
+	pods := []*corev1.Pod{
+		{
+			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      tidbPodName(upgradeTcName, 0),
+				Namespace: corev1.NamespaceDefault,
+				Labels:    lc,
+			},
+		},
+		{
+			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      tidbPodName(upgradeTcName, 1),
+				Namespace: corev1.NamespaceDefault,
+				Labels:    lu,
+			},
+		},
+	}
+	return pods
 }

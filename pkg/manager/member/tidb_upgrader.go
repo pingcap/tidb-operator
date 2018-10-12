@@ -17,6 +17,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1beta1"
+	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 const (
@@ -25,12 +26,16 @@ const (
 )
 
 type tidbUpgrader struct {
+	podLister   corelisters.PodLister
 	tidbControl controller.TiDBControlInterface
 }
 
 // NewTiDBUpgrader returns a tidb Upgrader
-func NewTiDBUpgrader(tidbControl controller.TiDBControlInterface) Upgrader {
-	return &tidbUpgrader{tidbControl: tidbControl}
+func NewTiDBUpgrader(tidbControl controller.TiDBControlInterface, podLister corelisters.PodLister) Upgrader {
+	return &tidbUpgrader{
+		tidbControl: tidbControl,
+		podLister:   podLister,
+	}
 }
 
 func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
@@ -47,26 +52,41 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
+	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
+		return nil
+	}
+
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 
-	if tc.Status.TiDB.StatefulSet.CurrentReplicas == 0 {
-		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb doesn't have old version pod to upgrade", ns, tcName)
-	}
+	for i := tc.Status.TiDB.StatefulSet.Replicas - 1; i >= 0; i-- {
+		podName := tidbPodName(tcName, i)
+		pod, err := tdu.podLister.Pods(ns).Get(podName)
+		if err != nil {
+			return err
+		}
+		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+		if !exist {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb pod: [%s] have not label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
+		}
 
-	if !tc.TiDBAllPodsStarted() {
-		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb pods are not all created", ns, tcName)
-	}
-
-	for i := tc.Status.TiDB.StatefulSet.Replicas; i > tc.Status.TiDB.StatefulSet.CurrentReplicas; i-- {
-		if member, exist := tc.Status.TiDB.Members[tidbPodName(tcName, i-1)]; !exist || !member.Health {
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb upgraded pods are not all ready", ns, tcName)
+		if revision == tc.Status.TiDB.StatefulSet.UpdateRevision {
+			if member, exist := tc.Status.TiDB.Members[podName]; !exist || !member.Health {
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb upgraded pod: [%s] is not ready", ns, tcName, podName)
+			}
+			continue
+		} else {
+			return tdu.upgradeTiDBPod(tc, i, newSet)
 		}
 	}
 
-	upgradeOrdinal := tc.Status.TiDB.StatefulSet.CurrentReplicas - 1
+	return nil
+}
+
+func (tdu *tidbUpgrader) upgradeTiDBPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
+	tcName := tc.GetName()
 	if tc.Spec.TiDB.Replicas > 1 {
-		if member, exist := tc.Status.TiDB.Members[tidbPodName(tcName, upgradeOrdinal)]; exist && member.Health {
-			hasResign, err := tdu.tidbControl.ResignDDLOwner(tc, upgradeOrdinal)
+		if member, exist := tc.Status.TiDB.Members[tidbPodName(tcName, ordinal)]; exist && member.Health {
+			hasResign, err := tdu.tidbControl.ResignDDLOwner(tc, ordinal)
 			if (!hasResign || err != nil) && tc.Status.TiDB.ResignDDLOwnerRetryCount < MaxResignDDLOwnerCount {
 				tc.Status.TiDB.ResignDDLOwnerRetryCount++
 				return err
@@ -75,7 +95,7 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	tc.Status.TiDB.ResignDDLOwnerRetryCount = 0
-	setUpgradePartition(newSet, upgradeOrdinal)
+	setUpgradePartition(newSet, ordinal)
 	return nil
 }
 

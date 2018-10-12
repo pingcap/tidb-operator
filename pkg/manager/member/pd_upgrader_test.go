@@ -37,6 +37,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		name              string
 		changeFn          func(*v1alpha1.TidbCluster)
 		changePods        func(pods []*corev1.Pod)
+		changeOldSet      func(set *apps.StatefulSet)
 		transferLeaderErr bool
 		errExpectFn       func(*GomegaWithT, error)
 		expectFn          func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet)
@@ -71,9 +72,13 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			podInformer.Informer().GetIndexer().Add(pods[i])
 		}
 
-		oldSet := newStatefulSetForPDUpgrader()
-		newSet := oldSet.DeepCopy()
-		newSet.Spec.Template.Spec.Containers[0].Image = "pd-test-images:v2"
+		newSet := newStatefulSetForPDUpgrader()
+		oldSet := newSet.DeepCopy()
+		if test.changeOldSet != nil {
+			test.changeOldSet(oldSet)
+		}
+		SetLastAppliedConfigAnnotation(oldSet)
+
 		newSet.Spec.UpdateStrategy.RollingUpdate.Partition = func() *int32 { i := int32(3); return &i }()
 
 		err := upgrader.Upgrade(tc, oldSet, newSet)
@@ -98,6 +103,24 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
+			name: "newSet template changed",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Synced = true
+			},
+			changePods: nil,
+			changeOldSet: func(set *apps.StatefulSet) {
+				set.Spec.Template.Spec.Containers[0].Image = "pd-test-image:old"
+			},
+			transferLeaderErr: false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(func() *int32 { i := int32(3); return &i }()))
+			},
+		},
+		{
 			name: "skip to wait all members health",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Synced = true
@@ -106,7 +129,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			changePods:        nil,
 			transferLeaderErr: false,
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err.Error()).To(Equal("tidbcluster: [default/upgrader]'s pd upgraded pods are not all ready"))
+				g.Expect(err.Error()).To(Equal(fmt.Sprintf("tidbcluster: [default/upgrader]'s pd upgraded pod: [%s] are not ready", pdPodName(upgradeTcName, 2))))
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
