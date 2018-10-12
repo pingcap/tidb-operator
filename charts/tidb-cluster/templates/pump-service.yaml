@@ -1,0 +1,21 @@
+{{- if .Values.binlog.pump.create }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.clusterName }}-pump
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: pump
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  clusterIP: None
+  ports:
+  - name: pump
+    port: 8250
+  selector:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: pump
+{{- end }}

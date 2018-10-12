@@ -14,6 +14,8 @@
 package member
 
 import (
+	"strconv"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -305,6 +307,10 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 								{
 									Name:  "TZ",
 									Value: tc.Spec.Timezone,
+								},
+								{
+									Name:  "BINLOG_ENABLED",
+									Value: strconv.FormatBool(tc.Spec.TiDB.BinlogEnabled),
 								},
 							},
 						},

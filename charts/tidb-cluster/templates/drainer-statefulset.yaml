@@ -1,0 +1,96 @@
+{{- if .Values.binlog.drainer.create }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.clusterName }}-drainer
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: drainer
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+      app.kubernetes.io/instance: {{ .Values.clusterName }}
+      app.kubernetes.io/component: drainer
+  serviceName: {{ .Values.clusterName }}-drainer
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8249"
+      labels:
+        app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/component: drainer
+    spec:
+      containers:
+      - name: drainer
+        image: {{ .Values.binlog.drainer.image }}
+        imagePullPolicy: {{ .Values.binlog.drainer.imagePullPolicy | default "IfNotPresent" }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -euo pipefail
+
+          domain=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-drainer
+
+          elapseTime=0
+          period=1
+          threshold=30
+          while true; do
+              sleep ${period}
+              elapseTime=$(( elapseTime+period ))
+
+              if [[ ${elapseTime} -ge ${threshold} ]]
+              then
+                  echo "waiting for drainer domain ready timeout" >&2
+                  exit 1
+              fi
+
+              if nslookup ${domain} 2>/dev/null
+              then
+                  echo "nslookup domain ${domain} success"
+                  break
+              else
+                  echo "nslookup domain ${domain} failed" >&2
+              fi
+          done
+
+          /drainer \
+          -L={{ .Values.binlog.drainer.logLevel | default "info" }} \
+          -addr=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-drainer:8249 \
+          -config=/etc/drainer/drainer.toml \
+          -disable-detect={{ .Values.binlog.drainer.disableDetect | default false }} \
+          -initial-commit-ts={{ .Values.binlog.drainer.initialCommitTs | default 0 }} \
+          -log-file=
+        ports:
+        - containerPort: 8249
+          name: drainer
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: config
+          mountPath: /etc/drainer
+      volumes:
+      - name: config
+        configMap:
+          name: {{ .Values.clusterName }}-drainer
+          items:
+          - key: drainer-config
+            path: drainer.toml
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: {{ .Values.binlog.drainer.storageClassName }}
+      resources:
+        requests:
+          storage: {{ .Values.binlog.drainer.storage }}
+{{- end }}
