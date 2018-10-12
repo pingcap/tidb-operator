@@ -197,10 +197,11 @@ type PDFailureMember struct {
 
 // TiDBStatus is TiDB status
 type TiDBStatus struct {
-	Phase          MemberPhase                  `json:"phase,omitempty"`
-	StatefulSet    *apps.StatefulSetStatus      `json:"statefulSet,omitempty"`
-	Members        map[string]TiDBMember        `json:"members,omitempty"`
-	FailureMembers map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
+	Phase                    MemberPhase                  `json:"phase,omitempty"`
+	StatefulSet              *apps.StatefulSetStatus      `json:"statefulSet,omitempty"`
+	Members                  map[string]TiDBMember        `json:"members,omitempty"`
+	FailureMembers           map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
+	ResignDDLOwnerRetryCount int32                        `json:"resignDDLOwnerRetryCount,omitempty"`
 }
 
 // TiDBMember is TiDB member
