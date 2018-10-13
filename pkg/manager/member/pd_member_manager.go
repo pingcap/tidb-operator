@@ -260,6 +260,12 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 
 	tc.Status.PD.StatefulSet = &set.Status
 
+	if statefulSetIsUpgrading(set) {
+		tc.Status.PD.Phase = v1alpha1.UpgradePhase
+	} else {
+		tc.Status.PD.Phase = v1alpha1.NormalPhase
+	}
+
 	pdClient := pmm.pdControl.GetPDClient(tc)
 	healthInfo, err := pdClient.GetHealth()
 	if err != nil {
@@ -307,12 +313,6 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	tc.Status.PD.Synced = true
 	tc.Status.PD.Members = pdStatus
 	tc.Status.PD.Leader = tc.Status.PD.Members[leader.GetName()]
-
-	if statefulSetIsUpgrading(set) {
-		tc.Status.PD.Phase = v1alpha1.UpgradePhase
-	} else {
-		tc.Status.PD.Phase = v1alpha1.NormalPhase
-	}
 
 	return nil
 }
