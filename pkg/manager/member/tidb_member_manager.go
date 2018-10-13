@@ -334,6 +334,12 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	tc.Status.TiDB.StatefulSet = &set.Status
 
+	if statefulSetIsUpgrading(set) {
+		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
+	} else {
+		tc.Status.TiDB.Phase = v1alpha1.NormalPhase
+	}
+
 	tidbStatus := map[string]v1alpha1.TiDBMember{}
 	tidbHealth := tmm.tidbControl.GetHealth(tc)
 	for name, health := range tidbHealth {
@@ -352,10 +358,5 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 	}
 	tc.Status.TiDB.Members = tidbStatus
 
-	if statefulSetIsUpgrading(set) {
-		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
-	} else {
-		tc.Status.TiDB.Phase = v1alpha1.NormalPhase
-	}
 	return nil
 }

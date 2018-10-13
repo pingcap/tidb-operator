@@ -443,6 +443,20 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 
 	tc.Status.TiKV.StatefulSet = &set.Status
 
+	if statefulSetIsUpgrading(set) {
+		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+	} else {
+		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+	}
+
+	exist, err := tkmm.evictSchedulerExists(tc)
+	if err != nil {
+		return err
+	}
+	if exist {
+		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+	}
+
 	previousStores := tc.Status.TiKV.Stores
 	stores := map[string]v1alpha1.TiKVStore{}
 	tombstoneStores := map[string]v1alpha1.TiKVStore{}
@@ -504,16 +518,6 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	tc.Status.TiKV.Synced = true
 	tc.Status.TiKV.Stores = stores
 	tc.Status.TiKV.TombstoneStores = tombstoneStores
-
-	exist, err := tkmm.evictSchedulerExists(tc)
-	if err != nil {
-		return err
-	}
-	if statefulSetIsUpgrading(set) || exist {
-		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-	} else {
-		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-	}
 
 	return nil
 }
