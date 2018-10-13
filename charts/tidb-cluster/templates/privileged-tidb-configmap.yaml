@@ -45,7 +45,7 @@ data:
     "
 
     echo "start privileged-tidb-server ..."
-    echo "/tidb-server ${AGRS}"
+    echo "/tidb-server ${ARGS}"
     exec /tidb-server ${ARGS}
 
   config-file: |-
