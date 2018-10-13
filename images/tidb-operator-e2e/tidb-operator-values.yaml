@@ -12,6 +12,7 @@ defaultStorageClassName: local-storage
 clusterScoped: true
 
 controllerManager:
+  serviceAccount: tidb-controller-manager
   logLevel: 2
   replicas: 1
   resources:

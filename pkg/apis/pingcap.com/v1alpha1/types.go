@@ -123,6 +123,7 @@ type TiDBSpec struct {
 	NodeSelectorRequired bool                `json:"nodeSelectorRequired,omitempty"`
 	StorageClassName     string              `json:"storageClassName,omitempty"`
 	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
+	BinlogEnabled        bool                `json:"binlogEnabled,omitempty"`
 }
 
 // TiKVSpec contains details of PD member
@@ -196,10 +197,11 @@ type PDFailureMember struct {
 
 // TiDBStatus is TiDB status
 type TiDBStatus struct {
-	Phase          MemberPhase                  `json:"phase,omitempty"`
-	StatefulSet    *apps.StatefulSetStatus      `json:"statefulSet,omitempty"`
-	Members        map[string]TiDBMember        `json:"members,omitempty"`
-	FailureMembers map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
+	Phase                    MemberPhase                  `json:"phase,omitempty"`
+	StatefulSet              *apps.StatefulSetStatus      `json:"statefulSet,omitempty"`
+	Members                  map[string]TiDBMember        `json:"members,omitempty"`
+	FailureMembers           map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
+	ResignDDLOwnerRetryCount int32                        `json:"resignDDLOwnerRetryCount,omitempty"`
 }
 
 // TiDBMember is TiDB member

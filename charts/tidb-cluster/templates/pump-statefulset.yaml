@@ -1,0 +1,70 @@
+{{- if .Values.binlog.pump.create }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.clusterName }}-pump
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: pump
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+      app.kubernetes.io/instance: {{ .Values.clusterName }}
+      app.kubernetes.io/component: pump
+  serviceName: {{ .Values.clusterName }}-pump
+  replicas: {{ .Values.binlog.pump.replicas }}
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8250"
+      labels:
+        app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/component: pump
+    spec:
+      containers:
+      - name: pump
+        image: {{ .Values.binlog.pump.image }}
+        imagePullPolicy: {{ .Values.binlog.pump.imagePullPolicy }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -euo pipefail
+          /pump \
+          -L={{ .Values.binlog.pump.logLevel | default "info" }} \
+          -advertise-addr=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-pump:8250 \
+          -config=/etc/pump/pump.toml \
+          -enable-tolerant={{ .Values.binlog.pump.enableTolerant | default true }} \
+          -log-file=
+        ports:
+        - containerPort: 8250
+          name: pump
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: config
+          mountPath: /etc/pump
+      volumes:
+      - name: config
+        configMap:
+          name: {{ .Values.clusterName }}-pump
+          items:
+          - key: pump-config
+            path: pump.toml
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: {{ .Values.binlog.pump.storageClassName }}
+      resources:
+        requests:
+          storage: {{ .Values.binlog.pump.storage }}
+{{- end }}
