@@ -23,9 +23,13 @@ spec:
         app.kubernetes.io/instance: {{ .Values.clusterName }}
         app.kubernetes.io/component: monitor
     spec:
+  {{- if .Values.monitor.serviceAccount }}
+      serviceAccount: {{ .Values.monitor.serviceAccount }}
+  {{- else }}
     {{- if .Values.rbac.create }}
       serviceAccount: {{ .Values.clusterName }}-monitor
     {{- end }}
+  {{- end }}
     {{- if .Values.monitor.nodeSelector }}
       affinity:
         nodeAffinity:
