@@ -2,6 +2,8 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# Also see monitor.serviceAccount
+# If you set rbac.create to false, you need to provide a value for monitor.serviceAccount
 rbac:
   create: true
 
@@ -129,6 +131,10 @@ tidb:
       # cloud.google.com/load-balancer-type: Internal
 
 monitor:
+  # Also see rbac.create
+  # If you set rbac.create to false, you need to provide a value here.
+  # If you set rbac.create to true, you should leave this empty.
+  serviceAccount:
   create: true
   persistent: false
   storageClassName: local-storage
