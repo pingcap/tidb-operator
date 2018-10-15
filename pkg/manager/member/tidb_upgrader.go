@@ -54,6 +54,10 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 
+	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
+		return nil
+	}
+
 	for i := tc.Status.TiDB.StatefulSet.Replicas - 1; i >= 0; i-- {
 		podName := tidbPodName(tcName, i)
 		pod, err := tdu.podLister.Pods(ns).Get(podName)
@@ -70,9 +74,8 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb upgraded pod: [%s] is not ready", ns, tcName, podName)
 			}
 			continue
-		} else {
-			return tdu.upgradeTiDBPod(tc, i, newSet)
 		}
+		return tdu.upgradeTiDBPod(tc, i, newSet)
 	}
 
 	return nil

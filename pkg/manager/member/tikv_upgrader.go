@@ -69,6 +69,10 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 
+	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
+		return nil
+	}
+
 	for i := tc.Status.TiKV.StatefulSet.Replicas - 1; i >= 0; i-- {
 		store := tku.getStoreByOrdinal(tc, i)
 		podName := tikvPodName(tcName, i)
@@ -87,16 +91,15 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 			}
 			if store == nil || store.State != v1alpha1.TiKVStateUp {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv are not all ready", ns, tcName)
-			} else {
-				err := tku.endEvictLeader(tc, i)
-				if err != nil {
-					return err
-				}
-				continue
 			}
-		} else {
-			return tku.upgradeTiKVPod(tc, i, newSet)
+			err := tku.endEvictLeader(tc, i)
+			if err != nil {
+				return err
+			}
+			continue
 		}
+
+		return tku.upgradeTiKVPod(tc, i, newSet)
 	}
 
 	return nil

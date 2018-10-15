@@ -68,6 +68,10 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 	tc.Status.PD.Phase = v1alpha1.UpgradePhase
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 
+	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
+		return nil
+	}
+
 	for i := tc.Status.PD.StatefulSet.Replicas - 1; i >= 0; i-- {
 		podName := pdPodName(tcName, i)
 		pod, err := pu.podLister.Pods(ns).Get(podName)
@@ -85,9 +89,9 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd upgraded pod: [%s] are not ready", ns, tcName, podName)
 			}
 			continue
-		} else {
-			return pu.upgradePDPod(tc, i, newSet)
 		}
+
+		return pu.upgradePDPod(tc, i, newSet)
 	}
 
 	return nil
@@ -126,20 +130,21 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 	tcName := tc.GetName()
 	upgradePodName := pdPodName(tcName, ordinal)
 	if tc.Status.PD.Leader.Name == upgradePodName {
+		lastOrdinal := *newSet.Spec.Replicas - 1
 		var targetName string
-		if ordinal == *newSet.Spec.Replicas-1 {
+		if ordinal == lastOrdinal {
 			targetName = pdPodName(tcName, 0)
 		} else {
-			targetName = pdPodName(tcName, *newSet.Spec.Replicas-1)
+			targetName = pdPodName(tcName, lastOrdinal)
 		}
 		err := pu.transferPDLeaderTo(tc, targetName)
 		if err != nil {
 			return err
 		}
 		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is transferring leader to pd member: [%s]", ns, tcName, upgradePodName, targetName)
-	} else {
-		setUpgradePartition(newSet, ordinal)
 	}
+
+	setUpgradePartition(newSet, ordinal)
 	return nil
 }
 
