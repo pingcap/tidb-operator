@@ -112,6 +112,9 @@ data:
     echo "/pd-server ${ARGS}"
     exec /pd-server ${ARGS}
   config-file: |-
+    {{- if .Values.pd.config }}
+{{ .Values.pd.config | indent 4 }}
+    {{- else }}
     # PD Configuration.
 
     name = "pd"
@@ -198,3 +201,4 @@ data:
     #  [[label-property.reject-leader]]
     #  key = "zone"
     #  value = "cn1
+    {{- end -}}
