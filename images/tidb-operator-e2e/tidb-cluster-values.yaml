@@ -23,7 +23,7 @@ services:
 
 pd:
   replicas: 3
-  image: pingcap/pd:v2.0.4
+  image: pingcap/pd:v2.0.7
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -62,7 +62,7 @@ pd:
 
 tikv:
   replicas: 3
-  image: pingcap/tikv:v2.0.4
+  image: pingcap/tikv:v2.0.7
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -104,7 +104,7 @@ tikvPromGateway:
 
 tidb:
   replicas: 2
-  image: pingcap/tidb:v2.0.4
+  image: pingcap/tidb:v2.0.7
   logLevel: info
   resources: {}
     # limits:
@@ -178,7 +178,7 @@ fullbackup:
   create: false
   binlogImage: pingcap/tidb-binlog:latest
   # https://github.com/tennix/tidb-cloud-backup
-  mydumperImage: tennix/tidb-cloud-backup:latest
+  mydumperImage: pingcap/tidb-cloud-backup:latest
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -210,4 +210,3 @@ fullbackup:
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"
 metaValue: "{{ $value }}"
-
