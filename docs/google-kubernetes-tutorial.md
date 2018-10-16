@@ -129,10 +129,6 @@ You can connect to the clustered service within the Kubernetes cluster:
 
 Congratulations, you are now up and running with a distributed TiDB database compatible with MySQL!
 
-If you like, you can check your connection to TiDB:
-
-	select tidb_version();
-
 In addition to connecting to TiDB within the Kubernetes cluster, you can also establish a tunnel between the TiDB service and your Cloud Shell. This is recommended only for debugging purposes, because the tunnel will not automatically be transferred if your Cloud Shell restarts. To establish a tunnel:
 
 	kubectl -n tidb port-forward demo-tidb-0 4000:4000 &
@@ -141,6 +137,10 @@ From your Cloud Shell:
 
 	sudo apt-get install -y mysql-client &&
 	mysql -h 127.0.0.1 -u root -P 4000
+	
+If you like, you can check your connection to TiDB inside your MySQL terminal and see the latest TiDB version being deployed, using the command:
+
+	select tidb_version();
 
 ## Scale out the TiDB cluster
 
