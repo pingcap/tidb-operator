@@ -1,0 +1,116 @@
+applicationApiVersion: v1beta1
+
+properties:
+  name:
+    type: string
+    x-google-marketplace:
+      type: NAME
+  namespace:
+    type: string
+    x-google-marketplace:
+      type: NAMESPACE
+  image.primary:
+    type: string
+    default: $REGISTRY:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.pd.storageClassName:
+    type: string
+    x-google-marketplace:
+      type: STORAGE_CLASS
+      storageClass:
+        type: SSD
+
+  tidb-cluster.tikv.storageClassName:
+    type: string
+    x-google-marketplace:
+      type: STORAGE_CLASS
+      storageClass:
+        type: SSD
+
+  tidb-cluster.tidb.storageClassName:
+    type: string
+    x-google-marketplace:
+      type: STORAGE_CLASS
+      storageClass:
+        type: SSD
+
+  tidb-operator.controllerManager.serviceAccount:
+    type: string
+    x-google-marketplace:
+      type: SERVICE_ACCOUNT
+      serviceAccount:
+        roles:
+        - type: ClusterRole
+          rulesType: PREDEFINED
+          rulesFromRoleName: cluster-admin
+
+  tidb-cluster.monitor.serviceAccount:
+    type: string
+    x-google-marketplace:
+      type: SERVICE_ACCOUNT
+      serviceAccount:
+        roles:
+        - type: ClusterRole
+          rulesType: PREDEFINED
+          rulesFromRoleName: cluster-admin
+
+  tidb-crd.cluster.serviceAccount:
+    type: string
+    x-google-marketplace:
+      type: SERVICE_ACCOUNT
+      serviceAccount:
+        roles:
+        - type: ClusterRole
+          rulesType: PREDEFINED
+          rulesFromRoleName: cluster-admin
+
+  tidb-operator.operatorImage:
+    type: string
+    default: $REGISTRY/pingcap/tidb-operator:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.monitor.dashboardInstaller.image:
+    type: string
+    default: $REGISTRY/pingcap/tidb-dashboard-installer:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.pd.image:
+    type: string
+    default: $REGISTRY/pingcap/pd:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.tikv.image:
+    type: string
+    default: $REGISTRY/pingcap/tikv:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.tidb.image:
+    type: string
+    default: $REGISTRY/pingcap/tidb:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.monitor.ubbagent.image:
+    type: string
+    default: $REGISTRY/pingcap/ubbagent:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.monitor.ubbagent.reportingSecret:
+    type: string
+    x-google-marketplace:
+      type: REPORTING_SECRET
+
+required:
+- name
+- namespace
+- tidb-operator.controllerManager.serviceAccount
+- tidb-cluster.pd.storageClassName
+- tidb-cluster.tidb.storageClassName
+- tidb-cluster.tikv.storageClassName
