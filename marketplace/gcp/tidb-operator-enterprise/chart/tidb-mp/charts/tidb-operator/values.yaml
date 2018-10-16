@@ -1,0 +1,35 @@
+# Default values for tidb-operator
+
+# clusterScoped is whether tidb-operator should manage kubernetes cluster wide tidb clusters
+# Also see rbac.create and controllerManager.serviceAccount
+clusterScoped: true
+
+# Also see clusterScoped and controllerManager.serviceAccount
+rbac:
+  create: true
+
+# operatorImage is TiDB Operator image
+operatorImage: pingcap/tidb-operator:latest
+imagePullPolicy: IfNotPresent
+
+defaultStorageClassName: local-storage
+
+controllerManager:
+  # If you turn on rbac.create, you likely also want to turn this on
+  # Also see rbac.create and clusterScoped
+  serviceAccount: tidb-controller-manager
+  logLevel: 2
+  replicas: 1
+  resources:
+    limits:
+      cpu: 250m
+      memory: 150Mi
+    requests:
+      cpu: 80m
+      memory: 50Mi
+  # autoFailover is whether tidb-operator should auto failover when failure occurs
+  autoFailover: false
+  # pd failover period default(5m)
+  pdFailoverPeriod: 5m
+  # tidb failover period default(5m)
+  tidbFailoverPeriod: 5m

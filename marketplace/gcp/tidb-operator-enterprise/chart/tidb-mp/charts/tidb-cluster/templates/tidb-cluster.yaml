@@ -1,0 +1,72 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: {{ .Values.clusterName }}
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: tidb-cluster
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
+  timezone: {{ .Values.timezone | default "UTC" }}
+  services:
+{{ toYaml .Values.services | indent 4 }}
+  pd:
+    replicas: {{ .Values.pd.replicas }}
+    image: {{ .Values.pd.image }}
+  {{- if .Values.pd.storageClassName }}
+    storageClassName: {{ .Values.pd.storageClassName }}
+  {{- end }}
+  {{- if .Values.pd.resources }}
+{{ toYaml .Values.pd.resources | indent 4 }}
+  {{- end }}
+  {{- if .Values.pd.nodeSelector }}
+    nodeSelector:
+{{ toYaml .Values.pd.nodeSelector | indent 6 }}
+  {{- end }}
+    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}
+  {{- if .Values.pd.tolerations }}
+    tolerations:
+{{ toYaml .Values.pd.tolerations | indent 4 }}
+  {{- end }}
+  tikv:
+    replicas: {{ .Values.tikv.replicas }}
+    image: {{ .Values.tikv.image }}
+  {{- if .Values.tikv.storageClassName }}
+    storageClassName: {{ .Values.tikv.storageClassName }}
+  {{- end }}
+  {{- if .Values.tikv.resources }}
+{{ toYaml .Values.tikv.resources | indent 4 }}
+  {{- end }}
+  {{- if .Values.tikv.nodeSelector }}
+    nodeSelector:
+{{ toYaml .Values.tikv.nodeSelector | indent 6 }}
+  {{- end }}
+    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}
+  {{- if .Values.tikv.tolerations }}
+    tolerations:
+{{ toYaml .Values.tikv.tolerations | indent 4 }}
+  {{- end }}
+  tikvPromGateway:
+    image: {{ .Values.tikvPromGateway.image }}
+  {{- if .Values.tikvPromGateway.resources }}
+{{ toYaml .Values.tikvPromGateway.resources | indent 4 }}
+  {{- end }}
+  tidb:
+    replicas: {{ .Values.tidb.replicas }}
+    image: {{ .Values.tidb.image }}
+  {{- if .Values.tidb.resources }}
+{{ toYaml .Values.tidb.resources | indent 4 }}
+  {{- end }}
+  {{- if .Values.tidb.nodeSelector }}
+    nodeSelector:
+{{ toYaml .Values.tidb.nodeSelector | indent 6 }}
+  {{- end }}
+    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}
+  {{- if .Values.tidb.tolerations }}
+    tolerations:
+{{ toYaml .Values.tidb.tolerations | indent 4 }}
+  {{- end }}
+    binlogEnabled: {{ .Values.binlog.pump.create | default false }}

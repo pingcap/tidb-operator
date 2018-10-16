@@ -1,0 +1,45 @@
+{{- if .Values.monitor.create }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.clusterName }}-grafana
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: monitor
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  ports:
+  - name: grafana
+    port: 3000
+    protocol: TCP
+    targetPort: 3000
+  type: {{ .Values.monitor.grafana.service.type }}
+  selector:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: monitor
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.clusterName }}-prometheus
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: monitor
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  ports:
+  - name: prometheus
+    port: 9090
+    protocol: TCP
+    targetPort: 9090
+  type: {{ .Values.monitor.prometheus.service.type }}
+  selector:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: monitor
+{{- end }}

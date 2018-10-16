@@ -1,0 +1,10 @@
+dependencies:
+- name: tidb-crd
+  version: 0.1.0
+  repository: ../../deps/tidb-crd
+- name: tidb-operator
+  version: 0.1.0
+  repository: ../../deps/tidb-operator
+- name: tidb-cluster
+  version: 0.1.0
+  repository: ../../deps/tidb-cluster

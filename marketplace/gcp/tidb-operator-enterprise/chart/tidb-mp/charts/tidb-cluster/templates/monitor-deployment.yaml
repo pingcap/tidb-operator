@@ -1,0 +1,144 @@
+{{- if .Values.monitor.create }}
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: {{ .Values.clusterName }}-monitor
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: monitor
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+      app.kubernetes.io/instance: {{ .Values.clusterName }}
+      app.kubernetes.io/component: monitor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/component: monitor
+    spec:
+  {{- if .Values.monitor.serviceAccount }}
+      serviceAccount: {{ .Values.monitor.serviceAccount }}
+  {{- else }}
+    {{- if .Values.rbac.create }}
+      serviceAccount: {{ .Values.clusterName }}-monitor
+    {{- end }}
+  {{- end }}
+    {{- if .Values.monitor.nodeSelector }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+            {{- range $key, $val := .Values.monitor.nodeSelector }}
+              {{- $valList := splitList "," $val }}
+              - key: {{ $key }}
+                operator: In
+                values:
+              {{- range $kl, $vl := $valList }}
+                - {{ $vl }}
+              {{- end }}
+            {{- end }}
+    {{- end }}
+      initContainers:
+      - name: init-data
+        image: {{ .Values.monitor.prometheus.image }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          mkdir -p /data/prometheus /data/grafana
+          chmod 777 /data/prometheus /data/grafana
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: monitor-data
+          mountPath: /data
+      containers:
+      - name: prometheus
+        image: {{ .Values.monitor.prometheus.image }}
+        {{- if .Values.monitor.prometheus.resources }}
+        resources:
+{{ toYaml .Values.monitor.prometheus.resources | indent 12 }}
+        {{- end }}
+        command:
+        - /bin/prometheus
+        - --log.level={{ .Values.monitor.prometheus.logLevel }}
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --storage.tsdb.path=/data/prometheus
+        - --storage.tsdb.retention={{ .Values.monitor.prometheus.reserveDays }}d
+        ports:
+        - name: prometheus
+          containerPort: 9090
+          protocol: TCP
+        # `TZ` is unused in Prometheus Docker image, we set it here just to keep consistency
+        env:
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+        volumeMounts:
+          - name: prometheus-config
+            mountPath: /etc/prometheus
+            readOnly: true
+          - name: monitor-data
+            mountPath: /data
+      - name: grafana
+        image: {{ .Values.monitor.grafana.image }}
+        {{- if .Values.monitor.grafana.resources }}
+        resources:
+{{ toYaml .Values.monitor.grafana.resources | indent 12 }}
+        {{- end }}
+        ports:
+        - name: grafana
+          containerPort: 3000
+          protocol: TCP
+        env:
+        - name: GF_PATHS_DATA
+          value: /data/grafana
+        - name: GF_SECURITY_ADMIN_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.clusterName }}-monitor
+              key: username
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.clusterName }}-monitor
+              key: password
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+        volumeMounts:
+          - name: monitor-data
+            mountPath: /data
+      volumes:
+      - name: monitor-data
+        {{- if .Values.monitor.persistent }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.clusterName }}-monitor
+        {{- else }}
+        emptyDir: {}
+        {{- end }}
+      - name: prometheus-config
+        configMap:
+          name: {{ .Values.clusterName }}-monitor
+          items:
+          - key: prometheus-config
+            path: prometheus.yml
+          - key: alert-rules-config
+            path: alert.rules
+      - name: grafana-config
+        configMap:
+          name: {{ .Values.clusterName }}-monitor
+          items:
+          - key: grafana-config
+            path: grafana.ini
+    {{- if .Values.monitor.tolerations }}
+      tolerations:
+{{ toYaml .Values.monitor.tolerations | indent 6 }}
+    {{- end }}
+{{- end }}

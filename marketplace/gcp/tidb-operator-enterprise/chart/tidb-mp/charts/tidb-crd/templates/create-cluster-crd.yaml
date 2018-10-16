@@ -1,0 +1,31 @@
+{{- if .Values.cluster.create }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tidb-cluster-crd-create
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-crd.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: tidb-cluster-crd
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "tidb-crd.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: tidb-cluster-crd
+    spec:
+      restartPolicy: OnFailure
+    {{- if .Values.cluster.serviceAccount }}
+      serviceAccount: {{ .Values.cluster.serviceAccount }}
+    {{- end }}
+      containers:
+      - name: kubectl
+        image: lachlanevenson/k8s-kubectl
+        command:
+          - "/bin/sh"
+          - "-c"
+          - echo '{{ .Files.Get "tidb-cluster-crd.json" | trim }}' | kubectl apply -f -
+{{- end }}

@@ -1,0 +1,93 @@
+{{- if .Values.monitor.ubbagent.reportingSecret }}
+{{- if .Values.monitor.ubbagent.testSecret }}
+apiVersion: v1                                                                                           
+kind: Secret
+metadata:
+  name: {{ .Values.monitor.ubbagent.reportingSecret }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.clusterName }}-reporting-secret
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: monitor
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+type: Opaque
+data:
+  consumer-id: "test"
+  reporting-key: "test"
+  entitlement-id: "test"
+---
+{{- end }}
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: {{ .Values.clusterName }}-ubbagent
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: monitor
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+      app.kubernetes.io/instance: {{ .Values.clusterName }}
+      app.kubernetes.io/component: monitor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/component: monitor
+    spec:
+  {{- if .Values.monitor.serviceAccount }}
+      serviceAccount: {{ .Values.monitor.serviceAccount }}
+  {{- else }}
+    {{- if .Values.rbac.create }}
+      serviceAccount: {{ .Values.clusterName }}-monitor
+    {{- end }}
+  {{- end }}
+    {{- if .Values.monitor.nodeSelector }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+            {{- range $key, $val := .Values.monitor.nodeSelector }}
+              {{- $valList := splitList "," $val }}
+              - key: {{ $key }}
+                operator: In
+                values:
+              {{- range $kl, $vl := $valList }}
+                - {{ $vl }}
+              {{- end }}
+            {{- end }}
+    {{- end }}
+      containers:
+      - image: {{ .Values.monitor.ubbagent.image }}
+        name: ubbagent
+        env:
+        - name: AGENT_LOCAL_PORT
+          value: "6080"
+        - name: AGENT_STATE_DIR
+          value: /var/lib/ubbagent
+        - name: AGENT_REPORT_DIR
+          value: /var/lib/ubbagent/reports
+        - name: CONSUMER_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.monitor.ubbagent.reportingSecret }}
+              key: consumer-id
+        - name: REPORTING_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.monitor.ubbagent.reportingSecret }}
+              key: reporting-key
+        volumeMounts:
+        - name: ubbagent-state
+          mountPath: /var/lib/ubbagent
+      volumes:
+      - name: ubbagent-state
+        emptyDir: {}
+{{- end }}

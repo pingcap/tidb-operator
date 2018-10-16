@@ -1,0 +1,51 @@
+tidb-operator:
+  rbac:
+    create: false
+  clusterScoped: false
+  controllerManager:
+    serviceAccount:
+  operatorImage:
+
+
+tidb-cluster:
+  # Assume one cluster per namespace
+  clusterName: db
+  rbac:
+    create: false
+  
+  fullbackup:
+    # Need to get the backup images pushed to GCR first.
+    create: false
+    password:
+
+  monitor:
+    ubbagent:
+      image:
+      reportingSecret:
+      testSecret: true
+    serviceAccount:
+    dashboardInstaller:
+      image:
+    prometheus:
+      resources:
+        requests:
+          cpu: 2000m
+          memory: 2Gi
+
+    grafana:
+      resources:
+        requests:
+          cpu: 2000m
+          memory: 2Gi
+
+  pd:
+    storageClassName:
+    image:
+
+  tikv:
+    storageClassName:
+    image:
+
+  tidb:
+    storageClassName:
+    image:

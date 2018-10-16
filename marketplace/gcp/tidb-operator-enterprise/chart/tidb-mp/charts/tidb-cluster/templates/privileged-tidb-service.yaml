@@ -1,0 +1,28 @@
+{{- if .Values.privilegedTidb }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.clusterName }}-privileged-tidb
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: privileged-tidb
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  type: {{ .Values.privilegedTidb.service.type }}
+  ports:
+  - name: mysql-client
+    port: 4000
+    targetPort: 4000
+    protocol: TCP
+{{- if (.Values.privilegedTidb.service.type) and eq .Values.privilegedTidb.service.type "NodePort" }}
+  {{- if .Values.privilegedTidb.service.nodePort }}
+    nodePort: {{ .Values.service.nodePort }}
+  {{- end }}
+{{- end }}
+  selector:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: privileged-tidb
+{{- end }}

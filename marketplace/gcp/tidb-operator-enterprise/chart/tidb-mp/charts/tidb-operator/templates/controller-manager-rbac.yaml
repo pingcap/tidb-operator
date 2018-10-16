@@ -1,0 +1,123 @@
+{{- if .Values.rbac.create }}
+{{- if .Values.clusterScoped }}
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: {{ .Release.Namespace }}:tidb-controller-manager
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-operator.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: controller-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+rules:
+- apiGroups: [""]
+  resources:
+    - services
+    - events
+  verbs: ["*"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["create", "get", "update"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch","update", "delete"]
+- apiGroups: [""]
+  resources: ["persistentvolumes"]
+  verbs: ["get", "list", "watch", "patch","update"]
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "watch", "update", "delete"]
+- apiGroups: ["apps"]
+  resources: ["statefulsets"]
+  verbs: ["*"]
+- apiGroups: ["pingcap.com"]
+  resources: ["tidbclusters"]
+  verbs: ["*"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: {{ .Release.Namespace }}:tidb-controller-manager
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-operator.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: controller-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+subjects:
+- kind: ServiceAccount
+  name: tidb-controller-manager
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ .Release.Namespace }}:tidb-controller-manager
+  apiGroup: rbac.authorization.k8s.io
+{{- else }}
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: tidb-controller-manager
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-operator.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: controller-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+rules:
+- apiGroups: [""]
+  resources:
+    - services
+    - events
+  verbs: ["*"]
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["create", "get", "update"]
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "watch", "update", "delete"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch","update", "delete"]
+- apiGroups: ["apps"]
+  resources: ["statefulsets"]
+  verbs: ["*"]
+- apiGroups: ["pingcap.com"]
+  resources: ["tidbclusters"]
+  verbs: ["*"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: tidb-controller-manager
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-operator.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: controller-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+subjects:
+- kind: ServiceAccount
+  name: tidb-controller-manager
+roleRef:
+  kind: Role
+  name: tidb-controller-manager
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
+{{- if .Values.controllerManager.serviceAccount }}
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: {{ .Values.controllerManager.serviceAccount }}
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-operator.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: controller-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,40 @@
+{{- if .Values.monitor.create }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.clusterName }}-monitor-configurator
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: monitor-configurator
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/component: monitor-configurator
+    spec:
+      restartPolicy: OnFailure
+    {{- if .Values.rbac.create }}
+      serviceAccount: {{ .Values.clusterName }}-monitor
+    {{- end }}
+      containers:
+      - name: tidb-dashboard-installer
+        image: {{ .Values.monitor.dashboardInstaller.image }}
+        args:
+          - {{ .Values.clusterName }}-grafana:3000
+        env:
+          - name: GRAFANA_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.clusterName }}-monitor
+                key: username
+          - name: GRAFANA_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.clusterName }}-monitor
+                key: password
+{{- end }}
