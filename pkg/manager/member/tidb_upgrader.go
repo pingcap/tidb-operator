@@ -52,12 +52,11 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
-	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-
 	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
 		return nil
 	}
 
+	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	for i := tc.Status.TiDB.StatefulSet.Replicas - 1; i >= 0; i-- {
 		podName := tidbPodName(tcName, i)
 		pod, err := tdu.podLister.Pods(ns).Get(podName)

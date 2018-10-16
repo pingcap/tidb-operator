@@ -36,6 +36,7 @@ type tidbMemberManager struct {
 	tidbControl  controller.TiDBControlInterface
 	setLister    v1beta1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
+	podLister    corelisters.PodLister
 	tidbUpgrader Upgrader
 	autoFailover bool
 	tidbFailover Failover
@@ -47,6 +48,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	tidbControl controller.TiDBControlInterface,
 	setLister v1beta1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
+	podLister corelisters.PodLister,
 	tidbUpgrader Upgrader,
 	autoFailover bool,
 	tidbFailover Failover) manager.Manager {
@@ -56,6 +58,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 		tidbControl:  tidbControl,
 		setLister:    setLister,
 		svcLister:    svcLister,
+		podLister:    podLister,
 		tidbUpgrader: tidbUpgrader,
 		autoFailover: autoFailover,
 		tidbFailover: tidbFailover,
@@ -334,7 +337,11 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	tc.Status.TiDB.StatefulSet = &set.Status
 
-	if statefulSetIsUpgrading(set) {
+	upgrading, err := tmm.tidbStatefulSetIsUpgrading(set, tc)
+	if err != nil {
+		return err
+	}
+	if upgrading {
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
 	} else {
 		tc.Status.TiDB.Phase = v1alpha1.NormalPhase
@@ -359,4 +366,28 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 	tc.Status.TiDB.Members = tidbStatus
 
 	return nil
+}
+
+func (tmm *tidbMemberManager) tidbStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
+	if statefulSetIsUpgrading(set) {
+		return true, nil
+	}
+	selector, err := label.New().Cluster(tc.GetName()).TiDB().Selector()
+	if err != nil {
+		return false, err
+	}
+	tidbPods, err := tmm.podLister.Pods(tc.GetNamespace()).List(selector)
+	if err != nil {
+		return false, err
+	}
+	for _, pod := range tidbPods {
+		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+		if !exist {
+			return false, nil
+		}
+		if revisionHash != tc.Status.TiDB.StatefulSet.UpdateRevision {
+			return true, nil
+		}
+	}
+	return false, nil
 }

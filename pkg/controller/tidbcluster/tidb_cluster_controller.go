@@ -144,6 +144,7 @@ func NewController(
 				tidbControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
+				podInformer.Lister(),
 				tidbUpgrader,
 				autoFailover,
 				tidbFailover,

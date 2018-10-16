@@ -67,12 +67,11 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-
 	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
 		return nil
 	}
 
+	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	for i := tc.Status.TiKV.StatefulSet.Replicas - 1; i >= 0; i-- {
 		store := tku.getStoreByOrdinal(tc, i)
 		podName := tikvPodName(tcName, i)

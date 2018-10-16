@@ -66,12 +66,11 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 	}
 
 	tc.Status.PD.Phase = v1alpha1.UpgradePhase
-	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-
 	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
 		return nil
 	}
 
+	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	for i := tc.Status.PD.StatefulSet.Replicas - 1; i >= 0; i-- {
 		podName := pdPodName(tcName, i)
 		pod, err := pu.podLister.Pods(ns).Get(podName)
@@ -146,6 +145,30 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 
 	setUpgradePartition(newSet, ordinal)
 	return nil
+}
+
+func (pu *pdUpgrader) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
+	if statefulSetIsUpgrading(set) {
+		return true, nil
+	}
+	selector, err := label.New().Cluster(tc.GetName()).PD().Selector()
+	if err != nil {
+		return false, err
+	}
+	pdPods, err := pu.podLister.Pods(tc.GetNamespace()).List(selector)
+	if err != nil {
+		return false, err
+	}
+	for _, pod := range pdPods {
+		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+		if !exist {
+			return false, nil
+		}
+		if revisionHash != tc.Status.PD.StatefulSet.UpdateRevision {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (pu *pdUpgrader) transferPDLeaderTo(tc *v1alpha1.TidbCluster, targetName string) error {
