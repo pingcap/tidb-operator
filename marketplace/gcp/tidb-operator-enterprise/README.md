@@ -12,6 +12,9 @@ First you can modify configuration values.
 * chart/tidb-mp/charts/tidb-operator/values.yaml
 
 ``` bash
+# Install the k8s application CRD into your cluster
+kubectl apply -f manifests/app-crd.yaml
+
 export VERSION='v1.0.3'
 export PROJECT=${PROJECT:-$(gcloud config get-value project | tr ':' '/')}
 export REGISTRY="gcr.io/${PROJECT}"
