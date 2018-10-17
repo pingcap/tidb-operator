@@ -21,7 +21,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -45,26 +44,18 @@ type PDControlInterface interface {
 
 // defaultPDControl is the default implementation of PDControlInterface.
 type defaultPDControl struct {
-	mutex     sync.Mutex
-	pdClients map[string]PDClient
 }
 
 // NewDefaultPDControl returns a defaultPDControl instance
 func NewDefaultPDControl() PDControlInterface {
-	return &defaultPDControl{pdClients: map[string]PDClient{}}
+	return &defaultPDControl{}
 }
 
 // GetPDClient provides a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
 func (pdc *defaultPDControl) GetPDClient(tc *v1alpha1.TidbCluster) PDClient {
-	pdc.mutex.Lock()
-	defer pdc.mutex.Unlock()
 	namespace := tc.GetNamespace()
 	tcName := tc.GetName()
-	key := pdClientKey(namespace, tcName)
-	if _, ok := pdc.pdClients[key]; !ok {
-		pdc.pdClients[key] = NewPDClient(pdClientURL(namespace, tcName), timeout)
-	}
-	return pdc.pdClients[key]
+	return NewPDClient(pdClientURL(namespace, tcName), timeout)
 }
 
 // pdClientKey returns the pd client key
@@ -530,17 +521,22 @@ func readErrorBody(body io.Reader) (err error) {
 }
 
 type FakePDControl struct {
-	defaultPDControl
+	pdClients map[string]PDClient
 }
 
 func NewFakePDControl() *FakePDControl {
 	return &FakePDControl{
-		defaultPDControl{pdClients: map[string]PDClient{}},
+		pdClients: map[string]PDClient{},
 	}
 }
 
+func (fpc *FakePDControl) GetPDClient(tc *v1alpha1.TidbCluster) PDClient {
+	pdClient, _ := fpc.pdClients[pdClientKey(tc.Namespace, tc.Name)]
+	return pdClient
+}
+
 func (fpc *FakePDControl) SetPDClient(tc *v1alpha1.TidbCluster, pdclient PDClient) {
-	fpc.defaultPDControl.pdClients[pdClientKey(tc.Namespace, tc.Name)] = pdclient
+	fpc.pdClients[pdClientKey(tc.Namespace, tc.Name)] = pdclient
 }
 
 type ActionType string
