@@ -80,7 +80,7 @@ func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster
 	}
 
 	if !apiequality.Semantic.DeepEqual(&tc.Status, oldStatus) {
-		_, err := tcc.tcControl.UpdateTidbCluster(tc.DeepCopy())
+		_, err := tcc.tcControl.UpdateTidbCluster(tc.DeepCopy(), tc.Status.DeepCopy(), oldStatus.DeepCopy())
 		if err != nil {
 			errs = append(errs, err)
 		}
