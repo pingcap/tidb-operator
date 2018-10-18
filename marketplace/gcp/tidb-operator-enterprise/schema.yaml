@@ -15,28 +15,7 @@ properties:
     x-google-marketplace:
       type: IMAGE
 
-  tidb-cluster.pd.storageClassName:
-    type: string
-    x-google-marketplace:
-      type: STORAGE_CLASS
-      storageClass:
-        type: SSD
-
-  tidb-cluster.tikv.storageClassName:
-    type: string
-    x-google-marketplace:
-      type: STORAGE_CLASS
-      storageClass:
-        type: SSD
-
-  tidb-cluster.tidb.storageClassName:
-    type: string
-    x-google-marketplace:
-      type: STORAGE_CLASS
-      storageClass:
-        type: SSD
-
-  tidb-operator.controllerManager.serviceAccount:
+  serviceAccount:
     type: string
     x-google-marketplace:
       type: SERVICE_ACCOUNT
@@ -46,59 +25,45 @@ properties:
           rulesType: PREDEFINED
           rulesFromRoleName: cluster-admin
 
-  tidb-cluster.monitor.serviceAccount:
+  installerImage:
     type: string
+    default: $REGISTRY/tidb-operator-enterprise/installer:$TAG
     x-google-marketplace:
-      type: SERVICE_ACCOUNT
-      serviceAccount:
-        roles:
-        - type: ClusterRole
-          rulesType: PREDEFINED
-          rulesFromRoleName: cluster-admin
-
-  tidb-crd.cluster.serviceAccount:
-    type: string
-    x-google-marketplace:
-      type: SERVICE_ACCOUNT
-      serviceAccount:
-        roles:
-        - type: ClusterRole
-          rulesType: PREDEFINED
-          rulesFromRoleName: cluster-admin
+      type: IMAGE
 
   tidb-operator.operatorImage:
     type: string
-    default: $REGISTRY/pingcap/tidb-operator:$TAG
+    default: $REGISTRY/tidb-operator-enterprise/tidb-operator:$TAG
     x-google-marketplace:
       type: IMAGE
 
   tidb-cluster.monitor.dashboardInstaller.image:
     type: string
-    default: $REGISTRY/pingcap/tidb-dashboard-installer:$TAG
+    default: $REGISTRY/tidb-operator-enterprise/tidb-dashboard-installer:$TAG
     x-google-marketplace:
       type: IMAGE
 
   tidb-cluster.pd.image:
     type: string
-    default: $REGISTRY/pingcap/pd:$TAG
+    default: $REGISTRY/tidb-operator-enterprise/pd:$TAG
     x-google-marketplace:
       type: IMAGE
 
   tidb-cluster.tikv.image:
     type: string
-    default: $REGISTRY/pingcap/tikv:$TAG
+    default: $REGISTRY/tidb-operator-enterprise/tikv:$TAG
     x-google-marketplace:
       type: IMAGE
 
   tidb-cluster.tidb.image:
     type: string
-    default: $REGISTRY/pingcap/tidb:$TAG
+    default: $REGISTRY/tidb-operator-enterprise/tidb:$TAG
     x-google-marketplace:
       type: IMAGE
 
   tidb-cluster.monitor.ubbagent.image:
     type: string
-    default: $REGISTRY/pingcap/ubbagent:$TAG
+    default: $REGISTRY/tidb-operator-enterprise/ubbagent:$TAG
     x-google-marketplace:
       type: IMAGE
 
@@ -110,7 +75,4 @@ properties:
 required:
 - name
 - namespace
-- tidb-operator.controllerManager.serviceAccount
-- tidb-cluster.pd.storageClassName
-- tidb-cluster.tidb.storageClassName
-- tidb-cluster.tikv.storageClassName
+- serviceAccount

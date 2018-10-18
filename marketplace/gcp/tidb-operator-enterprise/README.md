@@ -5,19 +5,19 @@
 
 First you can modify configuration values.
 
-* schema.yaml: don't modify this, use parameters. overrides the below
-* chart/tidb-mp/values.yaml: these override the below
-* chart/tidb-mp/charts/tidb-cluster/values.yaml
-* chart/tidb-mp/charts/tidb-crd/values.yaml
-* chart/tidb-mp/charts/tidb-operator/values.yaml
+* schema.yaml: don't modify this, use parameters to override it as shown below
+* chart/tidb-mp/values.yaml:
+  * Note that you can override any tidb-operator or tidb-cluster configuration value
+
+TODO: review this once we have a Marketplace image published. In particular, set REPO in ./scripts/install
 
 ``` bash
 # Install the k8s application CRD into your cluster
 kubectl apply -f manifests/app-crd.yaml
 
-export VERSION='v1.0.3'
+export VERSION='1.0.0'
 export PROJECT=${PROJECT:-$(gcloud config get-value project | tr ':' '/')}
-export REGISTRY="gcr.io/${PROJECT}"
+export REGISTRY="gcr.io/$PROJECT"
 export APP_NAME="tidb-operator-enterprise"
 
 docker build \
@@ -27,15 +27,11 @@ docker build \
 
 gcloud docker -- push "$REGISTRY/$APP_NAME/deployer:$VERSION"
 
-# We recommend deploying into a new namespace
+# We strongly recommend deploying into a new namespace
 kubectl create namespace tidb
+export NAMESPACE=tidb
 
-PARAMETERS='{"name": "test-deployment", "namespace": "tidb", "tidb-cluster.monitor.ubbagent.reportingSecret":"secret", "tidb-cluster.pd.storageClassName":"pd-ssd", "tidb-cluster.tikv.storageClassName":"pd-ssd", "tidb-cluster.tidb.storageClassName":"pd-ssd"}'
-
-# This uses a large docker image that takes a long time to download.
-./scripts/mpdev /scripts/install \
-  --deployer=$REGISTRY/$APP_NAME/deployer:$VERSION \
-  --parameters="$PARAMETERS"
+./scripts/install
 ```
 
 You can watch the deployment come up with

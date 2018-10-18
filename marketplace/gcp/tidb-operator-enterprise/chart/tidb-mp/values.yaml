@@ -1,17 +1,29 @@
+# create resources at deploy time with this serviceAccount
+serviceAccount:
+
+# installer image
+installerImage:
+
+storageClass:
+  create: true
+
+clusterName: db
+
+# operator chart
 tidb-operator:
   rbac:
-    create: false
+    create: true
   clusterScoped: false
   controllerManager:
-    serviceAccount:
+    serviceAccount: tidb-controller-manager
   operatorImage:
 
-
+# cluster chart
 tidb-cluster:
   # Assume one cluster per namespace
   clusterName: db
   rbac:
-    create: false
+    create: true
   
   fullbackup:
     # Need to get the backup images pushed to GCR first.
@@ -19,11 +31,12 @@ tidb-cluster:
     password:
 
   monitor:
+    create: true
+    serviceAccount:
     ubbagent:
       image:
       reportingSecret:
       testSecret: true
-    serviceAccount:
     dashboardInstaller:
       image:
     prometheus:
@@ -39,13 +52,13 @@ tidb-cluster:
           memory: 2Gi
 
   pd:
-    storageClassName:
+    storageClassName: tidb-pd-ssd
     image:
 
   tikv:
-    storageClassName:
+    storageClassName: tidb-pd-ssd
     image:
 
   tidb:
-    storageClassName:
+    storageClassName: tidb-pd-ssd
     image:
