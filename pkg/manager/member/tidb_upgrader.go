@@ -65,7 +65,7 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 		}
 		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb pod: [%s] has not label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb pod: [%s] has no label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
 		}
 
 		if revision == tc.Status.TiDB.StatefulSet.UpdateRevision {

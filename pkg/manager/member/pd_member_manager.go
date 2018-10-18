@@ -291,7 +291,7 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		}
 		name := memberHealth.Name
 		if len(name) == 0 {
-			glog.Warningf("PD member: [%d] don't have a name, and can't get it from clientUrls: [%s], memberHealth Info: [%v] in [%s/%s]",
+			glog.Warningf("PD member: [%d] doesn't have a name, and can't get it from clientUrls: [%s], memberHealth Info: [%v] in [%s/%s]",
 				id, memberHealth.ClientUrls, memberHealth, ns, tcName)
 			continue
 		}
