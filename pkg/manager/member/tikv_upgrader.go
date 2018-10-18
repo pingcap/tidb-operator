@@ -74,6 +74,9 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	for i := tc.Status.TiKV.StatefulSet.Replicas - 1; i >= 0; i-- {
 		store := tku.getStoreByOrdinal(tc, i)
+		if store == nil {
+			continue
+		}
 		podName := tikvPodName(tcName, i)
 		pod, err := tku.podLister.Pods(ns).Get(podName)
 		if err != nil {
@@ -81,19 +84,16 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 		}
 		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] have not label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] has not label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
 		}
 
-		if store == nil {
-			continue
-		}
 		if revision == tc.Status.TiKV.StatefulSet.UpdateRevision {
 
 			if pod.Status.Phase != corev1.PodRunning {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pods are not all running", ns, tcName)
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not running", ns, tcName, podName)
 			}
 			if store.State != v1alpha1.TiKVStateUp {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv are not all ready", ns, tcName)
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
 			}
 			err := tku.endEvictLeader(tc, i)
 			if err != nil {
@@ -137,7 +137,7 @@ func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32,
 		}
 	}
 
-	return controller.RequeueErrorf("tidbcluster: [%s/%s] have not find store status of tikv pod: [%s]", ns, tcName, upgradePodName)
+	return controller.RequeueErrorf("tidbcluster: [%s/%s] no store status found for tikv pod: [%s]", ns, tcName, upgradePodName)
 }
 
 func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.TiKVStore) bool {

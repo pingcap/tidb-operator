@@ -80,12 +80,12 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 
 		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd pod: [%s] have not label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd pod: [%s] has not label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
 		}
 
 		if revision == tc.Status.PD.StatefulSet.UpdateRevision {
 			if member, exist := tc.Status.PD.Members[podName]; !exist || !member.Health {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd upgraded pod: [%s] are not ready", ns, tcName, podName)
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd upgraded pod: [%s] is not ready", ns, tcName, podName)
 			}
 			continue
 		}
@@ -145,30 +145,6 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 
 	setUpgradePartition(newSet, ordinal)
 	return nil
-}
-
-func (pu *pdUpgrader) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
-	if statefulSetIsUpgrading(set) {
-		return true, nil
-	}
-	selector, err := label.New().Cluster(tc.GetName()).PD().Selector()
-	if err != nil {
-		return false, err
-	}
-	pdPods, err := pu.podLister.Pods(tc.GetNamespace()).List(selector)
-	if err != nil {
-		return false, err
-	}
-	for _, pod := range pdPods {
-		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
-		if !exist {
-			return false, nil
-		}
-		if revisionHash != tc.Status.PD.StatefulSet.UpdateRevision {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 func (pu *pdUpgrader) transferPDLeaderTo(tc *v1alpha1.TidbCluster, targetName string) error {
