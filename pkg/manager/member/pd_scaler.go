@@ -51,6 +51,11 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 		return err
 	}
 
+	if !tc.Status.PD.Synced {
+		resetReplicas(newSet, oldSet)
+		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed,can't scale out now", ns, tcName)
+	}
+
 	var i int32 = 0
 	healthCount := 0
 	totalCount := *oldSet.Spec.Replicas
@@ -74,6 +79,7 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 // only remove one member at a time when scale down
 func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
+	tcName := tc.GetName()
 	ordinal := *oldSet.Spec.Replicas - 1
 	memberName := fmt.Sprintf("%s-pd-%d", tc.GetName(), ordinal)
 	setName := oldSet.GetName()
@@ -81,6 +87,11 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	if tc.PDUpgrading() {
 		resetReplicas(newSet, oldSet)
 		return nil
+	}
+
+	if !tc.Status.PD.Synced {
+		resetReplicas(newSet, oldSet)
+		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed,can't scale in now", ns, tcName)
 	}
 
 	err := psd.pdControl.GetPDClient(tc).DeleteMember(memberName)

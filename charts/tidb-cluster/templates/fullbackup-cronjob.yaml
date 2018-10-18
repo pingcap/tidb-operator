@@ -1,0 +1,97 @@
+{{- if .Values.fullbackup.create }}
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: {{ .Values.clusterName }}-fullbackup
+  labels:
+    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: fullbackup
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  schedule: {{ .Values.fullbackup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  suspend: {{ .Values.fullbackup.suspend }}
+  startingDeadlineSeconds: {{ .Values.fullbackup.startingDeadlineSeconds }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          initContainers:
+          - name: get-ts
+            image: {{ .Values.fullbackup.binlogImage }}
+            command:
+            - /binlogctl
+            - -pd-urls=http://{{ .Values.clusterName }}-pd:2379
+            - -cmd=generate_meta
+            - -data-dir=/savepoint-dir
+            volumeMounts:
+            - name: savepoint-dir
+              mountPath: "/savepoint-dir"
+          containers:
+          - name: fullbackup
+            image: {{ .Values.fullbackup.mydumperImage }}
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -euo pipefail
+              dirname=`date +%Y-%m-%dT%H%M%S`-${MY_POD_NAME}
+              host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]'`
+
+              mkdir -p /data/${dirname}/
+              cp /savepoint-dir/savepoint /data/${dirname}/
+
+              mydumper \
+                --outputdir=/data/${dirname} \
+                --host=`eval echo '${'$host'}'` \
+                --port=4000 \
+                --user={{ .Values.fullbackup.user }} \
+                --password=${TIDB_PASSWORD} \
+                {{ .Values.fullbackup.options }}
+
+            {{- if .Values.fullbackup.gcp }}
+              uploader \
+                --cloud=gcp \
+                --bucket={{ .Values.fullbackup.gcp.bucket }} \
+                --backup-dir=/data/${dirname}
+            {{- end }}
+            volumeMounts:
+            - name: savepoint-dir
+              mountPath: "/savepoint-dir"
+            - name: data
+              mountPath: "/data"
+          {{- if .Values.fullbackup.gcp }}
+            - name: gcp-credentials
+              mountPath: "/gcp"
+              readOnly: true
+          {{- end }}
+            ENV:
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          {{- if .Values.fullbackup.gcp }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /gcp/credentials.json
+          {{- end }}
+            - name: TIDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.clusterName }}-fullbackup-secret
+                  key: user-password
+          restartPolicy: OnFailure
+          volumes:
+          - name: savepoint-dir
+            emptyDir: {}
+          - name: data
+            persistentVolumeClaim:
+              claimName: {{ .Values.clusterName }}-fullbackup
+        {{- if .Values.fullbackup.gcp }}
+          - name: gcp-credentials
+            secret:
+              secretName: {{ .Values.clusterName }}-fullbackup-secret
+        {{- end }}
+
+{{- end }}

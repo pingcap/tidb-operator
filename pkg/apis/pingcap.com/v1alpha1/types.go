@@ -123,6 +123,7 @@ type TiDBSpec struct {
 	NodeSelectorRequired bool                `json:"nodeSelectorRequired,omitempty"`
 	StorageClassName     string              `json:"storageClassName,omitempty"`
 	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
+	BinlogEnabled        bool                `json:"binlogEnabled,omitempty"`
 }
 
 // TiKVSpec contains details of PD member
@@ -165,9 +166,11 @@ type ResourceRequirement struct {
 
 // PDStatus is PD status
 type PDStatus struct {
+	Synced         bool                       `json:"synced,omitempty"`
 	Phase          MemberPhase                `json:"phase,omitempty"`
 	StatefulSet    *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
 	Members        map[string]PDMember        `json:"members,omitempty"`
+	Leader         PDMember                   `json:"leader,omitempty"`
 	FailureMembers map[string]PDFailureMember `json:"failureMembers,omitempty"`
 }
 
@@ -194,10 +197,11 @@ type PDFailureMember struct {
 
 // TiDBStatus is TiDB status
 type TiDBStatus struct {
-	Phase          MemberPhase                  `json:"phase,omitempty"`
-	StatefulSet    *apps.StatefulSetStatus      `json:"statefulSet,omitempty"`
-	Members        map[string]TiDBMember        `json:"members,omitempty"`
-	FailureMembers map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
+	Phase                    MemberPhase                  `json:"phase,omitempty"`
+	StatefulSet              *apps.StatefulSetStatus      `json:"statefulSet,omitempty"`
+	Members                  map[string]TiDBMember        `json:"members,omitempty"`
+	FailureMembers           map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
+	ResignDDLOwnerRetryCount int32                        `json:"resignDDLOwnerRetryCount,omitempty"`
 }
 
 // TiDBMember is TiDB member
@@ -216,6 +220,7 @@ type TiDBFailureMember struct {
 
 // TiKVStatus is TiKV status
 type TiKVStatus struct {
+	Synced          bool                        `json:"synced,omitempty"`
 	Phase           MemberPhase                 `json:"phase,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
 	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
@@ -229,6 +234,7 @@ type TiKVStore struct {
 	ID                string      `json:"id"`
 	PodName           string      `json:"podName"`
 	IP                string      `json:"ip"`
+	LeaderCount       int32       `json:"leaderCount"`
 	State             string      `json:"state"`
 	LastHeartbeatTime metav1.Time `json:"lastHeartbeatTime"`
 	// Last time the health transitioned from one to another.

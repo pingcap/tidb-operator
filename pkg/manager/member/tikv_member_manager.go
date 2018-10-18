@@ -174,7 +174,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 
-	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
+	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
 		if err := tkmm.tikvUpgrader.Upgrade(tc, oldSet, newSet); err != nil {
 			return err
 		}
@@ -204,6 +204,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		set := *oldSet
 		set.Spec.Template = newSet.Spec.Template
 		*set.Spec.Replicas = *newSet.Spec.Replicas
+		set.Spec.UpdateStrategy = newSet.Spec.UpdateStrategy
 		err := SetLastAppliedConfigAnnotation(&set)
 		if err != nil {
 			return err
@@ -389,7 +390,12 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 			},
 			ServiceName:         headlessSvcName,
 			PodManagementPolicy: apps.ParallelPodManagement,
-			UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
+			UpdateStrategy: apps.StatefulSetUpdateStrategy{
+				Type: apps.RollingUpdateStatefulSetStrategyType,
+				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
+					Partition: func() *int32 { r := tc.TiKVRealReplicas(); return &r }(),
+				},
+			},
 		},
 	}
 	return tikvset, nil
@@ -437,6 +443,20 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 
 	tc.Status.TiKV.StatefulSet = &set.Status
 
+	if statefulSetIsUpgrading(set) {
+		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+	} else {
+		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+	}
+
+	exist, err := tkmm.evictSchedulerExists(tc)
+	if err != nil {
+		return err
+	}
+	if exist {
+		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+	}
+
 	previousStores := tc.Status.TiKV.Stores
 	stores := map[string]v1alpha1.TiKVStore{}
 	tombstoneStores := map[string]v1alpha1.TiKVStore{}
@@ -446,6 +466,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	// This only returns Up/Down/Offline stores
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
+		tc.Status.TiKV.Synced = false
 		glog.Errorf("failed to get stores from PD for TidbCluster: [%s/%s], %v", ns, tcName, err)
 		return err
 	}
@@ -491,18 +512,12 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		if status == nil {
 			continue
 		}
-
 		tombstoneStores[status.ID] = *status
 	}
 
+	tc.Status.TiKV.Synced = true
 	tc.Status.TiKV.Stores = stores
 	tc.Status.TiKV.TombstoneStores = tombstoneStores
-
-	if statefulSetIsUpgrading(set) {
-		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-	} else {
-		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-	}
 
 	return nil
 }
@@ -519,6 +534,7 @@ func (tkmm *tikvMemberManager) getTiKVStore(store *controller.StoreInfo) *v1alph
 		ID:                storeID,
 		PodName:           podName,
 		IP:                ip,
+		LeaderCount:       int32(store.Status.LeaderCount),
 		State:             store.Store.StateName,
 		LastHeartbeatTime: metav1.Time{Time: store.Status.LastHeartbeatTS},
 	}
@@ -586,4 +602,13 @@ func (tkmm *tikvMemberManager) storeLabelsEqualNodeLabels(storeLabels []*metapb.
 		}
 	}
 	return reflect.DeepEqual(ls, nodeLabels)
+}
+
+func (tkmm *tikvMemberManager) evictSchedulerExists(tc *v1alpha1.TidbCluster) (bool, error) {
+	evictLeaderSchedulers, err := tkmm.pdControl.GetPDClient(tc).GetEvictLeaderSchedulers()
+	if err != nil {
+		return false, err
+	}
+
+	return evictLeaderSchedulers != nil && len(evictLeaderSchedulers) > 0, nil
 }

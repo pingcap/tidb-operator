@@ -5,9 +5,14 @@ rbac:
 # operatorImage is TiDB Operator image
 operatorImage: 127.0.0.1:5000/pingcap/tidb-operator:latest
 imagePullPolicy: Always
+
 defaultStorageClassName: local-storage
 
+# clusterScoped is whether tidb-operator should manage kubernetes cluster wide tidb clusters
+clusterScoped: true
+
 controllerManager:
+  serviceAccount: tidb-controller-manager
   logLevel: 2
   replicas: 1
   resources:
@@ -17,4 +22,10 @@ controllerManager:
     requests:
       cpu: 80m
       memory: 50Mi
+  # autoFailover is whether tidb-operator should auto failover when failure occurs
+  autoFailover: false
+  # pd failover period default(5m)
+  pdFailoverPeriod: 5m
+  # tidb failover period default(5m)
+  tidbFailoverPeriod: 5m
 
