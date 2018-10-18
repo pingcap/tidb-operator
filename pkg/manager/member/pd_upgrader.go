@@ -128,7 +128,7 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	upgradePodName := pdPodName(tcName, ordinal)
-	if tc.Status.PD.Leader.Name == upgradePodName {
+	if tc.Status.PD.Leader.Name == upgradePodName && tc.Status.PD.StatefulSet.Replicas > 1 {
 		lastOrdinal := tc.Status.PD.StatefulSet.Replicas - 1
 		var targetName string
 		if ordinal == lastOrdinal {

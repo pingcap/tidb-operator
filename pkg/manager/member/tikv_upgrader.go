@@ -85,7 +85,6 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 		}
 
 		if store == nil {
-			setUpgradePartition(newSet, i)
 			continue
 		}
 		if revision == tc.Status.TiKV.StatefulSet.UpdateRevision {
