@@ -18,9 +18,6 @@ spec:
         app.kubernetes.io/component: monitor-configurator
     spec:
       restartPolicy: OnFailure
-    {{- if .Values.monitor.serviceAccount }}
-      serviceAccount: {{ .Values.monitor.serviceAccount }}
-    {{- end }}
       containers:
       - name: tidb-dashboard-installer
         image: {{ .Values.monitor.dashboardInstaller.image }}

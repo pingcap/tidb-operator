@@ -31,6 +31,9 @@ rules:
   resources: ["endpoints"]
   verbs: ["create", "get", "update"]
 - apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "watch", "update", "delete"]
+- apiGroups: [""]
   resources: ["pods"]
   verbs: ["get", "list", "watch","update", "delete"]
 - apiGroups: ["apps"]
@@ -46,9 +49,6 @@ rules:
 - apiGroups: [""]
   resources: ["persistentvolumes"]
   verbs: ["get", "list", "watch", "patch","update"]
-- apiGroups: [""]
-  resources: ["persistentvolumeclaims"]
-  verbs: ["get", "list", "watch", "update", "delete"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -73,7 +73,7 @@ roleRef:
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: tidb-controller-manager
+  name: {{ .Release.Name }}:tidb-controller-manager
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -105,7 +105,7 @@ rules:
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: tidb-controller-manager
+  name: {{ .Release.Name }}:tidb-controller-manager
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -117,7 +117,7 @@ subjects:
   name: {{ .Values.controllerManager.serviceAccount }}
 roleRef:
   kind: Role
-  name: tidb-controller-manager
+  name: {{ .Release.Name }}:tidb-controller-manager
   apiGroup: rbac.authorization.k8s.io
 {{- end }}
 {{- end }}
