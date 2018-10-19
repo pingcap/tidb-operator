@@ -49,7 +49,7 @@ $ # Install TiDB Operator into Kubernetes
 $ helm install charts/tidb-operator --name=tidb-operator --namespace=tidb-admin
 
 $ # wait operator running
-$ kubectl get po -n tidb-admin -l app=tidb-operator
+$ kubectl get pods --namespace tidb-admin -l app.kubernetes.io/instance=tidb-operator
 NAME                                       READY     STATUS    RESTARTS   AGE
 tidb-controller-manager-5cd94748c7-jlvfs   1/1       Running   0          1m
 ```
