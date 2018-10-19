@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: {{ .Values.clusterName }}-grafana
   labels:
-    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: monitor
@@ -17,7 +17,7 @@ spec:
     targetPort: 3000
   type: {{ .Values.monitor.grafana.service.type }}
   selector:
-    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: monitor
 ---
@@ -26,7 +26,7 @@ kind: Service
 metadata:
   name: {{ .Values.clusterName }}-prometheus
   labels:
-    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: monitor
@@ -39,7 +39,7 @@ spec:
     targetPort: 9090
   type: {{ .Values.monitor.prometheus.service.type }}
   selector:
-    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: monitor
 {{- end }}

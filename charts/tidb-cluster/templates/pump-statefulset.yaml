@@ -4,7 +4,7 @@ kind: StatefulSet
 metadata:
   name: {{ .Values.clusterName }}-pump
   labels:
-    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: pump
@@ -12,7 +12,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+      app.kubernetes.io/name: {{ template "chart.name" . }}
       app.kubernetes.io/instance: {{ .Values.clusterName }}
       app.kubernetes.io/component: pump
   serviceName: {{ .Values.clusterName }}-pump
@@ -24,7 +24,7 @@ spec:
         prometheus.io/path: "/metrics"
         prometheus.io/port: "8250"
       labels:
-        app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+        app.kubernetes.io/name: {{ template "chart.name" . }}
         app.kubernetes.io/instance: {{ .Values.clusterName }}
         app.kubernetes.io/component: pump
     spec:
