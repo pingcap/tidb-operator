@@ -178,6 +178,29 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
+			name: "newSet template changed",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Synced = true
+			},
+			changeOldSet: func(oldSet *apps.StatefulSet) {
+				oldSet.Spec.Template.Spec.Containers[0].Image = "old-image"
+				SetLastAppliedConfigAnnotation(oldSet)
+			},
+			changePods:          nil,
+			beginEvictLeaderErr: false,
+			endEvictLeaderErr:   false,
+			updatePodErr:        false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
+				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(3)))
+			},
+		},
+		{
 			name: "tikv can not upgrade when pd is upgrading",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.UpgradePhase
@@ -275,7 +298,8 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			endEvictLeaderErr:   false,
 			updatePodErr:        false,
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(err.Error()).To(Equal("tidbcluster: [default/upgrader]'s tikv pod: [upgrader-tikv-1] is evicting leader"))
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
@@ -469,7 +493,7 @@ func newStatefulSetForTiKVUpgrader() *apps.StatefulSet {
 					Containers: []corev1.Container{
 						{
 							Name:  "tikv",
-							Image: "tikv-test-images:v2",
+							Image: "tikv-test-image",
 						},
 					},
 				},
