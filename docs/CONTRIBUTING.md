@@ -122,7 +122,6 @@ $ make e2e-docker-push
 After Docker images are pushed to the DinD Docker registry, run e2e tests:
 
 ```sh
-$ kubectl create namespace tidb-operator-e2e
 $ kubectl apply -f manifests/tidb-operator-e2e.yaml
 ```
 
