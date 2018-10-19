@@ -15,6 +15,12 @@ spec:
     - group: batch/v1
       kind: Job
     - group: v1
+      kind: ConfigMap
+    - group: v1
+      kind: Service
+    - group: v1
+      kind: Secret
+    - group: v1
       kind: PersistentVolumeClaim
 
 metadata:
