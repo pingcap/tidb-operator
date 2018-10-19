@@ -301,6 +301,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			tidbControl,
 			setInformer.Lister(),
 			svcInformer.Lister(),
+			podInformer.Lister(),
 			tidbUpgrader,
 			autoFailover,
 			tidbFailover,

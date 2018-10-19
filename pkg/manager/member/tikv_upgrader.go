@@ -67,45 +67,51 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-
-	if tc.Status.TiKV.StatefulSet.CurrentReplicas == 0 {
-		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv doesn't have old version pod to upgrade", ns, tcName)
-	}
-
-	if tc.Status.TiKV.StatefulSet.CurrentRevision == tc.Status.TiKV.StatefulSet.UpdateRevision {
-		tku.endEvictLeader(tc, 0)
+	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
 		return nil
 	}
 
-	if !tc.TiKVAllPodsStarted() {
-		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pods are not all created", ns, tcName)
-	}
-	for i := tc.Status.TiKV.StatefulSet.Replicas; i > tc.Status.TiKV.StatefulSet.CurrentReplicas; i-- {
-		store := tku.getStoreByOrdinal(tc, i-1)
-		if tc.Status.TiKV.StatefulSet.UpdatedReplicas != tc.Status.TiKV.StatefulSet.Replicas-tc.Status.TiKV.StatefulSet.CurrentReplicas {
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgradedReplicas is not correct", ns, tcName)
+	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
+	for i := tc.Status.TiKV.StatefulSet.Replicas - 1; i >= 0; i-- {
+		store := tku.getStoreByOrdinal(tc, i)
+		if store == nil {
+			continue
 		}
-		podName := tikvPodName(tcName, i-1)
+		podName := tikvPodName(tcName, i)
 		pod, err := tku.podLister.Pods(ns).Get(podName)
 		if err != nil {
 			return err
 		}
-		if pod.Status.Phase != corev1.PodRunning {
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pods are not all running", ns, tcName)
+		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+		if !exist {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] has no label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
 		}
-		if store == nil || store.State != v1alpha1.TiKVStateUp {
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv are not all ready", ns, tcName)
-		} else {
-			err := tku.endEvictLeader(tc, i-1)
+
+		if revision == tc.Status.TiKV.StatefulSet.UpdateRevision {
+
+			if pod.Status.Phase != corev1.PodRunning {
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not running", ns, tcName, podName)
+			}
+			if store.State != v1alpha1.TiKVStateUp {
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
+			}
+			err := tku.endEvictLeader(tc, i)
 			if err != nil {
 				return err
 			}
+			continue
 		}
+
+		return tku.upgradeTiKVPod(tc, i, newSet)
 	}
 
-	upgradeOrdinal := tc.Status.TiKV.StatefulSet.CurrentReplicas - 1
-	upgradePodName := tikvPodName(tcName, upgradeOrdinal)
+	return nil
+}
+
+func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	upgradePodName := tikvPodName(tcName, ordinal)
 	upgradePod, err := tku.podLister.Pods(ns).Get(upgradePodName)
 	if err != nil {
 		return err
@@ -120,17 +126,18 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 			_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
 
 			if tku.readyToUpgrade(upgradePod, store) {
-				setUpgradePartition(newSet, upgradeOrdinal)
+				setUpgradePartition(newSet, ordinal)
 				return nil
 			}
 
 			if !evicting {
 				return tku.beginEvictLeader(tc, storeID, upgradePod)
 			}
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] is evicting leader", ns, tcName, upgradePodName)
 		}
 	}
 
-	return nil
+	return controller.RequeueErrorf("tidbcluster: [%s/%s] no store status found for tikv pod: [%s]", ns, tcName, upgradePodName)
 }
 
 func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.TiKVStore) bool {
@@ -192,11 +199,6 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 func (tku *tikvUpgrader) getStoreByOrdinal(tc *v1alpha1.TidbCluster, ordinal int32) *v1alpha1.TiKVStore {
 	podName := tikvPodName(tc.GetName(), ordinal)
 	for _, store := range tc.Status.TiKV.Stores {
-		if store.PodName == podName {
-			return &store
-		}
-	}
-	for _, store := range tc.Status.TiKV.TombstoneStores {
 		if store.PodName == podName {
 			return &store
 		}
