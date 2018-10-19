@@ -53,7 +53,7 @@ func NewRealTidbClusterControl(cli versioned.Interface,
 	}
 }
 
-func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, new *v1alpha1.TidbClusterStatus, old *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error) {
+func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, newStatus *v1alpha1.TidbClusterStatus, oldStatus *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -80,7 +80,7 @@ func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, n
 
 		return updateErr
 	})
-	if !deepEqualExceptHeartbeatTime(new, old) {
+	if !deepEqualExceptHeartbeatTime(newStatus.DeepCopy(), oldStatus.DeepCopy()) {
 		rtc.recordTidbClusterEvent("update", tc, err)
 	}
 	return updateTC, err
@@ -101,13 +101,13 @@ func (rtc *realTidbClusterControl) recordTidbClusterEvent(verb string, tc *v1alp
 	}
 }
 
-func deepEqualExceptHeartbeatTime(new *v1alpha1.TidbClusterStatus, old *v1alpha1.TidbClusterStatus) bool {
-	sweepHeartbeatTime(new.TiKV.Stores)
-	sweepHeartbeatTime(new.TiKV.TombstoneStores)
-	sweepHeartbeatTime(old.TiKV.Stores)
-	sweepHeartbeatTime(old.TiKV.TombstoneStores)
+func deepEqualExceptHeartbeatTime(newStatus *v1alpha1.TidbClusterStatus, oldStatus *v1alpha1.TidbClusterStatus) bool {
+	sweepHeartbeatTime(newStatus.TiKV.Stores)
+	sweepHeartbeatTime(newStatus.TiKV.TombstoneStores)
+	sweepHeartbeatTime(oldStatus.TiKV.Stores)
+	sweepHeartbeatTime(oldStatus.TiKV.TombstoneStores)
 
-	return apiequality.Semantic.DeepEqual(new, old)
+	return apiequality.Semantic.DeepEqual(newStatus, oldStatus)
 }
 
 func sweepHeartbeatTime(stores map[string]v1alpha1.TiKVStore) {
@@ -140,7 +140,7 @@ func (ssc *FakeTidbClusterControl) SetUpdateTidbClusterError(err error, after in
 }
 
 // UpdateTidbCluster updates the TidbCluster
-func (ssc *FakeTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, new *v1alpha1.TidbClusterStatus, old *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error) {
+func (ssc *FakeTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, _ *v1alpha1.TidbClusterStatus, _ *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error) {
 	defer ssc.updateTidbClusterTracker.inc()
 	if ssc.updateTidbClusterTracker.errorReady() {
 		defer ssc.updateTidbClusterTracker.reset()
