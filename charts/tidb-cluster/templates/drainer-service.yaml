@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: {{ .Values.clusterName }}-drainer
   labels:
-    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: drainer
@@ -15,7 +15,7 @@ spec:
   - name: drainer
     port: 8249
   selector:
-    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: drainer
 {{- end }}
