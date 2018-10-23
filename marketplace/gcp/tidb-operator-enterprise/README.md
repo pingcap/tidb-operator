@@ -15,7 +15,7 @@ TODO: review this once we have a Marketplace image published. In particular, set
 # Install the k8s application CRD into your cluster
 kubectl apply -f manifests/app-crd.yaml
 
-export VERSION='1.0.0'
+export VERSION='v1.0.0'
 export PROJECT=${PROJECT:-$(gcloud config get-value project | tr ':' '/')}
 export REGISTRY="gcr.io/$PROJECT"
 export APP_NAME="tidb-operator-enterprise"

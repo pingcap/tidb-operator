@@ -7,7 +7,7 @@ if [[ -z "${VERSION}" ]] ; then
 	exit 1
 fi
 
-REPO=gcr.io/greg-kubernetes
+REPO=${REGISTRY:-"gcr.io/pingcap-public"}
 PARAMETERS="{\"installerImage\":\"$REPO/tidb-operator-enterprise/installer:$VERSION\",\"tidb-operator.operatorImage\":\"$REPO/tidb-operator-enterprise/tidb-operator:$VERSION\",\"tidb-cluster.monitor.dashboardInstaller.image\":\"$REPO/tidb-operator-enterprise/tidb-dashboard-installer:$VERSION\",\"tidb-cluster.pd.image\":\"$REPO/tidb-operator-enterprise/pd:$VERSION\",\"tidb-cluster.tikv.image\":\"$REPO/tidb-operator-enterprise/tikv:$VERSION\",\"tidb-cluster.tidb.image\":\"$REPO/tidb-operator-enterprise/tidb:$VERSION\",\"tidb-cluster.monitor.ubbagent.image\":\"$REPO/tidb-operator-enterprise/ubbagent:$VERSION\",\"name\":\"test-deployment\",\"namespace\":\"tidb\",\"tidb-cluster.monitor.ubbagent.reportingSecret\":\"secret\"}"
 
 # This uses a large docker image that takes a long time to download.
