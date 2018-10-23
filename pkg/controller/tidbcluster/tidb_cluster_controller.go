@@ -104,7 +104,7 @@ func NewController(
 	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod)
 	pdUpgrader := mm.NewPDUpgrader(pdControl, podControl, podInformer.Lister())
 	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
-	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl)
+	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl, podInformer.Lister())
 
 	tcc := &Controller{
 		kubeClient: kubeCli,
@@ -144,6 +144,7 @@ func NewController(
 				tidbControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
+				podInformer.Lister(),
 				tidbUpgrader,
 				autoFailover,
 				tidbFailover,

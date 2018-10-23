@@ -442,19 +442,14 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	tcName := tc.GetName()
 
 	tc.Status.TiKV.StatefulSet = &set.Status
-
-	if statefulSetIsUpgrading(set) {
-		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-	} else {
-		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-	}
-
-	exist, err := tkmm.evictSchedulerExists(tc)
+	upgrading, err := tkmm.tikvStatefulSetIsUpgrading(set, tc)
 	if err != nil {
 		return err
 	}
-	if exist {
+	if upgrading {
 		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+	} else {
+		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 	}
 
 	previousStores := tc.Status.TiKV.Stores
@@ -604,7 +599,28 @@ func (tkmm *tikvMemberManager) storeLabelsEqualNodeLabels(storeLabels []*metapb.
 	return reflect.DeepEqual(ls, nodeLabels)
 }
 
-func (tkmm *tikvMemberManager) evictSchedulerExists(tc *v1alpha1.TidbCluster) (bool, error) {
+func (tkmm *tikvMemberManager) tikvStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
+	if statefulSetIsUpgrading(set) {
+		return true, nil
+	}
+	selector, err := label.New().Cluster(tc.GetName()).TiKV().Selector()
+	if err != nil {
+		return false, err
+	}
+	tikvPods, err := tkmm.podLister.Pods(tc.GetNamespace()).List(selector)
+	if err != nil {
+		return false, err
+	}
+	for _, pod := range tikvPods {
+		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+		if !exist {
+			return false, nil
+		}
+		if revisionHash != tc.Status.TiKV.StatefulSet.UpdateRevision {
+			return true, nil
+		}
+	}
+
 	evictLeaderSchedulers, err := tkmm.pdControl.GetPDClient(tc).GetEvictLeaderSchedulers()
 	if err != nil {
 		return false, err
