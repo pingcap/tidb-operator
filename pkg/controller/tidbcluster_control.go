@@ -23,6 +23,8 @@ import (
 	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -31,7 +33,7 @@ import (
 
 // TidbClusterControlInterface manages TidbClusters
 type TidbClusterControlInterface interface {
-	UpdateTidbCluster(*v1alpha1.TidbCluster) (*v1alpha1.TidbCluster, error)
+	UpdateTidbCluster(*v1alpha1.TidbCluster, *v1alpha1.TidbClusterStatus, *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error)
 }
 
 type realTidbClusterControl struct {
@@ -51,7 +53,7 @@ func NewRealTidbClusterControl(cli versioned.Interface,
 	}
 }
 
-func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) (*v1alpha1.TidbCluster, error) {
+func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, newStatus *v1alpha1.TidbClusterStatus, oldStatus *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -78,7 +80,9 @@ func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) (
 
 		return updateErr
 	})
-	rtc.recordTidbClusterEvent("update", tc, err)
+	if !deepEqualExceptHeartbeatTime(newStatus.DeepCopy(), oldStatus.DeepCopy()) {
+		rtc.recordTidbClusterEvent("update", tc, err)
+	}
 	return updateTC, err
 }
 
@@ -94,6 +98,22 @@ func (rtc *realTidbClusterControl) recordTidbClusterEvent(verb string, tc *v1alp
 		msg := fmt.Sprintf("%s TidbCluster %s failed error: %s",
 			strings.ToLower(verb), tcName, err)
 		rtc.recorder.Event(tc, corev1.EventTypeWarning, reason, msg)
+	}
+}
+
+func deepEqualExceptHeartbeatTime(newStatus *v1alpha1.TidbClusterStatus, oldStatus *v1alpha1.TidbClusterStatus) bool {
+	sweepHeartbeatTime(newStatus.TiKV.Stores)
+	sweepHeartbeatTime(newStatus.TiKV.TombstoneStores)
+	sweepHeartbeatTime(oldStatus.TiKV.Stores)
+	sweepHeartbeatTime(oldStatus.TiKV.TombstoneStores)
+
+	return apiequality.Semantic.DeepEqual(newStatus, oldStatus)
+}
+
+func sweepHeartbeatTime(stores map[string]v1alpha1.TiKVStore) {
+	for id, store := range stores {
+		store.LastHeartbeatTime = metav1.Time{}
+		stores[id] = store
 	}
 }
 
@@ -120,7 +140,7 @@ func (ssc *FakeTidbClusterControl) SetUpdateTidbClusterError(err error, after in
 }
 
 // UpdateTidbCluster updates the TidbCluster
-func (ssc *FakeTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) (*v1alpha1.TidbCluster, error) {
+func (ssc *FakeTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, _ *v1alpha1.TidbClusterStatus, _ *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error) {
 	defer ssc.updateTidbClusterTracker.inc()
 	if ssc.updateTidbClusterTracker.errorReady() {
 		defer ssc.updateTidbClusterTracker.reset()

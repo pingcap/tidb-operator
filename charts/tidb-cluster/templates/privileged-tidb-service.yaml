@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: {{ .Values.clusterName }}-privileged-tidb
   labels:
-    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: privileged-tidb
@@ -22,7 +22,7 @@ spec:
   {{- end }}
 {{- end }}
   selector:
-    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: privileged-tidb
 {{- end }}
