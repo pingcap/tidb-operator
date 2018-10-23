@@ -29,13 +29,15 @@ import (
 
 type tikvScaler struct {
 	generalScaler
+	podLister corelisters.PodLister
 }
 
 // NewTiKVScaler returns a tikv Scaler
 func NewTiKVScaler(pdControl controller.PDControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
-	pvcControl controller.PVCControlInterface) Scaler {
-	return &tikvScaler{generalScaler{pdControl, pvcLister, pvcControl}}
+	pvcControl controller.PVCControlInterface,
+	podLister corelisters.PodLister) Scaler {
+	return &tikvScaler{generalScaler{pdControl, pvcLister, pvcControl}, podLister}
 }
 
 func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
@@ -71,6 +73,11 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 
 	// We need remove member from cluster before reducing statefulset replicas
 	podName := ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
+	pod, err := tsd.podLister.Pods(ns).Get(podName)
+	if err != nil {
+		resetReplicas(newSet, oldSet)
+		return err
+	}
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
 			state := store.State
@@ -89,8 +96,8 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			return controller.RequeueErrorf("TiKV %s/%s store %d  still in cluster, state: %s", ns, podName, id, state)
 		}
 	}
-	for _, store := range tc.Status.TiKV.TombstoneStores {
-		if store.PodName == podName {
+	for id, store := range tc.Status.TiKV.TombstoneStores {
+		if store.PodName == podName && pod.Labels[label.StoreIDLabelKey] == id {
 			id, err := strconv.ParseUint(store.ID, 10, 64)
 			if err != nil {
 				resetReplicas(newSet, oldSet)
