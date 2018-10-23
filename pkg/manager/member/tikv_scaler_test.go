@@ -23,7 +23,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
@@ -53,7 +55,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 		newSet := oldSet.DeepCopy()
 		newSet.Spec.Replicas = int32Pointer(7)
 
-		scaler, _, pvcIndexer, pvcControl := newFakeTiKVScaler()
+		scaler, _, pvcIndexer, _, pvcControl := newFakeTiKVScaler()
 
 		pvc1 := newPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType)
 		pvc2 := pvc1.DeepCopy()
@@ -135,6 +137,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		storeFun      func(tc *v1alpha1.TidbCluster)
 		delStoreErr   bool
 		hasPVC        bool
+		storeIDSynced bool
 		pvcUpdateErr  bool
 		errExpectFn   func(*GomegaWithT, error)
 		changed       bool
@@ -153,12 +156,26 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		newSet := oldSet.DeepCopy()
 		newSet.Spec.Replicas = int32Pointer(3)
 
-		scaler, pdControl, pvcIndexer, pvcControl := newFakeTiKVScaler()
+		pod := &corev1.Pod{
+			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      tikvPodName(tc.GetName(), 4),
+				Namespace: corev1.NamespaceDefault,
+			},
+		}
+
+		scaler, pdControl, pvcIndexer, podIndexer, pvcControl := newFakeTiKVScaler()
 
 		if test.hasPVC {
 			pvc := newPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType)
 			pvcIndexer.Add(pvc)
 		}
+
+		pod.Labels = map[string]string{}
+		if test.storeIDSynced {
+			pod.Labels[label.StoreIDLabelKey] = "1"
+		}
+		podIndexer.Add(pod)
 
 		pdClient := controller.NewFakePDClient()
 		pdControl.SetPDClient(tc, pdClient)
@@ -188,6 +205,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			storeFun:      normalStoreFun,
 			delStoreErr:   false,
 			hasPVC:        true,
+			storeIDSynced: true,
 			pvcUpdateErr:  false,
 			errExpectFn:   errExpectNotNil,
 			changed:       false,
@@ -198,8 +216,20 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			storeFun:      normalStoreFun,
 			delStoreErr:   false,
 			hasPVC:        true,
+			storeIDSynced: true,
 			pvcUpdateErr:  false,
 			errExpectFn:   errExpectNil,
+			changed:       false,
+		},
+		{
+			name:          "store id not match",
+			tikvUpgrading: false,
+			storeFun:      normalStoreFun,
+			delStoreErr:   false,
+			hasPVC:        true,
+			storeIDSynced: false,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNotNil,
 			changed:       false,
 		},
 		{
@@ -209,11 +239,12 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 				normalStoreFun(tc)
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
 			},
-			delStoreErr:  false,
-			hasPVC:       true,
-			pvcUpdateErr: false,
-			errExpectFn:  errExpectNotNil,
-			changed:      false,
+			delStoreErr:   false,
+			hasPVC:        true,
+			storeIDSynced: true,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNotNil,
+			changed:       false,
 		},
 		{
 			name:          "podName not match",
@@ -224,11 +255,12 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 				store.PodName = "xxx"
 				tc.Status.TiKV.Stores["1"] = store
 			},
-			delStoreErr:  false,
-			hasPVC:       true,
-			pvcUpdateErr: false,
-			errExpectFn:  errExpectNotNil,
-			changed:      false,
+			delStoreErr:   false,
+			hasPVC:        true,
+			storeIDSynced: true,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNotNil,
+			changed:       false,
 		},
 		{
 			name:          "store id is not integer",
@@ -239,11 +271,12 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 				store.ID = "not integer"
 				tc.Status.TiKV.Stores["1"] = store
 			},
-			delStoreErr:  false,
-			hasPVC:       true,
-			pvcUpdateErr: false,
-			errExpectFn:  errExpectNotNil,
-			changed:      false,
+			delStoreErr:   false,
+			hasPVC:        true,
+			storeIDSynced: true,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNotNil,
+			changed:       false,
 		},
 		{
 			name:          "store state is offline",
@@ -254,11 +287,12 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 				store.State = util.StoreOfflineState
 				tc.Status.TiKV.Stores["1"] = store
 			},
-			delStoreErr:  false,
-			hasPVC:       true,
-			pvcUpdateErr: false,
-			errExpectFn:  errExpectNotNil,
-			changed:      false,
+			delStoreErr:   false,
+			hasPVC:        true,
+			storeIDSynced: true,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNotNil,
+			changed:       false,
 		},
 		{
 			name:          "store state is up, delete store success",
@@ -266,6 +300,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			storeFun:      normalStoreFun,
 			delStoreErr:   false,
 			hasPVC:        true,
+			storeIDSynced: true,
 			pvcUpdateErr:  false,
 			errExpectFn:   errExpectRequeue,
 			changed:       false,
@@ -276,6 +311,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			storeFun:      tombstoneStoreFun,
 			delStoreErr:   false,
 			hasPVC:        true,
+			storeIDSynced: true,
 			pvcUpdateErr:  false,
 			errExpectFn:   errExpectNil,
 			changed:       true,
@@ -289,11 +325,12 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 				store.ID = "not integer"
 				tc.Status.TiKV.TombstoneStores["1"] = store
 			},
-			delStoreErr:  false,
-			hasPVC:       true,
-			pvcUpdateErr: false,
-			errExpectFn:  errExpectNotNil,
-			changed:      false,
+			delStoreErr:   false,
+			hasPVC:        true,
+			storeIDSynced: true,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNotNil,
+			changed:       false,
 		},
 		{
 			name:          "store state is tombstone, don't have pvc",
@@ -301,6 +338,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			storeFun:      tombstoneStoreFun,
 			delStoreErr:   false,
 			hasPVC:        false,
+			storeIDSynced: true,
 			pvcUpdateErr:  false,
 			errExpectFn:   errExpectNotNil,
 			changed:       false,
@@ -311,6 +349,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			storeFun:      tombstoneStoreFun,
 			delStoreErr:   false,
 			hasPVC:        true,
+			storeIDSynced: true,
 			pvcUpdateErr:  true,
 			errExpectFn:   errExpectNotNil,
 			changed:       false,
@@ -322,16 +361,17 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 	}
 }
 
-func newFakeTiKVScaler() (*tikvScaler, *controller.FakePDControl, cache.Indexer, *controller.FakePVCControl) {
+func newFakeTiKVScaler() (*tikvScaler, *controller.FakePDControl, cache.Indexer, cache.Indexer, *controller.FakePVCControl) {
 	kubeCli := kubefake.NewSimpleClientset()
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
+	podInformer := kubeInformerFactory.Core().V1().Pods()
 	pdControl := controller.NewFakePDControl()
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
 
-	return &tikvScaler{generalScaler{pdControl, pvcInformer.Lister(), pvcControl}},
-		pdControl, pvcInformer.Informer().GetIndexer(), pvcControl
+	return &tikvScaler{generalScaler{pdControl, pvcInformer.Lister(), pvcControl}, podInformer.Lister()},
+		pdControl, pvcInformer.Informer().GetIndexer(), podInformer.Informer().GetIndexer(), pvcControl
 }
 
 func normalStoreFun(tc *v1alpha1.TidbCluster) {
