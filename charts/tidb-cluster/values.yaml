@@ -229,8 +229,6 @@ binlog:
     # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
     storageClassName: local-storage
     storage: 10Gi
-    # after enable tolerant, pump wouldn't return error if it fails to write binlog (default true)
-    enableTolerant: true
     # a integer value to control expiry date of the binlog data, indicates for how long (in days) the binlog data would be stored.
     # must bigger than 0
     gc: 7
