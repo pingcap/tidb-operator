@@ -180,6 +180,9 @@ monitor:
   #   value: tidb
   #   effect: "NoSchedule"
 
+  # GCP MarketPlace integration
+  ubbagent: {}
+
 fullbackup:
   create: false
   binlogImage: pingcap/tidb-binlog:latest
