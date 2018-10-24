@@ -4,7 +4,7 @@ kind: StatefulSet
 metadata:
   name: {{ .Values.clusterName }}-drainer
   labels:
-    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: drainer
@@ -12,7 +12,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+      app.kubernetes.io/name: {{ template "chart.name" . }}
       app.kubernetes.io/instance: {{ .Values.clusterName }}
       app.kubernetes.io/managed-by: tidb-operator
       app.kubernetes.io/component: drainer
@@ -25,7 +25,7 @@ spec:
         prometheus.io/path: "/metrics"
         prometheus.io/port: "8249"
       labels:
-        app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+        app.kubernetes.io/name: {{ template "chart.name" . }}
         app.kubernetes.io/instance: {{ .Values.clusterName }}
         app.kubernetes.io/managed-by: tidb-operator
         app.kubernetes.io/component: drainer

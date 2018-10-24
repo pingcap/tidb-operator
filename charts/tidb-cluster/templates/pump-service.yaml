@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: {{ .Values.clusterName }}-pump
   labels:
-    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: pump
@@ -15,7 +15,7 @@ spec:
   - name: pump
     port: 8250
   selector:
-    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: pump
 {{- end }}

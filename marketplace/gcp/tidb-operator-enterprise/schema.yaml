@@ -1,0 +1,78 @@
+applicationApiVersion: v1beta1
+
+properties:
+  name:
+    type: string
+    x-google-marketplace:
+      type: NAME
+  namespace:
+    type: string
+    x-google-marketplace:
+      type: NAMESPACE
+  image.primary:
+    type: string
+    default: $REGISTRY:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  serviceAccount:
+    type: string
+    x-google-marketplace:
+      type: SERVICE_ACCOUNT
+      serviceAccount:
+        roles:
+        - type: ClusterRole
+          rulesType: PREDEFINED
+          rulesFromRoleName: cluster-admin
+
+  installerImage:
+    type: string
+    default: $REGISTRY/tidb-operator-enterprise/installer:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-operator.operatorImage:
+    type: string
+    default: $REGISTRY/tidb-operator-enterprise/tidb-operator:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.monitor.dashboardInstaller.image:
+    type: string
+    default: $REGISTRY/tidb-operator-enterprise/tidb-dashboard-installer:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.pd.image:
+    type: string
+    default: $REGISTRY/tidb-operator-enterprise/pd:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.tikv.image:
+    type: string
+    default: $REGISTRY/tidb-operator-enterprise/tikv:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.tidb.image:
+    type: string
+    default: $REGISTRY/tidb-operator-enterprise/tidb:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.monitor.ubbagent.image:
+    type: string
+    default: $REGISTRY/tidb-operator-enterprise/ubbagent:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.monitor.ubbagent.reportingSecret:
+    type: string
+    x-google-marketplace:
+      type: REPORTING_SECRET
+
+required:
+- name
+- namespace
+- serviceAccount
