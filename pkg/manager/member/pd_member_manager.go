@@ -510,6 +510,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 					Annotations: controller.AnnProm(2379),
 				},
 				Spec: corev1.PodSpec{
+					SchedulerName: tc.Spec.SchedulerName,
 					Affinity: util.AffinityForNodeSelector(
 						ns,
 						tc.Spec.PD.NodeSelectorRequired,

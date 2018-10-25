@@ -18,7 +18,6 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-
 	"time"
 
 	"github.com/golang/glog"
@@ -33,12 +32,16 @@ import (
 var (
 	printVersion bool
 	port         int
+	pdReplicas   int
+	tikvReplicas int
 )
 
 func init() {
 	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.IntVar(&port, "port", 10262, "The port that the tidb scheduler's http service runs on (default 10262)")
+	flag.IntVar(&pdReplicas, "pd-replicas", 3, "The pd replicas (default 3)")
+	flag.IntVar(&tikvReplicas, "tikv-replicas", 3, "The tikv replicas (default 3)")
 	flag.Parse()
 }
 
@@ -62,7 +65,7 @@ func main() {
 	}
 
 	go wait.Forever(func() {
-		server.StartServer(kubeCli, port)
+		server.StartServer(kubeCli, port, int32(pdReplicas), int32(tikvReplicas))
 	}, 5*time.Second)
 	glog.Fatal(http.ListenAndServe(":6060", nil))
 }

@@ -14,6 +14,12 @@
 package scheduler
 
 import (
+	"fmt"
+
+	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/scheduler/predicates"
+	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	schedulerapiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
 )
@@ -33,21 +39,21 @@ type Scheduler interface {
 }
 
 type scheduler struct {
-	kubeCli kubernetes.Interface
-	// predicates []predicates.Predicate
+	kubeCli    kubernetes.Interface
+	predicates []predicates.Predicate
 }
 
 // NewScheduler returns a Scheduler
-func NewScheduler(kubeCli kubernetes.Interface) Scheduler {
+func NewScheduler(kubeCli kubernetes.Interface, pdReplicas, tikvReplicas int32) Scheduler {
 	return &scheduler{
 		kubeCli: kubeCli,
-		// predicates: []predicates.Predicate{
-		//	highavailability.NewHighAvailability(10, kubeCli),
-		//},
+		predicates: []predicates.Predicate{
+			predicates.NewHA(kubeCli, pdReplicas, tikvReplicas),
+		},
 	}
 }
 
-// Filter select a node from *schedulerapiv1.ExtenderArgs.Nodes when this is a pd or tikv pod
+// Filter selects a set of nodes from *schedulerapiv1.ExtenderArgs.Nodes when this is a pd or tikv pod
 // else return the original nodes.
 func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.ExtenderFilterResult, error) {
 	pod := &args.Pod
@@ -55,7 +61,32 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 	podName := pod.GetName()
 	kubeNodes := args.Nodes.Items
 
-	return nil, nil
+	var clusterName string
+	var exist bool
+	if clusterName, exist = pod.Labels[label.InstanceLabelKey]; !exist {
+		return nil, fmt.Errorf("can't find clusterName in pod labels: %s/%s", ns, podName)
+	}
+	if component := pod.Labels[label.ComponentLabelKey]; component != label.PDLabelVal && component != label.TiKVLabelVal {
+		return &schedulerapiv1.ExtenderFilterResult{
+			Nodes:     args.Nodes,
+			NodeNames: args.NodeNames,
+		}, nil
+	}
+
+	glog.Infof("scheduling pod: %s/%s", ns, podName)
+	var err error
+	for _, predicate := range s.predicates {
+		glog.Infof("entering predicate: %s, nodes: %v", predicate.Name(), getNodeNames(kubeNodes))
+		kubeNodes, err = predicate.Filter(clusterName, pod, kubeNodes)
+		if err != nil {
+			return nil, err
+		}
+		glog.Infof("leaving predicate: %s, nodes: %v", predicate.Name(), getNodeNames(kubeNodes))
+	}
+
+	return &schedulerapiv1.ExtenderFilterResult{
+		Nodes: &apiv1.NodeList{Items: kubeNodes},
+	}, nil
 }
 
 // We didn't pass `prioritizeVerb` to kubernetes scheduler extender's config file, this method will not be called.
@@ -74,3 +105,11 @@ func (s *scheduler) Priority(args *schedulerapiv1.ExtenderArgs) (schedulerapiv1.
 }
 
 var _ Scheduler = &scheduler{}
+
+func getNodeNames(nodes []apiv1.Node) []string {
+	nodeNames := make([]string, 0)
+	for _, node := range nodes {
+		nodeNames = append(nodeNames, node.GetName())
+	}
+	return nodeNames
+}

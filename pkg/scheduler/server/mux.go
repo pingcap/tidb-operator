@@ -18,10 +18,9 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/pingcap/tidb-operator/pkg/scheduler"
-
 	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/scheduler"
 	"k8s.io/client-go/kubernetes"
 	schedulerapiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
 )
@@ -33,13 +32,12 @@ var (
 
 type server struct {
 	scheduler scheduler.Scheduler
-	// All scheduling should be serialized
-	lock sync.Mutex
+	lock      sync.Mutex
 }
 
-// StartServer start a kubernetes scheduler extender http apiserver
-func StartServer(kubeCli kubernetes.Interface, port int) {
-	s := scheduler.NewScheduler(kubeCli)
+// StartServer starts a kubernetes scheduler extender http apiserver
+func StartServer(kubeCli kubernetes.Interface, port int, pdReplicas, tikvReplicas int32) {
+	s := scheduler.NewScheduler(kubeCli, pdReplicas, tikvReplicas)
 	svr := &server{scheduler: s}
 
 	ws := new(restful.WebService)

@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tidb-scheduler-policy
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: scheduler
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+data:
+  policy.cfg: |-
+    {
+            "kind" : "Policy",
+            "apiVersion" : "v1",
+            "predicates": [
+                    {"name": "MatchInterPodAffinity"},
+                    {"name": "CheckVolumeBinding"},
+                    {"name": "CheckNodeCondition"},
+                    {"name": "GeneralPredicates"},
+                    {"name": "HostName"},
+                    {"name": "PodFitsHostPorts"},
+                    {"name": "MatchNodeSelector"},
+                    {"name": "PodFitsResources"},
+                    {"name": "NoDiskConflict"},
+                    {"name": "PodToleratesNodeTaints"},
+                    {"name": "CheckNodeMemoryPressure"},
+                    {"name": "CheckNodeDiskPressure"}
+            ],
+            "priorities": [
+                    {"name": "EqualPriority", "weight": 1},
+                    {"name": "ImageLocalityPriority", "weight": 1},
+                    {"name": "LeastRequestedPriority", "weight": 1},
+                    {"name": "BalancedResourceAllocation", "weight": 1},
+                    {"name": "SelectorSpreadPriority", "weight": 1},
+                    {"name": "NodePreferAvoidPodsPriority", "weight": 1},
+                    {"name": "NodeAffinityPriority", "weight": 1},
+                    {"name": "TaintTolerationPriority", "weight": 1},
+                    {"name": "MostRequestedPriority", "weight": 1}
+            ],
+            "extenders": [
+                    {
+                            "urlPrefix": "http://127.0.0.1:10262/scheduler",
+                            "filterVerb": "filter",
+                            "weight": 1,
+                            "httpTimeout": 30000000000,
+                            "enableHttps": false
+                    }
+            ]
+    }

@@ -317,6 +317,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 					Annotations: controller.AnnProm(9091),
 				},
 				Spec: corev1.PodSpec{
+					SchedulerName: tc.Spec.SchedulerName,
 					Affinity: util.AffinityForNodeSelector(
 						ns,
 						tc.Spec.TiKV.NodeSelectorRequired,

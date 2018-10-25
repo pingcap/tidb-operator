@@ -13,6 +13,7 @@ spec:
   timezone: {{ .Values.timezone | default "UTC" }}
   services:
 {{ toYaml .Values.services | indent 4 }}
+  schedulerName: {{ .Values.schedulerName | default "default-scheduler" }}
   pd:
     replicas: {{ .Values.pd.replicas }}
     image: {{ .Values.pd.image }}

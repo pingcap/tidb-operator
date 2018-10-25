@@ -15,6 +15,7 @@ package util
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/golang/glog"
@@ -205,4 +206,13 @@ func ResourceRequirement(spec v1alpha1.ContainerSpec, defaultRequests ...corev1.
 		}
 	}
 	return rr
+}
+
+func GetOrdinalFromPodName(podName string) (int32, error) {
+	ordinalStr := podName[strings.LastIndex(podName, "-")+1:]
+	ordinalInt, err := strconv.Atoi(ordinalStr)
+	if err != nil {
+		return int32(0), err
+	}
+	return int32(ordinalInt), nil
 }

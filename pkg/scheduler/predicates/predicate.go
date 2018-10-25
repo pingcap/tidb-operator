@@ -22,9 +22,19 @@ type Predicate interface {
 	// Name return the predicate name
 	Name() string
 
-	// Filter function receives a *volume.TiDBVolume, an *apiv1.Pod and an *apiv1.PersistentVolumeClaim,
-	// should remove or add a Priority to every volumes,
-	// and return whether it is fusing after this predicate, and an error.
-	// Implementations must treat the *apiv1.Pod and *apiv1.PersistentVolumeClaim parameter as read-only and not modify it.
-	Filter(*apiv1.Pod) (bool, error)
+	// Filter function receives a set of nodes and returns a set of candidate nodes.
+	Filter(string, *apiv1.Pod, []apiv1.Node) ([]apiv1.Node, error)
+}
+
+func getNodeFromNames(nodes []apiv1.Node, nodeNames []string) []apiv1.Node {
+	var retNodes []apiv1.Node
+	for _, node := range nodes {
+		for _, nodeName := range nodeNames {
+			if node.GetName() == nodeName {
+				retNodes = append(retNodes, node)
+				break
+			}
+		}
+	}
+	return retNodes
 }
