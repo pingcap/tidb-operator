@@ -14,6 +14,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: {{ template "chart.name" . }}
       app.kubernetes.io/instance: {{ .Values.clusterName }}
+      app.kubernetes.io/managed-by: tidb-operator
       app.kubernetes.io/component: pump
   serviceName: {{ .Values.clusterName }}-pump
   replicas: {{ .Values.binlog.pump.replicas }}
@@ -26,6 +27,7 @@ spec:
       labels:
         app.kubernetes.io/name: {{ template "chart.name" . }}
         app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/managed-by: tidb-operator
         app.kubernetes.io/component: pump
     spec:
       containers:
