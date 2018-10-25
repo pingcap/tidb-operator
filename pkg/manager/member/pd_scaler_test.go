@@ -155,13 +155,16 @@ func TestPDScalerScaleOut(t *testing.T) {
 		{
 			name: "pd member not health",
 			update: func(tc *v1alpha1.TidbCluster) {
+				normalPDMember(tc)
 				tcName := tc.GetName()
-				member1 := tc.Status.PD.Members[ordinalPodName(v1alpha1.PDMemberType, tcName, 1)]
+				podName := ordinalPodName(v1alpha1.PDMemberType, tcName, 1)
+				member1 := tc.Status.PD.Members[podName]
 				member1.Health = false
+				tc.Status.PD.Members[podName] = member1
 			},
 			pdUpgrading:      false,
 			hasPVC:           true,
-			hasDeferAnn:      true,
+			hasDeferAnn:      false,
 			pvcDeleteErr:     false,
 			statusSyncFailed: false,
 			err:              true,
