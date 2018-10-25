@@ -65,9 +65,9 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 			healthCount++
 		}
 	}
-	if healthCount < int(totalCount/2+1) {
+	if healthCount < int(totalCount) {
 		resetReplicas(newSet, oldSet)
-		return fmt.Errorf("TidbCluster: %s/%s's pd %d/%d is not ready, can't scale out now",
+		return fmt.Errorf("TidbCluster: %s/%s's pd %d/%d is ready, can't scale out now",
 			ns, tcName, healthCount, totalCount)
 	}
 
