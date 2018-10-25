@@ -50,6 +50,22 @@ func testScale() {
 	err = wait.Poll(5*time.Second, 5*time.Minute, scaledCorrectly)
 	Expect(err).NotTo(HaveOccurred())
 
+	By("And scheduling policy is correct")
+	nodeMap, err := getNodeMap(label.PDLabelVal)
+	Expect(err).NotTo(HaveOccurred())
+	for nodeName, podNamesArr := range nodeMap {
+		if len(podNamesArr) > 2 {
+			Fail(fmt.Sprintf("node: %s has %d pods", nodeName, len(podNamesArr)))
+		}
+	}
+	nodeMap, err = getNodeMap(label.TiKVLabelVal)
+	Expect(err).NotTo(HaveOccurred())
+	for nodeName, podNamesArr := range nodeMap {
+		if len(podNamesArr) > 2 {
+			Fail(fmt.Sprintf("node: %s has %d pods", nodeName, len(podNamesArr)))
+		}
+	}
+
 	By("And the data is correct")
 	err = wait.Poll(5*time.Second, 5*time.Minute, dataIsCorrect)
 	Expect(err).NotTo(HaveOccurred())
