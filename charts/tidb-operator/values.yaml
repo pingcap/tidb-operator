@@ -15,7 +15,8 @@ imagePullPolicy: IfNotPresent
 defaultStorageClassName: local-storage
 
 controllerManager:
-  # If you turn on rbac.create, you likely also want to turn this on
+  # With rbac.create=false, the user is responsible for creating this account
+  # With rbac.create=true, this service account will be created
   # Also see rbac.create and clusterScoped
   serviceAccount: tidb-controller-manager
   logLevel: 2

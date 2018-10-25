@@ -17,11 +17,14 @@ import (
 	"errors"
 	"testing"
 
+	"time"
+
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
@@ -39,13 +42,12 @@ func TestTidbClusterControlUpdateTidbCluster(t *testing.T) {
 		update := action.(core.UpdateAction)
 		return true, update.GetObject(), nil
 	})
-	updateTC, err := control.UpdateTidbCluster(tc)
+	updateTC, err := control.UpdateTidbCluster(tc, &v1alpha1.TidbClusterStatus{}, &v1alpha1.TidbClusterStatus{})
 	g.Expect(err).To(Succeed())
 	g.Expect(updateTC.Spec.PD.Replicas).To(Equal(int32(5)))
 
 	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
+	g.Expect(events).To(HaveLen(0))
 }
 
 func TestTidbClusterControlUpdateTidbClusterConflictSuccess(t *testing.T) {
@@ -65,10 +67,38 @@ func TestTidbClusterControlUpdateTidbClusterConflictSuccess(t *testing.T) {
 		}
 		return true, update.GetObject(), nil
 	})
-	_, err := control.UpdateTidbCluster(tc)
+	_, err := control.UpdateTidbCluster(tc, &v1alpha1.TidbClusterStatus{}, &v1alpha1.TidbClusterStatus{})
 	g.Expect(err).To(Succeed())
 
 	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
+	g.Expect(events).To(HaveLen(0))
+}
+
+func TestDeepEqualExceptHeartbeatTime(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	new := &v1alpha1.TidbClusterStatus{
+		TiKV: v1alpha1.TiKVStatus{
+			Synced: true,
+			Stores: map[string]v1alpha1.TiKVStore{
+				"1": {
+					LastHeartbeatTime: metav1.Now(),
+					ID:                "1",
+				},
+			},
+		},
+	}
+	time.Sleep(1 * time.Second)
+	old := &v1alpha1.TidbClusterStatus{
+		TiKV: v1alpha1.TiKVStatus{
+			Synced: true,
+			Stores: map[string]v1alpha1.TiKVStore{
+				"1": {
+					LastHeartbeatTime: metav1.Now(),
+					ID:                "1",
+				},
+			},
+		},
+	}
+	g.Expect(deepEqualExceptHeartbeatTime(new, old)).To(Equal(true))
 }
