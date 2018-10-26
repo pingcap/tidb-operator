@@ -324,6 +324,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 										Port: intstr.FromInt(10080),
 									},
 								},
+								InitialDelaySeconds: int32(10),
 							},
 						},
 					},
