@@ -1,0 +1,78 @@
+{{- if .Values.restore.create }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.clusterName }}-restore
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: restore
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "chart.name" . }}
+        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/component: restore
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: tidb-restore-job
+        image: {{ .Values.restore.image }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -euo pipefail
+          host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]'`
+        {{- if .Values.restore.gcp }}
+          downloader \
+            --cloud=gcp \
+            --bucket={{ .Values.restore.gcp.bucket }} \
+            --srcDir={{ .Values.restore.gcp.srcDir }} \
+            --destDir=/data
+
+          dataDir=/data/{{ .Values.restore.gcp.srcDir }}
+          ./loader \
+            -d ${dataDir} \
+            -h `eval echo '${'$host'}'` \
+            -u {{ .Values.restore.user }} \
+            -p ${TIDB_PASSWORD} \
+            -P 4000 \
+            {{ .Values.restore.options }}
+        {{- end }}
+        volumeMounts:
+        - name: data
+          mountPath: "/data"
+      {{- if .Values.restore.gcp }}
+        - name: gcp-credentials
+          mountPath: "/gcp"
+          readOnly: true
+      {{- end }}
+        env:
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+      {{- if .Values.restore.gcp }}
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /gcp/credentials.json
+      {{- end }}
+        - name: TIDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.clusterName }}-restore-secret
+              key: user-password
+        restartPolicy: OnFailure
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ .Values.clusterName }}-restore
+    {{- if .Values.restore.gcp }}
+      - name: gcp-credentials
+        secret:
+          secretName: {{ .Values.clusterName }}-restore-secret
+    {{- end }}
+{{- end }}
