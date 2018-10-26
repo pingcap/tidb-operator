@@ -35,28 +35,8 @@ spec:
             command:
             - /bin/sh
             - -c
-            - |
-              set -euo pipefail
-              dirname=`date +%Y-%m-%dT%H%M%S`-${MY_POD_NAME}
-              host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]'`
-
-              mkdir -p /data/${dirname}/
-              cp /savepoint-dir/savepoint /data/${dirname}/
-
-              mydumper \
-                --outputdir=/data/${dirname} \
-                --host=`eval echo '${'$host'}'` \
-                --port=4000 \
-                --user={{ .Values.fullbackup.user }} \
-                --password=${TIDB_PASSWORD} \
-                {{ .Values.fullbackup.options }}
-
-            {{- if .Values.fullbackup.gcp }}
-              uploader \
-                --cloud=gcp \
-                --bucket={{ .Values.fullbackup.gcp.bucket }} \
-                --backup-dir=/data/${dirname}
-            {{- end }}
+            - |-
+{{ tuple "scripts/_start_fullbackup.sh.tpl" . | include "tidb-cluster.utils.template" | indent 14 }}
             volumeMounts:
             - name: savepoint-dir
               mountPath: "/savepoint-dir"
