@@ -83,6 +83,9 @@ func (h *ha) Filter(clusterName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]a
 		if nodeName == "" {
 			continue
 		}
+		if nodeMap[nodeName] == nil {
+			continue
+		}
 
 		nodeMap[nodeName] = append(nodeMap[nodeName], podName1)
 	}
