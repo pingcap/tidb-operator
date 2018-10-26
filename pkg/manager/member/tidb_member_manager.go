@@ -286,9 +286,10 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 					),
 					Containers: []corev1.Container{
 						{
-							Name:    v1alpha1.TiDBMemberType.String(),
-							Image:   tc.Spec.TiDB.Image,
-							Command: []string{"/bin/sh", "/usr/local/bin/tidb_start_script.sh"},
+							Name:            v1alpha1.TiDBMemberType.String(),
+							Image:           tc.Spec.TiDB.Image,
+							Command:         []string{"/bin/sh", "/usr/local/bin/tidb_start_script.sh"},
+							ImagePullPolicy: tc.Spec.TiDB.ImagePullPolicy,
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "server",
