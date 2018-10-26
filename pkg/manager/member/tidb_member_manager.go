@@ -317,6 +317,14 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 									Value: strconv.FormatBool(tc.Spec.TiDB.BinlogEnabled),
 								},
 							},
+							ReadinessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path: "/status",
+										Port: intstr.FromInt(10080),
+									},
+								},
+							},
 						},
 					},
 					RestartPolicy: corev1.RestartPolicyAlways,
