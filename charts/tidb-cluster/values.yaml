@@ -33,6 +33,9 @@ pd:
   # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
   storageClassName: local-storage
 
+  # Image pull policy.
+  imagePullPolicy: Always
+
   # maxStoreDownTime is how long a store will be considered `down` when disconnected
   # if a store is considered `down`, the regions will be migrated to other stores
   maxStoreDownTime: 1h
@@ -72,6 +75,9 @@ tikv:
   # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
   storageClassName: local-storage
 
+  # Image pull policy.
+  imagePullPolicy: Always
+
   # syncLog is a bool value to enable or disable syc-log for raftstore, default is true
   # enable this can prevent data loss when power failure
   syncLog: true
@@ -107,6 +113,8 @@ tikvPromGateway:
 tidb:
   replicas: 2
   image: pingcap/tidb:v2.0.7
+  # Image pull policy.
+  imagePullPolicy: Always
   logLevel: info
   resources: {}
     # limits:

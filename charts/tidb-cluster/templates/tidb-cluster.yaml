@@ -16,6 +16,9 @@ spec:
   pd:
     replicas: {{ .Values.pd.replicas }}
     image: {{ .Values.pd.image }}
+  {{- if .Values.pd.imagePullPolicy }} 
+    imagePullPolicy: {{ .Values.pd.imagePullPolicy }}
+  {{- end}}
   {{- if .Values.pd.storageClassName }}
     storageClassName: {{ .Values.pd.storageClassName }}
   {{- end }}
@@ -34,6 +37,9 @@ spec:
   tikv:
     replicas: {{ .Values.tikv.replicas }}
     image: {{ .Values.tikv.image }}
+  {{- if .Values.tikv.imagePullPolicy }} 
+    imagePullPolicy: {{ .Values.tikv.imagePullPolicy }}
+  {{- end}}
   {{- if .Values.tikv.storageClassName }}
     storageClassName: {{ .Values.tikv.storageClassName }}
   {{- end }}
@@ -57,6 +63,9 @@ spec:
   tidb:
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}
+  {{- if .Values.tidb.imagePullPolicy }} 
+    imagePullPolicy: {{ .Values.tidb.imagePullPolicy }}
+  {{- end}}
   {{- if .Values.tidb.resources }}
 {{ toYaml .Values.tidb.resources | indent 4 }}
   {{- end }}
