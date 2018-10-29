@@ -366,8 +366,9 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 							},
 						},
 						{
-							Name:  v1alpha1.PushGatewayMemberType.String(),
-							Image: controller.GetPushgatewayImage(tc),
+							Name:            v1alpha1.PushGatewayMemberType.String(),
+							Image:           controller.GetPushgatewayImage(tc),
+							ImagePullPolicy: tc.Spec.TiKVPromGateway.ImagePullPolicy,
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "metrics",
