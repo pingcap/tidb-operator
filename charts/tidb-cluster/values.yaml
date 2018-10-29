@@ -124,6 +124,7 @@ tidb:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  maxFailoverCount: 3
   service:
     type: NodePort
     exposeStatus: true

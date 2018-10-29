@@ -70,3 +70,4 @@ spec:
 {{ toYaml .Values.tidb.tolerations | indent 4 }}
   {{- end }}
     binlogEnabled: {{ .Values.binlog.pump.create | default false }}
+    maxFailoverCount: {{ .Values.tidb.maxFailoverCount | default 3 }}
