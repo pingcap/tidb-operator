@@ -33,7 +33,7 @@ spec:
           containers:
           - name: fullbackup
             image: {{ .Values.fullbackup.mydumperImage }}
-            imagePullPolicy: {{ .Values.fullbackup.binlogImagePullPolicy | default "IfNotPresent" }}
+            imagePullPolicy: {{ .Values.fullbackup.mydumperImagePullPolicy | default "IfNotPresent" }}
             command:
             - /bin/sh
             - -c
