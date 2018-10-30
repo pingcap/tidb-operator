@@ -33,10 +33,6 @@ tidb-cluster:
   monitor:
     create: true
     serviceAccount:
-    ubbagent:
-      image:
-      reportingSecret:
-      testSecret: true
     dashboardInstaller:
       image:
     prometheus:
