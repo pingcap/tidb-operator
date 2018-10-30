@@ -14,8 +14,6 @@
 package scheduler
 
 import (
-	"fmt"
-
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/scheduler/predicates"
@@ -64,9 +62,10 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 	var clusterName string
 	var exist bool
 	if clusterName, exist = pod.Labels[label.InstanceLabelKey]; !exist {
+		glog.Warningf("can't find clusterName in pod labels: %s/%s", ns, podName)
 		return &schedulerapiv1.ExtenderFilterResult{
 			Nodes: args.Nodes,
-		}, fmt.Errorf("can't find clusterName in pod labels: %s/%s", ns, podName)
+		}, nil
 	}
 	if component := pod.Labels[label.ComponentLabelKey]; component != label.PDLabelVal && component != label.TiKVLabelVal {
 		return &schedulerapiv1.ExtenderFilterResult{
