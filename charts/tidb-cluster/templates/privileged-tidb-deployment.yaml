@@ -42,6 +42,7 @@ spec:
       containers:
       - name: privileged-tidb
         image: {{ .Values.privilegedTidb.image }}
+        imagePullPolicy: {{ .Values.privilegedTidb.imagePullPolicy | default "IfNotPresent" }}
       {{- if .Values.privilegedTidb.resources }}
         resources:
 {{ toYaml .Values.privilegedTidb.resources | indent 10 }}
