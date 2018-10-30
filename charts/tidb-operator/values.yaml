@@ -50,9 +50,4 @@ scheduler:
     requests:
       cpu: 80m
       memory: 50Mi
-  # pd replicas
-  pdReplicas: 3
-  # tikv replicas
-  tikvReplicas: 3
-  hyperkubeImage: quay.io/coreos/hyperkube:v1.10.4_coreos.0
-  # kubeSchedulerImage:
+  kubeSchedulerImage: quay.io/coreos/hyperkube:v1.10.4_coreos.0

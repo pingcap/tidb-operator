@@ -44,17 +44,17 @@ type scheduler struct {
 }
 
 // NewScheduler returns a Scheduler
-func NewScheduler(kubeCli kubernetes.Interface, pdReplicas, tikvReplicas int32) Scheduler {
+func NewScheduler(kubeCli kubernetes.Interface) Scheduler {
 	return &scheduler{
 		kubeCli: kubeCli,
 		predicates: []predicates.Predicate{
-			predicates.NewHA(kubeCli, pdReplicas, tikvReplicas),
+			predicates.NewHA(kubeCli),
 		},
 	}
 }
 
 // Filter selects a set of nodes from *schedulerapiv1.ExtenderArgs.Nodes when this is a pd or tikv pod
-// else return the original nodes.
+// otherwise, returns the original nodes.
 func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.ExtenderFilterResult, error) {
 	pod := &args.Pod
 	ns := pod.GetNamespace()
@@ -64,24 +64,25 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 	var clusterName string
 	var exist bool
 	if clusterName, exist = pod.Labels[label.InstanceLabelKey]; !exist {
-		return nil, fmt.Errorf("can't find clusterName in pod labels: %s/%s", ns, podName)
+		return &schedulerapiv1.ExtenderFilterResult{
+			Nodes: args.Nodes,
+		}, fmt.Errorf("can't find clusterName in pod labels: %s/%s", ns, podName)
 	}
 	if component := pod.Labels[label.ComponentLabelKey]; component != label.PDLabelVal && component != label.TiKVLabelVal {
 		return &schedulerapiv1.ExtenderFilterResult{
-			Nodes:     args.Nodes,
-			NodeNames: args.NodeNames,
+			Nodes: args.Nodes,
 		}, nil
 	}
 
 	glog.Infof("scheduling pod: %s/%s", ns, podName)
 	var err error
 	for _, predicate := range s.predicates {
-		glog.Infof("entering predicate: %s, nodes: %v", predicate.Name(), getNodeNames(kubeNodes))
+		glog.V(4).Infof("entering predicate: %s, nodes: %v", predicate.Name(), getNodeNames(kubeNodes))
 		kubeNodes, err = predicate.Filter(clusterName, pod, kubeNodes)
 		if err != nil {
 			return nil, err
 		}
-		glog.Infof("leaving predicate: %s, nodes: %v", predicate.Name(), getNodeNames(kubeNodes))
+		glog.V(4).Infof("leaving predicate: %s, nodes: %v", predicate.Name(), getNodeNames(kubeNodes))
 	}
 
 	return &schedulerapiv1.ExtenderFilterResult{
@@ -89,7 +90,7 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 	}, nil
 }
 
-// We didn't pass `prioritizeVerb` to kubernetes scheduler extender's config file, this method will not be called.
+// We don't pass `prioritizeVerb` to kubernetes scheduler extender's config file, this method will not be called.
 func (s *scheduler) Priority(args *schedulerapiv1.ExtenderArgs) (schedulerapiv1.HostPriorityList, error) {
 	result := schedulerapiv1.HostPriorityList{}
 

@@ -36,8 +36,8 @@ type server struct {
 }
 
 // StartServer starts a kubernetes scheduler extender http apiserver
-func StartServer(kubeCli kubernetes.Interface, port int, pdReplicas, tikvReplicas int32) {
-	s := scheduler.NewScheduler(kubeCli, pdReplicas, tikvReplicas)
+func StartServer(kubeCli kubernetes.Interface, port int) {
+	s := scheduler.NewScheduler(kubeCli)
 	svr := &server{scheduler: s}
 
 	ws := new(restful.WebService)

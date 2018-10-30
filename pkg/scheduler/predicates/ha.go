@@ -24,19 +24,19 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const (
+	replicas int32 = 3
+)
+
 type ha struct {
-	kubeCli      kubernetes.Interface
-	podListFn    func(ns, clusterName, component string) (*apiv1.PodList, error)
-	pdReplicas   int32
-	tikvReplicas int32
+	kubeCli   kubernetes.Interface
+	podListFn func(ns, clusterName, component string) (*apiv1.PodList, error)
 }
 
 // NewHA returns a Predicate
-func NewHA(kubeCli kubernetes.Interface, pdReplicas, tikvReplicas int32) Predicate {
+func NewHA(kubeCli kubernetes.Interface) Predicate {
 	h := &ha{
-		kubeCli:      kubeCli,
-		pdReplicas:   pdReplicas,
-		tikvReplicas: tikvReplicas,
+		kubeCli: kubeCli,
 	}
 	h.podListFn = h.realPodListFn
 	return h
@@ -53,7 +53,7 @@ func (h *ha) Filter(clusterName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]a
 	var component string
 	var exist bool
 	if component, exist = pod.Labels[label.ComponentLabelKey]; !exist {
-		return nil, fmt.Errorf("can't find component in pod labels: %s/%s", ns, podName)
+		return nodes, fmt.Errorf("can't find component in pod labels: %s/%s", ns, podName)
 	}
 	podList, err := h.podListFn(ns, clusterName, component)
 	if err != nil {
@@ -111,17 +111,8 @@ func (h *ha) Filter(clusterName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]a
 	if len(minNodeNames) == 0 {
 		return nil, fmt.Errorf("no suitable node for pod: %s/%s", ns, podName)
 	}
-
-	var replicas int32
-	switch component {
-	case label.PDLabelVal:
-		replicas = h.pdReplicas
-	case label.TiKVLabelVal:
-		replicas = h.tikvReplicas
-	}
-
 	if ordinal < replicas && min != 0 {
-		return nil, fmt.Errorf("the first %d pods can't scheduled to the same node", replicas)
+		return nil, fmt.Errorf("the first %d pods can't be scheduled to the same node", replicas)
 	}
 
 	return getNodeFromNames(nodes, minNodeNames), nil
