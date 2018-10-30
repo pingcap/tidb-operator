@@ -11,5 +11,5 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 data:
   pump-config: |-
-{{ tuple "config/_pump-config.tpl" . | include "tidb-cluster.utils.template" | indent 4 }}
+{{ tuple "config/_pump-config.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
 {{- end -}}

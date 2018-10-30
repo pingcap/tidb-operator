@@ -38,7 +38,7 @@ spec:
         - /bin/sh
         - -c
         - |-
-{{ tuple "scripts/_start_pump.sh.tpl" . | include "tidb-cluster.utils.template" | indent 10 }}
+{{ tuple "scripts/_start_pump.sh.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
         ports:
         - containerPort: 8250
           name: pump

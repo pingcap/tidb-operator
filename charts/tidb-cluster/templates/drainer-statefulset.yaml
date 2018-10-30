@@ -38,7 +38,7 @@ spec:
         - /bin/sh
         - -c
         - |-
-{{ tuple "scripts/_start_drainer.sh.tpl" . | include "tidb-cluster.utils.template" | indent 10 }}
+{{ tuple "scripts/_start_drainer.sh.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
         ports:
         - containerPort: 8249
           name: drainer
