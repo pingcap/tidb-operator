@@ -20,7 +20,7 @@ TiDB Operator manages [TiDB](https://github.com/pingcap/tidb) clusters on [Kuber
 
     Users can deploy and manage multiple TiDB clusters on a single Kubernetes cluster easily.
 
-- __Automatic failover__ (WIP)
+- __Automatic failover__
 
     TiDB Operator automatically performs failover for your TiDB cluster when node failures occur.
 
