@@ -326,9 +326,10 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 					),
 					Containers: []corev1.Container{
 						{
-							Name:    v1alpha1.TiKVMemberType.String(),
-							Image:   tc.Spec.TiKV.Image,
-							Command: []string{"/bin/sh", "/usr/local/bin/tikv_start_script.sh"},
+							Name:            v1alpha1.TiKVMemberType.String(),
+							Image:           tc.Spec.TiKV.Image,
+							Command:         []string{"/bin/sh", "/usr/local/bin/tikv_start_script.sh"},
+							ImagePullPolicy: tc.Spec.TiKV.ImagePullPolicy,
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "server",
@@ -366,8 +367,9 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 							},
 						},
 						{
-							Name:  v1alpha1.PushGatewayMemberType.String(),
-							Image: controller.GetPushgatewayImage(tc),
+							Name:            v1alpha1.PushGatewayMemberType.String(),
+							Image:           controller.GetPushgatewayImage(tc),
+							ImagePullPolicy: tc.Spec.TiKVPromGateway.ImagePullPolicy,
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "metrics",

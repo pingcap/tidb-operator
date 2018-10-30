@@ -29,6 +29,7 @@ services:
 pd:
   replicas: 3
   image: pingcap/pd:v2.0.7
+  imagePullPolicy: IfNotPresent
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -68,6 +69,7 @@ pd:
 tikv:
   replicas: 3
   image: pingcap/tikv:v2.0.7
+  imagePullPolicy: IfNotPresent
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -99,6 +101,7 @@ tikv:
 
 tikvPromGateway:
   image: prom/pushgateway:v0.3.1
+  imagePullPolicy: IfNotPresent
   resources: {}
     # limits:
     #   cpu: 100m
@@ -110,6 +113,7 @@ tikvPromGateway:
 tidb:
   replicas: 2
   image: pingcap/tidb:v2.0.7
+  imagePullPolicy: IfNotPresent
   logLevel: info
   resources: {}
     # limits:
@@ -144,8 +148,10 @@ monitor:
   storage: 10Gi
   dashboardInstaller:
     image: pingcap/tidb-dashboard-installer:v2.0.0
+    imagePullPolicy: IfNotPresent
   grafana:
     image: grafana/grafana:4.6.3
+    imagePullPolicy: IfNotPresent
     logLevel: info
     resources: {}
       # limits:
@@ -161,6 +167,7 @@ monitor:
     grafanaUrl: http://localhost:3000
   prometheus:
     image: prom/prometheus:v2.2.1
+    imagePullPolicy: IfNotPresent
     logLevel: info
     resources: {}
       # limits:
@@ -188,8 +195,10 @@ monitor:
 fullbackup:
   create: false
   binlogImage: pingcap/tidb-binlog:latest
+  binlogImagePullPolicy: IfNotPresent
   # https://github.com/tennix/tidb-cloud-backup
   mydumperImage: pingcap/tidb-cloud-backup:latest
+  mydumperImagePullPolicy: IfNotPresent
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
