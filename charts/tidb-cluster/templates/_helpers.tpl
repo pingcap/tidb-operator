@@ -14,3 +14,11 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- $name := default .Chart.Name .Values.nameOverride -}}
 {{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
+
+{{- define "helm-toolkit.utils.template" -}}
+{{- $name := index . 0 -}}
+{{- $context := index . 1 -}}
+{{- $last := base $context.Template.Name }}
+{{- $wtf := $context.Template.Name | replace $last $name -}}
+{{ include $wtf $context }}
+{{- end -}}
