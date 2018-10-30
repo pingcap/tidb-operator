@@ -33,7 +33,7 @@ spec:
       containers:
       - name: pump
         image: {{ .Values.binlog.pump.image }}
-        imagePullPolicy: {{ .Values.binlog.pump.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.binlog.pump.imagePullPolicy | default "IfNotPresent"}}
         command:
         - /bin/sh
         - -c
