@@ -1,15 +1,9 @@
-# TODO
-
-* agent secret
-* storage class
-
 First you can modify configuration values.
 
 * schema.yaml: don't modify this, use parameters to override it as shown below
 * chart/tidb-mp/values.yaml:
   * Note that you can override any tidb-operator or tidb-cluster configuration value
 
-TODO: review this once we have a Marketplace image published. In particular, set REPO in ./scripts/install
 
 ``` bash
 # Install the k8s application CRD into your cluster
@@ -17,15 +11,14 @@ kubectl apply -f manifests/app-crd.yaml
 
 export VERSION='v1.0.0'
 export PROJECT=${PROJECT:-$(gcloud config get-value project | tr ':' '/')}
-export REGISTRY="gcr.io/$PROJECT"
-export APP_NAME="tidb-operator-enterprise"
+export REGISTRY="gcr.io/$PROJECT/tidb-operator"
 
 docker build \
   --build-arg "REGISTRY=$REGISTRY" \
   --build-arg "TAG=$VERSION" \
-  --tag "$REGISTRY/$APP_NAME/deployer:$VERSION" .
+  --tag "$REGISTRY/deployer:$VERSION" .
 
-gcloud docker -- push "$REGISTRY/$APP_NAME/deployer:$VERSION"
+gcloud docker -- push "$REGISTRY/deployer:$VERSION"
 
 # We strongly recommend deploying into a new namespace
 kubectl create namespace tidb

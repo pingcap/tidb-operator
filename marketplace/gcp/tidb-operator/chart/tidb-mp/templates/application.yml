@@ -29,7 +29,7 @@ metadata:
   labels:
     app.kubernetes.io/name: "{{ .Release.Name }}"
   annotations:
-    marketplace.cloud.google.com/deploy-info: '{partner_id: "pingcap-public", product_id: "tidb-operator-enterprise", partner_name: "PingCAP"}'
+    marketplace.cloud.google.com/deploy-info: '{partner_id: "pingcap-public", product_id: "tidb-operator", partner_name: "PingCAP"}'
     kubernetes-engine.cloud.google.com/icon: |-
         iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAAAXNSR0IArs4c6QAAFRRJREFUeAHt
         nQmUE1W+xr/0vqfpkQbEBRVQR3jqjIgK+BBFHR+IAgOCoAIiIyK7cEABdZAdRhpEUZQBBgYQEZzH
