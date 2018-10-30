@@ -117,7 +117,7 @@ func TestHAFilter(t *testing.T) {
 			ordinal:   1,
 			podFn:     newHAPDPod,
 			nodesFn:   fakeThreeNodes,
-			podListFn: podListFn(map[string][]int32{"": []int32{0}}),
+			podListFn: podListFn(map[string][]int32{"": {0}}),
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(strings.Contains(err.Error(), "waiting for pod: default/demo-pd-0")).To(Equal(true))
 			},
@@ -139,7 +139,7 @@ func TestHAFilter(t *testing.T) {
 			ordinal:   1,
 			podFn:     newHAPDPod,
 			nodesFn:   fakeThreeNodes,
-			podListFn: podListFn(map[string][]int32{"kube-node-1": []int32{0}}),
+			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}}),
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
@@ -151,7 +151,7 @@ func TestHAFilter(t *testing.T) {
 			ordinal:   1,
 			podFn:     newHAPDPod,
 			nodesFn:   fakeOneNode,
-			podListFn: podListFn(map[string][]int32{"kube-node-3": []int32{0}}),
+			podListFn: podListFn(map[string][]int32{"kube-node-3": {0}}),
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "the first 3 pods can't be scheduled to the same node")).To(Equal(true))
@@ -162,7 +162,7 @@ func TestHAFilter(t *testing.T) {
 			ordinal:   1,
 			podFn:     newHAPDPod,
 			nodesFn:   fakeZeroNode,
-			podListFn: podListFn(map[string][]int32{"kube-node-3": []int32{0}}),
+			podListFn: podListFn(map[string][]int32{"kube-node-3": {0}}),
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "no suitable node for pod: default/demo-pd-1")).To(Equal(true))
@@ -173,7 +173,7 @@ func TestHAFilter(t *testing.T) {
 			ordinal:   2,
 			podFn:     newHAPDPod,
 			nodesFn:   fakeThreeNodes,
-			podListFn: podListFn(map[string][]int32{"kube-node-2": []int32{0}, "kube-node-3": []int32{1}}),
+			podListFn: podListFn(map[string][]int32{"kube-node-2": {0}, "kube-node-3": {1}}),
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
@@ -185,7 +185,7 @@ func TestHAFilter(t *testing.T) {
 			ordinal:   2,
 			podFn:     newHAPDPod,
 			nodesFn:   fakeTwoNodes,
-			podListFn: podListFn(map[string][]int32{"kube-node-1": []int32{0}, "kube-node-3": []int32{1}}),
+			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-3": {1}}),
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "the first 3 pods can't be scheduled to the same node")).To(Equal(true))
@@ -196,7 +196,7 @@ func TestHAFilter(t *testing.T) {
 			ordinal:   2,
 			podFn:     newHAPDPod,
 			nodesFn:   fakeZeroNode,
-			podListFn: podListFn(map[string][]int32{"kube-node-1": []int32{0}, "kube-node-3": []int32{1}}),
+			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-3": {1}}),
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "no suitable node for pod: default/demo-pd-2")).To(Equal(true))
@@ -207,7 +207,7 @@ func TestHAFilter(t *testing.T) {
 			ordinal:   3,
 			podFn:     newHAPDPod,
 			nodesFn:   fakeThreeNodes,
-			podListFn: podListFn(map[string][]int32{"kube-node-2": []int32{0}, "kube-node-3": []int32{1}, "kube-node-1": []int32{2}}),
+			podListFn: podListFn(map[string][]int32{"kube-node-2": {0}, "kube-node-3": {1}, "kube-node-1": {2}}),
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
@@ -219,7 +219,7 @@ func TestHAFilter(t *testing.T) {
 			ordinal:   4,
 			podFn:     newHAPDPod,
 			nodesFn:   fakeThreeNodes,
-			podListFn: podListFn(map[string][]int32{"kube-node-2": []int32{0}, "kube-node-3": []int32{1}, "kube-node-1": []int32{2, 3}}),
+			podListFn: podListFn(map[string][]int32{"kube-node-2": {0}, "kube-node-3": {1}, "kube-node-1": {2, 3}}),
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
@@ -231,7 +231,7 @@ func TestHAFilter(t *testing.T) {
 			ordinal:   5,
 			podFn:     newHAPDPod,
 			nodesFn:   fakeThreeNodes,
-			podListFn: podListFn(map[string][]int32{"kube-node-2": []int32{0}, "kube-node-3": []int32{1, 4}, "kube-node-1": []int32{2, 3}}),
+			podListFn: podListFn(map[string][]int32{"kube-node-2": {0}, "kube-node-3": {1, 4}, "kube-node-1": {2, 3}}),
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
@@ -243,7 +243,7 @@ func TestHAFilter(t *testing.T) {
 			ordinal:   5,
 			podFn:     newHAPDPod,
 			nodesFn:   fakeTwoNodes,
-			podListFn: podListFn(map[string][]int32{"kube-node-2": []int32{0}, "kube-node-3": []int32{1, 4}, "kube-node-1": []int32{2, 3}}),
+			podListFn: podListFn(map[string][]int32{"kube-node-2": {0}, "kube-node-3": {1, 4}, "kube-node-1": {2, 3}}),
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
@@ -255,7 +255,7 @@ func TestHAFilter(t *testing.T) {
 			ordinal:   5,
 			podFn:     newHAPDPod,
 			nodesFn:   fakeOneNode,
-			podListFn: podListFn(map[string][]int32{"kube-node-2": []int32{0}, "kube-node-3": []int32{1, 4}, "kube-node-1": []int32{2, 3}}),
+			podListFn: podListFn(map[string][]int32{"kube-node-2": {0}, "kube-node-3": {1, 4}, "kube-node-1": {2, 3}}),
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
@@ -267,7 +267,7 @@ func TestHAFilter(t *testing.T) {
 			ordinal:   5,
 			podFn:     newHAPDPod,
 			nodesFn:   fakeZeroNode,
-			podListFn: podListFn(map[string][]int32{"kube-node-2": []int32{0}, "kube-node-3": []int32{1, 4}, "kube-node-1": []int32{2, 3}}),
+			podListFn: podListFn(map[string][]int32{"kube-node-2": {0}, "kube-node-3": {1, 4}, "kube-node-1": {2, 3}}),
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "no suitable node for pod: default/demo-pd-5")).To(Equal(true))
@@ -278,7 +278,7 @@ func TestHAFilter(t *testing.T) {
 			ordinal:   6,
 			podFn:     newHAPDPod,
 			nodesFn:   fakeThreeNodes,
-			podListFn: podListFn(map[string][]int32{"kube-node-2": []int32{0, 5}, "kube-node-3": []int32{1, 4}, "kube-node-1": []int32{2, 3}}),
+			podListFn: podListFn(map[string][]int32{"kube-node-2": {0, 5}, "kube-node-3": {1, 4}, "kube-node-1": {2, 3}}),
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
