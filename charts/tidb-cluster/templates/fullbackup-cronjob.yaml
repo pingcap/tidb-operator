@@ -21,6 +21,7 @@ spec:
           initContainers:
           - name: get-ts
             image: {{ .Values.fullbackup.binlogImage }}
+            imagePullPolicy: {{ .Values.fullbackup.binlogImagePullPolicy | default "IfNotPresent" }}
             command:
             - /binlogctl
             - -pd-urls=http://{{ .Values.clusterName }}-pd:2379
@@ -32,6 +33,7 @@ spec:
           containers:
           - name: fullbackup
             image: {{ .Values.fullbackup.mydumperImage }}
+            imagePullPolicy: {{ .Values.fullbackup.mydumperImagePullPolicy | default "IfNotPresent" }}
             command:
             - /bin/sh
             - -c
