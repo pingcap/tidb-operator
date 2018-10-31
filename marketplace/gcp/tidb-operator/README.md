@@ -9,9 +9,9 @@ First you can modify configuration values.
 # Install the k8s application CRD into your cluster
 kubectl apply -f manifests/app-crd.yaml
 
-export VERSION='v1.0.0'
-export PROJECT=${PROJECT:-$(gcloud config get-value project | tr ':' '/')}
-export REGISTRY="gcr.io/$PROJECT/tidb-operator"
+VERSION='2.0'
+PROJECT=$(gcloud config get-value project | tr ':' '/')
+REGISTRY="gcr.io/$PROJECT/tidb-operator"
 
 docker build \
   --build-arg "REGISTRY=$REGISTRY" \
@@ -20,11 +20,11 @@ docker build \
 
 gcloud docker -- push "$REGISTRY/deployer:$VERSION"
 
+NAMESPACE=tidb
 # We strongly recommend deploying into a new namespace
-kubectl create namespace tidb
-export NAMESPACE=tidb
+kubectl create namespace $NAMESPACE
 
-./scripts/install
+REGISTRY=$REGISTRY NAMESPACE=$NAMESPACE ./scripts/install
 ```
 
 You can watch the deployment come up with
@@ -36,6 +36,6 @@ kubectl get pods -n tidb --watch
 When the tidb containers are running, you can connect with a MySQL client.
 
 ``` bash
-kubectl -n test-ns port-forward db-tidb-0 4000:4000 &
+kubectl -n $NAMESPACE port-forward db-tidb-0 4000:4000 &
 mysql -u root -P 4000 -h 127.0.0.1
 ```
