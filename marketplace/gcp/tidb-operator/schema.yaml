@@ -27,50 +27,39 @@ properties:
 
   installerImage:
     type: string
-    default: $REGISTRY/tidb-operator-enterprise/installer:$TAG
+    default: $REGISTRY/installer:$TAG
     x-google-marketplace:
       type: IMAGE
 
   tidb-operator.operatorImage:
     type: string
-    default: $REGISTRY/tidb-operator-enterprise/tidb-operator:$TAG
+    default: $REGISTRY/tidb-operator:$TAG
     x-google-marketplace:
       type: IMAGE
 
   tidb-cluster.monitor.dashboardInstaller.image:
     type: string
-    default: $REGISTRY/tidb-operator-enterprise/tidb-dashboard-installer:$TAG
+    default: $REGISTRY/tidb-dashboard-installer:$TAG
     x-google-marketplace:
       type: IMAGE
 
   tidb-cluster.pd.image:
     type: string
-    default: $REGISTRY/tidb-operator-enterprise/pd:$TAG
+    default: $REGISTRY/pd:$TAG
     x-google-marketplace:
       type: IMAGE
 
   tidb-cluster.tikv.image:
     type: string
-    default: $REGISTRY/tidb-operator-enterprise/tikv:$TAG
+    default: $REGISTRY/tikv:$TAG
     x-google-marketplace:
       type: IMAGE
 
   tidb-cluster.tidb.image:
     type: string
-    default: $REGISTRY/tidb-operator-enterprise/tidb:$TAG
+    default: $REGISTRY/tidb:$TAG
     x-google-marketplace:
       type: IMAGE
-
-  tidb-cluster.monitor.ubbagent.image:
-    type: string
-    default: $REGISTRY/tidb-operator-enterprise/ubbagent:$TAG
-    x-google-marketplace:
-      type: IMAGE
-
-  tidb-cluster.monitor.ubbagent.reportingSecret:
-    type: string
-    x-google-marketplace:
-      type: REPORTING_SECRET
 
 required:
 - name
