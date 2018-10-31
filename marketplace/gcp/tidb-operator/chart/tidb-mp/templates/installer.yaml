@@ -44,3 +44,5 @@ spec:
             path: operator.yaml
           - key: cluster
             path: cluster.yaml
+          - key: release-name
+            path: release-name.txt
