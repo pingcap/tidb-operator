@@ -1,6 +1,6 @@
 GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=linux GOARCH=amd64
 GO     := $(GOENV) go
-GOTEST := go test -v -cover
+GOTEST := CGO_ENABLED=0 go test -v -cover
 
 LDFLAGS += -X "github.com/pingcap/tidb-operator/version.BuildTS=$(shell date -u '+%Y-%m-%d %I:%M:%S')"
 LDFLAGS += -X "github.com/pingcap/tidb-operator/version.GitSHA=$(shell git rev-parse HEAD)"
