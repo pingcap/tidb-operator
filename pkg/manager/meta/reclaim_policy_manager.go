@@ -39,13 +39,14 @@ func NewReclaimPolicyManager(pvcLister corelisters.PersistentVolumeClaimLister,
 }
 
 func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
 	l, err := label.New().Cluster(tcName).Selector()
 	if err != nil {
 		return err
 	}
-	pvcs, err := rpm.pvcLister.List(l)
+	pvcs, err := rpm.pvcLister.PersistentVolumeClaims(ns).List(l)
 	if err != nil {
 		return err
 	}
