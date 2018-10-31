@@ -79,15 +79,15 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			name:                     "normal",
 			prepare:                  nil,
 			errWhenCreateStatefulSet: false,
-			err:        false,
-			setCreated: true,
+			err:                      false,
+			setCreated:               true,
 		},
 		{
 			name:                     "error when create statefulset",
 			prepare:                  nil,
 			errWhenCreateStatefulSet: true,
-			err:        true,
-			setCreated: false,
+			err:                      true,
+			setCreated:               false,
 		},
 	}
 
@@ -162,7 +162,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: false,
-			err: false,
+			err:                      false,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
@@ -176,7 +176,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: true,
-			err: true,
+			err:                      true,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
@@ -194,6 +194,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
+	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
 	tidbUpgrader := NewFakeTiDBUpgrader()
@@ -206,6 +207,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		tidbControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
+		podInformer.Lister(),
 		tidbUpgrader,
 		true,
 		tidbFailover,

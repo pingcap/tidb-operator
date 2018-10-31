@@ -260,7 +260,11 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 
 	tc.Status.PD.StatefulSet = &set.Status
 
-	if statefulSetIsUpgrading(set) {
+	upgrading, err := pmm.pdStatefulSetIsUpgrading(set, tc)
+	if err != nil {
+		return err
+	}
+	if upgrading {
 		tc.Status.PD.Phase = v1alpha1.UpgradePhase
 	} else {
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
@@ -287,7 +291,7 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		}
 		name := memberHealth.Name
 		if len(name) == 0 {
-			glog.Warningf("PD member: [%d] don't have a name, and can't get it from clientUrls: [%s], memberHealth Info: [%v] in [%s/%s]",
+			glog.Warningf("PD member: [%d] doesn't have a name, and can't get it from clientUrls: [%s], memberHealth Info: [%v] in [%s/%s]",
 				id, memberHealth.ClientUrls, memberHealth, ns, tcName)
 			continue
 		}
@@ -408,6 +412,30 @@ func (pmm *pdMemberManager) getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.T
 	}
 }
 
+func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
+	if statefulSetIsUpgrading(set) {
+		return true, nil
+	}
+	selector, err := label.New().Cluster(tc.GetName()).PD().Selector()
+	if err != nil {
+		return false, err
+	}
+	pdPods, err := pmm.podLister.Pods(tc.GetNamespace()).List(selector)
+	if err != nil {
+		return false, err
+	}
+	for _, pod := range pdPods {
+		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+		if !exist {
+			return false, nil
+		}
+		if revisionHash != tc.Status.PD.StatefulSet.UpdateRevision {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
 	ns := tc.Namespace
 	tcName := tc.Name
@@ -490,9 +518,10 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 					),
 					Containers: []corev1.Container{
 						{
-							Name:    v1alpha1.PDMemberType.String(),
-							Image:   tc.Spec.PD.Image,
-							Command: []string{"/bin/sh", "/usr/local/bin/pd_start_script.sh"},
+							Name:            v1alpha1.PDMemberType.String(),
+							Image:           tc.Spec.PD.Image,
+							Command:         []string{"/bin/sh", "/usr/local/bin/pd_start_script.sh"},
+							ImagePullPolicy: tc.Spec.PD.ImagePullPolicy,
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "server",

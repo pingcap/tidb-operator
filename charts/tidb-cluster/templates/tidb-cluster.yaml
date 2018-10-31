@@ -3,7 +3,7 @@ kind: TidbCluster
 metadata:
   name: {{ .Values.clusterName }}
   labels:
-    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: tidb-cluster
@@ -16,6 +16,7 @@ spec:
   pd:
     replicas: {{ .Values.pd.replicas }}
     image: {{ .Values.pd.image }}
+    imagePullPolicy: {{ .Values.pd.imagePullPolicy | default "IfNotPresent" }}
   {{- if .Values.pd.storageClassName }}
     storageClassName: {{ .Values.pd.storageClassName }}
   {{- end }}
@@ -34,6 +35,7 @@ spec:
   tikv:
     replicas: {{ .Values.tikv.replicas }}
     image: {{ .Values.tikv.image }}
+    imagePullPolicy: {{ .Values.tikv.imagePullPolicy | default "IfNotPresent" }}
   {{- if .Values.tikv.storageClassName }}
     storageClassName: {{ .Values.tikv.storageClassName }}
   {{- end }}
@@ -51,12 +53,14 @@ spec:
   {{- end }}
   tikvPromGateway:
     image: {{ .Values.tikvPromGateway.image }}
+    imagePullPolicy: {{ .Values.tikvPromGateway.imagePullPolicy | default "IfNotPresent" }}
   {{- if .Values.tikvPromGateway.resources }}
 {{ toYaml .Values.tikvPromGateway.resources | indent 4 }}
   {{- end }}
   tidb:
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}
+    imagePullPolicy: {{ .Values.tidb.imagePullPolicy | default "IfNotPresent" }}
   {{- if .Values.tidb.resources }}
 {{ toYaml .Values.tidb.resources | indent 4 }}
   {{- end }}

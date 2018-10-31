@@ -4,7 +4,7 @@ kind: StatefulSet
 metadata:
   name: {{ .Values.clusterName }}-drainer
   labels:
-    app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: drainer
@@ -12,8 +12,9 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+      app.kubernetes.io/name: {{ template "chart.name" . }}
       app.kubernetes.io/instance: {{ .Values.clusterName }}
+      app.kubernetes.io/managed-by: tidb-operator
       app.kubernetes.io/component: drainer
   serviceName: {{ .Values.clusterName }}-drainer
   replicas: 1
@@ -24,8 +25,9 @@ spec:
         prometheus.io/path: "/metrics"
         prometheus.io/port: "8249"
       labels:
-        app.kubernetes.io/name: {{ template "tidb-cluster.name" . }}
+        app.kubernetes.io/name: {{ template "chart.name" . }}
         app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/managed-by: tidb-operator
         app.kubernetes.io/component: drainer
     spec:
       containers:
@@ -35,40 +37,8 @@ spec:
         command:
         - /bin/sh
         - -c
-        - |
-          set -euo pipefail
-
-          domain=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-drainer
-
-          elapseTime=0
-          period=1
-          threshold=30
-          while true; do
-              sleep ${period}
-              elapseTime=$(( elapseTime+period ))
-
-              if [[ ${elapseTime} -ge ${threshold} ]]
-              then
-                  echo "waiting for drainer domain ready timeout" >&2
-                  exit 1
-              fi
-
-              if nslookup ${domain} 2>/dev/null
-              then
-                  echo "nslookup domain ${domain} success"
-                  break
-              else
-                  echo "nslookup domain ${domain} failed" >&2
-              fi
-          done
-
-          /drainer \
-          -L={{ .Values.binlog.drainer.logLevel | default "info" }} \
-          -addr=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-drainer:8249 \
-          -config=/etc/drainer/drainer.toml \
-          -disable-detect={{ .Values.binlog.drainer.disableDetect | default false }} \
-          -initial-commit-ts={{ .Values.binlog.drainer.initialCommitTs | default 0 }} \
-          -log-file=
+        - |-
+{{ tuple "scripts/_start_drainer.sh.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
         ports:
         - containerPort: 8249
           name: drainer

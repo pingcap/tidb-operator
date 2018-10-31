@@ -98,13 +98,13 @@ func NewController(
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
-	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl)
+	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
 	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister())
 	tikvFailover := mm.NewTiKVFailover(pdControl)
 	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod)
 	pdUpgrader := mm.NewPDUpgrader(pdControl, podControl, podInformer.Lister())
 	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
-	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl)
+	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl, podInformer.Lister())
 
 	tcc := &Controller{
 		kubeClient: kubeCli,
@@ -144,6 +144,7 @@ func NewController(
 				tidbControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
+				podInformer.Lister(),
 				tidbUpgrader,
 				autoFailover,
 				tidbFailover,

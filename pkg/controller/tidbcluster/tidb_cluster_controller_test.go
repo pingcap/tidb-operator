@@ -254,7 +254,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
-	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl)
+	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
 	pdFailover := mm.NewFakePDFailover()
 	tikvFailover := mm.NewFakeTiKVFailover()
 	tidbFailover := mm.NewFakeTiDBFailover()
@@ -301,6 +301,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			tidbControl,
 			setInformer.Lister(),
 			svcInformer.Lister(),
+			podInformer.Lister(),
 			tidbUpgrader,
 			autoFailover,
 			tidbFailover,

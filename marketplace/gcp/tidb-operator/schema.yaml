@@ -1,0 +1,67 @@
+applicationApiVersion: v1beta1
+
+properties:
+  name:
+    type: string
+    x-google-marketplace:
+      type: NAME
+  namespace:
+    type: string
+    x-google-marketplace:
+      type: NAMESPACE
+  image.primary:
+    type: string
+    default: $REGISTRY:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  serviceAccount:
+    type: string
+    x-google-marketplace:
+      type: SERVICE_ACCOUNT
+      serviceAccount:
+        roles:
+        - type: ClusterRole
+          rulesType: PREDEFINED
+          rulesFromRoleName: cluster-admin
+
+  installerImage:
+    type: string
+    default: $REGISTRY/installer:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-operator.operatorImage:
+    type: string
+    default: $REGISTRY/tidb-operator:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.monitor.dashboardInstaller.image:
+    type: string
+    default: $REGISTRY/tidb-dashboard-installer:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.pd.image:
+    type: string
+    default: $REGISTRY/pd:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.tikv.image:
+    type: string
+    default: $REGISTRY/tikv:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+  tidb-cluster.tidb.image:
+    type: string
+    default: $REGISTRY/tidb:$TAG
+    x-google-marketplace:
+      type: IMAGE
+
+required:
+- name
+- namespace
+- serviceAccount

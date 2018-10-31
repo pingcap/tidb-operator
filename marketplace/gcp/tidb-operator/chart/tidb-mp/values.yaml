@@ -1,0 +1,60 @@
+# create resources at deploy time with this serviceAccount
+serviceAccount:
+
+# installer image
+installerImage:
+
+storageClass:
+  create: true
+
+clusterName: db
+
+# operator chart
+tidb-operator:
+  rbac:
+    create: true
+  clusterScoped: false
+  controllerManager:
+    serviceAccount: tidb-controller-manager
+  operatorImage:
+
+# cluster chart
+tidb-cluster:
+  # Assume one cluster per namespace
+  clusterName: db
+  rbac:
+    create: true
+  
+  fullbackup:
+    # Need to get the backup images pushed to GCR first.
+    create: false
+    password:
+
+  monitor:
+    create: true
+    serviceAccount:
+    dashboardInstaller:
+      image:
+    prometheus:
+      resources:
+        requests:
+          cpu: 2000m
+          memory: 2Gi
+
+    grafana:
+      resources:
+        requests:
+          cpu: 2000m
+          memory: 2Gi
+
+  pd:
+    storageClassName: tidb-pd-ssd
+    image:
+
+  tikv:
+    storageClassName: tidb-pd-ssd
+    image:
+
+  tidb:
+    storageClassName: tidb-pd-ssd
+    image:
