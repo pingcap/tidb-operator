@@ -20,3 +20,49 @@ spec:
     # shortNames allow shorter string to match your resource on the CLI
     shortNames:
     - tc
+  validation:
+   # openAPIV3Schema is the schema for validating custom objects.
+    openAPIV3Schema:
+      properties:
+        spec:
+          properties:
+            pd:
+              properties:
+                limits:
+                  properties:
+                    cpu:
+                      type: string
+                requests:
+                  properties:
+                    cpu:
+                      type: string
+            tikv:
+              properties:
+                limits:
+                  properties:
+                    cpu:
+                      type: string
+                requests:
+                  properties:
+                    cpu:
+                      type: string
+            tidb:
+              properties:
+                limits:
+                  properties:
+                    cpu:
+                      type: string
+                requests:
+                  properties:
+                    cpu:
+                      type: string
+            tikvPromGateway:
+              properties:
+                limits:
+                  properties:
+                    cpu:
+                      type: string
+                requests:
+                  properties:
+                    cpu:
+                      type: string
