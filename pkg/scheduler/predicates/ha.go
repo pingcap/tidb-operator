@@ -46,6 +46,10 @@ func (h *ha) Name() string {
 	return "HighAvailability"
 }
 
+// 1. First, we sort all the nodes we get from kube-scheduler by how many same kind of pod it contains,
+//    find the nodes that have least pods.
+// 2. When scheduling the first replicas pods, we must ensure no previous pods on the nodes.
+// 3. For later pods, we choose the nodes that have least pods.
 func (h *ha) Filter(clusterName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]apiv1.Node, error) {
 	ns := pod.GetNamespace()
 	podName := pod.GetName()
@@ -102,17 +106,15 @@ func (h *ha) Filter(clusterName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]a
 			min = count
 		}
 	}
+	if ordinal < replicas && min != 0 {
+		return nil, fmt.Errorf("the first %d pods can't be scheduled to the same node", replicas)
+	}
+
 	minNodeNames := make([]string, 0)
 	for nodeName, podNameArr := range nodeMap {
 		if len(podNameArr) == min {
 			minNodeNames = append(minNodeNames, nodeName)
 		}
-	}
-	if len(minNodeNames) == 0 {
-		return nil, fmt.Errorf("no suitable node for pod: %s/%s", ns, podName)
-	}
-	if ordinal < replicas && min != 0 {
-		return nil, fmt.Errorf("the first %d pods can't be scheduled to the same node", replicas)
 	}
 
 	return getNodeFromNames(nodes, minNodeNames), nil

@@ -158,17 +158,6 @@ func TestHAFilter(t *testing.T) {
 			},
 		},
 		{
-			name:      "ordinal 0 is scheduled to kube-node-3, get 0 node, ordinal 1 should be scheduled to none",
-			ordinal:   1,
-			podFn:     newHAPDPod,
-			nodesFn:   fakeZeroNode,
-			podListFn: podListFn(map[string][]int32{"kube-node-3": {0}}),
-			expectFn: func(nodes []apiv1.Node, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "no suitable node for pod: default/demo-pd-1")).To(Equal(true))
-			},
-		},
-		{
 			name:      "ordinal 0 is scheduled to kube-node-2, ordinal 1 is kube-node-3, ordinal 2 should be scheduled to kube-node-1",
 			ordinal:   2,
 			podFn:     newHAPDPod,
@@ -189,17 +178,6 @@ func TestHAFilter(t *testing.T) {
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "the first 3 pods can't be scheduled to the same node")).To(Equal(true))
-			},
-		},
-		{
-			name:      "ordinal 0 is scheduled to kube-node-1, ordinal 1 is kube-node-3, get 0 node, ordinal 2 should be scheduled to none",
-			ordinal:   2,
-			podFn:     newHAPDPod,
-			nodesFn:   fakeZeroNode,
-			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-3": {1}}),
-			expectFn: func(nodes []apiv1.Node, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "no suitable node for pod: default/demo-pd-2")).To(Equal(true))
 			},
 		},
 		{
@@ -260,17 +238,6 @@ func TestHAFilter(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-3"}))
-			},
-		},
-		{
-			name:      "the first five oridnals get to 3 nodes, got 0 nodes, the ordinal 5 should scheduled to none",
-			ordinal:   5,
-			podFn:     newHAPDPod,
-			nodesFn:   fakeZeroNode,
-			podListFn: podListFn(map[string][]int32{"kube-node-2": {0}, "kube-node-3": {1, 4}, "kube-node-1": {2, 3}}),
-			expectFn: func(nodes []apiv1.Node, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "no suitable node for pod: default/demo-pd-5")).To(Equal(true))
 			},
 		},
 		{
