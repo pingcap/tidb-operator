@@ -31,6 +31,6 @@ spec:
     imagePullPolicy: Always
     env:
     - name: GINKGO_NODES
-      value: "1"
-    command: ["sh", "-c", "ginkgo -v /usr/local/bin/e2e.test"]
+      value: "4"
+    command: ["sh", "-c", "ginkgo --nodes=${GINKGO_NODES} --v --stream --trace --failFast /usr/local/bin/e2e.test"]
   restartPolicy: Never
