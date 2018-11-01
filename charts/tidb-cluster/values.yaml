@@ -312,7 +312,7 @@ restore:
     # and then: cat credentials.json | base64 | tr -d '\n'
     # credentialsData: ""
     # bucket: ""
-    # srcDir is the direction of backup data in bucket
+    # srcDir is the directory of backup data in bucket
     # srcDir: ""
 
 metaInstance: "{{ $labels.instance }}"
