@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+VERSION=${VERSION:-""}
+if [[ -z "${VERSION}" ]] ; then
+	echo "no version"
+	exit 1
+fi
+
+NAMESPACE=${NAMESPACE:-""}
+if [[ -z "${NAMESPACE}" ]] ; then
+	echo "no namespace"
+	exit 1
+fi
+
+REPO="gcr.io/pingcap-public/pingcap/tidb-operator"
+PARAMETERS="{\"installerImage\":\"$REPO/installer:$VERSION\",\"tidb-operator.operatorImage\":\"$REPO/tidb-operator:$VERSION\",\"tidb-cluster.monitor.dashboardInstaller.image\":\"$REPO/tidb-dashboard-installer:$VERSION\",\"tidb-cluster.pd.image\":\"$REPO/pd:$VERSION\",\"tidb-cluster.tikv.image\":\"$REPO/tikv:$VERSION\",\"tidb-cluster.tidb.image\":\"$REPO/tidb:$VERSION\",\"name\":\"test-deployment\",\"namespace\":\"$NAMESPACE\"}"
+
+# This uses a large docker image that takes a long time to download.
+"$(dirname "$0")/../scripts/mpdev" /scripts/install \
+  --deployer=$REGISTRY/deployer:$VERSION \
+  --parameters="$PARAMETERS"

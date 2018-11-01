@@ -144,9 +144,10 @@ type TiKVPromGatewaySpec struct {
 
 // ContainerSpec is the container spec of a pod
 type ContainerSpec struct {
-	Image    string               `json:"image"`
-	Requests *ResourceRequirement `json:"requests,omitempty"`
-	Limits   *ResourceRequirement `json:"limits,omitempty"`
+	Image           string               `json:"image"`
+	ImagePullPolicy corev1.PullPolicy    `json:"imagePullPolicy,omitempty"`
+	Requests        *ResourceRequirement `json:"requests,omitempty"`
+	Limits          *ResourceRequirement `json:"limits,omitempty"`
 }
 
 // Service represent service type used in TidbCluster
