@@ -4,6 +4,41 @@ spec:
   descriptor:
     type: TiDB
     versions: '2.0'
+    description: |-
+      TiDB is a cloud-native, NewSQL distributed database with MySQL compatibility that handles hybrid transactional and analytical processing (HTAP) workloads. It has been deployed in-production in more than 300 companies, spanning industries from banking, e-commerce and gaming, to fintech and travel. TiDB Operator leverages Kubernetes and the operator pattern to simplify and automate deployment and management of a TiDB cluster. In this version, TiDB is deployed on GCP's persistent disks.
+      
+      [Learn more](https://pingcap.com/en/).
+      
+      PingCAP Enterprise Support is available via email for customers using TiDB Operator for GKE on the GCP Marketplace. To inquire about support packages and details, please email: tidb_gke_support@pingcap.com.
+    maintainers:
+    - name: PingCAP
+      url: https://pingcap.com
+    links:
+      - description: User Guide
+        url: https://github.com/pingcap/tidb-operator/tree/master/marketplace/gcp/tidb-operator/README.md
+      - description: Documentation
+        url: https://pingcap.com/docs/
+
+    notes: |-
+      # Connecting
+      
+      Note: there can be a small delay between the pod being up and running, and the service being available.
+      
+      You can connect to the clustered service within the Kubernetes cluster:
+      
+      ```
+      kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb --output json | jq -r '.spec.clusterIP')
+      ```
+      
+      Congratulations, you are now up and running with a distributed TiDB database compatible with MySQL!
+      
+      In addition to connecting to TiDB within the Kubernetes cluster, you can also establish a tunnel to the TiDB service.
+      
+      ```
+      kubectl -n tidb port-forward demo-tidb-0 4000:4000 &>/tmp/port-forward.log &
+      ```
+
+
   selector:
     matchExpressions:
       - {key: app.kubernetes.io/name, operator: In, values: [tidb-operator, tidb-cluster, tidb-mp]}
@@ -29,7 +64,7 @@ metadata:
   labels:
     app.kubernetes.io/name: "{{ .Release.Name }}"
   annotations:
-    marketplace.cloud.google.com/deploy-info: '{partner_id: "pingcap-public", product_id: "tidb-operator-enterprise", partner_name: "PingCAP"}'
+    marketplace.cloud.google.com/deploy-info: '{partner_id: "pingcap-public", product_id: "pingcap-tidb-operator", partner_name: "PingCAP"}'
     kubernetes-engine.cloud.google.com/icon: |-
         iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAAAXNSR0IArs4c6QAAFRRJREFUeAHt
         nQmUE1W+xr/0vqfpkQbEBRVQR3jqjIgK+BBFHR+IAgOCoAIiIyK7cEABdZAdRhpEUZQBBgYQEZzH

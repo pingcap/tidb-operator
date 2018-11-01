@@ -21,6 +21,7 @@ spec:
       containers:
       - name: tidb-dashboard-installer
         image: {{ .Values.monitor.dashboardInstaller.image }}
+        imagePullPolicy: {{ .Values.monitor.dashboardInstaller.imagePullPolicy | default "IfNotPresent" }}
         args:
           - {{ .Values.clusterName }}-grafana:3000
         env:

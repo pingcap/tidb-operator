@@ -518,9 +518,10 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 					),
 					Containers: []corev1.Container{
 						{
-							Name:    v1alpha1.PDMemberType.String(),
-							Image:   tc.Spec.PD.Image,
-							Command: []string{"/bin/sh", "/usr/local/bin/pd_start_script.sh"},
+							Name:            v1alpha1.PDMemberType.String(),
+							Image:           tc.Spec.PD.Image,
+							Command:         []string{"/bin/sh", "/usr/local/bin/pd_start_script.sh"},
+							ImagePullPolicy: tc.Spec.PD.ImagePullPolicy,
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "server",

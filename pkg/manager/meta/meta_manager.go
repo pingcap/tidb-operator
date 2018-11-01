@@ -55,13 +55,14 @@ func NewMetaManager(
 }
 
 func (pmm *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
 	l, err := label.New().Cluster(tcName).Selector()
 	if err != nil {
 		return err
 	}
-	pods, err := pmm.podLister.List(l)
+	pods, err := pmm.podLister.Pods(ns).List(l)
 	if err != nil {
 		return err
 	}

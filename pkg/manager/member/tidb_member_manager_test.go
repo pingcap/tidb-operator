@@ -79,15 +79,15 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			name:                     "normal",
 			prepare:                  nil,
 			errWhenCreateStatefulSet: false,
-			err:        false,
-			setCreated: true,
+			err:                      false,
+			setCreated:               true,
 		},
 		{
 			name:                     "error when create statefulset",
 			prepare:                  nil,
 			errWhenCreateStatefulSet: true,
-			err:        true,
-			setCreated: false,
+			err:                      true,
+			setCreated:               false,
 		},
 	}
 
@@ -162,7 +162,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: false,
-			err: false,
+			err:                      false,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
@@ -176,7 +176,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: true,
-			err: true,
+			err:                      true,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
