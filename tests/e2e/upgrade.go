@@ -21,18 +21,24 @@ import (
 	. "github.com/onsi/gomega" // revive:disable:dot-imports
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 const (
-	upgradeVersion = "v2.1.0-rc.3"
+	upgradeVersion = "v2.0.8"
 )
 
 func testUpgrade() {
+	pdNodeMap, err := getNodeMap(label.PDLabelVal)
+	Expect(err).NotTo(HaveOccurred())
+	tikvNodeMap, err := getNodeMap(label.TiKVLabelVal)
+	Expect(err).NotTo(HaveOccurred())
+
 	By("When upgrade TiDB cluster to newer version")
-	err := wait.Poll(5*time.Second, 5*time.Minute, upgrade)
+	err = wait.Poll(5*time.Second, 5*time.Minute, upgrade)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Then members should be upgrade in order: pd ==> tikv ==> tidb")
@@ -42,6 +48,15 @@ func testUpgrade() {
 	By("Then all members should running")
 	err = wait.Poll(5*time.Second, 5*time.Minute, allMembersRunning)
 	Expect(err).NotTo(HaveOccurred())
+
+	By("And scheduling policy is correct")
+	pdNodeMap1, err := getNodeMap(label.PDLabelVal)
+	Expect(err).NotTo(HaveOccurred())
+	tikvNodeMap1, err := getNodeMap(label.TiKVLabelVal)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(pdNodeMap).To(Equal(pdNodeMap1))
+	Expect(tikvNodeMap).To(Equal(tikvNodeMap1))
 
 	By("And the data is correct")
 	err = wait.Poll(5*time.Second, 5*time.Minute, dataIsCorrect)
