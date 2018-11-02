@@ -1,7 +1,8 @@
 set -euo pipefail
 
 dirname=`date +%Y-%m-%dT%H%M%S`-${MY_POD_NAME}
-mkdir -p /data/${dirname}/
+dataDir=/data/${dirname}
+mkdir -p ${dataDir}/
 host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]'`
 
 {{- if .Values.restore.gcp }}
@@ -9,11 +10,10 @@ downloader \
   --cloud=gcp \
   --bucket={{ .Values.restore.gcp.bucket }} \
   --srcDir={{ .Values.restore.gcp.srcDir }} \
-  --destDir=/data/${dirname}
+  --destDir=${dataDir}
 
-dataDir=/data/${dirname}/{{ .Values.restore.gcp.srcDir }}
 ./loader \
-  -d ${dataDir} \
+  -d ${dataDir}/{{ .Values.restore.gcp.srcDir }} \
   -h `eval echo '${'$host'}'` \
   -u {{ .Values.restore.user }} \
   -p ${TIDB_PASSWORD} \
