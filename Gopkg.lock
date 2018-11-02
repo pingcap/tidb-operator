@@ -150,6 +150,17 @@
   revision = "9f541cc9db5d55bce703bd99987c9d5cb8eea45e"
 
 [[projects]]
+  digest = "1:11596f65b08621cab2bd8096c60e2b4f1d4c6bc1d44f4905ffcb067141f6938a"
+  name = "github.com/emicklei/go-restful"
+  packages = [
+    ".",
+    "log",
+  ]
+  pruneopts = ""
+  revision = "3eb9738c1697594ea6e71a7156a9bb32ed216cf0"
+  version = "v2.8.0"
+
+[[projects]]
   digest = "1:b13707423743d41665fd23f0c36b2f37bb49c30e94adb813319c44188a51ba22"
   name = "github.com/ghodss/yaml"
   packages = ["."]
@@ -1105,6 +1116,8 @@
   packages = [
     "pkg/features",
     "pkg/kubelet/apis",
+    "pkg/scheduler/api",
+    "pkg/scheduler/api/v1",
   ]
   pruneopts = ""
   revision = "81753b10df112992bf51bbc2c2f85208aad78335"
@@ -1114,6 +1127,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/emicklei/go-restful",
     "github.com/go-sql-driver/mysql",
     "github.com/golang/glog",
     "github.com/onsi/ginkgo",
@@ -1165,6 +1179,7 @@
     "k8s.io/code-generator/cmd/informer-gen",
     "k8s.io/code-generator/cmd/lister-gen",
     "k8s.io/kubernetes/pkg/kubelet/apis",
+    "k8s.io/kubernetes/pkg/scheduler/api/v1",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

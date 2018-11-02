@@ -11,6 +11,9 @@ rbac:
 # if multiple clusters are deployed in the same namespace.
 clusterName: demo
 
+# schedulerName must be same with charts/tidb-operator/values#scheduler.schedulerName
+schedulerName: tidb-scheduler
+
 # timezone is the default system timzone for TiDB
 timezone: UTC
 
@@ -141,11 +144,11 @@ tidb:
       # cloud.google.com/load-balancer-type: Internal
 
 monitor:
+  create: true
   # Also see rbac.create
   # If you set rbac.create to false, you need to provide a value here.
   # If you set rbac.create to true, you should leave this empty.
   serviceAccount:
-  create: true
   persistent: false
   storageClassName: local-storage
   storage: 10Gi
