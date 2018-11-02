@@ -15,13 +15,12 @@ package member
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
@@ -68,7 +67,7 @@ func (pf *pdFailover) cleanOrphanPods(tc *v1alpha1.TidbCluster) error {
 		}
 
 		podName := pdMember.PodName
-		ordinal, err := getOrdinalFromPodName(podName)
+		ordinal, err := util.GetOrdinalFromPodName(podName)
 		if err != nil {
 			return err
 		}
@@ -170,7 +169,7 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 
-	ordinal, err := getOrdinalFromPodName(failurePodName)
+	ordinal, err := util.GetOrdinalFromPodName(failurePodName)
 	if err != nil {
 		return err
 	}
@@ -226,7 +225,7 @@ func (pf *pdFailover) markThisMemberAsFailure(tc *v1alpha1.TidbCluster, pdMember
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	podName := pdMember.Name
-	ordinal, err := getOrdinalFromPodName(podName)
+	ordinal, err := util.GetOrdinalFromPodName(podName)
 	if err != nil {
 		return err
 	}
@@ -252,15 +251,6 @@ func (pf *pdFailover) markThisMemberAsFailure(tc *v1alpha1.TidbCluster, pdMember
 	}
 
 	return nil
-}
-
-func getOrdinalFromPodName(podName string) (int32, error) {
-	ordinalStr := podName[strings.LastIndex(podName, "-")+1:]
-	ordinalInt, err := strconv.Atoi(ordinalStr)
-	if err != nil {
-		return int32(0), err
-	}
-	return int32(ordinalInt), nil
 }
 
 type fakePDFailover struct{}

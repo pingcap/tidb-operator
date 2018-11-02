@@ -1,0 +1,50 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: tidb-scheduler
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: scheduler
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  replicas: {{ .Values.scheduler.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "chart.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: scheduler
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "chart.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: scheduler
+    spec:
+    {{- if .Values.scheduler.serviceAccount }}
+      serviceAccount: {{ .Values.scheduler.serviceAccount }}
+    {{- end }}
+      containers:
+      - name: tidb-scheduler
+        image: {{ .Values.operatorImage }}
+        resources:
+{{ toYaml .Values.scheduler.resources | indent 12 }}
+        command:
+          - /usr/local/bin/tidb-scheduler
+          - -v={{ .Values.scheduler.logLevel }}
+          - -port=10262
+      - name: kube-scheduler
+        image: {{ .Values.scheduler.kubeSchedulerImage }}
+        resources:
+{{ toYaml .Values.scheduler.resources | indent 12 }}
+        command:
+        - kube-scheduler
+        - --port=10261
+        - --leader-elect=true
+        - --lock-object-name={{ .Values.scheduler.schedulerName }}
+        - --lock-object-namespace={{ .Release.Namespace }}
+        - --scheduler-name={{ .Values.scheduler.schedulerName }}
+        - --v={{ .Values.scheduler.logLevel }}
+        - --policy-configmap={{ .Values.scheduler.schedulerName }}-policy
+        - --policy-configmap-namespace={{ .Release.Namespace }}
