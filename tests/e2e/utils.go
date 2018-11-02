@@ -16,6 +16,7 @@ package e2e
 import (
 	"fmt"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 
@@ -169,4 +170,26 @@ func logf(format string, args ...interface{}) {
 
 func isNotFound(err error) bool {
 	return strings.Contains(err.Error(), "not found")
+}
+
+func getNodeMap(component string) (map[string][]string, error) {
+	nodeMap := make(map[string][]string)
+	selector := label.New().Cluster(clusterName).Component(component).Labels()
+	podList, err := kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(selector).String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, pod := range podList.Items {
+		nodeName := pod.Spec.NodeName
+		if len(nodeMap[nodeName]) == 0 {
+			nodeMap[nodeName] = make([]string, 0)
+		}
+		nodeMap[nodeName] = append(nodeMap[nodeName], pod.GetName())
+		sort.Strings(nodeMap[nodeName])
+	}
+
+	return nodeMap, nil
 }

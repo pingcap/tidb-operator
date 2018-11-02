@@ -88,6 +88,7 @@ type TidbClusterList struct {
 
 // TidbClusterSpec describes the attributes that a user creates on a tidb cluster
 type TidbClusterSpec struct {
+	SchedulerName   string              `json:"schedulerName,omitempty"`
 	PD              PDSpec              `json:"pd,omitempty"`
 	TiDB            TiDBSpec            `json:"tidb,omitempty"`
 	TiKV            TiKVSpec            `json:"tikv,omitempty"`
