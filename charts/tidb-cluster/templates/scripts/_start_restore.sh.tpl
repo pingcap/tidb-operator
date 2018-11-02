@@ -20,3 +20,4 @@ dataDir=/data/${dirname}/{{ .Values.restore.gcp.srcDir }}
   -P 4000 \
   {{ .Values.restore.options }}
 {{- end }}
+
