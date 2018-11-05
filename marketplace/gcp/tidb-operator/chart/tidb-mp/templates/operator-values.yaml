@@ -9,6 +9,7 @@ metadata:
     app.kubernetes.io/component: tidb-mp
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 data:
+  release-name: {{ template "release.name" . }}
   operator: |
 {{ toYaml (index .Values "tidb-operator") | indent 4 }}
 

@@ -278,6 +278,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 					Annotations: controller.AnnProm(10080),
 				},
 				Spec: corev1.PodSpec{
+					SchedulerName: tc.Spec.SchedulerName,
 					Affinity: util.AffinityForNodeSelector(
 						ns,
 						tc.Spec.TiDB.NodeSelectorRequired,

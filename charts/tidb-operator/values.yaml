@@ -34,3 +34,20 @@ controllerManager:
   pdFailoverPeriod: 5m
   # tidb failover period default(5m)
   tidbFailoverPeriod: 5m
+
+scheduler:
+  # With rbac.create=false, the user is responsible for creating this account
+  # With rbac.create=true, this service account will be created
+  # Also see rbac.create and clusterScoped
+  serviceAccount: tidb-scheduler
+  logLevel: 2
+  replicas: 1
+  schedulerName: tidb-scheduler
+  resources:
+    limits:
+      cpu: 250m
+      memory: 150Mi
+    requests:
+      cpu: 80m
+      memory: 50Mi
+  kubeSchedulerImage: quay.io/coreos/hyperkube:v1.10.4_coreos.0

@@ -44,6 +44,18 @@ func testCreate(ns, clusterName string) {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
+	By("And scheduling policy is correct")
+	nodeMap, err := getNodeMap(label.PDLabelVal)
+	Expect(err).NotTo(HaveOccurred())
+	for _, podNamesArr := range nodeMap {
+		Expect(len(podNamesArr)).To(Equal(1))
+	}
+	nodeMap, err = getNodeMap(label.TiKVLabelVal)
+	Expect(err).NotTo(HaveOccurred())
+	for _, podNamesArr := range nodeMap {
+		Expect(len(podNamesArr)).To(Equal(1))
+	}
+
 	By("When create a table and add some data to this table")
 	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
 		return addDataToCluster(ns, clusterName)
