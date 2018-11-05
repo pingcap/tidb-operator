@@ -210,7 +210,7 @@ func isNotFound(err error) bool {
 	return strings.Contains(err.Error(), "not found")
 }
 
-func getNodeMap(component string) (map[string][]string, error) {
+func getNodeMap(ns, clusterName, component string) (map[string][]string, error) {
 	nodeMap := make(map[string][]string)
 	selector := label.New().Cluster(clusterName).Component(component).Labels()
 	podList, err := kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{

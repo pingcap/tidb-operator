@@ -57,14 +57,14 @@ func testScale(ns, clusterName string) {
 	Expect(err).NotTo(HaveOccurred())
 
 	By("And scheduling policy is correct")
-	nodeMap, err := getNodeMap(label.PDLabelVal)
+	nodeMap, err := getNodeMap(ns, clusterName, label.PDLabelVal)
 	Expect(err).NotTo(HaveOccurred())
 	for nodeName, podNamesArr := range nodeMap {
 		if len(podNamesArr) > 2 {
 			Fail(fmt.Sprintf("node: %s has %d pods", nodeName, len(podNamesArr)))
 		}
 	}
-	nodeMap, err = getNodeMap(label.TiKVLabelVal)
+	nodeMap, err = getNodeMap(ns, clusterName, label.TiKVLabelVal)
 	Expect(err).NotTo(HaveOccurred())
 	for nodeName, podNamesArr := range nodeMap {
 		if len(podNamesArr) > 2 {

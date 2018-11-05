@@ -32,9 +32,9 @@ const (
 )
 
 func testUpgrade(ns, clusterName string) {
-	pdNodeMap, err := getNodeMap(label.PDLabelVal)
+	pdNodeMap, err := getNodeMap(ns, clusterName, label.PDLabelVal)
 	Expect(err).NotTo(HaveOccurred())
-	tikvNodeMap, err := getNodeMap(label.TiKVLabelVal)
+	tikvNodeMap, err := getNodeMap(ns, clusterName, label.TiKVLabelVal)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("When upgrade TiDB cluster to newer version")
@@ -56,9 +56,9 @@ func testUpgrade(ns, clusterName string) {
 	Expect(err).NotTo(HaveOccurred())
 
 	By("And scheduling policy is correct")
-	pdNodeMap1, err := getNodeMap(label.PDLabelVal)
+	pdNodeMap1, err := getNodeMap(ns, clusterName, label.PDLabelVal)
 	Expect(err).NotTo(HaveOccurred())
-	tikvNodeMap1, err := getNodeMap(label.TiKVLabelVal)
+	tikvNodeMap1, err := getNodeMap(ns, clusterName, label.TiKVLabelVal)
 	Expect(err).NotTo(HaveOccurred())
 
 	Expect(pdNodeMap).To(Equal(pdNodeMap1))

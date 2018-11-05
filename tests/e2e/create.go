@@ -45,12 +45,12 @@ func testCreate(ns, clusterName string) {
 	Expect(err).NotTo(HaveOccurred())
 
 	By("And scheduling policy is correct")
-	nodeMap, err := getNodeMap(label.PDLabelVal)
+	nodeMap, err := getNodeMap(ns, clusterName, label.PDLabelVal)
 	Expect(err).NotTo(HaveOccurred())
 	for _, podNamesArr := range nodeMap {
 		Expect(len(podNamesArr)).To(Equal(1))
 	}
-	nodeMap, err = getNodeMap(label.TiKVLabelVal)
+	nodeMap, err = getNodeMap(ns, clusterName, label.TiKVLabelVal)
 	Expect(err).NotTo(HaveOccurred())
 	for _, podNamesArr := range nodeMap {
 		Expect(len(podNamesArr)).To(Equal(1))
