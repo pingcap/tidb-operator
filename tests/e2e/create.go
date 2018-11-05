@@ -16,10 +16,9 @@ package e2e
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
-
-	"strconv"
 
 	_ "github.com/go-sql-driver/mysql" // init mysql driver
 	. "github.com/onsi/ginkgo"         // revive:disable:dot-imports
