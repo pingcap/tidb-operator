@@ -90,7 +90,7 @@ var fixtures = []clusterFixture{
 
 func clearOperator() error {
 	for _, fixture := range fixtures {
-		_, err := execCmd(fmt.Sprintf("helm del --purge %s", fixture.clusterName))
+		_, err := execCmd(fmt.Sprintf("helm del --purge %s", fmt.Sprintf("%s-%s", fixture.ns, fixture.clusterName)))
 		if err != nil && isNotFound(err) {
 			return err
 		}

@@ -34,7 +34,7 @@ func testCreate(ns, clusterName string) {
 	By(fmt.Sprintf("When create the TiDB cluster: %s/%s", ns, clusterName))
 	cmdStr := fmt.Sprintf("helm install /charts/tidb-cluster -f /tidb-cluster-values.yaml"+
 		" -n %s --namespace=%s --set clusterName=%s",
-		clusterName, ns, clusterName)
+		fmt.Sprintf("%s-%s", ns, clusterName), ns, clusterName)
 	_, err := execCmd(cmdStr)
 	Expect(err).NotTo(HaveOccurred())
 
