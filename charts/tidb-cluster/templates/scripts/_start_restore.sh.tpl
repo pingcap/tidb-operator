@@ -12,7 +12,7 @@ downloader \
   --srcDir={{ .Values.restore.gcp.srcDir }} \
   --destDir=${dataDir}
 
-./loader \
+/loader \
   -d ${dataDir}/{{ .Values.restore.gcp.srcDir }} \
   -h `eval echo '${'$host'}'` \
   -u {{ .Values.restore.user }} \
