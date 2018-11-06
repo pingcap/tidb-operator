@@ -24,8 +24,8 @@ This document defines the roadmap for TiDB Operator development.
 - [x] Backup via Binlog
 - [x] Backup via Mydumper
 
-## v0.4.0: (2018-10-30)
-- [ ] Extend scheduler for better support local persistent volume
+## v0.4.0: (2018-10-30) (aka. v1.0.0-alpha)
+- [x] Extend scheduler for better support local persistent volume
 
 ## v1.0.0-beta: (2018-11-20)
 - [ ] Improve unit test coverage (80%)
@@ -33,4 +33,6 @@ This document defines the roadmap for TiDB Operator development.
 - [ ] Basic chaos testing case
 - [ ] User guide document
 
-## v1.0.0-ga: (2018-12-20)
+## v1.0.0-ga: (2018-12-30)
+- [ ] Stabilize API
+- [ ] Stable for production deployment
