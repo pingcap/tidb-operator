@@ -30,11 +30,8 @@ import (
 )
 
 const (
-	ns               = "tidb-cluster-e2e"
-	helmName         = "tidb-cluster-e2e"
 	operatorNs       = "tidb-operator-e2e"
 	operatorHelmName = "tidb-operator-e2e"
-	clusterName      = "demo-cluster"
 	testTableName    = "demo_table"
 	testTableVal     = "demo_val"
 )
@@ -44,42 +41,94 @@ var (
 	kubeCli kubernetes.Interface
 )
 
+type clusterFixture struct {
+	ns          string
+	clusterName string
+	cases       []testCase
+}
+
+type testCase func(ns, name string)
+
+var fixtures = []clusterFixture{
+	{
+		ns:          "ns-1",
+		clusterName: "cluster-name-1",
+		cases: []testCase{
+			testCreate,
+			testScale,
+			testUpgrade,
+		},
+	},
+	{
+		ns:          "ns-1",
+		clusterName: "cluster-name-2",
+		cases: []testCase{
+			testCreate,
+			testUpgrade,
+			testScale,
+		},
+	},
+	{
+		ns:          "ns-2",
+		clusterName: "cluster-name-1",
+		cases: []testCase{
+			testCreate,
+			testScale,
+			testUpgrade,
+		},
+	},
+	{
+		ns:          "ns-2",
+		clusterName: "cluster-name-2",
+		cases: []testCase{
+			testCreate,
+			testUpgrade,
+			testScale,
+		},
+	},
+}
+
 func clearOperator() error {
-	_, err := execCmd(fmt.Sprintf("helm del --purge %s", helmName))
-	if err != nil && isNotFound(err) {
-		return err
-	}
-
-	_, err = execCmd(fmt.Sprintf("kubectl delete pvc -n %s --all", ns))
-	if err != nil {
-		return err
-	}
-
-	_, err = execCmd(fmt.Sprintf("helm del --purge %s", operatorHelmName))
-	if err != nil && isNotFound(err) {
-		return err
-	}
-
-	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
-		result, err := execCmd(fmt.Sprintf("kubectl get po --output=name -n %s", ns))
-		if err != nil || result != "" {
-			return false, nil
+	for _, fixture := range fixtures {
+		_, err := execCmd(fmt.Sprintf("helm del --purge %s", fmt.Sprintf("%s-%s", fixture.ns, fixture.clusterName)))
+		if err != nil && isNotFound(err) {
+			return err
 		}
-		_, err = execCmd(fmt.Sprintf(`kubectl get pv -l %s=%s,%s=%s --output=name | xargs -I {} \
-		kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`,
-			label.NamespaceLabelKey, ns, label.InstanceLabelKey, clusterName))
+
+		_, err = execCmd(fmt.Sprintf("kubectl delete pvc -n %s --all", fixture.ns))
 		if err != nil {
-			logf(err.Error())
+			return err
 		}
-		result, _ = execCmd(fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s 2>/dev/null|grep Released", label.NamespaceLabelKey, ns, label.InstanceLabelKey, clusterName))
-		if result != "" {
-			return false, nil
-		}
+	}
 
-		return true, nil
-	})
-	if err != nil {
+	_, err := execCmd(fmt.Sprintf("helm del --purge %s", operatorHelmName))
+	if err != nil && isNotFound(err) {
 		return err
+	}
+
+	for _, fixture := range fixtures {
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+			result, err := execCmd(fmt.Sprintf("kubectl get po --output=name -n %s", fixture.ns))
+			if err != nil || result != "" {
+				return false, nil
+			}
+			_, err = execCmd(fmt.Sprintf(`kubectl get pv -l %s=%s,%s=%s --output=name | xargs -I {} \
+		kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`,
+				label.NamespaceLabelKey, fixture.ns, label.InstanceLabelKey, fixture.clusterName))
+			if err != nil {
+				logf(err.Error())
+			}
+			result, _ = execCmd(fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s 2>/dev/null|grep Released",
+				label.NamespaceLabelKey, fixture.ns, label.InstanceLabelKey, fixture.clusterName))
+			if result != "" {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -94,17 +143,7 @@ func installOperator() error {
 		return err
 	}
 
-	By("When create a TiDB cluster")
-	_, err = execCmd(fmt.Sprintf(
-		"helm install /charts/tidb-cluster -f /tidb-cluster-values.yaml -n %s --namespace=%s",
-		helmName,
-		ns))
-	if err != nil {
-		return err
-	}
-
 	monitorRestartCount()
-
 	return nil
 }
 
@@ -116,11 +155,10 @@ func monitorRestartCount() {
 		for {
 			select {
 			case <-time.After(5 * time.Second):
-				labelSelector := label.New().Cluster(clusterName)
-				podList, err := kubeCli.CoreV1().Pods(ns).List(
+				podList, err := kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(
 					metav1.ListOptions{
 						LabelSelector: labels.SelectorFromSet(
-							labelSelector.Labels(),
+							label.New().Labels(),
 						).String(),
 					},
 				)
@@ -172,7 +210,7 @@ func isNotFound(err error) bool {
 	return strings.Contains(err.Error(), "not found")
 }
 
-func getNodeMap(component string) (map[string][]string, error) {
+func getNodeMap(ns, clusterName, component string) (map[string][]string, error) {
 	nodeMap := make(map[string][]string)
 	selector := label.New().Cluster(clusterName).Component(component).Labels()
 	podList, err := kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{
