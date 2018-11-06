@@ -144,6 +144,9 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 					"failover-tidb-1": {
 						PodName: "failover-tidb-1",
 					},
+					"failover-tidb-2": {
+						PodName: "failover-tidb-2",
+					},
 				}
 			},
 			errExpectFn: func(t *GomegaWithT, err error) {
