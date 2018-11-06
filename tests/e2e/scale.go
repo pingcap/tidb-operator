@@ -37,28 +37,34 @@ const (
 
 var podUIDsBeforeScale map[string]types.UID
 
-func testScale() {
+func testScale(ns, clusterName string) {
 	By(fmt.Sprintf("When scale out TiDB cluster: pd ==> [%d], tikv ==> [%d], tidb ==> [%d]", pdScaleOutTo, tikvScaleOutTo, tidbScaleOutTo))
-	err := wait.Poll(5*time.Second, 5*time.Minute, scaleOut)
+	err := wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return scaleOut(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Then TiDB cluster should scale out successfully")
-	err = wait.Poll(5*time.Second, 5*time.Minute, scaled)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return scaled(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By("And should scaled out correctly")
-	err = wait.Poll(5*time.Second, 5*time.Minute, scaledCorrectly)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return scaledCorrectly(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By("And scheduling policy is correct")
-	nodeMap, err := getNodeMap(label.PDLabelVal)
+	nodeMap, err := getNodeMap(ns, clusterName, label.PDLabelVal)
 	Expect(err).NotTo(HaveOccurred())
 	for nodeName, podNamesArr := range nodeMap {
 		if len(podNamesArr) > 2 {
 			Fail(fmt.Sprintf("node: %s has %d pods", nodeName, len(podNamesArr)))
 		}
 	}
-	nodeMap, err = getNodeMap(label.TiKVLabelVal)
+	nodeMap, err = getNodeMap(ns, clusterName, label.TiKVLabelVal)
 	Expect(err).NotTo(HaveOccurred())
 	for nodeName, podNamesArr := range nodeMap {
 		if len(podNamesArr) > 2 {
@@ -67,54 +73,74 @@ func testScale() {
 	}
 
 	By("And the data is correct")
-	err = wait.Poll(5*time.Second, 5*time.Minute, dataIsCorrect)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return dataIsCorrect(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By(fmt.Sprintf("When scale in TiDB cluster: pd ==> [%d], tikv ==> [%d], tidb ==> [%d]", pdScaleInTo, tikvScaleInTo, tidbScaleInTo))
-	err = wait.Poll(5*time.Second, 5*time.Minute, scaleIn)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return scaleIn(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Then TiDB cluster scale in securely")
-	err = wait.Poll(5*time.Second, 5*time.Minute, scaleInSafely)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return scaleInSafely(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By("And should scale in successfully")
-	err = wait.Poll(5*time.Second, 5*time.Minute, scaled)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return scaled(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By("And should be scaled in correctly")
-	err = wait.Poll(5*time.Second, 5*time.Minute, scaledCorrectly)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return scaledCorrectly(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By("And the data is correct")
-	err = wait.Poll(5*time.Second, 5*time.Minute, dataIsCorrect)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return dataIsCorrect(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By(fmt.Sprintf("When scale out TiDB cluster one more time: pd ==> [%d], tikv ==> [%d], tidb ==> [%d]", pdScaleOutTo, tikvScaleOutTo, tidbScaleOutTo))
-	err = wait.Poll(5*time.Second, 5*time.Minute, scaleOut)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return scaleOut(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Then TiDB cluster should scale out successfully")
-	err = wait.Poll(5*time.Second, 5*time.Minute, scaled)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return scaled(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By("And should scaled out correctly")
-	err = wait.Poll(5*time.Second, 5*time.Minute, scaledCorrectly)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return scaledCorrectly(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By("And the data is correct")
-	err = wait.Poll(5*time.Second, 5*time.Minute, dataIsCorrect)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return dataIsCorrect(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 }
 
-func scaleOut() (bool, error) {
+func scaleOut(ns, clusterName string) (bool, error) {
 	tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 	if err != nil {
 		logf("failed to get tidbcluster when scale out tidbcluster, error: %v", err)
 		return false, nil
 	}
-	podUIDsBeforeScale, err = getPodsUID()
+	podUIDsBeforeScale, err = getPodsUID(ns, clusterName)
 	if err != nil {
 		return false, nil
 	}
@@ -133,11 +159,11 @@ func scaleOut() (bool, error) {
 	return true, nil
 }
 
-func scaled() (bool, error) {
-	return allMembersRunning()
+func scaled(ns, clusterName string) (bool, error) {
+	return allMembersRunning(ns, clusterName)
 }
 
-func scaleIn() (bool, error) {
+func scaleIn(ns, clusterName string) (bool, error) {
 	tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 	if err != nil {
 		logf("failed to get tidbcluster when scale in tidbcluster, error: %v", err)
@@ -154,7 +180,7 @@ func scaleIn() (bool, error) {
 		return true, fmt.Errorf("the tidbcluster's tidb replicas less then tidbScaleInTo: [%d]", tidbScaleInTo)
 	}
 
-	podUIDsBeforeScale, err = getPodsUID()
+	podUIDsBeforeScale, err = getPodsUID(ns, clusterName)
 	if err != nil {
 		return false, nil
 	}
@@ -176,8 +202,8 @@ func scaleIn() (bool, error) {
 	return true, nil
 }
 
-func scaledCorrectly() (bool, error) {
-	podUIDs, err := getPodsUID()
+func scaledCorrectly(ns, clusterName string) (bool, error) {
+	podUIDs, err := getPodsUID(ns, clusterName)
 	if err != nil {
 		logf("failed to get pd pods's uid, error: %v", err)
 		return false, nil
@@ -197,7 +223,7 @@ func scaledCorrectly() (bool, error) {
 }
 
 // scaleInSafely confirms member scale in safely
-func scaleInSafely() (bool, error) {
+func scaleInSafely(ns, clusterName string) (bool, error) {
 	tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 	if err != nil {
 		logf("failed to get tidbcluster when scale in tidbcluster, error: %v", err)
@@ -230,7 +256,7 @@ func scaleInSafely() (bool, error) {
 	return false, nil
 }
 
-func getPodsUID() (map[string]types.UID, error) {
+func getPodsUID(ns, clusterName string) (map[string]types.UID, error) {
 	result := map[string]types.UID{}
 
 	selector, err := label.New().Cluster(clusterName).Selector()

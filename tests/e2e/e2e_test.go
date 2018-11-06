@@ -14,6 +14,7 @@
 package e2e
 
 import (
+	"fmt"
 	"testing"
 
 	. "github.com/onsi/ginkgo" // revive:disable:dot-imports
@@ -53,14 +54,12 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 }, func(data []byte) {})
 
 var _ = Describe("Smoke", func() {
-	It("should create a tidb cluster", func() {
-		testCreate()
-	})
-	It("should upgrade a tidb cluster", func() {
-		testUpgrade()
-	})
-	It("should scale in/out a tidb cluster", func() {
-		testScale()
-	})
-
+	for i := 0; i < len(fixtures); i++ {
+		fixture := fixtures[i]
+		It(fmt.Sprintf("Namespace: %s, clusterName: %s", fixture.ns, fixture.clusterName), func() {
+			for _, testCase := range fixture.cases {
+				testCase(fixture.ns, fixture.clusterName)
+			}
+		})
+	}
 })
