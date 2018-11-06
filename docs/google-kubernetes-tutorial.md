@@ -107,7 +107,7 @@ When you see `Running`, `Control + C` and proceed to launch a TiDB cluster!
 
 Now with a single command we can bring-up a full TiDB cluster:
 
-	helm install ./charts/tidb-cluster -n demo --namespace=tidb --set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd
+	helm install ./charts/tidb-cluster -n tidb --namespace=tidb --set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd
 
 It will take a few minutes to launch. You can monitor the progress with:
 
@@ -146,7 +146,7 @@ If you like, you can check your connection to TiDB inside your MySQL terminal an
 
 With a single command we can easily scale out the TiDB cluster. To scale out TiKV:
 
-	helm upgrade demo charts/tidb-cluster --set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd,tikv.replicas=5
+	helm upgrade tidb charts/tidb-cluster --set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd,tikv.replicas=5
 
 Now the number of TiKV pods is increased from the default 3 to 5. You can check it with:
 
