@@ -50,4 +50,4 @@ scheduler:
     requests:
       cpu: 80m
       memory: 50Mi
-  kubeSchedulerImage: 127.0.0.1:5000/pingcap/hyperkube:v1.10.4_coreos.0
+  kubeSchedulerImage: mirantis/hypokube:final
