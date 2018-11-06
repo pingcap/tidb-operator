@@ -32,33 +32,46 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-func testCreate() {
+func testCreate(ns, clusterName string) {
+	By(fmt.Sprintf("When create the TiDB cluster: %s/%s", ns, clusterName))
+	cmdStr := fmt.Sprintf("helm install /charts/tidb-cluster -f /tidb-cluster-values.yaml"+
+		" -n %s --namespace=%s --set clusterName=%s",
+		fmt.Sprintf("%s-%s", ns, clusterName), ns, clusterName)
+	_, err := execCmd(cmdStr)
+	Expect(err).NotTo(HaveOccurred())
+
 	By("Then all members should running")
-	err := wait.Poll(5*time.Second, 5*time.Minute, allMembersRunning)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return allMembersRunning(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By("And scheduling policy is correct")
-	nodeMap, err := getNodeMap(label.PDLabelVal)
+	nodeMap, err := getNodeMap(ns, clusterName, label.PDLabelVal)
 	Expect(err).NotTo(HaveOccurred())
 	for _, podNamesArr := range nodeMap {
 		Expect(len(podNamesArr)).To(Equal(1))
 	}
-	nodeMap, err = getNodeMap(label.TiKVLabelVal)
+	nodeMap, err = getNodeMap(ns, clusterName, label.TiKVLabelVal)
 	Expect(err).NotTo(HaveOccurred())
 	for _, podNamesArr := range nodeMap {
 		Expect(len(podNamesArr)).To(Equal(1))
 	}
 
 	By("When create a table and add some data to this table")
-	err = wait.Poll(5*time.Second, 5*time.Minute, addDataToCluster)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return addDataToCluster(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Then the data is correct")
-	err = wait.Poll(5*time.Second, 5*time.Minute, dataIsCorrect)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return dataIsCorrect(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func allMembersRunning() (bool, error) {
+func allMembersRunning(ns, clusterName string) (bool, error) {
 	tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 	if err != nil {
 		return false, nil
@@ -92,7 +105,7 @@ func allMembersRunning() (bool, error) {
 	return true, nil
 }
 
-func addDataToCluster() (bool, error) {
+func addDataToCluster(ns, clusterName string) (bool, error) {
 	db, err := sql.Open("mysql", fmt.Sprintf("root:@(%s-tidb.%s:4000)/test?charset=utf8", clusterName, ns))
 	if err != nil {
 		logf("can't open connection to mysql: %v", err)
@@ -100,7 +113,7 @@ func addDataToCluster() (bool, error) {
 	}
 	defer db.Close()
 
-	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s (name VARCHAR(64))", testTableName))
+	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s (clusterName VARCHAR(64))", testTableName))
 	if err != nil {
 		logf("can't create table to mysql: %v", err)
 		return false, nil
@@ -115,7 +128,7 @@ func addDataToCluster() (bool, error) {
 	return true, nil
 }
 
-func dataIsCorrect() (bool, error) {
+func dataIsCorrect(ns, clusterName string) (bool, error) {
 	db, err := sql.Open("mysql", fmt.Sprintf("root:@(%s-tidb.%s:4000)/test?charset=utf8", clusterName, ns))
 	if err != nil {
 		return false, nil
@@ -145,7 +158,9 @@ func dataIsCorrect() (bool, error) {
 }
 
 func pdMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
-	pdSetName := controller.PDMemberName(clusterName)
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	pdSetName := controller.PDMemberName(tcName)
 	pdSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(pdSetName, metav1.GetOptions{})
 	if err != nil {
 		logf(err.Error())
@@ -190,12 +205,12 @@ func pdMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 		}
 	}
 
-	_, err = kubeCli.CoreV1().Services(ns).Get(controller.PDMemberName(clusterName), metav1.GetOptions{})
+	_, err = kubeCli.CoreV1().Services(ns).Get(controller.PDMemberName(tcName), metav1.GetOptions{})
 	if err != nil {
 		logf(err.Error())
 		return false, nil
 	}
-	_, err = kubeCli.CoreV1().Services(ns).Get(controller.PDPeerMemberName(clusterName), metav1.GetOptions{})
+	_, err = kubeCli.CoreV1().Services(ns).Get(controller.PDPeerMemberName(tcName), metav1.GetOptions{})
 	if err != nil {
 		logf(err.Error())
 		return false, nil
@@ -205,7 +220,9 @@ func pdMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 }
 
 func tikvMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
-	tikvSetName := controller.TiKVMemberName(clusterName)
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	tikvSetName := controller.TiKVMemberName(tcName)
 
 	tikvSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
 	if err != nil {
@@ -251,7 +268,7 @@ func tikvMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 		}
 	}
 
-	_, err = kubeCli.CoreV1().Services(ns).Get(controller.TiKVPeerMemberName(clusterName), metav1.GetOptions{})
+	_, err = kubeCli.CoreV1().Services(ns).Get(controller.TiKVPeerMemberName(tcName), metav1.GetOptions{})
 	if err != nil {
 		logf(err.Error())
 		return false, nil
@@ -261,7 +278,9 @@ func tikvMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 }
 
 func tidbMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
-	tidbSetName := controller.TiDBMemberName(clusterName)
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	tidbSetName := controller.TiDBMemberName(tcName)
 	tidbSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
 		logf(err.Error())
@@ -293,7 +312,7 @@ func tidbMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 		return false, nil
 	}
 
-	_, err = kubeCli.CoreV1().Services(ns).Get(controller.TiDBMemberName(clusterName), metav1.GetOptions{})
+	_, err = kubeCli.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
 	if err != nil {
 		logf(err.Error())
 		return false, nil
