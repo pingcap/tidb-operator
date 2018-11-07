@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.clusterName }}-tidb-initializer
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: tidb-initializer
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "chart.name" . }}
+        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/component: tidb-initializer
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: mysql-client
+        image: {{ .Values.mysqlClient.image }}
+        imagePullPolicy: {{ .Values.mysqlClient.imagePullPolicy | default "IfNotPresent" }}
+        command:
+        - /bin/sh
+        - -c
+        # Read sql from file to avoid special characters interpreted as builtin variable
+        # And also avoid plain text password show in Job and Pod spec
+        # Besides we can also add more SQL in the file for initialization, eg. create database, create user etc
+        - |
+          until mysql -h {{ .Values.clusterName }}-tidb -P 4000 < /data/init-password.sql; do sleep 2; done
+        volumeMounts:
+        - name: password
+          mountPath: /data/init-password.sql
+          readOnly: true
+      volumes:
+      - name: password
+        secret:
+          secretName: {{ .Values.clusterName }}-tidb

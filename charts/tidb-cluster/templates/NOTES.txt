@@ -3,8 +3,9 @@
 2. List services in the tidb-cluster
    kubectl get services --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Values.clusterName }}
 3. Access tidb-cluster using MySQL client
+   PASSWORD=$(kubectl get secret -n {{ .Release.Namespace }} {{ .Values.clusterName }}-tidb -ojsonpath="{.data.password[*]}"| awk '{print $6}')
    kubectl port-forward -n {{ .Release.Namespace }} svc/{{ .Values.clusterName }}-tidb 4000:4000 &
-   mysql -h 127.0.0.1 -P 4000 -u root -D test
+   mysql -h 127.0.0.1 -P 4000 -u root -D test -p${PASSWORD}
 {{- if .Values.monitor.create }}
 4. View monitor dashboard for TiDB cluster
    kubectl port-forward -n {{ .Release.Namespace }} svc/{{ .Values.clusterName }}-grafana 3000:3000
