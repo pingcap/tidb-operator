@@ -48,7 +48,6 @@ spec:
             secretKeyRef:
               name: {{ .Values.clusterName }}-restore-secret
               key: user-password
-        restartPolicy: OnFailure
       volumes:
       - name: data
         persistentVolumeClaim:
