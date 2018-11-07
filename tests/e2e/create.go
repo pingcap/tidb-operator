@@ -399,6 +399,7 @@ outerLoop:
 					break
 				}
 			}
+			Expect(memberID).NotTo(BeEmpty())
 			Expect(pod.Labels[label.MemberIDLabelKey]).To(Equal(memberID))
 		case label.TiKVLabelVal:
 			var storeID string
@@ -414,6 +415,7 @@ outerLoop:
 					break
 				}
 			}
+			Expect(storeID).NotTo(BeEmpty())
 			Expect(pod.Labels[label.StoreIDLabelKey]).To(Equal(storeID))
 		case label.TiDBLabelVal:
 			continue outerLoop
