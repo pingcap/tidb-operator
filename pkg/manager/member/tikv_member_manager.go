@@ -631,3 +631,22 @@ func (tkmm *tikvMemberManager) tikvStatefulSetIsUpgrading(set *apps.StatefulSet,
 
 	return evictLeaderSchedulers != nil && len(evictLeaderSchedulers) > 0, nil
 }
+
+type FakeTiKVMemberManager struct {
+	err error
+}
+
+func NewFakeTiKVMemberManager() *FakeTiKVMemberManager {
+	return &FakeTiKVMemberManager{}
+}
+
+func (ftmm *FakeTiKVMemberManager) SetSyncError(err error) {
+	ftmm.err = err
+}
+
+func (ftmm *FakeTiKVMemberManager) Sync(_ *v1alpha1.TidbCluster) error {
+	if ftmm.err != nil {
+		return ftmm.err
+	}
+	return nil
+}

@@ -71,3 +71,22 @@ func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 var _ manager.Manager = &reclaimPolicyManager{}
+
+type FakeReclaimPolicyManager struct {
+	err error
+}
+
+func NewFakeReclaimPolicyManager() *FakeReclaimPolicyManager {
+	return &FakeReclaimPolicyManager{}
+}
+
+func (frpm *FakeReclaimPolicyManager) SetSyncError(err error) {
+	frpm.err = err
+}
+
+func (frpm *FakeReclaimPolicyManager) Sync(_ *v1alpha1.TidbCluster) error {
+	if frpm.err != nil {
+		return frpm.err
+	}
+	return nil
+}

@@ -252,6 +252,18 @@ func TestHAFilter(t *testing.T) {
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
 			},
 		},
+		{
+			name:      "5 pods scheduled to 3 nodes(and then delete the oridinal 1 pod), the created pod ordinal 1 should rescheduled to node 3",
+			ordinal:   1,
+			podFn:     newHAPDPod,
+			nodesFn:   fakeOneNode,
+			podListFn: podListFn(map[string][]int32{"kube-node-2": {0}, "kube-node-3": {4}, "kube-node-1": {2, 3}}),
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(1))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-3"}))
+			},
+		},
 	}
 
 	for i := range tests {
