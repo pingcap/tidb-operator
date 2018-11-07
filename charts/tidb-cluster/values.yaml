@@ -293,6 +293,31 @@ binlog:
       # kafkaAddrs: "127.0.0.1:9092"
       # kafkaVersion: "0.8.2.0"
 
+restore:
+  create: false
+  # https://github.com/tennix/tidb-cloud-backup
+  image: pingcap/tidb-cloud-backup:latest
+  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+  # different classes might map to quality-of-service levels, or to backup policies,
+  # or to arbitrary policies determined by the cluster administrators.
+  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
+  storageClassName: local-storage
+  storage: 1000Gi
+  # loader options https://www.pingcap.com/docs-cn/tools/loader/
+  options: "-t 16"
+  # user must set tidb cluster user and password
+  user: restore
+  password: "Password here ..."
+  # backup data comes from gcp
+  gcp: {}
+    # credentialsData is base64 format of the service account json file data
+    # https://cloud.google.com/docs/authentication/production#obtaining_and_providing_service_account_credentials_manually
+    # and then: cat credentials.json | base64 | tr -d '\n'
+    # credentialsData: ""
+    # bucket: ""
+    # srcDir is the directory of backup data in bucket
+    # srcDir: ""
+
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"
 metaValue: "{{ $value }}"
