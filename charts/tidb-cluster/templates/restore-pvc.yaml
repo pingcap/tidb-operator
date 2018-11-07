@@ -1,0 +1,21 @@
+{{- if .Values.restore.create }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ .Values.clusterName }}-restore
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: tidb-operator
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: restore
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: {{ .Values.restore.storage }}
+  storageClassName: {{ .Values.restore.storageClassName }}
+{{- end }}
+
