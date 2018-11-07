@@ -253,7 +253,7 @@ func TestHAFilter(t *testing.T) {
 			},
 		},
 		{
-			name:      "5 pods scheduled to 3 nodes(and then delete the oridinal 1 pod), the created pod ordinal 1 should rescheduled to node 3",
+			name:      "5 pods scheduled to 3 nodes(and then delete the ordinal 1 pod), the created pod ordinal 1 should rescheduled to node 3",
 			ordinal:   1,
 			podFn:     newHAPDPod,
 			nodesFn:   fakeOneNode,
