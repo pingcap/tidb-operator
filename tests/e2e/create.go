@@ -32,9 +32,10 @@ import (
 
 func testCreate(ns, clusterName string) {
 	By(fmt.Sprintf("When create the TiDB cluster: %s/%s", ns, clusterName))
+	instanceName := fmt.Sprintf("%s-%s", ns, clusterName)
 	cmdStr := fmt.Sprintf("helm install /charts/tidb-cluster -f /tidb-cluster-values.yaml"+
 		" -n %s --namespace=%s --set clusterName=%s",
-		fmt.Sprintf("%s-%s", ns, clusterName), ns, clusterName)
+		instanceName, ns, clusterName)
 	_, err := execCmd(cmdStr)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -318,8 +319,8 @@ func tidbMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 
 func reclaimPolicySynced(tc *v1alpha1.TidbCluster) (bool, error) {
 	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	labelSelector := label.New().Cluster(tcName)
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	labelSelector := label.New().Instance(instanceName)
 	pvcList, err := kubeCli.CoreV1().PersistentVolumeClaims(ns).List(
 		metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(
