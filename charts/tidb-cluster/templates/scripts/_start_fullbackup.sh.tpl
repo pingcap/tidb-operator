@@ -5,7 +5,7 @@ host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]'`
 mkdir -p /data/${dirname}/
 cp /savepoint-dir/savepoint /data/${dirname}/
 
-mydumper \
+/mydumper \
   --outputdir=/data/${dirname} \
   --host=`eval echo '${'$host'}'` \
   --port=4000 \
