@@ -31,39 +31,47 @@ const (
 	upgradeVersion = "v2.0.8"
 )
 
-func testUpgrade() {
-	pdNodeMap, err := getNodeMap(label.PDLabelVal)
+func testUpgrade(ns, clusterName string) {
+	pdNodeMap, err := getNodeMap(ns, clusterName, label.PDLabelVal)
 	Expect(err).NotTo(HaveOccurred())
-	tikvNodeMap, err := getNodeMap(label.TiKVLabelVal)
+	tikvNodeMap, err := getNodeMap(ns, clusterName, label.TiKVLabelVal)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("When upgrade TiDB cluster to newer version")
-	err = wait.Poll(5*time.Second, 5*time.Minute, upgrade)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return upgrade(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Then members should be upgrade in order: pd ==> tikv ==> tidb")
-	err = wait.Poll(5*time.Second, 10*time.Minute, memberUpgraded)
+	err = wait.Poll(5*time.Second, 10*time.Minute, func() (bool, error) {
+		return memberUpgraded(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Then all members should running")
-	err = wait.Poll(5*time.Second, 5*time.Minute, allMembersRunning)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return allMembersRunning(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	By("And scheduling policy is correct")
-	pdNodeMap1, err := getNodeMap(label.PDLabelVal)
+	pdNodeMap1, err := getNodeMap(ns, clusterName, label.PDLabelVal)
 	Expect(err).NotTo(HaveOccurred())
-	tikvNodeMap1, err := getNodeMap(label.TiKVLabelVal)
+	tikvNodeMap1, err := getNodeMap(ns, clusterName, label.TiKVLabelVal)
 	Expect(err).NotTo(HaveOccurred())
 
 	Expect(pdNodeMap).To(Equal(pdNodeMap1))
 	Expect(tikvNodeMap).To(Equal(tikvNodeMap1))
 
 	By("And the data is correct")
-	err = wait.Poll(5*time.Second, 5*time.Minute, dataIsCorrect)
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return dataIsCorrect(ns, clusterName)
+	})
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func upgrade() (bool, error) {
+func upgrade(ns, clusterName string) (bool, error) {
 	tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 	if err != nil {
 		logf("failed to get tidbcluster, error: %v", err)
@@ -84,7 +92,7 @@ func upgrade() (bool, error) {
 	return true, nil
 }
 
-func memberUpgraded() (bool, error) {
+func memberUpgraded(ns, clusterName string) (bool, error) {
 	tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 	if err != nil {
 		logf("failed to get tidbcluster: [%s], error: %v", clusterName, err)

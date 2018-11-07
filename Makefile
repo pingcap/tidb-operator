@@ -35,6 +35,8 @@ e2e-docker-push: e2e-docker
 e2e-docker: e2e-build
 	mkdir -p images/tidb-operator-e2e/bin
 	mv tests/e2e/e2e.test images/tidb-operator-e2e/bin/
+	[[ -d images/tidb-operator-e2e/tidb-operator ]] && rm -r images/tidb-operator-e2e/tidb-operator
+	[[ -d images/tidb-operator-e2e/tidb-cluster ]] && rm -r images/tidb-operator-e2e/tidb-cluster
 	cp -r charts/tidb-operator images/tidb-operator-e2e/
 	cp -r charts/tidb-cluster images/tidb-operator-e2e/
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" images/tidb-operator-e2e
