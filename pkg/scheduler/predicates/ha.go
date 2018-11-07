@@ -95,10 +95,7 @@ func (h *ha) Filter(clusterName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]a
 		if ordinal1 < ordinal && nodeName == "" {
 			return nil, fmt.Errorf("waiting for pod: %s/%s to be scheduled", ns, podName1)
 		}
-		if nodeName == "" {
-			continue
-		}
-		if nodeMap[nodeName] == nil {
+		if nodeName == "" || nodeMap[nodeName] == nil {
 			continue
 		}
 
