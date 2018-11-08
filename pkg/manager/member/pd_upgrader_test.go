@@ -280,6 +280,7 @@ func newTidbClusterForPDUpgrader() *v1alpha1.TidbCluster {
 			Name:      upgradeTcName,
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID(upgradeTcName),
+			Labels:    label.New().Instance(upgradeInstanceName),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: v1alpha1.PDSpec{
@@ -313,9 +314,9 @@ func newTidbClusterForPDUpgrader() *v1alpha1.TidbCluster {
 }
 
 func getPods() []*corev1.Pod {
-	lc := label.New().Cluster(upgradeTcName).PD().Labels()
+	lc := label.New().Instance(upgradeInstanceName).PD().Labels()
 	lc[apps.ControllerRevisionHashLabelKey] = "1"
-	lu := label.New().Cluster(upgradeTcName).PD().Labels()
+	lu := label.New().Instance(upgradeInstanceName).PD().Labels()
 	lu[apps.ControllerRevisionHashLabelKey] = "2"
 	pods := []*corev1.Pod{
 		{

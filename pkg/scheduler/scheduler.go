@@ -59,10 +59,10 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 	podName := pod.GetName()
 	kubeNodes := args.Nodes.Items
 
-	var clusterName string
+	var instanceName string
 	var exist bool
-	if clusterName, exist = pod.Labels[label.InstanceLabelKey]; !exist {
-		glog.Warningf("can't find clusterName in pod labels: %s/%s", ns, podName)
+	if instanceName, exist = pod.Labels[label.InstanceLabelKey]; !exist {
+		glog.Warningf("can't find instanceName in pod labels: %s/%s", ns, podName)
 		return &schedulerapiv1.ExtenderFilterResult{
 			Nodes: args.Nodes,
 		}, nil
@@ -77,7 +77,7 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 	var err error
 	for _, predicate := range s.predicates {
 		glog.V(4).Infof("entering predicate: %s, nodes: %v", predicate.Name(), getNodeNames(kubeNodes))
-		kubeNodes, err = predicate.Filter(clusterName, pod, kubeNodes)
+		kubeNodes, err = predicate.Filter(instanceName, pod, kubeNodes)
 		if err != nil {
 			return nil, err
 		}

@@ -114,12 +114,12 @@ func clearOperator() error {
 			}
 			_, err = execCmd(fmt.Sprintf(`kubectl get pv -l %s=%s,%s=%s --output=name | xargs -I {} \
 		kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`,
-				label.NamespaceLabelKey, fixture.ns, label.InstanceLabelKey, fixture.clusterName))
+				label.NamespaceLabelKey, fixture.ns, label.InstanceLabelKey, getInstanceName(fixture.ns, fixture.clusterName)))
 			if err != nil {
 				logf(err.Error())
 			}
 			result, _ = execCmd(fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s 2>/dev/null|grep Released",
-				label.NamespaceLabelKey, fixture.ns, label.InstanceLabelKey, fixture.clusterName))
+				label.NamespaceLabelKey, fixture.ns, label.InstanceLabelKey, getInstanceName(fixture.ns, fixture.clusterName)))
 			if result != "" {
 				return false, nil
 			}
@@ -211,8 +211,9 @@ func isNotFound(err error) bool {
 }
 
 func getNodeMap(ns, clusterName, component string) (map[string][]string, error) {
+	instanceName := getInstanceName(ns, clusterName)
 	nodeMap := make(map[string][]string)
-	selector := label.New().Cluster(clusterName).Component(component).Labels()
+	selector := label.New().Instance(instanceName).Component(component).Labels()
 	podList, err := kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(selector).String(),
 	})
@@ -230,4 +231,8 @@ func getNodeMap(ns, clusterName, component string) (map[string][]string, error) 
 	}
 
 	return nodeMap, nil
+}
+
+func getInstanceName(ns, clusterName string) string {
+	return fmt.Sprintf("%s-%s", ns, clusterName)
 }

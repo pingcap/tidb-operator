@@ -38,6 +38,7 @@ const (
 var podUIDsBeforeScale map[string]types.UID
 
 func testScale(ns, clusterName string) {
+	instanceName := getInstanceName(ns, clusterName)
 	By(fmt.Sprintf("When scale out TiDB cluster: pd ==> [%d], tikv ==> [%d], tidb ==> [%d]", pdScaleOutTo, tikvScaleOutTo, tidbScaleOutTo))
 	err := wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
 		return scaleOut(ns, clusterName)
@@ -122,7 +123,7 @@ func testScale(ns, clusterName string) {
 
 	By("And should scaled out correctly")
 	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
-		return scaledCorrectly(ns, clusterName)
+		return scaledCorrectly(ns, instanceName)
 	})
 	Expect(err).NotTo(HaveOccurred())
 
@@ -140,7 +141,8 @@ func scaleOut(ns, clusterName string) (bool, error) {
 		logf("failed to get tidbcluster when scale out tidbcluster, error: %v", err)
 		return false, nil
 	}
-	podUIDsBeforeScale, err = getPodsUID(ns, clusterName)
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	podUIDsBeforeScale, err = getPodsUID(ns, instanceName)
 	if err != nil {
 		return false, nil
 	}
@@ -180,7 +182,8 @@ func scaleIn(ns, clusterName string) (bool, error) {
 		return true, fmt.Errorf("the tidbcluster's tidb replicas less then tidbScaleInTo: [%d]", tidbScaleInTo)
 	}
 
-	podUIDsBeforeScale, err = getPodsUID(ns, clusterName)
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	podUIDsBeforeScale, err = getPodsUID(ns, instanceName)
 	if err != nil {
 		return false, nil
 	}
@@ -202,8 +205,8 @@ func scaleIn(ns, clusterName string) (bool, error) {
 	return true, nil
 }
 
-func scaledCorrectly(ns, clusterName string) (bool, error) {
-	podUIDs, err := getPodsUID(ns, clusterName)
+func scaledCorrectly(ns, instanceName string) (bool, error) {
+	podUIDs, err := getPodsUID(ns, instanceName)
 	if err != nil {
 		logf("failed to get pd pods's uid, error: %v", err)
 		return false, nil
@@ -256,10 +259,10 @@ func scaleInSafely(ns, clusterName string) (bool, error) {
 	return false, nil
 }
 
-func getPodsUID(ns, clusterName string) (map[string]types.UID, error) {
+func getPodsUID(ns, instanceName string) (map[string]types.UID, error) {
 	result := map[string]types.UID{}
 
-	selector, err := label.New().Cluster(clusterName).Selector()
+	selector, err := label.New().Instance(instanceName).Selector()
 	if err != nil {
 		return nil, err
 	}
