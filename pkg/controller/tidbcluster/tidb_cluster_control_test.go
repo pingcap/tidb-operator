@@ -14,6 +14,8 @@
 package tidbcluster
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -23,36 +25,316 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
+	perrors "github.com/pkg/errors"
+	apps "k8s.io/api/apps/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 )
 
-func TestTidbClusterControl(t *testing.T) {
+func TestTidbClusterControlUpdateTidbCluster(t *testing.T) {
 	g := NewGomegaWithT(t)
-	tc := newTidbCluster()
 
-	pdClient := controller.NewFakePDClient()
-	pdClient.AddReaction(controller.GetHealthActionType, func(action *controller.Action) (interface{}, error) {
-		return &controller.HealthInfo{
-			Healths: []controller.MemberHealth{
-				{Name: "pd1", MemberID: 1, ClientUrls: []string{"http://pd1:2379"}, Health: true},
-				{Name: "pd2", MemberID: 2, ClientUrls: []string{"http://pd2:2379"}, Health: true},
-				{Name: "pd3", MemberID: 3, ClientUrls: []string{"http://pd3:2379"}, Health: false},
+	type testcase struct {
+		name                     string
+		update                   func(cluster *v1alpha1.TidbCluster)
+		syncReclaimPolicyErr     bool
+		syncPDMemberManagerErr   bool
+		syncTiKVMemberManagerErr bool
+		syncTiDBMemberManagerErr bool
+		syncMetaManagerErr       bool
+		errExpectFn              func(*GomegaWithT, error)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		tc := newTidbClusterForTidbClusterControl()
+		if test.update != nil {
+			test.update(tc)
+		}
+		control, reclaimPolicyManager, pdMemberManager, tikvMemberManager, tidbMemberManager, metaManager := newFakeTidbClusterControl()
+
+		if test.syncReclaimPolicyErr {
+			reclaimPolicyManager.SetSyncError(fmt.Errorf("reclaim policy sync error"))
+		}
+		if test.syncPDMemberManagerErr {
+			pdMemberManager.SetSyncError(fmt.Errorf("pd member manager sync error"))
+		}
+		if test.syncTiKVMemberManagerErr {
+			tikvMemberManager.SetSyncError(fmt.Errorf("tikv member manager sync error"))
+		}
+		if test.syncTiDBMemberManagerErr {
+			tidbMemberManager.SetSyncError(fmt.Errorf("tidb member manager sync error"))
+		}
+		if test.syncMetaManagerErr {
+			metaManager.SetSyncError(fmt.Errorf("meta manager sync error"))
+		}
+
+		err := control.UpdateTidbCluster(tc)
+		if test.errExpectFn != nil {
+			test.errExpectFn(g, err)
+		}
+	}
+	tests := []testcase{
+		{
+			name:                     "reclaim policy sync error",
+			update:                   nil,
+			syncReclaimPolicyErr:     true,
+			syncPDMemberManagerErr:   false,
+			syncTiKVMemberManagerErr: false,
+			syncTiDBMemberManagerErr: false,
+			syncMetaManagerErr:       false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "reclaim policy sync error")).To(Equal(true))
 			},
-		}, nil
-	})
+		},
+		{
+			name:                     "pd member manager sync error",
+			update:                   nil,
+			syncReclaimPolicyErr:     false,
+			syncPDMemberManagerErr:   true,
+			syncTiKVMemberManagerErr: false,
+			syncTiDBMemberManagerErr: false,
+			syncMetaManagerErr:       false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "pd member manager sync error")).To(Equal(true))
+			},
+		},
+		{
+			name: "pd members count is 1",
+			update: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Status.PD.Members = map[string]v1alpha1.PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+				}
+			},
+			syncReclaimPolicyErr:     false,
+			syncPDMemberManagerErr:   false,
+			syncTiKVMemberManagerErr: false,
+			syncTiDBMemberManagerErr: false,
+			syncMetaManagerErr:       false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(perrors.Find(err, controller.IsRequeueError)).NotTo(BeNil())
+				g.Expect(strings.Contains(err.Error(), "waiting for PD cluster running")).To(Equal(true))
+			},
+		},
+		{
+			name: "pd members count is 2, but health count is 1",
+			update: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Status.PD.Members = map[string]v1alpha1.PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+					"pd-1": {Name: "pd-1", Health: false},
+				}
+			},
+			syncReclaimPolicyErr:     false,
+			syncPDMemberManagerErr:   false,
+			syncTiKVMemberManagerErr: false,
+			syncTiDBMemberManagerErr: false,
+			syncMetaManagerErr:       false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(perrors.Find(err, controller.IsRequeueError)).NotTo(BeNil())
+				g.Expect(strings.Contains(err.Error(), "waiting for PD cluster running")).To(Equal(true))
+			},
+		},
+		{
+			name: "pd members count is 3, health count is 3, but ready replicas is 1",
+			update: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Status.PD.Members = map[string]v1alpha1.PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+					"pd-1": {Name: "pd-1", Health: true},
+					"pd-2": {Name: "pd-2", Health: true},
+				}
+				cluster.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
+			},
+			syncReclaimPolicyErr:     false,
+			syncPDMemberManagerErr:   false,
+			syncTiKVMemberManagerErr: false,
+			syncTiDBMemberManagerErr: false,
+			syncMetaManagerErr:       false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(perrors.Find(err, controller.IsRequeueError)).NotTo(BeNil())
+				g.Expect(strings.Contains(err.Error(), "waiting for PD cluster running")).To(Equal(true))
+			},
+		},
+		{
+			name: "tikv member manager sync error",
+			update: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Status.PD.Members = map[string]v1alpha1.PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+					"pd-1": {Name: "pd-1", Health: true},
+					"pd-2": {Name: "pd-2", Health: true},
+				}
+				cluster.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+			},
+			syncReclaimPolicyErr:     false,
+			syncPDMemberManagerErr:   false,
+			syncTiKVMemberManagerErr: true,
+			syncTiDBMemberManagerErr: false,
+			syncMetaManagerErr:       false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "tikv member manager sync error")).To(Equal(true))
+			},
+		},
+		{
+			name: "pd is ready, tikv stores count is 0",
+			update: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Status.PD.Members = map[string]v1alpha1.PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+					"pd-1": {Name: "pd-1", Health: true},
+					"pd-2": {Name: "pd-2", Health: true},
+				}
+				cluster.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+				cluster.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
+			},
+			syncReclaimPolicyErr:     false,
+			syncPDMemberManagerErr:   false,
+			syncTiKVMemberManagerErr: false,
+			syncTiDBMemberManagerErr: false,
+			syncMetaManagerErr:       false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(perrors.Find(err, controller.IsRequeueError)).NotTo(BeNil())
+				g.Expect(strings.Contains(err.Error(), "waiting for TiKV cluster running")).To(Equal(true))
+			},
+		},
+		{
+			name: "pd is ready, tikv stores count is 1, but available count is 0",
+			update: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Status.PD.Members = map[string]v1alpha1.PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+					"pd-1": {Name: "pd-1", Health: true},
+					"pd-2": {Name: "pd-2", Health: true},
+				}
+				cluster.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+				cluster.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+					"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateDown},
+				}
+			},
+			syncReclaimPolicyErr:     false,
+			syncPDMemberManagerErr:   false,
+			syncTiKVMemberManagerErr: false,
+			syncTiDBMemberManagerErr: false,
+			syncMetaManagerErr:       false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(perrors.Find(err, controller.IsRequeueError)).NotTo(BeNil())
+				g.Expect(strings.Contains(err.Error(), "waiting for TiKV cluster running")).To(Equal(true))
+			},
+		},
+		{
+			name: "pd is ready, tikv stores count is 1, available count is 1, ready replicas is 0",
+			update: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Status.PD.Members = map[string]v1alpha1.PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+					"pd-1": {Name: "pd-1", Health: true},
+					"pd-2": {Name: "pd-2", Health: true},
+				}
+				cluster.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+				cluster.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+					"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
+				}
+				cluster.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 0}
+			},
+			syncReclaimPolicyErr:     false,
+			syncPDMemberManagerErr:   false,
+			syncTiKVMemberManagerErr: false,
+			syncTiDBMemberManagerErr: false,
+			syncMetaManagerErr:       false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(perrors.Find(err, controller.IsRequeueError)).NotTo(BeNil())
+				g.Expect(strings.Contains(err.Error(), "waiting for TiKV cluster running")).To(Equal(true))
+			},
+		},
+		{
+			name: "tidb member manager sync error",
+			update: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Status.PD.Members = map[string]v1alpha1.PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+					"pd-1": {Name: "pd-1", Health: true},
+					"pd-2": {Name: "pd-2", Health: true},
+				}
+				cluster.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+				cluster.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+					"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
+					"tikv-1": {PodName: "tikv-1", State: v1alpha1.TiKVStateUp},
+					"tikv-2": {PodName: "tikv-2", State: v1alpha1.TiKVStateUp},
+				}
+				cluster.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+			},
+			syncReclaimPolicyErr:     false,
+			syncPDMemberManagerErr:   false,
+			syncTiKVMemberManagerErr: false,
+			syncTiDBMemberManagerErr: true,
+			syncMetaManagerErr:       false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "tidb member manager sync error")).To(Equal(true))
+			},
+		},
+		{
+			name: "meta manager sync error",
+			update: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Status.PD.Members = map[string]v1alpha1.PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+					"pd-1": {Name: "pd-1", Health: true},
+					"pd-2": {Name: "pd-2", Health: true},
+				}
+				cluster.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+				cluster.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+					"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
+					"tikv-1": {PodName: "tikv-1", State: v1alpha1.TiKVStateUp},
+					"tikv-2": {PodName: "tikv-2", State: v1alpha1.TiKVStateUp},
+				}
+				cluster.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+			},
+			syncReclaimPolicyErr:     false,
+			syncPDMemberManagerErr:   false,
+			syncTiKVMemberManagerErr: false,
+			syncTiDBMemberManagerErr: false,
+			syncMetaManagerErr:       true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "meta manager sync error")).To(Equal(true))
+			},
+		},
+		{
+			name: "normal",
+			update: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Status.PD.Members = map[string]v1alpha1.PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+					"pd-1": {Name: "pd-1", Health: true},
+					"pd-2": {Name: "pd-2", Health: true},
+				}
+				cluster.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+				cluster.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+					"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
+					"tikv-1": {PodName: "tikv-1", State: v1alpha1.TiKVStateUp},
+					"tikv-2": {PodName: "tikv-2", State: v1alpha1.TiKVStateUp},
+				}
+				cluster.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+			},
+			syncReclaimPolicyErr:     false,
+			syncPDMemberManagerErr:   false,
+			syncTiKVMemberManagerErr: false,
+			syncTiDBMemberManagerErr: false,
+			syncMetaManagerErr:       false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+		},
+	}
 
-	control, setControl, pdControl := newFakeTidbClusterControl()
-	pdControl.SetPDClient(tc, pdClient)
-
-	err := syncTidbClusterControl(tc, setControl, control)
-	g.Expect(err).NotTo(HaveOccurred())
-
-	newTC, err := setControl.TcLister.TidbClusters(tc.Namespace).Get(tc.Name)
-	g.Expect(err).NotTo(HaveOccurred())
-	g.Expect(newTC.Status.PD.StatefulSet).NotTo(Equal(nil))
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
 }
 
 func TestTidbClusterStatusEquality(t *testing.T) {
@@ -68,44 +350,20 @@ func TestTidbClusterStatusEquality(t *testing.T) {
 	g.Expect(apiequality.Semantic.DeepEqual(&tcStatus, tcStatusCopy)).To(Equal(false))
 }
 
-func newFakeTidbClusterControl() (ControlInterface, *controller.FakeStatefulSetControl, *controller.FakePDControl) {
+func newFakeTidbClusterControl() (ControlInterface, *meta.FakeReclaimPolicyManager, *mm.FakePDMemberManager, *mm.FakeTiKVMemberManager, *mm.FakeTiDBMemberManager, *meta.FakeMetaManager) {
 	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
-	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
-	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
-	pvInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumes()
 	recorder := record.NewFakeRecorder(10)
-	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
 
-	pdControl := controller.NewFakePDControl()
-	tidbControl := controller.NewFakeTiDBControl()
-	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
-	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
-	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
-	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
 	tcControl := controller.NewFakeTidbClusterControl(tcInformer)
-	pdScaler := mm.NewFakePDScaler()
-	tikvScaler := mm.NewFakeTiKVScaler()
-	autoFailover := true
-	pdFailover := mm.NewFakePDFailover()
-	pdUpgrader := mm.NewFakePDUpgrader()
-	tikvFailover := mm.NewFakeTiKVFailover()
-	tikvUpgrader := mm.NewFakeTiKVUpgrader()
-	tidbUpgrader := mm.NewFakeTiDBUpgrader()
-	tidbFailover := mm.NewFakeTiDBFailover()
-
-	pdMemberManager := mm.NewPDMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), podInformer.Lister(), podControl, pvcInformer.Lister(), pdScaler, pdUpgrader, autoFailover, pdFailover)
-	tikvMemberManager := mm.NewTiKVMemberManager(pdControl, setControl, svcControl, setInformer.Lister(), svcInformer.Lister(), podInformer.Lister(), nodeInformer.Lister(), autoFailover, tikvFailover, tikvScaler, tikvUpgrader)
-	tidbMemberManager := mm.NewTiDBMemberManager(setControl, svcControl, tidbControl, setInformer.Lister(), svcInformer.Lister(), podInformer.Lister(), tidbUpgrader, autoFailover, tidbFailover)
-	reclaimPolicyManager := meta.NewReclaimPolicyManager(pvcInformer.Lister(), pvInformer.Lister(), pvControl)
-	metaManager := meta.NewMetaManager(pvcInformer.Lister(), pvcControl, pvInformer.Lister(), pvControl, podInformer.Lister(), podControl)
+	pdMemberManager := mm.NewFakePDMemberManager()
+	tikvMemberManager := mm.NewFakeTiKVMemberManager()
+	tidbMemberManager := mm.NewFakeTiDBMemberManager()
+	reclaimPolicyManager := meta.NewFakeReclaimPolicyManager()
+	metaManager := meta.NewFakeMetaManager()
 	control := NewDefaultTidbClusterControl(tcControl, pdMemberManager, tikvMemberManager, tidbMemberManager, reclaimPolicyManager, metaManager, recorder)
 
-	return control, setControl, pdControl
+	return control, reclaimPolicyManager, pdMemberManager, tikvMemberManager, tidbMemberManager, metaManager
 }
 
 func syncTidbClusterControl(tc *v1alpha1.TidbCluster, _ *controller.FakeStatefulSetControl, control ControlInterface) error {
@@ -117,4 +375,29 @@ func syncTidbClusterControl(tc *v1alpha1.TidbCluster, _ *controller.FakeStateful
 	}
 
 	return nil
+}
+
+func newTidbClusterForTidbClusterControl() *v1alpha1.TidbCluster {
+	return &v1alpha1.TidbCluster{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "TidbCluster",
+			APIVersion: "pingcap.com/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pd",
+			Namespace: corev1.NamespaceDefault,
+			UID:       types.UID("test"),
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			PD: v1alpha1.PDSpec{
+				Replicas: 3,
+			},
+			TiKV: v1alpha1.TiKVSpec{
+				Replicas: 3,
+			},
+			TiDB: v1alpha1.TiDBSpec{
+				Replicas: 1,
+			},
+		},
+	}
 }

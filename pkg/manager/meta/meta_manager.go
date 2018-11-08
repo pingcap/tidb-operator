@@ -126,3 +126,22 @@ func (pmm *metaManager) resolvePVCFromPod(pod *corev1.Pod) (*corev1.PersistentVo
 }
 
 var _ manager.Manager = &metaManager{}
+
+type FakeMetaManager struct {
+	err error
+}
+
+func NewFakeMetaManager() *FakeMetaManager {
+	return &FakeMetaManager{}
+}
+
+func (fmm *FakeMetaManager) SetSyncError(err error) {
+	fmm.err = err
+}
+
+func (fmm *FakeMetaManager) Sync(_ *v1alpha1.TidbCluster) error {
+	if fmm.err != nil {
+		return fmm.err
+	}
+	return nil
+}

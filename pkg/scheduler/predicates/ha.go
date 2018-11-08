@@ -16,6 +16,7 @@ package predicates
 import (
 	"fmt"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apiv1 "k8s.io/api/core/v1"
@@ -69,6 +70,16 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		return nil, err
 	}
 
+	// when a deleted pod is recreated again, it should be rescheduled to the original node
+	if len(nodes) == 1 {
+		nextPodName := util.GetNextOrdinalPodName(podName, ordinal)
+		for _, pod := range podList.Items {
+			if pod.GetName() == nextPodName && pod.Spec.NodeName != "" {
+				return nodes, nil
+			}
+		}
+	}
+
 	nodeMap := make(map[string][]string)
 	for _, node := range nodes {
 		nodeMap[node.GetName()] = make([]string, 0)
@@ -84,15 +95,13 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		if ordinal1 < ordinal && nodeName == "" {
 			return nil, fmt.Errorf("waiting for pod: %s/%s to be scheduled", ns, podName1)
 		}
-		if nodeName == "" {
-			continue
-		}
-		if nodeMap[nodeName] == nil {
+		if nodeName == "" || nodeMap[nodeName] == nil {
 			continue
 		}
 
 		nodeMap[nodeName] = append(nodeMap[nodeName], podName1)
 	}
+	glog.V(4).Infof("nodeMap: %+v", nodeMap)
 
 	var min int
 	var minInitialized bool

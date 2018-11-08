@@ -14,6 +14,7 @@
 package util
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -215,4 +216,9 @@ func GetOrdinalFromPodName(podName string) (int32, error) {
 		return int32(0), err
 	}
 	return int32(ordinalInt), nil
+}
+
+func GetNextOrdinalPodName(podName string, ordinal int32) string {
+	basicStr := podName[:strings.LastIndex(podName, "-")]
+	return fmt.Sprintf("%s-%d", basicStr, ordinal+1)
 }

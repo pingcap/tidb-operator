@@ -408,3 +408,22 @@ func (tmm *tidbMemberManager) tidbStatefulSetIsUpgrading(set *apps.StatefulSet, 
 	}
 	return false, nil
 }
+
+type FakeTiDBMemberManager struct {
+	err error
+}
+
+func NewFakeTiDBMemberManager() *FakeTiDBMemberManager {
+	return &FakeTiDBMemberManager{}
+}
+
+func (ftmm *FakeTiDBMemberManager) SetSyncError(err error) {
+	ftmm.err = err
+}
+
+func (ftmm *FakeTiDBMemberManager) Sync(_ *v1alpha1.TidbCluster) error {
+	if ftmm.err != nil {
+		return ftmm.err
+	}
+	return nil
+}
