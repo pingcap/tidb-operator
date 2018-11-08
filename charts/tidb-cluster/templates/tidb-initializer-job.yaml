@@ -31,9 +31,12 @@ spec:
           until mysql -h {{ .Values.clusterName }}-tidb -P 4000 < /data/init-password.sql; do sleep 2; done
         volumeMounts:
         - name: password
-          mountPath: /data/init-password.sql
+          mountPath: /data
           readOnly: true
       volumes:
       - name: password
         secret:
           secretName: {{ .Values.clusterName }}-tidb
+          items:
+          - key: password
+            path: init-password.sql
