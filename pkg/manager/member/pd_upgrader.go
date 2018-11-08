@@ -99,7 +99,8 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 func (pu *pdUpgrader) needForceUpgrade(tc *v1alpha1.TidbCluster) (bool, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	selector, err := label.New().Cluster(tcName).PD().Selector()
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	selector, err := label.New().Instance(instanceName).PD().Selector()
 	if err != nil {
 		return false, err
 	}

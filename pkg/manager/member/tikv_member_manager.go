@@ -219,8 +219,9 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 func (tkmm *tikvMemberManager) getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
 	svcName := svcConfig.MemberName(tcName)
-	svcLabel := svcConfig.SvcLabel(label.New().Cluster(tcName)).Labels()
+	svcLabel := svcConfig.SvcLabel(label.New().Instance(instanceName)).Labels()
 
 	svc := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -422,8 +423,8 @@ func (tkmm *tikvMemberManager) volumeClaimTemplate(q resource.Quantity, metaName
 }
 
 func (tkmm *tikvMemberManager) labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
-	tcName := tc.GetName()
-	return label.New().Cluster(tcName).TiKV()
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	return label.New().Instance(instanceName).TiKV()
 }
 
 func (tkmm *tikvMemberManager) needReduce(tc *v1alpha1.TidbCluster, oldReplicas int32) bool {
@@ -606,7 +607,8 @@ func (tkmm *tikvMemberManager) tikvStatefulSetIsUpgrading(set *apps.StatefulSet,
 	if statefulSetIsUpgrading(set) {
 		return true, nil
 	}
-	selector, err := label.New().Cluster(tc.GetName()).TiKV().Selector()
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	selector, err := label.New().Instance(instanceName).TiKV().Selector()
 	if err != nil {
 		return false, err
 	}
@@ -630,4 +632,23 @@ func (tkmm *tikvMemberManager) tikvStatefulSetIsUpgrading(set *apps.StatefulSet,
 	}
 
 	return evictLeaderSchedulers != nil && len(evictLeaderSchedulers) > 0, nil
+}
+
+type FakeTiKVMemberManager struct {
+	err error
+}
+
+func NewFakeTiKVMemberManager() *FakeTiKVMemberManager {
+	return &FakeTiKVMemberManager{}
+}
+
+func (ftmm *FakeTiKVMemberManager) SetSyncError(err error) {
+	ftmm.err = err
+}
+
+func (ftmm *FakeTiKVMemberManager) Sync(_ *v1alpha1.TidbCluster) error {
+	if ftmm.err != nil {
+		return ftmm.err
+	}
+	return nil
 }

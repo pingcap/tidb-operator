@@ -10,7 +10,7 @@ category: operations
 
 This tutorial is designed to be run locally with tools like [AWS Command Line Interface](https://aws.amazon.com/cli/) and [Terraform](https://www.terraform.io/). The Terraform code will ultilize a relatively new AWS service called [Amazon Elastic Container Service for Kubernetes (Amazon EKS)](https://aws.amazon.com/eks).
 
-This guide is for running Tidb cluster in a testing Kubernetes environment. The following steps will use certain unsecure configurations. Do not just follow this guide only to build your production db environment. 
+This guide is for running Tidb cluster in a testing Kubernetes environment. The following steps will use certain unsecure configurations. Do not just follow this guide only to build your production db environment.
 
 It takes you through these steps:
 
@@ -213,7 +213,7 @@ Export the configuration of the EKS cluster to `.config`. This will allow the `k
 ```sh
 mkdir .config
 
-terraform output kubeconfig > .config/ekskubeconfig 
+terraform output kubeconfig > .config/ekskubeconfig
 # Save output in ~/.kube/config and then use the following env prarm
 
 export  KUBECONFIG=$KUBECONFIG:$(pwd)/.config/ekskubeconfig
@@ -298,7 +298,7 @@ kubectl get storageclass
 More info to see:
 [here](https://docs.aws.amazon.com/eks/latest/userguide/storage-classes.html) ,
 [here](https://kubernetes.io/docs/concepts/storage/storage-classes/#aws)
-and 
+and
 [here](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html)
 
 ---
@@ -377,9 +377,8 @@ helm install ./charts/tidb-cluster -n tidb --namespace=tidb --set pd.storageClas
 # Or if something goes wrong later and you want to update the deployment, use command:
 # helm upgrade tidb ./charts/tidb-cluster --namespace=tidb --set pd.storageClassName=gp2,tikv.storageClassName=gp2
 
-# verify:
+# verify and wait until tidb-initializer pod status becomes completed:
 kubectl get pods --namespace tidb -o wide
-
 ```
 
 Then keep watching output of:
@@ -391,10 +390,12 @@ watch "kubectl get svc -n tidb"
 When you see `demo-tidb` appear, you can `Control + C` to stop watching. Then the service is ready to connect to!
 
 ```sh
-# make sure you have jq installed
-# on mac you can do: brew install jq
+# Get the TiDB password
+PASSWORD=$(kubectl get secret -n tidb demo-tidb -o jsonpath="{.data.password}" | base64 -d | awk '{print $6}')
+echo ${PASSWORD}
 
-kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb --output json | jq -r '.spec.clusterIP')
+# Connect to TiDB
+kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb -o jsonpath='{.spec.clusterIP}') -p
 ```
 
 Or just:
@@ -406,7 +407,7 @@ kubectl -n tidb port-forward demo-tidb-0 4000:4000 &>/tmp/port-forward.log &
 Then open a new terminal:
 
 ```sh
-mysql -h 127.0.0.1 -u root -P 4000 --default-character-set=utf8
+mysql -h 127.0.0.1 -u root -P 4000 --default-character-set=utf8 -p
 
 # Then try some sql command:
 select tidb_version();
@@ -478,7 +479,7 @@ the first TPC-H query can be finished within 10 seconds.
 
 ## Destroy
 
-At the end of the demo, please make sure all the resources created by Kubernetes are removed (LoadBalancers, Security groups), so you get a 
+At the end of the demo, please make sure all the resources created by Kubernetes are removed (LoadBalancers, Security groups), so you get a
 big bill from AWS.
 
 Simply run:

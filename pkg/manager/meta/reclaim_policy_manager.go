@@ -40,9 +40,9 @@ func NewReclaimPolicyManager(pvcLister corelisters.PersistentVolumeClaimLister,
 
 func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
-	tcName := tc.GetName()
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
 
-	l, err := label.New().Cluster(tcName).Selector()
+	l, err := label.New().Instance(instanceName).Selector()
 	if err != nil {
 		return err
 	}
@@ -71,3 +71,22 @@ func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 var _ manager.Manager = &reclaimPolicyManager{}
+
+type FakeReclaimPolicyManager struct {
+	err error
+}
+
+func NewFakeReclaimPolicyManager() *FakeReclaimPolicyManager {
+	return &FakeReclaimPolicyManager{}
+}
+
+func (frpm *FakeReclaimPolicyManager) SetSyncError(err error) {
+	frpm.err = err
+}
+
+func (frpm *FakeReclaimPolicyManager) Sync(_ *v1alpha1.TidbCluster) error {
+	if frpm.err != nil {
+		return frpm.err
+	}
+	return nil
+}

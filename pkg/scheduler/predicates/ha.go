@@ -16,6 +16,7 @@ package predicates
 import (
 	"fmt"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apiv1 "k8s.io/api/core/v1"
@@ -30,7 +31,7 @@ const (
 
 type ha struct {
 	kubeCli   kubernetes.Interface
-	podListFn func(ns, clusterName, component string) (*apiv1.PodList, error)
+	podListFn func(ns, instanceName, component string) (*apiv1.PodList, error)
 }
 
 // NewHA returns a Predicate
@@ -50,7 +51,7 @@ func (h *ha) Name() string {
 //    find the nodes that have least pods.
 // 2. When scheduling the first replicas pods, we must ensure no previous pods on the nodes.
 // 3. For later pods, we choose the nodes that have least pods.
-func (h *ha) Filter(clusterName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]apiv1.Node, error) {
+func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]apiv1.Node, error) {
 	ns := pod.GetNamespace()
 	podName := pod.GetName()
 
@@ -59,7 +60,7 @@ func (h *ha) Filter(clusterName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]a
 	if component, exist = pod.Labels[label.ComponentLabelKey]; !exist {
 		return nodes, fmt.Errorf("can't find component in pod labels: %s/%s", ns, podName)
 	}
-	podList, err := h.podListFn(ns, clusterName, component)
+	podList, err := h.podListFn(ns, instanceName, component)
 	if err != nil {
 		return nil, err
 	}
@@ -67,6 +68,16 @@ func (h *ha) Filter(clusterName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]a
 	ordinal, err := util.GetOrdinalFromPodName(podName)
 	if err != nil {
 		return nil, err
+	}
+
+	// when a deleted pod is recreated again, it should be rescheduled to the original node
+	if len(nodes) == 1 {
+		nextPodName := util.GetNextOrdinalPodName(podName, ordinal)
+		for _, pod := range podList.Items {
+			if pod.GetName() == nextPodName && pod.Spec.NodeName != "" {
+				return nodes, nil
+			}
+		}
 	}
 
 	nodeMap := make(map[string][]string)
@@ -84,15 +95,13 @@ func (h *ha) Filter(clusterName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]a
 		if ordinal1 < ordinal && nodeName == "" {
 			return nil, fmt.Errorf("waiting for pod: %s/%s to be scheduled", ns, podName1)
 		}
-		if nodeName == "" {
-			continue
-		}
-		if nodeMap[nodeName] == nil {
+		if nodeName == "" || nodeMap[nodeName] == nil {
 			continue
 		}
 
 		nodeMap[nodeName] = append(nodeMap[nodeName], podName1)
 	}
+	glog.V(4).Infof("nodeMap: %+v", nodeMap)
 
 	var min int
 	var minInitialized bool
@@ -120,8 +129,8 @@ func (h *ha) Filter(clusterName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]a
 	return getNodeFromNames(nodes, minNodeNames), nil
 }
 
-func (h *ha) realPodListFn(ns, clusterName, component string) (*apiv1.PodList, error) {
-	selector := label.New().Cluster(clusterName).Component(component).Labels()
+func (h *ha) realPodListFn(ns, instanceName, component string) (*apiv1.PodList, error) {
+	selector := label.New().Instance(instanceName).Component(component).Labels()
 	return h.kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(selector).String(),
 	})

@@ -173,8 +173,9 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 func (tmm *tidbMemberManager) getNewTiDBServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
 	svcName := controller.TiDBMemberName(tcName)
-	tidbLabel := label.New().Cluster(tcName).TiDB().Labels()
+	tidbLabel := label.New().Instance(instanceName).TiDB().Labels()
 
 	tidbSvc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -205,8 +206,9 @@ func (tmm *tidbMemberManager) getNewTiDBServiceForTidbCluster(tc *v1alpha1.TidbC
 func (tmm *tidbMemberManager) getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
 	svcName := controller.TiDBPeerMemberName(tcName)
-	tidbLabel := label.New().Cluster(tcName).TiDB().Labels()
+	tidbLabel := label.New().Instance(instanceName).TiDB().Labels()
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -233,6 +235,7 @@ func (tmm *tidbMemberManager) getNewTiDBHeadlessServiceForTidbCluster(tc *v1alph
 func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
 	tidbConfigMap := controller.TiDBMemberName(tcName)
 
 	annMount, annVolume := annotationsMountVolume()
@@ -261,7 +264,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		},
 	}
 
-	tidbLabel := label.New().Cluster(tcName).TiDB()
+	tidbLabel := label.New().Instance(instanceName).TiDB()
 	tidbSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            controller.TiDBMemberName(tcName),
@@ -282,7 +285,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 					Affinity: util.AffinityForNodeSelector(
 						ns,
 						tc.Spec.TiDB.NodeSelectorRequired,
-						label.New().Cluster(tcName).TiDB(),
+						label.New().Instance(instanceName).TiDB(),
 						tc.Spec.TiDB.NodeSelector,
 					),
 					Containers: []corev1.Container{
@@ -383,7 +386,10 @@ func (tmm *tidbMemberManager) tidbStatefulSetIsUpgrading(set *apps.StatefulSet, 
 	if statefulSetIsUpgrading(set) {
 		return true, nil
 	}
-	selector, err := label.New().Cluster(tc.GetName()).TiDB().Selector()
+	selector, err := label.New().
+		Instance(tc.GetLabels()[label.InstanceLabelKey]).
+		TiDB().
+		Selector()
 	if err != nil {
 		return false, err
 	}
@@ -401,4 +407,23 @@ func (tmm *tidbMemberManager) tidbStatefulSetIsUpgrading(set *apps.StatefulSet, 
 		}
 	}
 	return false, nil
+}
+
+type FakeTiDBMemberManager struct {
+	err error
+}
+
+func NewFakeTiDBMemberManager() *FakeTiDBMemberManager {
+	return &FakeTiDBMemberManager{}
+}
+
+func (ftmm *FakeTiDBMemberManager) SetSyncError(err error) {
+	ftmm.err = err
+}
+
+func (ftmm *FakeTiDBMemberManager) Sync(_ *v1alpha1.TidbCluster) error {
+	if ftmm.err != nil {
+		return ftmm.err
+	}
+	return nil
 }

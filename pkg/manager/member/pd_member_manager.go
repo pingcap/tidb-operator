@@ -360,7 +360,8 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 	ns := tc.Namespace
 	tcName := tc.Name
 	svcName := controller.PDMemberName(tcName)
-	pdLabel := label.New().Cluster(tcName).PD().Labels()
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	pdLabel := label.New().Instance(instanceName).PD().Labels()
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -388,7 +389,8 @@ func (pmm *pdMemberManager) getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.T
 	ns := tc.Namespace
 	tcName := tc.Name
 	svcName := controller.PDPeerMemberName(tcName)
-	pdLabel := label.New().Cluster(tcName).PD().Labels()
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	pdLabel := label.New().Instance(instanceName).PD().Labels()
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -416,7 +418,10 @@ func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *
 	if statefulSetIsUpgrading(set) {
 		return true, nil
 	}
-	selector, err := label.New().Cluster(tc.GetName()).PD().Selector()
+	selector, err := label.New().
+		Instance(tc.GetLabels()[label.InstanceLabelKey]).
+		PD().
+		Selector()
 	if err != nil {
 		return false, err
 	}
@@ -439,6 +444,7 @@ func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *
 func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
 	ns := tc.Namespace
 	tcName := tc.Name
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
 	pdConfigMap := controller.PDMemberName(tcName)
 
 	annMount, annVolume := annotationsMountVolume()
@@ -481,7 +487,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 			return nil, fmt.Errorf("cant' get storage size: %s for TidbCluster: %s/%s, %v", size, ns, tcName, err)
 		}
 	}
-	pdLabel := label.New().Cluster(tcName).PD()
+	pdLabel := label.New().Instance(instanceName).PD()
 	setName := controller.PDMemberName(tcName)
 	storageClassName := tc.Spec.PD.StorageClassName
 	if storageClassName == "" {
@@ -514,7 +520,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 					Affinity: util.AffinityForNodeSelector(
 						ns,
 						tc.Spec.PD.NodeSelectorRequired,
-						label.New().Cluster(tcName).PD(),
+						label.New().Instance(instanceName).PD(),
 						tc.Spec.PD.NodeSelector,
 					),
 					Containers: []corev1.Container{
@@ -599,4 +605,23 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 	}
 
 	return pdSet, nil
+}
+
+type FakePDMemberManager struct {
+	err error
+}
+
+func NewFakePDMemberManager() *FakePDMemberManager {
+	return &FakePDMemberManager{}
+}
+
+func (fpmm *FakePDMemberManager) SetSyncError(err error) {
+	fpmm.err = err
+}
+
+func (fpmm *FakePDMemberManager) Sync(_ *v1alpha1.TidbCluster) error {
+	if fpmm.err != nil {
+		return fpmm.err
+	}
+	return nil
 }
