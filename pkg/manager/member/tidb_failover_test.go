@@ -112,6 +112,51 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
 			},
 		},
+		{
+			name: "max failover count",
+			update: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{
+					"failover-tidb-0": {
+						Name:   "failover-tidb-0",
+						Health: false,
+					},
+					"failover-tidb-1": {
+						Name:   "failover-tidb-1",
+						Health: false,
+					},
+					"failover-tidb-2": {
+						Name:   "failover-tidb-2",
+						Health: false,
+					},
+					"failover-tidb-3": {
+						Name:   "failover-tidb-3",
+						Health: false,
+					},
+					"failover-tidb-4": {
+						Name:   "failover-tidb-4",
+						Health: false,
+					},
+				}
+				tc.Status.TiDB.FailureMembers = map[string]v1alpha1.TiDBFailureMember{
+					"failover-tidb-0": {
+						PodName: "failover-tidb-0",
+					},
+					"failover-tidb-1": {
+						PodName: "failover-tidb-1",
+					},
+					"failover-tidb-2": {
+						PodName: "failover-tidb-2",
+					},
+				}
+			},
+			errExpectFn: func(t *GomegaWithT, err error) {
+				t.Expect(err).NotTo(HaveOccurred())
+			},
+			expectFn: func(t *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				t.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(3))
+				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
+			},
+		},
 	}
 
 	for i := range tests {
@@ -318,6 +363,7 @@ func newTidbClusterForTiDBFailover() *v1alpha1.TidbCluster {
 				},
 				Replicas:         2,
 				StorageClassName: "my-storage-class",
+				MaxFailoverCount: 3,
 			},
 		},
 	}
