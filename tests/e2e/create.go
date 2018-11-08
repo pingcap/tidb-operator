@@ -16,6 +16,8 @@ package e2e
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql" // init mysql driver
@@ -95,7 +97,10 @@ func allMembersRunning(ns, clusterName string) (bool, error) {
 		return false, nil
 	}
 
-	// TODO meta information synced
+	synced, err = metaSynced(tc)
+	if err != nil || !synced {
+		return false, nil
+	}
 
 	return true, nil
 }
@@ -343,6 +348,116 @@ func reclaimPolicySynced(tc *v1alpha1.TidbCluster) (bool, error) {
 		if pv.Spec.PersistentVolumeReclaimPolicy != tc.Spec.PVReclaimPolicy {
 			return false, nil
 		}
+	}
+
+	return true, nil
+}
+
+func metaSynced(tc *v1alpha1.TidbCluster) (bool, error) {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	pdControl := controller.NewDefaultPDControl()
+	pdCli := pdControl.GetPDClient(tc)
+	cluster, err := pdCli.GetCluster()
+	if err != nil {
+		logf(err.Error())
+		return false, nil
+	}
+	clusterID := strconv.FormatUint(cluster.Id, 10)
+
+	labelSelector := label.New().Cluster(tcName)
+	podList, err := kubeCli.CoreV1().Pods(ns).List(
+		metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(
+				labelSelector.Labels(),
+			).String(),
+		},
+	)
+	if err != nil {
+		logf(err.Error())
+		return false, nil
+	}
+
+outerLoop:
+	for _, pod := range podList.Items {
+		podName := pod.GetName()
+		Expect(pod.Labels[label.ClusterIDLabelKey]).To(Equal(clusterID))
+
+		component := pod.Labels[label.ComponentLabelKey]
+		switch component {
+		case label.PDLabelVal:
+			var memberID string
+			members, err := pdCli.GetMembers()
+			if err != nil {
+				logf(err.Error())
+				return false, nil
+			}
+			for _, member := range members.Members {
+				if member.Name == podName {
+					memberID = strconv.FormatUint(member.GetMemberId(), 10)
+					break
+				}
+			}
+			Expect(memberID).NotTo(BeEmpty())
+			Expect(pod.Labels[label.MemberIDLabelKey]).To(Equal(memberID))
+		case label.TiKVLabelVal:
+			var storeID string
+			stores, err := pdCli.GetStores()
+			if err != nil {
+				logf(err.Error())
+				return false, nil
+			}
+			for _, store := range stores.Stores {
+				addr := store.Store.GetAddress()
+				if strings.Split(addr, ".")[0] == podName {
+					storeID = strconv.FormatUint(store.Store.GetId(), 10)
+					break
+				}
+			}
+			Expect(storeID).NotTo(BeEmpty())
+			Expect(pod.Labels[label.StoreIDLabelKey]).To(Equal(storeID))
+		case label.TiDBLabelVal:
+			continue outerLoop
+		}
+
+		var pvcName string
+		for _, vol := range pod.Spec.Volumes {
+			if vol.PersistentVolumeClaim != nil {
+				pvcName = vol.PersistentVolumeClaim.ClaimName
+				break
+			}
+		}
+		if pvcName == "" {
+			logf("pod: %s/%s's pvcName is empty", ns, podName)
+			return false, nil
+		}
+
+		pvc, err := kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
+		if err != nil {
+			logf(err.Error())
+			return false, nil
+		}
+		Expect(pvc.Labels[label.ClusterIDLabelKey]).To(Equal(clusterID))
+		Expect(pvc.Labels[label.MemberIDLabelKey]).To(Equal(pod.Labels[label.MemberIDLabelKey]))
+		Expect(pvc.Labels[label.StoreIDLabelKey]).To(Equal(pod.Labels[label.StoreIDLabelKey]))
+		Expect(pvc.Annotations[label.AnnPodNameKey]).To(Equal(podName))
+
+		pvName := pvc.Spec.VolumeName
+		pv, err := kubeCli.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
+		if err != nil {
+			logf(err.Error())
+			return false, nil
+		}
+		Expect(pv.Labels[label.NamespaceLabelKey]).To(Equal(ns))
+		Expect(pv.Labels[label.ComponentLabelKey]).To(Equal(pod.Labels[label.ComponentLabelKey]))
+		Expect(pv.Labels[label.NameLabelKey]).To(Equal(pod.Labels[label.NameLabelKey]))
+		Expect(pv.Labels[label.ManagedByLabelKey]).To(Equal(pod.Labels[label.ManagedByLabelKey]))
+		Expect(pv.Labels[label.InstanceLabelKey]).To(Equal(pod.Labels[label.InstanceLabelKey]))
+		Expect(pv.Labels[label.ClusterIDLabelKey]).To(Equal(clusterID))
+		Expect(pv.Labels[label.MemberIDLabelKey]).To(Equal(pod.Labels[label.MemberIDLabelKey]))
+		Expect(pv.Labels[label.StoreIDLabelKey]).To(Equal(pod.Labels[label.StoreIDLabelKey]))
+		Expect(pv.Annotations[label.AnnPodNameKey]).To(Equal(podName))
 	}
 
 	return true, nil
