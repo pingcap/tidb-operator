@@ -112,6 +112,8 @@ tikvPromGateway:
 
 tidb:
   replicas: 2
+  # password is TiDB's password, if omit password, a random password is generated
+  password: "admin"
   image: pingcap/tidb:v2.0.7
   imagePullPolicy: IfNotPresent
   logLevel: info
@@ -137,6 +139,11 @@ tidb:
     exposeStatus: true
     annotations: {}
       # cloud.google.com/load-balancer-type: Internal
+
+# mysqlClient is used to set password for TiDB
+mysqlClient:
+  image: pingcap/tidb-enterprise-tools:latest
+  imagePullPolicy: IfNotPresent
 
 monitor:
   create: true

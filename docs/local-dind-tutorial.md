@@ -78,6 +78,7 @@ demo-pd           ClusterIP   10.110.192.154   <none>        2379/TCP           
 demo-pd-peer      ClusterIP   None             <none>        2380/TCP                         1m
 demo-prometheus   NodePort    10.104.97.84     <none>        9090:32448/TCP                   1m
 demo-tidb         NodePort    10.102.165.13    <none>        4000:32714/TCP,10080:32680/TCP   1m
+demo-tidb-peer    ClusterIP   None             <none>        10080/TCP                        1m
 demo-tikv-peer    ClusterIP   None             <none>        20160/TCP                        1m
 
 $ kubectl get configmap -n tidb
@@ -96,6 +97,7 @@ demo-pd-1                         1/1       Running     0          1m
 demo-pd-2                         1/1       Running     0          1m
 demo-tidb-0                       1/1       Running     0          1m
 demo-tidb-1                       1/1       Running     0          1m
+demo-tidb-initializer-ftl4r       0/1       Completed   0          1m
 demo-tikv-0                       2/2       Running     0          1m
 demo-tikv-1                       2/2       Running     0          1m
 demo-tikv-2                       2/2       Running     0          1m
@@ -104,6 +106,13 @@ demo-tikv-2                       2/2       Running     0          1m
 To access the TiDB cluster, use `kubectl port-forward` to expose the services to host.
 
 - Access TiDB using the MySQL client
+
+    1. Get the TiDB password
+
+	    ```sh
+		$ PASSWORD=$(kubectl get secret -n tidb demo-tidb -ojsonpath="{.data.password}" base64 -c | awk '{print $6}')
+		$ echo ${PASSWORD}
+		```
 
     1. Use `kubectl` to forward the host machine port to the TiDB service port:
 
@@ -114,7 +123,7 @@ To access the TiDB cluster, use `kubectl port-forward` to expose the services to
     2. To connect to TiDB using the MySQL client, open a new terminal tab or window and run the following command:
 
         ```sh
-        $ mysql -h 127.0.0.1 -P 4000 -u root
+        $ mysql -h 127.0.0.1 -P 4000 -u root -p
         ```
 
 - View the monitor dashboard
