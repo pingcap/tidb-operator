@@ -56,9 +56,9 @@ func NewMetaManager(
 
 func (pmm *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
-	tcName := tc.GetName()
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
 
-	l, err := label.New().Cluster(tcName).Selector()
+	l, err := label.New().Instance(instanceName).Selector()
 	if err != nil {
 		return err
 	}

@@ -1,7 +1,7 @@
 1. Watch tidb-cluster up and running
-   watch kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Values.clusterName }} -o wide
+   watch kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }} -o wide
 2. List services in the tidb-cluster
-   kubectl get services --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Values.clusterName }}
+   kubectl get services --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
 3. Access tidb-cluster using MySQL client
    kubectl port-forward -n {{ .Release.Namespace }} svc/{{ .Values.clusterName }}-tidb 4000:4000 &
    mysql -h 127.0.0.1 -P 4000 -u root -D test

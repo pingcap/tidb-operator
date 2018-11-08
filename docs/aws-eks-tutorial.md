@@ -10,7 +10,7 @@ category: operations
 
 This tutorial is designed to be run locally with tools like [AWS Command Line Interface](https://aws.amazon.com/cli/) and [Terraform](https://www.terraform.io/). The Terraform code will ultilize a relatively new AWS service called [Amazon Elastic Container Service for Kubernetes (Amazon EKS)](https://aws.amazon.com/eks).
 
-This guide is for running Tidb cluster in a testing Kubernetes environment. The following steps will use certain unsecure configurations. Do not just follow this guide only to build your production db environment. 
+This guide is for running Tidb cluster in a testing Kubernetes environment. The following steps will use certain unsecure configurations. Do not just follow this guide only to build your production db environment.
 
 It takes you through these steps:
 
@@ -213,7 +213,7 @@ Export the configuration of the EKS cluster to `.config`. This will allow the `k
 ```sh
 mkdir .config
 
-terraform output kubeconfig > .config/ekskubeconfig 
+terraform output kubeconfig > .config/ekskubeconfig
 # Save output in ~/.kube/config and then use the following env prarm
 
 export  KUBECONFIG=$KUBECONFIG:$(pwd)/.config/ekskubeconfig
@@ -298,7 +298,7 @@ kubectl get storageclass
 More info to see:
 [here](https://docs.aws.amazon.com/eks/latest/userguide/storage-classes.html) ,
 [here](https://kubernetes.io/docs/concepts/storage/storage-classes/#aws)
-and 
+and
 [here](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html)
 
 ---
@@ -478,7 +478,7 @@ the first TPC-H query can be finished within 10 seconds.
 
 ## Destroy
 
-At the end of the demo, please make sure all the resources created by Kubernetes are removed (LoadBalancers, Security groups), so you get a 
+At the end of the demo, please make sure all the resources created by Kubernetes are removed (LoadBalancers, Security groups), so you get a
 big bill from AWS.
 
 Simply run:

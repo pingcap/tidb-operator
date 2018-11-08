@@ -5,7 +5,7 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: tidb
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
   {{- if .Values.tidb.service.annotations }}
@@ -36,5 +36,5 @@ spec:
   {{- end }}
   selector:
     app.kubernetes.io/name: {{ template "chart.name" . }}
-    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: tidb

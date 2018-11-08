@@ -30,7 +30,7 @@ const (
 	// It should always be tidb-cluster in our case.
 	NameLabelKey string = "app.kubernetes.io/name"
 	// InstanceLabelKey is Kubernetes recommended label key, it represents a unique name identifying the instance of an application
-	// It's the cluster name in our case
+	// It's set by helm when installing a release
 	InstanceLabelKey string = "app.kubernetes.io/instance"
 
 	// NamespaceLabelKey is label key used in PV for easy querying
@@ -71,16 +71,16 @@ func New() Label {
 }
 
 // ClusterListOptions returns a cluster ListOptions filter
-func ClusterListOptions(clusterName string) metav1.ListOptions {
+func ClusterListOptions(instanceName string) metav1.ListOptions {
 	return metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(
-			New().Cluster(clusterName).Labels(),
+			New().Instance(instanceName).Labels(),
 		).String(),
 	}
 }
 
-// Cluster adds cluster kv pair to label
-func (l Label) Cluster(name string) Label {
+// Instance adds instance kv pair to label
+func (l Label) Instance(name string) Label {
 	l[InstanceLabelKey] = name
 	return l
 }
