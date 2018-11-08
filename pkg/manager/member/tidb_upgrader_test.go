@@ -276,9 +276,9 @@ func newTidbClusterForTiDBUpgrader() *v1alpha1.TidbCluster {
 }
 
 func getTiDBPods() []*corev1.Pod {
-	lc := label.New().Cluster(upgradeTcName).TiDB().Labels()
+	lc := label.New().Instance(upgradeInstanceName).TiDB().Labels()
 	lc[apps.ControllerRevisionHashLabelKey] = "1"
-	lu := label.New().Cluster(upgradeTcName).TiDB().Labels()
+	lu := label.New().Instance(upgradeInstanceName).TiDB().Labels()
 	lu[apps.ControllerRevisionHashLabelKey] = "2"
 	pods := []*corev1.Pod{
 		{

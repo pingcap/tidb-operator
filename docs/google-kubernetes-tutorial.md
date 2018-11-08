@@ -125,7 +125,9 @@ When you see `demo-tidb` appear, you can `Control + C`. The service is ready to 
 
 You can connect to the clustered service within the Kubernetes cluster:
 
-	kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb --output json | jq -r '.spec.clusterIP')
+    PASSWORD=$(kubectl get secret -n tidb demo-tidb -o jsonpath="{.data.password}" | base64 -d | awk '{print $6}') &&
+	echo ${PASSWORD} &&
+	kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb -o jsonpath='{.spec.clusterIP}') -p
 
 Congratulations, you are now up and running with a distributed TiDB database compatible with MySQL!
 
@@ -136,8 +138,8 @@ In addition to connecting to TiDB within the Kubernetes cluster, you can also es
 From your Cloud Shell:
 
 	sudo apt-get install -y mysql-client &&
-	mysql -h 127.0.0.1 -u root -P 4000
-	
+	mysql -h 127.0.0.1 -u root -P 4000 -p
+
 If you like, you can check your connection to TiDB inside your MySQL terminal and see the latest TiDB version being deployed, using the command:
 
 	select tidb_version();

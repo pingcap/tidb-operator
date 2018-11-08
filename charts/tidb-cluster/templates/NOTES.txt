@@ -1,12 +1,17 @@
 1. Watch tidb-cluster up and running
-   watch kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Values.clusterName }} -o wide
+   watch kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }} -o wide
 2. List services in the tidb-cluster
-   kubectl get services --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Values.clusterName }}
-3. Access tidb-cluster using MySQL client
+   kubectl get services --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+3. Wait until tidb-initializer pod becomes completed
+   watch kubectl get po --namespace {{ .Release.Namespace }}  -l app.kubernetes.io/component=tidb-initializer
+4. Get the TiDB password
+   PASSWORD=$(kubectl get secret -n {{ .Release.Namespace }} {{ .Values.clusterName }}-tidb -o jsonpath="{.data.password}" | base64 -d | awk '{print $6}')
+   echo ${PASSWORD}
+5. Access tidb-cluster using the MySQL client
    kubectl port-forward -n {{ .Release.Namespace }} svc/{{ .Values.clusterName }}-tidb 4000:4000 &
-   mysql -h 127.0.0.1 -P 4000 -u root -D test
+   mysql -h 127.0.0.1 -P 4000 -u root -D test -p
 {{- if .Values.monitor.create }}
-4. View monitor dashboard for TiDB cluster
+6. View monitor dashboard for TiDB cluster
    kubectl port-forward -n {{ .Release.Namespace }} svc/{{ .Values.clusterName }}-grafana 3000:3000
    Open browser at http://localhost:3000. The default username and password is admin/admin.
 {{- end -}}

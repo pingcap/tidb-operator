@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: monitor-configurator
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
@@ -14,7 +14,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: {{ template "chart.name" . }}
-        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: monitor-configurator
     spec:
       restartPolicy: OnFailure
