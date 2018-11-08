@@ -356,7 +356,7 @@ func reclaimPolicySynced(tc *v1alpha1.TidbCluster) (bool, error) {
 
 func metaSynced(tc *v1alpha1.TidbCluster) (bool, error) {
 	ns := tc.GetNamespace()
-	tcName := tc.GetName()
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
 
 	pdControl := controller.NewDefaultPDControl()
 	pdCli := pdControl.GetPDClient(tc)
@@ -367,7 +367,7 @@ func metaSynced(tc *v1alpha1.TidbCluster) (bool, error) {
 	}
 	clusterID := strconv.FormatUint(cluster.Id, 10)
 
-	labelSelector := label.New().Cluster(tcName)
+	labelSelector := label.New().Instance(instanceName)
 	podList, err := kubeCli.CoreV1().Pods(ns).List(
 		metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(
