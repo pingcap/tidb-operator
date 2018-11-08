@@ -32,9 +32,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
+const (
+	password = "admin"
+)
+
 func testCreate(ns, clusterName string) {
 	By(fmt.Sprintf("When create the TiDB cluster: %s/%s", ns, clusterName))
-	instanceName := fmt.Sprintf("%s-%s", ns, clusterName)
+	instanceName := getInstanceName(ns, clusterName)
 	cmdStr := fmt.Sprintf("helm install /charts/tidb-cluster -f /tidb-cluster-values.yaml"+
 		" -n %s --namespace=%s --set clusterName=%s",
 		instanceName, ns, clusterName)
@@ -44,6 +48,12 @@ func testCreate(ns, clusterName string) {
 	By("Then all members should running")
 	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
 		return allMembersRunning(ns, clusterName)
+	})
+	Expect(err).NotTo(HaveOccurred())
+
+	By("And password is set correctly")
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		return passwordIsSet(ns, clusterName)
 	})
 	Expect(err).NotTo(HaveOccurred())
 
@@ -107,7 +117,7 @@ func allMembersRunning(ns, clusterName string) (bool, error) {
 }
 
 func addDataToCluster(ns, clusterName string) (bool, error) {
-	db, err := sql.Open("mysql", fmt.Sprintf("root:@(%s-tidb.%s:4000)/test?charset=utf8", clusterName, ns))
+	db, err := sql.Open("mysql", getDSN(ns, clusterName))
 	if err != nil {
 		logf("can't open connection to mysql: %v", err)
 		return false, nil
@@ -130,7 +140,7 @@ func addDataToCluster(ns, clusterName string) (bool, error) {
 }
 
 func dataIsCorrect(ns, clusterName string) (bool, error) {
-	db, err := sql.Open("mysql", fmt.Sprintf("root:@(%s-tidb.%s:4000)/test?charset=utf8", clusterName, ns))
+	db, err := sql.Open("mysql", getDSN(ns, clusterName))
 	if err != nil {
 		return false, nil
 	}
@@ -352,6 +362,35 @@ func reclaimPolicySynced(tc *v1alpha1.TidbCluster) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func passwordIsSet(ns, clusterName string) (bool, error) {
+	jobName := clusterName + "-tidb-initializer"
+	job, err := kubeCli.BatchV1().Jobs(ns).Get(jobName, metav1.GetOptions{})
+	if err != nil {
+		return false, nil
+	}
+	if job.Status.Succeeded < 1 {
+		logf("password setter job not finished")
+		return false, nil
+	}
+
+	db, err := sql.Open("mysql", getDSN(ns, clusterName))
+	if err != nil {
+		logf("can't open connection to mysql: %v", err)
+		return false, nil
+	}
+	defer db.Close()
+
+	if err = db.Ping(); err != nil {
+		logf("can't connect to tidb: %s/%s-tidb with password %s", ns, clusterName, password)
+		return false, nil
+	}
+	return true, nil
+}
+
+func getDSN(ns, clusterName string) string {
+	return fmt.Sprintf("root:%s@(%s-tidb.%s:4000)/test?charset=utf8", password, clusterName, ns)
 }
 
 func metaSynced(tc *v1alpha1.TidbCluster) (bool, error) {

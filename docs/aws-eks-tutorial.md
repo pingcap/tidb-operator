@@ -377,9 +377,8 @@ helm install ./charts/tidb-cluster -n tidb --namespace=tidb --set pd.storageClas
 # Or if something goes wrong later and you want to update the deployment, use command:
 # helm upgrade tidb ./charts/tidb-cluster --namespace=tidb --set pd.storageClassName=gp2,tikv.storageClassName=gp2
 
-# verify:
+# verify and wait until tidb-initializer pod status becomes completed:
 kubectl get pods --namespace tidb -o wide
-
 ```
 
 Then keep watching output of:
@@ -391,10 +390,12 @@ watch "kubectl get svc -n tidb"
 When you see `demo-tidb` appear, you can `Control + C` to stop watching. Then the service is ready to connect to!
 
 ```sh
-# make sure you have jq installed
-# on mac you can do: brew install jq
+# Get the TiDB password
+PASSWORD=$(kubectl get secret -n tidb demo-tidb -o jsonpath="{.data.password}" | base64 -d | awk '{print $6}')
+echo ${PASSWORD}
 
-kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb --output json | jq -r '.spec.clusterIP')
+# Connect to TiDB
+kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb -o jsonpath='{.spec.clusterIP}') -p
 ```
 
 Or just:
@@ -406,7 +407,7 @@ kubectl -n tidb port-forward demo-tidb-0 4000:4000 &>/tmp/port-forward.log &
 Then open a new terminal:
 
 ```sh
-mysql -h 127.0.0.1 -u root -P 4000 --default-character-set=utf8
+mysql -h 127.0.0.1 -u root -P 4000 --default-character-set=utf8 -p
 
 # Then try some sql command:
 select tidb_version();

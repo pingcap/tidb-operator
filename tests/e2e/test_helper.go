@@ -77,15 +77,15 @@ var fixtures = []clusterFixture{
 			testUpgrade,
 		},
 	},
-	{
-		ns:          "ns-2",
-		clusterName: "cluster-name-2",
-		cases: []testCase{
-			testCreate,
-			testUpgrade,
-			testScale,
-		},
-	},
+	// { // decrease a cluster due to CI machine resource limits
+	// 	ns:          "ns-2",
+	// 	clusterName: "cluster-name-2",
+	// 	cases: []testCase{
+	// 		testCreate,
+	// 		testUpgrade,
+	// 		testScale,
+	// 	},
+	// },
 }
 
 func clearOperator() error {
@@ -114,12 +114,12 @@ func clearOperator() error {
 			}
 			_, err = execCmd(fmt.Sprintf(`kubectl get pv -l %s=%s,%s=%s --output=name | xargs -I {} \
 		kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`,
-				label.NamespaceLabelKey, fixture.ns, label.InstanceLabelKey, fixture.clusterName))
+				label.NamespaceLabelKey, fixture.ns, label.InstanceLabelKey, getInstanceName(fixture.ns, fixture.clusterName)))
 			if err != nil {
 				logf(err.Error())
 			}
 			result, _ = execCmd(fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s 2>/dev/null|grep Released",
-				label.NamespaceLabelKey, fixture.ns, label.InstanceLabelKey, fixture.clusterName))
+				label.NamespaceLabelKey, fixture.ns, label.InstanceLabelKey, getInstanceName(fixture.ns, fixture.clusterName)))
 			if result != "" {
 				return false, nil
 			}
