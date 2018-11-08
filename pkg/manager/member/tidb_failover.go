@@ -16,6 +16,7 @@ package member
 import (
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 )
 
@@ -35,6 +36,17 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		tc.Status.TiDB.FailureMembers = map[string]v1alpha1.TiDBFailureMember{}
 	}
 
+	for _, tidbMember := range tc.Status.TiDB.Members {
+		_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
+		if exist && tidbMember.Health {
+			delete(tc.Status.TiDB.FailureMembers, tidbMember.Name)
+		}
+	}
+
+	if len(tc.Status.TiDB.FailureMembers) >= int(tc.Spec.TiDB.MaxFailoverCount) {
+		glog.Errorf("the failure members count reached the limit:%d", tc.Spec.TiDB.MaxFailoverCount)
+		return nil
+	}
 	for _, tidbMember := range tc.Status.TiDB.Members {
 		_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
 		deadline := tidbMember.LastTransitionTime.Add(tf.tidbFailoverPeriod)
