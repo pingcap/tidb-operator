@@ -77,15 +77,15 @@ var fixtures = []clusterFixture{
 			testUpgrade,
 		},
 	},
-	{
-		ns:          "ns-2",
-		clusterName: "cluster-name-2",
-		cases: []testCase{
-			testCreate,
-			testUpgrade,
-			testScale,
-		},
-	},
+	// { // decrease a cluster due to CI machine resource limits
+	// 	ns:          "ns-2",
+	// 	clusterName: "cluster-name-2",
+	// 	cases: []testCase{
+	// 		testCreate,
+	// 		testUpgrade,
+	// 		testScale,
+	// 	},
+	// },
 }
 
 func clearOperator() error {
