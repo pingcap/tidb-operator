@@ -14,7 +14,6 @@
 package tidbcluster
 
 import (
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
@@ -22,11 +21,6 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
-)
-
-const (
-// unused
-// pdConnTimeout = 2 * time.Second
 )
 
 // ControlInterface implements the control logic for updating TidbClusters and their children StatefulSets.
@@ -90,15 +84,23 @@ func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster
 }
 
 func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	// ReclaimPolicyManager
+	err := tcc.reclaimPolicyManager.Sync(tc)
+	if err != nil {
+		return err
+	}
+
 	// PD
-	err := tcc.pdMemberManager.Sync(tc)
+	err = tcc.pdMemberManager.Sync(tc)
 	if err != nil {
 		return err
 	}
 
 	if !tcc.IsPDAvailable(tc) {
-		glog.Infof("tidbcluster: [%s/%s]'s pd cluster is not running.", tc.GetNamespace(), tc.GetName())
-		return nil
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
 	// TiKV
@@ -109,18 +111,11 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 
 	// Wait tikv status sync
 	if !tcc.IsTiKVAvailable(tc) {
-		glog.Infof("tidbcluster: [%s/%s]'s tikv cluster is not running.", tc.GetNamespace(), tc.GetName())
-		return nil
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
 
 	// TiDB
 	err = tcc.tidbMemberManager.Sync(tc)
-	if err != nil {
-		return err
-	}
-
-	// ReclaimPolicyManager
-	err = tcc.reclaimPolicyManager.Sync(tc)
 	if err != nil {
 		return err
 	}
@@ -151,7 +146,7 @@ func (tcc *defaultTidbClusterControl) IsPDAvailable(tc *v1alpha1.TidbCluster) bo
 		return false
 	}
 
-	if tc.Status.PD.StatefulSet.ReadyReplicas < lowerLimit {
+	if tc.Status.PD.StatefulSet == nil || tc.Status.PD.StatefulSet.ReadyReplicas < lowerLimit {
 		return false
 	}
 
@@ -175,7 +170,7 @@ func (tcc *defaultTidbClusterControl) IsTiKVAvailable(tc *v1alpha1.TidbCluster) 
 		return false
 	}
 
-	if tc.Status.TiKV.StatefulSet.ReadyReplicas < lowerLimit {
+	if tc.Status.TiKV.StatefulSet == nil || tc.Status.TiKV.StatefulSet.ReadyReplicas < lowerLimit {
 		return false
 	}
 

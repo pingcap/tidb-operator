@@ -606,3 +606,22 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 
 	return pdSet, nil
 }
+
+type FakePDMemberManager struct {
+	err error
+}
+
+func NewFakePDMemberManager() *FakePDMemberManager {
+	return &FakePDMemberManager{}
+}
+
+func (fpmm *FakePDMemberManager) SetSyncError(err error) {
+	fpmm.err = err
+}
+
+func (fpmm *FakePDMemberManager) Sync(_ *v1alpha1.TidbCluster) error {
+	if fpmm.err != nil {
+		return fpmm.err
+	}
+	return nil
+}
