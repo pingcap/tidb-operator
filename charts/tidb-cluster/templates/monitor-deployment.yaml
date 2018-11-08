@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: monitor
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
@@ -14,13 +14,13 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ template "chart.name" . }}
-      app.kubernetes.io/instance: {{ .Values.clusterName }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
       app.kubernetes.io/component: monitor
   template:
     metadata:
       labels:
         app.kubernetes.io/name: {{ template "chart.name" . }}
-        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: monitor
     spec:
   {{- if .Values.monitor.serviceAccount }}

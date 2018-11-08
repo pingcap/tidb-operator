@@ -137,7 +137,7 @@ From your Cloud Shell:
 
 	sudo apt-get install -y mysql-client &&
 	mysql -h 127.0.0.1 -u root -P 4000
-	
+
 If you like, you can check your connection to TiDB inside your MySQL terminal and see the latest TiDB version being deployed, using the command:
 
 	select tidb_version();

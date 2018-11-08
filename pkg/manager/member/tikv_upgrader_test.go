@@ -33,7 +33,8 @@ import (
 )
 
 const (
-	upgradeTcName = "upgrader"
+	upgradeTcName       = "upgrader"
+	upgradeInstanceName = "upgrader"
 )
 
 func TestTiKVUpgraderUpgrade(t *testing.T) {
@@ -101,7 +102,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 
 		err := upgrader.Upgrade(tc, oldSet, newSet)
 		test.errExpectFn(g, err)
-		l, err := label.New().Cluster(upgradeTcName).TiKV().Selector()
+		l, err := label.New().Instance(upgradeInstanceName).TiKV().Selector()
 		g.Expect(err).NotTo(HaveOccurred())
 		tikvPods, err = podInformer.Lister().Pods(tc.Namespace).List(l)
 		g.Expect(err).NotTo(HaveOccurred())
@@ -484,7 +485,7 @@ func newStatefulSetForTiKVUpgrader() *apps.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "upgrader-tikv",
 			Namespace: metav1.NamespaceDefault,
-			Labels:    label.New().Cluster(upgradeTcName).TiKV().Labels(),
+			Labels:    label.New().Instance(upgradeInstanceName).TiKV().Labels(),
 		},
 		Spec: apps.StatefulSetSpec{
 			Replicas: int32Pointer(3),
@@ -510,7 +511,7 @@ func oldStatefulSetForTiKVUpgrader() *apps.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "upgrader-tikv",
 			Namespace: metav1.NamespaceDefault,
-			Labels:    label.New().Cluster(upgradeTcName).TiKV().Labels(),
+			Labels:    label.New().Instance(upgradeInstanceName).TiKV().Labels(),
 		},
 		Spec: apps.StatefulSetSpec{
 			Replicas: int32Pointer(3),
@@ -548,7 +549,7 @@ func newTidbClusterForTiKVUpgrader() *v1alpha1.TidbCluster {
 			Name:      upgradeTcName,
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID(upgradeTcName),
-			Labels:    label.New().Cluster(upgradeTcName).TiKV().Labels(),
+			Labels:    label.New().Instance(upgradeInstanceName).TiKV().Labels(),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: v1alpha1.PDSpec{
@@ -605,7 +606,7 @@ func newTidbClusterForTiKVUpgrader() *v1alpha1.TidbCluster {
 func getTiKVPods(set *apps.StatefulSet) []*corev1.Pod {
 	pods := []*corev1.Pod{}
 	for i := 0; i < int(set.Status.Replicas); i++ {
-		l := label.New().Cluster(upgradeTcName).TiKV().Labels()
+		l := label.New().Instance(upgradeInstanceName).TiKV().Labels()
 		if i+1 <= int(set.Status.CurrentReplicas) {
 			l[apps.ControllerRevisionHashLabelKey] = set.Status.CurrentRevision
 		} else {

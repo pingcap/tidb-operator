@@ -135,6 +135,7 @@ func newTidbClusterForMeta() *v1alpha1.TidbCluster {
 			Name:      controller.TestClusterName,
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
+			Labels:    label.New().Instance(controller.TestClusterName),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PVReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
