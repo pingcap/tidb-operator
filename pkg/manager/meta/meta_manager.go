@@ -87,6 +87,9 @@ func (pmm *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 		if err != nil {
 			return err
 		}
+		if pvc.Spec.VolumeName == "" {
+			continue
+		}
 		// update meta info for pv
 		pv, err := pmm.pvLister.Get(pvc.Spec.VolumeName)
 		if err != nil {
