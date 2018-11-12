@@ -49,9 +49,6 @@ e2e-docker: e2e-build
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" images/tidb-operator-e2e
 
 e2e-build:
-	# Ginkgo doesnt' work with retool for Go 1.11
-	# we have to install ginkgo with the following command manually
-	# `GO111MODULE=on go get github.com/dnephin/govet@v1.6.0`
 	$(GOENV) ginkgo build tests/e2e
 
 test:
@@ -63,6 +60,10 @@ check-all: lint check-static check-shadow check-gosec megacheck errcheck
 check-setup:
 	@which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
 	@GO111MODULE=off retool sync
+	# ginkgo and govet doesn't work with retool for Go 1.11
+	# so install separately
+	@GO111MODULE=on go get github.com/dnephin/govet@4a96d43e39d340b63daa8bc5576985aa599885f6
+	@GO111MODULE=on go get github.com/onsi/ginkgo@v1.6.0
 
 check: check-setup lint check-static
 
@@ -70,9 +71,6 @@ check-static:
 	@ # Not running vet and fmt through metalinter becauase it ends up looking at vendor
 	@echo "gofmt checking"
 	gofmt -s -l -w $(FILES) 2>&1| $(FAIL_ON_STDOUT)
-	# govet doesn't work with retool for Go 1.11
-	# we have to install govet with the following command manually
-	# `GO111MODULE=on go get github.com/dnephin/govet@4a96d43e39d340b63daa8bc5576985aa599885f6`
 	@echo "govet check"
 	govet -all $$($(PACKAGE_DIRECTORIES)) 2>&1
 	@echo "mispell and ineffassign checking"
@@ -108,4 +106,4 @@ check-gosec:
 	@echo "security checking"
 	CGO_ENABLED=0 retool do gosec $$($(PACKAGE_DIRECTORIES))
 
-.PHONY: check check-all build e2e-build
+.PHONY: check check-setup check-all build e2e-build
