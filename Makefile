@@ -62,8 +62,8 @@ check-setup:
 	@GO111MODULE=off retool sync
 	# ginkgo and govet doesn't work with retool for Go 1.11
 	# so install separately
-	@GO111MODULE=on go get github.com/dnephin/govet@4a96d43e39d340b63daa8bc5576985aa599885f6
-	@GO111MODULE=on go get github.com/onsi/ginkgo@v1.6.0
+	@GO111MODULE=on CGO_ENABLED=0 go get github.com/dnephin/govet@4a96d43e39d340b63daa8bc5576985aa599885f6
+	@GO111MODULE=on CGO_ENABLED=0 go get github.com/onsi/ginkgo@v1.6.0
 
 check: check-setup lint check-static
 
