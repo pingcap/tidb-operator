@@ -51,6 +51,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 					GITHASH = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
 					sh """
 					export GOPATH=${WORKSPACE}/go:$GOPATH
+					export PATH=${GOPATH}/bin
 					make check
 					make test
 					make
