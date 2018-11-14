@@ -1,6 +1,13 @@
+GOVER_MAJOR := $(shell go version | sed -E -e "s/.*go([0-9]+)[.]([0-9]+).*/\1/")
+GOVER_MINOR := $(shell go version | sed -E -e "s/.*go([0-9]+)[.]([0-9]+).*/\2/")
+GO111 := $(shell [ $(GOVER_MAJOR) -gt 1 ] || [ $(GOVER_MAJOR) -eq 1 ] && [ $(GOVER_MINOR) -ge 11 ]; echo $$?)
+ifeq ($(GO111), 1)
+$(error Please upgrade your Go compiler to 1.11 or higher version)
+endif
+
 GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=linux GOARCH=amd64
-GO     := $(GOENV) go
-GOTEST := CGO_ENABLED=0 go test -v -cover
+GO     := $(GOENV) GO111MODULE=on go build -mod=vendor
+GOTEST := CGO_ENABLED=0 GO111MODULE=on go test -v -mod=vendor -cover
 
 LDFLAGS += -X "github.com/pingcap/tidb-operator/version.BuildTS=$(shell date -u '+%Y-%m-%d %I:%M:%S')"
 LDFLAGS += -X "github.com/pingcap/tidb-operator/version.GitSHA=$(shell git rev-parse HEAD)"
@@ -24,10 +31,10 @@ docker: build
 build: controller-manager scheduler
 
 controller-manager:
-	$(GO) build -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
+	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
 
 scheduler:
-	$(GO) build -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-scheduler cmd/scheduler/main.go
+	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-scheduler cmd/scheduler/main.go
 
 e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest"
@@ -52,7 +59,11 @@ check-all: lint check-static check-shadow check-gosec megacheck errcheck
 
 check-setup:
 	@which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
-	@retool sync
+	@GO111MODULE=off retool sync
+	# ginkgo and govet doesn't work with retool for Go 1.11
+	# so install separately
+	@GO111MODULE=on CGO_ENABLED=0 go get github.com/dnephin/govet@4a96d43e39d340b63daa8bc5576985aa599885f6
+	@GO111MODULE=on CGO_ENABLED=0 go get github.com/onsi/ginkgo@v1.6.0
 
 check: check-setup lint check-static
 
@@ -60,8 +71,8 @@ check-static:
 	@ # Not running vet and fmt through metalinter becauase it ends up looking at vendor
 	@echo "gofmt checking"
 	gofmt -s -l -w $(FILES) 2>&1| $(FAIL_ON_STDOUT)
-	@echo "govet checking"
-	retool do govet -all $$($(PACKAGE_DIRECTORIES)) 2>&1
+	@echo "govet check"
+	govet -all $$($(PACKAGE_DIRECTORIES)) 2>&1
 	@echo "mispell and ineffassign checking"
 	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all \
 	  --enable misspell \
@@ -85,7 +96,7 @@ errcheck:
 # TODO: shadow check fails at the moment
 check-shadow:
 	@echo "govet shadow checking"
-	retool do govet -shadow $$($(PACKAGE_DIRECTORIES))
+	govet -shadow $$($(PACKAGE_DIRECTORIES))
 
 lint:
 	@echo "linting"
@@ -95,4 +106,4 @@ check-gosec:
 	@echo "security checking"
 	CGO_ENABLED=0 retool do gosec $$($(PACKAGE_DIRECTORIES))
 
-.PHONY: check check-all build e2e-build
+.PHONY: check check-setup check-all build e2e-build
