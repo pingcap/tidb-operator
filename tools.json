@@ -17,10 +17,6 @@
       "Commit": "88497007e8588ea5b6baee991f74a1607e809487"
     },
     {
-      "Repository": "github.com/dnephin/govet",
-      "Commit": "4a96d43e39d340b63daa8bc5576985aa599885f6"
-    },
-    {
       "Repository": "github.com/kisielk/errcheck",
       "Commit": "55d8f507faff4d6eddd0c41a3e713e2567fca4e5"
     },

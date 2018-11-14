@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -22,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -29,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/cache"
 )
 
 func TestPDMemberManagerSyncCreate(t *testing.T) {
@@ -54,7 +57,7 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			test.prepare(tc)
 		}
 
-		pmm, fakeSetControl, fakeSvcControl, fakePDControl := newFakePDMemberManager()
+		pmm, fakeSetControl, fakeSvcControl, fakePDControl, _, _, _ := newFakePDMemberManager()
 		pdClient := controller.NewFakePDClient()
 		fakePDControl.SetPDClient(tc, pdClient)
 
@@ -191,7 +194,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		ns := tc.Namespace
 		tcName := tc.Name
 
-		pmm, fakeSetControl, fakeSvcControl, fakePDControl := newFakePDMemberManager()
+		pmm, fakeSetControl, fakeSvcControl, fakePDControl, _, _, _ := newFakePDMemberManager()
 		pdClient := controller.NewFakePDClient()
 		fakePDControl.SetPDClient(tc, pdClient)
 		if test.errWhenGetPDHealth {
@@ -387,76 +390,232 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 	}
 }
 
-func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetControl, *controller.FakeServiceControl, *controller.FakePDControl) {
-	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
-	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
-	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
-	podControl := controller.NewFakePodControl(podInformer)
-	pdControl := controller.NewFakePDControl()
-	pdScaler := NewFakePDScaler()
-	autoFailover := true
-	pdFailover := NewFakePDFailover()
-	pdUpgrader := NewFakePDUpgrader()
+func TestPDMemberManagerInitFirstPDMember(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name            string
+		hasPod          bool
+		hasPVC          bool
+		updatePod       func(*corev1.Pod)
+		updatePodFailed bool
+		errExpectFn     func(*GomegaWithT, error)
+		podExpectFn     func(*GomegaWithT, *corev1.Pod)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		pmm, _, _, _, podIndexer, pvcIndexer, podControl := newFakePDMemberManager()
+		tc := newTidbClusterForPD()
 
-	return &pdMemberManager{
-		pdControl,
-		setControl,
-		svcControl,
-		setInformer.Lister(),
-		svcInformer.Lister(),
-		podInformer.Lister(),
-		podControl,
-		pvcInformer.Lister(),
-		pdScaler,
-		pdUpgrader,
-		autoFailover,
-		pdFailover,
-	}, setControl, svcControl, pdControl
+		if test.hasPod {
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0),
+					Namespace:   metav1.NamespaceDefault,
+					Annotations: map[string]string{},
+				},
+			}
+			if test.updatePod != nil {
+				test.updatePod(pod)
+			}
+			podIndexer.Add(pod)
+		}
+		if test.hasPVC {
+			pvc := &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.GetName()), 1),
+					Namespace: metav1.NamespaceDefault,
+				},
+			}
+			pvcIndexer.Add(pvc)
+		}
+		if test.updatePodFailed {
+			podControl.SetUpdatePodError(fmt.Errorf("udpate pod failed"), 0)
+		}
+		pod, err := pmm.initFirstPDMember(tc)
+		if test.errExpectFn != nil {
+			test.errExpectFn(g, err)
+		}
+		if test.podExpectFn != nil {
+			test.podExpectFn(g, pod)
+		}
+	}
+	tests := []testcase{
+		{
+			name:            "don't have pod with oridinal 0",
+			hasPod:          false,
+			hasPVC:          false,
+			updatePod:       nil,
+			updatePodFailed: false,
+			errExpectFn:     errExpectNil,
+			podExpectFn: func(g *GomegaWithT, pod *corev1.Pod) {
+				g.Expect(pod).To(BeNil())
+			},
+		},
+		{
+			name:   "pod with oridinal 0 has bootstrapping",
+			hasPod: true,
+			hasPVC: false,
+			updatePod: func(pod *corev1.Pod) {
+				pod.Annotations[label.Bootstrapping] = "true"
+			},
+			updatePodFailed: false,
+			errExpectFn:     errExpectNil,
+			podExpectFn: func(g *GomegaWithT, pod *corev1.Pod) {
+				g.Expect(pod.Annotations[label.Bootstrapping]).To(Equal("true"))
+			},
+		},
+		{
+			name:            "pod with oridinal 0 has no bootstrapping, has pvc, update pod success",
+			hasPod:          true,
+			hasPVC:          true,
+			updatePod:       nil,
+			updatePodFailed: false,
+			errExpectFn:     errExpectNil,
+			podExpectFn: func(g *GomegaWithT, pod *corev1.Pod) {
+				g.Expect(pod.Annotations[label.Bootstrapping]).To(Equal("false"))
+				g.Expect(pod.Annotations[label.Replicas]).To(Equal("3"))
+			},
+		},
+		{
+			name:            "pod with oridinal 0 has no bootstrapping, has pvc, update pod failed",
+			hasPod:          true,
+			hasPVC:          true,
+			updatePod:       nil,
+			updatePodFailed: true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "udpate pod failed")).To(Equal(true))
+			},
+			podExpectFn: nil,
+		},
+		{
+			name:            "pod with oridinal 0 has no bootstrapping, has no pvc, update pod success",
+			hasPod:          true,
+			hasPVC:          false,
+			updatePod:       nil,
+			updatePodFailed: false,
+			errExpectFn:     errExpectNil,
+			podExpectFn: func(g *GomegaWithT, pod *corev1.Pod) {
+				g.Expect(pod.Annotations[label.Bootstrapping]).To(Equal("true"))
+				g.Expect(pod.Annotations[label.Replicas]).To(Equal("3"))
+			},
+		},
+		{
+			name:            "pod with oridinal 0 has no bootstrapping, has no pvc, update pod failed",
+			hasPod:          true,
+			hasPVC:          false,
+			updatePod:       nil,
+			updatePodFailed: true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "udpate pod failed")).To(Equal(true))
+			},
+			podExpectFn: nil,
+		},
+	}
+
+	for i := range tests {
+		t.Logf(tests[i].name)
+		testFn(&tests[i], t)
+	}
 }
 
-func newTidbClusterForPD() *v1alpha1.TidbCluster {
-	return &v1alpha1.TidbCluster{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "TidbCluster",
-			APIVersion: "pingcap.com/v1alpha1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: corev1.NamespaceDefault,
-			UID:       types.UID("test"),
-		},
-		Spec: v1alpha1.TidbClusterSpec{
-			PD: v1alpha1.PDSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
-					Image: "pd-test-image",
-					Requests: &v1alpha1.ResourceRequirement{
-						CPU:     "1",
-						Memory:  "2Gi",
-						Storage: "100Gi",
-					},
-				},
-				Replicas:         3,
-				StorageClassName: "my-storage-class",
+func TestPDMemberManagerPdStatefulSetIsUpgrading(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name            string
+		setUpdate       func(*apps.StatefulSet)
+		hasPod          bool
+		updatePod       func(*corev1.Pod)
+		errExpectFn     func(*GomegaWithT, error)
+		expectUpgrading bool
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		pmm, _, _, _, podIndexer, _, _ := newFakePDMemberManager()
+		tc := newTidbClusterForPD()
+		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{
+			UpdateRevision: "v3",
+		}
+
+		set := &apps.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: metav1.NamespaceDefault,
 			},
-			TiKV: v1alpha1.TiKVSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
-					Image: "tikv-test-image",
-					Requests: &v1alpha1.ResourceRequirement{
-						CPU:     "1",
-						Memory:  "2Gi",
-						Storage: "100Gi",
-					},
+		}
+		if test.setUpdate != nil {
+			test.setUpdate(set)
+		}
+
+		if test.hasPod {
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0),
+					Namespace:   metav1.NamespaceDefault,
+					Annotations: map[string]string{},
+					Labels:      label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
 				},
-				Replicas:         3,
-				StorageClassName: "my-storage-class",
+			}
+			if test.updatePod != nil {
+				test.updatePod(pod)
+			}
+			podIndexer.Add(pod)
+		}
+		b, err := pmm.pdStatefulSetIsUpgrading(set, tc)
+		if test.errExpectFn != nil {
+			test.errExpectFn(g, err)
+		}
+		if test.expectUpgrading {
+			g.Expect(b).To(BeTrue())
+		} else {
+			g.Expect(b).NotTo(BeTrue())
+		}
+	}
+	tests := []testcase{
+		{
+			name: "stateful set is upgrading",
+			setUpdate: func(set *apps.StatefulSet) {
+				set.Status.CurrentRevision = "v1"
+				set.Status.UpdateRevision = "v2"
+				set.Status.ObservedGeneration = func() *int64 { var i int64; i = 1000; return &i }()
 			},
+			hasPod:          false,
+			updatePod:       nil,
+			errExpectFn:     nil,
+			expectUpgrading: true,
 		},
+		{
+			name:            "pod don't have revision hash",
+			setUpdate:       nil,
+			hasPod:          true,
+			updatePod:       nil,
+			errExpectFn:     nil,
+			expectUpgrading: false,
+		},
+		{
+			name:      "pod have revision hash, not equal statefulset's",
+			setUpdate: nil,
+			hasPod:    true,
+			updatePod: func(pod *corev1.Pod) {
+				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v2"
+			},
+			errExpectFn:     nil,
+			expectUpgrading: true,
+		},
+		{
+			name:      "pod have revision hash, equal statefulset's",
+			setUpdate: nil,
+			hasPod:    true,
+			updatePod: func(pod *corev1.Pod) {
+				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v3"
+			},
+			errExpectFn:     nil,
+			expectUpgrading: false,
+		},
+	}
+
+	for i := range tests {
+		t.Logf(tests[i].name)
+		testFn(&tests[i], t)
 	}
 }
 
@@ -477,7 +636,7 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 		ns := tc.Namespace
 		tcName := tc.Name
 
-		pmm, fakeSetControl, _, fakePDControl := newFakePDMemberManager()
+		pmm, fakeSetControl, _, fakePDControl, _, _, _ := newFakePDMemberManager()
 		pdClient := controller.NewFakePDClient()
 		fakePDControl.SetPDClient(tc, pdClient)
 
@@ -551,6 +710,79 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 		t.Logf("begin: %s", tests[i].name)
 		testFn(&tests[i], t)
 		t.Logf("end: %s", tests[i].name)
+	}
+}
+
+func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetControl, *controller.FakeServiceControl, *controller.FakePDControl, cache.Indexer, cache.Indexer, *controller.FakePodControl) {
+	cli := fake.NewSimpleClientset()
+	kubeCli := kubefake.NewSimpleClientset()
+	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
+	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
+	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
+	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
+	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
+	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
+	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
+	podControl := controller.NewFakePodControl(podInformer)
+	pdControl := controller.NewFakePDControl()
+	pdScaler := NewFakePDScaler()
+	autoFailover := true
+	pdFailover := NewFakePDFailover()
+	pdUpgrader := NewFakePDUpgrader()
+
+	return &pdMemberManager{
+		pdControl,
+		setControl,
+		svcControl,
+		setInformer.Lister(),
+		svcInformer.Lister(),
+		podInformer.Lister(),
+		podControl,
+		pvcInformer.Lister(),
+		pdScaler,
+		pdUpgrader,
+		autoFailover,
+		pdFailover,
+	}, setControl, svcControl, pdControl, podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), podControl
+}
+
+func newTidbClusterForPD() *v1alpha1.TidbCluster {
+	return &v1alpha1.TidbCluster{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "TidbCluster",
+			APIVersion: "pingcap.com/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: corev1.NamespaceDefault,
+			UID:       types.UID("test"),
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			PD: v1alpha1.PDSpec{
+				ContainerSpec: v1alpha1.ContainerSpec{
+					Image: "pd-test-image",
+					Requests: &v1alpha1.ResourceRequirement{
+						CPU:     "1",
+						Memory:  "2Gi",
+						Storage: "100Gi",
+					},
+				},
+				Replicas:         3,
+				StorageClassName: "my-storage-class",
+			},
+			TiKV: v1alpha1.TiKVSpec{
+				ContainerSpec: v1alpha1.ContainerSpec{
+					Image: "tikv-test-image",
+					Requests: &v1alpha1.ResourceRequirement{
+						CPU:     "1",
+						Memory:  "2Gi",
+						Storage: "100Gi",
+					},
+				},
+				Replicas:         3,
+				StorageClassName: "my-storage-class",
+			},
+		},
 	}
 }
 

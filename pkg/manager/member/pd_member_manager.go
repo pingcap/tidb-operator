@@ -206,7 +206,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
 	}
 
-	if err := pmm.initFirstPDMember(tc); err != nil {
+	if _, err := pmm.initFirstPDMember(tc); err != nil {
 		return err
 	}
 
@@ -321,39 +321,37 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	return nil
 }
 
-// TODO unit tests
-func (pmm *pdMemberManager) initFirstPDMember(tc *v1alpha1.TidbCluster) error {
+func (pmm *pdMemberManager) initFirstPDMember(tc *v1alpha1.TidbCluster) (*corev1.Pod, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	podName := ordinalPodName(v1alpha1.PDMemberType, tcName, 0)
-	firstPod, err := pmm.podLister.Pods(ns).Get(podName)
+
+	firstPodName := ordinalPodName(v1alpha1.PDMemberType, tcName, 0)
+	firstPod, err := pmm.podLister.Pods(ns).Get(firstPodName)
 	if err != nil && !errors.IsNotFound(err) {
-		return err
+		return nil, err
 	}
-	if firstPod != nil {
-		firstPodCopy := firstPod.DeepCopy()
-
-		if firstPodCopy.Annotations[label.Bootstrapping] == "" {
-			nextPVCName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), 1)
-			_, err := pmm.pvcLister.PersistentVolumeClaims(ns).Get(nextPVCName)
-			if err != nil && !errors.IsNotFound(err) {
-				return err
-			}
-			if errors.IsNotFound(err) {
-				firstPodCopy.Annotations[label.Bootstrapping] = "true"
-			} else {
-				firstPodCopy.Annotations[label.Bootstrapping] = "false"
-			}
-			firstPodCopy.Annotations[label.Replicas] = fmt.Sprintf("%d", tc.Spec.PD.Replicas)
-
-			_, err = pmm.podControl.UpdatePod(tc, firstPodCopy)
-			if err != nil {
-				return err
-			}
-		}
+	if firstPod == nil {
+		return nil, nil
 	}
 
-	return nil
+	firstPodCopy := firstPod.DeepCopy()
+	if firstPodCopy.Annotations[label.Bootstrapping] != "" {
+		return firstPodCopy, nil
+	}
+
+	nextPVCName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), 1)
+	_, err = pmm.pvcLister.PersistentVolumeClaims(ns).Get(nextPVCName)
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, err
+	}
+	if errors.IsNotFound(err) {
+		firstPodCopy.Annotations[label.Bootstrapping] = "true"
+	} else {
+		firstPodCopy.Annotations[label.Bootstrapping] = "false"
+	}
+	firstPodCopy.Annotations[label.Replicas] = fmt.Sprintf("%d", tc.Spec.PD.Replicas)
+
+	return pmm.podControl.UpdatePod(tc, firstPodCopy)
 }
 
 func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
