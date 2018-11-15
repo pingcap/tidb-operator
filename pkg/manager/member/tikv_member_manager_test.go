@@ -345,7 +345,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 	}
 }
 
-func TestPDMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
+func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name             string
@@ -507,7 +507,7 @@ func TestPDMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 	}
 }
 
-func TestPDMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
+func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name             string
@@ -818,7 +818,7 @@ func TestPDMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 	}
 }
 
-func TestPDMemberManagerSyncTidbClusterStatus(t *testing.T) {
+func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                      string
