@@ -53,19 +53,18 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	tidbUpgrader Upgrader,
 	autoFailover bool,
 	tidbFailover Failover) manager.Manager {
-	tmm := &tidbMemberManager{
-		setControl:   setControl,
-		svcControl:   svcControl,
-		tidbControl:  tidbControl,
-		setLister:    setLister,
-		svcLister:    svcLister,
-		podLister:    podLister,
-		tidbUpgrader: tidbUpgrader,
-		autoFailover: autoFailover,
-		tidbFailover: tidbFailover,
+	return &tidbMemberManager{
+		setControl:                   setControl,
+		svcControl:                   svcControl,
+		tidbControl:                  tidbControl,
+		setLister:                    setLister,
+		svcLister:                    svcLister,
+		podLister:                    podLister,
+		tidbUpgrader:                 tidbUpgrader,
+		autoFailover:                 autoFailover,
+		tidbFailover:                 tidbFailover,
+		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
 	}
-	tmm.tidbStatefulSetIsUpgradingFn = tidbStatefulSetIsUpgrading
-	return tmm
 }
 
 func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
