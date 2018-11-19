@@ -43,7 +43,7 @@ lower-case-table-names = 2
 
 [log]
 # Log level: debug, info, warn, error, fatal.
-level = "{{ .Values.tidb.logLevel }}"
+level = "{{ .Values.tidb.logLevel | default `info` }}"
 
 # Log format, one of json, text, console.
 format = "text"

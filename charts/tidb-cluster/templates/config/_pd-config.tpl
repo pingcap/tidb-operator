@@ -26,7 +26,7 @@ cert-path = ""
 key-path = ""
 
 [log]
-level = "{{ .Values.pd.logLevel }}"
+level = "{{ .Values.pd.logLevel | default `info` }}"
 
 # log format, one of json, text, console
 #format = "text"
