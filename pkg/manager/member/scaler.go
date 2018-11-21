@@ -15,15 +15,12 @@ package member
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/util/wait"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
@@ -63,19 +60,6 @@ func (gs *generalScaler) deleteAllDeferDeletingPVC(tc *v1alpha1.TidbCluster,
 		}
 
 		err = gs.pvcControl.DeletePVC(tc, pvc)
-		if err != nil {
-			return err
-		}
-
-		err = wait.Poll(1*time.Second, 30*time.Second, func() (done bool, err error) {
-			_, err = gs.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
-			if errors.IsNotFound(err) {
-				return true, nil
-			}
-
-			glog.V(4).Infof("waiting for PVC: %s/%s deleting", ns, pvcName)
-			return false, nil
-		})
 		if err != nil {
 			return err
 		}
