@@ -34,6 +34,7 @@ func TestRequeueError(t *testing.T) {
 	_, ok := err.(error)
 	g.Expect(ok).To(BeTrue())
 	g.Expect(err.Error()).To(Equal("i am a requeue error"))
+	g.Expect(IsRequeueError(fmt.Errorf("i am not a requeue error"))).To(BeFalse())
 }
 
 func TestGetOwnerRef(t *testing.T) {
