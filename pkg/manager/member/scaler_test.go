@@ -58,6 +58,25 @@ func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 	}
 	tests := []testcase{
 		{
+			name:       "normal",
+			memberType: v1alpha1.PDMemberType,
+			from:       4,
+			to:         5,
+			pvc: &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 4),
+					Namespace: corev1.NamespaceDefault,
+					Annotations: map[string]string{
+						label.AnnPVCDeferDeleting: "xxx",
+					},
+				},
+			},
+			deletePVCErr: false,
+			expectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+		},
+		{
 			name:         "from 4 to 5, but pvc is not found",
 			memberType:   v1alpha1.PDMemberType,
 			from:         4,
