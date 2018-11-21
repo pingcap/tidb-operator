@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	timeout           = 2 * time.Second
+	timeout           = 5 * time.Second
 	schedulerExisted  = "scheduler existed"
 	schedulerNotFound = "scheduler not found"
 )
