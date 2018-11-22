@@ -21,7 +21,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 )
 
@@ -33,14 +32,6 @@ const (
 	// ErrImagePull is the pod state of image pull failed
 	ErrImagePull = "ErrImagePull"
 )
-
-func timezoneMountVolume() (corev1.VolumeMount, corev1.Volume) {
-	return corev1.VolumeMount{Name: "timezone", MountPath: "/etc/localtime", ReadOnly: true},
-		corev1.Volume{
-			Name:         "timezone",
-			VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/etc/localtime"}},
-		}
-}
 
 func annotationsMountVolume() (corev1.VolumeMount, corev1.Volume) {
 	m := corev1.VolumeMount{Name: "annotations", ReadOnly: true, MountPath: "/etc/podinfo"}

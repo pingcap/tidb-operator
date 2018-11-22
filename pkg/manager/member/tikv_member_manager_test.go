@@ -15,18 +15,26 @@ package member
 
 import (
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/kubernetes/pkg/kubelet/apis"
 )
 
 func TestTiKVMemberManagerSyncCreate(t *testing.T) {
@@ -53,7 +61,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			test.prepare(tc)
 		}
 
-		tkmm, fakeSetControl, fakeSvcControl, pdClient := newFakeTiKVMemberManager(tc)
+		tkmm, fakeSetControl, fakeSvcControl, pdClient, _, _ := newFakeTiKVMemberManager(tc)
 
 		if test.errWhenGetStores {
 			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
@@ -182,7 +190,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		ns := tc.Namespace
 		tcName := tc.Name
 
-		tkmm, fakeSetControl, fakeSvcControl, pdClient := newFakeTiKVMemberManager(tc)
+		tkmm, fakeSetControl, fakeSvcControl, pdClient, _, _ := newFakeTiKVMemberManager(tc)
 		if test.errWhenGetStores {
 			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
 				return nil, fmt.Errorf("failed to get stores from pd cluster")
@@ -337,9 +345,1017 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 	}
 }
 
+func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name             string
+		setUpdate        func(*apps.StatefulSet)
+		hasPod           bool
+		updatePod        func(*corev1.Pod)
+		errWhenGetLeader bool
+		hasLeader        bool
+		errExpectFn      func(*GomegaWithT, error)
+		expectUpgrading  bool
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		tc := newTidbClusterForPD()
+		pmm, _, _, pdClient, podIndexer, _ := newFakeTiKVMemberManager(tc)
+		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{
+			UpdateRevision: "v3",
+		}
+
+		set := &apps.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: metav1.NamespaceDefault,
+			},
+		}
+		if test.setUpdate != nil {
+			test.setUpdate(set)
+		}
+
+		if test.hasPod {
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 0),
+					Namespace:   metav1.NamespaceDefault,
+					Annotations: map[string]string{},
+					Labels:      label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).TiKV().Labels(),
+				},
+			}
+			if test.updatePod != nil {
+				test.updatePod(pod)
+			}
+			podIndexer.Add(pod)
+		}
+		if test.errWhenGetLeader {
+			pdClient.AddReaction(controller.GetEvictLeaderSchedulersActionType, func(action *controller.Action) (interface{}, error) {
+				return []string{}, fmt.Errorf("failed to get leader")
+			})
+		} else if test.hasLeader {
+			pdClient.AddReaction(controller.GetEvictLeaderSchedulersActionType, func(action *controller.Action) (interface{}, error) {
+				return []string{"leader"}, nil
+			})
+		} else {
+			pdClient.AddReaction(controller.GetEvictLeaderSchedulersActionType, func(action *controller.Action) (interface{}, error) {
+				return []string{}, nil
+			})
+		}
+		b, err := pmm.tikvStatefulSetIsUpgradingFn(pmm.podLister, pmm.pdControl, set, tc)
+		if test.errExpectFn != nil {
+			test.errExpectFn(g, err)
+		}
+		if test.expectUpgrading {
+			g.Expect(b).To(BeTrue())
+		} else {
+			g.Expect(b).NotTo(BeTrue())
+		}
+	}
+	tests := []testcase{
+		{
+			name: "stateful set is upgrading",
+			setUpdate: func(set *apps.StatefulSet) {
+				set.Status.CurrentRevision = "v1"
+				set.Status.UpdateRevision = "v2"
+				set.Status.ObservedGeneration = func() *int64 { var i int64; i = 1000; return &i }()
+			},
+			hasPod:           false,
+			updatePod:        nil,
+			errWhenGetLeader: false,
+			hasLeader:        false,
+			errExpectFn:      errExpectNil,
+			expectUpgrading:  true,
+		},
+		{
+			name:             "pod don't have revision hash",
+			setUpdate:        nil,
+			hasPod:           true,
+			updatePod:        nil,
+			errWhenGetLeader: false,
+			hasLeader:        false,
+			errExpectFn:      errExpectNil,
+			expectUpgrading:  false,
+		},
+		{
+			name:      "pod have revision hash, not equal statefulset's",
+			setUpdate: nil,
+			hasPod:    true,
+			updatePod: func(pod *corev1.Pod) {
+				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v2"
+			},
+			errWhenGetLeader: false,
+			hasLeader:        false,
+			errExpectFn:      errExpectNil,
+			expectUpgrading:  true,
+		},
+		{
+			name:      "pod have revision hash, equal statefulset's",
+			setUpdate: nil,
+			hasPod:    true,
+			updatePod: func(pod *corev1.Pod) {
+				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v3"
+			},
+			errWhenGetLeader: false,
+			hasLeader:        false,
+			errExpectFn:      errExpectNil,
+			expectUpgrading:  false,
+		},
+		{
+			name:      "error when get leader schedulers",
+			setUpdate: nil,
+			hasPod:    true,
+			updatePod: func(pod *corev1.Pod) {
+				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v3"
+			},
+			errWhenGetLeader: true,
+			hasLeader:        false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "failed to get leader")).To(Equal(true))
+			},
+			expectUpgrading: false,
+		},
+		{
+			name:      "has no leader",
+			setUpdate: nil,
+			hasPod:    true,
+			updatePod: func(pod *corev1.Pod) {
+				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v3"
+			},
+			errWhenGetLeader: false,
+			hasLeader:        false,
+			errExpectFn:      errExpectNil,
+			expectUpgrading:  false,
+		},
+		{
+			name:      "has leader",
+			setUpdate: nil,
+			hasPod:    true,
+			updatePod: func(pod *corev1.Pod) {
+				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v3"
+			},
+			errWhenGetLeader: false,
+			hasLeader:        true,
+			errExpectFn:      errExpectNil,
+			expectUpgrading:  true,
+		},
+	}
+
+	for i := range tests {
+		t.Logf(tests[i].name)
+		testFn(&tests[i], t)
+	}
+}
+
+func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name             string
+		errWhenGetStores bool
+		hasNode          bool
+		hasPod           bool
+		storeInfo        *controller.StoresInfo
+		errExpectFn      func(*GomegaWithT, error)
+		setCount         int
+		labelSetFailed   bool
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		tc := newTidbClusterForPD()
+		pmm, _, _, pdClient, podIndexer, nodeIndexer := newFakeTiKVMemberManager(tc)
+
+		if test.errWhenGetStores {
+			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
+				return nil, fmt.Errorf("failed to get stores")
+			})
+		}
+		if test.storeInfo != nil {
+			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
+				return test.storeInfo, nil
+			})
+		}
+		if test.hasNode {
+			node := &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node-1",
+					Labels: map[string]string{
+						"region":           "region",
+						"zone":             "zone",
+						"rack":             "rack",
+						apis.LabelHostname: "host",
+					},
+				},
+			}
+			nodeIndexer.Add(node)
+		}
+		if test.hasPod {
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod-1",
+					Namespace: metav1.NamespaceDefault,
+				},
+				Spec: corev1.PodSpec{
+					NodeName: "node-1",
+				},
+			}
+			podIndexer.Add(pod)
+		}
+		if test.labelSetFailed {
+			pdClient.AddReaction(controller.SetStoreLabelsActionType, func(action *controller.Action) (interface{}, error) {
+				return false, fmt.Errorf("label set failed")
+			})
+		} else {
+			pdClient.AddReaction(controller.SetStoreLabelsActionType, func(action *controller.Action) (interface{}, error) {
+				return true, nil
+			})
+		}
+
+		setCount, err := pmm.setStoreLabelsForTiKV(tc)
+		if test.errExpectFn != nil {
+			test.errExpectFn(g, err)
+		}
+		g.Expect(setCount).To(Equal(test.setCount))
+	}
+	tests := []testcase{
+		{
+			name:             "get stores return error",
+			errWhenGetStores: true,
+			storeInfo:        nil,
+			hasNode:          true,
+			hasPod:           true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "failed to get stores")).To(BeTrue())
+			},
+			setCount:       0,
+			labelSetFailed: false,
+		},
+		{
+			name:             "stores is empty",
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{},
+			},
+			hasNode: true,
+			hasPod:  true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			setCount:       0,
+			labelSetFailed: false,
+		},
+		{
+			name:             "status is nil",
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Status: nil,
+					},
+				},
+			},
+			hasNode: true,
+			hasPod:  true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			setCount:       0,
+			labelSetFailed: false,
+		},
+		{
+			name:             "store is nil",
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: nil,
+					},
+				},
+			},
+			hasNode: true,
+			hasPod:  true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			setCount:       0,
+			labelSetFailed: false,
+		},
+		{
+			name:             "don't have pod",
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: &controller.MetaStore{
+							Store: &metapb.Store{
+								Id:      333,
+								Address: "pod-1.ns-1",
+							},
+							StateName: "Up",
+						},
+						Status: &controller.StoreStatus{
+							LeaderCount:     1,
+							LastHeartbeatTS: time.Now(),
+						},
+					},
+				},
+			},
+			hasNode: true,
+			hasPod:  false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "not found")).To(BeTrue())
+			},
+			setCount:       0,
+			labelSetFailed: false,
+		},
+		{
+			name:             "don't have node",
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: &controller.MetaStore{
+							Store: &metapb.Store{
+								Id:      333,
+								Address: "pod-1.ns-1",
+							},
+							StateName: "Up",
+						},
+						Status: &controller.StoreStatus{
+							LeaderCount:     1,
+							LastHeartbeatTS: time.Now(),
+						},
+					},
+				},
+			},
+			hasNode: false,
+			hasPod:  true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			setCount:       0,
+			labelSetFailed: false,
+		},
+		{
+			name:             "already has labels",
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: &controller.MetaStore{
+							Store: &metapb.Store{
+								Id:      333,
+								Address: "pod-1.ns-1",
+								Labels: []*metapb.StoreLabel{
+									{
+										Key:   "region",
+										Value: "region",
+									},
+									{
+										Key:   "zone",
+										Value: "zone",
+									},
+									{
+										Key:   "rack",
+										Value: "rack",
+									},
+									{
+										Key:   "host",
+										Value: "host",
+									},
+								},
+							},
+							StateName: "Up",
+						},
+						Status: &controller.StoreStatus{
+							LeaderCount:     1,
+							LastHeartbeatTS: time.Now(),
+						},
+					},
+				},
+			},
+			hasNode: true,
+			hasPod:  true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			setCount:       0,
+			labelSetFailed: false,
+		},
+		{
+			name:             "labels not equal, but set failed",
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: &controller.MetaStore{
+							Store: &metapb.Store{
+								Id:      333,
+								Address: "pod-1.ns-1",
+								Labels: []*metapb.StoreLabel{
+									{
+										Key:   "region",
+										Value: "region",
+									},
+								},
+							},
+							StateName: "Up",
+						},
+						Status: &controller.StoreStatus{
+							LeaderCount:     1,
+							LastHeartbeatTS: time.Now(),
+						},
+					},
+				},
+			},
+			hasNode: true,
+			hasPod:  true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			setCount:       0,
+			labelSetFailed: true,
+		},
+		{
+			name:             "labels not equal, set success",
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: &controller.MetaStore{
+							Store: &metapb.Store{
+								Id:      333,
+								Address: "pod-1.ns-1",
+								Labels: []*metapb.StoreLabel{
+									{
+										Key:   "region",
+										Value: "region",
+									},
+								},
+							},
+							StateName: "Up",
+						},
+						Status: &controller.StoreStatus{
+							LeaderCount:     1,
+							LastHeartbeatTS: time.Now(),
+						},
+					},
+				},
+			},
+			hasNode: true,
+			hasPod:  true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			setCount:       1,
+			labelSetFailed: false,
+		},
+	}
+
+	for i := range tests {
+		t.Logf(tests[i].name)
+		testFn(&tests[i], t)
+	}
+}
+
+func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name                      string
+		updateTC                  func(*v1alpha1.TidbCluster)
+		upgradingFn               func(corelisters.PodLister, controller.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
+		errWhenGetStores          bool
+		storeInfo                 *controller.StoresInfo
+		errWhenGetTombstoneStores bool
+		tombstoneStoreInfo        *controller.StoresInfo
+		errExpectFn               func(*GomegaWithT, error)
+		tcExpectFn                func(*GomegaWithT, *v1alpha1.TidbCluster)
+	}
+	status := apps.StatefulSetStatus{
+		Replicas: int32(3),
+	}
+	now := metav1.Time{Time: time.Now()}
+	testFn := func(test *testcase, t *testing.T) {
+		tc := newTidbClusterForPD()
+		set := &apps.StatefulSet{
+			Status: status,
+		}
+		if test.updateTC != nil {
+			test.updateTC(tc)
+		}
+		pmm, _, _, pdClient, _, _ := newFakeTiKVMemberManager(tc)
+
+		if test.upgradingFn != nil {
+			pmm.tikvStatefulSetIsUpgradingFn = test.upgradingFn
+		}
+		if test.errWhenGetStores {
+			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
+				return nil, fmt.Errorf("failed to get stores")
+			})
+		} else if test.storeInfo != nil {
+			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
+				return test.storeInfo, nil
+			})
+		}
+		if test.errWhenGetTombstoneStores {
+			pdClient.AddReaction(controller.GetTombStoneStoresActionType, func(action *controller.Action) (interface{}, error) {
+				return nil, fmt.Errorf("failed to get tombstone stores")
+			})
+		} else if test.tombstoneStoreInfo != nil {
+			pdClient.AddReaction(controller.GetTombStoneStoresActionType, func(action *controller.Action) (interface{}, error) {
+				return test.tombstoneStoreInfo, nil
+			})
+		}
+
+		err := pmm.syncTidbClusterStatus(tc, set)
+		if test.errExpectFn != nil {
+			test.errExpectFn(g, err)
+		}
+		if test.tcExpectFn != nil {
+			test.tcExpectFn(g, tc)
+		}
+	}
+	tests := []testcase{
+		{
+			name:     "whether statefulset is upgrading returns failed",
+			updateTC: nil,
+			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, fmt.Errorf("whether upgrading failed")
+			},
+			errWhenGetStores:          false,
+			storeInfo:                 nil,
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo:        nil,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "whether upgrading failed")).To(BeTrue())
+			},
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.TiKV.StatefulSet.Replicas).To(Equal(int32(3)))
+			},
+		},
+		{
+			name:     "statefulset is upgrading",
+			updateTC: nil,
+			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return true, nil
+			},
+			errWhenGetStores:          false,
+			storeInfo:                 nil,
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo:        nil,
+			errExpectFn:               nil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.TiKV.StatefulSet.Replicas).To(Equal(int32(3)))
+				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.UpgradePhase))
+			},
+		},
+		{
+			name:     "statefulset is not upgrading",
+			updateTC: nil,
+			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errWhenGetStores:          false,
+			storeInfo:                 nil,
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo:        nil,
+			errExpectFn:               nil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.TiKV.StatefulSet.Replicas).To(Equal(int32(3)))
+				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.NormalPhase))
+			},
+		},
+		{
+			name:     "get stores failed",
+			updateTC: nil,
+			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errWhenGetStores:          true,
+			storeInfo:                 nil,
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo:        nil,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "failed to get stores")).To(BeTrue())
+			},
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.TiKV.StatefulSet.Replicas).To(Equal(int32(3)))
+				g.Expect(tc.Status.TiKV.Synced).To(BeFalse())
+			},
+		},
+		{
+			name:     "stores is empty",
+			updateTC: nil,
+			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{},
+			},
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{},
+			},
+			errExpectFn: errExpectNil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(0))
+				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(0))
+				g.Expect(tc.Status.TiKV.Synced).To(BeTrue())
+			},
+		},
+		{
+			name:     "store is nil",
+			updateTC: nil,
+			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: nil,
+					},
+				},
+			},
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{},
+			},
+			errExpectFn: errExpectNil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(0))
+				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(0))
+				g.Expect(tc.Status.TiKV.Synced).To(BeTrue())
+			},
+		},
+		{
+			name:     "status is nil",
+			updateTC: nil,
+			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Status: nil,
+					},
+				},
+			},
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{},
+			},
+			errExpectFn: errExpectNil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(0))
+				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(0))
+				g.Expect(tc.Status.TiKV.Synced).To(BeTrue())
+			},
+		},
+		{
+			name: "LastHeartbeatTS is zero, TidbClulster LastHeartbeatTS is not zero",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
+				tc.Status.TiKV.Stores["333"] = v1alpha1.TiKVStore{
+					LastHeartbeatTime: now,
+				}
+			},
+			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: &controller.MetaStore{
+							Store: &metapb.Store{
+								Id:      333,
+								Address: "pod-1.ns-1",
+							},
+						},
+						Status: &controller.StoreStatus{
+							LastHeartbeatTS: time.Time{},
+						},
+					},
+				},
+			},
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{},
+			},
+			errExpectFn: errExpectNil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(time.Time{}.IsZero()).To(BeTrue())
+				g.Expect(tc.Status.TiKV.Stores["333"].LastHeartbeatTime.Time.IsZero()).To(BeFalse())
+				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(1))
+				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(0))
+				g.Expect(tc.Status.TiKV.Synced).To(BeTrue())
+			},
+		},
+		{
+			name: "LastHeartbeatTS is zero, TidbClulster LastHeartbeatTS is zero",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
+				tc.Status.TiKV.Stores["333"] = v1alpha1.TiKVStore{
+					LastHeartbeatTime: metav1.Time{Time: time.Time{}},
+				}
+			},
+			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: &controller.MetaStore{
+							Store: &metapb.Store{
+								Id:      333,
+								Address: "pod-1.ns-1",
+							},
+						},
+						Status: &controller.StoreStatus{
+							LastHeartbeatTS: time.Time{},
+						},
+					},
+				},
+			},
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{},
+			},
+			errExpectFn: errExpectNil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(time.Time{}.IsZero()).To(BeTrue())
+				g.Expect(tc.Status.TiKV.Stores["333"].LastHeartbeatTime.Time.IsZero()).To(BeTrue())
+				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(1))
+				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(0))
+				g.Expect(tc.Status.TiKV.Synced).To(BeTrue())
+			},
+		},
+		{
+			name: "LastHeartbeatTS is not zero, TidbClulster LastHeartbeatTS is zero",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
+				tc.Status.TiKV.Stores["333"] = v1alpha1.TiKVStore{
+					LastHeartbeatTime: metav1.Time{Time: time.Time{}},
+				}
+			},
+			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: &controller.MetaStore{
+							Store: &metapb.Store{
+								Id:      333,
+								Address: "pod-1.ns-1",
+							},
+						},
+						Status: &controller.StoreStatus{
+							LastHeartbeatTS: time.Now(),
+						},
+					},
+				},
+			},
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{},
+			},
+			errExpectFn: errExpectNil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(time.Time{}.IsZero()).To(BeTrue())
+				g.Expect(tc.Status.TiKV.Stores["333"].LastHeartbeatTime.Time.IsZero()).To(BeFalse())
+				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(1))
+				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(0))
+				g.Expect(tc.Status.TiKV.Synced).To(BeTrue())
+			},
+		},
+		{
+			name: "set LastTransitionTime first time",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
+				// tc.Status.TiKV.Stores["333"] = v1alpha1.TiKVStore{}
+			},
+			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: &controller.MetaStore{
+							Store: &metapb.Store{
+								Id:      333,
+								Address: "pod-1.ns-1",
+							},
+						},
+						Status: &controller.StoreStatus{
+							LastHeartbeatTS: time.Now(),
+						},
+					},
+				},
+			},
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{},
+			},
+			errExpectFn: errExpectNil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(1))
+				g.Expect(tc.Status.TiKV.Stores["333"].LastTransitionTime.Time.IsZero()).To(BeFalse())
+				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(0))
+				g.Expect(tc.Status.TiKV.Synced).To(BeTrue())
+			},
+		},
+		{
+			name: "state not change, LastTransitionTime not change",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
+				tc.Status.TiKV.Stores["333"] = v1alpha1.TiKVStore{
+					LastTransitionTime: now,
+					State:              v1alpha1.TiKVStateUp,
+				}
+			},
+			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: &controller.MetaStore{
+							Store: &metapb.Store{
+								Id:      333,
+								Address: "pod-1.ns-1",
+							},
+							StateName: "Up",
+						},
+						Status: &controller.StoreStatus{
+							LastHeartbeatTS: time.Now(),
+						},
+					},
+				},
+			},
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{},
+			},
+			errExpectFn: errExpectNil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(1))
+				g.Expect(tc.Status.TiKV.Stores["333"].LastTransitionTime).To(Equal(now))
+				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(0))
+				g.Expect(tc.Status.TiKV.Synced).To(BeTrue())
+			},
+		},
+		{
+			name: "state change, LastTransitionTime change",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
+				tc.Status.TiKV.Stores["333"] = v1alpha1.TiKVStore{
+					LastTransitionTime: now,
+					State:              v1alpha1.TiKVStateUp,
+				}
+			},
+			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: &controller.MetaStore{
+							Store: &metapb.Store{
+								Id:      333,
+								Address: "pod-1.ns-1",
+							},
+							StateName: "Down",
+						},
+						Status: &controller.StoreStatus{
+							LastHeartbeatTS: time.Now(),
+						},
+					},
+				},
+			},
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{},
+			},
+			errExpectFn: errExpectNil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(1))
+				g.Expect(tc.Status.TiKV.Stores["333"].LastTransitionTime).NotTo(Equal(now))
+				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(0))
+				g.Expect(tc.Status.TiKV.Synced).To(BeTrue())
+			},
+		},
+		{
+			name: "get tombstone stores failed",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
+				tc.Status.TiKV.Stores["333"] = v1alpha1.TiKVStore{
+					LastTransitionTime: now,
+					State:              v1alpha1.TiKVStateUp,
+				}
+			},
+			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: &controller.MetaStore{
+							Store: &metapb.Store{
+								Id:      333,
+								Address: "pod-1.ns-1",
+							},
+							StateName: "Up",
+						},
+						Status: &controller.StoreStatus{
+							LastHeartbeatTS: time.Now(),
+						},
+					},
+				},
+			},
+			errWhenGetTombstoneStores: true,
+			tombstoneStoreInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{},
+			},
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "failed to get tombstone stores")).To(BeTrue())
+			},
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(1))
+				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(0))
+				g.Expect(tc.Status.TiKV.Synced).To(BeFalse())
+			},
+		},
+		{
+			name:     "all works",
+			updateTC: nil,
+			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errWhenGetStores: false,
+			storeInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: &controller.MetaStore{
+							Store: &metapb.Store{
+								Id:      333,
+								Address: "pod-1.ns-1",
+							},
+							StateName: "Up",
+						},
+						Status: &controller.StoreStatus{
+							LastHeartbeatTS: time.Now(),
+						},
+					},
+				},
+			},
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo: &controller.StoresInfo{
+				Stores: []*controller.StoreInfo{
+					{
+						Store: &controller.MetaStore{
+							Store: &metapb.Store{
+								Id:      333,
+								Address: "pod-1.ns-1",
+							},
+							StateName: "Tombstone",
+						},
+						Status: &controller.StoreStatus{
+							LastHeartbeatTS: time.Now(),
+						},
+					},
+				},
+			},
+			errExpectFn: errExpectNil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(1))
+				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(1))
+				g.Expect(tc.Status.TiKV.Synced).To(BeTrue())
+			},
+		},
+	}
+
+	for i := range tests {
+		t.Logf(tests[i].name)
+		testFn(&tests[i], t)
+	}
+}
+
 func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	*tikvMemberManager, *controller.FakeStatefulSetControl,
-	*controller.FakeServiceControl, *controller.FakePDClient) {
+	*controller.FakeServiceControl, *controller.FakePDClient, cache.Indexer, cache.Indexer) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	pdControl := controller.NewFakePDControl()
@@ -355,7 +1371,7 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	tikvScaler := NewFakeTiKVScaler()
 	tikvUpgrader := NewFakeTiKVUpgrader()
 
-	return &tikvMemberManager{
+	tmm := &tikvMemberManager{
 		pdControl:    pdControl,
 		podLister:    podInformer.Lister(),
 		nodeLister:   nodeInformer.Lister(),
@@ -365,5 +1381,7 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 		svcLister:    svcInformer.Lister(),
 		tikvScaler:   tikvScaler,
 		tikvUpgrader: tikvUpgrader,
-	}, setControl, svcControl, pdClient
+	}
+	tmm.tikvStatefulSetIsUpgradingFn = tikvStatefulSetIsUpgrading
+	return tmm, setControl, svcControl, pdClient, podInformer.Informer().GetIndexer(), nodeInformer.Informer().GetIndexer()
 }
