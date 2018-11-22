@@ -465,7 +465,6 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 	for _, test := range tests {
 		testFn(test, t)
 	}
-
 }
 
 func newTiKVUpgrader() (Upgrader, *controller.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
