@@ -406,7 +406,7 @@ func TestResourceRequirement(t *testing.T) {
 			},
 		},
 		{
-			name: "Request don't have Momory",
+			name: "Request don't have memory",
 			spec: v1alpha1.ContainerSpec{
 				Requests: &v1alpha1.ResourceRequirement{
 					CPU: "100m",
@@ -421,7 +421,7 @@ func TestResourceRequirement(t *testing.T) {
 			},
 		},
 		{
-			name: "Request don't have Momory, default has",
+			name: "Request don't have memory, default has",
 			spec: v1alpha1.ContainerSpec{
 				Requests: &v1alpha1.ResourceRequirement{
 					CPU: "100m",
@@ -475,7 +475,7 @@ func TestResourceRequirement(t *testing.T) {
 			},
 		},
 		{
-			name: "Limits don't have Momory",
+			name: "Limits don't have memory",
 			spec: v1alpha1.ContainerSpec{
 				Limits: &v1alpha1.ResourceRequirement{
 					CPU: "100m",
@@ -490,7 +490,7 @@ func TestResourceRequirement(t *testing.T) {
 			},
 		},
 		{
-			name: "Limits don't have Momory, default has",
+			name: "Limits don't have memory, default has",
 			spec: v1alpha1.ContainerSpec{
 				Limits: &v1alpha1.ResourceRequirement{
 					CPU: "100m",
