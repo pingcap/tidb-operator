@@ -6,7 +6,7 @@
 #    e.g.: 78_000 = "1.3m"
 
 # log level: trace, debug, info, warn, error, off.
-log-level = "{{ .Values.tikv.logLevel }}"
+log-level = {{ .Values.tikv.logLevel | default "info" | quote }}
 # file to store log, write to stderr if it's empty.
 # log-file = ""
 

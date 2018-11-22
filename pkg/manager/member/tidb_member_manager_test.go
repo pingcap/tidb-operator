@@ -15,13 +15,16 @@ package member
 
 import (
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -29,6 +32,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
 func TestTiDBMemberManagerSyncCreate(t *testing.T) {
@@ -50,7 +55,7 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			test.prepare(tc)
 		}
 
-		tmm, fakeSetControl := newFakeTiDBMemberManager()
+		tmm, fakeSetControl, _, _ := newFakeTiDBMemberManager()
 
 		if test.errWhenCreateStatefulSet {
 			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
@@ -112,7 +117,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
 
-		tmm, fakeSetControl := newFakeTiDBMemberManager()
+		tmm, fakeSetControl, _, _ := newFakeTiDBMemberManager()
 
 		if test.statusChange == nil {
 			fakeSetControl.SetStatusChange(func(set *apps.StatefulSet) {
@@ -188,7 +193,268 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 	}
 }
 
-func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSetControl) {
+func TestTiDBMemberManagerTiDBStatefulSetIsUpgrading(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name            string
+		setUpdate       func(*apps.StatefulSet)
+		hasPod          bool
+		updatePod       func(*corev1.Pod)
+		errExpectFn     func(*GomegaWithT, error)
+		expectUpgrading bool
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		pmm, _, podIndexer, _ := newFakeTiDBMemberManager()
+		tc := newTidbClusterForTiDB()
+		tc.Status.TiDB.StatefulSet = &apps.StatefulSetStatus{
+			UpdateRevision: "v3",
+		}
+
+		set := &apps.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: metav1.NamespaceDefault,
+			},
+		}
+		if test.setUpdate != nil {
+			test.setUpdate(set)
+		}
+
+		if test.hasPod {
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        ordinalPodName(v1alpha1.TiDBMemberType, tc.GetName(), 0),
+					Namespace:   metav1.NamespaceDefault,
+					Annotations: map[string]string{},
+					Labels:      label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).TiDB().Labels(),
+				},
+			}
+			if test.updatePod != nil {
+				test.updatePod(pod)
+			}
+			podIndexer.Add(pod)
+		}
+		b, err := pmm.tidbStatefulSetIsUpgradingFn(pmm.podLister, set, tc)
+		if test.errExpectFn != nil {
+			test.errExpectFn(g, err)
+		}
+		if test.expectUpgrading {
+			g.Expect(b).To(BeTrue())
+		} else {
+			g.Expect(b).NotTo(BeTrue())
+		}
+	}
+	tests := []testcase{
+		{
+			name: "stateful set is upgrading",
+			setUpdate: func(set *apps.StatefulSet) {
+				set.Status.CurrentRevision = "v1"
+				set.Status.UpdateRevision = "v2"
+				set.Status.ObservedGeneration = func() *int64 { var i int64; i = 1000; return &i }()
+			},
+			hasPod:          false,
+			updatePod:       nil,
+			errExpectFn:     nil,
+			expectUpgrading: true,
+		},
+		{
+			name:            "pod don't have revision hash",
+			setUpdate:       nil,
+			hasPod:          true,
+			updatePod:       nil,
+			errExpectFn:     nil,
+			expectUpgrading: false,
+		},
+		{
+			name:      "pod have revision hash, not equal statefulset's",
+			setUpdate: nil,
+			hasPod:    true,
+			updatePod: func(pod *corev1.Pod) {
+				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v2"
+			},
+			errExpectFn:     nil,
+			expectUpgrading: true,
+		},
+		{
+			name:      "pod have revision hash, equal statefulset's",
+			setUpdate: nil,
+			hasPod:    true,
+			updatePod: func(pod *corev1.Pod) {
+				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v3"
+			},
+			errExpectFn:     nil,
+			expectUpgrading: false,
+		},
+	}
+
+	for i := range tests {
+		t.Logf(tests[i].name)
+		testFn(&tests[i], t)
+	}
+}
+
+func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name        string
+		updateTC    func(*v1alpha1.TidbCluster)
+		upgradingFn func(corelisters.PodLister, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
+		healthInfo  map[string]bool
+		errExpectFn func(*GomegaWithT, error)
+		tcExpectFn  func(*GomegaWithT, *v1alpha1.TidbCluster)
+	}
+	status := apps.StatefulSetStatus{
+		Replicas: int32(3),
+	}
+	now := metav1.Time{Time: time.Now()}
+	testFn := func(test *testcase, t *testing.T) {
+		tc := newTidbClusterForPD()
+		set := &apps.StatefulSet{
+			Status: status,
+		}
+		if test.updateTC != nil {
+			test.updateTC(tc)
+		}
+		pmm, _, _, tidbControl := newFakeTiDBMemberManager()
+
+		if test.upgradingFn != nil {
+			pmm.tidbStatefulSetIsUpgradingFn = test.upgradingFn
+		}
+		if test.healthInfo != nil {
+			tidbControl.SetHealth(test.healthInfo)
+		}
+
+		err := pmm.syncTidbClusterStatus(tc, set)
+		if test.errExpectFn != nil {
+			test.errExpectFn(g, err)
+		}
+		if test.tcExpectFn != nil {
+			test.tcExpectFn(g, tc)
+		}
+	}
+	tests := []testcase{
+		{
+			name:     "whether statefulset is upgrading returns failed",
+			updateTC: nil,
+			upgradingFn: func(lister corelisters.PodLister, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, fmt.Errorf("whether upgrading failed")
+			},
+			healthInfo: map[string]bool{},
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "whether upgrading failed")).To(BeTrue())
+			},
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.TiDB.StatefulSet.Replicas).To(Equal(int32(3)))
+			},
+		},
+		{
+			name:     "statefulset is upgrading",
+			updateTC: nil,
+			upgradingFn: func(lister corelisters.PodLister, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return true, nil
+			},
+			healthInfo:  map[string]bool{},
+			errExpectFn: nil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.TiDB.StatefulSet.Replicas).To(Equal(int32(3)))
+				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.UpgradePhase))
+			},
+		},
+		{
+			name:     "statefulset is not upgrading",
+			updateTC: nil,
+			upgradingFn: func(lister corelisters.PodLister, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			healthInfo:  map[string]bool{},
+			errExpectFn: nil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.TiDB.StatefulSet.Replicas).To(Equal(int32(3)))
+				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.NormalPhase))
+			},
+		},
+		{
+			name:     "get health empty",
+			updateTC: nil,
+			upgradingFn: func(lister corelisters.PodLister, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			healthInfo:  map[string]bool{},
+			errExpectFn: errExpectNil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.TiDB.StatefulSet.Replicas).To(Equal(int32(3)))
+				g.Expect(len(tc.Status.TiDB.Members)).To(Equal(0))
+			},
+		},
+		{
+			name: "set LastTransitionTime first time",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{}
+			},
+			upgradingFn: func(lister corelisters.PodLister, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			healthInfo: map[string]bool{
+				"333": true,
+			},
+			errExpectFn: errExpectNil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(len(tc.Status.TiDB.Members)).To(Equal(1))
+				g.Expect(tc.Status.TiDB.Members["333"].LastTransitionTime.Time.IsZero()).To(BeFalse())
+			},
+		},
+		{
+			name: "state not change, LastTransitionTime not change",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{}
+				tc.Status.TiDB.Members["333"] = v1alpha1.TiDBMember{
+					Health:             true,
+					LastTransitionTime: now,
+				}
+			},
+			healthInfo: map[string]bool{
+				"333": true,
+			},
+			upgradingFn: func(lister corelisters.PodLister, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errExpectFn: errExpectNil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(len(tc.Status.TiDB.Members)).To(Equal(1))
+				g.Expect(tc.Status.TiDB.Members["333"].LastTransitionTime).To(Equal(now))
+			},
+		},
+		{
+			name: "state change, LastTransitionTime change",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{}
+				tc.Status.TiDB.Members["333"] = v1alpha1.TiDBMember{
+					Health:             false,
+					LastTransitionTime: now,
+				}
+			},
+			healthInfo: map[string]bool{
+				"333": true,
+			},
+			upgradingFn: func(lister corelisters.PodLister, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errExpectFn: errExpectNil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(len(tc.Status.TiDB.Members)).To(Equal(1))
+				g.Expect(tc.Status.TiDB.Members["333"].LastTransitionTime).NotTo(Equal(now))
+			},
+		},
+	}
+
+	for i := range tests {
+		t.Logf(tests[i].name)
+		testFn(&tests[i], t)
+	}
+}
+
+func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSetControl, cache.Indexer, *controller.FakeTiDBControl) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
@@ -201,7 +467,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	tidbFailover := NewFakeTiDBFailover()
 	tidbControl := controller.NewFakeTiDBControl()
 
-	return &tidbMemberManager{
+	tmm := &tidbMemberManager{
 		setControl,
 		svcControl,
 		tidbControl,
@@ -211,7 +477,9 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		tidbUpgrader,
 		true,
 		tidbFailover,
-	}, setControl
+		tidbStatefulSetIsUpgrading,
+	}
+	return tmm, setControl, podInformer.Informer().GetIndexer(), tidbControl
 }
 
 func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
