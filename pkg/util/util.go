@@ -37,17 +37,6 @@ var (
 	}
 )
 
-const (
-	// StoreUpState is state when tikv store is normal
-	StoreUpState = "Up"
-	// StoreOfflineState is state when tikv store is offline
-	StoreOfflineState = "Offline"
-	// StoreDownState is state when tikv store is down
-	StoreDownState = "Down"
-	// StoreTombstoneState is state when tikv store is tombstone
-	StoreTombstoneState = "Tombstone"
-)
-
 // AntiAffinityForPod creates a PodAntiAffinity with antiLabels
 func AntiAffinityForPod(namespace string, antiLabels map[string]string) *corev1.PodAntiAffinity {
 	keys := []string{}
