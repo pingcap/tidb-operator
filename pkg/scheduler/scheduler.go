@@ -93,12 +93,13 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 func (s *scheduler) Priority(args *schedulerapiv1.ExtenderArgs) (schedulerapiv1.HostPriorityList, error) {
 	result := schedulerapiv1.HostPriorityList{}
 
-	// avoid index out of range panic
-	if len(args.Nodes.Items) > 0 {
-		result = append(result, schedulerapiv1.HostPriority{
-			Host:  args.Nodes.Items[0].Name,
-			Score: 0,
-		})
+	if args.Nodes != nil {
+		for _, node := range args.Nodes.Items {
+			result = append(result, schedulerapiv1.HostPriority{
+				Host:  node.Name,
+				Score: 0,
+			})
+		}
 	}
 
 	return result, nil
