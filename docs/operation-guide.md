@@ -21,7 +21,11 @@ $ helm install charts/tidb-cluster --name=${releaseName} --namespace=${namespace
 $ kubectl get po -n ${namespace} -l app.kubernetes.io/name=tidb-operator
 ```
 
-For customized deployment, you can modify `values.yaml` before installing the charts. Most of the variables are self-explanatory with comments.
+The default deployment doesn't set CPU and memory requests or limits for any of the pods, and the storage used is `local-storage` with minimal size. These settings can make TiDB cluster run on a small Kubernetes cluster like DinD or the default GKE cluster for testing. But for production deployment, you would likely to adjust the cpu, memory and storage resources according to the [recommendations](https://github.com/pingcap/docs/blob/master/op-guide/recommendation.md).
+
+The resource limits should be equal or bigger than the resource requests, it is suggested to set limit and request equal to get [`Guaranteed` QoS]( https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#create-a-pod-that-gets-assigned-a-qos-class-of-guaranteed).
+
+For other settings, the variables in `values.yaml` are self-explanatory with comments. You can modify them according to your need before installing the charts.
 
 ## Access TiDB cluster
 
