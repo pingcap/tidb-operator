@@ -1,7 +1,7 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: tidb-scheduler
+  name: {{ .Values.scheduler.schedulerName }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -26,7 +26,7 @@ spec:
       serviceAccount: {{ .Values.scheduler.serviceAccount }}
     {{- end }}
       containers:
-      - name: tidb-scheduler
+      - name: {{ .Values.scheduler.schedulerName }}
         image: {{ .Values.operatorImage }}
         resources:
 {{ toYaml .Values.scheduler.resources | indent 12 }}

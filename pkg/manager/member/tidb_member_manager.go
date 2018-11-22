@@ -31,15 +31,16 @@ import (
 )
 
 type tidbMemberManager struct {
-	setControl   controller.StatefulSetControlInterface
-	svcControl   controller.ServiceControlInterface
-	tidbControl  controller.TiDBControlInterface
-	setLister    v1beta1.StatefulSetLister
-	svcLister    corelisters.ServiceLister
-	podLister    corelisters.PodLister
-	tidbUpgrader Upgrader
-	autoFailover bool
-	tidbFailover Failover
+	setControl                   controller.StatefulSetControlInterface
+	svcControl                   controller.ServiceControlInterface
+	tidbControl                  controller.TiDBControlInterface
+	setLister                    v1beta1.StatefulSetLister
+	svcLister                    corelisters.ServiceLister
+	podLister                    corelisters.PodLister
+	tidbUpgrader                 Upgrader
+	autoFailover                 bool
+	tidbFailover                 Failover
+	tidbStatefulSetIsUpgradingFn func(corelisters.PodLister, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiDBMemberManager returns a *tidbMemberManager
@@ -53,15 +54,16 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	autoFailover bool,
 	tidbFailover Failover) manager.Manager {
 	return &tidbMemberManager{
-		setControl:   setControl,
-		svcControl:   svcControl,
-		tidbControl:  tidbControl,
-		setLister:    setLister,
-		svcLister:    svcLister,
-		podLister:    podLister,
-		tidbUpgrader: tidbUpgrader,
-		autoFailover: autoFailover,
-		tidbFailover: tidbFailover,
+		setControl:                   setControl,
+		svcControl:                   svcControl,
+		tidbControl:                  tidbControl,
+		setLister:                    setLister,
+		svcLister:                    svcLister,
+		podLister:                    podLister,
+		tidbUpgrader:                 tidbUpgrader,
+		autoFailover:                 autoFailover,
+		tidbFailover:                 tidbFailover,
+		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
 	}
 }
 
@@ -168,39 +170,6 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	}
 
 	return nil
-}
-
-func (tmm *tidbMemberManager) getNewTiDBServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
-	svcName := controller.TiDBMemberName(tcName)
-	tidbLabel := label.New().Instance(instanceName).TiDB().Labels()
-
-	tidbSvc := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            svcName,
-			Namespace:       ns,
-			Labels:          tidbLabel,
-			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
-		},
-		Spec: corev1.ServiceSpec{
-			Type: controller.GetServiceType(tc.Spec.Services, v1alpha1.TiDBMemberType.String()),
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "mysql-client",
-					Port:       4000,
-					TargetPort: intstr.FromInt(4000),
-					Protocol:   corev1.ProtocolTCP,
-				},
-			},
-			Selector: tidbLabel,
-		},
-	}
-	if tidbSvc.Spec.Type == corev1.ServiceTypeNodePort || tidbSvc.Spec.Type == corev1.ServiceTypeLoadBalancer {
-		tidbSvc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyType(controller.ExternalTrafficPolicy)
-	}
-	return tidbSvc
 }
 
 func (tmm *tidbMemberManager) getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
@@ -351,7 +320,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	tc.Status.TiDB.StatefulSet = &set.Status
 
-	upgrading, err := tmm.tidbStatefulSetIsUpgrading(set, tc)
+	upgrading, err := tmm.tidbStatefulSetIsUpgradingFn(tmm.podLister, set, tc)
 	if err != nil {
 		return err
 	}
@@ -382,7 +351,7 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 	return nil
 }
 
-func (tmm *tidbMemberManager) tidbStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
+func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
 	if statefulSetIsUpgrading(set) {
 		return true, nil
 	}
@@ -393,7 +362,7 @@ func (tmm *tidbMemberManager) tidbStatefulSetIsUpgrading(set *apps.StatefulSet, 
 	if err != nil {
 		return false, err
 	}
-	tidbPods, err := tmm.podLister.Pods(tc.GetNamespace()).List(selector)
+	tidbPods, err := podLister.Pods(tc.GetNamespace()).List(selector)
 	if err != nil {
 		return false, err
 	}

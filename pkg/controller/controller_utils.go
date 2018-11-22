@@ -159,16 +159,6 @@ func TiDBPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tidb-peer", clusterName)
 }
 
-// PriTiDBMemberName returns privileged tidb member name
-func PriTiDBMemberName(clusterName string) string {
-	return fmt.Sprintf("%s-privileged-tidb", clusterName)
-}
-
-// MonitorMemberName returns monitor member name
-func MonitorMemberName(clusterName string) string {
-	return fmt.Sprintf("%s-monitor", clusterName)
-}
-
 // AnnProm adds annotations for prometheus scraping metrics
 func AnnProm(port int32) map[string]string {
 	return map[string]string{
