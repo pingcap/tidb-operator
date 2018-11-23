@@ -52,11 +52,11 @@ if [[ $(uname) == Linux && -z ${DOCKER_HOST:-} ]]; then
     using_local_linuxdocker=1
 fi
 
-EMBEDDED_CONFIG=y;DIND_IMAGE=mirantis/kubeadm-dind-cluster:v1.10
+EMBEDDED_CONFIG=y;DIND_IMAGE=mirantis/kubeadm-dind-cluster:v1.12
 
 KUBE_REPO_PREFIX="${KUBE_REPO_PREFIX:-}"
 if [[ -n ${KUBE_REPO_PREFIX} ]];then
-  DIND_IMAGE=${KUBE_REPO_PREFIX}/kubeadm-dind-cluster:v1.10
+  DIND_IMAGE=${KUBE_REPO_PREFIX}/kubeadm-dind-cluster:v1.12
 fi
 
 # dind::localhost provides the local host IP based on the address family used for service subnet.
@@ -509,7 +509,7 @@ DASHBOARD_URL="${DASHBOARD_URL:-${DIND_ROOT}/kubernetes-dashboard.yaml}"
 SKIP_SNAPSHOT="${SKIP_SNAPSHOT:-}"
 E2E_REPORT_DIR="${E2E_REPORT_DIR:-}"
 DIND_NO_PARALLEL_E2E="${DIND_NO_PARALLEL_E2E:-}"
-DNS_SERVICE="${DNS_SERVICE:-kube-dns}"
+DNS_SERVICE="${DNS_SERVICE:-coredns}"
 APISERVER_PORT="${APISERVER_PORT:-8080}"
 REGISTRY_PORT="${REGISTRY_PORT:-5000}"
 PV_NUMS="${PV_NUMS:-4}"
@@ -1342,17 +1342,31 @@ function dind::init {
   fi
 
   docker exec -i "$master_name" /bin/sh -c "cat >/etc/kubeadm.conf" <<EOF
+kind: InitConfiguration
 apiVersion: "${api_version}"
-unifiedControlPlaneImage: "mirantis/hypokube:final"
-kind: MasterConfiguration
+nodeRegistration:
+  criSocket: /var/run/dockershim.sock
+  name: "${master_name}"
+  taints:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+apiEndpoint:
+  advertiseAddress: "${master_ip}"
+  bindPort: 6443
+---
+kind: ClusterConfiguration
+apiVersion: "${api_version}"
 kubernetesVersion: "${kubeadm_version}"
 imageRepository: "${KUBE_REPO_PREFIX}"
-api:
-  advertiseAddress: "${master_ip}"
 networking:
   ${pod_subnet_disable}podSubnet: "${pod_net_cidrs[0]}"
   serviceSubnet: "${SERVICE_CIDR}"
-nodeName: "${master_name}"
+auditPolicy:
+  logDir: /var/log/kubernetes/audit
+  logMaxAge: 2
+  path: ""
+certificatesDir: /etc/kubernetes/pki
+controlPlaneEndpoint: ""
 schedulerExtraArgs:
   ${component_feature_gates}
 ${scheduler_extra_args}
@@ -1364,6 +1378,7 @@ ${apiserver_extra_args}
 controllerManagerExtraArgs:
   ${component_feature_gates}
 ${controller_manager_extra_args}
+unifiedControlPlaneImage: "mirantis/hypokube:final"
 EOF
   init_args=(--config /etc/kubeadm.conf)
   # required when building from source
