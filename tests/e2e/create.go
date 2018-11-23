@@ -26,7 +26,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -273,8 +272,8 @@ func tikvMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 	}
 
 	for _, store := range tc.Status.TiKV.Stores {
-		if store.State != util.StoreUpState {
-			logf("store(%s) state != %s", store.ID, util.StoreUpState)
+		if store.State != v1alpha1.TiKVStateUp {
+			logf("store(%s) state != %s", store.ID, v1alpha1.TiKVStateUp)
 			return false, nil
 		}
 	}
