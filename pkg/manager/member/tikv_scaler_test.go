@@ -22,7 +22,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -284,7 +283,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			storeFun: func(tc *v1alpha1.TidbCluster) {
 				normalStoreFun(tc)
 				store := tc.Status.TiKV.Stores["1"]
-				store.State = util.StoreOfflineState
+				store.State = v1alpha1.TiKVStateOffline
 				tc.Status.TiKV.Stores["1"] = store
 			},
 			delStoreErr:   false,
@@ -379,7 +378,7 @@ func normalStoreFun(tc *v1alpha1.TidbCluster) {
 		"1": {
 			ID:      "1",
 			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 4),
-			State:   util.StoreUpState,
+			State:   v1alpha1.TiKVStateUp,
 		},
 	}
 }
@@ -389,7 +388,7 @@ func tombstoneStoreFun(tc *v1alpha1.TidbCluster) {
 		"1": {
 			ID:      "1",
 			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 4),
-			State:   util.StoreTombstoneState,
+			State:   v1alpha1.TiKVStateTombstone,
 		},
 	}
 }
