@@ -31,13 +31,13 @@ import (
 
 func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 	type testcase struct {
-		name         string
-		memberType   v1alpha1.MemberType
-		from         int32
-		to           int32
-		pvc          *corev1.PersistentVolumeClaim
-		deletePVCErr bool
-		expectFn     func(*GomegaWithT, error)
+		name            string
+		memberType      v1alpha1.MemberType
+		from            int32
+		to              int32
+		pvcs            []*corev1.PersistentVolumeClaim
+		deleteFailedIdx []int
+		expectFn        func(*GomegaWithT, map[int32]string, error)
 	}
 	tc := newTidbClusterForPD()
 	setName := controller.PDMemberName(tc.GetName())
@@ -46,98 +46,274 @@ func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 		g := NewGomegaWithT(t)
 
 		gs, pvcIndexer, pvcControl := newFakeGeneralScaler()
-		if test.pvc != nil {
-			pvcIndexer.Add(test.pvc)
+		for _, pvc := range test.pvcs {
+			pvcIndexer.Add(pvc)
 		}
-		if test.deletePVCErr {
-			pvcControl.SetDeletePVCError(fmt.Errorf("delete pvc failed"), 0)
+		for _, idx := range test.deleteFailedIdx {
+			pvcControl.SetDeletePVCError(fmt.Errorf("delete pvc failed"), idx)
 		}
 
-		err := gs.deleteAllDeferDeletingPVC(tc, setName, test.memberType, test.from, test.to)
-		test.expectFn(g, err)
+		skipReason, err := gs.deleteAllDeferDeletingPVC(tc, setName, test.memberType, test.from, test.to)
+		test.expectFn(g, skipReason, err)
 	}
 	tests := []testcase{
 		{
 			name:       "normal",
 			memberType: v1alpha1.PDMemberType,
-			from:       4,
+			from:       3,
 			to:         5,
-			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 4),
-					Namespace: corev1.NamespaceDefault,
-					Annotations: map[string]string{
-						label.AnnPVCDeferDeleting: "xxx",
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 3),
+						Namespace: corev1.NamespaceDefault,
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: "deleting-3",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 4),
+						Namespace: corev1.NamespaceDefault,
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: "deleting-4",
+						},
 					},
 				},
 			},
-			deletePVCErr: false,
-			expectFn: func(g *GomegaWithT, err error) {
+			deleteFailedIdx: nil,
+			expectFn: func(g *GomegaWithT, skipReason map[int32]string, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(0))
 			},
 		},
 		{
-			name:         "from 4 to 5, but pvc is not found",
-			memberType:   v1alpha1.PDMemberType,
-			from:         4,
-			to:           5,
-			pvc:          nil,
-			deletePVCErr: false,
-			expectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-			},
-		},
-		{
-			name:       "annotation is nil",
+			name:       "from 3 to 5, but pvc 3 is not found",
 			memberType: v1alpha1.PDMemberType,
-			from:       4,
+			from:       3,
 			to:         5,
-			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 4),
-					Namespace: corev1.NamespaceDefault,
-				},
-			},
-			deletePVCErr: false,
-			expectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-			},
-		},
-		{
-			name:       "annotation defer deleting is empty",
-			memberType: v1alpha1.PDMemberType,
-			from:       4,
-			to:         5,
-			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        ordinalPVCName(v1alpha1.PDMemberType, setName, 4),
-					Namespace:   corev1.NamespaceDefault,
-					Annotations: map[string]string{},
-				},
-			},
-			deletePVCErr: false,
-			expectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-			},
-		},
-		{
-			name:       "delete pvc failed",
-			memberType: v1alpha1.PDMemberType,
-			from:       4,
-			to:         5,
-			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 4),
-					Namespace: corev1.NamespaceDefault,
-					Annotations: map[string]string{
-						label.AnnPVCDeferDeleting: "xxx",
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 4),
+						Namespace: corev1.NamespaceDefault,
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: "deleting-4",
+						},
 					},
 				},
 			},
-			deletePVCErr: true,
-			expectFn: func(g *GomegaWithT, err error) {
+			deleteFailedIdx: nil,
+			expectFn: func(g *GomegaWithT, skipReason map[int32]string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason[3]).To(Equal(skipReasonPVCNotFound))
+			},
+		},
+		{
+			name:       "from 3 to 5, but pvc 4 is not found",
+			memberType: v1alpha1.PDMemberType,
+			from:       3,
+			to:         5,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 3),
+						Namespace: corev1.NamespaceDefault,
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: "deleting-3",
+						},
+					},
+				},
+			},
+			deleteFailedIdx: nil,
+			expectFn: func(g *GomegaWithT, skipReason map[int32]string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason[4]).To(Equal(skipReasonPVCNotFound))
+			},
+		},
+		{
+			name:       "from 3 to 5, but pvc 3 annotations is nil",
+			memberType: v1alpha1.PDMemberType,
+			from:       3,
+			to:         5,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 3),
+						Namespace: corev1.NamespaceDefault,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 4),
+						Namespace: corev1.NamespaceDefault,
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: "deleting-4",
+						},
+					},
+				},
+			},
+			deleteFailedIdx: nil,
+			expectFn: func(g *GomegaWithT, skipReason map[int32]string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason[3]).To(Equal(skipReasonAnnIsNil))
+			},
+		},
+		{
+			name:       "from 3 to 5, but pvc 4 annotations is nil",
+			memberType: v1alpha1.PDMemberType,
+			from:       3,
+			to:         5,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 3),
+						Namespace: corev1.NamespaceDefault,
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: "deleting-3",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 4),
+						Namespace: corev1.NamespaceDefault,
+					},
+				},
+			},
+			deleteFailedIdx: nil,
+			expectFn: func(g *GomegaWithT, skipReason map[int32]string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason[4]).To(Equal(skipReasonAnnIsNil))
+			},
+		},
+		{
+			name:       "from 3 to 5, but pvc 3 annotations defer deleting is empty",
+			memberType: v1alpha1.PDMemberType,
+			from:       3,
+			to:         5,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        ordinalPVCName(v1alpha1.PDMemberType, setName, 3),
+						Namespace:   corev1.NamespaceDefault,
+						Annotations: map[string]string{},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 4),
+						Namespace: corev1.NamespaceDefault,
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: "deleting-4",
+						},
+					},
+				},
+			},
+			deleteFailedIdx: nil,
+			expectFn: func(g *GomegaWithT, skipReason map[int32]string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason[3]).To(Equal(skipReasonAnnDeferDeletingIsEmpty))
+			},
+		},
+		{
+			name:       "from 3 to 5, but pvc 4 annotations defer deleting is empty",
+			memberType: v1alpha1.PDMemberType,
+			from:       3,
+			to:         5,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 3),
+						Namespace: corev1.NamespaceDefault,
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: "deleting-3",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        ordinalPVCName(v1alpha1.PDMemberType, setName, 4),
+						Namespace:   corev1.NamespaceDefault,
+						Annotations: map[string]string{},
+					},
+				},
+			},
+			deleteFailedIdx: nil,
+			expectFn: func(g *GomegaWithT, skipReason map[int32]string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason[4]).To(Equal(skipReasonAnnDeferDeletingIsEmpty))
+			},
+		},
+		{
+			name:       "from 3 to 5, but pvc 3 delete failed",
+			memberType: v1alpha1.PDMemberType,
+			from:       3,
+			to:         5,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 3),
+						Namespace: corev1.NamespaceDefault,
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: "deleting-3",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 4),
+						Namespace: corev1.NamespaceDefault,
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: "deleting-4",
+						},
+					},
+				},
+			},
+			deleteFailedIdx: []int{0},
+			expectFn: func(g *GomegaWithT, skipReason map[int32]string, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "delete pvc failed")).To(BeTrue())
+				g.Expect(len(skipReason)).To(Equal(0))
+			},
+		},
+		{
+			name:       "from 3 to 5, but pvc 4 delete failed",
+			memberType: v1alpha1.PDMemberType,
+			from:       3,
+			to:         5,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 3),
+						Namespace: corev1.NamespaceDefault,
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: "deleting-3",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 4),
+						Namespace: corev1.NamespaceDefault,
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: "deleting-4",
+						},
+					},
+				},
+			},
+			deleteFailedIdx: []int{1},
+			expectFn: func(g *GomegaWithT, skipReason map[int32]string, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "delete pvc failed")).To(BeTrue())
+				g.Expect(len(skipReason)).To(Equal(0))
 			},
 		},
 	}

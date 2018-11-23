@@ -24,6 +24,12 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
+const (
+	skipReasonPVCNotFound             = "pvc is not found"
+	skipReasonAnnIsNil                = "pvc annotations is nil"
+	skipReasonAnnDeferDeletingIsEmpty = "pvc annotations defer deleting is empty"
+)
+
 // Scaler implements the logic for scaling out or scaling in the cluster.
 type Scaler interface {
 	// ScaleOut scales out the cluster
@@ -39,33 +45,38 @@ type generalScaler struct {
 }
 
 func (gs *generalScaler) deleteAllDeferDeletingPVC(tc *v1alpha1.TidbCluster,
-	setName string, memberType v1alpha1.MemberType, from, to int32) error {
+	setName string, memberType v1alpha1.MemberType, from, to int32) (map[int32]string, error) {
 	ns := tc.GetNamespace()
+	// for unit test
+	skipReason := map[int32]string{}
 
 	for i := from; i < to; i++ {
 		pvcName := ordinalPVCName(memberType, setName, i)
 		pvc, err := gs.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 		if errors.IsNotFound(err) {
+			skipReason[i] = skipReasonPVCNotFound
 			continue
 		}
 		if err != nil {
-			return err
+			return skipReason, err
 		}
 
 		if pvc.Annotations == nil {
+			skipReason[i] = skipReasonAnnIsNil
 			continue
 		}
 		if _, ok := pvc.Annotations[label.AnnPVCDeferDeleting]; !ok {
+			skipReason[i] = skipReasonAnnDeferDeletingIsEmpty
 			continue
 		}
 
 		err = gs.pvcControl.DeletePVC(tc, pvc)
 		if err != nil {
-			return err
+			return skipReason, err
 		}
 	}
 
-	return nil
+	return skipReason, nil
 }
 
 func resetReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
