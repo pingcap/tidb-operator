@@ -169,7 +169,7 @@ func TestAffinityForNodeSelector(t *testing.T) {
 										{
 											Key:      "a",
 											Operator: corev1.NodeSelectorOpIn,
-											Values:   []string{"a1,a2,a3"},
+											Values:   []string{"a1", "a2", "a3"},
 										},
 										{
 											Key:      "b",

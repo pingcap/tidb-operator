@@ -103,12 +103,12 @@ func AffinityForNodeSelector(namespace string, required bool, antiLabels, select
 	preferredTerms := []corev1.PreferredSchedulingTerm{}
 	exps := []corev1.NodeSelectorRequirement{}
 	for _, key := range keys {
+		if selector[key] == "" {
+			continue
+		}
+		values := strings.Split(selector[key], ",")
 		// region,zone,rack,host are preferred labels, others are must match labels
 		if weight, ok := topologySchedulingWeight[key]; ok {
-			if selector[key] == "" {
-				continue
-			}
-			values := strings.Split(selector[key], ",")
 			t := corev1.PreferredSchedulingTerm{
 				Weight: weight,
 				Preference: corev1.NodeSelectorTerm{
@@ -126,7 +126,7 @@ func AffinityForNodeSelector(namespace string, required bool, antiLabels, select
 			requirement := corev1.NodeSelectorRequirement{
 				Key:      key,
 				Operator: corev1.NodeSelectorOpIn,
-				Values:   []string{selector[key]},
+				Values:   values,
 			}
 			// NodeSelectorRequirement in the same MatchExpressions are ANDed otherwise ORed
 			exps = append(exps, requirement)
