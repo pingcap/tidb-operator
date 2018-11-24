@@ -45,7 +45,7 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 		return nil
 	}
 
-	err := psd.deleteAllDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.PDMemberType, *oldSet.Spec.Replicas, *newSet.Spec.Replicas)
+	_, err := psd.deleteAllDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.PDMemberType, *oldSet.Spec.Replicas, *newSet.Spec.Replicas)
 	if err != nil {
 		resetReplicas(newSet, oldSet)
 		return err
