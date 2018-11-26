@@ -33,10 +33,6 @@ import (
 
 const (
 	timeout = 5 * time.Second
-
-	// https://github.com/pingcap/pd/blob/master/server/coordinator.go#L42-L45
-	schedulerExisted  = "scheduler existed"
-	schedulerNotFound = "scheduler not found"
 )
 
 // PDControlInterface is an interface that knows how to manage and get tidb cluster's PD client
@@ -328,13 +324,6 @@ func (pc *pdClient) DeleteStore(storeID uint64) error {
 		return err
 	}
 
-	// FIXME: We should not rely on error text
-	// Remove a tombstone store should returns "store has been removed"
-	bodyStr := string(body)
-	if strings.Contains(bodyStr, "store has been removed") {
-		return nil
-	}
-
 	return fmt.Errorf("failed to delete store %d: %v", storeID, string(body))
 }
 
@@ -407,15 +396,24 @@ func (pc *pdClient) BeginEvictLeader(storeID uint64) error {
 	if res.StatusCode == http.StatusOK {
 		return nil
 	}
-	err2 := readErrorBody(res.Body)
-	if strings.Contains(err2.Error(), schedulerExisted) {
-		return nil
+
+	evictLeaderSchedulers, err := pc.GetEvictLeaderSchedulers()
+	if err != nil {
+		return err
 	}
+	for _, s := range evictLeaderSchedulers {
+		if s == getLeaderEvictSchedulerStr(storeID) {
+			return nil
+		}
+	}
+
+	err2 := readErrorBody(res.Body)
 	return fmt.Errorf("failed %v to begin evict leader of store:[%d],error: %v", res.StatusCode, storeID, err2)
 }
 
 func (pc *pdClient) EndEvictLeader(storeID uint64) error {
-	apiURL := fmt.Sprintf("%s/%s/%s", pc.url, schedulersPrefix, getLeaderEvictSchedulerStr(storeID))
+	sName := getLeaderEvictSchedulerStr(storeID)
+	apiURL := fmt.Sprintf("%s/%s/%s", pc.url, schedulersPrefix, sName)
 	req, err := http.NewRequest("DELETE", apiURL, nil)
 	if err != nil {
 		return err
@@ -428,11 +426,19 @@ func (pc *pdClient) EndEvictLeader(storeID uint64) error {
 	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
 		return nil
 	}
+
 	err2 := readErrorBody(res.Body)
-	if strings.Contains(err2.Error(), schedulerNotFound) {
-		return nil
+	evictLeaderSchedulers, err := pc.GetEvictLeaderSchedulers()
+	if err != nil {
+		return err
 	}
-	return fmt.Errorf("failed %v to end leader evict scheduler of store [%d],error:%v", res.StatusCode, storeID, err2)
+	for _, s := range evictLeaderSchedulers {
+		if s == sName {
+			return fmt.Errorf("failed %v to end leader evict scheduler of store [%d], error: %v", res.StatusCode, storeID, err2)
+		}
+	}
+
+	return nil
 }
 
 func (pc *pdClient) GetEvictLeaderSchedulers() ([]string, error) {
