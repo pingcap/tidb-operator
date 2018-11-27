@@ -17,7 +17,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
@@ -161,7 +160,7 @@ func (tcc *defaultTidbClusterControl) IsTiKVAvailable(tc *v1alpha1.TidbCluster) 
 
 	var availableNum int32
 	for _, store := range tc.Status.TiKV.Stores {
-		if store.State == util.StoreUpState {
+		if store.State == v1alpha1.TiKVStateUp {
 			availableNum++
 		}
 	}

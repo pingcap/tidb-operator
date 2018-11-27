@@ -70,15 +70,6 @@ func New() Label {
 	}
 }
 
-// ClusterListOptions returns a cluster ListOptions filter
-func ClusterListOptions(instanceName string) metav1.ListOptions {
-	return metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(
-			New().Instance(instanceName).Labels(),
-		).String(),
-	}
-}
-
 // Instance adds instance kv pair to label
 func (l Label) Instance(name string) Label {
 	l[InstanceLabelKey] = name

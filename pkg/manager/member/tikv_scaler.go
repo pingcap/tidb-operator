@@ -22,7 +22,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
@@ -46,7 +45,7 @@ func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 		return nil
 	}
 
-	err := tsd.deleteAllDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiKVMemberType, *oldSet.Spec.Replicas, *newSet.Spec.Replicas)
+	_, err := tsd.deleteAllDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiKVMemberType, *oldSet.Spec.Replicas, *newSet.Spec.Replicas)
 	if err != nil {
 		resetReplicas(newSet, oldSet)
 		return err
@@ -86,7 +85,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 				resetReplicas(newSet, oldSet)
 				return err
 			}
-			if state != util.StoreOfflineState {
+			if state != v1alpha1.TiKVStateOffline {
 				if err := tsd.pdControl.GetPDClient(tc).DeleteStore(id); err != nil {
 					resetReplicas(newSet, oldSet)
 					return err

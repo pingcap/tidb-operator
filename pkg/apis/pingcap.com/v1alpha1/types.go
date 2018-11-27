@@ -22,13 +22,14 @@ import (
 )
 
 const (
-	// AnnotationStorageSize is a storage size annotation key
-	AnnotationStorageSize string = "storage.pingcap.com/size"
-
 	// TiKVStateUp represents status of Up of TiKV
 	TiKVStateUp string = "Up"
 	// TiKVStateDown represents status of Down of TiKV
 	TiKVStateDown string = "Down"
+	// TiKVStateOffline represents status of Offline of TiKV
+	TiKVStateOffline string = "Offline"
+	// TiKVStateTombstone represents status of Tombstone of TiKV
+	TiKVStateTombstone string = "Tombstone"
 )
 
 // MemberType represents member type
@@ -37,16 +38,12 @@ type MemberType string
 const (
 	// PDMemberType is pd container type
 	PDMemberType MemberType = "pd"
-
 	// TiDBMemberType is tidb container type
 	TiDBMemberType MemberType = "tidb"
-
 	// TiKVMemberType is tikv container type
 	TiKVMemberType MemberType = "tikv"
-
 	//PushGatewayMemberType is pushgateway container type
 	PushGatewayMemberType MemberType = "pushgateway"
-
 	// UnknownMemberType is unknown container type
 	UnknownMemberType MemberType = "unknown"
 )

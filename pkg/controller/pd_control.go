@@ -32,7 +32,9 @@ import (
 )
 
 const (
-	timeout           = 5 * time.Second
+	timeout = 5 * time.Second
+
+	// https://github.com/pingcap/pd/blob/master/server/coordinator.go#L42-L45
 	schedulerExisted  = "scheduler existed"
 	schedulerNotFound = "scheduler not found"
 )
