@@ -52,11 +52,11 @@ if [[ $(uname) == Linux && -z ${DOCKER_HOST:-} ]]; then
     using_local_linuxdocker=1
 fi
 
-EMBEDDED_CONFIG=y;DIND_IMAGE=mirantis/kubeadm-dind-cluster:v1.12
+EMBEDDED_CONFIG=y;DIND_IMAGE=mirantis/kubeadm-dind-cluster@sha256:8e679951101f3f2030e77a1146cc514631f21f424027fcc003fc78a0337eb730
 
 KUBE_REPO_PREFIX="${KUBE_REPO_PREFIX:-}"
 if [[ -n ${KUBE_REPO_PREFIX} ]];then
-  DIND_IMAGE=${KUBE_REPO_PREFIX}/kubeadm-dind-cluster:v1.12
+  DIND_IMAGE=${KUBE_REPO_PREFIX}/kubeadm-dind-cluster@sha256:4a043e37e1cf8345b8abad65e1d034681a1d7963017c939707c172c2703cbe2d
 fi
 
 # dind::localhost provides the local host IP based on the address family used for service subnet.
@@ -499,6 +499,10 @@ done
 DIND_IMAGE="${DIND_IMAGE:-}"
 BUILD_KUBEADM="${BUILD_KUBEADM:-}"
 BUILD_HYPERKUBE="${BUILD_HYPERKUBE:-}"
+if [[ ! -z ${DIND_K8S_BIN_DIR:-} ]]; then
+  BUILD_KUBEADM=""
+  BUILD_HYPERKUBE=""
+fi
 KUBEADM_SOURCE="${KUBEADM_SOURCE-}"
 HYPERKUBE_SOURCE="${HYPERKUBE_SOURCE-}"
 NUM_NODES=${NUM_NODES:-3}
@@ -534,6 +538,19 @@ if [[ ! ${LOCAL_KUBECTL_VERSION:-} && ${DIND_IMAGE:-} =~ :(v[0-9]+\.[0-9]+)$ ]];
 fi
 
 ENABLE_CEPH="${ENABLE_CEPH:-}"
+
+DIND_CRI="${DIND_CRI:-docker}"
+case "${DIND_CRI}" in
+  docker)
+    CRI_SOCKET=/var/run/dockershim.sock
+    ;;
+  containerd)
+    CRI_SOCKET=/var/run/containerd/containerd.sock
+    ;;
+  *)
+    echo >&2 "Bad DIND_CRI. Please specify 'docker' or 'containerd'"
+    ;;
+esac
 
 # TODO: Test multi-cluster for IPv6, before enabling
 if [[ "${DIND_LABEL}" != "${DEFAULT_DIND_LABEL}"  && "${IP_MODE}" == 'dual-stack' ]]; then
@@ -976,6 +993,7 @@ function dind::run {
   local -a args=("systemd.setenv=CNI_PLUGIN=${CNI_PLUGIN}")
   args+=("systemd.setenv=IP_MODE=${IP_MODE}")
   args+=("systemd.setenv=DIND_STORAGE_DRIVER=${DIND_STORAGE_DRIVER}")
+  args+=("systemd.setenv=DIND_CRI=${DIND_CRI}")
 
   if [[ ${IP_MODE} != "ipv4" ]]; then
     opts+=(--sysctl net.ipv6.conf.all.disable_ipv6=0)
@@ -1050,6 +1068,9 @@ function dind::run {
 
   dind::step "Starting DIND container:" "${container_name}"
 
+  if [[ ! -z ${DIND_K8S_BIN_DIR:-} ]]; then
+      opts+=(-v ${DIND_K8S_BIN_DIR}:/k8s)
+  fi
   if [[ ! ${using_linuxkit} ]]; then
     opts+=(-v /boot:/boot -v /lib/modules:/lib/modules)
   fi
@@ -1093,11 +1114,12 @@ function dind::kubeadm {
   # See image/bare/wrapkubeadm.
   # Capturing output is necessary to grab flags for 'kubeadm join'
   kubelet_feature_gates="-e KUBELET_FEATURE_GATES=${KUBELET_FEATURE_GATES}"
+  dind_cri="-e DIND_CRI=${DIND_CRI}"
   pod_infra_container_image=""
   if [[ -n ${KUBE_REPO_PREFIX} ]]; then
     pod_infra_container_image="-e POD_INFRA_CONTAINER_IMAGE=${KUBE_REPO_PREFIX}/pause-amd64:3.1"
   fi
-  if ! docker exec ${pod_infra_container_image} ${kubelet_feature_gates} "${container_id}" /usr/local/bin/wrapkubeadm "$@" 2>&1 | tee /dev/fd/2; then
+  if ! docker exec ${dind_cri} ${pod_infra_container_image} ${kubelet_feature_gates} "${container_id}" /usr/local/bin/wrapkubeadm "$@" 2>&1 | tee /dev/fd/2; then
     echo "*** kubeadm failed" >&2
     return 1
   fi
@@ -1252,6 +1274,9 @@ function dind::init {
   master_name="$(dind::master-name)"
   local_host="$( dind::localhost )"
   container_id=$(dind::run "${master_name}" 1 "${local_host}:$(dind::apiserver-port):${INTERNAL_APISERVER_PORT}" ${master_opts[@]+"${master_opts[@]}"})
+
+  dind::verify-image-compatibility ${master_name}
+
   # FIXME: I tried using custom tokens with 'kubeadm ex token create' but join failed with:
   # 'failed to parse response as JWS object [square/go-jose: compact JWS format must have three parts]'
   # So we just pick the line from 'kubeadm init' output
@@ -1420,7 +1445,9 @@ function dind::join {
   shift
   dind::proxy "${container_id}"
   dind::custom-docker-opts "${container_id}"
-  dind::kubeadm "${container_id}" join --ignore-preflight-errors=all "$@" >/dev/null
+  local -a join_opts=(--ignore-preflight-errors=all
+                      --cri-socket="${CRI_SOCKET}")
+  dind::kubeadm "${container_id}" join "${join_opts[@]}" "$@" >/dev/null
 }
 
 function dind::escape-e2e-name {
@@ -1925,7 +1952,11 @@ function dind::fix-mounts {
 
 function dind::snapshot_container {
   local container_name="$1"
-  docker exec -i ${container_name} /usr/local/bin/snapshot prepare
+  # we must pass DIND_CRI here because in case of containerd
+  # a special care must be taken to stop the containers during
+  # the snapshot
+  docker exec -e DIND_CRI="${DIND_CRI}" -i ${container_name} \
+         /usr/local/bin/snapshot prepare
   # remove the hidden *plnk directories
   docker diff ${container_name} | grep -v plnk | docker exec -i ${container_name} /usr/local/bin/snapshot save
 }
