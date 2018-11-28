@@ -2,7 +2,7 @@
 
 # clusterScoped is whether tidb-operator should manage kubernetes cluster wide tidb clusters
 # Also see rbac.create and controllerManager.serviceAccount
-clusterScoped: false
+clusterScoped: true
 
 # kubeVersion is the k8s cluster version
 kubeVersion: v1.10.2
