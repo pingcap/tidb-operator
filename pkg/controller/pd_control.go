@@ -397,6 +397,13 @@ func (pc *pdClient) BeginEvictLeader(storeID uint64) error {
 		return nil
 	}
 
+	// pd will return an error with the body contains "scheduler existed" if the scheduler already exists
+	// this is not the standard response.
+	// so these lines are just a workaround for now:
+	//   - make a new request to get all schedulers
+	//   - return nil if the scheduler already exists
+	//
+	// when PD returns standard json response, we should get rid of this verbose code.
 	evictLeaderSchedulers, err := pc.GetEvictLeaderSchedulers()
 	if err != nil {
 		return err
@@ -427,6 +434,13 @@ func (pc *pdClient) EndEvictLeader(storeID uint64) error {
 		return nil
 	}
 
+	// pd will return an error with the body contains "scheduler not found" if the scheduler is not found
+	// this is not the standard response.
+	// so these lines are just a workaround for now:
+	//   - make a new request to get all schedulers
+	//   - return nil if the scheduler is not found
+	//
+	// when PD returns standard json response, we should get rid of this verbose code.
 	err2 := readErrorBody(res.Body)
 	evictLeaderSchedulers, err := pc.GetEvictLeaderSchedulers()
 	if err != nil {
