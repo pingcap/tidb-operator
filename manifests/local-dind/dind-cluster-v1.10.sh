@@ -1274,7 +1274,7 @@ function dind::init {
   master_name="$(dind::master-name)"
   local_host="$( dind::localhost )"
   container_id=$(dind::run "${master_name}" 1 "${local_host}:$(dind::apiserver-port):${INTERNAL_APISERVER_PORT}" ${master_opts[@]+"${master_opts[@]}"})
-
+  docker exec ${container_id} sed -i 's|^ExecStartPre=/sbin/modprobe overlay$|ExecStartPre=-/sbin/modprobe overlay|' /lib/systemd/system/containerd.service
   dind::verify-image-compatibility ${master_name}
 
   # FIXME: I tried using custom tokens with 'kubeadm ex token create' but join failed with:
@@ -1832,6 +1832,7 @@ function dind::up {
       exit 1
     else
       node_containers+=(${container_id})
+      docker exec ${container_id} sed -i 's|^ExecStartPre=/sbin/modprobe overlay$|ExecStartPre=-/sbin/modprobe overlay|' /lib/systemd/system/containerd.service
       dind::step "Node container started:" ${n}
     fi
   done
