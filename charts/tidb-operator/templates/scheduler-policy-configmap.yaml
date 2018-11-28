@@ -10,4 +10,4 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 data:
   policy.cfg: |-
-{{ .Files.Get "files/scheduler-policy.json" | indent 4 }}
+{{ tuple "config/_scheduler-policy-json.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
