@@ -57,36 +57,6 @@ func NewPDFailover(cli versioned.Interface,
 		pvLister}
 }
 
-func (pf *pdFailover) cleanOrphanPods(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	for _, pdMember := range tc.Status.PD.FailureMembers {
-		if !pdMember.MemberDeleted {
-			continue
-		}
-
-		podName := pdMember.PodName
-		ordinal, err := util.GetOrdinalFromPodName(podName)
-		if err != nil {
-			return err
-		}
-		pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), ordinal)
-		_, err = pf.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
-		if errors.IsNotFound(err) {
-			pod, err := pf.podLister.Pods(ns).Get(podName)
-			if err == nil {
-				err = pf.podControl.DeletePod(tc, pod)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
 func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
@@ -94,13 +64,8 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	if !tc.Status.PD.Synced {
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed, can't failover", ns, tcName)
 	}
-
 	if tc.Status.PD.FailureMembers == nil {
 		tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{}
-	}
-	err := pf.cleanOrphanPods(tc)
-	if err != nil {
-		return err
 	}
 
 	healthCount := 0
@@ -155,7 +120,7 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	}
 
 	// invoke deleteMember api to delete a member from the pd cluster
-	err = pf.pdControl.GetPDClient(tc).DeleteMember(failureMember.PodName)
+	err := pf.pdControl.GetPDClient(tc).DeleteMember(failureMember.PodName)
 	if err != nil {
 		return err
 	}

@@ -361,7 +361,8 @@ func newFakeTidbClusterControl() (ControlInterface, *meta.FakeReclaimPolicyManag
 	tidbMemberManager := mm.NewFakeTiDBMemberManager()
 	reclaimPolicyManager := meta.NewFakeReclaimPolicyManager()
 	metaManager := meta.NewFakeMetaManager()
-	control := NewDefaultTidbClusterControl(tcControl, pdMemberManager, tikvMemberManager, tidbMemberManager, reclaimPolicyManager, metaManager, recorder)
+	opc := mm.NewFakeOrphanPodsCleaner()
+	control := NewDefaultTidbClusterControl(tcControl, pdMemberManager, tikvMemberManager, tidbMemberManager, reclaimPolicyManager, metaManager, opc, recorder)
 
 	return control, reclaimPolicyManager, pdMemberManager, tikvMemberManager, tidbMemberManager, metaManager
 }
