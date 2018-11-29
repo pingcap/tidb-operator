@@ -343,6 +343,9 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 				g.Expect(skipReason["pod-3"]).To(Equal(skipReasonOrphanPodsCleanerPVCIsFound))
 				g.Expect(skipReason["pod-4"]).To(Equal(skipReasonOrphanPodsCleanerIsNotPDOrTiKV))
 				g.Expect(err).NotTo(HaveOccurred())
+				_, err = opc.podLister.Pods("default").Get("pod-1")
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "not found")).To(BeTrue())
 			},
 		},
 	}
