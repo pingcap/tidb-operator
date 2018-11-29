@@ -22,6 +22,7 @@ import (
 )
 
 const (
+	// https://github.com/pingcap/tidb/blob/master/owner/manager.go#L183
 	// NotDDLOwnerError is the error message which was returned when the tidb node is not a ddl owner
 	NotDDLOwnerError = "This node is not a ddl owner, can't be resigned."
 )
