@@ -4,7 +4,7 @@
   "predicates": [
     {"name": "MatchInterPodAffinity"},
     {"name": "CheckVolumeBinding"},
-{{- if semverCompare "<1.12-0" .Capabilities.KubeVersion }}
+{{- if semverCompare "<1.12-0" .Capabilities.KubeVersion.GitVersion }}
     {"name": "CheckNodeCondition"},
     {"name": "CheckNodeMemoryPressure"},
     {"name": "CheckNodeDiskPressure"},
