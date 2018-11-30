@@ -1,4 +1,5 @@
 {{- if .Values.monitor.create }}
+{{- if .Values.monitor.grafana.create }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -20,6 +21,7 @@ spec:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: monitor
+{{- end }}
 ---
 apiVersion: v1
 kind: Service

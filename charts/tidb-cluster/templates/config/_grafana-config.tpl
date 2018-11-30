@@ -36,7 +36,11 @@
 ;http_port = 3000
 
 # The public facing domain name used to access grafana from a browser
-;domain = localhost
+{{- if .Values.monitor.grafana.serverDomain }}
+domain = {{ .Values.monitor.grafana.serverDomain }}
+{{- else }}
+domain = localhost
+{{- end }}
 
 # Redirect to correct domain if host header does not match domain
 # Prevents DNS rebinding attacks
@@ -44,7 +48,11 @@
 
 # The full public facing url you use in browser, used for redirects and emails
 # If you use reverse proxy and sub path specify full url (with sub path)
-root_url = {{ .Values.grafanaUrl }}
+{{- if .Values.monitor.grafana.serverRootUrl }}
+root_url = {{ .Values.monitor.grafana.serverRootUrl }}
+{{- else }}
+root_url = %(protocol)s://%(domain)s:%(http_port)s/
+{{- end }}
 
 # Log web requests
 ;router_logging = false

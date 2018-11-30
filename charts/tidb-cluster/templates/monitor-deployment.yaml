@@ -54,8 +54,8 @@ spec:
         - /bin/sh
         - -c
         - |
-          mkdir -p /data/prometheus /data/grafana
-          chmod 777 /data/prometheus /data/grafana
+          mkdir -p /data/prometheus {{- if .Values.monitor.grafana.create }} /data/grafana {{- end }}
+          chmod 777 /data/prometheus {{- if .Values.monitor.grafana.create }} /data/grafana {{- end }}
         securityContext:
           runAsUser: 0
         volumeMounts:
@@ -89,6 +89,7 @@ spec:
             readOnly: true
           - name: monitor-data
             mountPath: /data
+      {{- if .Values.monitor.grafana.create }}
       - name: grafana
         image: {{ .Values.monitor.grafana.image }}
         imagePullPolicy: {{ .Values.monitor.grafana.imagePullPolicy | default "IfNotPresent" }}
@@ -116,8 +117,12 @@ spec:
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
         volumeMounts:
+          - name: grafana-config
+            mountPath: /etc/grafana
+            readOnly: true
           - name: monitor-data
             mountPath: /data
+      {{- end }}
       volumes:
       - name: monitor-data
         {{- if .Values.monitor.persistent }}
@@ -134,12 +139,14 @@ spec:
             path: prometheus.yml
           - key: alert-rules-config
             path: alert.rules
+      {{- if .Values.monitor.grafana.create }}
       - name: grafana-config
         configMap:
           name: {{ .Values.clusterName }}-monitor
           items:
           - key: grafana-config
             path: grafana.ini
+      {{- end }}
     {{- if .Values.monitor.tolerations }}
       tolerations:
 {{ toYaml .Values.monitor.tolerations | indent 6 }}
