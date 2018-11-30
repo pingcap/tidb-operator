@@ -62,7 +62,16 @@ $ kubectl get svc -n ${namespace} # check the available services
 
 ## Scale TiDB cluster
 
-TiDB Operator has full support of horizontal scaling. But for vertical scaling, if you're using local volumes for PD and TiKV, then scaling up may cause pod pending if the node doesn't have enough resources. So it's not recommended to do vertical scaling.
+TiDB Operator supports both horizontal and vertical scaling, but there are some caveats for storage vertical scaling.
+
+* Kubernetes is v1.11 or later, please reference [the official blog](https://kubernetes.io/blog/2018/07/12/resizing-persistent-volumes-using-kubernetes/)
+* Backend storage class supports resizing. (Currently only a limited of network storage class supports resizing)
+
+When using local persistent volumes, even CPU and memory vertical scaling can cause problems because there may be not enough resources on the node.
+
+Due to the above reasons, it's recommended to do horizontal scaling other than vertical scaling when workload increases.
+
+### Horizontal scaling
 
 To scale in/out TiDB cluster, just modify the `replicas` of PD, TiKV and TiDB in `values.yaml` file. And then run the following command:
 
@@ -70,7 +79,11 @@ To scale in/out TiDB cluster, just modify the `replicas` of PD, TiKV and TiDB in
 $ helm upgrade ${releaseName} charts/tidb-cluster
 ```
 
-To scale up/down TiDB cluster, modify the cpu/memory limits and requests of PD, TiKV and TiDB in `values.yaml` file. And then run the same command as above. (Note: This may fail when using local volumes.)
+### Vertical scaling
+
+To scale up/down TiDB cluster, modify the cpu/memory/storage limits and requests of PD, TiKV and TiDB in `values.yaml` file. And then run the same command as above.
+
+> **Note**: See the above caveats of vertical scaling. Before [#35](https://github.com/pingcap/tidb-operator/issues/35) is fixed, you have to manually configure the block cache size for TiKV in charts/tidb-cluster/templates/config/_tikv-config.tpl
 
 ## Upgrade TiDB cluster
 
@@ -79,6 +92,8 @@ Upgrade TiDB cluster is similar to scale TiDB cluster, but by changing `image` o
 ```shell
 $ helm upgrade ${releaseName} charts/tidb-cluster
 ```
+
+For minor version upgrade, updating the `image` should be enough. When TiDB major version is out, the better way to update is to fetch the new charts from tidb-operator and then merge the old values.yaml with new values.yaml. And then upgrade as above.
 
 ## Destroy TiDB cluster
 

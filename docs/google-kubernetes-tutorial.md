@@ -154,6 +154,18 @@ Now the number of TiKV pods is increased from the default 3 to 5. You can check 
 
 	kubectl get po -n tidb
 
+## Destroy the TiDB cluster
+
+When the TiDB cluster is not needed, you can delete with the following command:
+
+	helm delete tidb --purge &&
+	kubectl delete
+
+The above commands only delete the running pods, the data is persistent. If you do not need the data anymore, you should run the following command to clean the data and the dynamically created persistent disks:
+
+	kubectl delete pvc -n tidb -l app.kubernetes.io/instance=tidb,app.kubernetes.io/managed-by=tidb-operator &&
+	kubectl get pv -l app.kubernetes.io/namespace=tidb,app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/instance=tidb -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+
 ## Shut down the Kubernetes cluster
 
 Once you have finished experimenting, you can delete the Kubernetes cluster with:
