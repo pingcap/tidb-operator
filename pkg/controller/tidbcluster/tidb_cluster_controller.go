@@ -162,6 +162,11 @@ func NewController(
 				podInformer.Lister(),
 				podControl,
 			),
+			mm.NewOrphanPodsCleaner(
+				podInformer.Lister(),
+				podControl,
+				pvcInformer.Lister(),
+			),
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(

@@ -25,9 +25,9 @@ import (
 )
 
 const (
-	skipReasonPVCNotFound             = "pvc is not found"
-	skipReasonAnnIsNil                = "pvc annotations is nil"
-	skipReasonAnnDeferDeletingIsEmpty = "pvc annotations defer deleting is empty"
+	skipReasonScalerPVCNotFound             = "scaler: pvc is not found"
+	skipReasonScalerAnnIsNil                = "scaler: pvc annotations is nil"
+	skipReasonScalerAnnDeferDeletingIsEmpty = "scaler: pvc annotations defer deleting is empty"
 )
 
 // Scaler implements the logic for scaling out or scaling in the cluster.
@@ -44,39 +44,32 @@ type generalScaler struct {
 	pvcControl controller.PVCControlInterface
 }
 
-func (gs *generalScaler) deleteAllDeferDeletingPVC(tc *v1alpha1.TidbCluster,
-	setName string, memberType v1alpha1.MemberType, from, to int32) (map[int32]string, error) {
+func (gs *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,
+	setName string, memberType v1alpha1.MemberType, ordinal int32) (map[int32]string, error) {
 	ns := tc.GetNamespace()
 	// for unit test
 	skipReason := map[int32]string{}
 
-	for i := from; i < to; i++ {
-		pvcName := ordinalPVCName(memberType, setName, i)
-		pvc, err := gs.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
-		if errors.IsNotFound(err) {
-			skipReason[i] = skipReasonPVCNotFound
-			continue
-		}
-		if err != nil {
-			return skipReason, err
-		}
-
-		if pvc.Annotations == nil {
-			skipReason[i] = skipReasonAnnIsNil
-			continue
-		}
-		if _, ok := pvc.Annotations[label.AnnPVCDeferDeleting]; !ok {
-			skipReason[i] = skipReasonAnnDeferDeletingIsEmpty
-			continue
-		}
-
-		err = gs.pvcControl.DeletePVC(tc, pvc)
-		if err != nil {
-			return skipReason, err
-		}
+	pvcName := ordinalPVCName(memberType, setName, ordinal)
+	pvc, err := gs.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
+	if errors.IsNotFound(err) {
+		skipReason[ordinal] = skipReasonScalerPVCNotFound
+		return skipReason, nil
+	}
+	if err != nil {
+		return skipReason, err
 	}
 
-	return skipReason, nil
+	if pvc.Annotations == nil {
+		skipReason[ordinal] = skipReasonScalerAnnIsNil
+		return skipReason, nil
+	}
+	if _, ok := pvc.Annotations[label.AnnPVCDeferDeleting]; !ok {
+		skipReason[ordinal] = skipReasonScalerAnnDeferDeletingIsEmpty
+		return skipReason, nil
+	}
+
+	return skipReason, gs.pvcControl.DeletePVC(tc, pvc)
 }
 
 func resetReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
