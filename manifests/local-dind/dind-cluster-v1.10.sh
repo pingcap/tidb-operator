@@ -52,11 +52,11 @@ if [[ $(uname) == Linux && -z ${DOCKER_HOST:-} ]]; then
     using_local_linuxdocker=1
 fi
 
-EMBEDDED_CONFIG=y;DIND_IMAGE=mirantis/kubeadm-dind-cluster@sha256:f7c6b21a9a0a55c4bc79678d5b339dea02a6f3aaa3307c0c120c6a9b2cf0f4fc
+EMBEDDED_CONFIG=y;DIND_IMAGE=mirantis/kubeadm-dind-cluster@sha256:ba1b61973fb4761f209580c599c17eab7c2e1bead5dfe496aab47c5ff672b05f
 
 KUBE_REPO_PREFIX="${KUBE_REPO_PREFIX:-}"
 if [[ -n ${KUBE_REPO_PREFIX} ]];then
-  DIND_IMAGE=${KUBE_REPO_PREFIX}/kubeadm-dind-cluster@sha256:2d45b575bb48adec86e5d8faaebd3193c6cba9235cd27ce50af3787a5ed777d0
+  DIND_IMAGE=${KUBE_REPO_PREFIX}/kubeadm-dind-cluster@sha256:3862cf251c9d5be2fa93fd1b87aeed0bc05be74179cbd3f2ce3f9e0614d1b233
 fi
 
 # dind::localhost provides the local host IP based on the address family used for service subnet.
@@ -1274,7 +1274,7 @@ function dind::init {
   master_name="$(dind::master-name)"
   local_host="$( dind::localhost )"
   container_id=$(dind::run "${master_name}" 1 "${local_host}:$(dind::apiserver-port):${INTERNAL_APISERVER_PORT}" ${master_opts[@]+"${master_opts[@]}"})
-
+  docker exec ${container_id} sed -i 's|^ExecStartPre=/sbin/modprobe overlay$|ExecStartPre=-/sbin/modprobe overlay|' /lib/systemd/system/containerd.service
   dind::verify-image-compatibility ${master_name}
 
   # FIXME: I tried using custom tokens with 'kubeadm ex token create' but join failed with:
@@ -1832,6 +1832,7 @@ function dind::up {
       exit 1
     else
       node_containers+=(${container_id})
+      docker exec ${container_id} sed -i 's|^ExecStartPre=/sbin/modprobe overlay$|ExecStartPre=-/sbin/modprobe overlay|' /lib/systemd/system/containerd.service
       dind::step "Node container started:" ${n}
     fi
   done

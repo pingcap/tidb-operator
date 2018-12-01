@@ -4,16 +4,18 @@
   "predicates": [
     {"name": "MatchInterPodAffinity"},
     {"name": "CheckVolumeBinding"},
+{{- if semverCompare "<1.12-0" .Capabilities.KubeVersion.GitVersion }}
     {"name": "CheckNodeCondition"},
+    {"name": "CheckNodeMemoryPressure"},
+    {"name": "CheckNodeDiskPressure"},
+{{- end }}
     {"name": "GeneralPredicates"},
     {"name": "HostName"},
     {"name": "PodFitsHostPorts"},
     {"name": "MatchNodeSelector"},
     {"name": "PodFitsResources"},
     {"name": "NoDiskConflict"},
-    {"name": "PodToleratesNodeTaints"},
-    {"name": "CheckNodeMemoryPressure"},
-    {"name": "CheckNodeDiskPressure"}
+    {"name": "PodToleratesNodeTaints"}
   ],
   "priorities": [
     {"name": "EqualPriority", "weight": 1},
