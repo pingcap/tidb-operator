@@ -17,6 +17,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
@@ -39,6 +40,7 @@ func NewDefaultTidbClusterControl(
 	tidbMemberManager manager.Manager,
 	reclaimPolicyManager manager.Manager,
 	metaManager manager.Manager,
+	orphanPodsCleaner member.OrphanPodsCleaner,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		tcControl,
@@ -47,6 +49,7 @@ func NewDefaultTidbClusterControl(
 		tidbMemberManager,
 		reclaimPolicyManager,
 		metaManager,
+		orphanPodsCleaner,
 		recorder,
 	}
 }
@@ -58,6 +61,7 @@ type defaultTidbClusterControl struct {
 	tidbMemberManager    manager.Manager
 	reclaimPolicyManager manager.Manager
 	metaManager          manager.Manager
+	orphanPodsCleaner    member.OrphanPodsCleaner
 	recorder             record.EventRecorder
 }
 
@@ -88,6 +92,11 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 
 	// ReclaimPolicyManager
 	err := tcc.reclaimPolicyManager.Sync(tc)
+	if err != nil {
+		return err
+	}
+
+	_, err = tcc.orphanPodsCleaner.Clean(tc)
 	if err != nil {
 		return err
 	}

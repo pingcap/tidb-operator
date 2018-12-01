@@ -38,7 +38,7 @@ func testUpgrade(ns, clusterName string) {
 	Expect(err).NotTo(HaveOccurred())
 
 	By("When upgrade TiDB cluster to newer version")
-	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+	err = wait.Poll(5*time.Second, 10*time.Minute, func() (bool, error) {
 		return upgrade(ns, clusterName)
 	})
 	Expect(err).NotTo(HaveOccurred())
