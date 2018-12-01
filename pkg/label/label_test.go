@@ -16,9 +16,8 @@ package label
 import (
 	"testing"
 
-	"k8s.io/apimachinery/pkg/labels"
-
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 func TestLabelNew(t *testing.T) {
