@@ -15,7 +15,8 @@ data:
 
   alert-rules-config: |-
 {{ tuple "config/_alert-rules-config.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-
+{{- if .Values.monitor.grafana.create }}
   grafana-config: |-
 {{ tuple "config/_grafana-config.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- end }}
 {{- end }}
