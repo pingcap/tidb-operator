@@ -318,7 +318,7 @@ func TestFakeTiDBFailoverRecover(t *testing.T) {
 						PodName: "failover-tidb-0",
 					},
 					"failover-tidb-1": {
-						PodName: "failover-tidb-0",
+						PodName: "failover-tidb-1",
 					},
 				}
 			},
