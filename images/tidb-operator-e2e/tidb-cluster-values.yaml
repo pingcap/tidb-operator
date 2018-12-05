@@ -28,7 +28,7 @@ services:
 
 pd:
   replicas: 3
-  image: pingcap/pd:v2.0.7
+  image: pingcap/pd:v2.1.0
   imagePullPolicy: IfNotPresent
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -68,7 +68,7 @@ pd:
 
 tikv:
   replicas: 3
-  image: pingcap/tikv:v2.0.7
+  image: pingcap/tikv:v2.1.0
   imagePullPolicy: IfNotPresent
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -114,7 +114,7 @@ tidb:
   replicas: 2
   # password is TiDB's password, if omit password, a random password is generated
   password: "admin"
-  image: pingcap/tidb:v2.0.7
+  image: pingcap/tidb:v2.1.0
   imagePullPolicy: IfNotPresent
   logLevel: info
   resources: {}
@@ -200,7 +200,7 @@ monitor:
 
 fullbackup:
   create: false
-  binlogImage: pingcap/tidb-binlog:latest
+  binlogImage: pingcap/tidb-binlog:v2.1.0
   binlogImagePullPolicy: IfNotPresent
   # https://github.com/tennix/tidb-cloud-backup
   mydumperImage: pingcap/tidb-cloud-backup:latest
@@ -237,7 +237,7 @@ binlog:
   pump:
     create: false
     replicas: 1
-    image: pingcap/tidb-binlog:new
+    image: pingcap/tidb-binlog:v2.1.0
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -254,7 +254,7 @@ binlog:
 
   drainer:
     create: false
-    image: pingcap/tidb-binlog:new
+    image: pingcap/tidb-binlog:v2.1.0
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.

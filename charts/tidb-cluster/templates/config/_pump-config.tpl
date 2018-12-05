@@ -4,7 +4,7 @@
 addr = "0.0.0.0:8250"
 
 # addr(i.e. 'host:port') to advertise to the public
-# advertise-addr = ""
+advertise-addr = ""
 
 # a integer value to control expiry date of the binlog data, indicates for how long (in days) the binlog data would be stored.
 # must bigger than 0
@@ -26,3 +26,17 @@ pd-urls = "http://{{ .Values.clusterName }}-pd:2379"
 # ssl-cert = "/path/to/drainer.pem"
 # Path of file that contains X509 key in PEM format for connection with cluster components.
 # ssl-key = "/path/to/drainer-key.pem"
+#
+#
+# we suggest using the default config of the embedded LSM DB now, do not change it useless you know what you are doing
+# [storage.kv]
+# block-cache-capacity = 8388608
+# block-restart-interval = 16
+# block-size = 4096
+# compaction-L0-trigger = 8
+# compaction-table-size = 67108864
+# compaction-total-size = 536870912
+# compaction-total-size-multiplier = 8
+# write-buffer = 67108864
+# write-L0-pause-trigger = 24
+# write-L0-slowdown-trigger = 17

@@ -25,7 +25,7 @@ pd-urls = "http://{{ .Values.clusterName }}-pd:2379"
 [syncer]
 
 # disable sync these schema
-ignore-schemas = "{{ .Values.binlog.drainer.ignoreSchemas | default "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql,test" }}"
+ignore-schemas = {{ .Values.binlog.drainer.ignoreSchemas | default "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql" | quote }}
 
 # number of binlog events in a transaction batch
 txn-batch = {{ .Values.binlog.drainer.txnBatch | default 1 }}
@@ -54,6 +54,20 @@ db-type = "{{ .Values.binlog.drainer.destDBType }}"
 #db-name ="test"
 #tbl-name = "~^a.*"
 
+{{- if eq .Values.binlog.drainer.destDBType "mysql" }}
+# the downstream mysql protocol database
+[syncer.to]
+host = {{ .Values.binlog.drainer.mysql.host | quote }}
+user = {{ .Values.binlog.drainer.mysql.user | default "root" | quote }}
+password = {{ .Values.binlog.drainer.mysql.password | quote }}
+port = {{ .Values.binlog.drainer.mysql.port | default 3306 }}
+# Time and size limits for flash batch write
+time-limit = {{ .Values.binlog.drainer.mysql.timeLimit | default "30s" | quote }}
+size-limit = {{ .Values.binlog.drainer.mysql.sizeLimit | default 100000 | quote }}
+[syncer.to.checkpoint]
+#schema = "tidb_binlog"
+{{- end }}
+
 {{- if eq .Values.binlog.drainer.destDBType "pb" }}
 # Uncomment this if you want to use pb or sql as db-type.
 # Compress compresses output file, like pb and sql file. Now it supports "gzip" algorithm only.
@@ -63,16 +77,21 @@ dir = "/data/pb"
 compression = "gzip"
 {{- end }}
 
-
 {{- if eq .Values.binlog.drainer.destDBType "kafka" }}
 # when db-type is kafka, you can uncomment this to config the down stream kafka, it will be the globle config kafka default
 [syncer.to]
 # only need config one of zookeeper-addrs and kafka-addrs, will get kafka address if zookeeper-addrs is configed.
 {{- if .Values.binlog.drainer.kafka.zookeeperAddrs }}
-zookeeper-addrs = {{ .Values.binlog.drainer.kafka.zookeeperAddrs }}
+zookeeper-addrs = {{ .Values.binlog.drainer.kafka.zookeeperAddrs | quote }}
 {{- end }}
 {{- if .Values.binlog.drainer.kafka.kafkaAddrs }}
-kafka-addrs = {{ .Values.binlog.drainer.kafka.kafkaAddrs }}
+kafka-addrs = {{ .Values.binlog.drainer.kafka.kafkaAddrs | quote }}
 {{- end }}
-kafka-version = {{ .Values.binlog.drainer.kafka.kafkaVersion | default "0.8.2.0" }}
-{{- end }}
+kafka-version = {{ .Values.binlog.drainer.kafka.kafkaVersion | default "0.8.2.0" | quote }}
+kafka-max-messages = 1024
+#
+#
+# the topic name drainer will push msg, the default name is <cluster-id>_obinlog
+# be careful don't use the same name if run multi drainer instances
+# topic-name = ""
+{{- end -}}
