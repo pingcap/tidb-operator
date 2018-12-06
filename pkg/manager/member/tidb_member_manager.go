@@ -68,6 +68,13 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 }
 
 func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	if !tc.TiKVIsAvailable() {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
+	}
+
 	// Sync TiDB Headless Service
 	if err := tmm.syncTiDBHeadlessServiceForTidbCluster(tc); err != nil {
 		return err

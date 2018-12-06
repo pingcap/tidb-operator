@@ -47,7 +47,14 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
 		tc := newTidbClusterForTiDB()
+		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
+		}
+		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
+
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
 		oldSpec := tc.Spec
@@ -84,15 +91,24 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			name:                     "normal",
 			prepare:                  nil,
 			errWhenCreateStatefulSet: false,
-			err:                      false,
-			setCreated:               true,
+			err:        false,
+			setCreated: true,
+		},
+		{
+			name: "tikv is not avaliable",
+			prepare: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
+			},
+			errWhenCreateStatefulSet: false,
+			err:        true,
+			setCreated: false,
 		},
 		{
 			name:                     "error when create statefulset",
 			prepare:                  nil,
 			errWhenCreateStatefulSet: true,
-			err:                      true,
-			setCreated:               false,
+			err:        true,
+			setCreated: false,
 		},
 	}
 
@@ -113,7 +129,14 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
 		tc := newTidbClusterForTiDB()
+		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
+		}
+		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
+
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
 
@@ -167,7 +190,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: false,
-			err:                      false,
+			err: false,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
@@ -181,7 +204,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: true,
-			err:                      true,
+			err: true,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
