@@ -56,6 +56,11 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed,can't scale out now", ns, tcName)
 	}
 
+	if len(tc.Status.PD.FailureMembers) != 0 {
+		increaseReplicas(newSet, oldSet)
+		return nil
+	}
+
 	var i int32 = 0
 	healthCount := 0
 	totalCount := *oldSet.Spec.Replicas
