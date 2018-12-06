@@ -163,7 +163,8 @@ monitor:
     image: pingcap/tidb-dashboard-installer:v2.0.0
     imagePullPolicy: IfNotPresent
   grafana:
-    image: grafana/grafana:4.6.3
+    create: true
+    image: grafana/grafana:4.6.5
     imagePullPolicy: IfNotPresent
     logLevel: info
     resources: {}
@@ -177,7 +178,10 @@ monitor:
     password: admin
     service:
       type: NodePort
-    grafanaUrl: http://localhost:3000
+    # if grafana is running behind a reverse proxy with subpath http://foo.bar/grafana
+    # config the `serverDomain` and `serverRootUrl` as follows
+    # serverDomain: foo.bar
+    # serverRootUrl: "%(protocol)s://%(domain)s/grafana/"
   prometheus:
     image: prom/prometheus:v2.2.1
     imagePullPolicy: IfNotPresent
