@@ -28,7 +28,7 @@ pd-urls = "http://{{ .Values.clusterName }}-pd:2379"
 # ssl-key = "/path/to/drainer-key.pem"
 #
 #
-# we suggest using the default config of the embedded LSM DB now, do not change it useless you know what you are doing
+# we suggest using the default config of the embedded LSM DB now, do not change it unless you know what you are doing
 # [storage.kv]
 # block-cache-capacity = 8388608
 # block-restart-interval = 16
