@@ -15,7 +15,11 @@ package e2e
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -32,8 +36,24 @@ import (
 )
 
 const (
+	username = "admin"
 	password = "admin"
 )
+
+type Result struct {
+	Metric struct {
+		Job string `json:"job"`
+	} `json:"metric"`
+	Values []interface{} `json:"values"`
+}
+
+type Response struct {
+	Status string `json:"status"`
+	Data   struct {
+		ResultType string   `json:"resultType"`
+		Result     []Result `json:"result"`
+	}
+}
 
 func testCreate(ns, clusterName string) {
 	By(fmt.Sprintf("When create the TiDB cluster: %s/%s", ns, clusterName))
@@ -109,6 +129,11 @@ func allMembersRunning(ns, clusterName string) (bool, error) {
 
 	synced, err = metaSynced(tc)
 	if err != nil || !synced {
+		return false, nil
+	}
+
+	running, err = monitorMemberRunning(tc)
+	if err != nil || !running {
 		return false, nil
 	}
 
@@ -329,6 +354,63 @@ func tidbMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func monitorMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	deployName := fmt.Sprintf("%s-monitor", tcName)
+	deploy, err := kubeCli.AppsV1beta1().Deployments(ns).Get(deployName, metav1.GetOptions{})
+	if err != nil {
+		logf(err.Error())
+		return false, nil
+	}
+	if deploy.Status.ReadyReplicas < 1 {
+		logf("monitor ready replicas %d < 1", deploy.Status.ReadyReplicas)
+		return false, nil
+	}
+	if err := checkGrafanaData(tc); err != nil {
+		logf("can't get grafana data: %v", err)
+		return false, nil
+	}
+	return true, nil
+}
+
+func checkGrafanaData(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	svcName := fmt.Sprintf("%s-grafana", tcName)
+	end := time.Now()
+	start := end.Add(-time.Minute)
+	values := url.Values{}
+	values.Set("query", `sum(tikv_pd_heartbeat_tick_total{type="leader"}) by (job)`)
+	values.Set("start", fmt.Sprintf("%d", start.Unix()))
+	values.Set("end", fmt.Sprintf("%d", end.Unix()))
+	values.Set("step", "30")
+	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources/proxy/1/api/v1/query_range?%s", svcName, ns, values.Encode())
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return err
+	}
+	req.SetBasicAuth(username, password)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	data := &Response{}
+	if err := json.Unmarshal(buf, data); err != nil {
+		return err
+	}
+	if data.Status != "success" || len(data.Data.Result) < 1 {
+		return fmt.Errorf("invalid response: status: %s, result: %v", data.Status, data.Data.Result)
+	}
+	return nil
 }
 
 func reclaimPolicySynced(tc *v1alpha1.TidbCluster) (bool, error) {

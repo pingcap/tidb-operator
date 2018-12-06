@@ -1,4 +1,4 @@
-{{- if .Values.monitor.create }}
+{{- if (.Values.monitor.create) and (.Values.monitor.grafana.create) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
