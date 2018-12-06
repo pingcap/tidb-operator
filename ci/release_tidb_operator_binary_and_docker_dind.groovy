@@ -28,17 +28,17 @@ def call(BUILD_BRANCH, RELEASE_TAG) {
 					sh """
 					# release tidb-operator chart
 					sed -i "s/version:.*/version: ${RELEASE_TAG}/g" charts/tidb-operator/Chart.yaml
-					tar -zcf tidb-operator-charts-${RELEASE_TAG}.tar.gz -C charts tidb-operator
-					sha256sum tidb-operator-charts-${RELEASE_TAG}.tar.gz > tidb-operator-charts-${RELEASE_TAG}.sha256
+					tar -zcf tidb-operator-${RELEASE_TAG}.tar.gz -C charts tidb-operator
+					sha256sum tidb-operator-${RELEASE_TAG}.tar.gz > tidb-operator-${RELEASE_TAG}.sha256
 
-					upload.py tidb-operator-charts-${RELEASE_TAG}.tar.gz tidb-operator-charts-${RELEASE_TAG}.tar.gz
-					upload.py tidb-operator-charts-${RELEASE_TAG}.sha256 tidb-operator-charts-${RELEASE_TAG}.sha256
+					upload.py tidb-operator-${RELEASE_TAG}.tar.gz tidb-operator-${RELEASE_TAG}.tar.gz
+					upload.py tidb-operator-${RELEASE_TAG}.sha256 tidb-operator-${RELEASE_TAG}.sha256
 					# release tidb-cluster chart
-					tar -zcf tidb-cluster-charts-${RELEASE_TAG}.tar.gz -C charts tidb-cluster
-					sha256sum tidb-cluster-charts-${RELEASE_TAG}.tar.gz > tidb-cluster-charts-${RELEASE_TAG}.sha256
+					tar -zcf tidb-cluster-${RELEASE_TAG}.tar.gz -C charts tidb-cluster
+					sha256sum tidb-cluster-${RELEASE_TAG}.tar.gz > tidb-cluster-${RELEASE_TAG}.sha256
 
-					upload.py tidb-cluster-charts-${RELEASE_TAG}.tar.gz tidb-cluster-charts-${RELEASE_TAG}.tar.gz
-					upload.py tidb-cluster-charts-${RELEASE_TAG}.sha256 tidb-cluster-charts-${RELEASE_TAG}.sha256
+					upload.py tidb-cluster-${RELEASE_TAG}.tar.gz tidb-cluster-${RELEASE_TAG}.tar.gz
+					upload.py tidb-cluster-${RELEASE_TAG}.sha256 tidb-cluster-${RELEASE_TAG}.sha256
 					"""
 				}
 			}
