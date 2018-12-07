@@ -28,7 +28,7 @@ spec:
         # And also avoid plain text password show in Job and Pod spec
         # Besides we can also add more SQL in the file for initialization, eg. create database, create user etc
         - |
-          until mysql -h {{ .Values.clusterName }}-tidb -P 4000 < /data/init-password.sql; do sleep 2; done
+          until mysql -h {{ .Values.clusterName }}-tidb -P 4000 --connect-timeout=5 < /data/init-password.sql; do sleep 2; done
         volumeMounts:
         - name: password
           mountPath: /data
