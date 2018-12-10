@@ -28,7 +28,9 @@ import (
 )
 
 const (
-	upgradeVersion = "v2.0.8"
+	// TODO: the base version is also v2.1.0 now, so no upgrade right now
+	// change to later version when TiDB released
+	upgradeVersion = "v2.1.0"
 )
 
 func testUpgrade(ns, clusterName string) {
