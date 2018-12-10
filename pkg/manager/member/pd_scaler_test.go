@@ -140,6 +140,26 @@ func TestPDScalerScaleOut(t *testing.T) {
 			changed:          false,
 		},
 		{
+			name: "failover now",
+			update: func(tc *v1alpha1.TidbCluster) {
+				normalPDMember(tc)
+				podName := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0)
+				tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{
+					podName: {PodName: podName},
+				}
+				pd := tc.Status.PD.Members[podName]
+				pd.Health = false
+				tc.Status.PD.Members[podName] = pd
+			},
+			pdUpgrading:      false,
+			hasPVC:           true,
+			hasDeferAnn:      true,
+			pvcDeleteErr:     false,
+			statusSyncFailed: false,
+			err:              false,
+			changed:          true,
+		},
+		{
 			name: "don't have members",
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Members = nil
