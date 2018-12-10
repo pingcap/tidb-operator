@@ -125,7 +125,7 @@ When you see `demo-tidb` appear, you can `Control + C`. The service is ready to 
 
 You can connect to the clustered service within the Kubernetes cluster:
 
-    PASSWORD=$(kubectl get secret -n tidb demo-tidb -o jsonpath="{.data.password}" | base64 -d | awk '{print $6}') &&
+    PASSWORD=$(kubectl get secret -n tidb demo-tidb -o jsonpath="{.data.password}" | base64 --decode | awk '{print $6}') &&
 	echo ${PASSWORD} &&
 	kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb -o jsonpath='{.spec.clusterIP}') -p
 
