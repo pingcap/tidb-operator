@@ -15,8 +15,22 @@ spec:
   suspend: {{ .Values.fullbackup.suspend }}
   startingDeadlineSeconds: {{ .Values.fullbackup.startingDeadlineSeconds }}
   jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "chart.name" . }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: fullbackup
+        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
     spec:
       template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: {{ template "chart.name" . }}
+            app.kubernetes.io/managed-by: {{ .Release.Service }}
+            app.kubernetes.io/instance: {{ .Release.Name }}
+            app.kubernetes.io/component: fullbackup
+            helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
         spec:
           initContainers:
           - name: get-ts
@@ -49,7 +63,7 @@ spec:
               mountPath: "/gcp"
               readOnly: true
           {{- end }}
-            ENV:
+            env:
             - name: MY_POD_NAME
               valueFrom:
                 fieldRef:
@@ -61,7 +75,7 @@ spec:
             - name: TIDB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.clusterName }}-fullbackup-secret
+                  name: {{ .Values.clusterName }}-fullbackup
                   key: user-password
           restartPolicy: OnFailure
           volumes:
@@ -73,7 +87,7 @@ spec:
         {{- if .Values.fullbackup.gcp }}
           - name: gcp-credentials
             secret:
-              secretName: {{ .Values.clusterName }}-fullbackup-secret
+              secretName: {{ .Values.clusterName }}-fullbackup
         {{- end }}
 
 {{- end }}
