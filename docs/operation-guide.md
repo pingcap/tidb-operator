@@ -141,7 +141,7 @@ $ helm install charts/tidb-backup --name=${releaseName} --namespace=${namespace}
 $ watch kubectl get po -n ${namespace} -l app.kubernetes.io/component=fullbackup -o wide
 ```
 
-> **Note:** You must set the fullbackup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to safe your backup data.
+> **Note:** You must set the fullbackup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to keep your backup data safe.
 
 If TiDB cluster is running on GKE, the backup data can be uploaded to GCS bucket. A bucket name and base64 encoded service account credential that has bucket read/write access must be provided. The comments in `values.yaml` is self-explanatory for GCP backup.
 
