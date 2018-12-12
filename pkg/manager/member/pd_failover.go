@@ -109,6 +109,9 @@ func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 			continue
 		}
 
+		if tc.Status.PD.FailureMembers == nil {
+			tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{}
+		}
 		deadline := pdMember.LastTransitionTime.Add(pf.pdFailoverPeriod)
 		_, exist := tc.Status.PD.FailureMembers[podName]
 		if pdMember.Health || time.Now().Before(deadline) || exist {
@@ -125,9 +128,6 @@ func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 			return err
 		}
 
-		if tc.Status.PD.FailureMembers == nil {
-			tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{}
-		}
 		tc.Status.PD.FailureMembers[podName] = v1alpha1.PDFailureMember{
 			PodName:       podName,
 			MemberID:      pdMember.ID,
