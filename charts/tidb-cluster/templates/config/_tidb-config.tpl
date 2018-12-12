@@ -1,7 +1,10 @@
-#TiDB Configuration.
+# TiDB Configuration.
 
 # TiDB server host.
 host = "0.0.0.0"
+
+# tidb server advertise IP.
+advertise-address = ""
 
 # TiDB server port.
 port = 4000
@@ -40,6 +43,10 @@ enable-streaming = false
 
 # Set system variable 'lower_case_table_names'
 lower-case-table-names = 2
+
+# Make "kill query" behavior compatible with MySQL. It's not recommend to
+# turn on this option when TiDB server is behind a proxy.
+compatible-kill-query = false
 
 [log]
 # Log level: debug, info, warn, error, fatal.
@@ -121,9 +128,6 @@ stmt-count-limit = 5000
 # Set keep alive option for tcp connection.
 tcp-keep-alive = true
 
-# The maximum number of retries when commit a transaction.
-retry-limit = 10
-
 # Whether support cartesian product.
 cross-join = true
 
@@ -134,14 +138,18 @@ stats-lease = "3s"
 run-auto-analyze = true
 
 # Probability to use the query feedback to update stats, 0 or 1 for always false/true.
-feedback-probability = 0.0
+feedback-probability = 0.05
 
 # The max number of query feedback that cache in memory.
 query-feedback-limit = 1024
 
 # Pseudo stats will be used if the ratio between the modify count and
 # row count in statistics of a table is greater than it.
-pseudo-estimate-ratio = 0.7
+pseudo-estimate-ratio = 0.8
+
+# Force the priority of all statements in a specified priority.
+# The value could be "NO_PRIORITY", "LOW_PRIORITY", "HIGH_PRIORITY" or "DELAYED".
+force-priority = "NO_PRIORITY"
 
 [proxy-protocol]
 # PROXY protocol acceptable client networks.
@@ -150,11 +158,6 @@ networks = ""
 
 # PROXY protocol header read timeout, unit is second
 header-timeout = 5
-
-[plan-cache]
-enabled = false
-capacity = 2560
-shards = 256
 
 [prepared-plan-cache]
 enabled = false
@@ -226,10 +229,15 @@ grpc-keepalive-timeout = 3
 # max time for commit command, must be twice bigger than raft election timeout.
 commit-timeout = "41s"
 
-[binlog]
+[txn-local-latches]
+# Enable local latches for transactions. Enable it when
+# there are lots of conflicts between transactions.
+enabled = false
+capacity = 10240000
 
-# Socket file to write binlog.
-binlog-socket = ""
+[binlog]
+# enable to write binlog.
+enable = false
 
 # WriteTimeout specifies how long it will wait for writing binlog to pump.
 write-timeout = "15s"
