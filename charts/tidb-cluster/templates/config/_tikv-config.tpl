@@ -5,10 +5,17 @@
 #   Time(based on ms): ms, s, m, h
 #    e.g.: 78_000 = "1.3m"
 
-# log level: trace, debug, info, warn, error, off.
+# log level: trace, debug, info, warning, error, critical.
+# Note that `debug` and `trace` are only available in development builds.
 log-level = {{ .Values.tikv.logLevel | default "info" | quote }}
+
 # file to store log, write to stderr if it's empty.
 # log-file = ""
+
+# timespan between rotating the log files.
+# Once this timespan passes the existing log file will have a timestamp appended to its name,
+# and a new file will be created.
+# log-rotation-timespan = "24h"
 
 [readpool.storage]
 # size of thread pool for high-priority operations
@@ -17,12 +24,12 @@ log-level = {{ .Values.tikv.logLevel | default "info" | quote }}
 # normal-concurrency = 4
 # size of thread pool for low-priority operations
 # low-concurrency = 4
-# max running high-priority operations, reject if exceed
-# max-tasks-high = 8000
-# max running normal-priority operations, reject if exceed
-# max-tasks-normal = 8000
-# max running low-priority operations, reject if exceed
-# max-tasks-low = 8000
+# max running high-priority operations of each worker, reject if exceed
+# max-tasks-per-worker-high = 2000
+# max running normal-priority operations of each worker, reject if exceed
+# max-tasks-per-worker-normal = 2000
+# max running low-priority operations of each worker, reject if exceed
+# max-tasks-per-worker-low = 2000
 # size of stack size for each thread pool
 # stack-size = "10MB"
 
@@ -33,9 +40,9 @@ log-level = {{ .Values.tikv.logLevel | default "info" | quote }}
 # high-concurrency = 8
 # normal-concurrency = 8
 # low-concurrency = 8
-# max-tasks-high = 16000
-# max-tasks-normal = 16000
-# max-tasks-low = 16000
+# max-tasks-per-worker-high = 2000
+# max-tasks-per-worker-normal = 2000
+# max-tasks-per-worker-low = 2000
 # stack-size = "10MB"
 
 [server]
@@ -48,8 +55,8 @@ log-level = {{ .Values.tikv.logLevel | default "info" | quote }}
 # maximum number of messages can be processed in one tick.
 # messages-per-tick = 4096
 
-# compression type for grpc channel, available values are no, deflate and gzip.
-# grpc-compression-type = "no"
+# compression type for grpc channel, available values are none, deflate and gzip.
+# grpc-compression-type = "none"
 # size of thread pool for grpc server.
 # grpc-concurrency = 4
 # The number of max concurrent streams/requests on a client connection.
@@ -58,14 +65,17 @@ log-level = {{ .Values.tikv.logLevel | default "info" | quote }}
 # grpc-raft-conn-num = 10
 # Amount to read ahead on individual grpc streams.
 # grpc-stream-initial-window-size = "2MB"
+# Time to wait before sending out a ping to check if server is still alive.
+# This is only for communications between tikv instances.
+# grpc-keepalive-time = "10s"
+# Time to wait before closing the connection without receiving keepalive ping
+# ack.
+# grpc-keepalive-timeout = "3s"
 
 # How many snapshots can be sent concurrently.
 # concurrent-send-snap-limit = 32
 # How many snapshots can be recv concurrently.
 # concurrent-recv-snap-limit = 32
-
-# max count of tasks being handled, new tasks will be rejected.
-# end-point-max-tasks = 2000
 
 # max recursion level allowed when decoding dag expression
 # end-point-recursion-limit = 1000
@@ -117,6 +127,9 @@ address = "http://localhost:9091" # empty or http://localhost:9091 to disable or
 # true (default value) for high reliability, this can prevent data loss when power failure.
 sync-log = {{ .Values.tikv.syncLog }}
 
+# minimizes disruption when a partitioned node rejoins the cluster by using a two phase election.
+# prevote = true
+
 # set the path to raftdb directory, default value is data-dir/raft
 # raftdb-path = ""
 
@@ -160,14 +173,24 @@ sync-log = {{ .Values.tikv.syncLog }}
 
 # Interval to check whether start manual compaction for a region,
 # region-compact-check-interval = "5m"
+
 # Number of regions for each time to check.
 # region-compact-check-step = 100
+
 # The minimum number of delete tombstones to trigger manual compaction.
 # region-compact-min-tombstones = 10000
+
+# The minimum percentage of delete tombstones to trigger manual compaction.
+# Should between 1 and 100. Manual compaction only triggered when the number
+# of delete tombstones exceeds region-compact-min-tombstones and the percentage
+# of delete tombstones exceeds region-compact-tombstones-percent.
+# region-compact-tombstones-percent = 30
+
 # Interval to check whether should start a manual compaction for lock column family,
 # if written bytes reach lock-cf-compact-threshold for lock column family, will fire
 # a manual compaction for lock column family.
 # lock-cf-compact-interval = "10m"
+
 # lock-cf-compact-bytes-threshold = "256MB"
 
 # Interval (s) to check region whether the data are consistent.
@@ -192,6 +215,11 @@ sync-log = {{ .Values.tikv.syncLog }}
 # bit smaller.
 # region-max-size = "144MB"
 # region-split-size = "96MB"
+# When the region's keys exceeds region-max-keys, we will split the region
+# into two which the left region's keys will be region-split-keys or a little
+# bit smaller.
+# region-max-keys = 1440000
+# region-split-keys = 960000
 
 [rocksdb]
 # Maximum number of concurrent background jobs (compactions and flushes)
@@ -285,25 +313,23 @@ sync-log = {{ .Values.tikv.syncLog }}
 
 # Allows OS to incrementally sync files to disk while they are being
 # written, asynchronously, in the background.
-# bytes-per-sync = "0MB"
+# bytes-per-sync = "1MB"
 
 # Allows OS to incrementally sync WAL to disk while it is being written.
-# wal-bytes-per-sync = "0KB"
+# wal-bytes-per-sync = "512KB"
 
 # Specify the maximal size of the Rocksdb info log file. If the log file
 # is larger than `max_log_file_size`, a new info log file will be created.
 # If max_log_file_size == 0, all logs will be written to one log file.
-# Default: 1GB
 # info-log-max-size = "1GB"
 
 # Time for the Rocksdb info log file to roll (in seconds).
 # If specified with non-zero value, log file will be rolled
 # if it has been active longer than `log_file_time_to_roll`.
-# Default: 0 (disabled)
+# 0 means disabled.
 # info-log-roll-time = "0"
 
 # Maximal Rocksdb info log files to be kept.
-# Default: 10
 # info-log-keep-log-file-num = 10
 
 # This specifies the Rocksdb info LOG dir.
@@ -311,7 +337,6 @@ sync-log = {{ .Values.tikv.syncLog }}
 # If it is non empty, the log files will be in the specified dir,
 # and the db data dir's absolute path will be used as the log file
 # name's prefix.
-# Default: empty
 # info-log-dir = ""
 
 # Column Family default used to store actual data of the database.
@@ -454,8 +479,8 @@ sync-log = {{ .Values.tikv.syncLog }}
 # use-direct-io-for-flush-and-compaction = false
 # enable-pipelined-write = true
 # allow-concurrent-memtable-write = false
-# bytes-per-sync = "0MB"
-# wal-bytes-per-sync = "0KB"
+# bytes-per-sync = "1MB"
+# wal-bytes-per-sync = "512KB"
 
 # info-log-max-size = "1GB"
 # info-log-roll-time = "0"
@@ -489,8 +514,6 @@ sync-log = {{ .Values.tikv.syncLog }}
 # key-path = ""
 
 [import]
-# the directory to store importing kv data.
-# import-dir = "/tmp/tikv/import"
 # number of threads to handle RPC requests.
 # num-threads = 8
 # stream channel window size, stream will be blocked on channel full.
