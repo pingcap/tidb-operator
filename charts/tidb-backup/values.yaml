@@ -64,7 +64,3 @@ restore:
     # bucket: ""
     # # srcDir is the directory of backup data in bucket
     # srcDir: ""
-
-metaInstance: "{{ $labels.instance }}"
-metaType: "{{ $labels.type }}"
-metaValue: "{{ $value }}"
