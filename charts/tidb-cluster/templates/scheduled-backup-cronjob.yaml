@@ -89,5 +89,4 @@ spec:
             secret:
               secretName: {{ .Values.clusterName }}-scheduled-backup
         {{- end }}
-
 {{- end }}
