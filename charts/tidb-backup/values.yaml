@@ -5,7 +5,7 @@
 # clusterName is the TiDB cluster name that should backup from or restore to.
 clusterName: demo
 
-fullbackup:
+backup:
   create: false
   binlogImage: pingcap/tidb-binlog:v2.1.0
   binlogImagePullPolicy: IfNotPresent
@@ -18,15 +18,6 @@ fullbackup:
   # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
   storageClassName: local-storage
   storage: 100Gi
-  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#schedule
-  schedule: "0 0 * * *"
-  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#suspend
-  suspend: false
-  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#jobs-history-limits
-  successfulJobsHistoryLimit: 3
-  failedJobsHistoryLimit: 1
-  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#starting-deadline
-  startingDeadlineSeconds: 3600
   # https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
   options: "--chunk-filesize=100"
   # user must set tidb cluster user and password

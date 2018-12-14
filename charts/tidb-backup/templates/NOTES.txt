@@ -1,9 +1,8 @@
-{{- if .Values.fullbackup.create }}
-1. Watch fullbackup cronjob is created
-   watch kubectl get cronjobs --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
-2. Wait until fullbackup pods becomes completed
-   watch kubectl get jobs --namespace {{ .Release.Namespace }}  -l app.kubernetes.io/component=fullbackup
-   watch kubectl get po --namespace {{ .Release.Namespace }}  -l app.kubernetes.io/component=fullbackup -o wide
+{{- if .Values.backup.create }}
+1. Watch backup job is created
+   watch kubectl get jobs --namespace {{ .Release.Namespace }}  -l app.kubernetes.io/component=backup
+2. Wait until backup pods becomes completed
+   watch kubectl get po --namespace {{ .Release.Namespace }}  -l app.kubernetes.io/component=backup -o wide
 {{- end -}}
 {{- if .Values.restore.create }}
 1. Watch restore job is created
