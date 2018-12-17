@@ -51,7 +51,7 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
 		deadline := tidbMember.LastTransitionTime.Add(tf.tidbFailoverPeriod)
 		if !tidbMember.Health && time.Now().After(deadline) && !exist {
-			tc.Status.TiDB.FailureMembers[tidbMember.Name] = v1alpha1.TiDBFailureMember{PodName: tidbMember.Name, Replicas: tc.Spec.TiDB.Replicas}
+			tc.Status.TiDB.FailureMembers[tidbMember.Name] = v1alpha1.TiDBFailureMember{PodName: tidbMember.Name}
 			break
 		}
 	}

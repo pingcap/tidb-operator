@@ -53,9 +53,8 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
 			}
 			tc.Status.TiKV.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
-				PodName:  podName,
-				StoreID:  store.ID,
-				Replicas: tc.Spec.TiKV.Replicas,
+				PodName: podName,
+				StoreID: store.ID,
 			}
 		}
 	}
