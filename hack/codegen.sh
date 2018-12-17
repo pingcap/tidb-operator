@@ -15,7 +15,7 @@
 
 scriptdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-cd ${scriptdir}/../vendor/k8s.io/code-generator && ./generate-groups.sh \
+${scriptdir}/generate-groups.sh \
   deepcopy,client,lister,informer \
   github.com/pingcap/tidb-operator/pkg/client \
   github.com/pingcap/tidb-operator/pkg/apis \
