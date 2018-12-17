@@ -113,35 +113,42 @@ Then open your browser at http://localhost:3000 The default username and passwor
 
 The Grafana service is exposed as `NodePort` by default, you can change it to `LoadBalancer` if the underlining Kubernetes has load balancer support. And then view the dashboard via load balancer endpoint.
 
-## Backup
+## Backup and restore
 
-Currently, TiDB Operator supports two kinds of backup: full backup via [Mydumper](https://github.com/maxbube/mydumper) and incremental backup via binlog.
+Currently, TiDB Operator supports two kinds of backup: incremental backup via binlog and full backup(scheduled or ad-hoc) via [Mydumper](https://github.com/maxbube/mydumper).
 
 ### Incremental backup
 
 To enable incremental backup, set `binlog.pump.create` and `binlog.drainer.create` to `true`. By default the incremental backup data is stored in protobuffer format in a PV. You can change `binlog.drainer.destDBType` from `pb` to `mysql` or `kafka` and configure the corresponding downstream.
 
-### Full backup
+### Scheduled full backup
 
-> **Note:** The rest of the document will use `values.yaml` to reference `charts/tidb-backup/values.yaml`
+Scheduled full backup can be done periodically just like crontab job. Currently, scheduled full backup requires a PersistentVolume, the backup job will create a PVC to store backup data.
 
-Full backup can be done periodically just like crontab job. Currently, full backup requires a PersistentVolume, the backup job will create a PVC to store backup data.
-
-To create a full backup job, modify `fullbackup` section in `values.yaml` file.
+To create a scheduled full backup job, modify `scheduledBackup` section in `values.yaml` file.
 
 * `create` must be set to `true`
 * Set `storageClassName` to the PV storage class name used for backup data
 * `schedule` takes the [Cron](https://en.wikipedia.org/wiki/Cron) format
 * `user` and `password` must be set to the correct user which has the permission to read the database to be backuped.
 
-```shell
-$ releaseName="tidb-backup"
-$ namespace="tidb"
-$ helm install charts/tidb-backup --name=${releaseName} --namespace=${namespace}
-$ watch kubectl get po -n ${namespace} -l app.kubernetes.io/component=fullbackup -o wide
-```
+> **Note:** You must set the scheduled full backup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to keep your backup data safe.
 
-> **Note:** You must set the fullbackup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to keep your backup data safe.
+If TiDB cluster is running on GKE, the backup data can be uploaded to GCS bucket. A bucket name and base64 encoded service account credential that has bucket read/write access must be provided. The comments in `values.yaml` is self-explanatory for GCP backup.
+
+### Ad-Hoc full backup
+
+> **Note:** The rest of the document will use `values.yaml` to reference `charts/tidb-backup/values.yaml`
+
+Ad-Hoc full backup can be done once just like job. Currently, ad-hoc full backup requires a PersistentVolume, the backup job will create a PVC to store backup data.
+
+To create an ad-hoc full backup job, modify `backup` section in `values.yaml` file.
+
+* `create` must be set to `true`
+* Set `storageClassName` to the PV storage class name used for backup data
+* `user` and `password` must be set to the correct user which has the permission to read the database to be backuped.
+
+> **Note:** You must set the ad-hoc full backup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to keep your backup data safe.
 
 If TiDB cluster is running on GKE, the backup data can be uploaded to GCS bucket. A bucket name and base64 encoded service account credential that has bucket read/write access must be provided. The comments in `values.yaml` is self-explanatory for GCP backup.
 
