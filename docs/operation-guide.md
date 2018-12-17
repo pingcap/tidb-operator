@@ -113,7 +113,7 @@ Then open your browser at http://localhost:3000 The default username and passwor
 
 The Grafana service is exposed as `NodePort` by default, you can change it to `LoadBalancer` if the underlining Kubernetes has load balancer support. And then view the dashboard via load balancer endpoint.
 
-## Backup and restore
+## Backup
 
 Currently, TiDB Operator supports two kinds of backup: incremental backup via binlog and full backup(scheduled or ad-hoc) via [Mydumper](https://github.com/maxbube/mydumper).
 
