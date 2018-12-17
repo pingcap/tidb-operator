@@ -352,7 +352,7 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 }
 
 func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
-	if statefulSetIsUpgrading(set) {
+	if statefulSetIsUpgrading(set) && tc.Status.TiKV.Phase != v1alpha1.UpgradePhase {
 		return true, nil
 	}
 	selector, err := label.New().
