@@ -6,6 +6,8 @@ def call(BUILD_BRANCH, RELEASE_TAG) {
 
 	def GITHASH
 	def UCLOUD_OSS_URL = "http://pingcap-dev.hk.ufileos.com"
+	def TIDB_OPERATOR_CHART = "tidb-operator-${RELEASE_TAG}"
+	def TIDB_CLUSTER_CHART = "tidb-cluster-${RELEASE_TAG}"
 
 	catchError {
 		node('k8s_centos7_build') {
@@ -26,11 +28,19 @@ def call(BUILD_BRANCH, RELEASE_TAG) {
 
 				stage('Release charts to qiniu'){
 					sh """
-					tar -zcf tidb-operator-charts-${RELEASE_TAG}.tar.gz charts
-					sha256sum tidb-operator-charts-${RELEASE_TAG}.tar.gz > tidb-operator-charts-${RELEASE_TAG}.sha256
+					# release tidb-operator chart
+					sed -i "s/version:.*/version: ${RELEASE_TAG}/g" charts/tidb-operator/Chart.yaml
+					tar -zcf ${TIDB_OPERATOR_CHART}.tgz -C charts tidb-operator
+					sha256sum ${TIDB_OPERATOR_CHART}.tgz > ${TIDB_OPERATOR_CHART}.sha256
 
-					upload.py tidb-operator-charts-${RELEASE_TAG}.tar.gz tidb-operator-charts-${RELEASE_TAG}.tar.gz
-					upload.py tidb-operator-charts-${RELEASE_TAG}.sha256 tidb-operator-charts-${RELEASE_TAG}.sha256
+					upload.py ${TIDB_OPERATOR_CHART}.tgz ${TIDB_OPERATOR_CHART}.tgz
+					upload.py ${TIDB_OPERATOR_CHART}.sha256 ${TIDB_OPERATOR_CHART}.sha256
+					# release tidb-cluster chart
+					tar -zcf ${TIDB_CLUSTER_CHART}.tgz -C charts tidb-cluster
+					sha256sum ${TIDB_CLUSTER_CHART}.tgz > ${TIDB_CLUSTER_CHART}.sha256
+
+					upload.py ${TIDB_CLUSTER_CHART}.tgz ${TIDB_CLUSTER_CHART}.tgz
+					upload.py ${TIDB_CLUSTER_CHART}.sha256 ${TIDB_CLUSTER_CHART}.sha256
 					"""
 				}
 			}
@@ -52,8 +62,10 @@ def call(BUILD_BRANCH, RELEASE_TAG) {
 			slackmsg = "${slackmsg}" + "\n" +
 			"tidb-operator Docker Image: `pingcap/tidb-operator:${RELEASE_TAG}`" + "\n" +
 			"tidb-operator Docker Image: `uhub.ucloud.cn/pingcap/tidb-operator:${RELEASE_TAG}`" + "\n" +
-			"tidb-operator charts Download URL: http://download.pingcap.org/tidb-operator-charts-${RELEASE_TAG}.tar.gz" + "\n" +
-			"tidb-operator charts sha256: http://download.pingcap.org/tidb-operator-charts-${RELEASE_TAG}.sha256"
+			"tidb-operator charts Download URL: http://download.pingcap.org/${TIDB_OPERATOR_CHART}.tgz" + "\n" +
+			"tidb-operator charts sha256: http://download.pingcap.org/${TIDB_OPERATOR_CHART}.sha256" + "\n" +
+			"tidb-cluster charts Download URL: http://download.pingcap.org/${TIDB_CLUSTER_CHART}.tgz" + "\n" +
+			"tidb-cluster charts sha256: http://download.pingcap.org/${TIDB_CLUSTER_CHART}.sha256"
 			slackSend channel: '#cloud_jenkins', color: 'good', teamDomain: 'pingcap', tokenCredentialId: 'slack-pingcap-token', message: "${slackmsg}"
 		}
 	}
