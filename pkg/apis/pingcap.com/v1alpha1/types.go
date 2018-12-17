@@ -190,8 +190,7 @@ type PDMember struct {
 type PDFailureMember struct {
 	PodName       string    `json:"podName,omitempty"`
 	MemberID      string    `json:"memberID,omitempty"`
-	PVUID         types.UID `json:"pvUID,omitempty"`
-	Replicas      int32     `json:"replicas,omitempty"`
+	PVCUID        types.UID `json:"pvcUID,omitempty"`
 	MemberDeleted bool      `json:"memberDeleted,omitempty"`
 }
 
@@ -214,8 +213,7 @@ type TiDBMember struct {
 
 // TiDBFailureMember is the tidb failure member information
 type TiDBFailureMember struct {
-	PodName  string `json:"podName,omitempty"`
-	Replicas int32  `json:"replicas,omitempty"`
+	PodName string `json:"podName,omitempty"`
 }
 
 // TiKVStatus is TiKV status
@@ -243,7 +241,6 @@ type TiKVStore struct {
 
 // TiKVFailureStore is the tikv failure store information
 type TiKVFailureStore struct {
-	PodName  string `json:"podName,omitempty"`
-	StoreID  string `json:"storeID,omitempty"`
-	Replicas int32  `json:"replicas,omitempty"`
+	PodName string `json:"podName,omitempty"`
+	StoreID string `json:"storeID,omitempty"`
 }
