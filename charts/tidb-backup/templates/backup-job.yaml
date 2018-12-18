@@ -1,0 +1,79 @@
+{{- if .Values.backup.create }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.clusterName }}-backup
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: backup
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "chart.name" . }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: backup
+        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+    spec:
+      initContainers:
+      - name: get-ts
+        image: {{ .Values.backup.binlogImage }}
+        imagePullPolicy: {{ .Values.backup.binlogImagePullPolicy | default "IfNotPresent" }}
+        command:
+        - /binlogctl
+        - -pd-urls=http://{{ .Values.clusterName }}-pd:2379
+        - -cmd=generate_meta
+        - -data-dir=/savepoint-dir
+        volumeMounts:
+        - name: savepoint-dir
+          mountPath: "/savepoint-dir"
+      containers:
+      - name: backup
+        image: {{ .Values.backup.mydumperImage }}
+        imagePullPolicy: {{ .Values.backup.mydumperImagePullPolicy | default "IfNotPresent" }}
+        command:
+        - /bin/sh
+        - -c
+        - |-
+{{ tuple "scripts/_start_backup.sh.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
+        volumeMounts:
+        - name: savepoint-dir
+          mountPath: "/savepoint-dir"
+        - name: data
+          mountPath: "/data"
+      {{- if .Values.backup.gcp }}
+        - name: gcp-credentials
+          mountPath: "/gcp"
+          readOnly: true
+      {{- end }}
+        env:
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+      {{- if .Values.backup.gcp }}
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /gcp/credentials.json
+      {{- end }}
+        - name: TIDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.clusterName }}-backup
+              key: user-password
+      restartPolicy: OnFailure
+      volumes:
+      - name: savepoint-dir
+        emptyDir: {}
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ .Values.clusterName }}-backup
+    {{- if .Values.backup.gcp }}
+      - name: gcp-credentials
+        secret:
+          secretName: {{ .Values.clusterName }}-backup
+    {{- end }}
+{{- end }}

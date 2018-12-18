@@ -1,13 +1,13 @@
-{{- if .Values.fullbackup.create }}
+{{- if .Values.backup.create }}
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: {{ .Values.clusterName }}-fullbackup
+  name: {{ .Values.clusterName }}-backup
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: tidb-operator
     app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/component: fullbackup
+    app.kubernetes.io/component: backup
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   accessModes:
@@ -15,6 +15,6 @@ spec:
   volumeMode: Filesystem
   resources:
     requests:
-      storage: {{ .Values.fullbackup.storage }}
-  storageClassName: {{ .Values.fullbackup.storageClassName }}
+      storage: {{ .Values.backup.storage }}
+  storageClassName: {{ .Values.backup.storageClassName }}
 {{- end }}
