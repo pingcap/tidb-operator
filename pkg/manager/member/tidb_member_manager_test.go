@@ -95,7 +95,7 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			setCreated:               true,
 		},
 		{
-			name: "tikv is not avaliable",
+			name: "tikv is not available",
 			prepare: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
 			},

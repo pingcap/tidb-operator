@@ -134,7 +134,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 		},
 		{
-			name: "pd is not avaliable",
+			name: "pd is not available",
 			prepare: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Members = map[string]v1alpha1.PDMember{}
 			},
