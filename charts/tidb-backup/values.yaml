@@ -1,0 +1,57 @@
+# Default values for tidb-backup.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# clusterName is the TiDB cluster name that should backup from or restore to.
+clusterName: demo
+
+backup:
+  create: false
+  binlogImage: pingcap/tidb-binlog:v2.1.0
+  binlogImagePullPolicy: IfNotPresent
+  # https://github.com/tennix/tidb-cloud-backup
+  mydumperImage: pingcap/tidb-cloud-backup:latest
+  mydumperImagePullPolicy: IfNotPresent
+  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+  # different classes might map to quality-of-service levels, or to backup policies,
+  # or to arbitrary policies determined by the cluster administrators.
+  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
+  storageClassName: local-storage
+  storage: 100Gi
+  # https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
+  options: "--chunk-filesize=100"
+  # user must set tidb cluster user and password
+  user: backup
+  password: "Password here ..."
+  # backup to gcp
+  gcp: {}
+    # base64 format of the service account json file data
+    # https://cloud.google.com/docs/authentication/production#obtaining_and_providing_service_account_credentials_manually
+    # and then: cat credentials.json | base64 | tr -d '\n'
+    # credentialsData: ""
+    # bucket: ""
+
+restore:
+  create: false
+  # https://github.com/tennix/tidb-cloud-backup
+  image: pingcap/tidb-cloud-backup:latest
+  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+  # different classes might map to quality-of-service levels, or to backup policies,
+  # or to arbitrary policies determined by the cluster administrators.
+  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
+  storageClassName: local-storage
+  storage: 100Gi
+  # loader options https://www.pingcap.com/docs-cn/tools/loader/
+  options: "-t 16"
+  # user must set tidb cluster user and password
+  user: restore
+  password: "Password here ..."
+  # backup data comes from gcp
+  gcp: {}
+    # credentialsData is base64 format of the service account json file data
+    # https://cloud.google.com/docs/authentication/production#obtaining_and_providing_service_account_credentials_manually
+    # and then: cat credentials.json | base64 | tr -d '\n'
+    # credentialsData: ""
+    # bucket: ""
+    # # srcDir is the directory of backup data in bucket
+    # srcDir: ""
