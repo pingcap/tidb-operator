@@ -67,120 +67,76 @@ type defaultTidbClusterControl struct {
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
 func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) error {
-	// perform the main update function and get the status
-	oldStatus := tc.Status.DeepCopy()
 	var errs []error
+	oldStatus := tc.Status.DeepCopy()
 
-	err := tcc.updateTidbCluster(tc)
-	if err != nil {
+	if err := tcc.updateTidbCluster(tc); err != nil {
 		errs = append(errs, err)
 	}
-
-	if !apiequality.Semantic.DeepEqual(&tc.Status, oldStatus) {
-		_, err := tcc.tcControl.UpdateTidbCluster(tc.DeepCopy(), &tc.Status, oldStatus)
-		if err != nil {
-			errs = append(errs, err)
-		}
+	if apiequality.Semantic.DeepEqual(&tc.Status, oldStatus) {
+		return errorutils.NewAggregate(errs)
+	}
+	if _, err := tcc.tcControl.UpdateTidbCluster(tc.DeepCopy(), &tc.Status, oldStatus); err != nil {
+		errs = append(errs, err)
 	}
 
 	return errorutils.NewAggregate(errs)
 }
 
 func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	// ReclaimPolicyManager
-	err := tcc.reclaimPolicyManager.Sync(tc)
-	if err != nil {
+	// syncing all PVs managed by operator's reclaim policy to Retain
+	if err := tcc.reclaimPolicyManager.Sync(tc); err != nil {
 		return err
 	}
 
-	_, err = tcc.orphanPodsCleaner.Clean(tc)
-	if err != nil {
+	// cleaning all orphan pods(pd or tikv which don't have a related PVC) managed by operator
+	if _, err := tcc.orphanPodsCleaner.Clean(tc); err != nil {
 		return err
 	}
 
-	// PD
-	err = tcc.pdMemberManager.Sync(tc)
-	if err != nil {
+	// works that should do to making the pd cluster current state match the desired state:
+	//   - create or update the pd service
+	//   - create or update the pd headless service
+	//   - create the pd statefulset
+	//   - sync pd cluster status from pd to TidbCluster object
+	//   - set two annotations to the first pd member:
+	// 	   - label.Bootstrapping
+	// 	   - label.Replicas
+	//   - upgrade the pd cluster
+	//   - scale out/in the pd cluster
+	//   - failover the pd cluster
+	if err := tcc.pdMemberManager.Sync(tc); err != nil {
 		return err
 	}
 
-	if !tcc.IsPDAvailable(tc) {
-		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
-	}
-
-	// TiKV
-	err = tcc.tikvMemberManager.Sync(tc)
-	if err != nil {
+	// works that should do to making the tikv cluster current state match the desired state:
+	//   - waiting for the pd cluster available(pd cluster is in quorum)
+	//   - create or update tikv headless service
+	//   - create the tikv statefulset
+	//   - sync tikv cluster status from pd to TidbCluster object
+	//   - set scheduler labels to tikv stores
+	//   - upgrade the tikv cluster
+	//   - scale out/in the tikv cluster
+	//   - failover the tikv cluster
+	if err := tcc.tikvMemberManager.Sync(tc); err != nil {
 		return err
 	}
 
-	// Wait tikv status sync
-	if !tcc.IsTiKVAvailable(tc) {
-		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
-	}
-
-	// TiDB
-	err = tcc.tidbMemberManager.Sync(tc)
-	if err != nil {
+	// works that should do to making the tidb cluster current state match the desired state:
+	//   - waiting for the tikv cluster available(at least one peer works)
+	//   - create or update tidb headless service
+	//   - create the tidb statefulset
+	//   - sync tidb cluster status from pd to TidbCluster object
+	//   - upgrade the tidb cluster
+	//   - scale out/in the tidb cluster
+	//   - failover the tidb cluster
+	if err := tcc.tidbMemberManager.Sync(tc); err != nil {
 		return err
 	}
 
-	// MetaManager
-	err = tcc.metaManager.Sync(tc)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (tcc *defaultTidbClusterControl) IsPDAvailable(tc *v1alpha1.TidbCluster) bool {
-	lowerLimit := tc.Spec.PD.Replicas/2 + 1
-	if int32(len(tc.Status.PD.Members)) < lowerLimit {
-		return false
-	}
-
-	var availableNum int32
-	for _, pdMember := range tc.Status.PD.Members {
-		if pdMember.Health {
-			availableNum++
-		}
-	}
-
-	if availableNum < lowerLimit {
-		return false
-	}
-
-	if tc.Status.PD.StatefulSet == nil || tc.Status.PD.StatefulSet.ReadyReplicas < lowerLimit {
-		return false
-	}
-
-	return true
-}
-
-func (tcc *defaultTidbClusterControl) IsTiKVAvailable(tc *v1alpha1.TidbCluster) bool {
-	var lowerLimit int32 = 1
-	if int32(len(tc.Status.TiKV.Stores)) < lowerLimit {
-		return false
-	}
-
-	var availableNum int32
-	for _, store := range tc.Status.TiKV.Stores {
-		if store.State == v1alpha1.TiKVStateUp {
-			availableNum++
-		}
-	}
-
-	if availableNum < lowerLimit {
-		return false
-	}
-
-	if tc.Status.TiKV.StatefulSet == nil || tc.Status.TiKV.StatefulSet.ReadyReplicas < lowerLimit {
-		return false
-	}
-
-	return true
+	// syncing the labels from Pod to PVC and PV, these labels include:
+	//   - label.StoreIDLabelKey
+	//   - label.MemberIDLabelKey
+	//   - label.NamespaceLabelKey
+	return tcc.metaManager.Sync(tc)
 }

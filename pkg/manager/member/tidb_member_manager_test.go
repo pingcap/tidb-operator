@@ -47,7 +47,14 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
 		tc := newTidbClusterForTiDB()
+		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
+		}
+		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
+
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
 		oldSpec := tc.Spec
@@ -88,6 +95,15 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			setCreated:               true,
 		},
 		{
+			name: "tikv is not available",
+			prepare: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
+			},
+			errWhenCreateStatefulSet: false,
+			err:                      true,
+			setCreated:               false,
+		},
+		{
 			name:                     "error when create statefulset",
 			prepare:                  nil,
 			errWhenCreateStatefulSet: true,
@@ -113,7 +129,14 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
 		tc := newTidbClusterForTiDB()
+		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
+		}
+		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
+
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
 
