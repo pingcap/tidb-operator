@@ -53,7 +53,16 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
 		tc := newTidbClusterForPD()
+		tc.Status.PD.Members = map[string]v1alpha1.PDMember{
+			"pd-0": {Name: "pd-0", Health: true},
+			"pd-1": {Name: "pd-1", Health: true},
+			"pd-2": {Name: "pd-2", Health: true},
+		}
+		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+
 		ns := tc.Namespace
 		tcName := tc.Name
 		oldSpec := tc.Spec
@@ -114,14 +123,26 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 
 	tests := []testcase{
 		{
-			name:    "normal",
-			prepare: nil,
-
+			name:                         "normal",
+			prepare:                      nil,
 			errWhenCreateStatefulSet:     false,
 			errWhenCreateTiKVPeerService: false,
 			err:                          false,
 			tikvPeerSvcCreated:           true,
 			setCreated:                   true,
+			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
+			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
+		},
+		{
+			name: "pd is not available",
+			prepare: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Members = map[string]v1alpha1.PDMember{}
+			},
+			errWhenCreateStatefulSet:     false,
+			errWhenCreateTiKVPeerService: false,
+			err:                          true,
+			tikvPeerSvcCreated:           false,
+			setCreated:                   false,
 			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
 		},
@@ -185,8 +206,16 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
 
 		tc := newTidbClusterForPD()
+		tc.Status.PD.Members = map[string]v1alpha1.PDMember{
+			"pd-0": {Name: "pd-0", Health: true},
+			"pd-1": {Name: "pd-1", Health: true},
+			"pd-2": {Name: "pd-2", Health: true},
+		}
+		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+
 		ns := tc.Namespace
 		tcName := tc.Name
 
