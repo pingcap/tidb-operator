@@ -1,13 +1,13 @@
-{{- if .Values.restore.create }}
+{{- if .Values.scheduledBackup.create }}
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: {{ .Values.clusterName }}-restore
+  name: {{ .Values.clusterName }}-scheduled-backup
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: tidb-operator
-    app.kubernetes.io/instance: {{ .Values.clusterName }}
-    app.kubernetes.io/component: restore
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: scheduled-backup
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   accessModes:
@@ -15,7 +15,6 @@ spec:
   volumeMode: Filesystem
   resources:
     requests:
-      storage: {{ .Values.restore.storage }}
-  storageClassName: {{ .Values.restore.storageClassName }}
+      storage: {{ .Values.scheduledBackup.storage }}
+  storageClassName: {{ .Values.scheduledBackup.storageClassName }}
 {{- end }}
-

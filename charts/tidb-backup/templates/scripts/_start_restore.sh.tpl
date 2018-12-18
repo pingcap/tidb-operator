@@ -1,6 +1,6 @@
 set -euo pipefail
 
-dirname=`date +%Y-%m-%dT%H%M%S`-${MY_POD_NAME}
+dirname=restore-`date +%Y-%m-%dT%H%M%S`-${MY_POD_NAME}
 dataDir=/data/${dirname}
 mkdir -p ${dataDir}/
 host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]'`
