@@ -14,7 +14,7 @@ But it can't meet or hardly meet these requests:
 * No support offline the specific peers
 * No support deploy TiDB Operator on multiple K8s clusters
 
-Using local persistent volume, once deployed the PD and TiKV pod has to be on the node all its lifecycle, migrating it to other nodes with larger resources would be hard. However if we use multiple statefulset, we can do the migration on the fly. This is useful when there is a hot region on a TiKV that can hardly split
+Using local persistent volume, once deployed the PD and TiKV pod has to be on the node all its lifecycle, migrating it to other nodes with larger resources would be hard. However if we use multiple statefulsets, we can do the migration on the fly. This is useful when there is a hot region on a TiKV that can hardly split.
 
 So the TiDB Operator should support creating multiple statefulsets for one component to achieve all these requests:
 
@@ -27,7 +27,7 @@ So the TiDB Operator should support creating multiple statefulsets for one compo
 
 ### API change
 
-Users can create multiple statefulsets in charts/tidb-cluster/values.yaml, for example: change one tikv(Figure 1) to more tikvs(Figure 2):
+Users can create multiple statefulsets in `charts/tidb-cluster/values.yaml`, for example: change one tikv(Figure 1) to more tikvs(Figure 2):
 
 Figure 1:
 
@@ -56,7 +56,7 @@ tikv:
 
 The default values.yaml is the same as of now. We can add document about how to extend the values.yaml to include the `extra` part listed here. But only a name is required, other fields can inherit from the upper level. And the generated `TidbCluster` object includes all the fields. And each statefulset has a separate ConfigMap named by the statefulset name, for example `name-1-tikv`. Also we can name the upper level statefulset as `default` so we can handle the names uniformly.
 
-We must add a name attribute(for example: name-1 or name-2) to the section to distinguish the different statefulsets. The name of the default statefulset is default.
+We must add a name attribute(for example: name-1 or name-2) to the section to distinguish the different statefulsets. The name of the default statefulset is `default`.
 
 The same as TidbCluster object, from Figure 3 to Figure 4:
 
@@ -97,9 +97,9 @@ StatefulSet     []apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
 
 ### Create:
 
-The statefulset name will have a name suffix(Figure 2), for example: <cluserName>-tikv-<name-suffix> to distinguish different statefulsets.
+The statefulset name will have a name suffix(Figure 2), for example: `<cluserName>-tikv-<name-suffix>` to distinguish different statefulsets.
 
-The TiDB Operator should maintain multiple statefulset object in the kube apiserver. The startup scripts are the same as before basically. An exception is PD startup script: the bootstrapping Pod may be the first statefulset first Pod.
+The TiDB Operator should maintain multiple statefulset objects in the kube apiserver. The startup scripts are the same as before basically. An exception is PD startup script: the bootstrapping Pod may be the first statefulset first Pod.
 
 The TiDB Operator will create extra Services together with multiple statefulsets:
 
@@ -109,9 +109,9 @@ The TiDB Operator will create extra Services together with multiple statefulsets
 
 ### Upgrade:
 
-With multiple statefulsets supported, the user can modify the spec in the values.yaml then the Operator will range over all the statefulsets and select only one statefulset to upgrade at the same time. So the basic progress is the same with older design.
+With multiple statefulsets supported, the user can modify the spec in the `values.yaml` then the Operator will range over all the statefulsets and select only one statefulset to upgrade at a time. So the basic progress is the same with older design.
 
-The user can modify all the statefulsets at the same time, but we only support upgrade one Pod at the same time.
+The user can modify all the statefulsets, but we only support upgrade one Pod at a time.
 
 For example, the user can change the images from v2.1.0(Figure 5) to v2.2.0(Figure 6) to upgrade the cluster from v2.1.0 to v2.2.0:
 
@@ -147,7 +147,7 @@ tikv:
     …
 ```
 
-The operator does not guarantee the order of multiple statefulsets’ upgrade. If the user care the order indeed. Just: modify one statefulset replicas, wait it done, and then modify the other one.
+The operator does not guarantee the order of multiple statefulsets’ upgrade. If the user care about the order indeed. Just: modify one statefulset, wait it done, and then modify the other one.
 
 ### Scale In/Out:
 
