@@ -2,26 +2,25 @@
 
 ## Background
 
-Now, TiDB Operator create only one statefulset for one PD/TiKV/TiDB component separately. This works very well in most cases.
+Now, TiDB Operator creates only one statefulset for one PD/TiKV/TiDB component separately. This works very well in most cases.
 
 But it can't meet or hardly meet these requests:
 
 * When using local volume, only horizontal scaling is guaranteed, vertical scaling may fail if there are not enough resources on the node. We need vertical scaling anyway
 * Users can't specify an exact number of pods in a given AZ. For example deploy 3 TiKV in AZ-1, and 2 TiKV in AZ-2
 * For on-premise deployment, k8s nodes may not have the same size. To make most of the resources, it's better to allow different profiles for a single cluster.
-* One TiKV peer use different resources(CPU/Memory/Storage) from other peers in the same TiDB cluster
 * No isolation between different tidb-servers, a big AP query may affect TP query. The worst case is that AP query cause a tidb-server OOM, and this tidb-server is also serving TP request
-* No support offline the specific peers
+* No support for offline arbitrary peers due to ordinal limitations of statefulset.
 * No support deploy TiDB Operator on multiple K8s clusters
 
-Using local persistent volume, once deployed the PD and TiKV pod has to be on the node all its lifecycle, migrating it to other nodes with larger resources would be hard. However if we use multiple statefulsets, we can do the migration on the fly. This is useful when there is a hot region on a TiKV that can hardly split.
-
-So the TiDB Operator should support creating multiple statefulsets for one component to achieve all these requests:
+However, we can achieve all the above issues by using multiple statefulsets:
 
 * Add a new statefulset with bigger resources to scale TiDB cluster vertically
 * Different statefulsets can use different AZs or different resources and any other attributes
 * Can offline any peers when all the statefulsets’s replicas is 1
 * Deploy different statefulsets to different K8s clusters to support multiple K8s clusters(need further research)
+
+So this proposal suggests extending one statefulset with multiple statefulsets for a single component.
 
 ## Proposal
 
@@ -90,7 +89,7 @@ type TiKVSpec struct {
 }
 
 type TiKVStatus struct {
-StatefulSet     []apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
+StatefulSets     []apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
   …
 }
 ```
