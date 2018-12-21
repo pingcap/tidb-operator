@@ -10,15 +10,11 @@ But it can't meet or hardly meet these requests:
 * Users can't specify an exact number of pods in a given AZ. For example deploy 3 TiKV in AZ-1, and 2 TiKV in AZ-2
 * For on-premise deployment, k8s nodes may not have the same size. To make most of the resources, it's better to allow different profiles for a single cluster.
 * No isolation between different tidb-servers, a big AP query may affect TP query. The worst case is that AP query cause a tidb-server OOM, and this tidb-server is also serving TP request
-* No support for offline arbitrary peers due to ordinal limitations of statefulset.
-* No support deploy TiDB Operator on multiple K8s clusters
 
 However, we can achieve all the above issues by using multiple statefulsets:
 
 * Add a new statefulset with bigger resources to scale TiDB cluster vertically
 * Different statefulsets can use different AZs or different resources and any other attributes
-* Can offline any peers when all the statefulsets’s replicas is 1
-* Deploy different statefulsets to different K8s clusters to support multiple K8s clusters(need further research)
 
 So this proposal suggests extending one statefulset with multiple statefulsets for a single component.
 
