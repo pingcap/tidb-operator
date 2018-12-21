@@ -330,7 +330,7 @@ func (pc *pdClient) DeleteStore(storeID uint64) error {
 	defer DeferClose(res.Body, &err)
 
 	// Remove an offline store should returns http.StatusOK
-	if res.StatusCode == http.StatusOK {
+	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
 		return nil
 	}
 	body, err := ioutil.ReadAll(res.Body)
@@ -366,7 +366,7 @@ func (pc *pdClient) DeleteMemberByID(memberID uint64) error {
 		return err
 	}
 	defer DeferClose(res.Body, &err)
-	if res.StatusCode == http.StatusOK {
+	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
 		return nil
 	}
 	err2 := readErrorBody(res.Body)
