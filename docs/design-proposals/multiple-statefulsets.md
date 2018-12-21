@@ -37,21 +37,21 @@ Figure 2:
 
 ``` yaml
 tikv:
-  replicas: 3
-  image: pingcap/tikv:v2.1.0
-  …
-  extra:
+  setTemplate:
+    replicas: 3
+    image: pingcap/tikv:v2.1.0
+    …
+  sets:
   - name: name-1
     replicas: 2
-    …
   - name: name-2
-    replicas: 2
-    …
 ```
 
-The default values.yaml is the same as of now. We can add document about how to extend the values.yaml to include the `extra` part listed here. But only a name is required, other fields can inherit from the upper level. And the generated `TidbCluster` object includes all the fields. And each statefulset has a separate ConfigMap named by the statefulset name, for example `name-1-tikv`. Also we can name the upper level statefulset as `default` so we can handle the names uniformly.
+`setTemplate` is the template of `sets`. Only a name is required in `sets`, other fields can inherit from the `setTemplate`. And the generated `TidbCluster` object includes all the fields. And each statefulset has a separate ConfigMap named by the statefulset name, for example `name-1-tikv`.
 
-We must add a name attribute(for example: name-1 or name-2) to the section to distinguish the different statefulsets. The name of the default statefulset is `default`.
+Alternative names other than `setTemplate`: `default`, `setDefault`, `defaultConfig`.
+
+We must add a name attribute(for example: name-1 or name-2) to the section to distinguish the different statefulsets.
 
 The same as TidbCluster object, from Figure 3 to Figure 4:
 
@@ -59,13 +59,12 @@ Figure 3:
 
 ``` go
 type TidbClusterSpec struct {
-  …
   TiKV            TiKVSpec            `json:"tikv,omitempty"`
   …
 }
 
 type TiKVStatus struct {
-StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
+  StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
   …
 }
 ```
@@ -74,18 +73,18 @@ Figure 4:
 
 ``` go
 type TidbClusterSpec struct {
-  TiKV            []TiKVSpec            `json:"tikv,omitempty"`
+  TiKVSets            []TiKVSetSpec            `json:"tikv,omitempty"`
   …
 }
 
-type TiKVSpec struct {
+type TiKVSetSpec struct {
   Name            string           `json:"name"`
   Replicas        int32            `json:"replicas"`
   …
 }
 
 type TiKVStatus struct {
-StatefulSets     []apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
+  SetStatuses     []apps.StatefulSetStatus     `json:"setStatuses,omitempty"`
   …
 }
 ```
@@ -114,32 +113,28 @@ Figure 5:
 
 ``` yaml
 tikv:
-  replicas: 3
-  image: pingcap/tikv:v2.1.0
-  …
-  extra:
+  setTemplate:
+    replicas: 3
+    image: pingcap/tikv:v2.1.0
+    …
+  sets:
   - name: name-1
     replicas: 3
-    …
   - name: name-2
-    replicas: 2
-    …
 ```
 
 Figure 6:
 
 ``` yaml
 tikv:
-  replicas: 3
-  image: pingcap/tikv:v2.2.0
-  …
-  extra:
+  setTemplate:
+    replicas: 3
+    image: pingcap/tikv:v2.1.0
+    …
+  sets:
   - name: name-1
     replicas: 3
-    …
   - name: name-2
-    replicas: 2
-    …
 ```
 
 The operator does not guarantee the order of multiple statefulsets’ upgrade. If the user care about the order indeed. Just: modify one statefulset, wait it done, and then modify the other one.
@@ -155,32 +150,28 @@ Figure 7:
 
 ``` yaml
 tikv:
-  replicas: 3
-  image: pingcap/tikv:v2.1.0
-  …
-  extra:
+  setTemplate:
+    replicas: 3
+    image: pingcap/tikv:v2.1.0
+    …
+  sets:
   - name: name-1
     replicas: 3
-    …
   - name: name-2
-    replicas: 2
-    …
 ```
 
 Figure 8:
 
 ``` yaml
 tikv:
-  replicas: 3
-  image: pingcap/tikv:v2.1.0
-  …
-  extra:
+  setTemplate:
+    replicas: 3
+    image: pingcap/tikv:v2.1.0
+    …
+  sets:
   - name: name-1
     replicas: 5
-    …
   - name: name-2
-    replicas: 2
-    …
 ```
 
 The operator does not guarantee the order of multiple statefulsets’ scale in/out. If the user care the order indeed. Just: modify one statefulset, wait it done, and then modify the other one.
