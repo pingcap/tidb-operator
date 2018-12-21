@@ -304,6 +304,20 @@ func (pc *pdClient) GetStore(storeID uint64) (*StoreInfo, error) {
 }
 
 func (pc *pdClient) DeleteStore(storeID uint64) error {
+	var exist bool
+	stores, err := pc.GetStores()
+	if err != nil {
+		return err
+	}
+	for _, store := range stores.Stores {
+		if store.Store.GetId() == storeID {
+			exist = true
+			break
+		}
+	}
+	if !exist {
+		return nil
+	}
 	apiURL := fmt.Sprintf("%s/%s/%d", pc.url, storePrefix, storeID)
 	req, err := http.NewRequest("DELETE", apiURL, nil)
 	if err != nil {
@@ -328,6 +342,20 @@ func (pc *pdClient) DeleteStore(storeID uint64) error {
 }
 
 func (pc *pdClient) DeleteMemberByID(memberID uint64) error {
+	var exist bool
+	members, err := pc.GetMembers()
+	if err != nil {
+		return err
+	}
+	for _, member := range members.Members {
+		if member.MemberId == memberID {
+			exist = true
+			break
+		}
+	}
+	if !exist {
+		return nil
+	}
 	apiURL := fmt.Sprintf("%s/%s/id/%d", pc.url, membersPrefix, memberID)
 	req, err := http.NewRequest("DELETE", apiURL, nil)
 	if err != nil {
@@ -346,6 +374,20 @@ func (pc *pdClient) DeleteMemberByID(memberID uint64) error {
 }
 
 func (pc *pdClient) DeleteMember(name string) error {
+	var exist bool
+	members, err := pc.GetMembers()
+	if err != nil {
+		return err
+	}
+	for _, member := range members.Members {
+		if member.Name == name {
+			exist = true
+			break
+		}
+	}
+	if !exist {
+		return nil
+	}
 	apiURL := fmt.Sprintf("%s/%s/name/%s", pc.url, membersPrefix, name)
 	req, err := http.NewRequest("DELETE", apiURL, nil)
 	if err != nil {
