@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: restore
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
@@ -14,7 +14,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: {{ template "chart.name" . }}
-        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: restore
     spec:
       restartPolicy: OnFailure
@@ -46,7 +46,7 @@ spec:
         - name: TIDB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: {{ .Values.clusterName }}-restore-secret
+              name: {{ .Values.clusterName }}-restore
               key: user-password
       volumes:
       - name: data
@@ -55,7 +55,7 @@ spec:
     {{- if .Values.restore.gcp }}
       - name: gcp-credentials
         secret:
-          secretName: {{ .Values.clusterName }}-restore-secret
+          secretName: {{ .Values.clusterName }}-restore
     {{- end }}
 {{- end }}
 

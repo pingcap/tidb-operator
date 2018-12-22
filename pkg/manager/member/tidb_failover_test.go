@@ -222,8 +222,7 @@ func TestFakeTiDBFailoverRecover(t *testing.T) {
 				}
 				tc.Status.TiDB.FailureMembers = map[string]v1alpha1.TiDBFailureMember{
 					"failover-tidb-0": {
-						PodName:  "failover-tidb-0",
-						Replicas: 2,
+						PodName: "failover-tidb-0",
 					},
 				}
 			},
@@ -256,12 +255,10 @@ func TestFakeTiDBFailoverRecover(t *testing.T) {
 				}
 				tc.Status.TiDB.FailureMembers = map[string]v1alpha1.TiDBFailureMember{
 					"failover-tidb-0": {
-						PodName:  "failover-tidb-0",
-						Replicas: 2,
+						PodName: "failover-tidb-0",
 					},
 					"failover-tidb-1": {
-						PodName:  "failover-tidb-0",
-						Replicas: 3,
+						PodName: "failover-tidb-1",
 					},
 				}
 			},
@@ -294,12 +291,10 @@ func TestFakeTiDBFailoverRecover(t *testing.T) {
 				}
 				tc.Status.TiDB.FailureMembers = map[string]v1alpha1.TiDBFailureMember{
 					"failover-tidb-0": {
-						PodName:  "failover-tidb-0",
-						Replicas: 2,
+						PodName: "failover-tidb-0",
 					},
 					"failover-tidb-1": {
-						PodName:  "failover-tidb-0",
-						Replicas: 3,
+						PodName: "failover-tidb-1",
 					},
 				}
 			},
@@ -320,12 +315,10 @@ func TestFakeTiDBFailoverRecover(t *testing.T) {
 				}
 				tc.Status.TiDB.FailureMembers = map[string]v1alpha1.TiDBFailureMember{
 					"failover-tidb-0": {
-						PodName:  "failover-tidb-0",
-						Replicas: 2,
+						PodName: "failover-tidb-0",
 					},
 					"failover-tidb-1": {
-						PodName:  "failover-tidb-0",
-						Replicas: 3,
+						PodName: "failover-tidb-1",
 					},
 				}
 			},

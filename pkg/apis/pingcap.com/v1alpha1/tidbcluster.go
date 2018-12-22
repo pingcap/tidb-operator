@@ -102,3 +102,51 @@ func (tc *TidbCluster) TiDBAllMembersReady() bool {
 func (tc *TidbCluster) TiDBRealReplicas() int32 {
 	return tc.Spec.TiDB.Replicas + int32(len(tc.Status.TiDB.FailureMembers))
 }
+
+func (tc *TidbCluster) PDIsAvailable() bool {
+	lowerLimit := tc.Spec.PD.Replicas/2 + 1
+	if int32(len(tc.Status.PD.Members)) < lowerLimit {
+		return false
+	}
+
+	var availableNum int32
+	for _, pdMember := range tc.Status.PD.Members {
+		if pdMember.Health {
+			availableNum++
+		}
+	}
+
+	if availableNum < lowerLimit {
+		return false
+	}
+
+	if tc.Status.PD.StatefulSet == nil || tc.Status.PD.StatefulSet.ReadyReplicas < lowerLimit {
+		return false
+	}
+
+	return true
+}
+
+func (tc *TidbCluster) TiKVIsAvailable() bool {
+	var lowerLimit int32 = 1
+	if int32(len(tc.Status.TiKV.Stores)) < lowerLimit {
+		return false
+	}
+
+	var availableNum int32
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.State == TiKVStateUp {
+			availableNum++
+		}
+	}
+
+	if availableNum < lowerLimit {
+		return false
+	}
+
+	if tc.Status.TiKV.StatefulSet == nil || tc.Status.TiKV.StatefulSet.ReadyReplicas < lowerLimit {
+		return false
+	}
+
+	return true
+}

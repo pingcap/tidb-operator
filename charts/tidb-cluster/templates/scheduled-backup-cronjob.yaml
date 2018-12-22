@@ -1,0 +1,92 @@
+{{- if .Values.scheduledBackup.create }}
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: {{ .Values.clusterName }}-scheduled-backup
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: scheduled-backup
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  schedule: {{ .Values.scheduledBackup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  suspend: {{ .Values.scheduledBackup.suspend }}
+  startingDeadlineSeconds: {{ .Values.scheduledBackup.startingDeadlineSeconds }}
+  jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "chart.name" . }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: scheduled-backup
+        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: {{ template "chart.name" . }}
+            app.kubernetes.io/managed-by: {{ .Release.Service }}
+            app.kubernetes.io/instance: {{ .Release.Name }}
+            app.kubernetes.io/component: scheduled-backup
+            helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+        spec:
+          initContainers:
+          - name: get-ts
+            image: {{ .Values.scheduledBackup.binlogImage }}
+            imagePullPolicy: {{ .Values.scheduledBackup.binlogImagePullPolicy | default "IfNotPresent" }}
+            command:
+            - /binlogctl
+            - -pd-urls=http://{{ .Values.clusterName }}-pd:2379
+            - -cmd=generate_meta
+            - -data-dir=/savepoint-dir
+            volumeMounts:
+            - name: savepoint-dir
+              mountPath: "/savepoint-dir"
+          containers:
+          - name: scheduled-backup
+            image: {{ .Values.scheduledBackup.mydumperImage }}
+            imagePullPolicy: {{ .Values.scheduledBackup.mydumperImagePullPolicy | default "IfNotPresent" }}
+            command:
+            - /bin/sh
+            - -c
+            - |-
+{{ tuple "scripts/_start_scheduled_backup.sh.tpl" . | include "helm-toolkit.utils.template" | indent 14 }}
+            volumeMounts:
+            - name: savepoint-dir
+              mountPath: "/savepoint-dir"
+            - name: data
+              mountPath: "/data"
+          {{- if .Values.scheduledBackup.gcp }}
+            - name: gcp-credentials
+              mountPath: "/gcp"
+              readOnly: true
+          {{- end }}
+            env:
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          {{- if .Values.scheduledBackup.gcp }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /gcp/credentials.json
+          {{- end }}
+            - name: TIDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.clusterName }}-scheduled-backup
+                  key: user-password
+          restartPolicy: OnFailure
+          volumes:
+          - name: savepoint-dir
+            emptyDir: {}
+          - name: data
+            persistentVolumeClaim:
+              claimName: {{ .Values.clusterName }}-scheduled-backup
+        {{- if .Values.scheduledBackup.gcp }}
+          - name: gcp-credentials
+            secret:
+              secretName: {{ .Values.clusterName }}-scheduled-backup
+        {{- end }}
+{{- end }}
