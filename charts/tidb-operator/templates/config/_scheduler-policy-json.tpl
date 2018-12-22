@@ -13,7 +13,9 @@
     {"name": "MatchInterPodAffinity"},
     {"name": "CheckNodeMemoryPressure"},
     {"name": "CheckNodeDiskPressure"},
+{{- if semverCompare ">=1.11-0" .Capabilities.KubeVersion.GitVersion }}
     {"name": "CheckNodePIDPressure"},
+{{- end }}
 {{- if semverCompare "<1.12-0" .Capabilities.KubeVersion.GitVersion }}
     {"name": "CheckNodeCondition"},
 {{- end }}
