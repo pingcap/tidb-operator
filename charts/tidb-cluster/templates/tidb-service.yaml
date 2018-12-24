@@ -17,6 +17,9 @@ spec:
   {{- if .Values.tidb.service.externalTrafficPolicy }}
   externalTrafficPolicy: {{ .Values.tidb.service.externalTrafficPolicy }}
   {{- end }}
+  {{- if .Values.tidb.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.tidb.service.loadBalancerIP }}
+  {{- end }}
   ports:
   - name: mysql-client
     port: 4000
