@@ -157,12 +157,12 @@ func (pf *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error 
 		return nil
 	}
 
-	memberID, err := strconv.Atoi(failureMember.MemberID)
+	memberID, err := strconv.ParseUint(failureMember.MemberID, 10, 64)
 	if err != nil {
 		return err
 	}
 	// invoke deleteMember api to delete a member from the pd cluster
-	err = pf.pdControl.GetPDClient(tc).DeleteMemberByID(uint64(memberID))
+	err = pf.pdControl.GetPDClient(tc).DeleteMemberByID(memberID)
 	if err != nil {
 		return err
 	}
