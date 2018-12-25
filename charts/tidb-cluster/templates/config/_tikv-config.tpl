@@ -403,7 +403,11 @@ sync-log = {{ .Values.tikv.syncLog }}
 
 # block-cache used to cache uncompressed blocks, big block-cache can speed up read.
 # in normal cases should tune to 30%-50% system's total memory.
+{{- if .Values.tikv.defaultcfBlockCacheSize }}
+block-cache-size = {{ .Values.tikv.defaultcfBlockCacheSize | quote }}
+{{- else }}
 # block-cache-size = "1GB"
+{{- end }}
 
 # Indicating if we'd put index/filter blocks to the block cache.
 # If not specified, each "table reader" object will pre-load index/filter block
@@ -437,7 +441,11 @@ sync-log = {{ .Values.tikv.syncLog }}
 # target-file-size-base = "8MB"
 
 # in normal cases should tune to 10%-30% system's total memory.
+{{- if .Values.tikv.writecfBlockCacheSize }}
+block-cache-size = {{ .Values.tikv.writecfBlockCacheSize | quote }}
+{{- else }}
 # block-cache-size = "256MB"
+{{- end }}
 # level0-file-num-compaction-trigger = 4
 # level0-slowdown-writes-trigger = 20
 # level0-stop-writes-trigger = 36

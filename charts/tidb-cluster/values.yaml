@@ -103,6 +103,12 @@ tikv:
   #   value: tidb
   #   effect: "NoSchedule"
 
+  # block-cache used to cache uncompressed blocks, big block-cache can speed up read.
+  # in normal cases should tune to 30%-50% tikv.resources.limits.memory
+  # defaultcfBlockCacheSize: "1GB"
+  # in normal cases should tune to 10%-30% tikv.resources.limits.memory
+  # writecfBlockCacheSize: "256MB"
+
 tikvPromGateway:
   image: prom/pushgateway:v0.3.1
   imagePullPolicy: IfNotPresent
