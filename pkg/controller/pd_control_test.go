@@ -359,29 +359,78 @@ func TestSetStoreLabels(t *testing.T) {
 func TestDeleteMember(t *testing.T) {
 	g := NewGomegaWithT(t)
 	name := "testMember"
+	member := &pdpb.Member{Name: name, MemberId: uint64(1)}
+	membersExist := &MembersInfo{
+		Members: []*pdpb.Member{
+			member,
+		},
+		Leader:     member,
+		EtcdLeader: member,
+	}
+	membersExistBytes, err := json.Marshal(membersExist)
+	g.Expect(err).NotTo(HaveOccurred())
+
+	membersNotExist := &MembersInfo{
+		Members: []*pdpb.Member{},
+	}
+	membersNotExistBytes, err := json.Marshal(membersNotExist)
+	g.Expect(err).NotTo(HaveOccurred())
+
 	tcs := []struct {
-		caseName string
-		path     string
-		method   string
-		want     bool
+		caseName  string
+		prePath   string
+		preMethod string
+		preResp   []byte
+		exist     bool
+		path      string
+		method    string
+		want      bool
 	}{{
-		caseName: "success_DeleteMember",
-		path:     fmt.Sprintf("/%s/name/%s", membersPrefix, name),
-		method:   "DELETE",
-		want:     true,
+		caseName:  "success_DeleteMember",
+		prePath:   fmt.Sprintf("/%s", membersPrefix),
+		preMethod: "GET",
+		preResp:   membersExistBytes,
+		exist:     true,
+		path:      fmt.Sprintf("/%s/name/%s", membersPrefix, name),
+		method:    "DELETE",
+		want:      true,
 	}, {
-		caseName: "failed_DeleteMember",
-		path:     fmt.Sprintf("/%s/name/%s", membersPrefix, name),
-		method:   "DELETE",
-		want:     false,
+		caseName:  "failed_DeleteMember",
+		prePath:   fmt.Sprintf("/%s", membersPrefix),
+		preMethod: "GET",
+		preResp:   membersExistBytes,
+		exist:     true,
+		path:      fmt.Sprintf("/%s/name/%s", membersPrefix, name),
+		method:    "DELETE",
+		want:      false,
+	}, {
+		caseName:  "delete_not_exist_member",
+		prePath:   fmt.Sprintf("/%s", membersPrefix),
+		preMethod: "GET",
+		preResp:   membersNotExistBytes,
+		exist:     false,
+		path:      fmt.Sprintf("/%s/name/%s", membersPrefix, name),
+		method:    "DELETE",
+		want:      true,
 	},
 	}
 
 	for _, tc := range tcs {
+		count := 1
 		svc := getClientServer(func(w http.ResponseWriter, request *http.Request) {
+			if count == 1 {
+				g.Expect(request.Method).To(Equal(tc.preMethod), "check method")
+				g.Expect(request.URL.Path).To(Equal(tc.prePath), "check url")
+				w.Header().Set("Content-Type", ContentTypeJSON)
+				w.WriteHeader(http.StatusOK)
+				w.Write(tc.preResp)
+				count++
+				return
+			}
+
+			g.Expect(tc.exist).To(BeTrue())
 			g.Expect(request.Method).To(Equal(tc.method), "check method")
 			g.Expect(request.URL.Path).To(Equal(tc.path), "check url")
-
 			w.Header().Set("Content-Type", ContentTypeJSON)
 			if tc.want {
 				w.WriteHeader(http.StatusOK)
@@ -404,29 +453,78 @@ func TestDeleteMember(t *testing.T) {
 func TestDeleteMemberByID(t *testing.T) {
 	g := NewGomegaWithT(t)
 	id := uint64(1)
+	member := &pdpb.Member{Name: "test", MemberId: id}
+	membersExist := &MembersInfo{
+		Members: []*pdpb.Member{
+			member,
+		},
+		Leader:     member,
+		EtcdLeader: member,
+	}
+	membersExistBytes, err := json.Marshal(membersExist)
+	g.Expect(err).NotTo(HaveOccurred())
+
+	membersNotExist := &MembersInfo{
+		Members: []*pdpb.Member{},
+	}
+	membersNotExistBytes, err := json.Marshal(membersNotExist)
+	g.Expect(err).NotTo(HaveOccurred())
+
 	tcs := []struct {
-		caseName string
-		path     string
-		method   string
-		want     bool
+		caseName  string
+		prePath   string
+		preMethod string
+		preResp   []byte
+		exist     bool
+		path      string
+		method    string
+		want      bool
 	}{{
-		caseName: "success_DeleteMemberByID",
-		path:     fmt.Sprintf("/%s/id/%d", membersPrefix, id),
-		method:   "DELETE",
-		want:     true,
+		caseName:  "success_DeleteMemberByID",
+		prePath:   fmt.Sprintf("/%s", membersPrefix),
+		preMethod: "GET",
+		preResp:   membersExistBytes,
+		exist:     true,
+		path:      fmt.Sprintf("/%s/id/%d", membersPrefix, id),
+		method:    "DELETE",
+		want:      true,
 	}, {
-		caseName: "failed_DeleteMemberByID",
-		path:     fmt.Sprintf("/%s/id/%d", membersPrefix, id),
-		method:   "DELETE",
-		want:     false,
+		caseName:  "failed_DeleteMemberByID",
+		prePath:   fmt.Sprintf("/%s", membersPrefix),
+		preMethod: "GET",
+		preResp:   membersExistBytes,
+		exist:     true,
+		path:      fmt.Sprintf("/%s/id/%d", membersPrefix, id),
+		method:    "DELETE",
+		want:      false,
+	}, {
+		caseName:  "delete_not_exit_member",
+		prePath:   fmt.Sprintf("/%s", membersPrefix),
+		preMethod: "GET",
+		preResp:   membersNotExistBytes,
+		exist:     false,
+		path:      fmt.Sprintf("/%s/id/%d", membersPrefix, id),
+		method:    "DELETE",
+		want:      true,
 	},
 	}
 
 	for _, tc := range tcs {
+		count := 1
 		svc := getClientServer(func(w http.ResponseWriter, request *http.Request) {
+			if count == 1 {
+				g.Expect(request.Method).To(Equal(tc.preMethod), "check method")
+				g.Expect(request.URL.Path).To(Equal(tc.prePath), "check url")
+				w.Header().Set("Content-Type", ContentTypeJSON)
+				w.WriteHeader(http.StatusOK)
+				w.Write(tc.preResp)
+				count++
+				return
+			}
+
+			g.Expect(tc.exist).To(BeTrue())
 			g.Expect(request.Method).To(Equal(tc.method), "check method")
 			g.Expect(request.URL.Path).To(Equal(tc.path), "check url")
-
 			w.Header().Set("Content-Type", ContentTypeJSON)
 			if tc.want {
 				w.WriteHeader(http.StatusOK)
@@ -449,26 +547,73 @@ func TestDeleteMemberByID(t *testing.T) {
 func TestDeleteStore(t *testing.T) {
 	g := NewGomegaWithT(t)
 	storeID := uint64(1)
+	store := &StoreInfo{
+		Store:  &MetaStore{Store: &metapb.Store{Id: storeID, State: metapb.StoreState_Up}},
+		Status: &StoreStatus{},
+	}
+	stores := &StoresInfo{
+		Count: 1,
+		Stores: []*StoreInfo{
+			store,
+		},
+	}
+
+	storesBytes, err := json.Marshal(stores)
+	g.Expect(err).NotTo(HaveOccurred())
+
 	tcs := []struct {
-		caseName string
-		path     string
-		method   string
-		want     bool
+		caseName  string
+		prePath   string
+		preMethod string
+		preResp   []byte
+		exist     bool
+		path      string
+		method    string
+		want      bool
 	}{{
-		caseName: "success_DeleteStore",
-		path:     fmt.Sprintf("/%s/%d", storePrefix, storeID),
-		method:   "DELETE",
-		want:     true,
+		caseName:  "success_DeleteStore",
+		prePath:   fmt.Sprintf("/%s", storesPrefix),
+		preMethod: "GET",
+		preResp:   storesBytes,
+		exist:     true,
+		path:      fmt.Sprintf("/%s/%d", storePrefix, storeID),
+		method:    "DELETE",
+		want:      true,
 	}, {
-		caseName: "failed_DeleteStore",
-		path:     fmt.Sprintf("/%s/%d", storePrefix, storeID),
-		method:   "DELETE",
-		want:     false,
+		caseName:  "failed_DeleteStore",
+		prePath:   fmt.Sprintf("/%s", storesPrefix),
+		preMethod: "GET",
+		preResp:   storesBytes,
+		exist:     true,
+		path:      fmt.Sprintf("/%s/%d", storePrefix, storeID),
+		method:    "DELETE",
+		want:      false,
+	}, {
+		caseName:  "delete_not_exist_store",
+		prePath:   fmt.Sprintf("/%s", storesPrefix),
+		preMethod: "GET",
+		preResp:   storesBytes,
+		exist:     true,
+		path:      fmt.Sprintf("/%s/%d", storePrefix, storeID),
+		method:    "DELETE",
+		want:      true,
 	},
 	}
 
 	for _, tc := range tcs {
+		count := 1
 		svc := getClientServer(func(w http.ResponseWriter, request *http.Request) {
+			if count == 1 {
+				g.Expect(request.Method).To(Equal(tc.preMethod), "check method")
+				g.Expect(request.URL.Path).To(Equal(tc.prePath), "check url")
+				w.Header().Set("Content-Type", ContentTypeJSON)
+				w.WriteHeader(http.StatusOK)
+				w.Write(tc.preResp)
+				count++
+				return
+			}
+
+			g.Expect(tc.exist).To(BeTrue())
 			g.Expect(request.Method).To(Equal(tc.method), "check method")
 			g.Expect(request.URL.Path).To(Equal(tc.path), "check url")
 
