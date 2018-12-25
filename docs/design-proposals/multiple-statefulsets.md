@@ -22,6 +22,33 @@ So this proposal suggests extending one statefulset with multiple statefulsets f
 
 ### API change
 
+According to K8s [api compatibility](https://github.com/kubernetes/community/blob/master/contributors/devel/api_changes.md#on-compatibility):
+
+> An API change is considered compatible if it:
+>
+> - adds new functionality that is not required for correct behavior (e.g., does not add a new required field)
+> - does not change existing semantics, including:
+> - the semantic meaning of default values and behavior
+> - interpretation of existing API types, fields, and values
+> - which fields are required and which are not
+> - mutable fields do not become immutable
+> - valid values do not become invalid
+> - explicitly invalid values do not become valid
+>
+> Put another way:
+>
+> - Any API call (e.g. a structure POSTed to a REST endpoint) that succeeded before your change must succeed after your change.
+> - Any API call that does not use your change must behave the same as it did before your change.
+> - Any API call that uses your change must not cause problems (e.g. crash or degrade behavior) when issued against an API servers that do not include your change.
+> - It must be possible to round-trip your change (convert to different API versions and back) with no loss of information.
+> - Existing clients need not be aware of your change in order for them to continue to function as they did previously, even when your change is in use.
+> - It must be possible to rollback to a previous version of API server that does not include your change and have no impact on API objects which do not use your change. API objects that use your change will be impacted in case of a rollback.
+> - If your change does not meet these criteria, it is not considered compatible, and may break older clients, or result in newer clients causing undefined behavior. Such changes are generally disallowed, though exceptions have been made in extreme cases (e.g. security or obvious bugs).
+
+So add an extra field to existing may be a better solution.
+
+For example: change `values.yaml` from figure 1 to figure 2, and change the TidbCluster object from figure 3 to figure 4:
+
 Users can create multiple statefulsets in `charts/tidb-cluster/values.yaml`, for example: change one tikv(Figure 1) to more tikvs(Figure 2):
 
 Figure 1:
@@ -37,21 +64,28 @@ Figure 2:
 
 ``` yaml
 tikv:
-  setTemplate:
-    replicas: 3
-    image: pingcap/tikv:v2.1.0
-    …
-  sets:
+  replicas: 3
+  image: pingcap/tikv:v2.1.0
+  …
+
+tikvs:
   - name: name-1
     replicas: 2
+    image: pingcap/tikv:v2.1.0
+    …
   - name: name-2
+    replicas: 2
+    image: pingcap/tikv:v2.1.0
+    …
 ```
 
-`setTemplate` is the template of `sets`. Only a name is required in `sets`, other fields can inherit from the `setTemplate`. And the generated `TidbCluster` object includes all the fields. And each statefulset has a separate ConfigMap named by the statefulset name, for example `name-1-tikv`.
+The `tikv` section is the main tikv statefulset. `tikvs` is the extra tikv statefulsets. They must include all the attributes.
 
-Alternative names other than `setTemplate`: `default`, `setDefault`, `defaultConfig`.
+And each statefulset has a separate ConfigMap named by the statefulset name, the `tikv` statefulset name is: `<clusterName>-tikv`, the `tikvs` statefulset name are `<clusterName>-tikv-name-1` and `<clusterName>-tikv-name-2`.
 
-We must add a name attribute(for example: name-1 or name-2) to the section to distinguish the different statefulsets.
+We must add a name attribute(for example: name-1 or name-2) to the `tikvs` section to distinguish the different statefulsets.
+
+The `tikvs` section can be empty.
 
 The same as TidbCluster object, from Figure 3 to Figure 4:
 
@@ -73,27 +107,27 @@ Figure 4:
 
 ``` go
 type TidbClusterSpec struct {
-  TiKVSets            []TiKVSetSpec            `json:"tikv,omitempty"`
+  TiKV         TiKVSpec         `json:"tikv,omitempty"`
+  TiKVs        []TiKVSpec       `json:"tikvs,omitempty"`
   …
 }
 
-type TiKVSetSpec struct {
+type TiKVSpec struct {
   Name            string           `json:"name"`
   Replicas        int32            `json:"replicas"`
   …
 }
 
 type TiKVStatus struct {
-  SetStatuses     []apps.StatefulSetStatus     `json:"setStatuses,omitempty"`
+  StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
+  StatefulSets    []apps.StatefulSetStatus    `json:"statefulSets,omitempty"`
   …
 }
 ```
 
 ### Create:
 
-The statefulset name will have a name suffix(Figure 2), for example: `<cluserName>-tikv-<name-suffix>` to distinguish different statefulsets.
-
-The TiDB Operator should maintain multiple statefulset objects in the kube apiserver. The startup scripts are the same as before basically. An exception is PD startup script: the bootstrapping Pod may be the first statefulset first Pod.
+The TiDB Operator should maintain multiple statefulset objects in the kube apiserver. The startup scripts are the same as before basically. An exception is PD startup script: the bootstrapping Pod may be the main statefulset first Pod.
 
 The TiDB Operator will create extra Services together with multiple statefulsets:
 
@@ -113,28 +147,38 @@ Figure 5:
 
 ``` yaml
 tikv:
-  setTemplate:
-    replicas: 3
+  replicas: 3
+  image: pingcap/tikv:v2.1.0
+  …
+
+tikvs:
+  - name: name-1
+    replicas: 2
     image: pingcap/tikv:v2.1.0
     …
-  sets:
-  - name: name-1
-    replicas: 3
   - name: name-2
+    replicas: 2
+    image: pingcap/tikv:v2.1.0
+    …
 ```
 
 Figure 6:
 
 ``` yaml
 tikv:
-  setTemplate:
-    replicas: 3
-    image: pingcap/tikv:v2.1.0
-    …
-  sets:
+  replicas: 3
+  image: pingcap/tikv:v2.2.0
+  …
+
+tikvs:
   - name: name-1
-    replicas: 3
+    replicas: 2
+    image: pingcap/tikv:v2.2.0
+    …
   - name: name-2
+    replicas: 2
+    image: pingcap/tikv:v2.2.0
+    …
 ```
 
 The operator does not guarantee the order of multiple statefulsets’ upgrade. If the user care about the order indeed. Just: modify one statefulset, wait it done, and then modify the other one.
@@ -144,34 +188,44 @@ The operator does not guarantee the order of multiple statefulsets’ upgrade. I
 Like the Upgrade section, the user can sale in/out all the statefulsets at the same time, operator will only scale in/out one Pod at a time.
 The user can just modify one statefulset if they want to operate the special statefulset.
 
-For example, the user can change the replicas in region-1 from 3(Figure 7) to 5(Figure 8) to add more replicas in the region-1:
+For example, the user can change the replicas in name-1 from 3(Figure 7) to 5(Figure 8) to add more replicas in the name-1:
 
 Figure 7:
 
 ``` yaml
 tikv:
-  setTemplate:
+  replicas: 3
+  image: pingcap/tikv:v2.1.0
+  …
+
+tikvs:
+  - name: name-1
     replicas: 3
     image: pingcap/tikv:v2.1.0
     …
-  sets:
-  - name: name-1
-    replicas: 3
   - name: name-2
+    replicas: 2
+    image: pingcap/tikv:v2.1.0
+    …
 ```
 
 Figure 8:
 
 ``` yaml
 tikv:
-  setTemplate:
-    replicas: 3
-    image: pingcap/tikv:v2.1.0
-    …
-  sets:
+  replicas: 3
+  image: pingcap/tikv:v2.1.0
+  …
+
+tikvs:
   - name: name-1
     replicas: 5
+    image: pingcap/tikv:v2.1.0
+    …
   - name: name-2
+    replicas: 2
+    image: pingcap/tikv:v2.1.0
+    …
 ```
 
 The operator does not guarantee the order of multiple statefulsets’ scale in/out. If the user care the order indeed. Just: modify one statefulset, wait it done, and then modify the other one.
@@ -180,8 +234,184 @@ The operator does not guarantee the order of multiple statefulsets’ scale in/o
 
 When a PD/TiKV/TiDB peer is failure, the failover module will add a new peer to the failed statefulset. Others are the same with older design.
 
-## Overall:
+### Vertical scaling
 
-The unit tests and e2e tests will have many changes when we add multiple statefulsets feature to TiDB Operator.
+To do vertical scaling, the user must:
 
-It is a break change, so this feature may be added before the TiDB Operator GA.
+- Add a new statefulset in the `tikvs` section, using more `requests` or `limits` and wait it done. Add a new `name-3`, change from figure 9 to figure 10;
+- Scale down the old statefulset(`name-1`) in the `tikvs` section to zero and wait it done. See figure 11;
+- Remove the old statefulset(`name-1`) in the `tikvs` section. See figure 12.
+
+Figure 9:
+
+``` yaml
+tikv:
+  replicas: 3
+  image: pingcap/tikv:v2.1.0
+  …
+
+tikvs:
+  - name: name-1
+    replicas: 5
+    image: pingcap/tikv:v2.1.0
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 1000m
+        memory: 1Gi
+        storage: 1Gi
+    …
+  - name: name-2
+    replicas: 2
+    image: pingcap/tikv:v2.1.0
+    …
+```
+
+
+Figure 10:
+
+``` yaml
+tikv:
+  replicas: 3
+  image: pingcap/tikv:v2.1.0
+  …
+
+tikvs:
+  - name: name-1
+    replicas: 5
+    image: pingcap/tikv:v2.1.0
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 1000m
+        memory: 1Gi
+        storage: 1Gi
+    …
+  - name: name-2
+    replicas: 2
+    image: pingcap/tikv:v2.1.0
+    …
+  - name: name-3
+    replicas: 5
+    image: pingcap/tikv:v2.1.0
+    resources:
+      limits:
+        cpu: 8000m
+        memory: 8Gi
+      requests:
+        cpu: 8000m
+        memory: 8Gi
+        storage: 8Gi
+    …
+```
+
+
+Figure 11:
+
+``` yaml
+tikv:
+  replicas: 3
+  image: pingcap/tikv:v2.1.0
+  …
+
+tikvs:
+  - name: name-1
+    replicas: 0
+    image: pingcap/tikv:v2.1.0
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 1000m
+        memory: 1Gi
+        storage: 1Gi
+    …
+  - name: name-2
+    replicas: 2
+    image: pingcap/tikv:v2.1.0
+    …
+  - name: name-3
+    replicas: 5
+    image: pingcap/tikv:v2.1.0
+    resources:
+      limits:
+        cpu: 8000m
+        memory: 8Gi
+      requests:
+        cpu: 8000m
+        memory: 8Gi
+        storage: 8Gi
+    …
+```
+
+
+Figure 12:
+
+``` yaml
+tikv:
+  replicas: 3
+  image: pingcap/tikv:v2.1.0
+  …
+
+tikvs:
+  - name: name-2
+    replicas: 2
+    image: pingcap/tikv:v2.1.0
+    …
+  - name: name-3
+    replicas: 5
+    image: pingcap/tikv:v2.1.0
+    resources:
+      limits:
+        cpu: 8000m
+        memory: 8Gi
+      requests:
+        cpu: 8000m
+        memory: 8Gi
+        storage: 8Gi
+    …
+```
+
+### Multiple zones
+
+We can use defferent `nodeSelector`s in different statefulsets to deploy tidb to multiple zones, figure 13:
+
+Figure 13:
+
+``` yaml
+tikv:
+  replicas: 3
+  image: pingcap/tikv:v2.1.0
+  nodeSelector:
+    kind: tikv
+    zone: cn-bj1-01,cn-bj1-02
+  …
+
+tikvs:
+  - name: name-2
+    replicas: 2
+    image: pingcap/tikv:v2.1.0
+    nodeSelector:
+      kind: tikv
+      zone: cn-bj1-03,cn-bj1-04
+    …
+  - name: name-3
+    replicas: 5
+    image: pingcap/tikv:v2.1.0
+    resources:
+      limits:
+        cpu: 8000m
+        memory: 8Gi
+      requests:
+        cpu: 8000m
+        memory: 8Gi
+        storage: 8Gi
+    …
+```
+
+The main `tikv` will be deployed in `cn-bj1-01` and `cn-bj1-02` zones and the `name-2` in `tikvs` section will be deployed in `cn-bj1-03` and `cn-bj1-04` zones.
