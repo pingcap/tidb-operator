@@ -18,12 +18,21 @@ log-level = {{ .Values.tikv.logLevel | default "info" | quote }}
 # log-rotation-timespan = "24h"
 
 [readpool.storage]
+{{- if .Values.tikv.readpoolStorageconcurrency }}
+# size of thread pool for high-priority operations
+high-concurrency = {{ .Values.tikv.readpoolStorageconcurrency }}
+# size of thread pool for normal-priority operations
+normal-concurrency = {{ .Values.tikv.readpoolStorageconcurrency }}
+# size of thread pool for low-priority operations
+low-concurrency = {{ .Values.tikv.readpoolStorageconcurrency }}
+{{- else }}
 # size of thread pool for high-priority operations
 # high-concurrency = 4
 # size of thread pool for normal-priority operations
 # normal-concurrency = 4
 # size of thread pool for low-priority operations
 # low-concurrency = 4
+{{- end }}
 # max running high-priority operations of each worker, reject if exceed
 # max-tasks-per-worker-high = 2000
 # max running normal-priority operations of each worker, reject if exceed
@@ -37,9 +46,15 @@ log-level = {{ .Values.tikv.logLevel | default "info" | quote }}
 # Notice: if CPU_NUM > 8, default thread pool size for coprocessors
 # will be set to CPU_NUM * 0.8.
 
+{{- if .Values.tikv.readpoolCoprocessorconcurrency }}
+high-concurrency = {{ .Values.tikv.readpoolCoprocessorconcurrency }}
+normal-concurrency = {{ .Values.tikv.readpoolCoprocessorconcurrency }}
+low-concurrency = {{ .Values.tikv.readpoolCoprocessorconcurrency }}
+{{- else }}
 # high-concurrency = 8
 # normal-concurrency = 8
 # low-concurrency = 8
+{{- end }}
 # max-tasks-per-worker-high = 2000
 # max-tasks-per-worker-normal = 2000
 # max-tasks-per-worker-low = 2000
@@ -105,7 +120,11 @@ log-level = {{ .Values.tikv.logLevel | default "info" | quote }}
 
 # scheduler's worker pool size, should increase it in heavy write cases,
 # also should less than total cpu cores.
+{{- if .Values.tikv.storageSchedulerWorkerPoolSize }}
+scheduler-worker-pool-size = {{ .Values.tikv.storageSchedulerWorkerPoolSize }}
+{{- else }}
 # scheduler-worker-pool-size = 4
+{{- end }}
 
 # When the pending write bytes exceeds this threshold,
 # the "scheduler too busy" error is displayed.
