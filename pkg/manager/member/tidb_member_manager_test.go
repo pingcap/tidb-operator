@@ -47,7 +47,14 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
 		tc := newTidbClusterForTiDB()
+		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
+		}
+		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
+
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
 		oldSpec := tc.Spec
@@ -88,6 +95,15 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			setCreated:               true,
 		},
 		{
+			name: "tikv is not available",
+			prepare: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
+			},
+			errWhenCreateStatefulSet: false,
+			err:                      true,
+			setCreated:               false,
+		},
+		{
 			name:                     "error when create statefulset",
 			prepare:                  nil,
 			errWhenCreateStatefulSet: true,
@@ -113,7 +129,14 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
 		tc := newTidbClusterForTiDB()
+		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
+		}
+		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
+
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
 
@@ -309,6 +332,8 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	now := metav1.Time{Time: time.Now()}
 	testFn := func(test *testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
+		tc.Status.PD.Phase = v1alpha1.NormalPhase
+		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 		set := &apps.StatefulSet{
 			Status: status,
 		}
@@ -359,6 +384,36 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.TiDB.StatefulSet.Replicas).To(Equal(int32(3)))
 				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.UpgradePhase))
+			},
+		},
+		{
+			name: "statefulset is upgrading but pd is upgrading",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.UpgradePhase
+			},
+			upgradingFn: func(lister corelisters.PodLister, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return true, nil
+			},
+			healthInfo:  map[string]bool{},
+			errExpectFn: nil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.TiDB.StatefulSet.Replicas).To(Equal(int32(3)))
+				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.NormalPhase))
+			},
+		},
+		{
+			name: "statefulset is upgrading but tikv is upgrading",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+			},
+			upgradingFn: func(lister corelisters.PodLister, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return true, nil
+			},
+			healthInfo:  map[string]bool{},
+			errExpectFn: nil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.TiDB.StatefulSet.Replicas).To(Equal(int32(3)))
+				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.NormalPhase))
 			},
 		},
 		{

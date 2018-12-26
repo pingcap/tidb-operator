@@ -92,6 +92,13 @@ type SvcConfig struct {
 
 // Sync fulfills the manager.Manager interface
 func (tkmm *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	if !tc.PDIsAvailable() {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
+	}
+
 	svcList := []SvcConfig{
 		{
 			Name:       "peer",
@@ -439,7 +446,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	if err != nil {
 		return err
 	}
-	if upgrading {
+	if upgrading && tc.Status.PD.Phase != v1alpha1.UpgradePhase {
 		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 	} else {
 		tc.Status.TiKV.Phase = v1alpha1.NormalPhase

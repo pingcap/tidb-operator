@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
@@ -38,39 +39,38 @@ func TestPDFailoverFailover(t *testing.T) {
 		name                     string
 		update                   func(*v1alpha1.TidbCluster)
 		hasPVC                   bool
-		hasPV                    bool
 		hasPod                   bool
 		podWithDeletionTimestamp bool
+		pvcWithDeletionTimestamp bool
 		delMemberFailed          bool
 		delPodFailed             bool
 		delPVCFailed             bool
 		statusSyncFailed         bool
 		errExpectFn              func(*GomegaWithT, error)
-		expectFn                 func(*v1alpha1.TidbCluster)
+		expectFn                 func(*v1alpha1.TidbCluster, *pdFailover)
 	}
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 		tc := newTidbClusterForPD()
 		test.update(tc)
 
-		pdFailover, pvcIndexer, pvIndexer, podIndexer, fakePDControl, fakePodControl, fakePVCControl := newFakePDFailover()
+		pdFailover, pvcIndexer, podIndexer, fakePDControl, fakePodControl, fakePVCControl := newFakePDFailover()
 		pdClient := controller.NewFakePDClient()
 		fakePDControl.SetPDClient(tc, pdClient)
 
-		pdClient.AddReaction(controller.DeleteMemberActionType, func(action *controller.Action) (interface{}, error) {
+		pdClient.AddReaction(controller.DeleteMemberByIDActionType, func(action *controller.Action) (interface{}, error) {
 			if test.delMemberFailed {
 				return nil, fmt.Errorf("failed to delete member")
 			}
 			return nil, nil
 		})
 
-		pvc := newPVCForPDFailover(tc, v1alpha1.PDMemberType, 1)
 		if test.hasPVC {
+			pvc := newPVCForPDFailover(tc, v1alpha1.PDMemberType, 1)
+			if test.pvcWithDeletionTimestamp {
+				pvc.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+			}
 			pvcIndexer.Add(pvc)
-		}
-		if test.hasPV {
-			pv := newPVForPDFailover(pvc)
-			pvIndexer.Add(pv)
 		}
 		if test.hasPod {
 			pod := newPodForPDFailover(tc, v1alpha1.PDMemberType, 1)
@@ -80,24 +80,23 @@ func TestPDFailoverFailover(t *testing.T) {
 			podIndexer.Add(pod)
 		}
 		if test.delPodFailed {
-			fakePodControl.SetDeletePodError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+			fakePodControl.SetDeletePodError(errors.NewInternalError(fmt.Errorf("delete pod: API server failed")), 0)
 		}
 		if test.delPVCFailed {
-			fakePVCControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+			fakePVCControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("delete pvc: API server failed")), 0)
 		}
 
 		tc.Status.PD.Synced = !test.statusSyncFailed
 
 		err := pdFailover.Failover(tc)
 		test.errExpectFn(g, err)
-		test.expectFn(tc)
+		test.expectFn(tc, pdFailover)
 	}
 	tests := []testcase{
 		{
 			name:                     "all members are ready",
 			update:                   allMembersReady,
 			hasPVC:                   true,
-			hasPV:                    true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
@@ -105,16 +104,30 @@ func TestPDFailoverFailover(t *testing.T) {
 			delPVCFailed:             false,
 			statusSyncFailed:         false,
 			errExpectFn:              errExpectNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+			},
+		},
+		{
+			name:                     "pd status sync failed",
+			update:                   allMembersReady,
+			hasPVC:                   true,
+			hasPod:                   true,
+			podWithDeletionTimestamp: false,
+			delMemberFailed:          false,
+			delPodFailed:             false,
+			delPVCFailed:             false,
+			statusSyncFailed:         true,
+			errExpectFn:              errExpectNotNil,
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
+				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 			},
 		},
 		{
 			name:                     "two members are not ready, not in quorum",
 			update:                   twoMembersNotReady,
 			hasPVC:                   true,
-			hasPV:                    true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
@@ -125,7 +138,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "pd cluster is not health")).To(Equal(true))
 			},
-			expectFn: func(tc *v1alpha1.TidbCluster) {
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
 			},
@@ -134,21 +147,19 @@ func TestPDFailoverFailover(t *testing.T) {
 			name:                     "two members are ready and a failure member",
 			update:                   oneFailureMember,
 			hasPVC:                   true,
-			hasPV:                    true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
 			errExpectFn:              errExpectNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(1))
 				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
-				g.Expect(int(pd1.Replicas)).To(Equal(3))
 			},
 		},
 		{
@@ -161,7 +172,6 @@ func TestPDFailoverFailover(t *testing.T) {
 				tc.Status.PD.Members[pd1Name] = pd1
 			},
 			hasPVC:                   true,
-			hasPV:                    true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
@@ -169,7 +179,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			delPVCFailed:             false,
 			statusSyncFailed:         false,
 			errExpectFn:              errExpectNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
 			},
@@ -184,7 +194,6 @@ func TestPDFailoverFailover(t *testing.T) {
 				tc.Status.PD.Members[pd1Name] = pd1
 			},
 			hasPVC:                   true,
-			hasPV:                    true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
@@ -192,71 +201,56 @@ func TestPDFailoverFailover(t *testing.T) {
 			delPVCFailed:             false,
 			statusSyncFailed:         false,
 			errExpectFn:              errExpectNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
 			},
 		},
 		{
-			name:                     "has one not ready member, and exceed deadline, don't have PVC, have PV",
+			name:                     "has one not ready member, don't have pvc",
 			update:                   oneNotReadyMember,
-			hasPVC:                   true,
-			hasPV:                    false,
+			hasPVC:                   false,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
 			statusSyncFailed:         false,
-			errExpectFn:              errExpectNotNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "persistentvolumeclaim \"pd-test-pd-1\" not found")).To(Equal(true))
+			},
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
 			},
 		},
 		{
-			name:                     "has one not ready member, and exceed deadline, have PVC, don't have PV",
+			name:                     "has one not ready member",
 			update:                   oneNotReadyMember,
 			hasPVC:                   true,
-			hasPV:                    false,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
 			statusSyncFailed:         false,
-			errExpectFn:              errExpectNotNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
-				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "marking Pod: default/test-pd-1 pd member: test-pd-1 as failure")).To(Equal(true))
 			},
-		},
-		{
-			name:                     "has one not ready member, and exceed deadline, return requeue error",
-			update:                   oneNotReadyMember,
-			hasPVC:                   true,
-			hasPV:                    true,
-			hasPod:                   true,
-			podWithDeletionTimestamp: false,
-			delMemberFailed:          false,
-			delPodFailed:             false,
-			delPVCFailed:             false,
-			statusSyncFailed:         false,
-			errExpectFn:              errExpectRequeue,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
-				g.Expect(ok).To(Equal(true))
-				g.Expect(pd1.MemberDeleted).To(Equal(false))
-				g.Expect(int(pd1.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(1))
+				g.Expect(tc.Status.PD.FailureMembers).To(Equal(map[string]v1alpha1.PDFailureMember{
+					"test-pd-1": {PodName: "test-pd-1", MemberID: "12891273174085095651", PVCUID: "pvc-1-uid", MemberDeleted: false},
+				}))
 			},
 		},
 		{
 			name:                     "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete pod success",
 			update:                   oneNotReadyMemberAndAFailureMember,
 			hasPVC:                   false,
-			hasPV:                    true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
@@ -264,61 +258,112 @@ func TestPDFailoverFailover(t *testing.T) {
 			delPVCFailed:             false,
 			statusSyncFailed:         false,
 			errExpectFn:              errExpectNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
-				g.Expect(int(pd1.Replicas)).To(Equal(3))
 			},
 		},
 		{
-			name:                     "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete pod failed",
-			update:                   oneNotReadyMemberAndAFailureMember,
+			name: "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete pod success, but memberID is wrong",
+			update: func(tc *v1alpha1.TidbCluster) {
+				oneNotReadyMemberAndAFailureMember(tc)
+				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+				pd1 := tc.Status.PD.FailureMembers[pd1Name]
+				pd1.MemberID = "wrong-id"
+				tc.Status.PD.FailureMembers[pd1Name] = pd1
+			},
 			hasPVC:                   false,
-			hasPV:                    true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
-			delPodFailed:             true,
+			delPodFailed:             false,
 			delPVCFailed:             false,
 			statusSyncFailed:         false,
-			errExpectFn:              errExpectNotNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "invalid syntax")).To(Equal(true))
+			},
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
-				g.Expect(int(pd1.Replicas)).To(Equal(3))
 			},
 		},
 		{
-			name:                     "one failure member, delete member failed",
-			update:                   oneFailureMember,
-			hasPVC:                   true,
-			hasPV:                    true,
+			name:                     "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete member failed",
+			update:                   oneNotReadyMemberAndAFailureMember,
+			hasPVC:                   false,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          true,
 			delPodFailed:             false,
 			delPVCFailed:             false,
 			statusSyncFailed:         false,
-			errExpectFn:              errExpectNotNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "failed to delete member")).To(Equal(true))
+			},
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-				failMember, ok := tc.Status.PD.FailureMembers[pd1Name]
+				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
-				g.Expect(failMember.MemberDeleted).To(Equal(false))
+				g.Expect(pd1.MemberDeleted).To(Equal(false))
 			},
 		},
 		{
-			name:                     "one failure member, don't have pvc, have pod with deletetimestamp",
+			name:                     "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete pod failed",
 			update:                   oneNotReadyMemberAndAFailureMember,
 			hasPVC:                   false,
-			hasPV:                    true,
+			hasPod:                   true,
+			podWithDeletionTimestamp: false,
+			delMemberFailed:          false,
+			delPodFailed:             true,
+			delPVCFailed:             false,
+			statusSyncFailed:         false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "delete pod: API server failed")).To(Equal(true))
+			},
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
+				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
+				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
+				g.Expect(ok).To(Equal(true))
+				g.Expect(pd1.MemberDeleted).To(Equal(false))
+			},
+		},
+		{
+			name:                     "has one not ready member, and exceed deadline, has Pod, delete pvc failed",
+			update:                   oneNotReadyMemberAndAFailureMember,
+			hasPVC:                   true,
+			hasPod:                   true,
+			podWithDeletionTimestamp: false,
+			delMemberFailed:          false,
+			delPodFailed:             false,
+			delPVCFailed:             true,
+			statusSyncFailed:         false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "delete pvc: API server failed")).To(Equal(true))
+			},
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
+				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
+				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
+				g.Expect(ok).To(Equal(true))
+				g.Expect(pd1.MemberDeleted).To(Equal(false))
+			},
+		},
+		{
+			name:                     "has one not ready member, and exceed deadline, has Pod with deletion timestamp",
+			update:                   oneNotReadyMemberAndAFailureMember,
+			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: true,
 			delMemberFailed:          false,
@@ -326,134 +371,44 @@ func TestPDFailoverFailover(t *testing.T) {
 			delPVCFailed:             false,
 			statusSyncFailed:         false,
 			errExpectFn:              errExpectNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
+			expectFn: func(tc *v1alpha1.TidbCluster, pf *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-				failMember, ok := tc.Status.PD.FailureMembers[pd1Name]
+				pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.GetName()), 1)
+				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
-				g.Expect(failMember.MemberDeleted).To(Equal(true))
+				g.Expect(pd1.MemberDeleted).To(Equal(true))
+				_, err := pf.podLister.Pods(metav1.NamespaceDefault).Get(pd1Name)
+				g.Expect(err).NotTo(HaveOccurred())
+				_, err = pf.pvcLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(errors.IsNotFound(err)).To(BeTrue())
 			},
 		},
 		{
-			name:                     "one failure member, don't have pvc, have pod without deletetimestamp, delete pod success",
+			name:                     "has one not ready member, and exceed deadline, has PVC with deletion timestamp",
 			update:                   oneNotReadyMemberAndAFailureMember,
-			hasPVC:                   false,
-			hasPV:                    true,
+			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
+			pvcWithDeletionTimestamp: true,
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
 			statusSyncFailed:         false,
 			errExpectFn:              errExpectNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
+			expectFn: func(tc *v1alpha1.TidbCluster, pf *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-				failMember, ok := tc.Status.PD.FailureMembers[pd1Name]
+				pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.GetName()), 1)
+				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
-				g.Expect(failMember.MemberDeleted).To(Equal(true))
-			},
-		},
-		{
-			name:                     "one failure member, don't have pvc, have pod without deletetimestamp, delete pod failed",
-			update:                   oneNotReadyMemberAndAFailureMember,
-			hasPVC:                   false,
-			hasPV:                    true,
-			hasPod:                   true,
-			podWithDeletionTimestamp: false,
-			delMemberFailed:          false,
-			delPodFailed:             true,
-			delPVCFailed:             false,
-			statusSyncFailed:         false,
-			errExpectFn:              errExpectNotNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
-				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-				failMember, ok := tc.Status.PD.FailureMembers[pd1Name]
-				g.Expect(ok).To(Equal(true))
-				g.Expect(failMember.MemberDeleted).To(Equal(false))
-			},
-		},
-		{
-			name:                     "one failure member, don't have pv",
-			update:                   oneNotReadyMemberAndAFailureMember,
-			hasPVC:                   true,
-			hasPV:                    false,
-			hasPod:                   true,
-			podWithDeletionTimestamp: false,
-			delMemberFailed:          false,
-			delPodFailed:             false,
-			delPVCFailed:             false,
-			statusSyncFailed:         false,
-			errExpectFn:              errExpectNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
-				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-				failMember, ok := tc.Status.PD.FailureMembers[pd1Name]
-				g.Expect(ok).To(Equal(true))
-				g.Expect(failMember.MemberDeleted).To(Equal(true))
-			},
-		},
-		{
-			name: "one failure members, pv uid changed",
-			update: func(tc *v1alpha1.TidbCluster) {
-				oneNotReadyMemberAndAFailureMember(tc)
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-				pd1 := tc.Status.PD.FailureMembers[pd1Name]
-				pd1.PVUID = "xxx"
-				tc.Status.PD.FailureMembers[pd1Name] = pd1
-			},
-			hasPVC:                   true,
-			hasPV:                    true,
-			hasPod:                   true,
-			podWithDeletionTimestamp: false,
-			delMemberFailed:          false,
-			delPodFailed:             false,
-			delPVCFailed:             false,
-			statusSyncFailed:         false,
-			errExpectFn:              errExpectNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
-				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-				failMember, ok := tc.Status.PD.FailureMembers[pd1Name]
-				g.Expect(ok).To(Equal(true))
-				g.Expect(failMember.MemberDeleted).To(Equal(true))
-			},
-		},
-		{
-			name:                     "one failure members, pvc delete fail",
-			update:                   oneNotReadyMemberAndAFailureMember,
-			hasPVC:                   true,
-			hasPV:                    true,
-			hasPod:                   true,
-			podWithDeletionTimestamp: false,
-			delMemberFailed:          false,
-			delPodFailed:             false,
-			delPVCFailed:             true,
-			statusSyncFailed:         false,
-			errExpectFn:              errExpectNotNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
-				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-				failMember, ok := tc.Status.PD.FailureMembers[pd1Name]
-				g.Expect(ok).To(Equal(true))
-				g.Expect(failMember.MemberDeleted).To(Equal(false))
-			},
-		},
-		{
-			name:                     "pd status sync failed",
-			update:                   allMembersReady,
-			hasPVC:                   true,
-			hasPV:                    true,
-			hasPod:                   true,
-			podWithDeletionTimestamp: false,
-			delMemberFailed:          false,
-			delPodFailed:             false,
-			delPVCFailed:             false,
-			statusSyncFailed:         true,
-			errExpectFn:              errExpectNotNil,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
-				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
+				g.Expect(pd1.MemberDeleted).To(Equal(true))
+				_, err := pf.podLister.Pods(metav1.NamespaceDefault).Get(pd1Name)
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(errors.IsNotFound(err)).To(BeTrue())
+				_, err = pf.pvcLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
+				g.Expect(err).NotTo(HaveOccurred())
 			},
 		},
 	}
@@ -476,7 +431,7 @@ func TestPDFailoverRecovery(t *testing.T) {
 		tc := newTidbClusterForPD()
 		test.update(tc)
 
-		pdFailover, _, _, _, _, _, _ := newFakePDFailover()
+		pdFailover, _, _, _, _, _ := newFakePDFailover()
 		pdFailover.Recover(tc)
 		test.expectFn(tc)
 	}
@@ -565,7 +520,7 @@ func TestPDFailoverRecovery(t *testing.T) {
 	}
 }
 
-func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, cache.Indexer, *controller.FakePDControl, *controller.FakePodControl, *controller.FakePVCControl) {
+func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, *controller.FakePDControl, *controller.FakePodControl, *controller.FakePVCControl) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	pdControl := controller.NewFakePDControl()
@@ -586,7 +541,6 @@ func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, cache.Index
 			pvcControl,
 			pvInformer.Lister()},
 		pvcInformer.Informer().GetIndexer(),
-		pvInformer.Informer().GetIndexer(),
 		podInformer.Informer().GetIndexer(),
 		pdControl, podControl, pvcControl
 }
@@ -600,7 +554,7 @@ func oneFailureMember(tc *v1alpha1.TidbCluster) {
 		pd2: {Name: pd2, ID: "2", Health: true},
 	}
 	tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{
-		pd1: {Replicas: 3},
+		pd1: {PodName: pd1, PVCUID: "pvc-1-uid", MemberID: "12891273174085095651"},
 	}
 }
 
@@ -612,8 +566,8 @@ func twoFailureMembers(tc *v1alpha1.TidbCluster) {
 		pd2: {Name: pd2, ID: "2", Health: true},
 	}
 	tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{
-		pd0: {Replicas: 3},
-		pd1: {Replicas: 4},
+		pd0: {PodName: pd0},
+		pd1: {PodName: pd1},
 	}
 }
 
@@ -623,7 +577,7 @@ func oneNotReadyMember(tc *v1alpha1.TidbCluster) {
 	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
 		pd0: {Name: pd0, ID: "0", Health: true},
-		pd1: {Name: pd1, ID: "1", Health: false, LastTransitionTime: metav1.Time{Time: time.Now().Add(-10 * time.Minute)}},
+		pd1: {Name: pd1, ID: "12891273174085095651", Health: false, LastTransitionTime: metav1.Time{Time: time.Now().Add(-10 * time.Minute)}},
 		pd2: {Name: pd2, ID: "2", Health: true},
 	}
 }
@@ -634,11 +588,11 @@ func oneNotReadyMemberAndAFailureMember(tc *v1alpha1.TidbCluster) {
 	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
 		pd0: {Name: pd0, ID: "0", Health: true},
-		pd1: {Name: pd1, ID: "1", Health: false, LastTransitionTime: metav1.Time{Time: time.Now().Add(-10 * time.Minute)}},
+		pd1: {Name: pd1, ID: "12891273174085095651", Health: false, LastTransitionTime: metav1.Time{Time: time.Now().Add(-10 * time.Minute)}},
 		pd2: {Name: pd2, ID: "2", Health: true},
 	}
 	tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{
-		pd1: {Replicas: 3, PVUID: "uid-1"},
+		pd1: {PodName: pd1, PVCUID: "pvc-1-uid", MemberID: "12891273174085095651"},
 	}
 }
 
@@ -648,7 +602,7 @@ func allMembersReady(tc *v1alpha1.TidbCluster) {
 	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
 		pd0: {Name: pd0, ID: "0", Health: true},
-		pd1: {Name: pd1, ID: "1", Health: true},
+		pd1: {Name: pd1, ID: "12891273174085095651", Health: true},
 		pd2: {Name: pd2, ID: "2", Health: true},
 	}
 }
@@ -659,7 +613,7 @@ func twoMembersNotReady(tc *v1alpha1.TidbCluster) {
 	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
 		pd0: {Name: pd0, ID: "0", Health: false},
-		pd1: {Name: pd1, ID: "1", Health: false},
+		pd1: {Name: pd1, ID: "12891273174085095651", Health: false},
 		pd2: {Name: pd2, ID: "2", Health: true},
 	}
 }
@@ -677,18 +631,10 @@ func newPVCForPDFailover(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberTyp
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ordinalPVCName(memberType, controller.PDMemberName(tc.GetName()), ordinal),
 			Namespace: metav1.NamespaceDefault,
+			UID:       types.UID("pvc-1-uid"),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			VolumeName: fmt.Sprintf("pv-%d", ordinal),
-		},
-	}
-}
-
-func newPVForPDFailover(pvc *corev1.PersistentVolumeClaim) *corev1.PersistentVolume {
-	return &corev1.PersistentVolume{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: pvc.Spec.VolumeName,
-			UID:  "uid-1",
 		},
 	}
 }

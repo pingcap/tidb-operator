@@ -32,8 +32,6 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
-const defaultReplicas = 3
-
 type pdMemberManager struct {
 	pdControl    controller.PDControlInterface
 	setControl   controller.StatefulSetControlInterface

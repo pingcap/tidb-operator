@@ -1,6 +1,6 @@
 set -euo pipefail
-dirname=`date +%Y-%m-%dT%H%M%S`-${MY_POD_NAME}
-host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]'`
+dirname=backup-`date +%Y-%m-%dT%H%M%S`-${MY_POD_NAME}
+host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]'` | tr '-' '_'
 
 mkdir -p /data/${dirname}/
 cp /savepoint-dir/savepoint /data/${dirname}/
@@ -9,13 +9,13 @@ cp /savepoint-dir/savepoint /data/${dirname}/
   --outputdir=/data/${dirname} \
   --host=`eval echo '${'$host'}'` \
   --port=4000 \
-  --user={{ .Values.fullbackup.user }} \
+  --user={{ .Values.backup.user }} \
   --password=${TIDB_PASSWORD} \
-  {{ .Values.fullbackup.options }}
+  {{ .Values.backup.options }}
 
-{{- if .Values.fullbackup.gcp }}
+{{- if .Values.backup.gcp }}
 uploader \
   --cloud=gcp \
-  --bucket={{ .Values.fullbackup.gcp.bucket }} \
+  --bucket={{ .Values.backup.gcp.bucket }} \
   --backup-dir=/data/${dirname}
 {{- end }}
