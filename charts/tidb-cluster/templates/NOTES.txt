@@ -5,7 +5,7 @@
 3. Wait until tidb-initializer pod becomes completed
    watch kubectl get po --namespace {{ .Release.Namespace }}  -l app.kubernetes.io/component=tidb-initializer
 4. Get the TiDB password
-   PASSWORD=$(kubectl get secret -n {{ .Release.Namespace }} {{ .Values.clusterName }}-tidb -o jsonpath="{.data.password}" | base64 -d | awk '{print $6}')
+   PASSWORD=$(kubectl get secret -n {{ .Release.Namespace }} {{ .Values.clusterName }}-tidb -o jsonpath="{.data.password}" | base64 --decode | awk '{print $6}')
    echo ${PASSWORD}
 5. Access tidb-cluster using the MySQL client
    kubectl port-forward -n {{ .Release.Namespace }} svc/{{ .Values.clusterName }}-tidb 4000:4000 &
