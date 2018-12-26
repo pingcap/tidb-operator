@@ -97,6 +97,11 @@ type TidbClusterSpec struct {
   …
 }
 
+type TiKVSpec struct {
+  Replicas        int32            `json:"replicas"`
+  …
+}
+
 type TiKVStatus struct {
   StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
   …
@@ -120,7 +125,7 @@ type TiKVSpec struct {
 
 type TiKVStatus struct {
   StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
-  StatefulSets    []apps.StatefulSetStatus    `json:"statefulSets,omitempty"`
+  StatefulSets    map[string]apps.StatefulSetStatus    `json:"statefulSets,omitempty"`
   …
 }
 ```
@@ -181,7 +186,7 @@ tikvs:
     …
 ```
 
-The operator does not guarantee the order of multiple statefulsets’ upgrade. If the user care about the order indeed. Just: modify one statefulset, wait it done, and then modify the other one.
+The operator upgrades the main statefulset first, and then upgrades the statefulset in the order of statefulset slice.
 
 ### Scale In/Out:
 
@@ -228,7 +233,7 @@ tikvs:
     …
 ```
 
-The operator does not guarantee the order of multiple statefulsets’ scale in/out. If the user care the order indeed. Just: modify one statefulset, wait it done, and then modify the other one.
+The operator scales in/out the main statefulset first, and then scales in/out the statefulset in the order of statefulset slice.
 
 ### Failover:
 
