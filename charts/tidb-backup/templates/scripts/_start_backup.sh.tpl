@@ -1,6 +1,6 @@
 set -euo pipefail
 dirname=backup-`date +%Y-%m-%dT%H%M%S`-${MY_POD_NAME}
-host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]'`
+host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]'` | tr '-' '_'
 
 mkdir -p /data/${dirname}/
 cp /savepoint-dir/savepoint /data/${dirname}/
