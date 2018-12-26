@@ -379,7 +379,7 @@ tikvs:
 
 ### Multiple zones
 
-We can use defferent `nodeSelector`s in different statefulsets to deploy tidb to multiple zones, figure 13:
+We can use different `nodeSelector`s in different statefulsets to deploy tidb to multiple zones, figure 13:
 
 Figure 13:
 
