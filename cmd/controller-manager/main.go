@@ -87,7 +87,6 @@ func main() {
 	if err != nil {
 		glog.Fatalf("failed to get config: %v", err)
 	}
-	cfg.Timeout = 30 * time.Second
 
 	cli, err := versioned.NewForConfig(cfg)
 	if err != nil {
