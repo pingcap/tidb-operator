@@ -18,13 +18,13 @@ log-level = {{ .Values.tikv.logLevel | default "info" | quote }}
 # log-rotation-timespan = "24h"
 
 [readpool.storage]
-{{- if .Values.tikv.readpoolStorageconcurrency }}
+{{- if .Values.tikv.readpoolStorageConcurrency }}
 # size of thread pool for high-priority operations
-high-concurrency = {{ .Values.tikv.readpoolStorageconcurrency }}
+high-concurrency = {{ .Values.tikv.readpoolStorageConcurrency }}
 # size of thread pool for normal-priority operations
-normal-concurrency = {{ .Values.tikv.readpoolStorageconcurrency }}
+normal-concurrency = {{ .Values.tikv.readpoolStorageConcurrency }}
 # size of thread pool for low-priority operations
-low-concurrency = {{ .Values.tikv.readpoolStorageconcurrency }}
+low-concurrency = {{ .Values.tikv.readpoolStorageConcurrency }}
 {{- else }}
 # size of thread pool for high-priority operations
 # high-concurrency = 4
@@ -46,10 +46,10 @@ low-concurrency = {{ .Values.tikv.readpoolStorageconcurrency }}
 # Notice: if CPU_NUM > 8, default thread pool size for coprocessors
 # will be set to CPU_NUM * 0.8.
 
-{{- if .Values.tikv.readpoolCoprocessorconcurrency }}
-high-concurrency = {{ .Values.tikv.readpoolCoprocessorconcurrency }}
-normal-concurrency = {{ .Values.tikv.readpoolCoprocessorconcurrency }}
-low-concurrency = {{ .Values.tikv.readpoolCoprocessorconcurrency }}
+{{- if .Values.tikv.readpoolCoprocessorConcurrency }}
+high-concurrency = {{ .Values.tikv.readpoolCoprocessorConcurrency }}
+normal-concurrency = {{ .Values.tikv.readpoolCoprocessorConcurrency }}
+low-concurrency = {{ .Values.tikv.readpoolCoprocessorConcurrency }}
 {{- else }}
 # high-concurrency = 8
 # normal-concurrency = 8
