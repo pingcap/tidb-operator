@@ -110,7 +110,7 @@ To access the TiDB cluster, use `kubectl port-forward` to expose the services to
     1. Get the TiDB password
 
 	    ```sh
-		$ PASSWORD=$(kubectl get secret -n tidb demo-tidb -ojsonpath="{.data.password}" base64 -c | awk '{print $6}')
+		$ PASSWORD=$(kubectl get secret -n tidb demo-tidb -ojsonpath="{.data.password}" | base64 --decode | awk '{print $6}')
 		$ echo ${PASSWORD}
 		```
 
