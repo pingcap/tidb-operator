@@ -188,6 +188,10 @@ tikvs:
 
 The operator upgrades the main statefulset first, and then upgrades the statefulset in the order of statefulset slice.
 
+The operator should add validation to CRD using [`admission webhooks`](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#admission-webhooks).
+
+The operator does not allow modification of the `name` of statefulset, it should return an error to the user if the he is trying to change the `name` of the statefulset,
+
 ### Scale In/Out:
 
 Like the Upgrade section, the user can sale in/out all the statefulsets at the same time, operator will only scale in/out one Pod at a time.
@@ -240,6 +244,10 @@ The operator scales in/out the main statefulset first, and then scales in/out th
 When a PD/TiKV/TiDB peer is failure, the failover module will add a new peer to the failed statefulset. Others are the same with older design.
 
 ### Vertical scaling
+
+We implement this feature in two phases.
+
+#### Phase 1
 
 To do vertical scaling, the user must:
 
@@ -381,6 +389,13 @@ tikvs:
         storage: 8Gi
     …
 ```
+
+#### Phase 2
+
+When the user change the requests or limits or both of them, the operator creates a new statefulset and set its replicas to 0, then:
+
+- Scale up the new statefulset one at a time, and scale down the old statefulset one at a time.
+- Remove the old statefulset if the new statefulset reach the replicas.
 
 ### Multiple zones
 
