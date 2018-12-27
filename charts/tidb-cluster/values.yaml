@@ -103,6 +103,24 @@ tikv:
   #   value: tidb
   #   effect: "NoSchedule"
 
+  # block-cache used to cache uncompressed blocks, big block-cache can speed up read.
+  # in normal cases should tune to 30%-50% tikv.resources.limits.memory
+  # defaultcfBlockCacheSize: "1GB"
+
+  # in normal cases should tune to 10%-30% tikv.resources.limits.memory
+  # writecfBlockCacheSize: "256MB"
+
+  # size of thread pool for high-priority/normal-priority/low-priority operations
+  # readpoolStorageConcurrency: 4
+
+  # Notice: if tikv.resources.limits.cpu > 8, default thread pool size for coprocessors
+  # will be set to tikv.resources.limits.cpu * 0.8.
+  # readpoolCoprocessorConcurrency: 8
+
+  # scheduler's worker pool size, should increase it in heavy write cases,
+  # also should less than total cpu cores.
+  # storageSchedulerWorkerPoolSize: 4
+
 tikvPromGateway:
   image: prom/pushgateway:v0.3.1
   imagePullPolicy: IfNotPresent

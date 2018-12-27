@@ -74,8 +74,45 @@ $ kubectl get pv | grep local-storage
 
 ## Install TiDB Operator
 
+TiDB Operator uses [CRD](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/) to extend Kubernetes, so to use TiDB Operator, you should first create `TidbCluster` custom resource kind. This is a one-time job, namely you can only need to do this once in your Kubernetes cluster.
+
 ```shell
 $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
+$ kubectl get crd tidbclusters.pingcap.com
+```
+
+After the `TidbCluster` custom resource is created, you can install TiDB Operator in your Kubernetes cluster.
+
+```shell
 $ helm install charts/tidb-operator --name=tidb-operator --namespace=tidb-admin
 $ kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
 ```
+
+## Custom TiDB Operator
+
+Customizing is done by modifying `charts/tidb-operator/values.yaml`. The rest of the document will use `values.yaml` to reference `charts/tidb-operator/values.yaml`
+
+TiDB Operator contains two components:
+
+* tidb-controller-manager
+* tidb-scheduler
+
+This two components are stateless, so they are deployed via `Deployment`. You can customize the `replicas` and resource limits/requests as you wish in the values.yaml.
+
+After editing values.yaml, run the following command to apply the modification:
+
+```shell
+$ helm upgrade tidb-operator charts/tidb-operator
+```
+
+## Upgrade TiDB Operator
+
+Upgrading TiDB Operator itself is similar to customize TiDB Operator, modify the image version in values.yaml and then run `helm upgrade`:
+
+```shell
+$ helm upgrade tidb-operator charts/tidb-operator
+```
+
+When a new version of tidb-operator comes out, simply update the `operatorImage` in values.yaml and run the above command should be enough. But for safety reasons, you should get the new charts from tidb-operator repo and merge the old values.yaml with new values.yaml. And then upgrade as above.
+
+TiDB Operator is for TiDB cluster maintenance, what this means is that when TiDB cluster is up and running, you can just stop TiDB Operator and TiDB cluster still works well unless you need to do TiDB cluster maintenance like scaling, upgrading etc.
