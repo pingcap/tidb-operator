@@ -2,31 +2,33 @@
   "kind" : "Policy",
   "apiVersion" : "v1",
   "predicates": [
-    {"name": "MatchInterPodAffinity"},
+    {"name": "NoVolumeZoneConflict"},
+    {"name": "MaxEBSVolumeCount"},
+    {"name": "MaxAzureDiskVolumeCount"},
+    {"name": "NoDiskConflict"},
+    {"name": "GeneralPredicates"},
+    {"name": "PodToleratesNodeTaints"},
     {"name": "CheckVolumeBinding"},
-{{- if semverCompare "<1.12-0" .Capabilities.KubeVersion.GitVersion }}
-    {"name": "CheckNodeCondition"},
+    {"name": "MaxGCEPDVolumeCount"},
+    {"name": "MatchInterPodAffinity"},
     {"name": "CheckNodeMemoryPressure"},
     {"name": "CheckNodeDiskPressure"},
+{{- if semverCompare ">=1.11-0" .Capabilities.KubeVersion.GitVersion }}
+    {"name": "CheckNodePIDPressure"},
 {{- end }}
-    {"name": "GeneralPredicates"},
-    {"name": "HostName"},
-    {"name": "PodFitsHostPorts"},
-    {"name": "MatchNodeSelector"},
-    {"name": "PodFitsResources"},
-    {"name": "NoDiskConflict"},
-    {"name": "PodToleratesNodeTaints"}
+{{- if semverCompare "<1.12-0" .Capabilities.KubeVersion.GitVersion }}
+    {"name": "CheckNodeCondition"},
+{{- end }}
+    {"name": "CheckVolumeBinding"}
   ],
   "priorities": [
-    {"name": "EqualPriority", "weight": 1},
-    {"name": "ImageLocalityPriority", "weight": 1},
+    {"name": "SelectorSpreadPriority", "weight": 1},
+    {"name": "InterPodAffinityPriority", "weight": 1},
     {"name": "LeastRequestedPriority", "weight": 1},
     {"name": "BalancedResourceAllocation", "weight": 1},
-    {"name": "SelectorSpreadPriority", "weight": 1},
     {"name": "NodePreferAvoidPodsPriority", "weight": 1},
     {"name": "NodeAffinityPriority", "weight": 1},
-    {"name": "TaintTolerationPriority", "weight": 1},
-    {"name": "MostRequestedPriority", "weight": 1}
+    {"name": "TaintTolerationPriority", "weight": 1}
   ],
   "extenders": [
     {
