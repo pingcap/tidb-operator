@@ -18,12 +18,21 @@ log-level = {{ .Values.tikv.logLevel | default "info" | quote }}
 # log-rotation-timespan = "24h"
 
 [readpool.storage]
+{{- if .Values.tikv.readpoolStorageConcurrency }}
+# size of thread pool for high-priority operations
+high-concurrency = {{ .Values.tikv.readpoolStorageConcurrency }}
+# size of thread pool for normal-priority operations
+normal-concurrency = {{ .Values.tikv.readpoolStorageConcurrency }}
+# size of thread pool for low-priority operations
+low-concurrency = {{ .Values.tikv.readpoolStorageConcurrency }}
+{{- else }}
 # size of thread pool for high-priority operations
 # high-concurrency = 4
 # size of thread pool for normal-priority operations
 # normal-concurrency = 4
 # size of thread pool for low-priority operations
 # low-concurrency = 4
+{{- end }}
 # max running high-priority operations of each worker, reject if exceed
 # max-tasks-per-worker-high = 2000
 # max running normal-priority operations of each worker, reject if exceed
@@ -37,9 +46,15 @@ log-level = {{ .Values.tikv.logLevel | default "info" | quote }}
 # Notice: if CPU_NUM > 8, default thread pool size for coprocessors
 # will be set to CPU_NUM * 0.8.
 
+{{- if .Values.tikv.readpoolCoprocessorConcurrency }}
+high-concurrency = {{ .Values.tikv.readpoolCoprocessorConcurrency }}
+normal-concurrency = {{ .Values.tikv.readpoolCoprocessorConcurrency }}
+low-concurrency = {{ .Values.tikv.readpoolCoprocessorConcurrency }}
+{{- else }}
 # high-concurrency = 8
 # normal-concurrency = 8
 # low-concurrency = 8
+{{- end }}
 # max-tasks-per-worker-high = 2000
 # max-tasks-per-worker-normal = 2000
 # max-tasks-per-worker-low = 2000
@@ -105,7 +120,11 @@ log-level = {{ .Values.tikv.logLevel | default "info" | quote }}
 
 # scheduler's worker pool size, should increase it in heavy write cases,
 # also should less than total cpu cores.
+{{- if .Values.tikv.storageSchedulerWorkerPoolSize }}
+scheduler-worker-pool-size = {{ .Values.tikv.storageSchedulerWorkerPoolSize }}
+{{- else }}
 # scheduler-worker-pool-size = 4
+{{- end }}
 
 # When the pending write bytes exceeds this threshold,
 # the "scheduler too busy" error is displayed.
@@ -403,7 +422,11 @@ sync-log = {{ .Values.tikv.syncLog }}
 
 # block-cache used to cache uncompressed blocks, big block-cache can speed up read.
 # in normal cases should tune to 30%-50% system's total memory.
+{{- if .Values.tikv.defaultcfBlockCacheSize }}
+block-cache-size = {{ .Values.tikv.defaultcfBlockCacheSize | quote }}
+{{- else }}
 # block-cache-size = "1GB"
+{{- end }}
 
 # Indicating if we'd put index/filter blocks to the block cache.
 # If not specified, each "table reader" object will pre-load index/filter block
@@ -437,7 +460,11 @@ sync-log = {{ .Values.tikv.syncLog }}
 # target-file-size-base = "8MB"
 
 # in normal cases should tune to 10%-30% system's total memory.
+{{- if .Values.tikv.writecfBlockCacheSize }}
+block-cache-size = {{ .Values.tikv.writecfBlockCacheSize | quote }}
+{{- else }}
 # block-cache-size = "256MB"
+{{- end }}
 # level0-file-num-compaction-trigger = 4
 # level0-slowdown-writes-trigger = 20
 # level0-stop-writes-trigger = 36
