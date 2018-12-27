@@ -16,14 +16,14 @@ TIDB_VERSION=${TIDB_VERSION:-2.1.0}
 function tidb_operator::version::get_version_vars() {
   if [[ -n ${GIT_COMMIT-} ]] || GIT_COMMIT=$(git rev-parse "HEAD^{commit}" 2>/dev/null); then
     if [[ -z ${GIT_TREE_STATE-} ]]; then
-      # Check if the tree is dirty.  default to dirty
-      if git_status=$(git status --porcelain 2>/dev/null) && [[ -z ${git_status} ]]; then
-        GIT_TREE_STATE="clean"
-      else
+      # Check if the tree is dirty.  default to clean
+      if git ls-files -m|grep  ".*go$" 2>/dev/null; then
         GIT_TREE_STATE="dirty"
+      else
+        GIT_TREE_STATE="clean"
       fi
     fi
-  
+
     # Use git describe to find the version based on tags.
     if [[ -n ${GIT_VERSION-} ]] || GIT_VERSION=$(git describe --tags --abbrev=14 "${GIT_COMMIT}^{commit}" 2>/dev/null); then
       # This translates the "git describe" to an actual semver.org
