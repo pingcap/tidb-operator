@@ -35,7 +35,7 @@ spec:
           - -v={{ .Values.scheduler.logLevel }}
           - -port=10262
       - name: kube-scheduler
-        image: {{ .Values.scheduler.kubeSchedulerImage }}
+        image: {{ required "scheduler.kubeSchedulerImage is required! Its verison must be the same as your kubernetes cluster version" .Values.scheduler.kubeSchedulerImage }}
         resources:
 {{ toYaml .Values.scheduler.resources | indent 12 }}
         command:
