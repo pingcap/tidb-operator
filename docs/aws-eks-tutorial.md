@@ -391,7 +391,7 @@ When you see `demo-tidb` appear, you can `Control + C` to stop watching. Then th
 
 ```sh
 # Get the TiDB password
-PASSWORD=$(kubectl get secret -n tidb demo-tidb -o jsonpath="{.data.password}" | base64 -d | awk '{print $6}')
+PASSWORD=$(kubectl get secret -n tidb demo-tidb -o jsonpath="{.data.password}" | base64 --decode | awk '{print $6}')
 echo ${PASSWORD}
 
 # Connect to TiDB
