@@ -83,6 +83,8 @@ $ kubectl get crd tidbclusters.pingcap.com
 
 After the `TidbCluster` custom resource is created, you can install TiDB Operator in your Kubernetes cluster.
 
+Uncomment the `scheduler.kubeSchedulerImage` in `values.yaml`, set it to the same as your kubernetes cluster version.
+
 ```shell
 $ helm install charts/tidb-operator --name=tidb-operator --namespace=tidb-admin
 $ kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
