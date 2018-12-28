@@ -37,6 +37,8 @@ $ KUBE_REPO_PREFIX=uhub.ucloud.cn/pingcap manifests/local-dind/dind-cluster-v1.1
 
 ## Step 2: Install TiDB Operator in the DinD Kubernetes cluster
 
+Uncomment the `scheduler.kubeSchedulerImage` in `values.yaml`, set it to the same as your kubernetes cluster version.
+
 ```sh
 $ kubectl apply -f manifests/crd.yaml
 
