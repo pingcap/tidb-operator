@@ -136,9 +136,9 @@ The TiDB Operator should maintain multiple statefulset objects in the kube apise
 
 The TiDB Operator will create extra Services together with multiple statefulsets:
 
-* For PD: N+1 Services should be created, N headless services and 1 client service
-* For TiKV: N headless services should be created
-* For TiDB: N+1 Services should be created, N client services and 1 main client service
+* For PD: 1 headless service and 1 client service should be created;
+* For TiKV: 1 headless service should be created;
+* For TiDB: N client services and 1 main client service should be created, N represents the count of the statefulset.
 
 ### Upgrade:
 
