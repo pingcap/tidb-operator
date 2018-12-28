@@ -138,7 +138,7 @@ The TiDB Operator will create extra Services together with multiple statefulsets
 
 * For PD: 1 headless service and 1 client service should be created;
 * For TiKV: 1 headless service should be created;
-* For TiDB: N client services and 1 main client service should be created, N represents the count of the statefulset.
+* For TiDB: 1 headless service, 1 main client service and N client services should be created, N represents the count of the statefulsets.
 
 ### Upgrade:
 
