@@ -93,9 +93,10 @@ When you see `Running`, it's time to hit `Control + C` and proceed to the next s
 
 The first TiDB component we are going to install is the TiDB Operator, using a Helm Chart. TiDB Operator is the management system that works with Kubernetes to bootstrap your TiDB cluster and keep it running. This step assumes you are in the `tidb-operator` working directory:
 
+	KUBE_VERSION=$(kubectl version --short | awk '/Server/{print $NF}' | awk -F '-' '{print $1}') &&
 	kubectl apply -f ./manifests/crd.yaml &&
 	kubectl apply -f ./manifests/gke-storage.yml &&
-	helm install ./charts/tidb-operator -n tidb-admin --namespace=tidb-admin
+	helm install ./charts/tidb-operator -n tidb-admin --namespace=tidb-admin --set scheduler.kubeSchedulerImage=gcr.io/google-containers/hyperkube:${KUBE_VERSION}
 
 We can watch the operator come up with:
 

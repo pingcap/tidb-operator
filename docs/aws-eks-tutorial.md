@@ -331,6 +331,8 @@ connect onto your newly created cluster.
 
 TiDB Operator manages TiDB clusters on Kubernetes and automates tasks related to operating a TiDB cluster. It makes TiDB a truly cloud-native database.
 
+Uncomment the `scheduler.kubeSchedulerImage` in `values.yaml`, set it to the same as your kubernetes cluster version.
+
 If you already have helm installed, you can continue here to deploy tidb-operator:
 
 ```sh
