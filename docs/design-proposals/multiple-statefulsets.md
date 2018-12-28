@@ -136,8 +136,8 @@ The TiDB Operator should maintain multiple statefulset objects in the kube apise
 
 The TiDB Operator will create extra Services together with multiple statefulsets:
 
-* For PD: no change
-* For TiKV: no change
+* For PD: N+1 Services should be created, N headless services and 1 client service
+* For TiKV: N headless services should be created
 * For TiDB: N+1 Services should be created, N client services and 1 main client service
 
 ### Upgrade:
@@ -188,7 +188,7 @@ tikvs:
 
 The operator upgrades the main statefulset first, and then upgrades the statefulset in the order of statefulset slice.
 
-The operator should add validation to CRD using [`admission webhooks`](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#admission-webhooks).
+The operator should add validation to CRD using [`admission webhooks`](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#admission-webhooks). For example, validation will fail if the `name` filed in `tikvs` are the same.
 
 The operator does not allow modification of the `name` of statefulset, it should return an error to the user if the he is trying to change the `name` of the statefulset,
 
@@ -245,11 +245,11 @@ When a PD/TiKV/TiDB peer is failure, the failover module will add a new peer to 
 
 ### Vertical scaling
 
-We implement this feature in two phases.
+We can achieve vertical scaling in two phases.
 
 #### Phase 1
 
-To do vertical scaling, the user must:
+We do not implement this in tidb-operator. But users can achieve this:
 
 - Add a new statefulset in the `tikvs` section, using more `requests` or `limits` and wait it done. Add a new `name-3`, change from figure 9 to figure 10;
 - Scale down the old statefulset(`name-1`) in the `tikvs` section to zero and wait it done. See figure 11;
