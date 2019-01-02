@@ -27,12 +27,22 @@ This document defines the roadmap for TiDB Operator development.
 ## v0.4.0: (2018-10-30) (aka. v1.0.0-alpha)
 - [x] Extend scheduler for better support local persistent volume
 
-## v1.0.0-beta: (2018-11-20)
-- [ ] Improve unit test coverage (80%)
-- [ ] Improve e2e test coverage (70%)
-- [ ] Basic chaos testing case
-- [ ] User guide document
+## v1.0.0-beta.0: (2018-11-20)
+- [x] Improve unit test coverage (80%)
+- [x] Improve e2e test coverage (70%)
+- [x] Basic chaos testing case
+- [x] User guide document
 
-## v1.0.0-ga: (2018-12-30)
+## v1.0.0-beta.1: (2018-12-27)
+- [x] Improve chaos test
+- [x] More User friendly
+
+## v1.0.0-beta.2: (2019-01-18)
+- [ ] Multiple StatefulSets support
+
+## v1.0.0-rc: (2019-01-30)
+- [ ] Chaos test for multiple StatefulSets
+
+## v1.0.0-ga: (2019-02-14)
 - [ ] Stabilize API
 - [ ] Stable for production deployment
