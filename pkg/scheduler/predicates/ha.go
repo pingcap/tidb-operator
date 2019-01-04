@@ -15,31 +15,36 @@ package predicates
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
 
-const (
-	replicas int32 = 3
-)
-
 type ha struct {
 	kubeCli   kubernetes.Interface
+	cli       versioned.Interface
 	podListFn func(ns, instanceName, component string) (*apiv1.PodList, error)
+	pvcGetFn  func(ns, pvcName string) (*apiv1.PersistentVolumeClaim, error)
+	tcGetFn   func(ns, tcName string) (*v1alpha1.TidbCluster, error)
 }
 
 // NewHA returns a Predicate
-func NewHA(kubeCli kubernetes.Interface) Predicate {
+func NewHA(kubeCli kubernetes.Interface, cli versioned.Interface) Predicate {
 	h := &ha{
 		kubeCli: kubeCli,
+		cli:     cli,
 	}
 	h.podListFn = h.realPodListFn
+	h.pvcGetFn = h.realPVCGetFn
+	h.tcGetFn = h.realTCGetFn
 	return h
 }
 
@@ -47,85 +52,72 @@ func (h *ha) Name() string {
 	return "HighAvailability"
 }
 
-// 1. First, we sort all the nodes we get from kube-scheduler by how many same kind of pod it contains,
-//    find the nodes that have least pods.
-// 2. When scheduling the first replicas pods, we must ensure no previous pods on the nodes.
-// 3. For later pods, we choose the nodes that have least pods.
+// 1. return the node to kube-scheduler if there is only one node and the pod's pvc is bound
+// 2. return these nodes that have least pods and its pods count is less than replicas/2 to kube-scheduler
+// 3. let kube-scheduler to make the final decision
 func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]apiv1.Node, error) {
 	ns := pod.GetNamespace()
 	podName := pod.GetName()
+	component := pod.Labels[label.ComponentLabelKey]
+	tcName := getTCNameFromPod(pod, component)
 
-	var component string
-	var exist bool
-	if component, exist = pod.Labels[label.ComponentLabelKey]; !exist {
-		return nodes, fmt.Errorf("can't find component in pod labels: %s/%s", ns, podName)
+	if len(nodes) == 1 {
+		pvcName := fmt.Sprintf("%s-%s", component, podName)
+		pvc, err := h.pvcGetFn(ns, pvcName)
+		if err != nil {
+			return nil, err
+		}
+		if pvc.Status.Phase == apiv1.ClaimBound {
+			return nodes, nil
+		}
 	}
+
 	podList, err := h.podListFn(ns, instanceName, component)
 	if err != nil {
 		return nil, err
 	}
-
-	ordinal, err := util.GetOrdinalFromPodName(podName)
+	tc, err := h.tcGetFn(ns, tcName)
 	if err != nil {
 		return nil, err
 	}
-
-	// when a deleted pod is recreated again, it should be rescheduled to the original node
-	if len(nodes) == 1 {
-		nextPodName := util.GetNextOrdinalPodName(podName, ordinal)
-		for _, pod := range podList.Items {
-			if pod.GetName() == nextPodName && pod.Spec.NodeName != "" {
-				return nodes, nil
-			}
-		}
-	}
+	replicas := getReplicasFrom(tc, component)
 
 	nodeMap := make(map[string][]string)
 	for _, node := range nodes {
 		nodeMap[node.GetName()] = make([]string, 0)
 	}
 	for _, pod := range podList.Items {
-		podName1 := pod.GetName()
+		pName := pod.GetName()
 		nodeName := pod.Spec.NodeName
-		ordinal1, err := util.GetOrdinalFromPodName(podName1)
-		if err != nil {
-			return nil, err
-		}
-
-		if ordinal1 < ordinal && nodeName == "" {
-			return nil, fmt.Errorf("waiting for pod: %s/%s to be scheduled", ns, podName1)
-		}
 		if nodeName == "" || nodeMap[nodeName] == nil {
 			continue
 		}
 
-		nodeMap[nodeName] = append(nodeMap[nodeName], podName1)
+		nodeMap[nodeName] = append(nodeMap[nodeName], pName)
 	}
 	glog.V(4).Infof("nodeMap: %+v", nodeMap)
 
-	var min int
-	var minInitialized bool
-	for _, podNameArr := range nodeMap {
-		count := len(podNameArr)
-		if !minInitialized {
-			minInitialized = true
-			min = count
+	arr := make([]int, 0)
+	for _, podNames := range nodeMap {
+		podsCount := len(podNames)
+		if podsCount+1 >= int(replicas+1)/2 {
+			continue
 		}
-		if count < min {
-			min = count
-		}
+		arr = append(arr, podsCount)
 	}
-	if ordinal < replicas && min != 0 {
-		return nil, fmt.Errorf("the first %d pods can't be scheduled to the same node", replicas)
+	sort.Ints(arr)
+
+	if len(arr) == 0 {
+		return nil, fmt.Errorf("can't find a node from: %v, nodeMap: %v", nodes, nodeMap)
 	}
+	min := arr[0]
 
 	minNodeNames := make([]string, 0)
-	for nodeName, podNameArr := range nodeMap {
-		if len(podNameArr) == min {
+	for nodeName, podNames := range nodeMap {
+		if len(podNames) == min {
 			minNodeNames = append(minNodeNames, nodeName)
 		}
 	}
-
 	return getNodeFromNames(nodes, minNodeNames), nil
 }
 
@@ -134,4 +126,24 @@ func (h *ha) realPodListFn(ns, instanceName, component string) (*apiv1.PodList, 
 	return h.kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(selector).String(),
 	})
+}
+
+func (h *ha) realPVCGetFn(ns, pvcName string) (*apiv1.PersistentVolumeClaim, error) {
+	return h.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
+}
+
+func (h *ha) realTCGetFn(ns, tcName string) (*v1alpha1.TidbCluster, error) {
+	return h.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+}
+
+func getTCNameFromPod(pod *apiv1.Pod, component string) string {
+	return strings.TrimSuffix(pod.GenerateName, fmt.Sprintf("-%s-", component))
+}
+
+func getReplicasFrom(tc *v1alpha1.TidbCluster, component string) int32 {
+	if component == v1alpha1.PDMemberType.String() {
+		return tc.Spec.PD.Replicas
+	}
+
+	return tc.Spec.TiKV.Replicas
 }

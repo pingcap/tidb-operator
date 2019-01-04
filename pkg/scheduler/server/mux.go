@@ -20,6 +20,7 @@ import (
 
 	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/scheduler"
 	"k8s.io/client-go/kubernetes"
 	schedulerapiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
@@ -36,8 +37,8 @@ type server struct {
 }
 
 // StartServer starts a kubernetes scheduler extender http apiserver
-func StartServer(kubeCli kubernetes.Interface, port int) {
-	s := scheduler.NewScheduler(kubeCli)
+func StartServer(kubeCli kubernetes.Interface, cli versioned.Interface, port int) {
+	s := scheduler.NewScheduler(kubeCli, cli)
 	svr := &server{scheduler: s}
 
 	ws := new(restful.WebService)
