@@ -15,7 +15,6 @@ package predicates
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/golang/glog"
@@ -97,26 +96,29 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	}
 	glog.V(4).Infof("nodeMap: %+v", nodeMap)
 
-	arr := make([]int, 0)
-	for _, podNames := range nodeMap {
+	min := -1
+	minNodeNames := make([]string, 0)
+	for nodeName, podNames := range nodeMap {
 		podsCount := len(podNames)
 		if podsCount+1 >= int(replicas+1)/2 {
 			continue
 		}
-		arr = append(arr, podsCount)
-	}
-	sort.Ints(arr)
-
-	if len(arr) == 0 {
-		return nil, fmt.Errorf("can't find a node from: %v, nodeMap: %v", nodes, nodeMap)
-	}
-	min := arr[0]
-
-	minNodeNames := make([]string, 0)
-	for nodeName, podNames := range nodeMap {
-		if len(podNames) == min {
-			minNodeNames = append(minNodeNames, nodeName)
+		if min == -1 {
+			min = podsCount
 		}
+
+		if podsCount > min {
+			continue
+		}
+		if podsCount < min {
+			min = podsCount
+			minNodeNames = make([]string, 0)
+		}
+		minNodeNames = append(minNodeNames, nodeName)
+	}
+
+	if len(minNodeNames) == 0 {
+		return nil, fmt.Errorf("can't find a node from: %v, nodeMap: %v", nodes, nodeMap)
 	}
 	return getNodeFromNames(nodes, minNodeNames), nil
 }

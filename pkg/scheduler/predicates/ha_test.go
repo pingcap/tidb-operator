@@ -132,7 +132,7 @@ func TestHAFilter(t *testing.T) {
 			},
 		},
 		{
-			name:      "one node, return zero node",
+			name:      "zero node, return zero node",
 			podFn:     newHAPDPod,
 			nodesFn:   fakeZeroNode,
 			podListFn: podListFn(map[string][]int32{}),
