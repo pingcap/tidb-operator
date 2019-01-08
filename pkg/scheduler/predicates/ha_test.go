@@ -139,7 +139,7 @@ func TestHAFilter(t *testing.T) {
 			tcGetFn:   tcGetFn,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "can't find a node from: ")).To(BeTrue())
+				g.Expect(strings.Contains(err.Error(), "kube nodes is empty")).To(BeTrue())
 			},
 		},
 		{

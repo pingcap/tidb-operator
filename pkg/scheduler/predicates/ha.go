@@ -60,6 +60,10 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	component := pod.Labels[label.ComponentLabelKey]
 	tcName := getTCNameFromPod(pod, component)
 
+	if len(nodes) == 0 {
+		return nil, fmt.Errorf("kube nodes is empty")
+	}
+
 	if len(nodes) == 1 {
 		pvcName := fmt.Sprintf("%s-%s", component, podName)
 		pvc, err := h.pvcGetFn(ns, pvcName)
