@@ -52,7 +52,7 @@ func (h *ha) Name() string {
 }
 
 // 1. return the node to kube-scheduler if there is only one node and the pod's pvc is bound
-// 2. return these nodes that have least pods and its pods count is less than replicas/2 to kube-scheduler
+// 2. return these nodes that have least pods and its pods count is less than (replicas+1)/2 to kube-scheduler
 // 3. let kube-scheduler to make the final decision
 func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]apiv1.Node, error) {
 	ns := pod.GetNamespace()
