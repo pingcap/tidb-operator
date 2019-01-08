@@ -40,18 +40,6 @@ func TestMapAndIntNil(t *testing.T) {
 
 	g.Expect(m["c"] == nil).To(Equal(true))
 	g.Expect(m["a"] == nil).To(Equal(false))
-
-	var i *int
-	g.Expect(i).To(BeNil())
-}
-
-func TestSortEmptyArr(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	arr := make([]int, 0)
-	sort.Ints(arr)
-
-	g.Expect(len(arr)).To(BeZero())
 }
 
 func TestHAFilter(t *testing.T) {
