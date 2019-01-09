@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Values.clusterName }}-discovery
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: discovery
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  serviceAccount: {{ .Values.clusterName }}-discovery
+  containers:
+  - name: discovery
+    image: {{ .Values.discovery.image }}
+    imagePullPolicy: {{ .Values.discovery.imagePullPolicy | default "IfNotPresent" }}
+    command:
+      - /usr/local/bin/tidb-discovery

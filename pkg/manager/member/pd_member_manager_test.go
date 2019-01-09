@@ -42,13 +42,14 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 		errWhenCreateStatefulSet   bool
 		errWhenCreatePDService     bool
 		errWhenCreatePDPeerService bool
-		err                        bool
+		errExpectFn                func(*GomegaWithT, error)
 		pdSvcCreated               bool
 		pdPeerSvcCreated           bool
 		setCreated                 bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
 		tc := newTidbClusterForPD()
 		ns := tc.Namespace
 		tcName := tc.Name
@@ -72,12 +73,7 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 		}
 
 		err := pmm.Sync(tc)
-		if test.err {
-			g.Expect(err).To(HaveOccurred())
-		} else {
-			g.Expect(err).NotTo(HaveOccurred())
-		}
-
+		test.errExpectFn(g, err)
 		g.Expect(tc.Spec).To(Equal(oldSpec))
 
 		svc1, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
@@ -107,13 +103,12 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 
 	tests := []testcase{
 		{
-			name:    "normal",
-			prepare: nil,
-
+			name:                       "normal",
+			prepare:                    nil,
 			errWhenCreateStatefulSet:   false,
 			errWhenCreatePDService:     false,
 			errWhenCreatePDPeerService: false,
-			err:                        false,
+			errExpectFn:                errExpectRequeue,
 			pdSvcCreated:               true,
 			pdPeerSvcCreated:           true,
 			setCreated:                 true,
@@ -126,10 +121,13 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:   false,
 			errWhenCreatePDService:     false,
 			errWhenCreatePDPeerService: false,
-			err:                        true,
-			pdSvcCreated:               true,
-			pdPeerSvcCreated:           true,
-			setCreated:                 false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "cant' get storage size: 100xxxxi for TidbCluster: default/test")).To(BeTrue())
+			},
+			pdSvcCreated:     true,
+			pdPeerSvcCreated: true,
+			setCreated:       false,
 		},
 		{
 			name:                       "error when create statefulset",
@@ -137,10 +135,13 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:   true,
 			errWhenCreatePDService:     false,
 			errWhenCreatePDPeerService: false,
-			err:                        true,
-			pdSvcCreated:               true,
-			pdPeerSvcCreated:           true,
-			setCreated:                 false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "API server failed")).To(BeTrue())
+			},
+			pdSvcCreated:     true,
+			pdPeerSvcCreated: true,
+			setCreated:       false,
 		},
 		{
 			name:                       "error when create pd service",
@@ -148,10 +149,13 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:   false,
 			errWhenCreatePDService:     true,
 			errWhenCreatePDPeerService: false,
-			err:                        true,
-			pdSvcCreated:               false,
-			pdPeerSvcCreated:           false,
-			setCreated:                 false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "API server failed")).To(BeTrue())
+			},
+			pdSvcCreated:     false,
+			pdPeerSvcCreated: false,
+			setCreated:       false,
 		},
 		{
 			name:                       "error when create pd peer service",
@@ -159,10 +163,13 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:   false,
 			errWhenCreatePDService:     false,
 			errWhenCreatePDPeerService: true,
-			err:                        true,
-			pdSvcCreated:               true,
-			pdPeerSvcCreated:           false,
-			setCreated:                 false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "API server failed")).To(BeTrue())
+			},
+			pdSvcCreated:     true,
+			pdPeerSvcCreated: false,
+			setCreated:       false,
 		},
 	}
 
@@ -220,7 +227,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		err := pmm.Sync(tc)
-		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
 
 		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
@@ -647,7 +654,7 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 		fakeSetControl.SetStatusChange(test.statusChange)
 
 		err := pmm.Sync(tc)
-		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
 
 		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())

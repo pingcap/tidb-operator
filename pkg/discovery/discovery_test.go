@@ -1,0 +1,382 @@
+// Copyright 2018 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package discovery
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+
+	. "github.com/onsi/gomega"
+	"github.com/pingcap/kvproto/pkg/pdpb"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+func TestDiscoveryDiscovery(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name         string
+		url          string
+		clusters     map[string]*clusterInfo
+		tcFn         func() (*v1alpha1.TidbCluster, error)
+		getMembersFn func() (*controller.MembersInfo, error)
+		expectFn     func(*GomegaWithT, *TiDBDiscovery, string, error)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		fakePDControl := controller.NewFakePDControl()
+		pdClient := controller.NewFakePDClient()
+		tc, err := test.tcFn()
+		if err == nil {
+			fakePDControl.SetPDClient(tc, pdClient)
+		}
+		pdClient.AddReaction(controller.GetMembersActionType, func(action *controller.Action) (interface{}, error) {
+			return test.getMembersFn()
+		})
+
+		td := &TiDBDiscovery{
+			pdControl: fakePDControl,
+			tcGetFn: func(ns, tcName string) (*v1alpha1.TidbCluster, error) {
+				return tc, err
+			},
+			clusters: test.clusters,
+		}
+		re, err := td.Discover(test.url)
+		test.expectFn(g, td, re, err)
+	}
+	tests := []testcase{
+		{
+			name: "advertisePeerUrl is empty",
+			url:  "",
+			tcFn: newTC,
+			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "advertisePeerUrl is empty")).To(BeTrue())
+				g.Expect(len(td.clusters)).To(BeZero())
+			},
+		},
+		{
+			name: "advertisePeerUrl is wrong",
+			url:  "demo-pd-0.demo-pd-peer.default:2380",
+			tcFn: newTC,
+			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "advertisePeerUrl format is wrong: ")).To(BeTrue())
+				g.Expect(len(td.clusters)).To(BeZero())
+			},
+		},
+		{
+			name: "failed to get tidbcluster",
+			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
+			tcFn: func() (*v1alpha1.TidbCluster, error) {
+				return nil, fmt.Errorf("failed to get tidbcluster")
+			},
+			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "failed to get tidbcluster")).To(BeTrue())
+				g.Expect(len(td.clusters)).To(BeZero())
+			},
+		},
+		{
+			name: "failed to get members",
+			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
+			tcFn: newTC,
+			getMembersFn: func() (*controller.MembersInfo, error) {
+				return nil, fmt.Errorf("get members failed")
+			},
+			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "get members failed")).To(BeTrue())
+				g.Expect(len(td.clusters)).To(Equal(1))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(1))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-0"]).To(Equal(struct{}{}))
+			},
+		},
+		{
+			name: "resourceVersion changed",
+			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
+			tcFn: newTC,
+			getMembersFn: func() (*controller.MembersInfo, error) {
+				return nil, fmt.Errorf("getMembers failed")
+			},
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "2",
+					peers: map[string]struct{}{
+						"demo-pd-0": {},
+						"demo-pd-1": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "getMembers failed")).To(BeTrue())
+				g.Expect(len(td.clusters)).To(Equal(1))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(1))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-0"]).To(Equal(struct{}{}))
+			},
+		},
+		{
+			name: "1 cluster, first ordinal, there are no pd members",
+			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
+			tcFn: newTC,
+			getMembersFn: func() (*controller.MembersInfo, error) {
+				return nil, fmt.Errorf("there are no pd members")
+			},
+			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "there are no pd members")).To(BeTrue())
+				g.Expect(len(td.clusters)).To(Equal(1))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(1))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-0"]).To(Equal(struct{}{}))
+			},
+		},
+		{
+			name: "1 cluster, second ordinal, there are no pd members",
+			url:  "demo-pd-1.demo-pd-peer.default.svc:2380",
+			tcFn: newTC,
+			getMembersFn: func() (*controller.MembersInfo, error) {
+				return nil, fmt.Errorf("there are no pd members 2")
+			},
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers: map[string]struct{}{
+						"demo-pd-0": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "there are no pd members 2")).To(BeTrue())
+				g.Expect(len(td.clusters)).To(Equal(1))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(2))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-0"]).To(Equal(struct{}{}))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-1"]).To(Equal(struct{}{}))
+			},
+		},
+		{
+			name: "1 cluster, third ordinal, return the initial-cluster args",
+			url:  "demo-pd-2.demo-pd-peer.default.svc:2380",
+			tcFn: newTC,
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers: map[string]struct{}{
+						"demo-pd-0": {},
+						"demo-pd-1": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(td.clusters)).To(Equal(1))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(2))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-0"]).To(Equal(struct{}{}))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-1"]).To(Equal(struct{}{}))
+				g.Expect(s).To(Equal("--initial-cluster=demo-pd-2=http://demo-pd-2.demo-pd-peer.default.svc:2380"))
+			},
+		},
+		{
+			name: "1 cluster, the first ordinal second request, get members failed",
+			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
+			tcFn: newTC,
+			getMembersFn: func() (*controller.MembersInfo, error) {
+				return nil, fmt.Errorf("there are no pd members 3")
+			},
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers: map[string]struct{}{
+						"demo-pd-0": {},
+						"demo-pd-1": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "there are no pd members 3")).To(BeTrue())
+				g.Expect(len(td.clusters)).To(Equal(1))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(2))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-0"]).To(Equal(struct{}{}))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-1"]).To(Equal(struct{}{}))
+			},
+		},
+		{
+			name: "1 cluster, the first ordinal third request, get members success",
+			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
+			tcFn: newTC,
+			getMembersFn: func() (*controller.MembersInfo, error) {
+				return &controller.MembersInfo{
+					Members: []*pdpb.Member{
+						{
+							PeerUrls: []string{"demo-pd-2.demo-pd-peer.default.svc:2380"},
+						},
+					},
+				}, nil
+			},
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers: map[string]struct{}{
+						"demo-pd-0": {},
+						"demo-pd-1": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(td.clusters)).To(Equal(1))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(1))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-1"]).To(Equal(struct{}{}))
+				g.Expect(s).To(Equal("--join=demo-pd-2.demo-pd-peer.default.svc:2380"))
+			},
+		},
+		{
+			name: "1 cluster, the second ordinal second request, get members success",
+			url:  "demo-pd-1.demo-pd-peer.default.svc:2380",
+			tcFn: newTC,
+			getMembersFn: func() (*controller.MembersInfo, error) {
+				return &controller.MembersInfo{
+					Members: []*pdpb.Member{
+						{
+							PeerUrls: []string{"demo-pd-0.demo-pd-peer.default.svc:2380"},
+						},
+						{
+							PeerUrls: []string{"demo-pd-2.demo-pd-peer.default.svc:2380"},
+						},
+					},
+				}, nil
+			},
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers: map[string]struct{}{
+						"demo-pd-1": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(td.clusters)).To(Equal(1))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(0))
+				g.Expect(s).To(Equal("--join=demo-pd-0.demo-pd-peer.default.svc:2380,demo-pd-2.demo-pd-peer.default.svc:2380"))
+			},
+		},
+		{
+			name: "1 cluster, the fourth ordinal request, get members success",
+			url:  "demo-pd-3.demo-pd-peer.default.svc:2380",
+			tcFn: func() (*v1alpha1.TidbCluster, error) {
+				tc, _ := newTC()
+				tc.Spec.PD.Replicas = 5
+				return tc, nil
+			},
+			getMembersFn: func() (*controller.MembersInfo, error) {
+				return &controller.MembersInfo{
+					Members: []*pdpb.Member{
+						{
+							PeerUrls: []string{"demo-pd-0.demo-pd-peer.default.svc:2380"},
+						},
+						{
+							PeerUrls: []string{"demo-pd-1.demo-pd-peer.default.svc:2380"},
+						},
+						{
+							PeerUrls: []string{"demo-pd-2.demo-pd-peer.default.svc:2380"},
+						},
+					},
+				}, nil
+			},
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers:           map[string]struct{}{},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(td.clusters)).To(Equal(1))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(0))
+				g.Expect(s).To(Equal("--join=demo-pd-0.demo-pd-peer.default.svc:2380,demo-pd-1.demo-pd-peer.default.svc:2380,demo-pd-2.demo-pd-peer.default.svc:2380"))
+			},
+		},
+		{
+			name: "2 clusters, the five ordinal request, get members success",
+			url:  "demo-pd-3.demo-pd-peer.default.svc:2380",
+			tcFn: func() (*v1alpha1.TidbCluster, error) {
+				tc, _ := newTC()
+				tc.Spec.PD.Replicas = 5
+				return tc, nil
+			},
+			getMembersFn: func() (*controller.MembersInfo, error) {
+				return &controller.MembersInfo{
+					Members: []*pdpb.Member{
+						{
+							PeerUrls: []string{"demo-pd-0.demo-pd-peer.default.svc:2380"},
+						},
+						{
+							PeerUrls: []string{"demo-pd-1.demo-pd-peer.default.svc:2380"},
+						},
+						{
+							PeerUrls: []string{"demo-pd-2.demo-pd-peer.default.svc:2380"},
+						},
+						{
+							PeerUrls: []string{"demo-pd-3.demo-pd-peer.default.svc:2380"},
+						},
+					},
+				}, nil
+			},
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers:           map[string]struct{}{},
+				},
+				"default/demo-1": {
+					peers: map[string]struct{}{
+						"demo-1-pd-0": {},
+						"demo-1-pd-1": {},
+						"demo-1-pd-2": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(td.clusters)).To(Equal(2))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(0))
+				g.Expect(len(td.clusters["default/demo-1"].peers)).To(Equal(3))
+				g.Expect(s).To(Equal("--join=demo-pd-0.demo-pd-peer.default.svc:2380,demo-pd-1.demo-pd-peer.default.svc:2380,demo-pd-2.demo-pd-peer.default.svc:2380,demo-pd-3.demo-pd-peer.default.svc:2380"))
+			},
+		},
+	}
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
+func newTC() (*v1alpha1.TidbCluster, error) {
+	return &v1alpha1.TidbCluster{
+		TypeMeta: metav1.TypeMeta{Kind: "TidbCluster", APIVersion: "v1alpha1"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "demo",
+			Namespace:       metav1.NamespaceDefault,
+			ResourceVersion: "1",
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			PD: v1alpha1.PDSpec{Replicas: 3},
+		},
+	}, nil
+}
