@@ -27,7 +27,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: 127.0.0.1:5000/pingcap/tidb-operator:latest
+  image: pingcap/tidb-operator:latest
   imagePullPolicy: Always
 
 pd:

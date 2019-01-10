@@ -1,4 +1,4 @@
-def tidbClusterReplace(file) {
+def tidbClusterReplace(file, operatorImage) {
 	def SRC_E2E_FILE_CONTENT = readFile file: file
 	def DST_E2E_FILE_CONTENT = SRC_E2E_FILE_CONTENT.replaceAll("image:.*pingcap/pd", "image: localhost:5000/pingcap/pd")
 	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image:.*pingcap/tidb", "image: localhost:5000/pingcap/tidb")
@@ -7,12 +7,13 @@ def tidbClusterReplace(file) {
 	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image:.*pingcap/tidb-dashboard-installer", "image: localhost:5000/pingcap/tidb-dashboard-installer")
 	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image:.*grafana/grafana", "image: localhost:5000/pingcap/grafana")
 	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image:.*prom/prometheus", "image: localhost:5000/pingcap/prometheus")
+	DST_E2E_FILE_CONTENT = DST_E2E_FILE_CONTENT.replaceAll("image:.*pingcap/tidb-operator:latest", "image: ${operatorImage}")
 	writeFile file: file, text: "${DST_E2E_FILE_CONTENT}"
 }
 
-def operatorReplace(file, tag) {
+def operatorReplace(file, operatorImage) {
 	def SRC_E2E_FILE_CONTENT = readFile file: file
-	def DST_E2E_FILE_CONTENT = SRC_E2E_FILE_CONTENT.replaceAll("operatorImage:.*", "operatorImage: ${tag}")
+	def DST_E2E_FILE_CONTENT = SRC_E2E_FILE_CONTENT.replaceAll("operatorImage:.*", "operatorImage: ${operatorImage}")
 	writeFile file: file, text: "${DST_E2E_FILE_CONTENT}"
 }
 
@@ -33,7 +34,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 	env.GOPATH = "/go"
 	env.PATH = "/usr/local/bin:${env.GOROOT}/bin:${env.GOPATH}/bin:/bin:${env.PATH}:/home/jenkins/bin"
 
-	def IMAGE_TAG
+	def OPERATOR_IMAGE
 	def BACKUP_IMAGE_TAG
 	def GITHASH
 	def UCLOUD_OSS_URL = "http://pingcap-dev.hk.ufileos.com"
@@ -69,16 +70,16 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 
 			dir("${PROJECT_DIR}"){
 				stage('push tidb-operator images'){
-					IMAGE_TAG = "localhost:5000/pingcap/tidb-operator:${GITHASH.take(7)}"
+					OPERATOR_IMAGE = "localhost:5000/pingcap/tidb-operator:${GITHASH.take(7)}"
 					sh """
-					docker build -t ${IMAGE_TAG} images/tidb-operator
-					docker push ${IMAGE_TAG}
+					docker build -t ${OPERATOR_IMAGE} images/tidb-operator
+					docker push ${OPERATOR_IMAGE}
 					"""
 				}
 
 				stage('start prepare runtime environment'){
-					tidbClusterReplace("images/tidb-operator-e2e/tidb-cluster-values.yaml")
-					operatorReplace("images/tidb-operator-e2e/tidb-operator-values.yaml", IMAGE_TAG)
+					tidbClusterReplace("images/tidb-operator-e2e/tidb-cluster-values.yaml", OPERATOR_IMAGE)
+					operatorReplace("images/tidb-operator-e2e/tidb-operator-values.yaml", OPERATOR_IMAGE)
 
 					sh """
 					mkdir -p images/tidb-operator-e2e/bin
