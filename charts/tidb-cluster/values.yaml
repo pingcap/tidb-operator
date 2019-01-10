@@ -29,6 +29,13 @@ services:
 discovery:
   image: pingcap/tidb-operator:latest
   imagePullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 250m
+      memory: 150Mi
+    requests:
+      cpu: 80m
+      memory: 50Mi
 
 pd:
   replicas: 3

@@ -15,6 +15,7 @@ package discovery
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -40,7 +41,11 @@ type clusterInfo struct {
 
 // NewTiDBDiscovery returns a TiDBDiscovery
 func NewTiDBDiscovery(cli versioned.Interface) *TiDBDiscovery {
-	td := &TiDBDiscovery{cli: cli, pdControl: controller.NewDefaultPDControl()}
+	td := &TiDBDiscovery{
+		cli:       cli,
+		pdControl: controller.NewDefaultPDControl(),
+		clusters:  map[string]*clusterInfo{},
+	}
 	td.tcGetFn = td.realTCGetFn
 	return td
 }
@@ -59,16 +64,18 @@ func (td *TiDBDiscovery) Discover(advertisePeerUrl string) (string, error) {
 
 	podName, peerServiceName, ns := strArr[0], strArr[1], strArr[2]
 	tcName := strings.TrimSuffix(peerServiceName, "-pd-peer")
+	podNamespace := os.Getenv("MY_POD_NAMESPACE")
+	if ns != podNamespace {
+		return "", fmt.Errorf("the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
+	}
 	tc, err := td.tcGetFn(ns, tcName)
 	if err != nil {
 		return "", err
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, tcName)
+	// TODO: the replicas should be the total replicas of pd sets.
 	replicas := tc.Spec.PD.Replicas
 
-	if td.clusters == nil {
-		td.clusters = map[string]*clusterInfo{}
-	}
 	currentCluster := td.clusters[keyName]
 	if currentCluster == nil || currentCluster.resourceVersion != tc.ResourceVersion {
 		td.clusters[keyName] = &clusterInfo{

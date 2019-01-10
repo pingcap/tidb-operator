@@ -14,6 +14,7 @@
 package server
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -41,7 +42,16 @@ func StartServer(cli versioned.Interface, port int) {
 }
 
 func (svr *server) newHandler(req *restful.Request, resp *restful.Response) {
-	advertisePeerUrl := req.PathParameter("advertise-peer-url")
+	encodedAdvertisePeerUrl := req.PathParameter("advertise-peer-url")
+	data, err := base64.StdEncoding.DecodeString(encodedAdvertisePeerUrl)
+	if err != nil {
+		glog.Errorf("failed to decode advertise-peer-url: %s", encodedAdvertisePeerUrl)
+		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
+			glog.Errorf("failed to writeError: %v", err)
+		}
+		return
+	}
+	advertisePeerUrl := string(data)
 
 	result, err := svr.discovery.Discover(advertisePeerUrl)
 	if err != nil {

@@ -28,6 +28,7 @@ fi
 cluster_name=`echo ${PEER_SERVICE_NAME} | sed 's/-pd-peer//'`
 domain="${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc"
 discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc:10261"
+encoded_domain_url=`echo ${domain}:2380 | base64`
 
 elapseTime=0
 period=1
@@ -62,17 +63,11 @@ ARGS="--data-dir=/var/lib/pd \
 
 if [[ ! -d /var/lib/pd/member/wal ]]
 then
-    while true; do
-        sleep 5
-        wget -O /tmp/result http://${discovery_url}/new/${domain}:2380
-        if [[ $? -eq 0 ]]
-        then
-            result=`cat /tmp/result`
-            ARGS="${ARGS}${result}"
-            break
-        fi
+    until result=$(wget -qO- -T 3 http://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
         echo "waiting for discovery service returns start args ..."
+        sleep 2
     done
+    ARGS="${ARGS}${result}"
 fi
 
 echo "starting pd-server ..."

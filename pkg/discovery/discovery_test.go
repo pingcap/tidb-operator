@@ -15,6 +15,7 @@ package discovery
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -30,6 +31,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 
 	type testcase struct {
 		name         string
+		ns           string
 		url          string
 		clusters     map[string]*clusterInfo
 		tcFn         func() (*v1alpha1.TidbCluster, error)
@@ -56,14 +58,17 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			},
 			clusters: test.clusters,
 		}
+		os.Setenv("MY_POD_NAMESPACE", test.ns)
 		re, err := td.Discover(test.url)
 		test.expectFn(g, td, re, err)
 	}
 	tests := []testcase{
 		{
-			name: "advertisePeerUrl is empty",
-			url:  "",
-			tcFn: newTC,
+			name:     "advertisePeerUrl is empty",
+			ns:       "default",
+			url:      "",
+			clusters: map[string]*clusterInfo{},
+			tcFn:     newTC,
 			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "advertisePeerUrl is empty")).To(BeTrue())
@@ -71,9 +76,11 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			},
 		},
 		{
-			name: "advertisePeerUrl is wrong",
-			url:  "demo-pd-0.demo-pd-peer.default:2380",
-			tcFn: newTC,
+			name:     "advertisePeerUrl is wrong",
+			ns:       "default",
+			url:      "demo-pd-0.demo-pd-peer.default:2380",
+			clusters: map[string]*clusterInfo{},
+			tcFn:     newTC,
 			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "advertisePeerUrl format is wrong: ")).To(BeTrue())
@@ -81,8 +88,22 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			},
 		},
 		{
-			name: "failed to get tidbcluster",
-			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
+			name:     "namespace is wrong",
+			ns:       "default1",
+			url:      "demo-pd-0.demo-pd-peer.default.svc:2380",
+			clusters: map[string]*clusterInfo{},
+			tcFn:     newTC,
+			expectFn: func(g *GomegaWithT, td *TiDBDiscovery, s string, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "is not equal to discovery namespace:")).To(BeTrue())
+				g.Expect(len(td.clusters)).To(BeZero())
+			},
+		},
+		{
+			name:     "failed to get tidbcluster",
+			ns:       "default",
+			url:      "demo-pd-0.demo-pd-peer.default.svc:2380",
+			clusters: map[string]*clusterInfo{},
 			tcFn: func() (*v1alpha1.TidbCluster, error) {
 				return nil, fmt.Errorf("failed to get tidbcluster")
 			},
@@ -93,9 +114,11 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			},
 		},
 		{
-			name: "failed to get members",
-			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
-			tcFn: newTC,
+			name:     "failed to get members",
+			ns:       "default",
+			url:      "demo-pd-0.demo-pd-peer.default.svc:2380",
+			clusters: map[string]*clusterInfo{},
+			tcFn:     newTC,
 			getMembersFn: func() (*controller.MembersInfo, error) {
 				return nil, fmt.Errorf("get members failed")
 			},
@@ -109,6 +132,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 		},
 		{
 			name: "resourceVersion changed",
+			ns:   "default",
 			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
 			tcFn: newTC,
 			getMembersFn: func() (*controller.MembersInfo, error) {
@@ -132,9 +156,11 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			},
 		},
 		{
-			name: "1 cluster, first ordinal, there are no pd members",
-			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
-			tcFn: newTC,
+			name:     "1 cluster, first ordinal, there are no pd members",
+			ns:       "default",
+			url:      "demo-pd-0.demo-pd-peer.default.svc:2380",
+			clusters: map[string]*clusterInfo{},
+			tcFn:     newTC,
 			getMembersFn: func() (*controller.MembersInfo, error) {
 				return nil, fmt.Errorf("there are no pd members")
 			},
@@ -148,6 +174,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 		},
 		{
 			name: "1 cluster, second ordinal, there are no pd members",
+			ns:   "default",
 			url:  "demo-pd-1.demo-pd-peer.default.svc:2380",
 			tcFn: newTC,
 			getMembersFn: func() (*controller.MembersInfo, error) {
@@ -172,6 +199,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 		},
 		{
 			name: "1 cluster, third ordinal, return the initial-cluster args",
+			ns:   "default",
 			url:  "demo-pd-2.demo-pd-peer.default.svc:2380",
 			tcFn: newTC,
 			clusters: map[string]*clusterInfo{
@@ -194,6 +222,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 		},
 		{
 			name: "1 cluster, the first ordinal second request, get members failed",
+			ns:   "default",
 			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
 			tcFn: newTC,
 			getMembersFn: func() (*controller.MembersInfo, error) {
@@ -219,6 +248,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 		},
 		{
 			name: "1 cluster, the first ordinal third request, get members success",
+			ns:   "default",
 			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
 			tcFn: newTC,
 			getMembersFn: func() (*controller.MembersInfo, error) {
@@ -249,6 +279,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 		},
 		{
 			name: "1 cluster, the second ordinal second request, get members success",
+			ns:   "default",
 			url:  "demo-pd-1.demo-pd-peer.default.svc:2380",
 			tcFn: newTC,
 			getMembersFn: func() (*controller.MembersInfo, error) {
@@ -280,6 +311,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 		},
 		{
 			name: "1 cluster, the fourth ordinal request, get members success",
+			ns:   "default",
 			url:  "demo-pd-3.demo-pd-peer.default.svc:2380",
 			tcFn: func() (*v1alpha1.TidbCluster, error) {
 				tc, _ := newTC()
@@ -316,6 +348,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 		},
 		{
 			name: "2 clusters, the five ordinal request, get members success",
+			ns:   "default",
 			url:  "demo-pd-3.demo-pd-peer.default.svc:2380",
 			tcFn: func() (*v1alpha1.TidbCluster, error) {
 				tc, _ := newTC()
