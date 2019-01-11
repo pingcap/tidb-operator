@@ -19,14 +19,19 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TiDBDiscovery service helps new PD member to discover all other members in cluster bootstrap phase.
-type TiDBDiscovery struct {
+// TiDBDiscovery helps new PD member to discover all other members in cluster bootstrap phase.
+type TiDBDiscovery interface {
+	Discover(string) (string, error)
+}
+
+type tidbDiscovery struct {
 	cli       versioned.Interface
 	lock      sync.Mutex
 	clusters  map[string]*clusterInfo
@@ -40,8 +45,8 @@ type clusterInfo struct {
 }
 
 // NewTiDBDiscovery returns a TiDBDiscovery
-func NewTiDBDiscovery(cli versioned.Interface) *TiDBDiscovery {
-	td := &TiDBDiscovery{
+func NewTiDBDiscovery(cli versioned.Interface) TiDBDiscovery {
+	td := &tidbDiscovery{
 		cli:       cli,
 		pdControl: controller.NewDefaultPDControl(),
 		clusters:  map[string]*clusterInfo{},
@@ -50,13 +55,14 @@ func NewTiDBDiscovery(cli versioned.Interface) *TiDBDiscovery {
 	return td
 }
 
-func (td *TiDBDiscovery) Discover(advertisePeerUrl string) (string, error) {
+func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	td.lock.Lock()
 	defer td.lock.Unlock()
 
 	if advertisePeerUrl == "" {
 		return "", fmt.Errorf("advertisePeerUrl is empty")
 	}
+	glog.Infof("advertisePeerUrl is: %s", advertisePeerUrl)
 	strArr := strings.Split(advertisePeerUrl, ".")
 	if len(strArr) != 4 {
 		return "", fmt.Errorf("advertisePeerUrl format is wrong: %s", advertisePeerUrl)
@@ -105,6 +111,6 @@ func (td *TiDBDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	return fmt.Sprintf("--join=%s", strings.Join(membersArr, ",")), nil
 }
 
-func (td *TiDBDiscovery) realTCGetFn(ns, tcName string) (*v1alpha1.TidbCluster, error) {
+func (td *tidbDiscovery) realTCGetFn(ns, tcName string) (*v1alpha1.TidbCluster, error) {
 	return td.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 }

@@ -26,7 +26,7 @@ import (
 )
 
 type server struct {
-	discovery *discovery.TiDBDiscovery
+	discovery discovery.TiDBDiscovery
 }
 
 // StartServer starts a TiDB Discovery server

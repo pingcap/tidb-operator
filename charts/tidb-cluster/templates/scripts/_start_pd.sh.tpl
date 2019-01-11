@@ -25,6 +25,7 @@ then
     tail -f /dev/null
 fi
 
+# the general form of variable PEER_SERVICE_NAME is: "<clusterName>-pd-peer"
 cluster_name=`echo ${PEER_SERVICE_NAME} | sed 's/-pd-peer//'`
 domain="${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc"
 discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc:10261"
