@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/scheduler/server"
 	"github.com/pingcap/tidb-operator/version"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -59,9 +60,13 @@ func main() {
 	if err != nil {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
+	cli, err := versioned.NewForConfig(cfg)
+	if err != nil {
+		glog.Fatalf("failed to create Clientset: %v", err)
+	}
 
 	go wait.Forever(func() {
-		server.StartServer(kubeCli, port)
+		server.StartServer(kubeCli, cli, port)
 	}, 5*time.Second)
 	glog.Fatal(http.ListenAndServe(":6060", nil))
 }
