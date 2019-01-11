@@ -89,6 +89,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	for _, node := range nodes {
 		nodeMap[node.GetName()] = make([]string, 0)
 	}
+	glog.Infof("%+v", podList)
 	for _, pod := range podList.Items {
 		pName := pod.GetName()
 		nodeName := pod.Spec.NodeName
