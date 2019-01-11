@@ -66,11 +66,12 @@ if [[ ! -d /var/lib/pd/member/wal ]]
 then
     until result=$(wget -qO- -T 3 http://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
         echo "waiting for discovery service returns start args ..."
-        sleep 2
+        sleep $((RANDOM % 5))
     done
     ARGS="${ARGS}${result}"
 fi
 
 echo "starting pd-server ..."
+sleep $((RANDOM % 10))
 echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
