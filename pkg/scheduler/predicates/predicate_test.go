@@ -62,12 +62,12 @@ func TestGetNodeFromNames(t *testing.T) {
 		{
 			nodes:     fakeTwoNodes(),
 			nodeNames: []string{"kube-node-1", "kube-node-2", "kube-node-3"},
-			expected:  []string{"kube-node-1", "kube-node-3"},
+			expected:  []string{"kube-node-1", "kube-node-2"},
 		},
 		{
 			nodes:     fakeTwoNodes(),
 			nodeNames: []string{"kube-node-1", "kube-node-3"},
-			expected:  []string{"kube-node-1", "kube-node-3"},
+			expected:  []string{"kube-node-1"},
 		},
 		{
 			nodes:     fakeTwoNodes(),
@@ -77,32 +77,32 @@ func TestGetNodeFromNames(t *testing.T) {
 		{
 			nodes:     fakeTwoNodes(),
 			nodeNames: []string{"kube-node-3"},
-			expected:  []string{"kube-node-3"},
+			expected:  []string{},
 		},
 		{
 			nodes:     fakeTwoNodes(),
 			nodeNames: []string{"kube-node-2"},
-			expected:  []string{},
+			expected:  []string{"kube-node-2"},
 		},
 		{
 			nodes:     fakeOneNode(),
 			nodeNames: []string{"kube-node-1", "kube-node-2", "kube-node-3"},
-			expected:  []string{"kube-node-3"},
+			expected:  []string{"kube-node-1"},
 		},
 		{
 			nodes:     fakeOneNode(),
 			nodeNames: []string{"kube-node-2", "kube-node-3"},
-			expected:  []string{"kube-node-3"},
+			expected:  []string{},
 		},
 		{
 			nodes:     fakeOneNode(),
 			nodeNames: []string{"kube-node-1", "kube-node-3"},
-			expected:  []string{"kube-node-3"},
+			expected:  []string{"kube-node-1"},
 		},
 		{
 			nodes:     fakeOneNode(),
 			nodeNames: []string{"kube-node-1", "kube-node-2"},
-			expected:  []string{},
+			expected:  []string{"kube-node-1"},
 		},
 		{
 			nodes:     fakeZeroNode(),

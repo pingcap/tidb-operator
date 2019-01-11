@@ -15,6 +15,7 @@ package scheduler
 
 import (
 	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/scheduler/predicates"
 	apiv1 "k8s.io/api/core/v1"
@@ -37,16 +38,14 @@ type Scheduler interface {
 }
 
 type scheduler struct {
-	kubeCli    kubernetes.Interface
 	predicates []predicates.Predicate
 }
 
 // NewScheduler returns a Scheduler
-func NewScheduler(kubeCli kubernetes.Interface) Scheduler {
+func NewScheduler(kubeCli kubernetes.Interface, cli versioned.Interface) Scheduler {
 	return &scheduler{
-		kubeCli: kubeCli,
 		predicates: []predicates.Predicate{
-			predicates.NewHA(kubeCli),
+			predicates.NewHA(kubeCli, cli),
 		},
 	}
 }
