@@ -193,10 +193,6 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
 	}
 
-	if _, err := pmm.initFirstPDMember(tc); err != nil {
-		return err
-	}
-
 	if !templateEqual(newPDSet.Spec.Template, oldPDSet.Spec.Template) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
 		if err := pmm.pdUpgrader.Upgrade(tc, oldPDSet, newPDSet); err != nil {
 			return err
@@ -306,39 +302,6 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	tc.Status.PD.Leader = tc.Status.PD.Members[leader.GetName()]
 
 	return nil
-}
-
-func (pmm *pdMemberManager) initFirstPDMember(tc *v1alpha1.TidbCluster) (*corev1.Pod, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	firstPodName := ordinalPodName(v1alpha1.PDMemberType, tcName, 0)
-	firstPod, err := pmm.podLister.Pods(ns).Get(firstPodName)
-	if err != nil && !errors.IsNotFound(err) {
-		return nil, err
-	}
-	if firstPod == nil {
-		return nil, nil
-	}
-
-	firstPodCopy := firstPod.DeepCopy()
-	if firstPodCopy.Annotations[label.Bootstrapping] != "" {
-		return firstPodCopy, nil
-	}
-
-	nextPVCName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), 1)
-	_, err = pmm.pvcLister.PersistentVolumeClaims(ns).Get(nextPVCName)
-	if err != nil && !errors.IsNotFound(err) {
-		return nil, err
-	}
-	if errors.IsNotFound(err) {
-		firstPodCopy.Annotations[label.Bootstrapping] = "true"
-	} else {
-		firstPodCopy.Annotations[label.Bootstrapping] = "false"
-	}
-	firstPodCopy.Annotations[label.Replicas] = fmt.Sprintf("%d", tc.Spec.PD.Replicas)
-
-	return pmm.podControl.UpdatePod(tc, firstPodCopy)
 }
 
 func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
