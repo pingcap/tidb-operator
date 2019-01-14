@@ -178,17 +178,6 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		return err
 	}
 	if errors.IsNotFound(err) {
-		pvcName := ordinalPVCName(v1alpha1.PDMemberType, newPDSet.GetName(), *newPDSet.Spec.Replicas-int32(1))
-		var newReplicas int32 = 1
-		pvc, err := pmm.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
-		if err != nil && !errors.IsNotFound(err) {
-			return err
-		}
-		// start all the pd members together, if this is an old cluster
-		if pvc != nil {
-			newReplicas = *newPDSet.Spec.Replicas
-		}
-		newPDSet.Spec.Replicas = func() *int32 { var i int32 = newReplicas; return &i }()
 		err = SetLastAppliedConfigAnnotation(newPDSet)
 		if err != nil {
 			return err
@@ -197,15 +186,11 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 			return err
 		}
 		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{}
-		return nil
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
 	if err := pmm.syncTidbClusterStatus(tc, oldPDSet); err != nil {
 		glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
-	}
-
-	if _, err := pmm.initFirstPDMember(tc); err != nil {
-		return err
 	}
 
 	if !templateEqual(newPDSet.Spec.Template, oldPDSet.Spec.Template) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
@@ -317,39 +302,6 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	tc.Status.PD.Leader = tc.Status.PD.Members[leader.GetName()]
 
 	return nil
-}
-
-func (pmm *pdMemberManager) initFirstPDMember(tc *v1alpha1.TidbCluster) (*corev1.Pod, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	firstPodName := ordinalPodName(v1alpha1.PDMemberType, tcName, 0)
-	firstPod, err := pmm.podLister.Pods(ns).Get(firstPodName)
-	if err != nil && !errors.IsNotFound(err) {
-		return nil, err
-	}
-	if firstPod == nil {
-		return nil, nil
-	}
-
-	firstPodCopy := firstPod.DeepCopy()
-	if firstPodCopy.Annotations[label.Bootstrapping] != "" {
-		return firstPodCopy, nil
-	}
-
-	nextPVCName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), 1)
-	_, err = pmm.pvcLister.PersistentVolumeClaims(ns).Get(nextPVCName)
-	if err != nil && !errors.IsNotFound(err) {
-		return nil, err
-	}
-	if errors.IsNotFound(err) {
-		firstPodCopy.Annotations[label.Bootstrapping] = "true"
-	} else {
-		firstPodCopy.Annotations[label.Bootstrapping] = "false"
-	}
-	firstPodCopy.Annotations[label.Replicas] = fmt.Sprintf("%d", tc.Spec.PD.Replicas)
-
-	return pmm.podControl.UpdatePod(tc, firstPodCopy)
 }
 
 func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {

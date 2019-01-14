@@ -46,10 +46,6 @@ const (
 	AnnPodNameKey string = "tidb.pingcap.com/pod-name"
 	// AnnPVCDeferDeleting is pvc defer deletion annotation key used in PVC for defer deleting PVC
 	AnnPVCDeferDeleting = "tidb.pingcap.com/pvc-defer-deleting"
-	// Bootstrapping is bootstrapping key
-	Bootstrapping string = "bootstrapping"
-	// Replicas is replicas key
-	Replicas string = "replicas"
 
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"

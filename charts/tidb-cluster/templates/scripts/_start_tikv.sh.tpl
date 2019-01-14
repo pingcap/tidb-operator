@@ -7,6 +7,7 @@
 #
 #   runmode="normal/debug"
 #
+
 set -uo pipefail
 ANNOTATIONS="/etc/podinfo/annotations"
 

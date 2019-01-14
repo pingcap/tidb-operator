@@ -26,6 +26,10 @@ services:
   - name: pd
     type: ClusterIP
 
+discovery:
+  image: pingcap/tidb-operator:latest
+  imagePullPolicy: Always
+
 pd:
   replicas: 3
   image: pingcap/pd:v2.1.0
