@@ -42,13 +42,14 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 		errWhenCreateStatefulSet   bool
 		errWhenCreatePDService     bool
 		errWhenCreatePDPeerService bool
-		err                        bool
+		errExpectFn                func(*GomegaWithT, error)
 		pdSvcCreated               bool
 		pdPeerSvcCreated           bool
 		setCreated                 bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
 		tc := newTidbClusterForPD()
 		ns := tc.Namespace
 		tcName := tc.Name
@@ -72,12 +73,7 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 		}
 
 		err := pmm.Sync(tc)
-		if test.err {
-			g.Expect(err).To(HaveOccurred())
-		} else {
-			g.Expect(err).NotTo(HaveOccurred())
-		}
-
+		test.errExpectFn(g, err)
 		g.Expect(tc.Spec).To(Equal(oldSpec))
 
 		svc1, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
@@ -107,13 +103,12 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 
 	tests := []testcase{
 		{
-			name:    "normal",
-			prepare: nil,
-
+			name:                       "normal",
+			prepare:                    nil,
 			errWhenCreateStatefulSet:   false,
 			errWhenCreatePDService:     false,
 			errWhenCreatePDPeerService: false,
-			err:                        false,
+			errExpectFn:                errExpectRequeue,
 			pdSvcCreated:               true,
 			pdPeerSvcCreated:           true,
 			setCreated:                 true,
@@ -126,10 +121,13 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:   false,
 			errWhenCreatePDService:     false,
 			errWhenCreatePDPeerService: false,
-			err:                        true,
-			pdSvcCreated:               true,
-			pdPeerSvcCreated:           true,
-			setCreated:                 false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "cant' get storage size: 100xxxxi for TidbCluster: default/test")).To(BeTrue())
+			},
+			pdSvcCreated:     true,
+			pdPeerSvcCreated: true,
+			setCreated:       false,
 		},
 		{
 			name:                       "error when create statefulset",
@@ -137,10 +135,13 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:   true,
 			errWhenCreatePDService:     false,
 			errWhenCreatePDPeerService: false,
-			err:                        true,
-			pdSvcCreated:               true,
-			pdPeerSvcCreated:           true,
-			setCreated:                 false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "API server failed")).To(BeTrue())
+			},
+			pdSvcCreated:     true,
+			pdPeerSvcCreated: true,
+			setCreated:       false,
 		},
 		{
 			name:                       "error when create pd service",
@@ -148,10 +149,13 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:   false,
 			errWhenCreatePDService:     true,
 			errWhenCreatePDPeerService: false,
-			err:                        true,
-			pdSvcCreated:               false,
-			pdPeerSvcCreated:           false,
-			setCreated:                 false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "API server failed")).To(BeTrue())
+			},
+			pdSvcCreated:     false,
+			pdPeerSvcCreated: false,
+			setCreated:       false,
 		},
 		{
 			name:                       "error when create pd peer service",
@@ -159,10 +163,13 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:   false,
 			errWhenCreatePDService:     false,
 			errWhenCreatePDPeerService: true,
-			err:                        true,
-			pdSvcCreated:               true,
-			pdPeerSvcCreated:           false,
-			setCreated:                 false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "API server failed")).To(BeTrue())
+			},
+			pdSvcCreated:     true,
+			pdPeerSvcCreated: false,
+			setCreated:       false,
 		},
 	}
 
@@ -220,7 +227,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		err := pmm.Sync(tc)
-		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
 
 		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
@@ -390,135 +397,6 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 	}
 }
 
-func TestPDMemberManagerInitFirstPDMember(t *testing.T) {
-	g := NewGomegaWithT(t)
-	type testcase struct {
-		name            string
-		hasPod          bool
-		hasPVC          bool
-		updatePod       func(*corev1.Pod)
-		updatePodFailed bool
-		errExpectFn     func(*GomegaWithT, error)
-		podExpectFn     func(*GomegaWithT, *corev1.Pod)
-	}
-	testFn := func(test *testcase, t *testing.T) {
-		pmm, _, _, _, podIndexer, pvcIndexer, podControl := newFakePDMemberManager()
-		tc := newTidbClusterForPD()
-
-		if test.hasPod {
-			pod := &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0),
-					Namespace:   metav1.NamespaceDefault,
-					Annotations: map[string]string{},
-				},
-			}
-			if test.updatePod != nil {
-				test.updatePod(pod)
-			}
-			podIndexer.Add(pod)
-		}
-		if test.hasPVC {
-			pvc := &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.GetName()), 1),
-					Namespace: metav1.NamespaceDefault,
-				},
-			}
-			pvcIndexer.Add(pvc)
-		}
-		if test.updatePodFailed {
-			podControl.SetUpdatePodError(fmt.Errorf("udpate pod failed"), 0)
-		}
-		pod, err := pmm.initFirstPDMember(tc)
-		if test.errExpectFn != nil {
-			test.errExpectFn(g, err)
-		}
-		if test.podExpectFn != nil {
-			test.podExpectFn(g, pod)
-		}
-	}
-	tests := []testcase{
-		{
-			name:            "don't have pod with oridinal 0",
-			hasPod:          false,
-			hasPVC:          false,
-			updatePod:       nil,
-			updatePodFailed: false,
-			errExpectFn:     errExpectNil,
-			podExpectFn: func(g *GomegaWithT, pod *corev1.Pod) {
-				g.Expect(pod).To(BeNil())
-			},
-		},
-		{
-			name:   "pod with oridinal 0 has bootstrapping",
-			hasPod: true,
-			hasPVC: false,
-			updatePod: func(pod *corev1.Pod) {
-				pod.Annotations[label.Bootstrapping] = "true"
-			},
-			updatePodFailed: false,
-			errExpectFn:     errExpectNil,
-			podExpectFn: func(g *GomegaWithT, pod *corev1.Pod) {
-				g.Expect(pod.Annotations[label.Bootstrapping]).To(Equal("true"))
-			},
-		},
-		{
-			name:            "pod with oridinal 0 has no bootstrapping, has pvc, update pod success",
-			hasPod:          true,
-			hasPVC:          true,
-			updatePod:       nil,
-			updatePodFailed: false,
-			errExpectFn:     errExpectNil,
-			podExpectFn: func(g *GomegaWithT, pod *corev1.Pod) {
-				g.Expect(pod.Annotations[label.Bootstrapping]).To(Equal("false"))
-				g.Expect(pod.Annotations[label.Replicas]).To(Equal("3"))
-			},
-		},
-		{
-			name:            "pod with oridinal 0 has no bootstrapping, has pvc, update pod failed",
-			hasPod:          true,
-			hasPVC:          true,
-			updatePod:       nil,
-			updatePodFailed: true,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "udpate pod failed")).To(Equal(true))
-			},
-			podExpectFn: nil,
-		},
-		{
-			name:            "pod with oridinal 0 has no bootstrapping, has no pvc, update pod success",
-			hasPod:          true,
-			hasPVC:          false,
-			updatePod:       nil,
-			updatePodFailed: false,
-			errExpectFn:     errExpectNil,
-			podExpectFn: func(g *GomegaWithT, pod *corev1.Pod) {
-				g.Expect(pod.Annotations[label.Bootstrapping]).To(Equal("true"))
-				g.Expect(pod.Annotations[label.Replicas]).To(Equal("3"))
-			},
-		},
-		{
-			name:            "pod with oridinal 0 has no bootstrapping, has no pvc, update pod failed",
-			hasPod:          true,
-			hasPVC:          false,
-			updatePod:       nil,
-			updatePodFailed: true,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "udpate pod failed")).To(Equal(true))
-			},
-			podExpectFn: nil,
-		},
-	}
-
-	for i := range tests {
-		t.Logf(tests[i].name)
-		testFn(&tests[i], t)
-	}
-}
-
 func TestPDMemberManagerPdStatefulSetIsUpgrading(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
@@ -647,7 +525,7 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 		fakeSetControl.SetStatusChange(test.statusChange)
 
 		err := pmm.Sync(tc)
-		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
 
 		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())

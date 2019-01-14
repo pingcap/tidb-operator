@@ -10,8 +10,6 @@
 
 set -uo pipefail
 ANNOTATIONS="/etc/podinfo/annotations"
-# get statefulset ordinal index for current pod
-ORDINAL=$(echo ${HOSTNAME} | awk -F '-' '{print $NF}')
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
@@ -20,15 +18,18 @@ then
 fi
 source ${ANNOTATIONS} 2>/dev/null
 
-PEER_SERVICE_DOMAIN="${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc"
-SERVICE_DOMAIN="${SERVICE_NAME}.${NAMESPACE}.svc"
-
 runmode=${runmode:-normal}
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
     tail -f /dev/null
 fi
+
+# the general form of variable PEER_SERVICE_NAME is: "<clusterName>-pd-peer"
+cluster_name=`echo ${PEER_SERVICE_NAME} | sed 's/-pd-peer//'`
+domain="${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc"
+discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc:10261"
+encoded_domain_url=`echo ${domain}:2380 | base64`
 
 elapseTime=0
 period=1
@@ -43,59 +44,34 @@ while true; do
         exit 1
     fi
 
-    source ${ANNOTATIONS} 2>/dev/null
-    if nslookup ${PEER_SERVICE_DOMAIN} 2>/dev/null
+    if nslookup ${domain} 2>/dev/null
     then
-        echo "nslookup domain ${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc success"
-
-        if [[ ${ORDINAL} -eq 0 ]]
-        then
-            [[ -z ${bootstrapping:-} ]] && continue
-            [[ ${bootstrapping} == "true" ]] && break
-        fi
-
-        [[ -d /var/lib/pd/member/wal ]] && break
-        wget -qO- ${SERVICE_DOMAIN}:2379/pd/api/v1/members 2>/dev/null
-        [[ $? -eq 0 ]] && break
-        echo "pd cluster is not ready now: ${SERVICE_DOMAIN}"
+        echo "nslookup domain ${domain}.svc success"
+        break
     else
-        echo "nslookup domain ${PEER_SERVICE_DOMAIN} failed" >&2
+        echo "nslookup domain ${domain} failed" >&2
     fi
 done
 
 ARGS="--data-dir=/var/lib/pd \
 --name=${HOSTNAME} \
 --peer-urls=http://0.0.0.0:2380 \
---advertise-peer-urls=http://${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc:2380 \
+--advertise-peer-urls=http://${domain}:2380 \
 --client-urls=http://0.0.0.0:2379 \
---advertise-client-urls=http://${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc:2379 \
+--advertise-client-urls=http://${domain}:2379 \
 --config=/etc/pd/pd.toml \
 "
 
-replicas=${replicas:-3}
-if [[ ${ORDINAL} -eq 0 && ${bootstrapping:-} == "true" ]]
+if [[ ! -d /var/lib/pd/member/wal ]]
 then
-    ARGS="${ARGS}--initial-cluster=${HOSTNAME}=http://${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc:2380"
-else
-    if [[ ${ORDINAL} -eq 0 ]]
-    then
-      TOP=$((replicas-1))
-    else
-      TOP=$((ORDINAL-1))
-    fi
-
-    ARGS="${ARGS}--join="
-    for i in $(seq 0 ${TOP});
-    do
-        [[ ${i} -eq ${ORDINAL} ]] && continue
-        ARGS="${ARGS}http://${SET_NAME}-${i}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc:2380"
-        if [[ ${i} -lt ${TOP} ]]
-        then
-            ARGS="${ARGS},"
-        fi
+    until result=$(wget -qO- -T 3 http://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
+        echo "waiting for discovery service returns start args ..."
+        sleep $((RANDOM % 5))
     done
+    ARGS="${ARGS}${result}"
 fi
 
 echo "starting pd-server ..."
+sleep $((RANDOM % 10))
 echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
