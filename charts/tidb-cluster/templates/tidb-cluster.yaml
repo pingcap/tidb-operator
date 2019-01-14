@@ -33,6 +33,28 @@ spec:
     tolerations:
 {{ toYaml .Values.pd.tolerations | indent 4 }}
   {{- end }}
+  pds:
+  {{- range .Values.pds }}
+    - name: {{ .name }}
+      replicas: {{ .replicas }}
+      image: {{ .image }}
+      imagePullPolicy: {{ .imagePullPolicy | default "IfNotPresent" }}
+    {{- if .storageClassName }}
+      storageClassName: {{ .storageClassName }}
+    {{- end }}
+    {{- if .resources }}
+{{ toYaml .resources | indent 6 }}
+    {{- end }}
+    {{- if .nodeSelector }}
+      nodeSelector:
+{{ toYaml .nodeSelector | indent 8 }}
+    {{- end }}
+      nodeSelectorRequired: {{ .nodeSelectorRequired | default true }}
+    {{- if .tolerations }}
+      tolerations:
+{{ toYaml .tolerations | indent 6 }}
+    {{- end }}
+  {{- end }}
   tikv:
     replicas: {{ .Values.tikv.replicas }}
     image: {{ .Values.tikv.image }}

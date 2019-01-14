@@ -81,6 +81,9 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	keyName := fmt.Sprintf("%s/%s", ns, tcName)
 	// TODO: the replicas should be the total replicas of pd sets.
 	replicas := tc.Spec.PD.Replicas
+	for _, pdSpec := range tc.Spec.PDs {
+		replicas += pdSpec.Replicas
+	}
 
 	currentCluster := td.clusters[keyName]
 	if currentCluster == nil || currentCluster.resourceVersion != tc.ResourceVersion {

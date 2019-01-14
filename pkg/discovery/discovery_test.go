@@ -221,6 +221,148 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			},
 		},
 		{
+			name: "1 cluster, have extra pds, third ordinal, there are no pd members",
+			ns:   "default",
+			url:  "demo-pd-2.demo-pd-peer.default.svc:2380",
+			tcFn: func() (*v1alpha1.TidbCluster, error) {
+				tc, _ := newTC()
+				tc.Spec.PDs = []v1alpha1.PDSpec{
+					{Replicas: 2},
+				}
+				return tc, nil
+			},
+			getMembersFn: func() (*controller.MembersInfo, error) {
+				return nil, fmt.Errorf("there are no pd members 2-1")
+			},
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers: map[string]struct{}{
+						"demo-pd-0": {},
+						"demo-pd-1": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "there are no pd members 2-1")).To(BeTrue())
+				g.Expect(len(td.clusters)).To(Equal(1))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(3))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-0"]).To(Equal(struct{}{}))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-1"]).To(Equal(struct{}{}))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-2"]).To(Equal(struct{}{}))
+			},
+		},
+		{
+			name: "1 cluster, have extra pds, extra first ordinal, there are no pd members",
+			ns:   "default",
+			url:  "demo-first-pd-0.demo-pd-peer.default.svc:2380",
+			tcFn: func() (*v1alpha1.TidbCluster, error) {
+				tc, _ := newTC()
+				tc.Spec.PDs = []v1alpha1.PDSpec{
+					{Name: "first", Replicas: 2},
+				}
+				return tc, nil
+			},
+			getMembersFn: func() (*controller.MembersInfo, error) {
+				return nil, fmt.Errorf("there are no pd members 2-2")
+			},
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers: map[string]struct{}{
+						"demo-pd-0": {},
+						"demo-pd-1": {},
+						"demo-pd-2": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "there are no pd members 2-2")).To(BeTrue())
+				g.Expect(len(td.clusters)).To(Equal(1))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(4))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-0"]).To(Equal(struct{}{}))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-1"]).To(Equal(struct{}{}))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-2"]).To(Equal(struct{}{}))
+				g.Expect(td.clusters["default/demo"].peers["demo-first-pd-0"]).To(Equal(struct{}{}))
+			},
+		},
+		{
+			name: "1 cluster, have extra pds, extra second ordinal, returns the --initial-cluster args",
+			ns:   "default",
+			url:  "demo-first-pd-1.demo-pd-peer.default.svc:2380",
+			tcFn: func() (*v1alpha1.TidbCluster, error) {
+				tc, _ := newTC()
+				tc.Spec.PDs = []v1alpha1.PDSpec{
+					{Name: "first", Replicas: 2},
+				}
+				return tc, nil
+			},
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers: map[string]struct{}{
+						"demo-pd-0":       {},
+						"demo-pd-1":       {},
+						"demo-pd-2":       {},
+						"demo-first-pd-0": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(td.clusters)).To(Equal(1))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(4))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-0"]).To(Equal(struct{}{}))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-1"]).To(Equal(struct{}{}))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-2"]).To(Equal(struct{}{}))
+				g.Expect(td.clusters["default/demo"].peers["demo-first-pd-0"]).To(Equal(struct{}{}))
+				g.Expect(s).To(Equal("--initial-cluster=demo-first-pd-1=http://demo-first-pd-1.demo-pd-peer.default.svc:2380"))
+			},
+		},
+		{
+			name: "1 cluster, have extra pds, first ordinal, returns the --join args",
+			ns:   "default",
+			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
+			tcFn: func() (*v1alpha1.TidbCluster, error) {
+				tc, _ := newTC()
+				tc.Spec.PDs = []v1alpha1.PDSpec{
+					{Name: "first", Replicas: 2},
+				}
+				return tc, nil
+			},
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers: map[string]struct{}{
+						"demo-pd-0":       {},
+						"demo-pd-1":       {},
+						"demo-pd-2":       {},
+						"demo-first-pd-0": {},
+					},
+				},
+			},
+			getMembersFn: func() (*controller.MembersInfo, error) {
+				return &controller.MembersInfo{
+					Members: []*pdpb.Member{
+						{
+							PeerUrls: []string{"demo-first-pd-1.demo-pd-peer.default.svc:2380"},
+						},
+					},
+				}, nil
+			},
+			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(td.clusters)).To(Equal(1))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(3))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-1"]).To(Equal(struct{}{}))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-2"]).To(Equal(struct{}{}))
+				g.Expect(td.clusters["default/demo"].peers["demo-first-pd-0"]).To(Equal(struct{}{}))
+				g.Expect(s).To(Equal("--join=demo-first-pd-1.demo-pd-peer.default.svc:2380"))
+			},
+		},
+		{
 			name: "1 cluster, the first ordinal second request, get members failed",
 			ns:   "default",
 			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",

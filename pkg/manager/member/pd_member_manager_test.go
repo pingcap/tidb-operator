@@ -15,7 +15,6 @@ package member
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -33,150 +32,6 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 )
-
-func TestPDMemberManagerSyncCreate(t *testing.T) {
-	g := NewGomegaWithT(t)
-	type testcase struct {
-		name                       string
-		prepare                    func(cluster *v1alpha1.TidbCluster)
-		errWhenCreateStatefulSet   bool
-		errWhenCreatePDService     bool
-		errWhenCreatePDPeerService bool
-		errExpectFn                func(*GomegaWithT, error)
-		pdSvcCreated               bool
-		pdPeerSvcCreated           bool
-		setCreated                 bool
-	}
-
-	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
-		tc := newTidbClusterForPD()
-		ns := tc.Namespace
-		tcName := tc.Name
-		oldSpec := tc.Spec
-		if test.prepare != nil {
-			test.prepare(tc)
-		}
-
-		pmm, fakeSetControl, fakeSvcControl, fakePDControl, _, _, _ := newFakePDMemberManager()
-		pdClient := controller.NewFakePDClient()
-		fakePDControl.SetPDClient(tc, pdClient)
-
-		if test.errWhenCreateStatefulSet {
-			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
-		}
-		if test.errWhenCreatePDService {
-			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
-		}
-		if test.errWhenCreatePDPeerService {
-			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 1)
-		}
-
-		err := pmm.Sync(tc)
-		test.errExpectFn(g, err)
-		g.Expect(tc.Spec).To(Equal(oldSpec))
-
-		svc1, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
-		if test.pdSvcCreated {
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(svc1).NotTo(Equal(nil))
-		} else {
-			expectErrIsNotFound(g, err)
-		}
-
-		svc2, err := pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
-		if test.pdPeerSvcCreated {
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(svc2).NotTo(Equal(nil))
-		} else {
-			expectErrIsNotFound(g, err)
-		}
-
-		tc1, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
-		if test.setCreated {
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(tc1).NotTo(Equal(nil))
-		} else {
-			expectErrIsNotFound(g, err)
-		}
-	}
-
-	tests := []testcase{
-		{
-			name:                       "normal",
-			prepare:                    nil,
-			errWhenCreateStatefulSet:   false,
-			errWhenCreatePDService:     false,
-			errWhenCreatePDPeerService: false,
-			errExpectFn:                errExpectRequeue,
-			pdSvcCreated:               true,
-			pdPeerSvcCreated:           true,
-			setCreated:                 true,
-		},
-		{
-			name: "tidbcluster's storage format is wrong",
-			prepare: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PD.Requests.Storage = "100xxxxi"
-			},
-			errWhenCreateStatefulSet:   false,
-			errWhenCreatePDService:     false,
-			errWhenCreatePDPeerService: false,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "cant' get storage size: 100xxxxi for TidbCluster: default/test")).To(BeTrue())
-			},
-			pdSvcCreated:     true,
-			pdPeerSvcCreated: true,
-			setCreated:       false,
-		},
-		{
-			name:                       "error when create statefulset",
-			prepare:                    nil,
-			errWhenCreateStatefulSet:   true,
-			errWhenCreatePDService:     false,
-			errWhenCreatePDPeerService: false,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "API server failed")).To(BeTrue())
-			},
-			pdSvcCreated:     true,
-			pdPeerSvcCreated: true,
-			setCreated:       false,
-		},
-		{
-			name:                       "error when create pd service",
-			prepare:                    nil,
-			errWhenCreateStatefulSet:   false,
-			errWhenCreatePDService:     true,
-			errWhenCreatePDPeerService: false,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "API server failed")).To(BeTrue())
-			},
-			pdSvcCreated:     false,
-			pdPeerSvcCreated: false,
-			setCreated:       false,
-		},
-		{
-			name:                       "error when create pd peer service",
-			prepare:                    nil,
-			errWhenCreateStatefulSet:   false,
-			errWhenCreatePDService:     false,
-			errWhenCreatePDPeerService: true,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "API server failed")).To(BeTrue())
-			},
-			pdSvcCreated:     true,
-			pdPeerSvcCreated: false,
-			setCreated:       false,
-		},
-	}
-
-	for i := range tests {
-		testFn(&tests[i], t)
-	}
-}
 
 func TestPDMemberManagerSyncUpdate(t *testing.T) {
 	g := NewGomegaWithT(t)
@@ -621,6 +476,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 		pdUpgrader,
 		autoFailover,
 		pdFailover,
+		&pdSetCreator{setInformer.Lister(), pvcInformer.Lister(), setControl},
 	}, setControl, svcControl, pdControl, podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), podControl
 }
 

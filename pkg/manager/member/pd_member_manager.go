@@ -21,11 +21,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/listers/apps/v1beta1"
@@ -45,6 +43,7 @@ type pdMemberManager struct {
 	pdUpgrader   Upgrader
 	autoFailover bool
 	pdFailover   Failover
+	pdSetCreator PDSetCreator
 }
 
 // NewPDMemberManager returns a *pdMemberManager
@@ -72,7 +71,8 @@ func NewPDMemberManager(pdControl controller.PDControlInterface,
 		pdScaler,
 		pdUpgrader,
 		autoFailover,
-		pdFailover}
+		pdFailover,
+		&pdSetCreator{setLister, pvcLister, setControl}}
 }
 
 func (pmm *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
@@ -168,25 +168,21 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newPDSet, err := pmm.getNewPDSetForTidbCluster(tc)
-	if err != nil {
+	if err := pmm.pdSetCreator.CreatePDStatefulSet(tc, tc.Spec.PD); err != nil {
+		return err
+	}
+	if err := pmm.pdSetCreator.CreateExtraPDStatefulSets(tc); err != nil {
 		return err
 	}
 
-	oldPDSet, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
-	if err != nil && !errors.IsNotFound(err) {
+	var err error
+	var newPDSet *apps.StatefulSet
+	var oldPDSet *apps.StatefulSet
+	if newPDSet, err = generateNewPDSetFrom(tc, tc.Spec.PD); err != nil {
 		return err
 	}
-	if errors.IsNotFound(err) {
-		err = SetLastAppliedConfigAnnotation(newPDSet)
-		if err != nil {
-			return err
-		}
-		if err := pmm.setControl.CreateStatefulSet(tc, newPDSet); err != nil {
-			return err
-		}
-		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{}
-		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
+	if oldPDSet, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName)); err != nil && !errors.IsNotFound(err) {
+		return err
 	}
 
 	if err := pmm.syncTidbClusterStatus(tc, oldPDSet); err != nil {
@@ -387,172 +383,6 @@ func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *
 		}
 	}
 	return false, nil
-}
-
-func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
-	ns := tc.Namespace
-	tcName := tc.Name
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
-	pdConfigMap := controller.PDMemberName(tcName)
-
-	annMount, annVolume := annotationsMountVolume()
-	volMounts := []corev1.VolumeMount{
-		annMount,
-		{Name: "config", ReadOnly: true, MountPath: "/etc/pd"},
-		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
-		{Name: v1alpha1.PDMemberType.String(), MountPath: "/var/lib/pd"},
-	}
-	vols := []corev1.Volume{
-		annVolume,
-		{Name: "config",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: pdConfigMap,
-					},
-					Items: []corev1.KeyToPath{{Key: "config-file", Path: "pd.toml"}},
-				},
-			},
-		},
-		{Name: "startup-script",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: pdConfigMap,
-					},
-					Items: []corev1.KeyToPath{{Key: "startup-script", Path: "pd_start_script.sh"}},
-				},
-			},
-		},
-	}
-
-	var q resource.Quantity
-	var err error
-	if tc.Spec.PD.Requests != nil {
-		size := tc.Spec.PD.Requests.Storage
-		q, err = resource.ParseQuantity(size)
-		if err != nil {
-			return nil, fmt.Errorf("cant' get storage size: %s for TidbCluster: %s/%s, %v", size, ns, tcName, err)
-		}
-	}
-	pdLabel := label.New().Instance(instanceName).PD()
-	setName := controller.PDMemberName(tcName)
-	storageClassName := tc.Spec.PD.StorageClassName
-	if storageClassName == "" {
-		storageClassName = controller.DefaultStorageClassName
-	}
-	failureReplicas := 0
-	for _, failureMember := range tc.Status.PD.FailureMembers {
-		if failureMember.MemberDeleted {
-			failureReplicas++
-		}
-	}
-
-	pdSet := &apps.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            setName,
-			Namespace:       ns,
-			Labels:          pdLabel.Labels(),
-			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
-		},
-		Spec: apps.StatefulSetSpec{
-			Replicas: func() *int32 { r := tc.Spec.PD.Replicas + int32(failureReplicas); return &r }(),
-			Selector: pdLabel.LabelSelector(),
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels:      pdLabel.Labels(),
-					Annotations: controller.AnnProm(2379),
-				},
-				Spec: corev1.PodSpec{
-					SchedulerName: tc.Spec.SchedulerName,
-					Affinity: util.AffinityForNodeSelector(
-						ns,
-						tc.Spec.PD.NodeSelectorRequired,
-						label.New().Instance(instanceName).PD(),
-						tc.Spec.PD.NodeSelector,
-					),
-					Containers: []corev1.Container{
-						{
-							Name:            v1alpha1.PDMemberType.String(),
-							Image:           tc.Spec.PD.Image,
-							Command:         []string{"/bin/sh", "/usr/local/bin/pd_start_script.sh"},
-							ImagePullPolicy: tc.Spec.PD.ImagePullPolicy,
-							Ports: []corev1.ContainerPort{
-								{
-									Name:          "server",
-									ContainerPort: int32(2380),
-									Protocol:      corev1.ProtocolTCP,
-								},
-								{
-									Name:          "client",
-									ContainerPort: int32(2379),
-									Protocol:      corev1.ProtocolTCP,
-								},
-							},
-							VolumeMounts: volMounts,
-							Resources:    util.ResourceRequirement(tc.Spec.PD.ContainerSpec),
-							Env: []corev1.EnvVar{
-								{
-									Name: "NAMESPACE",
-									ValueFrom: &corev1.EnvVarSource{
-										FieldRef: &corev1.ObjectFieldSelector{
-											FieldPath: "metadata.namespace",
-										},
-									},
-								},
-								{
-									Name:  "PEER_SERVICE_NAME",
-									Value: controller.PDPeerMemberName(tcName),
-								},
-								{
-									Name:  "SERVICE_NAME",
-									Value: controller.PDMemberName(tcName),
-								},
-								{
-									Name:  "SET_NAME",
-									Value: setName,
-								},
-								{
-									Name:  "TZ",
-									Value: tc.Spec.Timezone,
-								},
-							},
-						},
-					},
-					RestartPolicy: corev1.RestartPolicyAlways,
-					Tolerations:   tc.Spec.PD.Tolerations,
-					Volumes:       vols,
-				},
-			},
-			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: v1alpha1.PDMemberType.String(),
-					},
-					Spec: corev1.PersistentVolumeClaimSpec{
-						AccessModes: []corev1.PersistentVolumeAccessMode{
-							corev1.ReadWriteOnce,
-						},
-						StorageClassName: &storageClassName,
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{
-								corev1.ResourceStorage: q,
-							},
-						},
-					},
-				},
-			},
-			ServiceName:         controller.PDPeerMemberName(tcName),
-			PodManagementPolicy: apps.ParallelPodManagement,
-			UpdateStrategy: apps.StatefulSetUpdateStrategy{
-				Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: func() *int32 { r := tc.Spec.PD.Replicas + int32(failureReplicas); return &r }(),
-				}},
-		},
-	}
-
-	return pdSet, nil
 }
 
 type FakePDMemberManager struct {

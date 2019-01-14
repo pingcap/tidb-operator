@@ -124,6 +124,13 @@ func (in *PDStatus) DeepCopyInto(out *PDStatus) {
 		*out = new(v1beta1.StatefulSetStatus)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.StatefulSets != nil {
+		in, out := &in.StatefulSets, &out.StatefulSets
+		*out = make(map[string]v1beta1.StatefulSetStatus, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
+	}
 	if in.Members != nil {
 		in, out := &in.Members, &out.Members
 		*out = make(map[string]PDMember, len(*in))
@@ -472,6 +479,13 @@ func (in *TidbClusterList) DeepCopyObject() runtime.Object {
 func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 	*out = *in
 	in.PD.DeepCopyInto(&out.PD)
+	if in.PDs != nil {
+		in, out := &in.PDs, &out.PDs
+		*out = make([]PDSpec, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	in.TiDB.DeepCopyInto(&out.TiDB)
 	in.TiKV.DeepCopyInto(&out.TiKV)
 	in.TiKVPromGateway.DeepCopyInto(&out.TiKVPromGateway)

@@ -87,6 +87,7 @@ type TidbClusterList struct {
 type TidbClusterSpec struct {
 	SchedulerName   string              `json:"schedulerName,omitempty"`
 	PD              PDSpec              `json:"pd,omitempty"`
+	PDs             []PDSpec            `json:"pds,omitempty"`
 	TiDB            TiDBSpec            `json:"tidb,omitempty"`
 	TiKV            TiKVSpec            `json:"tikv,omitempty"`
 	TiKVPromGateway TiKVPromGatewaySpec `json:"tikvPromGateway,omitempty"`
@@ -106,6 +107,7 @@ type TidbClusterStatus struct {
 // PDSpec contains details of PD member
 type PDSpec struct {
 	ContainerSpec
+	Name                 string              `json:"name"`
 	Replicas             int32               `json:"replicas"`
 	NodeSelector         map[string]string   `json:"nodeSelector,omitempty"`
 	NodeSelectorRequired bool                `json:"nodeSelectorRequired,omitempty"`
@@ -166,12 +168,13 @@ type ResourceRequirement struct {
 
 // PDStatus is PD status
 type PDStatus struct {
-	Synced         bool                       `json:"synced,omitempty"`
-	Phase          MemberPhase                `json:"phase,omitempty"`
-	StatefulSet    *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
-	Members        map[string]PDMember        `json:"members,omitempty"`
-	Leader         PDMember                   `json:"leader,omitempty"`
-	FailureMembers map[string]PDFailureMember `json:"failureMembers,omitempty"`
+	Synced         bool                              `json:"synced,omitempty"`
+	Phase          MemberPhase                       `json:"phase,omitempty"`
+	StatefulSet    *apps.StatefulSetStatus           `json:"statefulSet,omitempty"`
+	StatefulSets   map[string]apps.StatefulSetStatus `json:"statefulSets,omitempty"`
+	Members        map[string]PDMember               `json:"members,omitempty"`
+	Leader         PDMember                          `json:"leader,omitempty"`
+	FailureMembers map[string]PDFailureMember        `json:"failureMembers,omitempty"`
 }
 
 // PDMember is PD member
