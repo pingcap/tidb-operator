@@ -52,6 +52,9 @@ func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 
 	for _, pvc := range pvcs {
+		if pvc.Spec.VolumeName == "" {
+			continue
+		}
 		pv, err := rpm.pvLister.Get(pvc.Spec.VolumeName)
 		if err != nil {
 			return err

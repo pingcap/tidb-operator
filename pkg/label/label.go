@@ -46,6 +46,8 @@ const (
 	AnnPodNameKey string = "tidb.pingcap.com/pod-name"
 	// AnnPVCDeferDeleting is pvc defer deletion annotation key used in PVC for defer deleting PVC
 	AnnPVCDeferDeleting = "tidb.pingcap.com/pvc-defer-deleting"
+	// AnnPVCPodScheduling is pod scheduling annotation key, it represents whether the pod is scheduling
+	AnnPVCPodScheduling = "tidb.pingcap.com/pod-scheduling"
 
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
