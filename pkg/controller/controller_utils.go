@@ -130,12 +130,12 @@ func GetPushgatewayImage(cluster *v1alpha1.TidbCluster) string {
 }
 
 // PDMemberName returns pd member name
-func PDMemberName(clusterName string, setName ...string) string {
-	if len(setName) == 0 || setName[0] == "" {
+func PDMemberName(clusterName string, specName string) string {
+	if specName == "" {
 		return fmt.Sprintf("%s-pd", clusterName)
 	}
 
-	return fmt.Sprintf("%s-%s-pd", clusterName, setName[0])
+	return fmt.Sprintf("%s-%s-pd", clusterName, specName)
 }
 
 // PDPeerMemberName returns pd peer service name

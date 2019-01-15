@@ -39,7 +39,7 @@ func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 		expectFn     func(*GomegaWithT, map[int32]string, error)
 	}
 	tc := newTidbClusterForPD()
-	setName := controller.PDMemberName(tc.GetName())
+	setName := controller.PDMemberName(tc.GetName(), tc.Spec.PD.Name)
 	testFn := func(test *testcase, t *testing.T) {
 		t.Logf(test.name)
 		g := NewGomegaWithT(t)

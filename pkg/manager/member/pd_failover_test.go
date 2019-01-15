@@ -374,7 +374,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster, pf *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-				pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.GetName()), 1)
+				pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.GetName(), tc.Spec.PD.Name), 1)
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
@@ -400,7 +400,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster, pf *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-				pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.GetName()), 1)
+				pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.GetName(), tc.Spec.PD.Name), 1)
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
@@ -629,7 +629,7 @@ func errExpectNotNil(g *GomegaWithT, err error) {
 func newPVCForPDFailover(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, ordinal int32) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ordinalPVCName(memberType, controller.PDMemberName(tc.GetName()), ordinal),
+			Name:      ordinalPVCName(memberType, controller.PDMemberName(tc.GetName(), tc.Spec.PD.Name), ordinal),
 			Namespace: metav1.NamespaceDefault,
 			UID:       types.UID("pvc-1-uid"),
 		},

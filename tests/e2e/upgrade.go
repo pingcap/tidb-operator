@@ -101,7 +101,7 @@ func memberUpgraded(ns, clusterName string) (bool, error) {
 		return false, nil
 	}
 
-	pdSetName := controller.PDMemberName(clusterName)
+	pdSetName := controller.PDMemberName(clusterName, "")
 	pdSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(pdSetName, metav1.GetOptions{})
 	if err != nil {
 		logf("failed to get pd statefulset: [%s], error: %v", pdSetName, err)

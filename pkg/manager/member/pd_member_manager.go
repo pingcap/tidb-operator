@@ -95,7 +95,7 @@ func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 	tcName := tc.GetName()
 
 	newSvc := pmm.getNewPDServiceForTidbCluster(tc)
-	oldSvc, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
+	oldSvc, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName, tc.Spec.PD.Name))
 	if errors.IsNotFound(err) {
 		err = SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
@@ -181,7 +181,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	if newPDSet, err = generateNewPDSetFrom(tc, tc.Spec.PD); err != nil {
 		return err
 	}
-	if oldPDSet, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName)); err != nil && !errors.IsNotFound(err) {
+	if oldPDSet, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName, tc.Spec.PD.Name)); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
@@ -303,7 +303,7 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
-	svcName := controller.PDMemberName(tcName)
+	svcName := controller.PDMemberName(tcName, tc.Spec.PD.Name)
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
 	pdLabel := label.New().Instance(instanceName).PD().Labels()
 

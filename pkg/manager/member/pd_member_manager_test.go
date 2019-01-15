@@ -84,11 +84,11 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		err := pmm.Sync(tc)
 		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
 
-		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
+		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName, tc.Spec.PD.Name))
 		g.Expect(err).NotTo(HaveOccurred())
 		_, err = pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+		_, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName, tc.Spec.PD.Name))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		tc1 := tc.DeepCopy()
@@ -112,7 +112,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		if test.expectPDServiceFn != nil {
-			svc, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
+			svc, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName, tc.Spec.PD.Name))
 			test.expectPDServiceFn(g, svc, err)
 		}
 		if test.expectPDPeerServiceFn != nil {
@@ -120,7 +120,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			test.expectPDPeerServiceFn(g, svc, err)
 		}
 		if test.expectStatefulSetFn != nil {
-			set, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+			set, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName, tc.Spec.PD.Name))
 			test.expectStatefulSetFn(g, set, err)
 		}
 		if test.expectTidbClusterFn != nil {
@@ -382,11 +382,11 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 		err := pmm.Sync(tc)
 		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
 
-		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
+		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName, tc.Spec.PD.Name))
 		g.Expect(err).NotTo(HaveOccurred())
 		_, err = pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+		_, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName, tc.Spec.PD.Name))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		tc1 := tc.DeepCopy()
@@ -400,7 +400,7 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 		}
 
 		if test.expectStatefulSetFn != nil {
-			set, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+			set, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName, tc.Spec.PD.Name))
 			test.expectStatefulSetFn(g, set, err)
 		}
 		if test.expectTidbClusterFn != nil {

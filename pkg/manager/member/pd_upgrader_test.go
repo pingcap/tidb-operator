@@ -236,7 +236,7 @@ func newPDUpgrader() (Upgrader, *controller.FakePDControl, *controller.FakePodCo
 func newStatefulSetForPDUpgrader() *apps.StatefulSet {
 	return &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      controller.PDMemberName(upgradeTcName),
+			Name:      controller.PDMemberName(upgradeTcName, ""),
 			Namespace: metav1.NamespaceDefault,
 		},
 		Spec: apps.StatefulSetSpec{

@@ -90,7 +90,7 @@ func generateNewPDSetFrom(tc *v1alpha1.TidbCluster, pdSpec v1alpha1.PDSpec) (*ap
 	ns := tc.Namespace
 	tcName := tc.Name
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
-	pdConfigMapName := controller.PDMemberName(tcName)
+	pdConfigMapName := controller.PDMemberName(tcName, tc.Spec.PD.Name)
 
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{

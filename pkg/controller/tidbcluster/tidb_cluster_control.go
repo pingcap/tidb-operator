@@ -99,9 +99,6 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	//   - create or update the pd headless service
 	//   - create the pd statefulset
 	//   - sync pd cluster status from pd to TidbCluster object
-	//   - set two annotations to the first pd member:
-	// 	   - label.Bootstrapping
-	// 	   - label.Replicas
 	//   - upgrade the pd cluster
 	//   - scale out/in the pd cluster
 	//   - failover the pd cluster

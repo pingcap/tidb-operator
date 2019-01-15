@@ -195,7 +195,7 @@ func dataIsCorrect(ns, clusterName string) (bool, error) {
 func pdMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	pdSetName := controller.PDMemberName(tcName)
+	pdSetName := controller.PDMemberName(tcName, tc.Spec.PD.Name)
 	pdSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(pdSetName, metav1.GetOptions{})
 	if err != nil {
 		logf(err.Error())
@@ -240,7 +240,7 @@ func pdMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 		}
 	}
 
-	_, err = kubeCli.CoreV1().Services(ns).Get(controller.PDMemberName(tcName), metav1.GetOptions{})
+	_, err = kubeCli.CoreV1().Services(ns).Get(controller.PDMemberName(tcName, tc.Spec.PD.Name), metav1.GetOptions{})
 	if err != nil {
 		logf(err.Error())
 		return false, nil

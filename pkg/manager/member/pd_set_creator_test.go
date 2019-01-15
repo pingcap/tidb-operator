@@ -54,7 +54,7 @@ func TestPDSetCreatorCreatePDStatefulSet(t *testing.T) {
 		pdReplicas = tc.Spec.PD.Replicas
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
-		setName := controller.PDMemberName(tcName)
+		setName := controller.PDMemberName(tcName, tc.Spec.PD.Name)
 		if test.update != nil {
 			test.update(tc)
 		}

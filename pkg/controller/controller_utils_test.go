@@ -159,7 +159,7 @@ func TestGetPushgatewayImage(t *testing.T) {
 
 func TestPDMemberName(t *testing.T) {
 	g := NewGomegaWithT(t)
-	g.Expect(PDMemberName("demo")).To(Equal("demo-pd"))
+	g.Expect(PDMemberName("demo", "")).To(Equal("demo-pd"))
 }
 
 func TestPDPeerMemberName(t *testing.T) {

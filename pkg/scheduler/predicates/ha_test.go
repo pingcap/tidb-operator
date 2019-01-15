@@ -362,7 +362,7 @@ func newHAPDPod(instanceName, clusterName string, ordinal int32) *apiv1.Pod {
 	return &apiv1.Pod{
 		TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%d", controller.PDMemberName(clusterName), ordinal),
+			Name:      fmt.Sprintf("%s-%d", controller.PDMemberName(clusterName, ""), ordinal),
 			Namespace: corev1.NamespaceDefault,
 			Labels:    label.New().Instance(instanceName).PD().Labels(),
 		},
@@ -380,7 +380,7 @@ func podListFn(nodePodMap map[string][]int32) func(string, string, string) (*api
 				podList.Items = append(podList.Items, apiv1.Pod{
 					TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      fmt.Sprintf("%s-%d", controller.PDMemberName(clusterName), podOrdinal),
+						Name:      fmt.Sprintf("%s-%d", controller.PDMemberName(clusterName, ""), podOrdinal),
 						Namespace: corev1.NamespaceDefault,
 						Labels:    label.New().PD().Labels(),
 					},

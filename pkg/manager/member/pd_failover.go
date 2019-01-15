@@ -122,7 +122,7 @@ func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 		if err != nil {
 			return err
 		}
-		pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), ordinal)
+		pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName, tc.Spec.PD.Name), ordinal)
 		pvc, err := pf.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 		if err != nil {
 			return err
@@ -180,7 +180,7 @@ func (pf *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error 
 	if err != nil {
 		return err
 	}
-	pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), ordinal)
+	pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName, tc.Spec.PD.Name), ordinal)
 	pvc, err := pf.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil && !errors.IsNotFound(err) {
 		return err
