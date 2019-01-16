@@ -157,7 +157,7 @@ func (h *ha) realAcquireLock(pod *apiv1.Pod) (*apiv1.PersistentVolumeClaim, *api
 	var schedulingPVC *apiv1.PersistentVolumeClaim
 	for i := 0; i < len(pvcList.Items); i++ {
 		pvc := pvcList.Items[i]
-		if pvc.GetName() == currentPVCName && currentPVC == nil {
+		if pvc.GetName() == currentPVCName {
 			currentPVC = &pvcList.Items[i]
 		}
 		if pvc.Annotations[label.AnnPVCPodScheduling] != "" && schedulingPVC == nil {
