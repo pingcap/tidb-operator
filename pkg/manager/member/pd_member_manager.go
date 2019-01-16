@@ -168,7 +168,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if err := pmm.pdSetCreator.CreatePDStatefulSet(tc, tc.Spec.PD); err != nil {
+	if err := pmm.pdSetCreator.CreatePDStatefulSet(tc); err != nil {
 		return err
 	}
 	if err := pmm.pdSetCreator.CreateExtraPDStatefulSets(tc); err != nil {

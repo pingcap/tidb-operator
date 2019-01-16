@@ -81,7 +81,7 @@ func TestPDSetCreatorCreatePDStatefulSet(t *testing.T) {
 			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed when creating StatefulSet")), 0)
 		}
 
-		err := psc.CreatePDStatefulSet(tc, tc.Spec.PD)
+		err := psc.CreatePDStatefulSet(tc)
 		test.errExpectFn(g, err)
 
 		set, err := psc.setLister.StatefulSets(ns).Get(setName)
@@ -94,8 +94,7 @@ func TestPDSetCreatorCreatePDStatefulSet(t *testing.T) {
 				tc.Spec.PD.StorageClassName = ""
 			},
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(controller.IsRequeueError(err)).To(Equal(true))
-				g.Expect(strings.Contains(err.Error(), "TidbCluster: [default/test], StatefulSet: [default/test-pd] created, waiting for PD cluster running")).To(BeTrue())
+				g.Expect(err).NotTo(HaveOccurred())
 			},
 			setExpectFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
@@ -109,8 +108,7 @@ func TestPDSetCreatorCreatePDStatefulSet(t *testing.T) {
 				tc.Spec.PD.StorageClassName = "abc"
 			},
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(controller.IsRequeueError(err)).To(Equal(true))
-				g.Expect(strings.Contains(err.Error(), "TidbCluster: [default/test], StatefulSet: [default/test-pd] created, waiting for PD cluster running")).To(BeTrue())
+				g.Expect(err).NotTo(HaveOccurred())
 			},
 			setExpectFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
@@ -147,8 +145,7 @@ func TestPDSetCreatorCreatePDStatefulSet(t *testing.T) {
 			name:      "recreated from the old cluster",
 			hasOldPVC: true,
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(controller.IsRequeueError(err)).To(Equal(true))
-				g.Expect(strings.Contains(err.Error(), "TidbCluster: [default/test], StatefulSet: [default/test-pd] created, waiting for PD cluster running")).To(BeTrue())
+				g.Expect(err).NotTo(HaveOccurred())
 			},
 			setExpectFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
@@ -221,8 +218,7 @@ func TestPDSetCreatorCreateExtraPDStatefulSets(t *testing.T) {
 				}
 			},
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(controller.IsRequeueError(err)).To(Equal(true))
-				g.Expect(strings.Contains(err.Error(), "TidbCluster: [default/test], StatefulSet: [default/test-extra-1-pd] created, waiting for PD cluster running")).To(BeTrue())
+				g.Expect(err).NotTo(HaveOccurred())
 			},
 			setExpectFn: func(g *GomegaWithT, sets []*apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
@@ -232,7 +228,7 @@ func TestPDSetCreatorCreateExtraPDStatefulSets(t *testing.T) {
 			},
 		},
 		{
-			name: "two extra pds, should create the first one",
+			name: "two extra pds, should create them all",
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PDs = []v1alpha1.PDSpec{
 					{
@@ -252,18 +248,18 @@ func TestPDSetCreatorCreateExtraPDStatefulSets(t *testing.T) {
 				}
 			},
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(controller.IsRequeueError(err)).To(Equal(true))
-				g.Expect(strings.Contains(err.Error(), "TidbCluster: [default/test], StatefulSet: [default/test-extra-1-pd] created, waiting for PD cluster running")).To(BeTrue())
+				g.Expect(err).NotTo(HaveOccurred())
 			},
 			setExpectFn: func(g *GomegaWithT, sets []*apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(len(sets)).To(Equal(1))
-				g.Expect(sets[0]).NotTo(BeNil())
-				g.Expect(sets[0].GetName()).To(Equal("test-extra-1-pd"))
+				g.Expect(len(sets)).To(Equal(2))
+				names := []string{sets[0].GetName(), sets[1].GetName()}
+				sort.Strings(names)
+				g.Expect(names).To(Equal([]string{"test-extra-1-pd", "test-extra-2-pd"}))
 			},
 		},
 		{
-			name: "two extra pds, one statefulset, should create the second one",
+			name: "two extra pds, one statefulset, should create them all",
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PDs = []v1alpha1.PDSpec{
 					{
@@ -291,8 +287,7 @@ func TestPDSetCreatorCreateExtraPDStatefulSets(t *testing.T) {
 				},
 			},
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(controller.IsRequeueError(err)).To(Equal(true))
-				g.Expect(strings.Contains(err.Error(), "TidbCluster: [default/test], StatefulSet: [default/test-extra-2-pd] created, waiting for PD cluster running")).To(BeTrue())
+				g.Expect(err).NotTo(HaveOccurred())
 			},
 			setExpectFn: func(g *GomegaWithT, sets []*apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
@@ -337,7 +332,7 @@ func TestPDSetCreatorCreateExtraPDStatefulSets(t *testing.T) {
 				},
 			},
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(BeNil())
+				g.Expect(err).NotTo(HaveOccurred())
 			},
 			setExpectFn: func(g *GomegaWithT, sets []*apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())

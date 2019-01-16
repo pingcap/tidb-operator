@@ -31,7 +31,7 @@ import (
 
 // PDSetCreator implements the logic for creating the main pd statefulset and extra pd statefulsets
 type PDSetCreator interface {
-	CreatePDStatefulSet(*v1alpha1.TidbCluster, v1alpha1.PDSpec) error
+	CreatePDStatefulSet(*v1alpha1.TidbCluster) error
 	CreateExtraPDStatefulSets(*v1alpha1.TidbCluster) error
 }
 
@@ -41,7 +41,21 @@ type pdSetCreator struct {
 	setControl controller.StatefulSetControlInterface
 }
 
-func (psc *pdSetCreator) CreatePDStatefulSet(tc *v1alpha1.TidbCluster, pdSpec v1alpha1.PDSpec) error {
+func (psc *pdSetCreator) CreatePDStatefulSet(tc *v1alpha1.TidbCluster) error {
+	return psc.createStatefulSet(tc, tc.Spec.PD)
+}
+
+func (psc *pdSetCreator) CreateExtraPDStatefulSets(tc *v1alpha1.TidbCluster) error {
+	for _, pdSpec := range tc.Spec.PDs {
+		if err := psc.createStatefulSet(tc, pdSpec); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (psc *pdSetCreator) createStatefulSet(tc *v1alpha1.TidbCluster, pdSpec v1alpha1.PDSpec) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	setName := controller.PDMemberName(tcName, pdSpec.Name)
@@ -57,33 +71,10 @@ func (psc *pdSetCreator) CreatePDStatefulSet(tc *v1alpha1.TidbCluster, pdSpec v1
 		return nil
 	}
 
-	return psc.createStatefulSet(tc, newPDSet)
-}
-
-func (psc *pdSetCreator) CreateExtraPDStatefulSets(tc *v1alpha1.TidbCluster) error {
-	for _, pdSpec := range tc.Spec.PDs {
-		if err := psc.CreatePDStatefulSet(tc, pdSpec); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (psc *pdSetCreator) createStatefulSet(tc *v1alpha1.TidbCluster, pdSet *apps.StatefulSet) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	setName := pdSet.GetName()
-	if err := SetLastAppliedConfigAnnotation(pdSet); err != nil {
+	if err := SetLastAppliedConfigAnnotation(newPDSet); err != nil {
 		return err
 	}
-	if err := psc.setControl.CreateStatefulSet(tc, pdSet); err != nil {
-		return err
-	}
-
-	tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{}
-	return controller.RequeueErrorf("TidbCluster: [%s/%s], StatefulSet: [%s/%s] created, waiting for PD cluster running",
-		ns, tcName, ns, setName)
+	return psc.setControl.CreateStatefulSet(tc, newPDSet)
 }
 
 func generateNewPDSetFrom(tc *v1alpha1.TidbCluster, pdSpec v1alpha1.PDSpec) (*apps.StatefulSet, error) {

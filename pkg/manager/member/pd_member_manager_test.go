@@ -82,7 +82,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		err := pmm.Sync(tc)
-		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
+		g.Expect(err).To(BeNil())
 
 		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName, tc.Spec.PD.Name))
 		g.Expect(err).NotTo(HaveOccurred())
@@ -380,7 +380,7 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 		fakeSetControl.SetStatusChange(test.statusChange)
 
 		err := pmm.Sync(tc)
-		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
+		g.Expect(err).To(BeNil())
 
 		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName, tc.Spec.PD.Name))
 		g.Expect(err).NotTo(HaveOccurred())
