@@ -223,26 +223,6 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
 		},
-		{
-			name: "error when sync pd status",
-			modify: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PD.Replicas = 5
-			},
-			errWhenUpdateStatefulSet:   false,
-			errWhenUpdatePDService:     false,
-			errWhenUpdatePDPeerService: false,
-			errWhenGetPDHealth:         true,
-			err:                        false,
-			expectPDServiceFn:          nil,
-			expectPDPeerServiceFn:      nil,
-			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-			},
-			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(tc.Status.PD.Synced).To(BeFalse())
-				g.Expect(tc.Status.PD.Members).To(BeNil())
-			},
-		},
 	}
 
 	for i := range tests {
@@ -477,6 +457,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 		autoFailover,
 		pdFailover,
 		&pdSetCreator{setInformer.Lister(), pvcInformer.Lister(), setControl},
+		&pdStatusSyncer{setInformer.Lister(), pdControl},
 	}, setControl, svcControl, pdControl, podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), podControl
 }
 
