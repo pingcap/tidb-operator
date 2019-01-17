@@ -181,7 +181,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	if newPDSet, err = generateNewPDSetFrom(tc, tc.Spec.PD); err != nil {
 		return err
 	}
-	if oldPDSet, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName, tc.Spec.PD.Name)); err != nil && !errors.IsNotFound(err) {
+	if oldPDSet, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName, tc.Spec.PD.Name)); err != nil {
 		return err
 	}
 
