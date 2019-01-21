@@ -34,11 +34,12 @@ import (
 func TestReclaimPolicyManagerSync(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name         string
-		pvcHasLabels bool
-		updateErr    bool
-		err          bool
-		changed      bool
+		name             string
+		pvcHasLabels     bool
+		pvcHasVolumeName bool
+		updateErr        bool
+		err              bool
+		changed          bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -49,6 +50,9 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 
 		if !test.pvcHasLabels {
 			pvc1.Labels = nil
+		}
+		if !test.pvcHasVolumeName {
+			pvc1.Spec.VolumeName = ""
 		}
 
 		rpm, fakePVControl, pvcIndexer, pvIndexer := newFakeReclaimPolicyManager()
@@ -82,25 +86,36 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 
 	tests := []testcase{
 		{
-			name:         "normal",
-			pvcHasLabels: true,
-			updateErr:    false,
-			err:          false,
-			changed:      true,
+			name:             "normal",
+			pvcHasLabels:     true,
+			pvcHasVolumeName: true,
+			updateErr:        false,
+			err:              false,
+			changed:          true,
 		},
 		{
-			name:         "pvc don't have labels",
-			pvcHasLabels: false,
-			updateErr:    false,
-			err:          false,
-			changed:      false,
+			name:             "pvc don't have labels",
+			pvcHasLabels:     false,
+			pvcHasVolumeName: true,
+			updateErr:        false,
+			err:              false,
+			changed:          false,
 		},
 		{
-			name:         "update failed",
-			pvcHasLabels: true,
-			updateErr:    true,
-			err:          true,
-			changed:      false,
+			name:             "pvc don't have volumeName",
+			pvcHasLabels:     false,
+			pvcHasVolumeName: false,
+			updateErr:        false,
+			err:              false,
+			changed:          false,
+		},
+		{
+			name:             "update failed",
+			pvcHasLabels:     true,
+			pvcHasVolumeName: true,
+			updateErr:        true,
+			err:              true,
+			changed:          false,
 		},
 	}
 

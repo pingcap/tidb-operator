@@ -55,7 +55,7 @@ rules:
   verbs: ["get"]
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
-  verbs: ["get"]
+  verbs: ["get", "list", "update"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -114,7 +114,7 @@ rules:
   verbs: ["get"]
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
-  verbs: ["get"]
+  verbs: ["get", "list", "update"]
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
