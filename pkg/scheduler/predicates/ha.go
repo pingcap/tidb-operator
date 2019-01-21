@@ -16,6 +16,8 @@ package predicates
 import (
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
@@ -28,11 +30,15 @@ import (
 )
 
 type ha struct {
-	kubeCli   kubernetes.Interface
-	cli       versioned.Interface
-	podListFn func(ns, instanceName, component string) (*apiv1.PodList, error)
-	pvcGetFn  func(ns, pvcName string) (*apiv1.PersistentVolumeClaim, error)
-	tcGetFn   func(ns, tcName string) (*v1alpha1.TidbCluster, error)
+	lock          sync.Mutex
+	kubeCli       kubernetes.Interface
+	cli           versioned.Interface
+	podListFn     func(ns, instanceName, component string) (*apiv1.PodList, error)
+	pvcGetFn      func(ns, pvcName string) (*apiv1.PersistentVolumeClaim, error)
+	tcGetFn       func(ns, tcName string) (*v1alpha1.TidbCluster, error)
+	pvcListFn     func(ns, instanceName, component string) (*apiv1.PersistentVolumeClaimList, error)
+	updatePVCFn   func(*apiv1.PersistentVolumeClaim) error
+	acquireLockFn func(*apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error)
 }
 
 // NewHA returns a Predicate
@@ -44,6 +50,9 @@ func NewHA(kubeCli kubernetes.Interface, cli versioned.Interface) Predicate {
 	h.podListFn = h.realPodListFn
 	h.pvcGetFn = h.realPVCGetFn
 	h.tcGetFn = h.realTCGetFn
+	h.pvcListFn = h.realPVCListFn
+	h.updatePVCFn = h.realUpdatePVCFn
+	h.acquireLockFn = h.realAcquireLock
 	return h
 }
 
@@ -55,6 +64,9 @@ func (h *ha) Name() string {
 // 2. return these nodes that have least pods and its pods count is less than (replicas+1)/2 to kube-scheduler
 // 3. let kube-scheduler to make the final decision
 func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]apiv1.Node, error) {
+	h.lock.Lock()
+	defer h.lock.Unlock()
+
 	ns := pod.GetNamespace()
 	podName := pod.GetName()
 	component := pod.Labels[label.ComponentLabelKey]
@@ -63,9 +75,12 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("kube nodes is empty")
 	}
+	if _, _, err := h.acquireLockFn(pod); err != nil {
+		return nil, err
+	}
 
 	if len(nodes) == 1 {
-		pvcName := fmt.Sprintf("%s-%s", component, podName)
+		pvcName := pvcName(component, podName)
 		pvc, err := h.pvcGetFn(ns, pvcName)
 		if err != nil {
 			return nil, err
@@ -127,11 +142,67 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	return getNodeFromNames(nodes, minNodeNames), nil
 }
 
+func (h *ha) realAcquireLock(pod *apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error) {
+	ns := pod.GetNamespace()
+	component := pod.Labels[label.ComponentLabelKey]
+	instanceName := pod.Labels[label.InstanceLabelKey]
+	podName := pod.GetName()
+	pvcList, err := h.pvcListFn(ns, instanceName, component)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	currentPVCName := pvcName(component, podName)
+	var currentPVC *apiv1.PersistentVolumeClaim
+	var schedulingPVC *apiv1.PersistentVolumeClaim
+	items := pvcList.Items
+	for i := range items {
+		if items[i].GetName() == currentPVCName {
+			currentPVC = &items[i]
+		}
+		if items[i].Annotations[label.AnnPVCPodScheduling] != "" && schedulingPVC == nil {
+			schedulingPVC = &items[i]
+		}
+	}
+
+	if currentPVC == nil {
+		return schedulingPVC, currentPVC, fmt.Errorf("can't find current Pod %s/%s's PVC", ns, podName)
+	}
+	if schedulingPVC == nil {
+		return schedulingPVC, currentPVC, h.setCurrentPodScheduling(currentPVC)
+	}
+	if schedulingPVC == currentPVC {
+		return schedulingPVC, currentPVC, nil
+	}
+	if schedulingPVC.Status.Phase != apiv1.ClaimBound {
+		return schedulingPVC, currentPVC, fmt.Errorf("waiting for Pod %s/%s scheduling", ns, strings.TrimPrefix(schedulingPVC.GetName(), component))
+	}
+
+	delete(schedulingPVC.Annotations, label.AnnPVCPodScheduling)
+	err = h.updatePVCFn(schedulingPVC)
+	if err != nil {
+		return schedulingPVC, currentPVC, err
+	}
+	return schedulingPVC, currentPVC, h.setCurrentPodScheduling(currentPVC)
+}
+
 func (h *ha) realPodListFn(ns, instanceName, component string) (*apiv1.PodList, error) {
 	selector := label.New().Instance(instanceName).Component(component).Labels()
 	return h.kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(selector).String(),
 	})
+}
+
+func (h *ha) realPVCListFn(ns, instanceName, component string) (*apiv1.PersistentVolumeClaimList, error) {
+	selector := label.New().Instance(instanceName).Component(component).Labels()
+	return h.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(selector).String(),
+	})
+}
+
+func (h *ha) realUpdatePVCFn(pvc *apiv1.PersistentVolumeClaim) error {
+	_, err := h.kubeCli.CoreV1().PersistentVolumeClaims(pvc.GetNamespace()).Update(pvc)
+	return err
 }
 
 func (h *ha) realPVCGetFn(ns, pvcName string) (*apiv1.PersistentVolumeClaim, error) {
@@ -140,6 +211,14 @@ func (h *ha) realPVCGetFn(ns, pvcName string) (*apiv1.PersistentVolumeClaim, err
 
 func (h *ha) realTCGetFn(ns, tcName string) (*v1alpha1.TidbCluster, error) {
 	return h.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+}
+
+func (h *ha) setCurrentPodScheduling(pvc *apiv1.PersistentVolumeClaim) error {
+	if pvc.Annotations == nil {
+		pvc.Annotations = map[string]string{}
+	}
+	pvc.Annotations[label.AnnPVCPodScheduling] = time.Now().Format(time.RFC3339)
+	return h.updatePVCFn(pvc)
 }
 
 func getTCNameFromPod(pod *apiv1.Pod, component string) string {
@@ -152,4 +231,8 @@ func getReplicasFrom(tc *v1alpha1.TidbCluster, component string) int32 {
 	}
 
 	return tc.Spec.TiKV.Replicas
+}
+
+func pvcName(component, podName string) string {
+	return fmt.Sprintf("%s-%s", component, podName)
 }
