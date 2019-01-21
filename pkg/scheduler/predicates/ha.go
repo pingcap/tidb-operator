@@ -156,7 +156,7 @@ func (h *ha) realAcquireLock(pod *apiv1.Pod) (*apiv1.PersistentVolumeClaim, *api
 	var currentPVC *apiv1.PersistentVolumeClaim
 	var schedulingPVC *apiv1.PersistentVolumeClaim
 	items := pvcList.Items
-	for i, _ := range items {
+	for i := range items {
 		if items[i].GetName() == currentPVCName {
 			currentPVC = &items[i]
 		}
