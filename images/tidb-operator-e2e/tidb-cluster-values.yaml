@@ -64,7 +64,7 @@ pd:
     # region: cn-bj1
   # Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
   # refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
-  tolerations: {}
+  tolerations: []
   # - key: node-role
   #   operator: Equal
   #   value: tidb
@@ -97,7 +97,7 @@ tikv:
     # kind: tikv
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
-  tolerations: {}
+  tolerations: []
   # - key: node-role
   #   operator: Equal
   #   value: tidb
@@ -132,7 +132,7 @@ tidb:
     # kind: tidb
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
-  tolerations: {}
+  tolerations: []
   # - key: node-role
   #   operator: Equal
   #   value: tidb
@@ -196,7 +196,7 @@ monitor:
     # kind: monitor
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
-  tolerations: {}
+  tolerations: []
   # - key: node-role
   #   operator: Equal
   #   value: tidb
