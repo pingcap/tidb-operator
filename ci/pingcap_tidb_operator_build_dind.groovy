@@ -55,6 +55,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 					export PATH=${env.PATH}:${WORKSPACE}/go/bin
 					make check
 					make test
+					bash <(curl -s https://codecov.io/bash)
 					make
 					make e2e-build
 					"""
