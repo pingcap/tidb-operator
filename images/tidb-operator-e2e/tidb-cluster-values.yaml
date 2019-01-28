@@ -47,7 +47,7 @@ pd:
   # maxReplicas is the number of replicas for each region
   maxReplicas: 3
   resources:
-    # limits:
+    limits: {}
     #   cpu: 8000m
     #   memory: 8Gi
     requests:
@@ -85,7 +85,7 @@ tikv:
   # enable this can prevent data loss when power failure
   syncLog: true
   resources:
-    # limits:
+    limits: {}
     #   cpu: 16000m
     #   memory: 32Gi
     #   storage: 300Gi
@@ -106,11 +106,11 @@ tikv:
 tikvPromGateway:
   image: prom/pushgateway:v0.3.1
   imagePullPolicy: IfNotPresent
-  resources: {}
-    # limits:
+  resources:
+    limits: {}
     #   cpu: 100m
     #   memory: 100Mi
-    # requests:
+    requests: {}
     #   cpu: 50m
     #   memory: 50Mi
 
@@ -121,11 +121,11 @@ tidb:
   image: pingcap/tidb:v2.1.0
   imagePullPolicy: IfNotPresent
   logLevel: info
-  resources: {}
-    # limits:
+  resources:
+    limits: {}
     #   cpu: 16000m
     #   memory: 16Gi
-    # requests:
+    requests: {}
     #   cpu: 12000m
     #   memory: 12Gi
   nodeSelector: {}
@@ -141,7 +141,7 @@ tidb:
   service:
     type: NodePort
     exposeStatus: true
-    annotations: {}
+    # annotations:
       # cloud.google.com/load-balancer-type: Internal
 
 # mysqlClient is used to set password for TiDB
@@ -154,7 +154,7 @@ monitor:
   # Also see rbac.create
   # If you set rbac.create to false, you need to provide a value here.
   # If you set rbac.create to true, you should leave this empty.
-  serviceAccount:
+  # serviceAccount:
   persistent: false
   storageClassName: local-storage
   storage: 10Gi
@@ -165,11 +165,11 @@ monitor:
     image: grafana/grafana:4.6.3
     imagePullPolicy: IfNotPresent
     logLevel: info
-    resources: {}
-      # limits:
+    resources:
+      limits: {}
       #   cpu: 8000m
       #   memory: 8Gi
-      # requests:
+      requests: {}
       #   cpu: 4000m
       #   memory: 4Gi
     username: admin
@@ -181,11 +181,11 @@ monitor:
     image: prom/prometheus:v2.2.1
     imagePullPolicy: IfNotPresent
     logLevel: info
-    resources: {}
-      # limits:
+    resources:
+      limits: {}
       #   cpu: 8000m
       #   memory: 8Gi
-      # requests:
+      requests: {}
       #   cpu: 4000m
       #   memory: 4Gi
     service:
