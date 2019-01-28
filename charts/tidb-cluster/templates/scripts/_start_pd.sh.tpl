@@ -62,7 +62,7 @@ ARGS="--data-dir=/var/lib/pd \
 --config=/etc/pd/pd.toml \
 "
 
-if [[ ! -d /var/lib/pd/member/wal ]]
+if [[ ! -f /var/lib/pd/join && ! -d /var/lib/pd/member/wal ]]
 then
     until result=$(wget -qO- -T 3 http://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
         echo "waiting for discovery service returns start args ..."
