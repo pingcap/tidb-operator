@@ -29,7 +29,7 @@ fi
 cluster_name=`echo ${PEER_SERVICE_NAME} | sed 's/-pd-peer//'`
 domain="${HOSTNAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc"
 discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc:10261"
-encoded_domain_url=`echo ${domain}:2380 | base64`
+encoded_domain_url=`echo ${domain}:2380 | base64 | tr "\n" " " | sed "s/ //g"`
 
 elapseTime=0
 period=1
@@ -62,7 +62,7 @@ ARGS="--data-dir=/var/lib/pd \
 --config=/etc/pd/pd.toml \
 "
 
-if [[ ! -d /var/lib/pd/member/wal ]]
+if [[ ! -f /var/lib/pd/join && ! -d /var/lib/pd/member/wal ]]
 then
     until result=$(wget -qO- -T 3 http://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
         echo "waiting for discovery service returns start args ..."
