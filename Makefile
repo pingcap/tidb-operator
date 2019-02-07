@@ -9,7 +9,7 @@ GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=linux GOARCH=amd64
 GO     := $(GOENV) GO111MODULE=on go build -mod=vendor
 GOTEST := CGO_ENABLED=0 GO111MODULE=on go test -v -mod=vendor -cover
 
-LDFLAGS = $(shell ./hack/version.sh) 
+LDFLAGS = $(shell ./hack/version.sh)
 
 DOCKER_REGISTRY := $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY),localhost:5000)
 
@@ -55,7 +55,7 @@ e2e-build:
 
 test:
 	@echo "Run unit tests"
-	@$(GOTEST) ./pkg/... && echo "\nUnit tests run successfully!"
+	@$(GOTEST) ./pkg/... -coverprofile=coverage.txt -covermode=atomic && echo "\nUnit tests run successfully!"
 
 check-all: lint check-static check-shadow check-gosec megacheck errcheck
 
