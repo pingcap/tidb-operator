@@ -262,8 +262,9 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	tikvUpgrader := mm.NewFakeTiKVUpgrader()
 	tidbUpgrader := mm.NewFakeTiDBUpgrader()
 
+	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder, pdControl)
 	tcc.control = NewDefaultTidbClusterControl(
-		controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder),
+		tcControl,
 		mm.NewPDMemberManager(
 			pdControl,
 			setControl,
@@ -312,6 +313,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			pvControl,
 		),
 		meta.NewMetaManager(
+			tcControl,
 			pvcInformer.Lister(),
 			pvcControl,
 			pvInformer.Lister(),

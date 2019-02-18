@@ -89,8 +89,8 @@ func NewController(
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 
-	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
 	pdControl := controller.NewDefaultPDControl()
+	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder, pdControl)
 	tidbControl := controller.NewDefaultTiDBControl()
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
@@ -155,6 +155,7 @@ func NewController(
 				pvControl,
 			),
 			meta.NewMetaManager(
+				tcControl,
 				pvcInformer.Lister(),
 				pvcControl,
 				pvInformer.Lister(),
