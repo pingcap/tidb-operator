@@ -500,6 +500,8 @@ func metaSynced(tc *v1alpha1.TidbCluster) (bool, error) {
 		return false, nil
 	}
 
+	Expect(tc.Labels[label.ClusterIDLabelKey]).To(Equal(clusterID))
+
 outerLoop:
 	for _, pod := range podList.Items {
 		podName := pod.GetName()
