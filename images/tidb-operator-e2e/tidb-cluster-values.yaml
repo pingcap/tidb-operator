@@ -236,6 +236,10 @@ fullbackup:
     # and then: cat credentials.json | base64 | tr -d '\n'
     # credentialsData: ""
     # bucket: ""
+  # backup to ceph object storage
+  ceph: {}
+    # endpoint: ""
+    # bucket: ""
 
 binlog:
   pump:
