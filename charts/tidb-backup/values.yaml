@@ -30,6 +30,10 @@ backup:
     # and then: cat credentials.json | base64 | tr -d '\n'
     # credentialsData: ""
     # bucket: ""
+  # backup to ceph object storage
+  ceph: {}
+    # endpoint: ""
+    # bucket: ""
 
 restore:
   create: false
@@ -53,5 +57,11 @@ restore:
     # and then: cat credentials.json | base64 | tr -d '\n'
     # credentialsData: ""
     # bucket: ""
-    # # srcDir is the directory of backup data in bucket
+    # srcDir is the directory of backup data in bucket
+    # srcDir: ""
+  # backup data comes from ceph object storage
+  ceph: {}
+    # endpoint: ""
+    # bucket: ""
+    # srcDir is the directory of backup data in bucket
     # srcDir: ""

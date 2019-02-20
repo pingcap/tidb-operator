@@ -21,3 +21,19 @@ downloader \
   {{ .Values.restore.options }}
 {{- end }}
 
+{{- if .Values.restore.ceph }}
+downloader \
+  --cloud=ceph \
+  --bucket={{ .Values.restore.ceph.bucket }} \
+  --endpoint={{ .Values.restore.ceph.endpoint }} \
+  --srcDir={{ .Values.restore.ceph.srcDir }} \
+  --destDir=${dataDir}
+
+/loader \
+  -d ${dataDir}/{{ .Values.restore.ceph.srcDir }} \
+  -h `eval echo '${'$host'}'` \
+  -u {{ .Values.restore.user }} \
+  -p ${TIDB_PASSWORD} \
+  -P 4000 \
+  {{ .Values.restore.options }}
+{{- end }}
