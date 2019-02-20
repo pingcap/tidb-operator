@@ -20,8 +20,6 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
@@ -41,14 +39,12 @@ func TestMetaManagerSync(t *testing.T) {
 		pvcHasLabels     bool
 		pvcHasVolumeName bool
 		podRefPvc        bool
-		tcUpdateErr      bool
 		podUpdateErr     bool
 		getClusterErr    bool
 		getMemberErr     bool
 		getStoreErr      bool
 		pvcUpdateErr     bool
 		pvUpdateErr      bool
-		tcChanged        bool
 		podChanged       bool
 		pvcChanged       bool
 		pvChanged        bool
@@ -76,7 +72,7 @@ func TestMetaManagerSync(t *testing.T) {
 			pod1.Spec = newPodSpec(v1alpha1.TiDBMemberType.String(), pvc1.GetName())
 		}
 
-		nmm, fakePodControl, fakePVCControl, fakePVControl, fakeTcControl, podIndexer, pvcIndexer, pvIndexer := newFakeMetaManager()
+		nmm, fakePodControl, fakePVCControl, fakePVControl, podIndexer, pvcIndexer, pvIndexer := newFakeMetaManager()
 		err := podIndexer.Add(pod1)
 		g.Expect(err).NotTo(HaveOccurred())
 		err = pvcIndexer.Add(pvc1)
@@ -84,9 +80,6 @@ func TestMetaManagerSync(t *testing.T) {
 		err = pvIndexer.Add(pv1)
 		g.Expect(err).NotTo(HaveOccurred())
 
-		if test.tcUpdateErr {
-			fakeTcControl.SetUpdateMetaInfoError(errors.NewInternalError(fmt.Errorf("set tidbCluster labels error")), 0)
-		}
 		if test.podUpdateErr {
 			fakePodControl.SetUpdatePodError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
@@ -107,24 +100,6 @@ func TestMetaManagerSync(t *testing.T) {
 		}
 
 		err = nmm.Sync(tc)
-		if test.tcUpdateErr {
-			g.Expect(err).To(HaveOccurred())
-
-			g.Expect(tcMetaInfoMatchDesire(tc)).To(Equal(false))
-
-			pod, err := nmm.podLister.Pods(ns).Get(pod1.Name)
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(podMetaInfoMatchDesire(pod)).To(Equal(false))
-
-			pvc, err := nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(pvcMetaInfoMatchDesire(pvc)).To(Equal(false))
-
-			pv, err := nmm.pvLister.Get(pv1.Name)
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(false))
-		}
-
 		if test.podUpdateErr || test.getClusterErr || test.getMemberErr || test.getStoreErr {
 			g.Expect(err).To(HaveOccurred())
 
@@ -159,12 +134,6 @@ func TestMetaManagerSync(t *testing.T) {
 			pv, err := nmm.pvLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(false))
-		}
-
-		if test.tcChanged {
-			g.Expect(tcMetaInfoMatchDesire(tc)).To(Equal(true))
-		} else {
-			g.Expect(tcMetaInfoMatchDesire(tc)).To(Equal(false))
 		}
 
 		if test.podChanged {
@@ -212,7 +181,6 @@ func TestMetaManagerSync(t *testing.T) {
 			getStoreErr:      false,
 			pvcUpdateErr:     false,
 			pvUpdateErr:      false,
-			tcChanged:        true,
 			podChanged:       true,
 			pvcChanged:       true,
 			pvChanged:        true,
@@ -229,7 +197,6 @@ func TestMetaManagerSync(t *testing.T) {
 			getStoreErr:      false,
 			pvcUpdateErr:     false,
 			pvUpdateErr:      false,
-			tcChanged:        true,
 			podChanged:       false,
 			pvcChanged:       false,
 			pvChanged:        false,
@@ -246,7 +213,6 @@ func TestMetaManagerSync(t *testing.T) {
 			getStoreErr:      false,
 			pvcUpdateErr:     false,
 			pvUpdateErr:      false,
-			tcChanged:        true,
 			podChanged:       true,
 			pvcChanged:       true,
 			pvChanged:        true,
@@ -263,7 +229,6 @@ func TestMetaManagerSync(t *testing.T) {
 			getStoreErr:      false,
 			pvcUpdateErr:     false,
 			pvUpdateErr:      false,
-			tcChanged:        true,
 			podChanged:       true,
 			pvcChanged:       true,
 			pvChanged:        false,
@@ -280,7 +245,6 @@ func TestMetaManagerSync(t *testing.T) {
 			getStoreErr:      false,
 			pvcUpdateErr:     false,
 			pvUpdateErr:      false,
-			tcChanged:        true,
 			podChanged:       true,
 			pvcChanged:       false,
 			pvChanged:        false,
@@ -297,7 +261,6 @@ func TestMetaManagerSync(t *testing.T) {
 			getStoreErr:      false,
 			pvcUpdateErr:     false,
 			pvUpdateErr:      false,
-			tcChanged:        true,
 			podChanged:       false,
 			pvcChanged:       false,
 			pvChanged:        false,
@@ -314,7 +277,6 @@ func TestMetaManagerSync(t *testing.T) {
 			getStoreErr:      false,
 			pvcUpdateErr:     false,
 			pvUpdateErr:      false,
-			tcChanged:        true,
 			podChanged:       false,
 			pvcChanged:       false,
 			pvChanged:        false,
@@ -331,7 +293,6 @@ func TestMetaManagerSync(t *testing.T) {
 			getStoreErr:      false,
 			pvcUpdateErr:     false,
 			pvUpdateErr:      false,
-			tcChanged:        true,
 			podChanged:       false,
 			pvcChanged:       false,
 			pvChanged:        false,
@@ -348,7 +309,6 @@ func TestMetaManagerSync(t *testing.T) {
 			getStoreErr:      true,
 			pvcUpdateErr:     false,
 			pvUpdateErr:      false,
-			tcChanged:        true,
 			podChanged:       false,
 			pvcChanged:       false,
 			pvChanged:        false,
@@ -365,7 +325,6 @@ func TestMetaManagerSync(t *testing.T) {
 			getStoreErr:      false,
 			pvcUpdateErr:     true,
 			pvUpdateErr:      false,
-			tcChanged:        true,
 			podChanged:       true,
 			pvcChanged:       false,
 			pvChanged:        false,
@@ -382,26 +341,8 @@ func TestMetaManagerSync(t *testing.T) {
 			getStoreErr:      false,
 			pvcUpdateErr:     false,
 			pvUpdateErr:      true,
-			tcChanged:        true,
 			podChanged:       true,
 			pvcChanged:       true,
-			pvChanged:        false,
-		},
-		{
-			name:             "tc update failed",
-			podHasLabels:     true,
-			pvcHasLabels:     true,
-			pvcHasVolumeName: true,
-			podRefPvc:        true,
-			tcUpdateErr:      true,
-			podUpdateErr:     false,
-			getClusterErr:    false,
-			getMemberErr:     false,
-			getStoreErr:      false,
-			pvcUpdateErr:     false,
-			pvUpdateErr:      false,
-			podChanged:       false,
-			pvcChanged:       false,
 			pvChanged:        false,
 		},
 	}
@@ -416,7 +357,6 @@ func newFakeMetaManager() (
 	*controller.FakePodControl,
 	*controller.FakePVCControl,
 	*controller.FakePVControl,
-	*controller.FakeTidbClusterControl,
 	cache.Indexer,
 	cache.Indexer,
 	cache.Indexer,
@@ -432,24 +372,14 @@ func newFakeMetaManager() (
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
 	pvControl := controller.NewFakePVControl(pvInformer, pvcInformer)
 
-	cli := fake.NewSimpleClientset()
-	informerFactory := informers.NewSharedInformerFactory(cli, 0)
-	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
-	tcControl := controller.NewFakeTidbClusterControl(tcInformer)
-
 	return &metaManager{
-		tcControl,
 		pvcInformer.Lister(),
 		pvcControl,
 		pvInformer.Lister(),
 		pvControl,
 		podInformer.Lister(),
 		podControl,
-	}, podControl, pvcControl, pvControl, tcControl, podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), pvInformer.Informer().GetIndexer()
-}
-
-func tcMetaInfoMatchDesire(tc *v1alpha1.TidbCluster) bool {
-	return tc.Labels[label.ClusterIDLabelKey] == controller.TestClusterID
+	}, podControl, pvcControl, pvControl, podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), pvInformer.Informer().GetIndexer()
 }
 
 func podMetaInfoMatchDesire(pod *corev1.Pod) bool {

@@ -27,7 +27,6 @@ import (
 var errPVCNotFound = errors.New("PVC is not found")
 
 type metaManager struct {
-	tcControl  controller.TidbClusterControlInterface
 	pvcLister  corelisters.PersistentVolumeClaimLister
 	pvcControl controller.PVCControlInterface
 	pvLister   corelisters.PersistentVolumeLister
@@ -38,7 +37,6 @@ type metaManager struct {
 
 // NewMetaManager returns a *metaManager
 func NewMetaManager(
-	tcControl controller.TidbClusterControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pvcControl controller.PVCControlInterface,
 	pvLister corelisters.PersistentVolumeLister,
@@ -47,7 +45,6 @@ func NewMetaManager(
 	podControl controller.PodControlInterface,
 ) manager.Manager {
 	return &metaManager{
-		tcControl:  tcControl,
 		pvcLister:  pvcLister,
 		pvcControl: pvcControl,
 		pvLister:   pvLister,
@@ -66,11 +63,6 @@ func (pmm *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 	pods, err := pmm.podLister.Pods(ns).List(l)
-	if err != nil {
-		return err
-	}
-
-	tc, err = pmm.tcControl.UpdateMetaInfo(tc)
 	if err != nil {
 		return err
 	}

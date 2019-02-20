@@ -15,7 +15,6 @@ package controller
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/golang/glog"
@@ -23,7 +22,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,44 +34,23 @@ import (
 // TidbClusterControlInterface manages TidbClusters
 type TidbClusterControlInterface interface {
 	UpdateTidbCluster(*v1alpha1.TidbCluster, *v1alpha1.TidbClusterStatus, *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error)
-	UpdateMetaInfo(*v1alpha1.TidbCluster) (*v1alpha1.TidbCluster, error)
 }
 
 type realTidbClusterControl struct {
-	cli       versioned.Interface
-	tcLister  listers.TidbClusterLister
-	recorder  record.EventRecorder
-	pdControl PDControlInterface
+	cli      versioned.Interface
+	tcLister listers.TidbClusterLister
+	recorder record.EventRecorder
 }
 
 // NewRealTidbClusterControl creates a new TidbClusterControlInterface
 func NewRealTidbClusterControl(cli versioned.Interface,
 	tcLister listers.TidbClusterLister,
-	recorder record.EventRecorder,
-	pdControl PDControlInterface) TidbClusterControlInterface {
+	recorder record.EventRecorder) TidbClusterControlInterface {
 	return &realTidbClusterControl{
 		cli,
 		tcLister,
 		recorder,
-		pdControl,
 	}
-}
-
-func (rtc *realTidbClusterControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster) (*v1alpha1.TidbCluster, error) {
-	pdClient := rtc.pdControl.GetPDClient(tc)
-	pdClient.GetCluster()
-	cluster, err := pdClient.GetCluster()
-	if err != nil {
-		return tc, fmt.Errorf("failed to get tidb cluster info from pd, TidbCluster: %s/%s, err: %v", tc.GetNamespace(), tc.GetName(), err)
-	}
-	clusterID := strconv.FormatUint(cluster.Id, 10)
-	labels := tc.GetLabels()
-	if labels == nil {
-		labels = map[string]string{}
-	}
-	setIfNotEmpty(labels, label.ClusterIDLabelKey, clusterID)
-	tc.Labels = labels
-	return tc, nil
 }
 
 func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, newStatus *v1alpha1.TidbClusterStatus, oldStatus *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error) {
@@ -145,7 +122,6 @@ type FakeTidbClusterControl struct {
 	TcLister                 listers.TidbClusterLister
 	TcIndexer                cache.Indexer
 	updateTidbClusterTracker requestTracker
-	updateMetaInfoTracker    requestTracker
 }
 
 // NewFakeTidbClusterControl returns a FakeTidbClusterControl
@@ -154,7 +130,6 @@ func NewFakeTidbClusterControl(tcInformer tcinformers.TidbClusterInformer) *Fake
 		tcInformer.Lister(),
 		tcInformer.Informer().GetIndexer(),
 		requestTracker{0, nil, 0},
-		requestTracker{0, nil, 0},
 	}
 }
 
@@ -162,12 +137,6 @@ func NewFakeTidbClusterControl(tcInformer tcinformers.TidbClusterInformer) *Fake
 func (ssc *FakeTidbClusterControl) SetUpdateTidbClusterError(err error, after int) {
 	ssc.updateTidbClusterTracker.err = err
 	ssc.updateTidbClusterTracker.after = after
-}
-
-// SetUpdateMetaInfoError sets the error attributes of updateMetaInfoTracker
-func (ssc *FakeTidbClusterControl) SetUpdateMetaInfoError(err error, after int) {
-	ssc.updateMetaInfoTracker.err = err
-	ssc.updateMetaInfoTracker.after = after
 }
 
 // UpdateTidbCluster updates the TidbCluster
@@ -179,15 +148,4 @@ func (ssc *FakeTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, _
 	}
 
 	return tc, ssc.TcIndexer.Update(tc)
-}
-
-func (ssc *FakeTidbClusterControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster) (*v1alpha1.TidbCluster, error) {
-	defer ssc.updateMetaInfoTracker.inc()
-	if ssc.updateMetaInfoTracker.errorReady() {
-		defer ssc.updateMetaInfoTracker.reset()
-		return tc, ssc.updateMetaInfoTracker.err
-	}
-
-	tc.Labels = map[string]string{label.ClusterIDLabelKey: TestClusterID}
-	return tc, nil
 }

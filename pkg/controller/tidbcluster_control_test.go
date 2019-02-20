@@ -15,16 +15,14 @@ package controller
 
 import (
 	"errors"
-	"fmt"
 	"testing"
+
 	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,8 +37,7 @@ func TestTidbClusterControlUpdateTidbCluster(t *testing.T) {
 	tc := newTidbCluster()
 	tc.Spec.PD.Replicas = int32(5)
 	fakeClient := &fake.Clientset{}
-	pdControl := NewFakePDControl()
-	control := NewRealTidbClusterControl(fakeClient, nil, recorder, pdControl)
+	control := NewRealTidbClusterControl(fakeClient, nil, recorder)
 	fakeClient.AddReactor("update", "tidbclusters", func(action core.Action) (bool, runtime.Object, error) {
 		update := action.(core.UpdateAction)
 		return true, update.GetObject(), nil
@@ -60,8 +57,7 @@ func TestTidbClusterControlUpdateTidbClusterConflictSuccess(t *testing.T) {
 	fakeClient := &fake.Clientset{}
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	tcLister := listers.NewTidbClusterLister(indexer)
-	pdControl := NewFakePDControl()
-	control := NewRealTidbClusterControl(fakeClient, tcLister, recorder, pdControl)
+	control := NewRealTidbClusterControl(fakeClient, tcLister, recorder)
 	conflict := false
 	fakeClient.AddReactor("update", "tidbclusters", func(action core.Action) (bool, runtime.Object, error) {
 		update := action.(core.UpdateAction)
@@ -76,46 +72,6 @@ func TestTidbClusterControlUpdateTidbClusterConflictSuccess(t *testing.T) {
 
 	events := collectEvents(recorder.Events)
 	g.Expect(events).To(HaveLen(0))
-}
-
-func TestRealTidbClusterControlUpdateMetaInfoSuccess(t *testing.T) {
-	g := NewGomegaWithT(t)
-	recorder := record.NewFakeRecorder(10)
-	tc := newTidbCluster()
-	tc.Spec.PD.Replicas = int32(5)
-	fakeClient := &fake.Clientset{}
-	pdControl := NewFakePDControl()
-	control := NewRealTidbClusterControl(fakeClient, nil, recorder, pdControl)
-	pdClient := NewFakePDClient()
-	pdControl.SetPDClient(tc, pdClient)
-	pdClient.AddReaction(GetClusterActionType, func(action *Action) (interface{}, error) {
-		cluster := &metapb.Cluster{
-			Id: 1234,
-		}
-		return cluster, nil
-	})
-	tc, err := control.UpdateMetaInfo(tc)
-	g.Expect(err).NotTo(HaveOccurred())
-	g.Expect(tc.Labels[label.ClusterIDLabelKey]).NotTo(BeNil())
-	g.Expect(tc.Labels[label.ClusterIDLabelKey]).To(Equal("1234"))
-}
-
-func TestRealTidbClusterControlUpdateMetaInfoGetClusterFailed(t *testing.T) {
-	g := NewGomegaWithT(t)
-	recorder := record.NewFakeRecorder(10)
-	tc := newTidbCluster()
-	tc.Spec.PD.Replicas = int32(5)
-	fakeClient := &fake.Clientset{}
-	pdControl := NewFakePDControl()
-	control := NewRealTidbClusterControl(fakeClient, nil, recorder, pdControl)
-	pdClient := NewFakePDClient()
-	pdControl.SetPDClient(tc, pdClient)
-	pdClient.AddReaction(GetClusterActionType, func(action *Action) (interface{}, error) {
-		return nil, fmt.Errorf("error to get cluster")
-	})
-	tc, err := control.UpdateMetaInfo(tc)
-	g.Expect(err).To(HaveOccurred())
-	g.Expect(tc.Labels[label.ClusterIDLabelKey]).To(Equal(""))
 }
 
 func TestDeepEqualExceptHeartbeatTime(t *testing.T) {
