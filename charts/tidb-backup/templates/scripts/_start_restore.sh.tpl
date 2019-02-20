@@ -9,16 +9,8 @@ host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]' | tr
 downloader \
   --cloud=gcp \
   --bucket={{ .Values.restore.gcp.bucket }} \
-  --srcDir={{ .Values.restore.gcp.srcDir }} \
+  --srcDir={{ .Values.restore.srcDir }} \
   --destDir=${dataDir}
-
-/loader \
-  -d ${dataDir}/{{ .Values.restore.gcp.srcDir }} \
-  -h `eval echo '${'$host'}'` \
-  -u {{ .Values.restore.user }} \
-  -p ${TIDB_PASSWORD} \
-  -P 4000 \
-  {{ .Values.restore.options }}
 {{- end }}
 
 {{- if .Values.restore.ceph }}
@@ -26,14 +18,14 @@ downloader \
   --cloud=ceph \
   --bucket={{ .Values.restore.ceph.bucket }} \
   --endpoint={{ .Values.restore.ceph.endpoint }} \
-  --srcDir={{ .Values.restore.ceph.srcDir }} \
+  --srcDir={{ .Values.restore.srcDir }} \
   --destDir=${dataDir}
+{{- end }}
 
 /loader \
-  -d ${dataDir}/{{ .Values.restore.ceph.srcDir }} \
+  -d ${dataDir}/{{ .Values.restore.srcDir }} \
   -h `eval echo '${'$host'}'` \
   -u {{ .Values.restore.user }} \
   -p ${TIDB_PASSWORD} \
   -P 4000 \
   {{ .Values.restore.options }}
-{{- end }}

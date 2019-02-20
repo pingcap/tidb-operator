@@ -50,6 +50,8 @@ restore:
   # user must set tidb cluster user and password
   user: restore
   password: "Password here ..."
+  # srcDir is the directory of backup data in bucket
+  srcDir: ""
   # backup data comes from gcp
   gcp: {}
     # credentialsData is base64 format of the service account json file data
@@ -57,11 +59,7 @@ restore:
     # and then: cat credentials.json | base64 | tr -d '\n'
     # credentialsData: ""
     # bucket: ""
-    # srcDir is the directory of backup data in bucket
-    # srcDir: ""
   # backup data comes from ceph object storage
   ceph: {}
     # endpoint: ""
     # bucket: ""
-    # srcDir is the directory of backup data in bucket
-    # srcDir: ""
