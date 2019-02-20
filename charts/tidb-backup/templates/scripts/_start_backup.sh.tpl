@@ -19,3 +19,11 @@ uploader \
   --bucket={{ .Values.backup.gcp.bucket }} \
   --backup-dir=/data/${dirname}
 {{- end }}
+
+{{- if .Values.backup.ceph }}
+uploader \
+  --cloud=ceph \
+  --bucket={{ .Values.backup.ceph.bucket }} \
+  --endpoint={{ .Values.backup.ceph.endpoint }} \
+  --backup-dir=/data/${dirname}
+{{- end }}
