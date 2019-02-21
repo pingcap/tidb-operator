@@ -240,6 +240,11 @@ func pdMemberRunning(tc *v1alpha1.TidbCluster) (bool, error) {
 		}
 	}
 
+	if tc.Status.ClusterID == "" {
+		logf("tc.Status.ClusterID is nil")
+		return false, nil
+	}
+
 	_, err = kubeCli.CoreV1().Services(ns).Get(controller.PDMemberName(tcName), metav1.GetOptions{})
 	if err != nil {
 		logf(err.Error())

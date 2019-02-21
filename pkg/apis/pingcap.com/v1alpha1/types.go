@@ -98,9 +98,10 @@ type TidbClusterSpec struct {
 
 // TidbClusterStatus represents the current status of a tidb cluster.
 type TidbClusterStatus struct {
-	PD   PDStatus   `json:"pd,omitempty"`
-	TiKV TiKVStatus `json:"tikv,omitempty"`
-	TiDB TiDBStatus `json:"tidb,omitempty"`
+	ClusterID string     `json:"clusterID,omitempty"`
+	PD        PDStatus   `json:"pd,omitempty"`
+	TiKV      TiKVStatus `json:"tikv,omitempty"`
+	TiDB      TiDBStatus `json:"tidb,omitempty"`
 }
 
 // PDSpec contains details of PD member
