@@ -26,7 +26,15 @@ TiDB Operator uses [PersistentVolume](https://kubernetes.io/docs/concepts/storag
 
 The Kubernetes cluster is suggested to enable [RBAC](https://kubernetes.io/docs/admin/authorization/rbac). Otherwise you may want to set `rbac.create` to `false` in the values.yaml of both tidb-operator and tidb-cluster charts.
 
-Because TiDB by default will use at most 40960 file descriptors, the [worker node](https://access.redhat.com/solutions/61334) and its [Docker daemon's](https://docs.docker.com/engine/reference/commandline/dockerd/#default-ulimit-settings) ulimit must be configured to greater than 40960. Otherwise you have to change TiKV's `max-open-files` to match your work node `ulimit -n` in the configuration file `charts/tidb-cluster/templates/config/_tikv-config.tpl`, but this will impact TiDB performance.
+Because TiDB by default will use at most 40960 file descriptors, the [worker node](https://access.redhat.com/solutions/61334) and its Docker daemon's ulimit must be configured to greater than 40960:
+
+```shell
+$ sudo vim /etc/systemd/system/docker.service
+```
+
+Set `LimitNOFILE` to equal or greater than 40960.
+
+Otherwise you have to change TiKV's `max-open-files` to match your work node `ulimit -n` in the configuration file `charts/tidb-cluster/templates/config/_tikv-config.tpl`, but this will impact TiDB performance.
 
 ## Helm
 
@@ -52,7 +60,9 @@ You can follow Helm official [documentation](https://helm.sh) to install Helm in
 
 ## Local Persistent Volume
 
-Local disks are recommended to be formatted as ext4 filesystem.
+Local disks are recommended to be formatted as ext4 filesystem. The local persistent volume directory must be a [mount point](https://unix.stackexchange.com/questions/198590/what-is-a-bind-mount): a whole disk mount or a bind mount:
+
+### Disk mount
 
 Mount local ssd disks of your Kubernetes nodes at subdirectory of /mnt/disks. For example if your data disk is `/dev/nvme0n1`, you can format and mount with the following commands:
 
@@ -62,9 +72,30 @@ $ sudo mkfs.ext4 /dev/nvme0n1
 $ sudo mount -t ext4 -o nodelalloc /dev/nvme0n1 /mnt/disks/disk0
 ```
 
-To auto-mount disks when your operating system is booted, you should edit `/etc/fstab` to include these mounting info.
+### Bind mount
 
-After mounting all data disks on Kubernetes nodes, you can deploy [local-volume-provisioner](https://github.com/kubernetes-incubator/external-storage/tree/master/local-volume) to automatically provision the mounted disks as Local PersistentVolumes.
+For example if your data directory is `/data`, you can create a bind mount with the following commands:
+
+```shell
+$ sudo mkdir -p /data/local-pv01
+$ sudo mkdir -p /mnt/disks/local-pv01
+$ sudo mount --bind /data/local-pv01 /mnt/disks/local-pv01
+```
+
+Use this command to confirm the mount point exist:
+
+```shell
+$ mount | grep /mnt/disks/local-pv01
+```
+
+To auto-mount disks when your operating system is booted, you should edit `/etc/fstab` to include these mounting info:
+
+```shell
+$ echo "/dev/nvme0n1 /mnt/disks/disk0 none bind 0 0" >> /etc/fstab
+$ echo "/data/local-pv01 /mnt/disks/local-pv01 none bind 0 0" >> /etc/fstab
+```
+
+After mounting all data disks on Kubernetes nodes, you can deploy [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) to automatically provision the mounted disks as Local PersistentVolumes.
 
 ```shell
 $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/local-dind/local-volume-provisioner.yaml
