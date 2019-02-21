@@ -150,3 +150,7 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 
 	return true
 }
+
+func (tc *TidbCluster) GetClusterID() string {
+	return tc.Status.ClusterID
+}

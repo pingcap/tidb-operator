@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
@@ -254,6 +255,14 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	}
 
 	pdClient := pmm.pdControl.GetPDClient(tc)
+
+	cluster, err := pdClient.GetCluster()
+	if err != nil {
+		tc.Status.PD.Synced = false
+		return err
+	}
+	tc.Status.ClusterID = strconv.FormatUint(cluster.Id, 10)
+
 	healthInfo, err := pdClient.GetHealth()
 	if err != nil {
 		tc.Status.PD.Synced = false

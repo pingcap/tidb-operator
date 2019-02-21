@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -187,6 +188,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		errWhenUpdateStatefulSet   bool
 		errWhenUpdatePDService     bool
 		errWhenUpdatePDPeerService bool
+		errWhenGetCluster          bool
 		errWhenGetPDHealth         bool
 		statusChange               func(*apps.StatefulSet)
 		err                        bool
@@ -211,6 +213,16 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		} else {
 			pdClient.AddReaction(controller.GetHealthActionType, func(action *controller.Action) (interface{}, error) {
 				return test.pdHealth, nil
+			})
+		}
+
+		if test.errWhenGetCluster {
+			pdClient.AddReaction(controller.GetClusterActionType, func(action *controller.Action) (interface{}, error) {
+				return nil, fmt.Errorf("failed to get cluster info")
+			})
+		} else {
+			pdClient.AddReaction(controller.GetClusterActionType, func(action *controller.Action) (interface{}, error) {
+				return &metapb.Cluster{Id: uint64(1)}, nil
 			})
 		}
 
@@ -302,6 +314,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 				// g.Expect(int(*set.Spec.Replicas)).To(Equal(4))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.ClusterID).To(Equal("1"))
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.NormalPhase))
 				g.Expect(*tc.Status.PD.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
 				g.Expect(len(tc.Status.PD.Members)).To(Equal(3))
@@ -377,6 +390,27 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			errWhenUpdatePDService:     false,
 			errWhenUpdatePDPeerService: false,
 			errWhenGetPDHealth:         true,
+			err:                        false,
+			expectPDServiceFn:          nil,
+			expectPDPeerServiceFn:      nil,
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.PD.Synced).To(BeFalse())
+				g.Expect(tc.Status.PD.Members).To(BeNil())
+			},
+		},
+		{
+			name: "error when sync cluster ID",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PD.Replicas = 5
+			},
+			errWhenUpdateStatefulSet:   false,
+			errWhenUpdatePDService:     false,
+			errWhenUpdatePDPeerService: false,
+			errWhenGetCluster:          true,
+			errWhenGetPDHealth:         false,
 			err:                        false,
 			expectPDServiceFn:          nil,
 			expectPDPeerServiceFn:      nil,
@@ -520,6 +554,9 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 
 		pdClient.AddReaction(controller.GetHealthActionType, func(action *controller.Action) (interface{}, error) {
 			return test.pdHealth, nil
+		})
+		pdClient.AddReaction(controller.GetClusterActionType, func(action *controller.Action) (interface{}, error) {
+			return &metapb.Cluster{Id: uint64(1)}, nil
 		})
 
 		fakeSetControl.SetStatusChange(test.statusChange)
