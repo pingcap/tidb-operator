@@ -117,6 +117,8 @@ After the `TidbCluster` custom resource is created, you can install TiDB Operato
 Uncomment the `scheduler.kubeSchedulerImage` in `values.yaml`, set it to the same as your kubernetes cluster version.
 
 ```shell
+$ git clone https://github.com/pingcap/tidb-operator.git
+$ cd tidb-operator
 $ helm install charts/tidb-operator --name=tidb-operator --namespace=tidb-admin
 $ kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
 ```
