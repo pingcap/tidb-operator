@@ -31,12 +31,15 @@ For other settings, the variables in `values.yaml` are self-explanatory with com
 
 By default TiDB service is exposed using [`NodePort`](https://kubernetes.io/docs/concepts/services-networking/service/#nodeport). You can modify it to `ClusterIP` which will disable access from outside of the cluster. Or modify it to [`LoadBalancer`](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer) if the underlining Kubernetes supports this kind of service.
 
-By default TiDB cluster is deployed with a random generated password. You can specify a password by setting `tidb.password` in `values.yaml` before deploying. Whether you specify the password or not, you can retrieve the password through `Secret`:
+```shell
+$ kubectl get svc -n ${namespace} # check the available services
+```
+
+By default the TiDB cluster has no password set. You can specify a password by setting `tidb.password` in `values.yaml` before deploying. You can retrieve the password from the initialization `Secret`:
 
 ```shell
 $ PASSWORD=$(kubectl get secret -n ${namespace} ${clusterName}-tidb -ojsonpath="{.data.password}" | base64 --decode | awk '{print $6}')
 $ echo ${PASSWORD}
-$ kubectl get svc -n ${namespace} # check the available services
 ```
 
 * Access inside of the Kubernetes cluster
