@@ -1,3 +1,4 @@
+{{- if .Values.tidb.password }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -40,3 +41,4 @@ spec:
           items:
           - key: password
             path: init-password.sql
+{{- end }}
