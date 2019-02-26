@@ -42,8 +42,10 @@ const (
 	TiDBMemberType MemberType = "tidb"
 	// TiKVMemberType is tikv container type
 	TiKVMemberType MemberType = "tikv"
-	//PushGatewayMemberType is pushgateway container type
+	// PushGatewayMemberType is pushgateway container type
 	PushGatewayMemberType MemberType = "pushgateway"
+	// TiDBLogTailerMemberType is tidb log tailer container type
+	SlowLogTailerMemberType MemberType = "slowlog-tailer"
 	// UnknownMemberType is unknown container type
 	UnknownMemberType MemberType = "unknown"
 )
@@ -117,13 +119,20 @@ type PDSpec struct {
 // TiDBSpec contains details of PD member
 type TiDBSpec struct {
 	ContainerSpec
-	Replicas             int32               `json:"replicas"`
-	NodeSelector         map[string]string   `json:"nodeSelector,omitempty"`
-	NodeSelectorRequired bool                `json:"nodeSelectorRequired,omitempty"`
-	StorageClassName     string              `json:"storageClassName,omitempty"`
-	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
-	BinlogEnabled        bool                `json:"binlogEnabled,omitempty"`
-	MaxFailoverCount     int32               `json:"maxFailoverCount,omitempty"`
+	Replicas             int32                 `json:"replicas"`
+	NodeSelector         map[string]string     `json:"nodeSelector,omitempty"`
+	NodeSelectorRequired bool                  `json:"nodeSelectorRequired,omitempty"`
+	StorageClassName     string                `json:"storageClassName,omitempty"`
+	Tolerations          []corev1.Toleration   `json:"tolerations,omitempty"`
+	BinlogEnabled        bool                  `json:"binlogEnabled,omitempty"`
+	MaxFailoverCount     int32                 `json:"maxFailoverCount,omitempty"`
+	SeparateSlowLog      bool                  `json:"separateSlowLog,omitempty"`
+	SlowLogTailer        TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
+}
+
+// TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB
+type TiDBSlowLogTailerSpec struct {
+	ContainerSpec
 }
 
 // TiKVSpec contains details of PD member

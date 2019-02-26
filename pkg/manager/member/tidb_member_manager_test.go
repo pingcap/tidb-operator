@@ -558,6 +558,7 @@ func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
 					},
 				},
 				Replicas: 3,
+				SeparateSlowLog: true,
 			},
 		},
 	}
