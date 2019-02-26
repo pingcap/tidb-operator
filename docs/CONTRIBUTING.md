@@ -139,7 +139,7 @@ You can get the e2e test report from the log of testing pod:
 $ kubectl -n=tidb-operator-e2e logs -f tidb-operator-e2e
 ```
 
-To re-run e2e tests, delete the testing pod and apply it again:
+To re-run e2e tests, delete the testing pod and apply it again.
 
 ### Step 5: Keep your branch in sync
 
