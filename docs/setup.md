@@ -60,7 +60,7 @@ You can follow Helm official [documentation](https://helm.sh) to install Helm in
 
 ## Local Persistent Volume
 
-Local disks are recommended to be formatted as ext4 filesystem. The local persistent volume directory must be a [mount point](https://unix.stackexchange.com/questions/198590/what-is-a-bind-mount): a whole disk mount or a bind mount:
+Local disks are recommended to be formatted as ext4 filesystem. The local persistent volume directory must be a mount point: a whole disk mount or a [bind mount](https://unix.stackexchange.com/questions/198590/what-is-a-bind-mount):
 
 ### Disk mount
 
@@ -74,7 +74,7 @@ $ sudo mount -t ext4 -o nodelalloc /dev/nvme0n1 /mnt/disks/disk0
 
 ### Bind mount
 
-For example if your data directory is `/data`, you can create a bind mount with the following commands:
+The disadvantages of bind mount for TiDB: all the volumes has the size of the whole disk and there is no quota and isolation of bind mount volumes. Here is the commands to setup a bind mount: if your data directory is `/data`, you can create a bind mount with the following commands:
 
 ```shell
 $ sudo mkdir -p /data/local-pv01
