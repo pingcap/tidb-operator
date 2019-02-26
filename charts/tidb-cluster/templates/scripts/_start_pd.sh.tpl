@@ -69,7 +69,7 @@ then
     # The --join args must be:
     #   --join=http://demo-pd-0.demo-pd-peer.demo.svc:2380,http://demo-pd-1.demo-pd-peer.demo.svc:2380
     join=`cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","`
-    join=${join%?}
+    join=${join%,}
     ARGS="${ARGS} --join=${join}"
 elif [[ ! -d /var/lib/pd/member/wal ]]
 then
