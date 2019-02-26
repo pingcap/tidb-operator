@@ -145,10 +145,13 @@ tikvPromGateway:
 
 tidb:
   replicas: 2
-  # The password to access TiDB
-  # If set, the password will be stored both in helm and in a Secret
+  # The secret name of root password, you can create secret with following command:
+  # kubectl create secret generic tidb-secret --from-literal=root=<root-password>
   # If unset, the root password will be empty and you can set it after connecting
-  # password: "admin"
+  # passwordSecret: tidb-secret
+  # initSql is the SQL statements executed after the TiDB cluster is bootstrapped.
+  # initSql: |-
+  #   create database app;
   image: pingcap/tidb:v2.1.0
   # Image pull policy.
   imagePullPolicy: IfNotPresent
@@ -178,7 +181,7 @@ tidb:
 
 # mysqlClient is used to set password for TiDB
 mysqlClient:
-  image: pingcap/tidb-enterprise-tools:latest
+  image: tnir/mysqlclient
   imagePullPolicy: IfNotPresent
 
 monitor:

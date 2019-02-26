@@ -1,4 +1,3 @@
-{{- if .Values.tidb.password }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -9,7 +8,10 @@ metadata:
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: tidb-initializer
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+  annotations:
+    helm.sh/hook: post-install
 spec:
+  backoffLimit: 1000
   template:
     metadata:
       labels:
@@ -23,22 +25,45 @@ spec:
         image: {{ .Values.mysqlClient.image }}
         imagePullPolicy: {{ .Values.mysqlClient.imagePullPolicy | default "IfNotPresent" }}
         command:
-        - /bin/sh
+        - python
         - -c
-        # Read sql from file to avoid special characters interpreted as builtin variable
-        # And also avoid plain text password show in Job and Pod spec
-        # Besides we can also add more SQL in the file for initialization, eg. create database, create user etc
         - |
-          until mysql -h {{ .Values.clusterName }}-tidb -P 4000 --connect-timeout=5 < /data/init-password.sql; do sleep 2; done
+          import os, MySQLdb
+          host = {{ .Values.clusterName | quote }}
+          port = 4000
+          root_password = os.environ.get('ROOT_PASSWORD')
+          system_password = os.environ.get('SYSTEM_PASSWORD')
+          conn = MySQLdb.connect(host=host, port=port, user=user)
+          if root_password:
+              conn.cursor().execute("set password for 'root'@'%%' = '%s';", (root_password,))
+          if system_password:
+              conn.cursor().execute("create user 'system'@'%%' identified by '%s';", (system_password,))
+          conn.cursor().execute("flush privileges;")
+          conn.commit()
+          with open('/data/init.sql', 'r') as sql:
+              for line in sql.readlines():
+                  conn.cursor().execute(line)
+                  conn.commit()
+        env:
+        - name: ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.tidb.passwordSecret }}
+              key: root
+        - name: SYSTEM_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.tidb.passwordSecret }}
+              key: system
+              optional: true
         volumeMounts:
-        - name: password
+        - name: init-sql
           mountPath: /data
           readOnly: true
       volumes:
-      - name: password
-        secret:
-          secretName: {{ .Values.clusterName }}-tidb
+      - name: init-sql
+        configMap:
+          name: {{ .Values.clusterName }}-tidb
           items:
-          - key: password
-            path: init-password.sql
-{{- end }}
+          - key: init.sql
+            path: init.sql
