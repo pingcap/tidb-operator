@@ -74,7 +74,7 @@ $ sudo mount -t ext4 -o nodelalloc /dev/nvme0n1 /mnt/disks/disk0
 
 ### Bind mount
 
-The disadvantages of bind mount for TiDB: all the volumes has the size of the whole disk and there is no quota and isolation of bind mount volumes. Here is the commands to setup a bind mount: if your data directory is `/data`, you can create a bind mount with the following commands:
+The disadvantages of bind mount for TiDB: all the volumes has the size of the whole disk and there is no quota and isolation of bind mount volumes. If your data directory is `/data`, you can create a bind mount with the following commands:
 
 ```shell
 $ sudo mkdir -p /data/local-pv01
