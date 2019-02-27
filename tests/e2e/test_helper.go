@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/ginkgo" // revive:disable:dot-imports
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -97,6 +98,10 @@ func clearOperator() error {
 
 		_, err = execCmd(fmt.Sprintf("kubectl delete pvc -n %s --all", fixture.ns))
 		if err != nil {
+			return err
+		}
+		err = kubeCli.CoreV1().Secrets(fixture.ns).Delete(fixture.ns+"-"+fixture.clusterName, nil)
+		if err != nil && apierrs.IsNotFound(err) {
 			return err
 		}
 	}

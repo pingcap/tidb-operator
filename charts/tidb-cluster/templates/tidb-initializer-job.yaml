@@ -1,4 +1,4 @@
-{{- if (.Values.tidb.passwordSecret) or (.Values.tidb.initSql) }}
+{{- if (.Values.tidb.passwordSecretName) or (.Values.tidb.initSql) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -30,13 +30,18 @@ spec:
           import os, MySQLdb
           host = {{ printf "%s-tidb" .Values.clusterName | quote }}
           port = 4000
-          root_password = os.environ.get('ROOT_PASSWORD')
-          system_password = os.environ.get('SYSTEM_PASSWORD')
+          password_dir = '/etc/tidb/password'
           conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5)
-          if root_password:
-              conn.cursor().execute("set password for 'root'@'%%' = %s;", (root_password,))
-          if system_password:
-              conn.cursor().execute("create user 'system'@'%%' identified by %s;", (system_password,))
+          for file in os.listdir(password_dir):
+              if file.startswith('.'):
+                  continue
+              user = file
+              with open(os.path.join(password_dir, file), 'r') as f:
+                  password = f.read()
+              if user == 'root':
+                  conn.cursor().execute("set password for 'root'@'%%' = %s;", (password,))
+              else:
+                  conn.cursor().execute("create user %s@'%%' identified by %s;", (user, password,))
           conn.cursor().execute("flush privileges;")
           conn.commit()
           {{- if .Values.tidb.initSql }}
@@ -45,24 +50,20 @@ spec:
                   conn.cursor().execute(line)
                   conn.commit()
           {{- end }}
-        env:
-        - name: ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: {{ .Values.tidb.passwordSecret }}
-              key: root
-        - name: SYSTEM_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: {{ .Values.tidb.passwordSecret }}
-              key: system
-              optional: true
-      {{- if .Values.tidb.initSql }}
         volumeMounts:
+        - name: password
+          mountPath: /etc/tidb/password
+          readOnly: true
+        {{- if .Values.tidb.initSql }}
         - name: init-sql
           mountPath: /data
           readOnly: true
+        {{- end }}
       volumes:
+      - name: password
+        secret:
+          secretName: {{ .Values.tidb.passwordSecretName }}
+      {{- if .Values.tidb.initSql }}
       - name: init-sql
         configMap:
           name: {{ .Values.clusterName }}-tidb

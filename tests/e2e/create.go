@@ -15,6 +15,7 @@ package e2e
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -30,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -58,10 +60,13 @@ type Response struct {
 func testCreate(ns, clusterName string) {
 	By(fmt.Sprintf("When create the TiDB cluster: %s/%s", ns, clusterName))
 	instanceName := getInstanceName(ns, clusterName)
+	err := createSecret(ns, clusterName)
+	Expect(err).NotTo(HaveOccurred())
+
 	cmdStr := fmt.Sprintf("helm install /charts/tidb-cluster -f /tidb-cluster-values.yaml"+
-		" -n %s --namespace=%s --set clusterName=%s",
-		instanceName, ns, clusterName)
-	_, err := execCmd(cmdStr)
+		" -n %s --namespace=%s --set clusterName=%s,tidb.passwordSecretName=%s",
+		instanceName, ns, clusterName, ns+"-"+clusterName)
+	_, err = execCmd(cmdStr)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Then all members should running")
@@ -587,4 +592,20 @@ outerLoop:
 	}
 
 	return true, nil
+}
+
+func createSecret(ns, clusterName string) error {
+	secretName := ns + "-" + clusterName
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: ns,
+		},
+		Data: map[string][]byte{
+			"root": []byte(base64.StdEncoding.EncodeToString([]byte(password))),
+		},
+		Type: corev1.SecretTypeOpaque,
+	}
+	_, err := kubeCli.CoreV1().Secrets(ns).Create(&secret)
+	return err
 }
