@@ -96,6 +96,14 @@ $ git checkout -b myfeature
 
 ### Step 4: Develop
 
+#### Setup
+
+Make sure all the related tools are properly installed.
+
+```sh
+$ make check-setup
+```
+
 #### Edit the code
 
 You can now edit the code on the `myfeature` branch.
@@ -124,6 +132,14 @@ After Docker images are pushed to the DinD Docker registry, run e2e tests:
 ```sh
 $ kubectl apply -f manifests/tidb-operator-e2e.yaml
 ```
+
+You can get the e2e test report from the log of testing pod: 
+
+```sh
+$ kubectl -n=tidb-operator-e2e logs -f tidb-operator-e2e
+```
+
+To re-run e2e tests, delete the testing pod and apply it again.
 
 ### Step 5: Keep your branch in sync
 
