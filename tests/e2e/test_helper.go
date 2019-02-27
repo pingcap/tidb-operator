@@ -101,7 +101,7 @@ func clearOperator() error {
 			return err
 		}
 		err = kubeCli.CoreV1().Secrets(fixture.ns).Delete(fixture.ns+"-"+fixture.clusterName, nil)
-		if err != nil && apierrs.IsNotFound(err) {
+		if err != nil && !apierrs.IsNotFound(err) {
 			return err
 		}
 	}

@@ -15,7 +15,6 @@ package e2e
 
 import (
 	"database/sql"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -60,13 +59,14 @@ type Response struct {
 func testCreate(ns, clusterName string) {
 	By(fmt.Sprintf("When create the TiDB cluster: %s/%s", ns, clusterName))
 	instanceName := getInstanceName(ns, clusterName)
-	err := createSecret(ns, clusterName)
-	Expect(err).NotTo(HaveOccurred())
 
 	cmdStr := fmt.Sprintf("helm install /charts/tidb-cluster -f /tidb-cluster-values.yaml"+
 		" -n %s --namespace=%s --set clusterName=%s,tidb.passwordSecretName=%s",
 		instanceName, ns, clusterName, ns+"-"+clusterName)
-	_, err = execCmd(cmdStr)
+	_, err := execCmd(cmdStr)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = createSecret(ns, clusterName)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Then all members should running")
@@ -602,7 +602,7 @@ func createSecret(ns, clusterName string) error {
 			Namespace: ns,
 		},
 		Data: map[string][]byte{
-			"root": []byte(base64.StdEncoding.EncodeToString([]byte(password))),
+			"root": []byte(password),
 		},
 		Type: corev1.SecretTypeOpaque,
 	}
