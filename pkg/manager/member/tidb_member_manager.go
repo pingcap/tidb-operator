@@ -33,7 +33,7 @@ import (
 
 const (
 	slowQueryLogVolumeName = "slowlog"
-	slowQueryLogDir        = "/tmp/log/tidb"
+	slowQueryLogDir        = "/var/log/tidb"
 	slowQueryLogFile       = slowQueryLogDir + "/slowlog"
 )
 
