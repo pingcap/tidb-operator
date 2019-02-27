@@ -45,7 +45,7 @@ const (
 	// PushGatewayMemberType is pushgateway container type
 	PushGatewayMemberType MemberType = "pushgateway"
 	// TiDBLogTailerMemberType is tidb log tailer container type
-	SlowLogTailerMemberType MemberType = "slowlog-tailer"
+	SlowLogTailerMemberType MemberType = "slowlog"
 	// UnknownMemberType is unknown container type
 	UnknownMemberType MemberType = "unknown"
 )

@@ -209,6 +209,18 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
 		},
+		{
+			name: "enable separate slowlog on the fly",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiDB.SeparateSlowLog = true
+			},
+			errWhenUpdateStatefulSet: false,
+			err:                      false,
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(set.Spec.Template.Spec.Containers).To(HaveLen(2))
+			},
+		},
 	}
 
 	for i := range tests {
@@ -558,7 +570,6 @@ func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
 					},
 				},
 				Replicas: 3,
-				SeparateSlowLog: true,
 			},
 		},
 	}
