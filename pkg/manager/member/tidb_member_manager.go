@@ -268,7 +268,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			Command: []string{
 				"sh",
 				"-c",
-				fmt.Sprintf("touch %s; tail -n0 -f %s;", slowQueryLogFile, slowQueryLogFile),
+				fmt.Sprintf("touch %s; tail -n0 -F %s;", slowQueryLogFile, slowQueryLogFile),
 			},
 		})
 	}
