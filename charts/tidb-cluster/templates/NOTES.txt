@@ -1,17 +1,27 @@
+Cluster Startup
 1. Watch tidb-cluster up and running
-   watch kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }} -o wide
+     watch kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }} -o wide
 2. List services in the tidb-cluster
-   kubectl get services --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+     kubectl get services --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+{{- if .Values.tidb.password }}
 3. Wait until tidb-initializer pod becomes completed
-   watch kubectl get po --namespace {{ .Release.Namespace }}  -l app.kubernetes.io/component=tidb-initializer
+     watch kubectl get po --namespace {{ .Release.Namespace }}  -l app.kubernetes.io/component=tidb-initializer
 4. Get the TiDB password
-   PASSWORD=$(kubectl get secret -n {{ .Release.Namespace }} {{ .Values.clusterName }}-tidb -o jsonpath="{.data.password}" | base64 --decode | awk '{print $6}')
-   echo ${PASSWORD}
-5. Access tidb-cluster using the MySQL client
-   kubectl port-forward -n {{ .Release.Namespace }} svc/{{ .Values.clusterName }}-tidb 4000:4000 &
-   mysql -h 127.0.0.1 -P 4000 -u root -D test -p
+     kubectl get secret -n {{ .Release.Namespace }} {{ .Values.clusterName }}-tidb -o jsonpath="{.data.password}" | base64 --decode | awk '{print $6}'
+{{- end -}}
+
+Cluster access
+* Access tidb-cluster using the MySQL client
+    kubectl port-forward -n {{ .Release.Namespace }} svc/{{ .Values.clusterName }}-tidb 4000:4000 &
+{{- if .Values.tidb.password }}
+    mysql -h 127.0.0.1 -P 4000 -u root -D test -p
+{{- else -}}
+    mysql -h 127.0.0.1 -P 4000 -u root -D test
+  Set a password for your user
+    SET PASSWORD FOR 'root'@'%' = '{{ (randAlphaNum 10) }}'; FLUSH PRIVILEGES
+{{- end -}}
 {{- if .Values.monitor.create }}
-6. View monitor dashboard for TiDB cluster
+* View monitor dashboard for TiDB cluster
    kubectl port-forward -n {{ .Release.Namespace }} svc/{{ .Values.clusterName }}-grafana 3000:3000
    Open browser at http://localhost:3000. The default username and password is admin/admin.
 {{- end -}}
