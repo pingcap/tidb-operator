@@ -59,11 +59,7 @@ format = "text"
 disable-timestamp = false
 
 # Stores slow query log into separated files.
-{{- if .Values.tidb.separateSlowLog }}
-slow-query-file = "/tmp/log/tidb/slowlog"
-{{- else }}
 slow-query-file = ""
-{{- end }}
 
 # Queries with execution time greater than this value will be logged. (Milliseconds)
 slow-threshold = 300

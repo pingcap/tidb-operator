@@ -273,6 +273,26 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		})
 	}
 
+	envs := []corev1.EnvVar{
+		{
+			Name:  "CLUSTER_NAME",
+			Value: tc.GetName(),
+		},
+		{
+			Name:  "TZ",
+			Value: tc.Spec.Timezone,
+		},
+		{
+			Name:  "BINLOG_ENABLED",
+			Value: strconv.FormatBool(tc.Spec.TiDB.BinlogEnabled),
+		},
+	};
+	if tc.Spec.TiDB.SeparateSlowLog {
+		envs = append(envs, corev1.EnvVar{
+			Name: "SLOW_LOG_FILE",
+			Value: slowQueryLogFile,
+		})
+	}
 	containers = append(containers, corev1.Container{
 		Name:            v1alpha1.TiDBMemberType.String(),
 		Image:           tc.Spec.TiDB.Image,
@@ -292,20 +312,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		},
 		VolumeMounts: volMounts,
 		Resources:    util.ResourceRequirement(tc.Spec.TiDB.ContainerSpec),
-		Env: []corev1.EnvVar{
-			{
-				Name:  "CLUSTER_NAME",
-				Value: tc.GetName(),
-			},
-			{
-				Name:  "TZ",
-				Value: tc.Spec.Timezone,
-			},
-			{
-				Name:  "BINLOG_ENABLED",
-				Value: strconv.FormatBool(tc.Spec.TiDB.BinlogEnabled),
-			},
-		},
+		Env: envs,
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
 				HTTPGet: &corev1.HTTPGetAction{

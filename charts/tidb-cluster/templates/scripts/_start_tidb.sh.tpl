@@ -34,6 +34,11 @@ then
     ARGS="${ARGS} --enable-binlog=true"
 fi
 
+if [[ ! -z "${SLOW_LOG_FILE}" ]]
+then
+    ARGS="${ARGS} --log-slow-query=${SLOW_LOG_FILE:-}"
+fi
+
 echo "start tidb-server ..."
 echo "/tidb-server ${ARGS}"
 exec /tidb-server ${ARGS}
