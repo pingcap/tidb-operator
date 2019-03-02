@@ -286,10 +286,10 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			Name:  "BINLOG_ENABLED",
 			Value: strconv.FormatBool(tc.Spec.TiDB.BinlogEnabled),
 		},
-	};
+	}
 	if tc.Spec.TiDB.SeparateSlowLog {
 		envs = append(envs, corev1.EnvVar{
-			Name: "SLOW_LOG_FILE",
+			Name:  "SLOW_LOG_FILE",
 			Value: slowQueryLogFile,
 		})
 	}
@@ -312,7 +312,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		},
 		VolumeMounts: volMounts,
 		Resources:    util.ResourceRequirement(tc.Spec.TiDB.ContainerSpec),
-		Env: envs,
+		Env:          envs,
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
 				HTTPGet: &corev1.HTTPGetAction{
