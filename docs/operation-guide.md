@@ -131,6 +131,33 @@ Then open your browser at http://localhost:3000 The default username and passwor
 
 The Grafana service is exposed as `NodePort` by default, you can change it to `LoadBalancer` if the underlining Kubernetes has load balancer support. And then view the dashboard via load balancer endpoint.
 
+### View TiDB Slow Query Log
+
+For default setup, tidb is configured to export slow query log to STDOUT along with normal server logs. You can obtain the slow query log by `grep` the keyword `SLOW_QUERY`:
+
+```shell
+$ kubectl logs -n ${namespace} ${tidbPodName} | grep SLOW_QUERY
+```
+
+Optionally, you can output slow query log in a separate sidecar by enabling `separateSlowLog`:
+
+```yaml
+# Uncomment the following line to enable separate output of the slow query log
+    # separateSlowLog: true
+```
+
+Run `helm upgrade` to apply the change, then you can obtain the slow query log from the sidecar named `slowlog`:
+
+```shell
+$ kubectl logs -n ${namespace} ${tidbPodName} -c slowlog
+```
+
+To retrieve logs from multiple pods, [`stern`](https://github.com/wercker/stern) is recommended.
+
+```shell
+$ stern -n ${namespace} tidb -c slowlog
+```
+
 ## Backup
 
 Currently, TiDB Operator supports two kinds of backup: incremental backup via binlog and full backup(scheduled or ad-hoc) via [Mydumper](https://github.com/maxbube/mydumper).
