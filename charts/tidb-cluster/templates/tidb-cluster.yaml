@@ -76,3 +76,10 @@ spec:
   {{- end }}
     binlogEnabled: {{ .Values.binlog.pump.create | default false }}
     maxFailoverCount: {{ .Values.tidb.maxFailoverCount | default 3 }}
+    separateSlowLog: {{ .Values.tidb.separateSlowLog | default false }}
+    slowLogTailer:
+      image: {{ .Values.tidb.slowLogTailer.image }}
+      imagePullPolicy: {{ .Values.tidb.slowLogTailer.imagePullPolicy | default "IfNotPresent" }}
+      {{- if .Values.tidb.slowLogTailer.resources }}
+{{ toYaml .Values.tidb.slowLogTailer.resources | indent 6 }}
+      {{- end }}

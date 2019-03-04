@@ -178,6 +178,16 @@ tidb:
     exposeStatus: true
     # annotations:
       # cloud.google.com/load-balancer-type: Internal
+  # separateSlowLog: true
+  slowLogTailer:
+    image: busybox:1.26.2
+    resources:
+      limits:
+        cpu: 100m
+        memory: 50Mi
+      requests:
+        cpu: 20m
+        memory: 5Mi
 
 # mysqlClient is used to set password for TiDB
 # it must has Python MySQL client installed
