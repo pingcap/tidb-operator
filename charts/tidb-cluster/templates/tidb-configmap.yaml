@@ -11,7 +11,10 @@ metadata:
 data:
   startup-script: |-
 {{ tuple "scripts/_start_tidb.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-
+  {{- if .Values.tidb.initSql }}
+  init-sql: |-
+{{ .Values.tidb.initSql | indent 4 }}
+  {{- end }}
   config-file: |-
     {{- if .Values.tidb.config }}
 {{ .Values.tidb.config | indent 4 }}

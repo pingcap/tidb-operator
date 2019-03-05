@@ -1,4 +1,4 @@
-{{- if .Values.tidb.password }}
+{{- if (.Values.tidb.passwordSecretName) or (.Values.tidb.initSql) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -10,6 +10,7 @@ metadata:
     app.kubernetes.io/component: tidb-initializer
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
+  backoffLimit: 1000
   template:
     metadata:
       labels:
@@ -23,22 +24,51 @@ spec:
         image: {{ .Values.mysqlClient.image }}
         imagePullPolicy: {{ .Values.mysqlClient.imagePullPolicy | default "IfNotPresent" }}
         command:
-        - /bin/sh
+        - python
         - -c
-        # Read sql from file to avoid special characters interpreted as builtin variable
-        # And also avoid plain text password show in Job and Pod spec
-        # Besides we can also add more SQL in the file for initialization, eg. create database, create user etc
         - |
-          until mysql -h {{ .Values.clusterName }}-tidb -P 4000 --connect-timeout=5 < /data/init-password.sql; do sleep 2; done
+          import os, MySQLdb
+          host = {{ printf "%s-tidb" .Values.clusterName | quote }}
+          port = 4000
+          password_dir = '/etc/tidb/password'
+          conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5)
+          for file in os.listdir(password_dir):
+              if file.startswith('.'):
+                  continue
+              user = file
+              with open(os.path.join(password_dir, file), 'r') as f:
+                  password = f.read()
+              if user == 'root':
+                  conn.cursor().execute("set password for 'root'@'%%' = %s;", (password,))
+              else:
+                  conn.cursor().execute("create user %s@'%%' identified by %s;", (user, password,))
+          conn.cursor().execute("flush privileges;")
+          conn.commit()
+          {{- if .Values.tidb.initSql }}
+          with open('/data/init.sql', 'r') as sql:
+              for line in sql.readlines():
+                  conn.cursor().execute(line)
+                  conn.commit()
+          {{- end }}
         volumeMounts:
         - name: password
+          mountPath: /etc/tidb/password
+          readOnly: true
+        {{- if .Values.tidb.initSql }}
+        - name: init-sql
           mountPath: /data
           readOnly: true
+        {{- end }}
       volumes:
       - name: password
         secret:
-          secretName: {{ .Values.clusterName }}-tidb
+          secretName: {{ .Values.tidb.passwordSecretName }}
+      {{- if .Values.tidb.initSql }}
+      - name: init-sql
+        configMap:
+          name: {{ .Values.clusterName }}-tidb
           items:
-          - key: password
-            path: init-password.sql
+          - key: init-sql
+            path: init.sql
+      {{- end }}
 {{- end }}
