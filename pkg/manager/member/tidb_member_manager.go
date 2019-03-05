@@ -273,9 +273,9 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		})
 	}
 
-	slowLogFileEnvVal := "";
+	slowLogFileEnvVal := ""
 	if tc.Spec.TiDB.SeparateSlowLog {
-		slowLogFileEnvVal = slowQueryLogFile;
+		slowLogFileEnvVal = slowQueryLogFile
 	}
 	envs := []corev1.EnvVar{
 		{
