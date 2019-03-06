@@ -26,13 +26,13 @@ TiDB Operator uses [PersistentVolume](https://kubernetes.io/docs/concepts/storag
 
 The Kubernetes cluster is suggested to enable [RBAC](https://kubernetes.io/docs/admin/authorization/rbac). Otherwise you may want to set `rbac.create` to `false` in the values.yaml of both tidb-operator and tidb-cluster charts.
 
-Because TiDB by default will use at most 40960 file descriptors, the [worker node](https://access.redhat.com/solutions/61334) and its Docker daemon's ulimit must be configured to greater than 40960:
+Because TiDB by default will use lots of file descriptors, the [worker node](https://access.redhat.com/solutions/61334) and its Docker daemon's ulimit must be configured to greater than 1048576:
 
 ```shell
 $ sudo vim /etc/systemd/system/docker.service
 ```
 
-Set `LimitNOFILE` to equal or greater than 40960.
+Set `LimitNOFILE` to equal or greater than 1048576.
 
 Otherwise you have to change TiKV's `max-open-files` to match your work node `ulimit -n` in the configuration file `charts/tidb-cluster/templates/config/_tikv-config.tpl`, but this will impact TiDB performance.
 
