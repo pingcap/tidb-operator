@@ -89,6 +89,9 @@ var fixtures = []clusterFixture{
 		clusterSpec: clusterSpec{
 			ns:          "ns-2",
 			clusterName: "cluster-name-1",
+			values: map[string]string{
+				"tidb.separateSlowLog": "false",
+			},
 		},
 		cases: []testCase{
 			testCreate,
