@@ -1,8 +1,8 @@
-{{- if .Values.backup.create }}
+{{- if eq .Values.mode "backup" }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Values.clusterName }}-backup
+  name: {{ .Values.clusterName }}-{{ .Values.name }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -21,8 +21,8 @@ spec:
     spec:
       initContainers:
       - name: get-ts
-        image: {{ .Values.backup.binlogImage }}
-        imagePullPolicy: {{ .Values.backup.binlogImagePullPolicy | default "IfNotPresent" }}
+        image: {{ .Values.image.binlog }}
+        imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
         command:
         - /binlogctl
         - -pd-urls=http://{{ .Values.clusterName }}-pd:2379
@@ -33,8 +33,8 @@ spec:
           mountPath: "/savepoint-dir"
       containers:
       - name: backup
-        image: {{ .Values.backup.mydumperImage }}
-        imagePullPolicy: {{ .Values.backup.mydumperImagePullPolicy | default "IfNotPresent" }}
+        image: {{ .Values.image.backup }}
+        imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
         command:
         - /bin/sh
         - -c
@@ -45,35 +45,50 @@ spec:
           mountPath: "/savepoint-dir"
         - name: data
           mountPath: "/data"
-      {{- if .Values.backup.gcp }}
+      {{- if .Values.gcp }}
         - name: gcp-credentials
           mountPath: "/gcp"
           readOnly: true
       {{- end }}
         env:
-        - name: MY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-      {{- if .Values.backup.gcp }}
+        - name: BACKUP_NAME
+          value: {{ .Values.name | quote }}
+      {{- if .Values.gcp }}
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: /gcp/credentials.json
       {{- end }}
+      {{- if .Values.ceph }}
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.ceph.secretName }}
+              key: access_key
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.ceph.secretName }}
+              key: secret_key
+      {{- end }}
+        - name: TIDB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secretName }}
+              key: user
         - name: TIDB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: {{ .Values.clusterName }}-backup
-              key: user-password
+              name: {{ .Values.secretName }}
+              key: password
       restartPolicy: OnFailure
       volumes:
       - name: savepoint-dir
         emptyDir: {}
       - name: data
         persistentVolumeClaim:
-          claimName: {{ .Values.clusterName }}-backup
-    {{- if .Values.backup.gcp }}
+          claimName: {{ .Values.clusterName }}-{{ .Values.name }}
+    {{- if .Values.gcp }}
       - name: gcp-credentials
         secret:
-          secretName: {{ .Values.clusterName }}-backup
+          secretName: {{ .Values.gcp.secretName }}
     {{- end }}
 {{- end }}

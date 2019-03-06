@@ -1,10 +1,10 @@
-{{- if .Values.backup.create }}
+{{- if eq .Values.mode "backup" }}
 1. Watch backup job is created
    watch kubectl get jobs --namespace {{ .Release.Namespace }}  -l app.kubernetes.io/component=backup
 2. Wait until backup pods becomes completed
    watch kubectl get po --namespace {{ .Release.Namespace }}  -l app.kubernetes.io/component=backup -o wide
 {{- end -}}
-{{- if .Values.restore.create }}
+{{- if eq .Values.mode "restore" }}
 1. Watch restore job is created
    watch kubectl get jobs --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }} -o wide
 2. Wait until restore pod becomes completed

@@ -189,14 +189,21 @@ Ad-Hoc full backup can be done once just like job. Currently, ad-hoc full backup
 
 To create an ad-hoc full backup job, modify `backup` section in `values.yaml` file.
 
-* `create` must be set to `true`
-* Set `storageClassName` to the PV storage class name used for backup data
-* `user` and `password` must be set to the correct user which has the permission to read the database to be backuped.
+* `mode` must be set to `backup`
+* Set `storage.className` to the PV storage class name used for backup data
+
+Create a secret containing the user and password that has the permission to backup the database:
+
+```shell
+$ kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=<user> --from-literal=password=<password>
+```
 
 > **Note:** You must set the ad-hoc full backup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to keep your backup data safe.
 
-If TiDB cluster is running on GKE, the backup data can be uploaded to GCS bucket. A bucket name and base64 encoded service account credential that has bucket read/write access must be provided. The comments in `values.yaml` is self-explanatory for GCP backup.
+By default, the backup uses PV to store the backup data. You can also store the backup data to [Google Cloud Storage](https://cloud.google.com/storage/) bucket or [Ceph object storage](https://ceph.com/ceph-storage/object-storage/) by configuring the corresponding section in `values.yaml`. This way the PV is used to store backup data temporarily.
+
+The comments in `values.yaml` is self-explanatory for both GCP backup and Ceph backup.
 
 ## Restore
 
-Currently, tidb-operator only supports restoring from full backup in GCS bucket. The `restore` section in `values.yaml` should have enough comments as document.
+Restore is similar to backup. See the `values.yaml` file for details.
