@@ -148,7 +148,6 @@ tidb:
     exposeStatus: true
     # annotations:
       # cloud.google.com/load-balancer-type: Internal
-  separateSlowLog: true
 
 # mysqlClient is used to set password for TiDB
 # it must has Python MySQL client installed
