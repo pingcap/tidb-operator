@@ -42,16 +42,10 @@ e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest"
 
 e2e-docker: e2e-build
-	mkdir -p images/tidb-operator-e2e/bin
-	mv tests/e2e/e2e.test images/tidb-operator-e2e/bin/
-	[[ -d images/tidb-operator-e2e/tidb-operator ]] && rm -r images/tidb-operator-e2e/tidb-operator || true
-	[[ -d images/tidb-operator-e2e/tidb-cluster ]] && rm -r images/tidb-operator-e2e/tidb-cluster || true
-	cp -r charts/tidb-operator images/tidb-operator-e2e/
-	cp -r charts/tidb-cluster images/tidb-operator-e2e/
-	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" images/tidb-operator-e2e
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" tests/images/e2e
 
 e2e-build:
-	$(GOENV) ginkgo build tests/e2e
+	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
 
 test:
 	@echo "Run unit tests"
