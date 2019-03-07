@@ -37,7 +37,8 @@ const (
 
 var podUIDsBeforeScale map[string]types.UID
 
-func testScale(ns, clusterName string) {
+func testScale(spec clusterSpec) {
+	ns, clusterName := spec.ns, spec.clusterName
 	instanceName := getInstanceName(ns, clusterName)
 	By(fmt.Sprintf("When scale out TiDB cluster: pd ==> [%d], tikv ==> [%d], tidb ==> [%d]", pdScaleOutTo, tikvScaleOutTo, tidbScaleOutTo))
 	err := wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {

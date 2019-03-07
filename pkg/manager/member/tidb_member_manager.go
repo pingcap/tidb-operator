@@ -273,6 +273,10 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		})
 	}
 
+	slowLogFileEnvVal := ""
+	if tc.Spec.TiDB.SeparateSlowLog {
+		slowLogFileEnvVal = slowQueryLogFile
+	}
 	envs := []corev1.EnvVar{
 		{
 			Name:  "CLUSTER_NAME",
@@ -286,13 +290,12 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			Name:  "BINLOG_ENABLED",
 			Value: strconv.FormatBool(tc.Spec.TiDB.BinlogEnabled),
 		},
-	}
-	if tc.Spec.TiDB.SeparateSlowLog {
-		envs = append(envs, corev1.EnvVar{
+		{
 			Name:  "SLOW_LOG_FILE",
-			Value: slowQueryLogFile,
-		})
+			Value: slowLogFileEnvVal,
+		},
 	}
+
 	containers = append(containers, corev1.Container{
 		Name:            v1alpha1.TiDBMemberType.String(),
 		Image:           tc.Spec.TiDB.Image,
