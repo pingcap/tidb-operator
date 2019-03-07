@@ -358,7 +358,6 @@ scheduledBackup:
   ceph: {}
   # endpoint: ""
   # bucket: ""
-  # secretName
   # secretName is the name of the secret which stores ceph object store access key and secret key
   # You can create the secret by:
   # kubectl create secret generic ceph-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
