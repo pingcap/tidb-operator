@@ -208,6 +208,18 @@ Create a secret containing the user and password that has the permission to back
 $ kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=<user> --from-literal=password=<password>
 ```
 
+Then run the following command to create an ad-hoc backup job:
+
+```shell
+$ helm install charts/tidb-backup --name=<backup-name> --namespace=${namespace}
+```
+
 ## Restore
 
 Restore is similar to backup. See the `values.yaml` file for details.
+
+Modified the variables in `values.yaml` and then create restore job using the following command:
+
+```shell
+$ helm install charts/tidb-backup --name=<backup-name> --namespace=${namespace}
+```
