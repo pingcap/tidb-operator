@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pkg
+package tests
 
 import (
 	"database/sql"
@@ -152,21 +152,22 @@ func (oa *operatorActions) DeployOperator(info *OperatorInfo) error {
 		return err
 	}
 
-	deployCmd := fmt.Sprintf(`helm install /charts/%s/tidb-operator
-		--name %s
-		--namespace %s
-		--set operatorImage=%s
-		--set controllerManager.autoFailover=true
-		--set scheduler.kubeSchedulerImage=%s
-		--set controllerManager.logLevel=%d
-		--set scheduler.logLevel=4`,
+	cmd := fmt.Sprintf(`helm install /charts/%s/tidb-operator \
+		--name %s \
+		--namespace %s \
+		--set operatorImage=%s \
+		--set controllerManager.autoFailover=true \
+		--set scheduler.kubeSchedulerImage=%s \
+		--set controllerManager.logLevel=%s \
+		--set scheduler.logLevel=2`,
 		info.Tag,
 		info.ReleaseName,
 		info.Namespace,
 		info.Image,
 		info.SchedulerImage,
 		info.LogLevel)
-	res, err := exec.Command("/bin/sh", "-c", deployCmd).CombinedOutput()
+	glog.Info(cmd)
+	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
@@ -176,7 +177,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorInfo) error {
 
 func (oa *operatorActions) CleanOperator(info *OperatorInfo) error {
 	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
-	if err == nil || releaseIsNotFound(err) {
+	if err == nil || !releaseIsNotFound(err) {
 		return nil
 	}
 	return fmt.Errorf("failed to clear operator: %v, %s", err, string(res))
@@ -221,13 +222,13 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 	}
 	for _, chartName := range charts {
 		res, err := exec.Command("helm", "del", "--purge", chartName).CombinedOutput()
-		if err != nil && !releaseIsNotFound(err) {
+		if err != nil && releaseIsNotFound(err) {
 			return fmt.Errorf("failed to delete chart: %s/%s, %v, %s",
 				info.Namespace, chartName, err, string(res))
 		}
 	}
 
-	resources := []string{"cronjobs", "jobs", "pods", "pvcs"}
+	resources := []string{"cronjobs", "jobs", "pods", "pvc"}
 	for _, resource := range resources {
 		if res, err := exec.Command("kubectl", "delete", resource, "-n", info.Namespace,
 			"--all").CombinedOutput(); err != nil {
@@ -235,27 +236,30 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 		}
 	}
 
-	patchPVCmd := fmt.Sprintf(`kubectl get pv -l %s=%s,%s=%s --output=name | xargs -I {}
+	patchPVCmd := fmt.Sprintf(`kubectl get pv -l %s=%s,%s=%s --output=name | xargs -I {} \
 		kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`,
 		label.NamespaceLabelKey, info.Namespace, label.InstanceLabelKey, info.ClusterName)
+	glog.Info(patchPVCmd)
 	if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to patch pv: %v, %s", err, string(res))
 	}
 
 	pollFn := func() (bool, error) {
 		if res, err := exec.Command("kubectl", "get", "po", "--output=name", "-n", info.Namespace).
-			CombinedOutput(); err != nil || len(res) == 0 {
-			glog.Infof("waiting for tidbcluster: %s/%s pods deleting\n",
-				info.Namespace, info.ClusterName, string(res))
+			CombinedOutput(); err != nil || len(res) != 0 {
+			glog.Infof("waiting for tidbcluster: %s/%s pods deleting, %v, [%s]",
+				info.Namespace, info.ClusterName, err, string(res))
 			return false, nil
 		}
 
 		pvCmd := fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s 2>/dev/null|grep Released",
 			label.NamespaceLabelKey, info.Namespace, label.InstanceLabelKey, info.ClusterName)
+		glog.Info(pvCmd)
 		if res, err := exec.Command("/bin/sh", "-c", pvCmd).
-			CombinedOutput(); err != nil || len(res) != 0 {
-			glog.Infof("waiting for tidbcluster: %s/%s pvs deleting\n%s",
-				info.Namespace, info.ClusterName, string(res))
+			CombinedOutput(); len(res) == 0 {
+		} else if err != nil {
+			glog.Infof("waiting for tidbcluster: %s/%s pv deleting, %v, %s",
+				info.Namespace, info.ClusterName, err, string(res))
 			return false, nil
 		}
 
@@ -267,13 +271,14 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterInfo) error {
 	ns := info.Namespace
 	tcName := info.ClusterName
-	var tc *v1alpha1.TidbCluster
-	var err error
-	if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
-		return fmt.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
-	}
+	if err := wait.PollImmediate(1*time.Minute, 10*time.Minute, func() (bool, error) {
+		var tc *v1alpha1.TidbCluster
+		var err error
+		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
+			glog.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+			return false, nil
+		}
 
-	if err := wait.PollImmediate(1*time.Minute, 5*time.Minute, func() (bool, error) {
 		if b, err := oa.pdMembersReadyFn(tc); !b && err == nil {
 			return false, nil
 		}
@@ -300,7 +305,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterInfo) error {
 
 		return true, nil
 	}); err != nil {
-		return fmt.Errorf("failed to waiting for tidbcluster %s/%s ready in 5 minutes", ns, tcName)
+		return fmt.Errorf("failed to waiting for tidbcluster %s/%s ready in 10 minutes", ns, tcName)
 	}
 
 	return nil
@@ -779,8 +784,9 @@ func releaseIsNotFound(err error) bool {
 }
 
 func cloneOperatorRepo() error {
-	cloneCmd := fmt.Sprintf("git clone https://github.com/pingcap/tidb-operator.git /tidb-operator")
-	res, err := exec.Command("/bin/sh", "-c", cloneCmd).CombinedOutput()
+	cmd := fmt.Sprintf("git clone https://github.com/pingcap/tidb-operator.git /tidb-operator")
+	glog.Info(cmd)
+	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to clone tidb-operator repository: %v, %s", err, string(res))
 	}
@@ -795,8 +801,9 @@ func checkoutTag(tagName string) error {
 		mkdir -p /charts/%s;
 		cp -rf charts/tidb-operator /charts/%s/tidb-operator;
 		cp -rf charts/tidb-cluster /charts/%s/tidb-cluster;
-		cp -rf charts/tidb-backup /charts/%s/tidb-backup;`,
+		cp -rf charts/tidb-backup /charts/%s/tidb-backup`,
 		tagName, tagName, tagName, tagName, tagName)
+	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to check tag: %s, %v, %s", tagName, err, string(res))
