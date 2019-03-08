@@ -7,6 +7,9 @@ images/tidb-operator-e2e/tidb-operator/
 tmp/
 data/
 .idea
+cscope.files
+tags
+filenametags
 
 # ginkgo test coverage
 *.coverprofile
