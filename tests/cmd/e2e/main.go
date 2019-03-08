@@ -22,6 +22,7 @@ import (
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"github.com/pingcap/tidb-operator/tests/backup"
 )
 
 func main() {
@@ -77,6 +78,34 @@ func main() {
 		glog.Fatal(err)
 	}
 	if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+		glog.Fatal(err)
+	}
+
+	restoreClusterInfo := &tests.TidbClusterInfo{
+		Namespace:        "tidb",
+		ClusterName:      "demo-restore",
+		OperatorTag:      "v1.0.0-beta.1-p2",
+		PDImage:          "pingcap/pd:v2.1.3",
+		TiKVImage:        "pingcap/tikv:v2.1.3",
+		TiDBImage:        "pingcap/tidb:v2.1.3",
+		StorageClassName: "local-storage",
+		Password:         "admin",
+		Args:             map[string]string{},
+	}
+
+	if err := oa.CleanTidbCluster(clusterInfo); err != nil {
+		glog.Fatal(err)
+	}
+	if err := oa.DeployTidbCluster(clusterInfo); err != nil {
+		glog.Fatal(err)
+	}
+	if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+		glog.Fatal(err)
+	}
+
+	backupCase := backup.NewBackupCase(oa,clusterInfo,restoreClusterInfo)
+
+	if err := backupCase.Run(); err != nil {
 		glog.Fatal(err)
 	}
 }
