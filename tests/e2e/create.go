@@ -56,13 +56,14 @@ type Response struct {
 	}
 }
 
-func testCreate(ns, clusterName string) {
+func testCreate(spec clusterSpec) {
+	ns, clusterName := spec.ns, spec.clusterName
 	By(fmt.Sprintf("When create the TiDB cluster: %s/%s", ns, clusterName))
 	instanceName := getInstanceName(ns, clusterName)
 
 	cmdStr := fmt.Sprintf("helm install /charts/tidb-cluster -f /tidb-cluster-values.yaml"+
-		" -n %s --namespace=%s --set clusterName=%s,tidb.passwordSecretName=%s",
-		instanceName, ns, clusterName, ns+"-"+clusterName)
+		" -n %s --namespace=%s --set %s",
+		instanceName, ns, buildSetFlag(spec))
 	_, err := execCmd(cmdStr)
 	Expect(err).NotTo(HaveOccurred())
 

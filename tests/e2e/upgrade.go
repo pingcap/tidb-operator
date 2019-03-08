@@ -33,7 +33,8 @@ const (
 	upgradeVersion = "v2.1.0"
 )
 
-func testUpgrade(ns, clusterName string) {
+func testUpgrade(spec clusterSpec) {
+	ns, clusterName := spec.ns, spec.clusterName
 	pdNodeMap, err := getNodeMap(ns, clusterName, label.PDLabelVal)
 	Expect(err).NotTo(HaveOccurred())
 	tikvNodeMap, err := getNodeMap(ns, clusterName, label.TiKVLabelVal)
