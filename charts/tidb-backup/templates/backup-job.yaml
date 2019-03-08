@@ -85,7 +85,7 @@ spec:
         emptyDir: {}
       - name: data
         persistentVolumeClaim:
-          claimName: {{ .Values.clusterName }}-{{ .Values.name }}
+          claimName: {{ .Values.name }}
     {{- if .Values.gcp }}
       - name: gcp-credentials
         secret:
