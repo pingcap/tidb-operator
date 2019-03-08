@@ -121,7 +121,7 @@ func (bc *BackupCase) Run() error {
 		return err
 	}
 
-	//at last check incremental backup case
+/*	//at last check incremental backup case
 	err = bc.operator.DeployIncrementalBackup(bc.srcCluster, bc.desCluster)
 	if err != nil {
 		return err
@@ -155,7 +155,7 @@ func (bc *BackupCase) Run() error {
 	}
 	if srcCount != desCount {
 		return fmt.Errorf("cluster:[%s] the src cluster data[%d] is not equals des cluster data[%d]", bc.srcCluster.FullName(), srcCount, desCount)
-	}
+	}*/
 
 	return nil
 }
