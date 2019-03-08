@@ -904,9 +904,10 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterInfo) error {
 	}()
 	sets := map[string]string {
 		"clusterName":		info.ClusterName,
-		"backup.create":	"true",
-		"backup.user":		"root",
-		"backup.password":	info.Password,
+		"name":				"testbackup",
+		"mode":				"backup",
+		"user":				"root",
+		"password":			info.Password,
 	}
 	var buffer bytes.Buffer
 	for k,v := range sets {
@@ -1076,10 +1077,11 @@ func (oa *operatorActions) Restore(from *TidbClusterInfo, to *TidbClusterInfo) e
 		glog.Infof("deploy restore end")
 	}()
 	sets := map[string]string {
-		"clusterName":                 to.ClusterName,
-		"restore.create":              "true",
-		"restore.user":                "root",
-		"restore.password":            to.Password,
+		"clusterName":					to.ClusterName,
+		"name":							"testbackup",
+		"mode":							"restore",
+		"user":							"root",
+		"password":						to.Password,
 	}
 	var buffer bytes.Buffer
 	for k,v := range sets {
