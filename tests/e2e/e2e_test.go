@@ -58,7 +58,7 @@ var _ = Describe("Smoke", func() {
 		fixture := fixtures[i]
 		It(fmt.Sprintf("Namespace: %s, clusterName: %s", fixture.ns, fixture.clusterName), func() {
 			for _, testCase := range fixture.cases {
-				testCase(fixture.ns, fixture.clusterName)
+				testCase(fixture.clusterSpec)
 			}
 		})
 	}
