@@ -14,7 +14,7 @@
 {{- if semverCompare "~1.11.0" .Capabilities.KubeVersion.GitVersion }}
     {"name": "CheckNodePIDPressure"},
 {{- end }}
-{{- if semverCompare "<1.12-0" .Capabilities.KubeVersion.GitVersion }}
+{{- if semverCompare "<1.12.0" .Capabilities.KubeVersion.GitVersion }}
     {"name": "CheckNodeCondition"},
     {"name": "CheckNodeMemoryPressure"},
     {"name": "CheckNodeDiskPressure"},
