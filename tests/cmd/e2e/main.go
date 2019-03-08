@@ -93,13 +93,13 @@ func main() {
 		Args:             map[string]string{},
 	}
 
-	if err := oa.CleanTidbCluster(clusterInfo); err != nil {
+	if err := oa.CleanTidbCluster(restoreClusterInfo); err != nil {
 		glog.Fatal(err)
 	}
-	if err := oa.DeployTidbCluster(clusterInfo); err != nil {
+	if err := oa.DeployTidbCluster(restoreClusterInfo); err != nil {
 		glog.Fatal(err)
 	}
-	if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+	if err := oa.CheckTidbClusterStatus(restoreClusterInfo); err != nil {
 		glog.Fatal(err)
 	}
 
