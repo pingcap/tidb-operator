@@ -83,7 +83,7 @@ func main() {
 
 	restoreClusterInfo := &tests.TidbClusterInfo{
 		Namespace:        "tidb",
-		ClusterName:      "demo-restore",
+		ClusterName:      "demo2",
 		OperatorTag:      "v1.0.0-beta.1-p2",
 		PDImage:          "pingcap/pd:v2.1.3",
 		TiKVImage:        "pingcap/tikv:v2.1.3",

@@ -14,7 +14,7 @@
 package backup
 
 import (
-	"fmt"
+//	"fmt"
 	"time"
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests"
