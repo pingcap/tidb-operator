@@ -848,6 +848,13 @@ func checkoutTag(tagName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to check tag: %s, %v, %s", tagName, err, string(res))
 	}
+	//for test the yaml of tennix changed , we should delete this line later
+	cmd := "cd /tidb-operator;./checkout-pr-branch.sh tennix:refactor-backup"
+	glog.Info(cmd)
+	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to check tag: %s, %v, %s", tagName, err, string(res))
+	}
 
 	return nil
 }
