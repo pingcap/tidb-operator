@@ -848,13 +848,6 @@ func checkoutTag(tagName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to check tag: %s, %v, %s", tagName, err, string(res))
 	}
-	//for test the yaml of tennix changed , we should delete this line later
-	cmd := "cd /tidb-operator;./checkout-pr-branch.sh tennix:refactor-backup"
-	glog.Info(cmd)
-	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to check tag: %s, %v, %s", tagName, err, string(res))
-	}
 
 	return nil
 }
@@ -877,7 +870,7 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterInfo) error {
 	}
 	var buffer bytes.Buffer
 	for k,v := range sets {
-		set := fmt.Sprintf("--set %s=%s",k , v)
+		set := fmt.Sprintf(" --set %s=%s",k , v)
 		_,err := buffer.WriteString(set)
 		if err != nil  {
 			return err
@@ -960,7 +953,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterInfo) error {
 	}
 	var buffer bytes.Buffer
 	for k,v := range sets {
-		set := fmt.Sprintf("--set %s=%s",k , v)
+		set := fmt.Sprintf(" --set %s=%s",k , v)
 		_,err := buffer.WriteString(set)
 		if err != nil  {
 			return err
@@ -971,6 +964,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterInfo) error {
 	fullbackupName := fmt.Sprintf("%s-backup",info.ClusterName)
 	cmd := fmt.Sprintf("helm install -n %s --namespace %s /charts/%s/tidb-backup %s",
 		fullbackupName, info.Namespace, info.OperatorTag, setStr)
+	glog.Infof("install adhoc deployment [%s]",cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to launch adhoc backup job: %v, %s", err, string(res))
@@ -1025,7 +1019,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterInfo, to *Ti
 
 	var buffer bytes.Buffer
 	for k,v := range sets {
-		set := fmt.Sprintf("--set %s=%s",k , v)
+		set := fmt.Sprintf(" --set %s=%s",k , v)
 		_,err := buffer.WriteString(set)
 		if err != nil  {
 			return err
@@ -1134,7 +1128,7 @@ func (oa *operatorActions) Restore(from *TidbClusterInfo, to *TidbClusterInfo) e
 	}
 	var buffer bytes.Buffer
 	for k,v := range sets {
-		set := fmt.Sprintf("--set %s=%s",k , v)
+		set := fmt.Sprintf(" --set %s=%s",k , v)
 		_,err := buffer.WriteString(set)
 		if err != nil  {
 			return err
