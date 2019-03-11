@@ -22,7 +22,7 @@ import (
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"github.com/pingcap/tidb-operator/tests/backup"
+//	"github.com/pingcap/tidb-operator/tests/backup"
 )
 
 func main() {
@@ -103,9 +103,9 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	backupCase := backup.NewBackupCase(oa,clusterInfo,restoreClusterInfo)
+/*	backupCase := backup.NewBackupCase(oa,clusterInfo,restoreClusterInfo)
 
 	if err := backupCase.Run(); err != nil {
 		glog.Fatal(err)
-	}
+	}*/
 }

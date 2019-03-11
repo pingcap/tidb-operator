@@ -15,7 +15,7 @@ package backup
 
 import (
 //	"fmt"
-	"time"
+//	"time"
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests"
 )
@@ -37,9 +37,9 @@ func NewBackupCase(operator tests.OperatorActions, srcCluster *tests.TidbCluster
 func (bc *BackupCase) Run() error {
 
 	//begin to insert data
-	bc.operator.BeginInsertDataTo(bc.srcCluster)
+/*	bc.operator.BeginInsertDataTo(bc.srcCluster)
 	time.Sleep(5 * time.Second)
-	bc.operator.StopInsertDataTo(bc.srcCluster)
+	bc.operator.StopInsertDataTo(bc.srcCluster)*/
 
 	//first is check adhoc backup case
 	err := bc.operator.DeployAdHocBackup(bc.srcCluster)
@@ -80,7 +80,7 @@ func (bc *BackupCase) Run() error {
 	}
 
 	//then check sechduler backup case
-	bc.operator.BeginInsertDataTo(bc.srcCluster)
+/*	bc.operator.BeginInsertDataTo(bc.srcCluster)
 	time.Sleep(5 * time.Second)
 	bc.operator.StopInsertDataTo(bc.srcCluster)
 
@@ -121,7 +121,7 @@ func (bc *BackupCase) Run() error {
 		return err
 	}
 
-/*	//at last check incremental backup case
+	//at last check incremental backup case
 	err = bc.operator.DeployIncrementalBackup(bc.srcCluster, bc.desCluster)
 	if err != nil {
 		return err
