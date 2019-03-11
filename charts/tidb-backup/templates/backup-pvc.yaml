@@ -1,3 +1,4 @@
+{{- if eq .Values.mode "backup" }}
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
@@ -16,3 +17,4 @@ spec:
     requests:
       storage: {{ .Values.storage.size }}
   storageClassName: {{ .Values.storage.className }}
+{{- end }}

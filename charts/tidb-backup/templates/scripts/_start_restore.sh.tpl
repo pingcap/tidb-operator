@@ -22,7 +22,7 @@ downloader \
 {{- end }}
 
 /loader \
-  -d ${BACKUP_NAME} \
+  -d ${dirname} \
   -h `eval echo '${'$host'}'` \
   -u ${TIDB_USER} \
   -p ${TIDB_PASSWORD} \

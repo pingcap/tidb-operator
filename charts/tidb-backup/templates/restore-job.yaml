@@ -36,7 +36,7 @@ spec:
       {{- end }}
         env:
         - name: BACKUP_NAME
-          value: {{ .Values.restore.backupName | quote }}
+          value: {{ .Values.name | quote }}
       {{- if .Values.gcp }}
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: /gcp/credentials.json
