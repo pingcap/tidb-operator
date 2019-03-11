@@ -18,7 +18,7 @@ After TiDB Operator and Helm are deployed correctly, TiDB cluster can be deploye
 
 ```shell
 $ helm install charts/tidb-cluster --name=${releaseName} --namespace=${namespace}
-$ kubectl get po -n ${namespace} -l app.kubernetes.io/name=tidb-operator
+$ kubectl get po -n ${namespace} -l app.kubernetes.io/name=${releaseName}
 ```
 
 The default deployment doesn't set CPU and memory requests or limits for any of the pods, and the storage used is `local-storage` with minimal size. These settings can make TiDB cluster run on a small Kubernetes cluster like DinD or the default GKE cluster for testing. But for production deployment, you would likely to adjust the cpu, memory and storage resources according to the [recommendations](https://github.com/pingcap/docs/blob/master/op-guide/recommendation.md).
