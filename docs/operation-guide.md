@@ -166,9 +166,20 @@ Currently, TiDB Operator supports two kinds of backup: incremental backup via bi
 
 To enable incremental backup, set `binlog.pump.create` and `binlog.drainer.create` to `true`. By default the incremental backup data is stored in protobuffer format in a PV. You can change `binlog.drainer.destDBType` from `pb` to `mysql` or `kafka` and configure the corresponding downstream.
 
+### Full backup
+
+Currently, full backup requires a PersistentVolume. The backup job will create a PVC to store backup data.
+
+By default, the backup uses PV to store the backup data.
+> **Note:** You must set the ad-hoc full backup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to keep your backup data safe.
+
+You can also store the backup data to [Google Cloud Storage](https://cloud.google.com/storage/) bucket or [Ceph object storage](https://ceph.com/ceph-storage/object-storage/) by configuring the corresponding section in `values.yaml`. This way the PV temporarily stores backup data before it is placed in object storage.
+
+The comments in `values.yaml` is self-explanatory for both GCP backup and Ceph backup.
+
 ### Scheduled full backup
 
-Scheduled full backup can be done periodically just like crontab job. Currently, scheduled full backup requires a PersistentVolume, the backup job will create a PVC to store backup data.
+Scheduled full backup can be ran periodically just like crontab job.
 
 To create a scheduled full backup job, modify `scheduledBackup` section in `values.yaml` file.
 
@@ -179,24 +190,36 @@ To create a scheduled full backup job, modify `scheduledBackup` section in `valu
 
 > **Note:** You must set the scheduled full backup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to keep your backup data safe.
 
-If TiDB cluster is running on GKE, the backup data can be uploaded to GCS bucket. A bucket name and base64 encoded service account credential that has bucket read/write access must be provided. The comments in `values.yaml` is self-explanatory for GCP backup.
 
 ### Ad-Hoc full backup
 
 > **Note:** The rest of the document will use `values.yaml` to reference `charts/tidb-backup/values.yaml`
 
-Ad-Hoc full backup can be done once just like job. Currently, ad-hoc full backup requires a PersistentVolume, the backup job will create a PVC to store backup data.
+Ad-Hoc full backup can be done once just like job.
 
 To create an ad-hoc full backup job, modify `backup` section in `values.yaml` file.
 
-* `create` must be set to `true`
-* Set `storageClassName` to the PV storage class name used for backup data
-* `user` and `password` must be set to the correct user which has the permission to read the database to be backuped.
+* `mode` must be set to `backup`
+* Set `storage.className` to the PV storage class name used for backup data
 
-> **Note:** You must set the ad-hoc full backup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to keep your backup data safe.
+Create a secret containing the user and password that has the permission to backup the database:
 
-If TiDB cluster is running on GKE, the backup data can be uploaded to GCS bucket. A bucket name and base64 encoded service account credential that has bucket read/write access must be provided. The comments in `values.yaml` is self-explanatory for GCP backup.
+```shell
+$ kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=<user> --from-literal=password=<password>
+```
+
+Then run the following command to create an ad-hoc backup job:
+
+```shell
+$ helm install charts/tidb-backup --name=<backup-name> --namespace=${namespace}
+```
 
 ## Restore
 
-Currently, tidb-operator only supports restoring from full backup in GCS bucket. The `restore` section in `values.yaml` should have enough comments as document.
+Restore is similar to backup. See the `values.yaml` file for details.
+
+Modified the variables in `values.yaml` and then create restore job using the following command:
+
+```shell
+$ helm install charts/tidb-backup --name=<backup-name> --namespace=${namespace}
+```
