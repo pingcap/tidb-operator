@@ -243,8 +243,6 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 		}
 	}
 
-	//for the test should add two clusters in a namespace, so we
-	//has to use clustername as an label.
 	setStr := label.New().Instance(info.ClusterName).String()
 
 	resources := []string{"pvc"}
