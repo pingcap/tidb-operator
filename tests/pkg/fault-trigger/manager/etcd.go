@@ -19,7 +19,7 @@ import (
 
 // StartETCD starts etcd
 func (m *Manager) StartETCD() error {
-	shell := "service etcd start"
+	shell := "systemctl start etcd"
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	_, err := cmd.CombinedOutput()
 	return err
@@ -27,7 +27,7 @@ func (m *Manager) StartETCD() error {
 
 // StopETCD stops etcd
 func (m *Manager) StopETCD() error {
-	shell := "service etcd stop"
+	shell := "systemctl stop etcd"
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	_, err := cmd.CombinedOutput()
 	return err

@@ -14,23 +14,23 @@
 package manager
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/juju/errors"
 )
 
 // ListVMs lists vms
 func (m *Manager) ListVMs() ([]*VM, error) {
 	shell := fmt.Sprintf("virsh list --all")
 	cmd := exec.Command("/bin/sh", "-c", shell)
-	stdoutStderr, err := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, err
 	}
-	vms := parserVMs(string(stdoutStderr))
+	vms := parserVMs(string(output))
 	//"virsh domifaddr vm1 --interface eth0 --source agent"
 	for _, vm := range vms {
 		vmIP, err := getVMIP(vm.Name)
@@ -47,29 +47,83 @@ func (m *Manager) ListVMs() ([]*VM, error) {
 func (m *Manager) StopVM(v *VM) (string, error) {
 	shell := fmt.Sprintf("virsh destroy %s", v.Name)
 	cmd := exec.Command("/bin/sh", "-c", shell)
-	stdoutStderr, err := cmd.CombinedOutput()
-	return string(stdoutStderr), err
+	output, err := cmd.CombinedOutput()
+	return string(output), err
 }
 
 // StartVM starts vm
 func (m *Manager) StartVM(v *VM) (string, error) {
 	shell := fmt.Sprintf("virsh start %s", v.Name)
 	cmd := exec.Command("/bin/sh", "-c", shell)
-	stdoutStderr, err := cmd.CombinedOutput()
-	return string(stdoutStderr), err
+	output, err := cmd.CombinedOutput()
+	return string(output), err
 }
 
 func getVMIP(name string) (string, error) {
 	shell := fmt.Sprintf("virsh domifaddr %s --interface eth0 --source agent", name)
 	cmd := exec.Command("/bin/sh", "-c", shell)
-	stdoutStderr, err := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		mac, err := getVMMac(name)
+		if err != nil {
+			return "", err
+		}
+
+		ipNeighShell := fmt.Sprintf("ip neigh | grep -i %s", mac)
+		cmd = exec.Command("/bin/sh", "-c", ipNeighShell)
+		ipNeighOutput, err := cmd.CombinedOutput()
+		if err != nil {
+			return "", err
+		}
+
+		return parserIPFromIPNeign(string(ipNeighOutput))
+	}
+
+	return parserIP(string(output))
+}
+
+func getVMMac(name string) (string, error) {
+	shell := fmt.Sprintf("virsh domiflist %s", name)
+	cmd := exec.Command("/bin/sh", "-c", shell)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", err
 	}
 
-	return parserIP(string(stdoutStderr))
+	return parserMac(string(output))
 }
 
+// example input :
+// Interface  Type       Source     Model       MAC
+// -------------------------------------------------------
+// vnet1      bridge     br0        virtio      52:54:00:d4:9e:bb
+// output: 52:54:00:d4:9e:bb, nil
+func parserMac(data string) (string, error) {
+	data = stripEmpty(data)
+	lines := strings.Split(data, "\n")
+
+	for _, line := range lines {
+		if !strings.Contains(line, "bridge") {
+			continue
+		}
+
+		fields := strings.Split(line, " ")
+		if len(fields) < 5 {
+			continue
+		}
+
+		return fields[4], nil
+	}
+
+	return "", errors.New("mac not found")
+}
+
+// example input:
+// Name       MAC address          Protocol     Address
+// -------------------------------------------------------------------------------
+// eth0       52:54:00:4c:5b:c0    ipv4         172.16.30.216/24
+// -          -                    ipv6         fe80::5054:ff:fe4c:5bc0/64
+// output: 172.16.30.216, nil
 func parserIP(data string) (string, error) {
 	data = stripEmpty(data)
 	lines := strings.Split(data, "\n")
@@ -87,9 +141,28 @@ func parserIP(data string) (string, error) {
 		return ip, nil
 	}
 
-	return "", errors.NotFoundf("address")
+	return "", errors.New("ip not found")
 }
 
+// example input:
+// 172.16.30.216 dev br0 lladdr 52:54:00:4c:5b:c0 STALE
+// output: 172.16.30.216, nil
+func parserIPFromIPNeign(data string) (string, error) {
+	fields := strings.Split(strings.Trim(data, "\n"), " ")
+	if len(fields) != 6 {
+		return "", errors.New("ip not found")
+	}
+
+	return fields[0], nil
+}
+
+// example input:
+//  Id    Name                           State
+// ----------------------------------------------------
+// 6     vm2                            running
+// 11    vm3                            running
+// 12    vm1                            running
+// -     vm-template                    shut off
 func parserVMs(data string) []*VM {
 	data = stripEmpty(data)
 	lines := strings.Split(data, "\n")

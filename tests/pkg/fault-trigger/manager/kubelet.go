@@ -15,17 +15,17 @@ package manager
 
 import "os/exec"
 
-// StopKubelet stops kubelet
-func (m *Manager) StopKubelet() error {
-	shell := "service kubelet stop"
+// StartKubelet starts kubelet
+func (m *Manager) StartKubelet() error {
+	shell := "systemctl start kubelet"
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	_, err := cmd.CombinedOutput()
 	return err
 }
 
-// StartKubelet starts kubelet
-func (m *Manager) StartKubelet() error {
-	shell := "service kubelet start"
+// StopKubelet stops kubelet
+func (m *Manager) StopKubelet() error {
+	shell := "systemctl stop kubelet"
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	_, err := cmd.CombinedOutput()
 	return err
