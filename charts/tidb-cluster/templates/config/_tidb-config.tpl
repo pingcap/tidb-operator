@@ -237,7 +237,7 @@ capacity = 10240000
 
 [binlog]
 # enable to write binlog.
-enable = false
+enable = "off"
 
 # WriteTimeout specifies how long it will wait for writing binlog to pump.
 write-timeout = "15s"
