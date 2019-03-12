@@ -4,7 +4,7 @@ github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 h1:xJ4a3vCFaGF/jqvzLM
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/coreos/bbolt v1.3.1-coreos.6 h1:uTXKg9gY70s9jMAKdfljFQcuh4e/BXOM+V+d00KFj3A=
 github.com/coreos/bbolt v1.3.1-coreos.6/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
-github.com/coreos/etcd v0.0.0-20180530235116-2b3aa7e1d49d h1:zhOJad+Mv6DJ3IdTSoOubih2OeMTZFH+qs21GS5uHP8=
+github.com/coreos/etcd v0.0.0-20180530235116-2b3aa7e1d49d h1:X15ii/EYFV9j7Hgj8VwtpSe65vGy7RYrX9oIDgXvRHk=
 github.com/coreos/etcd v0.0.0-20180530235116-2b3aa7e1d49d/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=
 github.com/coreos/go-semver v0.2.0 h1:3Jm3tLmsgAYcjC+4Up7hJrFBPr+n7rAqYeSw/SZazuY=
 github.com/coreos/go-semver v0.2.0/go.mod h1:nnelYz7RCh+5ahJtPPxZlU+153eP4D4r3EedlOD2RNk=
@@ -16,6 +16,7 @@ github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumCAMpl/TFQ4/5kLM=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
+github.com/dnephin/govet v0.0.0-20171012192244-4a96d43e39d3 h1:LrNBULdC8dhFb7VeeIfuLAVq2IOFtVD9zIYh838jWfM=
 github.com/dnephin/govet v0.0.0-20171012192244-4a96d43e39d3/go.mod h1:pPTX0MEEoAnfbrAGFj4nSVNhl6YbugRj6eardUZdtGo=
 github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
@@ -83,7 +84,7 @@ github.com/pingcap/check v0.0.0-20171206051426-1c287c953996 h1:ZBdiJCMan6GSo/aPA
 github.com/pingcap/check v0.0.0-20171206051426-1c287c953996/go.mod h1:B1+S9LNcuMyLH/4HMTViQOJevkGiik3wW2AN9zb2fNQ=
 github.com/pingcap/errors v0.11.0 h1:DCJQB8jrHbQ1VVlMFIrbj2ApScNNotVmkSNplu2yUt4=
 github.com/pingcap/errors v0.11.0/go.mod h1:Oi8TUi2kEtXXLMJk9l1cGmz20kV3TaQ0usTwv5KuLY8=
-github.com/pingcap/kvproto v0.0.0-20180606093822-b7ba8ea1c0b4 h1:TpR2noYlyow48v/Q5Pll0c3uvn9+N4h9gVDqxRX8CbQ=
+github.com/pingcap/kvproto v0.0.0-20180606093822-b7ba8ea1c0b4 h1:fYmrrTx2rWqgvlvTLoHvSlZ78Ckd5BB+NIn0+PVZRTc=
 github.com/pingcap/kvproto v0.0.0-20180606093822-b7ba8ea1c0b4/go.mod h1:0gwbe1F2iBIjuQ9AH0DbQhL+Dpr5GofU8fgYyXk+ykk=
 github.com/pingcap/pd v2.1.0-beta+incompatible h1:DZrskt6POM+zhTZvUjUJKXV9OVWpV7cdcq1tXQGOiCY=
 github.com/pingcap/pd v2.1.0-beta+incompatible/go.mod h1:nD3+EoYes4+aNNODO99ES59V83MZSI+dFbhyr667a0E=
@@ -165,9 +166,9 @@ k8s.io/apimachinery v0.0.0-20180228050457-302974c03f7e h1:CsgbEA8905OlpVLNKWD4Ga
 k8s.io/apimachinery v0.0.0-20180228050457-302974c03f7e/go.mod h1:ccL7Eh7zubPUSh9A3USN90/OzHNSVN6zxzde07TDCL0=
 k8s.io/apiserver v0.0.0-20180807214737-1b22bcf04547 h1:6ywv8+3hlyxlevR3XvNSECNIou1TRUYgrUKqBpCQUog=
 k8s.io/apiserver v0.0.0-20180807214737-1b22bcf04547/go.mod h1:6bqaTSOSJavUIXUtfaR9Os9JtTCm8ZqH2SUl2S60C4w=
-k8s.io/client-go v0.0.0-20180424211516-33f2870a2b83 h1:OmkDDtLpA4IuQnfrcfOjqAhBi1SayXrwo5ksneP2u84=
+k8s.io/client-go v0.0.0-20180424211516-33f2870a2b83 h1:zFG4vdZo+7VePgo3YFfw+ZZURiwY0BGAzdt20E6X9M0=
 k8s.io/client-go v0.0.0-20180424211516-33f2870a2b83/go.mod h1:7vJpHMYJwNQCWgzmNV+VYUl1zCObLyodBc8nIyt8L5s=
 k8s.io/kube-openapi v0.0.0-20180731170545-e3762e86a74c h1:3KSCztE7gPitlZmWbNwue/2U0YruD65DqX3INopDAQM=
 k8s.io/kube-openapi v0.0.0-20180731170545-e3762e86a74c/go.mod h1:BXM9ceUBTj2QnfH2MK1odQs778ajze1RxcmP6S8RVVc=
-k8s.io/kubernetes v1.10.2 h1:F96VqOTtf7epA620J3sNJMhhaqbOeBaAppm+rZzxNlU=
+k8s.io/kubernetes v1.10.2 h1:ad/NtArD2zm//BVvQpiWHHpSxryJrSd73B68Z18WFzM=
 k8s.io/kubernetes v1.10.2/go.mod h1:ocZa8+6APFNC2tX1DZASIbocyYT5jHzqFVsY5aoB7Jk=

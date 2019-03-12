@@ -6,14 +6,14 @@ $(error Please upgrade your Go compiler to 1.11 or higher version)
 endif
 
 GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=linux GOARCH=amd64
-GO     := $(GOENV) GO111MODULE=on go build -mod=vendor
-GOTEST := CGO_ENABLED=0 GO111MODULE=on go test -v -mod=vendor -cover
+GO     := $(GOENV) GO111MODULE=on go build
+GOTEST := CGO_ENABLED=0 GO111MODULE=on go test -v -cover
 
 LDFLAGS = $(shell ./hack/version.sh)
 
 DOCKER_REGISTRY := $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY),localhost:5000)
 
-PACKAGE_LIST := go list ./... | grep -vE "vendor" | grep -vE "pkg/client" | grep -vE "zz_generated"
+PACKAGE_LIST := go list ./... | grep -vE "pkg/client" | grep -vE "zz_generated"
 PACKAGES := $$($(PACKAGE_LIST))
 PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
 FILES := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go")
