@@ -50,8 +50,8 @@ func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface) O
 }
 
 const (
-	WAITMINUTE time.Duration = 10
-	WAITSECOND time.Duration = 5
+	DefaultPollTimeout time.Duration = 10 * time.Minute
+	DefaultPollInterval time.Duration = 5 * time.Second
 )
 
 type OperatorActions interface {
@@ -77,6 +77,7 @@ type OperatorActions interface {
 	DeployMonitor(info *TidbClusterInfo) error
 	CleanMonitor(info *TidbClusterInfo) error
 	ForceDeploy(info *TidbClusterInfo) error
+	CreateSecret(info *TidbClusterInfo) error
 }
 
 type FaultTriggerActions interface {
@@ -256,7 +257,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 	}
 	var buffer bytes.Buffer
 	for k,v := range sets {
-		set := fmt.Sprintf("-l %s=%s",k , v)
+		set := fmt.Sprintf(" %s=%s",k , v)
 		_,err := buffer.WriteString(set)
 		if err != nil  {
 			return err
@@ -266,7 +267,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 	setStr := buffer.String()
 	resources := []string{"cronjobs", "jobs", "pods", "pvc"}
 	for _, resource := range resources {
-		if res, err := exec.Command("kubectl", "delete", resource, "-n", info.Namespace,
+		if res, err := exec.Command("kubectl", "delete", resource, "-n", info.Namespace, "-l",
 			setStr).CombinedOutput(); err != nil {
 			return fmt.Errorf("failed to delete %s: %v, %s", resource, err, string(res))
 		}
@@ -300,7 +301,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 		}
 		return true, nil
 	}
-	return wait.PollImmediate(WAITSECOND * time.Second, WAITMINUTE * time.Minute, pollFn)
+	return wait.PollImmediate(DefaultPollInterval , DefaultPollTimeout , pollFn)
 }
 
 func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterInfo) error {
@@ -310,7 +311,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterInfo) error {
 	}()
 	ns := info.Namespace
 	tcName := info.ClusterName
-	if err := wait.PollImmediate(WAITSECOND * time.Second, WAITMINUTE * time.Minute, func() (bool, error) {
+	if err := wait.PollImmediate(DefaultPollInterval , DefaultPollTimeout , func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -358,6 +359,22 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterInfo) error {
 	}
 
 	return nil
+}
+
+func (oa *operatorActions) CreateSecret(info *TidbClusterInfo) error {
+	secretName := "backup-secret"
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: info.Namespace,
+		},
+		Data: map[string][]byte{
+			"root": []byte(info.Password),
+		},
+		Type: corev1.SecretTypeOpaque,
+	}
+	_, err := oa.kubeCli.CoreV1().Secrets(info.Namespace).Create(&secret)
+	return err
 }
 
 func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterInfo) error {
@@ -878,7 +895,7 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterInfo) error {
 	}
 
 	setStr := buffer.String()
-	cmd := fmt.Sprintf("helm update %s /charts/%s/tidb-cluster %s",
+	cmd := fmt.Sprintf("helm upgrade %s /charts/%s/tidb-cluster %s",
 		info.ClusterName, info.OperatorTag, setStr)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -894,7 +911,7 @@ func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterInfo) error {
 		glog.Infof("deploy check scheduler end")
 	}()
 
-	jobName := fmt.Sprintf("%s--scheduled-backup",info.ClusterName)
+	jobName := fmt.Sprintf("%s-scheduled-backup",info.ClusterName)
 	fn := func() (bool, error) {
 		job, err :=  oa.kubeCli.BatchV1beta1().CronJobs(info.Namespace).Get(jobName,metav1.GetOptions{})
 		if err != nil {
@@ -930,7 +947,7 @@ func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterInfo) error {
 		return true, nil
 	}
 
-	err := wait.Poll(WAITSECOND * time.Second, WAITMINUTE * time.Minute, fn)
+	err := wait.Poll(DefaultPollInterval , DefaultPollTimeout , fn)
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
@@ -994,7 +1011,7 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterInfo) error {
 		return true, nil
 	}
 
-	err := wait.Poll(WAITSECOND * time.Second, WAITMINUTE * time.Minute, fn)
+	err := wait.Poll(DefaultPollInterval , DefaultPollTimeout , fn)
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
@@ -1027,7 +1044,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterInfo, to *Ti
 	}
 
 	setStr := buffer.String()
-	cmd := fmt.Sprintf("helm update %s /charts/%s/tidb-cluster %s",
+	cmd := fmt.Sprintf("helm upgrade %s /charts/%s/tidb-cluster %s",
 	from.ClusterName, from.OperatorTag, setStr)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1105,7 +1122,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterInfo) error {
 		return true, nil
 	}
 
-	err := wait.Poll(WAITSECOND * time.Second, WAITMINUTE * time.Minute, fn)
+	err := wait.Poll(DefaultPollInterval , DefaultPollTimeout , fn)
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
@@ -1137,7 +1154,7 @@ func (oa *operatorActions) Restore(from *TidbClusterInfo, to *TidbClusterInfo) e
 
 	setStr := buffer.String()
 	restoreName := fmt.Sprintf("%s-restore",to.ClusterName)
-	cmd := fmt.Sprintf("helm update -n %s -namespace %s /charts/%s/tidb-backup %s",
+	cmd := fmt.Sprintf("helm upgrade -n %s -namespace %s /charts/%s/tidb-backup %s",
 		restoreName,to.ClusterName, to.OperatorTag, setStr)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1186,7 +1203,7 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterInfo, to *TidbClusterIn
 		return true, nil
 	}
 
-	err := wait.Poll(WAITSECOND * time.Second, WAITMINUTE * time.Minute, fn)
+	err := wait.Poll(DefaultPollInterval , DefaultPollTimeout , fn)
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
@@ -1318,6 +1335,3 @@ func getParentUIDFromJob(j batchv1.Job) (types.UID, bool) {
 
 	return controllerRef.UID, true
 }
-
-
-
