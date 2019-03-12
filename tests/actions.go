@@ -35,11 +35,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface) OperatorActions {
+func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, logDir string) OperatorActions {
 	return &operatorActions{
 		cli:       cli,
 		kubeCli:   kubeCli,
 		pdControl: controller.NewDefaultPDControl(),
+		logDir:    logDir,
 	}
 }
 
@@ -47,7 +48,7 @@ type OperatorActions interface {
 	DeployOperator(info *OperatorInfo) error
 	CleanOperator(info *OperatorInfo) error
 	UpgradeOperator(info *OperatorInfo) error
-	DumpAllLogs(info *OperatorInfo, clusterInfo *TidbClusterInfo) error
+	DumpAllLogs(info *OperatorInfo, clusterInfos []*TidbClusterInfo) error
 	DeployTidbCluster(info *TidbClusterInfo) error
 	CleanTidbCluster(info *TidbClusterInfo) error
 	CheckTidbClusterStatus(info *TidbClusterInfo) error
@@ -91,6 +92,7 @@ type operatorActions struct {
 	cli       versioned.Interface
 	kubeCli   kubernetes.Interface
 	pdControl controller.PDControlInterface
+	logDir    string
 }
 
 type OperatorInfo struct {
@@ -196,10 +198,6 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorInfo) error {
 	if err != nil {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
 	}
-	return nil
-}
-
-func (oa *operatorActions) DumpAllLogs(info *OperatorInfo, clusterInfo *TidbClusterInfo) error {
 	return nil
 }
 

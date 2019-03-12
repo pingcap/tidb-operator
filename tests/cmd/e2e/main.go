@@ -42,7 +42,7 @@ func main() {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 
-	oa := tests.NewOperatorActions(cli, kubeCli)
+	oa := tests.NewOperatorActions(cli, kubeCli, "/logDir")
 
 	operatorInfo := &tests.OperatorInfo{
 		Namespace:      "pingcap",
@@ -53,9 +53,11 @@ func main() {
 		LogLevel:       "2",
 	}
 	if err := oa.CleanOperator(operatorInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{})
 		glog.Fatal(err)
 	}
 	if err := oa.DeployOperator(operatorInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{})
 		glog.Fatal(err)
 	}
 
@@ -71,12 +73,15 @@ func main() {
 		Args:             map[string]string{},
 	}
 	if err := oa.CleanTidbCluster(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
 		glog.Fatal(err)
 	}
 	if err := oa.DeployTidbCluster(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
 		glog.Fatal(err)
 	}
 	if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
 		glog.Fatal(err)
 	}
 }
