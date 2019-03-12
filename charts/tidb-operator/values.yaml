@@ -50,5 +50,6 @@ scheduler:
     requests:
       cpu: 80m
       memory: 50Mi
-  # this hyperkube verison must be the same as your kubernetes cluster version
-  # kubeSchedulerImage: gcr.io/google-containers/hyperkube:v1.12.1
+  kubeSchedulerImageName: gcr.io/google-containers/hyperkube
+  # This will default to matching your kubernetes version
+  # kubeSchedulerImageTag:
