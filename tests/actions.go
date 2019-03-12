@@ -362,7 +362,7 @@ func (oa *operatorActions) DeployMonitor(info *TidbClusterInfo) error { return n
 func (oa *operatorActions) CleanMonitor(info *TidbClusterInfo) error  { return nil }
 
 func getComponentContainer(set *v1beta1.StatefulSet) (corev1.Container, bool) {
-	name := set.Labels["app.kubernetes.io/component"]
+	name := set.Labels[label.ComponentLabelKey]
 	for _, c := range set.Spec.Template.Spec.Containers {
 		if c.Name == name {
 			return c, true
