@@ -79,4 +79,26 @@ func main() {
 	if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
 		glog.Fatal(err)
 	}
+
+	restoreClusterInfo := &tests.TidbClusterInfo{
+		Namespace:        "tidb",
+		ClusterName:      "demo2",
+		OperatorTag:      "v1.0.0-beta.1-p2",
+		PDImage:          "pingcap/pd:v2.1.3",
+		TiKVImage:        "pingcap/tikv:v2.1.3",
+		TiDBImage:        "pingcap/tidb:v2.1.3",
+		StorageClassName: "local-storage",
+		Password:         "admin",
+		Args:             map[string]string{},
+	}
+
+	if err := oa.CleanTidbCluster(restoreClusterInfo); err != nil {
+		glog.Fatal(err)
+	}
+	if err := oa.DeployTidbCluster(restoreClusterInfo); err != nil {
+		glog.Fatal(err)
+	}
+	if err := oa.CheckTidbClusterStatus(restoreClusterInfo); err != nil {
+		glog.Fatal(err)
+	}
 }
