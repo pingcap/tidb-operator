@@ -282,7 +282,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 	}
 
 	pollFn := func() (bool, error) {
-		if res, err := exec.Command("kubectl", "get", "po", "--output=name", "-n", info.Namespace, setStr).
+		if res, err := exec.Command("kubectl", "get", "po", "--output=name", "-n", info.Namespace, "-l",  setStr).
 			CombinedOutput(); err != nil || len(res) != 0 {
 			glog.Infof("waiting for tidbcluster: %s/%s pods deleting, %v, [%s]",
 				info.Namespace, info.ClusterName, err, string(res))
