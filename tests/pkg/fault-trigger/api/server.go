@@ -19,7 +19,6 @@ import (
 
 	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
-	"github.com/ngaut/log"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
 )
 
@@ -62,7 +61,7 @@ func (s *Server) listVMs(req *restful.Request, resp *restful.Response) {
 	res.payload(vms).statusCode(http.StatusOK)
 
 	if err = resp.WriteEntity(res); err != nil {
-		log.Errorf("failed to response, method: listVMs, error: %v", err)
+		glog.Errorf("failed to response, method: listVMs, error: %v", err)
 	}
 }
 
@@ -152,7 +151,7 @@ func (s *Server) action(
 	res.message("OK").statusCode(http.StatusOK)
 
 	if err := resp.WriteEntity(res); err != nil {
-		log.Errorf("failed to response, method: %s, error: %v", method, err)
+		glog.Errorf("failed to response, method: %s, error: %v", method, err)
 	}
 }
 
@@ -177,7 +176,7 @@ func (s *Server) vmAction(
 	res.message("OK").statusCode(http.StatusOK)
 
 	if err := resp.WriteEntity(res); err != nil {
-		log.Errorf("failed to response, method: %s, error: %v", method, err)
+		glog.Errorf("failed to response, method: %s, error: %v", method, err)
 	}
 }
 
