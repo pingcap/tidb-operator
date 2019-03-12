@@ -14,8 +14,10 @@
 package label
 
 import (
+	"fmt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"strings"
 )
 
 const (
@@ -137,4 +139,15 @@ func (l Label) LabelSelector() *metav1.LabelSelector {
 // Labels converts label to map[string]string
 func (l Label) Labels() map[string]string {
 	return l
+}
+
+// String converts label to a string
+func (l Label) String() string {
+	var arr []string
+
+	for k, v := range l {
+		arr = append(arr, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	return strings.Join(arr, ",")
 }
