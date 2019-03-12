@@ -20,12 +20,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"net/http"
-	"io/ioutil"
-	"encoding/json"
 
-	"github.com/golang/glog"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang/glog"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -48,7 +45,7 @@ func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface) O
 }
 
 const (
-	DefaultPollTimeout time.Duration = 10 * time.Minute
+	DefaultPollTimeout  time.Duration = 10 * time.Minute
 	DefaultPollInterval time.Duration = 1 * time.Minute
 )
 
@@ -68,7 +65,7 @@ type OperatorActions interface {
 	CheckAdHocBackup(info *TidbClusterInfo) error
 	DeployScheduledBackup(info *TidbClusterInfo) error
 	CheckScheduledBackup(info *TidbClusterInfo) error
-	DeployIncrementalBackup(from *TidbClusterInfo,to *TidbClusterInfo) error
+	DeployIncrementalBackup(from *TidbClusterInfo, to *TidbClusterInfo) error
 	CheckIncrementalBackup(info *TidbClusterInfo) error
 	Restore(from *TidbClusterInfo, to *TidbClusterInfo) error
 	CheckRestore(from *TidbClusterInfo, to *TidbClusterInfo) error
@@ -248,12 +245,9 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 
 	//for the test should add two clusters in a namespace, so we
 	//has to use clustername as an label.
-	setStr,err := label.New().Instance(info.ClusterName).String()
-	if err != nil {
-		return fmt.Errorf("failed to arrange label to string : %v",  err)
-	}
+	setStr := label.New().Instance(info.ClusterName).String()
 
-	resources := []string{ "pvc"}
+	resources := []string{"pvc"}
 	for _, resource := range resources {
 		if res, err := exec.Command("kubectl", "delete", resource, "-n", info.Namespace, "-l",
 			setStr).CombinedOutput(); err != nil {
@@ -270,7 +264,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 	}
 
 	pollFn := func() (bool, error) {
-		if res, err := exec.Command("kubectl", "get", "po", "--output=name", "-n", info.Namespace, "-l",  setStr).
+		if res, err := exec.Command("kubectl", "get", "po", "--output=name", "-n", info.Namespace, "-l", setStr).
 			CombinedOutput(); err != nil || len(res) != 0 {
 			glog.Infof("waiting for tidbcluster: %s/%s pods deleting, %v, [%s]",
 				info.Namespace, info.ClusterName, err, string(res))
@@ -289,7 +283,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 		}
 		return true, nil
 	}
-	return wait.PollImmediate(DefaultPollInterval , DefaultPollTimeout , pollFn)
+	return wait.PollImmediate(DefaultPollInterval, DefaultPollTimeout, pollFn)
 }
 
 func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterInfo) error {
@@ -299,7 +293,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterInfo) error {
 	}()
 	ns := info.Namespace
 	tcName := info.ClusterName
-	if err := wait.PollImmediate(DefaultPollInterval , DefaultPollTimeout , func() (bool, error) {
+	if err := wait.PollImmediate(DefaultPollInterval, DefaultPollTimeout, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -357,10 +351,10 @@ func (oa *operatorActions) StopInsertDataTo(info *TidbClusterInfo) error {
 	return nil
 }
 
-func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterInfo) error        { return nil }
-func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterInfo) error      { return nil }
-func (oa *operatorActions) DeployMonitor(info *TidbClusterInfo) error { return nil }
-func (oa *operatorActions) CleanMonitor(info *TidbClusterInfo) error  { return nil }
+func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterInfo) error   { return nil }
+func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterInfo) error { return nil }
+func (oa *operatorActions) DeployMonitor(info *TidbClusterInfo) error      { return nil }
+func (oa *operatorActions) CleanMonitor(info *TidbClusterInfo) error       { return nil }
 
 func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
 	tcName := tc.GetName()
@@ -841,131 +835,39 @@ func checkoutTag(tagName string) error {
 	return nil
 }
 
-//scheduler backup, make sure there are serveral backup record is generated, and 
-//store the datas of each record
 func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterInfo) error {
 	return nil
 }
 
-//restore genereted record by scheduledbackup, and make sure the data is correct
 func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterInfo) error {
 	return nil
 }
 
-//full data backup
 func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterInfo) error {
 	return nil
 }
 
-//restore full data backup is correct and check full data backup data is correct
 func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterInfo) error {
 	return nil
 }
 
-//return fmt.Errorf("failed to launch scheduler backup job: %v, %s", err, string(res))incretment data backup
 func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterInfo, to *TidbClusterInfo) error {
 	return nil
 }
 
-//restore increment data backup and make sure data is correct.
 func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterInfo) error {
 	return nil
 
 }
 
-//full restore data from record to database.
 func (oa *operatorActions) Restore(from *TidbClusterInfo, to *TidbClusterInfo) error {
 	return nil
 }
 
-//check wether restore data is correct.
 func (oa *operatorActions) CheckRestore(from *TidbClusterInfo, to *TidbClusterInfo) error {
 	return nil
 }
 
-type pumpStatus struct {
-	StatusMap map[string]*nodeStatus
-}
-
-type nodeStatus struct {
-	State string
-}
-
-func (oa *operatorActions) pumpHealth(info *TidbClusterInfo , hostName string) bool {
-	pumpHealthUrl := fmt.Sprintf("%s.%s-pump.%s", hostName, info.ClusterName, info.Namespace)
-	res, err := http.Get(pumpHealthUrl)
-	if err != nil {
-		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, pumpHealthUrl, err)
-		return false
-	}
-	if res.StatusCode >= 400 {
-		glog.Errorf("Error response %v", res.StatusCode)
-		return false
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		glog.Errorf("cluster:[%s] read response body failed,error:%v", info.ClusterName, err)
-		return false
-	}
-	healths := pumpStatus{}
-	err = json.Unmarshal(body, &healths)
-	if err != nil {
-		glog.Errorf("cluster:[%s] unmarshal failed,error:%v", info.ClusterName, err)
-		return false
-	}
-	for _, status := range healths.StatusMap {
-		if status.State != "online" {
-			glog.Errorf("cluster:[%s] pump's state is not online", info.ClusterName)
-			return false
-		}
-	}
-	return true
-}
-
-type drainerStatus struct {
-	PumpPos map[string]int64 `json:"PumpPos"`
-	Synced  bool             `json:"Synced"`
-	LastTS  int64            `json:"LastTS"`
-	TsMap   string           `json:"TsMap"`
-}
-
-func (oa *operatorActions) drainerHealth(info *TidbClusterInfo, hostName string) bool {
-	drainerHealthUrl := fmt.Sprintf("%s.%s-drainer.%s", hostName, info.ClusterName, info.Namespace)
-	res, err := http.Get(drainerHealthUrl)
-	if err != nil {
-		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthUrl, err)
-		return false
-	}
-	if res.StatusCode >= 400 {
-		glog.Errorf("Error response %v", res.StatusCode)
-		return false
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		glog.Errorf("cluster:[%s] read response body failed,error:%v", info.ClusterName, err)
-		return false
-	}
-	healths := drainerStatus{}
-	err = json.Unmarshal(body, &healths)
-	if err != nil {
-		glog.Errorf("cluster:[%s] unmarshal failed,error:%v", info.ClusterName, err)
-		return false
-	}
-	return len(healths.PumpPos) > 0 && healths.Synced
-}
-
 func (oa *operatorActions) ForceDeploy(info *TidbClusterInfo) error {
-	if err := oa.CleanTidbCluster(info); err != nil {
-		return err
-	}
-
-	if err := oa.DeployTidbCluster(info); err != nil {
-		return err
-	}
-
 	return nil
-}
-
-func (info *TidbClusterInfo) FullName() string {
-	return fmt.Sprintf("%s/%s",info.Namespace,info.ClusterName)
 }

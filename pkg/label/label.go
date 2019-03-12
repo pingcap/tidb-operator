@@ -14,10 +14,10 @@
 package label
 
 import (
+	"fmt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"bytes"
-	"fmt"
+	"strings"
 )
 
 const (
@@ -142,23 +142,12 @@ func (l Label) Labels() map[string]string {
 }
 
 //Labels convers label to string
-func (l Label) String() (string,error) {
-	var buffer bytes.Buffer
-	count := 1
-	for k,v := range l {
-		var set string
-		if count == len(l) {
-			set = fmt.Sprintf("%s=%s",k , v)
-		} else {
-			set = fmt.Sprintf("%s=%s,",k , v)
-		}
-		count += 1
-		_,err := buffer.WriteString(set)
-		if err != nil  {
-			return "",err
-		}
+func (l Label) String() string {
+	var arr []string
+
+	for k, v := range l {
+		arr = append(arr, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	setStr := buffer.String()
-	return setStr,nil
+	return strings.Join(arr, ",")
 }
