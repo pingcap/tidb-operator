@@ -5,61 +5,48 @@
 # clusterName is the TiDB cluster name that should backup from or restore to.
 clusterName: demo
 
-backup:
-  create: false
-  binlogImage: pingcap/tidb-binlog:v2.1.0
-  binlogImagePullPolicy: IfNotPresent
+mode: backup # backup | restore
+# name is the backup name
+name: fullbackup-20190306
+image:
+  pullPolicy: IfNotPresent
+  binlog: pingcap/tidb-binlog:v2.1.0
   # https://github.com/tennix/tidb-cloud-backup
-  mydumperImage: pingcap/tidb-cloud-backup:latest
-  mydumperImagePullPolicy: IfNotPresent
-  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
-  # different classes might map to quality-of-service levels, or to backup policies,
-  # or to arbitrary policies determined by the cluster administrators.
-  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
-  storageClassName: local-storage
-  storage: 100Gi
-  # https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
-  options: "--chunk-filesize=100"
-  # user must set tidb cluster user and password
-  user: backup
-  password: "Password here ..."
-  # backup to gcp
-  gcp: {}
-    # base64 format of the service account json file data
-    # https://cloud.google.com/docs/authentication/production#obtaining_and_providing_service_account_credentials_manually
-    # and then: cat credentials.json | base64 | tr -d '\n'
-    # credentialsData: ""
-    # bucket: ""
-  # backup to ceph object storage
-  ceph: {}
-    # endpoint: ""
-    # bucket: ""
+  backup: pingcap/tidb-cloud-backup:latest
 
-restore:
-  create: false
-  # https://github.com/tennix/tidb-cloud-backup
-  image: pingcap/tidb-cloud-backup:latest
-  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
-  # different classes might map to quality-of-service levels, or to backup policies,
-  # or to arbitrary policies determined by the cluster administrators.
-  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
-  storageClassName: local-storage
-  storage: 100Gi
-  # loader options https://www.pingcap.com/docs-cn/tools/loader/
-  options: "-t 16"
-  # user must set tidb cluster user and password
-  user: restore
-  password: "Password here ..."
-  # srcDir is the directory of backup data in bucket
-  srcDir: ""
-  # backup data comes from gcp
-  gcp: {}
-    # credentialsData is base64 format of the service account json file data
-    # https://cloud.google.com/docs/authentication/production#obtaining_and_providing_service_account_credentials_manually
-    # and then: cat credentials.json | base64 | tr -d '\n'
-    # credentialsData: ""
-    # bucket: ""
-  # backup data comes from ceph object storage
-  ceph: {}
-    # endpoint: ""
-    # bucket: ""
+# secretName is the name of the secret which stores user and password used for backup/restore
+# Note: you must give the user enough privilege to do the backup and restore
+# you can create the secret by:
+# kubectl create secret generic backup-secret --from-literal=user=root --from-literal=password=<password>
+secretName: backup-secret
+
+storage:
+  className: local-storage
+  size: 100Gi
+
+# backupOptions is the options of mydumper https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
+backupOptions: "--chunk-filesize=100"
+# restoreOptions is the options of loader https://www.pingcap.com/docs-cn/tools/loader/
+restoreOptions: "-t 16"
+
+# By default, the backup/restore uses PV to store/load backup data
+# You can choose to store/load backup data to/from gcp or ceph bucket by enabling the following corresponding section:
+
+# backup to or restore from gcp bucket, the backup path is in the form of <clusterName>-<name>
+gcp: {}
+  # bucket: ""
+  # secretName is the name of the secret which stores the gcp service account credentials json file
+  # The service account must have read/write permission to the above bucket.
+  # Read the following document to create the service account and download the credentials file as credentials.json:
+  # https://cloud.google.com/docs/authentication/production#obtaining_and_providing_service_account_credentials_manually
+  # And then create the secret by: kubectl create secret generic gcp-backup-secret --from-file=./credentials.json
+  # secretName: gcp-backup-secret
+
+# backup to or restore from ceph bucket,  the backup path is in the form of <clusterName>-<name>
+ceph: {}
+  # endpoint: ""
+  # bucket: ""
+  # secretName is the name of the secret which stores ceph object store access key and secret key
+  # You can create the secret by:
+  # kubectl create secret generic ceph-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
+  # secretName: ceph-backup-secret
