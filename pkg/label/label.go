@@ -141,7 +141,7 @@ func (l Label) Labels() map[string]string {
 	return l
 }
 
-//Labels convers label to string
+// String converts label to a string
 func (l Label) String() string {
 	var arr []string
 
