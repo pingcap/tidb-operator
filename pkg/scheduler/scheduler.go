@@ -53,7 +53,7 @@ func NewScheduler(kubeCli kubernetes.Interface, cli versioned.Interface) Schedul
 // Filter selects a set of nodes from *schedulerapiv1.ExtenderArgs.Nodes when this is a pd or tikv pod
 // otherwise, returns the original nodes.
 func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.ExtenderFilterResult, error) {
-	pod := &args.Pod
+	pod := args.Pod
 	ns := pod.GetNamespace()
 	podName := pod.GetName()
 	kubeNodes := args.Nodes.Items
