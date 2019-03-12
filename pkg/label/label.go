@@ -16,6 +16,8 @@ package label
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"bytes"
+	"fmt"
 )
 
 const (
@@ -137,4 +139,26 @@ func (l Label) LabelSelector() *metav1.LabelSelector {
 // Labels converts label to map[string]string
 func (l Label) Labels() map[string]string {
 	return l
+}
+
+//Labels convers label to string
+func (l Label) String() (string,error) {
+	var buffer bytes.Buffer
+	count := 1
+	for k,v := range l {
+		var set string
+		if count == len(l) {
+			set = fmt.Sprintf("%s=%s",k , v)
+		} else {
+			set = fmt.Sprintf("%s=%s,",k , v)
+		}
+		count += 1
+		_,err := buffer.WriteString(set)
+		if err != nil  {
+			return "",err
+		}
+	}
+
+	setStr := buffer.String()
+	return setStr,nil
 }
