@@ -249,23 +249,14 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 		}
 	}
 
-
 	//for the test should add two clusters in a namespace, so we
 	//has to use clustername as an label.
-	sets := map[string]string {
-		label.InstanceLabelKey:		info.ClusterName,
-	}
-	var buffer bytes.Buffer
-	for k,v := range sets {
-		set := fmt.Sprintf(" %s=%s",k , v)
-		_,err := buffer.WriteString(set)
-		if err != nil  {
-			return err
-		}
+	setStr,err := label.New().Instance(info.ClusterName).String()
+	if err != nil {
+		return fmt.Errorf("failed to arrange label to string : %v",  err)
 	}
 
-	setStr := buffer.String()
-	resources := []string{"cronjobs", "jobs", "pods", "pvc"}
+	resources := []string{ "pvc"}
 	for _, resource := range resources {
 		if res, err := exec.Command("kubectl", "delete", resource, "-n", info.Namespace, "-l",
 			setStr).CombinedOutput(); err != nil {
