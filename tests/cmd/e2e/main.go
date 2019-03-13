@@ -19,6 +19,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/tests"
+	"github.com/pingcap/tidb-operator/tests/backup"
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -47,11 +48,12 @@ func main() {
 	operatorInfo := &tests.OperatorInfo{
 		Namespace:      "pingcap",
 		ReleaseName:    "operator",
-		Image:          "pingcap/tidb-operator:v1.0.0-beta.1-p2",
-		Tag:            "v1.0.0-beta.1-p2",
+		Image:          "pingcap/tidb-operator:latest",
+		Tag:            "latest",
 		SchedulerImage: "gcr.io/google-containers/hyperkube:v1.12.1",
 		LogLevel:       "2",
 	}
+
 	if err := oa.CleanOperator(operatorInfo); err != nil {
 		glog.Fatal(err)
 	}
@@ -62,7 +64,7 @@ func main() {
 	clusterInfo := &tests.TidbClusterInfo{
 		Namespace:        "tidb",
 		ClusterName:      "demo",
-		OperatorTag:      "v1.0.0-beta.1-p2",
+		OperatorTag:      "latest",
 		PDImage:          "pingcap/pd:v2.1.3",
 		TiKVImage:        "pingcap/tikv:v2.1.3",
 		TiDBImage:        "pingcap/tidb:v2.1.3",
@@ -70,6 +72,11 @@ func main() {
 		Password:         "admin",
 		Args:             map[string]string{},
 	}
+
+	if err := oa.CreateSecret(clusterInfo); err != nil {
+		glog.Fatal(err)
+	}
+
 	if err := oa.CleanTidbCluster(clusterInfo); err != nil {
 		glog.Fatal(err)
 	}
@@ -83,7 +90,7 @@ func main() {
 	restoreClusterInfo := &tests.TidbClusterInfo{
 		Namespace:        "tidb",
 		ClusterName:      "demo2",
-		OperatorTag:      "v1.0.0-beta.1-p2",
+		OperatorTag:      "latest",
 		PDImage:          "pingcap/pd:v2.1.3",
 		TiKVImage:        "pingcap/tikv:v2.1.3",
 		TiDBImage:        "pingcap/tidb:v2.1.3",
@@ -101,4 +108,11 @@ func main() {
 	if err := oa.CheckTidbClusterStatus(restoreClusterInfo); err != nil {
 		glog.Fatal(err)
 	}
+
+	backupCase := backup.NewBackupCase(oa, clusterInfo, restoreClusterInfo)
+
+	if err := backupCase.Run(); err != nil {
+		glog.Fatal(err)
+	}
+
 }
