@@ -242,6 +242,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 	charts := []string{
 		info.ClusterName,
 		fmt.Sprintf("%s-backup", info.ClusterName),
+		fmt.Sprintf("%s-restore", info.ClusterName),
 	}
 	for _, chartName := range charts {
 		res, err := exec.Command("helm", "del", "--purge", chartName).CombinedOutput()
