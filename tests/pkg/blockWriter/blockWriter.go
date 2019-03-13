@@ -155,11 +155,11 @@ func (c *BlockWriterCase) updateResult(ctx context.Context, statChan chan *stat,
 		}
 
 		c.Lock()
-		atomic.AddUint64(&c.result.Total, 1)
-		atomic.AddUint64(&c.result.SingleCount, 1)
+		c.result.Total++
+		c.result.SingleCount++
 		if st.succ {
-			atomic.AddUint64(&c.result.Succ, 1)
-			atomic.AddUint64(&c.result.SingleSucc, 1)
+			c.result.Succ++
+			c.result.SingleSucc++
 		}
 		c.Unlock()
 	}
