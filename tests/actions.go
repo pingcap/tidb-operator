@@ -220,9 +220,9 @@ func (oa *operatorActions) DumpAllLogs(info *OperatorInfo, clusterInfo *TidbClus
 }
 
 func (oa *operatorActions) DeployTidbCluster(info *TidbClusterInfo) error {
-	glog.Infof("begin to deploy tidb cluster cluster[%s] namespace[%s]",info.ClusterName, info.Namespace)
+	glog.Infof("begin to deploy tidb cluster cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	defer func() {
-		glog.Infof("deploy tidb cluster end cluster[%s] namespace[%s]",info.ClusterName, info.Namespace)
+		glog.Infof("deploy tidb cluster end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	}()
 	cmd := fmt.Sprintf("helm install /charts/%s/tidb-cluster  --name %s --namespace %s --set-string %s",
 		info.OperatorTag, info.ClusterName, info.Namespace, info.HelmSetString())
@@ -235,9 +235,9 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterInfo) error {
 }
 
 func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
-	glog.Infof("begin to clean tidb cluster[%s] namespace[%s]",info.ClusterName, info.Namespace)
+	glog.Infof("begin to clean tidb cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	defer func() {
-		glog.Infof("clean tidb cluster end cluster[%s] namespace[%s]",info.ClusterName, info.Namespace)
+		glog.Infof("clean tidb cluster end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	}()
 	charts := []string{
 		info.ClusterName,
@@ -294,9 +294,9 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 }
 
 func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterInfo) error {
-	glog.Infof("begin to check tidb cluster cluster[%s] namespace[%s]",info.ClusterName, info.Namespace)
+	glog.Infof("begin to check tidb cluster cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	defer func() {
-		glog.Infof("check tidb cluster end cluster[%s] namespace[%s]",info.ClusterName, info.Namespace)
+		glog.Infof("check tidb cluster end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	}()
 	ns := info.Namespace
 	tcName := info.ClusterName
@@ -843,9 +843,9 @@ func checkoutTag(tagName string) error {
 }
 
 func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterInfo) error {
-	glog.Infof("begin to deploy adhoc backup cluster[%s] namespace[%s]",info.ClusterName, info.Namespace)
+	glog.Infof("begin to deploy adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	defer func() {
-		glog.Infof("deploy adhoc backup end cluster[%s] namespace[%s]",info.ClusterName, info.Namespace)
+		glog.Infof("deploy adhoc backup end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	}()
 	sets := map[string]string{
 		"clusterName":  info.ClusterName,
@@ -877,9 +877,9 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterInfo) error {
 }
 
 func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterInfo) error {
-	glog.Infof("begin to clean adhoc backup cluster[%s] namespace[%s]",info.ClusterName, info.Namespace)
+	glog.Infof("begin to clean adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	defer func() {
-		glog.Infof("deploy clean backup end cluster[%s] namespace[%s]",info.ClusterName, info.Namespace)
+		glog.Infof("deploy clean backup end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	}()
 
 	jobName := fmt.Sprintf("%s-%s", info.ClusterName, "test-backup")
@@ -905,9 +905,9 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterInfo) error {
 }
 
 func (oa *operatorActions) Restore(from *TidbClusterInfo, to *TidbClusterInfo) error {
-	glog.Infof("begin to deploy restore cluster[%s] namespace[%s]",info.ClusterName, info.Namespace)
+	glog.Infof("begin to deploy restore cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
 	defer func() {
-		glog.Infof("deploy restore end cluster[%s] namespace[%s]",info.ClusterName, info.Namespace)
+		glog.Infof("deploy restore end cluster[%s] namespace[%s]", to.ClusterName, to.Namespace)
 	}()
 	sets := map[string]string{
 		"clusterName":  to.ClusterName,
@@ -940,9 +940,9 @@ func (oa *operatorActions) Restore(from *TidbClusterInfo, to *TidbClusterInfo) e
 }
 
 func (oa *operatorActions) CheckRestore(from *TidbClusterInfo, to *TidbClusterInfo) error {
-	glog.Infof("begin to check restore backup cluster[%s] namespace[%s]",from.ClusterName, from.Namespace)
+	glog.Infof("begin to check restore backup cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
 	defer func() {
-		glog.Infof("check restore end cluster[%s] namespace[%s]",to.ClusterName, to.Namespace)
+		glog.Infof("check restore end cluster[%s] namespace[%s]", to.ClusterName, to.Namespace)
 	}()
 
 	jobName := fmt.Sprintf("%s-restore-test-backup", to.ClusterName)
