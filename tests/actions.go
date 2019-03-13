@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockWriter"
+	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,16 +38,22 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const (
+	defaultTableNum    = 16
+	defaultConcurrency = 256
+	defaultBatchSize   = 200
+)
+
 func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface) OperatorActions {
 	return &operatorActions{
 		cli:       cli,
 		kubeCli:   kubeCli,
 		pdControl: controller.NewDefaultPDControl(),
 
-		blockWriter: blockWriter.NewBlocWriterCase(blockWriter.Config{
-			TableNum:    16,
-			Concurrency: 256,
-			BatchSize:   100,
+		blockWriter: blockWriter.NewBlockWriterCase(blockWriter.Config{
+			TableNum:    defaultTableNum,
+			Concurrency: defaultConcurrency,
+			BatchSize:   defaultBatchSize,
 		}),
 	}
 }
@@ -107,7 +114,7 @@ type operatorActions struct {
 	kubeCli   kubernetes.Interface
 	pdControl controller.PDControlInterface
 
-	blockWriter blockWriter.BlockWriterCase
+	blockWriter *blockWriter.BlockWriterCase
 }
 
 type OperatorInfo struct {
@@ -351,7 +358,13 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterInfo) error {
 }
 
 func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterInfo) error {
-	return oa.blockWriter.Start()
+	dsn := getDSN(info.Namespace, info.ClusterName, "test", info.Password)
+	db, err := util.OpenDB(dsn, defaultConcurrency)
+	if err != nil {
+		return err
+	}
+
+	return oa.blockWriter.Start(db)
 }
 
 func (oa *operatorActions) StopInsertDataTo(info *TidbClusterInfo) error {

@@ -1,3 +1,16 @@
+// Copyright 2019 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.package spec
+
 package blockWriter
 
 import (
@@ -181,13 +194,7 @@ func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan strin
 }
 
 // Initialize inits case
-func (c *BlockWriterCase) Initialize(ctx context.Context, db *sql.DB) error {
-	if atomic.CompareAndSwapUint32(&c.isInit, 0, 1) {
-		err := fmt.Errorf("[%s] is inited", c)
-		glog.Error(err)
-		return err
-	}
-
+func (c *BlockWriterCase) initialize(db *sql.DB) error {
 	glog.Infof("[%s] start to init...", c)
 	defer func() {
 		atomic.StoreUint32(&c.isInit, 1)
@@ -195,11 +202,6 @@ func (c *BlockWriterCase) Initialize(ctx context.Context, db *sql.DB) error {
 	}()
 
 	for i := 0; i < c.cfg.TableNum; i++ {
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-		}
 		var s string
 		if i > 0 {
 			s = fmt.Sprintf("%d", i)
@@ -232,7 +234,7 @@ func (c *BlockWriterCase) Initialize(ctx context.Context, db *sql.DB) error {
 }
 
 // Start starts to run cases
-func (c *BlockWriterCase) Start(ctx context.Context, db *sql.DB) error {
+func (c *BlockWriterCase) Start(db *sql.DB) error {
 	if atomic.CompareAndSwapUint32(&c.isRunning, 0, 1) {
 		err := fmt.Errorf("[%s] is running, you can't start it again", c)
 		glog.Error(err)
@@ -251,8 +253,8 @@ func (c *BlockWriterCase) Start(ctx context.Context, db *sql.DB) error {
 		atomic.SwapUint32(&c.isRunning, 0)
 	}()
 
-	if !atomic.CompareAndSwapUint32(&c.isInit, 0, 1) {
-		if err := c.Initialize(ctx, db); err != nil {
+	if c.isInit == 0 {
+		if err := c.initialize(db); err != nil {
 			return err
 		}
 	}
@@ -261,7 +263,7 @@ func (c *BlockWriterCase) Start(ctx context.Context, db *sql.DB) error {
 
 	var wg sync.WaitGroup
 
-	cctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
 
 	queryChan := make(chan string, queryChanSize)
 	statChan := make(chan *stat, statChanSize)
@@ -269,11 +271,6 @@ func (c *BlockWriterCase) Start(ctx context.Context, db *sql.DB) error {
 	go func() {
 		for {
 			select {
-			case <-ctx.Done():
-				close(statChan)
-				close(queryChan)
-				cancel()
-				return
 			case <-c.stopChan:
 				close(statChan)
 				close(queryChan)
@@ -293,7 +290,7 @@ func (c *BlockWriterCase) Start(ctx context.Context, db *sql.DB) error {
 	}
 
 	wg.Add(2)
-	go c.generateQuery(cctx, queryChan, &wg)
+	go c.generateQuery(ctx, queryChan, &wg)
 	go c.updateResult(ctx, statChan, &wg)
 
 	wg.Wait()
