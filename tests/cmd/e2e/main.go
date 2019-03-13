@@ -114,5 +114,4 @@ func main() {
 	if err := backupCase.Run(); err != nil {
 		glog.Fatal(err)
 	}
-
 }

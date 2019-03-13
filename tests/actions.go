@@ -842,6 +842,7 @@ func checkoutTag(tagName string) error {
 	return nil
 }
 
+<<<<<<< HEAD
 func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterInfo) error {
 	glog.Infof("begin to deploy adhoc backup")
 	defer func() {
@@ -1078,4 +1079,40 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterInfo, to *Ti
 func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterInfo) error {
 	return nil
 
+func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterInfo) error {
+	return nil
+}
+
+func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterInfo) error {
+	return nil
+}
+
+func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterInfo) error {
+	return nil
+}
+
+func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterInfo) error {
+	return nil
+}
+
+func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterInfo, to *TidbClusterInfo) error {
+	return nil
+}
+
+func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterInfo) error {
+	return nil
+
+}
+
+func (oa *operatorActions) Restore(from *TidbClusterInfo, to *TidbClusterInfo) error {
+	return nil
+}
+
+func (oa *operatorActions) CheckRestore(from *TidbClusterInfo, to *TidbClusterInfo) error {
+	return nil
+}
+
+func (oa *operatorActions) ForceDeploy(info *TidbClusterInfo) error {
+	return nil
+>>>>>>> 8541758abdf1864a958f435e66e6e6281b06193b
 }
