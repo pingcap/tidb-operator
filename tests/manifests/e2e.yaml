@@ -27,7 +27,15 @@ spec:
   serviceAccount: tidb-operator-e2e
   containers:
   - name: tidb-operator-e2e
-    image: ""
+    image: "localhost:5000/pingcap/tidb-operator-e2e:latest"
     imagePullPolicy: Always
     command: ["sh", "-c", "/usr/local/bin/e2e"]
+    volumeMounts:
+    - mountPath: /logDir
+      name: logdir
+  volumes:
+  - name: logdir
+    hostPath:
+      path: /var/log
+      type: Directory
   restartPolicy: Never
