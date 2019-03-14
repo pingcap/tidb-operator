@@ -339,6 +339,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterInfo) error {
 
 		return true, nil
 	}); err != nil {
+		glog.Infof("check tidb cluster status failed: %s", err.Error())
 		return fmt.Errorf("failed to waiting for tidbcluster %s/%s ready in 10 minutes", ns, tcName)
 	}
 
@@ -621,8 +622,9 @@ outerLoop:
 	for _, pod := range podList.Items {
 		podName := pod.GetName()
 		if pod.Labels[label.ClusterIDLabelKey] != clusterID {
-			return false, fmt.Errorf("tidbcluster %s/%s's pod %s's label %s not equals %s ",
+			glog.Infof("tidbcluster %s/%s's pod %s's label %s not equals %s ",
 				ns, tcName, podName, label.ClusterIDLabelKey, clusterID)
+			return false, nil
 		}
 
 		component := pod.Labels[label.ComponentLabelKey]

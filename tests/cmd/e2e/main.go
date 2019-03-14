@@ -24,6 +24,12 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+func perror(err error) {
+	if err != nil {
+		glog.Fatal(err)
+	}
+}
+
 func main() {
 	flag.Parse()
 	logs.InitLogs()
@@ -52,12 +58,8 @@ func main() {
 		SchedulerImage: "gcr.io/google-containers/hyperkube:v1.12.1",
 		LogLevel:       "2",
 	}
-	if err := oa.CleanOperator(operatorInfo); err != nil {
-		glog.Fatal(err)
-	}
-	if err := oa.DeployOperator(operatorInfo); err != nil {
-		glog.Fatal(err)
-	}
+	perror(oa.CleanOperator(operatorInfo))
+	perror(oa.DeployOperator(operatorInfo))
 
 	clusterInfo := &tests.TidbClusterInfo{
 		Namespace:        "tidb",
@@ -68,17 +70,34 @@ func main() {
 		TiDBImage:        "pingcap/tidb:v2.1.3",
 		StorageClassName: "local-storage",
 		Password:         "admin",
-		Args:             map[string]string{},
+		Resources: map[string]string{
+			"pd.resources.limits.cpu":        "1000m",
+			"pd.resources.limits.memory":     "2Gi",
+			"pd.resources.requests.cpu":      "200m",
+			"pd.resources.requests.memory":   "1Gi",
+			"tikv.resources.limits.cpu":      "2000m",
+			"tikv.resources.limits.memory":   "4Gi",
+			"tikv.resources.requests.cpu":    "1000m",
+			"tikv.resources.requests.memory": "2Gi",
+			"tidb.resources.limits.cpu":      "2000m",
+			"tidb.resources.limits.memory":   "4Gi",
+			"tidb.resources.requests.cpu":    "500m",
+			"tidb.resources.requests.memory": "1Gi",
+		},
+		Args: map[string]string{},
 	}
-	if err := oa.CleanTidbCluster(clusterInfo); err != nil {
-		glog.Fatal(err)
-	}
-	if err := oa.DeployTidbCluster(clusterInfo); err != nil {
-		glog.Fatal(err)
-	}
-	if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-		glog.Fatal(err)
-	}
+
+	perror(oa.CleanTidbCluster(clusterInfo))
+	perror(oa.DeployTidbCluster(clusterInfo))
+	perror(oa.CheckTidbClusterStatus(clusterInfo))
+
+	clusterInfo = clusterInfo.ScaleTiDB(3)
+	perror(oa.ScaleTidbCluster(clusterInfo))
+	perror(oa.CheckTidbClusterStatus(clusterInfo))
+
+	clusterInfo = clusterInfo.UpgradeAll("v2.1.4")
+	perror(oa.UpgradeTidbCluster(clusterInfo))
+	perror(oa.CheckTidbClusterStatus(clusterInfo))
 
 	restoreClusterInfo := &tests.TidbClusterInfo{
 		Namespace:        "tidb",
@@ -89,16 +108,25 @@ func main() {
 		TiDBImage:        "pingcap/tidb:v2.1.3",
 		StorageClassName: "local-storage",
 		Password:         "admin",
-		Args:             map[string]string{},
+		Resources: map[string]string{
+			"pd.resources.limits.cpu":        "1000m",
+			"pd.resources.limits.memory":     "2Gi",
+			"pd.resources.requests.cpu":      "200m",
+			"pd.resources.requests.memory":   "1Gi",
+			"tikv.resources.limits.cpu":      "2000m",
+			"tikv.resources.limits.memory":   "4Gi",
+			"tikv.resources.requests.cpu":    "1000m",
+			"tikv.resources.requests.memory": "2Gi",
+			"tidb.resources.limits.cpu":      "2000m",
+			"tidb.resources.limits.memory":   "4Gi",
+			"tidb.resources.requests.cpu":    "500m",
+			"tidb.resources.requests.memory": "1Gi",
+		},
+		Args: map[string]string{},
 	}
 
-	if err := oa.CleanTidbCluster(restoreClusterInfo); err != nil {
-		glog.Fatal(err)
-	}
-	if err := oa.DeployTidbCluster(restoreClusterInfo); err != nil {
-		glog.Fatal(err)
-	}
-	if err := oa.CheckTidbClusterStatus(restoreClusterInfo); err != nil {
-		glog.Fatal(err)
-	}
+	perror(oa.CleanTidbCluster(restoreClusterInfo))
+	perror(oa.DeployTidbCluster(restoreClusterInfo))
+	perror(oa.CheckTidbClusterStatus(restoreClusterInfo))
+
 }
