@@ -39,9 +39,10 @@ import (
 )
 
 const (
-	defaultTableNum    = 16
-	defaultConcurrency = 256
-	defaultBatchSize   = 200
+	defaultTableNum    int = 64
+	defaultConcurrency     = 512
+	defaultBatchSize       = 100
+	defaultRawSize         = 100
 )
 
 func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface) OperatorActions {
@@ -49,12 +50,6 @@ func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface) O
 		cli:       cli,
 		kubeCli:   kubeCli,
 		pdControl: controller.NewDefaultPDControl(),
-
-		blockWriter: blockWriter.NewBlockWriterCase(blockWriter.Config{
-			TableNum:    defaultTableNum,
-			Concurrency: defaultConcurrency,
-			BatchSize:   defaultBatchSize,
-		}),
 	}
 }
 
@@ -139,6 +134,8 @@ type TidbClusterInfo struct {
 	InsertBetchSize  string
 	Resources        map[string]string
 	Args             map[string]string
+
+	blockWriter *blockWriter.BlockWriterCase
 }
 
 func (tc *TidbClusterInfo) HelmSetString() string {
@@ -238,6 +235,14 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterInfo) error {
 		return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
 			info.Namespace, info.ClusterName, err, string(res))
 	}
+
+	// init blockWriter case
+	info.blockWriter = blockWriter.NewBlockWriterCase(blockWriter.Config{
+		TableNum:    defaultTableNum,
+		Concurrency: defaultConcurrency,
+		BatchSize:   defaultBatchSize,
+		RawSize:     defaultRawSize,
+	})
 
 	return nil
 }
@@ -364,11 +369,11 @@ func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterInfo) error {
 		return err
 	}
 
-	return oa.blockWriter.Start(db)
+	return info.blockWriter.Start(db)
 }
 
 func (oa *operatorActions) StopInsertDataTo(info *TidbClusterInfo) error {
-	oa.blockWriter.Stop()
+	info.blockWriter.Stop()
 	return nil
 }
 

@@ -29,17 +29,13 @@ import (
 )
 
 const (
-	statChanSize  int = 10000
 	queryChanSize int = 10000
-
-	defaultRowSize int = 512
 )
 
 // BlockWriterCase is for concurrent writing blocks.
 type BlockWriterCase struct {
-	cfg    Config
-	result Result
-	bws    []*blockWriter
+	cfg Config
+	bws []*blockWriter
 
 	isRunning uint32
 	isInit    uint32
@@ -53,22 +49,13 @@ type Config struct {
 	TableNum    int
 	Concurrency int
 	BatchSize   int
-}
-
-// Result is the result of BlockWriterCase,
-type Result struct {
-	Total uint64
-	Succ  uint64
-
-	SingleCount uint64
-	SingleSucc  uint64
+	RawSize     int
 }
 
 type blockWriter struct {
-	rowSize         int
-	blockDataBuffer []byte
-	values          []string
-	batchSize       int
+	rawSize   int
+	values    []string
+	batchSize int
 }
 
 // NewBlockWriterCase returns the BlockWriterCase.
@@ -95,88 +82,63 @@ func (c *BlockWriterCase) initBlocks() {
 
 func (c *BlockWriterCase) newBlockWriter() *blockWriter {
 	return &blockWriter{
-		rowSize:         defaultRowSize,
-		blockDataBuffer: make([]byte, 1024),
-		values:          make([]string, c.cfg.BatchSize),
-		batchSize:       c.cfg.BatchSize,
+		rawSize:   c.cfg.RawSize,
+		values:    make([]string, c.cfg.BatchSize),
+		batchSize: c.cfg.BatchSize,
 	}
 }
 
-func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan string, gwg *sync.WaitGroup) {
-	defer gwg.Done()
-	var wg sync.WaitGroup
-	var src = rand.NewSource(time.Now().UnixNano())
-	rand := rand.New(src)
+func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []string, wg *sync.WaitGroup) {
+	defer func() {
+		glog.Infof("[%s] [action: generate Query] stopped", c)
+		wg.Done()
+	}()
 
-	for i := 0; i < 4; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-				}
-
-				tableN := rand.Intn(c.cfg.TableNum)
-				var index string
-				if tableN > 0 {
-					index = fmt.Sprintf("%d", tableN)
-				}
-
-				values := make([]string, c.cfg.BatchSize)
-				for i := 0; i < c.cfg.BatchSize; i++ {
-					blockData := util.RandString(defaultRowSize, rand)
-					values[i] = fmt.Sprintf("('%s')", blockData)
-					queryChan <- fmt.Sprintf(
-						"INSERT INTO block_writer%s VALUES %s",
-						index, strings.Join(values, ","))
-				}
-			}
-		}()
-	}
-
-	wg.Wait()
-}
-
-func (c *BlockWriterCase) updateResult(ctx context.Context, statChan chan *stat, gwg *sync.WaitGroup) {
-	defer gwg.Done()
 	for {
+		tableN := rand.Intn(c.cfg.TableNum)
+		var index string
+		if tableN > 0 {
+			index = fmt.Sprintf("%d", tableN)
+		}
+
+		var querys []string
+		for i := 0; i < 100; i++ {
+			values := make([]string, c.cfg.BatchSize)
+			for i := 0; i < c.cfg.BatchSize; i++ {
+				blockData := util.RandString(defaultRawSize)
+				values[i] = fmt.Sprintf("('%s')", blockData)
+			}
+
+			querys = append(querys, fmt.Sprintf(
+				"INSERT INTO block_writer%s(raw_bytes) VALUES %s",
+				index, strings.Join(values, ",")))
+		}
+
 		select {
 		case <-ctx.Done():
 			return
 		default:
+			if len(queryChan) < queryChanSize {
+				queryChan <- querys
+			} else {
+				glog.Infof("[%s] [action: generate Query] query channel is full, sleep 10 seconds", c)
+				util.Sleep(ctx, 10*time.Second)
+			}
 		}
-
-		st, ok := <-statChan
-		if !ok {
-			return
-		}
-
-		c.Lock()
-		c.result.Total++
-		c.result.SingleCount++
-		if st.succ {
-			c.result.Succ++
-			c.result.SingleSucc++
-		}
-		c.Unlock()
 	}
 }
 
-func (bw *blockWriter) batchExecute(db *sql.DB, query string, statChan chan *stat) {
+func (bw *blockWriter) batchExecute(db *sql.DB, query string) error {
 	_, err := db.Exec(query)
 	if err != nil {
-		glog.Warningf("[block_writer] exec sql [%s] failed, err: %v", query, err)
-		statChan <- &stat{}
-		return
+		glog.Errorf("[block_writer] exec sql [%s] failed, err: %v", query, err)
+		return err
 	}
 
-	statChan <- &stat{succ: true}
+	return nil
 }
 
-func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan string, statChan chan *stat) {
+func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan []string) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -184,12 +146,22 @@ func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan strin
 		default:
 		}
 
-		query, ok := <-queryChan
+		querys, ok := <-queryChan
 		if !ok {
 			// No more query
 			return
 		}
-		bw.batchExecute(db, query, statChan)
+
+		for _, query := range querys {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				if err := bw.batchExecute(db, query); err != nil {
+					glog.Fatal(err)
+				}
+			}
+		}
 	}
 }
 
@@ -235,7 +207,7 @@ func (c *BlockWriterCase) initialize(db *sql.DB) error {
 
 // Start starts to run cases
 func (c *BlockWriterCase) Start(db *sql.DB) error {
-	if atomic.CompareAndSwapUint32(&c.isRunning, 0, 1) {
+	if !atomic.CompareAndSwapUint32(&c.isRunning, 0, 1) {
 		err := fmt.Errorf("[%s] is running, you can't start it again", c)
 		glog.Error(err)
 		return err
@@ -243,13 +215,7 @@ func (c *BlockWriterCase) Start(db *sql.DB) error {
 
 	defer func() {
 		c.RLock()
-		glog.Infof("[%s] [Query: %d, Succ: %d, Failed: %d]", c, c.result.SingleCount,
-			c.result.SingleSucc, c.result.SingleCount-c.result.SingleSucc)
-		glog.Infof("[%s] [Total Query: %d, Succ: %d, Failed: %d]", c, c.result.Total,
-			c.result.Succ, c.result.Total-c.result.Succ)
-		glog.Infof("[%s] stoped...", c)
-		c.Unlock()
-
+		glog.Infof("[%s] stopped", c)
 		atomic.SwapUint32(&c.isRunning, 0)
 	}()
 
@@ -265,55 +231,36 @@ func (c *BlockWriterCase) Start(db *sql.DB) error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	queryChan := make(chan string, queryChanSize)
-	statChan := make(chan *stat, statChanSize)
-
-	go func() {
-		for {
-			select {
-			case <-c.stopChan:
-				close(statChan)
-				close(queryChan)
-				cancel()
-				return
-			default:
-			}
-		}
-	}()
+	queryChan := make(chan []string, queryChanSize)
 
 	for i := 0; i < c.cfg.Concurrency; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			c.bws[i].run(ctx, db, queryChan, statChan)
+			c.bws[i].run(ctx, db, queryChan)
 		}(i)
 	}
 
-	wg.Add(2)
+	wg.Add(1)
 	go c.generateQuery(ctx, queryChan, &wg)
-	go c.updateResult(ctx, statChan, &wg)
 
-	wg.Wait()
-
-	return nil
-}
-
-// Structure for stat result.
-type stat struct {
-	succ bool
+	for {
+		select {
+		case <-c.stopChan:
+			glog.Infof("[%s] stoping...", c)
+			cancel()
+			wg.Wait()
+			close(queryChan)
+			return nil
+		default:
+			util.Sleep(context.Background(), 2*time.Second)
+		}
+	}
 }
 
 // Stop stops cases
 func (c *BlockWriterCase) Stop() {
 	c.stopChan <- struct{}{}
-}
-
-// GetResult returns the results of the cases
-func (c *BlockWriterCase) GetResult() Result {
-	c.RLock()
-	defer c.RUnlock()
-
-	return c.result
 }
 
 // String implements fmt.Stringer interface.
