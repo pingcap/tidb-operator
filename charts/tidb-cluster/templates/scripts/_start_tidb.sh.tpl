@@ -34,6 +34,7 @@ then
     ARGS="${ARGS} --enable-binlog=true"
 fi
 
+SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
 if [[ ! -z "${SLOW_LOG_FILE}" ]]
 then
     ARGS="${ARGS} --log-slow-query=${SLOW_LOG_FILE:-}"
