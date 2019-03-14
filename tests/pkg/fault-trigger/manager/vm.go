@@ -28,6 +28,7 @@ func (m *Manager) ListVMs() ([]*VM, error) {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return nil, err
 	}
 	vms := parserVMs(string(output))
@@ -44,19 +45,27 @@ func (m *Manager) ListVMs() ([]*VM, error) {
 }
 
 // StopVM stops vm
-func (m *Manager) StopVM(v *VM) (string, error) {
+func (m *Manager) StopVM(v *VM) error {
 	shell := fmt.Sprintf("virsh destroy %s", v.Name)
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
-	return string(output), err
+	if err != nil {
+		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		return err
+	}
+	return nil
 }
 
 // StartVM starts vm
-func (m *Manager) StartVM(v *VM) (string, error) {
+func (m *Manager) StartVM(v *VM) error {
 	shell := fmt.Sprintf("virsh start %s", v.Name)
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
-	return string(output), err
+	if err != nil {
+		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		return err
+	}
+	return nil
 }
 
 func getVMIP(name string) (string, error) {
@@ -64,6 +73,7 @@ func getVMIP(name string) (string, error) {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		glog.Warningf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		mac, err := getVMMac(name)
 		if err != nil {
 			return "", err
@@ -73,6 +83,7 @@ func getVMIP(name string) (string, error) {
 		cmd = exec.Command("/bin/sh", "-c", ipNeighShell)
 		ipNeighOutput, err := cmd.CombinedOutput()
 		if err != nil {
+			glog.Errorf("exec: [%s] failed, output: %s, error: %v", ipNeighShell, string(ipNeighOutput), err)
 			return "", err
 		}
 

@@ -15,20 +15,30 @@ package manager
 
 import (
 	"os/exec"
+
+	"github.com/golang/glog"
 )
 
 // StartETCD starts etcd
 func (m *Manager) StartETCD() error {
 	shell := "systemctl start etcd"
 	cmd := exec.Command("/bin/sh", "-c", shell)
-	_, err := cmd.CombinedOutput()
-	return err
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		return err
+	}
+	return nil
 }
 
 // StopETCD stops etcd
 func (m *Manager) StopETCD() error {
 	shell := "systemctl stop etcd"
 	cmd := exec.Command("/bin/sh", "-c", shell)
-	_, err := cmd.CombinedOutput()
-	return err
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		return err
+	}
+	return nil
 }

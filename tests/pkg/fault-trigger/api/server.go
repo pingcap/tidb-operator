@@ -160,12 +160,11 @@ func (s *Server) vmAction(
 	resp *restful.Response,
 	res *Response,
 	targetVM *manager.VM,
-	fn func(vm *manager.VM) (string, error),
+	fn func(vm *manager.VM) error,
 	method string,
 ) {
-	if output, err := fn(targetVM); err != nil {
-		res.message(fmt.Sprintf("failed to %s vm: %s, output: %s, error: %v",
-			method, targetVM.Name, output, err)).
+	if err := fn(targetVM); err != nil {
+		res.message(fmt.Sprintf("failed to %s vm: %s, error: %v", method, targetVM.Name, err)).
 			statusCode(http.StatusInternalServerError)
 		if err = resp.WriteEntity(res); err != nil {
 			glog.Errorf("failed to response, methods: %s, error: %v", method, err)
