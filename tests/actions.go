@@ -825,12 +825,12 @@ func cloneOperatorRepo() error {
 }
 
 func checkoutTag(tagName string) error {
-	cmd := fmt.Sprintf(`cd /tidb-operator;
-		git stash -u;
-		git checkout %s;
-		mkdir -p /charts/%s;
-		cp -rf charts/tidb-operator /charts/%s/tidb-operator;
-		cp -rf charts/tidb-cluster /charts/%s/tidb-cluster;
+	cmd := fmt.Sprintf(`cd /tidb-operator &&
+		git stash -u &&
+		git checkout %s &&
+		mkdir -p /charts/%s &&
+		cp -rf charts/tidb-operator /charts/%s/tidb-operator &&
+		cp -rf charts/tidb-cluster /charts/%s/tidb-cluster &&
 		cp -rf charts/tidb-backup /charts/%s/tidb-backup`,
 		tagName, tagName, tagName, tagName, tagName)
 	glog.Info(cmd)

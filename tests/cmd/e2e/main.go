@@ -49,7 +49,7 @@ func main() {
 		Namespace:      "pingcap",
 		ReleaseName:    "operator",
 		Image:          "pingcap/tidb-operator:latest",
-		Tag:            "latest",
+		Tag:            "master",
 		SchedulerImage: "gcr.io/google-containers/hyperkube:v1.12.1",
 		LogLevel:       "2",
 	}
@@ -64,7 +64,7 @@ func main() {
 	clusterInfo := &tests.TidbClusterInfo{
 		Namespace:        "tidb",
 		ClusterName:      "demo",
-		OperatorTag:      "latest",
+		OperatorTag:      "master",
 		PDImage:          "pingcap/pd:v2.1.3",
 		TiKVImage:        "pingcap/tikv:v2.1.3",
 		TiDBImage:        "pingcap/tidb:v2.1.3",
@@ -90,7 +90,7 @@ func main() {
 	restoreClusterInfo := &tests.TidbClusterInfo{
 		Namespace:        "tidb",
 		ClusterName:      "demo2",
-		OperatorTag:      "latest",
+		OperatorTag:      "master",
 		PDImage:          "pingcap/pd:v2.1.3",
 		TiKVImage:        "pingcap/tikv:v2.1.3",
 		TiDBImage:        "pingcap/tidb:v2.1.3",
