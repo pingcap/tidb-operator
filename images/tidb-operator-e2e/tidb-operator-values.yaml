@@ -50,4 +50,5 @@ scheduler:
     requests:
       cpu: 80m
       memory: 50Mi
-  kubeSchedulerImage: mirantis/hypokube:final
+  kubeSchedulerImageName: mirantis/hypokube
+  kubeSchedulerImageTag: final
