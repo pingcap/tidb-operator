@@ -15,7 +15,11 @@ package tests
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -49,6 +53,11 @@ const (
 	DefaultPollInterval time.Duration = 1 * time.Minute
 )
 
+const (
+	grafanaUsername = "admin"
+	grafanaPassword = "admin"
+)
+
 type OperatorActions interface {
 	DeployOperator(info *OperatorInfo) error
 	CleanOperator(info *OperatorInfo) error
@@ -69,8 +78,6 @@ type OperatorActions interface {
 	CheckIncrementalBackup(info *TidbClusterInfo) error
 	Restore(from *TidbClusterInfo, to *TidbClusterInfo) error
 	CheckRestore(from *TidbClusterInfo, to *TidbClusterInfo) error
-	DeployMonitor(info *TidbClusterInfo) error
-	CleanMonitor(info *TidbClusterInfo) error
 	ForceDeploy(info *TidbClusterInfo) error
 }
 
@@ -123,6 +130,7 @@ type TidbClusterInfo struct {
 	InsertBetchSize  string
 	Resources        map[string]string
 	Args             map[string]string
+	Monitor          bool
 }
 
 func (tc *TidbClusterInfo) HelmSetString() string {
@@ -136,6 +144,7 @@ func (tc *TidbClusterInfo) HelmSetString() string {
 		"pd.image":              tc.PDImage,
 		"tikv.image":            tc.TiKVImage,
 		"tidb.image":            tc.TiDBImage,
+		"monitor.create":        strconv.FormatBool(tc.Monitor),
 	}
 
 	for k, v := range tc.Resources {
@@ -333,6 +342,12 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterInfo) error {
 			return false, nil
 		}
 
+		if info.Monitor {
+			glog.Infof("check tidb monitor normal")
+			if b, err := oa.monitorNormal(info); !b && err == nil {
+				return false, nil
+			}
+		}
 		return true, nil
 	}); err != nil {
 		return fmt.Errorf("failed to waiting for tidbcluster %s/%s ready in 10 minutes", ns, tcName)
@@ -351,8 +366,6 @@ func (oa *operatorActions) StopInsertDataTo(info *TidbClusterInfo) error {
 
 func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterInfo) error   { return nil }
 func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterInfo) error { return nil }
-func (oa *operatorActions) DeployMonitor(info *TidbClusterInfo) error      { return nil }
-func (oa *operatorActions) CleanMonitor(info *TidbClusterInfo) error       { return nil }
 
 func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
 	tcName := tc.GetName()
@@ -794,6 +807,116 @@ func (oa *operatorActions) passwordIsSet(clusterInfo *TidbClusterInfo) (bool, er
 	}
 
 	return true, nil
+}
+
+func (oa *operatorActions) monitorNormal(clusterInfo *TidbClusterInfo) (bool, error) {
+	ns := clusterInfo.Namespace
+	tcName := clusterInfo.ClusterName
+	monitorDeploymentName := fmt.Sprintf("%s-monitor", tcName)
+	monitorDeployment, err := oa.kubeCli.AppsV1().Deployments(ns).Get(monitorDeploymentName, metav1.GetOptions{})
+	if err != nil {
+		glog.Errorf("get monitor deployment: [%s/%s] failed", ns, monitorDeploymentName)
+		return false, nil
+	}
+	if monitorDeployment.Status.ReadyReplicas < 1 {
+		glog.Info("monitor ready replicas %d < 1", monitorDeployment.Status.ReadyReplicas)
+		return false, nil
+	}
+	configuratorJobName := fmt.Sprintf("%s-monitor-configurator", tcName)
+	monitorJob, err := oa.kubeCli.BatchV1().Jobs(ns).Get(configuratorJobName, metav1.GetOptions{})
+	if err != nil {
+		glog.Info("get monitor configurator job: [%s/%s] failed", ns, configuratorJobName)
+		return false, nil
+	}
+	if monitorJob.Status.Succeeded == 0 {
+		glog.Info("the monitor configurator job: [%s/%s] had not success", ns, configuratorJobName)
+		return false, nil
+	}
+
+	if err := oa.checkPrometheus(clusterInfo); err != nil {
+		glog.Info("check [%s/%s]'s prometheus data failed: %v", ns, monitorDeploymentName, err)
+		return false, nil
+	}
+
+	if err := oa.checkGrafanaData(clusterInfo); err != nil {
+		glog.Info("check [%s/%s]'s grafana data failed: %v", ns, monitorDeploymentName, err)
+		return false, nil
+	}
+	return false, nil
+}
+
+func (oa *operatorActions) checkPrometheus(clusterInfo *TidbClusterInfo) error {
+	ns := clusterInfo.Namespace
+	tcName := clusterInfo.ClusterName
+	prometheusSvc := fmt.Sprintf("%s-prometheus.%s:9090/api/v1/query?query=up", tcName, ns)
+	resp, err := http.Get(prometheusSvc)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	response := &struct {
+		Status string `json:"status"`
+	}{}
+	err = json.Unmarshal(body, response)
+	if err != nil {
+		return err
+	}
+	if response.Status != "success" {
+		return fmt.Errorf("the prometheus's api[%s] has not ready", prometheusSvc)
+	}
+	return nil
+}
+
+func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterInfo) error {
+	ns := clusterInfo.Namespace
+	tcName := clusterInfo.ClusterName
+	svcName := fmt.Sprintf("%s-grafana", tcName)
+	end := time.Now()
+	start := end.Add(-time.Minute)
+	values := url.Values{}
+	values.Set("query", `sum(tikv_pd_heartbeat_tick_total{type="leader"}) by (job)`)
+	values.Set("start", fmt.Sprintf("%d", start.Unix()))
+	values.Set("end", fmt.Sprintf("%d", end.Unix()))
+	values.Set("step", "30")
+	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources/proxy/1/api/v1/query_range?%s", svcName, ns, values.Encode())
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return err
+	}
+	req.SetBasicAuth(grafanaUsername, grafanaPassword)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	data := struct {
+		Status string `json:"status"`
+		Data   struct {
+			ResultType string `json:"resultType"`
+			Result     []struct {
+				Metric struct {
+					Job string `json:"job"`
+				} `json:"metric"`
+				Values []interface{} `json:"values"`
+			} `json:"result"`
+		}
+	}{}
+	if err := json.Unmarshal(buf, data); err != nil {
+		return err
+	}
+	if data.Status != "success" || len(data.Data.Result) < 1 {
+		return fmt.Errorf("invalid response: status: %s, result: %v", data.Status, data.Data.Result)
+	}
+	return nil
 }
 
 func getDSN(ns, tcName, databaseName, password string) string {

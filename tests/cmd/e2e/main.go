@@ -69,6 +69,7 @@ func main() {
 		StorageClassName: "local-storage",
 		Password:         "admin",
 		Args:             map[string]string{},
+		Monitor:          true,
 	}
 	if err := oa.CleanTidbCluster(clusterInfo); err != nil {
 		glog.Fatal(err)
@@ -90,6 +91,7 @@ func main() {
 		StorageClassName: "local-storage",
 		Password:         "admin",
 		Args:             map[string]string{},
+		Monitor:          true,
 	}
 
 	if err := oa.CleanTidbCluster(restoreClusterInfo); err != nil {
