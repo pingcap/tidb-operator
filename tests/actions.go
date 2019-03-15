@@ -50,7 +50,7 @@ func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface) O
 
 const (
 	DefaultPollTimeout  time.Duration = 10 * time.Minute
-	DefaultPollInterval time.Duration = 1 * time.Minute
+	DefaultPollInterval time.Duration = 10 * time.Second
 )
 
 const (
@@ -842,13 +842,13 @@ func (oa *operatorActions) monitorNormal(clusterInfo *TidbClusterInfo) (bool, er
 		glog.Info("check [%s/%s]'s grafana data failed: %v", ns, monitorDeploymentName, err)
 		return false, nil
 	}
-	return false, nil
+	return true, nil
 }
 
 func (oa *operatorActions) checkPrometheus(clusterInfo *TidbClusterInfo) error {
 	ns := clusterInfo.Namespace
 	tcName := clusterInfo.ClusterName
-	prometheusSvc := fmt.Sprintf("%s-prometheus.%s:9090/api/v1/query?query=up", tcName, ns)
+	prometheusSvc := fmt.Sprintf("http://%s-prometheus.%s:9090/api/v1/query?query=up", tcName, ns)
 	resp, err := http.Get(prometheusSvc)
 	if err != nil {
 		return err
@@ -910,7 +910,7 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterInfo) error 
 			} `json:"result"`
 		}
 	}{}
-	if err := json.Unmarshal(buf, data); err != nil {
+	if err := json.Unmarshal(buf, &data); err != nil {
 		return err
 	}
 	if data.Status != "success" || len(data.Data.Result) < 1 {
