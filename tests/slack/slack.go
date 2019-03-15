@@ -99,7 +99,7 @@ func SendErrMsg(msg string) error {
 
 func SendGoodMsg(msg string) error {
 	attachment := Attachment{
-		Title: "operator stability test success",
+		Title: "operator stability test succeeded",
 		Color: "good",
 	}
 	payload := Payload{
