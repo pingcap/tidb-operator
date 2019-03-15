@@ -115,6 +115,7 @@ $ kubectl get pv -l app.kubernetes.io/namespace=${namespace},app.kubernetes.io/m
 
 > **Note:** the above command will delete the data permanently. Think twice before executing them.
 
+
 ## Monitor
 
 TiDB cluster is monitored with Prometheus and Grafana. When TiDB cluster is created, a Prometheus and Grafana pod will be created and configured to scrape and visualize metrics.
