@@ -890,7 +890,7 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterInfo) error {
 			return false, nil
 		}
 		if job.Status.Succeeded == 0 {
-			glog.Error("cluster [%s] back up job is not completed, please wait! ", info.ClusterName)
+			glog.Errorf("cluster [%s] back up job is not completed, please wait! ", info.ClusterName)
 			return false, nil
 		}
 
@@ -953,24 +953,24 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterInfo, to *TidbClusterIn
 			return false, nil
 		}
 		if job.Status.Succeeded == 0 {
-			glog.Error("cluster [%s] back up job is not completed, please wait! ", to.ClusterName)
+			glog.Errorf("cluster [%s] back up job is not completed, please wait! ", to.ClusterName)
 			return false, nil
 		}
 
 		fromCount, err := from.QueryCount()
 		if err != nil {
-			glog.Error("cluster [%s] count err ", from.ClusterName)
+			glog.Errorf("cluster [%s] count err ", from.ClusterName)
 			return false, nil
 		}
 
 		toCount, err := to.QueryCount()
 		if err != nil {
-			glog.Error("cluster [%s] count err ", to.ClusterName)
+			glog.Errorf("cluster [%s] count err ", to.ClusterName)
 			return false, nil
 		}
 
 		if fromCount != toCount {
-			glog.Error("cluster [%s] count %d cluster [%s] count %d is not equal ",
+			glog.Errorf("cluster [%s] count %d cluster [%s] count %d is not equal ",
 				from.ClusterName, fromCount, to.ClusterName, toCount)
 			return false, nil
 		}
@@ -1002,6 +1002,7 @@ func (info *TidbClusterInfo) QueryCount() (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	defer db.Close()
 
 	rows, err := db.Query(fmt.Sprintf("SELECT count(*) FROM %s", tableName))
 	if err != nil {
