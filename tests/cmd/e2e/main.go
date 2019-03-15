@@ -53,11 +53,11 @@ func main() {
 		LogLevel:       "2",
 	}
 	if err := oa.CleanOperator(operatorInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{})
+		oa.DumpAllLogs(operatorInfo, nil)
 		glog.Fatal(err)
 	}
 	if err := oa.DeployOperator(operatorInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{})
+		oa.DumpAllLogs(operatorInfo, nil)
 		glog.Fatal(err)
 	}
 

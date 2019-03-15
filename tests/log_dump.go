@@ -31,9 +31,13 @@ func (oa *operatorActions) DumpAllLogs(operatorInfo *OperatorInfo, testClusters 
 	dumpLog(fmt.Sprintf("kubectl get po -owide -n %s", operatorInfo.Namespace), resourceWriter)
 	dumpLog("kubectl get pv", resourceWriter)
 	dumpLog("kubectl get pv -oyaml", resourceWriter)
+	dumpedNamespace := map[string]bool{}
 	for _, testCluster := range testClusters {
-		dumpLog(fmt.Sprintf("kubectl get po,pvc,svc,cm,cronjobs,jobs,statefulsets,tidbclusters -owide -n %s", testCluster.Namespace), resourceWriter)
-		dumpLog(fmt.Sprintf("kubectl get po,pvc,svc,cm,cronjobs,jobs,statefulsets,tidbclusters -n %s -oyaml", testCluster.Namespace), resourceWriter)
+		if _, exist := dumpedNamespace[testCluster.Namespace]; !exist {
+			dumpLog(fmt.Sprintf("kubectl get po,pvc,svc,cm,cronjobs,jobs,statefulsets,tidbclusters -owide -n %s", testCluster.Namespace), resourceWriter)
+			dumpLog(fmt.Sprintf("kubectl get po,pvc,svc,cm,cronjobs,jobs,statefulsets,tidbclusters -n %s -oyaml", testCluster.Namespace), resourceWriter)
+			dumpedNamespace[testCluster.Namespace] = true
+		}
 	}
 
 	// dump operator components's log
@@ -49,16 +53,20 @@ func (oa *operatorActions) DumpAllLogs(operatorInfo *OperatorInfo, testClusters 
 	}
 
 	// dump all test clusters's logs
+	dumpedNamespace = map[string]bool{}
 	for _, testCluster := range testClusters {
-		clusterPodList, err := oa.kubeCli.CoreV1().Pods(testCluster.Namespace).List(metav1.ListOptions{})
-		if err != nil {
-			return err
-		}
-		for _, pod := range clusterPodList.Items {
-			err := dumpPod(logPath, &pod)
+		if _, exist := dumpedNamespace[testCluster.Namespace]; !exist {
+			clusterPodList, err := oa.kubeCli.CoreV1().Pods(testCluster.Namespace).List(metav1.ListOptions{})
 			if err != nil {
 				return err
 			}
+			for _, pod := range clusterPodList.Items {
+				err := dumpPod(logPath, &pod)
+				if err != nil {
+					return err
+				}
+			}
+			dumpedNamespace[testCluster.Namespace] = true
 		}
 	}
 
@@ -76,8 +84,12 @@ func dumpPod(logPath string, pod *corev1.Pod) error {
 		return err
 	}
 	defer plogFile.Close()
+
 	logWriter := bufio.NewWriter(logFile)
 	plogWriter := bufio.NewWriter(plogFile)
+	defer logWriter.Flush()
+	defer plogWriter.Flush()
+
 	for _, c := range pod.Spec.Containers {
 		dumpLog(fmt.Sprintf("kubectl logs -n %s %s -c %s", pod.Namespace, pod.GetName(), c.Name), logWriter)
 		dumpLog(fmt.Sprintf("kubectl logs -n %s %s -c %s -p", pod.Namespace, pod.GetName(), c.Name), plogWriter)
@@ -88,9 +100,11 @@ func dumpPod(logPath string, pod *corev1.Pod) error {
 
 func dumpLog(cmdStr string, writer *bufio.Writer) {
 	writer.WriteString(fmt.Sprintf("$ %s\n", cmdStr))
-	data, err := exec.Command("/bin/sh", "-c", "/usr/local/bin/"+cmdStr).CombinedOutput()
+	cmd := exec.Command("/bin/sh", "-c", "/usr/local/bin/"+cmdStr)
+	cmd.Stderr = writer
+	cmd.Stdout = writer
+	err := cmd.Run()
 	if err != nil {
 		writer.WriteString(err.Error())
 	}
-	writer.WriteString(string(data))
 }
