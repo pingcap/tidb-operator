@@ -70,5 +70,20 @@ func (bc *BackupCase) Run() error {
 		return err
 	}
 
+	bc.srcCluster.Name = "demo-scheduled-backup"
+	bc.desCluster.Name = "demo-scheduled-backup"
+
+	err = bc.operator.DeployScheduledBackup(bc.srcCluster)
+	if err != nil {
+		glog.Errorf("cluster:[%s] scheduler happen error: %v", bc.srcCluster.ClusterName, err)
+		return err
+	}
+
+	err = bc.operator.CheckScheduledBackup(bc.srcCluster)
+	if err != nil {
+		glog.Errorf("cluster:[%s] scheduler failed error: %v", bc.srcCluster.ClusterName, err)
+		return err
+	}
+
 	return nil
 }

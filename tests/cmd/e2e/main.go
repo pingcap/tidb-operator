@@ -61,7 +61,11 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	// create database and table and insert a column for test backup and restore
+	initSql := `"create database record;use record;create table test(t char(32))"`
+
 	clusterInfo := &tests.TidbClusterInfo{
+		Name:             "test-backup",
 		Namespace:        "tidb",
 		ClusterName:      "demo",
 		OperatorTag:      "master",
@@ -70,6 +74,7 @@ func main() {
 		TiDBImage:        "pingcap/tidb:v2.1.3",
 		StorageClassName: "local-storage",
 		Password:         "admin",
+		InitSql:          initSql,
 		Args:             map[string]string{},
 	}
 
@@ -88,6 +93,7 @@ func main() {
 	}
 
 	restoreClusterInfo := &tests.TidbClusterInfo{
+		Name:             "test-backup",
 		Namespace:        "tidb",
 		ClusterName:      "demo2",
 		OperatorTag:      "master",
@@ -96,6 +102,7 @@ func main() {
 		TiDBImage:        "pingcap/tidb:v2.1.3",
 		StorageClassName: "local-storage",
 		Password:         "admin",
+		InitSql:          initSql,
 		Args:             map[string]string{},
 	}
 
