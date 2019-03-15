@@ -19,6 +19,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/tests"
+	"github.com/pingcap/tidb-operator/tests/backup"
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -53,8 +54,8 @@ func main() {
 	operatorInfo := &tests.OperatorInfo{
 		Namespace:      "pingcap",
 		ReleaseName:    "operator",
-		Image:          "pingcap/tidb-operator:v1.0.0-beta.1-p2",
-		Tag:            "v1.0.0-beta.1-p2",
+		Image:          "pingcap/tidb-operator:latest",
+		Tag:            "master",
 		SchedulerImage: "gcr.io/google-containers/hyperkube:v1.12.1",
 		LogLevel:       "2",
 	}
@@ -64,7 +65,7 @@ func main() {
 	clusterInfo := &tests.TidbClusterInfo{
 		Namespace:        "tidb",
 		ClusterName:      "demo",
-		OperatorTag:      "v1.0.0-beta.1-p2",
+		OperatorTag:      "master",
 		PDImage:          "pingcap/pd:v2.1.3",
 		TiKVImage:        "pingcap/tikv:v2.1.3",
 		TiDBImage:        "pingcap/tidb:v2.1.3",
@@ -102,7 +103,7 @@ func main() {
 	restoreClusterInfo := &tests.TidbClusterInfo{
 		Namespace:        "tidb",
 		ClusterName:      "demo2",
-		OperatorTag:      "v1.0.0-beta.1-p2",
+		OperatorTag:      "master",
 		PDImage:          "pingcap/pd:v2.1.3",
 		TiKVImage:        "pingcap/tikv:v2.1.3",
 		TiDBImage:        "pingcap/tidb:v2.1.3",
@@ -129,4 +130,9 @@ func main() {
 	perror(oa.DeployTidbCluster(restoreClusterInfo))
 	perror(oa.CheckTidbClusterStatus(restoreClusterInfo))
 
+	backupCase := backup.NewBackupCase(oa, clusterInfo, restoreClusterInfo)
+
+	if err := backupCase.Run(); err != nil {
+		glog.Fatal(err)
+	}
 }
