@@ -56,6 +56,9 @@ require (
 	github.com/soheilhy/cmux v0.1.4 // indirect
 	github.com/spf13/pflag v1.0.1 // indirect
 	github.com/stretchr/testify v1.2.2 // indirect
+	github.com/tidwall/gjson v1.2.1
+	github.com/tidwall/match v1.0.1 // indirect
+	github.com/tidwall/pretty v0.0.0-20180105212114-65a9db5fad51 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20171017195756-830351dc03c6 // indirect
 	github.com/ugorji/go v1.1.1 // indirect
 	github.com/unrolled/render v0.0.0-20180807193321-4206df6ff701 // indirect

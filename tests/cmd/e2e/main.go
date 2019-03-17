@@ -15,11 +15,15 @@ package main
 
 import (
 	"flag"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
+	"github.com/pingcap/tidb-operator/tests/pkg/util"
+	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -43,15 +47,26 @@ func main() {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 
+	gcli, err := util.NewClientFor(cfg)
+	if err != nil {
+		zap.L().Fatal("new generic client", zap.Error(err))
+	}
+
+	src := util.NewOperatorSource("master")
+	if err := src.Fetch(false); err != nil {
+		zap.L().Fatal("download tidb-operator", zap.Error(err))
+	}
+
 	oa := tests.NewOperatorActions(cli, kubeCli)
 
 	operatorInfo := &tests.OperatorInfo{
 		Namespace:      "pingcap",
 		ReleaseName:    "operator",
 		Image:          "pingcap/tidb-operator:latest",
-		Tag:            "master",
 		SchedulerImage: "gcr.io/google-containers/hyperkube:v1.12.1",
 		LogLevel:       "2",
+
+		Source: src,
 	}
 
 	if err := oa.CleanOperator(operatorInfo); err != nil {
@@ -64,13 +79,14 @@ func main() {
 	clusterInfo := &tests.TidbClusterInfo{
 		Namespace:        "tidb",
 		ClusterName:      "demo",
-		OperatorTag:      "master",
 		PDImage:          "pingcap/pd:v2.1.3",
 		TiKVImage:        "pingcap/tikv:v2.1.3",
 		TiDBImage:        "pingcap/tidb:v2.1.3",
 		StorageClassName: "local-storage",
 		Password:         "admin",
 		Args:             map[string]string{},
+
+		Source: src,
 	}
 
 	if err := oa.CreateSecret(clusterInfo); err != nil {
@@ -83,6 +99,20 @@ func main() {
 	if err := oa.DeployTidbCluster(clusterInfo); err != nil {
 		glog.Fatal(err)
 	}
+
+	// just for example
+	err = wait.PollImmediate(15*time.Second, 10*time.Minute, util.CheckAllMembersReady(
+		gcli, "tidb", "demo",
+		util.ClusterStatus{
+			PD:   util.MemberStatus{Replicas: 3, Image: clusterInfo.PDImage},
+			TiKV: util.MemberStatus{Replicas: 3, Image: clusterInfo.TiKVImage},
+			TiDB: util.MemberStatus{Replicas: 2, Image: clusterInfo.TiDBImage},
+		},
+	))
+	if err != nil {
+		zap.L().Fatal("wait for all members ready", zap.Error(err))
+	}
+
 	if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
 		glog.Fatal(err)
 	}
@@ -90,13 +120,14 @@ func main() {
 	restoreClusterInfo := &tests.TidbClusterInfo{
 		Namespace:        "tidb",
 		ClusterName:      "demo2",
-		OperatorTag:      "master",
 		PDImage:          "pingcap/pd:v2.1.3",
 		TiKVImage:        "pingcap/tikv:v2.1.3",
 		TiDBImage:        "pingcap/tidb:v2.1.3",
 		StorageClassName: "local-storage",
 		Password:         "admin",
 		Args:             map[string]string{},
+
+		Source: src,
 	}
 
 	if err := oa.CleanTidbCluster(restoreClusterInfo); err != nil {
@@ -114,4 +145,12 @@ func main() {
 	if err := backupCase.Run(); err != nil {
 		glog.Fatal(err)
 	}
+}
+
+func init() {
+	logger, err := util.NewGLogDev()
+	if err != nil {
+		panic(err)
+	}
+	zap.ReplaceGlobals(logger)
 }
