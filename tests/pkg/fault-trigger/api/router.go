@@ -16,13 +16,14 @@ package api
 import restful "github.com/emicklei/go-restful"
 
 const (
-	apiPrefix = "/pingcap.com/api/v1"
+	// APIPrefix defines a prefix string for fault-trigger api
+	APIPrefix = "/pingcap.com/api/v1"
 )
 
 func (s *Server) newService() *restful.WebService {
 	ws := new(restful.WebService)
 	ws.
-		Path(apiPrefix).
+		Path(APIPrefix).
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 

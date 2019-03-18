@@ -13,6 +13,8 @@
 
 package manager
 
+import "errors"
+
 // VM defines the descriptive information of a virtual machine
 type VM struct {
 	Host string   `json:"host"`
@@ -20,4 +22,12 @@ type VM struct {
 	Name string   `json:"name"`
 	IP   string   `json:"ip"`
 	Role []string `json:"role"`
+}
+
+func (v *VM) Verify() error {
+	if len(v.Name) == 0 && len(v.IP) == 0 {
+		return errors.New("name or ip must be provided")
+	}
+
+	return nil
 }
