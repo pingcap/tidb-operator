@@ -424,14 +424,14 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 			ns, pdSetName, *pdSet.Spec.Replicas, ns, tcName, replicas)
 		return false, nil
 	}
-	if pdSet.Status.ReadyReplicas != tc.Spec.PD.Replicas {
+	if pdSet.Status.ReadyReplicas != replicas {
 		glog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
-			ns, pdSetName, pdSet.Status.ReadyReplicas, tc.Spec.PD.Replicas)
+			ns, pdSetName, pdSet.Status.ReadyReplicas, replicas)
 		return false, nil
 	}
-	if len(tc.Status.PD.Members) != int(tc.Spec.PD.Replicas) {
+	if len(tc.Status.PD.Members) != int(replicas) {
 		glog.Infof("tidbcluster: %s/%s .status.PD.Members count(%d) != %d",
-			ns, tcName, len(tc.Status.PD.Members), tc.Spec.PD.Replicas)
+			ns, tcName, len(tc.Status.PD.Members), replicas)
 		return false, nil
 	}
 	if pdSet.Status.ReadyReplicas != pdSet.Status.Replicas {
@@ -496,7 +496,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	}
 	if len(tc.Status.TiKV.Stores) != int(replicas) {
 		glog.Infof("tidbcluster: %s/%s .status.TiKV.Stores.count(%d) != %d",
-			ns, tcName, len(tc.Status.TiKV.Stores), tc.Spec.TiKV.Replicas)
+			ns, tcName, len(tc.Status.TiKV.Stores), replicas)
 		return false, nil
 	}
 	if tikvSet.Status.ReadyReplicas != tikvSet.Status.Replicas {
@@ -521,6 +521,16 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(tikvPeerServiceName, metav1.GetOptions{}); err != nil {
 		glog.Errorf("failed to get peer service: %s/%s", ns, tikvPeerServiceName)
 		return false, nil
+	}
+
+	for _, svc := range []string{
+		controller.TiDBMemberName(tcName),
+		controller.TiDBPeerMemberName(tcName),
+	} {
+		if _, err := oa.kubeCli.CoreV1().Services(ns).Get(svc, metav1.GetOptions{}); err != nil {
+			glog.Errorf("failed to get tidb service: %s/%s", ns, svc)
+			return false, nil
+		}
 	}
 
 	return true, nil
@@ -548,9 +558,14 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 			ns, tidbSetName, *tidbSet.Spec.Replicas, replicas)
 		return false, nil
 	}
-	if tidbSet.Status.ReadyReplicas != tc.Spec.TiDB.Replicas {
+	if tidbSet.Status.ReadyReplicas != replicas {
 		glog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
 			ns, tidbSetName, tidbSet.Status.ReadyReplicas, replicas)
+		return false, nil
+	}
+	if len(tc.Status.TiDB.Members) != int(replicas) {
+		glog.Infof("statefulset: %s/%s .status.TiDB.Member.count(%d) != %d",
+			ns, tcName, len(tc.Status.TiDB.Members), replicas)
 		return false, nil
 	}
 	if tidbSet.Status.ReadyReplicas != tidbSet.Status.Replicas {
