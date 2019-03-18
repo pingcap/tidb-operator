@@ -30,4 +30,12 @@ spec:
     image: ""
     imagePullPolicy: Always
     command: ["sh", "-c", "/usr/local/bin/e2e"]
+    volumeMounts:
+    - mountPath: /logDir
+      name: logdir
+  volumes:
+  - name: logdir
+    hostPath:
+      path: /var/log
+      type: Directory
   restartPolicy: Never
