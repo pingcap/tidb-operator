@@ -15,9 +15,11 @@ package main
 
 import (
 	"flag"
+	"reflect"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
 	"k8s.io/apiserver/pkg/util/logs"
@@ -132,14 +134,24 @@ func main() {
 	perror(oa.CheckTidbClusterStatus(clusterInfo), dumplogs)
 	perror(oa.CheckScaledCorrectly(clusterInfo, podUIDsBeforeScale), dumplogs)
 
+	pdNodeMapBeforeUpgrade, err := oa.GetNodeMap(clusterInfo, label.PDLabelVal)
+	perror(err, dumplogs)
+	tikvNodeMapBeforeUpgrade, err := oa.GetNodeMap(clusterInfo, label.TiKVLabelVal)
+	perror(err, dumplogs)
 	clusterInfo = clusterInfo.UpgradeAll("v2.1.4")
-	if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
+	perror(oa.UpgradeTidbCluster(clusterInfo), dumplogs)
+	perror(oa.CheckUpgradeProgress(clusterInfo), dumplogs)
+	perror(oa.CheckTidbClusterStatus(clusterInfo), dumplogs)
+	pdNodeMapAfterUpgrade, err := oa.GetNodeMap(clusterInfo, label.PDLabelVal)
+	perror(err, dumplogs)
+	tikvNodeMapAfterUpgrade, err := oa.GetNodeMap(clusterInfo, label.TiKVLabelVal)
+	perror(err, dumplogs)
+
+	if !reflect.DeepEqual(pdNodeMapAfterUpgrade, pdNodeMapBeforeUpgrade) {
+		glog.Fatal("pd node map changed: %v != %v", pdNodeMapAfterUpgrade, pdNodeMapBeforeUpgrade)
 	}
-	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
+	if !reflect.DeepEqual(tikvNodeMapAfterUpgrade, tikvNodeMapBeforeUpgrade) {
+		glog.Fatal("tikv node map changed: %v != %v", tikvNodeMapAfterUpgrade, tikvNodeMapBeforeUpgrade)
 	}
 
 	restoreClusterInfo := &tests.TidbClusterInfo{

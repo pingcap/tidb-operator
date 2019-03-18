@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -77,6 +78,7 @@ type OperatorActions interface {
 	CheckScaleInSafely(info *TidbClusterInfo) error
 	CheckScaledCorrectly(info *TidbClusterInfo, podUIDsBeforeScale map[string]types.UID) error
 	UpgradeTidbCluster(info *TidbClusterInfo) error
+	CheckUpgradeProgress(info *TidbClusterInfo) error
 	DeployAdHocBackup(info *TidbClusterInfo) error
 	CheckAdHocBackup(info *TidbClusterInfo) error
 	DeployScheduledBackup(info *TidbClusterInfo) error
@@ -88,6 +90,7 @@ type OperatorActions interface {
 	ForceDeploy(info *TidbClusterInfo) error
 	CreateSecret(info *TidbClusterInfo) error
 	GetPodUIDMap(info *TidbClusterInfo) (map[string]types.UID, error)
+	GetNodeMap(info *TidbClusterInfo, component string) (map[string][]string, error)
 }
 
 type FaultTriggerActions interface {
@@ -461,6 +464,146 @@ func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterInfo) error {
 		return errors.Wrapf(err, "failed to upgrade tidb cluster: %s", string(res))
 	}
 	return nil
+}
+
+func (oa *operatorActions) CheckUpgradeProgress(info *TidbClusterInfo) error {
+	return wait.Poll(5*time.Second, DefaultPollTimeout, func() (done bool, err error) {
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
+		if err != nil {
+			glog.Infof("failed to get tidbcluster: [%s], error: %v", info.ClusterName, err)
+			return false, nil
+		}
+
+		pdSetName := controller.PDMemberName(info.ClusterName)
+		pdSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(info.Namespace).Get(pdSetName, metav1.GetOptions{})
+		if err != nil {
+			glog.Infof("failed to get pd statefulset: [%s], error: %v", pdSetName, err)
+			return false, nil
+		}
+
+		tikvSetName := controller.TiKVMemberName(info.ClusterName)
+		tikvSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(info.Namespace).Get(tikvSetName, metav1.GetOptions{})
+		if err != nil {
+			glog.Infof("failed to get tikvSet statefulset: [%s], error: %v", tikvSetName, err)
+			return false, nil
+		}
+
+		tidbSetName := controller.TiDBMemberName(info.ClusterName)
+		tidbSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(info.Namespace).Get(tidbSetName, metav1.GetOptions{})
+		if err != nil {
+			glog.Infof("failed to get tidbSet statefulset: [%s], error: %v", tidbSetName, err)
+			return false, nil
+		}
+
+		imageUpgraded := func(memberType v1alpha1.MemberType, set *v1beta1.StatefulSet) bool {
+			image := ""
+			switch memberType {
+			case v1alpha1.PDMemberType:
+				image = tc.Spec.PD.Image
+			case v1alpha1.TiKVMemberType:
+				image = tc.Spec.TiKV.Image
+			case v1alpha1.TiDBMemberType:
+				image = tc.Spec.TiDB.Image
+			}
+			memberName := string(memberType)
+			c, ok := getComponentContainer(set)
+			if !ok || c.Image != image {
+				glog.Infof("check %s image: getContainer(set).Image(%s) != tc.Spec.%s.Image(%s)",
+					memberName, c.Image, strings.ToUpper(memberName), image)
+			}
+			return ok && c.Image == image
+		}
+		setUpgraded := func(set *v1beta1.StatefulSet) bool {
+			return set.Generation <= *set.Status.ObservedGeneration && set.Status.CurrentRevision == set.Status.UpdateRevision
+		}
+
+		// check upgrade order
+		if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
+			glog.Infof("pd is upgrading")
+			if tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
+				return false, errors.New("tikv is upgrading while pd is upgrading")
+			}
+			if tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+				return false, errors.New("tidb is upgrading while pd is upgrading")
+			}
+			if !imageUpgraded(v1alpha1.PDMemberType, pdSet) {
+				return false, errors.New("pd image is not updated while pd is upgrading")
+			}
+			if !setUpgraded(pdSet) {
+				if imageUpgraded(v1alpha1.TiKVMemberType, tikvSet) {
+					return false, errors.New("tikv image is updated while pd is upgrading")
+				}
+				if imageUpgraded(v1alpha1.TiDBMemberType, tidbSet) {
+					return false, errors.New("tidb image is updated while pd is upgrading")
+				}
+			}
+			return false, nil
+		} else if tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
+			glog.Infof("tikv is upgrading")
+			if tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+				return false, errors.New("tidb is upgrading while tikv is upgrading")
+			}
+			if !imageUpgraded(v1alpha1.PDMemberType, pdSet) {
+				return false, errors.New("pd image is not updated while tikv is upgrading")
+			}
+			if !setUpgraded(pdSet) {
+				return false, errors.New("pd stateful set is not upgraded while tikv is upgrading")
+			}
+			if !imageUpgraded(v1alpha1.TiKVMemberType, tikvSet) {
+				return false, errors.New("tikv image is not updated while tikv is upgrading")
+			}
+			if !setUpgraded(tikvSet) {
+				if imageUpgraded(v1alpha1.TiDBMemberType, tidbSet) {
+					return false, errors.New("tidb image is updated while tikv is upgrading")
+				}
+			}
+			return false, nil
+		} else if tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+			glog.Infof("tidb is upgrading")
+			if !imageUpgraded(v1alpha1.PDMemberType, pdSet) {
+				return false, errors.New("pd image is not updated while tidb is upgrading")
+			}
+			if !setUpgraded(pdSet) {
+				return false, errors.New("pd stateful set is not upgraded while tidb is upgrading")
+			}
+			if !imageUpgraded(v1alpha1.TiKVMemberType, tikvSet) {
+				return false, errors.New("tikv image is not updated while tidb is upgrading")
+			}
+			if !setUpgraded(tikvSet) {
+				return false, errors.New("tikv stateful set is not upgraded while tidb is upgrading")
+			}
+			if !imageUpgraded(v1alpha1.TiDBMemberType, tidbSet) {
+				return false, errors.New("tidb image is not updated while tikv is upgrading")
+			}
+			return false, nil
+		}
+
+		// check pd final state
+		if !imageUpgraded(v1alpha1.PDMemberType, pdSet) {
+			return false, nil
+		}
+		if !setUpgraded(pdSet) {
+			glog.Infof("check pd stateful set upgraded failed")
+			return false, nil
+		}
+		// check tikv final state
+		if !imageUpgraded(v1alpha1.TiKVMemberType, tikvSet) {
+			return false, nil
+		}
+		if !setUpgraded(tikvSet) {
+			glog.Infof("check tikv stateful set upgraded failed")
+			return false, nil
+		}
+		// check tidb final state
+		if !imageUpgraded(v1alpha1.TiDBMemberType, tidbSet) {
+			return false, nil
+		}
+		if !setUpgraded(tidbSet) {
+			glog.Infof("check tidb stateful set upgraded failed")
+			return false, nil
+		}
+		return true, nil
+	})
 }
 
 func (oa *operatorActions) DeployMonitor(info *TidbClusterInfo) error { return nil }
@@ -1335,4 +1478,26 @@ func (oa *operatorActions) GetPodUIDMap(info *TidbClusterInfo) (map[string]types
 	}
 
 	return result, nil
+}
+
+func (oa *operatorActions) GetNodeMap(info *TidbClusterInfo, component string) (map[string][]string, error) {
+	nodeMap := make(map[string][]string)
+	selector := label.New().Instance(info.ClusterName).Component(component).Labels()
+	podList, err := oa.kubeCli.CoreV1().Pods(info.Namespace).List(metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(selector).String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, pod := range podList.Items {
+		nodeName := pod.Spec.NodeName
+		if len(nodeMap[nodeName]) == 0 {
+			nodeMap[nodeName] = make([]string, 0)
+		}
+		nodeMap[nodeName] = append(nodeMap[nodeName], pod.GetName())
+		sort.Strings(nodeMap[nodeName])
+	}
+
+	return nodeMap, nil
 }
