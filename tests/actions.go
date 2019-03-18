@@ -28,11 +28,13 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,11 +43,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface) OperatorActions {
+func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, logDir string) OperatorActions {
 	return &operatorActions{
 		cli:       cli,
 		kubeCli:   kubeCli,
 		pdControl: controller.NewDefaultPDControl(),
+		logDir:    logDir,
 	}
 }
 
@@ -63,7 +66,7 @@ type OperatorActions interface {
 	DeployOperator(info *OperatorInfo) error
 	CleanOperator(info *OperatorInfo) error
 	UpgradeOperator(info *OperatorInfo) error
-	DumpAllLogs(info *OperatorInfo, clusterInfo *TidbClusterInfo) error
+	DumpAllLogs(info *OperatorInfo, clusterInfos []*TidbClusterInfo) error
 	DeployTidbCluster(info *TidbClusterInfo) error
 	CleanTidbCluster(info *TidbClusterInfo) error
 	CheckTidbClusterStatus(info *TidbClusterInfo) error
@@ -108,7 +111,10 @@ type operatorActions struct {
 	cli       versioned.Interface
 	kubeCli   kubernetes.Interface
 	pdControl controller.PDControlInterface
+	logDir    string
 }
+
+var _ = OperatorActions(&operatorActions{})
 
 type OperatorInfo struct {
 	Namespace      string
@@ -129,7 +135,7 @@ type TidbClusterInfo struct {
 	StorageClassName string
 	Password         string
 	RecordCount      string
-	InsertBetchSize  string
+	InsertBatchSize  string
 	Resources        map[string]string
 	Args             map[string]string
 	Monitor          bool
@@ -221,10 +227,6 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorInfo) error {
 	if err != nil {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
 	}
-	return nil
-}
-
-func (oa *operatorActions) DumpAllLogs(info *OperatorInfo, clusterInfo *TidbClusterInfo) error {
 	return nil
 }
 
@@ -359,6 +361,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterInfo) error {
 		}
 		return true, nil
 	}); err != nil {
+		glog.Infof("check tidb cluster status failed: %s", err.Error())
 		return fmt.Errorf("failed to waiting for tidbcluster %s/%s ready in 10 minutes", ns, tcName)
 	}
 
@@ -373,8 +376,44 @@ func (oa *operatorActions) StopInsertDataTo(info *TidbClusterInfo) error {
 	return nil
 }
 
-func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterInfo) error   { return nil }
-func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterInfo) error { return nil }
+func chartPath(name string, tag string) string {
+	return "/charts/" + tag + "/" + name
+}
+
+func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterInfo) error {
+	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
+		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.HelmSetString())
+	glog.Info("[SCALE] " + cmd)
+	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		return errors.Wrapf(err, "failed to scale tidb cluster: %s", string(res))
+	}
+	return nil
+}
+
+func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterInfo) error {
+	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
+		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.HelmSetString())
+	glog.Info("[UPGRADE] " + cmd)
+	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		return errors.Wrapf(err, "failed to upgrade tidb cluster: %s", string(res))
+	}
+	return nil
+}
+
+func (oa *operatorActions) DeployMonitor(info *TidbClusterInfo) error { return nil }
+func (oa *operatorActions) CleanMonitor(info *TidbClusterInfo) error  { return nil }
+
+func getComponentContainer(set *v1beta1.StatefulSet) (corev1.Container, bool) {
+	name := set.Labels[label.ComponentLabelKey]
+	for _, c := range set.Spec.Template.Spec.Containers {
+		if c.Name == name {
+			return c, true
+		}
+	}
+	return corev1.Container{}, false
+}
 
 func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
 	tcName := tc.GetName()
@@ -411,6 +450,11 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 	if pdSet.Status.ReadyReplicas != pdSet.Status.Replicas {
 		glog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
 			ns, pdSetName, pdSet.Status.ReadyReplicas, pdSet.Status.Replicas)
+		return false, nil
+	}
+	if c, ok := getComponentContainer(pdSet); !ok || tc.Spec.PD.Image != c.Image {
+		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
+			ns, pdSetName, c.Image, tc.Spec.PD.Image)
 		return false, nil
 	}
 
@@ -473,6 +517,11 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 			ns, tikvSetName, tikvSet.Status.ReadyReplicas, tikvSet.Status.Replicas)
 		return false, nil
 	}
+	if c, ok := getComponentContainer(tikvSet); !ok || tc.Spec.TiKV.Image != c.Image {
+		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
+			ns, tikvSetName, c.Image, tc.Spec.TiKV.Image)
+		return false, nil
+	}
 
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.State != v1alpha1.TiKVStateUp {
@@ -520,6 +569,11 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	if tidbSet.Status.ReadyReplicas != tidbSet.Status.Replicas {
 		glog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
 			ns, tidbSetName, tidbSet.Status.ReadyReplicas, tidbSet.Status.Replicas)
+		return false, nil
+	}
+	if c, ok := getComponentContainer(tidbSet); !ok || tc.Spec.TiDB.Image != c.Image {
+		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
+			ns, tidbSetName, c.Image, tc.Spec.TiDB.Image)
 		return false, nil
 	}
 
@@ -590,8 +644,9 @@ outerLoop:
 	for _, pod := range podList.Items {
 		podName := pod.GetName()
 		if pod.Labels[label.ClusterIDLabelKey] != clusterID {
-			return false, fmt.Errorf("tidbcluster %s/%s's pod %s's label %s not equals %s ",
+			glog.Infof("tidbcluster %s/%s's pod %s's label %s not equals %s ",
 				ns, tcName, podName, label.ClusterIDLabelKey, clusterID)
+			return false, nil
 		}
 
 		component := pod.Labels[label.ComponentLabelKey]
