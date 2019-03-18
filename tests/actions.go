@@ -770,6 +770,11 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 			ns, tidbSetName, tidbSet.Status.ReadyReplicas, replicas)
 		return false, nil
 	}
+	if len(tc.Status.TiDB.Members) != int(tc.Spec.TiDB.Replicas) {
+		glog.Infof("tidbcluster: %s/%s .status.TiDB.Members count(%d) != %d",
+			ns, tcName, len(tc.Status.TiDB.Members), tc.Spec.TiDB.Replicas)
+		return false, nil
+	}
 	if tidbSet.Status.ReadyReplicas != tidbSet.Status.Replicas {
 		glog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
 			ns, tidbSetName, tidbSet.Status.ReadyReplicas, tidbSet.Status.Replicas)
@@ -784,6 +789,11 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	_, err = oa.kubeCli.CoreV1().Services(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
 		glog.Errorf("failed to get service: %s/%s", ns, tidbSetName)
+		return false, nil
+	}
+	_, err = oa.kubeCli.CoreV1().Services(ns).Get(controller.TiDBPeerMemberName(tidbSetName), metav1.GetOptions{})
+	if err != nil {
+		glog.Errorf("failed to get peer service: %s/%s", ns, controller.TiDBPeerMemberName(tidbSetName))
 		return false, nil
 	}
 
