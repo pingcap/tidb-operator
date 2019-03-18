@@ -49,12 +49,8 @@ func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface) O
 
 const (
 	DefaultPollTimeout  time.Duration = 10 * time.Minute
-	DefaultPollInterval time.Duration = 1 * time.Minute
+	DefaultPollInterval time.Duration = 10 * time.Second
 	getBackupDirPodName               = "get-backup-dir"
-)
-
-var (
-	backupDir string
 )
 
 type OperatorActions interface {
@@ -81,7 +77,7 @@ type OperatorActions interface {
 	CleanMonitor(info *TidbClusterInfo) error
 	ForceDeploy(info *TidbClusterInfo) error
 	CreateSecret(info *TidbClusterInfo) error
-	getBackupDir(info *TidbClusterInfo) (string, error)
+	getBackupDir(info *TidbClusterInfo) (int, error)
 }
 
 type FaultTriggerActions interface {
@@ -260,9 +256,10 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 		}
 	}
 
-	_, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(getBackupDirPodName, metav1.GetOptions{})
-	if !errors.IsNotFound(err) {
-		oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(getBackupDirPodName, &metav1.DeleteOptions{})
+	err := oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(getBackupDirPodName, &metav1.DeleteOptions{})
+
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete dir pod %v", err)
 	}
 
 	setStr := label.New().Instance(info.ClusterName).String()
@@ -860,8 +857,6 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterInfo) error {
 	defer func() {
 		glog.Infof("deploy adhoc backup end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	}()
-	// I need a name for pvc and another name for backupDir,
-	// But in operator, there are the same
 	sets := map[string]string{
 		"clusterName":  info.ClusterName,
 		"name":         info.Name,
@@ -916,11 +911,6 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterInfo) error {
 	err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
-	}
-
-	backupDir, err = oa.getBackupDir(info)
-	if err != nil {
-		return fmt.Errorf("failed to get backup dir: %v", err)
 	}
 
 	return nil
@@ -1091,8 +1081,8 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterInfo) error {
 	defer func() {
 		glog.Infof("deploy shceduled backup end")
 	}()
-	minute := time.Now().Minute()
-	cron := fmt.Sprintf("'%d * * * *'", (minute+5)%60)
+
+	cron := fmt.Sprintf("'*/1 * * * *'")
 	sets := map[string]string{
 		"clusterName":              info.ClusterName,
 		"scheduledBackup.create":   "true",
@@ -1170,9 +1160,16 @@ func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterInfo) error {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
 
-	backupDir, err = oa.getBackupDir(info)
+	// sleep 1 minute for cronjob
+	time.Sleep(60 * time.Second)
+
+	dirs, err := oa.getBackupDir(info)
 	if err != nil {
 		return fmt.Errorf("failed to get backup dir: %v", err)
+	}
+
+	if dirs != 3 {
+		return fmt.Errorf("scheduler job failed!")
 	}
 
 	return nil
@@ -1193,7 +1190,7 @@ func getParentUIDFromJob(j batchv1.Job) (types.UID, bool) {
 	return controllerRef.UID, true
 }
 
-func (oa *operatorActions) getBackupDir(info *TidbClusterInfo) (string, error) {
+func (oa *operatorActions) getBackupDir(info *TidbClusterInfo) (int, error) {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      getBackupDirPodName,
@@ -1237,13 +1234,13 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterInfo) (string, error) {
 	err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
 
 	if err != nil {
-		return "", fmt.Errorf("failed to delete pod %s", getBackupDirPodName)
+		return 0, fmt.Errorf("failed to delete pod %s", getBackupDirPodName)
 	}
 
 	_, err = oa.kubeCli.CoreV1().Pods(info.Namespace).Create(pod)
 	if err != nil && !errors.IsAlreadyExists(err) {
 		glog.Errorf("cluster: [%s/%s] create get backup dir pod failed, error :%v", info.Namespace, info.ClusterName, err)
-		return "", err
+		return 0, err
 	}
 
 	fn = func() (bool, error) {
@@ -1257,7 +1254,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterInfo) (string, error) {
 	err = wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
 
 	if err != nil {
-		return "", fmt.Errorf("failed to create pod %s", getBackupDirPodName)
+		return 0, fmt.Errorf("failed to create pod %s", getBackupDirPodName)
 	}
 
 	cmd := fmt.Sprintf("kubectl exec %s -n %s ls /data", getBackupDirPodName, info.Namespace)
@@ -1265,12 +1262,12 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterInfo) (string, error) {
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		glog.Errorf("cluster:[%s/%s] exec :%s failed,error:%v,result:%s", info.Namespace, info.ClusterName, cmd, err, res)
-		return "", err
+		return 0, err
 	}
 
 	dirs := strings.Split(string(res), "\n")
 	glog.Infof("dirs in pod info name [%s] dir name [%s]", info.Name, strings.Join(dirs, ","))
-	return strings.TrimSpace(dirs[0]), nil
+	return len(dirs), nil
 }
 
 func (info *TidbClusterInfo) FullName() string {
