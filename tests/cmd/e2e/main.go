@@ -25,9 +25,15 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-func perror(err error) {
+func perror(err error, dumplogs func() error) {
 	if err != nil {
-		glog.Fatal(err)
+		if dumplogs != nil {
+			err := dumplogs()
+			if err != nil {
+				glog.Errorf("failed to dump logs: %s", err.Error())
+			}
+		}
+		glog.FatalDepth(1, err)
 	}
 }
 
@@ -107,15 +113,24 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	clusterInfo = clusterInfo.ScaleTiDB(3)
-	if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
-	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
+	dumplogs := func() error { return oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo}) }
+
+	// scale out: tidb 2 -> 3, tikv 3 -> 5
+	podUIDsBeforeScale, err := oa.GetPodUIDMap(clusterInfo)
+	perror(err, dumplogs)
+	clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5)
+	perror(oa.ScaleTidbCluster(clusterInfo), dumplogs)
+	perror(oa.CheckTidbClusterStatus(clusterInfo), dumplogs)
+	perror(oa.CheckScaledCorrectly(clusterInfo, podUIDsBeforeScale), dumplogs)
+
+	// scale in: tikv 5 -> 3
+	podUIDsBeforeScale, err = oa.GetPodUIDMap(clusterInfo)
+	perror(err, dumplogs)
+	clusterInfo = clusterInfo.ScaleTiKV(3)
+	perror(oa.ScaleTidbCluster(clusterInfo), dumplogs)
+	perror(oa.CheckScaleInSafely(clusterInfo), dumplogs)
+	perror(oa.CheckTidbClusterStatus(clusterInfo), dumplogs)
+	perror(oa.CheckScaledCorrectly(clusterInfo, podUIDsBeforeScale), dumplogs)
 
 	clusterInfo = clusterInfo.UpgradeAll("v2.1.4")
 	if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {

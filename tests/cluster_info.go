@@ -1,6 +1,8 @@
 package tests
 
-import "strconv"
+import (
+	"strconv"
+)
 
 func (tc *TidbClusterInfo) set(name string, value string) (string, bool) {
 	// NOTE: not thread-safe, maybe make info struct immutable

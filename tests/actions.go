@@ -39,6 +39,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 )
@@ -73,6 +74,8 @@ type OperatorActions interface {
 	BeginInsertDataTo(info *TidbClusterInfo) error
 	StopInsertDataTo(info *TidbClusterInfo) error
 	ScaleTidbCluster(info *TidbClusterInfo) error
+	CheckScaleInSafely(info *TidbClusterInfo) error
+	CheckScaledCorrectly(info *TidbClusterInfo, podUIDsBeforeScale map[string]types.UID) error
 	UpgradeTidbCluster(info *TidbClusterInfo) error
 	DeployAdHocBackup(info *TidbClusterInfo) error
 	CheckAdHocBackup(info *TidbClusterInfo) error
@@ -84,6 +87,7 @@ type OperatorActions interface {
 	CheckRestore(from *TidbClusterInfo, to *TidbClusterInfo) error
 	ForceDeploy(info *TidbClusterInfo) error
 	CreateSecret(info *TidbClusterInfo) error
+	GetPodUIDMap(info *TidbClusterInfo) (map[string]types.UID, error)
 }
 
 type FaultTriggerActions interface {
@@ -389,6 +393,63 @@ func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterInfo) error {
 		return errors.Wrapf(err, "failed to scale tidb cluster: %s", string(res))
 	}
 	return nil
+}
+
+func (oa *operatorActions) CheckScaleInSafely(info *TidbClusterInfo) error {
+	return wait.Poll(5*time.Second, DefaultPollTimeout, func() (done bool, err error) {
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
+		if err != nil {
+			glog.Infof("failed to get tidbcluster when scale in tidbcluster, error: %v", err)
+			return false, nil
+		}
+
+		tikvSetName := controller.TiKVMemberName(info.ClusterName)
+		tikvSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(info.Namespace).Get(tikvSetName, metav1.GetOptions{})
+		if err != nil {
+			glog.Infof("failed to get tikvSet statefulset: [%s], error: %v", tikvSetName, err)
+			return false, nil
+		}
+
+		pdClient := controller.NewDefaultPDControl().GetPDClient(tc)
+		stores, err := pdClient.GetStores()
+		if err != nil {
+			glog.Infof("pdClient.GetStores failed,error: %v", err)
+			return false, nil
+		}
+		if len(stores.Stores) > int(*tikvSet.Spec.Replicas) {
+			glog.Infof("stores.Stores: %v", stores.Stores)
+			glog.Infof("tikvSet.Spec.Replicas: %d", *tikvSet.Spec.Replicas)
+			return false, fmt.Errorf("the tikvSet.Spec.Replicas may reduce before tikv complete offline")
+		}
+
+		if *tikvSet.Spec.Replicas == tc.Spec.TiKV.Replicas {
+			return true, nil
+		}
+
+		return false, nil
+	})
+}
+
+func (oa *operatorActions) CheckScaledCorrectly(info *TidbClusterInfo, podUIDsBeforeScale map[string]types.UID) error {
+	return wait.Poll(DefaultPollInterval, DefaultPollTimeout, func() (done bool, err error) {
+		podUIDs, err := oa.GetPodUIDMap(info)
+		if err != nil {
+			glog.Infof("failed to get pd pods's uid, error: %v", err)
+			return false, nil
+		}
+
+		if len(podUIDsBeforeScale) == len(podUIDs) {
+			return false, fmt.Errorf("the length of pods before scale equals the length of pods after scale")
+		}
+
+		for podName, uidAfter := range podUIDs {
+			if uidBefore, ok := podUIDsBeforeScale[podName]; ok && uidBefore != uidAfter {
+				return false, fmt.Errorf("pod: [%s] have be recreated", podName)
+			}
+		}
+
+		return true, nil
+	})
 }
 
 func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterInfo) error {
@@ -1256,4 +1317,22 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterInfo, to *Ti
 
 func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterInfo) error {
 	return nil
+}
+
+func (oa *operatorActions) GetPodUIDMap(info *TidbClusterInfo) (map[string]types.UID, error) {
+	result := map[string]types.UID{}
+
+	selector, err := label.New().Instance(info.ClusterName).Selector()
+	if err != nil {
+		return nil, err
+	}
+	pods, err := oa.kubeCli.CoreV1().Pods(info.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return nil, err
+	}
+	for _, pod := range pods.Items {
+		result[pod.GetName()] = pod.GetUID()
+	}
+
+	return result, nil
 }
