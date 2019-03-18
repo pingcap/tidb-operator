@@ -419,7 +419,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 	replicas := tc.Spec.PD.Replicas + int32(failureCount)
 	if *pdSet.Spec.Replicas != replicas {
 		glog.Infof("statefulset: %s/%s .spec.Replicas(%d) != %d",
-			ns, pdSetName, *pdSet.Spec.Replicas, ns, tcName, replicas)
+			ns, pdSetName, *pdSet.Spec.Replicas, replicas)
 		return false, nil
 	}
 	if pdSet.Status.ReadyReplicas != tc.Spec.PD.Replicas {
@@ -589,7 +589,7 @@ func (oa *operatorActions) reclaimPolicySyncFn(tc *v1alpha1.TidbCluster) (bool, 
 	for _, pvc := range pvcList.Items {
 		pvName := pvc.Spec.VolumeName
 		if pv, err := oa.kubeCli.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{}); err != nil {
-			glog.Errorf("failed to get pv: %s", pvName, err)
+			glog.Errorf("failed to get pv: %s, error: %v", pvName, err)
 			return false, nil
 		} else if pv.Spec.PersistentVolumeReclaimPolicy != tc.Spec.PVReclaimPolicy {
 			glog.Errorf("pv: %s's reclaimPolicy is not Retain", pvName)
@@ -608,7 +608,7 @@ func (oa *operatorActions) metaSyncFn(tc *v1alpha1.TidbCluster) (bool, error) {
 	var cluster *metapb.Cluster
 	var err error
 	if cluster, err = pdCli.GetCluster(); err != nil {
-		glog.Errorf("failed to get cluster from pdControl: %s/%s", ns, tcName, err)
+		glog.Errorf("failed to get cluster from pdControl: %s/%s, error: %v", ns, tcName, err)
 		return false, nil
 	}
 
@@ -808,7 +808,7 @@ func (oa *operatorActions) schedulerHAFn(tc *v1alpha1.TidbCluster) (bool, error)
 			}
 			nodeMap[nodeName] = append(nodeMap[nodeName], pod.GetName())
 			if len(nodeMap[nodeName]) > totalCount/2 {
-				return false, fmt.Errorf("node % have %d pods, greater than %d/2",
+				return false, fmt.Errorf("node %s have %d pods, greater than %d/2",
 					nodeName, len(nodeMap[nodeName]), totalCount)
 			}
 		}

@@ -19,7 +19,7 @@ import (
 	"github.com/golang/glog"
 )
 
-// StartETCD starts etcd
+// StartETCD starts the etcd service
 func (m *Manager) StartETCD() error {
 	shell := "systemctl start etcd"
 	cmd := exec.Command("/bin/sh", "-c", shell)
@@ -31,7 +31,7 @@ func (m *Manager) StartETCD() error {
 	return nil
 }
 
-// StopETCD stops etcd
+// StopETCD stops the etcd service
 func (m *Manager) StopETCD() error {
 	shell := "systemctl stop etcd"
 	cmd := exec.Command("/bin/sh", "-c", shell)
