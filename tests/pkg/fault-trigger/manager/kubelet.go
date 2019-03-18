@@ -19,7 +19,7 @@ import (
 	"github.com/golang/glog"
 )
 
-// StartKubelet starts kubelet
+// StartKubelet starts the kubelet service
 func (m *Manager) StartKubelet() error {
 	shell := "systemctl start kubelet"
 	cmd := exec.Command("/bin/sh", "-c", shell)
@@ -31,7 +31,7 @@ func (m *Manager) StartKubelet() error {
 	return nil
 }
 
-// StopKubelet stops kubelet
+// StopKubelet stops the kubelet service
 func (m *Manager) StopKubelet() error {
 	shell := "systemctl stop kubelet"
 	cmd := exec.Command("/bin/sh", "-c", shell)
