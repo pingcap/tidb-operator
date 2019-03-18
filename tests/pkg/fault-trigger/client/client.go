@@ -35,7 +35,7 @@ type client struct {
 	httpCli *http.Client
 }
 
-// Config defines for schrodinger client
+// Config defines for fault-trigger client
 type Config struct {
 	Addr string
 }
