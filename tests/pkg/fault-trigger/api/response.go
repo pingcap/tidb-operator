@@ -13,7 +13,13 @@
 
 package api
 
-import "net/http"
+import (
+	"encoding/json"
+	"net/http"
+
+	"github.com/golang/glog"
+	"github.com/juju/errors"
+)
 
 // Response defines a new response struct for http
 type Response struct {
@@ -40,4 +46,23 @@ func (r *Response) message(msg string) *Response {
 func (r *Response) payload(payload interface{}) *Response {
 	r.Payload = payload
 	return r
+}
+
+// ExtractResponse extract response from api
+func ExtractResponse(data []byte) ([]byte, error) {
+	respData := &Response{}
+	if err := json.Unmarshal(data, respData); err != nil {
+		return nil, errors.Trace(err)
+	}
+
+	if respData.StatusCode != http.StatusOK {
+		d, err := json.Marshal(respData.Payload)
+		if err != nil {
+			glog.Errorf("marshal data failed %v", d)
+		}
+
+		return d, errors.New(respData.Message)
+	}
+
+	return json.Marshal(respData.Payload)
 }
