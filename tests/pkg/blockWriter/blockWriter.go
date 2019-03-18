@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.package spec
 
-package blockWriter
+package blockwriter
 
 import (
 	"context"
@@ -105,7 +105,7 @@ func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []st
 		for i := 0; i < 100; i++ {
 			values := make([]string, c.cfg.BatchSize)
 			for i := 0; i < c.cfg.BatchSize; i++ {
-				blockData := util.RandString(defaultRawSize)
+				blockData := util.RandString(c.cfg.RawSize)
 				values[i] = fmt.Sprintf("('%s')", blockData)
 			}
 
@@ -244,18 +244,22 @@ func (c *BlockWriterCase) Start(db *sql.DB) error {
 	wg.Add(1)
 	go c.generateQuery(ctx, queryChan, &wg)
 
+loop:
 	for {
 		select {
 		case <-c.stopChan:
 			glog.Infof("[%s] stoping...", c)
 			cancel()
-			wg.Wait()
-			close(queryChan)
-			return nil
+			break loop
 		default:
 			util.Sleep(context.Background(), 2*time.Second)
 		}
 	}
+
+	wg.Wait()
+	close(queryChan)
+
+	return nil
 }
 
 // Stop stops cases

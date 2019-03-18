@@ -28,7 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/tests/pkg/blockWriter"
+	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -109,7 +109,7 @@ type operatorActions struct {
 	kubeCli   kubernetes.Interface
 	pdControl controller.PDControlInterface
 
-	blockWriter *blockWriter.BlockWriterCase
+	blockWriter *blockwriter.BlockWriterCase
 }
 
 type OperatorInfo struct {
@@ -135,7 +135,7 @@ type TidbClusterInfo struct {
 	Resources        map[string]string
 	Args             map[string]string
 
-	blockWriter *blockWriter.BlockWriterCase
+	blockWriter *blockwriter.BlockWriterCase
 }
 
 func (tc *TidbClusterInfo) HelmSetString() string {
@@ -237,7 +237,7 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterInfo) error {
 	}
 
 	// init blockWriter case
-	info.blockWriter = blockWriter.NewBlockWriterCase(blockWriter.Config{
+	info.blockWriter = blockwriter.NewBlockWriterCase(blockwriter.Config{
 		TableNum:    defaultTableNum,
 		Concurrency: defaultConcurrency,
 		BatchSize:   defaultBatchSize,
