@@ -25,7 +25,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-func perror(err error, info *tests.OperatorInfo, clusterInfos []*tests.TidbClusterInfo) {
+func perror(err error) {
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -59,9 +59,14 @@ func main() {
 		SchedulerImage: "gcr.io/google-containers/hyperkube:v1.12.1",
 		LogLevel:       "2",
 	}
-	oa.DumpAllLogs(operatorInfo, nil)
-	perror(oa.CleanOperator(operatorInfo), operatorInfo, nil)
-	perror(oa.DeployOperator(operatorInfo), operatorInfo, nil)
+	if err := oa.CleanOperator(operatorInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, nil)
+		glog.Fatal(err)
+	}
+	if err = oa.DeployOperator(operatorInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, nil)
+		glog.Fatal(err)
+	}
 
 	clusterInfo := &tests.TidbClusterInfo{
 		Namespace:        "tidb",
@@ -89,17 +94,38 @@ func main() {
 		Args: map[string]string{},
 	}
 
-	perror(oa.CleanTidbCluster(clusterInfo), operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-	perror(oa.DeployTidbCluster(clusterInfo), operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-	perror(oa.CheckTidbClusterStatus(clusterInfo), operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+	if err = oa.CleanTidbCluster(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+	if err = oa.DeployTidbCluster(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
 
 	clusterInfo = clusterInfo.ScaleTiDB(3)
-	perror(oa.ScaleTidbCluster(clusterInfo), operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-	perror(oa.CheckTidbClusterStatus(clusterInfo), operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+	if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
 
 	clusterInfo = clusterInfo.UpgradeAll("v2.1.4")
-	perror(oa.UpgradeTidbCluster(clusterInfo), operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-	perror(oa.CheckTidbClusterStatus(clusterInfo), operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+	if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
 
 	restoreClusterInfo := &tests.TidbClusterInfo{
 		Namespace:        "tidb",
@@ -127,13 +153,23 @@ func main() {
 		Args: map[string]string{},
 	}
 
-	perror(oa.CleanTidbCluster(restoreClusterInfo), operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-	perror(oa.DeployTidbCluster(restoreClusterInfo), operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-	perror(oa.CheckTidbClusterStatus(restoreClusterInfo), operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+	if err = oa.CleanTidbCluster(restoreClusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
+		glog.Fatal(err)
+	}
+	if err = oa.DeployTidbCluster(restoreClusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
+		glog.Fatal(err)
+	}
+	if err = oa.CheckTidbClusterStatus(restoreClusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
+		glog.Fatal(err)
+	}
 
 	backupCase := backup.NewBackupCase(oa, clusterInfo, restoreClusterInfo)
 
 	if err := backupCase.Run(); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
 		glog.Fatal(err)
 	}
 }
