@@ -15,6 +15,8 @@ package main
 
 import (
 	"flag"
+	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -25,10 +27,20 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+func perror(err error) {
+	if err != nil {
+		glog.Fatal(err)
+	}
+}
+
 func main() {
 	flag.Parse()
 	logs.InitLogs()
 	defer logs.FlushLogs()
+
+	go func() {
+		glog.Info(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
@@ -43,7 +55,7 @@ func main() {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 
-	oa := tests.NewOperatorActions(cli, kubeCli)
+	oa := tests.NewOperatorActions(cli, kubeCli, "/logDir")
 
 	operatorInfo := &tests.OperatorInfo{
 		Namespace:      "pingcap",
@@ -53,11 +65,12 @@ func main() {
 		SchedulerImage: "gcr.io/google-containers/hyperkube:v1.12.1",
 		LogLevel:       "2",
 	}
-
 	if err := oa.CleanOperator(operatorInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, nil)
 		glog.Fatal(err)
 	}
-	if err := oa.DeployOperator(operatorInfo); err != nil {
+	if err = oa.DeployOperator(operatorInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, nil)
 		glog.Fatal(err)
 	}
 
@@ -75,20 +88,53 @@ func main() {
 		StorageClassName: "local-storage",
 		Password:         "admin",
 		InitSql:          initSql,
-		Args:             map[string]string{},
+		Resources: map[string]string{
+			"pd.resources.limits.cpu":        "1000m",
+			"pd.resources.limits.memory":     "2Gi",
+			"pd.resources.requests.cpu":      "200m",
+			"pd.resources.requests.memory":   "1Gi",
+			"tikv.resources.limits.cpu":      "2000m",
+			"tikv.resources.limits.memory":   "4Gi",
+			"tikv.resources.requests.cpu":    "1000m",
+			"tikv.resources.requests.memory": "2Gi",
+			"tidb.resources.limits.cpu":      "2000m",
+			"tidb.resources.limits.memory":   "4Gi",
+			"tidb.resources.requests.cpu":    "500m",
+			"tidb.resources.requests.memory": "1Gi",
+		},
+		Args: map[string]string{},
 	}
 
-	if err := oa.CreateSecret(clusterInfo); err != nil {
+	if err = oa.CleanTidbCluster(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+	if err = oa.DeployTidbCluster(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
 		glog.Fatal(err)
 	}
 
-	if err := oa.CleanTidbCluster(clusterInfo); err != nil {
+	clusterInfo = clusterInfo.ScaleTiDB(3)
+	if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
 		glog.Fatal(err)
 	}
-	if err := oa.DeployTidbCluster(clusterInfo); err != nil {
+	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
 		glog.Fatal(err)
 	}
-	if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+
+	clusterInfo = clusterInfo.UpgradeAll("v2.1.4")
+	if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
 		glog.Fatal(err)
 	}
 
@@ -103,22 +149,40 @@ func main() {
 		StorageClassName: "local-storage",
 		Password:         "admin",
 		InitSql:          initSql,
-		Args:             map[string]string{},
+		Resources: map[string]string{
+			"pd.resources.limits.cpu":        "1000m",
+			"pd.resources.limits.memory":     "2Gi",
+			"pd.resources.requests.cpu":      "200m",
+			"pd.resources.requests.memory":   "1Gi",
+			"tikv.resources.limits.cpu":      "2000m",
+			"tikv.resources.limits.memory":   "4Gi",
+			"tikv.resources.requests.cpu":    "1000m",
+			"tikv.resources.requests.memory": "2Gi",
+			"tidb.resources.limits.cpu":      "2000m",
+			"tidb.resources.limits.memory":   "4Gi",
+			"tidb.resources.requests.cpu":    "500m",
+			"tidb.resources.requests.memory": "1Gi",
+		},
+		Args: map[string]string{},
 	}
 
-	if err := oa.CleanTidbCluster(restoreClusterInfo); err != nil {
+	if err = oa.CleanTidbCluster(restoreClusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
 		glog.Fatal(err)
 	}
-	if err := oa.DeployTidbCluster(restoreClusterInfo); err != nil {
+	if err = oa.DeployTidbCluster(restoreClusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
 		glog.Fatal(err)
 	}
-	if err := oa.CheckTidbClusterStatus(restoreClusterInfo); err != nil {
+	if err = oa.CheckTidbClusterStatus(restoreClusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
 		glog.Fatal(err)
 	}
 
 	backupCase := backup.NewBackupCase(oa, clusterInfo, restoreClusterInfo)
 
 	if err := backupCase.Run(); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
 		glog.Fatal(err)
 	}
 }
