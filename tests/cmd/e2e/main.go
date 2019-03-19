@@ -15,6 +15,8 @@ package main
 
 import (
 	"flag"
+	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -35,6 +37,10 @@ func main() {
 	flag.Parse()
 	logs.InitLogs()
 	defer logs.FlushLogs()
+
+	go func() {
+		glog.Info(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
