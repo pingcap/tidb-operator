@@ -16,7 +16,11 @@ package tests
 import (
 	"bytes"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -59,7 +63,12 @@ func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, l
 
 const (
 	DefaultPollTimeout  time.Duration = 10 * time.Minute
-	DefaultPollInterval time.Duration = 1 * time.Minute
+	DefaultPollInterval time.Duration = 10 * time.Second
+)
+
+const (
+	grafanaUsername = "admin"
+	grafanaPassword = "admin"
 )
 
 type OperatorActions interface {
@@ -82,8 +91,6 @@ type OperatorActions interface {
 	CheckIncrementalBackup(info *TidbClusterInfo) error
 	Restore(from *TidbClusterInfo, to *TidbClusterInfo) error
 	CheckRestore(from *TidbClusterInfo, to *TidbClusterInfo) error
-	DeployMonitor(info *TidbClusterInfo) error
-	CleanMonitor(info *TidbClusterInfo) error
 	ForceDeploy(info *TidbClusterInfo) error
 	CreateSecret(info *TidbClusterInfo) error
 }
@@ -140,8 +147,8 @@ type TidbClusterInfo struct {
 	InsertBatchSize  string
 	Resources        map[string]string
 	Args             map[string]string
-
-	blockWriter *blockwriter.BlockWriterCase
+	blockWriter      *blockwriter.BlockWriterCase
+	Monitor          bool
 }
 
 func (tc *TidbClusterInfo) HelmSetString() string {
@@ -161,6 +168,7 @@ func (tc *TidbClusterInfo) HelmSetString() string {
 		"tidb.image":              tc.TiDBImage,
 		"tidb.passwordSecretName": "set-secret",
 		"tidb.initSql":            initSql,
+		"monitor.create":          strconv.FormatBool(tc.Monitor),
 	}
 
 	for k, v := range tc.Resources {
@@ -363,6 +371,12 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterInfo) error {
 			return false, nil
 		}
 
+		if info.Monitor {
+			glog.Infof("check tidb monitor normal")
+			if b, err := oa.monitorNormal(info); !b && err == nil {
+				return false, nil
+			}
+		}
 		return true, nil
 	}); err != nil {
 		glog.Infof("check tidb cluster status failed: %s", err.Error())
@@ -445,7 +459,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 	replicas := tc.Spec.PD.Replicas + int32(failureCount)
 	if *pdSet.Spec.Replicas != replicas {
 		glog.Infof("statefulset: %s/%s .spec.Replicas(%d) != %d",
-			ns, pdSetName, *pdSet.Spec.Replicas, ns, tcName, replicas)
+			ns, pdSetName, *pdSet.Spec.Replicas, replicas)
 		return false, nil
 	}
 	if pdSet.Status.ReadyReplicas != tc.Spec.PD.Replicas {
@@ -615,7 +629,7 @@ func (oa *operatorActions) reclaimPolicySyncFn(tc *v1alpha1.TidbCluster) (bool, 
 	for _, pvc := range pvcList.Items {
 		pvName := pvc.Spec.VolumeName
 		if pv, err := oa.kubeCli.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{}); err != nil {
-			glog.Errorf("failed to get pv: %s", pvName, err)
+			glog.Errorf("failed to get pv: %s, error: %v", pvName, err)
 			return false, nil
 		} else if pv.Spec.PersistentVolumeReclaimPolicy != tc.Spec.PVReclaimPolicy {
 			glog.Errorf("pv: %s's reclaimPolicy is not Retain", pvName)
@@ -634,7 +648,7 @@ func (oa *operatorActions) metaSyncFn(tc *v1alpha1.TidbCluster) (bool, error) {
 	var cluster *metapb.Cluster
 	var err error
 	if cluster, err = pdCli.GetCluster(); err != nil {
-		glog.Errorf("failed to get cluster from pdControl: %s/%s", ns, tcName, err)
+		glog.Errorf("failed to get cluster from pdControl: %s/%s, error: %v", ns, tcName, err)
 		return false, nil
 	}
 
@@ -834,7 +848,7 @@ func (oa *operatorActions) schedulerHAFn(tc *v1alpha1.TidbCluster) (bool, error)
 			}
 			nodeMap[nodeName] = append(nodeMap[nodeName], pod.GetName())
 			if len(nodeMap[nodeName]) > totalCount/2 {
-				return false, fmt.Errorf("node % have %d pods, greater than %d/2",
+				return false, fmt.Errorf("node %s have %d pods, greater than %d/2",
 					nodeName, len(nodeMap[nodeName]), totalCount)
 			}
 		}
@@ -882,6 +896,116 @@ func (oa *operatorActions) passwordIsSet(clusterInfo *TidbClusterInfo) (bool, er
 	}
 
 	return true, nil
+}
+
+func (oa *operatorActions) monitorNormal(clusterInfo *TidbClusterInfo) (bool, error) {
+	ns := clusterInfo.Namespace
+	tcName := clusterInfo.ClusterName
+	monitorDeploymentName := fmt.Sprintf("%s-monitor", tcName)
+	monitorDeployment, err := oa.kubeCli.AppsV1().Deployments(ns).Get(monitorDeploymentName, metav1.GetOptions{})
+	if err != nil {
+		glog.Errorf("get monitor deployment: [%s/%s] failed", ns, monitorDeploymentName)
+		return false, nil
+	}
+	if monitorDeployment.Status.ReadyReplicas < 1 {
+		glog.Info("monitor ready replicas %d < 1", monitorDeployment.Status.ReadyReplicas)
+		return false, nil
+	}
+	configuratorJobName := fmt.Sprintf("%s-monitor-configurator", tcName)
+	monitorJob, err := oa.kubeCli.BatchV1().Jobs(ns).Get(configuratorJobName, metav1.GetOptions{})
+	if err != nil {
+		glog.Info("get monitor configurator job: [%s/%s] failed", ns, configuratorJobName)
+		return false, nil
+	}
+	if monitorJob.Status.Succeeded == 0 {
+		glog.Info("the monitor configurator job: [%s/%s] had not success", ns, configuratorJobName)
+		return false, nil
+	}
+
+	if err := oa.checkPrometheus(clusterInfo); err != nil {
+		glog.Info("check [%s/%s]'s prometheus data failed: %v", ns, monitorDeploymentName, err)
+		return false, nil
+	}
+
+	if err := oa.checkGrafanaData(clusterInfo); err != nil {
+		glog.Info("check [%s/%s]'s grafana data failed: %v", ns, monitorDeploymentName, err)
+		return false, nil
+	}
+	return true, nil
+}
+
+func (oa *operatorActions) checkPrometheus(clusterInfo *TidbClusterInfo) error {
+	ns := clusterInfo.Namespace
+	tcName := clusterInfo.ClusterName
+	prometheusSvc := fmt.Sprintf("http://%s-prometheus.%s:9090/api/v1/query?query=up", tcName, ns)
+	resp, err := http.Get(prometheusSvc)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	response := &struct {
+		Status string `json:"status"`
+	}{}
+	err = json.Unmarshal(body, response)
+	if err != nil {
+		return err
+	}
+	if response.Status != "success" {
+		return fmt.Errorf("the prometheus's api[%s] has not ready", prometheusSvc)
+	}
+	return nil
+}
+
+func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterInfo) error {
+	ns := clusterInfo.Namespace
+	tcName := clusterInfo.ClusterName
+	svcName := fmt.Sprintf("%s-grafana", tcName)
+	end := time.Now()
+	start := end.Add(-time.Minute)
+	values := url.Values{}
+	values.Set("query", `sum(tikv_pd_heartbeat_tick_total{type="leader"}) by (job)`)
+	values.Set("start", fmt.Sprintf("%d", start.Unix()))
+	values.Set("end", fmt.Sprintf("%d", end.Unix()))
+	values.Set("step", "30")
+	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources/proxy/1/api/v1/query_range?%s", svcName, ns, values.Encode())
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return err
+	}
+	req.SetBasicAuth(grafanaUsername, grafanaPassword)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	data := struct {
+		Status string `json:"status"`
+		Data   struct {
+			ResultType string `json:"resultType"`
+			Result     []struct {
+				Metric struct {
+					Job string `json:"job"`
+				} `json:"metric"`
+				Values []interface{} `json:"values"`
+			} `json:"result"`
+		}
+	}{}
+	if err := json.Unmarshal(buf, &data); err != nil {
+		return err
+	}
+	if data.Status != "success" || len(data.Data.Result) < 1 {
+		return fmt.Errorf("invalid response: status: %s, result: %v", data.Status, data.Data.Result)
+	}
+	return nil
 }
 
 func getDSN(ns, tcName, databaseName, password string) string {
