@@ -15,9 +15,9 @@ package main
 
 import (
 	"flag"
-	"reflect"
 	"net/http"
 	_ "net/http/pprof"
+	"reflect"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -128,18 +128,18 @@ func main() {
 
 	dumplogs := func() error { return oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo}) }
 
-	// scale out: tidb 2 -> 3, tikv 3 -> 5
+	// scale out: tidb 2 -> 3, tikv 3 -> 5, pd 3 -> 5
 	podUIDsBeforeScale, err := oa.GetPodUIDMap(clusterInfo)
 	perror(err, dumplogs)
-	clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5)
+	clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
 	perror(oa.ScaleTidbCluster(clusterInfo), dumplogs)
 	perror(oa.CheckTidbClusterStatus(clusterInfo), dumplogs)
 	perror(oa.CheckScaledCorrectly(clusterInfo, podUIDsBeforeScale), dumplogs)
 
-	// scale in: tikv 5 -> 3
+	// scale in: tidb 3 -> 1, tikv 5 -> 3, pd 5 -> 3
 	podUIDsBeforeScale, err = oa.GetPodUIDMap(clusterInfo)
 	perror(err, dumplogs)
-	clusterInfo = clusterInfo.ScaleTiKV(3)
+	clusterInfo = clusterInfo.ScaleTiDB(1).ScaleTiKV(3).ScalePD(3)
 	perror(oa.ScaleTidbCluster(clusterInfo), dumplogs)
 	perror(oa.CheckScaleInSafely(clusterInfo), dumplogs)
 	perror(oa.CheckTidbClusterStatus(clusterInfo), dumplogs)

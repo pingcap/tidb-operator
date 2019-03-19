@@ -430,7 +430,7 @@ func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterInfo) error {
 }
 
 func (oa *operatorActions) CheckScaleInSafely(info *TidbClusterInfo) error {
-	return wait.Poll(5*time.Second, DefaultPollTimeout, func() (done bool, err error) {
+	return wait.Poll(DefaultPollInterval, DefaultPollTimeout, func() (done bool, err error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 		if err != nil {
 			glog.Infof("failed to get tidbcluster when scale in tidbcluster, error: %v", err)
@@ -498,7 +498,7 @@ func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterInfo) error {
 }
 
 func (oa *operatorActions) CheckUpgradeProgress(info *TidbClusterInfo) error {
-	return wait.Poll(5*time.Second, DefaultPollTimeout, func() (done bool, err error) {
+	return wait.Poll(DefaultPollInterval, DefaultPollTimeout, func() (done bool, err error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 		if err != nil {
 			glog.Infof("failed to get tidbcluster: [%s], error: %v", info.ClusterName, err)
@@ -822,9 +822,9 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		glog.Errorf("failed to get service: %s/%s", ns, tidbSetName)
 		return false, nil
 	}
-	_, err = oa.kubeCli.CoreV1().Services(ns).Get(controller.TiDBPeerMemberName(tidbSetName), metav1.GetOptions{})
+	_, err = oa.kubeCli.CoreV1().Services(ns).Get(controller.TiDBPeerMemberName(tcName), metav1.GetOptions{})
 	if err != nil {
-		glog.Errorf("failed to get peer service: %s/%s", ns, controller.TiDBPeerMemberName(tidbSetName))
+		glog.Errorf("failed to get peer service: %s/%s", ns, controller.TiDBPeerMemberName(tcName))
 		return false, nil
 	}
 
