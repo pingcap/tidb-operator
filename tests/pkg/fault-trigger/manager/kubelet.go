@@ -28,6 +28,9 @@ func (m *Manager) StartKubelet() error {
 		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
+
+	glog.Info("kubelet is started")
+
 	return nil
 }
 
@@ -40,5 +43,8 @@ func (m *Manager) StopKubelet() error {
 		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
+
+	glog.Info("kubelet is stopped")
+
 	return nil
 }

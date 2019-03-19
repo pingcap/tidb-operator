@@ -35,14 +35,14 @@ func perror(err error) {
 }
 
 func main() {
+	logs.InitLogs()
+	defer logs.FlushLogs()
+
 	conf := tests.NewConfig()
 	err := conf.Parse(os.Args[1:])
 	if err != nil {
 		glog.Fatalf("failed to parse config: %v", err)
 	}
-
-	logs.InitLogs()
-	defer logs.FlushLogs()
 
 	go func() {
 		glog.Info(http.ListenAndServe("localhost:6060", nil))
@@ -194,14 +194,12 @@ func main() {
 
 	fa := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	if err := fa.StopETCD("172.16.4.171"); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
 		glog.Fatal(err)
 	}
 
-	time.Sleep(3 * time.Minute)
+	time.Sleep(1 * time.Minute)
 
 	if err := fa.StartETCD("172.16.4.171"); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
 		glog.Fatal(err)
 	}
 }

@@ -14,10 +14,11 @@ type Config struct {
 
 	configFile string
 
-	LogDir     string  `yaml:"log-dir" json:"log-dir"`
-	Nodes      []Nodes `yaml:"nodes" json:"nodes"`
-	ETCDs      []Nodes `yaml:"etcds" json:"etcds"`
-	APIServers []Nodes `yaml:"apiservers" json:"apiservers"`
+	LogDir           string  `yaml:"log_dir" json:"log_dir"`
+	FaultTriggerPort int     `yaml:"fault_trigger_port" json:"fault_trigger_port"`
+	Nodes            []Nodes `yaml:"nodes" json:"nodes"`
+	ETCDs            []Nodes `yaml:"etcds" json:"etcds"`
+	APIServers       []Nodes `yaml:"apiservers" json:"apiservers"`
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
@@ -29,12 +30,13 @@ type Nodes struct {
 // NewConfig creates a new config.
 func NewConfig() *Config {
 	cfg := &Config{}
-	cfg.FlagSet = flag.NewFlagSet("e2e", flag.ContinueOnError)
+	cfg.FlagSet = flag.CommandLine
 
 	fs := cfg.FlagSet
 
-	fs.StringVar(&cfg.configFile, "config", "", "Config file")
+	fs.StringVar(&cfg.configFile, "config", "/etc/e2e/config.yaml", "Config file")
 	fs.StringVar(&cfg.LogDir, "log-dir", "/logDir", "log directory")
+	fs.IntVar(&cfg.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
 
 	return cfg
 }

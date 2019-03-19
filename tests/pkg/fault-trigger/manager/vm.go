@@ -53,6 +53,9 @@ func (m *Manager) StopVM(v *VM) error {
 		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
+
+	glog.Infof("virtual machine %s is stopped", v.Name)
+
 	return nil
 }
 
@@ -65,6 +68,9 @@ func (m *Manager) StartVM(v *VM) error {
 		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
+
+	glog.Infof("virtual machine %s is started", v.Name)
+
 	return nil
 }
 

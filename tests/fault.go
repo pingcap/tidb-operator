@@ -1,6 +1,8 @@
 package tests
 
 import (
+	"fmt"
+
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -49,7 +51,7 @@ type faultTriggerActions struct {
 
 func (fa *faultTriggerActions) StopNode(physicalNode string, node string) error {
 	faultCli := client.NewClient(client.Config{
-		Addr: physicalNode,
+		Addr: fa.genFaultTriggerAddr(physicalNode),
 	})
 
 	err := faultCli.StopVM(&manager.VM{
@@ -57,16 +59,18 @@ func (fa *faultTriggerActions) StopNode(physicalNode string, node string) error 
 	})
 
 	if err != nil {
-		glog.Errorf("failed to stop %s node %s: %v", physicalNode, node, err)
+		glog.Errorf("failed to stop node %s on physical node: %s: %v", node, physicalNode, err)
 		return err
 	}
+
+	glog.Infof("node %s on physical node %s is stopped", node, physicalNode)
 
 	return nil
 }
 
 func (fa *faultTriggerActions) StartNode(physicalNode string, node string) error {
 	faultCli := client.NewClient(client.Config{
-		Addr: physicalNode,
+		Addr: fa.genFaultTriggerAddr(physicalNode),
 	})
 
 	err := faultCli.StartVM(&manager.VM{
@@ -74,9 +78,11 @@ func (fa *faultTriggerActions) StartNode(physicalNode string, node string) error
 	})
 
 	if err != nil {
-		glog.Errorf("failed to start %s node %s: %v", physicalNode, node, err)
+		glog.Errorf("failed to start node %s on physical node %s: %v", node, physicalNode, err)
 		return err
 	}
+
+	glog.Infof("node %s on physical node %s is started", physicalNode, node)
 
 	return nil
 }
@@ -92,13 +98,15 @@ func (fa *faultTriggerActions) StopETCD(nodes ...string) error {
 
 	for _, node := range nodes {
 		faultCli := client.NewClient(client.Config{
-			Addr: node,
+			Addr: fa.genFaultTriggerAddr(node),
 		})
 
 		if err := faultCli.StopETCD(); err != nil {
 			glog.Errorf("failed to stop etcd %s: %v", node, err)
 			return err
 		}
+
+		glog.Infof("etcd %s is stopped", node)
 	}
 
 	return nil
@@ -115,13 +123,15 @@ func (fa *faultTriggerActions) StartETCD(nodes ...string) error {
 
 	for _, node := range nodes {
 		faultCli := client.NewClient(client.Config{
-			Addr: node,
+			Addr: fa.genFaultTriggerAddr(node),
 		})
 
 		if err := faultCli.StartETCD(); err != nil {
 			glog.Errorf("failed to start etcd %s: %v", node, err)
 			return err
 		}
+
+		glog.Infof("etcd %s is started", node)
 	}
 
 	return nil
@@ -130,13 +140,15 @@ func (fa *faultTriggerActions) StartETCD(nodes ...string) error {
 // StopKubelet stops the kubelet service.
 func (fa *faultTriggerActions) StopKubelet(node string) error {
 	faultCli := client.NewClient(client.Config{
-		Addr: node,
+		Addr: fa.genFaultTriggerAddr(node),
 	})
 
 	if err := faultCli.StopKubelet(); err != nil {
 		glog.Errorf("failed to stop kubelet %s: %v", node, err)
 		return err
 	}
+
+	glog.Infof("kubelet %s is stopped", node)
 
 	return nil
 }
@@ -152,5 +164,11 @@ func (fa *faultTriggerActions) StartKubelet(node string) error {
 		return err
 	}
 
+	glog.Infof("kubelet %s is started", node)
+
 	return nil
+}
+
+func (fa *faultTriggerActions) genFaultTriggerAddr(node string) string {
+	return fmt.Sprintf("%s:%d", node, fa.cfg.FaultTriggerPort)
 }
