@@ -77,7 +77,7 @@ type OperatorActions interface {
 	CleanMonitor(info *TidbClusterInfo) error
 	ForceDeploy(info *TidbClusterInfo) error
 	CreateSecret(info *TidbClusterInfo) error
-	getBackupDir(info *TidbClusterInfo) (int, error)
+	getBackupDir(info *TidbClusterInfo) ([]string, error)
 }
 
 type FaultTriggerActions interface {
@@ -1168,7 +1168,7 @@ func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterInfo) error {
 		return fmt.Errorf("failed to get backup dir: %v", err)
 	}
 
-	if dirs != 3 {
+	if len(dirs) != 3 {
 		return fmt.Errorf("scheduler job failed!")
 	}
 
@@ -1190,7 +1190,7 @@ func getParentUIDFromJob(j batchv1.Job) (types.UID, bool) {
 	return controllerRef.UID, true
 }
 
-func (oa *operatorActions) getBackupDir(info *TidbClusterInfo) (int, error) {
+func (oa *operatorActions) getBackupDir(info *TidbClusterInfo) ([]string, error) {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      getBackupDirPodName,
@@ -1234,13 +1234,13 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterInfo) (int, error) {
 	err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
 
 	if err != nil {
-		return 0, fmt.Errorf("failed to delete pod %s", getBackupDirPodName)
+		return nil, fmt.Errorf("failed to delete pod %s", getBackupDirPodName)
 	}
 
 	_, err = oa.kubeCli.CoreV1().Pods(info.Namespace).Create(pod)
 	if err != nil && !errors.IsAlreadyExists(err) {
 		glog.Errorf("cluster: [%s/%s] create get backup dir pod failed, error :%v", info.Namespace, info.ClusterName, err)
-		return 0, err
+		return nil, err
 	}
 
 	fn = func() (bool, error) {
@@ -1254,7 +1254,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterInfo) (int, error) {
 	err = wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
 
 	if err != nil {
-		return 0, fmt.Errorf("failed to create pod %s", getBackupDirPodName)
+		return nil, fmt.Errorf("failed to create pod %s", getBackupDirPodName)
 	}
 
 	cmd := fmt.Sprintf("kubectl exec %s -n %s ls /data", getBackupDirPodName, info.Namespace)
@@ -1262,12 +1262,12 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterInfo) (int, error) {
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		glog.Errorf("cluster:[%s/%s] exec :%s failed,error:%v,result:%s", info.Namespace, info.ClusterName, cmd, err, res)
-		return 0, err
+		return nil, err
 	}
 
 	dirs := strings.Split(string(res), "\n")
 	glog.Infof("dirs in pod info name [%s] dir name [%s]", info.BackupPVC, strings.Join(dirs, ","))
-	return len(dirs), nil
+	return dirs, nil
 }
 
 func (info *TidbClusterInfo) FullName() string {
