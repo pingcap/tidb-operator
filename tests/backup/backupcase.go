@@ -46,12 +46,6 @@ func (bc *BackupCase) Run() error {
 		return err
 	}
 
-	err = bc.operator.ForceDeploy(bc.desCluster)
-	if err != nil {
-		glog.Errorf("cluster:[%s] deploy happen error: %v", bc.desCluster.ClusterName, err)
-		return err
-	}
-
 	err = bc.operator.CheckTidbClusterStatus(bc.desCluster)
 	if err != nil {
 		glog.Errorf("cluster:[%s] deploy faild error: %v", bc.desCluster.ClusterName, err)
@@ -67,6 +61,20 @@ func (bc *BackupCase) Run() error {
 	err = bc.operator.CheckRestore(bc.srcCluster, bc.desCluster)
 	if err != nil {
 		glog.Errorf("from cluster:[%s] to cluster [%s] restore failed error: %v", bc.srcCluster.ClusterName, bc.desCluster.ClusterName, err)
+		return err
+	}
+
+	bc.srcCluster.BackupPVC = "demo-scheduled-backup"
+
+	err = bc.operator.DeployScheduledBackup(bc.srcCluster)
+	if err != nil {
+		glog.Errorf("cluster:[%s] scheduler happen error: %v", bc.srcCluster.ClusterName, err)
+		return err
+	}
+
+	err = bc.operator.CheckScheduledBackup(bc.srcCluster)
+	if err != nil {
+		glog.Errorf("cluster:[%s] scheduler failed error: %v", bc.srcCluster.ClusterName, err)
 		return err
 	}
 
