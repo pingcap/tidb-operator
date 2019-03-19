@@ -79,15 +79,20 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	// create database and table and insert a column for test backup and restore
+	initSql := `"create database record;use record;create table test(t char(32))"`
+
 	clusterInfo := &tests.TidbClusterInfo{
+		BackupPVC:        "test-backup",
 		Namespace:        "tidb",
 		ClusterName:      "demo",
 		OperatorTag:      "master",
-		PDImage:          "pingcap/pd:v2.1.3",
-		TiKVImage:        "pingcap/tikv:v2.1.3",
-		TiDBImage:        "pingcap/tidb:v2.1.3",
+		PDImage:          "pingcap/pd:v2.1.0",
+		TiKVImage:        "pingcap/tikv:v2.1.0",
+		TiDBImage:        "pingcap/tidb:v2.1.0",
 		StorageClassName: "local-storage",
 		Password:         "admin",
+		InitSql:          initSql,
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
@@ -139,14 +144,16 @@ func main() {
 	}
 
 	restoreClusterInfo := &tests.TidbClusterInfo{
+		BackupPVC:        "test-backup",
 		Namespace:        "tidb",
 		ClusterName:      "demo2",
 		OperatorTag:      "master",
-		PDImage:          "pingcap/pd:v2.1.3",
-		TiKVImage:        "pingcap/tikv:v2.1.3",
-		TiDBImage:        "pingcap/tidb:v2.1.3",
+		PDImage:          "pingcap/pd:v2.1.0",
+		TiKVImage:        "pingcap/tikv:v2.1.0",
+		TiDBImage:        "pingcap/tidb:v2.1.0",
 		StorageClassName: "local-storage",
 		Password:         "admin",
+		InitSql:          initSql,
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
