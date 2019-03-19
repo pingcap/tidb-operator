@@ -14,9 +14,9 @@
 package main
 
 import (
-	"flag"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -34,7 +34,12 @@ func perror(err error) {
 }
 
 func main() {
-	flag.Parse()
+	conf := tests.NewConfig()
+	err := conf.Parse(os.Args[1:])
+	if err != nil {
+		glog.Fatalf("failed to parse config: %v", err)
+	}
+
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
@@ -55,7 +60,7 @@ func main() {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 
-	oa := tests.NewOperatorActions(cli, kubeCli, "/logDir")
+	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 
 	operatorInfo := &tests.OperatorInfo{
 		Namespace:      "pingcap",
@@ -178,4 +183,7 @@ func main() {
 		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
 		glog.Fatal(err)
 	}
+
+	fa := tests.NewFaultTriggerAction(cli, kubeCli, conf)
+
 }

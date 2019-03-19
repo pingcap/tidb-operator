@@ -52,12 +52,12 @@ const (
 	defaultRawSize         = 100
 )
 
-func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, logDir string) OperatorActions {
+func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, cfg *Config) OperatorActions {
 	return &operatorActions{
 		cli:       cli,
 		kubeCli:   kubeCli,
 		pdControl: controller.NewDefaultPDControl(),
-		logDir:    logDir,
+		cfg:       cfg,
 	}
 }
 
@@ -95,32 +95,11 @@ type OperatorActions interface {
 	CreateSecret(info *TidbClusterInfo) error
 }
 
-type FaultTriggerActions interface {
-	StopNode(nodeName string) error
-	StartNode(nodeName string) error
-	StopEtcd() error
-	StartEtcd() error
-	StopKubeAPIServer() error
-	StartKubeAPIServer() error
-	StopKubeControllerManager() error
-	StartKubeControllerManager() error
-	StopKubeScheduler() error
-	StartKubeScheduler() error
-	StopKubelet(nodeName string) error
-	StartKubelet(nodeName string) error
-	StopKubeProxy(nodeName string) error
-	StartKubeProxy(nodeName string) error
-	DiskCorruption(nodeName string) error
-	NetworkPartition(fromNode, toNode string) error
-	NetworkDelay(fromNode, toNode string) error
-	DockerCrash(nodeName string) error
-}
-
 type operatorActions struct {
 	cli       versioned.Interface
 	kubeCli   kubernetes.Interface
 	pdControl controller.PDControlInterface
-	logDir    string
+	cfg       *Config
 }
 
 var _ = OperatorActions(&operatorActions{})
@@ -908,27 +887,27 @@ func (oa *operatorActions) monitorNormal(clusterInfo *TidbClusterInfo) (bool, er
 		return false, nil
 	}
 	if monitorDeployment.Status.ReadyReplicas < 1 {
-		glog.Info("monitor ready replicas %d < 1", monitorDeployment.Status.ReadyReplicas)
+		glog.Infof("monitor ready replicas %d < 1", monitorDeployment.Status.ReadyReplicas)
 		return false, nil
 	}
 	configuratorJobName := fmt.Sprintf("%s-monitor-configurator", tcName)
 	monitorJob, err := oa.kubeCli.BatchV1().Jobs(ns).Get(configuratorJobName, metav1.GetOptions{})
 	if err != nil {
-		glog.Info("get monitor configurator job: [%s/%s] failed", ns, configuratorJobName)
+		glog.Infof("get monitor configurator job: [%s/%s] failed", ns, configuratorJobName)
 		return false, nil
 	}
 	if monitorJob.Status.Succeeded == 0 {
-		glog.Info("the monitor configurator job: [%s/%s] had not success", ns, configuratorJobName)
+		glog.Infof("the monitor configurator job: [%s/%s] had not success", ns, configuratorJobName)
 		return false, nil
 	}
 
 	if err := oa.checkPrometheus(clusterInfo); err != nil {
-		glog.Info("check [%s/%s]'s prometheus data failed: %v", ns, monitorDeploymentName, err)
+		glog.Infof("check [%s/%s]'s prometheus data failed: %v", ns, monitorDeploymentName, err)
 		return false, nil
 	}
 
 	if err := oa.checkGrafanaData(clusterInfo); err != nil {
-		glog.Info("check [%s/%s]'s grafana data failed: %v", ns, monitorDeploymentName, err)
+		glog.Infof("check [%s/%s]'s grafana data failed: %v", ns, monitorDeploymentName, err)
 		return false, nil
 	}
 	return true, nil
