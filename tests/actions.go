@@ -28,7 +28,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
-	"github.com/pingcap/errors"
+	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -418,7 +418,7 @@ func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterInfo) error {
 	glog.Info("[SCALE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
-		return errors.Wrapf(err, "failed to scale tidb cluster: %s", string(res))
+		return pingcapErrors.Wrapf(err, "failed to scale tidb cluster: %s", string(res))
 	}
 	return nil
 }
@@ -429,7 +429,7 @@ func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterInfo) error {
 	glog.Info("[UPGRADE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
-		return errors.Wrapf(err, "failed to upgrade tidb cluster: %s", string(res))
+		return pingcapErrors.Wrapf(err, "failed to upgrade tidb cluster: %s", string(res))
 	}
 	return nil
 }
