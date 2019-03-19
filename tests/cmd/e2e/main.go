@@ -118,26 +118,6 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	clusterInfo = clusterInfo.ScaleTiDB(3)
-	if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
-	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
-
-	clusterInfo = clusterInfo.UpgradeAll("v2.1.4")
-	if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
-	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
-
 	restoreClusterInfo := &tests.TidbClusterInfo{
 		BackupPVC:        "test-backup",
 		Namespace:        "tidb",
@@ -183,6 +163,26 @@ func main() {
 
 	if err := backupCase.Run(); err != nil {
 		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
+		glog.Fatal(err)
+	}
+
+	clusterInfo = clusterInfo.ScaleTiDB(3)
+	if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+
+	clusterInfo = clusterInfo.UpgradeAll("v2.1.4")
+	if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
 		glog.Fatal(err)
 	}
 }

@@ -67,8 +67,8 @@ const (
 	DefaultPollTimeout  time.Duration = 10 * time.Minute
 	DefaultPollInterval time.Duration = 10 * time.Second
 	getBackupDirPodName               = "get-backup-dir"
-	grafanaUsername = "admin"
-	grafanaPassword = "admin"
+	grafanaUsername                   = "admin"
+	grafanaPassword                   = "admin"
 )
 
 type OperatorActions interface {
@@ -1475,9 +1475,182 @@ func (info *TidbClusterInfo) FullName() string {
 }
 
 func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterInfo, to *TidbClusterInfo) error {
+	glog.Infof("begin to deploy incremental backup cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
+	defer func() {
+		glog.Infof("deploy incremental backup end cluster[%s] namespace[%s]", to.ClusterName, to.Namespace)
+	}()
+	sets := map[string]string{
+		"binlog.pump.create":            "true",
+		"binlog.drainer.destDBType":     "mysql",
+		"binlog.drainer.create":         "true",
+		"binlog.drainer.mysql.host":     fmt.Sprintf("%s-tidb.%s", to.ClusterName, to.Namespace),
+		"binlog.drainer.mysql.user":     "root",
+		"binlog.drainer.mysql.password": to.Password,
+		"binlog.drainer.mysql.port":     "4000",
+	}
+
+	var buffer bytes.Buffer
+	for k, v := range sets {
+		set := fmt.Sprintf(" --set %s=%s", k, v)
+		_, err := buffer.WriteString(set)
+		if err != nil {
+			return err
+		}
+	}
+
+	setStr := buffer.String()
+	cmd := fmt.Sprintf("helm upgrade %s /charts/%s/tidb-cluster %s",
+		from.ClusterName, from.OperatorTag, setStr)
+	glog.Infof(cmd)
+	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to launch scheduler backup job: %v, %s", err, string(res))
+	}
 	return nil
 }
 
 func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterInfo) error {
+	glog.Infof("begin to check incremental backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
+	defer func() {
+		glog.Infof("check incremental backup end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
+	}()
+
+	pumpStatefulSetName := fmt.Sprintf("%s-pump", info.ClusterName)
+	fn := func() (bool, error) {
+		pumpStatefulSet, err := oa.kubeCli.AppsV1().StatefulSets(info.Namespace).Get(pumpStatefulSetName, metav1.GetOptions{})
+		if err != nil {
+			glog.Errorf("failed to get jobs %s ,%v", pumpStatefulSetName, err)
+			return false, nil
+		}
+		if pumpStatefulSet.Status.Replicas != pumpStatefulSet.Status.ReadyReplicas {
+			glog.Errorf("pump replicas is not ready, please wait ! %s ", pumpStatefulSetName)
+			return false, nil
+		}
+
+		listOps := metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(
+				pumpStatefulSet.Labels,
+			).String(),
+		}
+
+		pods, err := oa.kubeCli.CoreV1().Pods(info.Namespace).List(listOps)
+		if err != nil {
+			glog.Errorf("failed to get pods via pump labels %s ,%v", pumpStatefulSetName, err)
+			return false, nil
+		}
+
+		for _, pod := range pods.Items {
+			if !oa.pumpHealth(info, pod.Spec.Hostname) {
+				glog.Errorf("some pods is not health %s ,%v", pumpStatefulSetName, err)
+				return false, nil
+			}
+		}
+
+		drainerStatefulSetName := fmt.Sprintf("%s-drainer", info.ClusterName)
+		drainerStatefulSet, err := oa.kubeCli.AppsV1().StatefulSets(info.Namespace).Get(drainerStatefulSetName, metav1.GetOptions{})
+		if err != nil {
+			glog.Errorf("failed to get jobs %s ,%v", pumpStatefulSetName, err)
+			return false, nil
+		}
+		if drainerStatefulSet.Status.Replicas != drainerStatefulSet.Status.ReadyReplicas {
+			glog.Errorf("drainer replicas is not ready, please wait ! %s ", pumpStatefulSetName)
+			return false, nil
+		}
+
+		listOps = metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(
+				drainerStatefulSet.Labels,
+			).String(),
+		}
+
+		pods, err = oa.kubeCli.CoreV1().Pods(info.Namespace).List(listOps)
+		if err != nil {
+			return false, nil
+		}
+		for _, pod := range pods.Items {
+			if !oa.drainerHealth(info, pod.Spec.Hostname) {
+				return false, nil
+			}
+		}
+
+		return true, nil
+	}
+
+	err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
+	if err != nil {
+		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
+	}
 	return nil
+
+}
+
+type pumpStatus struct {
+	StatusMap map[string]*nodeStatus
+}
+
+type nodeStatus struct {
+	State string `json:"state"`
+}
+
+func (oa *operatorActions) pumpHealth(info *TidbClusterInfo, hostName string) bool {
+	pumpHealthUrl := fmt.Sprintf("%s.%s-pump.%s:8250/status", hostName, info.ClusterName, info.Namespace)
+	res, err := http.Get(pumpHealthUrl)
+	if err != nil {
+		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, pumpHealthUrl, err)
+		return false
+	}
+	if res.StatusCode >= 400 {
+		glog.Errorf("Error response %v", res.StatusCode)
+		return false
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		glog.Errorf("cluster:[%s] read response body failed,error:%v", info.ClusterName, err)
+		return false
+	}
+	healths := pumpStatus{}
+	err = json.Unmarshal(body, &healths)
+	if err != nil {
+		glog.Errorf("cluster:[%s] unmarshal failed,error:%v", info.ClusterName, err)
+		return false
+	}
+	for _, status := range healths.StatusMap {
+		if status.State != "online" {
+			glog.Errorf("cluster:[%s] pump's state is not online", info.ClusterName)
+			return false
+		}
+	}
+	return true
+}
+
+type drainerStatus struct {
+	PumpPos map[string]int64 `json:"PumpPos"`
+	Synced  bool             `json:"Synced"`
+	LastTS  int64            `json:"LastTS"`
+	TsMap   string           `json:"TsMap"`
+}
+
+func (oa *operatorActions) drainerHealth(info *TidbClusterInfo, hostName string) bool {
+	drainerHealthUrl := fmt.Sprintf("%s.%s-drainer.%s:8249/status", hostName, info.ClusterName, info.Namespace)
+	res, err := http.Get(drainerHealthUrl)
+	if err != nil {
+		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthUrl, err)
+		return false
+	}
+	if res.StatusCode >= 400 {
+		glog.Errorf("Error response %v", res.StatusCode)
+		return false
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		glog.Errorf("cluster:[%s] read response body failed,error:%v", info.ClusterName, err)
+		return false
+	}
+	healths := drainerStatus{}
+	err = json.Unmarshal(body, &healths)
+	if err != nil {
+		glog.Errorf("cluster:[%s] unmarshal failed,error:%v", info.ClusterName, err)
+		return false
+	}
+	return len(healths.PumpPos) > 0 && healths.Synced
 }
