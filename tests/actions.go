@@ -14,7 +14,6 @@
 package tests
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -92,7 +91,7 @@ type OperatorActions interface {
 	Restore(from *TidbClusterInfo, to *TidbClusterInfo) error
 	CheckRestore(from *TidbClusterInfo, to *TidbClusterInfo) error
 	ForceDeploy(info *TidbClusterInfo) error
-	CreateSecret(info *TidbClusterInfo) error
+	CreateSecret(info *TidbClusterInfo) (string, string, error)
 	getBackupDir(info *TidbClusterInfo) ([]string, error)
 }
 
@@ -152,9 +151,12 @@ type TidbClusterInfo struct {
 	Args             map[string]string
 	blockWriter      *blockwriter.BlockWriterCase
 	Monitor          bool
+	UserName         string
+	InitSecretName   string
+	BackupSecretName string
 }
 
-func (tc *TidbClusterInfo) HelmSetString() string {
+func (tc *TidbClusterInfo) HelmSetString(m map[string]string) string {
 
 	set := map[string]string{
 		"clusterName":             tc.ClusterName,
@@ -166,15 +168,19 @@ func (tc *TidbClusterInfo) HelmSetString() string {
 		"pd.image":                tc.PDImage,
 		"tikv.image":              tc.TiKVImage,
 		"tidb.image":              tc.TiDBImage,
-		"tidb.passwordSecretName": "set-secret",
+		"tidb.passwordSecretName": tc.InitSecretName,
 		"tidb.initSql":            tc.InitSql,
 		"monitor.create":          strconv.FormatBool(tc.Monitor),
+		"secretName":              tc.BackupSecretName,
 	}
 
 	for k, v := range tc.Resources {
 		set[k] = v
 	}
 	for k, v := range tc.Args {
+		set[k] = v
+	}
+	for k, v := range m {
 		set[k] = v
 	}
 
@@ -245,8 +251,16 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterInfo) error {
 	defer func() {
 		glog.Infof("deploy tidb cluster end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	}()
+
+	initSecretName, backupSecretName, err := oa.CreateSecret(info)
+	if err != nil {
+		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
+	}
+
+	info.InitSecretName, info.BackupSecretName = initSecretName, backupSecretName
+
 	cmd := fmt.Sprintf("helm install /charts/%s/tidb-cluster  --name %s --namespace %s --set-string %s",
-		info.OperatorTag, info.ClusterName, info.Namespace, info.HelmSetString())
+		info.OperatorTag, info.ClusterName, info.Namespace, info.HelmSetString(map[string]string{}))
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
 			info.Namespace, info.ClusterName, err, string(res))
@@ -414,7 +428,7 @@ func chartPath(name string, tag string) string {
 
 func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterInfo) error {
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.HelmSetString())
+		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.HelmSetString(map[string]string{}))
 	glog.Info("[SCALE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -425,7 +439,7 @@ func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterInfo) error {
 
 func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterInfo) error {
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.HelmSetString())
+		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.HelmSetString(map[string]string{}))
 	glog.Info("[UPGRADE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1058,26 +1072,18 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterInfo) error {
 		glog.Infof("deploy adhoc backup end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	}()
 	sets := map[string]string{
-		"clusterName":  info.ClusterName,
 		"name":         info.BackupPVC,
 		"mode":         "backup",
 		"user":         "root",
 		"password":     info.Password,
 		"storage.size": "10Gi",
 	}
-	var buffer bytes.Buffer
-	for k, v := range sets {
-		set := fmt.Sprintf(" --set %s=%s", k, v)
-		_, err := buffer.WriteString(set)
-		if err != nil {
-			return err
-		}
-	}
 
-	setStr := buffer.String()
+	setString := info.HelmSetString(sets)
+
 	fullbackupName := fmt.Sprintf("%s-backup", info.ClusterName)
-	cmd := fmt.Sprintf("helm install -n %s --namespace %s /charts/%s/tidb-backup %s",
-		fullbackupName, info.Namespace, info.OperatorTag, setStr)
+	cmd := fmt.Sprintf("helm install -n %s --namespace %s /charts/%s/tidb-backup --set-string %s",
+		fullbackupName, info.Namespace, info.OperatorTag, setString)
 	glog.Infof("install adhoc deployment [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1122,26 +1128,18 @@ func (oa *operatorActions) Restore(from *TidbClusterInfo, to *TidbClusterInfo) e
 		glog.Infof("deploy restore end cluster[%s] namespace[%s]", to.ClusterName, to.Namespace)
 	}()
 	sets := map[string]string{
-		"clusterName":  to.ClusterName,
 		"name":         to.BackupPVC,
 		"mode":         "restore",
 		"user":         "root",
 		"password":     to.Password,
 		"storage.size": "10Gi",
 	}
-	var buffer bytes.Buffer
-	for k, v := range sets {
-		set := fmt.Sprintf(" --set %s=%s", k, v)
-		_, err := buffer.WriteString(set)
-		if err != nil {
-			return err
-		}
-	}
 
-	setStr := buffer.String()
+	setString := to.HelmSetString(sets)
+
 	restoreName := fmt.Sprintf("%s-restore", from.ClusterName)
-	cmd := fmt.Sprintf("helm install -n %s --namespace %s /charts/%s/tidb-backup %s",
-		restoreName, to.Namespace, to.OperatorTag, setStr)
+	cmd := fmt.Sprintf("helm install -n %s --namespace %s /charts/%s/tidb-backup --set-string %s",
+		restoreName, to.Namespace, to.OperatorTag, setString)
 	glog.Infof("install restore [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1233,23 +1231,23 @@ func (info *TidbClusterInfo) QueryCount() (int, error) {
 	return 0, fmt.Errorf("can not find count of ")
 }
 
-func (oa *operatorActions) CreateSecret(info *TidbClusterInfo) error {
-	initSecretName := "set-secret"
-	backupSecretName := "backup-secret"
+func (oa *operatorActions) CreateSecret(info *TidbClusterInfo) (string, string, error) {
+	initSecretName := fmt.Sprintf("%s-set-secret", info.ClusterName)
+	backupSecretName := fmt.Sprintf("%s-backup-secret", info.ClusterName)
 	initSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      initSecretName,
 			Namespace: info.Namespace,
 		},
 		Data: map[string][]byte{
-			"root": []byte(info.Password),
+			info.UserName: []byte(info.Password),
 		},
 		Type: corev1.SecretTypeOpaque,
 	}
 
 	_, err := oa.kubeCli.CoreV1().Secrets(info.Namespace).Create(&initSecret)
 	if err != nil && !releaseIsExist(err) {
-		return err
+		return "", "", err
 	}
 
 	backupSecret := corev1.Secret{
@@ -1258,7 +1256,7 @@ func (oa *operatorActions) CreateSecret(info *TidbClusterInfo) error {
 			Namespace: info.Namespace,
 		},
 		Data: map[string][]byte{
-			"user":     []byte("root"),
+			"user":     []byte(info.UserName),
 			"password": []byte(info.Password),
 		},
 		Type: corev1.SecretTypeOpaque,
@@ -1266,10 +1264,10 @@ func (oa *operatorActions) CreateSecret(info *TidbClusterInfo) error {
 
 	_, err = oa.kubeCli.CoreV1().Secrets(info.Namespace).Create(&backupSecret)
 	if err != nil && !releaseIsExist(err) {
-		return err
+		return "", "", err
 	}
 
-	return nil
+	return initSecretName, backupSecretName, nil
 }
 
 func releaseIsExist(err error) bool {
@@ -1291,19 +1289,11 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterInfo) error {
 		"scheduledBackup.schedule": cron,
 		"scheduledBackup.storage":  "10Gi",
 	}
-	var buffer bytes.Buffer
-	for k, v := range sets {
-		set := fmt.Sprintf(" --set %s=%s", k, v)
-		_, err := buffer.WriteString(set)
-		if err != nil {
-			return err
-		}
-	}
 
-	setStr := buffer.String()
+	setString := info.HelmSetString(sets)
 
-	cmd := fmt.Sprintf("helm upgrade %s /charts/%s/tidb-cluster %s",
-		info.ClusterName, info.OperatorTag, setStr)
+	cmd := fmt.Sprintf("helm upgrade %s /charts/%s/tidb-cluster --set-string %s",
+		info.ClusterName, info.OperatorTag, setString)
 
 	glog.Infof("scheduled-backup delploy [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -1458,11 +1448,17 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterInfo) ([]string, error)
 	}
 
 	cmd := fmt.Sprintf("kubectl exec %s -n %s ls /data", getBackupDirPodName, info.Namespace)
-	glog.Infof(cmd)
+
+	time.Sleep(20 * time.Second)
+
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
-		glog.Errorf("cluster:[%s/%s] exec :%s failed,error:%v,result:%s", info.Namespace, info.ClusterName, cmd, err, res)
+		glog.Errorf("cluster:[%s/%s] exec :%s failed,error:%v,result:%s", info.Namespace, info.ClusterName, cmd, err, string(res))
 		return nil, err
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get dir via cmd [%s]", cmd)
 	}
 
 	dirs := strings.Split(string(res), "\n")
@@ -1489,18 +1485,10 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterInfo, to *Ti
 		"binlog.drainer.mysql.port":     "4000",
 	}
 
-	var buffer bytes.Buffer
-	for k, v := range sets {
-		set := fmt.Sprintf(" --set %s=%s", k, v)
-		_, err := buffer.WriteString(set)
-		if err != nil {
-			return err
-		}
-	}
+	setString := from.HelmSetString(sets)
 
-	setStr := buffer.String()
-	cmd := fmt.Sprintf("helm upgrade %s /charts/%s/tidb-cluster %s",
-		from.ClusterName, from.OperatorTag, setStr)
+	cmd := fmt.Sprintf("helm upgrade %s /charts/%s/tidb-cluster --set-string %s",
+		from.ClusterName, from.OperatorTag, setString)
 	glog.Infof(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {

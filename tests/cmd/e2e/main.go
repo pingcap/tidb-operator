@@ -88,6 +88,7 @@ func main() {
 		StorageClassName: "local-storage",
 		Password:         "admin",
 		InitSql:          initSql,
+		UserName:         "root",
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
@@ -129,6 +130,7 @@ func main() {
 		StorageClassName: "local-storage",
 		Password:         "admin",
 		InitSql:          initSql,
+		UserName:         "root",
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
