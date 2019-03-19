@@ -34,6 +34,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
+	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -41,6 +43,13 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+)
+
+const (
+	defaultTableNum    int = 64
+	defaultConcurrency     = 512
+	defaultBatchSize       = 100
+	defaultRawSize         = 100
 )
 
 func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, logDir string) OperatorActions {
@@ -138,6 +147,7 @@ type TidbClusterInfo struct {
 	InsertBatchSize  string
 	Resources        map[string]string
 	Args             map[string]string
+	blockWriter      *blockwriter.BlockWriterCase
 	Monitor          bool
 }
 
@@ -241,6 +251,14 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterInfo) error {
 		return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
 			info.Namespace, info.ClusterName, err, string(res))
 	}
+
+	// init blockWriter case
+	info.blockWriter = blockwriter.NewBlockWriterCase(blockwriter.Config{
+		TableNum:    defaultTableNum,
+		Concurrency: defaultConcurrency,
+		BatchSize:   defaultBatchSize,
+		RawSize:     defaultRawSize,
+	})
 
 	return nil
 }
@@ -369,10 +387,17 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterInfo) error {
 }
 
 func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterInfo) error {
-	return nil
+	dsn := getDSN(info.Namespace, info.ClusterName, "test", info.Password)
+	db, err := util.OpenDB(dsn, defaultConcurrency)
+	if err != nil {
+		return err
+	}
+
+	return info.blockWriter.Start(db)
 }
 
 func (oa *operatorActions) StopInsertDataTo(info *TidbClusterInfo) error {
+	info.blockWriter.Stop()
 	return nil
 }
 
