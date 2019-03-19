@@ -117,7 +117,7 @@ type OperatorInfo struct {
 }
 
 type TidbClusterInfo struct {
-	Name             string
+	BackupPVC        string
 	Namespace        string
 	ClusterName      string
 	OperatorTag      string
@@ -859,7 +859,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterInfo) error {
 	}()
 	sets := map[string]string{
 		"clusterName":  info.ClusterName,
-		"name":         info.Name,
+		"name":         info.BackupPVC,
 		"mode":         "backup",
 		"user":         "root",
 		"password":     info.Password,
@@ -893,7 +893,7 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterInfo) error {
 		glog.Infof("deploy clean backup end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	}()
 
-	jobName := fmt.Sprintf("%s-%s", info.ClusterName, info.Name)
+	jobName := fmt.Sprintf("%s-%s", info.ClusterName, info.BackupPVC)
 	fn := func() (bool, error) {
 		job, err := oa.kubeCli.BatchV1().Jobs(info.Namespace).Get(jobName, metav1.GetOptions{})
 		if err != nil {
@@ -923,7 +923,7 @@ func (oa *operatorActions) Restore(from *TidbClusterInfo, to *TidbClusterInfo) e
 	}()
 	sets := map[string]string{
 		"clusterName":  to.ClusterName,
-		"name":         to.Name,
+		"name":         to.BackupPVC,
 		"mode":         "restore",
 		"user":         "root",
 		"password":     to.Password,
@@ -957,7 +957,7 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterInfo, to *TidbClusterIn
 		glog.Infof("check restore end cluster[%s] namespace[%s]", to.ClusterName, to.Namespace)
 	}()
 
-	jobName := fmt.Sprintf("%s-restore-%s", to.ClusterName, from.Name)
+	jobName := fmt.Sprintf("%s-restore-%s", to.ClusterName, from.BackupPVC)
 	fn := func() (bool, error) {
 		job, err := oa.kubeCli.BatchV1().Jobs(to.Namespace).Get(jobName, metav1.GetOptions{})
 		if err != nil {
@@ -1215,7 +1215,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterInfo) (int, error) {
 					Name: "data",
 					VolumeSource: corev1.VolumeSource{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: info.Name,
+							ClaimName: info.BackupPVC,
 						},
 					},
 				},
@@ -1266,7 +1266,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterInfo) (int, error) {
 	}
 
 	dirs := strings.Split(string(res), "\n")
-	glog.Infof("dirs in pod info name [%s] dir name [%s]", info.Name, strings.Join(dirs, ","))
+	glog.Infof("dirs in pod info name [%s] dir name [%s]", info.BackupPVC, strings.Join(dirs, ","))
 	return len(dirs), nil
 }
 

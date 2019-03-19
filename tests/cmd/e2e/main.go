@@ -65,7 +65,7 @@ func main() {
 	initSql := `"create database record;use record;create table test(t char(32))"`
 
 	clusterInfo := &tests.TidbClusterInfo{
-		Name:             "test-backup",
+		BackupPVC:        "test-backup",
 		Namespace:        "tidb",
 		ClusterName:      "demo",
 		OperatorTag:      "master",
@@ -93,7 +93,7 @@ func main() {
 	}
 
 	restoreClusterInfo := &tests.TidbClusterInfo{
-		Name:             "test-backup",
+		BackupPVC:        "test-backup",
 		Namespace:        "tidb",
 		ClusterName:      "demo2",
 		OperatorTag:      "master",

@@ -64,7 +64,7 @@ func (bc *BackupCase) Run() error {
 		return err
 	}
 
-	bc.srcCluster.Name = "demo-scheduled-backup"
+	bc.srcCluster.BackupPVC = "demo-scheduled-backup"
 
 	err = bc.operator.DeployScheduledBackup(bc.srcCluster)
 	if err != nil {
