@@ -17,6 +17,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -192,5 +193,15 @@ func main() {
 	}
 
 	fa := tests.NewFaultTriggerAction(cli, kubeCli, conf)
+	if err := fa.StopETCD("172.16.4.171"); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
 
+	time.Sleep(3 * time.Minute)
+
+	if err := fa.StartETCD("172.16.4.171"); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
 }
