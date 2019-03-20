@@ -23,12 +23,12 @@ type FaultTriggerActions interface {
 	StartETCD(nodes ...string) error
 	StopKubelet(node string) error
 	StartKubelet(node string) error
-	StopKubeAPIServer() error
-	StartKubeAPIServer() error
-	StopKubeControllerManager() error
-	StartKubeControllerManager() error
-	StopKubeScheduler() error
-	StartKubeScheduler() error
+	StopKubeAPIServer(node string) error
+	StartKubeAPIServer(node string) error
+	StopKubeControllerManager(node string) error
+	StartKubeControllerManager(node string) error
+	StopKubeScheduler(node string) error
+	StartKubeScheduler(node string) error
 	StopKubeProxy(node string) error
 	StartKubeProxy(node string) error
 	// TODO: support more faults
