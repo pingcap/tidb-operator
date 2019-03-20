@@ -131,7 +131,7 @@ func (c *client) StartVM(vm *manager.VM) error {
 		vmName = vm.IP
 	}
 
-	url := util.GenURL(fmt.Sprintf("%s/%s/vm/%s/start", c.cfg.Addr, api.APIPrefix, vmName))
+	url := util.GenURL(fmt.Sprintf("%s%s/vm/%s/start", c.cfg.Addr, api.APIPrefix, vmName))
 	if _, err := c.get(url); err != nil {
 		return err
 	}
@@ -149,7 +149,7 @@ func (c *client) StopVM(vm *manager.VM) error {
 		vmName = vm.IP
 	}
 
-	url := util.GenURL(fmt.Sprintf("%s/%s/vm/%s/stop", c.cfg.Addr, api.APIPrefix, vmName))
+	url := util.GenURL(fmt.Sprintf("%s%s/vm/%s/stop", c.cfg.Addr, api.APIPrefix, vmName))
 	if _, err := c.get(url); err != nil {
 		return err
 	}
@@ -158,7 +158,7 @@ func (c *client) StopVM(vm *manager.VM) error {
 }
 
 func (c *client) StartETCD() error {
-	url := util.GenURL(fmt.Sprintf("%s/%s/etcd/start", c.cfg.Addr, api.APIPrefix))
+	url := util.GenURL(fmt.Sprintf("%s%s/etcd/start", c.cfg.Addr, api.APIPrefix))
 	if _, err := c.get(url); err != nil {
 		return err
 	}
@@ -167,7 +167,7 @@ func (c *client) StartETCD() error {
 }
 
 func (c *client) StopETCD() error {
-	url := util.GenURL(fmt.Sprintf("%s/%s/etcd/stop", c.cfg.Addr, api.APIPrefix))
+	url := util.GenURL(fmt.Sprintf("%s%s/etcd/stop", c.cfg.Addr, api.APIPrefix))
 	if _, err := c.get(url); err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func (c *client) StopETCD() error {
 }
 
 func (c *client) StartKubelet() error {
-	url := util.GenURL(fmt.Sprintf("%s/%s/kubelet/start", c.cfg.Addr, api.APIPrefix))
+	url := util.GenURL(fmt.Sprintf("%s%s/kubelet/start", c.cfg.Addr, api.APIPrefix))
 	if _, err := c.get(url); err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (c *client) StartKubelet() error {
 }
 
 func (c *client) StopKubelet() error {
-	url := util.GenURL(fmt.Sprintf("%s/%s/kubelet/stop", c.cfg.Addr, api.APIPrefix))
+	url := util.GenURL(fmt.Sprintf("%s%s/kubelet/stop", c.cfg.Addr, api.APIPrefix))
 	if _, err := c.get(url); err != nil {
 		return err
 	}

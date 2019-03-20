@@ -33,9 +33,18 @@ spec:
     volumeMounts:
     - mountPath: /logDir
       name: logdir
+    - name: config
+      readOnly: true 
+      mountPath: /etc/e2e
   volumes:
   - name: logdir
     hostPath:
       path: /var/log
       type: Directory
+  - name: config
+    configMap:
+      name: tidb-operator-e2e-config 
+      items:
+      - key: e2e-config 
+        path: config.yaml 
   restartPolicy: Never
