@@ -236,12 +236,6 @@ func main() {
 	}
 
 	for _, clusterInfo := range clusterInfos {
-		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-	}
-
-	for _, clusterInfo := range clusterInfos {
 		clusterInfo = clusterInfo.UpgradeAll(toTidbVersion)
 		if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
 			glog.Fatal(err)
