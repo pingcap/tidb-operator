@@ -11,6 +11,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const (
+	startAction = "start"
+	stopAction  = "stop"
+)
+
 type FaultTriggerActions interface {
 	StopNode(physicalNode string, node string) error
 	StartNode(physicalNode string, node string) error
@@ -18,15 +23,15 @@ type FaultTriggerActions interface {
 	StartETCD(nodes ...string) error
 	StopKubelet(node string) error
 	StartKubelet(node string) error
+	StopKubeAPIServer() error
+	StartKubeAPIServer() error
+	StopKubeControllerManager() error
+	StartKubeControllerManager() error
+	StopKubeScheduler() error
+	StartKubeScheduler() error
+	StopKubeProxy(node string) error
+	StartKubeProxy(node string) error
 	// TODO: support more faults
-	// StopKubeAPIServer() error
-	// StartKubeAPIServer() error
-	// StopKubeControllerManager() error
-	// StartKubeControllerManager() error
-	// StopKubeScheduler() error
-	// StartKubeScheduler() error
-	// StopKubeProxy(node string) error
-	// StartKubeProxy(node string) error
 	// DiskCorruption(node string) error
 	// NetworkPartition(fromNode, toNode string) error
 	// NetworkDelay(fromNode, toNode string) error
@@ -97,16 +102,9 @@ func (fa *faultTriggerActions) StopETCD(nodes ...string) error {
 	}
 
 	for _, node := range nodes {
-		faultCli := client.NewClient(client.Config{
-			Addr: fa.genFaultTriggerAddr(node),
-		})
-
-		if err := faultCli.StopETCD(); err != nil {
-			glog.Errorf("failed to stop etcd %s: %v", node, err)
-			return err
+		if err := fa.serviceAction(node, manager.ETCDService, stopAction); err != nil {
+			return nil
 		}
-
-		glog.Infof("etcd %s is stopped", node)
 	}
 
 	return nil
@@ -122,16 +120,9 @@ func (fa *faultTriggerActions) StartETCD(nodes ...string) error {
 	}
 
 	for _, node := range nodes {
-		faultCli := client.NewClient(client.Config{
-			Addr: fa.genFaultTriggerAddr(node),
-		})
-
-		if err := faultCli.StartETCD(); err != nil {
-			glog.Errorf("failed to start etcd %s: %v", node, err)
-			return err
+		if err := fa.serviceAction(node, manager.ETCDService, startAction); err != nil {
+			return nil
 		}
-
-		glog.Infof("etcd %s is started", node)
 	}
 
 	return nil
@@ -139,32 +130,107 @@ func (fa *faultTriggerActions) StartETCD(nodes ...string) error {
 
 // StopKubelet stops the kubelet service.
 func (fa *faultTriggerActions) StopKubelet(node string) error {
-	faultCli := client.NewClient(client.Config{
-		Addr: fa.genFaultTriggerAddr(node),
-	})
-
-	if err := faultCli.StopKubelet(); err != nil {
-		glog.Errorf("failed to stop kubelet %s: %v", node, err)
-		return err
-	}
-
-	glog.Infof("kubelet %s is stopped", node)
-
-	return nil
+	return fa.serviceAction(node, manager.KubeletService, stopAction)
 }
 
 // StartKubelet starts the kubelet service.
 func (fa *faultTriggerActions) StartKubelet(node string) error {
+	return fa.serviceAction(node, manager.KubeletService, startAction)
+}
+
+// StopKubeProxy stops the kube-proxy service.
+func (fa *faultTriggerActions) StopKubeProxy(node string) error {
+	return fa.serviceAction(node, manager.KubeProxyService, stopAction)
+}
+
+// StartKubeProxy starts the kube-proxy service.
+func (fa *faultTriggerActions) StartKubeProxy(node string) error {
+	return fa.serviceAction(node, manager.KubeProxyService, startAction)
+}
+
+// StopKubeScheduler stops the kube-scheduler service.
+func (fa *faultTriggerActions) StopKubeScheduler(node string) error {
+	return fa.serviceAction(node, manager.KubeSchedulerService, stopAction)
+}
+
+// StartKubeScheduler starts the kube-scheduler service.
+func (fa *faultTriggerActions) StartKubeScheduler(node string) error {
+	return fa.serviceAction(node, manager.KubeSchedulerService, startAction)
+}
+
+// StopKubeControllerManager stops the kube-controller-manager service.
+func (fa *faultTriggerActions) StopKubeControllerManager(node string) error {
+	return fa.serviceAction(node, manager.KubeControllerManagerService, stopAction)
+}
+
+// StartKubeControllerManager starts the kube-controller-manager service.
+func (fa *faultTriggerActions) StartKubeControllerManager(node string) error {
+	return fa.serviceAction(node, manager.KubeControllerManagerService, startAction)
+}
+
+// StopKubeAPIServer stops the apiserver service.
+func (fa *faultTriggerActions) StopKubeAPIServer(node string) error {
+	return fa.serviceAction(node, manager.KubeAPIServerService, stopAction)
+}
+
+// StartKubeAPIServer starts the apiserver service.
+func (fa *faultTriggerActions) StartKubeAPIServer(node string) error {
+	return fa.serviceAction(node, manager.KubeAPIServerService, startAction)
+}
+
+func (fa *faultTriggerActions) serviceAction(node string, serverName string, action string) error {
 	faultCli := client.NewClient(client.Config{
-		Addr: node,
+		Addr: fa.genFaultTriggerAddr(node),
 	})
 
-	if err := faultCli.StartKubelet(); err != nil {
-		glog.Errorf("failed to start kubelet %s: %v", node, err)
+	var err error
+	switch action {
+	case startAction:
+		switch serverName {
+		case manager.KubeletService:
+			err = faultCli.StartKubelet()
+		case manager.KubeProxyService:
+			err = faultCli.StartKubeProxy()
+		case manager.KubeSchedulerService:
+			err = faultCli.StartKubeScheduler()
+		case manager.KubeControllerManagerService:
+			err = faultCli.StartKubeControllerManager()
+		case manager.KubeAPIServerService:
+			err = faultCli.StartKubeAPIServer()
+		case manager.ETCDService:
+			err = faultCli.StartETCD()
+		default:
+			err = fmt.Errorf("%s %s is not supported", action, serverName)
+			return err
+		}
+	case stopAction:
+		switch serverName {
+		case manager.KubeletService:
+			err = faultCli.StopKubelet()
+		case manager.KubeProxyService:
+			err = faultCli.StopKubeProxy()
+		case manager.KubeSchedulerService:
+			err = faultCli.StopKubeScheduler()
+		case manager.KubeControllerManagerService:
+			err = faultCli.StopKubeControllerManager()
+		case manager.KubeAPIServerService:
+			err = faultCli.StopKubeAPIServer()
+		case manager.ETCDService:
+			err = faultCli.StopETCD()
+		default:
+			err = fmt.Errorf("%s %s is not supported", action, serverName)
+		}
+	default:
+		err = fmt.Errorf("action %s is not supported", action)
 		return err
 	}
 
-	glog.Infof("kubelet %s is started", node)
+	if err != nil {
+		glog.Errorf("failed to %s %s %s: %v", action, serverName, node, err)
+		return err
+	}
+
+	glog.Infof("%s %s %s successfully", action, serverName, node)
 
 	return nil
 }

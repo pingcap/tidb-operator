@@ -13,7 +13,12 @@
 
 package api
 
-import restful "github.com/emicklei/go-restful"
+import (
+	"fmt"
+
+	restful "github.com/emicklei/go-restful"
+	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
+)
 
 const (
 	// APIPrefix defines a prefix string for fault-trigger api
@@ -28,14 +33,26 @@ func (s *Server) newService() *restful.WebService {
 		Produces(restful.MIME_JSON)
 
 	ws.Route(ws.GET("/vms").To(s.listVMs))
-	ws.Route(ws.GET("/vm/{name}/start").To(s.startVM))
-	ws.Route(ws.GET("/vm/{name}/stop").To(s.stopVM))
+	ws.Route(ws.POST("/vm/{name}/start").To(s.startVM))
+	ws.Route(ws.POST("/vm/{name}/stop").To(s.stopVM))
 
-	ws.Route(ws.GET("/etcd/start").To(s.startETCD))
-	ws.Route(ws.GET("/etcd/stop").To(s.stopETCD))
+	ws.Route(ws.POST(fmt.Sprintf("/%s/start", manager.ETCDService)).To(s.startETCD))
+	ws.Route(ws.POST(fmt.Sprintf("/%s/stop", manager.ETCDService)).To(s.stopETCD))
 
-	ws.Route(ws.GET("/kubelet/start").To(s.startKubelet))
-	ws.Route(ws.GET("/kubelet/stop").To(s.stopKubelet))
+	ws.Route(ws.POST(fmt.Sprintf("/%s/start", manager.KubeletService)).To(s.startKubelet))
+	ws.Route(ws.POST(fmt.Sprintf("/%s/stop", manager.KubeletService)).To(s.stopKubelet))
+
+	ws.Route(ws.POST(fmt.Sprintf("/%s/start", manager.KubeAPIServerService)).To(s.startKubeAPIServer))
+	ws.Route(ws.POST(fmt.Sprintf("/%s/stop", manager.KubeAPIServerService)).To(s.stopKubeAPIServer))
+
+	ws.Route(ws.POST(fmt.Sprintf("/%s/start", manager.KubeProxyService)).To(s.startKubeProxy))
+	ws.Route(ws.POST(fmt.Sprintf("/%s/stop", manager.KubeProxyService)).To(s.stopKubeProxy))
+
+	ws.Route(ws.POST(fmt.Sprintf("/%s/start", manager.KubeSchedulerService)).To(s.startKubeScheduler))
+	ws.Route(ws.POST(fmt.Sprintf("/%s/stop", manager.KubeSchedulerService)).To(s.stopKubeScheduler))
+
+	ws.Route(ws.POST(fmt.Sprintf("/%s/start", manager.KubeControllerManagerService)).To(s.startKubeControllerManager))
+	ws.Route(ws.POST(fmt.Sprintf("/%s/stop", manager.KubeControllerManagerService)).To(s.stopKubeControllerManager))
 
 	return ws
 }

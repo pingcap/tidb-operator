@@ -1,5 +1,3 @@
-// Copyright 2019 PingCAP, Inc.
-//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -129,6 +127,38 @@ func (s *Server) startKubelet(req *restful.Request, resp *restful.Response) {
 
 func (s *Server) stopKubelet(req *restful.Request, resp *restful.Response) {
 	s.action(req, resp, s.mgr.StopKubelet, "stopKubelet")
+}
+
+func (s *Server) startKubeAPIServer(req *restful.Request, resp *restful.Response) {
+	s.action(req, resp, s.mgr.StartKubeAPIServer, "startKubeAPIServer")
+}
+
+func (s *Server) stopKubeAPIServer(req *restful.Request, resp *restful.Response) {
+	s.action(req, resp, s.mgr.StopKubeAPIServer, "stopKubeAPIServer")
+}
+
+func (s *Server) startKubeProxy(req *restful.Request, resp *restful.Response) {
+	s.action(req, resp, s.mgr.StartKubeProxy, "startKubeProxy")
+}
+
+func (s *Server) stopKubeProxy(req *restful.Request, resp *restful.Response) {
+	s.action(req, resp, s.mgr.StopKubeProxy, "stopKubeProxy")
+}
+
+func (s *Server) startKubeScheduler(req *restful.Request, resp *restful.Response) {
+	s.action(req, resp, s.mgr.StartKubeScheduler, "startKubeScheduler")
+}
+
+func (s *Server) stopKubeScheduler(req *restful.Request, resp *restful.Response) {
+	s.action(req, resp, s.mgr.StopKubeScheduler, "stopKubeScheduler")
+}
+
+func (s *Server) startKubeControllerManager(req *restful.Request, resp *restful.Response) {
+	s.action(req, resp, s.mgr.StartKubeControllerManager, "startKubeControllerManager")
+}
+
+func (s *Server) stopKubeControllerManager(req *restful.Request, resp *restful.Response) {
+	s.action(req, resp, s.mgr.StopKubeControllerManager, "stopKubeControllerManager")
 }
 
 func (s *Server) action(
