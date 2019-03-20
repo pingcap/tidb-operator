@@ -12,7 +12,7 @@ import (
 )
 
 func (oa *operatorActions) DumpAllLogs(operatorInfo *OperatorInfo, testClusters []*TidbClusterInfo) error {
-	logPath := fmt.Sprintf("/%s/%s", oa.logDir, "operator-stability")
+	logPath := fmt.Sprintf("/%s/%s", oa.cfg.LogDir, "operator-stability")
 	if _, err := os.Stat(logPath); os.IsNotExist(err) {
 		err = os.MkdirAll(logPath, os.ModePerm)
 		if err != nil {
