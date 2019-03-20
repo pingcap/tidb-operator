@@ -14,16 +14,18 @@
 package main
 
 import (
-	"flag"
 	"net/http"
 	_ "net/http/pprof"
 	"reflect"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
+	"github.com/pingcap/tidb-operator/tests/pkg/workload"
+	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -42,9 +44,14 @@ func perror(err error, dumplogs func() error) {
 }
 
 func main() {
-	flag.Parse()
 	logs.InitLogs()
 	defer logs.FlushLogs()
+
+	conf := tests.NewConfig()
+	err := conf.Parse()
+	if err != nil {
+		glog.Fatalf("failed to parse config: %v", err)
+	}
 
 	go func() {
 		glog.Info(http.ListenAndServe("localhost:6060", nil))
@@ -63,7 +70,7 @@ func main() {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 
-	oa := tests.NewOperatorActions(cli, kubeCli, "/logDir")
+	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 
 	operatorInfo := &tests.OperatorInfo{
 		Namespace:      "pingcap",
@@ -96,6 +103,9 @@ func main() {
 		StorageClassName: "local-storage",
 		Password:         "admin",
 		InitSql:          initSql,
+		UserName:         "root",
+		InitSecretName:   "demo-set-secret",
+		BackupSecretName: "demo-backup-secret",
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
@@ -128,31 +138,39 @@ func main() {
 
 	dumplogs := func() error { return oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo}) }
 
-	// scale out: tidb 2 -> 3, tikv 3 -> 5, pd 3 -> 5
-	podUIDsBeforeScale, err := oa.GetPodUIDMap(clusterInfo)
-	perror(err, dumplogs)
-	clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
-	perror(oa.ScaleTidbCluster(clusterInfo), dumplogs)
-	perror(oa.CheckTidbClusterStatus(clusterInfo), dumplogs)
-	perror(oa.CheckScaledCorrectly(clusterInfo, podUIDsBeforeScale), dumplogs)
+	workload.Run(func() error {
 
-	// scale in: tidb 3 -> 1, tikv 5 -> 3, pd 5 -> 3
-	podUIDsBeforeScale, err = oa.GetPodUIDMap(clusterInfo)
-	perror(err, dumplogs)
-	clusterInfo = clusterInfo.ScaleTiDB(1).ScaleTiKV(3).ScalePD(3)
-	perror(oa.ScaleTidbCluster(clusterInfo), dumplogs)
-	perror(oa.CheckScaleInSafely(clusterInfo), dumplogs)
-	perror(oa.CheckTidbClusterStatus(clusterInfo), dumplogs)
-	perror(oa.CheckScaledCorrectly(clusterInfo, podUIDsBeforeScale), dumplogs)
+		// scale out: tidb 2 -> 3, tikv 3 -> 5, pd 3 -> 5
+		podUIDsBeforeScale, err := oa.GetPodUIDMap(clusterInfo)
+		perror(err, dumplogs)
+		clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
+		perror(oa.ScaleTidbCluster(clusterInfo), dumplogs)
+		perror(oa.CheckTidbClusterStatus(clusterInfo), dumplogs)
+		perror(oa.CheckScaledCorrectly(clusterInfo, podUIDsBeforeScale), dumplogs)
 
+		// scale in: tidb 3 -> 1, tikv 5 -> 3, pd 5 -> 3
+		podUIDsBeforeScale, err = oa.GetPodUIDMap(clusterInfo)
+		perror(err, dumplogs)
+		clusterInfo = clusterInfo.ScaleTiDB(1).ScaleTiKV(3).ScalePD(3)
+		perror(oa.ScaleTidbCluster(clusterInfo), dumplogs)
+		perror(oa.CheckScaleInSafely(clusterInfo), dumplogs)
+		perror(oa.CheckTidbClusterStatus(clusterInfo), dumplogs)
+		perror(oa.CheckScaledCorrectly(clusterInfo, podUIDsBeforeScale), dumplogs)
+
+		return nil
+	}, ddl.New(clusterInfo.DSN("test"), 4, 10))
+
+	// upgrade all cluster components
 	pdNodeMapBeforeUpgrade, err := oa.GetNodeMap(clusterInfo, label.PDLabelVal)
 	perror(err, dumplogs)
 	tikvNodeMapBeforeUpgrade, err := oa.GetNodeMap(clusterInfo, label.TiKVLabelVal)
 	perror(err, dumplogs)
+
 	clusterInfo = clusterInfo.UpgradeAll("v2.1.4")
 	perror(oa.UpgradeTidbCluster(clusterInfo), dumplogs)
 	perror(oa.CheckUpgradeProgress(clusterInfo), dumplogs)
 	perror(oa.CheckTidbClusterStatus(clusterInfo), dumplogs)
+
 	pdNodeMapAfterUpgrade, err := oa.GetNodeMap(clusterInfo, label.PDLabelVal)
 	perror(err, dumplogs)
 	tikvNodeMapAfterUpgrade, err := oa.GetNodeMap(clusterInfo, label.TiKVLabelVal)
@@ -176,6 +194,9 @@ func main() {
 		StorageClassName: "local-storage",
 		Password:         "admin",
 		InitSql:          initSql,
+		UserName:         "root",
+		InitSecretName:   "demo2-set-secret",
+		BackupSecretName: "demo2-backup-secret",
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
@@ -210,6 +231,17 @@ func main() {
 
 	if err := backupCase.Run(); err != nil {
 		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
+		glog.Fatal(err)
+	}
+
+	fa := tests.NewFaultTriggerAction(cli, kubeCli, conf)
+	if err := fa.StopETCD("172.16.4.171"); err != nil {
+		glog.Fatal(err)
+	}
+
+	time.Sleep(1 * time.Minute)
+
+	if err := fa.StartETCD("172.16.4.171"); err != nil {
 		glog.Fatal(err)
 	}
 }
