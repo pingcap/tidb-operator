@@ -260,7 +260,7 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterInfo) error {
 	info.InitSecretName, info.BackupSecretName = initSecretName, backupSecretName
 
 	cmd := fmt.Sprintf("helm install /charts/%s/tidb-cluster  --name %s --namespace %s --set-string %s",
-		info.OperatorTag, info.ClusterName, info.Namespace, info.HelmSetString(map[string]string{}))
+		info.OperatorTag, info.ClusterName, info.Namespace, info.HelmSetString(nil))
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
 			info.Namespace, info.ClusterName, err, string(res))
@@ -428,7 +428,7 @@ func chartPath(name string, tag string) string {
 
 func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterInfo) error {
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.HelmSetString(map[string]string{}))
+		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.HelmSetString(nil))
 	glog.Info("[SCALE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -439,7 +439,7 @@ func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterInfo) error {
 
 func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterInfo) error {
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.HelmSetString(map[string]string{}))
+		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.HelmSetString(nil))
 	glog.Info("[UPGRADE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1455,10 +1455,6 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterInfo) ([]string, error)
 	if err != nil {
 		glog.Errorf("cluster:[%s/%s] exec :%s failed,error:%v,result:%s", info.Namespace, info.ClusterName, cmd, err, string(res))
 		return nil, err
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to get dir via cmd [%s]", cmd)
 	}
 
 	dirs := strings.Split(string(res), "\n")
