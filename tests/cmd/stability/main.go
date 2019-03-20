@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
@@ -236,6 +237,12 @@ func main() {
 	}
 
 	for _, clusterInfo := range clusterInfos {
+		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
+	}
+
+	for _, clusterInfo := range clusterInfos {
 		clusterInfo = clusterInfo.UpgradeAll(toTidbVersion)
 		if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
 			glog.Fatal(err)
@@ -267,6 +274,17 @@ func main() {
 	backupCase := backup.NewBackupCase(oa, backupClusterInfo, restoreClusterInfo)
 
 	if err := backupCase.Run(); err != nil {
+		glog.Fatal(err)
+	}
+
+	fa := tests.NewFaultTriggerAction(cli, kubeCli, conf)
+	if err := fa.StopETCD("172.16.4.171"); err != nil {
+		glog.Fatal(err)
+	}
+
+	time.Sleep(1 * time.Minute)
+
+	if err := fa.StartETCD("172.16.4.171"); err != nil {
 		glog.Fatal(err)
 	}
 }
