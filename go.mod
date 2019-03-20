@@ -30,9 +30,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.4.1 // indirect
 	github.com/hashicorp/golang-lru v0.0.0-20180201235237-0fb14efe8c47 // indirect
-	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c // indirect
 	github.com/hpcloud/tail v1.0.0 // indirect
-	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/json-iterator/go v1.1.5 // indirect
 	github.com/juju/errors v0.0.0-20180806074554-22422dad46e1
@@ -49,7 +47,7 @@ require (
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/kvproto v0.0.0-20180606093822-b7ba8ea1c0b4
 	github.com/pingcap/pd v2.1.0-beta+incompatible
-	github.com/pkg/errors v0.8.0
+	github.com/pkg/errors v0.8.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v0.8.0
 	github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910 // indirect
