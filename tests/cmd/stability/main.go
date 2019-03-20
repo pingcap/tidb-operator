@@ -17,14 +17,11 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
-	"reflect"
-
-	"k8s.io/apimachinery/pkg/types"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
 	"github.com/pingcap/tidb-operator/tests/pkg/workload"
@@ -178,51 +175,56 @@ func main() {
 
 	var workloads []workload.Workload
 	for _, clusterInfo := range clusterInfos {
-		workload := ddl.New(clusterInfo.DSN("test"), 4, 10)
+		workload := ddl.New(clusterInfo.DSN("test"), 1, 1)
 		workloads = append(workloads, workload)
 	}
 
 	err = workload.Run(func() error {
-		podUIDsMaps := make([]map[string]types.UID, len(clusterInfos))
 
-		for i, clusterInfo := range clusterInfos {
-			podUIDsMaps[i], err = oa.GetPodUIDMap(clusterInfo)
-			if err != nil {
-				return err
-			}
+		for _, clusterInfo := range clusterInfos {
 			clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
 			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
 				return err
 			}
 		}
-		for i, clusterInfo := range clusterInfos {
+		for _, clusterInfo := range clusterInfos {
 			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
-			if err := oa.CheckScaledCorrectly(clusterInfo, podUIDsMaps[i]); err != nil {
 				return err
 			}
 		}
 
-		for i, clusterInfo := range clusterInfos {
-			podUIDsMaps[i], err = oa.GetPodUIDMap(clusterInfo)
-			if err != nil {
-				return err
-			}
-			clusterInfo = clusterInfo.ScaleTiDB(1).ScaleTiKV(3).ScalePD(3)
+		for _, clusterInfo := range clusterInfos {
+			clusterInfo = clusterInfo.ScalePD(3)
 			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
 				return err
 			}
-
 		}
-		for i, clusterInfo := range clusterInfos {
-			if err := oa.CheckScaleInSafely(clusterInfo); err != nil {
-				return err
-			}
+		for _, clusterInfo := range clusterInfos {
 			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
 				return err
 			}
-			if err := oa.CheckScaledCorrectly(clusterInfo, podUIDsMaps[i]); err != nil {
+		}
+
+		for _, clusterInfo := range clusterInfos {
+			clusterInfo = clusterInfo.ScaleTiKV(3)
+			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+				return err
+			}
+		}
+		for _, clusterInfo := range clusterInfos {
+			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+				return err
+			}
+		}
+
+		for _, clusterInfo := range clusterInfos {
+			clusterInfo = clusterInfo.ScaleTiDB(1)
+			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+				return err
+			}
+		}
+		for _, clusterInfo := range clusterInfos {
+			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
 				return err
 			}
 		}
@@ -235,43 +237,15 @@ func main() {
 	}
 
 	for _, clusterInfo := range clusterInfos {
-
-		// upgrade all cluster components
-		pdNodeMapBeforeUpgrade, err := oa.GetNodeMap(clusterInfo, label.PDLabelVal)
-		if err != nil {
-			glog.Fatal(err)
-		}
-		tikvNodeMapBeforeUpgrade, err := oa.GetNodeMap(clusterInfo, label.TiKVLabelVal)
-		if err != nil {
-			glog.Fatal(err)
-		}
-
-		clusterInfo = clusterInfo.UpgradeAll(toTidbVersion)
-
-		if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-		if err = oa.CheckUpgradeProgress(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
 		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
 			glog.Fatal(err)
 		}
+	}
 
-		pdNodeMapAfterUpgrade, err := oa.GetNodeMap(clusterInfo, label.PDLabelVal)
-		if err != nil {
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.UpgradeAll(toTidbVersion)
+		if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
 			glog.Fatal(err)
-		}
-		tikvNodeMapAfterUpgrade, err := oa.GetNodeMap(clusterInfo, label.TiKVLabelVal)
-		if err != nil {
-			glog.Fatal(err)
-		}
-
-		if !reflect.DeepEqual(pdNodeMapAfterUpgrade, pdNodeMapBeforeUpgrade) {
-			glog.Fatal("pd node map changed: %v != %v", pdNodeMapAfterUpgrade, pdNodeMapBeforeUpgrade)
-		}
-		if !reflect.DeepEqual(tikvNodeMapAfterUpgrade, tikvNodeMapBeforeUpgrade) {
-			glog.Fatal("tikv node map changed: %v != %v", tikvNodeMapAfterUpgrade, tikvNodeMapBeforeUpgrade)
 		}
 	}
 
@@ -300,6 +274,17 @@ func main() {
 	backupCase := backup.NewBackupCase(oa, backupClusterInfo, restoreClusterInfo)
 
 	if err := backupCase.Run(); err != nil {
+		glog.Fatal(err)
+	}
+
+	fa := tests.NewFaultTriggerAction(cli, kubeCli, conf)
+	if err := fa.StopETCD("172.16.4.171"); err != nil {
+		glog.Fatal(err)
+	}
+
+	time.Sleep(1 * time.Minute)
+
+	if err := fa.StartETCD("172.16.4.171"); err != nil {
 		glog.Fatal(err)
 	}
 }
