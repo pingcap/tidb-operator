@@ -89,6 +89,8 @@ func main() {
 		Password:         "admin",
 		InitSql:          initSql,
 		UserName:         "root",
+		InitSecretName:   "demo-set-secret",
+		BackupSecretName: "demo-backup-secret",
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
@@ -131,6 +133,8 @@ func main() {
 		Password:         "admin",
 		InitSql:          initSql,
 		UserName:         "root",
+		InitSecretName:   "demo2-set-secret",
+		BackupSecretName: "demo2-backup-secret",
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",

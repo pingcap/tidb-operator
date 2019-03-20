@@ -91,7 +91,7 @@ type OperatorActions interface {
 	Restore(from *TidbClusterInfo, to *TidbClusterInfo) error
 	CheckRestore(from *TidbClusterInfo, to *TidbClusterInfo) error
 	ForceDeploy(info *TidbClusterInfo) error
-	CreateSecret(info *TidbClusterInfo) (string, string, error)
+	CreateSecret(info *TidbClusterInfo) error
 	getBackupDir(info *TidbClusterInfo) ([]string, error)
 }
 
@@ -252,12 +252,10 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterInfo) error {
 		glog.Infof("deploy tidb cluster end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	}()
 
-	initSecretName, backupSecretName, err := oa.CreateSecret(info)
+	err := oa.CreateSecret(info)
 	if err != nil {
 		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
 	}
-
-	info.InitSecretName, info.BackupSecretName = initSecretName, backupSecretName
 
 	cmd := fmt.Sprintf("helm install /charts/%s/tidb-cluster  --name %s --namespace %s --set-string %s",
 		info.OperatorTag, info.ClusterName, info.Namespace, info.HelmSetString(nil))
@@ -1231,7 +1229,7 @@ func (info *TidbClusterInfo) QueryCount() (int, error) {
 	return 0, fmt.Errorf("can not find count of ")
 }
 
-func (oa *operatorActions) CreateSecret(info *TidbClusterInfo) (string, string, error) {
+func (oa *operatorActions) CreateSecret(info *TidbClusterInfo) error {
 	initSecretName := fmt.Sprintf("%s-set-secret", info.ClusterName)
 	backupSecretName := fmt.Sprintf("%s-backup-secret", info.ClusterName)
 	initSecret := corev1.Secret{
@@ -1247,7 +1245,7 @@ func (oa *operatorActions) CreateSecret(info *TidbClusterInfo) (string, string, 
 
 	_, err := oa.kubeCli.CoreV1().Secrets(info.Namespace).Create(&initSecret)
 	if err != nil && !releaseIsExist(err) {
-		return "", "", err
+		return  err
 	}
 
 	backupSecret := corev1.Secret{
@@ -1264,10 +1262,10 @@ func (oa *operatorActions) CreateSecret(info *TidbClusterInfo) (string, string, 
 
 	_, err = oa.kubeCli.CoreV1().Secrets(info.Namespace).Create(&backupSecret)
 	if err != nil && !releaseIsExist(err) {
-		return "", "", err
+		return err
 	}
 
-	return initSecretName, backupSecretName, nil
+	return nil
 }
 
 func releaseIsExist(err error) bool {
