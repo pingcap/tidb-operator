@@ -14,6 +14,9 @@
 package backup
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests"
 )
@@ -76,6 +79,41 @@ func (bc *BackupCase) Run() error {
 	if err != nil {
 		glog.Errorf("cluster:[%s] scheduler failed error: %v", bc.srcCluster.ClusterName, err)
 		return err
+	}
+
+	err = bc.operator.DeployIncrementalBackup(bc.srcCluster, bc.desCluster)
+	if err != nil {
+		return err
+	}
+
+	err = bc.operator.CheckIncrementalBackup(bc.srcCluster)
+	if err != nil {
+		return err
+	}
+
+	glog.Infof("waiting 1 minutes for binlog to work")
+	time.Sleep(1 * time.Minute)
+
+	glog.Infof("cluster[%s] begin insert data")
+	go bc.operator.BeginInsertDataTo(bc.srcCluster)
+
+	time.Sleep(30 * time.Second)
+
+	glog.Infof("cluster[%s] stop insert data")
+	bc.operator.StopInsertDataTo(bc.srcCluster)
+
+	time.Sleep(5 * time.Second)
+
+	srcCount, err := bc.srcCluster.QueryCount()
+	if err != nil {
+		return err
+	}
+	desCount, err := bc.desCluster.QueryCount()
+	if err != nil {
+		return err
+	}
+	if srcCount != desCount {
+		return fmt.Errorf("cluster:[%s] the src cluster data[%d] is not equals des cluster data[%d]", bc.srcCluster.FullName(), srcCount, desCount)
 	}
 
 	return nil
