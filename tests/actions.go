@@ -67,8 +67,9 @@ const (
 	DefaultPollTimeout  time.Duration = 10 * time.Minute
 	DefaultPollInterval time.Duration = 10 * time.Second
 	getBackupDirPodName               = "get-backup-dir"
-	grafanaUsername = "admin"
-	grafanaPassword = "admin"
+	grafanaUsername                   = "admin"
+	grafanaPassword                   = "admin"
+	e2eTag                            = "e2e"
 )
 
 type OperatorActions interface {
@@ -186,11 +187,13 @@ func (tc *TidbClusterInfo) HelmSetString() string {
 }
 
 func (oa *operatorActions) DeployOperator(info *OperatorInfo) error {
-	if err := cloneOperatorRepo(); err != nil {
-		return err
-	}
-	if err := checkoutTag(info.Tag); err != nil {
-		return err
+	if info.Tag != e2eTag {
+		if err := cloneOperatorRepo(); err != nil {
+			return err
+		}
+		if err := checkoutTag(info.Tag); err != nil {
+			return err
+		}
 	}
 
 	cmd := fmt.Sprintf(`helm install /charts/%s/tidb-operator \

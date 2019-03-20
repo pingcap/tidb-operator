@@ -15,10 +15,12 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 
 	"github.com/golang/glog"
+	"github.com/jinzhu/copier"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
@@ -26,12 +28,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
-
-func perror(err error) {
-	if err != nil {
-		glog.Fatal(err)
-	}
-}
 
 func main() {
 	flag.Parse()
@@ -41,6 +37,12 @@ func main() {
 	go func() {
 		glog.Info(http.ListenAndServe("localhost:6060", nil))
 	}()
+
+	// TODO read these args from config
+	beginTidbVersion := "v2.1.0"
+	toTidbVersion := "v2.1.4"
+	operatorTag := "master"
+	operatorImage := "pingcap/tidb-operator:latest"
 
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
@@ -60,11 +62,79 @@ func main() {
 	operatorInfo := &tests.OperatorInfo{
 		Namespace:      "pingcap",
 		ReleaseName:    "operator",
-		Image:          "pingcap/tidb-operator:latest",
-		Tag:            "master",
+		Image:          operatorImage,
+		Tag:            operatorTag,
 		SchedulerImage: "gcr.io/google-containers/hyperkube:v1.12.1",
 		LogLevel:       "2",
 	}
+
+	// create database and table and insert a column for test backup and restore
+	initSql := `"create database record;use record;create table test(t char(32))"`
+
+	clusterInfos := []*tests.TidbClusterInfo{
+		{
+			Namespace:        "e2e-cluster1",
+			ClusterName:      "e2e-cluster1",
+			OperatorTag:      operatorTag,
+			PDImage:          fmt.Sprintf("pingcap/pd:%s", beginTidbVersion),
+			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", beginTidbVersion),
+			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", beginTidbVersion),
+			StorageClassName: "local-storage",
+			Password:         "admin",
+			InitSql:          initSql,
+			BackupPVC:        "test-backup",
+			Resources: map[string]string{
+				"pd.resources.limits.cpu":        "1000m",
+				"pd.resources.limits.memory":     "2Gi",
+				"pd.resources.requests.cpu":      "200m",
+				"pd.resources.requests.memory":   "1Gi",
+				"tikv.resources.limits.cpu":      "2000m",
+				"tikv.resources.limits.memory":   "4Gi",
+				"tikv.resources.requests.cpu":    "1000m",
+				"tikv.resources.requests.memory": "2Gi",
+				"tidb.resources.limits.cpu":      "2000m",
+				"tidb.resources.limits.memory":   "4Gi",
+				"tidb.resources.requests.cpu":    "500m",
+				"tidb.resources.requests.memory": "1Gi",
+			},
+			Args:    map[string]string{},
+			Monitor: true,
+		},
+		{
+			Namespace:        "e2e-cluster2",
+			ClusterName:      "e2e-cluster2",
+			OperatorTag:      "master",
+			PDImage:          fmt.Sprintf("pingcap/pd:%s", beginTidbVersion),
+			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", beginTidbVersion),
+			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", beginTidbVersion),
+			StorageClassName: "local-storage",
+			Password:         "admin",
+			InitSql:          initSql,
+			BackupPVC:        "test-backup",
+			Resources: map[string]string{
+				"pd.resources.limits.cpu":        "1000m",
+				"pd.resources.limits.memory":     "2Gi",
+				"pd.resources.requests.cpu":      "200m",
+				"pd.resources.requests.memory":   "1Gi",
+				"tikv.resources.limits.cpu":      "2000m",
+				"tikv.resources.limits.memory":   "4Gi",
+				"tikv.resources.requests.cpu":    "1000m",
+				"tikv.resources.requests.memory": "2Gi",
+				"tidb.resources.limits.cpu":      "2000m",
+				"tidb.resources.limits.memory":   "4Gi",
+				"tidb.resources.requests.cpu":    "500m",
+				"tidb.resources.requests.memory": "1Gi",
+			},
+			Args:    map[string]string{},
+			Monitor: true,
+		},
+	}
+
+	defer func() {
+		oa.DumpAllLogs(operatorInfo, clusterInfos)
+	}()
+
+	// deploy operator
 	if err := oa.CleanOperator(operatorInfo); err != nil {
 		oa.DumpAllLogs(operatorInfo, nil)
 		glog.Fatal(err)
@@ -74,115 +144,69 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	// create database and table and insert a column for test backup and restore
-	initSql := `"create database record;use record;create table test(t char(32))"`
-
-	clusterInfo := &tests.TidbClusterInfo{
-		BackupPVC:        "test-backup",
-		Namespace:        "tidb",
-		ClusterName:      "demo",
-		OperatorTag:      "master",
-		PDImage:          "pingcap/pd:v2.1.0",
-		TiKVImage:        "pingcap/tikv:v2.1.0",
-		TiDBImage:        "pingcap/tidb:v2.1.0",
-		StorageClassName: "local-storage",
-		Password:         "admin",
-		InitSql:          initSql,
-		Resources: map[string]string{
-			"pd.resources.limits.cpu":        "1000m",
-			"pd.resources.limits.memory":     "2Gi",
-			"pd.resources.requests.cpu":      "200m",
-			"pd.resources.requests.memory":   "1Gi",
-			"tikv.resources.limits.cpu":      "2000m",
-			"tikv.resources.limits.memory":   "4Gi",
-			"tikv.resources.requests.cpu":    "1000m",
-			"tikv.resources.requests.memory": "2Gi",
-			"tidb.resources.limits.cpu":      "2000m",
-			"tidb.resources.limits.memory":   "4Gi",
-			"tidb.resources.requests.cpu":    "500m",
-			"tidb.resources.requests.memory": "1Gi",
-		},
-		Args: map[string]string{},
+	// deploy tidbclusters
+	for _, clusterInfo := range clusterInfos {
+		if err = oa.CleanTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
+		if err = oa.DeployTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
 	}
 
-	if err = oa.CleanTidbCluster(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
-	if err = oa.DeployTidbCluster(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
-	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
+	for _, clusterInfo := range clusterInfos {
+		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
 	}
 
-	clusterInfo = clusterInfo.ScaleTiDB(3)
-	if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
-	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
-
-	clusterInfo = clusterInfo.UpgradeAll("v2.1.4")
-	if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
-	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.ScaleTiDB(3)
+		clusterInfo = clusterInfo.ScaleTiKV(5)
+		clusterInfo = clusterInfo.ScalePD(5)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
 	}
 
-	restoreClusterInfo := &tests.TidbClusterInfo{
-		BackupPVC:        "test-backup",
-		Namespace:        "tidb",
-		ClusterName:      "demo2",
-		OperatorTag:      "master",
-		PDImage:          "pingcap/pd:v2.1.0",
-		TiKVImage:        "pingcap/tikv:v2.1.0",
-		TiDBImage:        "pingcap/tidb:v2.1.0",
-		StorageClassName: "local-storage",
-		Password:         "admin",
-		InitSql:          initSql,
-		Resources: map[string]string{
-			"pd.resources.limits.cpu":        "1000m",
-			"pd.resources.limits.memory":     "2Gi",
-			"pd.resources.requests.cpu":      "200m",
-			"pd.resources.requests.memory":   "1Gi",
-			"tikv.resources.limits.cpu":      "2000m",
-			"tikv.resources.limits.memory":   "4Gi",
-			"tikv.resources.requests.cpu":    "1000m",
-			"tikv.resources.requests.memory": "2Gi",
-			"tidb.resources.limits.cpu":      "2000m",
-			"tidb.resources.limits.memory":   "4Gi",
-			"tidb.resources.requests.cpu":    "500m",
-			"tidb.resources.requests.memory": "1Gi",
-		},
-		Args: map[string]string{},
+	for _, clusterInfo := range clusterInfos {
+		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
 	}
+
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.UpgradeAll(toTidbVersion)
+		if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
+	}
+
+	for _, clusterInfo := range clusterInfos {
+		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
+	}
+
+	// backup and restore
+	backupClusterInfo := clusterInfos[0]
+	restoreClusterInfo := &tests.TidbClusterInfo{}
+	copier.Copy(restoreClusterInfo, backupClusterInfo)
+	restoreClusterInfo.ClusterName = restoreClusterInfo.ClusterName + "-restore"
 
 	if err = oa.CleanTidbCluster(restoreClusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
 		glog.Fatal(err)
 	}
 	if err = oa.DeployTidbCluster(restoreClusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
 		glog.Fatal(err)
 	}
 	if err = oa.CheckTidbClusterStatus(restoreClusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
 		glog.Fatal(err)
 	}
 
-	backupCase := backup.NewBackupCase(oa, clusterInfo, restoreClusterInfo)
+	backupCase := backup.NewBackupCase(oa, backupClusterInfo, restoreClusterInfo)
 
 	if err := backupCase.Run(); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
 		glog.Fatal(err)
 	}
 }

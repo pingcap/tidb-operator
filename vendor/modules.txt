@@ -139,6 +139,8 @@ github.com/hpcloud/tail/ratelimiter
 github.com/hpcloud/tail/util
 github.com/hpcloud/tail/watch
 github.com/hpcloud/tail/winfile
+# github.com/jinzhu/copier v0.0.0-20180308034124-7e38e58719c3
+github.com/jinzhu/copier
 # github.com/jonboulle/clockwork v0.1.0
 github.com/jonboulle/clockwork
 # github.com/json-iterator/go v1.1.5
@@ -327,13 +329,13 @@ gopkg.in/yaml.v2
 # k8s.io/api v0.0.0-20180308224125-73d903622b73
 k8s.io/api/apps/v1beta1
 k8s.io/api/core/v1
+k8s.io/api/batch/v1
 k8s.io/api/admissionregistration/v1alpha1
 k8s.io/api/admissionregistration/v1beta1
 k8s.io/api/apps/v1
 k8s.io/api/apps/v1beta2
 k8s.io/api/autoscaling/v1
 k8s.io/api/autoscaling/v2beta1
-k8s.io/api/batch/v1
 k8s.io/api/batch/v1beta1
 k8s.io/api/batch/v2alpha1
 k8s.io/api/certificates/v1beta1
