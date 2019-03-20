@@ -22,6 +22,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
+	"github.com/pingcap/tidb-operator/tests/pkg/workload"
+	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -119,6 +121,57 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	err = workload.Run(func() error {
+		clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			return err
+		}
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			return err
+		}
+
+		clusterInfo = clusterInfo.ScalePD(3)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			return err
+		}
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			return err
+		}
+
+		clusterInfo = clusterInfo.ScaleTiKV(3)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			return err
+		}
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			return err
+		}
+
+		clusterInfo = clusterInfo.ScaleTiDB(1)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			return err
+		}
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			return err
+		}
+
+		return nil
+	}, ddl.New(clusterInfo.DSN("test"), 1, 1))
+
+	if err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+
+	clusterInfo = clusterInfo.UpgradeAll("v2.1.4")
+	if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+
 	restoreClusterInfo := &tests.TidbClusterInfo{
 		BackupPVC:        "test-backup",
 		Namespace:        "tidb",
@@ -167,24 +220,5 @@ func main() {
 		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo, restoreClusterInfo})
 		glog.Fatal(err)
 	}
-
-	clusterInfo = clusterInfo.ScaleTiDB(3)
-	if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
-	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
-
-	clusterInfo = clusterInfo.UpgradeAll("v2.1.4")
-	if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
-	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
+  
 }
