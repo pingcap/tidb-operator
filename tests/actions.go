@@ -1115,8 +1115,8 @@ func (oa *operatorActions) Restore(from *TidbClusterInfo, to *TidbClusterInfo) e
 	setString := to.HelmSetString(sets)
 
 	restoreName := fmt.Sprintf("%s-restore", from.ClusterName)
-	cmd := fmt.Sprintf("helm upgrade -n %s --namespace %s /charts/%s/tidb-backup --set-string %s",
-		restoreName, to.Namespace, to.OperatorTag, setString)
+	cmd := fmt.Sprintf("helm upgrade %s /charts/%s/tidb-backup --set-string %s",
+		restoreName, to.OperatorTag, setString)
 	glog.Infof("install restore [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
