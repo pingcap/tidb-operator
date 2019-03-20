@@ -1,6 +1,9 @@
 package tests
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+)
 
 func (tc *TidbClusterInfo) set(name string, value string) (string, bool) {
 	// NOTE: not thread-safe, maybe make info struct immutable
@@ -47,4 +50,8 @@ func (tc *TidbClusterInfo) UpgradeAll(tag string) *TidbClusterInfo {
 		UpgradePD("pingcap/pd:" + tag).
 		UpgradeTiKV("pingcap/tikv:" + tag).
 		UpgradeTiDB("pingcap/tidb:" + tag)
+}
+
+func (tc *TidbClusterInfo) DSN(dbName string) string {
+	return fmt.Sprintf("root:%s@tcp(%s-tidb.%s:4000)/%s", tc.Password, tc.ClusterName, tc.Namespace, dbName)
 }
