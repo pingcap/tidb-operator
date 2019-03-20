@@ -28,6 +28,9 @@ func (m *Manager) StartETCD() error {
 		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
+
+	glog.Info("etcd service is started")
+
 	return nil
 }
 
@@ -40,5 +43,8 @@ func (m *Manager) StopETCD() error {
 		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
+
+	glog.Info("etcd service is stopped")
+
 	return nil
 }

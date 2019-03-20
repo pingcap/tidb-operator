@@ -43,13 +43,14 @@ require (
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/onsi/ginkgo v1.6.0
 	github.com/onsi/gomega v1.4.1
+	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/pingcap/check v0.0.0-20171206051426-1c287c953996 // indirect
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/kvproto v0.0.0-20180606093822-b7ba8ea1c0b4
 	github.com/pingcap/pd v2.1.0-beta+incompatible
 	github.com/pkg/errors v0.8.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_golang v0.8.0 // indirect
+	github.com/prometheus/client_golang v0.8.0
 	github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910 // indirect
 	github.com/prometheus/common v0.0.0-20180801064454-c7de2306084e // indirect
 	github.com/prometheus/procfs v0.0.0-20180725123919-05ee40e3a273 // indirect
@@ -65,7 +66,7 @@ require (
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1 // indirect
 	golang.org/x/crypto v0.0.0-20180807104621-f027049dab0a // indirect
-	golang.org/x/net v0.0.0-20180808004115-f9ce57c11b24 // indirect
+	golang.org/x/net v0.0.0-20180808004115-f9ce57c11b24
 	golang.org/x/sync v0.0.0-20181108010431-42b317875d0f // indirect
 	golang.org/x/sys v0.0.0-20180807162357-acbc56fc7007 // indirect
 	golang.org/x/text v0.3.0 // indirect
@@ -80,7 +81,7 @@ require (
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0-20170531160350-a96e63847dc3 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
-	gopkg.in/yaml.v2 v2.2.1 // indirect
+	gopkg.in/yaml.v2 v2.2.1
 	k8s.io/api v0.0.0-20180308224125-73d903622b73
 	k8s.io/apiextensions-apiserver v0.0.0-20180426153726-e8ab413e0ae1 // indirect
 	k8s.io/apimachinery v0.0.0-20180228050457-302974c03f7e

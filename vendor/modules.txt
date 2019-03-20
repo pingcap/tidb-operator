@@ -114,6 +114,8 @@ github.com/golang/protobuf/ptypes/struct
 github.com/google/btree
 # github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf
 github.com/google/gofuzz
+# github.com/google/uuid v1.0.0
+github.com/google/uuid
 # github.com/googleapis/gnostic v0.2.0
 github.com/googleapis/gnostic/OpenAPIv2
 github.com/googleapis/gnostic/compiler
@@ -187,6 +189,8 @@ github.com/onsi/gomega/matchers/support/goraph/bipartitegraph
 github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
+# github.com/pborman/uuid v1.2.0
+github.com/pborman/uuid
 # github.com/pingcap/errors v0.11.0
 github.com/pingcap/errors
 # github.com/pingcap/kvproto v0.0.0-20180606093822-b7ba8ea1c0b4
@@ -251,8 +255,8 @@ golang.org/x/crypto/ssh/terminal
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
 # golang.org/x/net v0.0.0-20180808004115-f9ce57c11b24
-golang.org/x/net/http2
 golang.org/x/net/context
+golang.org/x/net/http2
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2/hpack
 golang.org/x/net/idna
@@ -372,6 +376,7 @@ k8s.io/apimachinery/pkg/api/resource
 k8s.io/apimachinery/pkg/util/runtime
 k8s.io/apimachinery/pkg/util/errors
 k8s.io/apimachinery/pkg/util/intstr
+k8s.io/apimachinery/pkg/util/uuid
 k8s.io/apimachinery/pkg/conversion
 k8s.io/apimachinery/pkg/fields
 k8s.io/apimachinery/pkg/selection
