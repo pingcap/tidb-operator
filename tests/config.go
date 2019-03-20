@@ -4,14 +4,11 @@ import (
 	"flag"
 	"io/ioutil"
 
-	"github.com/pingcap/errors"
 	yaml "gopkg.in/yaml.v2"
 )
 
 // Config defines the config of operator tests
 type Config struct {
-	*flag.FlagSet `json:"-"`
-
 	configFile string
 
 	LogDir           string  `yaml:"log_dir" json:"log_dir"`
@@ -30,40 +27,26 @@ type Nodes struct {
 // NewConfig creates a new config.
 func NewConfig() *Config {
 	cfg := &Config{}
-	cfg.FlagSet = flag.CommandLine
-
-	fs := cfg.FlagSet
-
-	fs.StringVar(&cfg.configFile, "config", "/etc/e2e/config.yaml", "Config file")
-	fs.StringVar(&cfg.LogDir, "log-dir", "/logDir", "log directory")
-	fs.IntVar(&cfg.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
+	flag.StringVar(&cfg.configFile, "config", "/etc/e2e/config.yaml", "Config file")
+	flag.StringVar(&cfg.LogDir, "log-dir", "/logDir", "log directory")
+	flag.IntVar(&cfg.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
 
 	return cfg
 }
 
 // Parse parses flag definitions from the argument list.
-func (c *Config) Parse(args []string) error {
+func (c *Config) Parse() error {
 	// Parse first to get config file
-	err := c.FlagSet.Parse(args)
-	if err != nil {
-		return err
-	}
+	flag.Parse()
 
 	if c.configFile != "" {
-		if err = c.configFromFile(c.configFile); err != nil {
+		if err := c.configFromFile(c.configFile); err != nil {
 			return err
 		}
 	}
 
 	// Parse again to replace with command line options.
-	err = c.FlagSet.Parse(args)
-	if err != nil {
-		return err
-	}
-
-	if len(c.FlagSet.Args()) != 0 {
-		return errors.Errorf("'%s' is an invalid flag", c.FlagSet.Arg(0))
-	}
+	flag.Parse()
 
 	return nil
 }

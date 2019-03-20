@@ -16,7 +16,6 @@ package main
 import (
 	"net/http"
 	_ "net/http/pprof"
-	"os"
 	"time"
 
 	"github.com/golang/glog"
@@ -39,7 +38,7 @@ func main() {
 	defer logs.FlushLogs()
 
 	conf := tests.NewConfig()
-	err := conf.Parse(os.Args[1:])
+	err := conf.Parse()
 	if err != nil {
 		glog.Fatalf("failed to parse config: %v", err)
 	}
