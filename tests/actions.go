@@ -1209,11 +1209,9 @@ func (info *TidbClusterInfo) QueryCount() (int, error) {
 }
 
 func (oa *operatorActions) CreateSecret(info *TidbClusterInfo) error {
-	initSecretName := fmt.Sprintf("%s-set-secret", info.ClusterName)
-	backupSecretName := fmt.Sprintf("%s-backup-secret", info.ClusterName)
 	initSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      initSecretName,
+			Name:      info.InitSecretName,
 			Namespace: info.Namespace,
 		},
 		Data: map[string][]byte{
@@ -1229,7 +1227,7 @@ func (oa *operatorActions) CreateSecret(info *TidbClusterInfo) error {
 
 	backupSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      backupSecretName,
+			Name:      info.BackupSecretName,
 			Namespace: info.Namespace,
 		},
 		Data: map[string][]byte{
