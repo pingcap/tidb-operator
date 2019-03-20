@@ -14,14 +14,16 @@
 package main
 
 import (
-	"flag"
 	"net/http"
 	_ "net/http/pprof"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
+	"github.com/pingcap/tidb-operator/tests/pkg/workload"
+	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -34,9 +36,14 @@ func perror(err error) {
 }
 
 func main() {
-	flag.Parse()
 	logs.InitLogs()
 	defer logs.FlushLogs()
+
+	conf := tests.NewConfig()
+	err := conf.Parse()
+	if err != nil {
+		glog.Fatalf("failed to parse config: %v", err)
+	}
 
 	go func() {
 		glog.Info(http.ListenAndServe("localhost:6060", nil))
@@ -55,7 +62,7 @@ func main() {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 
-	oa := tests.NewOperatorActions(cli, kubeCli, "/logDir")
+	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 
 	operatorInfo := &tests.OperatorInfo{
 		Namespace:      "pingcap",
@@ -121,6 +128,57 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	err = workload.Run(func() error {
+		clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			return err
+		}
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			return err
+		}
+
+		clusterInfo = clusterInfo.ScalePD(3)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			return err
+		}
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			return err
+		}
+
+		clusterInfo = clusterInfo.ScaleTiKV(3)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			return err
+		}
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			return err
+		}
+
+		clusterInfo = clusterInfo.ScaleTiDB(1)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			return err
+		}
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			return err
+		}
+
+		return nil
+	}, ddl.New(clusterInfo.DSN("test"), 1, 1))
+
+	if err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+
+	clusterInfo = clusterInfo.UpgradeAll("v2.1.4")
+	if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+		glog.Fatal(err)
+	}
+
 	restoreClusterInfo := &tests.TidbClusterInfo{
 		BackupPVC:        "test-backup",
 		Namespace:        "tidb",
@@ -172,23 +230,14 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	clusterInfo = clusterInfo.ScaleTiDB(3)
-	if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
-	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+	fa := tests.NewFaultTriggerAction(cli, kubeCli, conf)
+	if err := fa.StopETCD("172.16.4.171"); err != nil {
 		glog.Fatal(err)
 	}
 
-	clusterInfo = clusterInfo.UpgradeAll("v2.1.4")
-	if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
-		glog.Fatal(err)
-	}
-	if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, []*tests.TidbClusterInfo{clusterInfo})
+	time.Sleep(1 * time.Minute)
+
+	if err := fa.StartETCD("172.16.4.171"); err != nil {
 		glog.Fatal(err)
 	}
 }
