@@ -23,14 +23,12 @@ import (
 const (
 	staticPodPath                 = "/etc/kubernetes/manifests"
 	staticPodTmpPath              = "/etc/kubernetes/tmp"
-	kubeAPIServerManifes          = "kube-apiserver.manifest"
-	kubeControllerManagerManifest = "kube-controller-manager.manifest"
-	kubeProxyManifest             = "kube-proxy.manifest"
-	kubeSchedulerManifest         = "kube-scheduler.manifest"
+	kubeAPIServerManifes          = "kube-apiserver.yaml"
+	kubeControllerManagerManifest = "kube-controller-manager.yaml"
+	kubeSchedulerManifest         = "kube-scheduler.yaml"
 
 	KubeAPIServerService         = "kube-apiserver"
 	KubeSchedulerService         = "kube-scheduler"
-	KubeProxyService             = "kube-proxy"
 	KubeControllerManagerService = "kube-controller-manager"
 )
 
@@ -54,15 +52,15 @@ func (m *Manager) StopKubeAPIServer() error {
 	return m.stopStaticPodService(KubeAPIServerService, kubeAPIServerManifes)
 }
 
-// StartKubeProxy starts the kube-proxy service
-func (m *Manager) StartKubeProxy() error {
-	return m.startStaticPodService(KubeProxyService, kubeProxyManifest)
-}
-
-// StopKubeProxy stops the kube-proxy service
-func (m *Manager) StopKubeProxy() error {
-	return m.stopStaticPodService(KubeProxyService, kubeProxyManifest)
-}
+// // StartKubeProxy starts the kube-proxy service
+// func (m *Manager) StartKubeProxy() error {
+// 	return m.startStaticPodService(KubeProxyService, kubeProxyManifest)
+// }
+//
+// // StopKubeProxy stops the kube-proxy service
+// func (m *Manager) StopKubeProxy() error {
+// 	return m.stopStaticPodService(KubeProxyService, kubeProxyManifest)
+// }
 
 // StartKubeControllerManager starts the kube-controller-manager service
 func (m *Manager) StartKubeControllerManager() error {
@@ -76,7 +74,7 @@ func (m *Manager) StopKubeControllerManager() error {
 
 func (m *Manager) stopStaticPodService(serviceName string, fileName string) error {
 	maniest := fmt.Sprintf("%s/%s", staticPodPath, fileName)
-	shell := fmt.Sprintf("mkdir -p %s && mv %s %s", staticPodTmpPath, maniest, staticPodPath)
+	shell := fmt.Sprintf("mkdir -p %s && mv %s %s", staticPodTmpPath, maniest, staticPodTmpPath)
 
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()

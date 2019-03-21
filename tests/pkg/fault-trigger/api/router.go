@@ -45,14 +45,14 @@ func (s *Server) newService() *restful.WebService {
 	ws.Route(ws.POST(fmt.Sprintf("/%s/start", manager.KubeAPIServerService)).To(s.startKubeAPIServer))
 	ws.Route(ws.POST(fmt.Sprintf("/%s/stop", manager.KubeAPIServerService)).To(s.stopKubeAPIServer))
 
-	ws.Route(ws.POST(fmt.Sprintf("/%s/start", manager.KubeProxyService)).To(s.startKubeProxy))
-	ws.Route(ws.POST(fmt.Sprintf("/%s/stop", manager.KubeProxyService)).To(s.stopKubeProxy))
-
 	ws.Route(ws.POST(fmt.Sprintf("/%s/start", manager.KubeSchedulerService)).To(s.startKubeScheduler))
 	ws.Route(ws.POST(fmt.Sprintf("/%s/stop", manager.KubeSchedulerService)).To(s.stopKubeScheduler))
 
 	ws.Route(ws.POST(fmt.Sprintf("/%s/start", manager.KubeControllerManagerService)).To(s.startKubeControllerManager))
 	ws.Route(ws.POST(fmt.Sprintf("/%s/stop", manager.KubeControllerManagerService)).To(s.stopKubeControllerManager))
+	// TODO: support kube-proxy
+	// ws.Route(ws.POST(fmt.Sprintf("/%s/start", manager.KubeProxyService)).To(s.startKubeProxy))
+	// ws.Route(ws.POST(fmt.Sprintf("/%s/stop", manager.KubeProxyService)).To(s.stopKubeProxy))
 
 	return ws
 }

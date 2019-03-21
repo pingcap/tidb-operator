@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/api"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
@@ -32,11 +33,6 @@ type Client interface {
 	StartKubeAPIServer() error
 	// StopKubeAPIServer stops the apiserver service
 	StopKubeAPIServer() error
-	// StartKubeProxy starts the kube-proxy service
-	StartKubeProxy() error
-	// StopKubeProxy stops the kube-proxy service
-	StopKubeProxy() error
-	// StartKubeScheduler starts the kube-scheduler service
 	StartKubeScheduler() error
 	// StopKubeScheduler stops the kube-scheduler service
 	StopKubeScheduler() error
@@ -44,6 +40,12 @@ type Client interface {
 	StartKubeControllerManager() error
 	// StopKubeControllerManager stops the kube-controller-manager service
 	StopKubeControllerManager() error
+	// TODO: support controller kube-proxy
+	// // StartKubeProxy starts the kube-proxy service
+	// StartKubeProxy() error
+	// // StopKubeProxy stops the kube-proxy service
+	// StopKubeProxy() error
+	// // StartKubeScheduler starts the kube-scheduler service
 }
 
 // client is used to communicate with the fault-trigger
@@ -129,6 +131,8 @@ func (c *client) post(url string, data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("error creating request: %v", err)
 	}
 
+	req.Header.Set("Content-Type", "application/json")
+
 	_, body, err := c.do(req)
 	if err != nil {
 		return nil, err
@@ -141,6 +145,7 @@ func (c *client) ListVMs() ([]*manager.VM, error) {
 	url := util.GenURL(fmt.Sprintf("%s%s/vms", c.cfg.Addr, api.APIPrefix))
 	data, err := c.get(url)
 	if err != nil {
+		glog.Errorf("failed to get %s: %v", url, err)
 		return nil, err
 	}
 
@@ -164,6 +169,7 @@ func (c *client) StartVM(vm *manager.VM) error {
 
 	url := util.GenURL(fmt.Sprintf("%s%s/vm/%s/start", c.cfg.Addr, api.APIPrefix, vmName))
 	if _, err := c.post(url, nil); err != nil {
+		glog.Errorf("faled to post %s: %v", url, err)
 		return err
 	}
 
@@ -182,6 +188,7 @@ func (c *client) StopVM(vm *manager.VM) error {
 
 	url := util.GenURL(fmt.Sprintf("%s%s/vm/%s/stop", c.cfg.Addr, api.APIPrefix, vmName))
 	if _, err := c.post(url, nil); err != nil {
+		glog.Errorf("faled to post %s: %v", url, err)
 		return err
 	}
 
@@ -212,13 +219,13 @@ func (c *client) StopKubeAPIServer() error {
 	return c.stopService(manager.KubeAPIServerService)
 }
 
-func (c *client) StartKubeProxy() error {
-	return c.startService(manager.KubeProxyService)
-}
-
-func (c *client) StopKubeProxy() error {
-	return c.stopService(manager.KubeProxyService)
-}
+// func (c *client) StartKubeProxy() error {
+// 	return c.startService(manager.KubeProxyService)
+// }
+//
+// func (c *client) StopKubeProxy() error {
+// 	return c.stopService(manager.KubeProxyService)
+// }
 
 func (c *client) StartKubeScheduler() error {
 	return c.startService(manager.KubeSchedulerService)
@@ -239,6 +246,7 @@ func (c *client) StopKubeControllerManager() error {
 func (c *client) startService(serviceName string) error {
 	url := util.GenURL(fmt.Sprintf("%s%s/%s/start", c.cfg.Addr, api.APIPrefix, serviceName))
 	if _, err := c.post(url, nil); err != nil {
+		glog.Errorf("faled to post %s: %v", url, err)
 		return err
 	}
 
@@ -248,6 +256,7 @@ func (c *client) startService(serviceName string) error {
 func (c *client) stopService(serviceName string) error {
 	url := util.GenURL(fmt.Sprintf("%s%s/%s/stop", c.cfg.Addr, api.APIPrefix, serviceName))
 	if _, err := c.post(url, nil); err != nil {
+		glog.Errorf("faled to post %s: %v", url, err)
 		return err
 	}
 

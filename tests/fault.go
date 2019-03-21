@@ -29,9 +29,9 @@ type FaultTriggerActions interface {
 	StartKubeControllerManager(node string) error
 	StopKubeScheduler(node string) error
 	StartKubeScheduler(node string) error
-	StopKubeProxy(node string) error
-	StartKubeProxy(node string) error
 	// TODO: support more faults
+	// StopKubeProxy(node string) error
+	// StartKubeProxy(node string) error
 	// DiskCorruption(node string) error
 	// NetworkPartition(fromNode, toNode string) error
 	// NetworkDelay(fromNode, toNode string) error
@@ -103,7 +103,7 @@ func (fa *faultTriggerActions) StopETCD(nodes ...string) error {
 
 	for _, node := range nodes {
 		if err := fa.serviceAction(node, manager.ETCDService, stopAction); err != nil {
-			return nil
+			return err
 		}
 	}
 
@@ -121,7 +121,7 @@ func (fa *faultTriggerActions) StartETCD(nodes ...string) error {
 
 	for _, node := range nodes {
 		if err := fa.serviceAction(node, manager.ETCDService, startAction); err != nil {
-			return nil
+			return err
 		}
 	}
 
@@ -138,15 +138,15 @@ func (fa *faultTriggerActions) StartKubelet(node string) error {
 	return fa.serviceAction(node, manager.KubeletService, startAction)
 }
 
-// StopKubeProxy stops the kube-proxy service.
-func (fa *faultTriggerActions) StopKubeProxy(node string) error {
-	return fa.serviceAction(node, manager.KubeProxyService, stopAction)
-}
-
-// StartKubeProxy starts the kube-proxy service.
-func (fa *faultTriggerActions) StartKubeProxy(node string) error {
-	return fa.serviceAction(node, manager.KubeProxyService, startAction)
-}
+// // StopKubeProxy stops the kube-proxy service.
+//func (fa *faultTriggerActions) StopKubeProxy(node string) error {
+//	return fa.serviceAction(node, manager.KubeProxyService, stopAction)
+//}
+//
+//// StartKubeProxy starts the kube-proxy service.
+//func (fa *faultTriggerActions) StartKubeProxy(node string) error {
+//	return fa.serviceAction(node, manager.KubeProxyService, startAction)
+//}
 
 // StopKubeScheduler stops the kube-scheduler service.
 func (fa *faultTriggerActions) StopKubeScheduler(node string) error {
@@ -189,8 +189,6 @@ func (fa *faultTriggerActions) serviceAction(node string, serverName string, act
 		switch serverName {
 		case manager.KubeletService:
 			err = faultCli.StartKubelet()
-		case manager.KubeProxyService:
-			err = faultCli.StartKubeProxy()
 		case manager.KubeSchedulerService:
 			err = faultCli.StartKubeScheduler()
 		case manager.KubeControllerManagerService:
@@ -207,8 +205,6 @@ func (fa *faultTriggerActions) serviceAction(node string, serverName string, act
 		switch serverName {
 		case manager.KubeletService:
 			err = faultCli.StopKubelet()
-		case manager.KubeProxyService:
-			err = faultCli.StopKubeProxy()
 		case manager.KubeSchedulerService:
 			err = faultCli.StopKubeScheduler()
 		case manager.KubeControllerManagerService:
