@@ -157,6 +157,9 @@ func (c *testCase) execDMLInTransactionSQL(taskCh chan *dmlJobTask) error {
 	for i := 0; i < tasksLen; i++ {
 		task := <-taskCh
 		err = c.sendDMLRequest(ctx, conn, task)
+		if err != nil {
+			return err
+		}
 		tasks = append(tasks, task)
 	}
 
