@@ -5,9 +5,9 @@ ifeq ($(GO111), 1)
 $(error Please upgrade your Go compiler to 1.11 or higher version)
 endif
 
-GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=linux GOARCH=amd64
-GO     := $(GOENV) GO111MODULE=on go build -mod=vendor
-GOTEST := CGO_ENABLED=0 GO111MODULE=on go test -v -mod=vendor -cover
+GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GO111MODULE=on GOOS=linux GOARCH=amd64
+GO     := $(GOENV) go build
+GOTEST := CGO_ENABLED=0 GO111MODULE=on go test -v -cover
 
 LDFLAGS = $(shell ./hack/version.sh)
 
@@ -45,7 +45,7 @@ e2e-docker: e2e-build
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" tests/images/e2e
 
 e2e-build:
-	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
+	$(GOENV) ginkgo build tests/e2e
 
 test:
 	@echo "Run unit tests"
