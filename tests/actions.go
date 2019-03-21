@@ -51,6 +51,8 @@ const (
 	defaultConcurrency     = 512
 	defaultBatchSize       = 100
 	defaultRawSize         = 100
+
+	period = 5 * time.Minute
 )
 
 func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, cfg *Config) OperatorActions {
@@ -1634,4 +1636,176 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterInfo, hostName string)
 		return false
 	}
 	return len(healths.PumpPos) > 0 && healths.Synced
+}
+
+func (oa *operatorActions) PendingFailOver(info *TidbClusterInfo, faultPoint *time.Time) (bool, error) {
+	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
+	if err != nil {
+		glog.Infof("pending failover,failed to get tidbcluster:[%s], error: %v", info.FullName(), err)
+		if strings.Contains(err.Error(), "Client.Timeout exceeded while awaiting headers") {
+			glog.Info("create new client")
+			newCli, _, err := CreateKubeClient()
+			if err != nil {
+				glog.Errorf("create new client failed, error:%v", err)
+				return false, nil
+			}
+			oa.cli = newCli
+		}
+		return false, nil
+	}
+	deadline := faultPoint.Add(period)
+	if time.Now().Before(deadline) {
+		if tc.Status.PD.FailureMembers != nil && len(tc.Status.PD.FailureMembers) > 0 {
+			err := fmt.Errorf("cluster: [%s] the pd member should be mark failure after %s", info.FullName(), deadline.Format(time.RFC3339))
+			glog.Errorf(err.Error())
+			return false, err
+		}
+		if tc.Status.TiKV.FailureStores != nil && len(tc.Status.TiKV.FailureStores) > 0 {
+			err := fmt.Errorf("cluster: [%s] the tikv store should be mark failure after %s", info.FullName(), deadline.Format(time.RFC3339))
+			glog.Errorf(err.Error())
+			return false, err
+		}
+		if tc.Status.TiDB.FailureMembers != nil && len(tc.Status.TiDB.FailureMembers) > 0 {
+			err := fmt.Errorf("cluster: [%s] the tidb member should be mark failure after %s", info.FullName(), deadline.Format(time.RFC3339))
+			glog.Errorf(err.Error())
+			return false, err
+		}
+
+		glog.Infof("cluster: [%s] operator's failover feature is pending", info.FullName())
+		return false, nil
+	}
+	return true, nil
+}
+
+func (oa *operatorActions) CheckFailOver(info *TidbClusterInfo, node string) (bool, error) {
+	selector, err := label.New().Instance(info.ClusterName).Selector()
+	if err != nil {
+		glog.Errorf("cluster:[%s] create selector failed, error:%v", info.FullName(), err)
+		return false, nil
+	}
+	pods, err := oa.kubeCli.CoreV1().Pods(info.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		glog.Errorf("cluster:[%s] query pods failed, error:%v", info.FullName(), err)
+		return false, nil
+	}
+
+	affectedPods := map[string]*corev1.Pod{}
+	for i, pod := range pods.Items {
+		if pod.Spec.NodeName == node {
+			affectedPods[pod.Name] = &pods.Items[i]
+		}
+	}
+	if len(affectedPods) == 0 {
+		glog.Infof("the cluster:[%s] can not be affected by node:[%s]", info.FullName(), node)
+		return true, nil
+	}
+
+	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(info.ClusterName, metav1.GetOptions{})
+	if err != nil {
+		glog.Errorf("query tidbcluster: [%s] failed, error: %v", info.FullName(), err)
+		return false, nil
+	}
+
+	for _, affectedPod := range affectedPods {
+		switch affectedPod.Labels[label.ComponentLabelKey] {
+		case label.PDLabelVal:
+			if !oa.pdFailover(affectedPod, tc) {
+				return false, nil
+			}
+		case label.TiKVLabelVal:
+			if !oa.tikvFailover(affectedPod, tc) {
+				return false, nil
+			}
+		case label.TiDBLabelVal:
+			if !oa.tidbFailover(affectedPod, tc) {
+				return false, nil
+			}
+		}
+	}
+
+	glog.Infof("cluster: [%s]'s failover feature has complete", info.FullName())
+	return true, nil
+}
+
+func (oa *operatorActions) pdFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
+	failure := false
+	for _, failureMember := range tc.Status.PD.FailureMembers {
+		if failureMember.PodName == pod.GetName() {
+			failure = true
+			break
+		}
+	}
+	if !failure {
+		glog.Infof("tidbCluster:[%s/%s]'s member:[%s] have not become failuremember", tc.Namespace, tc.Name, pod.Name)
+		return false
+	}
+
+	for _, member := range tc.Status.PD.Members {
+		if member.Name == pod.GetName() {
+			glog.Infof("tidbCluster:[%s/%s]'s status.members still have pd member:[%s]", tc.Namespace, tc.Name, pod.Name)
+			return false
+		}
+	}
+
+	if tc.Status.PD.Synced && len(tc.Status.PD.Members) == int(tc.Spec.PD.Replicas) {
+		return true
+	}
+
+	glog.Infof("cluster: [%s/%s] pd:[%s] failover still not complete", tc.Namespace, tc.Name, pod.GetName())
+
+	return false
+}
+
+func (oa *operatorActions) tikvFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
+	failure := false
+	for _, failureStore := range tc.Status.TiKV.FailureStores {
+		if failureStore.PodName == pod.GetName() {
+			failure = true
+			break
+		}
+	}
+	if !failure {
+		glog.Infof("tidbCluster:[%s/%s]'s store pod:[%s] have not become failuremember", tc.Namespace, tc.Name, pod.Name)
+		return false
+	}
+
+	healthCount := 0
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.State == v1alpha1.TiKVStateUp {
+			healthCount++
+		}
+	}
+	if tc.Status.TiKV.Synced && healthCount == int(tc.Spec.TiKV.Replicas) {
+		return true
+	}
+
+	glog.Infof("cluster: [%s/%s] tikv:[%s] failover still not complete", tc.Namespace, tc.Name, pod.GetName())
+	return false
+}
+
+func (oa *operatorActions) tidbFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
+	failure := false
+	for _, failureMember := range tc.Status.TiDB.FailureMembers {
+		if failureMember.PodName == pod.GetName() {
+			glog.Infof("tidbCluster:[%s/%s]'s store pod:[%s] have not become failuremember", tc.Namespace, tc.Name, pod.Name)
+			failure = true
+			break
+		}
+	}
+	if !failure {
+		return false
+	}
+
+	healthCount := 0
+	for _, member := range tc.Status.TiDB.Members {
+		if member.Health {
+			healthCount++
+		}
+	}
+
+	if healthCount == int(tc.Spec.TiDB.Replicas) {
+		return true
+	}
+	glog.Infof("cluster: [%s/%s] tidb:[%s] failover still not complete", tc.Namespace, tc.Name, pod.GetName())
+	return false
 }

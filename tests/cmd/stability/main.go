@@ -21,14 +21,11 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
 	"github.com/pingcap/tidb-operator/tests/pkg/workload"
 	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
 	"k8s.io/apiserver/pkg/util/logs"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 func main() {
@@ -51,17 +48,9 @@ func main() {
 	operatorTag := "master"
 	operatorImage := "pingcap/tidb-operator:latest"
 
-	cfg, err := rest.InClusterConfig()
+	cli, kubeCli, err := tests.CreateKubeClient()
 	if err != nil {
-		glog.Fatalf("failed to get config: %v", err)
-	}
-	cli, err := versioned.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("failed to create Clientset: %v", err)
-	}
-	kubeCli, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
+		glog.Fatalf("failed to create kubernetes clientset: %v", err)
 	}
 
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
