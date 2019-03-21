@@ -15,17 +15,15 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	_ "net/http/pprof"
-
-	"github.com/pingcap/tidb-operator/tests/pkg/workload"
-	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
+	"github.com/pingcap/tidb-operator/tests/pkg/workload"
+	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -40,16 +38,6 @@ func main() {
 	if err != nil {
 		glog.Fatalf("failed to parse config: %v", err)
 	}
-
-	go func() {
-		glog.Info(http.ListenAndServe("localhost:6060", nil))
-	}()
-
-	// TODO read these args from config
-	beginTidbVersion := "v2.1.0"
-	toTidbVersion := "v2.1.4"
-	operatorTag := "master"
-	operatorImage := "pingcap/tidb-operator:latest"
 
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
@@ -69,12 +57,16 @@ func main() {
 	operatorInfo := &tests.OperatorInfo{
 		Namespace:      "pingcap",
 		ReleaseName:    "operator",
-		Image:          operatorImage,
-		Tag:            operatorTag,
+		Image:          conf.OperatorImage,
+		Tag:            conf.OperatorTag,
 		SchedulerImage: "gcr.io/google-containers/hyperkube:v1.12.1",
 		LogLevel:       "2",
 	}
 
+	initTidbVersion, err := conf.GetInitTidbVersion()
+	if err != nil {
+		glog.Fatal(err)
+	}
 	// create database and table and insert a column for test backup and restore
 	initSql := `"create database record;use record;create table test(t char(32))"`
 
@@ -84,10 +76,10 @@ func main() {
 		{
 			Namespace:        name1,
 			ClusterName:      name1,
-			OperatorTag:      operatorTag,
-			PDImage:          fmt.Sprintf("pingcap/pd:%s", beginTidbVersion),
-			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", beginTidbVersion),
-			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", beginTidbVersion),
+			OperatorTag:      conf.OperatorTag,
+			PDImage:          fmt.Sprintf("pingcap/pd:%s", initTidbVersion),
+			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", initTidbVersion),
+			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
 			StorageClassName: "local-storage",
 			Password:         "admin",
 			InitSql:          initSql,
@@ -116,9 +108,9 @@ func main() {
 			Namespace:        name2,
 			ClusterName:      name2,
 			OperatorTag:      "master",
-			PDImage:          fmt.Sprintf("pingcap/pd:%s", beginTidbVersion),
-			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", beginTidbVersion),
-			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", beginTidbVersion),
+			PDImage:          fmt.Sprintf("pingcap/pd:%s", initTidbVersion),
+			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", initTidbVersion),
+			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
 			StorageClassName: "local-storage",
 			Password:         "admin",
 			InitSql:          initSql,
@@ -231,24 +223,27 @@ func main() {
 			}
 		}
 
+		// upgrade test
+		upgradeTidbVersions := conf.GetUpgradeTidbVersions()
+		for _, upgradeTidbVersion := range upgradeTidbVersions {
+			for _, clusterInfo := range clusterInfos {
+				clusterInfo = clusterInfo.UpgradeAll(upgradeTidbVersion)
+				if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
+					glog.Fatal(err)
+				}
+			}
+			for _, clusterInfo := range clusterInfos {
+				if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+					glog.Fatal(err)
+				}
+			}
+		}
+
 		return nil
 	}, workloads...)
 
 	if err != nil {
 		glog.Fatal(err)
-	}
-
-	for _, clusterInfo := range clusterInfos {
-		clusterInfo = clusterInfo.UpgradeAll(toTidbVersion)
-		if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-	}
-
-	for _, clusterInfo := range clusterInfos {
-		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
 	}
 
 	// backup and restore

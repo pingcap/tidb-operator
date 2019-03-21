@@ -191,11 +191,13 @@ func (tc *TidbClusterInfo) TidbClusterHelmSetString(m map[string]string) string 
 }
 
 func (oa *operatorActions) DeployOperator(info *OperatorInfo) error {
-	if err := cloneOperatorRepo(); err != nil {
-		return err
-	}
-	if err := checkoutTag(info.Tag); err != nil {
-		return err
+	if info.Tag != "e2e" {
+		if err := cloneOperatorRepo(); err != nil {
+			return err
+		}
+		if err := checkoutTag(info.Tag); err != nil {
+			return err
+		}
 	}
 
 	cmd := fmt.Sprintf(`helm install /charts/%s/tidb-operator \
