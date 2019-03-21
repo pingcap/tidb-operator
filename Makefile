@@ -45,7 +45,7 @@ e2e-docker: e2e-build
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" tests/images/e2e
 
 e2e-build:
-	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
+	$(GOENV) ginkgo build tests/e2e
 
 test:
 	@echo "Run unit tests"
