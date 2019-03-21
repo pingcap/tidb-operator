@@ -142,9 +142,6 @@ func (tc *TidbClusterInfo) BackupHelmSetString(m map[string]string) string {
 		"secretName":  tc.BackupSecretName,
 	}
 
-	for k, v := range tc.Resources {
-		set[k] = v
-	}
 	for k, v := range tc.Args {
 		set[k] = v
 	}
@@ -1138,8 +1135,8 @@ func (oa *operatorActions) Restore(from *TidbClusterInfo, to *TidbClusterInfo) e
 	setString := to.BackupHelmSetString(sets)
 
 	restoreName := fmt.Sprintf("%s-restore", from.ClusterName)
-	cmd := fmt.Sprintf("helm upgrade %s /charts/%s/tidb-backup --set-string %s",
-		restoreName, to.OperatorTag, setString)
+	cmd := fmt.Sprintf("helm install -n %s --namespace %s /charts/%s/tidb-backup --set-string %s",
+		restoreName, to.Namespace, to.OperatorTag, setString)
 	glog.Infof("install restore [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
