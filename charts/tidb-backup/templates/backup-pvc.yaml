@@ -1,8 +1,8 @@
-{{- if .Values.backup.create }}
+{{- if eq .Values.mode "backup" }}
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: {{ .Values.clusterName }}-backup
+  name: {{ .Values.name }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: tidb-operator
@@ -15,6 +15,6 @@ spec:
   volumeMode: Filesystem
   resources:
     requests:
-      storage: {{ .Values.backup.storage }}
-  storageClassName: {{ .Values.backup.storageClassName }}
+      storage: {{ .Values.storage.size }}
+  storageClassName: {{ .Values.storage.className }}
 {{- end }}

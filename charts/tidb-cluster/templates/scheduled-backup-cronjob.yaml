@@ -72,11 +72,16 @@ spec:
             - name: GOOGLE_APPLICATION_CREDENTIALS
               value: /gcp/credentials.json
           {{- end }}
+            - name: TIDB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.scheduledBackup.secretName }}
+                  key: user
             - name: TIDB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.clusterName }}-scheduled-backup
-                  key: user-password
+                  name: {{ .Values.scheduledBackup.secretName }}
+                  key: password
           restartPolicy: OnFailure
           volumes:
           - name: savepoint-dir
@@ -87,6 +92,6 @@ spec:
         {{- if .Values.scheduledBackup.gcp }}
           - name: gcp-credentials
             secret:
-              secretName: {{ .Values.clusterName }}-scheduled-backup
+              secretName: {{ .Values.scheduledBackup.gcp.secretName }}
         {{- end }}
 {{- end }}

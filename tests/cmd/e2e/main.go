@@ -70,10 +70,12 @@ func main() {
 	// create database and table and insert a column for test backup and restore
 	initSql := `"create database record;use record;create table test(t char(32))"`
 
+	name1 := "e2e-cluster1"
+	name2 := "e2e-cluster2"
 	clusterInfos := []*tests.TidbClusterInfo{
 		{
-			Namespace:        "e2e-cluster1",
-			ClusterName:      "e2e-cluster1",
+			Namespace:        name1,
+			ClusterName:      name1,
 			OperatorTag:      conf.OperatorTag,
 			PDImage:          fmt.Sprintf("pingcap/pd:%s", initTidbVersion),
 			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", initTidbVersion),
@@ -82,9 +84,9 @@ func main() {
 			Password:         "admin",
 			InitSql:          initSql,
 			UserName:         "root",
-			InitSecretName:   "demo-set-secret",
-			BackupSecretName: "demo-backup-secret",
-			BackupPVC:        "test-backup",
+			InitSecretName:   fmt.Sprintf("%s-set-secret", name1),
+			BackupSecretName: fmt.Sprintf("%s-backup-secret", name1),
+			BackupPVC:        "backup-pvc",
 			Resources: map[string]string{
 				"pd.resources.limits.cpu":        "1000m",
 				"pd.resources.limits.memory":     "2Gi",
@@ -103,9 +105,9 @@ func main() {
 			Monitor: true,
 		},
 		{
-			Namespace:        "e2e-cluster2",
-			ClusterName:      "e2e-cluster2",
-			OperatorTag:      conf.OperatorTag,
+			Namespace:        name2,
+			ClusterName:      name2,
+			OperatorTag:      "master",
 			PDImage:          fmt.Sprintf("pingcap/pd:%s", initTidbVersion),
 			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", initTidbVersion),
 			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
@@ -113,9 +115,9 @@ func main() {
 			Password:         "admin",
 			InitSql:          initSql,
 			UserName:         "root",
-			InitSecretName:   "demo-set-secret",
-			BackupSecretName: "demo-backup-secret",
-			BackupPVC:        "test-backup",
+			InitSecretName:   fmt.Sprintf("%s-set-secret", name2),
+			BackupSecretName: fmt.Sprintf("%s-backup-secret", name2),
+			BackupPVC:        "backup-pvc",
 			Resources: map[string]string{
 				"pd.resources.limits.cpu":        "1000m",
 				"pd.resources.limits.memory":     "2Gi",
@@ -248,7 +250,9 @@ func main() {
 	backupClusterInfo := clusterInfos[0]
 	restoreClusterInfo := &tests.TidbClusterInfo{}
 	copier.Copy(restoreClusterInfo, backupClusterInfo)
-	restoreClusterInfo.ClusterName = restoreClusterInfo.ClusterName + "-restore"
+	restoreClusterInfo.ClusterName = restoreClusterInfo.ClusterName + "-other"
+	restoreClusterInfo.InitSecretName = fmt.Sprintf("%s-set-secret", restoreClusterInfo.ClusterName)
+	restoreClusterInfo.BackupSecretName = fmt.Sprintf("%s-backup-secret", restoreClusterInfo.ClusterName)
 
 	if err = oa.CleanTidbCluster(restoreClusterInfo); err != nil {
 		glog.Fatal(err)

@@ -1,29 +1,30 @@
 set -euo pipefail
-dirname=backup-`date +%Y-%m-%dT%H%M%S`-${MY_POD_NAME}
+
 host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]' | tr '-' '_'`
 
-mkdir -p /data/${dirname}/
-cp /savepoint-dir/savepoint /data/${dirname}/
+dirname=/data/${BACKUP_NAME}
+mkdir -p ${dirname}
+cp /savepoint-dir/savepoint ${dirname}/
 
 /mydumper \
-  --outputdir=/data/${dirname} \
+  --outputdir=${dirname} \
   --host=`eval echo '${'$host'}'` \
   --port=4000 \
-  --user={{ .Values.backup.user }} \
+  --user=${TIDB_USER} \
   --password=${TIDB_PASSWORD} \
-  {{ .Values.backup.options }}
+  {{ .Values.backupOptions }}
 
-{{- if .Values.backup.gcp }}
+{{- if .Values.gcp }}
 uploader \
   --cloud=gcp \
-  --bucket={{ .Values.backup.gcp.bucket }} \
-  --backup-dir=/data/${dirname}
+  --bucket={{ .Values.gcp.bucket }} \
+  --backup-dir=${dirname}
 {{- end }}
 
-{{- if .Values.backup.ceph }}
+{{- if .Values.ceph }}
 uploader \
   --cloud=ceph \
-  --bucket={{ .Values.backup.ceph.bucket }} \
-  --endpoint={{ .Values.backup.ceph.endpoint }} \
-  --backup-dir=/data/${dirname}
+  --bucket={{ .Values.ceph.bucket }} \
+  --endpoint={{ .Values.ceph.endpoint }} \
+  --backup-dir=${dirname}
 {{- end }}

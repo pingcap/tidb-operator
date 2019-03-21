@@ -38,6 +38,7 @@ func NewConfig() *Config {
 	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v2.1.3,v2.1.4", "tidb versions")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
+
 	return cfg
 }
 

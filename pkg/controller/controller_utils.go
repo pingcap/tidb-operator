@@ -36,6 +36,8 @@ var (
 const (
 	// defaultPushgatewayImage is default image of pushgateway
 	defaultPushgatewayImage = "prom/pushgateway:v0.3.1"
+	// defaultTiDBSlowLogImage is default image of tidb log tailer
+	defaultTiDBLogTailerImage = "busybox:1.26.2"
 )
 
 // RequeueError is used to requeue the item, this error type should't be considered as a real error
@@ -127,6 +129,13 @@ func GetPushgatewayImage(cluster *v1alpha1.TidbCluster) string {
 		return img
 	}
 	return defaultPushgatewayImage
+}
+
+func GetSlowLogTailerImage(cluster *v1alpha1.TidbCluster) string {
+	if img := cluster.Spec.TiDB.SlowLogTailer.Image; img != "" {
+		return img
+	}
+	return defaultTiDBLogTailerImage
 }
 
 // PDMemberName returns pd member name

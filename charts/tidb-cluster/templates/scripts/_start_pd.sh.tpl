@@ -62,7 +62,16 @@ ARGS="--data-dir=/var/lib/pd \
 --config=/etc/pd/pd.toml \
 "
 
-if [[ ! -f /var/lib/pd/join && ! -d /var/lib/pd/member/wal ]]
+if [[ -f /var/lib/pd/join ]]
+then
+    # The content of the join file is:
+    #   demo-pd-0=http://demo-pd-0.demo-pd-peer.demo.svc:2380,demo-pd-1=http://demo-pd-1.demo-pd-peer.demo.svc:2380
+    # The --join args must be:
+    #   --join=http://demo-pd-0.demo-pd-peer.demo.svc:2380,http://demo-pd-1.demo-pd-peer.demo.svc:2380
+    join=`cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","`
+    join=${join%,}
+    ARGS="${ARGS} --join=${join}"
+elif [[ ! -d /var/lib/pd/member/wal ]]
 then
     until result=$(wget -qO- -T 3 http://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
         echo "waiting for discovery service returns start args ..."

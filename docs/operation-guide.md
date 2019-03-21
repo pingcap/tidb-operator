@@ -18,7 +18,7 @@ After TiDB Operator and Helm are deployed correctly, TiDB cluster can be deploye
 
 ```shell
 $ helm install charts/tidb-cluster --name=${releaseName} --namespace=${namespace}
-$ kubectl get po -n ${namespace} -l app.kubernetes.io/name=tidb-operator
+$ kubectl get po -n ${namespace} -l app.kubernetes.io/name=${releaseName}
 ```
 
 The default deployment doesn't set CPU and memory requests or limits for any of the pods, and the storage used is `local-storage` with minimal size. These settings can make TiDB cluster run on a small Kubernetes cluster like DinD or the default GKE cluster for testing. But for production deployment, you would likely to adjust the cpu, memory and storage resources according to the [recommendations](https://github.com/pingcap/docs/blob/master/op-guide/recommendation.md).
@@ -31,12 +31,15 @@ For other settings, the variables in `values.yaml` are self-explanatory with com
 
 By default TiDB service is exposed using [`NodePort`](https://kubernetes.io/docs/concepts/services-networking/service/#nodeport). You can modify it to `ClusterIP` which will disable access from outside of the cluster. Or modify it to [`LoadBalancer`](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer) if the underlining Kubernetes supports this kind of service.
 
-By default TiDB cluster is deployed with a random generated password. You can specify a password by setting `tidb.password` in `values.yaml` before deploying. Whether you specify the password or not, you can retrieve the password through `Secret`:
+```shell
+$ kubectl get svc -n ${namespace} # check the available services
+```
+
+By default the TiDB cluster has no password set. You can specify a password by setting `tidb.password` in `values.yaml` before deploying. You can retrieve the password from the initialization `Secret`:
 
 ```shell
 $ PASSWORD=$(kubectl get secret -n ${namespace} ${clusterName}-tidb -ojsonpath="{.data.password}" | base64 --decode | awk '{print $6}')
 $ echo ${PASSWORD}
-$ kubectl get svc -n ${namespace} # check the available services
 ```
 
 * Access inside of the Kubernetes cluster
@@ -112,6 +115,7 @@ $ kubectl get pv -l app.kubernetes.io/namespace=${namespace},app.kubernetes.io/m
 
 > **Note:** the above command will delete the data permanently. Think twice before executing them.
 
+
 ## Monitor
 
 TiDB cluster is monitored with Prometheus and Grafana. When TiDB cluster is created, a Prometheus and Grafana pod will be created and configured to scrape and visualize metrics.
@@ -128,6 +132,33 @@ Then open your browser at http://localhost:3000 The default username and passwor
 
 The Grafana service is exposed as `NodePort` by default, you can change it to `LoadBalancer` if the underlining Kubernetes has load balancer support. And then view the dashboard via load balancer endpoint.
 
+### View TiDB Slow Query Log
+
+For default setup, tidb is configured to export slow query log to STDOUT along with normal server logs. You can obtain the slow query log by `grep` the keyword `SLOW_QUERY`:
+
+```shell
+$ kubectl logs -n ${namespace} ${tidbPodName} | grep SLOW_QUERY
+```
+
+Optionally, you can output slow query log in a separate sidecar by enabling `separateSlowLog`:
+
+```yaml
+# Uncomment the following line to enable separate output of the slow query log
+    # separateSlowLog: true
+```
+
+Run `helm upgrade` to apply the change, then you can obtain the slow query log from the sidecar named `slowlog`:
+
+```shell
+$ kubectl logs -n ${namespace} ${tidbPodName} -c slowlog
+```
+
+To retrieve logs from multiple pods, [`stern`](https://github.com/wercker/stern) is recommended.
+
+```shell
+$ stern -n ${namespace} tidb -c slowlog
+```
+
 ## Backup
 
 Currently, TiDB Operator supports two kinds of backup: incremental backup via binlog and full backup(scheduled or ad-hoc) via [Mydumper](https://github.com/maxbube/mydumper).
@@ -136,9 +167,20 @@ Currently, TiDB Operator supports two kinds of backup: incremental backup via bi
 
 To enable incremental backup, set `binlog.pump.create` and `binlog.drainer.create` to `true`. By default the incremental backup data is stored in protobuffer format in a PV. You can change `binlog.drainer.destDBType` from `pb` to `mysql` or `kafka` and configure the corresponding downstream.
 
+### Full backup
+
+Currently, full backup requires a PersistentVolume. The backup job will create a PVC to store backup data.
+
+By default, the backup uses PV to store the backup data.
+> **Note:** You must set the ad-hoc full backup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to keep your backup data safe.
+
+You can also store the backup data to [Google Cloud Storage](https://cloud.google.com/storage/) bucket or [Ceph object storage](https://ceph.com/ceph-storage/object-storage/) by configuring the corresponding section in `values.yaml`. This way the PV temporarily stores backup data before it is placed in object storage.
+
+The comments in `values.yaml` is self-explanatory for both GCP backup and Ceph backup.
+
 ### Scheduled full backup
 
-Scheduled full backup can be done periodically just like crontab job. Currently, scheduled full backup requires a PersistentVolume, the backup job will create a PVC to store backup data.
+Scheduled full backup can be ran periodically just like crontab job.
 
 To create a scheduled full backup job, modify `scheduledBackup` section in `values.yaml` file.
 
@@ -149,24 +191,36 @@ To create a scheduled full backup job, modify `scheduledBackup` section in `valu
 
 > **Note:** You must set the scheduled full backup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to keep your backup data safe.
 
-If TiDB cluster is running on GKE, the backup data can be uploaded to GCS bucket. A bucket name and base64 encoded service account credential that has bucket read/write access must be provided. The comments in `values.yaml` is self-explanatory for GCP backup.
 
 ### Ad-Hoc full backup
 
 > **Note:** The rest of the document will use `values.yaml` to reference `charts/tidb-backup/values.yaml`
 
-Ad-Hoc full backup can be done once just like job. Currently, ad-hoc full backup requires a PersistentVolume, the backup job will create a PVC to store backup data.
+Ad-Hoc full backup can be done once just like job.
 
 To create an ad-hoc full backup job, modify `backup` section in `values.yaml` file.
 
-* `create` must be set to `true`
-* Set `storageClassName` to the PV storage class name used for backup data
-* `user` and `password` must be set to the correct user which has the permission to read the database to be backuped.
+* `mode` must be set to `backup`
+* Set `storage.className` to the PV storage class name used for backup data
 
-> **Note:** You must set the ad-hoc full backup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to keep your backup data safe.
+Create a secret containing the user and password that has the permission to backup the database:
 
-If TiDB cluster is running on GKE, the backup data can be uploaded to GCS bucket. A bucket name and base64 encoded service account credential that has bucket read/write access must be provided. The comments in `values.yaml` is self-explanatory for GCP backup.
+```shell
+$ kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=<user> --from-literal=password=<password>
+```
+
+Then run the following command to create an ad-hoc backup job:
+
+```shell
+$ helm install charts/tidb-backup --name=<backup-name> --namespace=${namespace}
+```
 
 ## Restore
 
-Currently, tidb-operator only supports restoring from full backup in GCS bucket. The `restore` section in `values.yaml` should have enough comments as document.
+Restore is similar to backup. See the `values.yaml` file for details.
+
+Modified the variables in `values.yaml` and then create restore job using the following command:
+
+```shell
+$ helm install charts/tidb-backup --name=<backup-name> --namespace=${namespace}
+```

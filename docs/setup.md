@@ -4,13 +4,16 @@
 
 Before deploying the TiDB Operator, make sure the following requirements are satisfied:
 
-* Kubernetes v1.10 or later
+* Kubernetes v1.10 or greater
 * [DNS addons](https://kubernetes.io/docs/tasks/access-application-cluster/configure-dns-cluster/)
 * [PersistentVolume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 * [RBAC](https://kubernetes.io/docs/admin/authorization/rbac) enabled (optional)
-* [Helm](https://helm.sh) v2.8.2 or later
+* [Helm](https://helm.sh) v2.8.2 or greater
+* Kubernetes v1.12 is required for zone-aware persistent volumes.
 
-> **Note:** Though TiDB Operator can use network volume to persist TiDB data, it is highly recommended to set up [local volume](https://kubernetes.io/docs/concepts/storage/volumes/#local) for better performance. Because TiDB already replicates data, network volume will add extra replicas which is redundant.
+> **Note:** Allthough TiDB Operator can use network volume to persist TiDB data, this is slower due to redundant replication. It is highly recommended to set up [local volume](https://kubernetes.io/docs/concepts/storage/volumes/#local) for better performance.
+
+> **Note:** Network volumes in a multi availability zone setup require Kubernetes v1.12 or greater. We do recommend using networked volumes for backup in the tidb-bakup chart.
 
 ## Kubernetes
 
@@ -26,7 +29,15 @@ TiDB Operator uses [PersistentVolume](https://kubernetes.io/docs/concepts/storag
 
 The Kubernetes cluster is suggested to enable [RBAC](https://kubernetes.io/docs/admin/authorization/rbac). Otherwise you may want to set `rbac.create` to `false` in the values.yaml of both tidb-operator and tidb-cluster charts.
 
-Because TiDB by default will use at most 40960 file descriptors, the [worker node](https://access.redhat.com/solutions/61334) and its [Docker daemon's](https://docs.docker.com/engine/reference/commandline/dockerd/#default-ulimit-settings) ulimit must be configured to greater than 40960. Otherwise you have to change TiKV's `max-open-files` to match your work node `ulimit -n` in the configuration file `charts/tidb-cluster/templates/config/_tikv-config.tpl`, but this will impact TiDB performance.
+Because TiDB by default will use lots of file descriptors, the [worker node](https://access.redhat.com/solutions/61334) and its Docker daemon's ulimit must be configured to greater than 1048576:
+
+```shell
+$ sudo vim /etc/systemd/system/docker.service
+```
+
+Set `LimitNOFILE` to equal or greater than 1048576.
+
+Otherwise you have to change TiKV's `max-open-files` to match your work node `ulimit -n` in the configuration file `charts/tidb-cluster/templates/config/_tikv-config.tpl`, but this will impact TiDB performance.
 
 ## Helm
 
@@ -52,7 +63,9 @@ You can follow Helm official [documentation](https://helm.sh) to install Helm in
 
 ## Local Persistent Volume
 
-Local disks are recommended to be formatted as ext4 filesystem.
+Local disks are recommended to be formatted as ext4 filesystem. The local persistent volume directory must be a mount point: a whole disk mount or a [bind mount](https://unix.stackexchange.com/questions/198590/what-is-a-bind-mount):
+
+### Disk mount
 
 Mount local ssd disks of your Kubernetes nodes at subdirectory of /mnt/disks. For example if your data disk is `/dev/nvme0n1`, you can format and mount with the following commands:
 
@@ -62,9 +75,30 @@ $ sudo mkfs.ext4 /dev/nvme0n1
 $ sudo mount -t ext4 -o nodelalloc /dev/nvme0n1 /mnt/disks/disk0
 ```
 
-To auto-mount disks when your operating system is booted, you should edit `/etc/fstab` to include these mounting info.
+### Bind mount
 
-After mounting all data disks on Kubernetes nodes, you can deploy [local-volume-provisioner](https://github.com/kubernetes-incubator/external-storage/tree/master/local-volume) to automatically provision the mounted disks as Local PersistentVolumes.
+The disadvantages of bind mount for TiDB: all the volumes has the size of the whole disk and there is no quota and isolation of bind mount volumes. If your data directory is `/data`, you can create a bind mount with the following commands:
+
+```shell
+$ sudo mkdir -p /data/local-pv01
+$ sudo mkdir -p /mnt/disks/local-pv01
+$ sudo mount --bind /data/local-pv01 /mnt/disks/local-pv01
+```
+
+Use this command to confirm the mount point exist:
+
+```shell
+$ mount | grep /mnt/disks/local-pv01
+```
+
+To auto-mount disks when your operating system is booted, you should edit `/etc/fstab` to include these mounting info:
+
+```shell
+$ echo "/dev/nvme0n1 /mnt/disks/disk0 none bind 0 0" >> /etc/fstab
+$ echo "/data/local-pv01 /mnt/disks/local-pv01 none bind 0 0" >> /etc/fstab
+```
+
+After mounting all data disks on Kubernetes nodes, you can deploy [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) to automatically provision the mounted disks as Local PersistentVolumes.
 
 ```shell
 $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/local-dind/local-volume-provisioner.yaml
@@ -86,6 +120,8 @@ After the `TidbCluster` custom resource is created, you can install TiDB Operato
 Uncomment the `scheduler.kubeSchedulerImage` in `values.yaml`, set it to the same as your kubernetes cluster version.
 
 ```shell
+$ git clone https://github.com/pingcap/tidb-operator.git
+$ cd tidb-operator
 $ helm install charts/tidb-operator --name=tidb-operator --namespace=tidb-admin
 $ kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
 ```
@@ -118,3 +154,8 @@ $ helm upgrade tidb-operator charts/tidb-operator
 When a new version of tidb-operator comes out, simply update the `operatorImage` in values.yaml and run the above command should be enough. But for safety reasons, you should get the new charts from tidb-operator repo and merge the old values.yaml with new values.yaml. And then upgrade as above.
 
 TiDB Operator is for TiDB cluster maintenance, what this means is that when TiDB cluster is up and running, you can just stop TiDB Operator and TiDB cluster still works well unless you need to do TiDB cluster maintenance like scaling, upgrading etc.
+
+## Upgrade Kubernetes
+
+When you have a major version change of Kubernetes, you need to make sure that the kubeSchedulerImageTag matches it. By default, this value is generated by helm during install/upgrade so you need to perform a helm upgrade to reset it.
+

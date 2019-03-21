@@ -60,6 +60,12 @@ func Send(webhookUrl string, proxy string, payload Payload) error {
 		return err
 	}
 	req, err := http.NewRequest("POST", webhookUrl, bytes.NewBuffer(body))
+<<<<<<< HEAD
+=======
+	if err != nil {
+		return err
+	}
+>>>>>>> master
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}

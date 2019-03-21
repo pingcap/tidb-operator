@@ -9,7 +9,7 @@ rbac:
 
 # clusterName is the TiDB cluster name, it is required and should be unique
 # if multiple clusters are deployed in the same namespace.
-clusterName: demo
+clusterName: demo-cluster
 
 # schedulerName must be same with charts/tidb-operator/values#scheduler.schedulerName
 schedulerName: tidb-scheduler
@@ -28,27 +28,18 @@ services:
 
 discovery:
   image: pingcap/tidb-operator:latest
-  imagePullPolicy: IfNotPresent
-  resources:
-    limits:
-      cpu: 250m
-      memory: 150Mi
-    requests:
-      cpu: 80m
-      memory: 50Mi
+  imagePullPolicy: Always
 
 pd:
   replicas: 3
   image: pingcap/pd:v2.1.0
+  imagePullPolicy: IfNotPresent
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
   # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
   storageClassName: local-storage
-
-  # Image pull policy.
-  imagePullPolicy: IfNotPresent
 
   # maxStoreDownTime is how long a store will be considered `down` when disconnected
   # if a store is considered `down`, the regions will be migrated to other stores
@@ -82,15 +73,13 @@ pd:
 tikv:
   replicas: 3
   image: pingcap/tikv:v2.1.0
+  imagePullPolicy: IfNotPresent
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
   # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
   storageClassName: local-storage
-
-  # Image pull policy.
-  imagePullPolicy: IfNotPresent
 
   # syncLog is a bool value to enable or disable syc-log for raftstore, default is true
   # enable this can prevent data loss when power failure
@@ -114,24 +103,6 @@ tikv:
   #   value: tidb
   #   effect: "NoSchedule"
 
-  # block-cache used to cache uncompressed blocks, big block-cache can speed up read.
-  # in normal cases should tune to 30%-50% tikv.resources.limits.memory
-  # defaultcfBlockCacheSize: "1GB"
-
-  # in normal cases should tune to 10%-30% tikv.resources.limits.memory
-  # writecfBlockCacheSize: "256MB"
-
-  # size of thread pool for high-priority/normal-priority/low-priority operations
-  # readpoolStorageConcurrency: 4
-
-  # Notice: if tikv.resources.limits.cpu > 8, default thread pool size for coprocessors
-  # will be set to tikv.resources.limits.cpu * 0.8.
-  # readpoolCoprocessorConcurrency: 8
-
-  # scheduler's worker pool size, should increase it in heavy write cases,
-  # also should less than total cpu cores.
-  # storageSchedulerWorkerPoolSize: 4
-
 tikvPromGateway:
   image: prom/pushgateway:v0.3.1
   imagePullPolicy: IfNotPresent
@@ -153,7 +124,6 @@ tidb:
   # initSql: |-
   #   create database app;
   image: pingcap/tidb:v2.1.0
-  # Image pull policy.
   imagePullPolicy: IfNotPresent
   logLevel: info
   resources:
@@ -178,16 +148,6 @@ tidb:
     exposeStatus: true
     # annotations:
       # cloud.google.com/load-balancer-type: Internal
-  # separateSlowLog: true
-  slowLogTailer:
-    image: busybox:1.26.2
-    resources:
-      limits:
-        cpu: 100m
-        memory: 50Mi
-      requests:
-        cpu: 20m
-        memory: 5Mi
 
 # mysqlClient is used to set password for TiDB
 # it must has Python MySQL client installed
@@ -208,8 +168,7 @@ monitor:
     image: pingcap/tidb-dashboard-installer:v2.0.0
     imagePullPolicy: IfNotPresent
   grafana:
-    create: true
-    image: grafana/grafana:4.6.5
+    image: grafana/grafana:4.6.3
     imagePullPolicy: IfNotPresent
     logLevel: info
     resources:
@@ -223,10 +182,7 @@ monitor:
     password: admin
     service:
       type: NodePort
-    # if grafana is running behind a reverse proxy with subpath http://foo.bar/grafana
-    # config the `serverDomain` and `serverRootUrl` as follows
-    # serverDomain: foo.bar
-    # serverRootUrl: "%(protocol)s://%(domain)s/grafana/"
+    grafanaUrl: http://localhost:3000
   prometheus:
     image: prom/prometheus:v2.2.1
     imagePullPolicy: IfNotPresent
@@ -251,6 +207,45 @@ monitor:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+
+fullbackup:
+  create: false
+  binlogImage: pingcap/tidb-binlog:v2.1.0
+  binlogImagePullPolicy: IfNotPresent
+  # https://github.com/tennix/tidb-cloud-backup
+  mydumperImage: pingcap/tidb-cloud-backup:latest
+  mydumperImagePullPolicy: IfNotPresent
+  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+  # different classes might map to quality-of-service levels, or to backup policies,
+  # or to arbitrary policies determined by the cluster administrators.
+  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
+  storageClassName: local-storage
+  storage: 1000Gi
+  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#schedule
+  schedule: "0 0 * * *"
+  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#suspend
+  suspend: false
+  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#jobs-history-limits
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#starting-deadline
+  startingDeadlineSeconds: 3600
+  # https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
+  options: "--chunk-filesize=100"
+  # user must set tidb cluster user and password
+  user: backup
+  password: "Password here ..."
+  # backup to gcp
+  gcp: {}
+    # base64 format of the service account json file data
+    # https://cloud.google.com/docs/authentication/production#obtaining_and_providing_service_account_credentials_manually
+    # and then: cat credentials.json | base64 | tr -d '\n'
+    # credentialsData: ""
+    # bucket: ""
+  # backup to ceph object storage
+  ceph: {}
+    # endpoint: ""
+    # bucket: ""
 
 binlog:
   pump:
@@ -314,54 +309,6 @@ binlog:
       # zookeeperAddrs: "127.0.0.1:2181"
       # kafkaAddrs: "127.0.0.1:9092"
       # kafkaVersion: "0.8.2.0"
-
-scheduledBackup:
-  create: false
-  binlogImage: pingcap/tidb-binlog:v2.1.0
-  binlogImagePullPolicy: IfNotPresent
-  # https://github.com/tennix/tidb-cloud-backup
-  mydumperImage: pingcap/tidb-cloud-backup:latest
-  mydumperImagePullPolicy: IfNotPresent
-  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
-  # different classes might map to quality-of-service levels, or to backup policies,
-  # or to arbitrary policies determined by the cluster administrators.
-  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
-  storageClassName: local-storage
-  storage: 100Gi
-  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#schedule
-  schedule: "0 0 * * *"
-  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#suspend
-  suspend: false
-  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#jobs-history-limits
-  successfulJobsHistoryLimit: 3
-  failedJobsHistoryLimit: 1
-  # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#starting-deadline
-  startingDeadlineSeconds: 3600
-  # https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
-  options: "--chunk-filesize=100"
-  # secretName is the name of the secret which stores user and password used for backup
-  # Note: you must give the user enough privilege to do the backup
-  # you can create the secret by:
-  # kubectl create secret generic backup-secret --from-literal=user=root --from-literal=password=<password>
-  secretName: backup-secret
-  # backup to gcp
-  gcp: {}
-  # bucket: ""
-  # secretName is the name of the secret which stores the gcp service account credentials json file
-  # The service account must have read/write permission to the above bucket.
-  # Read the following document to create the service account and download the credentials file as credentials.json:
-  # https://cloud.google.com/docs/authentication/production#obtaining_and_providing_service_account_credentials_manually
-  # And then create the secret by: kubectl create secret generic gcp-backup-secret --from-file=./credentials.json
-  # secretName: gcp-backup-secret
-
-  # backup to ceph object storage
-  ceph: {}
-  # endpoint: ""
-  # bucket: ""
-  # secretName is the name of the secret which stores ceph object store access key and secret key
-  # You can create the secret by:
-  # kubectl create secret generic ceph-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
-  # secretName: ceph-backup-secret
 
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"
