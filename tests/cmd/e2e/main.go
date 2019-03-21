@@ -105,7 +105,7 @@ func main() {
 		{
 			Namespace:        "e2e-cluster2",
 			ClusterName:      "e2e-cluster2",
-			OperatorTag:      "master",
+			OperatorTag:      conf.OperatorTag,
 			PDImage:          fmt.Sprintf("pingcap/pd:%s", initTidbVersion),
 			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", initTidbVersion),
 			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
