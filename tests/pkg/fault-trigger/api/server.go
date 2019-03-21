@@ -137,13 +137,13 @@ func (s *Server) stopKubeAPIServer(req *restful.Request, resp *restful.Response)
 	s.action(req, resp, s.mgr.StopKubeAPIServer, "stopKubeAPIServer")
 }
 
-func (s *Server) startKubeProxy(req *restful.Request, resp *restful.Response) {
-	s.action(req, resp, s.mgr.StartKubeProxy, "startKubeProxy")
-}
-
-func (s *Server) stopKubeProxy(req *restful.Request, resp *restful.Response) {
-	s.action(req, resp, s.mgr.StopKubeProxy, "stopKubeProxy")
-}
+// func (s *Server) startKubeProxy(req *restful.Request, resp *restful.Response) {
+// 	s.action(req, resp, s.mgr.StartKubeProxy, "startKubeProxy")
+// }
+//
+// func (s *Server) stopKubeProxy(req *restful.Request, resp *restful.Response) {
+// 	s.action(req, resp, s.mgr.StopKubeProxy, "stopKubeProxy")
+// }
 
 func (s *Server) startKubeScheduler(req *restful.Request, resp *restful.Response) {
 	s.action(req, resp, s.mgr.StartKubeScheduler, "startKubeScheduler")
