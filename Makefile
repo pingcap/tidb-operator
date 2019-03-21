@@ -5,9 +5,9 @@ ifeq ($(GO111), 1)
 $(error Please upgrade your Go compiler to 1.11 or higher version)
 endif
 
-GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=linux GOARCH=amd64
-GO     := $(GOENV) GO111MODULE=on go build -mod=vendor
-GOTEST := CGO_ENABLED=0 GO111MODULE=on go test -v -mod=vendor -cover
+GOENV  := GO15VENDOREXPERIMENT="1" GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+GO     := $(GOENV) go build
+GOTEST := CGO_ENABLED=0 GO111MODULE=on go test -v -cover
 
 LDFLAGS = $(shell ./hack/version.sh)
 
