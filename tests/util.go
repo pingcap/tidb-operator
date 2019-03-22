@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"k8s.io_d/client-go/kubernetes"
-	"k8s.io_d/client-go/rest"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 func CreateKubeClient() (versioned.Interface, kubernetes.Interface, error) {

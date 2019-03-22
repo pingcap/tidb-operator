@@ -47,6 +47,15 @@ e2e-docker: e2e-build
 e2e-build:
 	$(GOENV) ginkgo build tests/e2e
 
+stability-test-build:
+	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test tests/cmd/stability/main.go
+
+stability-test-docker: stability-test-build
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest" tests/images/stability-test
+
+stability-test-push: stability-test-docker
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest"
+
 test:
 	@echo "Run unit tests"
 	@$(GOTEST) ./pkg/... -coverprofile=coverage.txt -covermode=atomic && echo "\nUnit tests run successfully!"

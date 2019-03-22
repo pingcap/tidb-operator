@@ -1700,7 +1700,7 @@ func (oa *operatorActions) CheckFailOver(info *TidbClusterInfo, node string) (bo
 		return true, nil
 	}
 
-	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(info.ClusterName, metav1.GetOptions{})
+	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 	if err != nil {
 		glog.Errorf("query tidbcluster: [%s] failed, error: %v", info.FullName(), err)
 		return false, nil
