@@ -36,6 +36,11 @@ spec:
     - name: config
       readOnly: true 
       mountPath: /etc/e2e
+    env:
+      - name: MY_NODE_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: spec.nodeName
   volumes:
   - name: logdir
     hostPath:

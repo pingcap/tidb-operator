@@ -39,3 +39,5 @@ func CreateKubeClient() (versioned.Interface, kubernetes.Interface, error) {
 
 	return operatorCli, kubeCli, nil
 }
+
+// func ()

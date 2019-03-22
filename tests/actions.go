@@ -95,6 +95,8 @@ type OperatorActions interface {
 	ForceDeploy(info *TidbClusterInfo) error
 	CreateSecret(info *TidbClusterInfo) error
 	getBackupDir(info *TidbClusterInfo) ([]string, error)
+	PendingFailover(info *TidbClusterInfo, faultPoint *time.Time) (bool, error)
+	CheckFailover(info *TidbClusterInfo, faultNode string) (bool, error)
 }
 
 type operatorActions struct {
@@ -1638,7 +1640,7 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterInfo, hostName string)
 	return len(healths.PumpPos) > 0 && healths.Synced
 }
 
-func (oa *operatorActions) PendingFailOver(info *TidbClusterInfo, faultPoint *time.Time) (bool, error) {
+func (oa *operatorActions) PendingFailover(info *TidbClusterInfo, faultPoint *time.Time) (bool, error) {
 	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 	if err != nil {
 		glog.Infof("pending failover,failed to get tidbcluster:[%s], error: %v", info.FullName(), err)
@@ -1677,7 +1679,7 @@ func (oa *operatorActions) PendingFailOver(info *TidbClusterInfo, faultPoint *ti
 	return true, nil
 }
 
-func (oa *operatorActions) CheckFailOver(info *TidbClusterInfo, node string) (bool, error) {
+func (oa *operatorActions) CheckFailover(info *TidbClusterInfo, node string) (bool, error) {
 	selector, err := label.New().Instance(info.ClusterName).Selector()
 	if err != nil {
 		glog.Errorf("cluster:[%s] create selector failed, error:%v", info.FullName(), err)
