@@ -17,18 +17,15 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
-	"reflect"
 
-	"k8s.io/apimachinery/pkg/types"
+	"github.com/pingcap/tidb-operator/tests/pkg/workload"
+	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
-	"github.com/pingcap/tidb-operator/tests/pkg/workload"
-	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -81,10 +78,12 @@ func main() {
 	// create database and table and insert a column for test backup and restore
 	initSql := `"create database record;use record;create table test(t char(32))"`
 
+	name1 := "e2e-cluster1"
+	name2 := "e2e-cluster2"
 	clusterInfos := []*tests.TidbClusterInfo{
 		{
-			Namespace:        "e2e-cluster1",
-			ClusterName:      "e2e-cluster1",
+			Namespace:        name1,
+			ClusterName:      name1,
 			OperatorTag:      operatorTag,
 			PDImage:          fmt.Sprintf("pingcap/pd:%s", beginTidbVersion),
 			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", beginTidbVersion),
@@ -93,9 +92,9 @@ func main() {
 			Password:         "admin",
 			InitSql:          initSql,
 			UserName:         "root",
-			InitSecretName:   "demo-set-secret",
-			BackupSecretName: "demo-backup-secret",
-			BackupPVC:        "test-backup",
+			InitSecretName:   fmt.Sprintf("%s-set-secret", name1),
+			BackupSecretName: fmt.Sprintf("%s-backup-secret", name1),
+			BackupPVC:        "backup-pvc",
 			Resources: map[string]string{
 				"pd.resources.limits.cpu":        "1000m",
 				"pd.resources.limits.memory":     "2Gi",
@@ -114,8 +113,8 @@ func main() {
 			Monitor: true,
 		},
 		{
-			Namespace:        "e2e-cluster2",
-			ClusterName:      "e2e-cluster2",
+			Namespace:        name2,
+			ClusterName:      name2,
 			OperatorTag:      "master",
 			PDImage:          fmt.Sprintf("pingcap/pd:%s", beginTidbVersion),
 			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", beginTidbVersion),
@@ -124,9 +123,9 @@ func main() {
 			Password:         "admin",
 			InitSql:          initSql,
 			UserName:         "root",
-			InitSecretName:   "demo-set-secret",
-			BackupSecretName: "demo-backup-secret",
-			BackupPVC:        "test-backup",
+			InitSecretName:   fmt.Sprintf("%s-set-secret", name2),
+			BackupSecretName: fmt.Sprintf("%s-backup-secret", name2),
+			BackupPVC:        "backup-pvc",
 			Resources: map[string]string{
 				"pd.resources.limits.cpu":        "1000m",
 				"pd.resources.limits.memory":     "2Gi",
@@ -178,51 +177,56 @@ func main() {
 
 	var workloads []workload.Workload
 	for _, clusterInfo := range clusterInfos {
-		workload := ddl.New(clusterInfo.DSN("test"), 4, 10)
+		workload := ddl.New(clusterInfo.DSN("test"), 1, 1)
 		workloads = append(workloads, workload)
 	}
 
 	err = workload.Run(func() error {
-		podUIDsMaps := make([]map[string]types.UID, len(clusterInfos))
 
-		for i, clusterInfo := range clusterInfos {
-			podUIDsMaps[i], err = oa.GetPodUIDMap(clusterInfo)
-			if err != nil {
-				return err
-			}
+		for _, clusterInfo := range clusterInfos {
 			clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
 			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
 				return err
 			}
 		}
-		for i, clusterInfo := range clusterInfos {
+		for _, clusterInfo := range clusterInfos {
 			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
-			if err := oa.CheckScaledCorrectly(clusterInfo, podUIDsMaps[i]); err != nil {
 				return err
 			}
 		}
 
-		for i, clusterInfo := range clusterInfos {
-			podUIDsMaps[i], err = oa.GetPodUIDMap(clusterInfo)
-			if err != nil {
-				return err
-			}
-			clusterInfo = clusterInfo.ScaleTiDB(1).ScaleTiKV(3).ScalePD(3)
+		for _, clusterInfo := range clusterInfos {
+			clusterInfo = clusterInfo.ScalePD(3)
 			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
 				return err
 			}
-
 		}
-		for i, clusterInfo := range clusterInfos {
-			if err := oa.CheckScaleInSafely(clusterInfo); err != nil {
-				return err
-			}
+		for _, clusterInfo := range clusterInfos {
 			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
 				return err
 			}
-			if err := oa.CheckScaledCorrectly(clusterInfo, podUIDsMaps[i]); err != nil {
+		}
+
+		for _, clusterInfo := range clusterInfos {
+			clusterInfo = clusterInfo.ScaleTiKV(3)
+			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+				return err
+			}
+		}
+		for _, clusterInfo := range clusterInfos {
+			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+				return err
+			}
+		}
+
+		for _, clusterInfo := range clusterInfos {
+			clusterInfo = clusterInfo.ScaleTiDB(1)
+			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+				return err
+			}
+		}
+		for _, clusterInfo := range clusterInfos {
+			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
 				return err
 			}
 		}
@@ -235,43 +239,9 @@ func main() {
 	}
 
 	for _, clusterInfo := range clusterInfos {
-
-		// upgrade all cluster components
-		pdNodeMapBeforeUpgrade, err := oa.GetNodeMap(clusterInfo, label.PDLabelVal)
-		if err != nil {
-			glog.Fatal(err)
-		}
-		tikvNodeMapBeforeUpgrade, err := oa.GetNodeMap(clusterInfo, label.TiKVLabelVal)
-		if err != nil {
-			glog.Fatal(err)
-		}
-
 		clusterInfo = clusterInfo.UpgradeAll(toTidbVersion)
-
 		if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
 			glog.Fatal(err)
-		}
-		if err = oa.CheckUpgradeProgress(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-
-		pdNodeMapAfterUpgrade, err := oa.GetNodeMap(clusterInfo, label.PDLabelVal)
-		if err != nil {
-			glog.Fatal(err)
-		}
-		tikvNodeMapAfterUpgrade, err := oa.GetNodeMap(clusterInfo, label.TiKVLabelVal)
-		if err != nil {
-			glog.Fatal(err)
-		}
-
-		if !reflect.DeepEqual(pdNodeMapAfterUpgrade, pdNodeMapBeforeUpgrade) {
-			glog.Fatal("pd node map changed: %v != %v", pdNodeMapAfterUpgrade, pdNodeMapBeforeUpgrade)
-		}
-		if !reflect.DeepEqual(tikvNodeMapAfterUpgrade, tikvNodeMapBeforeUpgrade) {
-			glog.Fatal("tikv node map changed: %v != %v", tikvNodeMapAfterUpgrade, tikvNodeMapBeforeUpgrade)
 		}
 	}
 
@@ -285,7 +255,9 @@ func main() {
 	backupClusterInfo := clusterInfos[0]
 	restoreClusterInfo := &tests.TidbClusterInfo{}
 	copier.Copy(restoreClusterInfo, backupClusterInfo)
-	restoreClusterInfo.ClusterName = restoreClusterInfo.ClusterName + "-restore"
+	restoreClusterInfo.ClusterName = restoreClusterInfo.ClusterName + "-other"
+	restoreClusterInfo.InitSecretName = fmt.Sprintf("%s-set-secret", restoreClusterInfo.ClusterName)
+	restoreClusterInfo.BackupSecretName = fmt.Sprintf("%s-backup-secret", restoreClusterInfo.ClusterName)
 
 	if err = oa.CleanTidbCluster(restoreClusterInfo); err != nil {
 		glog.Fatal(err)

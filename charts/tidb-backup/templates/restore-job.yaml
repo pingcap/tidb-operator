@@ -1,8 +1,8 @@
-{{- if .Values.restore.create }}
+{{- if eq .Values.mode "restore" }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Values.clusterName }}-restore
+  name: {{ .Values.clusterName }}-restore-{{ .Values.name }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -20,7 +20,7 @@ spec:
       restartPolicy: OnFailure
       containers:
       - name: tidb-restore-job
-        image: {{ .Values.restore.image }}
+        image: {{ .Values.image.backup }}
         command:
         - /bin/sh
         - -c
@@ -29,33 +29,47 @@ spec:
         volumeMounts:
         - name: data
           mountPath: "/data"
-      {{- if .Values.restore.gcp }}
+      {{- if .Values.gcp }}
         - name: gcp-credentials
           mountPath: "/gcp"
           readOnly: true
       {{- end }}
         env:
-        - name: MY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-      {{- if .Values.restore.gcp }}
+        - name: BACKUP_NAME
+          value: {{ .Values.name | quote }}
+      {{- if .Values.gcp }}
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: /gcp/credentials.json
       {{- end }}
+      {{- if .Values.ceph }}
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.ceph.secretName }}
+              key: access_key
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.ceph.secretName }}
+              key: secret_key
+      {{- end }}
+        - name: TIDB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secretName }}
+              key: user
         - name: TIDB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: {{ .Values.clusterName }}-restore
-              key: user-password
+              name: {{ .Values.secretName }}
+              key: password
       volumes:
       - name: data
         persistentVolumeClaim:
-          claimName: {{ .Values.clusterName }}-restore
-    {{- if .Values.restore.gcp }}
+          claimName: {{ .Values.name }}
+    {{- if .Values.gcp }}
       - name: gcp-credentials
         secret:
-          secretName: {{ .Values.clusterName }}-restore
+          secretName: {{ .Values.gcp.secretName }}
     {{- end }}
 {{- end }}
-

@@ -392,30 +392,30 @@ watch "kubectl get svc -n tidb"
 When you see `demo-tidb` appear, you can `Control + C` to stop watching. Then the service is ready to connect to!
 
 ```sh
-# Get the TiDB password
-PASSWORD=$(kubectl get secret -n tidb demo-tidb -o jsonpath="{.data.password}" | base64 --decode | awk '{print $6}')
-echo ${PASSWORD}
-
-# Connect to TiDB
 kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb -o jsonpath='{.spec.clusterIP}') -p
 ```
 
-Or just:
+Or you can forward ports and run a mysql client locally:
 
 ```sh
 kubectl -n tidb port-forward demo-tidb-0 4000:4000 &>/tmp/port-forward.log &
+mysql -h 127.0.0.1 -u root -P 4000 --default-character-set=utf8 -p
 ```
 
-Then open a new terminal:
+Try out some mysql commands:
 
 ```sh
-mysql -h 127.0.0.1 -u root -P 4000 --default-character-set=utf8 -p
-
-# Then try some sql command:
 select tidb_version();
 ```
 
 It works! :tada:
+
+If you did not specify a password in helm, set one now:
+
+```sh
+SET PASSWORD FOR 'root'@'%' =
+```
+
 
 ### Monitoring with Grafana
 

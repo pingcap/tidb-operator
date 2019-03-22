@@ -14,6 +14,7 @@
 package e2e
 
 import (
+	"bytes"
 	"fmt"
 	"os/exec"
 	"sort"
@@ -23,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo" // revive:disable:dot-imports
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -41,18 +43,28 @@ var (
 	kubeCli kubernetes.Interface
 )
 
-type clusterFixture struct {
+type clusterSpec struct {
 	ns          string
 	clusterName string
-	cases       []testCase
+
+	// values override the specified helm values
+	values map[string]string
 }
 
-type testCase func(ns, name string)
+type clusterFixture struct {
+	clusterSpec
+
+	cases []testCase
+}
+
+type testCase func(cluster clusterSpec)
 
 var fixtures = []clusterFixture{
 	{
-		ns:          "ns-1",
-		clusterName: "cluster-name-1",
+		clusterSpec: clusterSpec{
+			ns:          "ns-1",
+			clusterName: "cluster-name-1",
+		},
 		cases: []testCase{
 			testCreate,
 			testScale,
@@ -60,8 +72,13 @@ var fixtures = []clusterFixture{
 		},
 	},
 	{
-		ns:          "ns-1",
-		clusterName: "cluster-name-2",
+		clusterSpec: clusterSpec{
+			ns:          "ns-1",
+			clusterName: "cluster-name-2",
+			values: map[string]string{
+				"tidb.separateSlowLog": "true",
+			},
+		},
 		cases: []testCase{
 			testCreate,
 			testUpgrade,
@@ -69,8 +86,13 @@ var fixtures = []clusterFixture{
 		},
 	},
 	{
-		ns:          "ns-2",
-		clusterName: "cluster-name-1",
+		clusterSpec: clusterSpec{
+			ns:          "ns-2",
+			clusterName: "cluster-name-1",
+			values: map[string]string{
+				"tidb.separateSlowLog": "false",
+			},
+		},
 		cases: []testCase{
 			testCreate,
 			testScale,
@@ -88,6 +110,15 @@ var fixtures = []clusterFixture{
 	// },
 }
 
+func buildSetFlag(spec clusterSpec) string {
+	var buffer bytes.Buffer
+	buffer.WriteString(fmt.Sprintf("clusterName=%s,tidb.passwordSecretName=%s", spec.clusterName, spec.ns+"-"+spec.clusterName))
+	for k, v := range spec.values {
+		buffer.WriteString(fmt.Sprintf(",%s=%s", k, v))
+	}
+	return buffer.String()
+}
+
 func clearOperator() error {
 	for _, fixture := range fixtures {
 		_, err := execCmd(fmt.Sprintf("helm del --purge %s", fmt.Sprintf("%s-%s", fixture.ns, fixture.clusterName)))
@@ -97,6 +128,10 @@ func clearOperator() error {
 
 		_, err = execCmd(fmt.Sprintf("kubectl delete pvc -n %s --all", fixture.ns))
 		if err != nil {
+			return err
+		}
+		err = kubeCli.CoreV1().Secrets(fixture.ns).Delete(fixture.ns+"-"+fixture.clusterName, nil)
+		if err != nil && !apierrs.IsNotFound(err) {
 			return err
 		}
 	}

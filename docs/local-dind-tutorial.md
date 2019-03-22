@@ -109,13 +109,6 @@ To access the TiDB cluster, use `kubectl port-forward` to expose the services to
 
 - Access TiDB using the MySQL client
 
-    1. Get the TiDB password
-
-	    ```sh
-		$ PASSWORD=$(kubectl get secret -n tidb demo-tidb -ojsonpath="{.data.password}" | base64 --decode | awk '{print $6}')
-		$ echo ${PASSWORD}
-		```
-
     1. Use `kubectl` to forward the host machine port to the TiDB service port:
 
         ```sh

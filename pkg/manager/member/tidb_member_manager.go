@@ -14,6 +14,7 @@
 package member
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
@@ -28,6 +29,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/listers/apps/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+)
+
+const (
+	slowQueryLogVolumeName = "slowlog"
+	slowQueryLogDir        = "/var/log/tidb"
+	slowQueryLogFile       = slowQueryLogDir + "/slowlog"
 )
 
 type tidbMemberManager struct {
@@ -240,6 +247,86 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		},
 	}
 
+	var containers []corev1.Container
+	if tc.Spec.TiDB.SeparateSlowLog {
+		// mount a shared volume and tail the slow log to STDOUT using a sidecar.
+		vols = append(vols, corev1.Volume{
+			Name: slowQueryLogVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+		volMounts = append(volMounts, corev1.VolumeMount{Name: slowQueryLogVolumeName, MountPath: slowQueryLogDir})
+		containers = append(containers, corev1.Container{
+			Name:            v1alpha1.SlowLogTailerMemberType.String(),
+			Image:           controller.GetSlowLogTailerImage(tc),
+			ImagePullPolicy: tc.Spec.TiDB.SlowLogTailer.ImagePullPolicy,
+			Resources:       util.ResourceRequirement(tc.Spec.TiDB.SlowLogTailer.ContainerSpec),
+			VolumeMounts: []corev1.VolumeMount{
+				{Name: slowQueryLogVolumeName, MountPath: slowQueryLogDir},
+			},
+			Command: []string{
+				"sh",
+				"-c",
+				fmt.Sprintf("touch %s; tail -n0 -F %s;", slowQueryLogFile, slowQueryLogFile),
+			},
+		})
+	}
+
+	slowLogFileEnvVal := ""
+	if tc.Spec.TiDB.SeparateSlowLog {
+		slowLogFileEnvVal = slowQueryLogFile
+	}
+	envs := []corev1.EnvVar{
+		{
+			Name:  "CLUSTER_NAME",
+			Value: tc.GetName(),
+		},
+		{
+			Name:  "TZ",
+			Value: tc.Spec.Timezone,
+		},
+		{
+			Name:  "BINLOG_ENABLED",
+			Value: strconv.FormatBool(tc.Spec.TiDB.BinlogEnabled),
+		},
+		{
+			Name:  "SLOW_LOG_FILE",
+			Value: slowLogFileEnvVal,
+		},
+	}
+
+	containers = append(containers, corev1.Container{
+		Name:            v1alpha1.TiDBMemberType.String(),
+		Image:           tc.Spec.TiDB.Image,
+		Command:         []string{"/bin/sh", "/usr/local/bin/tidb_start_script.sh"},
+		ImagePullPolicy: tc.Spec.TiDB.ImagePullPolicy,
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "server",
+				ContainerPort: int32(4000),
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				Name:          "status", // pprof, status, metrics
+				ContainerPort: int32(10080),
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
+		VolumeMounts: volMounts,
+		Resources:    util.ResourceRequirement(tc.Spec.TiDB.ContainerSpec),
+		Env:          envs,
+		ReadinessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/status",
+					Port: intstr.FromInt(10080),
+				},
+			},
+			InitialDelaySeconds: int32(10),
+		},
+	})
+
 	tidbLabel := label.New().Instance(instanceName).TiDB()
 	tidbSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -264,51 +351,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 						label.New().Instance(instanceName).TiDB(),
 						tc.Spec.TiDB.NodeSelector,
 					),
-					Containers: []corev1.Container{
-						{
-							Name:            v1alpha1.TiDBMemberType.String(),
-							Image:           tc.Spec.TiDB.Image,
-							Command:         []string{"/bin/sh", "/usr/local/bin/tidb_start_script.sh"},
-							ImagePullPolicy: tc.Spec.TiDB.ImagePullPolicy,
-							Ports: []corev1.ContainerPort{
-								{
-									Name:          "server",
-									ContainerPort: int32(4000),
-									Protocol:      corev1.ProtocolTCP,
-								},
-								{
-									Name:          "status", // pprof, status, metrics
-									ContainerPort: int32(10080),
-									Protocol:      corev1.ProtocolTCP,
-								},
-							},
-							VolumeMounts: volMounts,
-							Resources:    util.ResourceRequirement(tc.Spec.TiDB.ContainerSpec),
-							Env: []corev1.EnvVar{
-								{
-									Name:  "CLUSTER_NAME",
-									Value: tc.GetName(),
-								},
-								{
-									Name:  "TZ",
-									Value: tc.Spec.Timezone,
-								},
-								{
-									Name:  "BINLOG_ENABLED",
-									Value: strconv.FormatBool(tc.Spec.TiDB.BinlogEnabled),
-								},
-							},
-							ReadinessProbe: &corev1.Probe{
-								Handler: corev1.Handler{
-									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/status",
-										Port: intstr.FromInt(10080),
-									},
-								},
-								InitialDelaySeconds: int32(10),
-							},
-						},
-					},
+					Containers:    containers,
 					RestartPolicy: corev1.RestartPolicyAlways,
 					Tolerations:   tc.Spec.TiDB.Tolerations,
 					Volumes:       vols,
