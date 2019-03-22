@@ -259,7 +259,17 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterInfo) error {
 		glog.Infof("deploy tidb cluster end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	}()
 
-	err := oa.CreateSecret(info)
+	namespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: info.Namespace,
+		},
+	}
+	_, err := oa.kubeCli.CoreV1().Namespaces().Create(namespace)
+	if err != nil {
+		return fmt.Errorf("failed to create namespace[%s]:%v", info.Namespace, err)
+	}
+
+	err = oa.CreateSecret(info)
 	if err != nil {
 		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
 	}
