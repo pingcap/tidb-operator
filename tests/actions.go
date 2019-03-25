@@ -333,7 +333,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 
 	setStr := label.New().Instance(info.ClusterName).String()
 
-	resources := []string{"pvc"}
+	resources := []string{"jobs", "pvc"}
 	for _, resource := range resources {
 		if res, err := exec.Command("kubectl", "delete", resource, "-n", info.Namespace, "-l",
 			setStr).CombinedOutput(); err != nil {
