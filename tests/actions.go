@@ -335,8 +335,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 
 	resources := []string{"jobs", "pvc"}
 	for _, resource := range resources {
-		if res, err := exec.Command("kubectl", "delete", resource, "-n", info.Namespace, "-l",
-			setStr).CombinedOutput(); err != nil {
+		if res, err := exec.Command("kubectl", "delete", resource, "-n", info.Namespace, "--all").CombinedOutput(); err != nil {
 			return fmt.Errorf("failed to delete %s: %v, %s", resource, err, string(res))
 		}
 	}
