@@ -56,6 +56,9 @@ stability-test-docker: stability-test-build
 stability-test-push: stability-test-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest"
 
+fault-trigger:
+	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/fault-trigger/bin/fault-trigger tests/cmd/fault-trigger/*.go
+
 test:
 	@echo "Run unit tests"
 	@$(GOTEST) ./pkg/... -coverprofile=coverage.txt -covermode=atomic && echo "\nUnit tests run successfully!"

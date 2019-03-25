@@ -29,7 +29,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/golang/glog"
-	"github.com/jinzhu/copier"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
 	"github.com/pingcap/tidb-operator/tests/pkg/workload"
@@ -275,18 +274,6 @@ func main() {
 	}
 
 	fa := tests.NewFaultTriggerAction(cli, kubeCli, conf)
-	if err := fa.StopETCD("172.16.4.171"); err != nil {
-		glog.Fatal(err)
-	}
-
-	time.Sleep(30 * time.Second)
-
-	if err := fa.StartETCD("172.16.4.171"); err != nil {
-		glog.Fatal(err)
-	}
-
-	time.Sleep(1 * time.Minute)
-
 	if err := testFailover(kubeCli, oa, fa, conf, clusterInfos); err != nil {
 		glog.Fatal(err)
 	}
