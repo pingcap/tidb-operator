@@ -116,6 +116,7 @@ type OperatorInfo struct {
 	Image          string
 	Tag            string
 	SchedulerImage string
+	SchedulerTag   string
 	LogLevel       string
 }
 
@@ -196,6 +197,25 @@ func (tc *TidbClusterInfo) TidbClusterHelmSetString(m map[string]string) string 
 	return strings.Join(arr, ",")
 }
 
+func (oi *OperatorInfo) OperatorHelmSetString(m map[string]string) string {
+	set := map[string]string{
+		"operatorImage":                  oi.Image,
+		"controllerManager.autoFailover": "true",
+		"scheduler.kubeSchedulerImage":   oi.SchedulerImage,
+		"controllerManager.logLevel":     oi.LogLevel,
+		"scheduler.logLevel":             "2",
+	}
+	if oi.SchedulerTag != "" {
+		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
+	}
+
+	arr := make([]string, 0, len(set))
+	for k, v := range set {
+		arr = append(arr, fmt.Sprintf("%s=%s", k, v))
+	}
+	return strings.Join(arr, ",")
+}
+
 func (oa *operatorActions) DeployOperator(info *OperatorInfo) error {
 	if info.Tag != "e2e" {
 		if err := cloneOperatorRepo(); err != nil {
@@ -209,17 +229,11 @@ func (oa *operatorActions) DeployOperator(info *OperatorInfo) error {
 	cmd := fmt.Sprintf(`helm install /charts/%s/tidb-operator \
 		--name %s \
 		--namespace %s \
-		--set operatorImage=%s \
-		--set controllerManager.autoFailover=true \
-		--set scheduler.kubeSchedulerImage=%s \
-		--set controllerManager.logLevel=%s \
-		--set scheduler.logLevel=2`,
+		--set-string %s`,
 		info.Tag,
 		info.ReleaseName,
 		info.Namespace,
-		info.Image,
-		info.SchedulerImage,
-		info.LogLevel)
+		info.OperatorHelmSetString(nil))
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {

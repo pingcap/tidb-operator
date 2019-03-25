@@ -59,7 +59,8 @@ func main() {
 		ReleaseName:    "operator",
 		Image:          conf.OperatorImage,
 		Tag:            conf.OperatorTag,
-		SchedulerImage: "gcr.io/google-containers/hyperkube:v1.12.1",
+		SchedulerImage: "mirantis/hypokube",
+		SchedulerTag:   "final",
 		LogLevel:       "2",
 	}
 
