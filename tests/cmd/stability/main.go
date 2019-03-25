@@ -279,7 +279,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Minute)
+	time.Sleep(30 * time.Second)
 
 	if err := fa.StartETCD("172.16.4.171"); err != nil {
 		glog.Fatal(err)

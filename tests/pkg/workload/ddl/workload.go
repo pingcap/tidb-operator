@@ -41,7 +41,7 @@ func (w *DDLWorkload) Enter() error {
 		return errors.New("already in ddl workload context")
 	}
 	w.ctx, w.cancel = context.WithCancel(context.Background())
-	go internal.Run(w.ctx, w.DSN, w.Concurrency, w.Tables, false, internal.SerialDDLTest)
+	go internal.Run(w.ctx, w.DSN, w.Concurrency, w.Tables, false, internal.ParallelDDLTest)
 	return nil
 }
 
