@@ -265,7 +265,7 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterInfo) error {
 		},
 	}
 	_, err := oa.kubeCli.CoreV1().Namespaces().Create(namespace)
-	if err != nil {
+	if err != nil && !errors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create namespace[%s]:%v", info.Namespace, err)
 	}
 
