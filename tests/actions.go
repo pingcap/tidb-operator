@@ -199,11 +199,11 @@ func (tc *TidbClusterInfo) TidbClusterHelmSetString(m map[string]string) string 
 
 func (oi *OperatorInfo) OperatorHelmSetString(m map[string]string) string {
 	set := map[string]string{
-		"operatorImage":                  oi.Image,
-		"controllerManager.autoFailover": "true",
-		"scheduler.kubeSchedulerImage":   oi.SchedulerImage,
-		"controllerManager.logLevel":     oi.LogLevel,
-		"scheduler.logLevel":             "2",
+		"operatorImage":                    oi.Image,
+		"controllerManager.autoFailover":   "true",
+		"scheduler.kubeSchedulerImageName": oi.SchedulerImage,
+		"controllerManager.logLevel":       oi.LogLevel,
+		"scheduler.logLevel":               "2",
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
