@@ -14,29 +14,39 @@
 package manager
 
 import (
+	"fmt"
 	"os/exec"
 
 	"github.com/golang/glog"
 )
 
+const (
+	ETCDService    = "etcd"
+	KubeletService = "kubelet"
+)
+
+// StartETCD starts the etcd service
+func (m *Manager) StartETCD() error {
+	return m.systemctlStartService(ETCDService)
+}
+
+// StopETCD stops the etcd service
+func (m *Manager) StopETCD() error {
+	return m.systemctlStopService(ETCDService)
+}
+
 // StartKubelet starts the kubelet service
 func (m *Manager) StartKubelet() error {
-	shell := "systemctl start kubelet"
-	cmd := exec.Command("/bin/sh", "-c", shell)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
-		return err
-	}
-
-	glog.Info("kubelet is started")
-
-	return nil
+	return m.systemctlStartService(KubeletService)
 }
 
 // StopKubelet stops the kubelet service
 func (m *Manager) StopKubelet() error {
-	shell := "systemctl stop kubelet"
+	return m.systemctlStopService(KubeletService)
+}
+
+func (m *Manager) systemctlStartService(serviceName string) error {
+	shell := fmt.Sprintf("systemctl start %s", serviceName)
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -44,7 +54,21 @@ func (m *Manager) StopKubelet() error {
 		return err
 	}
 
-	glog.Info("kubelet is stopped")
+	glog.Infof("%s is started", serviceName)
+
+	return nil
+}
+
+func (m *Manager) systemctlStopService(serviceName string) error {
+	shell := fmt.Sprintf("systemctl stop %s", serviceName)
+	cmd := exec.Command("/bin/sh", "-c", shell)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		return err
+	}
+
+	glog.Infof("%s is stopped", serviceName)
 
 	return nil
 }
