@@ -108,7 +108,7 @@ func TestStopVM(t *testing.T) {
 	g.Expect(err).To(HaveOccurred())
 }
 
-func TestStartETCD(t *testing.T) {
+func TestStartAndStopService(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	resp := &api.Response{
@@ -123,79 +123,16 @@ func TestStartETCD(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	cli := NewClient(Config{
-		Addr: ts.URL,
-	})
-
-	err := cli.StartETCD()
-	g.Expect(err).NotTo(HaveOccurred())
-}
-
-func TestStopETCD(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	resp := &api.Response{
-		Action:     "stopETCD",
-		StatusCode: 200,
-		Message:    "OK",
+	cli := &client{
+		cfg: Config{
+			Addr: ts.URL,
+		},
+		httpCli: http.DefaultClient,
 	}
 
-	respJSON, _ := json.Marshal(resp)
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, string(respJSON))
-	}))
-	defer ts.Close()
-
-	cli := NewClient(Config{
-		Addr: ts.URL,
-	})
-
-	err := cli.StopETCD()
+	err := cli.startService(manager.ETCDService)
 	g.Expect(err).NotTo(HaveOccurred())
-}
 
-func TestStartKubelet(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	resp := &api.Response{
-		Action:     "startKubelet",
-		StatusCode: 200,
-		Message:    "OK",
-	}
-
-	respJSON, _ := json.Marshal(resp)
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, string(respJSON))
-	}))
-	defer ts.Close()
-
-	cli := NewClient(Config{
-		Addr: ts.URL,
-	})
-
-	err := cli.StartKubelet()
-	g.Expect(err).NotTo(HaveOccurred())
-}
-
-func TestStopKubelet(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	resp := &api.Response{
-		Action:     "stopKubelet",
-		StatusCode: 200,
-		Message:    "OK",
-	}
-
-	respJSON, _ := json.Marshal(resp)
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, string(respJSON))
-	}))
-	defer ts.Close()
-
-	cli := NewClient(Config{
-		Addr: ts.URL,
-	})
-
-	err := cli.StopKubelet()
+	err = cli.stopService(manager.ETCDService)
 	g.Expect(err).NotTo(HaveOccurred())
 }

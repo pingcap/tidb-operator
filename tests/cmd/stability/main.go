@@ -282,9 +282,57 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Minute)
+	time.Sleep(30 * time.Second)
 
 	if err := fa.StartETCD("172.16.4.171"); err != nil {
+		glog.Fatal(err)
+	}
+
+	time.Sleep(10 * time.Second)
+
+	if err := fa.StopKubeAPIServer("172.16.4.171"); err != nil {
+		glog.Fatal(err)
+	}
+
+	time.Sleep(30 * time.Second)
+
+	if err := fa.StartKubeAPIServer("172.16.4.171"); err != nil {
+		glog.Fatal(err)
+	}
+
+	time.Sleep(10 * time.Second)
+
+	if err := fa.StopKubeScheduler("172.16.4.171"); err != nil {
+		glog.Fatal(err)
+	}
+
+	time.Sleep(30 * time.Second)
+
+	if err := fa.StartKubeScheduler("172.16.4.171"); err != nil {
+		glog.Fatal(err)
+	}
+
+	time.Sleep(10 * time.Second)
+
+	if err := fa.StopKubeControllerManager("172.16.4.171"); err != nil {
+		glog.Fatal(err)
+	}
+
+	time.Sleep(30 * time.Second)
+
+	if err := fa.StartKubeControllerManager("172.16.4.171"); err != nil {
+		glog.Fatal(err)
+	}
+
+	time.Sleep(10 * time.Second)
+
+	if err := fa.StopKubelet("172.16.4.171"); err != nil {
+		glog.Fatal(err)
+	}
+
+	time.Sleep(30 * time.Second)
+
+	if err := fa.StartKubelet("172.16.4.171"); err != nil {
 		glog.Fatal(err)
 	}
 }
