@@ -107,7 +107,7 @@ func main() {
 		{
 			Namespace:        name2,
 			ClusterName:      name2,
-			OperatorTag:      "master",
+			OperatorTag:      conf.OperatorTag,
 			PDImage:          fmt.Sprintf("pingcap/pd:%s", initTidbVersion),
 			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", initTidbVersion),
 			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
