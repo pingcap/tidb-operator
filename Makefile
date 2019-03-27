@@ -53,6 +53,18 @@ e2e-docker: e2e-build
 e2e-build:
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
 
+stability-test-build:
+	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test tests/cmd/stability/*.go
+
+stability-test-docker: stability-test-build
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest" tests/images/stability-test
+
+stability-test-push: stability-test-docker
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest"
+
+fault-trigger:
+	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/fault-trigger/bin/fault-trigger tests/cmd/fault-trigger/*.go
+
 test:
 	@echo "Run unit tests"
 	@$(GOTEST) ./pkg/... -coverprofile=coverage.txt -covermode=atomic && echo "\nUnit tests run successfully!"
