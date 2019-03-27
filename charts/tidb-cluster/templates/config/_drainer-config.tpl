@@ -11,7 +11,7 @@ detect-interval = {{ .Values.binlog.drainer.detectInterval | default 10 }}
 data-dir = "/data"
 
 # a comma separated list of PD endpoints
-pd-urls = "http://{{ .Values.clusterName }}-pd:2379"
+pd-urls = "http://{{ template "cluster.name" . }}-pd:2379"
 
 #[security]
 # Path of file that contains list of trusted SSL CAs for connection with cluster components.

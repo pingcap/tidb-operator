@@ -1,7 +1,7 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
-  name: {{ .Values.clusterName }}
+  name: {{ template "cluster.name" . }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
