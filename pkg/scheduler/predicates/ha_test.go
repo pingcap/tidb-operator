@@ -425,6 +425,86 @@ func TestHAFilter(t *testing.T) {
 			},
 		},
 		{
+			name:    "one node, one replicas, return one node",
+			podFn:   newHAPDPod,
+			nodesFn: fakeOneNode,
+			pvcGetFn: func(ns string, pvcName string) (*corev1.PersistentVolumeClaim, error) {
+				return &corev1.PersistentVolumeClaim{
+					TypeMeta:   metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "pd-cluster-1-pd-0"},
+					Status:     corev1.PersistentVolumeClaimStatus{Phase: corev1.ClaimPending},
+				}, nil
+			},
+			podListFn:     podListFn(map[string][]int32{}),
+			tcGetFn:       tcGetOneReplicasFn,
+			acquireLockFn: acquireSuccess,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(1))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1"}))
+			},
+		},
+		{
+			name:    "two nodes, one replicas, return two nodes",
+			podFn:   newHAPDPod,
+			nodesFn: fakeTwoNodes,
+			pvcGetFn: func(ns string, pvcName string) (*corev1.PersistentVolumeClaim, error) {
+				return &corev1.PersistentVolumeClaim{
+					TypeMeta:   metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "pd-cluster-1-pd-0"},
+					Status:     corev1.PersistentVolumeClaimStatus{Phase: corev1.ClaimPending},
+				}, nil
+			},
+			podListFn:     podListFn(map[string][]int32{}),
+			tcGetFn:       tcGetOneReplicasFn,
+			acquireLockFn: acquireSuccess,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(2))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2"}))
+			},
+		},
+		{
+			name:    "one node, two replicas, return one node",
+			podFn:   newHAPDPod,
+			nodesFn: fakeOneNode,
+			pvcGetFn: func(ns string, pvcName string) (*corev1.PersistentVolumeClaim, error) {
+				return &corev1.PersistentVolumeClaim{
+					TypeMeta:   metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "pd-cluster-1-pd-0"},
+					Status:     corev1.PersistentVolumeClaimStatus{Phase: corev1.ClaimPending},
+				}, nil
+			},
+			podListFn:     podListFn(map[string][]int32{}),
+			tcGetFn:       tcGetTwoReplicasFn,
+			acquireLockFn: acquireSuccess,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(1))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1"}))
+			},
+		},
+		{
+			name:    "two nodes, two replicas, return two nodes",
+			podFn:   newHAPDPod,
+			nodesFn: fakeTwoNodes,
+			pvcGetFn: func(ns string, pvcName string) (*corev1.PersistentVolumeClaim, error) {
+				return &corev1.PersistentVolumeClaim{
+					TypeMeta:   metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "pd-cluster-1-pd-0"},
+					Status:     corev1.PersistentVolumeClaimStatus{Phase: corev1.ClaimPending},
+				}, nil
+			},
+			podListFn:     podListFn(map[string][]int32{}),
+			tcGetFn:       tcGetTwoReplicasFn,
+			acquireLockFn: acquireSuccess,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(2))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2"}))
+			},
+		},
+		{
 			name:    "one node, no pod scheduled, return the node",
 			podFn:   newHAPDPod,
 			nodesFn: fakeOneNode,
@@ -735,6 +815,32 @@ func tcGetFn(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: v1alpha1.PDSpec{Replicas: 3},
+		},
+	}, nil
+}
+
+func tcGetOneReplicasFn(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+	return &v1alpha1.TidbCluster{
+		TypeMeta: metav1.TypeMeta{Kind: "TidbCluster", APIVersion: "v1alpha1"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      tcName,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			PD: v1alpha1.PDSpec{Replicas: 1},
+		},
+	}, nil
+}
+
+func tcGetTwoReplicasFn(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+	return &v1alpha1.TidbCluster{
+		TypeMeta: metav1.TypeMeta{Kind: "TidbCluster", APIVersion: "v1alpha1"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      tcName,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			PD: v1alpha1.PDSpec{Replicas: 2},
 		},
 	}, nil
 }
