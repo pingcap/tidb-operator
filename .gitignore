@@ -3,6 +3,8 @@ images/tidb-operator/bin/
 images/tidb-operator-e2e/bin/
 images/tidb-operator-e2e/tidb-cluster/
 images/tidb-operator-e2e/tidb-operator/
+tests/images/e2e/tidb-cluster/
+tests/images/e2e/tidb-operator/
 *.tar
 tmp/
 data/
