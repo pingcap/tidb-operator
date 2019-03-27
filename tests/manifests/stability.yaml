@@ -1,0 +1,55 @@
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: tidb-operator-e2e
+subjects:
+- kind: ServiceAccount
+  namespace: tidb-operator-e2e
+  name: tidb-operator-e2e
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  namespace: tidb-operator-e2e
+  name: tidb-operator-e2e
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: tidb-operator-e2e
+  name: tidb-operator-stability-test
+spec:
+  serviceAccount: tidb-operator-e2e
+  containers:
+  - name: tidb-operator-e2e
+    image: ""
+    imagePullPolicy: Always
+    command: ["sh", "-c", "/usr/local/bin/stability-test"]
+    volumeMounts:
+    - mountPath: /logDir
+      name: logdir
+    - name: config
+      readOnly: true 
+      mountPath: /etc/e2e
+    env:
+      - name: MY_NODE_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: spec.nodeName
+  volumes:
+  - name: logdir
+    hostPath:
+      path: /var/log
+      type: Directory
+  - name: config
+    configMap:
+      name: tidb-operator-e2e-config 
+      items:
+      - key: e2e-config 
+        path: config.yaml 
+  restartPolicy: Never
