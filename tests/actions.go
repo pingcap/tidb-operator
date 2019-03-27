@@ -120,6 +120,7 @@ type OperatorInfo struct {
 	Image          string
 	Tag            string
 	SchedulerImage string
+	SchedulerTag   string
 	LogLevel       string
 }
 
@@ -200,28 +201,43 @@ func (tc *TidbClusterInfo) TidbClusterHelmSetString(m map[string]string) string 
 	return strings.Join(arr, ",")
 }
 
-func (oa *operatorActions) DeployOperator(info *OperatorInfo) error {
-	if err := cloneOperatorRepo(); err != nil {
-		return err
+func (oi *OperatorInfo) OperatorHelmSetString(m map[string]string) string {
+	set := map[string]string{
+		"operatorImage":                    oi.Image,
+		"controllerManager.autoFailover":   "true",
+		"scheduler.kubeSchedulerImageName": oi.SchedulerImage,
+		"controllerManager.logLevel":       oi.LogLevel,
+		"scheduler.logLevel":               "2",
 	}
-	if err := checkoutTag(info.Tag); err != nil {
-		return err
+	if oi.SchedulerTag != "" {
+		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
+	}
+
+	arr := make([]string, 0, len(set))
+	for k, v := range set {
+		arr = append(arr, fmt.Sprintf("%s=%s", k, v))
+	}
+	return strings.Join(arr, ",")
+}
+
+func (oa *operatorActions) DeployOperator(info *OperatorInfo) error {
+	if info.Tag != "e2e" {
+		if err := cloneOperatorRepo(); err != nil {
+			return err
+		}
+		if err := checkoutTag(info.Tag); err != nil {
+			return err
+		}
 	}
 
 	cmd := fmt.Sprintf(`helm install /charts/%s/tidb-operator \
 		--name %s \
 		--namespace %s \
-		--set operatorImage=%s \
-		--set controllerManager.autoFailover=true \
-		--set scheduler.kubeSchedulerImage=%s \
-		--set controllerManager.logLevel=%s \
-		--set scheduler.logLevel=2`,
+		--set-string %s`,
 		info.Tag,
 		info.ReleaseName,
 		info.Namespace,
-		info.Image,
-		info.SchedulerImage,
-		info.LogLevel)
+		info.OperatorHelmSetString(nil))
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -261,7 +277,17 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterInfo) error {
 		glog.Infof("deploy tidb cluster end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 	}()
 
-	err := oa.CreateSecret(info)
+	namespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: info.Namespace,
+		},
+	}
+	_, err := oa.kubeCli.CoreV1().Namespaces().Create(namespace)
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return fmt.Errorf("failed to create namespace[%s]:%v", info.Namespace, err)
+	}
+
+	err = oa.CreateSecret(info)
 	if err != nil {
 		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
 	}
@@ -317,6 +343,12 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterInfo) error {
 			setStr).CombinedOutput(); err != nil {
 			return fmt.Errorf("failed to delete %s: %v, %s", resource, err, string(res))
 		}
+	}
+
+	// delete all jobs
+	allJobsSet := label.Label{}.Instance(info.ClusterName).String()
+	if res, err := exec.Command("kubectl", "delete", "jobs", "-n", info.Namespace, "-l", allJobsSet).CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to delete jobs: %v, %s", err, string(res))
 	}
 
 	patchPVCmd := fmt.Sprintf(`kubectl get pv -l %s=%s,%s=%s --output=name | xargs -I {} \
