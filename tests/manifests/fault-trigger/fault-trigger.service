@@ -1,0 +1,12 @@
+[Unit]
+Description=TiDB Operator fault trigger
+After=network.target
+
+[Service]
+User=root
+ExecStart=/usr/local/bin/fault-trigger
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
