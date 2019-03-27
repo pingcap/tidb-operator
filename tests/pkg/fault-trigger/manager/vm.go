@@ -36,10 +36,14 @@ func (m *Manager) ListVMs() ([]*VM, error) {
 	for _, vm := range vms {
 		vmIP, err := getVMIP(vm.Name)
 		if err != nil {
-			glog.Errorf("can not get vm %s ip", vm.Name)
-			continue
+			glog.Errorf("can not get vm %s ip, try to get from cache", vm.Name)
+			if vmIP, err = m.getVMCache(vm.Name); err != nil {
+				glog.Errorf("failed to get vm ip: %v", err)
+				continue
+			}
 		}
 		vm.IP = vmIP
+		m.setVMCache(vm.Name, vmIP)
 	}
 	return vms, nil
 }
