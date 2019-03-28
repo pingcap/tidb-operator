@@ -118,6 +118,12 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	min := -1
 	minNodeNames := make([]string, 0)
 	for nodeName, podNames := range nodeMap {
+		// replicas less than 3 cannot achieve high availability
+		if replicas < 3 {
+			minNodeNames = append(minNodeNames, nodeName)
+			continue
+		}
+
 		podsCount := len(podNames)
 		if podsCount+1 >= int(replicas+1)/2 {
 			continue
