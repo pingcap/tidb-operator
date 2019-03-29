@@ -22,6 +22,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/jinzhu/copier"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -39,15 +40,12 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	conf := tests.NewConfig()
-	err := conf.Parse()
-	if err != nil {
-		glog.Fatalf("failed to parse config: %v", err)
-	}
-
 	go func() {
 		glog.Info(http.ListenAndServe("localhost:6060", nil))
 	}()
+
+	conf := tests.NewConfig()
+	conf.ParseOrDie()
 
 	// TODO read these args from config
 	beginTidbVersion := "v2.1.0"

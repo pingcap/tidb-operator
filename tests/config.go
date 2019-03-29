@@ -59,6 +59,13 @@ func (c *Config) Parse() error {
 	return nil
 }
 
+func (c *Config) ParseOrDie() {
+	err := c.Parse()
+	if err != nil {
+		panic(err)
+	}
+}
+
 func (c *Config) configFromFile(path string) error {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {

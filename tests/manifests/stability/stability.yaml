@@ -29,15 +29,15 @@ spec:
   - name: tidb-operator-stability
     image: ""
     imagePullPolicy: Always
-    command: ["sh", "-c", "/usr/local/bin/stability"]
+    command: ["sh", "-c", "/usr/local/bin/stability-test"]
     args:
-    - --config=/etc/e2e/config.yaml
+    - --config=/etc/tidb-operator-stability/config.yaml
     volumeMounts:
     - mountPath: /logDir
       name: logdir
     - name: config
       readOnly: true
-      mountPath: /etc/e2e
+      mountPath: /etc/tidb-operator-stability
   volumes:
   - name: logdir
     hostPath:
@@ -45,8 +45,8 @@ spec:
       type: Directory
   - name: config
     configMap:
-      name: tidb-operator-e2e-config
+      name: tidb-operator-stability-config
       items:
-      - key: e2e-config
+      - key: config
         path: config.yaml
   restartPolicy: Never
