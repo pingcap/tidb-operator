@@ -73,6 +73,7 @@ spec:
         - /bin/prometheus
         - --log.level={{ .Values.monitor.prometheus.logLevel }}
         - --config.file=/etc/prometheus/prometheus.yml
+        - --web.enable-admin-api
         - --storage.tsdb.path=/data/prometheus
         - --storage.tsdb.retention={{ .Values.monitor.prometheus.reserveDays }}d
         ports:
