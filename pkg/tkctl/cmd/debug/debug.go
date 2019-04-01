@@ -14,9 +14,11 @@
 package debug
 
 import (
+	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/kubernetes/typed/core/v1"
+	"os"
 )
 
 const (
@@ -40,25 +42,29 @@ Run a container in a running pod, this container will join the namespaces of an 
 	defaultImage = "nicolaka/netshoot:latest"
 )
 
+// TODO: implementation
 // NewCmdDebug creates the debug subcommand which helps container debugging
-func NewCmdDebug(configFlags *genericclioptions.ConfigFlags, streams genericclioptions.IOStreams) *cobra.Command {
-	return nil
+func NewCmdDebug(tkcContext *config.TkcContext, streams genericclioptions.IOStreams) *cobra.Command {
+	return &cobra.Command{
+		Use:   "debug",
+		Short: "Not implemented",
+		Run: func(_ *cobra.Command, args []string) {
+			fmt.Fprint(os.Stdout, "not implemented")
+		},
+	}
 }
 
 // DebugOptions specify how to run debug container in a running pod
 type DebugOptions struct {
-
 
 	// Pod select options
 	Namespace string
 	PodName   string
 
 	// Debug options
-	Image          string
-	ContainerName  string
-	Command        []string
-
-	KubeClient v1.CoreV1Interface
+	Image         string
+	ContainerName string
+	Command       []string
 }
 
 // Complete populate default values for DebugOptions
@@ -84,6 +90,3 @@ func (p *DebugOptions) Run() error {
 	// Hold and cleanup
 	return nil
 }
-
-
-

@@ -93,6 +93,7 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0-20170531160350-a96e63847dc3 // indirect
 	gopkg.in/square/go-jose.v2 v2.3.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
+	gopkg.in/yaml.v2 v2.2.1
 	k8s.io/api v0.0.0-20181128191700-6db15a15d2d3
 	k8s.io/apiextensions-apiserver v0.0.0-20190118124337-a384d17938fe // indirect
 	k8s.io/apimachinery v0.0.0-20181128191346-49ce2735e507

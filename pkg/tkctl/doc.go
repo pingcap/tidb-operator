@@ -11,24 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pdctl
-
-import (
-	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
-	"github.com/spf13/cobra"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"os"
-)
-
-// TODO: implementation
-// NewCmdPdctl creates the pdctl subcommand
-func NewCmdPdctl(tkcContext *config.TkcContext, streams genericclioptions.IOStreams) *cobra.Command {
-	return &cobra.Command{
-		Use:   "pdctl",
-		Short: "Not implemented",
-		Run: func(_ *cobra.Command, args []string) {
-			fmt.Fprint(os.Stdout, "not implemented")
-		},
-	}
-}
+// Package tkctl provides the functions used by the `tkc` command line tool.
+// The functions are kept in this package to better support unit testing.
+// `tkc` is highly inspired by `kubectl` and `istioctl`
+package tkctl

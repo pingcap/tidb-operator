@@ -14,12 +14,22 @@
 package ctop
 
 import (
+	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"os"
 )
 
+// TODO: implementation
 // NewCmdTop creates the ctop subcommand
-func NewCmdCtop(configFlags *genericclioptions.ConfigFlags, streams genericclioptions.IOStreams) *cobra.Command {
+func NewCmdCtop(tkcContext *config.TkcContext, streams genericclioptions.IOStreams) *cobra.Command {
 	// create pod in target host, bind docker.sock or runc sock in RO mode, filter the target container
-	return nil
+	return &cobra.Command{
+		Use:   "ctop",
+		Short: "Not implemented",
+		Run: func(_ *cobra.Command, args []string) {
+			fmt.Fprint(os.Stdout, "not implemented")
+		},
+	}
 }

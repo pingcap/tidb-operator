@@ -15,65 +15,85 @@ package cmd
 
 import (
 	"flag"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/ctop"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/debug"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/get"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/info"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/list"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/pdctl"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/use"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/spf13/cobra"
+	"io"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-
 )
 
-// NewTkcCommand creates the `tkc` command and its nested children.
+const (
+	tkcLongDescription = `
+		"tkc"(TiDB kubernetes control) is a command line interface for cloud tidb management and troubleshooting.
+`
+)
+
+// NewTkcCommand creates the root `tkc` command and its nested children.
 func NewTkcCommand(streams genericclioptions.IOStreams) *cobra.Command {
-	// Root command to which all subcommands are added.
+	// Root command that all the subcommands are added to
 	rootCmd := &cobra.Command{
 		Use:   "tkc",
 		Short: "TiDB kubernetes control.",
-		Long: `TiDB kubernetes command line interface for cluster management and troubleshooting.
-`,
+		Long:  tkcLongDescription,
 		Run:   runHelp,
 	}
 
 	rootCmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 
-	configFlags := genericclioptions.NewConfigFlags()
-	configFlags.AddFlags(rootCmd.PersistentFlags())
-	f := cmdutil.NewFactory(configFlags)
-	f.KubernetesClientSet()
+	// Reuse kubectl global flags to provide namespace, context and credential options
+	kubeFlags := genericclioptions.NewConfigFlags()
+	kubeFlags.AddFlags(rootCmd.PersistentFlags())
+	tkcContext := config.NewTkcContext(kubeFlags)
 
 	groups := templates.CommandGroups{
-		//{
-		//	Message: "Cluster Management Commands:",
-		//	Commands: []*cobra.Command{
-		//
-		//	},
-		//},
-		//{
-		//	Message: "Volume and Backup Commands:",
-		//	Commands: []*cobra.Command{
-		//
-		//	},
-		//},
-		//{
-		//	Message: "Troubleshooting Commands:",
-		//	Commands: []*cobra.Command{
-		//		debug.NewCmdDebug(configFlags, streams),
-		//		pdctl.NewCmdPdctl(configFlags, streams),
-		//		ctop.NewCmdCtop(configFlags, streams),
-		//	},
-		//},
-		//{
-		//	Message: "Cluster Meta Commands:",
-		//	Commands: []*cobra.Command{
-		//
-		//	},
-		//},
+		{
+			Message: "Cluster Management Commands:",
+			Commands: []*cobra.Command{
+				list.NewCmdList(tkcContext, streams),
+				get.NewCmdGet(tkcContext, streams),
+				info.NewCmdInfo(tkcContext, streams),
+				use.NewCmdUse(tkcContext, streams),
+			},
+		},
+		{
+			Message: "Troubleshooting Commands:",
+			Commands: []*cobra.Command{
+				debug.NewCmdDebug(tkcContext, streams),
+				pdctl.NewCmdPdctl(tkcContext, streams),
+				ctop.NewCmdCtop(tkcContext, streams),
+			},
+		},
 	}
 	groups.Add(rootCmd)
 	templates.ActsAsRootCommand(rootCmd, []string{"options"}, groups...)
+	rootCmd.AddCommand(NewCmdOptions(streams.Out))
 
 	return rootCmd
 }
 
-func runHelp(cmd *cobra.Command, args []string) {
+func runHelp(cmd *cobra.Command, _ []string) {
 	cmd.Help()
+}
+
+// NewCmdOptions implements the options command
+func NewCmdOptions(out io.Writer) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "options",
+		Short: "Print the list of flags inherited by all commands",
+		Run: func(cmd *cobra.Command, args []string) {
+			cmd.Usage()
+		},
+	}
+
+	cmd.SetOutput(out)
+
+	templates.UseOptionsTemplates(cmd)
+	return cmd
 }
