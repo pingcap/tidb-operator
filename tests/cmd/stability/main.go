@@ -14,36 +14,38 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apiserver/pkg/util/logs"
+	"k8s.io/client-go/kubernetes"
+
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
 	"github.com/pingcap/tidb-operator/tests/pkg/workload"
 	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
-	"k8s.io/apiserver/pkg/util/logs"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	conf := tests.NewConfig()
-	err := conf.Parse()
-	if err != nil {
-		glog.Fatalf("failed to parse config: %v", err)
-	}
-
 	go func() {
 		glog.Info(http.ListenAndServe("localhost:6060", nil))
 	}()
+
+	conf := tests.NewConfig()
+	conf.ParseOrDie()
 
 	// TODO read these args from config
 	beginTidbVersion := "v2.1.0"
@@ -51,17 +53,9 @@ func main() {
 	operatorTag := "master"
 	operatorImage := "pingcap/tidb-operator:latest"
 
-	cfg, err := rest.InClusterConfig()
+	cli, kubeCli, err := tests.CreateKubeClient()
 	if err != nil {
-		glog.Fatalf("failed to get config: %v", err)
-	}
-	cli, err := versioned.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("failed to create Clientset: %v", err)
-	}
-	kubeCli, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
+		glog.Fatalf("failed to create kubernetes clientset: %v", err)
 	}
 
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
@@ -278,13 +272,213 @@ func main() {
 	}
 
 	fa := tests.NewFaultTriggerAction(cli, kubeCli, conf)
-	if err := fa.StopETCD("172.16.4.171"); err != nil {
+	if err := testFailover(kubeCli, oa, fa, conf, clusterInfos); err != nil {
 		glog.Fatal(err)
 	}
+}
 
-	time.Sleep(1 * time.Minute)
-
-	if err := fa.StartETCD("172.16.4.171"); err != nil {
-		glog.Fatal(err)
+func testFailover(
+	kubeCli kubernetes.Interface,
+	oa tests.OperatorActions,
+	fa tests.FaultTriggerActions,
+	cfg *tests.Config,
+	clusters []*tests.TidbClusterInfo,
+) error {
+	var faultPoint time.Time
+	faultNode, err := getFaultNode(kubeCli)
+	if err != nil {
+		return err
 	}
+
+	physicalNode := getPhysicalNode(faultNode, cfg)
+
+	if physicalNode == "" {
+		err = errors.New("physical node is empty")
+		glog.Error(err.Error())
+		return err
+	}
+
+	glog.Infof("try to stop node [%s:%s]", physicalNode, faultNode)
+	err = wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
+		err = fa.StopNode(physicalNode, faultNode)
+		if err != nil {
+			glog.Errorf("failed stop node [%s:%s]: %v", physicalNode, faultNode, err)
+			return false, nil
+		}
+		faultPoint = time.Now()
+		return true, nil
+	})
+
+	if err != nil {
+		glog.Errorf("test failed when trigger a node [%s:%s] stop,error: %v", physicalNode, faultNode, err)
+		return err
+	}
+
+	// defer start node
+	defer func() {
+		glog.Infof("defer: start node [%s:%s]", physicalNode, faultNode)
+		if err = fa.StartNode(physicalNode, faultNode); err != nil {
+			glog.Errorf("failed start node [%s:%s]: %v", physicalNode, faultNode, err)
+		}
+	}()
+
+	glog.Info("the operator's failover feature should pending some time")
+	if err = checkPendingFailover(oa, clusters, &faultPoint); err != nil {
+		glog.Errorf("pending failover failed: %v", err)
+		return err
+	}
+
+	glog.Info("the operator's failover feature should start.")
+	if err = checkFailover(oa, clusters, faultNode); err != nil {
+		glog.Errorf("check failover failed: %v", err)
+		return err
+	}
+
+	glog.Info("sleep 3 minutes ......")
+	time.Sleep(3 * time.Minute)
+
+	glog.Infof("begin to start node %s %s", physicalNode, faultNode)
+	err = wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
+		err = fa.StartNode(physicalNode, faultNode)
+		if err != nil {
+			glog.Errorf("failed start node [%s:%s]: %v", physicalNode, faultNode, err)
+			return false, nil
+		}
+		return true, nil
+	})
+
+	glog.Infof("begin to check recover after node [%s:%s] start", physicalNode, faultNode)
+	if err = checkRecover(oa, clusters); err != nil {
+		glog.Infof("check recover failed: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func checkRecover(oa tests.OperatorActions, clusters []*tests.TidbClusterInfo) error {
+	return wait.Poll(5*time.Second, 10*time.Minute, func() (bool, error) {
+		var passes []bool
+		for i := range clusters {
+			err := oa.CheckTidbClusterStatus(clusters[i])
+			if err != nil {
+				return false, err
+			}
+			passes = append(passes, true)
+		}
+		for _, pass := range passes {
+			if !pass {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
+}
+
+func checkPendingFailover(oa tests.OperatorActions, clusters []*tests.TidbClusterInfo, faultPoint *time.Time) error {
+	return wait.Poll(5*time.Second, 10*time.Minute, func() (bool, error) {
+		var passes []bool
+		for i := range clusters {
+			pass, err := oa.PendingFailover(clusters[i], faultPoint)
+			if err != nil {
+				return pass, err
+			}
+			passes = append(passes, pass)
+		}
+		for _, pass := range passes {
+			if !pass {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
+}
+
+func checkFailover(oa tests.OperatorActions, clusters []*tests.TidbClusterInfo, faultNode string) error {
+	return wait.Poll(5*time.Second, 25*time.Minute, func() (bool, error) {
+		var passes []bool
+		for i := range clusters {
+			pass, err := oa.CheckFailover(clusters[i], faultNode)
+			if err != nil {
+				return pass, err
+			}
+			passes = append(passes, pass)
+		}
+		for _, pass := range passes {
+			if !pass {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
+
+}
+
+func getMyNodeName() string {
+	return os.Getenv("MY_NODE_NAME")
+}
+
+func getFaultNode(kubeCli kubernetes.Interface) (string, error) {
+	var err error
+	var nodes *v1.NodeList
+	err = wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
+		nodes, err = kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
+		if err != nil {
+			glog.Errorf("trigger node stop failed when get all nodes, error: %v", err)
+			return false, nil
+		}
+
+		return true, nil
+	})
+
+	if err != nil {
+		glog.Errorf("failed to list nodes: %v", err)
+		return "", err
+	}
+
+	if len(nodes.Items) <= 1 {
+		err := errors.New("the number of nodes cannot be less than 1")
+		glog.Error(err.Error())
+		return "", err
+	}
+
+	myNode := getMyNodeName()
+	if myNode == "" {
+		err := errors.New("get own node name is empty")
+		glog.Error(err.Error())
+		return "", err
+	}
+
+	index := rand.Intn(len(nodes.Items))
+	faultNode := nodes.Items[index].Name
+	if faultNode != myNode {
+		return faultNode, nil
+	}
+
+	if index == 0 {
+		faultNode = nodes.Items[index+1].Name
+	} else {
+		faultNode = nodes.Items[index-1].Name
+	}
+
+	if faultNode == myNode {
+		err := fmt.Errorf("there are at least two nodes with the name %s", myNode)
+		glog.Error(err.Error())
+		return "", err
+	}
+
+	return faultNode, nil
+}
+
+func getPhysicalNode(faultNode string, cfg *tests.Config) string {
+	var physicalNode string
+	for _, nodes := range cfg.Nodes {
+		for _, node := range nodes.Nodes {
+			if node == faultNode {
+				physicalNode = nodes.PhysicalNode
+			}
+		}
+	}
+
+	return physicalNode
 }

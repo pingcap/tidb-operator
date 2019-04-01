@@ -1,0 +1,52 @@
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: tidb-operator-stability
+subjects:
+- kind: ServiceAccount
+  namespace: tidb-operator-stability
+  name: tidb-operator-stability
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  namespace: tidb-operator-stability
+  name: tidb-operator-stability
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: tidb-operator-stability
+  name: tidb-operator-stability
+spec:
+  serviceAccount: tidb-operator-stability
+  containers:
+  - name: tidb-operator-stability
+    image: ""
+    imagePullPolicy: Always
+    command: ["sh", "-c", "/usr/local/bin/stability-test"]
+    args:
+    - --config=/etc/tidb-operator-stability/config.yaml
+    volumeMounts:
+    - mountPath: /logDir
+      name: logdir
+    - name: config
+      readOnly: true
+      mountPath: /etc/tidb-operator-stability
+  volumes:
+  - name: logdir
+    hostPath:
+      path: /var/log
+      type: Directory
+  - name: config
+    configMap:
+      name: tidb-operator-stability-config
+      items:
+      - key: config
+        path: config.yaml
+  restartPolicy: Never
