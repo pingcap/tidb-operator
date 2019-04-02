@@ -52,8 +52,8 @@ func (p *PrintFlags) ToPrinter(withKind, withNamespace bool) (printers.ResourceP
 		printer := kubeprinters.NewHumanReadablePrinter(scheme.Codecs.UniversalDecoder(),
 			kubeprinters.PrintOptions{
 				WithNamespace: withNamespace,
-				WithKind: withKind,
-		})
+				WithKind:      withKind,
+			})
 		// Add custom handlers
 		AddHandlers(printer)
 		return printer, nil

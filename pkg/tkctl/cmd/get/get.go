@@ -54,16 +54,15 @@ const (
 )
 
 const (
-	kindPD = "pd"
-	kindTiKV = "tikv"
-	kindTiDB = "tidb"
+	kindPD     = "pd"
+	kindTiKV   = "tikv"
+	kindTiDB   = "tidb"
 	kindVolume = "volume"
-	kindAll = "all"
+	kindAll    = "all"
 )
 
 // GetOptions contains the input to the list command.
 type GetOptions struct {
-
 	LabelSelector   string
 	AllClusters     bool
 	Namespace       string

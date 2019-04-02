@@ -189,7 +189,6 @@ func printVolume(volume *v1.PersistentVolume, options printers.PrintOptions) ([]
 		}
 	}
 
-
 	capacity := unset
 	if volume.Spec.Capacity != nil {
 		if val, ok := volume.Spec.Capacity["storage"]; ok {
