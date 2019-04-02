@@ -14,6 +14,7 @@
 package use
 
 import (
+	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/spf13/cobra"
@@ -26,8 +27,8 @@ const (
 	useLongDesc = `
 		Specify a tidb cluster to use.
 		
-		By using a certain cluster, you may omit --tidbcluster option or <clusterName>
-		option in many control commands.
+		By using a certain cluster, you may omit --tidbcluster option
+		in many control commands.
 `
 	useExample = `
 		# specify a tidb cluster to use
@@ -43,11 +44,15 @@ type UseOptions struct {
 	KubeContext     string
 	Namespace       string
 	TidbClusterName string
+
+	TcCli *versioned.Clientset
+
+	genericclioptions.IOStreams
 }
 
 // NewCmdUse creates the use command.
 func NewCmdUse(tkcContext *config.TkcContext, streams genericclioptions.IOStreams) *cobra.Command {
-	options := &UseOptions{}
+	options := &UseOptions{IOStreams: streams}
 
 	cmd := &cobra.Command{
 		Use:     "use",
@@ -60,16 +65,16 @@ func NewCmdUse(tkcContext *config.TkcContext, streams genericclioptions.IOStream
 		},
 	}
 
-	cmd.Flags().StringVarP(&options.TidbClusterName, "tidbcluster", "t", options.TidbClusterName, "Tidb cluster name")
-
 	return cmd
 }
 
 func (o *UseOptions) Complete(tkcContext *config.TkcContext, cmd *cobra.Command, args []string) error {
+	o.TidbClusterName = tkcContext.TkcOptions.TidbClusterName
+	// 'use' command allows specifying tidb cluster name in args (which overrides options)
 	if len(o.TidbClusterName) == 0 && len(args) == 0 {
 		return cmdutil.UsageErrorf(cmd, useUsage)
 	}
-	if len(o.TidbClusterName) == 0 {
+	if len(args) > 0 {
 		o.TidbClusterName = args[0]
 	}
 
@@ -77,6 +82,15 @@ func (o *UseOptions) Complete(tkcContext *config.TkcContext, cmd *cobra.Command,
 
 	var err error
 	o.Namespace, _, err = kubeConfig.Namespace()
+	if err != nil {
+		return err
+	}
+
+	restConfig, err := kubeConfig.ClientConfig()
+	if err != nil {
+		return err
+	}
+	o.TcCli, err = versioned.NewForConfig(restConfig)
 	if err != nil {
 		return err
 	}
@@ -100,21 +114,15 @@ func (o *UseOptions) Complete(tkcContext *config.TkcContext, cmd *cobra.Command,
 
 func (o *UseOptions) Run(tkcContext *config.TkcContext, args []string) error {
 
-	// For the 'use' command, typically the user wants to switch to another tidb cluster
-	// in a different kube-context or namespace, so it's better to use the raw kubectl context
-	restConfig, err := tkcContext.ToKubectlRestConfig()
-	if err != nil {
-		return err
-	}
-	tcCli, err := versioned.NewForConfig(restConfig)
-	if err != nil {
-		return err
-	}
-	tc, err := tcCli.PingcapV1alpha1().
+	tc, err := o.TcCli.PingcapV1alpha1().
 		TidbClusters(o.Namespace).
 		Get(o.TidbClusterName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	return tkcContext.SwitchTidbCluster(o.KubeContext, tc.Namespace, tc.Name)
+	err = tkcContext.SwitchTidbCluster(o.KubeContext, tc.Namespace, tc.Name)
+	if err == nil {
+		fmt.Fprintf(o.Out, "Tidb cluster switched to %s/%s\n", tc.Namespace, tc.Name)
+	}
+	return err
 }

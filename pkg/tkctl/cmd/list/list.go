@@ -14,10 +14,17 @@
 package list
 
 import (
+	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/genericclioptions/printers"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/scheme"
+	kubeprinters "k8s.io/kubernetes/pkg/printers"
+	"strings"
 )
 
 const (
@@ -34,29 +41,38 @@ const (
 		# filter by namespace
 		tkc list --namespace=foo
 
-		# choose json output format
-		tkc list -o json
+		# get tidb cluster in all namespaces
+		tkc list -A
 `
 )
 
 // ListOptions contains the input to the list command.
 type ListOptions struct {
-	IsHumanReadablePrinter bool
-	PrintWithOpenAPICols   bool
-
-	LabelSelector string
+	OutputFormat  string
 	AllNamespaces bool
 	Namespace     string
 
-	ServerPrint bool
+	JSONYamlPrintFlags *genericclioptions.JSONYamlPrintFlags
+
+	ToPrinter func(bool) (printers.ResourcePrinter, error)
 
 	genericclioptions.IOStreams
+}
+
+// NewListOptions returns a ListOptions.
+func NewListOptions(streams genericclioptions.IOStreams) *ListOptions {
+	return &ListOptions{
+		JSONYamlPrintFlags: genericclioptions.NewJSONYamlPrintFlags(),
+
+		IOStreams: streams,
+	}
 }
 
 // NewCmdList creates the list command which lists all the tidb cluster
 // in the specified kubernetes cluster and sync to local config file.
 // List only searches for pingcap.com/tidbclusters custom resources.
 func NewCmdList(tkcContext *config.TkcContext, streams genericclioptions.IOStreams) *cobra.Command {
+	options := NewListOptions(streams)
 
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -64,29 +80,88 @@ func NewCmdList(tkcContext *config.TkcContext, streams genericclioptions.IOStrea
 		Long:    listLongDesc,
 		Example: listExample,
 		Run: func(cmd *cobra.Command, args []string) {
+			cmdutil.CheckErr(options.Complete(tkcContext, cmd, args))
+			cmdutil.CheckErr(options.Run(tkcContext, cmd, args))
 		},
 		SuggestFor: []string{"ls", "ps"},
 	}
+
+	options.JSONYamlPrintFlags.AddFlags(cmd)
+
+	cmd.Flags().StringVarP(&options.OutputFormat, "output", "o", options.OutputFormat,
+		"Output format. json|yaml|default.")
+	cmd.Flags().BoolVarP(&options.AllNamespaces, "all-namespaces", "A", false,
+		"whether list tidb clusters in all namespaces")
 	return cmd
 }
 
-// NewListOptions returns a ListOptions.
-func NewListOptions(streams genericclioptions.IOStreams) *ListOptions {
-	return &ListOptions{
-
-		IOStreams:   streams,
-		ServerPrint: true,
+func (o *ListOptions) Complete(tkcContext *config.TkcContext, cmd *cobra.Command, args []string) error {
+	clientConfig, err := tkcContext.ToTkcClientConfig()
+	if err != nil {
+		return err
 	}
-}
+	namespace, _, err := clientConfig.Namespace()
+	if err != nil {
+		return err
+	}
+	o.Namespace = namespace
 
-func (o *ListOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
+	o.ToPrinter = func(withNamespace bool) (printers.ResourcePrinter, error) {
+		output := strings.ToLower(o.OutputFormat)
+		if output == "json" || output == "yaml" {
+			printer, err := o.JSONYamlPrintFlags.ToPrinter(output)
+			if err != nil {
+				return nil, err
+			}
+			return printer, nil
+		} else {
+			// Reuse kubectl HumanReadablePrinter
+			printer := kubeprinters.NewHumanReadablePrinter(scheme.Codecs.UniversalDecoder(),
+				kubeprinters.PrintOptions{WithNamespace: withNamespace})
+			// Add custom handlers
+			readable.AddHandlers(printer)
+			return printer, nil
+		}
+	}
 	return nil
 }
 
-func (o *ListOptions) Validate(cmd *cobra.Command) error {
-	return nil
-}
+func (o *ListOptions) Run(tkcContext *config.TkcContext, cmd *cobra.Command, args []string) error {
+	r := tkcContext.TkcBuilder().
+		NamespaceParam(o.Namespace).DefaultNamespace().AllNamespaces(o.AllNamespaces).
+		SingleResourceType().ResourceTypes("tidbcluster").
+		SelectAllParam(true).
+		Unstructured().
+		ContinueOnError().
+		Latest().
+		Flatten().
+		Do()
 
-func (o *ListOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
+	if err := r.Err(); err != nil {
+		return err
+	}
+
+	printer, err := o.ToPrinter(o.AllNamespaces)
+	if err != nil {
+		return err
+	}
+
+	infos, err := r.Infos()
+	if err != nil {
+		return err
+	}
+
+	w := kubeprinters.GetNewTabWriter(o.Out)
+	for _, info := range infos {
+		internalObj, err := v1alpha1.Scheme.ConvertToVersion(info.Object, v1alpha1.SchemeGroupVersion)
+		if err != nil {
+			glog.V(1).Info(err)
+			printer.PrintObj(info.Object, w)
+		} else {
+			printer.PrintObj(internalObj, w)
+		}
+	}
+	w.Flush()
+
 	return nil
 }

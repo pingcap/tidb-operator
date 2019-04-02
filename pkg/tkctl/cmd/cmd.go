@@ -37,6 +37,9 @@ const (
 
 // NewTkcCommand creates the root `tkc` command and its nested children.
 func NewTkcCommand(streams genericclioptions.IOStreams) *cobra.Command {
+
+	options := &config.TkcOptions{}
+
 	// Root command that all the subcommands are added to
 	rootCmd := &cobra.Command{
 		Use:   "tkc",
@@ -45,12 +48,15 @@ func NewTkcCommand(streams genericclioptions.IOStreams) *cobra.Command {
 		Run:   runHelp,
 	}
 
+	rootCmd.PersistentFlags().StringVarP(&options.TidbClusterName,
+		"tidbcluster", "t", options.TidbClusterName, "Tidb cluster name")
+
 	rootCmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 
 	// Reuse kubectl global flags to provide namespace, context and credential options
 	kubeFlags := genericclioptions.NewConfigFlags()
 	kubeFlags.AddFlags(rootCmd.PersistentFlags())
-	tkcContext := config.NewTkcContext(kubeFlags)
+	tkcContext := config.NewTkcContext(kubeFlags, options)
 
 	groups := templates.CommandGroups{
 		{
@@ -82,7 +88,7 @@ func runHelp(cmd *cobra.Command, _ []string) {
 	cmd.Help()
 }
 
-// NewCmdOptions implements the options command
+// NewCmdOptions implements the options command which shows all global options
 func NewCmdOptions(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "options",

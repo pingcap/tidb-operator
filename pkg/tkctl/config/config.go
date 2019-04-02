@@ -25,11 +25,42 @@ import (
 	"os/user"
 	"path/filepath"
 	"sync"
+
+	restclient "k8s.io/client-go/rest"
 )
 
 const (
 	tcConfigRelativePath = "/.kube/tidbcluster-config"
 )
+
+// TkcOptions stores persistent flags (global flags) for all tkc subcommands
+type TkcOptions struct {
+	TidbClusterName string
+}
+
+// TkcClientConfig is loaded client configuration that ready to use
+type TkcClientConfig struct {
+	TidbClusterConfig *TidbClusterConfig
+
+	kubeClientConfig clientcmd.ClientConfig
+}
+
+// TidbClusterName returns the tidb cluster name and whether tidb cluster has been set
+func (c *TkcClientConfig) TidbClusterName() (string, bool) {
+	if c.TidbClusterConfig != nil && len(c.TidbClusterConfig.ClusterName) > 0 {
+		return c.TidbClusterConfig.ClusterName, true
+	}
+	return "", false
+}
+
+// Namespace returns
+func (c *TkcClientConfig) Namespace() (string, bool, error) {
+	return c.kubeClientConfig.Namespace()
+}
+
+func (c *TkcClientConfig) RestConfig() (*restclient.Config, error) {
+	return c.kubeClientConfig.ClientConfig()
+}
 
 // TkcContext wraps the configuration and credential for tidb cluster accessing.
 type TkcContext struct {
@@ -37,28 +68,20 @@ type TkcContext struct {
 
 	TidbClusterConfig *TidbClusterConfig
 
+	TkcOptions *TkcOptions
+
 	loadingLock  sync.Mutex
-	clientConfig clientcmd.ClientConfig
+	clientConfig *TkcClientConfig
 }
 
 // NewTkcContext create a TkcContext
-func NewTkcContext(kubeFlags *genericclioptions.ConfigFlags) *TkcContext {
-	return &TkcContext{ConfigFlags: kubeFlags}
-}
-
-// TkcBuilder returns a builder that operates on generic objects under tkc context
-func (c *TkcContext) TkcBuilder() *resource.Builder {
-	return resource.NewBuilder(c)
-}
-
-// KubeBuilder returns a builder that operates on generic objects under original kubectl context
-func (c *TkcContext) KubeBuilder() *resource.Builder {
-	return resource.NewBuilder(c.ConfigFlags)
+func NewTkcContext(kubeFlags *genericclioptions.ConfigFlags, tkcOptions *TkcOptions) *TkcContext {
+	return &TkcContext{ConfigFlags: kubeFlags, TkcOptions: tkcOptions}
 }
 
 // ToTkcConfigLoader create the tkc client config for tidb cluster which overrides
 // the tidb cluster context and namespace to the raw kubectl config
-func (c *TkcContext) ToTkcConfigLoader() (clientcmd.ClientConfig, error) {
+func (c *TkcContext) ToTkcClientConfig() (*TkcClientConfig, error) {
 	if c.clientConfig != nil {
 		return c.clientConfig, nil
 	}
@@ -71,7 +94,7 @@ func (c *TkcContext) ToTkcConfigLoader() (clientcmd.ClientConfig, error) {
 		return c.clientConfig, nil
 	}
 
-	// try loading tidbcluster config
+	// try loading tidb cluster config
 	tcConfigFile, err := tcConfigLocation()
 	if err != nil {
 		glog.V(4).Info("Error getting tidb cluster config file location")
@@ -79,9 +102,15 @@ func (c *TkcContext) ToTkcConfigLoader() (clientcmd.ClientConfig, error) {
 		tcConfig, err := LoadFile(tcConfigFile)
 		if err != nil {
 			glog.V(4).Info("Error reading tidb cluster config file")
+			c.TidbClusterConfig = &TidbClusterConfig{}
 		} else {
 			c.TidbClusterConfig = tcConfig
 		}
+	}
+
+	// override tidb cluster name from command line
+	if len(c.TkcOptions.TidbClusterName) > 0 {
+		c.TidbClusterConfig.ClusterName = c.TkcOptions.TidbClusterName
 	}
 
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
@@ -96,25 +125,41 @@ func (c *TkcContext) ToTkcConfigLoader() (clientcmd.ClientConfig, error) {
 
 	overrides := c.collectOverrides()
 
-	var clientConfig clientcmd.ClientConfig
+	var kubeConfig clientcmd.ClientConfig
 
 	// we only have an interactive prompt when a password is allowed
 	if c.Password == nil {
-		clientConfig = clientcmd.NewNonInteractiveClientConfig(*mergedConfig, overrides.CurrentContext, overrides, loadingRules)
+		kubeConfig = clientcmd.NewNonInteractiveClientConfig(*mergedConfig, overrides.CurrentContext, overrides, loadingRules)
 	} else {
-		clientConfig = clientcmd.NewInteractiveClientConfig(*mergedConfig, overrides.CurrentContext, overrides, os.Stdin, loadingRules)
+		kubeConfig = clientcmd.NewInteractiveClientConfig(*mergedConfig, overrides.CurrentContext, overrides, os.Stdin, loadingRules)
 	}
 
-	return clientConfig, nil
+	tkcConfig := &TkcClientConfig{
+		kubeClientConfig:  kubeConfig,
+		TidbClusterConfig: c.TidbClusterConfig,
+	}
+
+	c.clientConfig = tkcConfig
+	return c.clientConfig, nil
+}
+
+// TkcBuilder returns a builder that operates on generic objects under tkc context
+func (c *TkcContext) TkcBuilder() *resource.Builder {
+	return resource.NewBuilder(c)
+}
+
+// KubeBuilder returns a builder that operates on generic objects under original kubectl context
+func (c *TkcContext) KubeBuilder() *resource.Builder {
+	return resource.NewBuilder(c.ConfigFlags)
 }
 
 // ToRestConfig overrides ConfigFlags.ToRestConfig()
 func (c *TkcContext) ToRESTConfig() (*rest.Config, error) {
-	configLoader, err := c.ToTkcConfigLoader()
+	tkcWrapper, err := c.ToTkcClientConfig()
 	if err != nil {
 		return nil, err
 	}
-	return configLoader.ClientConfig()
+	return tkcWrapper.kubeClientConfig.ClientConfig()
 }
 
 // ToKubectlRestConfig returns the rest config under kubectl context
