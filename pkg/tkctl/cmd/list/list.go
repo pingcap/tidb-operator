@@ -20,11 +20,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/cli-runtime/pkg/genericclioptions/printers"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/scheme"
 	kubeprinters "k8s.io/kubernetes/pkg/printers"
-	"strings"
 )
 
 const (
@@ -48,13 +45,10 @@ const (
 
 // ListOptions contains the input to the list command.
 type ListOptions struct {
-	OutputFormat  string
 	AllNamespaces bool
 	Namespace     string
 
-	JSONYamlPrintFlags *genericclioptions.JSONYamlPrintFlags
-
-	ToPrinter func(bool) (printers.ResourcePrinter, error)
+	PrintFlags *readable.PrintFlags
 
 	genericclioptions.IOStreams
 }
@@ -62,7 +56,7 @@ type ListOptions struct {
 // NewListOptions returns a ListOptions.
 func NewListOptions(streams genericclioptions.IOStreams) *ListOptions {
 	return &ListOptions{
-		JSONYamlPrintFlags: genericclioptions.NewJSONYamlPrintFlags(),
+		PrintFlags: readable.NewPrintFlags(),
 
 		IOStreams: streams,
 	}
@@ -86,10 +80,8 @@ func NewCmdList(tkcContext *config.TkcContext, streams genericclioptions.IOStrea
 		SuggestFor: []string{"ls", "ps"},
 	}
 
-	options.JSONYamlPrintFlags.AddFlags(cmd)
+	options.PrintFlags.AddFlags(cmd)
 
-	cmd.Flags().StringVarP(&options.OutputFormat, "output", "o", options.OutputFormat,
-		"Output format. json|yaml|default.")
 	cmd.Flags().BoolVarP(&options.AllNamespaces, "all-namespaces", "A", false,
 		"whether list tidb clusters in all namespaces")
 	return cmd
@@ -105,24 +97,6 @@ func (o *ListOptions) Complete(tkcContext *config.TkcContext, cmd *cobra.Command
 		return err
 	}
 	o.Namespace = namespace
-
-	o.ToPrinter = func(withNamespace bool) (printers.ResourcePrinter, error) {
-		output := strings.ToLower(o.OutputFormat)
-		if output == "json" || output == "yaml" {
-			printer, err := o.JSONYamlPrintFlags.ToPrinter(output)
-			if err != nil {
-				return nil, err
-			}
-			return printer, nil
-		} else {
-			// Reuse kubectl HumanReadablePrinter
-			printer := kubeprinters.NewHumanReadablePrinter(scheme.Codecs.UniversalDecoder(),
-				kubeprinters.PrintOptions{WithNamespace: withNamespace})
-			// Add custom handlers
-			readable.AddHandlers(printer)
-			return printer, nil
-		}
-	}
 	return nil
 }
 
@@ -141,7 +115,7 @@ func (o *ListOptions) Run(tkcContext *config.TkcContext, cmd *cobra.Command, arg
 		return err
 	}
 
-	printer, err := o.ToPrinter(o.AllNamespaces)
+	printer, err := o.PrintFlags.ToPrinter(false, o.AllNamespaces)
 	if err != nil {
 		return err
 	}

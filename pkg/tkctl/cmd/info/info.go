@@ -43,7 +43,7 @@ const (
 		# get specified tidb cluster info
 		tkc info -t another-cluster
 `
-	infoUsage = `expected 'info CLUSTER_NAME' for the info command or 
+	infoUsage = `expected 'info -t CLUSTER_NAME' for the info command or 
 using 'tkc use' to set tidb cluster first.
 `
 )
@@ -108,14 +108,16 @@ func (o *InfoOptions) Complete(tkcContext *config.TkcContext, cmd *cobra.Command
 	if err != nil {
 		return err
 	}
-	o.TcCli, err = versioned.NewForConfig(restConfig)
+	tcCli, err := versioned.NewForConfig(restConfig)
 	if err != nil {
 		return err
 	}
-	o.KubeCli, err = kubernetes.NewForConfig(restConfig)
+	o.TcCli = tcCli
+	kubeCli, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return err
 	}
+	o.KubeCli = kubeCli
 
 	return nil
 }

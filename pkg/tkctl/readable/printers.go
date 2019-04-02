@@ -57,7 +57,8 @@ func AddHandlers(h printers.PrintHandler) {
 	}
 	h.TableHandler(tidbClusterColumns, printTidbClusterList)
 	h.TableHandler(tidbClusterColumns, printTidbCluster)
-	// TODO: separate different column definitions for PD/TiKV/TiDB Pod
+	// TODO: separate different column definitions for PD/TiKV/TiDB Pod,
+	// e.g. show store-id for tikv, show member-id for pd
 	commonPodColumns := []metav1beta1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
 		{Name: "Ready", Type: "string", Description: "The aggregate readiness state of this pod for accepting traffic."},
@@ -188,7 +189,14 @@ func printVolume(volume *v1.PersistentVolume, options printers.PrintOptions) ([]
 		}
 	}
 
-	row.Cells = append(row.Cells, volume.Name, claim, volume.Status.Phase, host, local)
+
+	capacity := unset
+	if volume.Spec.Capacity != nil {
+		if val, ok := volume.Spec.Capacity["storage"]; ok {
+			capacity = val.String()
+		}
+	}
+	row.Cells = append(row.Cells, volume.Name, claim, volume.Status.Phase, capacity, host, local)
 
 	return []metav1beta1.TableRow{row}, nil
 }
