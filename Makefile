@@ -5,8 +5,8 @@ ifeq ($(GO111), 1)
 $(error Please upgrade your Go compiler to 1.11 or higher version)
 endif
 
-GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=linux GOARCH=amd64
-GO     := $(GOENV) GO111MODULE=on go build
+GOENV  := GO15VENDOREXPERIMENT="1" GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+GO     := $(GOENV) go build
 GOTEST := CGO_ENABLED=0 GO111MODULE=on go test -v -cover
 
 LDFLAGS = $(shell ./hack/version.sh)
@@ -42,16 +42,28 @@ e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest"
 
 e2e-docker: e2e-build
-	mkdir -p images/tidb-operator-e2e/bin
-	mv tests/e2e/e2e.test images/tidb-operator-e2e/bin/
-	[[ -d images/tidb-operator-e2e/tidb-operator ]] && rm -r images/tidb-operator-e2e/tidb-operator || true
-	[[ -d images/tidb-operator-e2e/tidb-cluster ]] && rm -r images/tidb-operator-e2e/tidb-cluster || true
-	cp -r charts/tidb-operator images/tidb-operator-e2e/
-	cp -r charts/tidb-cluster images/tidb-operator-e2e/
-	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" images/tidb-operator-e2e
+	[[ -d tests/images/e2e/tidb-operator ]] && rm -r tests/images/e2e/tidb-operator || true
+	[[ -d tests/images/e2e/tidb-cluster ]] && rm -r tests/images/e2e/tidb-cluster || true
+	[[ -d tests/images/e2e/tidb-backup ]] && rm -r tests/images/e2e/tidb-backup || true
+	cp -r charts/tidb-operator tests/images/e2e
+	cp -r charts/tidb-cluster tests/images/e2e
+	cp -r charts/tidb-backup tests/images/e2e
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" tests/images/e2e
 
 e2e-build:
-	$(GOENV) ginkgo build tests/e2e
+	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
+
+stability-test-build:
+	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test tests/cmd/stability/*.go
+
+stability-test-docker: stability-test-build
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest" tests/images/stability-test
+
+stability-test-push: stability-test-docker
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest"
+
+fault-trigger:
+	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/fault-trigger/bin/fault-trigger tests/cmd/fault-trigger/*.go
 
 test:
 	@echo "Run unit tests"

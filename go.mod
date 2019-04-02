@@ -42,9 +42,10 @@ require (
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c // indirect
 	github.com/hpcloud/tail v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.7 // indirect
+	github.com/jinzhu/copier v0.0.0-20180308034124-7e38e58719c3
 	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/json-iterator/go v1.1.5 // indirect
-	github.com/juju/errors v0.0.0-20180806074554-22422dad46e1 // indirect
+	github.com/juju/errors v0.0.0-20180806074554-22422dad46e1
 	github.com/juju/loggo v0.0.0-20180524022052-584905176618 // indirect
 	github.com/juju/testing v0.0.0-20180920084828-472a3e8b2073 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
@@ -62,7 +63,7 @@ require (
 	github.com/pingcap/kvproto v0.0.0-20180606093822-b7ba8ea1c0b4
 	github.com/pingcap/pd v2.1.0-beta+incompatible
 	github.com/pkg/errors v0.8.0 // indirect
-	github.com/prometheus/client_golang v0.8.0 // indirect
+	github.com/prometheus/client_golang v0.8.0
 	github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910 // indirect
 	github.com/prometheus/common v0.0.0-20180801064454-c7de2306084e // indirect
 	github.com/prometheus/procfs v0.0.0-20180725123919-05ee40e3a273 // indirect
@@ -80,6 +81,7 @@ require (
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1 // indirect
 	golang.org/x/crypto v0.0.0-20180807104621-f027049dab0a // indirect
+	golang.org/x/net v0.0.0-20190108225652-1e06a53dbb7e
 	golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421 // indirect
 	golang.org/x/sys v0.0.0-20180807162357-acbc56fc7007 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
