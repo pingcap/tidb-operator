@@ -2,12 +2,18 @@ package tests
 
 import (
 	"fmt"
+	"math/rand"
+	"os"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -17,8 +23,10 @@ const (
 )
 
 type FaultTriggerActions interface {
-	StopNode(physicalNode string, node string) error
+	StopNode() (string, string, time.Time, error)
+	StopNodeOrDie() (string, string, time.Time)
 	StartNode(physicalNode string, node string) error
+	StartNodeOrDie(physicalNode string, node string)
 	StopETCD(nodes ...string) error
 	StartETCD(nodes ...string) error
 	StopKubelet(node string) error
@@ -54,23 +62,44 @@ type faultTriggerActions struct {
 	cfg       *Config
 }
 
-func (fa *faultTriggerActions) StopNode(physicalNode string, node string) error {
+func (fa *faultTriggerActions) StopNode() (string, string, time.Time, error) {
+	now := time.Now()
+	node, err := getFaultNode(fa.kubeCli)
+	if err != nil {
+		return "", "", now, err
+	}
+	glog.Infof("selecting %s as the node to failover", node)
+
+	physicalNode := getPhysicalNode(node, fa.cfg)
+
+	if physicalNode == "" {
+		return "", "", now, fmt.Errorf("physical node is empty")
+	}
+
 	faultCli := client.NewClient(client.Config{
 		Addr: fa.genFaultTriggerAddr(physicalNode),
 	})
 
-	err := faultCli.StopVM(&manager.VM{
+	if err := faultCli.StopVM(&manager.VM{
 		IP: node,
-	})
-
-	if err != nil {
+	}); err != nil {
 		glog.Errorf("failed to stop node %s on physical node: %s: %v", node, physicalNode, err)
-		return err
+		return "", "", now, err
 	}
 
 	glog.Infof("node %s on physical node %s is stopped", node, physicalNode)
+	return physicalNode, node, now, nil
+}
 
-	return nil
+func (fa *faultTriggerActions) StopNodeOrDie() (string, string, time.Time) {
+	var pn string
+	var n string
+	var err error
+	var now time.Time
+	if pn, n, now, err = fa.StopNode(); err != nil {
+		panic(err)
+	}
+	return pn, n, now
 }
 
 func (fa *faultTriggerActions) StartNode(physicalNode string, node string) error {
@@ -78,11 +107,22 @@ func (fa *faultTriggerActions) StartNode(physicalNode string, node string) error
 		Addr: fa.genFaultTriggerAddr(physicalNode),
 	})
 
-	err := faultCli.StartVM(&manager.VM{
-		IP: node,
-	})
-
+	vms, err := faultCli.ListVMs()
 	if err != nil {
+		return err
+	}
+
+	glog.Infof("%+v", vms)
+
+	for _, vm := range vms {
+		if vm.IP == node && vm.Status == "running" {
+			return nil
+		}
+	}
+
+	if err := faultCli.StartVM(&manager.VM{
+		IP: node,
+	}); err != nil {
 		glog.Errorf("failed to start node %s on physical node %s: %v", node, physicalNode, err)
 		return err
 	}
@@ -90,6 +130,12 @@ func (fa *faultTriggerActions) StartNode(physicalNode string, node string) error
 	glog.Infof("node %s on physical node %s is started", physicalNode, node)
 
 	return nil
+}
+
+func (fa *faultTriggerActions) StartNodeOrDie(physicalNode string, node string) {
+	if err := fa.StartNode(physicalNode, node); err != nil {
+		panic(err)
+	}
 }
 
 // StopETCD stops the etcd service.
@@ -233,4 +279,69 @@ func (fa *faultTriggerActions) serviceAction(node string, serverName string, act
 
 func (fa *faultTriggerActions) genFaultTriggerAddr(node string) string {
 	return fmt.Sprintf("%s:%d", node, fa.cfg.FaultTriggerPort)
+}
+
+func getMyNodeName() string {
+	return os.Getenv("MY_NODE_NAME")
+}
+
+func getFaultNode(kubeCli kubernetes.Interface) (string, error) {
+	var err error
+	var nodes *v1.NodeList
+	err = wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
+		nodes, err = kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
+		if err != nil {
+			glog.Errorf("trigger node stop failed when get all nodes, error: %v", err)
+			return false, nil
+		}
+
+		return true, nil
+	})
+
+	if err != nil {
+		glog.Errorf("failed to list nodes: %v", err)
+		return "", err
+	}
+
+	if len(nodes.Items) <= 1 {
+		return "", fmt.Errorf("the number of nodes cannot be less than 1")
+	}
+
+	myNode := getMyNodeName()
+	if myNode == "" {
+		return "", fmt.Errorf("get own node name is empty")
+	}
+
+	index := rand.Intn(len(nodes.Items))
+	faultNode := nodes.Items[index].Name
+	if faultNode != myNode {
+		return faultNode, nil
+	}
+
+	if index == 0 {
+		faultNode = nodes.Items[index+1].Name
+	} else {
+		faultNode = nodes.Items[index-1].Name
+	}
+
+	if faultNode == myNode {
+		err := fmt.Errorf("there are at least two nodes with the name %s", myNode)
+		glog.Error(err.Error())
+		return "", err
+	}
+
+	return faultNode, nil
+}
+
+func getPhysicalNode(faultNode string, cfg *Config) string {
+	var physicalNode string
+	for _, nodes := range cfg.Nodes {
+		for _, node := range nodes.Nodes {
+			if node == faultNode {
+				physicalNode = nodes.PhysicalNode
+			}
+		}
+	}
+
+	return physicalNode
 }

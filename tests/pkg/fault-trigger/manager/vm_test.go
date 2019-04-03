@@ -50,7 +50,7 @@ func TestParseVMs(t *testing.T) {
 	data := `
  Id    Name                           State
 ----------------------------------------------------
- 6     vm2                            running
+ 6     vm2                            shut off
  11    vm3                            running
  12    vm1                            running
  -     vm-template                    shut off
@@ -59,13 +59,16 @@ func TestParseVMs(t *testing.T) {
 
 	var expectedVMs []*VM
 	expectedVMs = append(expectedVMs, &VM{
-		Name: "vm2",
+		Name:   "vm2",
+		Status: "running",
 	})
 	expectedVMs = append(expectedVMs, &VM{
-		Name: "vm3",
+		Name:   "vm3",
+		Status: "running",
 	})
 	expectedVMs = append(expectedVMs, &VM{
-		Name: "vm1",
+		Name:   "vm1",
+		Status: "shut off",
 	})
 	g.Expect(vms).To(Equal(expectedVMs))
 }
