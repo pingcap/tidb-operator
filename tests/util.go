@@ -39,3 +39,18 @@ func CreateKubeClient() (versioned.Interface, kubernetes.Interface, error) {
 
 	return operatorCli, kubeCli, nil
 }
+
+// Keep will keep the fun running in the period, otherwise the fun return error
+func Keep(interval time.Duration, period time.Duration, fun func() error) error {
+	timeline := time.Now().Add(period)
+	for {
+		if time.Now().After(timeline) {
+			break
+		}
+		err := fun()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
