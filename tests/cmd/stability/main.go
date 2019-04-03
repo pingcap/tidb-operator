@@ -57,7 +57,7 @@ func main() {
 	// create database and table and insert a column for test backup and restore
 	initSql := `"create database record;use record;create table test(t char(32))"`
 
-	// two clusters in diffrent namespaces
+	// two clusters in different namespaces
 	clusterName1 := "stability-cluster1"
 	clusterName2 := "stability-cluster2"
 	cluster1 := &tests.TidbClusterConfig{
