@@ -153,14 +153,10 @@ func main() {
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
-	// TODO insert data
-	//for _, clusterInfo := range clusterInfos {
-	//	go func() {
-	//		if err = oa.BeginInsertDataTo(clusterInfo); err != nil {
-	//			glog.Fatal(err)
-	//		}
-	//	}()
-	//}
+	//go func() {
+	//	oa.BeginInsertDataTo(cluster1)
+	//	oa.BeginInsertDataTo(cluster2)
+	//}()
 
 	// TODO add DDL
 	//var workloads []workload.Workload
@@ -213,6 +209,7 @@ func main() {
 	oa.CheckFailoverOrDie(allClusters, node)
 	time.Sleep(3 * time.Minute)
 	fta.StartNodeOrDie(physicalNode, node)
+	oa.CheckRecoverOrDie(allClusters)
 	for _, cluster := range allClusters {
 		oa.CheckTidbClusterStatusOrDie(cluster)
 	}

@@ -29,12 +29,6 @@ import (
 	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
-	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -44,6 +38,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
+	"github.com/pingcap/tidb-operator/tests/pkg/util"
 )
 
 const (
@@ -111,6 +112,8 @@ type OperatorActions interface {
 	CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, faultPoint *time.Time)
 	CheckFailover(info *TidbClusterConfig, faultNode string) (bool, error)
 	CheckFailoverOrDie(clusters []*TidbClusterConfig, faultNode string)
+	CheckRecover(cluster *TidbClusterConfig) (bool, error)
+	CheckRecoverOrDie(clusters []*TidbClusterConfig)
 }
 
 type operatorActions struct {
@@ -293,9 +296,6 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 
 func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 	glog.Infof("begin to deploy tidb cluster cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
-	defer func() {
-		glog.Infof("deploy tidb cluster end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
-	}()
 
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -337,10 +337,8 @@ func (oa *operatorActions) DeployTidbClusterOrDie(info *TidbClusterConfig) {
 }
 
 func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
-	glog.Infof("begin to clean tidb cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
-	defer func() {
-		glog.Infof("clean tidb cluster end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
-	}()
+	glog.Infof("cleaning tidbcluster %s/%s", info.Namespace, info.ClusterName)
+
 	charts := []string{
 		info.ClusterName,
 		fmt.Sprintf("%s-backup", info.ClusterName),
@@ -356,7 +354,6 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	}
 
 	err := oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(getBackupDirPodName, &metav1.DeleteOptions{})
-
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete dir pod %v", err)
 	}
@@ -380,7 +377,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	patchPVCmd := fmt.Sprintf(`kubectl get pv -l %s=%s,%s=%s --output=name | xargs -I {} \
 		kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`,
 		label.NamespaceLabelKey, info.Namespace, label.InstanceLabelKey, info.ClusterName)
-	glog.Info(patchPVCmd)
+	glog.V(4).Info(patchPVCmd)
 	if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to patch pv: %v, %s", err, string(res))
 	}
@@ -388,14 +385,14 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	pollFn := func() (bool, error) {
 		if res, err := exec.Command("kubectl", "get", "po", "--output=name", "-n", info.Namespace, "-l", setStr).
 			CombinedOutput(); err != nil || len(res) != 0 {
-			glog.Infof("waiting for tidbcluster: %s/%s pods deleting, %v, [%s]",
+			glog.V(4).Infof("waiting for tidbcluster: %s/%s pods deleting, %v, [%s]",
 				info.Namespace, info.ClusterName, err, string(res))
 			return false, nil
 		}
 
 		pvCmd := fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s 2>/dev/null|grep Released",
 			label.NamespaceLabelKey, info.Namespace, label.InstanceLabelKey, info.ClusterName)
-		glog.Info(pvCmd)
+		glog.V(4).Info(pvCmd)
 		if res, err := exec.Command("/bin/sh", "-c", pvCmd).
 			CombinedOutput(); len(res) == 0 {
 		} else if err != nil {
@@ -416,9 +413,7 @@ func (oa *operatorActions) CleanTidbClusterOrDie(info *TidbClusterConfig) {
 
 func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error {
 	glog.Infof("begin to check tidb cluster cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
-	defer func() {
-		glog.Infof("check tidb cluster end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
-	}()
+
 	ns := info.Namespace
 	tcName := info.ClusterName
 	if err := wait.PollImmediate(DefaultPollInterval, DefaultPollTimeout, func() (bool, error) {
@@ -1364,9 +1359,7 @@ func checkoutTag(tagName string) error {
 
 func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	glog.Infof("begin to deploy adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
-	defer func() {
-		glog.Infof("deploy adhoc backup end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
-	}()
+
 	sets := map[string]string{
 		"name":         info.BackupPVC,
 		"mode":         "backup",
@@ -1391,9 +1384,6 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
 	glog.Infof("begin to clean adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
-	defer func() {
-		glog.Infof("deploy clean backup end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
-	}()
 
 	jobName := fmt.Sprintf("%s-%s", info.ClusterName, info.BackupPVC)
 	fn := func() (bool, error) {
@@ -1420,9 +1410,7 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfig) error {
 	glog.Infof("begin to deploy restore cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
-	defer func() {
-		glog.Infof("deploy restore end cluster[%s] namespace[%s]", to.ClusterName, to.Namespace)
-	}()
+
 	sets := map[string]string{
 		"name":         to.BackupPVC,
 		"mode":         "restore",
@@ -1447,10 +1435,6 @@ func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfi
 
 func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbClusterConfig) error {
 	glog.Infof("begin to check restore backup cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
-	defer func() {
-		glog.Infof("check restore end cluster[%s] namespace[%s]", to.ClusterName, to.Namespace)
-	}()
-
 	jobName := fmt.Sprintf("%s-restore-%s", to.ClusterName, from.BackupPVC)
 	fn := func() (bool, error) {
 		job, err := oa.kubeCli.BatchV1().Jobs(to.Namespace).Get(jobName, metav1.GetOptions{})
@@ -1570,9 +1554,6 @@ func releaseIsExist(err error) bool {
 
 func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error {
 	glog.Infof("begin to deploy scheduled backup")
-	defer func() {
-		glog.Infof("deploy shceduled backup end")
-	}()
 
 	cron := fmt.Sprintf("'*/1 * * * *'")
 	sets := map[string]string{
@@ -1600,9 +1581,6 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 
 func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterConfig) error {
 	glog.Infof("begin to check scheduler backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
-	defer func() {
-		glog.Infof("deploy check scheduler end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
-	}()
 
 	jobName := fmt.Sprintf("%s-scheduled-backup", info.ClusterName)
 	fn := func() (bool, error) {
@@ -1764,9 +1742,7 @@ func (info *TidbClusterConfig) FullName() string {
 
 func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig) error {
 	glog.Infof("begin to deploy incremental backup cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
-	defer func() {
-		glog.Infof("deploy incremental backup end cluster[%s] namespace[%s]", to.ClusterName, to.Namespace)
-	}()
+
 	sets := map[string]string{
 		"binlog.pump.create":            "true",
 		"binlog.drainer.destDBType":     "mysql",
@@ -1791,9 +1767,6 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 
 func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig) error {
 	glog.Infof("begin to check incremental backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
-	defer func() {
-		glog.Infof("check incremental backup end cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
-	}()
 
 	pumpStatefulSetName := fmt.Sprintf("%s-pump", info.ClusterName)
 	fn := func() (bool, error) {

@@ -145,6 +145,46 @@ func (oa *operatorActions) CheckFailoverOrDie(clusters []*TidbClusterConfig, fau
 	}
 }
 
+func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error) {
+	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+	if err != nil {
+		return false, nil
+	}
+
+	if tc.Status.PD.FailureMembers != nil && len(tc.Status.PD.FailureMembers) > 0 {
+		glog.Infof("cluster: [%s]'s pd FailureMembers is not nil, continue to wait", cluster.FullName())
+		return false, nil
+	}
+
+	if tc.Status.TiDB.FailureMembers != nil && len(tc.Status.TiDB.FailureMembers) > 0 {
+		glog.Infof("cluster: [%s]'s tidb FailureMembers is not nil, continue to wait", cluster.FullName())
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func (oa *operatorActions) CheckRecoverOrDie(clusters []*TidbClusterConfig) {
+	if err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, func() (bool, error) {
+		var passes []bool
+		for i := range clusters {
+			pass, err := oa.CheckRecover(clusters[i])
+			if err != nil {
+				return pass, err
+			}
+			passes = append(passes, pass)
+		}
+		for _, pass := range passes {
+			if !pass {
+				return false, nil
+			}
+		}
+		return true, nil
+	}); err != nil {
+		panic("failed to check recover")
+	}
+}
+
 func (oa *operatorActions) pdFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
 	failure := false
 	for _, failureMember := range tc.Status.PD.FailureMembers {
