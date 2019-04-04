@@ -23,17 +23,20 @@ import (
 	"time"
 
 	"github.com/jinzhu/copier"
-	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apiserver/pkg/util/logs"
-	"k8s.io/client-go/kubernetes"
+	"github.com/pingcap/tidb-operator/tests/backup"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests"
-	"github.com/pingcap/tidb-operator/tests/backup"
 	"github.com/pingcap/tidb-operator/tests/pkg/workload"
 	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
+
+	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apiserver/pkg/util/logs"
+	"k8s.io/client-go/kubernetes"
 )
 
 func main() {
@@ -49,7 +52,7 @@ func main() {
 
 	// TODO read these args from config
 	beginTidbVersion := "v2.1.0"
-	toTidbVersion := "v2.1.4"
+	//toTidbVersion := "v2.1.4"
 	operatorTag := "master"
 	operatorImage := "pingcap/tidb-operator:latest"
 
@@ -65,7 +68,7 @@ func main() {
 		ReleaseName:    "operator",
 		Image:          operatorImage,
 		Tag:            operatorTag,
-		SchedulerImage: "gcr.io/google-containers/hyperkube:v1.12.1",
+		SchedulerImage: "gcr.io/google-containers/hyperkube",
 		LogLevel:       "2",
 	}
 
@@ -275,6 +278,79 @@ func main() {
 	if err := testFailover(kubeCli, oa, fa, conf, clusterInfos); err != nil {
 		glog.Fatal(err)
 	}
+
+	//
+	faultEtcd := selectNode(conf.ETCDs)
+	err = fa.StopETCD(faultEtcd)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	defer fa.StartETCD(faultEtcd)
+
+	err = oa.CheckK8sKeepAvailable(5*time.Minute, nil, nil)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	err = oa.CheckOperatorKeepAvailable(operatorInfo, 5*time.Minute)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	err = oa.CheckTidbClustersKeepAvailable(clusterInfos, 5*time.Minute)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	err = fa.StartETCD(faultEtcd)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	faultApiserver := selectNode(conf.APIServers)
+	apiserverPod, err := getApiserverPod(kubeCli, faultApiserver)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	err = fa.StopKubeAPIServer(faultApiserver)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	err = oa.CheckK8sKeepAvailable(5*time.Minute, nil, map[string]*corev1.Pod{apiserverPod.GetName(): apiserverPod})
+	if err != nil {
+		glog.Fatal(err)
+	}
+	err = oa.CheckOperatorKeepAvailable(operatorInfo, 5*time.Minute)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	err = oa.CheckTidbClustersKeepAvailable(clusterInfos, 5*time.Minute)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	err = fa.StartKubeAPIServer(faultApiserver)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+}
+
+func selectNode(nodes []tests.Nodes) string {
+	rand.Seed(time.Now().Unix())
+	index := rand.Intn(len(nodes))
+	return nodes[index].Nodes[0]
+}
+
+func getApiserverPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
+	selector := labels.Set(map[string]string{"component": "kube-apiserver"}).AsSelector()
+	options := metav1.ListOptions{LabelSelector: selector.String()}
+	apiserverPods, err := kubeCli.CoreV1().Pods("kube-system").List(options)
+	if err != nil {
+		return nil, err
+	}
+	for _, apiserverPod := range apiserverPods.Items {
+		if apiserverPod.Spec.NodeName == node {
+			return &apiserverPod, nil
+		}
+	}
+	return nil, nil
 }
 
 func testFailover(

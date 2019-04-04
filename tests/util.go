@@ -51,6 +51,7 @@ func Keep(interval time.Duration, period time.Duration, fun func() error) error 
 		if err != nil {
 			return err
 		}
+		time.Sleep(interval)
 	}
 	return nil
 }
