@@ -29,8 +29,8 @@ spec:
   - name: tidb-operator-stability
     image: ""
     imagePullPolicy: Always
-    command: ["sh", "-c", "/usr/local/bin/stability-test"]
-    args:
+    command:
+    - /usr/local/bin/stability-test
     - --config=/etc/tidb-operator-stability/config.yaml
     volumeMounts:
     - mountPath: /logDir
@@ -38,6 +38,11 @@ spec:
     - name: config
       readOnly: true
       mountPath: /etc/tidb-operator-stability
+    env:
+    - name: MY_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
   volumes:
   - name: logdir
     hostPath:
