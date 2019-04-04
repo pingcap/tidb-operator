@@ -15,7 +15,6 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
 	"net/http"
 	_ "net/http/pprof"
 	"time"
@@ -28,10 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apiserver/pkg/util/logs"
-	"k8s.io/client-go/kubernetes"
 )
 
 func main() {
@@ -221,13 +217,10 @@ func main() {
 	}
 
 	// stop one etcd node and k8s/operator/tidbcluster is available
-	faultEtcd := selectNode(conf.ETCDs)
-	err := fta.StopETCD(faultEtcd)
-	if err != nil {
-		glog.Fatal(err)
-	}
-	defer fta.StartETCD(faultEtcd)
-	err = tests.Keep(3*time.Second, 10*time.Minute, func() error {
+	faultEtcd := tests.SelectNode(conf.ETCDs)
+	fta.StopETCDOrDie(faultEtcd)
+	defer fta.StartETCDOrDie(faultEtcd)
+	tests.KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(nil, nil)
 		if err != nil {
 			return err
@@ -242,25 +235,13 @@ func main() {
 		}
 		return nil
 	})
-	if err != nil {
-		glog.Fatal(err)
-	}
-	err = fta.StartETCD(faultEtcd)
-	if err != nil {
-		glog.Fatal(err)
-	}
+	fta.StartETCDOrDie(faultEtcd)
 
 	// stop one apiserver node and k8s/operator/tidbcluster is available
-	faultApiserver := selectNode(conf.APIServers)
-	apiserverPod, err := getApiserverPod(kubeCli, faultApiserver)
-	if err != nil {
-		glog.Fatal(err)
-	}
-	err = fta.StopKubeAPIServer(faultApiserver)
-	if err != nil {
-		glog.Fatal(err)
-	}
-	err = tests.Keep(3*time.Second, 10*time.Minute, func() error {
+	faultApiserver := tests.SelectNode(conf.APIServers)
+	apiserverPod := tests.GetApiserverPodOrDie(kubeCli, faultApiserver)
+	fta.StopKubeAPIServerOrDie(faultApiserver)
+	tests.KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(nil, map[string]*corev1.Pod{apiserverPod.GetName(): apiserverPod})
 		if err != nil {
 			return err
@@ -275,34 +256,7 @@ func main() {
 		}
 		return nil
 	})
-	if err != nil {
-		glog.Fatal(err)
-	}
-	err = fta.StartKubeAPIServer(faultApiserver)
-	if err != nil {
-		glog.Fatal(err)
-	}
+	fta.StartKubeAPIServerOrDie(faultApiserver)
 
 	glog.Infof("\nFinished.")
-}
-
-func selectNode(nodes []tests.Nodes) string {
-	rand.Seed(time.Now().Unix())
-	index := rand.Intn(len(nodes))
-	return nodes[index].Nodes[0]
-}
-
-func getApiserverPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
-	selector := labels.Set(map[string]string{"component": "kube-apiserver"}).AsSelector()
-	options := metav1.ListOptions{LabelSelector: selector.String()}
-	apiserverPods, err := kubeCli.CoreV1().Pods("kube-system").List(options)
-	if err != nil {
-		return nil, err
-	}
-	for _, apiserverPod := range apiserverPods.Items {
-		if apiserverPod.Spec.NodeName == node {
-			return &apiserverPod, nil
-		}
-	}
-	return nil, nil
 }

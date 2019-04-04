@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"database/sql"
 	"fmt"
 	"sort"
 	"strings"
@@ -306,4 +307,163 @@ func (oa *operatorActions) GetNodeMap(info *TidbClusterConfig, component string)
 	}
 
 	return nodeMap, nil
+}
+
+func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]*corev1.Node, excludePods map[string]*corev1.Pod) error {
+	return wait.Poll(3*time.Second, time.Minute, func() (bool, error) {
+		nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
+		if err != nil {
+			glog.Errorf("failed to list nodes,error:%v", err)
+			return false, nil
+		}
+		for _, node := range nodes.Items {
+			if _, exist := excludeNodes[node.GetName()]; exist {
+				continue
+			}
+			if node.Status.Phase != corev1.NodeRunning {
+				return false, fmt.Errorf("node: [%s] is not in running", node.GetName())
+			}
+		}
+		systemPods, err := oa.kubeCli.CoreV1().Pods("kube-system").List(metav1.ListOptions{})
+		if err != nil {
+			glog.Errorf("failed to list kube-system pods,error:%v", err)
+			return false, nil
+		}
+		for _, pod := range systemPods.Items {
+			if _, exist := excludePods[pod.GetName()]; exist {
+				continue
+			}
+			if GetPodStatus(&pod) != string(corev1.PodRunning) {
+				return false, fmt.Errorf("pod:[%s/%s] is unavailable", pod.GetName(), pod.GetNamespace())
+			}
+		}
+		return true, nil
+	})
+}
+
+func (oa *operatorActions) CheckOperatorAvailable(operatorConfig *OperatorConfig) error {
+	return wait.Poll(3*time.Second, 3*time.Minute, func() (bool, error) {
+		controllerDeployment, err := oa.kubeCli.AppsV1().Deployments(operatorConfig.Namespace).Get(tidbControllerName, metav1.GetOptions{})
+		if err != nil {
+			glog.Errorf("failed to get deployment：%s failed,error:%v", tidbControllerName, err)
+			return false, nil
+		}
+		if controllerDeployment.Status.AvailableReplicas != *controllerDeployment.Spec.Replicas {
+			return false, fmt.Errorf("the %s is not available", tidbControllerName)
+		}
+		schedulerDeployment, err := oa.kubeCli.AppsV1().Deployments(operatorConfig.Namespace).Get(tidbSchedulerName, metav1.GetOptions{})
+		if err != nil {
+			glog.Errorf("failed to get deployment：%s failed,error:%v", tidbSchedulerName, err)
+			return false, nil
+		}
+		if schedulerDeployment.Status.AvailableReplicas != *schedulerDeployment.Spec.Replicas {
+			return false, fmt.Errorf("the %s is not available", tidbSchedulerName)
+		}
+		return true, nil
+	})
+}
+
+func (oa *operatorActions) CheckTidbClustersAvailable(infos []*TidbClusterConfig) error {
+	return wait.Poll(3*time.Second, 30*time.Second, func() (bool, error) {
+		for _, info := range infos {
+			succ, err := oa.addDataToCluster(info)
+			if err != nil {
+				return false, err
+			}
+			if !succ {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
+
+}
+
+var testTableName = "testTable"
+
+func (op *operatorActions) addDataToCluster(info *TidbClusterConfig) (bool, error) {
+	db, err := sql.Open("mysql", getDSN(info.Namespace, info.ClusterName, "test", info.Password))
+	if err != nil {
+		glog.Infof("cluster:[%s] can't open connection to mysql: %v", info.FullName(), err)
+		return false, nil
+	}
+	defer db.Close()
+
+	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s (name VARCHAR(64))", testTableName))
+	if err != nil && !tableAlreadyExist(err) {
+		glog.Infof("cluster:[%s] can't create table to mysql: %v", info.FullName(), err)
+		return false, nil
+	}
+
+	_, err = db.Exec(fmt.Sprintf("INSERT INTO %s VALUES (?)", testTableName), "testValue")
+	if err != nil {
+		glog.Infof("cluster:[%s] can't insert data to mysql: %v", info.FullName(), err)
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func GetPodStatus(pod *corev1.Pod) string {
+	reason := string(pod.Status.Phase)
+	if pod.Status.Reason != "" {
+		reason = pod.Status.Reason
+	}
+
+	initializing := false
+	for i := range pod.Status.InitContainerStatuses {
+		container := pod.Status.InitContainerStatuses[i]
+		switch {
+		case container.State.Terminated != nil && container.State.Terminated.ExitCode == 0:
+			continue
+		case container.State.Terminated != nil:
+			// initialization is failed
+			if len(container.State.Terminated.Reason) == 0 {
+				if container.State.Terminated.Signal != 0 {
+					reason = fmt.Sprintf("Init:Signal:%d", container.State.Terminated.Signal)
+				} else {
+					reason = fmt.Sprintf("Init:ExitCode:%d", container.State.Terminated.ExitCode)
+				}
+			} else {
+				reason = "Init:" + container.State.Terminated.Reason
+			}
+			initializing = true
+		case container.State.Waiting != nil && len(container.State.Waiting.Reason) > 0 && container.State.Waiting.Reason != "PodInitializing":
+			reason = "Init:" + container.State.Waiting.Reason
+			initializing = true
+		default:
+			reason = fmt.Sprintf("Init:%d/%d", i, len(pod.Spec.InitContainers))
+			initializing = true
+		}
+		break
+	}
+	if !initializing {
+		for i := len(pod.Status.ContainerStatuses) - 1; i >= 0; i-- {
+			container := pod.Status.ContainerStatuses[i]
+
+			if container.State.Waiting != nil && container.State.Waiting.Reason != "" {
+				reason = container.State.Waiting.Reason
+			} else if container.State.Terminated != nil && container.State.Terminated.Reason != "" {
+				reason = container.State.Terminated.Reason
+			} else if container.State.Terminated != nil && container.State.Terminated.Reason == "" {
+				if container.State.Terminated.Signal != 0 {
+					reason = fmt.Sprintf("Signal:%d", container.State.Terminated.Signal)
+				} else {
+					reason = fmt.Sprintf("ExitCode:%d", container.State.Terminated.ExitCode)
+				}
+			}
+		}
+	}
+
+	if pod.DeletionTimestamp != nil && pod.Status.Reason == NodeUnreachablePodReason {
+		reason = "Unknown"
+	} else if pod.DeletionTimestamp != nil {
+		reason = "Terminating"
+	}
+
+	return reason
+}
+
+func tableAlreadyExist(err error) bool {
+	return strings.Contains(err.Error(), "already exists")
 }
