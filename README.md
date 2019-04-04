@@ -12,8 +12,6 @@
 
 TiDB Operator manages [TiDB](https://github.com/pingcap/tidb) clusters on [Kubernetes](https://kubernetes.io) and automates tasks related to operating a TiDB cluster. It makes TiDB a truly cloud-native database.
 
-TiDB Operator is production ready, but the project is constantly, evolving so future versions may cause break points for older versions. Please reach out to the community for help if you run into issues and refer to the User Guide (below) for the most updated method of deployment and operations. 
-
 ## Features
 
 - __Safely scaling the TiDB cluster__
