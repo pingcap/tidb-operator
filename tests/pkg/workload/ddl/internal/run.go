@@ -44,12 +44,12 @@ func openDB(dsn string, maxIdleConns int) (*sql.DB, error) {
 	}
 
 	db.SetMaxIdleConns(maxIdleConns)
-	glog.Info("DB opens successfully")
+	glog.V(4).Info("DB opens successfully")
 	return db, nil
 }
 
 func Run(ctx context.Context, dbDSN string, concurrency int, tablesToCreate int, mysqlCompatible bool, testTp DDLTestType) {
-	glog.Infof("[ddl] Enable transaction test is: %v", enableTransactionTest)
+	glog.V(4).Infof("[ddl] Enable transaction test is: %v", enableTransactionTest)
 
 	dbss := make([][]*sql.DB, 0, concurrency)
 	for i := 0; i < concurrency; i++ {

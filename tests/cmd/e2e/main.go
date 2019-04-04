@@ -19,14 +19,13 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"k8s.io/apiserver/pkg/util/logs"
+
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
+	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/workload"
 	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
-	"k8s.io/apiserver/pkg/util/logs"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 func main() {
@@ -39,22 +38,11 @@ func main() {
 		glog.Fatalf("failed to parse config: %v", err)
 	}
 
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		glog.Fatalf("failed to get config: %v", err)
-	}
-	cli, err := versioned.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("failed to create Clientset: %v", err)
-	}
-	kubeCli, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
-	}
+	cli, kubeCli := client.NewCliOrDie()
 
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 
-	operatorInfo := &tests.OperatorInfo{
+	operatorInfo := &tests.OperatorConfig{
 		Namespace:      "pingcap",
 		ReleaseName:    "operator",
 		Image:          conf.OperatorImage,
@@ -64,7 +52,7 @@ func main() {
 		LogLevel:       "2",
 	}
 
-	initTidbVersion, err := conf.GetInitTidbVersion()
+	initTidbVersion, err := conf.GetTiDBVersion()
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -73,7 +61,7 @@ func main() {
 
 	name1 := "e2e-cluster1"
 	name2 := "e2e-cluster2"
-	clusterInfos := []*tests.TidbClusterInfo{
+	clusterInfos := []*tests.TidbClusterConfig{
 		{
 			Namespace:        name1,
 			ClusterName:      name1,
@@ -249,7 +237,7 @@ func main() {
 
 	// backup and restore
 	backupClusterInfo := clusterInfos[0]
-	restoreClusterInfo := &tests.TidbClusterInfo{}
+	restoreClusterInfo := &tests.TidbClusterConfig{}
 	copier.Copy(restoreClusterInfo, backupClusterInfo)
 	restoreClusterInfo.ClusterName = restoreClusterInfo.ClusterName + "-other"
 	restoreClusterInfo.InitSecretName = fmt.Sprintf("%s-set-secret", restoreClusterInfo.ClusterName)

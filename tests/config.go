@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"github.com/golang/glog"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -42,6 +43,16 @@ func NewConfig() *Config {
 	return cfg
 }
 
+func ParseConfigOrDie() *Config {
+	cfg := NewConfig()
+	if err := cfg.Parse(); err != nil {
+		panic(err)
+	}
+
+	glog.Infof("using config: %+v", cfg)
+	return cfg
+}
+
 // Parse parses flag definitions from the argument list.
 func (c *Config) Parse() error {
 	// Parse first to get config file
@@ -59,13 +70,6 @@ func (c *Config) Parse() error {
 	return nil
 }
 
-func (c *Config) ParseOrDie() {
-	err := c.Parse()
-	if err != nil {
-		panic(err)
-	}
-}
-
 func (c *Config) configFromFile(path string) error {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -79,7 +83,7 @@ func (c *Config) configFromFile(path string) error {
 	return nil
 }
 
-func (c *Config) GetInitTidbVersion() (string, error) {
+func (c *Config) GetTiDBVersion() (string, error) {
 	tidbVersions := strings.Split(c.TidbVersions, ",")
 	if len(tidbVersions) == 0 {
 		return "", fmt.Errorf("init tidb versions can not be nil")
@@ -88,8 +92,26 @@ func (c *Config) GetInitTidbVersion() (string, error) {
 	return tidbVersions[0], nil
 }
 
+func (c *Config) GetTiDBVersionOrDie() string {
+	v, err := c.GetTiDBVersion()
+	if err != nil {
+		panic(err)
+	}
+
+	return v
+}
+
 func (c *Config) GetUpgradeTidbVersions() []string {
 	tidbVersions := strings.Split(c.TidbVersions, ",")
 
 	return tidbVersions[1:]
+}
+
+func (c *Config) GetUpgradeTidbVersionsOrDie() []string {
+	versions := c.GetUpgradeTidbVersions()
+	if len(versions) < 1 {
+		panic("upgrade tidb verions is empty")
+	}
+
+	return versions
 }
