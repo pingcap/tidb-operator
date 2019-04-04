@@ -84,7 +84,7 @@ func checkConflict(task *dmlJobTask) error {
 func (c *testCase) sendDMLRequest(ctx context.Context, conn *sql.Conn, task *dmlJobTask) error {
 	_, err := conn.ExecContext(ctx, task.sql)
 	task.err = err
-	glog.Infof("[ddl] [instance %d] %s, err: %v", c.caseIndex, task.sql, err)
+	glog.V(4).Infof("[ddl] [instance %d] %s, err: %v", c.caseIndex, task.sql, err)
 	if err != nil {
 		err2 := checkConflict(task)
 		if err2 != nil {
@@ -148,7 +148,7 @@ func (c *testCase) execDMLInTransactionSQL(taskCh chan *dmlJobTask) error {
 	defer conn.Close()
 
 	_, err = conn.ExecContext(ctx, "begin")
-	glog.Infof("[ddl] [instance %d] begin error: %v", c.caseIndex, err)
+	glog.V(4).Infof("[ddl] [instance %d] begin error: %v", c.caseIndex, err)
 	if err != nil {
 		return errors.Annotatef(err, "Error when executing SQL: %s", "begin")
 	}
@@ -164,7 +164,7 @@ func (c *testCase) execDMLInTransactionSQL(taskCh chan *dmlJobTask) error {
 	}
 
 	_, err = conn.ExecContext(ctx, "commit")
-	glog.Infof("[ddl] [instance %d] commit error: %v", c.caseIndex, err)
+	glog.V(4).Infof("[ddl] [instance %d] commit error: %v", c.caseIndex, err)
 	if err != nil {
 		if ignore_error(err) {
 			return nil

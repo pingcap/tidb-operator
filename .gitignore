@@ -7,6 +7,7 @@ tests/images/stability-test/bin/
 tests/images/e2e/bin/
 tests/images/fault-trigger/bin/
 tests/images/e2e/tidb-cluster/
+tests/images/e2e/tidb-backup/
 tests/images/e2e/tidb-operator/
 *.tar
 tmp/
