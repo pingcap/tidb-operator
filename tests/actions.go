@@ -107,7 +107,6 @@ type OperatorActions interface {
 	CreateSecret(info *TidbClusterConfig) error
 	GetPodUIDMap(info *TidbClusterConfig) (map[string]types.UID, error)
 	GetNodeMap(info *TidbClusterConfig, component string) (map[string][]string, error)
-	getBackupDir(info *TidbClusterConfig) ([]string, error)
 	CheckFailoverPending(info *TidbClusterConfig, faultPoint *time.Time) (bool, error)
 	CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, faultPoint *time.Time)
 	CheckFailover(info *TidbClusterConfig, faultNode string) (bool, error)
