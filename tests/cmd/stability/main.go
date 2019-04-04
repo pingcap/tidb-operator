@@ -220,23 +220,28 @@ func main() {
 		oa.CheckTidbClusterStatusOrDie(cluster)
 	}
 
-	//
+	// stop one etcd node and k8s/operator/tidbcluster is available
 	faultEtcd := selectNode(conf.ETCDs)
 	err := fta.StopETCD(faultEtcd)
 	if err != nil {
 		glog.Fatal(err)
 	}
 	defer fta.StartETCD(faultEtcd)
-
-	err = oa.CheckK8sKeepAvailable(5*time.Minute, nil, nil)
-	if err != nil {
-		glog.Fatal(err)
-	}
-	err = oa.CheckOperatorKeepAvailable(operatorCfg, 5*time.Minute)
-	if err != nil {
-		glog.Fatal(err)
-	}
-	err = oa.CheckTidbClustersKeepAvailable(allClusters, 5*time.Minute)
+	err = tests.Keep(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckK8sAvailable(nil, nil)
+		if err != nil {
+			return err
+		}
+		err = oa.CheckOperatorAvailable(operatorCfg)
+		if err != nil {
+			return err
+		}
+		err = oa.CheckTidbClustersAvailable(allClusters)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -245,6 +250,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	// stop one apiserver node and k8s/operator/tidbcluster is available
 	faultApiserver := selectNode(conf.APIServers)
 	apiserverPod, err := getApiserverPod(kubeCli, faultApiserver)
 	if err != nil {
@@ -254,15 +260,21 @@ func main() {
 	if err != nil {
 		glog.Fatal(err)
 	}
-	err = oa.CheckK8sKeepAvailable(5*time.Minute, nil, map[string]*corev1.Pod{apiserverPod.GetName(): apiserverPod})
-	if err != nil {
-		glog.Fatal(err)
-	}
-	err = oa.CheckOperatorKeepAvailable(operatorCfg, 5*time.Minute)
-	if err != nil {
-		glog.Fatal(err)
-	}
-	err = oa.CheckTidbClustersKeepAvailable(allClusters, 5*time.Minute)
+	err = tests.Keep(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckK8sAvailable(nil, map[string]*corev1.Pod{apiserverPod.GetName(): apiserverPod})
+		if err != nil {
+			return err
+		}
+		err = oa.CheckOperatorAvailable(operatorCfg)
+		if err != nil {
+			return err
+		}
+		err = oa.CheckTidbClustersAvailable(allClusters)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		glog.Fatal(err)
 	}

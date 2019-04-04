@@ -120,9 +120,9 @@ type OperatorActions interface {
 	CheckFailoverOrDie(clusters []*TidbClusterConfig, faultNode string)
 	CheckRecover(cluster *TidbClusterConfig) (bool, error)
 	CheckRecoverOrDie(clusters []*TidbClusterConfig)
-	CheckK8sKeepAvailable(period time.Duration, excludeNodes map[string]*corev1.Node, excludePods map[string]*corev1.Pod) error
-	CheckOperatorKeepAvailable(operatorConfig *OperatorConfig, period time.Duration) error
-	CheckTidbClustersKeepAvailable(infos []*TidbClusterConfig, period time.Duration) error
+	CheckK8sAvailable(excludeNodes map[string]*corev1.Node, excludePods map[string]*corev1.Pod) error
+	CheckOperatorAvailable(operatorConfig *OperatorConfig) error
+	CheckTidbClustersAvailable(infos []*TidbClusterConfig) error
 }
 
 type operatorActions struct {
@@ -1917,101 +1917,74 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 	return len(healths.PumpPos) > 0 && healths.Synced
 }
 
-func (oa *operatorActions) CheckK8sKeepAvailable(period time.Duration, excludeNodes map[string]*corev1.Node, excludePods map[string]*corev1.Pod) error {
-	timeline := time.Now().Add(period)
-	for {
-		if time.Now().After(timeline) {
-			break
-		}
-		err := wait.Poll(3*time.Second, time.Minute, func() (bool, error) {
-			nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
-			if err != nil {
-				glog.Errorf("failed to list nodes,error:%v", err)
-				return false, nil
-			}
-			for _, node := range nodes.Items {
-				if _, exist := excludeNodes[node.GetName()]; exist {
-					continue
-				}
-				if node.Status.Phase != corev1.NodeRunning {
-					return false, fmt.Errorf("node: [%s] is not in running", node.GetName())
-				}
-			}
-			systemPods, err := oa.kubeCli.CoreV1().Pods("kube-system").List(metav1.ListOptions{})
-			if err != nil {
-				glog.Errorf("failed to list kube-system pods,error:%v", err)
-				return false, nil
-			}
-			for _, pod := range systemPods.Items {
-				if _, exist := excludePods[pod.GetName()]; exist {
-					continue
-				}
-				if GetPodStatus(&pod) != string(corev1.PodRunning) {
-					return false, fmt.Errorf("pod:[%s/%s] is unavailable", pod.GetName(), pod.GetNamespace())
-				}
-			}
-			return true, nil
-		})
+func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]*corev1.Node, excludePods map[string]*corev1.Pod) error {
+	return wait.Poll(3*time.Second, time.Minute, func() (bool, error) {
+		nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
 		if err != nil {
-			return err
+			glog.Errorf("failed to list nodes,error:%v", err)
+			return false, nil
 		}
-		time.Sleep(3 * time.Second)
-	}
-	return nil
+		for _, node := range nodes.Items {
+			if _, exist := excludeNodes[node.GetName()]; exist {
+				continue
+			}
+			if node.Status.Phase != corev1.NodeRunning {
+				return false, fmt.Errorf("node: [%s] is not in running", node.GetName())
+			}
+		}
+		systemPods, err := oa.kubeCli.CoreV1().Pods("kube-system").List(metav1.ListOptions{})
+		if err != nil {
+			glog.Errorf("failed to list kube-system pods,error:%v", err)
+			return false, nil
+		}
+		for _, pod := range systemPods.Items {
+			if _, exist := excludePods[pod.GetName()]; exist {
+				continue
+			}
+			if GetPodStatus(&pod) != string(corev1.PodRunning) {
+				return false, fmt.Errorf("pod:[%s/%s] is unavailable", pod.GetName(), pod.GetNamespace())
+			}
+		}
+		return true, nil
+	})
 }
 
-func (oa *operatorActions) CheckOperatorKeepAvailable(operatorConfig *OperatorConfig, period time.Duration) error {
-	timeline := time.Now().Add(period)
-	for {
-		if time.Now().After(timeline) {
-			break
+func (oa *operatorActions) CheckOperatorAvailable(operatorConfig *OperatorConfig) error {
+	return wait.Poll(3*time.Second, 3*time.Minute, func() (bool, error) {
+		controllerDeployment, err := oa.kubeCli.AppsV1().Deployments(operatorConfig.Namespace).Get(tidbControllerName, metav1.GetOptions{})
+		if err != nil {
+			glog.Errorf("failed to get deployment：%s failed,error:%v", tidbControllerName, err)
+			return false, nil
 		}
-		wait.Poll(3*time.Second, 3*time.Minute, func() (bool, error) {
-			controllerDeployment, err := oa.kubeCli.AppsV1().Deployments(operatorConfig.Namespace).Get(tidbControllerName, metav1.GetOptions{})
-			if err != nil {
-				glog.Errorf("failed to get deployment：%s failed,error:%v", tidbControllerName, err)
-				return false, nil
-			}
-			if controllerDeployment.Status.AvailableReplicas != *controllerDeployment.Spec.Replicas {
-				return false, fmt.Errorf("the %s is not available", tidbControllerName)
-			}
-			schedulerDeployment, err := oa.kubeCli.AppsV1().Deployments(operatorConfig.Namespace).Get(tidbSchedulerName, metav1.GetOptions{})
-			if err != nil {
-				glog.Errorf("failed to get deployment：%s failed,error:%v", tidbSchedulerName, err)
-				return false, nil
-			}
-			if schedulerDeployment.Status.AvailableReplicas != *schedulerDeployment.Spec.Replicas {
-				return false, fmt.Errorf("the %s is not available", tidbSchedulerName)
-			}
-			return true, nil
-		})
-		time.Sleep(3 * time.Second)
-	}
-	return nil
+		if controllerDeployment.Status.AvailableReplicas != *controllerDeployment.Spec.Replicas {
+			return false, fmt.Errorf("the %s is not available", tidbControllerName)
+		}
+		schedulerDeployment, err := oa.kubeCli.AppsV1().Deployments(operatorConfig.Namespace).Get(tidbSchedulerName, metav1.GetOptions{})
+		if err != nil {
+			glog.Errorf("failed to get deployment：%s failed,error:%v", tidbSchedulerName, err)
+			return false, nil
+		}
+		if schedulerDeployment.Status.AvailableReplicas != *schedulerDeployment.Spec.Replicas {
+			return false, fmt.Errorf("the %s is not available", tidbSchedulerName)
+		}
+		return true, nil
+	})
 }
 
-func (oa *operatorActions) CheckTidbClustersKeepAvailable(infos []*TidbClusterConfig, period time.Duration) error {
-	timeline := time.Now().Add(period)
-	for {
-		if time.Now().After(timeline) {
-			break
-		}
-		wait.Poll(3*time.Second, 30*time.Second, func() (bool, error) {
-			for _, info := range infos {
-				succ, err := oa.addDataToCluster(info)
-				if err != nil {
-					return false, err
-				}
-				if !succ {
-					return false, nil
-				}
+func (oa *operatorActions) CheckTidbClustersAvailable(infos []*TidbClusterConfig) error {
+	return wait.Poll(3*time.Second, 30*time.Second, func() (bool, error) {
+		for _, info := range infos {
+			succ, err := oa.addDataToCluster(info)
+			if err != nil {
+				return false, err
 			}
-			return true, nil
-		})
+			if !succ {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
 
-		time.Sleep(3 * time.Second)
-	}
-	return nil
 }
 
 var testTableName = "testTable"
