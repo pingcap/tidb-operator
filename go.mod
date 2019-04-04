@@ -65,12 +65,10 @@ require (
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1 // indirect
-	golang.org/x/crypto v0.0.0-20180807104621-f027049dab0a // indirect
-	golang.org/x/net v0.0.0-20180808004115-f9ce57c11b24
+	golang.org/x/net v0.0.0-20190311183353-d8887717615a
 	golang.org/x/sync v0.0.0-20181108010431-42b317875d0f // indirect
-	golang.org/x/sys v0.0.0-20180807162357-acbc56fc7007 // indirect
-	golang.org/x/text v0.3.0 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
+	golang.org/x/tools v0.0.0-20190403183509-8a44e74612bc // indirect
 	google.golang.org/appengine v1.1.0 // indirect
 	google.golang.org/genproto v0.0.0-20180731170733-daca94659cb5 // indirect
 	google.golang.org/grpc v1.12.0 // indirect
@@ -87,6 +85,9 @@ require (
 	k8s.io/apimachinery v0.0.0-20180228050457-302974c03f7e
 	k8s.io/apiserver v0.0.0-20180807214737-1b22bcf04547
 	k8s.io/client-go v0.0.0-20180424211516-33f2870a2b83
+	k8s.io/code-generator v0.0.0-20180228050103-7ead8f38b01c // indirect
+	k8s.io/gengo v0.0.0-20190327210449-e17681d19d3a // indirect
+	k8s.io/klog v0.2.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20180731170545-e3762e86a74c // indirect
 	k8s.io/kubernetes v1.10.2
 )
