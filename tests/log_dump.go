@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (oa *operatorActions) DumpAllLogs(operatorInfo *OperatorInfo, testClusters []*TidbClusterInfo) error {
+func (oa *operatorActions) DumpAllLogs(operatorInfo *OperatorConfig, testClusters []*TidbClusterConfig) error {
 	logPath := fmt.Sprintf("/%s/%s", oa.cfg.LogDir, "operator-stability")
 	if _, err := os.Stat(logPath); os.IsNotExist(err) {
 		err = os.MkdirAll(logPath, os.ModePerm)
