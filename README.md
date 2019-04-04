@@ -1,11 +1,18 @@
 # TiDB Operator
 
+- [**Stack Overflow**](https://stackoverflow.com/questions/tagged/tidb)
+- [**Community Slack Channel**](http://bit.ly/tidbslack)
+- [**Reddit**](https://www.reddit.com/r/TiDB/)
+- **Mailing list**: [Google Group](https://groups.google.com/forum/#!forum/tidb-user)
+- [**Blog**](https://www.pingcap.com/blog/)
+- [**For support, please contact PingCAP**](http://bit.ly/contact_us_via_github)
+
 [![Build Status](https://internal.pingcap.net/jenkins/job/build_tidb_operator_master/badge/icon)](https://internal.pingcap.net/jenkins/job/build_tidb_operator_master)
 [![codecov](https://codecov.io/gh/pingcap/tidb-operator/branch/master/graph/badge.svg)](https://codecov.io/gh/pingcap/tidb-operator)
 
 TiDB Operator manages [TiDB](https://github.com/pingcap/tidb) clusters on [Kubernetes](https://kubernetes.io) and automates tasks related to operating a TiDB cluster. It makes TiDB a truly cloud-native database.
 
-> **Warning:** Currently, TiDB Operator is work in progress [WIP] and is NOT ready for production. Use at your own risk.
+TiDB Operator is production ready, but the project is constantly, evolving so future versions may cause break points for older versions. Please reach out to the community for help if you run into issues and refer to the User Guide (below) for the most updated method of deployment and operations. 
 
 ## Features
 
