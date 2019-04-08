@@ -30,6 +30,7 @@ import (
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -45,6 +46,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
+	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 )
 
 const (
@@ -71,6 +73,11 @@ const (
 	getBackupDirPodName               = "get-backup-dir"
 	grafanaUsername                   = "admin"
 	grafanaPassword                   = "admin"
+	webhookServiceName = "webhook-service"
+	webhookSecretName = "webhook-secret"
+	webhookConfigName = "webhook-config"
+	podLabels["webhook"] = "true"
+	webhookImage = ""
 )
 
 type OperatorActions interface {
@@ -113,6 +120,9 @@ type OperatorActions interface {
 	CheckFailoverOrDie(clusters []*TidbClusterConfig, faultNode string)
 	CheckRecover(cluster *TidbClusterConfig) (bool, error)
 	CheckRecoverOrDie(clusters []*TidbClusterConfig)
+	DeployWebHookAndService(info *TidbClusterConfig) error
+	RegisterWebHookAndService(info *TidbClusterConfig) error
+	CleanWebHookAndService(info *TidbClusterConfig)
 }
 
 type operatorActions struct {
@@ -154,6 +164,7 @@ type TidbClusterConfig struct {
 	UserName         string
 	InitSecretName   string
 	BackupSecretName string
+	context  *apimachinery.certContext
 }
 
 func (tc *TidbClusterConfig) BackupHelmSetString(m map[string]string) string {
@@ -1833,6 +1844,189 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig) error
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
 	return nil
+
+}
+
+func (oa *operatorActions) DeployWebHookAndService(info *TidbClusterConfig) error {
+	log.Infof("Deploying the webhook pod")
+	client := oa.kubeCli
+
+	// Creating the secret that contains the webhook's cert.
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: webhookSecretName,
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: map[string][]byte{
+			"tls.crt": info.context.cert,
+			"tls.key": info.context.key,
+		},
+	}
+	namespace := info.Namespace
+	if _, err := client.CoreV1().Secrets(namespace).Create(secret) ; err != nil {
+		glog.Errorf("creating secret %s in namespace %s, error %v", secretName, namespace, err)
+		return err
+	}
+
+	// Create the deployment of the webhook
+	podLabels := map[string]string{"app":"sample-webhook", "webhook","true"}
+	replicas := int32(1)
+	zero := int64(0)
+	mounts := []corev1.VolumeMount{
+		{
+			Name:      "webhook-certs",
+			ReadOnly:  true,
+			MountPath: "/webhook.local.config/certificates",
+		},
+	}
+	volumes := []corev1.Volume{
+		{
+			Name: "webhook-certs",
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{SecretName: secretName},
+			},
+		},
+	}
+	containers := []corev1.Container{
+		{
+			Name:         "sample-webhook",
+			VolumeMounts: mounts,
+			Args: []string{
+				"--tls-cert-file=/webhook.local.config/certificates/tls.crt",
+				"--tls-private-key-file=/webhook.local.config/certificates/tls.key",
+				"--alsologtostderr",
+				"-v=4",
+				"2>&1",
+			},
+			Image: webhookImage,
+		},
+	}
+	d := &apps.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   deploymentName,
+			Labels: podLabels,
+		},
+		Spec: apps.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: podLabels,
+			},
+			Strategy: apps.DeploymentStrategy{
+				Type: apps.RollingUpdateDeploymentStrategyType,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: podLabels,
+				},
+				Spec: corev1.PodSpec{
+					TerminationGracePeriodSeconds: &zero,
+					Containers:                    containers,
+					Volumes:                       volumes,
+				},
+			},
+		},
+	}
+
+	if deployment, err := client.AppsV1().Deployments(namespace).Create(d); err != nil {
+		glog.Errorf("creating deployment %s in namespace %s, error %v", deployName, namespace, err)
+		return err
+	}
+
+	// TODO wait for deployment stand by
+/*
+	err = framework.WaitForDeploymentRevisionAndImage(client, namespace, deploymentName, "1", image)
+	framework.ExpectNoError(err, "waiting for the deployment of image %s in %s in %s to complete", image, deploymentName, namespace)
+	err = framework.WaitForDeploymentComplete(client, deployment)
+	framework.ExpectNoError(err, "waiting for the deployment status valid", image, deploymentName, namespace)
+	*/
+
+	glog.Infof("Deploying the webhook service")
+
+	serviceLabels := map[string]string{"webhook": "true"}
+	service := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      webhookServiceName,
+			Labels:    map[string]string{"test": "webhook"},
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: serviceLabels,
+			Ports: []corev1.ServicePort{
+				{
+					Protocol:   "TCP",
+					Port:       443,
+					TargetPort: intstr.FromInt(443),
+				},
+			},
+		},
+	}
+
+	if _, err = client.CoreV1().Services(namespace).Create(service); err != nil {
+		glog.Errorf("creating service %s in namespace %s err %v", webhookServiceName, namespace,err)
+		return err
+	}
+
+	glog.Infof("Verifying the service has paired with the endpoint")
+
+	// TODO wait for service stand by 
+	/*
+	err = framework.WaitForServiceEndpointsNum(client, namespace, serviceName, 1, 1*time.Second, 30*time.Second)
+	framework.ExpectNoError(err, "waiting for service %s/%s have %d endpoint", namespace, serviceName, 1)
+	*/
+	return nil
+}
+
+func (oa *operatorActions) RegisterWebHookAndService(info *TidbClusterConfig) error{
+	client := oa.kubeCli
+	glog.Infof("Registering the webhook via the AdmissionRegistration API")
+
+	namespace := info.Namespace
+	configName := webhookConfigName
+	// A webhook that cannot talk to server, with fail-open policy
+	policyIgnore := v1beta1.Ignore
+	failOpenHook.FailurePolicy = &policyIgnore
+
+	_, err := client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(&v1beta1.ValidatingWebhookConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: configName,
+		},
+		Webhooks: []v1beta1.Webhook{
+			{
+				Name: "check-pod-before-delete",
+				Rules: []v1beta1.RuleWithOperations{{
+					Operations: []v1beta1.OperationType{v1beta1.Delete},
+					Rule: v1beta1.Rule{
+						APIGroups:   []string{""},
+						APIVersions: []string{"v1"},
+						Resources:   []string{"pods"},
+					},
+				}},
+				ClientConfig: v1beta1.WebhookClientConfig{
+					Service: &v1beta1.ServiceReference{
+						Namespace: namespace,
+						Name:      webhookServiceName,
+						Path:      strPtr("/pods"),
+					},
+					CABundle: info.context.signingCert,
+				},
+			},
+		},
+	})
+
+	if err != nil {
+		glog.Errorf("registering webhook config %s with namespace %s error %v", configName, namespace,err)
+		return err
+	}
+
+	// The webhook configuration is honored in 10s.
+	time.Sleep(10 * time.Second)
+
+	return nil
+
+}
+
+func (oa *operatorActions) CleanWebHookAndService(info *TidbClusterConfig){
+	oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(webhookConfigName,nil)
 
 }
 
