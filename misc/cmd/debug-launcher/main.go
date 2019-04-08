@@ -11,24 +11,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pdctl
+package main
 
 import (
-	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
-	"github.com/spf13/cobra"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/debug"
+	"log"
 	"os"
 )
 
-// TODO: implementation
-// NewCmdPdctl creates the pdctl subcommand
-func NewCmdPdctl(tkcContext *config.TkcContext, streams genericclioptions.IOStreams) *cobra.Command {
-	return &cobra.Command{
-		Use:   "pdctl",
-		Short: "Not implemented",
-		Run: func(_ *cobra.Command, args []string) {
-			fmt.Fprint(os.Stdout, "not implemented")
-		},
+func main() {
+
+	iostreams := debug.IOStreams{
+		In:     os.Stdin,
+		Out:    os.Stdout,
+		ErrOut: os.Stderr,
+	}
+	cmd := debug.NewLauncherCmd(iostreams)
+	if err := cmd.Execute(); err != nil {
+		log.Fatal(err)
+		os.Exit(1)
 	}
 }
