@@ -96,14 +96,6 @@ $ git checkout -b myfeature
 
 ### Step 4: Develop
 
-#### Setup
-
-Make sure all the related tools are properly installed.
-
-```sh
-$ make check-setup
-```
-
 #### Edit the code
 
 You can now edit the code on the `myfeature` branch.
@@ -152,7 +144,14 @@ $ git rebase upstream/master
 
 ### Step 6: Commit
 
-Commit your changes.
+Before you commit, make sure the all the checks and unit tests are passed:
+
+```sh
+$ make check
+$ meke test
+```
+
+Then commit your changes.
 
 ```sh
 $ git commit
