@@ -201,7 +201,8 @@ func parserVMs(data string) []*VM {
 			continue
 		}
 		vm := &VM{
-			Name: fields[1],
+			Name:   fields[1],
+			Status: fields[2],
 		}
 		vms = append(vms, vm)
 	}

@@ -17,11 +17,12 @@ import "errors"
 
 // VM defines the descriptive information of a virtual machine
 type VM struct {
-	Host string   `json:"host"`
-	Port int64    `json:"port"`
-	Name string   `json:"name"`
-	IP   string   `json:"ip"`
-	Role []string `json:"role"`
+	Host   string   `json:"host"`
+	Port   int64    `json:"port"`
+	Name   string   `json:"name"`
+	IP     string   `json:"ip"`
+	Role   []string `json:"role"`
+	Status string   `json:"status"`
 }
 
 func (v *VM) Verify() error {

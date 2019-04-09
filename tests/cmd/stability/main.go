@@ -14,26 +14,18 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"math/rand"
 	"net/http"
 	_ "net/http/pprof"
-	"os"
 	"time"
 
-	"github.com/jinzhu/copier"
-	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apiserver/pkg/util/logs"
-	"k8s.io/client-go/kubernetes"
-
 	"github.com/golang/glog"
+	"github.com/jinzhu/copier"
+	"k8s.io/apiserver/pkg/util/logs"
+
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
-	"github.com/pingcap/tidb-operator/tests/pkg/workload"
-	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
+	"github.com/pingcap/tidb-operator/tests/pkg/client"
 )
 
 func main() {
@@ -44,441 +36,183 @@ func main() {
 		glog.Info(http.ListenAndServe("localhost:6060", nil))
 	}()
 
-	conf := tests.NewConfig()
-	conf.ParseOrDie()
-
-	// TODO read these args from config
-	beginTidbVersion := "v2.1.0"
-	toTidbVersion := "v2.1.4"
-	operatorTag := "master"
-	operatorImage := "pingcap/tidb-operator:latest"
-
-	cli, kubeCli, err := tests.CreateKubeClient()
-	if err != nil {
-		glog.Fatalf("failed to create kubernetes clientset: %v", err)
-	}
-
+	conf := tests.ParseConfigOrDie()
+	cli, kubeCli := client.NewCliOrDie()
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 
-	operatorInfo := &tests.OperatorInfo{
+	tidbVersion := conf.GetTiDBVersionOrDie()
+	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
+
+	// operator config
+	operatorCfg := &tests.OperatorConfig{
 		Namespace:      "pingcap",
 		ReleaseName:    "operator",
-		Image:          operatorImage,
-		Tag:            operatorTag,
-		SchedulerImage: "gcr.io/google-containers/hyperkube:v1.12.1",
+		Image:          conf.OperatorImage,
+		Tag:            conf.OperatorTag,
+		SchedulerImage: "gcr.io/google-containers/hyperkube",
 		LogLevel:       "2",
 	}
 
+	// TODO remove this
 	// create database and table and insert a column for test backup and restore
 	initSql := `"create database record;use record;create table test(t char(32))"`
 
-	clusterInfos := []*tests.TidbClusterInfo{
-		{
-			Namespace:        "e2e-cluster1",
-			ClusterName:      "e2e-cluster1",
-			OperatorTag:      operatorTag,
-			PDImage:          fmt.Sprintf("pingcap/pd:%s", beginTidbVersion),
-			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", beginTidbVersion),
-			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", beginTidbVersion),
-			StorageClassName: "local-storage",
-			Password:         "admin",
-			InitSql:          initSql,
-			UserName:         "root",
-			InitSecretName:   "demo-set-secret",
-			BackupSecretName: "demo-backup-secret",
-			BackupPVC:        "test-backup",
-			Resources: map[string]string{
-				"pd.resources.limits.cpu":        "1000m",
-				"pd.resources.limits.memory":     "2Gi",
-				"pd.resources.requests.cpu":      "200m",
-				"pd.resources.requests.memory":   "1Gi",
-				"tikv.resources.limits.cpu":      "2000m",
-				"tikv.resources.limits.memory":   "4Gi",
-				"tikv.resources.requests.cpu":    "1000m",
-				"tikv.resources.requests.memory": "2Gi",
-				"tidb.resources.limits.cpu":      "2000m",
-				"tidb.resources.limits.memory":   "4Gi",
-				"tidb.resources.requests.cpu":    "500m",
-				"tidb.resources.requests.memory": "1Gi",
-			},
-			Args:    map[string]string{},
-			Monitor: true,
+	// two clusters in different namespaces
+	clusterName1 := "stability-cluster1"
+	clusterName2 := "stability-cluster2"
+	cluster1 := &tests.TidbClusterConfig{
+		Namespace:        clusterName1,
+		ClusterName:      clusterName1,
+		OperatorTag:      conf.OperatorTag,
+		PDImage:          fmt.Sprintf("pingcap/pd:%s", tidbVersion),
+		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
+		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
+		StorageClassName: "local-storage",
+		Password:         "admin",
+		InitSql:          initSql,
+		UserName:         "root",
+		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName1),
+		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName1),
+		BackupPVC:        "backup-pvc",
+		Resources: map[string]string{
+			"pd.resources.limits.cpu":        "1000m",
+			"pd.resources.limits.memory":     "2Gi",
+			"pd.resources.requests.cpu":      "200m",
+			"pd.resources.requests.memory":   "1Gi",
+			"tikv.resources.limits.cpu":      "2000m",
+			"tikv.resources.limits.memory":   "4Gi",
+			"tikv.resources.requests.cpu":    "1000m",
+			"tikv.resources.requests.memory": "2Gi",
+			"tidb.resources.limits.cpu":      "2000m",
+			"tidb.resources.limits.memory":   "4Gi",
+			"tidb.resources.requests.cpu":    "500m",
+			"tidb.resources.requests.memory": "1Gi",
+			"monitor.persistent":             "true",
 		},
-		{
-			Namespace:        "e2e-cluster2",
-			ClusterName:      "e2e-cluster2",
-			OperatorTag:      "master",
-			PDImage:          fmt.Sprintf("pingcap/pd:%s", beginTidbVersion),
-			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", beginTidbVersion),
-			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", beginTidbVersion),
-			StorageClassName: "local-storage",
-			Password:         "admin",
-			InitSql:          initSql,
-			UserName:         "root",
-			InitSecretName:   "demo-set-secret",
-			BackupSecretName: "demo-backup-secret",
-			BackupPVC:        "test-backup",
-			Resources: map[string]string{
-				"pd.resources.limits.cpu":        "1000m",
-				"pd.resources.limits.memory":     "2Gi",
-				"pd.resources.requests.cpu":      "200m",
-				"pd.resources.requests.memory":   "1Gi",
-				"tikv.resources.limits.cpu":      "2000m",
-				"tikv.resources.limits.memory":   "4Gi",
-				"tikv.resources.requests.cpu":    "1000m",
-				"tikv.resources.requests.memory": "2Gi",
-				"tidb.resources.limits.cpu":      "2000m",
-				"tidb.resources.limits.memory":   "4Gi",
-				"tidb.resources.requests.cpu":    "500m",
-				"tidb.resources.requests.memory": "1Gi",
-			},
-			Args:    map[string]string{},
-			Monitor: true,
-		},
+		Args:    map[string]string{},
+		Monitor: true,
 	}
+	cluster2 := &tests.TidbClusterConfig{
+		Namespace:        clusterName2,
+		ClusterName:      clusterName2,
+		OperatorTag:      conf.OperatorTag,
+		PDImage:          fmt.Sprintf("pingcap/pd:%s", tidbVersion),
+		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
+		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
+		StorageClassName: "local-storage",
+		Password:         "admin",
+		InitSql:          initSql,
+		UserName:         "root",
+		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName2),
+		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName2),
+		BackupPVC:        "backup-pvc",
+		Resources: map[string]string{
+			"pd.resources.limits.cpu":        "1000m",
+			"pd.resources.limits.memory":     "2Gi",
+			"pd.resources.requests.cpu":      "200m",
+			"pd.resources.requests.memory":   "1Gi",
+			"tikv.resources.limits.cpu":      "2000m",
+			"tikv.resources.limits.memory":   "4Gi",
+			"tikv.resources.requests.cpu":    "1000m",
+			"tikv.resources.requests.memory": "2Gi",
+			"tidb.resources.limits.cpu":      "2000m",
+			"tidb.resources.limits.memory":   "4Gi",
+			"tidb.resources.requests.cpu":    "500m",
+			"tidb.resources.requests.memory": "1Gi",
+			// TODO assert the the monitor's pvc exist and clean it when bootstrapping
+			"monitor.persistent": "true",
+		},
+		Args:    map[string]string{},
+		Monitor: true,
+	}
+
+	// cluster backup and restore
+	clusterBackupFrom := cluster1
+	clusterRestoreTo := &tests.TidbClusterConfig{}
+	copier.Copy(clusterRestoreTo, clusterBackupFrom)
+	clusterRestoreTo.ClusterName = "cluster-restore"
+
+	allClusters := []*tests.TidbClusterConfig{cluster1, cluster2, clusterRestoreTo}
 
 	defer func() {
-		oa.DumpAllLogs(operatorInfo, clusterInfos)
+		oa.DumpAllLogs(operatorCfg, allClusters)
 	}()
 
-	// deploy operator
-	if err := oa.CleanOperator(operatorInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, nil)
-		glog.Fatal(err)
-	}
-	if err = oa.DeployOperator(operatorInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, nil)
-		glog.Fatal(err)
+	// clean all clusters
+	for _, cluster := range allClusters {
+		oa.CleanTidbClusterOrDie(cluster)
 	}
 
-	// deploy tidbclusters
-	for _, clusterInfo := range clusterInfos {
-		if err = oa.CleanTidbCluster(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-		if err = oa.DeployTidbCluster(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-	}
+	// clean and deploy operator
+	oa.CleanOperatorOrDie(operatorCfg)
+	oa.DeployOperatorOrDie(operatorCfg)
 
-	for _, clusterInfo := range clusterInfos {
-		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-	}
+	// deploy and check cluster1, cluster2
+	oa.DeployTidbClusterOrDie(cluster1)
+	oa.DeployTidbClusterOrDie(cluster2)
+	oa.CheckTidbClusterStatusOrDie(cluster1)
+	oa.CheckTidbClusterStatusOrDie(cluster2)
 
-	var workloads []workload.Workload
-	for _, clusterInfo := range clusterInfos {
-		workload := ddl.New(clusterInfo.DSN("test"), 1, 1)
-		workloads = append(workloads, workload)
-	}
+	//go func() {
+	//	oa.BeginInsertDataTo(cluster1)
+	//	oa.BeginInsertDataTo(cluster2)
+	//}()
 
-	err = workload.Run(func() error {
+	// TODO add DDL
+	//var workloads []workload.Workload
+	//for _, clusterInfo := range clusterInfos {
+	//	workload := ddl.New(clusterInfo.DSN("test"), 1, 1)
+	//	workloads = append(workloads, workload)
+	//}
+	//err = workload.Run(func() error {
+	//}, workloads...)
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
-		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
-		}
+	// scale out cluster1 and cluster2
+	cluster1.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
+	oa.ScaleTidbClusterOrDie(cluster1)
+	cluster2.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
+	oa.ScaleTidbClusterOrDie(cluster2)
+	time.Sleep(30 * time.Second)
+	oa.CheckTidbClusterStatusOrDie(cluster1)
+	oa.CheckTidbClusterStatusOrDie(cluster2)
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScalePD(3)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
-		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
-		}
+	// scale in cluster1 and cluster2
+	cluster1.ScaleTiDB(2).ScaleTiKV(3).ScalePD(3)
+	oa.ScaleTidbClusterOrDie(cluster1)
+	cluster2.ScaleTiDB(2).ScaleTiKV(3).ScalePD(3)
+	oa.ScaleTidbClusterOrDie(cluster2)
+	time.Sleep(30 * time.Second)
+	oa.CheckTidbClusterStatusOrDie(cluster1)
+	oa.CheckTidbClusterStatusOrDie(cluster2)
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScaleTiKV(3)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
-		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
-		}
+	// upgrade cluster1 and cluster2
+	firstUpgradeVersion := upgardeTiDBVersions[0]
+	cluster1.UpgradeAll(firstUpgradeVersion)
+	cluster2.UpgradeAll(firstUpgradeVersion)
+	oa.UpgradeTidbClusterOrDie(cluster1)
+	oa.UpgradeTidbClusterOrDie(cluster2)
+	time.Sleep(30 * time.Second)
+	oa.CheckTidbClusterStatusOrDie(cluster1)
+	oa.CheckTidbClusterStatusOrDie(cluster2)
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScaleTiDB(1)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
-		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
-		}
+	// deploy and check cluster restore
+	oa.DeployTidbClusterOrDie(clusterRestoreTo)
+	oa.CheckTidbClusterStatusOrDie(clusterRestoreTo)
 
-		return nil
-	}, workloads...)
+	// restore
+	backup.NewBackupCase(oa, clusterBackupFrom, clusterRestoreTo).RunOrDie()
 
-	if err != nil {
-		glog.Fatal(err)
-	}
-
-	for _, clusterInfo := range clusterInfos {
-		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-	}
-
-	for _, clusterInfo := range clusterInfos {
-		clusterInfo = clusterInfo.UpgradeAll(toTidbVersion)
-		if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-	}
-
-	for _, clusterInfo := range clusterInfos {
-		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-	}
-
-	// backup and restore
-	backupClusterInfo := clusterInfos[0]
-	restoreClusterInfo := &tests.TidbClusterInfo{}
-	copier.Copy(restoreClusterInfo, backupClusterInfo)
-	restoreClusterInfo.ClusterName = restoreClusterInfo.ClusterName + "-restore"
-
-	if err = oa.CleanTidbCluster(restoreClusterInfo); err != nil {
-		glog.Fatal(err)
-	}
-	if err = oa.DeployTidbCluster(restoreClusterInfo); err != nil {
-		glog.Fatal(err)
-	}
-	if err = oa.CheckTidbClusterStatus(restoreClusterInfo); err != nil {
-		glog.Fatal(err)
-	}
-
-	backupCase := backup.NewBackupCase(oa, backupClusterInfo, restoreClusterInfo)
-
-	if err := backupCase.Run(); err != nil {
-		glog.Fatal(err)
-	}
-
-	fa := tests.NewFaultTriggerAction(cli, kubeCli, conf)
-	if err := testFailover(kubeCli, oa, fa, conf, clusterInfos); err != nil {
-		glog.Fatal(err)
-	}
-}
-
-func testFailover(
-	kubeCli kubernetes.Interface,
-	oa tests.OperatorActions,
-	fa tests.FaultTriggerActions,
-	cfg *tests.Config,
-	clusters []*tests.TidbClusterInfo,
-) error {
-	var faultPoint time.Time
-	faultNode, err := getFaultNode(kubeCli)
-	if err != nil {
-		return err
-	}
-
-	physicalNode := getPhysicalNode(faultNode, cfg)
-
-	if physicalNode == "" {
-		err = errors.New("physical node is empty")
-		glog.Error(err.Error())
-		return err
-	}
-
-	glog.Infof("try to stop node [%s:%s]", physicalNode, faultNode)
-	err = wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
-		err = fa.StopNode(physicalNode, faultNode)
-		if err != nil {
-			glog.Errorf("failed stop node [%s:%s]: %v", physicalNode, faultNode, err)
-			return false, nil
-		}
-		faultPoint = time.Now()
-		return true, nil
-	})
-
-	if err != nil {
-		glog.Errorf("test failed when trigger a node [%s:%s] stop,error: %v", physicalNode, faultNode, err)
-		return err
-	}
-
-	// defer start node
-	defer func() {
-		glog.Infof("defer: start node [%s:%s]", physicalNode, faultNode)
-		if err = fa.StartNode(physicalNode, faultNode); err != nil {
-			glog.Errorf("failed start node [%s:%s]: %v", physicalNode, faultNode, err)
-		}
-	}()
-
-	glog.Info("the operator's failover feature should pending some time")
-	if err = checkPendingFailover(oa, clusters, &faultPoint); err != nil {
-		glog.Errorf("pending failover failed: %v", err)
-		return err
-	}
-
-	glog.Info("the operator's failover feature should start.")
-	if err = checkFailover(oa, clusters, faultNode); err != nil {
-		glog.Errorf("check failover failed: %v", err)
-		return err
-	}
-
-	glog.Info("sleep 3 minutes ......")
+	// stop a node and failover automatically
+	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
+	physicalNode, node, faultTime := fta.StopNodeOrDie()
+	oa.CheckFailoverPendingOrDie(allClusters, &faultTime)
+	oa.CheckFailoverOrDie(allClusters, node)
 	time.Sleep(3 * time.Minute)
-
-	glog.Infof("begin to start node %s %s", physicalNode, faultNode)
-	err = wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
-		err = fa.StartNode(physicalNode, faultNode)
-		if err != nil {
-			glog.Errorf("failed start node [%s:%s]: %v", physicalNode, faultNode, err)
-			return false, nil
-		}
-		return true, nil
-	})
-
-	glog.Infof("begin to check recover after node [%s:%s] start", physicalNode, faultNode)
-	if err = checkRecover(oa, clusters); err != nil {
-		glog.Infof("check recover failed: %v", err)
-		return err
+	fta.StartNodeOrDie(physicalNode, node)
+	oa.CheckRecoverOrDie(allClusters)
+	for _, cluster := range allClusters {
+		oa.CheckTidbClusterStatusOrDie(cluster)
 	}
 
-	return nil
-}
-
-func checkRecover(oa tests.OperatorActions, clusters []*tests.TidbClusterInfo) error {
-	return wait.Poll(5*time.Second, 10*time.Minute, func() (bool, error) {
-		var passes []bool
-		for i := range clusters {
-			err := oa.CheckTidbClusterStatus(clusters[i])
-			if err != nil {
-				return false, err
-			}
-			passes = append(passes, true)
-		}
-		for _, pass := range passes {
-			if !pass {
-				return false, nil
-			}
-		}
-		return true, nil
-	})
-}
-
-func checkPendingFailover(oa tests.OperatorActions, clusters []*tests.TidbClusterInfo, faultPoint *time.Time) error {
-	return wait.Poll(5*time.Second, 10*time.Minute, func() (bool, error) {
-		var passes []bool
-		for i := range clusters {
-			pass, err := oa.PendingFailover(clusters[i], faultPoint)
-			if err != nil {
-				return pass, err
-			}
-			passes = append(passes, pass)
-		}
-		for _, pass := range passes {
-			if !pass {
-				return false, nil
-			}
-		}
-		return true, nil
-	})
-}
-
-func checkFailover(oa tests.OperatorActions, clusters []*tests.TidbClusterInfo, faultNode string) error {
-	return wait.Poll(5*time.Second, 25*time.Minute, func() (bool, error) {
-		var passes []bool
-		for i := range clusters {
-			pass, err := oa.CheckFailover(clusters[i], faultNode)
-			if err != nil {
-				return pass, err
-			}
-			passes = append(passes, pass)
-		}
-		for _, pass := range passes {
-			if !pass {
-				return false, nil
-			}
-		}
-		return true, nil
-	})
-
-}
-
-func getMyNodeName() string {
-	return os.Getenv("MY_NODE_NAME")
-}
-
-func getFaultNode(kubeCli kubernetes.Interface) (string, error) {
-	var err error
-	var nodes *v1.NodeList
-	err = wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
-		nodes, err = kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
-		if err != nil {
-			glog.Errorf("trigger node stop failed when get all nodes, error: %v", err)
-			return false, nil
-		}
-
-		return true, nil
-	})
-
-	if err != nil {
-		glog.Errorf("failed to list nodes: %v", err)
-		return "", err
-	}
-
-	if len(nodes.Items) <= 1 {
-		err := errors.New("the number of nodes cannot be less than 1")
-		glog.Error(err.Error())
-		return "", err
-	}
-
-	myNode := getMyNodeName()
-	if myNode == "" {
-		err := errors.New("get own node name is empty")
-		glog.Error(err.Error())
-		return "", err
-	}
-
-	index := rand.Intn(len(nodes.Items))
-	faultNode := nodes.Items[index].Name
-	if faultNode != myNode {
-		return faultNode, nil
-	}
-
-	if index == 0 {
-		faultNode = nodes.Items[index+1].Name
-	} else {
-		faultNode = nodes.Items[index-1].Name
-	}
-
-	if faultNode == myNode {
-		err := fmt.Errorf("there are at least two nodes with the name %s", myNode)
-		glog.Error(err.Error())
-		return "", err
-	}
-
-	return faultNode, nil
-}
-
-func getPhysicalNode(faultNode string, cfg *tests.Config) string {
-	var physicalNode string
-	for _, nodes := range cfg.Nodes {
-		for _, node := range nodes.Nodes {
-			if node == faultNode {
-				physicalNode = nodes.PhysicalNode
-			}
-		}
-	}
-
-	return physicalNode
+	glog.Infof("\nFinished.")
 }
