@@ -82,9 +82,9 @@ func (c *DDLCase) Execute(ctx context.Context, dbss [][]*sql.DB, exeDDLFunc Exec
 		}
 	}
 
-	glog.Infof("[%s] start to test...", c)
+	glog.V(4).Infof("[%s] start to test...", c)
 	defer func() {
-		glog.Infof("[%s] test end...", c)
+		glog.V(4).Infof("[%s] test end...", c)
 	}()
 	var wg sync.WaitGroup
 	for i := 0; i < c.cfg.Concurrency; i++ {
@@ -372,8 +372,8 @@ func (c *testCase) execute(executeDDL ExecuteDDLFunc, exeDMLFunc ExecuteDMLFunc)
 		return errors.Trace(err)
 	}
 
-	glog.Infof("[ddl] [instance %d] Round completed", c.caseIndex)
-	glog.Infof("[ddl] [instance %d] Executing post round operations...", c.caseIndex)
+	glog.V(4).Infof("[ddl] [instance %d] Round completed", c.caseIndex)
+	glog.V(4).Infof("[ddl] [instance %d] Executing post round operations...", c.caseIndex)
 
 	if !c.cfg.MySQLCompatible {
 		err := c.executeAdminCheck()
@@ -421,7 +421,7 @@ func (c *testCase) executeVerifyIntegrity() error {
 		// execute
 		opStart := time.Now()
 		rows, err := db.Query(sql)
-		glog.Infof("[ddl] [instance %d] %s, elapsed time:%v, got table time:%v, selectID:%v", c.caseIndex, sql, time.Since(opStart).Seconds(), gotTableTime, uniqID)
+		glog.V(4).Infof("[ddl] [instance %d] %s, elapsed time:%v, got table time:%v, selectID:%v", c.caseIndex, sql, time.Since(opStart).Seconds(), gotTableTime, uniqID)
 		if err == nil {
 			defer rows.Close()
 		}
@@ -446,7 +446,7 @@ func (c *testCase) executeVerifyIntegrity() error {
 				return errors.Trace(err)
 			}
 
-			glog.Infof("[ddl] [instance %d] rows.Columns():%v, len(cols):%v, selectID:%v", c.caseIndex, cols, len(cols), uniqID)
+			glog.V(4).Infof("[ddl] [instance %d] rows.Columns():%v, len(cols):%v, selectID:%v", c.caseIndex, cols, len(cols), uniqID)
 
 			// See https://stackoverflow.com/questions/14477941/read-select-columns-into-string-in-go
 			rawResult := make([][]byte, len(cols))
@@ -514,14 +514,14 @@ func (c *testCase) executeVerifyIntegrity() error {
 			if !ok {
 				c.stopTest()
 				err = fmt.Errorf("Expecting row %s in table `%s` but not found, sql: %s, selectID:%v, checkTime:%v, rowErr:%v, actualRowsMap:%#v\n%s", rowString, table.name, sql, uniqID, checkTime, rows.Err(), actualRowsMap, table.debugPrintToString())
-				glog.Infof("err: %v", err)
+				glog.V(4).Infof("err: %v", err)
 				return errors.Trace(err)
 			}
 			actualRowsMap[rowString]--
 			if actualRowsMap[rowString] < 0 {
 				c.stopTest()
 				err = fmt.Errorf("Expecting row %s in table `%s` but not found, sql: %s, selectID:%v, checkTime:%v, rowErr:%v, actualRowsMap:%#v\n%s", rowString, table.name, sql, uniqID, checkTime, rows.Err(), actualRowsMap, table.debugPrintToString())
-				glog.Infof("err: %v", err)
+				glog.V(4).Infof("err: %v", err)
 				return errors.Trace(err)
 			}
 		}
@@ -529,7 +529,7 @@ func (c *testCase) executeVerifyIntegrity() error {
 			if occurs > 0 {
 				c.stopTest()
 				err = fmt.Errorf("Unexpected row %s in table `%s`, sql: %s, selectID:%v, checkTime:%v, rowErr:%v, actualRowsMap:%#v\n%s", rowString, table.name, sql, uniqID, checkTime, rows.Err(), actualRowsMap, table.debugPrintToString())
-				glog.Infof("err: %v", err)
+				glog.V(4).Infof("err: %v", err)
 				return errors.Trace(err)
 			}
 		}
@@ -572,7 +572,7 @@ func (c *testCase) executeAdminCheck() error {
 	dbIdx := rand.Intn(len(c.dbs))
 	db := c.dbs[dbIdx]
 	// execute
-	glog.Infof("[ddl] [instance %d] %s", c.caseIndex, sql)
+	glog.V(4).Infof("[ddl] [instance %d] %s", c.caseIndex, sql)
 	_, err := db.Exec(sql)
 	if err != nil {
 		if ignore_error(err) {
