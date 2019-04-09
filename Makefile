@@ -27,7 +27,7 @@ docker-push: docker
 docker: build
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest" images/tidb-operator
 
-build: controller-manager scheduler discovery
+build: check-setup controller-manager scheduler discovery
 
 controller-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
@@ -50,7 +50,7 @@ e2e-docker: e2e-build
 	cp -r charts/tidb-backup tests/images/e2e
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" tests/images/e2e
 
-e2e-build:
+e2e-build: check-setup
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
 
 stability-test-build:
