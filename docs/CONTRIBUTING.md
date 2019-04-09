@@ -144,7 +144,7 @@ $ git rebase upstream/master
 
 ### Step 6: Commit
 
-Before you commit, make sure the all the checks and unit tests are passed:
+Before you commit, make sure that all the checks and unit tests are passed:
 
 ```sh
 $ make check
