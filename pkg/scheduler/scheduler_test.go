@@ -53,7 +53,7 @@ func TestSchedulerFilter(t *testing.T) {
 		{
 			name: "pod instance label is empty",
 			args: &schedulerapiv1.ExtenderArgs{
-				Pod: apiv1.Pod{
+				Pod: &apiv1.Pod{
 					TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod-1",
@@ -76,7 +76,7 @@ func TestSchedulerFilter(t *testing.T) {
 		{
 			name: "pod is not pd or tikv",
 			args: &schedulerapiv1.ExtenderArgs{
-				Pod: apiv1.Pod{
+				Pod: &apiv1.Pod{
 					TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod-1",
@@ -103,7 +103,7 @@ func TestSchedulerFilter(t *testing.T) {
 		{
 			name: "predicate returns error",
 			args: &schedulerapiv1.ExtenderArgs{
-				Pod: apiv1.Pod{
+				Pod: &apiv1.Pod{
 					TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod-1",
@@ -130,7 +130,7 @@ func TestSchedulerFilter(t *testing.T) {
 		{
 			name: "predicate success",
 			args: &schedulerapiv1.ExtenderArgs{
-				Pod: apiv1.Pod{
+				Pod: &apiv1.Pod{
 					TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod-1",
