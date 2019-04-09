@@ -11,6 +11,10 @@ rbac:
 # if multiple clusters are deployed in the same namespace.
 clusterName: demo
 
+# Add additional TidbCluster labels
+# ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+extraLabels: {}
+
 # schedulerName must be same with charts/tidb-operator/values#scheduler.schedulerName
 schedulerName: tidb-scheduler
 
@@ -52,7 +56,7 @@ pd:
 
   # maxStoreDownTime is how long a store will be considered `down` when disconnected
   # if a store is considered `down`, the regions will be migrated to other stores
-  maxStoreDownTime: 1h
+  maxStoreDownTime: 30m
   # maxReplicas is the number of replicas for each region
   maxReplicas: 3
   resources:

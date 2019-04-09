@@ -17,30 +17,24 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 )
 
 type tikvFailover struct {
-	pdControl controller.PDControlInterface
+	tikvFailoverPeriod time.Duration
 }
 
 // NewTiKVFailover returns a tikv Failover
-func NewTiKVFailover(pdControl controller.PDControlInterface) Failover {
-	return &tikvFailover{pdControl}
+func NewTiKVFailover(tikvFailoverPeriod time.Duration) Failover {
+	return &tikvFailover{tikvFailoverPeriod}
 }
 
 func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
-	cfg, err := tf.pdControl.GetPDClient(tc).GetConfig()
-	if err != nil {
-		return err
-	}
-
 	for storeID, store := range tc.Status.TiKV.Stores {
 		podName := store.PodName
 		if store.LastTransitionTime.IsZero() {
 			continue
 		}
-		deadline := store.LastTransitionTime.Add(cfg.Schedule.MaxStoreDownTime.Duration)
+		deadline := store.LastTransitionTime.Add(tf.tikvFailoverPeriod)
 		exist := false
 		for _, failureStore := range tc.Status.TiKV.FailureStores {
 			if failureStore.PodName == podName {

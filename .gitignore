@@ -27,3 +27,5 @@ coverage.txt
 /_tools/
 vendor
 tests/e2e/e2e.test
+.orig
+tkc
