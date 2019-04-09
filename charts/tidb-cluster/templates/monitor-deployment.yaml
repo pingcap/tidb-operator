@@ -71,6 +71,7 @@ spec:
         {{- end }}
         command:
         - /bin/prometheus
+        - --web.enable-admin-api
         - --log.level={{ .Values.monitor.prometheus.logLevel }}
         - --config.file=/etc/prometheus/prometheus.yml
         - --storage.tsdb.path=/data/prometheus

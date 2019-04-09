@@ -131,7 +131,7 @@ func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []st
 func (bw *blockWriter) batchExecute(db *sql.DB, query string) error {
 	_, err := db.Exec(query)
 	if err != nil {
-		glog.Errorf("[block_writer] exec sql [%s] failed, err: %v", query, err)
+		glog.V(4).Infof("[block_writer] exec sql [%s] failed, err: %v", query, err)
 		return err
 	}
 
@@ -158,7 +158,9 @@ func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan []str
 				return
 			default:
 				if err := bw.batchExecute(db, query); err != nil {
-					glog.Fatal(err)
+					glog.Error(err)
+					time.Sleep(5 * time.Second)
+					continue
 				}
 			}
 		}
@@ -210,7 +212,7 @@ func (c *BlockWriterCase) Start(db *sql.DB) error {
 	if !atomic.CompareAndSwapUint32(&c.isRunning, 0, 1) {
 		err := fmt.Errorf("[%s] is running, you can't start it again", c)
 		glog.Error(err)
-		return err
+		return nil
 	}
 
 	defer func() {

@@ -26,13 +26,13 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 ```sh
 $ git clone https://github.com/pingcap/tidb-operator
 $ cd tidb-operator
-$ manifests/local-dind/dind-cluster-v1.10.sh up
+$ manifests/local-dind/dind-cluster-v1.12.sh up
 ```
 
-> **Note:** If the cluster fails to pull Docker images during the startup due to the firewall, you can set the environment variable `KUBE_REPO_PREFIX` to `uhub.ucloud.cn/pingcap` before running the script `dind-cluster-v1.10.sh` as follows (the Docker images used are pulled from [UCloud Docker Registry](https://docs.ucloud.cn/compute/uhub/index)):
+> **Note:** If the cluster fails to pull Docker images during the startup due to the firewall, you can set the environment variable `KUBE_REPO_PREFIX` to `uhub.ucloud.cn/pingcap` before running the script `dind-cluster-v1.12.sh` as follows (the Docker images used are pulled from [UCloud Docker Registry](https://docs.ucloud.cn/compute/uhub/index)):
 
 ```
-$ KUBE_REPO_PREFIX=uhub.ucloud.cn/pingcap manifests/local-dind/dind-cluster-v1.10.sh up
+$ KUBE_REPO_PREFIX=uhub.ucloud.cn/pingcap manifests/local-dind/dind-cluster-v1.12.sh up
 ```
 
 ## Step 2: Install TiDB Operator in the DinD Kubernetes cluster
@@ -54,6 +54,7 @@ $ # wait operator running
 $ kubectl get pods --namespace tidb-admin -l app.kubernetes.io/instance=tidb-operator
 NAME                                       READY     STATUS    RESTARTS   AGE
 tidb-controller-manager-5cd94748c7-jlvfs   1/1       Running   0          1m
+tidb-scheduler-56757c896c-clzdg            2/2       Running   0          1m
 ```
 
 ## Step 3: Deploy a TiDB cluster in the DinD Kubernetes cluster
@@ -75,6 +76,7 @@ demo-tikv   3         3         1m
 
 $ kubectl get service -n tidb
 NAME              TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                          AGE
+demo-discovery    ClusterIP   10.96.146.139    <none>        10261/TCP                        1m
 demo-grafana      NodePort    10.111.80.73     <none>        3000:32503/TCP                   1m
 demo-pd           ClusterIP   10.110.192.154   <none>        2379/TCP                         1m
 demo-pd-peer      ClusterIP   None             <none>        2380/TCP                         1m
@@ -92,6 +94,7 @@ demo-tikv      2         1m
 
 $ kubectl get pod -n tidb
 NAME                              READY     STATUS      RESTARTS   AGE
+demo-discovery-649c7bcbdc-t5r2k   2/2       Running     0          1m
 demo-monitor-58745cf54f-gb8kd     2/2       Running     0          1m
 demo-monitor-configurator-stvw6   0/1       Completed   0          1m
 demo-pd-0                         1/1       Running     0          1m
@@ -99,7 +102,6 @@ demo-pd-1                         1/1       Running     0          1m
 demo-pd-2                         1/1       Running     0          1m
 demo-tidb-0                       1/1       Running     0          1m
 demo-tidb-1                       1/1       Running     0          1m
-demo-tidb-initializer-ftl4r       0/1       Completed   0          1m
 demo-tikv-0                       2/2       Running     0          1m
 demo-tikv-1                       2/2       Running     0          1m
 demo-tikv-2                       2/2       Running     0          1m
@@ -154,7 +156,7 @@ You can scale out or scale in the TiDB cluster simply by modifying the number of
 
 1. Configure the `charts/tidb-cluster/values.yaml` file.
 
-    For example, change the version of PD/TiKV/TiDB `image` from `v2.0.4` to `v2.0.5`.
+    For example, change the version of PD/TiKV/TiDB `image` to `v2.1.1`.
 
 2. Run the following command to apply the changes:
 
@@ -182,14 +184,14 @@ $ kubectl delete pvc --namespace tidb --all
 * If you want to stop the DinD Kubernetes cluster, run the following command:
 
     ```sh
-    $ manifests/local-dind/dind-cluster-v1.10.sh stop
+    $ manifests/local-dind/dind-cluster-v1.12.sh stop
 
     ```
 
 * If you want to restart the DinD Kubernetes after you stop it, run the following command:
 
     ```
-    $ manifests/local-dind/dind-cluster-v1.10.sh start
+    $ manifests/local-dind/dind-cluster-v1.12.sh start
     ```
 
 ## Destroy the DinD Kubernetes cluster
@@ -197,9 +199,9 @@ $ kubectl delete pvc --namespace tidb --all
 If you want to clean up the DinD Kubernetes cluster and bring up a new cluster, run the following commands:
 
 ```sh
-$ manifests/local-dind/dind-cluster-v1.10.sh clean
+$ manifests/local-dind/dind-cluster-v1.12.sh clean
 $ sudo rm -rf data/kube-node-*
-$ manifests/local-dind/dind-cluster-v1.10.sh up
+$ manifests/local-dind/dind-cluster-v1.12.sh up
 ```
 
 > **Warning:** You must clean the data after you destroy the DinD Kubernetes cluster, otherwise the TiDB cluster would fail to start when you bring it up again.

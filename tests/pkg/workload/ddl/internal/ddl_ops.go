@@ -156,7 +156,7 @@ func (c *testCase) execParaDDLSQL(taskCh chan *ddlJobTask, num int) error {
 			opStart := time.Now()
 			db := c.dbs[0]
 			_, err := db.Exec(task.sql)
-			glog.Infof("[ddl] [instance %d] TiDB execute %s , err %v, table_id %s, elapsed time:%v", c.caseIndex, task.sql, err, task.tblInfo.id, time.Since(opStart).Seconds())
+			glog.V(4).Infof("[ddl] [instance %d] TiDB execute %s , err %v, table_id %s, elapsed time:%v", c.caseIndex, task.sql, err, task.tblInfo.id, time.Since(opStart).Seconds())
 			task.err = err
 		}(task)
 	}
@@ -168,7 +168,7 @@ func (c *testCase) execParaDDLSQL(taskCh chan *ddlJobTask, num int) error {
 	}
 	for _, task := range SortTasks {
 		err := c.updateTableInfo(task)
-		glog.Infof("[ddl] [instance %d] local execute %s, err %v , table_id %s, ddlID %v", c.caseIndex, task.sql, err, task.tblInfo.id, task.ddlID)
+		glog.V(4).Infof("[ddl] [instance %d] local execute %s, err %v , table_id %s, ddlID %v", c.caseIndex, task.sql, err, task.tblInfo.id, task.ddlID)
 		if err == nil && task.err != nil || err != nil && task.err == nil {
 			return fmt.Errorf("Error when executing SQL: %s\n, local err: %#v, remote tidb err: %#v\n%s\n", task.sql, err, task.err, task.tblInfo.debugPrintToString())
 		}
@@ -185,7 +185,7 @@ func (c *testCase) execSerialDDLSQL(taskCh chan *ddlJobTask) error {
 	db := c.dbs[0]
 	opStart := time.Now()
 	_, err := db.Exec(task.sql)
-	glog.Infof("[ddl] [instance %d] %s, elapsed time:%v", c.caseIndex, task.sql, time.Since(opStart).Seconds())
+	glog.V(4).Infof("[ddl] [instance %d] %s, elapsed time:%v", c.caseIndex, task.sql, time.Since(opStart).Seconds())
 	if err != nil {
 		return fmt.Errorf("Error when executing SQL: %s\n remote tidb Err: %#v\n%s\n", task.sql, err, task.tblInfo.debugPrintToString())
 	}
@@ -702,7 +702,7 @@ func (c *testCase) getHistoryDDLJobs(db *sql.DB, tasks []*ddlJobTask) ([]*ddlJob
 	// execute
 	opStart := time.Now()
 	rows, err := db.Query(sql)
-	glog.Infof("%s, elapsed time:%v", sql, time.Since(opStart).Seconds())
+	glog.V(4).Infof("%s, elapsed time:%v", sql, time.Since(opStart).Seconds())
 	if err != nil {
 		return nil, err
 	}
