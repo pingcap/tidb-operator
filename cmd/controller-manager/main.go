@@ -43,6 +43,7 @@ var (
 	workers            int
 	autoFailover       bool
 	pdFailoverPeriod   time.Duration
+	tikvFailoverPeriod time.Duration
 	tidbFailoverPeriod time.Duration
 	leaseDuration      = 15 * time.Second
 	renewDuration      = 5 * time.Second
@@ -59,6 +60,7 @@ func init() {
 	flag.StringVar(&controller.DefaultStorageClassName, "default-storage-class-name", "standard", "Default storage class name")
 	flag.BoolVar(&autoFailover, "auto-failover", false, "Auto failover")
 	flag.DurationVar(&pdFailoverPeriod, "pd-failover-period", time.Duration(5*time.Minute), "PD failover period default(5m)")
+	flag.DurationVar(&tikvFailoverPeriod, "tikv-failover-period", time.Duration(5*time.Minute), "TiKV failover period default(5m)")
 	flag.DurationVar(&tidbFailoverPeriod, "tidb-failover-period", time.Duration(5*time.Minute), "TiDB failover period")
 
 	flag.Parse()
@@ -120,8 +122,7 @@ func main() {
 		},
 	}
 
-	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tidbFailoverPeriod)
-
+	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go informerFactory.Start(controllerCtx.Done())
