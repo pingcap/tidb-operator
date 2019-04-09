@@ -11,6 +11,10 @@ rbac:
 # if multiple clusters are deployed in the same namespace.
 clusterName: demo
 
+# Add additional TidbCluster labels
+# ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+extraLabels: {}
+
 # schedulerName must be same with charts/tidb-operator/values#scheduler.schedulerName
 schedulerName: tidb-scheduler
 
