@@ -110,7 +110,7 @@ func initErrorMetric() prometheus.Counter{
 
 //IncreErrorCountWithAnno increments the errorcount by 1,
 //and add the annotation to grafanan.
-func (cli *grafanaCli) IncreErrorCountWithAnno(annotation *Annotation) error{
+func (cli *grafanaCli) IncreErrorCountWithAnno(annotation Annotation) error{
 	initAction.Do(initFunc)
 
 	counterMetric.Inc()
