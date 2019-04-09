@@ -37,12 +37,14 @@ This document defines the roadmap for TiDB Operator development.
 - [x] Improve chaos test
 - [x] More User friendly
 
-## v1.0.0-beta.2: (2019-01-18)
-- [ ] Multiple StatefulSets support
+## v1.0.0-beta.2: (2019-04-30)
+- [ ] Simple CLI tool
+- [ ] Deployment guide on different platforms
 
-## v1.0.0-rc: (2019-01-30)
-- [ ] Chaos test for multiple StatefulSets
+## v1.0.0-rc: (2019-05-30)
+- [ ] Automate Chaos tests
+- [ ] Improve documentation
 
-## v1.0.0-ga: (2019-02-14)
+## v1.0.0-ga: (2019-06-30)
 - [ ] Stabilize API
 - [ ] Stable for production deployment
