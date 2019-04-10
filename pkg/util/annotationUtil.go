@@ -12,6 +12,7 @@
 // limitations under the License.
 
 package util
+
 import (
 	"bytes"
 	"encoding/json"
@@ -27,7 +28,7 @@ import (
 )
 
 //Client request grafana API on a set of resource paths.
-type grafanaCli struct {
+type client struct {
 	// base is the root URL for all invocations of the client
 	baseUrl url.URL
 	client *http.Client
@@ -42,17 +43,17 @@ type Annotation struct {
 	text string
 }
 
-//NewGrafanaClient creats a new grafanaClient. This client performs rest functions
+//NewClient creats a new grafanaClient. This client performs rest functions
 //such as Get, Post on specified paths.
-func NewGrafanaClient(grafanaUrl string, userName string, password string) (*grafanaCli, error){
+func NewClient(grafanaUrl string, userName string, password string, prometheusExporterPort int) (*client, error){
 	u, err := url.Parse(grafanaUrl)
 	if err != nil {
 		return nil, err
 	}
 
+	initFunc(prometheusExporterPort)
 	u.User = url.UserPassword(userName, password)
-
-	return &grafanaCli{
+	return &client{
 		baseUrl: *u,
 		client: &http.Client{},
 	}, nil
@@ -78,26 +79,28 @@ func (annotation *Annotation) getBody() ([]byte, error) {
 }
 
 var(
-	initAction sync.Once
+	initedOnce sync.Once
 	counterMetric prometheus.Counter
 	annotationSubPath = "api/annotations"
 )
 
 //initFunc is called with sync.Once, we use sync.Once to keep the thread safe.
-func initFunc() {
-	counterMetric = initErrorMetric()
-	prometheus.MustRegister(counterMetric)
-	mux := http.NewServeMux()
+func initFunc(port int) {
+	initedOnce.Do(func() {
+		counterMetric = initErrorMetric()
+		prometheus.MustRegister(counterMetric)
+		mux := http.NewServeMux()
 
-	l, err := net.Listen("tcp", ":8083")
-	if err != nil {
-		fmt.Fprint(os.Stderr, "listening port 8083 failed", err)
-		panic(err)
-	}
+		l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+		if err != nil {
+			fmt.Fprint(os.Stderr, "listening port 8083 failed", err)
+			panic(err)
+		}
 
-	mux.Handle("/metrics", promhttp.Handler())
-	srv := &http.Server{Handler: mux}
-	go srv.Serve(l)
+		mux.Handle("/metrics", promhttp.Handler())
+		srv := &http.Server{Handler: mux}
+		go srv.Serve(l)
+	})
 }
 
 func initErrorMetric() prometheus.Counter{
@@ -110,9 +113,7 @@ func initErrorMetric() prometheus.Counter{
 
 //IncreErrorCountWithAnno increments the errorcount by 1,
 //and add the annotation to grafanan.
-func (cli *grafanaCli) IncreErrorCountWithAnno(annotation Annotation) error{
-	initAction.Do(initFunc)
-
+func (cli *client) IncreErrorCountWithAnno(annotation Annotation) error{
 	counterMetric.Inc()
 	body, err := annotation.getBody()
 	if err != nil {
@@ -139,7 +140,7 @@ func (cli *grafanaCli) IncreErrorCountWithAnno(annotation Annotation) error{
 	return nil
 }
 
-func (cli *grafanaCli) getAnnotationPath() string {
+func (cli *client) getAnnotationPath() string {
 	u := cli.baseUrl
 	u.Path = path.Join(cli.baseUrl.Path, annotationSubPath)
 	return u.String()
