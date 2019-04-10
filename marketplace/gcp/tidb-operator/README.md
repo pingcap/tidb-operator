@@ -1,3 +1,11 @@
+# GKE service account
+
+If you install on GKE, please select the option to create a new service account.
+The default service account may not have the required permissions.
+
+
+# Manual installation
+
 First you can modify configuration values.
 
 * schema.yaml: don't modify this, use parameters to override it as shown below
@@ -24,7 +32,7 @@ NAMESPACE=tidb
 # We strongly recommend deploying into a new namespace
 kubectl create namespace $NAMESPACE
 
-REGISTRY=$REGISTRY NAMESPACE=$NAMESPACE ./scripts/install
+REGISTRY=$REGISTRY NAMESPACE=$NAMESPACE VERSION=$VERSION ./scripts/install
 ```
 
 You can watch the deployment come up with
