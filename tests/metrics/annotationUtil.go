@@ -139,7 +139,7 @@ func (cli *client) AddAnnotation(annotation Annotation) error {
 	return nil
 }
 
-func IncrErrorCount() {
+func (cli *client) IncrErrorCount() {
 	counterMetric.Inc()
 }
 
