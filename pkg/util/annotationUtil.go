@@ -31,21 +31,21 @@ import (
 type client struct {
 	// base is the root URL for all invocations of the client
 	baseUrl url.URL
-	client *http.Client
+	client  *http.Client
 }
 
 //Annotation is a specification of the desired behavior of adding annotation
 type Annotation struct {
-	dashboardId int
-	panelId int
+	dashboardId         int
+	panelId             int
 	timestampInMilliSec int64
-	tags []string
-	text string
+	tags                []string
+	text                string
 }
 
 //NewClient creats a new grafanaClient. This client performs rest functions
 //such as Get, Post on specified paths.
-func NewClient(grafanaUrl string, userName string, password string, prometheusExporterPort int) (*client, error){
+func NewClient(grafanaUrl string, userName string, password string, prometheusExporterPort int) (*client, error) {
 	u, err := url.Parse(grafanaUrl)
 	if err != nil {
 		return nil, err
@@ -55,19 +55,19 @@ func NewClient(grafanaUrl string, userName string, password string, prometheusEx
 	u.User = url.UserPassword(userName, password)
 	return &client{
 		baseUrl: *u,
-		client: &http.Client{},
+		client:  &http.Client{},
 	}, nil
 }
 
 func (annotation *Annotation) getBody() ([]byte, error) {
-	m := map[string]interface{} {
+	m := map[string]interface{}{
 		"dashboardId": annotation.dashboardId,
-		"panelId": annotation.panelId,
-		"time": annotation.timestampInMilliSec,
-		"isRegion": false,
-		"tags": annotation.tags,
-		"text": annotation.text,
-		"timeEnd": 0,
+		"panelId":     annotation.panelId,
+		"time":        annotation.timestampInMilliSec,
+		"isRegion":    false,
+		"tags":        annotation.tags,
+		"text":        annotation.text,
+		"timeEnd":     0,
 	}
 
 	body, error := json.Marshal(m)
@@ -78,9 +78,9 @@ func (annotation *Annotation) getBody() ([]byte, error) {
 	return body, nil
 }
 
-var(
-	initedOnce sync.Once
-	counterMetric prometheus.Counter
+var (
+	initedOnce        sync.Once
+	counterMetric     prometheus.Counter
 	annotationSubPath = "api/annotations"
 )
 
@@ -103,17 +103,17 @@ func initFunc(port int) {
 	})
 }
 
-func initErrorMetric() prometheus.Counter{
+func initErrorMetric() prometheus.Counter {
 	return prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "errorcount",
-		Help: "record error count",
+		Name:        "errorcount",
+		Help:        "record error count",
 		ConstLabels: map[string]string{"fortest": "true"},
 	})
 }
 
 //IncreErrorCountWithAnno increments the errorcount by 1,
 //and add the annotation to grafanan.
-func (cli *client) IncreErrorCountWithAnno(annotation Annotation) error{
+func (cli *client) IncreErrorCountWithAnno(annotation Annotation) error {
 	counterMetric.Inc()
 	body, err := annotation.getBody()
 	if err != nil {
@@ -134,7 +134,7 @@ func (cli *client) IncreErrorCountWithAnno(annotation Annotation) error{
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("add annotation faield, statusCode=%v",  resp.Status)
+		return fmt.Errorf("add annotation faield, statusCode=%v", resp.Status)
 	}
 
 	return nil
@@ -145,7 +145,3 @@ func (cli *client) getAnnotationPath() string {
 	u.Path = path.Join(cli.baseUrl.Path, annotationSubPath)
 	return u.String()
 }
-
-
-
-

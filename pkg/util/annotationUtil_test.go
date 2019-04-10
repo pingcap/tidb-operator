@@ -24,11 +24,11 @@ import (
 func TestAnnotationGetBody(t *testing.T) {
 	tags := []string{"1", "2", "3"}
 	annotation := Annotation{
-		dashboardId: 1,
-		panelId: 2,
-		tags: tags,
+		dashboardId:         1,
+		panelId:             2,
+		tags:                tags,
 		timestampInMilliSec: time.Now().Unix() * 1000,
-		text: "abc",
+		text:                "abc",
 	}
 
 	b, _ := annotation.getBody()
@@ -36,10 +36,9 @@ func TestAnnotationGetBody(t *testing.T) {
 	re := make(map[string]interface{})
 	json.Unmarshal(b, &re)
 
-
 	g := gomega.NewGomegaWithT(t)
 
-	g.Expect(fmt.Sprintf("%v",re["dashboardId"])).To(gomega.Equal(fmt.Sprintf("%v", 1)))
+	g.Expect(fmt.Sprintf("%v", re["dashboardId"])).To(gomega.Equal(fmt.Sprintf("%v", 1)))
 	g.Expect(re["text"]).To(gomega.Equal("abc"))
 }
 
