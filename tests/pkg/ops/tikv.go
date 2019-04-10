@@ -17,7 +17,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/tests/pkg/util/client"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,7 +27,7 @@ type TruncateOptions struct {
 }
 
 type TiKVOps struct {
-	client.ClientOps
+	ClientOps
 }
 
 func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions, cb func(sst string) error) error {
@@ -44,7 +43,7 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions, cb func(sst string) er
 	}
 
 	exec := func(cmd ...string) (string, string, error) {
-		return ops.ExecWithOptions(client.ExecOptions{
+		return ops.ExecWithOptions(ExecOptions{
 			Command:       cmd,
 			Namespace:     opts.Namespace,
 			PodName:       store.PodName,

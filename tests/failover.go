@@ -13,9 +13,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
+	"github.com/pingcap/tidb-operator/tests/pkg/ops"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
-	unioncli "github.com/pingcap/tidb-operator/tests/pkg/util/client"
-	"github.com/pingcap/tidb-operator/tests/pkg/util/ops"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -26,8 +25,8 @@ import (
 func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error {
 	const failoverTimeout = 5 * time.Minute
 
-	cli := unioncli.Union(oa.kubeCli, oa.cli)
-	tikvOps := ops.TiKVOps{ClientOps: unioncli.ClientOps{Client: cli}}
+	cli := client.Union(oa.kubeCli, oa.cli)
+	tikvOps := ops.TiKVOps{ClientOps: ops.ClientOps{Client: cli}}
 
 	// checkout latest tidb cluster
 	tc, err := cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
@@ -42,6 +41,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		return err
 	}
 	maxStoreDownTime := pdCfg.Schedule.MaxStoreDownTime.Duration
+	glog.Infof("failover config: maxStoreDownTime=%v tikvFailoverPeriod=%v", maxStoreDownTime, tikvFailoverPeriod)
 
 	// find an up store
 	var store v1alpha1.TiKVStore
@@ -109,11 +109,22 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		Cluster:   info.ClusterName,
 		Store:     store.ID,
 	}, func(sst string) error {
+		countUpStores := func(tc *v1alpha1.TidbCluster) int {
+			cnt := 0
+			for _, s := range tc.Status.TiKV.Stores {
+				if s.State == v1alpha1.TiKVStateUp {
+					cnt++
+				}
+			}
+			return cnt
+		}
+
 		tc, err := cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
-		failures := len(tc.Status.TiKV.FailureStores)
+		origFailures := len(tc.Status.TiKV.FailureStores)
+		origUps := countUpStores(tc)
 
 		err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", 1, syscall.SIGTERM)
 		if err != nil {
@@ -123,12 +134,17 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 
 		return tikvOps.WaitForTiDBCluster(info.Namespace, info.ClusterName,
 			func(tc *v1alpha1.TidbCluster, err error) (bool, error) {
-				glog.Infof("check failure stores: current=%d before=%d", len(tc.Status.TiKV.FailureStores), failures)
-				if len(tc.Status.TiKV.FailureStores) <= failures {
+				glog.Infof("check failure stores: current=%d origin=%d", len(tc.Status.TiKV.FailureStores), origFailures)
+				if len(tc.Status.TiKV.FailureStores) <= origFailures {
+					return false, nil
+				}
+				ups := countUpStores(tc)
+				glog.Infof("check up stores: current=%d origin=%d", ups, origUps)
+				if ups < origUps {
 					return false, nil
 				}
 				return true, nil
-			}, unioncli.Poll(DefaultPollInterval, maxStoreDownTime+tikvFailoverPeriod+failoverTimeout))
+			}, ops.Poll(DefaultPollInterval, maxStoreDownTime+tikvFailoverPeriod+failoverTimeout))
 	})
 }
 

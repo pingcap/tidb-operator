@@ -10,7 +10,7 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package client
+package ops
 
 import (
 	"bytes"
@@ -22,6 +22,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -49,7 +50,7 @@ type ExecOptions struct {
 func (cli *ClientOps) ExecWithOptions(options ExecOptions) (string, string, error) {
 	glog.Infof("ExecWithOptions %+v", options)
 
-	config, err := LoadConfig()
+	config, err := client.LoadConfig()
 	if err != nil {
 		return "", "", err
 	}

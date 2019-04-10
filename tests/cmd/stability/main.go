@@ -202,9 +202,6 @@ func main() {
 	// restore
 	backup.NewBackupCase(oa, clusterBackupFrom, clusterRestoreTo).RunOrDie()
 
-	// truncate a sst file and check failover
-	oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 30*time.Minute)
-
 	// stop a node and failover automatically
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	physicalNode, node, faultTime := fta.StopNodeOrDie()
@@ -216,6 +213,9 @@ func main() {
 	for _, cluster := range allClusters {
 		oa.CheckTidbClusterStatusOrDie(cluster)
 	}
+
+	// truncate a sst file and check failover
+	oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 5*time.Minute)
 
 	glog.Infof("\nFinished.")
 }

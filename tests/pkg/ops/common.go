@@ -10,12 +10,13 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package client
+package ops
 
 import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,6 +57,10 @@ func pollOrDefault(optionalPoll []PollFn) PollFn {
 		return optionalPoll[0]
 	}
 	return defaultPollFn
+}
+
+type ClientOps struct {
+	client.Client
 }
 
 func (cli *ClientOps) WaitForPod(ns string, name string, cond func(po *corev1.Pod, err error) (bool, error), optionalPoll ...PollFn) error {
