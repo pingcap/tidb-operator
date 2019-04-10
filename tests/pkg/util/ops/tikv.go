@@ -84,12 +84,13 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions, cb func(sst string) er
 		glog.Errorf("backup sst file: stderr=%s err=%s", stderr, err.Error())
 		return errors.Annotate(err, "backup sst file")
 	}
-	defer func() {
-		_, stderr, err := exec("mv", sst+".save", sst)
-		if err != nil {
-			glog.Errorf("recover sst file: stderr=%s err=%s", stderr, err.Error())
-		}
-	}()
+	// no need for recovery, cannot attach to the container when it failed
+	//defer func() {
+	//	_, stderr, err := exec("mv", sst+".save", sst)
+	//	if err != nil {
+	//		glog.Errorf("recover sst file: stderr=%s err=%s", stderr, err.Error())
+	//	}
+	//}()
 
 	_, stderr, err = exec("truncate", "-s", "0", sst)
 	if err != nil {
