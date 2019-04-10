@@ -10,7 +10,7 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package util
+package metrics
 
 import (
 	"encoding/json"
@@ -24,11 +24,11 @@ import (
 func TestAnnotationGetBody(t *testing.T) {
 	tags := []string{"1", "2", "3"}
 	annotation := Annotation{
-		dashboardId:         1,
-		panelId:             2,
-		tags:                tags,
-		timestampInMilliSec: time.Now().Unix() * 1000,
-		text:                "abc",
+		DashboardId:         1,
+		PanelId:             2,
+		Tags:                tags,
+		TimestampInMilliSec: time.Now().Unix() * 1000,
+		Text:                "abc",
 	}
 
 	b, _ := annotation.getBody()

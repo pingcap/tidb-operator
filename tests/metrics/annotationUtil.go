@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util
+package metrics
 
 import (
 	"bytes"
@@ -36,11 +36,11 @@ type client struct {
 
 //Annotation is a specification of the desired behavior of adding annotation
 type Annotation struct {
-	dashboardId         int
-	panelId             int
-	timestampInMilliSec int64
-	tags                []string
-	text                string
+	DashboardId         int
+	PanelId             int
+	TimestampInMilliSec int64
+	Tags                []string
+	Text                string
 }
 
 //NewClient creats a new grafanaClient. This client performs rest functions
@@ -61,18 +61,18 @@ func NewClient(grafanaUrl string, userName string, password string, prometheusEx
 
 func (annotation *Annotation) getBody() ([]byte, error) {
 	m := map[string]interface{}{
-		"dashboardId": annotation.dashboardId,
-		"panelId":     annotation.panelId,
-		"time":        annotation.timestampInMilliSec,
+		"dashboardId": annotation.DashboardId,
+		"panelId":     annotation.PanelId,
+		"time":        annotation.TimestampInMilliSec,
 		"isRegion":    false,
-		"tags":        annotation.tags,
-		"text":        annotation.text,
+		"tags":        annotation.Tags,
+		"text":        annotation.Text,
 		"timeEnd":     0,
 	}
 
-	body, error := json.Marshal(m)
-	if error != nil {
-		return nil, error
+	body, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
 	}
 
 	return body, nil
@@ -113,8 +113,7 @@ func initErrorMetric() prometheus.Counter {
 
 //IncreErrorCountWithAnno increments the errorcount by 1,
 //and add the annotation to grafanan.
-func (cli *client) IncreErrorCountWithAnno(annotation Annotation) error {
-	counterMetric.Inc()
+func (cli *client) AddAnnotation(annotation Annotation) error {
 	body, err := annotation.getBody()
 	if err != nil {
 		return fmt.Errorf("create request body faield, %v", err)
@@ -138,6 +137,10 @@ func (cli *client) IncreErrorCountWithAnno(annotation Annotation) error {
 	}
 
 	return nil
+}
+
+func IncrErrorCount() {
+	counterMetric.Inc()
 }
 
 func (cli *client) getAnnotationPath() string {
