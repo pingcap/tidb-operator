@@ -3,6 +3,16 @@
 If you install on GKE, please select the option to create a new service account.
 The default service account may not have the required permissions.
 
+# Deletion
+
+In the below, tidb is installed into the namespace "tidb".
+Deleting the application will not delete the pods. You should delete the namespace and then delete the persistent volumes.
+
+```
+kubectl delete namespace tidb
+kubectl get pv -l app.kubernetes.io/namespace=$NAMESPACE -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+```
+
 
 # Manual installation
 
