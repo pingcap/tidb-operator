@@ -219,13 +219,25 @@ func (c *client) StopKubeAPIServer() error {
 	return c.stopService(manager.KubeAPIServerService)
 }
 
-// func (c *client) StartKubeProxy() error {
-// 	return c.startService(manager.KubeProxyService)
-// }
-//
-// func (c *client) StopKubeProxy() error {
-// 	return c.stopService(manager.KubeProxyService)
-// }
+func (c *client) StartKubeProxy(nodeName string) error {
+	url := util.GenURL(fmt.Sprintf("%s%s/kube-proxy/%s/start", c.cfg.Addr, api.APIPrefix, nodeName))
+	if _, err := c.post(url, nil); err != nil {
+		glog.Errorf("failed to post %s: %v", url, err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *client) StopKubeProxy(nodeName string) error {
+	url := util.GenURL(fmt.Sprintf("%s%s/kube-proxy/%s/stop", c.cfg.Addr, api.APIPrefix, nodeName))
+	if _, err := c.post(url, nil); err != nil {
+		glog.Errorf("failed to post %s: %v", url, err)
+		return err
+	}
+
+	return nil
+}
 
 func (c *client) StartKubeScheduler() error {
 	return c.startService(manager.KubeSchedulerService)
@@ -246,7 +258,7 @@ func (c *client) StopKubeControllerManager() error {
 func (c *client) startService(serviceName string) error {
 	url := util.GenURL(fmt.Sprintf("%s%s/%s/start", c.cfg.Addr, api.APIPrefix, serviceName))
 	if _, err := c.post(url, nil); err != nil {
-		glog.Errorf("faled to post %s: %v", url, err)
+		glog.Errorf("failed to post %s: %v", url, err)
 		return err
 	}
 
@@ -256,7 +268,7 @@ func (c *client) startService(serviceName string) error {
 func (c *client) stopService(serviceName string) error {
 	url := util.GenURL(fmt.Sprintf("%s%s/%s/stop", c.cfg.Addr, api.APIPrefix, serviceName))
 	if _, err := c.post(url, nil); err != nil {
-		glog.Errorf("faled to post %s: %v", url, err)
+		glog.Errorf("failed to post %s: %v", url, err)
 		return err
 	}
 
