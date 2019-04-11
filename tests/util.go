@@ -59,3 +59,18 @@ func GetApiserverPodOrDie(kubeCli kubernetes.Interface, node string) *corev1.Pod
 	}
 	panic(fmt.Errorf("can't find apiserver in node:%s", node))
 }
+
+func GetControllerManagerPodOrDie(kubeCli kubernetes.Interface, node string) *corev1.Pod {
+	selector := labels.Set(map[string]string{"component": "kube-controller-manager"}).AsSelector()
+	options := metav1.ListOptions{LabelSelector: selector.String()}
+	apiserverPods, err := kubeCli.CoreV1().Pods("kube-system").List(options)
+	if err != nil {
+		panic(err)
+	}
+	for _, apiserverPod := range apiserverPods.Items {
+		if apiserverPod.Spec.NodeName == node {
+			return &apiserverPod
+		}
+	}
+	panic(fmt.Errorf("can't find controller-manager in node:%s", node))
+}

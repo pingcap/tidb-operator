@@ -320,8 +320,10 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]*corev1.Nod
 			if _, exist := excludeNodes[node.GetName()]; exist {
 				continue
 			}
-			if node.Status.Phase != corev1.NodeRunning {
-				return false, fmt.Errorf("node: [%s] is not in running", node.GetName())
+			for _, condition := range node.Status.Conditions {
+				if condition.Type == corev1.NodeReady && condition.Status != corev1.ConditionTrue {
+					return false, fmt.Errorf("node: [%s] is not in running", node.GetName())
+				}
 			}
 		}
 		systemPods, err := oa.kubeCli.CoreV1().Pods("kube-system").List(metav1.ListOptions{})
