@@ -115,6 +115,16 @@ $ kubectl get po -n kube-system -l app=local-volume-provisioner
 $ kubectl get pv | grep local-storage
 ```
 
+### Remove a mount point
+
+If we want to remove a mount point, first we need to `umount` the mount point, and then delete the related directories. For example:
+
+```shell
+$ umount /mnt/disks/local-pv01
+$ rm -rf /mnt/disks/local-pv01 
+$ rm -rf /data/local-pv01
+```
+
 > Note: The local-volume plugin expects paths to be stable, if you remove a previous mount-point in the discovery directory (default to `/mnt/disks/`), you should remove the PV manually to keep consistency.
 
 ## Install TiDB Operator
