@@ -73,8 +73,8 @@ func (m *Manager) StopKubeControllerManager() error {
 }
 
 func (m *Manager) stopStaticPodService(serviceName string, fileName string) error {
-	maniest := fmt.Sprintf("%s/%s", staticPodPath, fileName)
-	shell := fmt.Sprintf("mkdir -p %s && mv %s %s", staticPodTmpPath, maniest, staticPodTmpPath)
+	manifest := fmt.Sprintf("%s/%s", staticPodPath, fileName)
+	shell := fmt.Sprintf("mkdir -p %s && mv %s %s", staticPodTmpPath, manifest, staticPodTmpPath)
 
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
@@ -89,8 +89,8 @@ func (m *Manager) stopStaticPodService(serviceName string, fileName string) erro
 }
 
 func (m *Manager) startStaticPodService(serviceName string, fileName string) error {
-	maniest := fmt.Sprintf("%s/%s", staticPodTmpPath, fileName)
-	shell := fmt.Sprintf("mv %s %s", maniest, staticPodPath)
+	manifest := fmt.Sprintf("%s/%s", staticPodTmpPath, fileName)
+	shell := fmt.Sprintf("mv %s %s", manifest, staticPodPath)
 
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
