@@ -64,7 +64,7 @@ type faultTriggerActions struct {
 }
 
 func (fa *faultTriggerActions) CheckAndRecoverEnv() error {
-	// ensure all nodes are running
+	glog.Infof("ensure all nodes are running")
 	for _, physicalNode := range fa.cfg.Nodes {
 		for _, vNode := range physicalNode.Nodes {
 			err := fa.StartNode(physicalNode.PhysicalNode, vNode)
@@ -73,12 +73,12 @@ func (fa *faultTriggerActions) CheckAndRecoverEnv() error {
 			}
 		}
 	}
-	// ensure all etcds are running
+	glog.Infof("ensure all etcds are running")
 	err := fa.StartETCD()
 	if err != nil {
 		return err
 	}
-	// ensure all kubelets are running
+	glog.Infof("ensure all kubelets are running")
 	for _, physicalNode := range fa.cfg.Nodes {
 		for _, vNode := range physicalNode.Nodes {
 			err := fa.StartKubelet(vNode)
@@ -87,7 +87,7 @@ func (fa *faultTriggerActions) CheckAndRecoverEnv() error {
 			}
 		}
 	}
-	// ensure all static pods are running
+	glog.Infof("ensure all static pods are running")
 	for _, physicalNode := range fa.cfg.APIServers {
 		for _, vNode := range physicalNode.Nodes {
 			err := fa.StartKubeAPIServer(vNode)
