@@ -36,11 +36,11 @@ type client struct {
 
 //Annotation is a specification of the desired behavior of adding annotation
 type Annotation struct {
-	DashboardId         int
-	PanelId             int
-	TimestampInMilliSec int64
-	Tags                []string
-	Text                string
+	DashboardId         int      `json: "dashboardId"`
+	PanelId             int      `json: "panelId"`
+	TimestampInMilliSec int64    `json: time`
+	Tags                []string `json: tags`
+	Text                string   `json: text`
 }
 
 //NewClient creats a new grafanaClient. This client performs rest functions
@@ -59,18 +59,8 @@ func NewClient(grafanaUrl string, userName string, password string, prometheusEx
 	}, nil
 }
 
-func (annotation *Annotation) getBody() ([]byte, error) {
-	m := map[string]interface{}{
-		"dashboardId": annotation.DashboardId,
-		"panelId":     annotation.PanelId,
-		"time":        annotation.TimestampInMilliSec,
-		"isRegion":    false,
-		"tags":        annotation.Tags,
-		"text":        annotation.Text,
-		"timeEnd":     0,
-	}
-
-	body, err := json.Marshal(m)
+func (annotation Annotation) getBody() ([]byte, error) {
+	body, err := json.Marshal(annotation)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +83,7 @@ func initFunc(port int) {
 
 		l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 		if err != nil {
-			fmt.Fprint(os.Stderr, "listening port 8083 failed", err)
+			fmt.Fprintf(os.Stderr, fmt.Sprintf("listening port %v failed", port), err)
 			panic(err)
 		}
 
@@ -105,7 +95,7 @@ func initFunc(port int) {
 
 func initErrorMetric() prometheus.Counter {
 	return prometheus.NewCounter(prometheus.CounterOpts{
-		Name:        "errorcount",
+		Name:        "error_count",
 		Help:        "record error count",
 		ConstLabels: map[string]string{"fortest": "true"},
 	})
