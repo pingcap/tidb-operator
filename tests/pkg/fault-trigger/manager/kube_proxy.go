@@ -63,7 +63,10 @@ func (m *Manager) UpdateKubeProxyDaemonset(hostname string) error {
 		return fmt.Errorf("create file %s failed, err: %v", kubeProxyManifestFullPath, err)
 	}
 	defer f.Close()
-	proxyDaemonSetBytes, err := util.ParseTemplate(KubeProxyDaemonSet, struct{ Image string }{m.kubeProxyImages})
+	proxyDaemonSetBytes, err := util.ParseTemplate(KubeProxyDaemonSet, struct{ Image, KubeProxyLabel string }{
+		Image:          m.kubeProxyImages,
+		KubeProxyLabel: kubeProxyLabel,
+	})
 	if err != nil {
 		return fmt.Errorf("parsing kube-proxy daemonset template failed, err: %v", err)
 	}
@@ -143,7 +146,7 @@ func getKubectlPath() (string, error) {
 }
 
 func addKubeProxyLabel(kubectlPath, nodeName string) error {
-	commandStr := fmt.Sprintf("%s label no %s %s=", kubectlPath, nodeName, kubeProxyLabel)
+	commandStr := fmt.Sprintf("%s label no %s %s= --overwrite", kubectlPath, nodeName, kubeProxyLabel)
 	cmd := exec.Command("/bin/sh", "-c", commandStr)
 	output, err := cmd.CombinedOutput()
 	if err != nil {

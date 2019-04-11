@@ -41,7 +41,7 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: app.kubernetes.io/kube-proxy
+              - key: {{ .KubeProxyLabel }}
                 operator: Exists
       containers:
       - name: kube-proxy
