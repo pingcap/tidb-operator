@@ -15,6 +15,7 @@ package manager
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 
 	"github.com/golang/glog"
@@ -74,6 +75,10 @@ func (m *Manager) StopKubeControllerManager() error {
 
 func (m *Manager) stopStaticPodService(serviceName string, fileName string) error {
 	maniest := fmt.Sprintf("%s/%s", staticPodPath, fileName)
+	if _, err := os.Stat(maniest); os.IsNotExist(err) {
+		glog.Infof("%s had been stopped before", serviceName)
+		return nil
+	}
 	shell := fmt.Sprintf("mkdir -p %s && mv %s %s", staticPodTmpPath, maniest, staticPodTmpPath)
 
 	cmd := exec.Command("/bin/sh", "-c", shell)
@@ -90,6 +95,10 @@ func (m *Manager) stopStaticPodService(serviceName string, fileName string) erro
 
 func (m *Manager) startStaticPodService(serviceName string, fileName string) error {
 	maniest := fmt.Sprintf("%s/%s", staticPodTmpPath, fileName)
+	if _, err := os.Stat(maniest); err == nil {
+		glog.Infof("%s had been started before", serviceName)
+		return nil
+	}
 	shell := fmt.Sprintf("mv %s %s", maniest, staticPodPath)
 
 	cmd := exec.Command("/bin/sh", "-c", shell)
