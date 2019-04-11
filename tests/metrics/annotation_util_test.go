@@ -38,8 +38,8 @@ func TestAnnotationGetBody(t *testing.T) {
 
 	g := gomega.NewGomegaWithT(t)
 
-	g.Expect(fmt.Sprintf("%v", re["dashboardId"])).To(gomega.Equal(fmt.Sprintf("%v", 1)))
-	g.Expect(re["text"]).To(gomega.Equal("abc"))
+	g.Expect(fmt.Sprintf("%v", re["DashboardId"])).To(gomega.Equal(fmt.Sprintf("%v", 1)))
+	g.Expect(re["Text"]).To(gomega.Equal("abc"))
 }
 
 func TestErrorMetric(t *testing.T) {

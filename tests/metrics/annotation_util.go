@@ -83,7 +83,7 @@ func initFunc(port int) {
 
 		l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, fmt.Sprintf("listening port %v failed", port), err)
+			fmt.Fprintf(os.Stderr, "listening port %d failed, %v", port, err)
 			panic(err)
 		}
 
