@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strings"
+	"crypto/tls"
 
 	"github.com/golang/glog"
 	yaml "gopkg.in/yaml.v2"
@@ -22,6 +23,8 @@ type Config struct {
 	Nodes            []Nodes `yaml:"nodes" json:"nodes"`
 	ETCDs            []Nodes `yaml:"etcds" json:"etcds"`
 	APIServers       []Nodes `yaml:"apiservers" json:"apiservers"`
+	CertFile string
+	KeyFile  string
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
@@ -39,6 +42,11 @@ func NewConfig() *Config {
 	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v2.1.3,v2.1.4", "tidb versions")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
+	flag.StringVar(&cfg.CertFile, "tls-cert-file", cfg.CertFile, ""+
+		"File containing the default x509 Certificate for HTTPS. (CA cert, if any, concatenated "+
+		"after server cert).")
+	flag.StringVar(&cfg.KeyFile, "tls-private-key-file", cfg.KeyFile, ""+
+		"File containing the default x509 private key matching --tls-cert-file.")
 
 	return cfg
 }
@@ -99,6 +107,18 @@ func (c *Config) GetTiDBVersionOrDie() string {
 	}
 
 	return v
+}
+
+func (c *Config) ConfigTLS() *tls.Config {
+	sCert, err := tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	return &tls.Config{
+		Certificates: []tls.Certificate{sCert},
+		// TODO: uses mutual tls after we agree on what cert the apiserver should use.
+		// ClientAuth:   tls.RequireAndVerifyClientCert,
+	}
 }
 
 func (c *Config) GetUpgradeTidbVersions() []string {

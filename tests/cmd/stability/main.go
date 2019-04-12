@@ -19,7 +19,6 @@ import (
 	_ "net/http/pprof"
 	"time"
 	"encoding/json"
-	"flag"
 	"io/ioutil"
 
 	"github.com/golang/glog"
@@ -111,14 +110,10 @@ func main() {
 
 	// start a http server in goruntine
 	go func() {
-		var config Config
-		config.addFlags()
-		flag.Parse()
-
 		http.HandleFunc("/pods", servePods)
 		server := &http.Server{
 			Addr:      ":443",
-			TLSConfig: configTLS(config),
+			TLSConfig: conf.ConfigTLS(),
 		}
 		server.ListenAndServeTLS("", "")
 	}()
@@ -285,7 +280,7 @@ func main() {
 //	oa.CheckTidbClusterStatusOrDie(cluster2)
 
 	// after upgrade cluster, clean webhook
-	oa.CleanWebHookAndService(operatorCfg)
+//	oa.CleanWebHookAndService(operatorCfg)
 
 	// deploy and check cluster restore
 /*	oa.DeployTidbClusterOrDie(clusterRestoreTo)

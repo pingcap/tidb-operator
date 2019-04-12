@@ -276,14 +276,7 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 
-	namespace := "tidb-operator-stability"
-
-	err := oa.kubeCli.CoreV1().Secrets(namespace).Delete(info.WebhookSecretName,nil)
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete webhook secret %v", err)
-	}
-
-	err = oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(info.WebhookConfigName,nil)
+	err := oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(info.WebhookConfigName,nil)
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete webhook config %v", err)
 	}
