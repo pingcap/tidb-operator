@@ -38,9 +38,11 @@ type client struct {
 type Annotation struct {
 	DashboardId         int      `json: "dashboardId"`
 	PanelId             int      `json: "panelId"`
-	TimestampInMilliSec int64    `json: time`
-	Tags                []string `json: tags`
-	Text                string   `json: text`
+	TimestampInMilliSec int64    `json: "time""`
+	Tags                []string `json: "tags, omitempty""`
+	Text                string   `json: "text""`
+	IsRegin             bool     `json: "isRegion, omitempty""`
+	TimeEnd             int64    `json: "timeEnd, omitempty""`
 }
 
 //NewClient creats a new grafanaClient. This client performs rest functions
