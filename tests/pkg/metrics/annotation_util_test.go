@@ -25,12 +25,12 @@ func TestAnnotationGetBody(t *testing.T) {
 	options := AnnotationOptions{
 		DashboardId: 1,
 		PanelId:     2,
-		Text:        "abc",
 	}
 
 	annotation := Annotation{
 		Tags:                tags,
 		TimestampInMilliSec: 1,
+		Text:                "abc",
 	}
 
 	annotation.AnnotationOptions = options
