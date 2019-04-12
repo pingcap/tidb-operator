@@ -23,60 +23,59 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-const DefaultPoll = 10 * time.Second
-const DefaultTimeout = 10 * time.Minute
+const (
+	DefaultPollInterval = 10 * time.Second
+	DefaultPollTimeout  = 10 * time.Minute
+)
 
-type PollFn func(conditionFunc wait.ConditionFunc) error
-
-func PollImmediate(ds ...time.Duration) PollFn {
-	poll, timeout := DefaultPoll, DefaultTimeout
-	if len(ds) > 0 {
-		poll = ds[0]
-	}
-	if len(ds) > 1 {
-		timeout = ds[1]
-	}
-	return func(f wait.ConditionFunc) error { return wait.PollImmediate(poll, timeout, f) }
-}
-
-func Poll(ds ...time.Duration) PollFn {
-	poll, timeout := DefaultPoll, DefaultTimeout
-	if len(ds) > 0 {
-		poll = ds[0]
-	}
-	if len(ds) > 1 {
-		timeout = ds[1]
-	}
-	return func(f wait.ConditionFunc) error { return wait.Poll(poll, timeout, f) }
-}
-
-var defaultPollFn = PollImmediate()
-
-func pollOrDefault(optionalPoll []PollFn) PollFn {
-	if len(optionalPoll) > 0 {
-		return optionalPoll[0]
-	}
-	return defaultPollFn
-}
+type PollFn func(time.Duration, time.Duration, wait.ConditionFunc) error
 
 type ClientOps struct {
 	client.Client
+
+	PollInterval *time.Duration
+	PollTimeout  *time.Duration
 }
 
-func (cli *ClientOps) WaitForPod(ns string, name string, cond func(po *corev1.Pod, err error) (bool, error), optionalPoll ...PollFn) error {
-	return pollOrDefault(optionalPoll)(func() (done bool, err error) {
+func (cli *ClientOps) pollArgs(cond wait.ConditionFunc) (time.Duration, time.Duration, wait.ConditionFunc) {
+	interval := DefaultPollInterval
+	if cli.PollInterval != nil {
+		interval = *cli.PollInterval
+	}
+	timeout := DefaultPollTimeout
+	if cli.PollTimeout != nil {
+		timeout = *cli.PollTimeout
+	}
+	return interval, timeout, cond
+}
+
+func (cli *ClientOps) SetPoll(interval time.Duration, timeout time.Duration) {
+	cli.PollInterval = &interval
+	cli.PollTimeout = &timeout
+}
+
+func (cli *ClientOps) Poll(cond wait.ConditionFunc) error {
+	return wait.Poll(cli.pollArgs(cond))
+}
+
+func (cli *ClientOps) PollImmediate(cond wait.ConditionFunc) error {
+	return wait.PollImmediate(cli.pollArgs(cond))
+}
+
+func (cli *ClientOps) PollPod(ns string, name string, cond func(po *corev1.Pod, err error) (bool, error)) error {
+	return cli.Poll(func() (done bool, err error) {
 		return cond(cli.CoreV1().Pods(ns).Get(name, metav1.GetOptions{}))
 	})
 }
 
-func (cli *ClientOps) WaitForStatefulSet(ns string, name string, cond func(ss *appsv1.StatefulSet, err error) (bool, error), optionalPoll ...PollFn) error {
-	return pollOrDefault(optionalPoll)(func() (done bool, err error) {
+func (cli *ClientOps) PollStatefulSet(ns string, name string, cond func(ss *appsv1.StatefulSet, err error) (bool, error)) error {
+	return cli.Poll(func() (done bool, err error) {
 		return cond(cli.AppsV1().StatefulSets(ns).Get(name, metav1.GetOptions{}))
 	})
 }
 
-func (cli *ClientOps) WaitForTiDBCluster(ns string, name string, cond func(tc *v1alpha1.TidbCluster, err error) (bool, error), optionalPoll ...PollFn) error {
-	return pollOrDefault(optionalPoll)(func() (done bool, err error) {
+func (cli *ClientOps) PollTiDBCluster(ns string, name string, cond func(tc *v1alpha1.TidbCluster, err error) (bool, error)) error {
+	return cli.Poll(func() (done bool, err error) {
 		return cond(cli.PingcapV1alpha1().TidbClusters(ns).Get(name, metav1.GetOptions{}))
 	})
 }

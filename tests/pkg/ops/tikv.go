@@ -30,7 +30,7 @@ type TiKVOps struct {
 	ClientOps
 }
 
-func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions, cb func(sst string) error) error {
+func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 	glog.Infof("truncate sst option: %+v", opts)
 
 	tc, err := ops.PingcapV1alpha1().TidbClusters(opts.Namespace).Get(opts.Cluster, metav1.GetOptions{})
@@ -83,13 +83,6 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions, cb func(sst string) er
 		glog.Errorf("backup sst file: stderr=%s err=%s", stderr, err.Error())
 		return errors.Annotate(err, "backup sst file")
 	}
-	// no need for recovery, cannot attach to the container when it failed
-	//defer func() {
-	//	_, stderr, err := exec("mv", sst+".save", sst)
-	//	if err != nil {
-	//		glog.Errorf("recover sst file: stderr=%s err=%s", stderr, err.Error())
-	//	}
-	//}()
 
 	_, stderr, err = exec("truncate", "-s", "0", sst)
 	if err != nil {
@@ -97,5 +90,5 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions, cb func(sst string) er
 		return errors.Annotate(err, "truncate sst file")
 	}
 
-	return cb(sst)
+	return nil
 }
