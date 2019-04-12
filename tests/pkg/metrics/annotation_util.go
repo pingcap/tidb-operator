@@ -36,8 +36,8 @@ type client struct {
 
 //Annotation is a specification of the desired behavior of adding annotation
 type Annotation struct {
-	DashboardId         int      `json: "dashboardId"`
-	PanelId             int      `json: "panelId"`
+	DashboardId         int      `json: "dashboardId, omitempty"`
+	PanelId             int      `json: "panelId, omitempty"`
 	TimestampInMilliSec int64    `json: "time""`
 	Tags                []string `json: "tags, omitempty""`
 	Text                string   `json: "text""`
