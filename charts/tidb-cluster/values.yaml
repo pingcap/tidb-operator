@@ -208,12 +208,9 @@ monitor:
   persistent: false
   storageClassName: local-storage
   storage: 10Gi
-  dashboardInstaller:
-    image: pingcap/tidb-dashboard-installer:v2.0.0
-    imagePullPolicy: IfNotPresent
   grafana:
     create: true
-    image: grafana/grafana:4.6.5
+    image: grafana/grafana:6.0.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     resources:
