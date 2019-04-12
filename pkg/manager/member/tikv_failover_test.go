@@ -14,15 +14,11 @@
 package member
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/pd/pkg/typeutil"
-	"github.com/pingcap/pd/server"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -30,28 +26,16 @@ func TestTiKVFailoverFailover(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcase struct {
-		name      string
-		update    func(*v1alpha1.TidbCluster)
-		getCfgErr bool
-		err       bool
-		expectFn  func(*v1alpha1.TidbCluster)
+		name     string
+		update   func(*v1alpha1.TidbCluster)
+		err      bool
+		expectFn func(*v1alpha1.TidbCluster)
 	}
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 		tc := newTidbClusterForPD()
 		test.update(tc)
-		tikvFailover, fakePDControl := newFakeTiKVFailover()
-		pdClient := controller.NewFakePDClient()
-		fakePDControl.SetPDClient(tc, pdClient)
-
-		pdClient.AddReaction(controller.GetConfigActionType, func(action *controller.Action) (interface{}, error) {
-			if test.getCfgErr {
-				return nil, fmt.Errorf("get config failed")
-			}
-			return &server.Config{
-				Schedule: server.ScheduleConfig{MaxStoreDownTime: typeutil.Duration{Duration: 1 * time.Hour}},
-			}, nil
-		})
+		tikvFailover := newFakeTiKVFailover()
 
 		err := tikvFailover.Failover(tc)
 		if test.err {
@@ -79,21 +63,10 @@ func TestTiKVFailoverFailover(t *testing.T) {
 					},
 				}
 			},
-			getCfgErr: false,
-			err:       false,
+			err: false,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(2))
-			},
-		},
-		{
-			name:      "get config failed",
-			update:    func(*v1alpha1.TidbCluster) {},
-			getCfgErr: true,
-			err:       true,
-			expectFn: func(tc *v1alpha1.TidbCluster) {
-				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
-				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(0))
 			},
 		},
 		{
@@ -103,8 +76,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 					"1": {State: v1alpha1.TiKVStateUp, PodName: "tikv-1"},
 				}
 			},
-			getCfgErr: false,
-			err:       false,
+			err: false,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(0))
@@ -121,8 +93,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 					},
 				}
 			},
-			getCfgErr: false,
-			err:       false,
+			err: false,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(0))
@@ -138,8 +109,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 					},
 				}
 			},
-			getCfgErr: false,
-			err:       false,
+			err: false,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(0))
@@ -162,8 +132,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 					},
 				}
 			},
-			getCfgErr: false,
-			err:       false,
+			err: false,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(1))
@@ -175,7 +144,6 @@ func TestTiKVFailoverFailover(t *testing.T) {
 	}
 }
 
-func newFakeTiKVFailover() (*tikvFailover, *controller.FakePDControl) {
-	pdControl := controller.NewFakePDControl()
-	return &tikvFailover{pdControl}, pdControl
+func newFakeTiKVFailover() *tikvFailover {
+	return &tikvFailover{1 * time.Hour}
 }
