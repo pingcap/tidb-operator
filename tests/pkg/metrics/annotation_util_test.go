@@ -16,40 +16,31 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/onsi/gomega"
-	"reflect"
 	"testing"
-	"time"
 )
 
 func TestAnnotationGetBody(t *testing.T) {
 	tags := []string{"1", "2", "3"}
-	annotation := Annotation{
-		DashboardId:         1,
-		PanelId:             2,
-		Tags:                tags,
-		TimestampInMilliSec: time.Now().Unix() * 1000,
-		Text:                "abc",
+
+	options := AnnotationOptions{
+		DashboardId: 1,
+		PanelId:     2,
+		Text:        "abc",
 	}
 
-	b, _ := annotation.getBody()
+	annotation := Annotation{
+		Tags:                tags,
+		TimestampInMilliSec: 1,
+	}
 
+	annotation.AnnotationOptions = options
+
+	b, _ := annotation.getBody()
 	re := make(map[string]interface{})
 	json.Unmarshal(b, &re)
 
 	g := gomega.NewGomegaWithT(t)
-
-	g.Expect(fmt.Sprintf("%v", re["DashboardId"])).To(gomega.Equal(fmt.Sprintf("%v", 1)))
-	g.Expect(re["Text"]).To(gomega.Equal("abc"))
-}
-
-func TestErrorMetric(t *testing.T) {
-	metric := initErrorMetric()
-	metric.Inc()
-	metric.Inc()
-
-	g := gomega.NewGomegaWithT(t)
-
-	v := reflect.ValueOf(metric).Elem()
-
-	g.Expect(fmt.Sprintf("%v", v.FieldByName("valInt"))).To(gomega.Equal("2"))
+	g.Expect(fmt.Sprintf("%v", re["dashboardId"])).To(gomega.Equal(fmt.Sprintf("%v", 1)))
+	g.Expect(re["text"]).To(gomega.Equal("abc"))
+	g.Expect(re["time"]).To(gomega.Equal(float64(1)))
 }

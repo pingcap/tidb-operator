@@ -36,13 +36,18 @@ type client struct {
 
 //Annotation is a specification of the desired behavior of adding annotation
 type Annotation struct {
-	DashboardId         int      `json: "dashboardId, omitempty"`
-	PanelId             int      `json: "panelId, omitempty"`
-	TimestampInMilliSec int64    `json: "time""`
-	Tags                []string `json: "tags, omitempty""`
-	Text                string   `json: "text""`
-	IsRegin             bool     `json: "isRegion, omitempty""`
-	TimeEnd             int64    `json: "timeEnd, omitempty""`
+	AnnotationOptions
+	Tags                []string `json:"tags"`
+	TimestampInMilliSec int64    `json:"time"`
+}
+
+//AnnotationOptions is the query options to a standard REST list call.
+type AnnotationOptions struct {
+	DashboardId int    `json:"dashboardId, omitempty"`
+	PanelId     int    `json:"panelId, omitempty"`
+	IsRegin     bool   `json:"isRegion, omitempty"`
+	TimeEnd     int64  `json:"timeEnd, omitempty"`
+	Text        string `json:"text, omitempty"`
 }
 
 //NewClient creats a new grafanaClient. This client performs rest functions
