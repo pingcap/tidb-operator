@@ -101,6 +101,10 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
+	go func() {
+		glog.Info(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	conf := tests.ParseConfigOrDie()
 	cli, kubeCli := client.NewCliOrDie()
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
