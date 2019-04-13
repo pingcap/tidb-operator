@@ -6,7 +6,7 @@
 # To avoid dashboard files that are too large to exceed the limit of configMap, compress the files by gzip and
 # decompress the gzip files with postStart command.
 
-# If you want to update dashboard contents, please follow these steps:
+# If you want to update dashboard contents(get the origin files from tidb-ansible repository or tidb-docker-composse repository), please follow these steps:
 # 1. Make sure there is not the ${DS_TEST-CLUSTER} variables in the dashboard files.
 #    Replace this variables with datasource name in _grafana_datasource.tpl, default value is tidb-cluster
 #    Please deleted invalid graphs, like "System Info" and "Services Port Status"
