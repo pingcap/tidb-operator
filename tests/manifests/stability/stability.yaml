@@ -32,7 +32,6 @@ spec:
     command:
     - /usr/local/bin/stability-test
     - --config=/etc/tidb-operator-stability/config.yaml
-    args:
     - --tls-cert-file=/webhook.local.config/certificates/tls.crt
     - --tls-private-key-file=/webhook.local.config/certificates/tls.key
     - --alsologtostderr
@@ -52,6 +51,8 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
+    - name: CA_BUNDLE
+      value: ${CA_BUNDLE}
   volumes:
   - name: logdir
     hostPath:
@@ -63,7 +64,7 @@ spec:
       items:
       - key: config
         path: config.yaml
-  -name: webhook-certs
+  - name: webhook-certs
     secret:
         secretName: webhook-secret
   restartPolicy: Never
