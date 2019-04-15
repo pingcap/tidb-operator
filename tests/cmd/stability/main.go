@@ -26,7 +26,7 @@ import (
 	"k8s.io/apiserver/pkg/util/logs"
 
 	"github.com/pingcap/tidb-operator/tests"
-//	"github.com/pingcap/tidb-operator/tests/backup"
+	"github.com/pingcap/tidb-operator/tests/backup"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -121,7 +121,6 @@ func main() {
 		}
 		server.ListenAndServeTLS("", "")
 	}()
-
 
 	// operator config
 	operatorCfg := &tests.OperatorConfig{
@@ -223,20 +222,20 @@ func main() {
 		oa.DumpAllLogs(operatorCfg, allClusters)
 	}()
 
+	// clean and deploy operator
+	oa.CleanOperatorOrDie(operatorCfg)
+	oa.DeployOperatorOrDie(operatorCfg)
+
 	// clean all clusters
 	for _, cluster := range allClusters {
 		oa.CleanTidbClusterOrDie(cluster)
 	}
 
-	// clean and deploy operator
-	oa.CleanOperatorOrDie(operatorCfg)
-	oa.DeployOperatorOrDie(operatorCfg)
-
 	// deploy and check cluster1, cluster2
 	oa.DeployTidbClusterOrDie(cluster1)
-//	oa.DeployTidbClusterOrDie(cluster2)
+	oa.DeployTidbClusterOrDie(cluster2)
 	oa.CheckTidbClusterStatusOrDie(cluster1)
-//	oa.CheckTidbClusterStatusOrDie(cluster2)
+	oa.CheckTidbClusterStatusOrDie(cluster2)
 
 	//go func() {
 	//	oa.BeginInsertDataTo(cluster1)
@@ -253,7 +252,7 @@ func main() {
 	//}, workloads...)
 
 	// scale out cluster1 and cluster2
-/*	cluster1.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
+	cluster1.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
 	oa.ScaleTidbClusterOrDie(cluster1)
 	cluster2.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
 	oa.ScaleTidbClusterOrDie(cluster2)
@@ -268,7 +267,7 @@ func main() {
 	oa.ScaleTidbClusterOrDie(cluster2)
 	time.Sleep(30 * time.Second)
 	oa.CheckTidbClusterStatusOrDie(cluster1)
-	oa.CheckTidbClusterStatusOrDie(cluster2)*/
+	oa.CheckTidbClusterStatusOrDie(cluster2)
 
 	// before upgrade cluster, deploy and register webhook first
 	oa.RegisterWebHookAndServiceOrDie(operatorCfg)
@@ -276,18 +275,18 @@ func main() {
 	// upgrade cluster1 and cluster2
 	firstUpgradeVersion := upgardeTiDBVersions[0]
 	cluster1.UpgradeAll(firstUpgradeVersion)
-//	cluster2.UpgradeAll(firstUpgradeVersion)
+	cluster2.UpgradeAll(firstUpgradeVersion)
 	oa.UpgradeTidbClusterOrDie(cluster1)
-//	oa.UpgradeTidbClusterOrDie(cluster2)
+	oa.UpgradeTidbClusterOrDie(cluster2)
 	time.Sleep(30 * time.Second)
 	oa.CheckTidbClusterStatusOrDie(cluster1)
-//	oa.CheckTidbClusterStatusOrDie(cluster2)
+	oa.CheckTidbClusterStatusOrDie(cluster2)
 
 	// after upgrade cluster, clean webhook
-//	oa.CleanWebHookAndService(operatorCfg)
+	oa.CleanWebHookAndService(operatorCfg)
 
 	// deploy and check cluster restore
-/*	oa.DeployTidbClusterOrDie(clusterRestoreTo)
+	oa.DeployTidbClusterOrDie(clusterRestoreTo)
 	oa.CheckTidbClusterStatusOrDie(clusterRestoreTo)
 
 	// restore
@@ -305,5 +304,5 @@ func main() {
 		oa.CheckTidbClusterStatusOrDie(cluster)
 	}
 
-	glog.Infof("\nFinished.")*/
+	glog.Infof("\nFinished.")
 }

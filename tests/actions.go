@@ -275,7 +275,6 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 }
 
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
-
 	err := oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(info.WebhookConfigName,nil)
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete webhook config %v", err)
@@ -1878,8 +1877,22 @@ func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error
 
 	namespace := "tidb-operator-stability"
 	configName := info.WebhookConfigName
+	filePath := "/webhook.local.config/certificates/ca.crt"
 
-	_, err := client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(&admissionV1beta1.ValidatingWebhookConfiguration{
+	fd, err := os.Open(filePath)
+	if err != nil {
+		glog.Errorf("file can't open file path %s err %v",filePath, err)
+		return err
+	}
+
+	ca,err := ioutil.ReadAll(fd)
+
+	if err != nil {
+		glog.Errorf("file can't read file path %s err %v",filePath, err)
+		return err
+	}
+
+	_, err = client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(&admissionV1beta1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: configName,
 		},
@@ -1900,7 +1913,7 @@ func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error
 						Name:      info.WebhookServiceName,
 						Path:      strPtr("/pods"),
 					},
-					CABundle: []byte(os.Getenv("CA_BUNDLE")),
+					CABundle: ca,
 				},
 			},
 		},
