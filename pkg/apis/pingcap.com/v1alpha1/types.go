@@ -143,6 +143,7 @@ type TiKVSpec struct {
 	NodeSelectorRequired bool                `json:"nodeSelectorRequired,omitempty"`
 	StorageClassName     string              `json:"storageClassName,omitempty"`
 	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
+	Privileged           bool                `json:"privileged,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
