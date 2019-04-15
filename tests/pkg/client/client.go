@@ -17,18 +17,17 @@ func NewCliOrDie() (versioned.Interface, kubernetes.Interface) {
 		panic(err)
 	}
 
-	cfg.Timeout = 30 * time.Second
-	cli, err := versioned.NewForConfig(cfg)
+	return buildClientsOrDie(cfg)
+}
+
+func NewOutOfClusterCliOrDie(kubeconfig string) (versioned.Interface, kubernetes.Interface) {
+	// TODO: support context selection, current context will be used now
+	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
-		panic(err)
+		panic(err.Error())
 	}
 
-	kubeCli, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		panic(err)
-	}
-
-	return cli, kubeCli
+	return buildClientsOrDie(cfg)
 }
 
 var (
@@ -73,4 +72,19 @@ func SetMasterURL(url string) {
 func LoadConfig() (*rest.Config, error) {
 	cfg, err := clientcmd.BuildConfigFromFlags(masterUrl, kubeconfigPath)
 	return cfg, errors.Trace(err)
+}
+
+func buildClientsOrDie(cfg *rest.Config) (versioned.Interface, kubernetes.Interface) {
+	cfg.Timeout = 30 * time.Second
+	cli, err := versioned.NewForConfig(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	kubeCli, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	return cli, kubeCli
 }

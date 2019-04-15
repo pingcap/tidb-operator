@@ -15,6 +15,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"k8s.io/client-go/kubernetes"
 	"net/http"
 	_ "net/http/pprof"
 	"time"
@@ -31,13 +33,18 @@ import (
 func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
-
 	go func() {
 		glog.Info(http.ListenAndServe("localhost:6060", nil))
 	}()
 
 	conf := tests.ParseConfigOrDie()
-	cli, kubeCli := client.NewCliOrDie()
+	var cli versioned.Interface
+	var kubeCli kubernetes.Interface
+	if conf.OutOfCluster {
+		cli, kubeCli = client.NewOutOfClusterCliOrDie(conf.KubeConfigPath)
+	} else {
+		cli, kubeCli = client.NewCliOrDie()
+	}
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	fta.CheckAndRecoverEnvOrDie()

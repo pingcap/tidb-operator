@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/golang/glog"
@@ -22,6 +24,11 @@ type Config struct {
 	Nodes            []Nodes `yaml:"nodes" json:"nodes"`
 	ETCDs            []Nodes `yaml:"etcds" json:"etcds"`
 	APIServers       []Nodes `yaml:"apiservers" json:"apiservers"`
+
+	// For local test
+	GitRepoDir       string  `yaml:"git_repo_dir" json:"gir_repo_dir"`
+	OutOfCluster     bool    `yaml:"out_of_cluster" json:"out_of_cluster"`
+	KubeConfigPath   string  `yaml:"kube_config_path" json:"kube_config_path"`
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
@@ -39,6 +46,15 @@ func NewConfig() *Config {
 	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v2.1.3,v2.1.4", "tidb versions")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
+	flag.StringVar(&cfg.GitRepoDir, "git-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
+	if home := homeDir(); home != "" {
+		flag.StringVar(&cfg.KubeConfigPath, "kubeconfig", filepath.Join(home, ".kube", "config"), "absolute path to the kubeconfig file")
+	} else {
+		// cannot get homedir, kube config file path must be provided explicitly
+		flag.StringVar(&cfg.KubeConfigPath, "kubeconfig", "", "absolute path to the kubeconfig file")
+	}
+	flag.BoolVar(&cfg.OutOfCluster, "out-of-cluster", false, "whether stability test runs out of cluster.")
+	flag.Parse()
 
 	return cfg
 }
@@ -114,4 +130,11 @@ func (c *Config) GetUpgradeTidbVersionsOrDie() []string {
 	}
 
 	return versions
+}
+
+func homeDir() string {
+	if h := os.Getenv("HOME"); h != "" {
+		return h
+	}
+	return os.Getenv("USERPROFILE") // for windows
 }
