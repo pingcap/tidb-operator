@@ -140,8 +140,6 @@ type OperatorConfig struct {
 	WebhookServiceName    string
 	WebhookSecretName     string
 	WebhookConfigName     string
-	WebhookDeploymentName string
-	WebhookImage          string
 }
 
 type TidbClusterConfig struct {
