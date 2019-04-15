@@ -2,7 +2,7 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: {{ .Values.clusterName }}-monitor
+  name: {{ template "cluster.name" . }}-monitor
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -27,7 +27,7 @@ spec:
       serviceAccount: {{ .Values.monitor.serviceAccount }}
   {{- else }}
     {{- if .Values.rbac.create }}
-      serviceAccount: {{ .Values.clusterName }}-monitor
+      serviceAccount: {{ template "cluster.name" . }}-monitor
     {{- end }}
   {{- end }}
     {{- if .Values.monitor.nodeSelector }}
@@ -131,12 +131,12 @@ spec:
         - name: GF_SECURITY_ADMIN_USER
           valueFrom:
             secretKeyRef:
-              name: {{ .Values.clusterName }}-monitor
+              name: {{ template "cluster.name" . }}-monitor
               key: username
         - name: GF_SECURITY_ADMIN_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: {{ .Values.clusterName }}-monitor
+              name: {{ template "cluster.name" . }}-monitor
               key: password
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
@@ -164,13 +164,13 @@ spec:
       - name: monitor-data
         {{- if .Values.monitor.persistent }}
         persistentVolumeClaim:
-          claimName: {{ .Values.clusterName }}-monitor
+          claimName: {{ template "cluster.name" . }}-monitor
         {{- else }}
         emptyDir: {}
         {{- end }}
       - name: prometheus-config
         configMap:
-          name: {{ .Values.clusterName }}-monitor
+          name: {{ template "cluster.name" . }}-monitor
           items:
           - key: prometheus-config
             path: prometheus.yml
@@ -179,18 +179,18 @@ spec:
       {{- if .Values.monitor.grafana.create }}
       - name: grafana-config
         configMap:
-          name: {{ .Values.clusterName }}-monitor
+          name: {{ template "cluster.name" . }}-monitor
           items:
           - key: grafana-config
             path: grafana.ini
       - configMap:
-          name: {{ .Values.clusterName }}-monitor
+          name: {{ template "cluster.name" . }}-monitor
           items:
           - key: datasource-config
             path: datasource.yaml
         name: datasource
       - configMap:
-          name: {{ .Values.clusterName }}-monitor
+          name: {{ template "cluster.name" . }}-monitor
           items:
           - key: dashboard-config
             path: dashboards.yaml
@@ -198,7 +198,7 @@ spec:
       - emptyDir: {}
         name: grafana-dashboard
       - configMap:
-          name: {{ .Values.clusterName }}-monitor-dashboard
+          name: {{ template "cluster.name" . }}-monitor-dashboard
         name: dashboard-gz
       {{- end }}
     {{- if .Values.monitor.tolerations }}

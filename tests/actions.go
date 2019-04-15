@@ -107,6 +107,8 @@ type OperatorActions interface {
 	CreateSecret(info *TidbClusterConfig) error
 	GetPodUIDMap(info *TidbClusterConfig) (map[string]types.UID, error)
 	GetNodeMap(info *TidbClusterConfig, component string) (map[string][]string, error)
+	TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error
+	TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration)
 	CheckFailoverPending(info *TidbClusterConfig, faultPoint *time.Time) (bool, error)
 	CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, faultPoint *time.Time)
 	CheckFailover(info *TidbClusterConfig, faultNode string) (bool, error)
@@ -1331,7 +1333,7 @@ func cloneOperatorRepo() error {
 	cmd := fmt.Sprintf("git clone https://github.com/pingcap/tidb-operator.git /tidb-operator")
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
+	if err != nil && !strings.Contains(string(res), "already exists") {
 		return fmt.Errorf("failed to clone tidb-operator repository: %v, %s", err, string(res))
 	}
 

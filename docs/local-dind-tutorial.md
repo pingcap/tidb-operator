@@ -60,8 +60,8 @@ tidb-scheduler-56757c896c-clzdg            2/2       Running   0          1m
 ## Step 3: Deploy a TiDB cluster in the DinD Kubernetes cluster
 
 ```sh
-$ helm install charts/tidb-cluster --name=tidb-cluster --namespace=tidb
-$ watch kubectl get pods --namespace tidb -l app.kubernetes.io/instance=tidb-cluster -o wide
+$ helm install charts/tidb-cluster --name=demo --namespace=tidb
+$ watch kubectl get pods --namespace tidb -l app.kubernetes.io/instance=demo -o wide
 $ # wait a few minutes to get all TiDB components created and ready
 
 $ kubectl get tidbcluster -n tidb
@@ -147,7 +147,7 @@ You can scale out or scale in the TiDB cluster simply by modifying the number of
 2. Run the following command to apply the changes:
 
     ```sh
-    helm upgrade tidb-cluster charts/tidb-cluster --namespace=tidb
+    helm upgrade demo charts/tidb-cluster --namespace=tidb
     ```
 
 > **Note:** If you need to scale in TiKV, the consumed time depends on the volume of your existing data, because the data needs to be migrated safely.
@@ -161,7 +161,7 @@ You can scale out or scale in the TiDB cluster simply by modifying the number of
 2. Run the following command to apply the changes:
 
     ```sh
-    helm upgrade tidb-cluster charts/tidb-cluster --namespace=tidb
+    helm upgrade demo charts/tidb-cluster --namespace=tidb
     ```
 
 ## Destroy the TiDB cluster
@@ -169,7 +169,7 @@ You can scale out or scale in the TiDB cluster simply by modifying the number of
 When you are done with your test, use the following command to destroy the TiDB cluster:
 
 ```sh
-$ helm delete tidb-cluster --purge
+$ helm delete demo --purge
 ```
 
 > **Note:** This only deletes the running pods and other resources, the data is persisted. If you do not need the data anymore, run the following commands to clean up the data. (Be careful, this permanently deletes the data).

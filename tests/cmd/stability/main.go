@@ -214,5 +214,8 @@ func main() {
 		oa.CheckTidbClusterStatusOrDie(cluster)
 	}
 
+	// truncate a sst file and check failover
+	oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 5*time.Minute)
+
 	glog.Infof("\nFinished.")
 }
