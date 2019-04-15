@@ -1,6 +1,6 @@
 set -euo pipefail
 
-domain=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-drainer
+domain=`echo ${HOSTNAME}`.{{ template "cluster.name" . }}-drainer
 
 elapseTime=0
 period=1
@@ -26,7 +26,7 @@ done
 
 /drainer \
 -L={{ .Values.binlog.drainer.logLevel | default "info" }} \
--addr=`echo ${HOSTNAME}`.{{ .Values.clusterName }}-drainer:8249 \
+-addr=`echo ${HOSTNAME}`.{{ template "cluster.name" . }}-drainer:8249 \
 -config=/etc/drainer/drainer.toml \
 -disable-detect={{ .Values.binlog.drainer.disableDetect | default false }} \
 -initial-commit-ts={{ .Values.binlog.drainer.initialCommitTs | default 0 }} \

@@ -2,7 +2,7 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: {{ .Values.clusterName }}-privileged-tidb
+  name: {{ template "cluster.name" . }}-privileged-tidb
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -56,7 +56,7 @@ spec:
           protocol: TCP
         env:
         - name: CLUSTER_NAME
-          value: {{ .Values.clusterName }}
+          value: {{ template "cluster.name" . }}
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
         volumeMounts:
@@ -73,7 +73,7 @@ spec:
       volumes:
       - name: config
         configMap:
-          name: {{ .Values.clusterName }}-privileged-tidb
+          name: {{ template "cluster.name" . }}-privileged-tidb
           items:
           - key: config-file
             path: tidb.toml
@@ -85,7 +85,7 @@ spec:
               fieldPath: metadata.annotations
       - name: startup-script
         configMap:
-          name: {{ .Values.clusterName }}-privileged-tidb
+          name: {{ template "cluster.name" . }}-privileged-tidb
           items:
           - key: startup-script
             path: privileged_tidb_start_script.sh
