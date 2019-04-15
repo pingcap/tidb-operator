@@ -101,10 +101,10 @@ spec:
                   - "/bin/sh"
                   - "-c"
                   - >
-                    gzip -dc /tmp/dashboard-gz/tidb.json.gz > /grafana-dashboard-definitions/tidb/tidb.json;
-                    gzip -dc /tmp/dashboard-gz/pd.json.gz > /grafana-dashboard-definitions/tidb/pd.json;
-                    gzip -dc /tmp/dashboard-gz/tikv.json.gz > /grafana-dashboard-definitions/tidb/tikv.json;
-                    gzip -dc /tmp/dashboard-gz/overview.json.gz > /grafana-dashboard-definitions/tidb/overview.json;
+                    gzip -dc /tmp/dashboard-gz/tidb.json.gz > /grafana-dashboard-definitions/tidb/tidb.json &&
+                    gzip -dc /tmp/dashboard-gz/pd.json.gz > /grafana-dashboard-definitions/tidb/pd.json &&
+                    gzip -dc /tmp/dashboard-gz/tikv.json.gz > /grafana-dashboard-definitions/tidb/tikv.json &&
+                    gzip -dc /tmp/dashboard-gz/overview.json.gz > /grafana-dashboard-definitions/tidb/overview.json
         {{- if .Values.monitor.grafana.resources }}
         resources:
 {{ toYaml .Values.monitor.grafana.resources | indent 12 }}
