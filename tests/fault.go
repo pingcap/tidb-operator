@@ -110,7 +110,7 @@ func (fa *faultTriggerActions) CheckAndRecoverEnv() error {
 }
 
 func (fa *faultTriggerActions) CheckAndRecoverEnvOrDie() {
-	if err:=fa.CheckAndRecoverEnv();err!=nil{
+	if err := fa.CheckAndRecoverEnv(); err != nil {
 		glog.Fatal(err)
 	}
 }
