@@ -54,7 +54,7 @@ spec:
   serviceAccount: tidb-operator-stability
   containers:
   - name: tidb-operator-stability
-    image: "hub.pingcap.net/yinliang/pingcap/tidb-operator-stability-test"
+    image: ""
     imagePullPolicy: Always
     command:
     - /usr/local/bin/stability-test

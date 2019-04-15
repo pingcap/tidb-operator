@@ -117,7 +117,7 @@ type OperatorActions interface {
 	CheckRecoverOrDie(clusters []*TidbClusterConfig)
 	RegisterWebHookAndService(info *OperatorConfig) error
 	RegisterWebHookAndServiceOrDie(info *OperatorConfig)
-	CleanWebHookAndService(info *OperatorConfig)
+	CleanWebHookAndService(info *OperatorConfig) error
 }
 
 type operatorActions struct {
@@ -130,16 +130,16 @@ type operatorActions struct {
 var _ = OperatorActions(&operatorActions{})
 
 type OperatorConfig struct {
-	Namespace             string
-	ReleaseName           string
-	Image                 string
-	Tag                   string
-	SchedulerImage        string
-	SchedulerTag          string
-	LogLevel              string
-	WebhookServiceName    string
-	WebhookSecretName     string
-	WebhookConfigName     string
+	Namespace          string
+	ReleaseName        string
+	Image              string
+	Tag                string
+	SchedulerImage     string
+	SchedulerTag       string
+	LogLevel           string
+	WebhookServiceName string
+	WebhookSecretName  string
+	WebhookConfigName  string
 }
 
 type TidbClusterConfig struct {
@@ -272,9 +272,9 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 }
 
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
-	err := oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(info.WebhookConfigName, nil)
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete webhook config %v", err)
+	err := oa.CleanWebHookAndService(info)
+	if err != nil {
+		return err
 	}
 
 	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
@@ -1881,6 +1881,7 @@ func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error
 		glog.Errorf("file can't open file path %s err %v", filePath, err)
 		return err
 	}
+	defer fd.Close()
 
 	ca, err := ioutil.ReadAll(fd)
 
@@ -1928,8 +1929,12 @@ func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error
 
 }
 
-func (oa *operatorActions) CleanWebHookAndService(info *OperatorConfig) {
-	oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(info.WebhookConfigName, nil)
+func (oa *operatorActions) CleanWebHookAndService(info *OperatorConfig) error {
+	err := oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(info.WebhookConfigName, nil)
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete webhook config %v", err)
+	}
+	return nil
 }
 
 type pumpStatus struct {

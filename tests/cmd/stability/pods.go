@@ -1,11 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -14,7 +14,12 @@ import (
 	"k8s.io/api/admission/v1beta1"
 )
 
-// only allow pods to pull images from specific registry.
+type dbInfo struct {
+	IsOwner bool `json:"is_owner"`
+}
+
+// only allow pods to be delete when it is not ddlowner of tidb, not leader of pd and not
+// master of tikv.
 func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	glog.Infof("admitting pods")
 	httpClient := &http.Client{}
@@ -64,11 +69,18 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 			return &reviewResponse
 		}
 
-		if strings.Contains(string(content), "\"is_owner\":false") {
+		info := dbInfo{}
+		err = json.Unmarshal(content, &info)
+		if err != nil {
+			glog.Errorf("unmarshal failed,namespace %s name %s error:%v", nameSpace, name, err)
+			return &reviewResponse
+		}
+
+		if !info.IsOwner {
 			glog.Infof("savely delete pod namespace %s name %s", nameSpace, name)
 		}
 
-		if strings.Contains(string(content), "\"is_owner\":true") {
+		if info.IsOwner {
 			glog.Errorf("tidb is ddl owner, can't be deleted namespace %s name %s", nameSpace, name)
 			os.Exit(3)
 		}
