@@ -61,9 +61,6 @@ spec:
     - --config=/etc/tidb-operator-stability/config.yaml
     - --tls-cert-file=/webhook.local.config/certificates/tls.crt
     - --tls-private-key-file=/webhook.local.config/certificates/tls.key
-    - --alsologtostderr
-    - -v=4
-    - 2>&1
     volumeMounts:
     - mountPath: /logDir
       name: logdir
