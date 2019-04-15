@@ -69,7 +69,7 @@ func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, c
 
 const (
 	DefaultPollTimeout  time.Duration = 10 * time.Minute
-	DefaultPollInterval time.Duration = 5 * time.Second
+	DefaultPollInterval time.Duration = 1 * time.Minute
 	getBackupDirPodName               = "get-backup-dir"
 	grafanaUsername                   = "admin"
 	grafanaPassword                   = "admin"
@@ -1854,14 +1854,6 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig) error
 
 func strPtr(s string) *string { return &s }
 
-func countEndpoint(e *corev1.Endpoints) int {
-	num := 0
-	for _, sub := range e.Subsets {
-		num += len(sub.Addresses)
-	}
-	return num
-}
-
 func (oa *operatorActions) RegisterWebHookAndServiceOrDie(info *OperatorConfig) {
 	if err := oa.RegisterWebHookAndService(info); err != nil {
 		panic(err)
@@ -1872,7 +1864,7 @@ func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error
 	client := oa.kubeCli
 	glog.Infof("Registering the webhook via the AdmissionRegistration API")
 
-	namespace := "tidb-operator-stability"
+	namespace := os.Getenv("NAMESPACE")
 	configName := info.WebhookConfigName
 	filePath := "/webhook.local.config/certificates/ca.crt"
 

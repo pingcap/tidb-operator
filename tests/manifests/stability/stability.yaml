@@ -19,8 +19,8 @@ metadata:
     app: webhook-service
 spec:
   ports:
-  - port: 443
-    targetPort: 443
+  - port: 444
+    targetPort: 444
   selector:
     app: webhook
 ---
@@ -78,6 +78,8 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
+    - name: NAMESPACE
+	  value: tidb-operator-stability
   volumes:
   - name: logdir
     hostPath:

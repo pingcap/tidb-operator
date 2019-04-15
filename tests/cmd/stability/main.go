@@ -25,6 +25,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
+	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 )
 
@@ -45,7 +46,7 @@ func main() {
 
 	// start a http server in goruntine
 	go func() {
-		http.HandleFunc("/pods", servePods)
+		http.HandleFunc("/pods", webhook.ServePods)
 		server := &http.Server{
 			Addr:      ":443",
 			TLSConfig: conf.ConfigTLS(),
