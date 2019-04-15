@@ -24,6 +24,7 @@ const (
 
 type FaultTriggerActions interface {
 	CheckAndRecoverEnv() error
+	CheckAndRecoverEnvOrDie()
 	StopNode() (string, string, time.Time, error)
 	StopNodeOrDie() (string, string, time.Time)
 	StartNode(physicalNode string, node string) error
@@ -106,6 +107,12 @@ func (fa *faultTriggerActions) CheckAndRecoverEnv() error {
 	}
 
 	return nil
+}
+
+func (fa *faultTriggerActions) CheckAndRecoverEnvOrDie() {
+	if err:=fa.CheckAndRecoverEnv();err!=nil{
+		glog.Fatal(err)
+	}
 }
 
 func (fa *faultTriggerActions) StopNode() (string, string, time.Time, error) {

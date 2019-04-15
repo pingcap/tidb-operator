@@ -95,7 +95,7 @@ func (m *Manager) stopStaticPodService(serviceName string, fileName string) erro
 
 func (m *Manager) startStaticPodService(serviceName string, fileName string) error {
 	maniest := fmt.Sprintf("%s/%s", staticPodTmpPath, fileName)
-	if _, err := os.Stat(maniest); err == nil {
+	if _, err := os.Stat(maniest); os.IsNotExist(err) {
 		glog.Infof("%s had been started before", serviceName)
 		return nil
 	}

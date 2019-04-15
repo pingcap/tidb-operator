@@ -40,10 +40,7 @@ func main() {
 	cli, kubeCli := client.NewCliOrDie()
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
-	err := fta.CheckAndRecoverEnv()
-	if err != nil {
-		glog.Fatal(err)
-	}
+	fta.CheckAndRecoverEnvOrDie()
 
 	tidbVersion := conf.GetTiDBVersionOrDie()
 	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
