@@ -2,7 +2,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Values.clusterName }}-monitor-configurator
+  name: {{ template "cluster.name" . }}-monitor-configurator
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -23,16 +23,16 @@ spec:
         image: {{ .Values.monitor.dashboardInstaller.image }}
         imagePullPolicy: {{ .Values.monitor.dashboardInstaller.imagePullPolicy | default "IfNotPresent" }}
         args:
-          - {{ .Values.clusterName }}-grafana:3000
+          - {{ template "cluster.name" . }}-grafana:3000
         env:
           - name: GRAFANA_USERNAME
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.clusterName }}-monitor
+                name: {{ template "cluster.name" . }}-monitor
                 key: username
           - name: GRAFANA_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.clusterName }}-monitor
+                name: {{ template "cluster.name" . }}-monitor
                 key: password
 {{- end }}

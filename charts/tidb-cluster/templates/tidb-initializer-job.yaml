@@ -2,11 +2,11 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Values.clusterName }}-tidb-initializer
+  name: {{ template "cluster.name" . }}-tidb-initializer
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/instance: {{ template "cluster.name" . }}
     app.kubernetes.io/component: tidb-initializer
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
@@ -15,7 +15,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: {{ template "chart.name" . }}
-        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/instance: {{ template "cluster.name" . }}
         app.kubernetes.io/component: tidb-initializer
     spec:
       restartPolicy: OnFailure
@@ -28,7 +28,7 @@ spec:
         - -c
         - |
           import os, MySQLdb
-          host = {{ printf "%s-tidb" .Values.clusterName | quote }}
+          host = '{{ template "cluster.name" . }}-tidb'
           port = 4000
           password_dir = '/etc/tidb/password'
           conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5)
@@ -66,7 +66,7 @@ spec:
       {{- if .Values.tidb.initSql }}
       - name: init-sql
         configMap:
-          name: {{ .Values.clusterName }}-tidb
+          name: {{ template "cluster.name" . }}-tidb
           items:
           - key: init-sql
             path: init.sql
