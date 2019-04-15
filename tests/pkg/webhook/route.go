@@ -30,14 +30,14 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 		if data, err := ioutil.ReadAll(r.Body); err == nil {
 			body = data
 		}
+	} else {
+		return
 	}
 
 	// verify the content type is accurate
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "application/json" {
 		glog.Errorf("contentType=%s, expect application/json", contentType)
-		return
-	} else {
 		return
 	}
 
