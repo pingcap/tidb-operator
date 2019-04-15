@@ -14,13 +14,13 @@
 package tests
 
 import (
-	"os"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -30,8 +30,8 @@ import (
 	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
-	"k8s.io/api/apps/v1beta1"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
+	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -130,19 +130,18 @@ type operatorActions struct {
 var _ = OperatorActions(&operatorActions{})
 
 type OperatorConfig struct {
-	Namespace      string
-	ReleaseName    string
-	Image          string
-	Tag            string
-	SchedulerImage string
-	SchedulerTag   string
-	LogLevel       string
-	WebhookServiceName string
-	WebhookSecretName string
-	WebhookConfigName string
+	Namespace             string
+	ReleaseName           string
+	Image                 string
+	Tag                   string
+	SchedulerImage        string
+	SchedulerTag          string
+	LogLevel              string
+	WebhookServiceName    string
+	WebhookSecretName     string
+	WebhookConfigName     string
 	WebhookDeploymentName string
-	WebhookImage string
-
+	WebhookImage          string
 }
 
 type TidbClusterConfig struct {
@@ -275,7 +274,7 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 }
 
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
-	err := oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(info.WebhookConfigName,nil)
+	err := oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(info.WebhookConfigName, nil)
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete webhook config %v", err)
 	}
@@ -367,7 +366,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		res, err := exec.Command("helm", "del", "--purge", chartName).CombinedOutput()
 		if err != nil && releaseIsNotFound(err) {
 			return fmt.Errorf("failed to delete chart: %s/%s, %v, %s",
-			info.Namespace, chartName, err, string(res))
+				info.Namespace, chartName, err, string(res))
 		}
 	}
 
@@ -381,7 +380,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	resources := []string{"pvc"}
 	for _, resource := range resources {
 		if res, err := exec.Command("kubectl", "delete", resource, "-n", info.Namespace, "-l",
-		setStr).CombinedOutput(); err != nil {
+			setStr).CombinedOutput(); err != nil {
 			return fmt.Errorf("failed to delete %s: %v, %s", resource, err, string(res))
 		}
 	}
@@ -394,7 +393,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 
 	patchPVCmd := fmt.Sprintf(`kubectl get pv -l %s=%s,%s=%s --output=name | xargs -I {} \
 	kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`,
-	label.NamespaceLabelKey, info.Namespace, label.InstanceLabelKey, info.ClusterName)
+		label.NamespaceLabelKey, info.Namespace, label.InstanceLabelKey, info.ClusterName)
 	glog.V(4).Info(patchPVCmd)
 	if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to patch pv: %v, %s", err, string(res))
@@ -402,20 +401,20 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 
 	pollFn := func() (bool, error) {
 		if res, err := exec.Command("kubectl", "get", "po", "--output=name", "-n", info.Namespace, "-l", setStr).
-		CombinedOutput(); err != nil || len(res) != 0 {
+			CombinedOutput(); err != nil || len(res) != 0 {
 			glog.V(4).Infof("waiting for tidbcluster: %s/%s pods deleting, %v, [%s]",
-			info.Namespace, info.ClusterName, err, string(res))
+				info.Namespace, info.ClusterName, err, string(res))
 			return false, nil
 		}
 
 		pvCmd := fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s 2>/dev/null|grep Released",
-		label.NamespaceLabelKey, info.Namespace, label.InstanceLabelKey, info.ClusterName)
+			label.NamespaceLabelKey, info.Namespace, label.InstanceLabelKey, info.ClusterName)
 		glog.V(4).Info(pvCmd)
 		if res, err := exec.Command("/bin/sh", "-c", pvCmd).
-		CombinedOutput(); len(res) == 0 {
+			CombinedOutput(); len(res) == 0 {
 		} else if err != nil {
 			glog.Infof("waiting for tidbcluster: %s/%s pv deleting, %v, %s",
-			info.Namespace, info.ClusterName, err, string(res))
+				info.Namespace, info.ClusterName, err, string(res))
 			return false, nil
 		}
 		return true, nil
@@ -1855,11 +1854,11 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig) error
 
 }
 
-func strPtr(s string) *string {return &s}
+func strPtr(s string) *string { return &s }
 
-func countEndpoint(e *corev1.Endpoints)  int {
+func countEndpoint(e *corev1.Endpoints) int {
 	num := 0
-	for _,sub := range e.Subsets {
+	for _, sub := range e.Subsets {
 		num += len(sub.Addresses)
 	}
 	return num
@@ -1871,7 +1870,7 @@ func (oa *operatorActions) RegisterWebHookAndServiceOrDie(info *OperatorConfig) 
 	}
 }
 
-func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error{
+func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error {
 	client := oa.kubeCli
 	glog.Infof("Registering the webhook via the AdmissionRegistration API")
 
@@ -1881,14 +1880,14 @@ func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error
 
 	fd, err := os.Open(filePath)
 	if err != nil {
-		glog.Errorf("file can't open file path %s err %v",filePath, err)
+		glog.Errorf("file can't open file path %s err %v", filePath, err)
 		return err
 	}
 
-	ca,err := ioutil.ReadAll(fd)
+	ca, err := ioutil.ReadAll(fd)
 
 	if err != nil {
-		glog.Errorf("file can't read file path %s err %v",filePath, err)
+		glog.Errorf("file can't read file path %s err %v", filePath, err)
 		return err
 	}
 
@@ -1920,7 +1919,7 @@ func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error
 	})
 
 	if err != nil {
-		glog.Errorf("registering webhook config %s with namespace %s error %v", configName, namespace,err)
+		glog.Errorf("registering webhook config %s with namespace %s error %v", configName, namespace, err)
 		return err
 	}
 
@@ -1931,8 +1930,8 @@ func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error
 
 }
 
-func (oa *operatorActions) CleanWebHookAndService(info *OperatorConfig){
-	oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(info.WebhookConfigName,nil)
+func (oa *operatorActions) CleanWebHookAndService(info *OperatorConfig) {
+	oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(info.WebhookConfigName, nil)
 }
 
 type pumpStatus struct {

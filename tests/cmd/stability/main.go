@@ -14,12 +14,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"time"
-	"encoding/json"
-	"io/ioutil"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
@@ -124,17 +124,15 @@ func main() {
 
 	// operator config
 	operatorCfg := &tests.OperatorConfig{
-		Namespace:      "pingcap",
-		ReleaseName:    "operator",
-		Image:          conf.OperatorImage,
-		Tag:            conf.OperatorTag,
-		SchedulerImage: "gcr.io/google-containers/hyperkube",
-		LogLevel:       "2",
-		WebhookServiceName : "webhook-service",
-		WebhookSecretName : "webhook-secret",
-		WebhookConfigName : "webhook-config",
-		WebhookDeploymentName : "webhook-deployment",
-		WebhookImage : "hub.pingcap.net/yinliang/pingcap/tidb-operator-webhook:latest",
+		Namespace:          "pingcap",
+		ReleaseName:        "operator",
+		Image:              conf.OperatorImage,
+		Tag:                conf.OperatorTag,
+		SchedulerImage:     "gcr.io/google-containers/hyperkube",
+		LogLevel:           "2",
+		WebhookServiceName: "webhook-service",
+		WebhookSecretName:  "webhook-secret",
+		WebhookConfigName:  "webhook-config",
 	}
 
 	// TODO remove this
