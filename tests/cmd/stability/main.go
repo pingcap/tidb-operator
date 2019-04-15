@@ -39,6 +39,8 @@ func main() {
 	conf := tests.ParseConfigOrDie()
 	cli, kubeCli := client.NewCliOrDie()
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
+	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
+	fta.CheckAndRecoverEnvOrDie()
 
 	tidbVersion := conf.GetTiDBVersionOrDie()
 	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
@@ -203,7 +205,6 @@ func main() {
 	backup.NewBackupCase(oa, clusterBackupFrom, clusterRestoreTo).RunOrDie()
 
 	// stop a node and failover automatically
-	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	physicalNode, node, faultTime := fta.StopNodeOrDie()
 	oa.CheckFailoverPendingOrDie(allClusters, &faultTime)
 	oa.CheckFailoverOrDie(allClusters, node)
