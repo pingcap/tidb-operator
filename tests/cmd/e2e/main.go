@@ -44,13 +44,13 @@ func main() {
 	go oa.StartValidatingAdmissionWebhookServerOrDie()
 
 	operatorInfo := &tests.OperatorConfig{
-		Namespace:      "pingcap",
-		ReleaseName:    "operator",
-		Image:          conf.OperatorImage,
-		Tag:            conf.OperatorTag,
-		SchedulerImage: "mirantis/hypokube",
-		SchedulerTag:   "final",
-		LogLevel:       "2",
+		Namespace:          "pingcap",
+		ReleaseName:        "operator",
+		Image:              conf.OperatorImage,
+		Tag:                conf.OperatorTag,
+		SchedulerImage:     "mirantis/hypokube",
+		SchedulerTag:       "final",
+		LogLevel:           "2",
 		WebhookServiceName: "webhook-service",
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
