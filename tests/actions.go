@@ -1224,17 +1224,6 @@ func (oa *operatorActions) monitorNormal(clusterInfo *TidbClusterConfig) (bool, 
 		glog.Infof("monitor ready replicas %d < 1", monitorDeployment.Status.ReadyReplicas)
 		return false, nil
 	}
-	configuratorJobName := fmt.Sprintf("%s-monitor-configurator", tcName)
-	monitorJob, err := oa.kubeCli.BatchV1().Jobs(ns).Get(configuratorJobName, metav1.GetOptions{})
-	if err != nil {
-		glog.Infof("get monitor configurator job: [%s/%s] failed", ns, configuratorJobName)
-		return false, nil
-	}
-	if monitorJob.Status.Succeeded == 0 {
-		glog.Infof("the monitor configurator job: [%s/%s] had not success", ns, configuratorJobName)
-		return false, nil
-	}
-
 	if err := oa.checkPrometheus(clusterInfo); err != nil {
 		glog.Infof("check [%s/%s]'s prometheus data failed: %v", ns, monitorDeploymentName, err)
 		return false, nil
