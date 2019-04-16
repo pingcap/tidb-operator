@@ -89,6 +89,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		return errors.New("failed to get container status from tikv pod")
 	}
 
+	oa.emitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s", store.PodName))
 	// restart tikv to ensure sst files
 	err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", 1, syscall.SIGTERM)
 	if err != nil {

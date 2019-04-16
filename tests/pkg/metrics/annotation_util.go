@@ -28,7 +28,7 @@ import (
 )
 
 //Client request grafana API on a set of resource paths.
-type client struct {
+type Client struct {
 	// base is the root URL for all invocations of the client
 	baseUrl url.URL
 	client  *http.Client
@@ -52,7 +52,7 @@ type AnnotationOptions struct {
 
 //NewClient creats a new grafanaClient. This client performs rest functions
 //such as Get, Post on specified paths.
-func NewClient(grafanaUrl string, userName string, password string, prometheusExporterPort int) (*client, error) {
+func NewClient(grafanaUrl string, userName string, password string, prometheusExporterPort int) (*Client, error) {
 	u, err := url.Parse(grafanaUrl)
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func NewClient(grafanaUrl string, userName string, password string, prometheusEx
 
 	initFunc(prometheusExporterPort)
 	u.User = url.UserPassword(userName, password)
-	return &client{
+	return &Client{
 		baseUrl: *u,
 		client:  &http.Client{},
 	}, nil
@@ -110,7 +110,7 @@ func initErrorMetric() prometheus.Counter {
 
 //IncreErrorCountWithAnno increments the errorcount by 1,
 //and add the annotation to grafanan.
-func (cli *client) AddAnnotation(annotation Annotation) error {
+func (cli *Client) AddAnnotation(annotation Annotation) error {
 	body, err := annotation.getBody()
 	if err != nil {
 		return fmt.Errorf("create request body faield, %v", err)
@@ -136,11 +136,11 @@ func (cli *client) AddAnnotation(annotation Annotation) error {
 	return nil
 }
 
-func (cli *client) IncrErrorCount() {
+func (cli *Client) IncrErrorCount() {
 	counterMetric.Inc()
 }
 
-func (cli *client) getAnnotationPath() string {
+func (cli *Client) getAnnotationPath() string {
 	u := cli.baseUrl
 	u.Path = path.Join(cli.baseUrl.Path, annotationSubPath)
 	return u.String()

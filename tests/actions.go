@@ -17,6 +17,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -66,6 +67,8 @@ const (
 	getBackupDirPodName               = "get-backup-dir"
 	grafanaUsername                   = "admin"
 	grafanaPassword                   = "admin"
+	metricsPort                       = 8090
+	statbilityTestTag                 = "stability"
 )
 
 type OperatorActions interface {
@@ -119,6 +122,8 @@ type operatorActions struct {
 	kubeCli   kubernetes.Interface
 	pdControl controller.PDControlInterface
 	cfg       *Config
+
+	grafanaClient *metrics.Client
 }
 
 var _ = OperatorActions(&operatorActions{})
@@ -248,6 +253,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		info.Namespace,
 		info.OperatorHelmSetString(nil))
 	glog.Info(cmd)
+
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
@@ -294,6 +300,7 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 
 func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 	glog.Infof("begin to deploy tidb cluster cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
+	oa.emitEvent(info, "DeployTidbCluster")
 
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -332,6 +339,7 @@ func (oa *operatorActions) DeployTidbClusterOrDie(info *TidbClusterConfig) {
 
 func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	glog.Infof("cleaning tidbcluster %s/%s", info.Namespace, info.ClusterName)
+	oa.emitEvent(info, "CleanTidbCluster")
 
 	charts := []string{
 		info.ClusterName,
@@ -474,6 +482,8 @@ func (oa *operatorActions) CheckTidbClusterStatusOrDie(info *TidbClusterConfig) 
 }
 
 func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
+	oa.emitEvent(info, fmt.Sprintf("BeginInsertData: concurrency: %d", oa.cfg.BlockWriter.Concurrency))
+
 	dsn := getDSN(info.Namespace, info.ClusterName, "test", info.Password)
 	glog.Infof("[%s] [%s] open TiDB connections, concurrency: %d",
 		info.blockWriter, info.ClusterName, oa.cfg.BlockWriter.Concurrency)
@@ -493,6 +503,8 @@ func (oa *operatorActions) BeginInsertDataToOrDie(info *TidbClusterConfig) {
 }
 
 func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) error {
+	oa.emitEvent(info, "StopInsertData")
+
 	info.blockWriter.Stop()
 	return nil
 }
@@ -509,6 +521,8 @@ func chartPath(name string, tag string) string {
 }
 
 func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterConfig) error {
+	oa.emitEvent(info, fmt.Sprintf("ScaleTidbCluster"))
+
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
 		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.TidbClusterHelmSetString(nil))
 	glog.Info("[SCALE] " + cmd)
@@ -583,6 +597,8 @@ func (oa *operatorActions) CheckScaledCorrectly(info *TidbClusterConfig, podUIDs
 }
 
 func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
+	oa.emitEvent(info, "UpgradeTidbCluster")
+
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
 		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.TidbClusterHelmSetString(nil))
 	glog.Info("[UPGRADE] " + cmd)
@@ -1316,6 +1332,16 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 	if data.Status != "success" || len(data.Data.Result) < 1 {
 		return fmt.Errorf("invalid response: status: %s, result: %v", data.Status, data.Data.Result)
 	}
+
+	// Grafana ready, init grafana client
+	if oa.grafanaClient == nil {
+		grafanaUrl := fmt.Sprintf("http://%s.%s:3000", svcName, ns)
+		client, err := metrics.NewClient(grafanaUrl, grafanaUsername, grafanaPassword, metricsPort)
+		if err != nil {
+			return err
+		}
+		oa.grafanaClient = client
+	}
 	return nil
 }
 
@@ -1357,6 +1383,7 @@ func (oa *operatorActions) checkoutTag(tagName string) error {
 }
 
 func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
+	oa.emitEvent(info, "DeployAdHocBackup")
 	glog.Infof("begin to deploy adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
 	sets := map[string]string{
@@ -1408,6 +1435,7 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
 }
 
 func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfig) error {
+	oa.emitEvent(to, fmt.Sprintf("RestoreBackup: source: %s", from.ClusterName))
 	glog.Infof("begin to deploy restore cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
 
 	sets := map[string]string{
@@ -1552,6 +1580,7 @@ func releaseIsExist(err error) bool {
 }
 
 func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error {
+	oa.emitEvent(info, "DeploySchedulerBackup")
 	glog.Infof("begin to deploy scheduled backup")
 
 	cron := fmt.Sprintf("'*/1 * * * *'")
@@ -1740,6 +1769,7 @@ func (info *TidbClusterConfig) FullName() string {
 }
 
 func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig) error {
+	oa.emitEvent(from, fmt.Sprintf("DeployIncrementalBackup: slave: %s", to.ClusterName))
 	glog.Infof("begin to deploy incremental backup cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
 
 	sets := map[string]string{
@@ -1905,4 +1935,28 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 		return false
 	}
 	return len(healths.PumpPos) > 0 && healths.Synced
+}
+
+func (oa *operatorActions) emitEvent(info *TidbClusterConfig, event string) {
+	if oa.grafanaClient == nil {
+		glog.V(4).Infof("cluster:[%s] grafana client not ready, skip recording event %s.",
+			info.ClusterName, event)
+		return
+	}
+
+	anno := metrics.Annotation{
+		Text:                event,
+		TimestampInMilliSec: time.Now().UnixNano() / int64(time.Millisecond),
+
+		Tags: []string{
+			statbilityTestTag,
+			fmt.Sprintf("cluster-%s", info.ClusterName),
+			fmt.Sprintf("ns-%s", info.Namespace),
+		},
+	}
+	go func() {
+		if err := oa.grafanaClient.AddAnnotation(anno); err != nil {
+			glog.Errorf("cluster:[%s] error recording event %s, reason: %v", info.ClusterName, event, err)
+		}
+	}()
 }
