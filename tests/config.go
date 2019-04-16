@@ -26,9 +26,9 @@ type Config struct {
 	APIServers       []Nodes `yaml:"apiservers" json:"apiservers"`
 
 	// For local test
-	GitRepoDir       string  `yaml:"git_repo_dir" json:"gir_repo_dir"`
-	OutOfCluster     bool    `yaml:"out_of_cluster" json:"out_of_cluster"`
-	KubeConfigPath   string  `yaml:"kube_config_path" json:"kube_config_path"`
+	GitRepoDir     string `yaml:"git_repo_dir" json:"gir_repo_dir"`
+	OutOfCluster   bool   `yaml:"out_of_cluster" json:"out_of_cluster"`
+	KubeConfigPath string `yaml:"kube_config_path" json:"kube_config_path"`
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
