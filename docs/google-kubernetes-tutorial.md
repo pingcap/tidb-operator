@@ -140,7 +140,7 @@ If you did not specify a password in helm, set one now:
 	SET PASSWORD FOR 'root'@'%' = '<change-to-your-password>';
 
 _Note that, this command contains some special characters which cannot be
-auto-populated, you need to copy and paste it into your console manually._
+auto-populated in the google cloud shell tutorial: you need to copy and paste it into your console manually._
 
 Congratulations, you are now up and running with a distributed TiDB database compatible with MySQL!
 
