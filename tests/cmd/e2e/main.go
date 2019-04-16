@@ -154,6 +154,70 @@ func main() {
 		}
 	}
 
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
+	}
+	for _, clusterInfo := range clusterInfos {
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
+	}
+
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.ScalePD(3)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
+	}
+	for _, clusterInfo := range clusterInfos {
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
+	}
+
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.ScaleTiKV(3)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
+	}
+	for _, clusterInfo := range clusterInfos {
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
+	}
+
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.ScaleTiDB(1)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
+	}
+	for _, clusterInfo := range clusterInfos {
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
+	}
+
+	// upgrade test
+	upgradeTidbVersions := conf.GetUpgradeTidbVersions()
+	for _, upgradeTidbVersion := range upgradeTidbVersions {
+		for _, clusterInfo := range clusterInfos {
+			clusterInfo = clusterInfo.UpgradeAll(upgradeTidbVersion)
+			if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
+				glog.Fatal(err)
+			}
+		}
+		for _, clusterInfo := range clusterInfos {
+			if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+				glog.Fatal(err)
+			}
+		}
+	}
+
 	// backup and restore
 	backupClusterInfo := clusterInfos[0]
 	restoreClusterInfo := &tests.TidbClusterConfig{}
