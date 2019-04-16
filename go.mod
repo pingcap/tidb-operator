@@ -80,10 +80,8 @@ require (
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1 // indirect
-	golang.org/x/crypto v0.0.0-20180807104621-f027049dab0a // indirect
-	golang.org/x/net v0.0.0-20190108225652-1e06a53dbb7e
+	golang.org/x/net v0.0.0-20190311183353-d8887717615a
 	golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421 // indirect
-	golang.org/x/sys v0.0.0-20180807162357-acbc56fc7007 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
 	golang.org/x/tools v0.0.0-20190405180640-052fc3cfdbc2 // indirect
 	google.golang.org/genproto v0.0.0-20180731170733-daca94659cb5 // indirect

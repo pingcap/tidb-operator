@@ -24,8 +24,6 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
-	"github.com/pingcap/tidb-operator/tests/pkg/workload"
-	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
 )
 
 func main() {
@@ -154,85 +152,6 @@ func main() {
 		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
 			glog.Fatal(err)
 		}
-	}
-
-	var workloads []workload.Workload
-	for _, clusterInfo := range clusterInfos {
-		workload := ddl.New(clusterInfo.DSN("test"), 1, 1)
-		workloads = append(workloads, workload)
-	}
-
-	err = workload.Run(func() error {
-
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
-		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
-		}
-
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScalePD(3)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
-		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
-		}
-
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScaleTiKV(3)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
-		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
-		}
-
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScaleTiDB(1)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
-		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
-		}
-
-		// upgrade test
-		upgradeTidbVersions := conf.GetUpgradeTidbVersions()
-		for _, upgradeTidbVersion := range upgradeTidbVersions {
-			for _, clusterInfo := range clusterInfos {
-				clusterInfo = clusterInfo.UpgradeAll(upgradeTidbVersion)
-				if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
-					glog.Fatal(err)
-				}
-			}
-			for _, clusterInfo := range clusterInfos {
-				if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-					glog.Fatal(err)
-				}
-			}
-		}
-
-		return nil
-	}, workloads...)
-
-	if err != nil {
-		glog.Fatal(err)
 	}
 
 	// backup and restore
