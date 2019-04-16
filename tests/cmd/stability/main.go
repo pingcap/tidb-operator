@@ -154,10 +154,18 @@ func main() {
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
-	//go func() {
-	//	oa.BeginInsertDataTo(cluster1)
-	//	oa.BeginInsertDataTo(cluster2)
-	//}()
+	defer func() {
+		if err := oa.StopInsertDataTo(cluster1); err != nil {
+			glog.Errorf("cluster:[%s] stop insert data failed,error: %v", cluster1.ClusterName, err)
+		}
+		if err := oa.StopInsertDataTo(cluster2); err != nil {
+			glog.Errorf("cluster:[%s] stop insert data failed,error: %v", cluster2.ClusterName, err)
+		}
+	}()
+	go func() {
+		oa.BeginInsertDataToOrDie(cluster1)
+		oa.BeginInsertDataToOrDie(cluster2)
+	}()
 
 	// TODO add DDL
 	//var workloads []workload.Workload

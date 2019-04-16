@@ -36,13 +36,14 @@ func NewBackupCase(operator tests.OperatorActions, srcCluster *tests.TidbCluster
 }
 
 func (bc *BackupCase) Run() error {
-	//err := bc.operator.StopInsertDataTo(bc.srcCluster)
-	//if err != nil {
-	//	glog.Errorf("cluster:[%s] stop insert data failed,error: %v", bc.srcCluster.ClusterName, err)
-	//	return err
-	//}
 
-	err := bc.operator.DeployAdHocBackup(bc.srcCluster)
+	err := bc.operator.StopInsertDataTo(bc.srcCluster)
+	if err != nil {
+		glog.Errorf("cluster:[%s] stop insert data failed,error: %v", bc.srcCluster.ClusterName, err)
+		return err
+	}
+
+	err = bc.operator.DeployAdHocBackup(bc.srcCluster)
 	if err != nil {
 		glog.Errorf("cluster:[%s] deploy happen error: %v", bc.srcCluster.ClusterName, err)
 		return err
@@ -119,11 +120,11 @@ func (bc *BackupCase) Run() error {
 		return fmt.Errorf("cluster:[%s] the src cluster data[%d] is not equals des cluster data[%d]", bc.srcCluster.FullName(), srcCount, desCount)
 	}
 
-	//err = bc.operator.BeginInsertDataTo(bc.srcCluster)
-	//if err != nil {
-	//	glog.Errorf("cluster:[%s] begin insert data failed,error: %v", bc.srcCluster.ClusterName, err)
-	//	return err
-	//}
+	err = bc.operator.BeginInsertDataTo(bc.srcCluster)
+	if err != nil {
+		glog.Errorf("cluster:[%s] begin insert data failed,error: %v", bc.srcCluster.ClusterName, err)
+		return err
+	}
 
 	return nil
 }

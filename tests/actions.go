@@ -87,7 +87,9 @@ type OperatorActions interface {
 	CheckTidbClusterStatus(info *TidbClusterConfig) error
 	CheckTidbClusterStatusOrDie(info *TidbClusterConfig)
 	BeginInsertDataTo(info *TidbClusterConfig) error
+	BeginInsertDataToOrDie(info *TidbClusterConfig)
 	StopInsertDataTo(info *TidbClusterConfig) error
+	StopInsertDataToOrDie(info *TidbClusterConfig)
 	ScaleTidbCluster(info *TidbClusterConfig) error
 	ScaleTidbClusterOrDie(info *TidbClusterConfig)
 	CheckScaleInSafely(info *TidbClusterConfig) error
@@ -490,9 +492,23 @@ func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 	return info.blockWriter.Start(db)
 }
 
+func (oa *operatorActions) BeginInsertDataToOrDie(info *TidbClusterConfig) {
+	err := oa.BeginInsertDataTo(info)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) error {
 	info.blockWriter.Stop()
 	return nil
+}
+
+func (oa *operatorActions) StopInsertDataToOrDie(info *TidbClusterConfig) {
+	err := oa.StopInsertDataTo(info)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func chartPath(name string, tag string) string {
