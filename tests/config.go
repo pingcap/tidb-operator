@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 // Config defines the config of operator tests
@@ -22,6 +22,9 @@ type Config struct {
 	Nodes            []Nodes `yaml:"nodes" json:"nodes"`
 	ETCDs            []Nodes `yaml:"etcds" json:"etcds"`
 	APIServers       []Nodes `yaml:"apiservers" json:"apiservers"`
+
+	// For local test
+	OperatorRepoDir string `yaml:"operator_repo_dir" json:"operator_repo_dir"`
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
@@ -39,6 +42,8 @@ func NewConfig() *Config {
 	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v2.1.3,v2.1.4", "tidb versions")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
+	flag.StringVar(&cfg.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
+	flag.Parse()
 
 	return cfg
 }

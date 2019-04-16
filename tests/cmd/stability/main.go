@@ -21,17 +21,16 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
+	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"k8s.io/apiserver/pkg/util/logs"
 
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
-	"github.com/pingcap/tidb-operator/tests/pkg/client"
 )
 
 func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
-
 	go func() {
 		glog.Info(http.ListenAndServe("localhost:6060", nil))
 	}()
