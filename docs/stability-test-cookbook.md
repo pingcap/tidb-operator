@@ -1,4 +1,20 @@
-# How to: run stability test in your local environment
+# Stability Test Cookbook
+
+> Important notes: this guide is under heavy development and have complicated enviroment pre-requesites, things are ought to change in the future.
+
+The following commands assumes you are in the `tidb-operator` working directory:
+```shell
+# image will be tagged as YOUR_DOCKER_REGISTRY/pingcap/tidb-operator-stability-test:latest
+$ export DOCKER_REGISTRY=${YOUR_DOCKER_REGISTRY} 
+$ make stability-test-push
+$ kubectl apply -f ./tests/manifests/stability/stability-configmap.yaml
+# edit the stability.yaml and change .spec.template.spec.containers[].image to the pushed image
+$ vi ./tests/manifests/stability/stability.yaml
+# apply the stability test pod
+$ kubectl apply -f ./tests/manifests/stability/stability.yaml
+```
+
+## Alternative: run stability test in your local environment
 
 Deploy & witness flow can be tedious when developing stability-test, this document introduce that how to run stability-test out of the cluster(your local machine, usually) while still operating the remote cluster.
 
