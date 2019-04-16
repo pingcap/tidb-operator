@@ -1,13 +1,16 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
-  name: {{ .Values.clusterName }}
+  name: {{ template "cluster.name" . }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: tidb-cluster
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+    {{- if .Values.extraLabels }}
+{{ toYaml .Values.extraLabels | indent 4 }}
+    {{- end }}
 spec:
   pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
   timezone: {{ .Values.timezone | default "UTC" }}

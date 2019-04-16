@@ -1,13 +1,12 @@
 # TiDB Cluster Operation Guide
 
-TiDB Operator can manage multiple clusters in the same Kubernetes cluster. Clusters are qualified by `namespace` and `clusterName`, namely different clusters may have same `namespace` or `clusterName` but not both.
+TiDB Operator can manage multiple clusters in the same Kubernetes cluster.
 
-The default `clusterName` is `demo` which is defined in charts/tidb-cluster/values.yaml. The following variables will be used in the rest of the document:
+The following variables will be used in the rest of the document:
 
 ```shell
-$ releaseName="tidb-cluster"
+$ releaseName="demo"
 $ namespace="tidb"
-$ clusterName="demo" # Make sure this is the same as variable defined in charts/tidb-cluster/values.yaml
 ```
 
 > **Note:** The rest of the document will use `values.yaml` to reference `charts/tidb-cluster/values.yaml`
@@ -38,20 +37,20 @@ $ kubectl get svc -n ${namespace} # check the available services
 By default the TiDB cluster has no password set. You can specify a password by setting `tidb.password` in `values.yaml` before deploying. You can retrieve the password from the initialization `Secret`:
 
 ```shell
-$ PASSWORD=$(kubectl get secret -n ${namespace} ${clusterName}-tidb -ojsonpath="{.data.password}" | base64 --decode | awk '{print $6}')
+$ PASSWORD=$(kubectl get secret -n ${namespace} ${releaseName}-tidb -ojsonpath="{.data.password}" | base64 --decode | awk '{print $6}')
 $ echo ${PASSWORD}
 ```
 
 * Access inside of the Kubernetes cluster
 
-    When your application is deployed in the same Kubernetes cluster, you can access TiDB via domain name `demo-tidb.tidb.svc` with port `4000`. Here `demo` is the `clusterName` which can be modified in `values.yaml`. And the latter `tidb` is the namespace you specified when using `helm install` to deploy TiDB cluster.
+    When your application is deployed in the same Kubernetes cluster, you can access TiDB via domain name `demo-tidb.tidb.svc` with port `4000`. Here `demo` is the `releaseName`. And the latter `tidb` is the namespace you specified when using `helm install` to deploy TiDB cluster.
 
 * Access outside of the Kubernetes cluster
 
     * Using kubectl portforward
 
         ```shell
-        $ kubectl port-forward -n ${namespace} svc/${clusterName}-tidb 4000:4000 &>/tmp/portforward-tidb.log
+        $ kubectl port-forward -n ${namespace} svc/${releaseName}-tidb 4000:4000 &>/tmp/portforward-tidb.log
         $ mysql -h 127.0.0.1 -P 4000 -u root -p
         ```
 
@@ -125,7 +124,7 @@ By default the monitor data is not persistent, when the monitor pod is killed fo
 You can view the dashboard using `kubectl portforward`:
 
 ```shell
-$ kubectl port-forward -n ${namespace} svc/${clusterName}-grafana 3000:3000 &>/tmp/portforward-grafana.log
+$ kubectl port-forward -n ${namespace} svc/${releaseName}-grafana 3000:3000 &>/tmp/portforward-grafana.log
 ```
 
 Then open your browser at http://localhost:3000 The default username and password are both `admin`

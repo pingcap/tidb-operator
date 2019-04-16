@@ -110,6 +110,8 @@ type OperatorActions interface {
 	CreateSecret(info *TidbClusterConfig) error
 	GetPodUIDMap(info *TidbClusterConfig) (map[string]types.UID, error)
 	GetNodeMap(info *TidbClusterConfig, component string) (map[string][]string, error)
+	TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error
+	TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration)
 	CheckFailoverPending(info *TidbClusterConfig, faultPoint *time.Time) (bool, error)
 	CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, faultPoint *time.Time)
 	CheckFailover(info *TidbClusterConfig, faultNode string) (bool, error)
@@ -1240,17 +1242,6 @@ func (oa *operatorActions) monitorNormal(clusterInfo *TidbClusterConfig) (bool, 
 		glog.Infof("monitor ready replicas %d < 1", monitorDeployment.Status.ReadyReplicas)
 		return false, nil
 	}
-	configuratorJobName := fmt.Sprintf("%s-monitor-configurator", tcName)
-	monitorJob, err := oa.kubeCli.BatchV1().Jobs(ns).Get(configuratorJobName, metav1.GetOptions{})
-	if err != nil {
-		glog.Infof("get monitor configurator job: [%s/%s] failed", ns, configuratorJobName)
-		return false, nil
-	}
-	if monitorJob.Status.Succeeded == 0 {
-		glog.Infof("the monitor configurator job: [%s/%s] had not success", ns, configuratorJobName)
-		return false, nil
-	}
-
 	if err := oa.checkPrometheus(clusterInfo); err != nil {
 		glog.Infof("check [%s/%s]'s prometheus data failed: %v", ns, monitorDeploymentName, err)
 		return false, nil
@@ -1349,7 +1340,7 @@ func cloneOperatorRepo() error {
 	cmd := fmt.Sprintf("git clone https://github.com/pingcap/tidb-operator.git /tidb-operator")
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
+	if err != nil && !strings.Contains(string(res), "already exists") {
 		return fmt.Errorf("failed to clone tidb-operator repository: %v, %s", err, string(res))
 	}
 

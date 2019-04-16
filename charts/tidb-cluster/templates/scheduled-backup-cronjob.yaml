@@ -2,7 +2,7 @@
 apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
-  name: {{ .Values.clusterName }}-scheduled-backup
+  name: {{ template "cluster.name" . }}-scheduled-backup
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -38,7 +38,7 @@ spec:
             imagePullPolicy: {{ .Values.scheduledBackup.binlogImagePullPolicy | default "IfNotPresent" }}
             command:
             - /binlogctl
-            - -pd-urls=http://{{ .Values.clusterName }}-pd:2379
+            - -pd-urls=http://{{ template "cluster.name" . }}-pd:2379
             - -cmd=generate_meta
             - -data-dir=/savepoint-dir
             volumeMounts:
@@ -88,7 +88,7 @@ spec:
             emptyDir: {}
           - name: data
             persistentVolumeClaim:
-              claimName: {{ .Values.clusterName }}-scheduled-backup
+              claimName: {{ template "cluster.name" . }}-scheduled-backup
         {{- if .Values.scheduledBackup.gcp }}
           - name: gcp-credentials
             secret:
