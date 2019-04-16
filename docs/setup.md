@@ -125,6 +125,8 @@ $ rm -rf /mnt/disks/local-pv01
 $ rm -rf /data/local-pv01
 ```
 
+You should also delete the related entries in `/etc/fstab` at the same time, otherwise the automount may cause problems when the machine restarts.
+
 > Note: The local-volume plugin expects paths to be stable, if you remove a previous mount-point in the discovery directory (default to `/mnt/disks/`), you should remove the PV manually to keep consistency.
 
 ## Install TiDB Operator
