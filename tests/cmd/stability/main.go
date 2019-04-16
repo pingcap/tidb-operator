@@ -90,8 +90,9 @@ func main() {
 			"tidb.resources.requests.memory": "1Gi",
 			"monitor.persistent":             "true",
 		},
-		Args:    map[string]string{},
-		Monitor: true,
+		Args:             map[string]string{},
+		Monitor:          true,
+		BlockWriteConfig: conf.BlockWriter,
 	}
 	cluster2 := &tests.TidbClusterConfig{
 		Namespace:        clusterName2,
@@ -123,8 +124,9 @@ func main() {
 			// TODO assert the the monitor's pvc exist and clean it when bootstrapping
 			"monitor.persistent": "true",
 		},
-		Args:    map[string]string{},
-		Monitor: true,
+		Args:             map[string]string{},
+		Monitor:          true,
+		BlockWriteConfig: conf.BlockWriter,
 	}
 
 	// cluster backup and restore
@@ -155,12 +157,8 @@ func main() {
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
 	defer func() {
-		if err := oa.StopInsertDataTo(cluster1); err != nil {
-			glog.Errorf("cluster:[%s] stop insert data failed,error: %v", cluster1.ClusterName, err)
-		}
-		if err := oa.StopInsertDataTo(cluster2); err != nil {
-			glog.Errorf("cluster:[%s] stop insert data failed,error: %v", cluster2.ClusterName, err)
-		}
+		oa.StopInsertDataTo(cluster1)
+		oa.StopInsertDataTo(cluster2)
 	}()
 	go oa.BeginInsertDataToOrDie(cluster1)
 	go oa.BeginInsertDataToOrDie(cluster2)
