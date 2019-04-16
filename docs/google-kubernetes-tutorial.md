@@ -79,7 +79,6 @@ Copy `helm` to your `$HOME` directory so that it will persist after the Cloud Sh
 
 Helm will also need a couple of permissions to work properly:
 
-	kubectl create serviceaccount tiller --namespace kube-system &&
 	kubectl apply -f ./manifests/tiller-rbac.yaml &&
 	helm init --service-account tiller --upgrade
 
@@ -101,7 +100,7 @@ We can watch the operator come up with:
 
 	watch kubectl get pods --namespace tidb-admin -o wide
 
-When you see `Running`, `Control + C` and proceed to launch a TiDB cluster!
+When you see all pods are `Running`, `Control + C` and proceed to launch a TiDB cluster!
 
 ## Deploy your first TiDB cluster
 
@@ -123,20 +122,14 @@ There can be a small delay between the pod being up and running, and the service
 
 When you see `demo-tidb` appear, you can `Control + C`. The service is ready to connect to!
 
-You can connect to the clustered service within the Kubernetes cluster:
+To connect to TiDB within the Kubernetes cluster, you can establish a tunnel between the TiDB service and your Cloud Shell. This is recommended only for debugging purposes, because the tunnel will not automatically be transferred if your Cloud Shell restarts. To establish a tunnel:
 
-	kubectl run -n tidb mysql-client --rm -i --tty --image mysql -- mysql -P 4000 -u root -h $(kubectl get svc demo-tidb -n tidb -o jsonpath='{.spec.clusterIP}') -p
-
-Congratulations, you are now up and running with a distributed TiDB database compatible with MySQL!
-
-In addition to connecting to TiDB within the Kubernetes cluster, you can also establish a tunnel between the TiDB service and your Cloud Shell. This is recommended only for debugging purposes, because the tunnel will not automatically be transferred if your Cloud Shell restarts. To establish a tunnel:
-
-	kubectl -n tidb port-forward demo-tidb-0 4000:4000 &>/tmp/port-forward.log &
+	kubectl -n tidb port-forward svc/demo-tidb 4000:4000 &>/tmp/port-forward.log &
 
 From your Cloud Shell:
 
 	sudo apt-get install -y mysql-client &&
-	mysql -h 127.0.0.1 -u root -P 4000 -p
+	mysql -h 127.0.0.1 -u root -P 4000
 
 Try out a MySQL command inside your MySQL terminal:
 
@@ -144,8 +137,12 @@ Try out a MySQL command inside your MySQL terminal:
 
 If you did not specify a password in helm, set one now:
 
-	SET PASSWORD FOR 'root'@'%' =
+	SET PASSWORD FOR 'root'@'%' = '<change-to-your-password>';
 
+_Note that, this command contains some special characters which cannot be
+auto-populated, you need to copy and paste it into your console manually._
+
+Congratulations, you are now up and running with a distributed TiDB database compatible with MySQL!
 
 ## Scale out the TiDB cluster
 
