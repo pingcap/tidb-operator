@@ -6,7 +6,7 @@ Deploy & witness flow can be tedious when developing stability-test, this docume
 ```shell
 $ telepresence --new-deployment ${POD_NAME}
 $ go build -o stability ./tests/cmd/stability/main.go
-$ ./stability --operator-repo-dir=${ABITRARY_EMPTY_DIR_TO_CLONE_OPERATOR_REPO}
+$ ./stability --operator-repo-dir=${ABITRARY_EMPTY_DIR_TO_CLONE_OPERATOR_REPO} --kubeconfig=${YOUR_KUBE_CONFIG_PATH}
 ```
 
 ### Explained
@@ -17,8 +17,7 @@ Generally we have three problems to solve:
     * if `kubeconfig` command line option provided, use it
     * if `KUBECONFIG` env variable set, use it
     * try loading `InClusterConfig()`
-    * if no `InClusterConfig()` provided, try loading kubeconfig file from default location (`~/.kube/config`)
-so typically you will get right client configs if you have proper `~/.kube/config` in your local environment. 
+so you have to specify the `kubeconfig` path by either command line option or  env variable if you want to test locally.
 2. **Privilege issue**: If you don't want to or cannot run stability test with root privilege, change the working dir or create it in advance:
     * git repo dir can be overridden by option `--git-repo-dir=xxxx`, but helm dir must be created manually. 
 ```shell
