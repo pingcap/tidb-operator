@@ -24,7 +24,7 @@ type Config struct {
 	APIServers       []Nodes `yaml:"apiservers" json:"apiservers"`
 
 	// For local test
-	OperatorRepoDir string `yaml:"git_repo_dir" json:"gir_repo_dir"`
+	OperatorRepoDir string `yaml:"operator_repo_dir" json:"operator_repo_dir"`
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
