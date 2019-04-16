@@ -40,6 +40,9 @@ func main() {
 
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 
+	// start a http server in goruntine
+	go oa.StartValidatingAdmissionWebhookServerOrDie()
+
 	operatorInfo := &tests.OperatorConfig{
 		Namespace:      "pingcap",
 		ReleaseName:    "operator",
@@ -48,6 +51,9 @@ func main() {
 		SchedulerImage: "mirantis/hypokube",
 		SchedulerTag:   "final",
 		LogLevel:       "2",
+		WebhookServiceName: "webhook-service",
+		WebhookSecretName:  "webhook-secret",
+		WebhookConfigName:  "webhook-config",
 	}
 
 	initTidbVersion, err := conf.GetTiDBVersion()
@@ -202,6 +208,9 @@ func main() {
 		}
 	}
 
+	// before upgrade cluster, register webhook first
+	oa.RegisterWebHookAndServiceOrDie(operatorInfo)
+
 	// upgrade test
 	upgradeTidbVersions := conf.GetUpgradeTidbVersions()
 	for _, upgradeTidbVersion := range upgradeTidbVersions {
@@ -217,6 +226,9 @@ func main() {
 			}
 		}
 	}
+
+	// after upgrade cluster, clean webhook
+	oa.CleanWebHookAndService(operatorInfo)
 
 	// backup and restore
 	backupClusterInfo := clusterInfos[0]
