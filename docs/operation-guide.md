@@ -34,10 +34,17 @@ By default TiDB service is exposed using [`NodePort`](https://kubernetes.io/docs
 $ kubectl get svc -n ${namespace} # check the available services
 ```
 
-By default the TiDB cluster has no password set. You can specify a password by setting `tidb.password` in `values.yaml` before deploying. You can retrieve the password from the initialization `Secret`:
+By default the TiDB cluster has no password set. You can create `Secret` with following command, and uncomment setting `tidb.passwordSecretName` in `values.yaml` before deploying:
+
+```
+kubectl create namespace ${namespace}
+kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=${namespace}
+```
+
+You can retrieve the password from the initialization `Secret`:
 
 ```shell
-$ PASSWORD=$(kubectl get secret -n ${namespace} ${releaseName}-tidb -ojsonpath="{.data.password}" | base64 --decode | awk '{print $6}')
+$ PASSWORD=$(kubectl get secret -n ${namespace} tidb-secret -ojsonpath="{.data.root}" | base64 --decode)
 $ echo ${PASSWORD}
 ```
 
