@@ -77,7 +77,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		}
 
 		if !info.IsOwner {
-			glog.Infof("savely delete pod namespace %s name %s", nameSpace, name)
+			glog.Infof("savely delete pod namespace %s name %s content [%s]", nameSpace, name, string(content))
 		}
 
 		if info.IsOwner {

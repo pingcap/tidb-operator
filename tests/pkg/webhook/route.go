@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/golang/glog"
 	"io/ioutil"
 	"k8s.io/api/admission/v1beta1"
@@ -25,31 +26,37 @@ type admitFunc func(v1beta1.AdmissionReview) *v1beta1.AdmissionResponse
 // serve handles the http portion of a request prior to handing to an admit
 // function
 func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
+
 	var body []byte
+	var contentType string
+	responseAdmissionReview := v1beta1.AdmissionReview{}
+	requestedAdmissionReview := v1beta1.AdmissionReview{}
+	deserializer := codecs.UniversalDeserializer()
+
+	// The AdmissionReview that will be returned
 	if r.Body != nil {
 		if data, err := ioutil.ReadAll(r.Body); err == nil {
 			body = data
+		} else {
+			responseAdmissionReview.Response = toAdmissionResponse(err)
+			goto returnData
 		}
 	} else {
-		return
+		err := errors.New("request body is nil!")
+		responseAdmissionReview.Response = toAdmissionResponse(err)
+		goto returnData
 	}
 
 	// verify the content type is accurate
-	contentType := r.Header.Get("Content-Type")
+	contentType = r.Header.Get("Content-Type")
 	if contentType != "application/json" {
-		glog.Errorf("contentType=%s, expect application/json", contentType)
-		return
+		err := errors.New("expect application/json")
+		responseAdmissionReview.Response = toAdmissionResponse(err)
+		goto returnData
 	}
 
 	// The AdmissionReview that was sent to the webhook
-	requestedAdmissionReview := v1beta1.AdmissionReview{}
-
-	// The AdmissionReview that will be returned
-	responseAdmissionReview := v1beta1.AdmissionReview{}
-
-	deserializer := codecs.UniversalDeserializer()
 	if _, _, err := deserializer.Decode(body, nil, &requestedAdmissionReview); err != nil {
-		glog.Error(err)
 		responseAdmissionReview.Response = toAdmissionResponse(err)
 	} else {
 		// pass to admitFunc
@@ -59,6 +66,7 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 	// Return the same UID
 	responseAdmissionReview.Response.UID = requestedAdmissionReview.Request.UID
 
+returnData:
 	respBytes, err := json.Marshal(responseAdmissionReview)
 	if err != nil {
 		glog.Error(err)

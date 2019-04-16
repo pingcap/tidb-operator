@@ -31,6 +31,7 @@ import (
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
+	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -118,6 +119,7 @@ type OperatorActions interface {
 	RegisterWebHookAndService(info *OperatorConfig) error
 	RegisterWebHookAndServiceOrDie(info *OperatorConfig)
 	CleanWebHookAndService(info *OperatorConfig) error
+	StartValidatingAdmissionWebhookServerOrDie()
 }
 
 type operatorActions struct {
@@ -1998,4 +2000,17 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 		return false
 	}
 	return len(healths.PumpPos) > 0 && healths.Synced
+}
+
+func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie() {
+	http.HandleFunc("/pods", webhook.ServePods)
+	server := &http.Server{
+		Addr:      ":443",
+		TLSConfig: oa.cfg.ConfigTLS(),
+	}
+	err := server.ListenAndServeTLS("", "")
+	if err != nil {
+		glog.Errorf("fail to start webhook server err %v",err)
+		os.Exit(4)
+	}
 }

@@ -25,7 +25,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
-	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 )
 
@@ -45,14 +44,7 @@ func main() {
 	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
 
 	// start a http server in goruntine
-	go func() {
-		http.HandleFunc("/pods", webhook.ServePods)
-		server := &http.Server{
-			Addr:      ":443",
-			TLSConfig: conf.ConfigTLS(),
-		}
-		server.ListenAndServeTLS("", "")
-	}()
+	go oa.StartValidatingAdmissionWebhookServerOrDie()
 
 	// operator config
 	operatorCfg := &tests.OperatorConfig{
@@ -171,15 +163,6 @@ func main() {
 	//	oa.BeginInsertDataTo(cluster1)
 	//	oa.BeginInsertDataTo(cluster2)
 	//}()
-
-	// TODO add DDL
-	//var workloads []workload.Workload
-	//for _, clusterInfo := range clusterInfos {
-	//	workload := ddl.New(clusterInfo.DSN("test"), 1, 1)
-	//	workloads = append(workloads, workload)
-	//}
-	//err = workload.Run(func() error {
-	//}, workloads...)
 
 	// scale out cluster1 and cluster2
 	cluster1.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
