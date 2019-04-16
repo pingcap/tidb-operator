@@ -2,7 +2,7 @@
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ .Values.clusterName}}-discovery
+  name: {{ template "cluster.name" . }}-discovery
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -12,13 +12,13 @@ metadata:
 rules:
 - apiGroups: ["pingcap.com"]
   resources: ["tidbclusters"]
-  resourceNames: [{{ .Values.clusterName | quote }}]
+  resourceNames: [{{ template "cluster.name" . }}]
   verbs: ["get"]
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ .Values.clusterName }}-discovery
+  name: {{ template "cluster.name" . }}-discovery
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -27,16 +27,16 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 subjects:
 - kind: ServiceAccount
-  name: {{ .Values.clusterName }}-discovery
+  name: {{ template "cluster.name" . }}-discovery
 roleRef:
   kind: Role
-  name: {{ .Values.clusterName }}-discovery
+  name: {{ template "cluster.name" . }}-discovery
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: {{ .Values.clusterName }}-discovery
+  name: {{ template "cluster.name" . }}-discovery
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}

@@ -4,19 +4,154 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
+	"github.com/pingcap/tidb-operator/tests/pkg/ops"
+	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
+
+func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error {
+	const failoverTimeout = 5 * time.Minute
+
+	cli := client.Union(oa.kubeCli, oa.cli)
+	tikvOps := ops.TiKVOps{ClientOps: ops.ClientOps{Client: cli}}
+
+	// checkout latest tidb cluster
+	tc, err := cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
+	if err != nil {
+		glog.Errorf("failed to get the cluster: ns=%s tc=%s err=%s", info.Namespace, info.ClusterName, err.Error())
+		return err
+	}
+	countUpStores := func(tc *v1alpha1.TidbCluster) int {
+		cnt := 0
+		for _, s := range tc.Status.TiKV.Stores {
+			if s.State == v1alpha1.TiKVStateUp {
+				cnt++
+			}
+		}
+		return cnt
+	}
+
+	origFailures := len(tc.Status.TiKV.FailureStores)
+	origUps := countUpStores(tc)
+
+	// checkout pd config
+	pdCfg, err := oa.pdControl.GetPDClient(tc).GetConfig()
+	if err != nil {
+		glog.Errorf("failed to get the pd config: tc=%s err=%s", info.ClusterName, err.Error())
+		return err
+	}
+	maxStoreDownTime := pdCfg.Schedule.MaxStoreDownTime.Duration
+	glog.Infof("failover config: maxStoreDownTime=%v tikvFailoverPeriod=%v", maxStoreDownTime, tikvFailoverPeriod)
+
+	// find an up store
+	var store v1alpha1.TiKVStore
+	for _, v := range tc.Status.TiKV.Stores {
+		if v.State != v1alpha1.TiKVStateUp {
+			continue
+		}
+		store = v
+		break
+	}
+	if len(store.ID) == 0 {
+		glog.Errorf("failed to find an up store")
+		return errors.New("no up store for truncating sst file")
+	} else {
+		glog.Infof("target store: id=%s pod=%s", store.ID, store.PodName)
+	}
+
+	// checkout pod status
+	podBeforeRestart, err := cli.CoreV1().Pods(info.Namespace).Get(store.PodName, metav1.GetOptions{})
+	if err != nil {
+		glog.Errorf("failed to get target pod: pod=%s err=%s", store.PodName, err.Error())
+		return err
+	}
+
+	var rc int32
+	if c := util.GetContainerStatusFromPod(podBeforeRestart, func(status corev1.ContainerStatus) bool {
+		return status.Name == "tikv"
+	}); c != nil {
+		rc = c.RestartCount
+	} else {
+		glog.Errorf("failed to get container status from tikv pod")
+		return errors.New("failed to get container status from tikv pod")
+	}
+
+	// restart tikv to ensure sst files
+	err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", 1, syscall.SIGTERM)
+	if err != nil {
+		glog.Errorf("kill tikv: pod=%s err=%s", store.PodName, err.Error())
+		return err
+	}
+
+	err = tikvOps.PollPod(info.Namespace, store.PodName,
+		func(pod *corev1.Pod, err error) (bool, error) {
+			if pod == nil {
+				glog.Warningf("pod is nil: err=%s", err.Error())
+				return false, nil
+			}
+			tikv := util.GetContainerStatusFromPod(pod, func(status corev1.ContainerStatus) bool {
+				return status.Name == "tikv"
+			})
+
+			if pod.Status.Phase == corev1.PodRunning && tikv != nil && tikv.RestartCount > rc {
+				return true, nil
+			}
+			return false, nil
+		})
+	if err != nil {
+		glog.Errorf("tikv process hasn't been restarted: err=%s", err.Error())
+		return err
+	}
+
+	// truncate the sst file and wait for failover
+	err = tikvOps.TruncateSSTFile(ops.TruncateOptions{
+		Namespace: info.Namespace,
+		Cluster:   info.ClusterName,
+		Store:     store.ID,
+	})
+
+	// make tikv crash
+	err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", 1, syscall.SIGTERM)
+	if err != nil {
+		glog.Errorf("kill tikv: pod=%s err=%s", store.PodName, err.Error())
+		return err
+	}
+
+	tikvOps.SetPoll(DefaultPollInterval, maxStoreDownTime+tikvFailoverPeriod+failoverTimeout)
+
+	return tikvOps.PollTiDBCluster(info.Namespace, info.ClusterName,
+		func(tc *v1alpha1.TidbCluster, err error) (bool, error) {
+			glog.Infof("check failure stores: current=%d origin=%d", len(tc.Status.TiKV.FailureStores), origFailures)
+			if len(tc.Status.TiKV.FailureStores) <= origFailures {
+				return false, nil
+			}
+			ups := countUpStores(tc)
+			glog.Infof("check up stores: current=%d origin=%d", ups, origUps)
+			if ups < origUps {
+				return false, nil
+			}
+			return true, nil
+		})
+}
+
+func (oa *operatorActions) TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) {
+	if err := oa.TruncateSSTFileThenCheckFailover(info, tikvFailoverPeriod); err != nil {
+		panic(err)
+	}
+}
 
 func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, faultPoint *time.Time) (bool, error) {
 	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
@@ -214,6 +349,9 @@ func (oa *operatorActions) pdFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster)
 	return false
 }
 
+// TODO we should confirm the tombstone exists, important!!!!!!
+// 		for example: offline the same pod again and again, and see it in the tombstone stores
+// 					 offline two pods, and see them in the tombstone stores
 func (oa *operatorActions) tikvFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
 	failure := false
 	for _, failureStore := range tc.Status.TiKV.FailureStores {

@@ -62,7 +62,7 @@ func (c *FakeTidbClusters) List(opts v1.ListOptions) (result *v1alpha1.TidbClust
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v1alpha1.TidbClusterList{}
+	list := &v1alpha1.TidbClusterList{ListMeta: obj.(*v1alpha1.TidbClusterList).ListMeta}
 	for _, item := range obj.(*v1alpha1.TidbClusterList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)

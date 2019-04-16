@@ -107,7 +107,7 @@ When you see `Running`, `Control + C` and proceed to launch a TiDB cluster!
 
 Now with a single command we can bring-up a full TiDB cluster:
 
-	helm install ./charts/tidb-cluster -n tidb --namespace=tidb --set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd
+	helm install ./charts/tidb-cluster -n demo --namespace=tidb --set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd
 
 It will take a few minutes to launch. You can monitor the progress with:
 
@@ -151,7 +151,7 @@ If you did not specify a password in helm, set one now:
 
 With a single command we can easily scale out the TiDB cluster. To scale out TiKV:
 
-	helm upgrade tidb charts/tidb-cluster --set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd,tikv.replicas=5
+	helm upgrade demo charts/tidb-cluster --set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd,tikv.replicas=5
 
 Now the number of TiKV pods is increased from the default 3 to 5. You can check it with:
 
@@ -161,12 +161,12 @@ Now the number of TiKV pods is increased from the default 3 to 5. You can check 
 
 When the TiDB cluster is not needed, you can delete it with the following command:
 
-	helm delete tidb --purge
+	helm delete demo --purge
 
 The above commands only delete the running pods, the data is persistent. If you do not need the data anymore, you should run the following commands to clean the data and the dynamically created persistent disks:
 
-	kubectl delete pvc -n tidb -l app.kubernetes.io/instance=tidb,app.kubernetes.io/managed-by=tidb-operator &&
-	kubectl get pv -l app.kubernetes.io/namespace=tidb,app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/instance=tidb -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+	kubectl delete pvc -n tidb -l app.kubernetes.io/instance=demo,app.kubernetes.io/managed-by=tidb-operator &&
+	kubectl get pv -l app.kubernetes.io/namespace=tidb,app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/instance=demo -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
 
 ## Shut down the Kubernetes cluster
 

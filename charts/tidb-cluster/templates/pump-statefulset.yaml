@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ .Values.clusterName }}-pump
+  name: {{ template "cluster.name" . }}-pump
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -16,7 +16,7 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
       app.kubernetes.io/managed-by: tidb-operator
       app.kubernetes.io/component: pump
-  serviceName: {{ .Values.clusterName }}-pump
+  serviceName: {{ template "cluster.name" . }}-pump
   replicas: {{ .Values.binlog.pump.replicas }}
   template:
     metadata:
@@ -50,7 +50,7 @@ spec:
       volumes:
       - name: config
         configMap:
-          name: {{ .Values.clusterName }}-pump
+          name: {{ template "cluster.name" . }}-pump
           items:
           - key: pump-config
             path: pump.toml

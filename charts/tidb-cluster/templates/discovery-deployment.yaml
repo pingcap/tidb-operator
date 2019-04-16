@@ -1,7 +1,7 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: {{ .Values.clusterName }}-discovery
+  name: {{ template "cluster.name" . }}-discovery
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -27,7 +27,7 @@ spec:
       serviceAccount: {{ .Values.discovery.serviceAccount }}
   {{- else }}
     {{- if .Values.rbac.create }}
-      serviceAccount: {{ .Values.clusterName }}-discovery
+      serviceAccount: {{ template "cluster.name" . }}-discovery
     {{- end }}
   {{- end }}
       containers:

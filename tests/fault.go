@@ -23,6 +23,8 @@ const (
 )
 
 type FaultTriggerActions interface {
+	CheckAndRecoverEnv() error
+	CheckAndRecoverEnvOrDie()
 	StopNode() (string, string, time.Time, error)
 	StopNodeOrDie() (string, string, time.Time)
 	StartNode(physicalNode string, node string) error
@@ -60,6 +62,57 @@ type faultTriggerActions struct {
 	kubeCli   kubernetes.Interface
 	pdControl controller.PDControlInterface
 	cfg       *Config
+}
+
+func (fa *faultTriggerActions) CheckAndRecoverEnv() error {
+	glog.Infof("ensure all nodes are running")
+	for _, physicalNode := range fa.cfg.Nodes {
+		for _, vNode := range physicalNode.Nodes {
+			err := fa.StartNode(physicalNode.PhysicalNode, vNode)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	glog.Infof("ensure all etcds are running")
+	err := fa.StartETCD()
+	if err != nil {
+		return err
+	}
+	glog.Infof("ensure all kubelets are running")
+	for _, physicalNode := range fa.cfg.Nodes {
+		for _, vNode := range physicalNode.Nodes {
+			err := fa.StartKubelet(vNode)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	glog.Infof("ensure all static pods are running")
+	for _, physicalNode := range fa.cfg.APIServers {
+		for _, vNode := range physicalNode.Nodes {
+			err := fa.StartKubeAPIServer(vNode)
+			if err != nil {
+				return err
+			}
+			err = fa.StartKubeControllerManager(vNode)
+			if err != nil {
+				return err
+			}
+			err = fa.StartKubeScheduler(vNode)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (fa *faultTriggerActions) CheckAndRecoverEnvOrDie() {
+	if err := fa.CheckAndRecoverEnv(); err != nil {
+		glog.Fatal(err)
+	}
 }
 
 func (fa *faultTriggerActions) StopNode() (string, string, time.Time, error) {

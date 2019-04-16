@@ -14,6 +14,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"net/http"
 	_ "net/http/pprof"
@@ -42,6 +43,7 @@ var (
 	workers            int
 	autoFailover       bool
 	pdFailoverPeriod   time.Duration
+	tikvFailoverPeriod time.Duration
 	tidbFailoverPeriod time.Duration
 	leaseDuration      = 15 * time.Second
 	renewDuration      = 5 * time.Second
@@ -58,6 +60,7 @@ func init() {
 	flag.StringVar(&controller.DefaultStorageClassName, "default-storage-class-name", "standard", "Default storage class name")
 	flag.BoolVar(&autoFailover, "auto-failover", false, "Auto failover")
 	flag.DurationVar(&pdFailoverPeriod, "pd-failover-period", time.Duration(5*time.Minute), "PD failover period default(5m)")
+	flag.DurationVar(&tikvFailoverPeriod, "tikv-failover-period", time.Duration(5*time.Minute), "TiKV failover period default(5m)")
 	flag.DurationVar(&tidbFailoverPeriod, "tidb-failover-period", time.Duration(5*time.Minute), "TiDB failover period")
 
 	flag.Parse()
@@ -119,14 +122,14 @@ func main() {
 		},
 	}
 
-	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tidbFailoverPeriod)
-	stop := make(chan struct{})
-	defer close(stop)
-	go informerFactory.Start(stop)
-	go kubeInformerFactory.Start(stop)
+	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
+	controllerCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go informerFactory.Start(controllerCtx.Done())
+	go kubeInformerFactory.Start(controllerCtx.Done())
 
-	onStarted := func(stopCh <-chan struct{}) {
-		tcController.Run(workers, stopCh)
+	onStarted := func(ctx context.Context) {
+		tcController.Run(workers, ctx.Done())
 	}
 	onStopped := func() {
 		glog.Fatalf("leader election lost")
@@ -134,7 +137,7 @@ func main() {
 
 	// leader election for multiple tidb-cloud-manager
 	go wait.Forever(func() {
-		leaderelection.RunOrDie(leaderelection.LeaderElectionConfig{
+		leaderelection.RunOrDie(controllerCtx, leaderelection.LeaderElectionConfig{
 			Lock:          &rl,
 			LeaseDuration: leaseDuration,
 			RenewDeadline: renewDuration,

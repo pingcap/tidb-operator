@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Values.clusterName }}-monitor
+  name: {{ template "cluster.name" . }}-monitor
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -12,10 +12,13 @@ metadata:
 data:
   prometheus-config: |-
 {{ tuple "config/_prometheus-config.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-
   alert-rules-config: |-
 {{ tuple "config/_alert-rules-config.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
 {{- if .Values.monitor.grafana.create }}
+  datasource-config: |-
+{{ tuple "config/_grafana-datasource.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  dashboard-config: |-
+{{ tuple "config/_grafana-dashboard.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   grafana-config: |-
 {{ tuple "config/_grafana-config.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
 {{- end }}
