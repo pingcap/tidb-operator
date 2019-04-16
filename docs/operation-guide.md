@@ -34,7 +34,7 @@ By default TiDB service is exposed using [`NodePort`](https://kubernetes.io/docs
 $ kubectl get svc -n ${namespace} # check the available services
 ```
 
-By default the TiDB cluster has no password set. You can create `Secret` with following command, and uncomment setting `tidb.passwordSecretName` in `values.yaml` before deploying:
+By default the TiDB cluster has no root password set. Setting a password in helm is insecure. Instead you can set the name of a K8s secret as `tidb.passwordSecretName` in `values.yaml`. Note that this is only used to initialize users: once your tidb cluster is initialized you may delete the secret. The format of the secret is `user=password`, so you can set the root user password with:
 
 ```
 kubectl create namespace ${namespace}
