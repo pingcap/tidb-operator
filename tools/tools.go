@@ -20,4 +20,3 @@ package tools
 import (
 	_ "github.com/dnephin/govet"
 )
-

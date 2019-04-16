@@ -1,11 +1,11 @@
 package tests
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"strings"
-	"crypto/tls"
 
 	"github.com/golang/glog"
 	yaml "gopkg.in/yaml.v2"
@@ -23,8 +23,8 @@ type Config struct {
 	Nodes            []Nodes `yaml:"nodes" json:"nodes"`
 	ETCDs            []Nodes `yaml:"etcds" json:"etcds"`
 	APIServers       []Nodes `yaml:"apiservers" json:"apiservers"`
-	CertFile string
-	KeyFile  string
+	CertFile         string
+	KeyFile          string
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.

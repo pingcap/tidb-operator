@@ -30,8 +30,8 @@ import (
 	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
-	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
+	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -2010,7 +2010,7 @@ func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie() {
 	}
 	err := server.ListenAndServeTLS("", "")
 	if err != nil {
-		glog.Errorf("fail to start webhook server err %v",err)
+		glog.Errorf("fail to start webhook server err %v", err)
 		os.Exit(4)
 	}
 }
