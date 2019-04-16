@@ -1,6 +1,6 @@
 # How to: run stability test in your local environment
 
-Deploy & witness flow can be tedious when developing stability-test, this PR introduce the ability to run stability-test out of the cluster(your local machine, usually) while still operating the remote cluster.
+Deploy & witness flow can be tedious when developing stability-test, this document introduce that how to run stability-test out of the cluster(your local machine, usually) while still operating the remote cluster.
 
 ### TL;DR: 
 ```shell
