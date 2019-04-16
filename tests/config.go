@@ -13,7 +13,7 @@ import (
 
 const (
 	defaultTableNum    int = 64
-	defaultConcurrency     = 512
+	defaultConcurrency     = 128
 	defaultBatchSize       = 100
 	defaultRawSize         = 100
 )
