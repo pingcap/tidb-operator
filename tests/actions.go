@@ -48,11 +48,6 @@ import (
 )
 
 const (
-	defaultTableNum    int = 64
-	defaultConcurrency     = 512
-	defaultBatchSize       = 100
-	defaultRawSize         = 100
-
 	period = 5 * time.Minute
 )
 
@@ -323,12 +318,8 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 	}
 
 	// init blockWriter case
-	info.blockWriter = blockwriter.NewBlockWriterCase(blockwriter.Config{
-		TableNum:    defaultTableNum,
-		Concurrency: defaultConcurrency,
-		BatchSize:   defaultBatchSize,
-		RawSize:     defaultRawSize,
-	})
+	info.blockWriter = blockwriter.NewBlockWriterCase(oa.cfg.BlockWriter)
+	info.blockWriter.ClusterName = info.ClusterName
 
 	return nil
 }
@@ -484,7 +475,9 @@ func (oa *operatorActions) CheckTidbClusterStatusOrDie(info *TidbClusterConfig) 
 
 func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 	dsn := getDSN(info.Namespace, info.ClusterName, "test", info.Password)
-	db, err := util.OpenDB(dsn, defaultConcurrency)
+	glog.Infof("[%s] [%s] open TiDB connections, concurrency: %d",
+		info.blockWriter, info.ClusterName, oa.cfg.BlockWriter.Concurrency)
+	db, err := util.OpenDB(dsn, oa.cfg.BlockWriter.Concurrency)
 	if err != nil {
 		return err
 	}

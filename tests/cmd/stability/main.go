@@ -162,10 +162,8 @@ func main() {
 			glog.Errorf("cluster:[%s] stop insert data failed,error: %v", cluster2.ClusterName, err)
 		}
 	}()
-	go func() {
-		oa.BeginInsertDataToOrDie(cluster1)
-		oa.BeginInsertDataToOrDie(cluster2)
-	}()
+	go oa.BeginInsertDataToOrDie(cluster1)
+	go oa.BeginInsertDataToOrDie(cluster2)
 
 	// TODO add DDL
 	//var workloads []workload.Workload
