@@ -91,12 +91,21 @@ Use this command to confirm the mount point exist:
 $ mount | grep /mnt/disks/local-pv01
 ```
 
-To auto-mount disks when your operating system is booted, you should edit `/etc/fstab` to include these mounting info:
+### Auto-mount on reboot
 
+To auto-mount disks when your operating system is booted, you should edit `/etc/fstab` to include these mounting info.
+
+Disk mount:
 ```shell
-$ echo "/dev/nvme0n1 /mnt/disks/disk0 none bind 0 0" >> /etc/fstab
+$ echo "/dev/nvme0n1 /mnt/disks/disk01 ext4 defaults 0 0" >> /etc/fstab
+```
+
+Bind mount:
+```shell
 $ echo "/data/local-pv01 /mnt/disks/local-pv01 none bind 0 0" >> /etc/fstab
 ```
+
+### Deploy local-static-provisioner
 
 After mounting all data disks on Kubernetes nodes, you can deploy [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) to automatically provision the mounted disks as Local PersistentVolumes.
 
@@ -105,6 +114,20 @@ $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/maste
 $ kubectl get po -n kube-system -l app=local-volume-provisioner
 $ kubectl get pv | grep local-storage
 ```
+
+### Remove a mount point
+
+If we want to remove a mount point, first we need to `umount` the mount point, and then delete the related directories. For example:
+
+```shell
+$ umount /mnt/disks/local-pv01
+$ rm -rf /mnt/disks/local-pv01 
+$ rm -rf /data/local-pv01
+```
+
+You should also delete the related entries in `/etc/fstab` at the same time, otherwise the automount may cause problems when the machine restarts.
+
+> Note: The local-volume plugin expects paths to be stable, if you remove a previous mount-point in the discovery directory (default to `/mnt/disks/`), you should remove the PV manually to keep consistency.
 
 ## Install TiDB Operator
 
