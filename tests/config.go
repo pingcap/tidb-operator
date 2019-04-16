@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 // Config defines the config of operator tests
@@ -25,6 +25,8 @@ type Config struct {
 	APIServers       []Nodes `yaml:"apiservers" json:"apiservers"`
 	CertFile         string
 	KeyFile          string
+	// For local test
+	OperatorRepoDir string `yaml:"operator_repo_dir" json:"operator_repo_dir"`
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
@@ -47,6 +49,8 @@ func NewConfig() *Config {
 		"after server cert).")
 	flag.StringVar(&cfg.KeyFile, "tls-private-key-file", cfg.KeyFile, ""+
 		"File containing the default x509 private key matching --tls-cert-file.")
+	flag.StringVar(&cfg.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
+	flag.Parse()
 
 	return cfg
 }
