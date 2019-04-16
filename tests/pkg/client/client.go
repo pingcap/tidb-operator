@@ -1,6 +1,11 @@
 package client
 
 import (
+	"flag"
+	"fmt"
+	"os"
+	"os/user"
+	"path/filepath"
 	"time"
 
 	"github.com/juju/errors"
@@ -11,8 +16,21 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+var (
+	masterUrl      string
+	kubeconfigPath string
+)
+
+func init() {
+	flag.StringVar(&kubeconfigPath, "kubeconfig", "",
+		"path to a kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&masterUrl, "master", "",
+		"address of the Kubernetes API server. Overrides any value in kubeconfig. "+
+			"Only required if out-of-cluster.")
+}
+
 func NewCliOrDie() (versioned.Interface, kubernetes.Interface) {
-	cfg, err := rest.InClusterConfig()
+	cfg, err := GetConfig()
 	if err != nil {
 		panic(err)
 	}
@@ -20,20 +38,29 @@ func NewCliOrDie() (versioned.Interface, kubernetes.Interface) {
 	return buildClientsOrDie(cfg)
 }
 
-func NewOutOfClusterCliOrDie(kubeconfig string) (versioned.Interface, kubernetes.Interface) {
-	// TODO: support context selection, current context will be used now
-	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		panic(err.Error())
+func GetConfig() (*rest.Config, error) {
+	// If kubeconfigPath provided, use that
+	if len(kubeconfigPath) > 0 {
+		return clientcmd.BuildConfigFromFlags(masterUrl, kubeconfigPath)
+	}
+	// If an env variable is specified with the config locaiton, use that
+	if len(os.Getenv("KUBECONFIG")) > 0 {
+		return clientcmd.BuildConfigFromFlags(masterUrl, os.Getenv("KUBECONFIG"))
+	}
+	// If no explicit location, try the in-cluster config
+	if c, err := rest.InClusterConfig(); err == nil {
+		return c, nil
+	}
+	// If no in-cluster config, try the default location in the user's home directory
+	if usr, err := user.Current(); err == nil {
+		if c, err := clientcmd.BuildConfigFromFlags(
+			"", filepath.Join(usr.HomeDir, ".kube", "config")); err == nil {
+			return c, nil
+		}
 	}
 
-	return buildClientsOrDie(cfg)
+	return nil, fmt.Errorf("could not locate a kubeconfig")
 }
-
-var (
-	masterUrl      string
-	kubeconfigPath string
-)
 
 type Client interface {
 	kubernetes.Interface

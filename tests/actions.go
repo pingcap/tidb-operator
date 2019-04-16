@@ -1319,7 +1319,7 @@ func releaseIsNotFound(err error) bool {
 }
 
 func (oa *operatorActions) cloneOperatorRepo() error {
-	cmd := fmt.Sprintf("git clone https://github.com/pingcap/tidb-operator.git %s", oa.cfg.GitRepoDir)
+	cmd := fmt.Sprintf("git clone https://github.com/pingcap/tidb-operator.git %s", oa.cfg.OperatorRepoDir)
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil && !strings.Contains(string(res), "already exists") {
@@ -1337,7 +1337,7 @@ func (oa *operatorActions) checkoutTag(tagName string) error {
 		cp -rf charts/tidb-operator /charts/%s/tidb-operator &&
 		cp -rf charts/tidb-cluster /charts/%s/tidb-cluster &&
 		cp -rf charts/tidb-backup /charts/%s/tidb-backup`,
-		oa.cfg.GitRepoDir, tagName, tagName, tagName, tagName, tagName)
+		oa.cfg.OperatorRepoDir, tagName, tagName, tagName, tagName, tagName)
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {

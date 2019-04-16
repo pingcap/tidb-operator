@@ -15,19 +15,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"k8s.io/client-go/kubernetes"
 	"net/http"
 	_ "net/http/pprof"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
+	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"k8s.io/apiserver/pkg/util/logs"
 
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
-	"github.com/pingcap/tidb-operator/tests/pkg/client"
 )
 
 func main() {
@@ -38,13 +36,7 @@ func main() {
 	}()
 
 	conf := tests.ParseConfigOrDie()
-	var cli versioned.Interface
-	var kubeCli kubernetes.Interface
-	if conf.OutOfCluster {
-		cli, kubeCli = client.NewOutOfClusterCliOrDie(conf.KubeConfigPath)
-	} else {
-		cli, kubeCli = client.NewCliOrDie()
-	}
+	cli, kubeCli := client.NewCliOrDie()
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	fta.CheckAndRecoverEnvOrDie()
