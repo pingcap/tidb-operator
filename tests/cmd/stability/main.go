@@ -182,7 +182,7 @@ func main() {
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
-	// before upgrade cluster, deploy and register webhook first
+	// before upgrade cluster, register webhook first
 	oa.RegisterWebHookAndServiceOrDie(operatorCfg)
 
 	// upgrade cluster1 and cluster2
