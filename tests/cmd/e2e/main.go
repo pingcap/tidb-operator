@@ -48,8 +48,7 @@ func main() {
 		ReleaseName:        "operator",
 		Image:              conf.OperatorImage,
 		Tag:                conf.OperatorTag,
-		SchedulerImage:     "mirantis/hypokube",
-		SchedulerTag:       "final",
+		SchedulerImage:     "gcr.io/google-containers/hyperkube",
 		LogLevel:           "2",
 		WebhookServiceName: "webhook-service",
 		WebhookSecretName:  "webhook-secret",
@@ -144,6 +143,22 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	// deploy tidbclusters
+	for _, clusterInfo := range clusterInfos {
+		if err = oa.CleanTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
+		if err = oa.DeployTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
+	}
+
+	for _, clusterInfo := range clusterInfos {
+		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
+		}
+	}
+
 	// before upgrade cluster, register webhook first
 	oa.RegisterWebHookAndServiceOrDie(operatorInfo)
 
@@ -165,22 +180,6 @@ func main() {
 
 	// after upgrade cluster, clean webhook
 	oa.CleanWebHookAndService(operatorInfo)
-
-	// deploy tidbclusters
-	for _, clusterInfo := range clusterInfos {
-		if err = oa.CleanTidbCluster(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-		if err = oa.DeployTidbCluster(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-	}
-
-	for _, clusterInfo := range clusterInfos {
-		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-	}
 
 	for _, clusterInfo := range clusterInfos {
 		clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
