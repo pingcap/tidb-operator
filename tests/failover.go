@@ -44,7 +44,6 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		return cnt
 	}
 
-	origFailures := len(tc.Status.TiKV.FailureStores)
 	origUps := countUpStores(tc)
 
 	// checkout pd config
@@ -135,8 +134,9 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 
 	return tikvOps.PollTiDBCluster(info.Namespace, info.ClusterName,
 		func(tc *v1alpha1.TidbCluster, err error) (bool, error) {
-			glog.Infof("check failure stores: current=%d origin=%d", len(tc.Status.TiKV.FailureStores), origFailures)
-			if len(tc.Status.TiKV.FailureStores) <= origFailures {
+			_, ok := tc.Status.TiKV.FailureStores[store.ID]
+			glog.Infof("check if target store failed: %t", ok)
+			if !ok {
 				return false, nil
 			}
 			ups := countUpStores(tc)
