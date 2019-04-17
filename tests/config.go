@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/golang/glog"
@@ -134,4 +135,20 @@ func (c *Config) GetUpgradeTidbVersionsOrDie() []string {
 	}
 
 	return versions
+}
+
+func (c *Config) CleanTempDirs() error {
+	if c.OperatorRepoDir != "" {
+		err := os.RemoveAll(c.OperatorRepoDir)
+		if err != nil {
+			return err
+		}
+	}
+	if c.ChartDir != "" {
+		err := os.RemoveAll(c.ChartDir)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

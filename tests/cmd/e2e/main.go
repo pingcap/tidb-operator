@@ -254,4 +254,11 @@ func main() {
 	if err := backupCase.Run(); err != nil {
 		glog.Fatal(err)
 	}
+
+	//clean temp dirs when e2e success
+	err = conf.CleanTempDirs()
+	if err != nil {
+		glog.Errorf("failed to clean temp dirs, this error can be ignored.")
+	}
+	glog.Infof("\nFinished.")
 }
