@@ -144,6 +144,28 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	// before upgrade cluster, register webhook first
+	oa.RegisterWebHookAndServiceOrDie(operatorInfo)
+
+	// upgrade test
+	upgradeTidbVersions := conf.GetUpgradeTidbVersions()
+	for _, upgradeTidbVersion := range upgradeTidbVersions {
+		for _, clusterInfo := range clusterInfos {
+			clusterInfo = clusterInfo.UpgradeAll(upgradeTidbVersion)
+			if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
+				glog.Fatal(err)
+			}
+		}
+		for _, clusterInfo := range clusterInfos {
+			if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+				glog.Fatal(err)
+			}
+		}
+	}
+
+	// after upgrade cluster, clean webhook
+	oa.CleanWebHookAndService(operatorInfo)
+
 	// deploy tidbclusters
 	for _, clusterInfo := range clusterInfos {
 		if err = oa.CleanTidbCluster(clusterInfo); err != nil {
@@ -207,28 +229,6 @@ func main() {
 			glog.Fatal(err)
 		}
 	}
-
-	// before upgrade cluster, register webhook first
-	oa.RegisterWebHookAndServiceOrDie(operatorInfo)
-
-	// upgrade test
-	upgradeTidbVersions := conf.GetUpgradeTidbVersions()
-	for _, upgradeTidbVersion := range upgradeTidbVersions {
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.UpgradeAll(upgradeTidbVersion)
-			if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
-				glog.Fatal(err)
-			}
-		}
-		for _, clusterInfo := range clusterInfos {
-			if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				glog.Fatal(err)
-			}
-		}
-	}
-
-	// after upgrade cluster, clean webhook
-	oa.CleanWebHookAndService(operatorInfo)
 
 	// backup and restore
 	backupClusterInfo := clusterInfos[0]
