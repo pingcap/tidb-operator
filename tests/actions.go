@@ -48,11 +48,6 @@ import (
 )
 
 const (
-	defaultTableNum    int = 64
-	defaultConcurrency     = 512
-	defaultBatchSize       = 100
-	defaultRawSize         = 100
-
 	period = 5 * time.Minute
 )
 
@@ -87,7 +82,8 @@ type OperatorActions interface {
 	CheckTidbClusterStatus(info *TidbClusterConfig) error
 	CheckTidbClusterStatusOrDie(info *TidbClusterConfig)
 	BeginInsertDataTo(info *TidbClusterConfig) error
-	StopInsertDataTo(info *TidbClusterConfig) error
+	BeginInsertDataToOrDie(info *TidbClusterConfig)
+	StopInsertDataTo(info *TidbClusterConfig)
 	ScaleTidbCluster(info *TidbClusterConfig) error
 	ScaleTidbClusterOrDie(info *TidbClusterConfig)
 	CheckScaleInSafely(info *TidbClusterConfig) error
@@ -156,6 +152,8 @@ type TidbClusterConfig struct {
 	UserName         string
 	InitSecretName   string
 	BackupSecretName string
+
+	BlockWriteConfig blockwriter.Config
 }
 
 func (tc *TidbClusterConfig) BackupHelmSetString(m map[string]string) string {
@@ -321,12 +319,8 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 	}
 
 	// init blockWriter case
-	info.blockWriter = blockwriter.NewBlockWriterCase(blockwriter.Config{
-		TableNum:    defaultTableNum,
-		Concurrency: defaultConcurrency,
-		BatchSize:   defaultBatchSize,
-		RawSize:     defaultRawSize,
-	})
+	info.blockWriter = blockwriter.NewBlockWriterCase(info.BlockWriteConfig)
+	info.blockWriter.ClusterName = info.ClusterName
 
 	return nil
 }
@@ -482,7 +476,12 @@ func (oa *operatorActions) CheckTidbClusterStatusOrDie(info *TidbClusterConfig) 
 
 func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 	dsn := getDSN(info.Namespace, info.ClusterName, "test", info.Password)
-	db, err := util.OpenDB(dsn, defaultConcurrency)
+	if info.blockWriter == nil {
+		return fmt.Errorf("block writer not initialized for cluster: %s", info.ClusterName)
+	}
+	glog.Infof("[%s] [%s] open TiDB connections, concurrency: %d",
+		info.blockWriter, info.ClusterName, info.blockWriter.GetConcurrency())
+	db, err := util.OpenDB(dsn, info.blockWriter.GetConcurrency())
 	if err != nil {
 		return err
 	}
@@ -490,9 +489,15 @@ func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 	return info.blockWriter.Start(db)
 }
 
-func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) error {
+func (oa *operatorActions) BeginInsertDataToOrDie(info *TidbClusterConfig) {
+	err := oa.BeginInsertDataTo(info)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
 	info.blockWriter.Stop()
-	return nil
 }
 
 func chartPath(name string, tag string) string {
