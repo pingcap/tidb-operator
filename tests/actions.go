@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -29,6 +30,8 @@ import (
 	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
+	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
+	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -111,6 +114,10 @@ type OperatorActions interface {
 	CheckFailoverOrDie(clusters []*TidbClusterConfig, faultNode string)
 	CheckRecover(cluster *TidbClusterConfig) (bool, error)
 	CheckRecoverOrDie(clusters []*TidbClusterConfig)
+	RegisterWebHookAndService(info *OperatorConfig) error
+	RegisterWebHookAndServiceOrDie(info *OperatorConfig)
+	CleanWebHookAndService(info *OperatorConfig) error
+	StartValidatingAdmissionWebhookServerOrDie()
 }
 
 type operatorActions struct {
@@ -123,13 +130,16 @@ type operatorActions struct {
 var _ = OperatorActions(&operatorActions{})
 
 type OperatorConfig struct {
-	Namespace      string
-	ReleaseName    string
-	Image          string
-	Tag            string
-	SchedulerImage string
-	SchedulerTag   string
-	LogLevel       string
+	Namespace          string
+	ReleaseName        string
+	Image              string
+	Tag                string
+	SchedulerImage     string
+	SchedulerTag       string
+	LogLevel           string
+	WebhookServiceName string
+	WebhookSecretName  string
+	WebhookConfigName  string
 }
 
 type TidbClusterConfig struct {
@@ -264,10 +274,17 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 }
 
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
+	err := oa.CleanWebHookAndService(info)
+	if err != nil {
+		return err
+	}
+
 	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
+
 	if err == nil || !releaseIsNotFound(err) {
 		return nil
 	}
+
 	return fmt.Errorf("failed to clear operator: %v, %s", err, string(res))
 }
 
@@ -313,6 +330,7 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 
 	cmd := fmt.Sprintf("helm install /charts/%s/tidb-cluster  --name %s --namespace %s --set-string %s",
 		info.OperatorTag, info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
+	glog.Infof(cmd)
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
 			info.Namespace, info.ClusterName, err, string(res))
@@ -370,7 +388,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	}
 
 	patchPVCmd := fmt.Sprintf(`kubectl get pv -l %s=%s,%s=%s --output=name | xargs -I {} \
-		kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`,
+	kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`,
 		label.NamespaceLabelKey, info.Namespace, label.InstanceLabelKey, info.ClusterName)
 	glog.V(4).Info(patchPVCmd)
 	if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
@@ -1832,6 +1850,83 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig) error
 
 }
 
+func strPtr(s string) *string { return &s }
+
+func (oa *operatorActions) RegisterWebHookAndServiceOrDie(info *OperatorConfig) {
+	if err := oa.RegisterWebHookAndService(info); err != nil {
+		panic(err)
+	}
+}
+
+func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error {
+	client := oa.kubeCli
+	glog.Infof("Registering the webhook via the AdmissionRegistration API")
+
+	namespace := os.Getenv("NAMESPACE")
+	configName := info.WebhookConfigName
+	filePath := "/webhook.local.config/certificates/ca.crt"
+
+	fd, err := os.Open(filePath)
+	if err != nil {
+		glog.Errorf("file can't open file path %s err %v", filePath, err)
+		return err
+	}
+	defer fd.Close()
+
+	ca, err := ioutil.ReadAll(fd)
+
+	if err != nil {
+		glog.Errorf("file can't read file path %s err %v", filePath, err)
+		return err
+	}
+
+	_, err = client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(&admissionV1beta1.ValidatingWebhookConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: configName,
+		},
+		Webhooks: []admissionV1beta1.Webhook{
+			{
+				Name: "check-pod-before-delete.k8s.io",
+				Rules: []admissionV1beta1.RuleWithOperations{{
+					Operations: []admissionV1beta1.OperationType{admissionV1beta1.Delete},
+					Rule: admissionV1beta1.Rule{
+						APIGroups:   []string{""},
+						APIVersions: []string{"v1"},
+						Resources:   []string{"pods"},
+					},
+				}},
+				ClientConfig: admissionV1beta1.WebhookClientConfig{
+					Service: &admissionV1beta1.ServiceReference{
+						Namespace: namespace,
+						Name:      info.WebhookServiceName,
+						Path:      strPtr("/pods"),
+					},
+					CABundle: ca,
+				},
+			},
+		},
+	})
+
+	if err != nil {
+		glog.Errorf("registering webhook config %s with namespace %s error %v", configName, namespace, err)
+		return err
+	}
+
+	// The webhook configuration is honored in 10s.
+	time.Sleep(10 * time.Second)
+
+	return nil
+
+}
+
+func (oa *operatorActions) CleanWebHookAndService(info *OperatorConfig) error {
+	err := oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(info.WebhookConfigName, nil)
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete webhook config %v", err)
+	}
+	return nil
+}
+
 type pumpStatus struct {
 	StatusMap map[string]*nodeStatus
 }
@@ -1901,4 +1996,17 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 		return false
 	}
 	return len(healths.PumpPos) > 0 && healths.Synced
+}
+
+func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie() {
+	http.HandleFunc("/pods", webhook.ServePods)
+	server := &http.Server{
+		Addr:      ":443",
+		TLSConfig: oa.cfg.ConfigTLS(),
+	}
+	err := server.ListenAndServeTLS("", "")
+	if err != nil {
+		glog.Errorf("fail to start webhook server err %v", err)
+		os.Exit(4)
+	}
 }
