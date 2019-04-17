@@ -25,6 +25,6 @@ Cluster access
    kubectl port-forward -n {{ .Release.Namespace }} svc/{{ template "cluster.name" . }}-grafana 3000:3000
    Open browser at http://localhost:3000. The default username and password is admin/admin.
    Note that, if you run in remote server, you need to specify server's external IP address.
-   In gcloud web console, you can user web preview feature, e.g. https://ssh.cloud.google.com/devshell/proxy&port=3000.
+   In gcloud web console, you can user web preview feature, e.g. https://ssh.cloud.google.com/devshell/proxy?port=3000
    You can refer to https://cloud.google.com/shell/docs/using-web-preview for more details.
 {{- end -}}
