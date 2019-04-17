@@ -5,7 +5,7 @@ groups:
     expr: sum ( pd_cluster_status{type="store_down_count"} ) > 0
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: emergency
       expr:  sum ( pd_cluster_status{type="store_down_count"} ) > 0
     annotations:
@@ -17,7 +17,7 @@ groups:
     expr: histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket[1m])) by (instance,job,le) ) > 1
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr:  histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket[1m])) by (instance,job,le) ) > 1
     annotations:
@@ -29,7 +29,7 @@ groups:
     expr: sum( pd_regions_status{type="miss_peer_region_count"} )  > 100
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr:  sum( pd_regions_status{type="miss_peer_region_count"} )  > 100
     annotations:
@@ -41,7 +41,7 @@ groups:
     expr: sum ( pd_cluster_status{type="store_disconnected_count"} )   > 0
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  sum ( pd_cluster_status{type="store_disconnected_count"} )   > 0
     annotations:
@@ -53,7 +53,7 @@ groups:
     expr: sum ( pd_cluster_status{type="store_low_space_count"} )  > 0
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  sum ( pd_cluster_status{type="store_low_space_count"} )  > 0
     annotations:
@@ -65,7 +65,7 @@ groups:
     expr: histogram_quantile(0.99, sum(rate(etcd_network_peer_round_trip_time_seconds_bucket[1m])) by (To,instance,job,le) ) > 1
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  histogram_quantile(0.99, sum(rate(etcd_network_peer_round_trip_time_seconds_bucket[1m])) by (To,instance,job,le) ) > 1
     annotations:
@@ -77,7 +77,7 @@ groups:
     expr: histogram_quantile(0.99, sum(rate(pd_client_request_handle_requests_duration_seconds_bucket{type="tso"}[1m])) by (instance,job,le) ) > 0.1
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  histogram_quantile(0.99, sum(rate(pd_client_request_handle_requests_duration_seconds_bucket{type="tso"}[1m])) by (instance,job,le) ) > 0.1
     annotations:
@@ -89,7 +89,7 @@ groups:
     expr: sum ( pd_regions_status{type="down_peer_region_count"} ) > 0
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  sum ( pd_regions_status{type="down_peer_region_count"} ) > 0
     annotations:
@@ -101,7 +101,7 @@ groups:
     expr: sum ( pd_regions_status{type="incorrect_namespace_region_count"} ) > 100
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr: sum ( pd_regions_status{type="incorrect_namespace_region_count"} ) > 0
     annotations:
@@ -113,7 +113,7 @@ groups:
     expr: sum( pd_regions_status{type="pending_peer_region_count"} )  > 100
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  sum( pd_regions_status{type="pending_peer_region_count"} )  > 100
     annotations:
@@ -125,7 +125,7 @@ groups:
     expr: count( changes(pd_server_tso{type="save"}[10m]) > 0 )   >= 2
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  count( changes(pd_server_tso{type="save"}[10m]) > 0 )   >= 2
     annotations:
@@ -137,7 +137,7 @@ groups:
     expr: sum(pd_cluster_status{type="storage_size"}) / sum(pd_cluster_status{type="storage_capacity"}) * 100  > 80
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  sum(pd_cluster_status{type="storage_size"}) / sum(pd_cluster_status{type="storage_capacity"}) * 100  > 80
     annotations:
@@ -148,7 +148,7 @@ groups:
     expr: increase(tidb_session_schema_lease_error_total{type="outdated"}[15m]) > 0
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: emergency
       expr:  increase(tidb_session_schema_lease_error_total{type="outdated"}[15m]) > 0
     annotations:
@@ -160,7 +160,7 @@ groups:
     expr: increase( tidb_tikvclient_region_err_total[10m] )  > 6000
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: emergency
       expr:  increase( tidb_tikvclient_region_err_total[10m] )  > 6000
     annotations:
@@ -172,7 +172,7 @@ groups:
     expr: increase( tidb_domain_load_schema_total{type="failed"}[10m] )  > 10
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: emergency
       expr:  increase( tidb_domain_load_schema_total{type="failed"}[10m] )  > 10
     annotations:
@@ -184,7 +184,7 @@ groups:
     expr: increase(tidb_monitor_keep_alive_total[10m]) < 100
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: emergency
       expr:  increase(tidb_monitor_keep_alive_total[10m]) < 100
     annotations:
@@ -196,7 +196,7 @@ groups:
     expr: increase(tidb_server_panic_total[10m]) > 0
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr:  increase(tidb_server_panic_total[10m]) > 0
     annotations:
@@ -208,7 +208,7 @@ groups:
     expr: go_memstats_heap_inuse_bytes{job="tidb"} > 1e+10
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr: go_memstats_heap_inuse_bytes{job="tidb"} > 1e+10
     annotations:
@@ -220,7 +220,7 @@ groups:
     expr: histogram_quantile(0.99, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) BY (le, instance)) > 1
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  histogram_quantile(0.99, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) BY (le, instance)) > 1
     annotations:
@@ -232,7 +232,7 @@ groups:
     expr: increase(tidb_server_server_event{type=~"server_start|server_hang"}[15m])  > 0
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  increase(tidb_server_server_event{type=~"server_start|server_hang"}[15m])  > 0
     annotations:
@@ -244,7 +244,7 @@ groups:
     expr: increase( tidb_tikvclient_backoff_count[10m] )  > 10
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  increase( tidb_tikvclient_backoff_count[10m] )  > 10
     annotations:
@@ -256,7 +256,7 @@ groups:
     expr: increase(tidb_monitor_time_jump_back_total[10m])  > 0
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  increase(tidb_monitor_time_jump_back_total[10m])  > 0
     annotations:
@@ -268,7 +268,7 @@ groups:
     expr: sum(tidb_ddl_waiting_jobs) > 5
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  sum(tidb_ddl_waiting_jobs) > 5
     annotations:
@@ -280,7 +280,7 @@ groups:
     expr: (node_memory_MemAvailable offset 5m) - node_memory_MemAvailable > 5*1024*1024*1024
     for: 5m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: emergency
       expr: (node_memory_MemAvailable offset 5m) - node_memory_MemAvailable > 5*1024*1024*1024
     annotations:
@@ -292,7 +292,7 @@ groups:
     expr: sum(increase(tidb_tikvclient_gc_action_result{type="success"}[6h])) < 1
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: emergency
       expr: sum(increase(tidb_tikvclient_gc_action_result{type="success"}[6h])) < 1
     annotations:
@@ -304,7 +304,7 @@ groups:
     expr:  sum(rate(tikv_server_report_failure_msg_total{type="unreachable"}[10m])) BY (store_id) > 10
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr:  sum(rate(tikv_server_report_failure_msg_total{type="unreachable"}[10m])) BY (store_id) > 10
     annotations:
@@ -316,7 +316,7 @@ groups:
     expr: sum(rate(tikv_channel_full_total[10m])) BY (type, instance) > 0
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr:  sum(rate(tikv_channel_full_total[10m])) BY (type, instance) > 0
     annotations:
@@ -328,7 +328,7 @@ groups:
     expr: delta( tikv_engine_write_stall[10m])  > 0
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr:  delta( tikv_engine_write_stall[10m])  > 0
     annotations:
@@ -340,7 +340,7 @@ groups:
     expr: histogram_quantile(0.99, sum(rate(tikv_raftstore_log_lag_bucket[1m])) by (le, instance, job))  > 5000
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr:  histogram_quantile(0.99, sum(rate(tikv_raftstore_log_lag_bucket[1m])) by (le, instance, job))  > 5000
     annotations:
@@ -352,7 +352,7 @@ groups:
     expr: histogram_quantile(0.99, sum(rate(tikv_storage_engine_async_request_duration_seconds_bucket{type="snapshot"}[1m])) by (le, instance, job,type)) > 1
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr:  histogram_quantile(0.99, sum(rate(tikv_storage_engine_async_request_duration_seconds_bucket{type="snapshot"}[1m])) by (le, instance, job,type)) > 1
     annotations:
@@ -364,7 +364,7 @@ groups:
     expr: histogram_quantile(0.99, sum(rate(tikv_storage_engine_async_request_duration_seconds_bucket{type="write"}[1m])) by (le, instance, job,type)) > 1
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr:  histogram_quantile(0.99, sum(rate(tikv_storage_engine_async_request_duration_seconds_bucket{type="write"}[1m])) by (le, instance, job,type)) > 1
     annotations:
@@ -376,7 +376,7 @@ groups:
     expr: histogram_quantile(0.9999, sum(rate(tikv_coprocessor_request_wait_seconds_bucket[1m])) by (le, instance, job,req)) > 10
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr:  histogram_quantile(0.9999, sum(rate(tikv_coprocessor_request_wait_seconds_bucket[1m])) by (le, instance, job,req)) > 10
     annotations:
@@ -388,7 +388,7 @@ groups:
     expr: sum(rate(tikv_thread_cpu_seconds_total{name=~"raftstore_.*"}[1m])) by (job, name)  > 0.8
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr: sum(rate(tikv_thread_cpu_seconds_total{name=~"raftstore_.*"}[1m])) by (job, name)  > 0.8
     annotations:
@@ -400,7 +400,7 @@ groups:
     expr: histogram_quantile(0.99, sum(rate(tikv_raftstore_append_log_duration_seconds_bucket[1m])) by (le, instance, job)) > 1
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr: histogram_quantile(0.99, sum(rate(tikv_raftstore_append_log_duration_seconds_bucket[1m])) by (le, instance, job)) > 1
     annotations:
@@ -412,7 +412,7 @@ groups:
     expr: histogram_quantile(0.99, sum(rate(tikv_raftstore_apply_log_duration_seconds_bucket[1m])) by (le, instance, job)) > 1
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr: histogram_quantile(0.99, sum(rate(tikv_raftstore_apply_log_duration_seconds_bucket[1m])) by (le, instance, job)) > 1
     annotations:
@@ -424,7 +424,7 @@ groups:
     expr: histogram_quantile(0.99, sum(rate(tikv_scheduler_latch_wait_duration_seconds_bucket[1m])) by (le, instance, job,type))  > 1
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr:  histogram_quantile(0.99, sum(rate(tikv_scheduler_latch_wait_duration_seconds_bucket[1m])) by (le, instance, job,type))  > 1
     annotations:
@@ -437,7 +437,7 @@ groups:
     expr: sum(rate(tikv_thread_cpu_seconds_total{name="apply_worker"}[1m])) by (job) > 0.9
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr:  sum(rate(tikv_thread_cpu_seconds_total{name="apply_worker"}[1m])) by (job) > 0.9
     annotations:
@@ -449,7 +449,7 @@ groups:
     expr: sum(increase(tidb_tikvclient_gc_action_result{type="fail"}[1m])) > 10
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: critical
       expr: sum(increase(tidb_tikvclient_gc_action_result{type="fail"}[1m])) > 10
     annotations:
@@ -461,7 +461,7 @@ groups:
     expr: delta(tikv_pd_heartbeat_tick_total{type="leader"}[30s]) < -10
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr: delta(tikv_pd_heartbeat_tick_total{type="leader"}[30s]) < -10
     annotations:
@@ -473,7 +473,7 @@ groups:
     expr: histogram_quantile(0.999, sum(rate(tikv_raftstore_raft_process_duration_secs_bucket{type='ready'}[1m])) by (le, instance, job,type)) > 2
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr: histogram_quantile(0.999, sum(rate(tikv_raftstore_raft_process_duration_secs_bucket{type='ready'}[1m])) by (le, instance, job,type)) > 2
     annotations:
@@ -485,7 +485,7 @@ groups:
     expr: histogram_quantile(0.999, sum(rate(tikv_raftstore_raft_process_duration_secs_bucket{type='tick'}[1m])) by (le, instance, job,type)) > 2
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr: histogram_quantile(0.999, sum(rate(tikv_raftstore_raft_process_duration_secs_bucket{type='tick'}[1m])) by (le, instance, job,type)) > 2
     annotations:
@@ -497,7 +497,7 @@ groups:
     expr: abs(delta( tikv_scheduler_contex_total[5m])) > 1000
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  abs(delta( tikv_scheduler_contex_total[5m])) > 1000
     annotations:
@@ -509,7 +509,7 @@ groups:
     expr: histogram_quantile(0.99, sum(rate(tikv_scheduler_command_duration_seconds_bucket[1m])) by (le, instance, job,type)  / 1000)  > 1
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  histogram_quantile(0.99, sum(rate(tikv_scheduler_command_duration_seconds_bucket[1m])) by (le, instance, job,type)  / 1000)  > 1
     annotations:
@@ -521,7 +521,7 @@ groups:
     expr: sum(rate(tikv_thread_cpu_seconds_total{name=~"storage_schedul.*"}[1m])) by (job) > 0.8
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  sum(rate(tikv_thread_cpu_seconds_total{name=~"storage_schedul.*"}[1m])) by (job) > 0.8
     annotations:
@@ -533,7 +533,7 @@ groups:
     expr: delta( tikv_coprocessor_outdated_request_wait_seconds_count[10m] )  > 0
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  delta( tikv_coprocessor_outdated_request_wait_seconds_count[10m] )  > 0
     annotations:
@@ -545,7 +545,7 @@ groups:
     expr: increase(tikv_coprocessor_request_error[10m]) > 100
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  increase(tikv_coprocessor_request_error[10m]) > 100
     annotations:
@@ -557,7 +557,7 @@ groups:
     expr: delta( tikv_coprocessor_pending_request[10m]) > 5000
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  delta( tikv_coprocessor_pending_request[10m]) > 5000
     annotations:
@@ -569,7 +569,7 @@ groups:
     expr: sum(rate(tikv_thread_cpu_seconds_total{name=~"cop_.*"}[1m])) by (job) / ( count(tikv_thread_cpu_seconds_total{name=~"cop_.*"}) *  0.9 ) / count(count(tikv_thread_cpu_seconds_total) by (instance)) > 0
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  sum(rate(tikv_thread_cpu_seconds_total{name=~"cop_.*"}[1m])) by (job) / ( count(tikv_thread_cpu_seconds_total{name=~"cop_.*"}) *  0.9 ) / count(count(tikv_thread_cpu_seconds_total) by (instance)) > 0
     annotations:
@@ -581,7 +581,7 @@ groups:
     expr: sum(tikv_worker_pending_task_total) BY (job,instance,name)  > 1000
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  sum(tikv_worker_pending_task_total) BY (job,instance,name)  > 1000
     annotations:
@@ -593,7 +593,7 @@ groups:
     expr: count( (sum(tikv_store_size_bytes{type="available"}) by (job) / sum(tikv_store_size_bytes{type="capacity"}) by (job) < 0.2) and (sum(tikv_raftstore_snapshot_traffic_total{type="applying"}) by (job) > 0 ) ) > 0
     for: 1m
     labels:
-      env: '{{ .Values.clusterName }}'
+      env: '{{ template "cluster.name" . }}'
       level: warning
       expr:  count( (sum(tikv_store_size_bytes{type="available"}) by (job) / sum(tikv_store_size_bytes{type="capacity"}) by (job) < 0.2) and (sum(tikv_raftstore_snapshot_traffic_total{type="applying"}) by (job) > 0 ) ) > 0
     annotations:

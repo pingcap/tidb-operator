@@ -107,6 +107,8 @@ type OperatorActions interface {
 	CreateSecret(info *TidbClusterConfig) error
 	GetPodUIDMap(info *TidbClusterConfig) (map[string]types.UID, error)
 	GetNodeMap(info *TidbClusterConfig, component string) (map[string][]string, error)
+	TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error
+	TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration)
 	CheckFailoverPending(info *TidbClusterConfig, faultPoint *time.Time) (bool, error)
 	CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, faultPoint *time.Time)
 	CheckFailover(info *TidbClusterConfig, faultNode string) (bool, error)
@@ -232,10 +234,10 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 
 func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	if info.Tag != "e2e" {
-		if err := cloneOperatorRepo(); err != nil {
+		if err := oa.cloneOperatorRepo(); err != nil {
 			return err
 		}
-		if err := checkoutTag(info.Tag); err != nil {
+		if err := oa.checkoutTag(info.Tag); err != nil {
 			return err
 		}
 	}
@@ -278,7 +280,7 @@ func (oa *operatorActions) CleanOperatorOrDie(info *OperatorConfig) {
 }
 
 func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
-	if err := checkoutTag(info.Tag); err != nil {
+	if err := oa.checkoutTag(info.Tag); err != nil {
 		return err
 	}
 
@@ -1222,17 +1224,6 @@ func (oa *operatorActions) monitorNormal(clusterInfo *TidbClusterConfig) (bool, 
 		glog.Infof("monitor ready replicas %d < 1", monitorDeployment.Status.ReadyReplicas)
 		return false, nil
 	}
-	configuratorJobName := fmt.Sprintf("%s-monitor-configurator", tcName)
-	monitorJob, err := oa.kubeCli.BatchV1().Jobs(ns).Get(configuratorJobName, metav1.GetOptions{})
-	if err != nil {
-		glog.Infof("get monitor configurator job: [%s/%s] failed", ns, configuratorJobName)
-		return false, nil
-	}
-	if monitorJob.Status.Succeeded == 0 {
-		glog.Infof("the monitor configurator job: [%s/%s] had not success", ns, configuratorJobName)
-		return false, nil
-	}
-
 	if err := oa.checkPrometheus(clusterInfo); err != nil {
 		glog.Infof("check [%s/%s]'s prometheus data failed: %v", ns, monitorDeploymentName, err)
 		return false, nil
@@ -1327,26 +1318,26 @@ func releaseIsNotFound(err error) bool {
 	return strings.Contains(err.Error(), "not found")
 }
 
-func cloneOperatorRepo() error {
-	cmd := fmt.Sprintf("git clone https://github.com/pingcap/tidb-operator.git /tidb-operator")
+func (oa *operatorActions) cloneOperatorRepo() error {
+	cmd := fmt.Sprintf("git clone https://github.com/pingcap/tidb-operator.git %s", oa.cfg.OperatorRepoDir)
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
+	if err != nil && !strings.Contains(string(res), "already exists") {
 		return fmt.Errorf("failed to clone tidb-operator repository: %v, %s", err, string(res))
 	}
 
 	return nil
 }
 
-func checkoutTag(tagName string) error {
-	cmd := fmt.Sprintf(`cd /tidb-operator &&
+func (oa *operatorActions) checkoutTag(tagName string) error {
+	cmd := fmt.Sprintf(`cd %s &&
 		git stash -u &&
 		git checkout %s &&
 		mkdir -p /charts/%s &&
 		cp -rf charts/tidb-operator /charts/%s/tidb-operator &&
 		cp -rf charts/tidb-cluster /charts/%s/tidb-cluster &&
 		cp -rf charts/tidb-backup /charts/%s/tidb-backup`,
-		tagName, tagName, tagName, tagName, tagName)
+		oa.cfg.OperatorRepoDir, tagName, tagName, tagName, tagName, tagName)
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {

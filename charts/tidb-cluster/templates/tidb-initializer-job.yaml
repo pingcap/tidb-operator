@@ -2,11 +2,11 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Values.clusterName }}-tidb-initializer
+  name: {{ template "cluster.name" . }}-tidb-initializer
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/instance: {{ template "cluster.name" . }}
     app.kubernetes.io/component: tidb-initializer
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
@@ -15,7 +15,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: {{ template "chart.name" . }}
-        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/instance: {{ template "cluster.name" . }}
         app.kubernetes.io/component: tidb-initializer
     spec:
       restartPolicy: OnFailure
@@ -27,29 +27,7 @@ spec:
         - python
         - -c
         - |
-          import os, MySQLdb
-          host = {{ printf "%s-tidb" .Values.clusterName | quote }}
-          port = 4000
-          password_dir = '/etc/tidb/password'
-          conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5)
-          for file in os.listdir(password_dir):
-              if file.startswith('.'):
-                  continue
-              user = file
-              with open(os.path.join(password_dir, file), 'r') as f:
-                  password = f.read()
-              if user == 'root':
-                  conn.cursor().execute("set password for 'root'@'%%' = %s;", (password,))
-              else:
-                  conn.cursor().execute("create user %s@'%%' identified by %s;", (user, password,))
-          conn.cursor().execute("flush privileges;")
-          conn.commit()
-          {{- if .Values.tidb.initSql }}
-          with open('/data/init.sql', 'r') as sql:
-              for line in sql.readlines():
-                  conn.cursor().execute(line)
-                  conn.commit()
-          {{- end }}
+{{ tuple "scripts/_initialize_tidb_users.py.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
         volumeMounts:
         - name: password
           mountPath: /etc/tidb/password
@@ -66,7 +44,7 @@ spec:
       {{- if .Values.tidb.initSql }}
       - name: init-sql
         configMap:
-          name: {{ .Values.clusterName }}-tidb
+          name: {{ template "cluster.name" . }}-tidb
           items:
           - key: init-sql
             path: init.sql

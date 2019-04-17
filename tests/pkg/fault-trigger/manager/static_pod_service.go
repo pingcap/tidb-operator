@@ -15,6 +15,7 @@ package manager
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 
 	"github.com/golang/glog"
@@ -52,16 +53,6 @@ func (m *Manager) StopKubeAPIServer() error {
 	return m.stopStaticPodService(KubeAPIServerService, kubeAPIServerManifes)
 }
 
-// // StartKubeProxy starts the kube-proxy service
-// func (m *Manager) StartKubeProxy() error {
-// 	return m.startStaticPodService(KubeProxyService, kubeProxyManifest)
-// }
-//
-// // StopKubeProxy stops the kube-proxy service
-// func (m *Manager) StopKubeProxy() error {
-// 	return m.stopStaticPodService(KubeProxyService, kubeProxyManifest)
-// }
-
 // StartKubeControllerManager starts the kube-controller-manager service
 func (m *Manager) StartKubeControllerManager() error {
 	return m.startStaticPodService(KubeControllerManagerService, kubeControllerManagerManifest)
@@ -74,6 +65,10 @@ func (m *Manager) StopKubeControllerManager() error {
 
 func (m *Manager) stopStaticPodService(serviceName string, fileName string) error {
 	manifest := fmt.Sprintf("%s/%s", staticPodPath, fileName)
+	if _, err := os.Stat(manifest); os.IsNotExist(err) {
+		glog.Infof("%s had been stopped before", serviceName)
+		return nil
+	}
 	shell := fmt.Sprintf("mkdir -p %s && mv %s %s", staticPodTmpPath, manifest, staticPodTmpPath)
 
 	cmd := exec.Command("/bin/sh", "-c", shell)
@@ -90,6 +85,10 @@ func (m *Manager) stopStaticPodService(serviceName string, fileName string) erro
 
 func (m *Manager) startStaticPodService(serviceName string, fileName string) error {
 	manifest := fmt.Sprintf("%s/%s", staticPodTmpPath, fileName)
+	if _, err := os.Stat(manifest); os.IsNotExist(err) {
+		glog.Infof("%s had been started before", serviceName)
+		return nil
+	}
 	shell := fmt.Sprintf("mv %s %s", manifest, staticPodPath)
 
 	cmd := exec.Command("/bin/sh", "-c", shell)

@@ -21,17 +21,16 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
+	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"k8s.io/apiserver/pkg/util/logs"
 
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
-	"github.com/pingcap/tidb-operator/tests/pkg/client"
 )
 
 func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
-
 	go func() {
 		glog.Info(http.ListenAndServe("localhost:6060", nil))
 	}()
@@ -39,6 +38,8 @@ func main() {
 	conf := tests.ParseConfigOrDie()
 	cli, kubeCli := client.NewCliOrDie()
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
+	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
+	fta.CheckAndRecoverEnvOrDie()
 
 	tidbVersion := conf.GetTiDBVersionOrDie()
 	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
@@ -203,7 +204,6 @@ func main() {
 	backup.NewBackupCase(oa, clusterBackupFrom, clusterRestoreTo).RunOrDie()
 
 	// stop a node and failover automatically
-	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	physicalNode, node, faultTime := fta.StopNodeOrDie()
 	oa.CheckFailoverPendingOrDie(allClusters, &faultTime)
 	oa.CheckFailoverOrDie(allClusters, node)
@@ -213,6 +213,9 @@ func main() {
 	for _, cluster := range allClusters {
 		oa.CheckTidbClusterStatusOrDie(cluster)
 	}
+
+	// truncate a sst file and check failover
+	oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 5*time.Minute)
 
 	glog.Infof("\nFinished.")
 }

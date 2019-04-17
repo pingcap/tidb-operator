@@ -374,10 +374,10 @@ max-open-files = 1024
 ```sh
 # Deploy your first TiDB cluster
 
-helm install ./charts/tidb-cluster -n tidb --namespace=tidb --set pd.storageClassName=gp2,tikv.storageClassName=gp2
+helm install ./charts/tidb-cluster -n demo --namespace=tidb --set pd.storageClassName=gp2,tikv.storageClassName=gp2
 
 # Or if something goes wrong later and you want to update the deployment, use command:
-# helm upgrade tidb ./charts/tidb-cluster --namespace=tidb --set pd.storageClassName=gp2,tikv.storageClassName=gp2
+# helm upgrade demo ./charts/tidb-cluster --namespace=tidb --set pd.storageClassName=gp2,tikv.storageClassName=gp2
 
 # verify and wait until tidb-initializer pod status becomes completed:
 kubectl get pods --namespace tidb -o wide
@@ -465,7 +465,7 @@ the TiDB (V2.0) should be able to finish the first TPC-H query with 15 seconds.
 With a single command we can easily scale out the TiDB cluster. To scale out TiKV:
 
 ```sh
-helm upgrade tidb charts/tidb-cluster --set pd.storageClassName=gp2,tikv.storageClassName=gp2,tikv.replicas=5,tidb.replicas=3
+helm upgrade demo charts/tidb-cluster --set pd.storageClassName=gp2,tikv.storageClassName=gp2,tikv.replicas=5,tidb.replicas=3
 ```
 
 Now the number of TiKV pods is increased from the default 3 to 5. You can check it with:

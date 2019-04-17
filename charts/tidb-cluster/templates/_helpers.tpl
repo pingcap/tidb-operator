@@ -22,3 +22,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- $wtf := $context.Template.Name | replace $last $name -}}
 {{ include $wtf $context }}
 {{- end -}}
+
+{{- define "cluster.name" -}}
+{{- default .Release.Name .Values.clusterName }}
+{{- end -}}

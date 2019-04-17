@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ .Values.clusterName }}-drainer
+  name: {{ template "cluster.name" . }}-drainer
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -16,7 +16,7 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
       app.kubernetes.io/managed-by: tidb-operator
       app.kubernetes.io/component: drainer
-  serviceName: {{ .Values.clusterName }}-drainer
+  serviceName: {{ template "cluster.name" . }}-drainer
   replicas: 1
   template:
     metadata:
@@ -50,7 +50,7 @@ spec:
       volumes:
       - name: config
         configMap:
-          name: {{ .Values.clusterName }}-drainer
+          name: {{ template "cluster.name" . }}-drainer
           items:
           - key: drainer-config
             path: drainer.toml

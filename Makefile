@@ -38,19 +38,23 @@ scheduler:
 discovery:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery cmd/discovery/main.go
 
+e2e-setup:
+	# ginkgo doesn't work with retool for Go 1.11
+	@GO111MODULE=on CGO_ENABLED=0 go get github.com/onsi/ginkgo@v1.6.0
+
 e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest"
 
 e2e-docker: e2e-build
-	[[ -d tests/images/e2e/tidb-operator ]] && rm -r tests/images/e2e/tidb-operator || true
-	[[ -d tests/images/e2e/tidb-cluster ]] && rm -r tests/images/e2e/tidb-cluster || true
-	[[ -d tests/images/e2e/tidb-backup ]] && rm -r tests/images/e2e/tidb-backup || true
+	[ -d tests/images/e2e/tidb-operator ] && rm -r tests/images/e2e/tidb-operator || true
+	[ -d tests/images/e2e/tidb-cluster ] && rm -r tests/images/e2e/tidb-cluster || true
+	[ -d tests/images/e2e/tidb-backup ] && rm -r tests/images/e2e/tidb-backup || true
 	cp -r charts/tidb-operator tests/images/e2e
 	cp -r charts/tidb-cluster tests/images/e2e
 	cp -r charts/tidb-backup tests/images/e2e
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" tests/images/e2e
 
-e2e-build:
+e2e-build: e2e-setup
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
 
 stability-test-build:
@@ -74,10 +78,9 @@ check-all: lint check-static check-shadow check-gosec megacheck errcheck
 check-setup:
 	@which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
 	@GO111MODULE=off retool sync
-	# ginkgo and govet doesn't work with retool for Go 1.11
+	# govet doesn't work with retool for Go 1.11
 	# so install separately
 	@GO111MODULE=on CGO_ENABLED=0 go get github.com/dnephin/govet@4a96d43e39d340b63daa8bc5576985aa599885f6
-	@GO111MODULE=on CGO_ENABLED=0 go get github.com/onsi/ginkgo@v1.6.0
 
 check: check-setup lint check-static
 
