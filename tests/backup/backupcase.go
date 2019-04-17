@@ -38,6 +38,7 @@ func NewBackupCase(operator tests.OperatorActions, srcCluster *tests.TidbCluster
 func (bc *BackupCase) Run() error {
 
 	// pause write pressure during backup
+	bc.operator.StopInsertDataTo(bc.srcCluster)
 	defer func() {
 		go func() {
 			if err := bc.operator.BeginInsertDataTo(bc.srcCluster); err != nil {
@@ -45,7 +46,6 @@ func (bc *BackupCase) Run() error {
 			}
 		}()
 	}()
-	bc.operator.StopInsertDataTo(bc.srcCluster)
 
 	err := bc.operator.DeployAdHocBackup(bc.srcCluster)
 	if err != nil {

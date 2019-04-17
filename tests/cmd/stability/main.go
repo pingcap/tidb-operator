@@ -156,12 +156,10 @@ func main() {
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
-	defer func() {
-		oa.StopInsertDataTo(cluster1)
-		oa.StopInsertDataTo(cluster2)
-	}()
 	go oa.BeginInsertDataToOrDie(cluster1)
+	defer oa.StopInsertDataTo(cluster1)
 	go oa.BeginInsertDataToOrDie(cluster2)
+	defer oa.StopInsertDataTo(cluster2)
 
 	// TODO add DDL
 	//var workloads []workload.Workload
