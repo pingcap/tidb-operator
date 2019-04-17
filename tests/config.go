@@ -4,11 +4,19 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"io/ioutil"
 	"strings"
 
 	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
+)
+
+const (
+	defaultTableNum    int = 64
+	defaultConcurrency     = 128
+	defaultBatchSize       = 100
+	defaultRawSize         = 100
 )
 
 // Config defines the config of operator tests
@@ -25,6 +33,10 @@ type Config struct {
 	APIServers       []Nodes `yaml:"apiservers" json:"apiservers"`
 	CertFile         string
 	KeyFile          string
+
+	// Block writer
+	BlockWriter blockwriter.Config `yaml:"block_writer,omitempty"`
+
 	// For local test
 	OperatorRepoDir string `yaml:"operator_repo_dir" json:"operator_repo_dir"`
 }
@@ -37,7 +49,14 @@ type Nodes struct {
 
 // NewConfig creates a new config.
 func NewConfig() *Config {
-	cfg := &Config{}
+	cfg := &Config{
+		BlockWriter: blockwriter.Config{
+			TableNum:    defaultTableNum,
+			Concurrency: defaultConcurrency,
+			BatchSize:   defaultBatchSize,
+			RawSize:     defaultRawSize,
+		},
+	}
 	flag.StringVar(&cfg.configFile, "config", "", "Config file")
 	flag.StringVar(&cfg.LogDir, "log-dir", "/logDir", "log directory")
 	flag.IntVar(&cfg.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")

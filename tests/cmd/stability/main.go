@@ -96,8 +96,9 @@ func main() {
 			"tidb.resources.requests.memory": "1Gi",
 			"monitor.persistent":             "true",
 		},
-		Args:    map[string]string{},
-		Monitor: true,
+		Args:             map[string]string{},
+		Monitor:          true,
+		BlockWriteConfig: conf.BlockWriter,
 	}
 	cluster2 := &tests.TidbClusterConfig{
 		Namespace:        clusterName2,
@@ -129,8 +130,9 @@ func main() {
 			// TODO assert the the monitor's pvc exist and clean it when bootstrapping
 			"monitor.persistent": "true",
 		},
-		Args:    map[string]string{},
-		Monitor: true,
+		Args:             map[string]string{},
+		Monitor:          true,
+		BlockWriteConfig: conf.BlockWriter,
 	}
 
 	// cluster backup and restore
@@ -160,10 +162,10 @@ func main() {
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
-	//go func() {
-	//	oa.BeginInsertDataTo(cluster1)
-	//	oa.BeginInsertDataTo(cluster2)
-	//}()
+	go oa.BeginInsertDataToOrDie(cluster1)
+	defer oa.StopInsertDataTo(cluster1)
+	go oa.BeginInsertDataToOrDie(cluster2)
+	defer oa.StopInsertDataTo(cluster2)
 
 	// scale out cluster1 and cluster2
 	cluster1.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
