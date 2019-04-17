@@ -25,6 +25,8 @@ type Config struct {
 
 	// For local test
 	OperatorRepoDir string `yaml:"operator_repo_dir" json:"operator_repo_dir"`
+	// chart dir
+	ChartDir string `yaml:"chart_dir" json:"chart_dir"`
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
@@ -34,7 +36,7 @@ type Nodes struct {
 }
 
 // NewConfig creates a new config.
-func NewConfig() *Config {
+func NewConfig() (*Config, error) {
 	cfg := &Config{}
 	flag.StringVar(&cfg.configFile, "config", "", "Config file")
 	flag.StringVar(&cfg.LogDir, "log-dir", "/logDir", "log directory")
@@ -42,14 +44,27 @@ func NewConfig() *Config {
 	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v2.1.3,v2.1.4", "tidb versions")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
-	flag.StringVar(&cfg.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
 	flag.Parse()
 
-	return cfg
+	operatorRepo, err := ioutil.TempDir("", "tidb-operator")
+	if err != nil {
+		return nil, err
+	}
+	cfg.OperatorRepoDir = operatorRepo
+
+	chartDir, err := ioutil.TempDir("", "charts")
+	if err != nil {
+		return nil, err
+	}
+	cfg.ChartDir = chartDir
+	return cfg, nil
 }
 
 func ParseConfigOrDie() *Config {
-	cfg := NewConfig()
+	cfg, err := NewConfig()
+	if err != nil {
+		panic(err)
+	}
 	if err := cfg.Parse(); err != nil {
 		panic(err)
 	}

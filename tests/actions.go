@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/url"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -66,11 +67,14 @@ func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, c
 }
 
 const (
-	DefaultPollTimeout  time.Duration = 10 * time.Minute
-	DefaultPollInterval time.Duration = 1 * time.Minute
-	getBackupDirPodName               = "get-backup-dir"
-	grafanaUsername                   = "admin"
-	grafanaPassword                   = "admin"
+	DefaultPollTimeout   time.Duration = 10 * time.Minute
+	DefaultPollInterval  time.Duration = 1 * time.Minute
+	getBackupDirPodName                = "get-backup-dir"
+	grafanaUsername                    = "admin"
+	grafanaPassword                    = "admin"
+	operartorChartName                 = "tidb-operator"
+	tidbClusterChartName               = "tidb-cluster"
+	backupChartName                    = "tidb-backup"
 )
 
 type OperatorActions interface {
@@ -242,11 +246,11 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		}
 	}
 
-	cmd := fmt.Sprintf(`helm install /charts/%s/tidb-operator \
+	cmd := fmt.Sprintf(`helm install %s \
 		--name %s \
 		--namespace %s \
 		--set-string %s`,
-		info.Tag,
+		oa.operatorChartPath(info.Tag),
 		info.ReleaseName,
 		info.Namespace,
 		info.OperatorHelmSetString(nil))
@@ -284,9 +288,9 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		return err
 	}
 
-	cmd := fmt.Sprintf(`helm upgrade %s /charts/%s/tidb-operator
+	cmd := fmt.Sprintf(`helm upgrade %s %s
 		--set operatorImage=%s`,
-		info.ReleaseName, info.Tag,
+		info.ReleaseName, oa.operatorChartPath(info.Tag),
 		info.Image)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -313,8 +317,8 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
 	}
 
-	cmd := fmt.Sprintf("helm install /charts/%s/tidb-cluster  --name %s --namespace %s --set-string %s",
-		info.OperatorTag, info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
+	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s",
+		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
 			info.Namespace, info.ClusterName, err, string(res))
@@ -495,13 +499,25 @@ func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) error {
 	return nil
 }
 
-func chartPath(name string, tag string) string {
-	return "/charts/" + tag + "/" + name
+func (oa *operatorActions) chartPath(name string, tag string) string {
+	return filepath.Join(oa.cfg.ChartDir, tag, name)
+}
+
+func (oa *operatorActions) operatorChartPath(tag string) string {
+	return oa.chartPath(operartorChartName, tag)
+}
+
+func (oa *operatorActions) tidbClusterChartPath(tag string) string {
+	return oa.chartPath(tidbClusterChartName, tag)
+}
+
+func (oa *operatorActions) backupChartPath(tag string) string {
+	return oa.chartPath(backupChartName, tag)
 }
 
 func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterConfig) error {
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.TidbClusterHelmSetString(nil))
+		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(nil))
 	glog.Info("[SCALE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -575,7 +591,7 @@ func (oa *operatorActions) CheckScaledCorrectly(info *TidbClusterConfig, podUIDs
 
 func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.TidbClusterHelmSetString(nil))
+		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(nil))
 	glog.Info("[UPGRADE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1333,11 +1349,11 @@ func (oa *operatorActions) checkoutTag(tagName string) error {
 	cmd := fmt.Sprintf(`cd %s &&
 		git stash -u &&
 		git checkout %s &&
-		mkdir -p /charts/%s &&
-		cp -rf charts/tidb-operator /charts/%s/tidb-operator &&
-		cp -rf charts/tidb-cluster /charts/%s/tidb-cluster &&
-		cp -rf charts/tidb-backup /charts/%s/tidb-backup`,
-		oa.cfg.OperatorRepoDir, tagName, tagName, tagName, tagName, tagName)
+		mkdir -p %s &&
+		cp -rf charts/tidb-operator %s &&
+		cp -rf charts/tidb-cluster %s &&
+		cp -rf charts/tidb-backup %s`,
+		oa.cfg.OperatorRepoDir, tagName, filepath.Join(oa.cfg.ChartDir, tagName), oa.operatorChartPath(tagName), oa.tidbClusterChartPath(tagName), oa.backupChartPath(tagName))
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1361,8 +1377,8 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	setString := info.BackupHelmSetString(sets)
 
 	fullbackupName := fmt.Sprintf("%s-backup", info.ClusterName)
-	cmd := fmt.Sprintf("helm install -n %s --namespace %s /charts/%s/tidb-backup --set-string %s",
-		fullbackupName, info.Namespace, info.OperatorTag, setString)
+	cmd := fmt.Sprintf("helm install -n %s --namespace %s %s --set-string %s",
+		fullbackupName, info.Namespace, oa.backupChartPath(info.OperatorTag), setString)
 	glog.Infof("install adhoc deployment [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1412,8 +1428,8 @@ func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfi
 	setString := to.BackupHelmSetString(sets)
 
 	restoreName := fmt.Sprintf("%s-restore", from.ClusterName)
-	cmd := fmt.Sprintf("helm install -n %s --namespace %s /charts/%s/tidb-backup --set-string %s",
-		restoreName, to.Namespace, to.OperatorTag, setString)
+	cmd := fmt.Sprintf("helm install -n %s --namespace %s %s --set-string %s",
+		restoreName, to.Namespace, oa.backupChartPath(to.OperatorTag), setString)
 	glog.Infof("install restore [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1558,8 +1574,8 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 
 	setString := info.TidbClusterHelmSetString(sets)
 
-	cmd := fmt.Sprintf("helm upgrade %s /charts/%s/tidb-cluster --set-string %s",
-		info.ClusterName, info.OperatorTag, setString)
+	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
+		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), setString)
 
 	glog.Infof("scheduled-backup delploy [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -1745,8 +1761,8 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 
 	setString := from.TidbClusterHelmSetString(sets)
 
-	cmd := fmt.Sprintf("helm upgrade %s /charts/%s/tidb-cluster --set-string %s",
-		from.ClusterName, from.OperatorTag, setString)
+	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
+		from.ClusterName, oa.tidbClusterChartPath(from.OperatorTag), setString)
 	glog.Infof(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {

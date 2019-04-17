@@ -32,14 +32,10 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	conf := tests.NewConfig()
-	err := conf.Parse()
-	if err != nil {
-		glog.Fatalf("failed to parse config: %v", err)
-	}
+	conf := tests.ParseConfigOrDie()
+	conf.ChartDir = "/charts"
 
 	cli, kubeCli := client.NewCliOrDie()
-
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 
 	operatorInfo := &tests.OperatorConfig{
