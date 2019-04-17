@@ -63,13 +63,9 @@ If you see `Ready` for all nodes, congratulations! You've setup your first Kuber
 
 Helm is the package manager for Kubernetes, and is what allows us to install all of the distributed components of TiDB in a single step. Helm requires both a server-side and a client-side component to be installed.
 
-Download the `helm` installer:
-
-	curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > get_helm.sh
-
 Install `helm`:
 
-	chmod 700 get_helm.sh && ./get_helm.sh
+	curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash
 
 Copy `helm` to your `$HOME` directory so that it will persist after the Cloud Shell reaches its idle timeout:
 
