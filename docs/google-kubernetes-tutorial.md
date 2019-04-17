@@ -96,7 +96,7 @@ We can watch the operator come up with:
 
 	watch kubectl get pods --namespace tidb-admin -o wide
 
-When you see all pods are `Running`, `Control + C` and proceed to launch a TiDB cluster!
+When you see tidb-scheduler and tidb-controller-manager are `Running`, `Control + C` and proceed to launch a TiDB cluster!
 
 ## Deploy your first TiDB cluster
 
