@@ -34,13 +34,13 @@ const (
 
 // BlockWriterCase is for concurrent writing blocks.
 type BlockWriterCase struct {
-	cfg Config
 	bws []*blockWriter
 
 	isRunning uint32
 	isInit    uint32
 	stopChan  chan struct{}
 
+	cfg         Config
 	ClusterName string
 
 	sync.RWMutex
@@ -73,6 +73,10 @@ func NewBlockWriterCase(cfg Config) *BlockWriterCase {
 	c.initBlocks()
 
 	return c
+}
+
+func (c *BlockWriterCase) GetConcurrency() int {
+	return c.cfg.Concurrency
 }
 
 func (c *BlockWriterCase) initBlocks() {

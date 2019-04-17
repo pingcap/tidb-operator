@@ -38,6 +38,7 @@ func NewBackupCase(operator tests.OperatorActions, srcCluster *tests.TidbCluster
 func (bc *BackupCase) Run() error {
 
 	// pause write pressure during backup
+	bc.operator.StopInsertDataTo(bc.srcCluster)
 	defer func() {
 		go func() {
 			if err := bc.operator.BeginInsertDataTo(bc.srcCluster); err != nil {
@@ -45,13 +46,8 @@ func (bc *BackupCase) Run() error {
 			}
 		}()
 	}()
-	err := bc.operator.StopInsertDataTo(bc.srcCluster)
-	if err != nil {
-		glog.Errorf("cluster:[%s] stop insert data failed,error: %v", bc.srcCluster.ClusterName, err)
-		return err
-	}
 
-	err = bc.operator.DeployAdHocBackup(bc.srcCluster)
+	err := bc.operator.DeployAdHocBackup(bc.srcCluster)
 	if err != nil {
 		glog.Errorf("cluster:[%s] deploy happen error: %v", bc.srcCluster.ClusterName, err)
 		return err
