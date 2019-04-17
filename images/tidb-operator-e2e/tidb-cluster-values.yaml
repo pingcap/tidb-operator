@@ -11,6 +11,10 @@ rbac:
 # if multiple clusters are deployed in the same namespace.
 clusterName: demo-cluster
 
+# Add additional TidbCluster labels
+# ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+extraLabels: {}
+
 # schedulerName must be same with charts/tidb-operator/values#scheduler.schedulerName
 schedulerName: tidb-scheduler
 
@@ -117,7 +121,7 @@ tikvPromGateway:
 tidb:
   replicas: 2
   # The secret name of root password, you can create secret with following command:
-  # kubectl create secret generic tidb-secret --from-literal=root_password=<root-password>
+  # kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
   # If unset, the root password will be empty and you can set it after connecting
   # passwordSecretName: tidb-secret
   # initSql is the SQL statements executed after the TiDB cluster is bootstrapped.

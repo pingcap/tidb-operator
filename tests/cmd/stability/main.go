@@ -33,7 +33,6 @@ import (
 func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
-
 	go func() {
 		glog.Info(http.ListenAndServe("localhost:6060", nil))
 	}()
@@ -41,6 +40,8 @@ func main() {
 	conf := tests.ParseConfigOrDie()
 	cli, kubeCli := client.NewCliOrDie()
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
+	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
+	fta.CheckAndRecoverEnvOrDie()
 
 	tidbVersion := conf.GetTiDBVersionOrDie()
 	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
@@ -91,8 +92,9 @@ func main() {
 			"tidb.resources.requests.memory": "1Gi",
 			"monitor.persistent":             "true",
 		},
-		Args:    map[string]string{},
-		Monitor: true,
+		Args:             map[string]string{},
+		Monitor:          true,
+		BlockWriteConfig: conf.BlockWriter,
 	}
 	cluster2 := &tests.TidbClusterConfig{
 		Namespace:        clusterName2,
@@ -124,8 +126,9 @@ func main() {
 			// TODO assert the the monitor's pvc exist and clean it when bootstrapping
 			"monitor.persistent": "true",
 		},
-		Args:    map[string]string{},
-		Monitor: true,
+		Args:             map[string]string{},
+		Monitor:          true,
+		BlockWriteConfig: conf.BlockWriter,
 	}
 
 	// cluster backup and restore
@@ -155,10 +158,10 @@ func main() {
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
-	//go func() {
-	//	oa.BeginInsertDataTo(cluster1)
-	//	oa.BeginInsertDataTo(cluster2)
-	//}()
+	go oa.BeginInsertDataToOrDie(cluster1)
+	defer oa.StopInsertDataTo(cluster1)
+	go oa.BeginInsertDataToOrDie(cluster2)
+	defer oa.StopInsertDataTo(cluster2)
 
 	// TODO add DDL
 	//var workloads []workload.Workload
@@ -205,7 +208,6 @@ func main() {
 	backup.NewBackupCase(oa, clusterBackupFrom, clusterRestoreTo).RunOrDie()
 
 	// stop a node and failover automatically
-	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	physicalNode, node, faultTime := fta.StopNodeOrDie()
 	oa.CheckFailoverPendingOrDie(allClusters, &faultTime)
 	oa.CheckFailoverOrDie(allClusters, node)
@@ -215,6 +217,9 @@ func main() {
 	for _, cluster := range allClusters {
 		oa.CheckTidbClusterStatusOrDie(cluster)
 	}
+
+	// truncate a sst file and check failover
+	oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 5*time.Minute)
 
 	// stop one etcd node and k8s/operator/tidbcluster is available
 	faultEtcd := tests.SelectNode(conf.ETCDs)

@@ -48,11 +48,6 @@ import (
 )
 
 const (
-	defaultTableNum    int = 64
-	defaultConcurrency     = 512
-	defaultBatchSize       = 100
-	defaultRawSize         = 100
-
 	period = 5 * time.Minute
 
 	tidbControllerName string = "tidb-controller-manager"
@@ -94,7 +89,8 @@ type OperatorActions interface {
 	CheckTidbClusterStatus(info *TidbClusterConfig) error
 	CheckTidbClusterStatusOrDie(info *TidbClusterConfig)
 	BeginInsertDataTo(info *TidbClusterConfig) error
-	StopInsertDataTo(info *TidbClusterConfig) error
+	BeginInsertDataToOrDie(info *TidbClusterConfig)
+	StopInsertDataTo(info *TidbClusterConfig)
 	ScaleTidbCluster(info *TidbClusterConfig) error
 	ScaleTidbClusterOrDie(info *TidbClusterConfig)
 	CheckScaleInSafely(info *TidbClusterConfig) error
@@ -114,6 +110,8 @@ type OperatorActions interface {
 	CreateSecret(info *TidbClusterConfig) error
 	GetPodUIDMap(info *TidbClusterConfig) (map[string]types.UID, error)
 	GetNodeMap(info *TidbClusterConfig, component string) (map[string][]string, error)
+	TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error
+	TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration)
 	CheckFailoverPending(info *TidbClusterConfig, faultPoint *time.Time) (bool, error)
 	CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, faultPoint *time.Time)
 	CheckFailover(info *TidbClusterConfig, faultNode string) (bool, error)
@@ -164,6 +162,8 @@ type TidbClusterConfig struct {
 	UserName         string
 	InitSecretName   string
 	BackupSecretName string
+
+	BlockWriteConfig blockwriter.Config
 }
 
 func (tc *TidbClusterConfig) BackupHelmSetString(m map[string]string) string {
@@ -242,10 +242,10 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 
 func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	if info.Tag != "e2e" {
-		if err := cloneOperatorRepo(); err != nil {
+		if err := oa.cloneOperatorRepo(); err != nil {
 			return err
 		}
-		if err := checkoutTag(info.Tag); err != nil {
+		if err := oa.checkoutTag(info.Tag); err != nil {
 			return err
 		}
 	}
@@ -288,7 +288,7 @@ func (oa *operatorActions) CleanOperatorOrDie(info *OperatorConfig) {
 }
 
 func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
-	if err := checkoutTag(info.Tag); err != nil {
+	if err := oa.checkoutTag(info.Tag); err != nil {
 		return err
 	}
 
@@ -329,12 +329,8 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 	}
 
 	// init blockWriter case
-	info.blockWriter = blockwriter.NewBlockWriterCase(blockwriter.Config{
-		TableNum:    defaultTableNum,
-		Concurrency: defaultConcurrency,
-		BatchSize:   defaultBatchSize,
-		RawSize:     defaultRawSize,
-	})
+	info.blockWriter = blockwriter.NewBlockWriterCase(info.BlockWriteConfig)
+	info.blockWriter.ClusterName = info.ClusterName
 
 	return nil
 }
@@ -490,7 +486,12 @@ func (oa *operatorActions) CheckTidbClusterStatusOrDie(info *TidbClusterConfig) 
 
 func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 	dsn := getDSN(info.Namespace, info.ClusterName, "test", info.Password)
-	db, err := util.OpenDB(dsn, defaultConcurrency)
+	if info.blockWriter == nil {
+		return fmt.Errorf("block writer not initialized for cluster: %s", info.ClusterName)
+	}
+	glog.Infof("[%s] [%s] open TiDB connections, concurrency: %d",
+		info.blockWriter, info.ClusterName, info.blockWriter.GetConcurrency())
+	db, err := util.OpenDB(dsn, info.blockWriter.GetConcurrency())
 	if err != nil {
 		return err
 	}
@@ -498,9 +499,15 @@ func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 	return info.blockWriter.Start(db)
 }
 
-func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) error {
+func (oa *operatorActions) BeginInsertDataToOrDie(info *TidbClusterConfig) {
+	err := oa.BeginInsertDataTo(info)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
 	info.blockWriter.Stop()
-	return nil
 }
 
 func chartPath(name string, tag string) string {
@@ -1232,17 +1239,6 @@ func (oa *operatorActions) monitorNormal(clusterInfo *TidbClusterConfig) (bool, 
 		glog.Infof("monitor ready replicas %d < 1", monitorDeployment.Status.ReadyReplicas)
 		return false, nil
 	}
-	configuratorJobName := fmt.Sprintf("%s-monitor-configurator", tcName)
-	monitorJob, err := oa.kubeCli.BatchV1().Jobs(ns).Get(configuratorJobName, metav1.GetOptions{})
-	if err != nil {
-		glog.Infof("get monitor configurator job: [%s/%s] failed", ns, configuratorJobName)
-		return false, nil
-	}
-	if monitorJob.Status.Succeeded == 0 {
-		glog.Infof("the monitor configurator job: [%s/%s] had not success", ns, configuratorJobName)
-		return false, nil
-	}
-
 	if err := oa.checkPrometheus(clusterInfo); err != nil {
 		glog.Infof("check [%s/%s]'s prometheus data failed: %v", ns, monitorDeploymentName, err)
 		return false, nil
@@ -1337,26 +1333,26 @@ func releaseIsNotFound(err error) bool {
 	return strings.Contains(err.Error(), "not found")
 }
 
-func cloneOperatorRepo() error {
-	cmd := fmt.Sprintf("git clone https://github.com/pingcap/tidb-operator.git /tidb-operator")
+func (oa *operatorActions) cloneOperatorRepo() error {
+	cmd := fmt.Sprintf("git clone https://github.com/pingcap/tidb-operator.git %s", oa.cfg.OperatorRepoDir)
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
+	if err != nil && !strings.Contains(string(res), "already exists") {
 		return fmt.Errorf("failed to clone tidb-operator repository: %v, %s", err, string(res))
 	}
 
 	return nil
 }
 
-func checkoutTag(tagName string) error {
-	cmd := fmt.Sprintf(`cd /tidb-operator &&
+func (oa *operatorActions) checkoutTag(tagName string) error {
+	cmd := fmt.Sprintf(`cd %s &&
 		git stash -u &&
 		git checkout %s &&
 		mkdir -p /charts/%s &&
 		cp -rf charts/tidb-operator /charts/%s/tidb-operator &&
 		cp -rf charts/tidb-cluster /charts/%s/tidb-cluster &&
 		cp -rf charts/tidb-backup /charts/%s/tidb-backup`,
-		tagName, tagName, tagName, tagName, tagName)
+		oa.cfg.OperatorRepoDir, tagName, tagName, tagName, tagName, tagName)
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {

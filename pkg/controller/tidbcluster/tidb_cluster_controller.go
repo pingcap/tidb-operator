@@ -73,6 +73,7 @@ func NewController(
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	autoFailover bool,
 	pdFailoverPeriod time.Duration,
+	tikvFailoverPeriod time.Duration,
 	tidbFailoverPeriod time.Duration,
 ) *Controller {
 	eventBroadcaster := record.NewBroadcaster()
@@ -100,7 +101,7 @@ func NewController(
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
 	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister())
-	tikvFailover := mm.NewTiKVFailover(pdControl)
+	tikvFailover := mm.NewTiKVFailover(tikvFailoverPeriod)
 	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod)
 	pdUpgrader := mm.NewPDUpgrader(pdControl, podControl, podInformer.Lister())
 	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
