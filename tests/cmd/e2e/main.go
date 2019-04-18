@@ -16,6 +16,7 @@ package main
 import (
 	"fmt"
 	_ "net/http/pprof"
+	"os"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
@@ -23,6 +24,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
+	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 )
 
@@ -38,10 +40,9 @@ func main() {
 
 	cli, kubeCli := client.NewCliOrDie()
 
-	oa := tests.NewOperatorActions(cli, kubeCli, conf)
+	context := apimachinery.SetupServerCert(os.Getenv("NAMESPACE"), "webhook-service")
 
-	// start a http server in goruntine
-	go oa.StartValidatingAdmissionWebhookServerOrDie()
+	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 
 	operatorInfo := &tests.OperatorConfig{
 		Namespace:          "pingcap",
@@ -54,7 +55,11 @@ func main() {
 		WebhookServiceName: "webhook-service",
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
+		Context:            context,
 	}
+
+	// start a http server in goruntine
+	go oa.StartValidatingAdmissionWebhookServerOrDie(operatorInfo)
 
 	initTidbVersion, err := conf.GetTiDBVersion()
 	if err != nil {

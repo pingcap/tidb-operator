@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
@@ -63,11 +62,6 @@ func NewConfig() *Config {
 	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v2.1.3,v2.1.4", "tidb versions")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
-	flag.StringVar(&cfg.CertFile, "tls-cert-file", cfg.CertFile, ""+
-		"File containing the default x509 Certificate for HTTPS. (CA cert, if any, concatenated "+
-		"after server cert).")
-	flag.StringVar(&cfg.KeyFile, "tls-private-key-file", cfg.KeyFile, ""+
-		"File containing the default x509 private key matching --tls-cert-file.")
 	flag.StringVar(&cfg.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
 	flag.Parse()
 
@@ -130,16 +124,6 @@ func (c *Config) GetTiDBVersionOrDie() string {
 	}
 
 	return v
-}
-
-func (c *Config) ConfigTLS() *tls.Config {
-	sCert, err := tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
-	if err != nil {
-		glog.Fatal(err)
-	}
-	return &tls.Config{
-		Certificates: []tls.Certificate{sCert},
-	}
 }
 
 func (c *Config) GetUpgradeTidbVersions() []string {
