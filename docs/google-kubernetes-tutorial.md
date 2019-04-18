@@ -82,7 +82,7 @@ It takes a minute for helm to initialize `tiller`, its server component:
 
 	watch "kubectl get pods --namespace kube-system | grep tiller"
 
-When you see `Running`, it's time to hit `Control + C` and proceed to the next step!
+When you see `Running`, it's time to hit <kbd>Ctrl</kbd>+<kbd>C</kbd> and proceed to the next step!
 
 ## Deploy TiDB Operator
 
@@ -108,7 +108,7 @@ It will take a few minutes to launch. You can monitor the progress with:
 
 	watch kubectl get pods --namespace tidb -o wide
 
-The TiDB cluster includes 2 TiDB pods, 3 TiKV pods, and 3 PD pods. When you see all pods `Running`, it's time to `Control + C` and proceed forward!
+The TiDB cluster includes 2 TiDB pods, 3 TiKV pods, and 3 PD pods. When you see all pods `Running`, it's time to <kbd>Ctrl</kbd>+<kbd>C</kbd> and proceed forward!
 
 ## Connect to the TiDB cluster
 
@@ -116,7 +116,7 @@ There can be a small delay between the pod being up and running, and the service
 
 	watch "kubectl get svc -n tidb"
 
-When you see `demo-tidb` appear, you can `Control + C`. The service is ready to connect to!
+When you see `demo-tidb` appear, you can <kbd>Ctrl</kbd>+<kbd>C</kbd>. The service is ready to connect to!
 
 To connect to TiDB within the Kubernetes cluster, you can establish a tunnel between the TiDB service and your Cloud Shell. This is recommended only for debugging purposes, because the tunnel will not automatically be transferred if your Cloud Shell restarts. To establish a tunnel:
 
