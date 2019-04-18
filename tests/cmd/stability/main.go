@@ -37,7 +37,7 @@ func main() {
 
 	conf := tests.ParseConfigOrDie()
 	cli, kubeCli := client.NewCliOrDie()
-	oa := tests.NewOperatorActions(cli, kubeCli, conf)
+	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollTimeout, conf)
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	fta.CheckAndRecoverEnvOrDie()
 
