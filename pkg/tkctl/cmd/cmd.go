@@ -20,7 +20,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/get"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/info"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/list"
-	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/pdctl"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/use"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/spf13/cobra"
@@ -72,7 +71,6 @@ func NewTkcCommand(streams genericclioptions.IOStreams) *cobra.Command {
 			Message: "Troubleshooting Commands:",
 			Commands: []*cobra.Command{
 				debug.NewCmdDebug(tkcContext, streams),
-				pdctl.NewCmdPdctl(tkcContext, streams),
 				ctop.NewCmdCtop(tkcContext, streams),
 			},
 		},
