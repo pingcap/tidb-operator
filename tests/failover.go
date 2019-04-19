@@ -470,19 +470,31 @@ func (oa *operatorActions) CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig,
 
 func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
 	affectedPods := map[string]*corev1.Pod{}
-	apiserverPod := GetApiserverPodOrDie(oa.kubeCli, faultNode)
+	apiserverPod, err := GetApiserverPod(oa.kubeCli, faultNode)
+	if err != nil {
+		panic(fmt.Errorf("can't find apiserver in node:%s", faultNode))
+	}
 	if apiserverPod != nil {
 		affectedPods[apiserverPod.GetName()] = apiserverPod
 	}
-	controllerPod := GetControllerManagerPodOrDie(oa.kubeCli, faultNode)
+	controllerPod, err := GetControllerManagerPod(oa.kubeCli, faultNode)
+	if err != nil {
+		glog.Infof("can't find controllerManager in node:%s", faultNode)
+	}
 	if controllerPod != nil {
 		affectedPods[controllerPod.GetName()] = controllerPod
 	}
-	schedulerPod := GetSchedulerPodOrDie(oa.kubeCli, faultNode)
+	schedulerPod, err := GetSchedulerPod(oa.kubeCli, faultNode)
+	if err != nil {
+		glog.Infof("can't find scheduler in node:%s", faultNode)
+	}
 	if schedulerPod != nil {
 		affectedPods[schedulerPod.GetName()] = schedulerPod
 	}
-	dnsPod := GetDnsPodOrDie(oa.kubeCli, faultNode)
+	dnsPod, err := GetDnsPod(oa.kubeCli, faultNode)
+	if err != nil {
+		panic(fmt.Errorf("can't find controller-manager in node:%s", faultNode))
+	}
 	if dnsPod != nil {
 		affectedPods[dnsPod.GetName()] = dnsPod
 	}
