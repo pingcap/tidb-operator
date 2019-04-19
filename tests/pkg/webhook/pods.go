@@ -13,6 +13,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"k8s.io/api/admission/v1beta1"
 )
@@ -79,9 +80,9 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		return &reviewResponse
 	}
 
-	glog.Infof("delete pod %s", pod.Labels["app.kubernetes.io/component"])
+	glog.Infof("delete pod %s", pod.Labels[label.ComponentLabelKey])
 
-	if pod.Labels["app.kubernetes.io/component"] == "tidb" {
+	if pod.Labels[label.ComponentLabelKey] == "tidb" {
 		podIP := pod.Status.PodIP
 		url := fmt.Sprintf("http://%s:10080/info", podIP)
 
@@ -106,7 +107,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 			glog.Infof("savely delete pod namespace %s name %s content %s", nameSpace, name, string(content))
 		}
 
-	} else if pod.Labels["app.kubernetes.io/component"] == "pd" {
+	} else if pod.Labels[label.ComponentLabelKey] == "pd" {
 		podIP := tc.Status.PD.Leader.ClientURL
 		url := fmt.Sprintf("%s/pd/api/v1/leader", podIP)
 
@@ -131,7 +132,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 			glog.Infof("savely delete pod namespace %s name %s leader name %s", nameSpace, name, leader.Name)
 		}
 
-	} else if pod.Labels["app.kubernetes.io/component"] == "tikv" {
+	} else if pod.Labels[label.ComponentLabelKey] == "tikv" {
 		var storeID string
 		podIP := tc.Status.PD.Leader.ClientURL
 		for _, store := range tc.Status.TiKV.Stores {

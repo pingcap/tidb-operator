@@ -40,7 +40,10 @@ func main() {
 	conf := tests.ParseConfigOrDie()
 	cli, kubeCli := client.NewCliOrDie()
 
-	context := apimachinery.SetupServerCert(os.Getenv("NAMESPACE"), "webhook-service")
+	context, err := apimachinery.SetupServerCert(os.Getenv("NAMESPACE"), "webhook-service")
+	if err != nil {
+		glog.Fatalf("fail to setup server cert: %v", err)
+	}
 
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
