@@ -222,5 +222,10 @@ func main() {
 	// truncate a sst file and check failover
 	oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 5*time.Minute)
 
+	//clean temp dirs when stability success
+	err := conf.CleanTempDirs()
+	if err != nil {
+		glog.Errorf("failed to clean temp dirs, this error can be ignored.")
+	}
 	glog.Infof("\nFinished.")
 }

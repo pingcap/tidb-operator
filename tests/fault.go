@@ -361,9 +361,6 @@ func getFaultNode(kubeCli kubernetes.Interface) (string, error) {
 	}
 
 	myNode := getMyNodeName()
-	if myNode == "" {
-		return "", fmt.Errorf("get own node name is empty")
-	}
 
 	index := rand.Intn(len(nodes.Items))
 	faultNode := nodes.Items[index].Name
