@@ -13,8 +13,31 @@
 
 package util
 
-// TODO: fix unsafe name infer after resources being managed by CRD
+import "k8s.io/api/core/v1"
 
+const (
+	DockerSocket = "/var/run/docker.sock"
+)
+
+// MakeDockerSocketMount create the volume and corresponding mount for docker socket
+func MakeDockerSocketMount(hostDockerSocket string, readOnly bool) (volume v1.Volume, mount v1.VolumeMount) {
+	mount = v1.VolumeMount{
+		Name:      "docker",
+		ReadOnly:  readOnly,
+		MountPath: DockerSocket,
+	}
+	volume = v1.Volume{
+		Name: "docker",
+		VolumeSource: v1.VolumeSource{
+			HostPath: &v1.HostPathVolumeSource{
+				Path: hostDockerSocket,
+			},
+		},
+	}
+	return
+}
+
+// TODO: fix unsafe name infer after resources being managed by CRD
 // GetTidbServiceName infers tidb service name from tidb cluster name
 func GetTidbServiceName(tc string) string {
 	return tc + "-tidb"

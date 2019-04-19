@@ -20,7 +20,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +31,8 @@ import (
 	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
+	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
+	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -68,11 +72,15 @@ func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, c
 }
 
 const (
-	DefaultPollTimeout  time.Duration = 10 * time.Minute
-	DefaultPollInterval time.Duration = 1 * time.Minute
-	getBackupDirPodName               = "get-backup-dir"
-	grafanaUsername                   = "admin"
-	grafanaPassword                   = "admin"
+	DefaultPollTimeout          time.Duration = 10 * time.Minute
+	DefaultPollInterval         time.Duration = 1 * time.Minute
+	BackupAndRestorePollTimeOut time.Duration = 30 * time.Minute
+	getBackupDirPodName                       = "get-backup-dir"
+	grafanaUsername                           = "admin"
+	grafanaPassword                           = "admin"
+	operartorChartName                        = "tidb-operator"
+	tidbClusterChartName                      = "tidb-cluster"
+	backupChartName                           = "tidb-backup"
 )
 
 type OperatorActions interface {
@@ -124,6 +132,10 @@ type OperatorActions interface {
 	CheckTidbClustersAvailable(infos []*TidbClusterConfig) error
 	CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
+	RegisterWebHookAndService(info *OperatorConfig) error
+	RegisterWebHookAndServiceOrDie(info *OperatorConfig)
+	CleanWebHookAndService(info *OperatorConfig) error
+	StartValidatingAdmissionWebhookServerOrDie()
 }
 
 type operatorActions struct {
@@ -136,13 +148,16 @@ type operatorActions struct {
 var _ = OperatorActions(&operatorActions{})
 
 type OperatorConfig struct {
-	Namespace      string
-	ReleaseName    string
-	Image          string
-	Tag            string
-	SchedulerImage string
-	SchedulerTag   string
-	LogLevel       string
+	Namespace          string
+	ReleaseName        string
+	Image              string
+	Tag                string
+	SchedulerImage     string
+	SchedulerTag       string
+	LogLevel           string
+	WebhookServiceName string
+	WebhookSecretName  string
+	WebhookConfigName  string
 }
 
 type TidbClusterConfig struct {
@@ -253,11 +268,11 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		}
 	}
 
-	cmd := fmt.Sprintf(`helm install /charts/%s/tidb-operator \
+	cmd := fmt.Sprintf(`helm install %s \
 		--name %s \
 		--namespace %s \
 		--set-string %s`,
-		info.Tag,
+		oa.operatorChartPath(info.Tag),
 		info.ReleaseName,
 		info.Namespace,
 		info.OperatorHelmSetString(nil))
@@ -277,10 +292,17 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 }
 
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
+	err := oa.CleanWebHookAndService(info)
+	if err != nil {
+		return err
+	}
+
 	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
+
 	if err == nil || !releaseIsNotFound(err) {
 		return nil
 	}
+
 	return fmt.Errorf("failed to clear operator: %v, %s", err, string(res))
 }
 
@@ -295,9 +317,9 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		return err
 	}
 
-	cmd := fmt.Sprintf(`helm upgrade %s /charts/%s/tidb-operator
+	cmd := fmt.Sprintf(`helm upgrade %s %s
 		--set operatorImage=%s`,
-		info.ReleaseName, info.Tag,
+		info.ReleaseName, oa.operatorChartPath(info.Tag),
 		info.Image)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -324,8 +346,9 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
 	}
 
-	cmd := fmt.Sprintf("helm install /charts/%s/tidb-cluster  --name %s --namespace %s --set-string %s",
-		info.OperatorTag, info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
+	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s",
+		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
+	glog.Infof(cmd)
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
 			info.Namespace, info.ClusterName, err, string(res))
@@ -383,7 +406,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	}
 
 	patchPVCmd := fmt.Sprintf(`kubectl get pv -l %s=%s,%s=%s --output=name | xargs -I {} \
-		kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`,
+	kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'`,
 		label.NamespaceLabelKey, info.Namespace, label.InstanceLabelKey, info.ClusterName)
 	glog.V(4).Info(patchPVCmd)
 	if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
@@ -513,13 +536,25 @@ func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
 	info.blockWriter.Stop()
 }
 
-func chartPath(name string, tag string) string {
-	return "/charts/" + tag + "/" + name
+func (oa *operatorActions) chartPath(name string, tag string) string {
+	return filepath.Join(oa.cfg.ChartDir, tag, name)
+}
+
+func (oa *operatorActions) operatorChartPath(tag string) string {
+	return oa.chartPath(operartorChartName, tag)
+}
+
+func (oa *operatorActions) tidbClusterChartPath(tag string) string {
+	return oa.chartPath(tidbClusterChartName, tag)
+}
+
+func (oa *operatorActions) backupChartPath(tag string) string {
+	return oa.chartPath(backupChartName, tag)
 }
 
 func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterConfig) error {
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.TidbClusterHelmSetString(nil))
+		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(nil))
 	glog.Info("[SCALE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -593,7 +628,7 @@ func (oa *operatorActions) CheckScaledCorrectly(info *TidbClusterConfig, podUIDs
 
 func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.TidbClusterHelmSetString(nil))
+		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(nil))
 	glog.Info("[UPGRADE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1351,11 +1386,11 @@ func (oa *operatorActions) checkoutTag(tagName string) error {
 	cmd := fmt.Sprintf(`cd %s &&
 		git stash -u &&
 		git checkout %s &&
-		mkdir -p /charts/%s &&
-		cp -rf charts/tidb-operator /charts/%s/tidb-operator &&
-		cp -rf charts/tidb-cluster /charts/%s/tidb-cluster &&
-		cp -rf charts/tidb-backup /charts/%s/tidb-backup`,
-		oa.cfg.OperatorRepoDir, tagName, tagName, tagName, tagName, tagName)
+		mkdir -p %s &&
+		cp -rf charts/tidb-operator %s &&
+		cp -rf charts/tidb-cluster %s &&
+		cp -rf charts/tidb-backup %s`,
+		oa.cfg.OperatorRepoDir, tagName, filepath.Join(oa.cfg.ChartDir, tagName), oa.operatorChartPath(tagName), oa.tidbClusterChartPath(tagName), oa.backupChartPath(tagName))
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1379,8 +1414,8 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	setString := info.BackupHelmSetString(sets)
 
 	fullbackupName := fmt.Sprintf("%s-backup", info.ClusterName)
-	cmd := fmt.Sprintf("helm install -n %s --namespace %s /charts/%s/tidb-backup --set-string %s",
-		fullbackupName, info.Namespace, info.OperatorTag, setString)
+	cmd := fmt.Sprintf("helm install -n %s --namespace %s %s --set-string %s",
+		fullbackupName, info.Namespace, oa.backupChartPath(info.OperatorTag), setString)
 	glog.Infof("install adhoc deployment [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1408,7 +1443,7 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
 		return true, nil
 	}
 
-	err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
+	err := wait.Poll(DefaultPollInterval, BackupAndRestorePollTimeOut, fn)
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
@@ -1430,8 +1465,8 @@ func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfi
 	setString := to.BackupHelmSetString(sets)
 
 	restoreName := fmt.Sprintf("%s-restore", from.ClusterName)
-	cmd := fmt.Sprintf("helm install -n %s --namespace %s /charts/%s/tidb-backup --set-string %s",
-		restoreName, to.Namespace, to.OperatorTag, setString)
+	cmd := fmt.Sprintf("helm install -n %s --namespace %s %s --set-string %s",
+		restoreName, to.Namespace, oa.backupChartPath(to.OperatorTag), setString)
 	glog.Infof("install restore [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1475,7 +1510,7 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 		return true, nil
 	}
 
-	err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
+	err := wait.Poll(DefaultPollInterval, BackupAndRestorePollTimeOut, fn)
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
@@ -1576,8 +1611,8 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 
 	setString := info.TidbClusterHelmSetString(sets)
 
-	cmd := fmt.Sprintf("helm upgrade %s /charts/%s/tidb-cluster --set-string %s",
-		info.ClusterName, info.OperatorTag, setString)
+	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
+		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), setString)
 
 	glog.Infof("scheduled-backup delploy [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -1626,7 +1661,7 @@ func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterConfig) error {
 		return true, nil
 	}
 
-	err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
+	err := wait.Poll(DefaultPollInterval, BackupAndRestorePollTimeOut, fn)
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
@@ -1763,8 +1798,8 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 
 	setString := from.TidbClusterHelmSetString(sets)
 
-	cmd := fmt.Sprintf("helm upgrade %s /charts/%s/tidb-cluster --set-string %s",
-		from.ClusterName, from.OperatorTag, setString)
+	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
+		from.ClusterName, oa.tidbClusterChartPath(from.OperatorTag), setString)
 	glog.Infof(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1845,6 +1880,83 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig) error
 
 }
 
+func strPtr(s string) *string { return &s }
+
+func (oa *operatorActions) RegisterWebHookAndServiceOrDie(info *OperatorConfig) {
+	if err := oa.RegisterWebHookAndService(info); err != nil {
+		panic(err)
+	}
+}
+
+func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error {
+	client := oa.kubeCli
+	glog.Infof("Registering the webhook via the AdmissionRegistration API")
+
+	namespace := os.Getenv("NAMESPACE")
+	configName := info.WebhookConfigName
+	filePath := "/webhook.local.config/certificates/ca.crt"
+
+	fd, err := os.Open(filePath)
+	if err != nil {
+		glog.Errorf("file can't open file path %s err %v", filePath, err)
+		return err
+	}
+	defer fd.Close()
+
+	ca, err := ioutil.ReadAll(fd)
+
+	if err != nil {
+		glog.Errorf("file can't read file path %s err %v", filePath, err)
+		return err
+	}
+
+	_, err = client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(&admissionV1beta1.ValidatingWebhookConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: configName,
+		},
+		Webhooks: []admissionV1beta1.Webhook{
+			{
+				Name: "check-pod-before-delete.k8s.io",
+				Rules: []admissionV1beta1.RuleWithOperations{{
+					Operations: []admissionV1beta1.OperationType{admissionV1beta1.Delete},
+					Rule: admissionV1beta1.Rule{
+						APIGroups:   []string{""},
+						APIVersions: []string{"v1"},
+						Resources:   []string{"pods"},
+					},
+				}},
+				ClientConfig: admissionV1beta1.WebhookClientConfig{
+					Service: &admissionV1beta1.ServiceReference{
+						Namespace: namespace,
+						Name:      info.WebhookServiceName,
+						Path:      strPtr("/pods"),
+					},
+					CABundle: ca,
+				},
+			},
+		},
+	})
+
+	if err != nil {
+		glog.Errorf("registering webhook config %s with namespace %s error %v", configName, namespace, err)
+		return err
+	}
+
+	// The webhook configuration is honored in 10s.
+	time.Sleep(10 * time.Second)
+
+	return nil
+
+}
+
+func (oa *operatorActions) CleanWebHookAndService(info *OperatorConfig) error {
+	err := oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(info.WebhookConfigName, nil)
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete webhook config %v", err)
+	}
+	return nil
+}
+
 type pumpStatus struct {
 	StatusMap map[string]*nodeStatus
 }
@@ -1914,4 +2026,17 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 		return false
 	}
 	return len(healths.PumpPos) > 0 && healths.Synced
+}
+
+func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie() {
+	http.HandleFunc("/pods", webhook.ServePods)
+	server := &http.Server{
+		Addr:      ":443",
+		TLSConfig: oa.cfg.ConfigTLS(),
+	}
+	err := server.ListenAndServeTLS("", "")
+	if err != nil {
+		glog.Errorf("fail to start webhook server err %v", err)
+		os.Exit(4)
+	}
 }
