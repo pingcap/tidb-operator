@@ -17,12 +17,10 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
-	"os"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
-	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"k8s.io/apiserver/pkg/util/logs"
 
@@ -39,11 +37,6 @@ func main() {
 
 	conf := tests.ParseConfigOrDie()
 	cli, kubeCli := client.NewCliOrDie()
-
-	context, err := apimachinery.SetupServerCert(os.Getenv("NAMESPACE"), "webhook-service")
-	if err != nil {
-		glog.Fatalf("fail to setup server cert: %v", err)
-	}
 
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
@@ -63,7 +56,6 @@ func main() {
 		WebhookServiceName: "webhook-service",
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
-		Context:            context,
 	}
 
 	// start a http server in goruntine

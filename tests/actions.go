@@ -1997,12 +1997,20 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 }
 
 func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie(info *OperatorConfig) {
+
+	context, err := apimachinery.SetupServerCert(os.Getenv("NAMESPACE"), info.WebhookServiceName)
+	if err != nil {
+		glog.Fatalf("fail to setup server cert: %v", err)
+	}
+
+	info.Context = context
+
 	http.HandleFunc("/pods", webhook.ServePods)
 	server := &http.Server{
 		Addr:      ":443",
 		TLSConfig: info.ConfigTLS(),
 	}
-	err := server.ListenAndServeTLS("", "")
+	err = server.ListenAndServeTLS("", "")
 	if err != nil {
 		glog.Errorf("fail to start webhook server err %v", err)
 		os.Exit(4)
