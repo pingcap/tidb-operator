@@ -30,14 +30,10 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	conf := tests.NewConfig()
-	err := conf.Parse()
-	if err != nil {
-		glog.Fatalf("failed to parse config: %v", err)
-	}
+	conf := tests.ParseConfigOrDie()
+	conf.ChartDir = "/charts"
 
 	cli, kubeCli := client.NewCliOrDie()
-
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 
 	// start a http server in goruntine
@@ -253,4 +249,11 @@ func main() {
 	if err := backupCase.Run(); err != nil {
 		glog.Fatal(err)
 	}
+
+	//clean temp dirs when e2e success
+	err = conf.CleanTempDirs()
+	if err != nil {
+		glog.Errorf("failed to clean temp dirs, this error can be ignored.")
+	}
+	glog.Infof("\nFinished.")
 }
