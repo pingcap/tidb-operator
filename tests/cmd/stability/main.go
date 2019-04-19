@@ -19,14 +19,14 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/backup"
+
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
 
 	"github.com/pingcap/tidb-operator/tests"
-	"github.com/pingcap/tidb-operator/tests/backup"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apiserver/pkg/util/logs"
 )
 
@@ -42,6 +42,7 @@ func main() {
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	fta.CheckAndRecoverEnvOrDie()
+	oa.CheckK8sAvailable(nil, nil)
 
 	tidbVersion := conf.GetTiDBVersionOrDie()
 	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
@@ -225,42 +226,14 @@ func main() {
 	faultEtcd := tests.SelectNode(conf.ETCDs)
 	fta.StopETCDOrDie(faultEtcd)
 	defer fta.StartETCDOrDie(faultEtcd)
-	tests.KeepOrDie(3*time.Second, 10*time.Minute, func() error {
-		err := oa.CheckK8sAvailable(nil, nil)
-		if err != nil {
-			return err
-		}
-		err = oa.CheckOperatorAvailable(operatorCfg)
-		if err != nil {
-			return err
-		}
-		err = oa.CheckTidbClustersAvailable(allClusters)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	oa.CheckOneEtcdDownOrDie(operatorCfg, allClusters, faultEtcd)
 	fta.StartETCDOrDie(faultEtcd)
 
 	// stop one apiserver node and k8s/operator/tidbcluster is available
 	faultApiserver := tests.SelectNode(conf.APIServers)
-	apiserverPod := tests.GetApiserverPodOrDie(kubeCli, faultApiserver)
 	fta.StopKubeAPIServerOrDie(faultApiserver)
-	tests.KeepOrDie(3*time.Second, 10*time.Minute, func() error {
-		err := oa.CheckK8sAvailable(nil, map[string]*corev1.Pod{apiserverPod.GetName(): apiserverPod})
-		if err != nil {
-			return err
-		}
-		err = oa.CheckOperatorAvailable(operatorCfg)
-		if err != nil {
-			return err
-		}
-		err = oa.CheckTidbClustersAvailable(allClusters)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	defer fta.StartKubeAPIServer(faultApiserver)
+	oa.CheckOneApiserverDownOrDie(operatorCfg, allClusters, faultApiserver)
 	fta.StartKubeAPIServerOrDie(faultApiserver)
 
 	glog.Infof("\nFinished.")

@@ -447,6 +447,65 @@ func (oa *operatorActions) GetNodeMap(info *TidbClusterConfig, component string)
 	return nodeMap, nil
 }
 
+func (oa *operatorActions) CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckK8sAvailable(nil, nil)
+		if err != nil {
+			return err
+		}
+		glog.Infof("k8s cluster is available.")
+		err = oa.CheckOperatorAvailable(operatorConfig)
+		if err != nil {
+			return err
+		}
+		glog.Infof("tidb operator is available.")
+		err = oa.CheckTidbClustersAvailable(clusters)
+		if err != nil {
+			return err
+		}
+		glog.Infof("all clusters is available")
+		return nil
+	})
+}
+
+func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
+	affectedPods := map[string]*corev1.Pod{}
+	apiserverPod := GetApiserverPodOrDie(oa.kubeCli, faultNode)
+	if apiserverPod != nil {
+		affectedPods[apiserverPod.GetName()] = apiserverPod
+	}
+	controllerPod := GetControllerManagerPodOrDie(oa.kubeCli, faultNode)
+	if controllerPod != nil {
+		affectedPods[controllerPod.GetName()] = controllerPod
+	}
+	schedulerPod := GetSchedulerPodOrDie(oa.kubeCli, faultNode)
+	if schedulerPod != nil {
+		affectedPods[schedulerPod.GetName()] = schedulerPod
+	}
+	dnsPod := GetDnsPodOrDie(oa.kubeCli, faultNode)
+	if dnsPod != nil {
+		affectedPods[dnsPod.GetName()] = dnsPod
+	}
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckK8sAvailable(nil, affectedPods)
+		if err != nil {
+			return err
+		}
+		glog.Infof("k8s cluster is available.")
+		err = oa.CheckOperatorAvailable(operatorConfig)
+		if err != nil {
+			return err
+		}
+		glog.Infof("tidb operator is available.")
+		err = oa.CheckTidbClustersAvailable(clusters)
+		if err != nil {
+			return err
+		}
+		glog.Infof("all clusters is available")
+		return nil
+	})
+}
+
 func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]*corev1.Node, excludePods map[string]*corev1.Pod) error {
 	return wait.Poll(3*time.Second, time.Minute, func() (bool, error) {
 		nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
@@ -460,7 +519,8 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]*corev1.Nod
 			}
 			for _, condition := range node.Status.Conditions {
 				if condition.Type == corev1.NodeReady && condition.Status != corev1.ConditionTrue {
-					return false, fmt.Errorf("node: [%s] is not in running", node.GetName())
+					glog.Errorf("node: [%s] is not in running", node.GetName())
+					return false, nil
 				}
 			}
 		}
@@ -473,8 +533,10 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]*corev1.Nod
 			if _, exist := excludePods[pod.GetName()]; exist {
 				continue
 			}
-			if GetPodStatus(&pod) != string(corev1.PodRunning) {
-				return false, fmt.Errorf("pod:[%s/%s] is unavailable", pod.GetName(), pod.GetNamespace())
+			podState := GetPodStatus(&pod)
+			if podState != string(corev1.PodRunning) {
+				glog.Errorf("pod:[%s/%s] is unavailable,state is %s", pod.GetName(), pod.GetNamespace(), podState)
+				return false, nil
 			}
 		}
 		return true, nil

@@ -121,6 +121,8 @@ type OperatorActions interface {
 	CheckK8sAvailable(excludeNodes map[string]*corev1.Node, excludePods map[string]*corev1.Pod) error
 	CheckOperatorAvailable(operatorConfig *OperatorConfig) error
 	CheckTidbClustersAvailable(infos []*TidbClusterConfig) error
+	CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
+	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 }
 
 type operatorActions struct {

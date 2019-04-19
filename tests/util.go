@@ -18,6 +18,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/golang/glog"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -58,6 +60,38 @@ func GetApiserverPodOrDie(kubeCli kubernetes.Interface, node string) *corev1.Pod
 		}
 	}
 	panic(fmt.Errorf("can't find apiserver in node:%s", node))
+}
+
+func GetSchedulerPodOrDie(kubeCli kubernetes.Interface, node string) *corev1.Pod {
+	selector := labels.Set(map[string]string{"component": "kube-scheduler"}).AsSelector()
+	options := metav1.ListOptions{LabelSelector: selector.String()}
+	apiserverPods, err := kubeCli.CoreV1().Pods("kube-system").List(options)
+	if err != nil {
+		panic(err)
+	}
+	for _, apiserverPod := range apiserverPods.Items {
+		if apiserverPod.Spec.NodeName == node {
+			return &apiserverPod
+		}
+	}
+	glog.Infof("can't find scheduler in node:%s", node)
+	return nil
+}
+
+func GetDnsPodOrDie(kubeCli kubernetes.Interface, node string) *corev1.Pod {
+	selector := labels.Set(map[string]string{"component": "kube-dns"}).AsSelector()
+	options := metav1.ListOptions{LabelSelector: selector.String()}
+	apiserverPods, err := kubeCli.CoreV1().Pods("kube-system").List(options)
+	if err != nil {
+		panic(err)
+	}
+	for _, apiserverPod := range apiserverPods.Items {
+		if apiserverPod.Spec.NodeName == node {
+			return &apiserverPod
+		}
+	}
+	glog.Infof("can't find dns in node:%s", node)
+	return nil
 }
 
 func GetControllerManagerPodOrDie(kubeCli kubernetes.Interface, node string) *corev1.Pod {
