@@ -40,6 +40,7 @@ func SetupServerCert(namespaceName, serviceName string) (*CertContext, error) {
 	}
 	if err := ioutil.WriteFile(caCertFile.Name(), cert.EncodeCertPEM(signingCert), 0644); err != nil {
 		glog.Errorf("Failed to write CA cert %v", err)
+		return nil, err
 	}
 	key, err := cert.NewPrivateKey()
 	if err != nil {
