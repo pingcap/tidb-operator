@@ -41,7 +41,9 @@ func KeepOrDie(interval time.Duration, period time.Duration, fun func() error) {
 func SelectNode(nodes []Nodes) string {
 	rand.Seed(time.Now().Unix())
 	index := rand.Intn(len(nodes))
-	return nodes[index].Nodes[0]
+	vmNodes := nodes[index].Nodes
+	index2 := rand.Intn(len(vmNodes))
+	return vmNodes[index2]
 }
 
 func GetApiserverPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {

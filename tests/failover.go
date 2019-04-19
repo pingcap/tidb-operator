@@ -518,6 +518,12 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 	})
 }
 
+func (oa *operatorActions) CheckK8sAvailableOrDie(excludeNodes map[string]*corev1.Node, excludePods map[string]*corev1.Pod) {
+	if err := oa.CheckK8sAvailable(excludeNodes, excludePods); err != nil {
+		panic(err)
+	}
+}
+
 func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]*corev1.Node, excludePods map[string]*corev1.Pod) error {
 	return wait.Poll(3*time.Second, time.Minute, func() (bool, error) {
 		nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})

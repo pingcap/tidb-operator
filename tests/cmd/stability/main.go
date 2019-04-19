@@ -42,7 +42,7 @@ func main() {
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	fta.CheckAndRecoverEnvOrDie()
-	oa.CheckK8sAvailable(nil, nil)
+	oa.CheckK8sAvailableOrDie(nil, nil)
 
 	tidbVersion := conf.GetTiDBVersionOrDie()
 	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
@@ -226,6 +226,8 @@ func main() {
 	faultEtcd := tests.SelectNode(conf.ETCDs)
 	fta.StopETCDOrDie(faultEtcd)
 	defer fta.StartETCDOrDie(faultEtcd)
+	// TODO make the pause interval as a argument
+	time.Sleep(3 * time.Minute)
 	oa.CheckOneEtcdDownOrDie(operatorCfg, allClusters, faultEtcd)
 	fta.StartETCDOrDie(faultEtcd)
 
@@ -233,6 +235,7 @@ func main() {
 	faultApiserver := tests.SelectNode(conf.APIServers)
 	fta.StopKubeAPIServerOrDie(faultApiserver)
 	defer fta.StartKubeAPIServer(faultApiserver)
+	time.Sleep(3 * time.Minute)
 	oa.CheckOneApiserverDownOrDie(operatorCfg, allClusters, faultApiserver)
 	fta.StartKubeAPIServerOrDie(faultApiserver)
 
