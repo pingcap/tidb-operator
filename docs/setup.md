@@ -97,7 +97,7 @@ To auto-mount disks when your operating system is booted, you should edit `/etc/
 
 Disk mount:
 ```shell
-$ echo "/dev/nvme0n1 /mnt/disks/disk01 ext4 defaults 0 0" >> /etc/fstab
+$ echo "/dev/nvme0n1 /mnt/disks/disk0 ext4 defaults 0 0" >> /etc/fstab
 ```
 
 Bind mount:
