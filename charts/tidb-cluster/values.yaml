@@ -194,10 +194,10 @@ tidb:
 
   # tidb plugin configuration
   plugin:
-    # enable pulgin or not
+    # enable plugin or not
     enable: false
     # the start argument to specify the folder containing
-    directory: /pulugins
+    directory: /plugins
     # the start argument to specify the plugin id (name "-" version) that needs to be loaded, e.g. 'conn_limit-1'.
     list: whitelist-1
 
