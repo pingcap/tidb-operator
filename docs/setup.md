@@ -67,7 +67,7 @@ You can follow Helm official [documentation](https://helm.sh) to install Helm in
 
 See the [operations guide in sig-storage-local-static-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/operations.md) which explains setup and cleanup of local volumes on the nodes.
 
-It also provides some [best practices](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/best-practices.md) in production.
+It also provides some [best practices](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/best-practices.md) for production.
 
 ### Deploy local-static-provisioner
 
