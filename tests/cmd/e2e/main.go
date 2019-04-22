@@ -24,32 +24,32 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
-	"github.com/pingcap/tidb-operator/tests/pkg/workload"
-	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
 )
 
 func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	conf := tests.NewConfig()
-	err := conf.Parse()
-	if err != nil {
-		glog.Fatalf("failed to parse config: %v", err)
-	}
+	conf := tests.ParseConfigOrDie()
+	conf.ChartDir = "/charts"
 
 	cli, kubeCli := client.NewCliOrDie()
-
 	oa := tests.NewOperatorActions(cli, kubeCli, conf)
 
+	// start a http server in goruntine
+	go oa.StartValidatingAdmissionWebhookServerOrDie()
+
 	operatorInfo := &tests.OperatorConfig{
-		Namespace:      "pingcap",
-		ReleaseName:    "operator",
-		Image:          conf.OperatorImage,
-		Tag:            conf.OperatorTag,
-		SchedulerImage: "mirantis/hypokube",
-		SchedulerTag:   "final",
-		LogLevel:       "2",
+		Namespace:          "pingcap",
+		ReleaseName:        "operator",
+		Image:              conf.OperatorImage,
+		Tag:                conf.OperatorTag,
+		SchedulerImage:     "mirantis/hypokube",
+		SchedulerTag:       "final",
+		LogLevel:           "2",
+		WebhookServiceName: "webhook-service",
+		WebhookSecretName:  "webhook-secret",
+		WebhookConfigName:  "webhook-config",
 	}
 
 	initTidbVersion, err := conf.GetTiDBVersion()
@@ -156,83 +156,74 @@ func main() {
 		}
 	}
 
-	var workloads []workload.Workload
-	for _, clusterInfo := range clusterInfos {
-		workload := ddl.New(clusterInfo.DSN("test"), 1, 1)
-		workloads = append(workloads, workload)
+	// before upgrade cluster, register webhook first
+	oa.RegisterWebHookAndServiceOrDie(operatorInfo)
+
+	// upgrade test
+	upgradeTidbVersions := conf.GetUpgradeTidbVersions()
+	for _, upgradeTidbVersion := range upgradeTidbVersions {
+		for _, clusterInfo := range clusterInfos {
+			clusterInfo = clusterInfo.UpgradeAll(upgradeTidbVersion)
+			if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
+				glog.Fatal(err)
+			}
+		}
+		for _, clusterInfo := range clusterInfos {
+			if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+				glog.Fatal(err)
+			}
+		}
 	}
 
-	err = workload.Run(func() error {
+	// after upgrade cluster, clean webhook
+	oa.CleanWebHookAndService(operatorInfo)
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
+	}
+	for _, clusterInfo := range clusterInfos {
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
+	}
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScalePD(3)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.ScalePD(3)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
+	}
+	for _, clusterInfo := range clusterInfos {
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
+	}
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScaleTiKV(3)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.ScaleTiKV(3)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
+	}
+	for _, clusterInfo := range clusterInfos {
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
+	}
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScaleTiDB(1)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.ScaleTiDB(1)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
+	}
+	for _, clusterInfo := range clusterInfos {
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
-
-		// upgrade test
-		upgradeTidbVersions := conf.GetUpgradeTidbVersions()
-		for _, upgradeTidbVersion := range upgradeTidbVersions {
-			for _, clusterInfo := range clusterInfos {
-				clusterInfo = clusterInfo.UpgradeAll(upgradeTidbVersion)
-				if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
-					glog.Fatal(err)
-				}
-			}
-			for _, clusterInfo := range clusterInfos {
-				if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-					glog.Fatal(err)
-				}
-			}
-		}
-
-		return nil
-	}, workloads...)
-
-	if err != nil {
-		glog.Fatal(err)
 	}
 
 	// backup and restore
@@ -258,4 +249,11 @@ func main() {
 	if err := backupCase.Run(); err != nil {
 		glog.Fatal(err)
 	}
+
+	//clean temp dirs when e2e success
+	err = conf.CleanTempDirs()
+	if err != nil {
+		glog.Errorf("failed to clean temp dirs, this error can be ignored.")
+	}
+	glog.Infof("\nFinished.")
 }

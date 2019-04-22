@@ -131,8 +131,3 @@ spec:
           type: object
       type: object
   version: v1beta1
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: null

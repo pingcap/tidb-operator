@@ -5,7 +5,9 @@ ifeq ($(GO111), 1)
 $(error Please upgrade your Go compiler to 1.11 or higher version)
 endif
 
-GOENV  := GO15VENDOREXPERIMENT="1" GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+GOOS := $(if $(GOOS),$(GOOS),linux)
+GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
+GOENV  := GO15VENDOREXPERIMENT="1" GO111MODULE=on CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO     := $(GOENV) go build
 GOTEST := CGO_ENABLED=0 GO111MODULE=on go test -v -cover
 
@@ -123,4 +125,20 @@ check-gosec:
 	@echo "security checking"
 	CGO_ENABLED=0 retool do gosec $$($(PACKAGE_DIRECTORIES))
 
-.PHONY: check check-setup check-all build e2e-build
+cli:
+	$(GO) -ldflags '$(LDFLAGS)' -o tkc cmd/tkctl/main.go
+
+debug-docker-push: debug-build-docker
+	docker push "${DOCKER_REGISTRY}/pingcap/debug-launcher:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-control:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-debug:latest"
+
+debug-build-docker: debug-build
+	docker build -t "${DOCKER_REGISTRY}/pingcap/debug-launcher:latest" misc/images/debug-launcher
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-control:latest" misc/images/tidb-control
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-debug:latest" misc/images/tidb-debug
+
+debug-build:
+	$(GO) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
+
+.PHONY: check check-setup check-all build e2e-build debug-build cli
