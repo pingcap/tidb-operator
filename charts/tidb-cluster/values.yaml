@@ -192,6 +192,15 @@ tidb:
         cpu: 20m
         memory: 5Mi
 
+  # tidb plugin configuration
+  plugin:
+    # enable plugin or not
+    enable: false
+    # the start argument to specify the folder containing
+    directory: /plugins
+    # the start argument to specify the plugin id (name "-" version) that needs to be loaded, e.g. 'conn_limit-1'.
+    list: ["whitelist-1"]
+
 # mysqlClient is used to set password for TiDB
 # it must has Python MySQL client installed
 mysqlClient:
