@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -44,10 +45,10 @@ type Annotation struct {
 
 //AnnotationOptions is the query options to a standard REST list call.
 type AnnotationOptions struct {
-	DashboardId int   `json:"dashboardId, omitempty"`
-	PanelId     int   `json:"panelId, omitempty"`
-	IsRegin     bool  `json:"isRegion, omitempty"`
-	TimeEnd     int64 `json:"timeEnd, omitempty"`
+	DashboardId int   `json:"dashboardId,omitempty"`
+	PanelId     int   `json:"panelId,omitempty"`
+	IsRegin     bool  `json:"isRegion,omitempty"`
+	TimeEnd     int64 `json:"timeEnd,omitempty"`
 }
 
 //NewClient creats a new grafanaClient. This client performs rest functions
@@ -123,8 +124,8 @@ func (cli *Client) AddAnnotation(annotation Annotation) error {
 
 	req.Header.Add("Accept", "application/json, text/plain, */*")
 	req.Header.Add("Content-Type", "application/json;charset=UTF-8")
-	resp, error := cli.client.Do(req)
-	if error != nil {
+	resp, err := cli.client.Do(req)
+	if err != nil {
 		return fmt.Errorf("add annotation faield, %v", err)
 	}
 	defer resp.Body.Close()
@@ -132,6 +133,11 @@ func (cli *Client) AddAnnotation(annotation Annotation) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("add annotation faield, statusCode=%v", resp.Status)
 	}
+	all, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	fmt.Println(all)
 
 	return nil
 }

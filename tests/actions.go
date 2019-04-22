@@ -121,8 +121,6 @@ type operatorActions struct {
 	kubeCli   kubernetes.Interface
 	pdControl controller.PDControlInterface
 	cfg       *Config
-
-	grafanaClient *metrics.Client
 }
 
 var _ = OperatorActions(&operatorActions{})
@@ -159,6 +157,7 @@ type TidbClusterConfig struct {
 	BackupSecretName string
 
 	BlockWriteConfig blockwriter.Config
+	GrafanaClient    *metrics.Client
 }
 
 func (tc *TidbClusterConfig) BackupHelmSetString(m map[string]string) string {
@@ -1329,14 +1328,14 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 		return fmt.Errorf("invalid response: status: %s, result: %v", data.Status, data.Data.Result)
 	}
 
-	// Grafana ready, init grafana client
-	if oa.grafanaClient == nil {
+	// Grafana ready, init grafana client, no more sync logic because race condition is okay here
+	if clusterInfo.GrafanaClient == nil {
 		grafanaUrl := fmt.Sprintf("http://%s.%s:3000", svcName, ns)
 		client, err := metrics.NewClient(grafanaUrl, grafanaUsername, grafanaPassword, metricsPort)
 		if err != nil {
 			return err
 		}
-		oa.grafanaClient = client
+		clusterInfo.GrafanaClient = client
 	}
 	return nil
 }
@@ -1934,7 +1933,7 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 }
 
 func (oa *operatorActions) emitEvent(info *TidbClusterConfig, event string) {
-	if oa.grafanaClient == nil {
+	if info.GrafanaClient == nil {
 		glog.V(4).Infof("cluster:[%s] grafana client not ready, skip recording event %s.",
 			info.ClusterName, event)
 		return
@@ -1950,9 +1949,9 @@ func (oa *operatorActions) emitEvent(info *TidbClusterConfig, event string) {
 			fmt.Sprintf("ns-%s", info.Namespace),
 		},
 	}
-	go func() {
-		if err := oa.grafanaClient.AddAnnotation(anno); err != nil {
+	go func(anno metrics.Annotation) {
+		if err := info.GrafanaClient.AddAnnotation(anno); err != nil {
 			glog.Errorf("cluster:[%s] error recording event %s, reason: %v", info.ClusterName, event, err)
 		}
-	}()
+	}(anno)
 }
