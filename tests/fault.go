@@ -323,7 +323,7 @@ func (fa *faultTriggerActions) serviceAction(node string, serverName string, act
 		return err
 	}
 
-	glog.Infof("%s %s %s successfully", action, serverName, node)
+	glog.V(4).Infof("%s %s %s successfully", action, serverName, node)
 
 	return nil
 }

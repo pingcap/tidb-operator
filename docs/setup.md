@@ -63,47 +63,11 @@ You can follow Helm official [documentation](https://helm.sh) to install Helm in
 
 ## Local Persistent Volume
 
-Local disks are recommended to be formatted as ext4 filesystem. The local persistent volume directory must be a mount point: a whole disk mount or a [bind mount](https://unix.stackexchange.com/questions/198590/what-is-a-bind-mount):
+### Prepare local volumes
 
-### Disk mount
+See the [operations guide in sig-storage-local-static-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/operations.md) which explains setup and cleanup of local volumes on the nodes.
 
-Mount local ssd disks of your Kubernetes nodes at subdirectory of /mnt/disks. For example if your data disk is `/dev/nvme0n1`, you can format and mount with the following commands:
-
-```shell
-$ sudo mkdir -p /mnt/disks/disk0
-$ sudo mkfs.ext4 /dev/nvme0n1
-$ sudo mount -t ext4 -o nodelalloc /dev/nvme0n1 /mnt/disks/disk0
-```
-
-### Bind mount
-
-The disadvantages of bind mount for TiDB: all the volumes has the size of the whole disk and there is no quota and isolation of bind mount volumes. If your data directory is `/data`, you can create a bind mount with the following commands:
-
-```shell
-$ sudo mkdir -p /data/local-pv01
-$ sudo mkdir -p /mnt/disks/local-pv01
-$ sudo mount --bind /data/local-pv01 /mnt/disks/local-pv01
-```
-
-Use this command to confirm the mount point exist:
-
-```shell
-$ mount | grep /mnt/disks/local-pv01
-```
-
-### Auto-mount on reboot
-
-To auto-mount disks when your operating system is booted, you should edit `/etc/fstab` to include these mounting info.
-
-Disk mount:
-```shell
-$ echo "/dev/nvme0n1 /mnt/disks/disk01 ext4 defaults 0 0" >> /etc/fstab
-```
-
-Bind mount:
-```shell
-$ echo "/data/local-pv01 /mnt/disks/local-pv01 none bind 0 0" >> /etc/fstab
-```
+It also provides some [best practices](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/best-practices.md) for production.
 
 ### Deploy local-static-provisioner
 
@@ -114,20 +78,6 @@ $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/maste
 $ kubectl get po -n kube-system -l app=local-volume-provisioner
 $ kubectl get pv | grep local-storage
 ```
-
-### Remove a mount point
-
-If we want to remove a mount point, first we need to `umount` the mount point, and then delete the related directories. For example:
-
-```shell
-$ umount /mnt/disks/local-pv01
-$ rm -rf /mnt/disks/local-pv01 
-$ rm -rf /data/local-pv01
-```
-
-You should also delete the related entries in `/etc/fstab` at the same time, otherwise the automount may cause problems when the machine restarts.
-
-> Note: The local-volume plugin expects paths to be stable, if you remove a previous mount-point in the discovery directory (default to `/mnt/disks/`), you should remove the PV manually to keep consistency.
 
 ## Install TiDB Operator
 
