@@ -80,9 +80,6 @@ check-all: lint check-static check-shadow check-gosec megacheck errcheck
 check-setup:
 	@which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
 	@GO111MODULE=off retool sync
-	# govet doesn't work with retool for Go 1.11
-	# so install separately
-	@GO111MODULE=on CGO_ENABLED=0 go get github.com/dnephin/govet@4a96d43e39d340b63daa8bc5576985aa599885f6
 
 check: check-setup lint check-static
 
@@ -90,8 +87,8 @@ check-static:
 	@ # Not running vet and fmt through metalinter becauase it ends up looking at vendor
 	@echo "gofmt checking"
 	gofmt -s -l -w $(FILES) 2>&1| $(FAIL_ON_STDOUT)
-	@echo "govet check"
-	govet -all $$($(PACKAGE_DIRECTORIES)) 2>&1
+	@echo "go vet check"
+	@GO111MODULE=on go vet -all $$($(PACKAGE_LIST)) 2>&1
 	@echo "mispell and ineffassign checking"
 	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all \
 	  --enable misspell \
@@ -114,8 +111,9 @@ errcheck:
 
 # TODO: shadow check fails at the moment
 check-shadow:
-	@echo "govet shadow checking"
-	govet -shadow $$($(PACKAGE_DIRECTORIES))
+	@echo "go vet shadow checking"
+	go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
+	@GO111MODULE=on go vet -vettool=$(which shadow) $$($(PACKAGE_LIST))
 
 lint:
 	@echo "linting"

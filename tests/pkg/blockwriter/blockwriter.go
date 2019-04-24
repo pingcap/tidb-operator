@@ -137,7 +137,7 @@ func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []st
 func (bw *blockWriter) batchExecute(db *sql.DB, query string) error {
 	_, err := db.Exec(query)
 	if err != nil {
-		glog.V(4).Infof("[%s] exec sql [%s] failed, err: %v", query, err)
+		glog.V(4).Infof("exec sql [%s] failed, err: %v", query, err)
 		return err
 	}
 
