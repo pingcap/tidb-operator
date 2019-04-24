@@ -106,8 +106,15 @@ func main() {
 		informerFactory = informers.NewSharedInformerFactory(cli, resyncDuration)
 		kubeInformerFactory = kubeinformers.NewSharedInformerFactory(kubeCli, resyncDuration)
 	} else {
-		informerFactory = informers.NewFilteredSharedInformerFactory(cli, resyncDuration, ns, nil)
-		kubeInformerFactory = kubeinformers.NewFilteredSharedInformerFactory(kubeCli, resyncDuration, ns, nil)
+		options := []informers.SharedInformerOption{
+			informers.WithNamespace(ns),
+		}
+		informerFactory = informers.NewSharedInformerFactoryWithOptions(cli, resyncDuration, options...)
+
+		kubeoptions := []kubeinformers.SharedInformerOption{
+			kubeinformers.WithNamespace(ns),
+		}
+		kubeInformerFactory = kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, resyncDuration, kubeoptions...)
 	}
 
 	rl := resourcelock.EndpointsLock{

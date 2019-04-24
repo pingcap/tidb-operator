@@ -3,9 +3,11 @@ package tests
 import (
 	"flag"
 	"fmt"
-	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"io/ioutil"
+	"os"
 	"strings"
+
+	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 
 	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
@@ -38,6 +40,8 @@ type Config struct {
 
 	// For local test
 	OperatorRepoDir string `yaml:"operator_repo_dir" json:"operator_repo_dir"`
+	// chart dir
+	ChartDir string `yaml:"chart_dir" json:"chart_dir"`
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
@@ -47,7 +51,7 @@ type Nodes struct {
 }
 
 // NewConfig creates a new config.
-func NewConfig() *Config {
+func NewConfig() (*Config, error) {
 	cfg := &Config{
 		BlockWriter: blockwriter.Config{
 			TableNum:    defaultTableNum,
@@ -65,11 +69,25 @@ func NewConfig() *Config {
 	flag.StringVar(&cfg.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
 	flag.Parse()
 
-	return cfg
+	operatorRepo, err := ioutil.TempDir("", "tidb-operator")
+	if err != nil {
+		return nil, err
+	}
+	cfg.OperatorRepoDir = operatorRepo
+
+	chartDir, err := ioutil.TempDir("", "charts")
+	if err != nil {
+		return nil, err
+	}
+	cfg.ChartDir = chartDir
+	return cfg, nil
 }
 
 func ParseConfigOrDie() *Config {
-	cfg := NewConfig()
+	cfg, err := NewConfig()
+	if err != nil {
+		panic(err)
+	}
 	if err := cfg.Parse(); err != nil {
 		panic(err)
 	}
@@ -139,4 +157,20 @@ func (c *Config) GetUpgradeTidbVersionsOrDie() []string {
 	}
 
 	return versions
+}
+
+func (c *Config) CleanTempDirs() error {
+	if c.OperatorRepoDir != "" {
+		err := os.RemoveAll(c.OperatorRepoDir)
+		if err != nil {
+			return err
+		}
+	}
+	if c.ChartDir != "" {
+		err := os.RemoveAll(c.ChartDir)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

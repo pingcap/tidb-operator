@@ -20,6 +20,8 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/pkg/util"
+
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/api"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
@@ -28,13 +30,17 @@ import (
 )
 
 var (
-	port      int
-	pprofPort int
+	port             int
+	pprofPort        int
+	kubeProxyImage   string
+	hostnameOverride string
 )
 
 func init() {
 	flag.IntVar(&port, "port", 23332, "The port that the fault trigger's http service runs on (default 23332)")
 	flag.IntVar(&pprofPort, "pprof-port", 6060, "The port that the pprof's http service runs on (default 6060)")
+	flag.StringVar(&kubeProxyImage, "kube-proxy-image", "k8s.gcr.io/kube-proxy:v1.12.2", "The kube proxy image (default k8s.gcr.io/kube-proxy:v1.12.2)")
+	flag.StringVar(&hostnameOverride, "hostname-override", "", "If non-empty, will use this string as identification instead of the actual hostname")
 
 	flag.Parse()
 }
@@ -43,7 +49,15 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	mgr := manager.NewManager()
+	mgr := manager.NewManager(kubeProxyImage)
+	hostname, err := util.GetHostname(hostnameOverride)
+	if err != nil {
+		glog.Fatalf("get hostname failed, err: %v", err)
+	}
+	err = mgr.UpdateKubeProxyDaemonset(hostname)
+	if err != nil {
+		glog.Fatalf("update kube-proxy daemonset failed, err: %v", err)
+	}
 
 	server := api.NewServer(mgr, port)
 
