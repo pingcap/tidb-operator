@@ -610,6 +610,12 @@ func (oa *operatorActions) CheckScaledCorrectly(info *TidbClusterConfig, podUIDs
 }
 
 func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
+	// record tikv leader count in webhook first
+	err := webhook.GetAllKVLeaders(oa.cli, info.Namespace, info.ClusterName)
+	if err != nil {
+		return err
+	}
+
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
 		info.ClusterName, chartPath("tidb-cluster", info.OperatorTag), info.TidbClusterHelmSetString(nil))
 	glog.Info("[UPGRADE] " + cmd)

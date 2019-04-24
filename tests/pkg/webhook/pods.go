@@ -1,80 +1,61 @@
 package webhook
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/kvproto/pkg/pdpb"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"k8s.io/api/admission/v1beta1"
 )
 
-type dbInfo struct {
-	IsOwner bool `json:"is_owner"`
-}
-
 var (
-	kvLeaders map[string]int
-	kvShoot   map[string]bool
+	// Pod name may the same in different namespaces
+	kvLeaderMap map[string]map[string]int
 )
 
-func HttpHandler(url string, method string, httpClient *http.Client) (content []byte, err error) {
-	req, err := http.NewRequest(method, url, nil)
-	if err != nil {
-		glog.Errorf("fail to generator request %v", err)
-		return nil, err
+func GetAllKVLeaders(versionCli versioned.Interface, namespace string, clusterName string) error {
+
+	if kvLeaderMap == nil {
+		kvLeaderMap = make(map[string]map[string]int)
 	}
 
-	res, err := httpClient.Do(req)
-	if err != nil {
-		glog.Errorf("fail to send request %v", err)
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	content, err = ioutil.ReadAll(res.Body)
-	if err != nil {
-		glog.Errorf("fail to read response %v", err)
-		return nil, err
+	if kvLeaderMap[namespace] == nil {
+		kvLeaderMap[namespace] = make(map[string]int)
 	}
 
-	return content, nil
+	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(clusterName, metav1.GetOptions{})
 
-}
+	if err != nil {
+		glog.Infof("fail to get tc clustername %s namesapce %s %v", clusterName, namespace, err)
+		return err
+	}
 
-func getAllKVLeaders(tc *v1alpha1.TidbCluster, httpClient *http.Client) (ret map[string]int, err error) {
-	ret = make(map[string]int)
-	podIP := tc.Status.PD.Leader.ClientURL
+	pdClient := controller.NewDefaultPDControl().GetPDClient(tc)
+
 	for _, store := range tc.Status.TiKV.Stores {
-		url := fmt.Sprintf("%s/pd/api/v1/store/%s", podIP, store.ID)
-
-		content, err := HttpHandler(url, "GET", httpClient)
+		storeID, err := strconv.ParseUint(store.ID, 10, 64)
+		if err != nil {
+			glog.Errorf("fail to convert string to int while deleting TIKV err %v", err)
+			return err
+		}
+		storeInfo, err := pdClient.GetStore(storeID)
 		if err != nil {
 			glog.Errorf("fail to read response %v", err)
-			return nil, err
+			return err
 		}
-
-		storeInfo := &controller.StoreInfo{}
-		err = json.Unmarshal(content, storeInfo)
-		if err != nil {
-			glog.Errorf("unmarshal failed, %v", err)
-			return nil, err
-		}
-
-		ret[store.PodName] = storeInfo.Status.LeaderCount
+		kvLeaderMap[namespace][store.PodName] = storeInfo.Status.LeaderCount
 	}
 
-	return ret, nil
+	return nil
 }
 
 // only allow pods to be delete when it is not ddlowner of tidb, not leader of pd and not
@@ -82,13 +63,6 @@ func getAllKVLeaders(tc *v1alpha1.TidbCluster, httpClient *http.Client) (ret map
 func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	glog.Infof("admitting pods")
 
-	if kvShoot == nil {
-		kvShoot = make(map[string]bool)
-	}
-
-	glog.Infof("kvshoot [%#v]",kvShoot)
-
-	httpClient := &http.Client{}
 	podResource := metav1.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
 	if ar.Request.Resource != podResource {
 		err := fmt.Errorf("expect resource to be %s", podResource)
@@ -99,132 +73,104 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	versionCli, kubeCli := client.NewCliOrDie()
 
 	name := ar.Request.Name
-	nameSpace := ar.Request.Namespace
-	shootName := fmt.Sprintf("%s:%s", nameSpace, name)
+	namespace := ar.Request.Namespace
 
 	reviewResponse := v1beta1.AdmissionResponse{}
 	reviewResponse.Allowed = true
 
-	pod, err := kubeCli.CoreV1().Pods(nameSpace).Get(name, metav1.GetOptions{})
+	pod, err := kubeCli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
-		reviewResponse.Allowed = false
-		glog.Infof("%v", err)
+		glog.Infof("api server send wrong pod info namespace %s name %s err %v", namespace, name, err)
 		return &reviewResponse
 	}
 
 	glog.Infof("delete pod %s", pod.Labels[label.ComponentLabelKey])
 
-	tc, err := versionCli.PingcapV1alpha1().TidbClusters(nameSpace).Get(pod.Labels["app.kubernetes.io/instance"], metav1.GetOptions{})
+	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(pod.Labels[label.InstanceLabelKey], metav1.GetOptions{})
 	if err != nil {
-		reviewResponse.Allowed = false
-		glog.Infof("%v", err)
+		glog.Infof("fail to fetch tidbcluster info namespace %s clustername(instance) %s err %v", namespace, pod.Labels[label.InstanceLabelKey], err)
 		return &reviewResponse
 	}
 
-	if pod.Labels[label.ComponentLabelKey] == "tidb" {
-		podIP := pod.Status.PodIP
-		url := fmt.Sprintf("http://%s:10080/info", podIP)
+	pdClient := controller.NewDefaultPDControl().GetPDClient(tc)
+	tidbController := controller.NewDefaultTiDBControl()
 
-		content, err := HttpHandler(url, "POST", httpClient)
+	if pod.Labels[label.ComponentLabelKey] == "tidb" {
+
+		ordinal, err := strconv.ParseInt(strings.Split(name, "-")[len(strings.Split(name, "-"))-1], 10, 32)
 		if err != nil {
-			glog.Errorf("fail to read response %v", err)
+			glog.Errorf("fail to convert string to int while deleting TiDB err %v", err)
 			return &reviewResponse
 		}
 
-		info := dbInfo{}
-		err = json.Unmarshal(content, &info)
+		info, err := tidbController.GetInfo(tc, int32(ordinal))
 		if err != nil {
-			glog.Errorf("unmarshal failed,namespace %s name %s error:%v", nameSpace, name, err)
+			glog.Errorf("fail to get tidb info error:%v", err)
 			return &reviewResponse
 		}
 
 		if info.IsOwner && tc.Status.TiDB.StatefulSet.Replicas > 1 {
 			time.Sleep(10 * time.Second)
-			glog.Errorf("tidb is ddl owner, can't be deleted namespace %s name %s", nameSpace, name)
+			glog.Errorf("tidb is ddl owner, can't be deleted namespace %s name %s", namespace, name)
 			os.Exit(3)
 		} else {
-			glog.Infof("savely delete pod namespace %s name %s content %s", nameSpace, name, string(content))
+			glog.Infof("savely delete pod namespace %s name %s isowner %t", namespace, name, info.IsOwner)
 		}
-
-		kvShoot[shootName] = true
 
 	} else if pod.Labels[label.ComponentLabelKey] == "pd" {
-		podIP := tc.Status.PD.Leader.ClientURL
-		url := fmt.Sprintf("%s/pd/api/v1/leader", podIP)
 
-		content, err := HttpHandler(url, "GET", httpClient)
+		leader, err := pdClient.GetPDLeader()
 		if err != nil {
-			glog.Errorf("fail to read response %v", err)
-			return &reviewResponse
-		}
-
-		leader := &pdpb.Member{}
-		err = json.Unmarshal(content, leader)
-		if err != nil {
-			glog.Errorf("unmarshal failed,namespace %s name %s error:%v", nameSpace, name, err)
+			glog.Errorf("fail to get pd leader %v", err)
 			return &reviewResponse
 		}
 
 		if leader.Name == name && tc.Status.TiDB.StatefulSet.Replicas > 1 {
 			time.Sleep(10 * time.Second)
-			glog.Errorf("pd is leader, can't be deleted namespace %s name %s", nameSpace, name)
+			glog.Errorf("pd is leader, can't be deleted namespace %s name %s", namespace, name)
 			os.Exit(3)
 		} else {
-			glog.Infof("savely delete pod namespace %s name %s leader name %s", nameSpace, name, leader.Name)
+			glog.Infof("savely delete pod namespace %s name %s leader name %s", namespace, name, leader.Name)
 		}
-
-		kvShoot[shootName] = true
 
 	} else if pod.Labels[label.ComponentLabelKey] == "tikv" {
 
-		if _, ok := kvShoot[shootName]; ok {
-			return &reviewResponse
-		}
-
-		var storeID string
-		podIP := tc.Status.PD.Leader.ClientURL
+		var storeID uint64
+		storeID = 0
 		for _, store := range tc.Status.TiKV.Stores {
 			if store.PodName == name {
-				storeID = store.ID
+				storeID, err = strconv.ParseUint(store.ID, 10, 64)
+				if err != nil {
+					glog.Errorf("fail to convert string to int while deleting PD err %v", err)
+					return &reviewResponse
+				}
+				break
 			}
 		}
 
-		url := fmt.Sprintf("%s/pd/api/v1/store/%s", podIP, storeID)
-
-		content, err := HttpHandler(url, "GET", httpClient)
-		if err != nil {
-			glog.Errorf("fail to read response %v", err)
+		// Fail to get store in stores
+		if storeID == 0 {
+			glog.Errorf("fail to find store in TIKV.Stores podname %s", name)
 			return &reviewResponse
 		}
 
-		storeInfo := &controller.StoreInfo{}
-		err = json.Unmarshal(content, storeInfo)
+		storeInfo, err := pdClient.GetStore(storeID)
 		if err != nil {
-			glog.Errorf("unmarshal failed,namespace %s name %s error:%v", nameSpace, name, err)
+			glog.Errorf("fail to read storeID %d response %v", storeID, err)
 			return &reviewResponse
 		}
 
-		beforeCount := kvLeaders[name]
+		beforeCount := kvLeaderMap[namespace][name]
 		afterCount := storeInfo.Status.LeaderCount
-		glog.Infof("before evict the leader is %d after evict the leader is %d", beforeCount, afterCount)
 
-		if beforeCount != 0 && afterCount >= beforeCount && tc.Status.TiKV.StatefulSet.Replicas > 1 {
+		if beforeCount != 0 && beforeCount <= afterCount && tc.Status.TiKV.StatefulSet.Replicas > 1 {
 			time.Sleep(10 * time.Second)
-			glog.Errorf("kv leader is not zero, can't be deleted namespace %s name %s leaderCount %d", nameSpace, name, storeInfo.Status.LeaderCount)
+			glog.Errorf("kv leader is not zero, can't be deleted namespace %s name %s leaderCount %d", namespace, name, storeInfo.Status.LeaderCount)
 			os.Exit(3)
 		} else {
-			glog.Infof("savely delete pod namespace %s name %s", nameSpace, name)
+			glog.Infof("savely delete pod namespace %s name %s before count %d after count %d", namespace, name, beforeCount, afterCount)
 		}
-
-		kvShoot[shootName] = true
-
 	}
-
-	if kvLeaders, err = getAllKVLeaders(tc, httpClient); err != nil {
-		glog.Errorf("fail to get kv infos #v", err)
-	}
-
-	glog.Infof("%#v", kvLeaders)
 
 	return &reviewResponse
 }

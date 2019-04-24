@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -27,12 +28,18 @@ const (
 	NotDDLOwnerError = "This node is not a ddl owner, can't be resigned."
 )
 
+type dbInfo struct {
+	IsOwner bool `json:"is_owner"`
+}
+
 // TiDBControlInterface is the interface that knows how to manage tidb peers
 type TiDBControlInterface interface {
 	// GetHealth returns tidb's health info
 	GetHealth(tc *v1alpha1.TidbCluster) map[string]bool
 	// ResignDDLOwner resigns the ddl owner of tidb, if the tidb node is not a ddl owner returns (true,nil),else returns (false,err)
 	ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error)
+	// Get TIDB info return tidb's dbInfo
+	GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*dbInfo, error)
 }
 
 // defaultTiDBControl is default implementation of TiDBControlInterface.
@@ -87,6 +94,37 @@ func (tdc *defaultTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal 
 		return true, nil
 	}
 	return false, err2
+}
+
+func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*dbInfo, error) {
+	tcName := tc.GetName()
+	ns := tc.GetNamespace()
+
+	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
+	url := fmt.Sprintf("http://%s.%s.%s:10080/info", hostName, TiDBPeerMemberName(tcName), ns)
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := tdc.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer DeferClose(res.Body, &err)
+	if res.StatusCode != http.StatusOK {
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v", res.StatusCode))
+		return nil, errMsg
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	info := dbInfo{}
+	err = json.Unmarshal(body, &info)
+	if err != nil {
+		return nil, err
+	}
+	return &info, nil
 }
 
 func (tdc *defaultTiDBControl) getBodyOK(apiURL string) ([]byte, error) {
