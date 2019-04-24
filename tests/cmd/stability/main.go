@@ -39,7 +39,7 @@ func main() {
 
 	conf := tests.ParseConfigOrDie()
 	cli, kubeCli := client.NewCliOrDie()
-	oa := tests.NewOperatorActions(cli, kubeCli, conf)
+	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollTimeout, conf)
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	fta.CheckAndRecoverEnvOrDie()
 	oa.CheckK8sAvailableOrDie(nil, nil)
@@ -83,7 +83,7 @@ func main() {
 		UserName:         "root",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName1),
 		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName1),
-		BackupPVC:        "backup-pvc",
+		BackupName:       "backup",
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
@@ -116,7 +116,7 @@ func main() {
 		UserName:         "root",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName2),
 		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName2),
-		BackupPVC:        "backup-pvc",
+		BackupName:       "backup",
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
@@ -223,7 +223,7 @@ func main() {
 	}
 
 	// truncate a sst file and check failover
-	//oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 5*time.Minute)
+	oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 5*time.Minute)
 
 	// stop one etcd node and k8s/operator/tidbcluster is available
 	faultEtcd := tests.SelectNode(conf.ETCDs)

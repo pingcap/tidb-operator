@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -91,7 +90,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	}
 
 	// restart tikv to ensure sst files
-	err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", 1, syscall.SIGKILL)
+	err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", "tikv-server")
 	if err != nil {
 		glog.Errorf("kill tikv: pod=%s err=%s", store.PodName, err.Error())
 		return err
@@ -125,9 +124,11 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	})
 
 	// make tikv crash
-	err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", 1, syscall.SIGTERM)
+	err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", "tikv-server")
 	if err != nil {
-		glog.Errorf("kill tikv: pod=%s err=%s", store.PodName, err.Error())
+		glog.Errorf("cluster: [%s/%s] kill tikv: pod=%s err=%s",
+			info.Namespace, info.ClusterName,
+			store.PodName, err.Error())
 		return err
 	}
 
@@ -135,12 +136,16 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 
 	return tikvOps.PollTiDBCluster(info.Namespace, info.ClusterName,
 		func(tc *v1alpha1.TidbCluster, err error) (bool, error) {
-			glog.Infof("check failure stores: current=%d origin=%d", len(tc.Status.TiKV.FailureStores), origFailures)
+			glog.Infof("cluster: [%s/%s] check failure stores: current=%d origin=%d",
+				info.Namespace, info.ClusterName,
+				len(tc.Status.TiKV.FailureStores), origFailures)
 			if len(tc.Status.TiKV.FailureStores) <= origFailures {
 				return false, nil
 			}
 			ups := countUpStores(tc)
-			glog.Infof("check up stores: current=%d origin=%d", ups, origUps)
+			glog.Infof("cluster: [%s/%s] check up stores: current=%d origin=%d",
+				info.Namespace, info.ClusterName,
+				ups, origUps)
 			if ups < origUps {
 				return false, nil
 			}

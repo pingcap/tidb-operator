@@ -127,7 +127,7 @@ func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []st
 			if len(queryChan) < queryChanSize {
 				queryChan <- querys
 			} else {
-				glog.Infof("[%s] [%s] [action: generate Query] query channel is full, sleep 10 seconds", c, c.ClusterName)
+				glog.V(4).Infof("[%s] [%s] [action: generate Query] query channel is full, sleep 10 seconds", c, c.ClusterName)
 				util.Sleep(ctx, 10*time.Second)
 			}
 		}
@@ -137,7 +137,7 @@ func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []st
 func (bw *blockWriter) batchExecute(db *sql.DB, query string) error {
 	_, err := db.Exec(query)
 	if err != nil {
-		glog.V(4).Infof("[%s] exec sql [%s] failed, err: %v", query, err)
+		glog.V(4).Infof("exec sql [%s] failed, err: %v", query, err)
 		return err
 	}
 
@@ -164,7 +164,7 @@ func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan []str
 				return
 			default:
 				if err := bw.batchExecute(db, query); err != nil {
-					glog.Error(err)
+					glog.V(4).Info(err)
 					time.Sleep(5 * time.Second)
 					continue
 				}

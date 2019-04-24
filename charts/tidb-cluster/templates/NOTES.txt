@@ -15,13 +15,14 @@ Cluster access
     kubectl port-forward -n {{ .Release.Namespace }} svc/{{ template "cluster.name" . }}-tidb 4000:4000 &
 {{- if .Values.tidb.passwordSecretName }}
     mysql -h 127.0.0.1 -P 4000 -u root -D test -p
-{{- else -}}
+{{- else }}
     mysql -h 127.0.0.1 -P 4000 -u root -D test
   Set a password for your user
-    SET PASSWORD FOR 'root'@'%' = '{{ (randAlphaNum 10) }}'; FLUSH PRIVILEGES
+    SET PASSWORD FOR 'root'@'%' = '{{ (randAlphaNum 10) }}'; FLUSH PRIVILEGES;
 {{- end -}}
 {{- if .Values.monitor.create }}
 * View monitor dashboard for TiDB cluster
    kubectl port-forward -n {{ .Release.Namespace }} svc/{{ template "cluster.name" . }}-grafana 3000:3000
    Open browser at http://localhost:3000. The default username and password is admin/admin.
+   If you are running this from a remote machine, you must specify the server's external IP address.
 {{- end -}}

@@ -16,9 +16,7 @@ import (
 	"bytes"
 	"io"
 	"net/url"
-	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/errors"
@@ -81,9 +79,9 @@ func (cli *ClientOps) ExecWithOptions(options ExecOptions) (string, string, erro
 	return strings.TrimSpace(stdout.String()), strings.TrimSpace(stderr.String()), err
 }
 
-func (cli *ClientOps) KillProcess(ns string, pod string, container string, pid int, sig syscall.Signal) error {
+func (cli *ClientOps) KillProcess(ns string, pod string, container string, pname string) error {
 	_, _, err := cli.ExecWithOptions(ExecOptions{
-		Command:       []string{"kill", "-" + strconv.Itoa(int(sig)), strconv.Itoa(pid)},
+		Command:       []string{"pkill", pname},
 		Namespace:     ns,
 		PodName:       pod,
 		ContainerName: container,
