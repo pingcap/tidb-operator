@@ -102,12 +102,12 @@ func (bc *BackupCase) Run() error {
 	glog.Infof("waiting 1 minutes for binlog to work")
 	time.Sleep(1 * time.Minute)
 
-	glog.Infof("cluster[%s] begin insert data")
+	glog.Infof("cluster[%s] begin insert data", bc.srcCluster.ClusterName)
 	go bc.operator.BeginInsertDataTo(bc.srcCluster)
 
 	time.Sleep(30 * time.Second)
 
-	glog.Infof("cluster[%s] stop insert data")
+	glog.Infof("cluster[%s] stop insert data", bc.srcCluster.ClusterName)
 	bc.operator.StopInsertDataTo(bc.srcCluster)
 
 	time.Sleep(5 * time.Second)

@@ -55,12 +55,13 @@ const (
 	period = 5 * time.Minute
 )
 
-func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, cfg *Config) OperatorActions {
+func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, pollInterval time.Duration, cfg *Config) OperatorActions {
 	return &operatorActions{
-		cli:       cli,
-		kubeCli:   kubeCli,
-		pdControl: controller.NewDefaultPDControl(),
-		cfg:       cfg,
+		cli:          cli,
+		kubeCli:      kubeCli,
+		pdControl:    controller.NewDefaultPDControl(),
+		pollInterval: pollInterval,
+		cfg:          cfg,
 	}
 }
 
@@ -125,10 +126,11 @@ type OperatorActions interface {
 }
 
 type operatorActions struct {
-	cli       versioned.Interface
-	kubeCli   kubernetes.Interface
-	pdControl controller.PDControlInterface
-	cfg       *Config
+	cli          versioned.Interface
+	kubeCli      kubernetes.Interface
+	pdControl    controller.PDControlInterface
+	pollInterval time.Duration
+	cfg          *Config
 }
 
 var _ = OperatorActions(&operatorActions{})
@@ -420,7 +422,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		}
 		return true, nil
 	}
-	return wait.PollImmediate(DefaultPollInterval, DefaultPollTimeout, pollFn)
+	return wait.PollImmediate(oa.pollInterval, DefaultPollTimeout, pollFn)
 }
 
 func (oa *operatorActions) CleanTidbClusterOrDie(info *TidbClusterConfig) {
@@ -434,7 +436,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 
 	ns := info.Namespace
 	tcName := info.ClusterName
-	if err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, func() (bool, error) {
+	if err := wait.Poll(oa.pollInterval, DefaultPollTimeout, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -557,7 +559,7 @@ func (oa *operatorActions) ScaleTidbClusterOrDie(info *TidbClusterConfig) {
 }
 
 func (oa *operatorActions) CheckScaleInSafely(info *TidbClusterConfig) error {
-	return wait.Poll(DefaultPollInterval, DefaultPollTimeout, func() (done bool, err error) {
+	return wait.Poll(oa.pollInterval, DefaultPollTimeout, func() (done bool, err error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 		if err != nil {
 			glog.Infof("failed to get tidbcluster when scale in tidbcluster, error: %v", err)
@@ -592,7 +594,7 @@ func (oa *operatorActions) CheckScaleInSafely(info *TidbClusterConfig) error {
 }
 
 func (oa *operatorActions) CheckScaledCorrectly(info *TidbClusterConfig, podUIDsBeforeScale map[string]types.UID) error {
-	return wait.Poll(DefaultPollInterval, DefaultPollTimeout, func() (done bool, err error) {
+	return wait.Poll(oa.pollInterval, DefaultPollTimeout, func() (done bool, err error) {
 		podUIDs, err := oa.GetPodUIDMap(info)
 		if err != nil {
 			glog.Infof("failed to get pd pods's uid, error: %v", err)
@@ -631,7 +633,7 @@ func (oa *operatorActions) UpgradeTidbClusterOrDie(info *TidbClusterConfig) {
 }
 
 func (oa *operatorActions) CheckUpgradeProgress(info *TidbClusterConfig) error {
-	return wait.Poll(DefaultPollInterval, DefaultPollTimeout, func() (done bool, err error) {
+	return wait.Poll(oa.pollInterval, DefaultPollTimeout, func() (done bool, err error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 		if err != nil {
 			glog.Infof("failed to get tidbcluster: [%s], error: %v", info.ClusterName, err)
@@ -1428,7 +1430,7 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
 		return true, nil
 	}
 
-	err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
+	err := wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
@@ -1495,7 +1497,7 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 		return true, nil
 	}
 
-	err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
+	err := wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
@@ -1678,7 +1680,7 @@ func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterConfig) error {
 		return false, nil
 	}
 
-	err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
+	err := wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
@@ -1755,7 +1757,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 		return true, nil
 	}
 
-	err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
+	err := wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete pod %s", getBackupDirPodName)
@@ -1775,7 +1777,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 		return true, nil
 	}
 
-	err = wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
+	err = wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pod %s", getBackupDirPodName)
@@ -1889,7 +1891,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig) error
 		return true, nil
 	}
 
-	err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
+	err := wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
