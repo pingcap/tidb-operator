@@ -44,10 +44,10 @@ type Annotation struct {
 
 //AnnotationOptions is the query options to a standard REST list call.
 type AnnotationOptions struct {
-	DashboardId int   `json:"dashboardId, omitempty"`
-	PanelId     int   `json:"panelId, omitempty"`
-	IsRegin     bool  `json:"isRegion, omitempty"`
-	TimeEnd     int64 `json:"timeEnd, omitempty"`
+	DashboardId int   `json:"dashboardId,omitempty"`
+	PanelId     int   `json:"panelId,omitempty"`
+	IsRegin     bool  `json:"isRegion,omitempty"`
+	TimeEnd     int64 `json:"timeEnd,omitempty"`
 }
 
 //NewClient creats a new grafanaClient. This client performs rest functions
