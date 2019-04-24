@@ -165,8 +165,6 @@ func (fa *faultTriggerActions) StartNode(physicalNode string, node string) error
 		return err
 	}
 
-	glog.Infof("%+v", vms)
-
 	for _, vm := range vms {
 		if vm.IP == node && vm.Status == "running" {
 			return nil
@@ -325,7 +323,7 @@ func (fa *faultTriggerActions) serviceAction(node string, serverName string, act
 		return err
 	}
 
-	glog.Infof("%s %s %s successfully", action, serverName, node)
+	glog.V(4).Infof("%s %s %s successfully", action, serverName, node)
 
 	return nil
 }

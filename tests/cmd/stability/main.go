@@ -80,7 +80,7 @@ func main() {
 		UserName:         "root",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName1),
 		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName1),
-		BackupPVC:        "backup-pvc",
+		BackupName:       "backup",
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
@@ -113,7 +113,7 @@ func main() {
 		UserName:         "root",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName2),
 		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName2),
-		BackupPVC:        "backup-pvc",
+		BackupName:       "backup",
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
