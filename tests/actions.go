@@ -65,7 +65,7 @@ func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, c
 }
 
 const (
-	DefaultPollTimeout   time.Duration = 30 * time.Minute
+	DefaultPollTimeout   time.Duration = 10 * time.Minute
 	DefaultPollInterval  time.Duration = 1 * time.Minute
 	getBackupDirPodName                = "get-backup-dir"
 	grafanaUsername                    = "admin"
