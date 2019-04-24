@@ -120,8 +120,8 @@ type OperatorActions interface {
 	GetNodeMap(info *TidbClusterConfig, component string) (map[string][]string, error)
 	TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error
 	TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration)
-	CheckFailoverPending(info *TidbClusterConfig, faultPoint *time.Time) (bool, error)
-	CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, faultPoint *time.Time)
+	CheckFailoverPending(info *TidbClusterConfig, node string, faultPoint *time.Time) (bool, error)
+	CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, node string, faultPoint *time.Time)
 	CheckFailover(info *TidbClusterConfig, faultNode string) (bool, error)
 	CheckFailoverOrDie(clusters []*TidbClusterConfig, faultNode string)
 	CheckRecover(cluster *TidbClusterConfig) (bool, error)

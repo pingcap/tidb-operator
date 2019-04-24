@@ -91,7 +91,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	}
 
 	// restart tikv to ensure sst files
-	err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", 1, syscall.SIGTERM)
+	err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", 1, syscall.SIGKILL)
 	if err != nil {
 		glog.Errorf("kill tikv: pod=%s err=%s", store.PodName, err.Error())
 		return err
@@ -154,7 +154,12 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailoverOrDie(info *TidbClust
 	}
 }
 
-func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, faultPoint *time.Time) (bool, error) {
+func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node string, faultPoint *time.Time) (bool, error) {
+	affectedPods, err := oa.getPodsByNode(info, node)
+	if err != nil {
+		glog.Infof("cluster:[%s] query pods failed,error:%v", info.FullName(), err)
+		return false, nil
+	}
 	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 	if err != nil {
 		glog.Infof("pending failover,failed to get tidbcluster:[%s], error: %v", info.FullName(), err)
@@ -168,19 +173,32 @@ func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, faultPo
 	deadline := faultPoint.Add(period)
 	if time.Now().Before(deadline) {
 		if tc.Status.PD.FailureMembers != nil && len(tc.Status.PD.FailureMembers) > 0 {
-			err := fmt.Errorf("cluster: [%s] the pd member should be mark failure after %s", info.FullName(), deadline.Format(time.RFC3339))
-			glog.Errorf(err.Error())
-			return false, err
+			for _, failureMember := range tc.Status.PD.FailureMembers {
+				if _, exist := affectedPods[failureMember.PodName]; exist {
+					err := fmt.Errorf("cluster: [%s] the pd member[%s] should be mark failure after %s", info.FullName(), failureMember.PodName, deadline.Format(time.RFC3339))
+					glog.Errorf(err.Error())
+					return false, err
+				}
+			}
 		}
 		if tc.Status.TiKV.FailureStores != nil && len(tc.Status.TiKV.FailureStores) > 0 {
-			err := fmt.Errorf("cluster: [%s] the tikv store should be mark failure after %s", info.FullName(), deadline.Format(time.RFC3339))
-			glog.Errorf(err.Error())
-			return false, err
+			for _, failureStore := range tc.Status.TiKV.FailureStores {
+				if _, exist := affectedPods[failureStore.PodName]; exist {
+					err := fmt.Errorf("cluster: [%s] the tikv store[%s] should be mark failure after %s", info.FullName(), failureStore.PodName, deadline.Format(time.RFC3339))
+					glog.Errorf(err.Error())
+					return false, err
+				}
+			}
+
 		}
 		if tc.Status.TiDB.FailureMembers != nil && len(tc.Status.TiDB.FailureMembers) > 0 {
-			err := fmt.Errorf("cluster: [%s] the tidb member should be mark failure after %s", info.FullName(), deadline.Format(time.RFC3339))
-			glog.Errorf(err.Error())
-			return false, err
+			for _, failureMember := range tc.Status.TiDB.FailureMembers {
+				if _, exist := affectedPods[failureMember.PodName]; exist {
+					err := fmt.Errorf("cluster: [%s] the tidb member[%s] should be mark failure after %s", info.FullName(), failureMember.PodName, deadline.Format(time.RFC3339))
+					glog.Errorf(err.Error())
+					return false, err
+				}
+			}
 		}
 
 		glog.Infof("cluster: [%s] operator's failover feature is pending", info.FullName())
@@ -189,11 +207,11 @@ func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, faultPo
 	return true, nil
 }
 
-func (oa *operatorActions) CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, faultPoint *time.Time) {
+func (oa *operatorActions) CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, node string, faultPoint *time.Time) {
 	if err := wait.Poll(1*time.Minute, 30*time.Minute, func() (bool, error) {
 		var passes []bool
 		for i := range clusters {
-			pass, err := oa.CheckFailoverPending(clusters[i], faultPoint)
+			pass, err := oa.CheckFailoverPending(clusters[i], node, faultPoint)
 			if err != nil {
 				return pass, err
 			}
@@ -211,23 +229,12 @@ func (oa *operatorActions) CheckFailoverPendingOrDie(clusters []*TidbClusterConf
 }
 
 func (oa *operatorActions) CheckFailover(info *TidbClusterConfig, node string) (bool, error) {
-	selector, err := label.New().Instance(info.ClusterName).Selector()
+	affectedPods, err := oa.getPodsByNode(info, node)
 	if err != nil {
-		glog.Errorf("cluster:[%s] create selector failed, error:%v", info.FullName(), err)
-		return false, nil
-	}
-	pods, err := oa.kubeCli.CoreV1().Pods(info.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		glog.Errorf("cluster:[%s] query pods failed, error:%v", info.FullName(), err)
+		glog.Infof("cluster:[%s] query pods failed,error:%v", info.FullName(), err)
 		return false, nil
 	}
 
-	affectedPods := map[string]*corev1.Pod{}
-	for i, pod := range pods.Items {
-		if pod.Spec.NodeName == node {
-			affectedPods[pod.Name] = &pods.Items[i]
-		}
-	}
 	if len(affectedPods) == 0 {
 		glog.Infof("the cluster:[%s] can not be affected by node:[%s]", info.FullName(), node)
 		return true, nil
@@ -258,6 +265,27 @@ func (oa *operatorActions) CheckFailover(info *TidbClusterConfig, node string) (
 
 	glog.Infof("cluster: [%s]'s failover feature has complete", info.FullName())
 	return true, nil
+}
+
+func (oa *operatorActions) getPodsByNode(info *TidbClusterConfig, node string) (map[string]*corev1.Pod, error) {
+	selector, err := label.New().Instance(info.ClusterName).Selector()
+	if err != nil {
+		glog.Errorf("cluster:[%s] create selector failed, error:%v", info.FullName(), err)
+		return nil, err
+	}
+	pods, err := oa.kubeCli.CoreV1().Pods(info.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		glog.Errorf("cluster:[%s] query pods failed, error:%v", info.FullName(), err)
+		return nil, err
+	}
+	podsOfNode := map[string]*corev1.Pod{}
+	for i, pod := range pods.Items {
+		if pod.Spec.NodeName == node {
+			podsOfNode[pod.Name] = &pods.Items[i]
+		}
+	}
+
+	return podsOfNode, nil
 }
 
 func (oa *operatorActions) CheckFailoverOrDie(clusters []*TidbClusterConfig, faultNode string) {
@@ -525,7 +553,7 @@ func (oa *operatorActions) CheckK8sAvailableOrDie(excludeNodes map[string]*corev
 }
 
 func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]*corev1.Node, excludePods map[string]*corev1.Pod) error {
-	return wait.Poll(3*time.Second, time.Minute, func() (bool, error) {
+	return wait.Poll(3*time.Second, 3*time.Minute, func() (bool, error) {
 		nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
 		if err != nil {
 			glog.Errorf("failed to list nodes,error:%v", err)

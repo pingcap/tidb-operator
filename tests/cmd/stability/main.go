@@ -213,7 +213,7 @@ func main() {
 
 	// stop a node and failover automatically
 	physicalNode, node, faultTime := fta.StopNodeOrDie()
-	oa.CheckFailoverPendingOrDie(allClusters, &faultTime)
+	oa.CheckFailoverPendingOrDie(allClusters, node, &faultTime)
 	oa.CheckFailoverOrDie(allClusters, node)
 	time.Sleep(3 * time.Minute)
 	fta.StartNodeOrDie(physicalNode, node)
@@ -223,7 +223,7 @@ func main() {
 	}
 
 	// truncate a sst file and check failover
-	oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 5*time.Minute)
+	//oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 5*time.Minute)
 
 	// stop one etcd node and k8s/operator/tidbcluster is available
 	faultEtcd := tests.SelectNode(conf.ETCDs)
