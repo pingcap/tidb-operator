@@ -20,10 +20,10 @@ Code changes
  - Has Helm charts change
  - Has Go code change
  - Has CI related scripts change
+ - Has documents change
 
 Side effects
 
- - Increased code complexity
  - Breaking backward compatibility
 
 Related changes
