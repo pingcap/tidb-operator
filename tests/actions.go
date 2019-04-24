@@ -1695,12 +1695,7 @@ func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterConfig) error {
 		return fmt.Errorf("scheduler job failed!")
 	}
 
-	err = oa.disableScheduledBackup(info)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return oa.disableScheduledBackup(info)
 }
 
 func getParentUIDFromJob(j batchv1.Job) (types.UID, bool) {
