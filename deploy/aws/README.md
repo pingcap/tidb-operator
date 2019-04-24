@@ -12,6 +12,14 @@ https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html
 
 ## Setup
 
+The default setup will create a new VPC and a t2.micro instance as bastion machine. And EKS cluster with the following ec2 instance worker nodes:
+
+* 3 m5d.xlarge instances for PD
+* 3 i3.2xlarge instances for TiKV
+* 2 c4.4xlarge instances for TiDB
+* 1 c5.xlarge instance for monitor
+
+
 ``` shell
 $ git clone https://github.com/pingcap/tidb-operator
 $ cd tidb-operator/cloud/aws
@@ -64,5 +72,10 @@ The TiDB version and component count are also configurable in variables.tf, you 
 Currently, the instance type of TiDB cluster component is not configurable because PD and TiKV relies on [NVMe SSD instance store](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html), different instance types have different disks.
 
 ## TODO
+
 - [ ] auto-scaling group policy
 - [ ] Allow create a minimal TiDB cluster
+
+## Known issues
+
+There is possibility the helm install release fails the first time, but running `terraform apply` again will install tidb-operator and tidb-cluster release successfully.
