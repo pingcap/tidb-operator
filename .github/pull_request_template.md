@@ -2,7 +2,7 @@
 Thank you for contributing to TiDB Operator! Please read TiDB Operator's [CONTRIBUTING](https://github.com/pingcap/tidb-operator/blob/master/CONTRIBUTING.md) document **BEFORE** filing this PR.
 -->
 
-### What problem does this PR solve? <!--add issue link with summary if exists-->
+### What problem does this PR solve? <!--add and issue link with summary if exists-->
 
 ### What is changed and how it works?
 
@@ -12,6 +12,7 @@ Tests <!-- At least one of them must be included. -->
 
  - Unit test
  - E2E test
+ - Stability test
  - Manual test (add detailed scripts or steps below)
  - No code
 
