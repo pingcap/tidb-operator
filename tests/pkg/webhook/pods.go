@@ -76,7 +76,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	namespace := ar.Request.Namespace
 
 	reviewResponse := v1beta1.AdmissionResponse{}
-	reviewResponse.Allowed = true
+	reviewResponse.Allowed = false
 
 	pod, err := kubeCli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -171,6 +171,6 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 			glog.Infof("savely delete pod namespace %s name %s before count %d after count %d", namespace, name, beforeCount, afterCount)
 		}
 	}
-
+	reviewResponse.Allowed = true
 	return &reviewResponse
 }
