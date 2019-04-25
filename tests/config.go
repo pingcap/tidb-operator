@@ -1,13 +1,24 @@
 package tests
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
+	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
+
 	"github.com/golang/glog"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
+)
+
+const (
+	defaultTableNum    int = 64
+	defaultConcurrency     = 128
+	defaultBatchSize       = 100
+	defaultRawSize         = 100
 )
 
 // Config defines the config of operator tests
@@ -22,6 +33,16 @@ type Config struct {
 	Nodes            []Nodes `yaml:"nodes" json:"nodes"`
 	ETCDs            []Nodes `yaml:"etcds" json:"etcds"`
 	APIServers       []Nodes `yaml:"apiservers" json:"apiservers"`
+	CertFile         string
+	KeyFile          string
+
+	// Block writer
+	BlockWriter blockwriter.Config `yaml:"block_writer,omitempty"`
+
+	// For local test
+	OperatorRepoDir string `yaml:"operator_repo_dir" json:"operator_repo_dir"`
+	// chart dir
+	ChartDir string `yaml:"chart_dir" json:"chart_dir"`
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
@@ -31,20 +52,48 @@ type Nodes struct {
 }
 
 // NewConfig creates a new config.
-func NewConfig() *Config {
-	cfg := &Config{}
+func NewConfig() (*Config, error) {
+	cfg := &Config{
+		BlockWriter: blockwriter.Config{
+			TableNum:    defaultTableNum,
+			Concurrency: defaultConcurrency,
+			BatchSize:   defaultBatchSize,
+			RawSize:     defaultRawSize,
+		},
+	}
 	flag.StringVar(&cfg.configFile, "config", "", "Config file")
 	flag.StringVar(&cfg.LogDir, "log-dir", "/logDir", "log directory")
 	flag.IntVar(&cfg.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
 	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v2.1.3,v2.1.4", "tidb versions")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
+	flag.StringVar(&cfg.CertFile, "tls-cert-file", cfg.CertFile, ""+
+		"File containing the default x509 Certificate for HTTPS. (CA cert, if any, concatenated "+
+		"after server cert).")
+	flag.StringVar(&cfg.KeyFile, "tls-private-key-file", cfg.KeyFile, ""+
+		"File containing the default x509 private key matching --tls-cert-file.")
+	flag.StringVar(&cfg.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
+	flag.Parse()
 
-	return cfg
+	operatorRepo, err := ioutil.TempDir("", "tidb-operator")
+	if err != nil {
+		return nil, err
+	}
+	cfg.OperatorRepoDir = operatorRepo
+
+	chartDir, err := ioutil.TempDir("", "charts")
+	if err != nil {
+		return nil, err
+	}
+	cfg.ChartDir = chartDir
+	return cfg, nil
 }
 
 func ParseConfigOrDie() *Config {
-	cfg := NewConfig()
+	cfg, err := NewConfig()
+	if err != nil {
+		panic(err)
+	}
 	if err := cfg.Parse(); err != nil {
 		panic(err)
 	}
@@ -101,6 +150,16 @@ func (c *Config) GetTiDBVersionOrDie() string {
 	return v
 }
 
+func (c *Config) ConfigTLS() *tls.Config {
+	sCert, err := tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	return &tls.Config{
+		Certificates: []tls.Certificate{sCert},
+	}
+}
+
 func (c *Config) GetUpgradeTidbVersions() []string {
 	tidbVersions := strings.Split(c.TidbVersions, ",")
 
@@ -114,4 +173,20 @@ func (c *Config) GetUpgradeTidbVersionsOrDie() []string {
 	}
 
 	return versions
+}
+
+func (c *Config) CleanTempDirs() error {
+	if c.OperatorRepoDir != "" {
+		err := os.RemoveAll(c.OperatorRepoDir)
+		if err != nil {
+			return err
+		}
+	}
+	if c.ChartDir != "" {
+		err := os.RemoveAll(c.ChartDir)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -36,11 +36,16 @@ func NewBackupCase(operator tests.OperatorActions, srcCluster *tests.TidbCluster
 }
 
 func (bc *BackupCase) Run() error {
-	//err := bc.operator.StopInsertDataTo(bc.srcCluster)
-	//if err != nil {
-	//	glog.Errorf("cluster:[%s] stop insert data failed,error: %v", bc.srcCluster.ClusterName, err)
-	//	return err
-	//}
+
+	// pause write pressure during backup
+	bc.operator.StopInsertDataTo(bc.srcCluster)
+	defer func() {
+		go func() {
+			if err := bc.operator.BeginInsertDataTo(bc.srcCluster); err != nil {
+				glog.Errorf("cluster:[%s] begin insert data failed,error: %v", bc.srcCluster.ClusterName, err)
+			}
+		}()
+	}()
 
 	err := bc.operator.DeployAdHocBackup(bc.srcCluster)
 	if err != nil {
@@ -97,12 +102,12 @@ func (bc *BackupCase) Run() error {
 	glog.Infof("waiting 1 minutes for binlog to work")
 	time.Sleep(1 * time.Minute)
 
-	glog.Infof("cluster[%s] begin insert data")
+	glog.Infof("cluster[%s] begin insert data", bc.srcCluster.ClusterName)
 	go bc.operator.BeginInsertDataTo(bc.srcCluster)
 
 	time.Sleep(30 * time.Second)
 
-	glog.Infof("cluster[%s] stop insert data")
+	glog.Infof("cluster[%s] stop insert data", bc.srcCluster.ClusterName)
 	bc.operator.StopInsertDataTo(bc.srcCluster)
 
 	time.Sleep(5 * time.Second)
@@ -118,12 +123,6 @@ func (bc *BackupCase) Run() error {
 	if srcCount != desCount {
 		return fmt.Errorf("cluster:[%s] the src cluster data[%d] is not equals des cluster data[%d]", bc.srcCluster.FullName(), srcCount, desCount)
 	}
-
-	//err = bc.operator.BeginInsertDataTo(bc.srcCluster)
-	//if err != nil {
-	//	glog.Errorf("cluster:[%s] begin insert data failed,error: %v", bc.srcCluster.ClusterName, err)
-	//	return err
-	//}
 
 	return nil
 }

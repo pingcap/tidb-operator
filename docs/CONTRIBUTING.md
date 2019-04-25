@@ -122,7 +122,7 @@ $ make e2e-docker-push
 After Docker images are pushed to the DinD Docker registry, run e2e tests:
 
 ```sh
-$ kubectl apply -f manifests/tidb-operator-e2e.yaml
+$ kubectl apply -f tests/manifests/e2e/e2e.yaml
 ```
 
 You can get the e2e test report from the log of testing pod: 

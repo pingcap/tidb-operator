@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -28,7 +29,7 @@ import (
 )
 
 //Client request grafana API on a set of resource paths.
-type client struct {
+type Client struct {
 	// base is the root URL for all invocations of the client
 	baseUrl url.URL
 	client  *http.Client
@@ -44,15 +45,15 @@ type Annotation struct {
 
 //AnnotationOptions is the query options to a standard REST list call.
 type AnnotationOptions struct {
-	DashboardId int   `json:"dashboardId, omitempty"`
-	PanelId     int   `json:"panelId, omitempty"`
-	IsRegin     bool  `json:"isRegion, omitempty"`
-	TimeEnd     int64 `json:"timeEnd, omitempty"`
+	DashboardId int   `json:"dashboardId,omitempty"`
+	PanelId     int   `json:"panelId,omitempty"`
+	IsRegin     bool  `json:"isRegion,omitempty"`
+	TimeEnd     int64 `json:"timeEnd,omitempty"`
 }
 
 //NewClient creats a new grafanaClient. This client performs rest functions
 //such as Get, Post on specified paths.
-func NewClient(grafanaUrl string, userName string, password string, prometheusExporterPort int) (*client, error) {
+func NewClient(grafanaUrl string, userName string, password string, prometheusExporterPort int) (*Client, error) {
 	u, err := url.Parse(grafanaUrl)
 	if err != nil {
 		return nil, err
@@ -60,7 +61,7 @@ func NewClient(grafanaUrl string, userName string, password string, prometheusEx
 
 	initFunc(prometheusExporterPort)
 	u.User = url.UserPassword(userName, password)
-	return &client{
+	return &Client{
 		baseUrl: *u,
 		client:  &http.Client{},
 	}, nil
@@ -110,7 +111,7 @@ func initErrorMetric() prometheus.Counter {
 
 //IncreErrorCountWithAnno increments the errorcount by 1,
 //and add the annotation to grafanan.
-func (cli *client) AddAnnotation(annotation Annotation) error {
+func (cli *Client) AddAnnotation(annotation Annotation) error {
 	body, err := annotation.getBody()
 	if err != nil {
 		return fmt.Errorf("create request body faield, %v", err)
@@ -123,8 +124,8 @@ func (cli *client) AddAnnotation(annotation Annotation) error {
 
 	req.Header.Add("Accept", "application/json, text/plain, */*")
 	req.Header.Add("Content-Type", "application/json;charset=UTF-8")
-	resp, error := cli.client.Do(req)
-	if error != nil {
+	resp, err := cli.client.Do(req)
+	if err != nil {
 		return fmt.Errorf("add annotation faield, %v", err)
 	}
 	defer resp.Body.Close()
@@ -132,15 +133,20 @@ func (cli *client) AddAnnotation(annotation Annotation) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("add annotation faield, statusCode=%v", resp.Status)
 	}
+	all, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	fmt.Println(all)
 
 	return nil
 }
 
-func (cli *client) IncrErrorCount() {
+func (cli *Client) IncrErrorCount() {
 	counterMetric.Inc()
 }
 
-func (cli *client) getAnnotationPath() string {
+func (cli *Client) getAnnotationPath() string {
 	u := cli.baseUrl
 	u.Path = path.Join(cli.baseUrl.Path, annotationSubPath)
 	return u.String()

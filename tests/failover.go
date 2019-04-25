@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -44,7 +43,6 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		return cnt
 	}
 
-	origFailures := len(tc.Status.TiKV.FailureStores)
 	origUps := countUpStores(tc)
 
 	// checkout pd config
@@ -89,8 +87,9 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		return errors.New("failed to get container status from tikv pod")
 	}
 
+	oa.emitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s", store.PodName))
 	// restart tikv to ensure sst files
-	err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", 1, syscall.SIGTERM)
+	err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", "tikv-server")
 	if err != nil {
 		glog.Errorf("kill tikv: pod=%s err=%s", store.PodName, err.Error())
 		return err
@@ -124,22 +123,28 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	})
 
 	// make tikv crash
-	err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", 1, syscall.SIGTERM)
-	if err != nil {
-		glog.Errorf("kill tikv: pod=%s err=%s", store.PodName, err.Error())
-		return err
-	}
+	//err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", "tikv-server")
+	//if err != nil {
+	//	glog.Errorf("cluster: [%s/%s] kill tikv: pod=%s err=%s",
+	//		info.Namespace, info.ClusterName,
+	//		store.PodName, err.Error())
+	//	return err
+	//}
 
 	tikvOps.SetPoll(DefaultPollInterval, maxStoreDownTime+tikvFailoverPeriod+failoverTimeout)
 
 	return tikvOps.PollTiDBCluster(info.Namespace, info.ClusterName,
 		func(tc *v1alpha1.TidbCluster, err error) (bool, error) {
-			glog.Infof("check failure stores: current=%d origin=%d", len(tc.Status.TiKV.FailureStores), origFailures)
-			if len(tc.Status.TiKV.FailureStores) <= origFailures {
+			_, ok := tc.Status.TiKV.FailureStores[store.ID]
+			glog.Infof("cluster: [%s/%s] check if target store failed: %t",
+				info.Namespace, info.ClusterName, ok)
+			if !ok {
 				return false, nil
 			}
 			ups := countUpStores(tc)
-			glog.Infof("check up stores: current=%d origin=%d", ups, origUps)
+			glog.Infof("cluster: [%s/%s] check up stores: current=%d origin=%d",
+				info.Namespace, info.ClusterName,
+				ups, origUps)
 			if ups < origUps {
 				return false, nil
 			}

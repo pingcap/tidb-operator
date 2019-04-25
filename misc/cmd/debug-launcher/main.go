@@ -1,4 +1,4 @@
-// Copyright 2019 PingCAP, Inc.
+// Copyright 2019. PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,21 +11,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package workload
+package main
 
-import "github.com/pingcap/errors"
+import (
+	"github.com/pingcap/tidb-operator/pkg/tkctl/debug"
+	"log"
+	"os"
+)
 
-type Workload interface {
-	Enter() error
-	Leave()
-}
+func main() {
 
-func Run(f func() error, ws ...Workload) error {
-	for _, w := range ws {
-		if err := w.Enter(); err != nil {
-			return errors.Annotate(err, "enter workload")
-		}
-		defer w.Leave()
+	iostreams := debug.IOStreams{
+		In:     os.Stdin,
+		Out:    os.Stdout,
+		ErrOut: os.Stderr,
 	}
-	return f()
+	cmd := debug.NewLauncherCmd(iostreams)
+	if err := cmd.Execute(); err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
 }

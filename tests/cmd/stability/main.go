@@ -21,38 +21,43 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
+	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"k8s.io/apiserver/pkg/util/logs"
 
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
-	"github.com/pingcap/tidb-operator/tests/pkg/client"
 )
 
 func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
-
 	go func() {
 		glog.Info(http.ListenAndServe("localhost:6060", nil))
 	}()
 
 	conf := tests.ParseConfigOrDie()
 	cli, kubeCli := client.NewCliOrDie()
-	oa := tests.NewOperatorActions(cli, kubeCli, conf)
+	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollTimeout, conf)
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	fta.CheckAndRecoverEnvOrDie()
 
 	tidbVersion := conf.GetTiDBVersionOrDie()
 	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
 
+	// start a http server in goruntine
+	go oa.StartValidatingAdmissionWebhookServerOrDie()
+
 	// operator config
 	operatorCfg := &tests.OperatorConfig{
-		Namespace:      "pingcap",
-		ReleaseName:    "operator",
-		Image:          conf.OperatorImage,
-		Tag:            conf.OperatorTag,
-		SchedulerImage: "gcr.io/google-containers/hyperkube",
-		LogLevel:       "2",
+		Namespace:          "pingcap",
+		ReleaseName:        "operator",
+		Image:              conf.OperatorImage,
+		Tag:                conf.OperatorTag,
+		SchedulerImage:     "gcr.io/google-containers/hyperkube",
+		LogLevel:           "2",
+		WebhookServiceName: "webhook-service",
+		WebhookSecretName:  "webhook-secret",
+		WebhookConfigName:  "webhook-config",
 	}
 
 	// TODO remove this
@@ -75,7 +80,7 @@ func main() {
 		UserName:         "root",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName1),
 		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName1),
-		BackupPVC:        "backup-pvc",
+		BackupName:       "backup",
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
@@ -91,8 +96,9 @@ func main() {
 			"tidb.resources.requests.memory": "1Gi",
 			"monitor.persistent":             "true",
 		},
-		Args:    map[string]string{},
-		Monitor: true,
+		Args:             map[string]string{},
+		Monitor:          true,
+		BlockWriteConfig: conf.BlockWriter,
 	}
 	cluster2 := &tests.TidbClusterConfig{
 		Namespace:        clusterName2,
@@ -107,7 +113,7 @@ func main() {
 		UserName:         "root",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName2),
 		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName2),
-		BackupPVC:        "backup-pvc",
+		BackupName:       "backup",
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
@@ -124,8 +130,9 @@ func main() {
 			// TODO assert the the monitor's pvc exist and clean it when bootstrapping
 			"monitor.persistent": "true",
 		},
-		Args:    map[string]string{},
-		Monitor: true,
+		Args:             map[string]string{},
+		Monitor:          true,
+		BlockWriteConfig: conf.BlockWriter,
 	}
 
 	// cluster backup and restore
@@ -140,14 +147,14 @@ func main() {
 		oa.DumpAllLogs(operatorCfg, allClusters)
 	}()
 
+	// clean and deploy operator
+	oa.CleanOperatorOrDie(operatorCfg)
+	oa.DeployOperatorOrDie(operatorCfg)
+
 	// clean all clusters
 	for _, cluster := range allClusters {
 		oa.CleanTidbClusterOrDie(cluster)
 	}
-
-	// clean and deploy operator
-	oa.CleanOperatorOrDie(operatorCfg)
-	oa.DeployOperatorOrDie(operatorCfg)
 
 	// deploy and check cluster1, cluster2
 	oa.DeployTidbClusterOrDie(cluster1)
@@ -155,19 +162,10 @@ func main() {
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
-	//go func() {
-	//	oa.BeginInsertDataTo(cluster1)
-	//	oa.BeginInsertDataTo(cluster2)
-	//}()
-
-	// TODO add DDL
-	//var workloads []workload.Workload
-	//for _, clusterInfo := range clusterInfos {
-	//	workload := ddl.New(clusterInfo.DSN("test"), 1, 1)
-	//	workloads = append(workloads, workload)
-	//}
-	//err = workload.Run(func() error {
-	//}, workloads...)
+	go oa.BeginInsertDataToOrDie(cluster1)
+	defer oa.StopInsertDataTo(cluster1)
+	go oa.BeginInsertDataToOrDie(cluster2)
+	defer oa.StopInsertDataTo(cluster2)
 
 	// scale out cluster1 and cluster2
 	cluster1.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
@@ -187,6 +185,9 @@ func main() {
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
+	// before upgrade cluster, register webhook first
+	oa.RegisterWebHookAndServiceOrDie(operatorCfg)
+
 	// upgrade cluster1 and cluster2
 	firstUpgradeVersion := upgardeTiDBVersions[0]
 	cluster1.UpgradeAll(firstUpgradeVersion)
@@ -196,6 +197,9 @@ func main() {
 	time.Sleep(30 * time.Second)
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
+
+	// after upgrade cluster, clean webhook
+	oa.CleanWebHookAndService(operatorCfg)
 
 	// deploy and check cluster restore
 	oa.DeployTidbClusterOrDie(clusterRestoreTo)
@@ -218,5 +222,10 @@ func main() {
 	// truncate a sst file and check failover
 	oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 5*time.Minute)
 
+	//clean temp dirs when stability success
+	err := conf.CleanTempDirs()
+	if err != nil {
+		glog.Errorf("failed to clean temp dirs, this error can be ignored.")
+	}
 	glog.Infof("\nFinished.")
 }
