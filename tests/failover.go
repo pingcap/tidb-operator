@@ -43,7 +43,6 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		return cnt
 	}
 
-	origFailures := len(tc.Status.TiKV.FailureStores)
 	origUps := countUpStores(tc)
 
 	// checkout pd config
@@ -71,49 +70,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		glog.Infof("target store: id=%s pod=%s", store.ID, store.PodName)
 	}
 
-	// checkout pod status
-	//podBeforeRestart, err := cli.CoreV1().Pods(info.Namespace).Get(store.PodName, metav1.GetOptions{})
-	//if err != nil {
-	//	glog.Errorf("failed to get target pod: pod=%s err=%s", store.PodName, err.Error())
-	//	return err
-	//}
-
-	//var rc int32
-	//if c := util.GetContainerStatusFromPod(podBeforeRestart, func(status corev1.ContainerStatus) bool {
-	//	return status.Name == "tikv"
-	//}); c != nil {
-	//	rc = c.RestartCount
-	//} else {
-	//	glog.Errorf("failed to get container status from tikv pod")
-	//	return errors.New("failed to get container status from tikv pod")
-	//}
-
-	//// restart tikv to ensure sst files
-	//err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", "tikv-server")
-	//if err != nil {
-	//	glog.Errorf("kill tikv: pod=%s err=%s", store.PodName, err.Error())
-	//	return err
-	//}
-
-	//err = tikvOps.PollPod(info.Namespace, store.PodName,
-	//	func(pod *corev1.Pod, err error) (bool, error) {
-	//		if pod == nil {
-	//			glog.Warningf("pod is nil: err=%s", err.Error())
-	//			return false, nil
-	//		}
-	//		tikv := util.GetContainerStatusFromPod(pod, func(status corev1.ContainerStatus) bool {
-	//			return status.Name == "tikv"
-	//		})
-
-	//		if pod.Status.Phase == corev1.PodRunning && tikv != nil && tikv.RestartCount > rc {
-	//			return true, nil
-	//		}
-	//		return false, nil
-	//	})
-	//if err != nil {
-	//	glog.Errorf("cluster:[%s]'s tikv[%s] process hasn't been restarted: err=%s", info.ClusterName, store.PodName, err.Error())
-	//	return err
-	//}
+	oa.emitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s", store.PodName))
 
 	// truncate the sst file and wait for failover
 	err = tikvOps.TruncateSSTFile(ops.TruncateOptions{
@@ -122,23 +79,23 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		Store:     store.ID,
 	})
 
-	// make tikv crash
-	err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", "tikv-server")
-	if err != nil {
-		glog.Errorf("cluster: [%s/%s] kill tikv: pod=%s err=%s",
-			info.Namespace, info.ClusterName,
-			store.PodName, err.Error())
-		return err
-	}
+	// delete tikv pod
+	wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
+		err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(store.PodName, &metav1.DeleteOptions{})
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
 
 	tikvOps.SetPoll(DefaultPollInterval, maxStoreDownTime+tikvFailoverPeriod+failoverTimeout)
 
 	return tikvOps.PollTiDBCluster(info.Namespace, info.ClusterName,
 		func(tc *v1alpha1.TidbCluster, err error) (bool, error) {
-			glog.Infof("cluster: [%s/%s] check failure stores: current=%d origin=%d",
-				info.Namespace, info.ClusterName,
-				len(tc.Status.TiKV.FailureStores), origFailures)
-			if len(tc.Status.TiKV.FailureStores) <= origFailures {
+			_, ok := tc.Status.TiKV.FailureStores[store.ID]
+			glog.Infof("cluster: [%s/%s] check if target store failed: %t",
+				info.Namespace, info.ClusterName, ok)
+			if !ok {
 				return false, nil
 			}
 			ups := countUpStores(tc)

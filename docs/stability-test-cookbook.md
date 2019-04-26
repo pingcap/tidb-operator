@@ -2,6 +2,8 @@
 
 > Important notes: this guide is under heavy development and have complicated enviroment pre-requesites, things are ought to change in the future.
 
+## Run stability test
+
 The following commands assumes you are in the `tidb-operator` working directory:
 ```shell
 # image will be tagged as YOUR_DOCKER_REGISTRY/pingcap/tidb-operator-stability-test:latest
@@ -13,6 +15,35 @@ $ vi ./tests/manifests/stability/stability.yaml
 # apply the stability test pod
 $ kubectl apply -f ./tests/manifests/stability/stability.yaml
 ```
+
+## Get test report
+
+```shell
+$ kubectl -n tidb-operator-stability logs tidb-operator-stability
+```
+
+## Inspect overall cluster stats under various operations
+
+It is useful to inspect how the cluster performs under various kind of operations or faults, you can access such information from the Grafana dashboard of each cluster:
+
+```shell
+$ kubectl port-forward -n ${CLUSTER_NAMESPACE} svc/${CLUSTER_GRAFANA_SERVICE} 3000:3000
+```
+
+Navigate to [localhost:3000](http://localhost:3000) to view the dashboards.
+ 
+Optionally, you can view the event annotations like `scale cluster`, `upgrade cluster`, `vm crash` by querying annotations in Grafana to get better understanding of the system, follow this step-by-step guide:
+
+1. click "Dashboard Setting" in the navigate bar
+2. click the big "Make Editable" button
+3. click "Annotations" in the sidebar
+4. click "Add Annotation Query"
+5. enter a name you like
+6. switch "Match Any" on
+7. add "stability" tag
+8. click "add"
+9. go back to dashboard and you will see the annotations trigger and the cluster events
+
 
 ## Alternative: run stability test in your local environment
 
