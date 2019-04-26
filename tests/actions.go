@@ -419,14 +419,14 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	pollFn := func() (bool, error) {
 		if res, err := exec.Command("kubectl", "get", "po", "--output=name", "-n", info.Namespace, "-l", setStr).
 			CombinedOutput(); err != nil || len(res) != 0 {
-			glog.V(4).Infof("waiting for tidbcluster: %s/%s pods deleting, %v, [%s]",
+			glog.Infof("waiting for tidbcluster: %s/%s pods deleting, %v, [%s]",
 				info.Namespace, info.ClusterName, err, string(res))
 			return false, nil
 		}
 
-		pvCmd := fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s 2>/dev/null|grep Released",
-			label.NamespaceLabelKey, info.Namespace, label.InstanceLabelKey, info.ClusterName)
-		glog.V(4).Info(pvCmd)
+		pvCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s 2>/dev/null|grep Released",
+			info.Namespace, info.ClusterName)
+		glog.Info(pvCmd)
 		if res, err := exec.Command("/bin/sh", "-c", pvCmd).
 			CombinedOutput(); len(res) == 0 {
 		} else if err != nil {
@@ -465,35 +465,35 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 			return false, nil
 		}
 
-		glog.V(4).Infof("check tidb cluster begin tidbMembersReadyFn")
+		glog.Infof("check tidb cluster begin tidbMembersReadyFn")
 		if b, err := oa.tidbMembersReadyFn(tc); !b && err == nil {
 			return false, nil
 		}
 
-		glog.V(4).Infof("check tidb cluster begin reclaimPolicySyncFn")
+		glog.Infof("check tidb cluster begin reclaimPolicySyncFn")
 		if b, err := oa.reclaimPolicySyncFn(tc); !b && err == nil {
 			return false, nil
 		}
 
-		glog.V(4).Infof("check tidb cluster begin metaSyncFn")
+		glog.Infof("check tidb cluster begin metaSyncFn")
 		if b, err := oa.metaSyncFn(tc); err != nil {
 			return false, err
 		} else if !b && err == nil {
 			return false, nil
 		}
 
-		glog.V(4).Infof("check tidb cluster begin schedulerHAFn")
+		glog.Infof("check tidb cluster begin schedulerHAFn")
 		if b, err := oa.schedulerHAFn(tc); !b && err == nil {
 			return false, nil
 		}
 
-		glog.V(4).Infof("check tidb cluster begin passwordIsSet")
+		glog.Infof("check tidb cluster begin passwordIsSet")
 		if b, err := oa.passwordIsSet(info); !b && err == nil {
 			return false, nil
 		}
 
 		if info.Monitor {
-			glog.V(4).Infof("check tidb monitor normal")
+			glog.Infof("check tidb monitor normal")
 			if b, err := oa.monitorNormal(info); !b && err == nil {
 				return false, nil
 			}
@@ -1405,11 +1405,12 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	glog.Infof("begin to deploy adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
 	sets := map[string]string{
-		"name":         info.BackupName,
-		"mode":         "backup",
-		"user":         "root",
-		"password":     info.Password,
-		"storage.size": "10Gi",
+		"name":          info.BackupName,
+		"mode":          "backup",
+		"user":          "root",
+		"password":      info.Password,
+		"storage.size":  "10Gi",
+		"backupOptions": "'--chunk-filesize=100 --threads=1'",
 	}
 
 	setString := info.BackupHelmSetString(sets)
@@ -1446,7 +1447,7 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
 
 	err := wait.Poll(DefaultPollInterval, BackupAndRestorePollTimeOut, fn)
 	if err != nil {
-		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
+		return fmt.Errorf("failed to launch backup job: %v", err)
 	}
 
 	return nil
@@ -1487,7 +1488,7 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 			return false, nil
 		}
 		if job.Status.Succeeded == 0 {
-			glog.Errorf("cluster [%s] back up job is not completed, please wait! ", to.ClusterName)
+			glog.Errorf("cluster [%s] restore job is not completed, please wait! ", to.ClusterName)
 			return false, nil
 		}
 
@@ -1513,7 +1514,7 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 
 	err := wait.Poll(DefaultPollInterval, BackupAndRestorePollTimeOut, fn)
 	if err != nil {
-		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
+		return fmt.Errorf("failed to launch restore job: %v", err)
 	}
 	return nil
 }
@@ -1608,6 +1609,7 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 		"scheduledBackup.schedule":   cron,
 		"scheduledBackup.storage":    "10Gi",
 		"scheduledBackup.secretName": info.BackupSecretName,
+		"scheduledBackup.options":    "'--chunk-filesize=100 --threads=1'",
 	}
 
 	setString := info.TidbClusterHelmSetString(sets)

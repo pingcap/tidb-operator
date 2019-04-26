@@ -14,7 +14,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/ops"
-	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -73,48 +72,48 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	}
 
 	// checkout pod status
-	podBeforeRestart, err := cli.CoreV1().Pods(info.Namespace).Get(store.PodName, metav1.GetOptions{})
-	if err != nil {
-		glog.Errorf("failed to get target pod: pod=%s err=%s", store.PodName, err.Error())
-		return err
-	}
+	//podBeforeRestart, err := cli.CoreV1().Pods(info.Namespace).Get(store.PodName, metav1.GetOptions{})
+	//if err != nil {
+	//	glog.Errorf("failed to get target pod: pod=%s err=%s", store.PodName, err.Error())
+	//	return err
+	//}
 
-	var rc int32
-	if c := util.GetContainerStatusFromPod(podBeforeRestart, func(status corev1.ContainerStatus) bool {
-		return status.Name == "tikv"
-	}); c != nil {
-		rc = c.RestartCount
-	} else {
-		glog.Errorf("failed to get container status from tikv pod")
-		return errors.New("failed to get container status from tikv pod")
-	}
+	//var rc int32
+	//if c := util.GetContainerStatusFromPod(podBeforeRestart, func(status corev1.ContainerStatus) bool {
+	//	return status.Name == "tikv"
+	//}); c != nil {
+	//	rc = c.RestartCount
+	//} else {
+	//	glog.Errorf("failed to get container status from tikv pod")
+	//	return errors.New("failed to get container status from tikv pod")
+	//}
 
-	// restart tikv to ensure sst files
-	err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", "tikv-server")
-	if err != nil {
-		glog.Errorf("kill tikv: pod=%s err=%s", store.PodName, err.Error())
-		return err
-	}
+	//// restart tikv to ensure sst files
+	//err = tikvOps.KillProcess(info.Namespace, store.PodName, "tikv", "tikv-server")
+	//if err != nil {
+	//	glog.Errorf("kill tikv: pod=%s err=%s", store.PodName, err.Error())
+	//	return err
+	//}
 
-	err = tikvOps.PollPod(info.Namespace, store.PodName,
-		func(pod *corev1.Pod, err error) (bool, error) {
-			if pod == nil {
-				glog.Warningf("pod is nil: err=%s", err.Error())
-				return false, nil
-			}
-			tikv := util.GetContainerStatusFromPod(pod, func(status corev1.ContainerStatus) bool {
-				return status.Name == "tikv"
-			})
+	//err = tikvOps.PollPod(info.Namespace, store.PodName,
+	//	func(pod *corev1.Pod, err error) (bool, error) {
+	//		if pod == nil {
+	//			glog.Warningf("pod is nil: err=%s", err.Error())
+	//			return false, nil
+	//		}
+	//		tikv := util.GetContainerStatusFromPod(pod, func(status corev1.ContainerStatus) bool {
+	//			return status.Name == "tikv"
+	//		})
 
-			if pod.Status.Phase == corev1.PodRunning && tikv != nil && tikv.RestartCount > rc {
-				return true, nil
-			}
-			return false, nil
-		})
-	if err != nil {
-		glog.Errorf("tikv process hasn't been restarted: err=%s", err.Error())
-		return err
-	}
+	//		if pod.Status.Phase == corev1.PodRunning && tikv != nil && tikv.RestartCount > rc {
+	//			return true, nil
+	//		}
+	//		return false, nil
+	//	})
+	//if err != nil {
+	//	glog.Errorf("cluster:[%s]'s tikv[%s] process hasn't been restarted: err=%s", info.ClusterName, store.PodName, err.Error())
+	//	return err
+	//}
 
 	// truncate the sst file and wait for failover
 	err = tikvOps.TruncateSSTFile(ops.TruncateOptions{

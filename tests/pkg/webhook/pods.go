@@ -45,7 +45,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		return &reviewResponse
 	}
 
-	glog.Infof("delete pod %s", pod.Labels["app.kubernetes.io/component"])
+	glog.Infof("delete %s pod [%s]", pod.Labels["app.kubernetes.io/component"], pod.GetName())
 
 	if pod.Labels["app.kubernetes.io/component"] == "tidb" {
 		podIP := pod.Status.PodIP

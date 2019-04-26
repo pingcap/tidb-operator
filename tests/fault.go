@@ -182,7 +182,7 @@ func (fa *faultTriggerActions) StartNode(physicalNode string, node string) error
 		return err
 	}
 
-	glog.Infof("node %s on physical node %s is started", physicalNode, node)
+	glog.Infof("node %s on physical node %s is started", node, physicalNode)
 
 	return nil
 }
