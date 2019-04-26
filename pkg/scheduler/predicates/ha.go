@@ -165,6 +165,9 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	return getNodeFromNames(nodes, minNodeNames), nil
 }
 
+// kubernetes scheduling is parallel, to achieve HA, we must ensure the scheduling is serial,
+// so when a pod is scheduling, we set an annotation to its PVC, other pods can't be scheduled at this time,
+// delete the PVC's annotation when the pod is scheduled(PVC is bound and the pod's nodeName is set)
 func (h *ha) realAcquireLock(pod *apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error) {
 	ns := pod.GetNamespace()
 	component := pod.Labels[label.ComponentLabelKey]
