@@ -97,6 +97,14 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 	if pod.Labels[label.ComponentLabelKey] == "tidb" {
 
+
+		// if tidb pod is deleting, allow pod delete operation
+		if pod.DeletionTimestamp != nil {
+			glog.Infof("TIDB pod status is namespace %s name %s timestamp %s",namespace, name, pod.DeletionTimestamp)
+			reviewResponse.Allowed = true
+			return &reviewResponse
+		}
+
 		ordinal, err := strconv.ParseInt(strings.Split(name, "-")[len(strings.Split(name, "-"))-1], 10, 32)
 		if err != nil {
 			glog.Errorf("fail to convert string to int while deleting TiDB err %v", err)

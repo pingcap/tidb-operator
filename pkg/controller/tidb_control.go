@@ -150,6 +150,8 @@ type FakeTiDBControl struct {
 	healthInfo          map[string]bool
 	resignDDLOwnerError error
 	notDDLOwner         bool
+	tidbInfo            *dbInfo
+	getInfoError        error
 }
 
 // NewFakeTiDBControl returns a FakeTiDBControl instance
@@ -178,4 +180,8 @@ func (ftd *FakeTiDBControl) GetHealth(_ *v1alpha1.TidbCluster) map[string]bool {
 
 func (ftd *FakeTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
 	return ftd.notDDLOwner, ftd.resignDDLOwnerError
+}
+
+func (ftd *FakeTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*dbInfo, error) {
+	return ftd.tidbInfo, ftd.getInfoError
 }
