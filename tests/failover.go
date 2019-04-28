@@ -52,7 +52,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		return err
 	}
 	maxStoreDownTime := pdCfg.Schedule.MaxStoreDownTime.Duration
-	glog.Infof("failover config: maxStoreDownTime=%v tikvFailoverPeriod=%v", maxStoreDownTime, tikvFailoverPeriod)
+	glog.Infof("truncate sst file failover config: maxStoreDownTime=%v tikvFailoverPeriod=%v", maxStoreDownTime, tikvFailoverPeriod)
 
 	// find an up store
 	var store v1alpha1.TiKVStore
@@ -67,10 +67,17 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		glog.Errorf("failed to find an up store")
 		return errors.New("no up store for truncating sst file")
 	} else {
-		glog.Infof("target store: id=%s pod=%s", store.ID, store.PodName)
+		glog.Infof("truncate sst file target store: id=%s pod=%s", store.ID, store.PodName)
 	}
 
 	oa.emitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s", store.PodName))
+	glog.Infof("deleting pod: [%s/%s] and wait 1 minute for the pod to terminate", info.Namespace, store.PodName)
+	err = cli.CoreV1().Pods(info.Namespace).Delete(store.PodName, nil)
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(1 * time.Minute)
 
 	// truncate the sst file and wait for failover
 	err = tikvOps.TruncateSSTFile(ops.TruncateOptions{
@@ -78,8 +85,13 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		Cluster:   info.ClusterName,
 		Store:     store.ID,
 	})
+	if err != nil {
+		return err
+	}
+	oa.emitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s/%s", info.Namespace, store.PodName))
 
 	// delete tikv pod
+	glog.Infof("deleting pod: [%s/%s] again", info.Namespace, store.PodName)
 	wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
 		err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(store.PodName, &metav1.DeleteOptions{})
 		if err != nil {
