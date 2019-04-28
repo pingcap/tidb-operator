@@ -17,7 +17,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -32,7 +31,6 @@ import (
 	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -49,7 +47,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
+	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
+	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 )
 
 const (
@@ -443,7 +443,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 
 	ns := info.Namespace
 	tcName := info.ClusterName
-	if err := wait.Poll(oa.pollInterval, DefaultPollTimeout, func() (bool, error) {
+	if err := wait.Poll(oa.pollInterval, 30*time.Minute, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -1524,7 +1524,7 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 		return true, nil
 	}
 
-	err := wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
+	err := wait.Poll(oa.pollInterval, 30*time.Minute, fn)
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
