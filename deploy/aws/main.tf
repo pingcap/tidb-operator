@@ -81,7 +81,9 @@ module "eks" {
   version = "2.3.1"
   cluster_name = "${var.cluster_name}"
   cluster_version = "${var.k8s_version}"
-  config_output_path = "credentials/"
+  # The output config can not be used by kubernetes and helm provider directly
+  # so using local_file resource to force kubernetes and helm provider to rely on
+  # config_output_path = "credentials/"
   subnets = "${split(",", var.create_vpc ? join(",", module.vpc.private_subnets) : join(",", var.subnets))}"
   vpc_id = "${var.create_vpc ? module.vpc.vpc_id : var.vpc_id}"
 
@@ -146,8 +148,19 @@ module "eks" {
   }
 }
 
+# kubernetes and helm providers rely on EKS, but terraform provider doesn't support depends_on
+# follow this link https://github.com/hashicorp/terraform/issues/2430#issuecomment-370685911
+# we have the following hack
+resource "local_file" "kubeconfig" {
+  # HACK: depends_on for the helm and kubernetes provider
+  # Passing provider configuration value via a local_file
+  depends_on = ["module.eks"]
+  sensitive_content = "${module.eks.kubeconfig}"
+  filename = "${path.module}/credentials/kubeconfig_${var.cluster_name}"
+}
+
 provider "kubernetes" {
-  config_path = "${path.module}/credentials/kubeconfig_${var.cluster_name}"
+  config_path = "${local_file.kubeconfig.filename}"
 }
 
 provider "helm" {
@@ -155,7 +168,7 @@ provider "helm" {
   # service_account = "tiller"
   # install_tiller = true # currently this doesn't work, so we install tiller in the local-exec provisioner. See https://github.com/terraform-providers/terraform-provider-helm/issues/148
   kubernetes {
-    config_path = "${path.module}/credentials/kubeconfig_${var.cluster_name}"
+    config_path = "${local_file.kubeconfig.filename}"
   }
 }
 
@@ -173,9 +186,10 @@ helm init --service-account tiller --upgrade --wait
 until helm ls; do
   echo "Wait tiller ready"
 done
+helm version
 EOS
     environment = {
-      KUBECONFIG = "${path.module}/credentials/kubeconfig_${var.cluster_name}"
+      KUBECONFIG = "${local_file.kubeconfig.filename}"
     }
   }
 }
