@@ -351,7 +351,7 @@ func (fa *faultTriggerActions) serviceAction(node string, serverName string, act
 		return err
 	}
 
-	glog.V(4).Infof("%s %s %s successfully", action, serverName, node)
+	glog.Infof("%s %s %s successfully", action, serverName, node)
 
 	return nil
 }

@@ -234,14 +234,6 @@ func main() {
 	oa.CheckOneEtcdDownOrDie(operatorCfg, allClusters, faultEtcd)
 	fta.StartETCDOrDie(faultEtcd)
 
-	// stop one apiserver node and k8s/operator/tidbcluster is available
-	faultApiserver := tests.SelectNode(conf.APIServers)
-	fta.StopKubeAPIServerOrDie(faultApiserver)
-	defer fta.StartKubeAPIServer(faultApiserver)
-	time.Sleep(3 * time.Minute)
-	oa.CheckOneApiserverDownOrDie(operatorCfg, allClusters, faultApiserver)
-	fta.StartKubeAPIServerOrDie(faultApiserver)
-
 	//clean temp dirs when stability success
 	err := conf.CleanTempDirs()
 	if err != nil {
