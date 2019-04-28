@@ -1,0 +1,116 @@
+# 在阿里云上部署 TiDB Operator 和 TiDB 集群
+
+## 环境需求
+
+- [aliyun-cli](https://github.com/aliyun/aliyun-cli) >= 3.0.15 并且[配置 aliyun-cli](https://www.alibabacloud.com/help/doc-detail/90766.htm?spm=a2c63.l28256.a3.4.7b52a893EFVglq)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.12
+- [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) 2.9.*
+- [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) 0.11.*
+
+> 推荐使用阿里云的 [云命令行](https://shell.aliyun.com) 进行操作，云命令行中已经预装并且配置好了所有会用到的工具。
+
+## 概览
+
+默认配置下，我们会创建：
+ 
+- 一个新的 VPC；
+- 一台 ECS 实例作为堡垒机；
+- 一个托管版 ACK(阿里云 Kubernetes)集群以及一系列 worker 节点：
+  - 属于一个伸缩组的 2 台 ECS 实例(1核1G), 托管版 Kubernetes 的默认伸缩组中必须至少有两台实例, 用于承载整个的系统服务, 比如 CoreDNS
+  - 属于一个伸缩组的 3 台 `ecs.i2.xlarge` 实例, 用于部署 PD
+  - 属于一个伸缩组的 3 台 `ecs.i2.2xlarge` 实例, 用于部署 TiKV
+  - 属于一个伸缩组的 2 台 ECS 实例(16核32G)用于部署 TiDB
+  - 属于一个伸缩组的 1 台 ECS 实例(4核8G)用于部署监控组件
+  - 一块 500GB 的云盘用作监控数据存储
+
+除了默认伸缩组之外的其它所有实例都是跨可用区部署的。而伸缩组(Auto-scaling Group)能够保证集群的健康实例数等于期望数值，因此，当发生节点故障甚至可用区故障时，伸缩组能够自动为我们创建新实例来确保服务可用性。
+
+## 安装
+
+设置目标 Region 和阿里云密钥(也可以在运行 `terraform` 命令时根据命令提示输入)
+```shell
+export TF_VAR_ALICLOUD_REGION=<YOUR_REGION>
+export TF_VAR_ALICLOUD_ACCESS_KEY=<YOUR_ACCESS_KEY>
+export TF_VAR_ALICLOUD_SECRET_KEY=<YOUR_SECRET_KEY>
+```
+
+使用 Terraform 进行安装：
+
+```shell
+$ git clone https://github.com/pingcap/tidb-operator
+$ cd tidb-operator/cloud/aws
+$ terraform init
+$ terraform apply
+```
+
+整个安装过程大约需要 5 至 10 分钟，安装完成后，可以用 `kubectl` 或 `helm` 对集群进行操作：
+
+```shell
+$ export KUBECONFIG=$PWD/credentials/kubeconfig_<cluster_name>
+$ kubectl version
+$ helm ls
+```
+
+接下来，确认 TiDB 集群是否就绪：
+
+```shell
+$ watch kubectl get po --n tidb
+```
+
+一旦所有的 Pod 都进入 `READY` 或 `COMPLETE` 状态，就可以通过堡垒机连接 TiDB 集群进行测试了：
+
+```shell
+# 获取 tidb-cluster-tidb service 的 EXTERNAL-IP
+$ kubectl get svc -n tidb
+$ ssh -i credentials/bastion-key.pem root@<bastion_ip>
+$ mysql -h <tidb_slb_ip> -P 4000 -u root
+```
+
+## 升级 TiDB 集群
+
+设置 `variables.tf` 中的 `tidb_version` 参数，运行 `terraform apply` 即可完成升级。
+
+## TiDB 集群水平伸缩
+
+设计 `variables.tf` 中的 `tikv_count` 和 `tidb_count`，运行 `terraform apply` 即可完成 TiDB 集群的水平伸缩。
+
+## 销毁集群
+
+```shell
+$ terraform destroy
+```
+
+> 注意：监控组件挂载的云盘需要手动删除。
+
+## 监控
+
+你可以通过 `kubectl` 获取监控系统的公网 IP:
+```shell
+# 获取 tidb-cluster-grafana 服务的 EXTERNAL-IP
+$ kubectl get svc -n tidb
+```
+
+访问 `${EXTERNAL-IP}:3000` 就可以查看相关的 Grafana 看板。
+
+> 出于安全考虑，假如你已经或将要给 VPC 配置 VPN，强烈推荐将 `monitor_slb_network_type` 设置为 `intranet` 来禁止监控服务的公网访问。
+
+## 自定义
+
+默认配置下，Terraform 脚本会创建一个新的 VPC，假如要使用现有的 VPC，可以在 `variable.tf` 中设置 `vpc_id`。注意，当使用现有 VPC 时，没有设置 vswitch 的可用区将不会部署 kubernetes 节点。
+
+出于安全考虑，TiDB 服务的 SLB 只对内网暴露，因此默认配置下还会创建一台堡垒机用于运维操作。堡垒机上还会安装 mysql-cli 和 sysbench 以便于使用和测试。假如不需要堡垒机，可以设置 `variables.tf` 中的 `create_bastion` 参数来关闭。
+
+实例的规格可以通过两种方式进行定义：
+
+1. 通过声明实例规格名；
+2. 通过声明实例的配置，比如 CPU 核数和内存大小。
+
+由于阿里云在不同地域会提供不同的规格类型，并且部分规格有售罄的情况，我们推荐使用第二种办法来定义更通用的实例规格。你可以在 `variables.tf` 中找到相关的配置项。
+
+特殊地，由于 PD 和 TiKV 节点强需求本地 SSD 存储，脚本中不允许直接声明 PD 和 TiKV 的规格名，你可以通过设置 `*_instance_type_family` 来选择 PD 或 TiKV 的规格族（只能在三个拥有本地 SSD 的规格族中选择），再通过内存大小来筛选符合需求的型号。
+
+更多自定义配置相关的内容，请直接参考项目中的 `variables.tf` 文件。
+
+## 限制
+
+目前，pod cidr, service cid 和节点型号等配置在集群创建后均无法修改。
