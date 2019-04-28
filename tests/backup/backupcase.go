@@ -19,6 +19,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type BackupCase struct {
@@ -110,25 +111,36 @@ func (bc *BackupCase) Run() error {
 	glog.Infof("cluster[%s] stop insert data", bc.srcCluster.ClusterName)
 	bc.operator.StopInsertDataTo(bc.srcCluster)
 
-	time.Sleep(5 * time.Second)
-
-	srcCount, err := bc.srcCluster.QueryCount()
-	if err != nil {
-		return err
-	}
-	desCount, err := bc.desCluster.QueryCount()
-	if err != nil {
-		return err
-	}
-	if srcCount != desCount {
-		return fmt.Errorf("cluster:[%s] the src cluster data[%d] is not equals des cluster data[%d]", bc.srcCluster.FullName(), srcCount, desCount)
-	}
-
-	return nil
+	return bc.EnsureBackupDataIsCorrect()
 }
 
 func (bc *BackupCase) RunOrDie() {
 	if err := bc.Run(); err != nil {
 		panic(err)
 	}
+}
+
+func (bc *BackupCase) EnsureBackupDataIsCorrect() error {
+	fn := func() (bool, error) {
+		srcCount, err := bc.srcCluster.QueryCount()
+		if err != nil {
+			glog.Infof("failed to query count from src cluster: %s/%s",
+				bc.srcCluster.Namespace, bc.srcCluster.ClusterName)
+			return false, nil
+		}
+		desCount, err := bc.desCluster.QueryCount()
+		if err != nil {
+			glog.Infof("failed to query count from dest cluster: %s/%s",
+				bc.desCluster.Namespace, bc.desCluster.ClusterName)
+			return false, nil
+		}
+
+		if srcCount != desCount {
+			return false, fmt.Errorf("cluster:[%s] the src cluster data[%d] is not equals des cluster data[%d]", bc.srcCluster.FullName(), srcCount, desCount)
+		}
+
+		return true, nil
+	}
+
+	return wait.Poll(tests.DefaultPollInterval, tests.DefaultPollTimeout, fn)
 }
