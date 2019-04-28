@@ -32,13 +32,12 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 	go func() {
-		glog.Info(http.ListenAndServe("localhost:6060", nil))
+		glog.Info(http.ListenAndServe(":6060", nil))
 	}()
 
 	conf := tests.ParseConfigOrDie()
 	cli, kubeCli := client.NewCliOrDie()
-
-	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollTimeout, conf)
+	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, conf)
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	fta.CheckAndRecoverEnvOrDie()
 

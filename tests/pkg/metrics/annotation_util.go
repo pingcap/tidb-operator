@@ -17,8 +17,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -26,6 +24,9 @@ import (
 	"os"
 	"path"
 	"sync"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 //Client request grafana API on a set of resource paths.
@@ -133,11 +134,11 @@ func (cli *Client) AddAnnotation(annotation Annotation) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("add annotation faield, statusCode=%v", resp.Status)
 	}
-	all, err := ioutil.ReadAll(resp.Body)
+	_, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
-	fmt.Println(all)
+	// fmt.Println(all)
 
 	return nil
 }
