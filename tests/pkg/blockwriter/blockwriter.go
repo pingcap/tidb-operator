@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	queryChanSize int = 10000
+	queryChanSize int = 100
 )
 
 // BlockWriterCase is for concurrent writing blocks.
