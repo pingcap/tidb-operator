@@ -22,7 +22,7 @@ socket = ""
 run-ddl = true
 
 # Schema lease duration, very dangerous to change only if you know what you do.
-lease = "45s"
+lease = {{ .Values.tidb.lease | default "45s" | quote }}
 
 # When create table, split a separated region for it. It is recommended to
 # turn off this option if there will be a large number of tables created.
@@ -36,10 +36,13 @@ token-limit = 1000
 oom-action = "log"
 
 # Set the memory quota for a query in bytes. Default: 32GB
-mem-quota-query = 34359738368
+mem-quota-query = {{ .Values.tidb.memQuotaQuery | default "34359738368" | atoi }}
 
 # Enable coprocessor streaming.
 enable-streaming = false
+
+# Enable batch commit for the DMLs.
+enable-batch-dml = {{ .Values.tidb.enableBatchDml | default false }}
 
 # Set system variable 'lower_case_table_names'
 lower-case-table-names = 2
@@ -47,6 +50,12 @@ lower-case-table-names = 2
 # Make "kill query" behavior compatible with MySQL. It's not recommend to
 # turn on this option when TiDB server is behind a proxy.
 compatible-kill-query = false
+
+# check mb4 value in utf8 is used to control whether to check the mb4 characters when the charset is utf8.
+check-mb4-value-in-utf8 = {{ .Values.tidb.checkMb4ValueInUtf8 | default true }}
+
+# treat-old-version-utf8-as-utf8mb4 use for upgrade compatibility. Set to true will treat old version table/column UTF8 charset as UTF8MB4.
+treat-old-version-utf8-as-utf8mb4 = {{ .Values.tidb.treatOldVersionUtf8AsUtf8mb4 | default true }}
 
 [log]
 # Log level: debug, info, warn, error, fatal.
@@ -121,7 +130,7 @@ metrics-interval = 15
 
 [performance]
 # Max CPUs to use, 0 use number of CPUs in the machine.
-max-procs = 0
+max-procs = {{ .Values.tidb.maxProcs | default 0 }}
 # StmtCountLimit limits the max count of statement inside a transaction.
 stmt-count-limit = 5000
 
@@ -150,6 +159,18 @@ pseudo-estimate-ratio = 0.8
 # Force the priority of all statements in a specified priority.
 # The value could be "NO_PRIORITY", "LOW_PRIORITY", "HIGH_PRIORITY" or "DELAYED".
 force-priority = "NO_PRIORITY"
+
+# The limitation of the number for the entries in one transaction.
+# If using TiKV as the storage, the entry represents a key/value pair.
+# WARNING: Do not set the value too large, otherwise it will make a very large impact on the TiKV cluster.
+# Please adjust this configuration carefully.
+txn-entry-count-limit = {{ .Values.tidb.txnEntryCountLimit | default "300000" | atoi }}
+
+# The limitation of the size in byte for the entries in one transaction.
+# If using TiKV as the storage, the entry represents a key/value pair.
+# WARNING: Do not set the value too large, otherwise it will make a very large impact on the TiKV cluster.
+# Please adjust this configuration carefully.
+txn-total-size-limit = {{ .Values.tidb.txnTotalSizeLimit | default "104857600" | atoi }}
 
 [proxy-protocol]
 # PROXY protocol acceptable client networks.
@@ -245,3 +266,6 @@ write-timeout = "15s"
 # If IgnoreError is true, when writting binlog meets error, TiDB would stop writting binlog,
 # but still provide service.
 ignore-error = false
+
+# use socket file to write binlog, for compatible with kafka version tidb-binlog.
+binlog-socket = ""

@@ -18,21 +18,12 @@ log-level = {{ .Values.tikv.logLevel | default "info" | quote }}
 # log-rotation-timespan = "24h"
 
 [readpool.storage]
-{{- if .Values.tikv.readpoolStorageConcurrency }}
-# size of thread pool for high-priority operations
-high-concurrency = {{ .Values.tikv.readpoolStorageConcurrency }}
-# size of thread pool for normal-priority operations
-normal-concurrency = {{ .Values.tikv.readpoolStorageConcurrency }}
-# size of thread pool for low-priority operations
-low-concurrency = {{ .Values.tikv.readpoolStorageConcurrency }}
-{{- else }}
 # size of thread pool for high-priority operations
 # high-concurrency = 4
 # size of thread pool for normal-priority operations
 # normal-concurrency = 4
 # size of thread pool for low-priority operations
 # low-concurrency = 4
-{{- end }}
 # max running high-priority operations of each worker, reject if exceed
 # max-tasks-per-worker-high = 2000
 # max running normal-priority operations of each worker, reject if exceed
@@ -70,7 +61,15 @@ low-concurrency = {{ .Values.tikv.readpoolCoprocessorConcurrency }}
 # maximum number of messages can be processed in one tick.
 # messages-per-tick = 4096
 
-# compression type for grpc channel, available values are none, deflate and gzip.
+## Status address.
+## This is used for reporting the status of TiKV directly through the HTTP address.
+## Empty string means disabling it.
+status-addr = "0.0.0.0:20180"
+
+## Set the maximum number of worker threads for the status report HTTP service.
+# status-thread-pool-size = 1
+
+## Compression type for gRPC channel: none, deflate or gzip.
 # grpc-compression-type = "none"
 # size of thread pool for grpc server.
 # grpc-concurrency = 4
@@ -120,11 +119,7 @@ low-concurrency = {{ .Values.tikv.readpoolCoprocessorConcurrency }}
 
 # scheduler's worker pool size, should increase it in heavy write cases,
 # also should less than total cpu cores.
-{{- if .Values.tikv.storageSchedulerWorkerPoolSize }}
-scheduler-worker-pool-size = {{ .Values.tikv.storageSchedulerWorkerPoolSize }}
-{{- else }}
 # scheduler-worker-pool-size = 4
-{{- end }}
 
 # When the pending write bytes exceeds this threshold,
 # the "scheduler too busy" error is displayed.
@@ -133,14 +128,6 @@ scheduler-worker-pool-size = {{ .Values.tikv.storageSchedulerWorkerPoolSize }}
 [pd]
 # pd endpoints
 # endpoints = []
-
-[metric]
-# the Prometheus client push interval. Setting the value to 0s stops Prometheus client from pushing.
-# interval = "15s"
-# the Prometheus pushgateway address. Leaving it empty stops Prometheus client from pushing.
-address = "http://localhost:9091" # empty or http://localhost:9091 to disable or enable tikv push metrics
-# the Prometheus client push job name. Note: A node id will automatically append, e.g., "tikv_1".
-# job = "tikv"
 
 [raftstore]
 # true (default value) for high reliability, this can prevent data loss when power failure.
@@ -261,7 +248,7 @@ sync-log = {{ .Values.tikv.syncLog }}
 
 # Max size of rocksdb's MANIFEST file.
 # For detailed explanation please refer to https://github.com/facebook/rocksdb/wiki/MANIFEST
-# max-manifest-file-size = "20MB"
+# max-manifest-file-size = "128MB"
 
 # If true, the database will be created if it is missing.
 # create-if-missing = true
