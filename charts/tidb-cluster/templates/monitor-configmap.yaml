@@ -21,5 +21,9 @@ data:
 {{ tuple "config/_grafana-dashboard.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   grafana-config: |-
 {{ tuple "config/_grafana-config.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  grafana-prestart: |
+{{- include "setup" . | indent 4 }}
 {{- end }}
 {{- end }}
+
+
