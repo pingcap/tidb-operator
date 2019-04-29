@@ -1,3 +1,7 @@
+variable "region" {
+  description = "Alicloud region"
+}
+
 variable "cluster_name" {
   description = "Kubernetes cluster name"
   default     = "ack-cluster"

@@ -40,10 +40,3 @@ resource "alicloud_instance" "bastion" {
   internet_max_bandwidth_out = 10
   user_data                  = "${file("userdata/bastion-userdata")}"
 }
-//
-//resource "alicloud_key_pair_attachment" "bastion" {
-//  provider     = "alicloud.this"
-//  count        = "${var.create_bastion ? 1 : 0}"
-//  instance_ids = ["${alicloud_instance.bastion.id}"]
-//  key_name     = "${alicloud_key_pair.bastion.key_name}"
-//}

@@ -12,8 +12,8 @@ provider "alicloud" {
 locals {
   credential_path               = "${path.module}/credentials"
   kubeconfig                    = "${local.credential_path}/kubeconfig_${var.cluster_name}"
-  key_file                      = "${local.credential_path}/worker-node-key.pem"
-  bastion_key_file              = "${local.credential_path}/bastion-key.pem"
+  key_file                      = "${local.credential_path}/${var.cluster_name}-node-key.pem"
+  bastion_key_file              = "${local.credential_path}/${var.cluster_name}-bastion-key.pem"
   tidb_cluster_values_path      = "${path.module}/rendered/tidb-cluster-values.yaml"
   local_volume_provisioner_path = "${path.module}/rendered/local-volume-provisioner.yaml"
 }
@@ -34,6 +34,7 @@ module "ack" {
   }
 
   # TODO: support non-public apiserver
+  region           = "${var.ALICLOUD_REGION}"
   cluster_name     = "${var.cluster_name}"
   public_apiserver = true
   kubeconfig_file  = "${local.kubeconfig}"

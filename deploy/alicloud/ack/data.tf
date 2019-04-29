@@ -35,5 +35,6 @@ data "template_file" "userdata" {
     open_api_token = "${lookup(data.external.token.result, "token")}"
     node_taints    = "${lookup(var.worker_groups[count.index], "node_taints", var.group_default["node_taints"])}"
     node_labels    = "${lookup(var.worker_groups[count.index], "node_labels", var.group_default["node_labels"])}"
+    region         = "${var.region}"
   }
 }
