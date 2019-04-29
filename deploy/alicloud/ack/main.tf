@@ -26,9 +26,9 @@ resource "alicloud_vpc" "vpc" {
   }
 }
 
-# For new VPC, create vswitch for each zone
+# For new vpc or existing vpc with no vswitches, create vswitch for each zone
 resource "alicloud_vswitch" "all" {
-  count             = "${var.vpc_id == "" ? length(data.alicloud_zones.all.zones) : 0}"
+  count             = "${var.vpc_id != "" && (length(data.alicloud_vswitches.default.vswitches) != 0) ? 0 : length(data.alicloud_zones.all.zones)}"
   vpc_id            = "${alicloud_vpc.vpc.0.id}"
   cidr_block        = "${cidrsubnet(alicloud_vpc.vpc.0.cidr_block, var.vpc_cidr_newbits, count.index)}"
   availability_zone = "${lookup(data.alicloud_zones.all.zones[count.index%length(data.alicloud_zones.all.zones)], "id")}"
@@ -56,7 +56,8 @@ resource "alicloud_security_group_rule" "cluster_worker_ingress" {
 # Create a managed Kubernetes cluster
 resource "alicloud_cs_managed_kubernetes" "k8s" {
   name                  = "${var.cluster_name}"
-  vswitch_ids           = ["${var.vpc_id != "" ? lookup(data.alicloud_vswitches.default.vswitches[0], "id"): alicloud_vswitch.all.0.id}"]
+  // split and join: workaround for terraform's limitation of conditional list choice, similarly hereinafter
+  vswitch_ids           = ["${element(split(",", var.vpc_id != "" && (length(data.alicloud_vswitches.default.vswitches) != 0) ? join(",", data.template_file.vswitch_id.*.rendered) : join(",", alicloud_vswitch.all.*.id)), 0)}"]
   key_name              = "${alicloud_key_pair.default.key_name}"
   pod_cidr              = "${var.k8s_pod_cidr}"
   service_cidr          = "${var.k8s_service_cidr}"
@@ -92,6 +93,12 @@ resource "alicloud_ess_scaling_group" "workers" {
   max_size           = "${lookup(var.worker_groups[count.index], "max_size", var.group_default["max_size"])}"
   default_cooldown   = "${lookup(var.worker_groups[count.index], "default_cooldown", var.group_default["default_cooldown"])}"
   multi_az_policy    = "${lookup(var.worker_groups[count.index], "multi_az_policy", var.group_default["multi_az_policy"])}"
+
+  # Remove the newest instance in the oldest scaling configuration
+  removal_policies = [
+    "OldestScalingConfiguration",
+    "NewestInstance"
+  ]
 
   lifecycle {
     # FIXME: currently update vswitch_ids will force will recreate, allow updating when upstream support in-place
@@ -133,7 +140,7 @@ resource "alicloud_ess_scaling_configuration" "workers" {
     }"
 
   lifecycle {
-    ignore_changes = ["instance_type"]
+    ignore_changes        = ["instance_type"]
     create_before_destroy = true
   }
 }

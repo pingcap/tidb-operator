@@ -28,24 +28,28 @@ data "template_file" "local-volume-provisioner" {
 }
 
 data "alicloud_instance_types" "pd" {
+  provider = "alicloud.this"
   instance_type_family = "${var.pd_instance_type_family}"
   memory_size          = "${var.pd_instance_memory_size}"
   network_type         = "Vpc"
 }
 
 data "alicloud_instance_types" "tikv" {
+  provider = "alicloud.this"
   instance_type_family = "${var.tikv_instance_type_family}"
   memory_size          = "${var.tikv_memory_size}"
   network_type         = "Vpc"
 }
 
 data "alicloud_instance_types" "tidb" {
+  provider = "alicloud.this"
   cpu_core_count = "${var.tidb_instance_core_count}"
   memory_size    = "${var.tidb_instance_memory_size}"
   network_type   = "Vpc"
 }
 
 data "alicloud_instance_types" "monitor" {
+  provider = "alicloud.this"
   cpu_core_count = "${var.monitor_instance_core_count}"
   memory_size    = "${var.monitor_instance_memory_size}"
   network_type   = "Vpc"

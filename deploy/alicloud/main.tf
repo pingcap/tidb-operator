@@ -3,6 +3,7 @@ variable "ALICLOUD_SECRET_KEY" {}
 variable "ALICLOUD_REGION" {}
 
 provider "alicloud" {
+  alias      = "this"
   region     = "${var.ALICLOUD_REGION}"
   access_key = "${var.ALICLOUD_ACCESS_KEY}"
   secret_key = "${var.ALICLOUD_SECRET_KEY}"
@@ -17,11 +18,23 @@ locals {
   local_volume_provisioner_path = "${path.module}/rendered/local-volume-provisioner.yaml"
 }
 
+// AliCloud resource requires path existing
+resource "null_resource" "prepare-dir" {
+  provisioner "local-exec" {
+    command = "mkdir -p ${local.credential_path}"
+  }
+}
+
 module "ack" {
   source  = "./ack"
   version = "1.0.2"
 
+  providers = {
+    alicloud = "alicloud.this"
+  }
+
   # TODO: support non-public apiserver
+  cluster_name     = "${var.cluster_name}"
   public_apiserver = true
   kubeconfig_file  = "${local.kubeconfig}"
   key_file         = "${local.key_file}"
@@ -69,7 +82,7 @@ module "ack" {
 }
 
 // Workaround: ACK does not support customize node RAM role, access key is the only way get local volume provisioner working
-// TODO: use RAM role when upstream get this fixed
+// TODO: use STS when upstream get this fixed
 resource "local_file" "local-volume-provisioner" {
   depends_on = ["data.template_file.local-volume-provisioner"]
   filename   = "${local.local_volume_provisioner_path}"
@@ -89,7 +102,7 @@ resource "null_resource" "setup-env" {
     command = <<EOS
 kubectl apply -f manifests/crd.yaml
 kubectl apply -f rendered/local-volume-provisioner.yaml
-helm init --client-only
+helm init
 until helm ls; do
   echo "Wait tiller ready"
 done

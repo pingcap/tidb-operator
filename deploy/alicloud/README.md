@@ -9,8 +9,6 @@
 - [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.0
 - [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) 0.11.*
 
-> Note: We recommend to use the [Cloud Shell](https://shell.aliyun.com) service, which has all the tools installed and properly configured.
-
 ## Overview 
 
 The default setup will create:
@@ -36,6 +34,8 @@ export TF_VAR_ALICLOUD_REGION=<YOUR_REGION>
 export TF_VAR_ALICLOUD_ACCESS_KEY=<YOUR_ACCESS_KEY>
 export TF_VAR_ALICLOUD_SECRET_KEY=<YOUR_SECRET_KEY>
 ```
+
+> Note: The region configured for terraform and aliyun-cli should be consistent 
 
 Apply the stack:
 

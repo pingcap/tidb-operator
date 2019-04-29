@@ -1,6 +1,6 @@
 variable "cluster_name" {
   description = "TiDB cluster name"
-  default     = "tidb-cluster"
+  default     = "tidb-cluster-2"
 }
 
 variable "tidb_version" {

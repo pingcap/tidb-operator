@@ -4,6 +4,7 @@ data "alicloud_instance_types" "bastion" {
 }
 
 resource "alicloud_key_pair" "bastion" {
+  provider        = "alicloud.this"
   count           = "${var.create_bastion ? 1 : 0}"
   key_name_prefix = "${var.bastion_key_prefix}"
   key_file        = "${local.bastion_key_file}"
@@ -12,6 +13,10 @@ resource "alicloud_key_pair" "bastion" {
 module "bastion-group" {
   source  = "alibaba/security-group/alicloud"
   version = "1.2.0"
+
+  providers = {
+    alicloud = "alicloud.this"
+  }
 
   vpc_id            = "${module.ack.vpc_id}"
   cidr_ips          = ["${var.bastion_ingress_cidr}"]
@@ -22,6 +27,7 @@ module "bastion-group" {
 }
 
 resource "alicloud_instance" "bastion" {
+  provider                   = "alicloud.this"
   count                      = "${var.create_bastion ? 1 : 0}"
   instance_name              = "${var.cluster_name}-bastion"
   image_id                   = "${var.bastion_image_name}"
@@ -34,9 +40,10 @@ resource "alicloud_instance" "bastion" {
   internet_max_bandwidth_out = 10
   user_data                  = "${file("userdata/bastion-userdata")}"
 }
-
-resource "alicloud_key_pair_attachment" "bastion" {
-  count        = "${var.create_bastion ? 1 : 0}"
-  instance_ids = ["${alicloud_instance.bastion.id}"]
-  key_name     = "${alicloud_key_pair.bastion.key_name}"
-}
+//
+//resource "alicloud_key_pair_attachment" "bastion" {
+//  provider     = "alicloud.this"
+//  count        = "${var.create_bastion ? 1 : 0}"
+//  instance_ids = ["${alicloud_instance.bastion.id}"]
+//  key_name     = "${alicloud_key_pair.bastion.key_name}"
+//}

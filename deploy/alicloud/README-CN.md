@@ -7,8 +7,6 @@
 - [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) 2.9.*
 - [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) 0.11.*
 
-> 推荐使用阿里云的 [云命令行](https://shell.aliyun.com) 进行操作，云命令行中已经预装并且配置好了所有会用到的工具。
-
 ## 概览
 
 默认配置下，我们会创建：
@@ -33,6 +31,8 @@ export TF_VAR_ALICLOUD_REGION=<YOUR_REGION>
 export TF_VAR_ALICLOUD_ACCESS_KEY=<YOUR_ACCESS_KEY>
 export TF_VAR_ALICLOUD_SECRET_KEY=<YOUR_SECRET_KEY>
 ```
+
+> 注意：此处配置的 REGION 需要和 aliyun-cli 配置的 region 保持一致
 
 使用 Terraform 进行安装：
 
