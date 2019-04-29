@@ -14,6 +14,7 @@
 package tests
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -31,6 +32,8 @@ import (
 	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
+	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
+	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -125,7 +128,7 @@ type OperatorActions interface {
 	RegisterWebHookAndService(info *OperatorConfig) error
 	RegisterWebHookAndServiceOrDie(info *OperatorConfig)
 	CleanWebHookAndService(info *OperatorConfig) error
-	StartValidatingAdmissionWebhookServerOrDie()
+	StartValidatingAdmissionWebhookServerOrDie(info *OperatorConfig)
 }
 
 type operatorActions struct {
@@ -149,6 +152,7 @@ type OperatorConfig struct {
 	WebhookServiceName string
 	WebhookSecretName  string
 	WebhookConfigName  string
+	Context            *apimachinery.CertContext
 }
 
 type TidbClusterConfig struct {
@@ -174,6 +178,16 @@ type TidbClusterConfig struct {
 
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
+}
+
+func (oi *OperatorConfig) ConfigTLS() *tls.Config {
+	sCert, err := tls.X509KeyPair(oi.Context.Cert, oi.Context.Key)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	return &tls.Config{
+		Certificates: []tls.Certificate{sCert},
+	}
 }
 
 func (tc *TidbClusterConfig) BackupHelmSetString(m map[string]string) string {
@@ -629,6 +643,11 @@ func (oa *operatorActions) CheckScaledCorrectly(info *TidbClusterConfig, podUIDs
 }
 
 func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
+	// record tikv leader count in webhook first
+	err := webhook.GetAllKVLeaders(oa.cli, info.Namespace, info.ClusterName)
+	if err != nil {
+		return err
+	}
 	oa.emitEvent(info, "UpgradeTidbCluster")
 
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
@@ -1942,23 +1961,8 @@ func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error
 
 	namespace := os.Getenv("NAMESPACE")
 	configName := info.WebhookConfigName
-	filePath := "/webhook.local.config/certificates/ca.crt"
 
-	fd, err := os.Open(filePath)
-	if err != nil {
-		glog.Errorf("file can't open file path %s err %v", filePath, err)
-		return err
-	}
-	defer fd.Close()
-
-	ca, err := ioutil.ReadAll(fd)
-
-	if err != nil {
-		glog.Errorf("file can't read file path %s err %v", filePath, err)
-		return err
-	}
-
-	_, err = client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(&admissionV1beta1.ValidatingWebhookConfiguration{
+	_, err := client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(&admissionV1beta1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: configName,
 		},
@@ -1979,7 +1983,7 @@ func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error
 						Name:      info.WebhookServiceName,
 						Path:      strPtr("/pods"),
 					},
-					CABundle: ca,
+					CABundle: info.Context.SigningCert,
 				},
 			},
 		},
@@ -2076,13 +2080,21 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 	return len(healths.PumpPos) > 0 && healths.Synced
 }
 
-func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie() {
+func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie(info *OperatorConfig) {
+
+	context, err := apimachinery.SetupServerCert(os.Getenv("NAMESPACE"), info.WebhookServiceName)
+	if err != nil {
+		glog.Fatalf("fail to setup server cert: %v", err)
+	}
+
+	info.Context = context
+
 	http.HandleFunc("/pods", webhook.ServePods)
 	server := &http.Server{
 		Addr:      ":443",
-		TLSConfig: oa.cfg.ConfigTLS(),
+		TLSConfig: info.ConfigTLS(),
 	}
-	err := server.ListenAndServeTLS("", "")
+	err = server.ListenAndServeTLS("", "")
 	if err != nil {
 		glog.Errorf("fail to start webhook server err %v", err)
 		os.Exit(4)
