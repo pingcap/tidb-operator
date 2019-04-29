@@ -52,7 +52,7 @@ module "ack" {
       instance_type = "${data.alicloud_instance_types.pd.instance_types.0.id}"
       min_size      = "${var.pd_count}"
       max_size      = "${var.pd_count}"
-      node_taints   = "dedicated=pd:NoScheduler"
+      node_taints   = "dedicated=pd:NoSchedule"
       node_labels   = "dedicated=pd"
       post_userdata = "${file("userdata/pd-userdata.sh")}"
     },
@@ -61,7 +61,7 @@ module "ack" {
       instance_type = "${data.alicloud_instance_types.tikv.instance_types.0.id}"
       min_size      = "${var.tikv_count}"
       max_size      = "${var.tikv_count}"
-      node_taints   = "dedicated=tikv:NoScheduler"
+      node_taints   = "dedicated=tikv:NoSchedule"
       node_labels   = "dedicated=tikv"
       post_userdata = "${file("userdata/tikv-userdata.sh")}"
     },
@@ -70,7 +70,7 @@ module "ack" {
       instance_type = "${var.tidb_instance_type != "" ? var.tidb_instance_type : data.alicloud_instance_types.tidb.instance_types.0.id}"
       min_size      = "${var.tidb_count}"
       max_size      = "${var.tidb_count}"
-      node_taints   = "dedicated=tidb:NoScheduler"
+      node_taints   = "dedicated=tidb:NoSchedule"
       node_labels   = "dedicated=tidb"
     },
     {

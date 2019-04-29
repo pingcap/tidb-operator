@@ -22,7 +22,7 @@ data "external" "token" {
   depends_on = ["alicloud_cs_managed_kubernetes.k8s"]
 
   # Terraform use map[string]string to unmarshal the result, transform the json to conform
-  program = ["bash", "-c", "aliyun cs POST /clusters/${alicloud_cs_managed_kubernetes.k8s.id}/token --body '{\"is_permanently\": true}' | jq \"{token: .token}\""]
+  program = ["bash", "-c", "aliyun --region ${var.region} cs POST /clusters/${alicloud_cs_managed_kubernetes.k8s.id}/token --body '{\"is_permanently\": true}' | jq \"{token: .token}\""]
 }
 
 data "template_file" "userdata" {

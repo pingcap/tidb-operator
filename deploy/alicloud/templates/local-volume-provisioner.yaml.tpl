@@ -42,6 +42,15 @@ spec:
       labels:
         app: local-volume-provisioner
     spec:
+      tolerations:
+        - key: dedicated
+          operator: Equal
+          value: pd
+          effect: "NoSchedule"
+        - key: dedicated
+          operator: Equal
+          value: tikv
+          effect: "NoSchedule"
       hostPID: true
       hostNetwork: true
       serviceAccountName: admin

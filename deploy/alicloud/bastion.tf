@@ -1,4 +1,5 @@
 data "alicloud_instance_types" "bastion" {
+  provider       = "alicloud.this"
   count          = "${var.create_bastion ? 1 : 0}"
   cpu_core_count = "${var.bastion_cpu_core_count}"
 }

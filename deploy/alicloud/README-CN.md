@@ -4,7 +4,7 @@
 
 - [aliyun-cli](https://github.com/aliyun/aliyun-cli) >= 3.0.15 并且[配置 aliyun-cli](https://www.alibabacloud.com/help/doc-detail/90766.htm?spm=a2c63.l28256.a3.4.7b52a893EFVglq)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.12
-- [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) 2.9.*
+- [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.1
 - [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) 0.11.*
 
 ## 概览
@@ -31,8 +31,6 @@ export TF_VAR_ALICLOUD_REGION=<YOUR_REGION>
 export TF_VAR_ALICLOUD_ACCESS_KEY=<YOUR_ACCESS_KEY>
 export TF_VAR_ALICLOUD_SECRET_KEY=<YOUR_SECRET_KEY>
 ```
-
-> 注意：此处配置的 REGION 需要和 aliyun-cli 配置的 region 保持一致
 
 使用 Terraform 进行安装：
 
