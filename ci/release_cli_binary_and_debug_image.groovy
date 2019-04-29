@@ -5,7 +5,7 @@ def call(BUILD_BRANCH, RELEASE_TAG) {
     env.PATH = "${env.GOROOT}/bin:${env.GOPATH}/bin:/bin:${env.PATH}:/home/jenkins/bin"
 
     def GITHASH
-    def TKC_CLI_PACKAGE = "tkc-${GOOS}-${GOARCH}-${RELEASE_TAG}"
+    def TKCTL_CLI_PACKAGE = "tkctl-${GOOS}-${GOARCH}-${RELEASE_TAG}"
 
     catchError {
         node('k8s_centos7_build') {
@@ -19,11 +19,11 @@ def call(BUILD_BRANCH, RELEASE_TAG) {
                     ["linux", "darwin", "windows"].each {
                         sh """
                         GOOS=${it} GOARCH=${GOARCH} make cli
-                        tar -zcf ${TKC_CLI_PACKAGE}.tgz tkc
-                        sha256sum ${TKC_CLI_PACKAGE}.tgz > ${TKC_CLI_PACKAGE}.sha256
-                        
-                        upload.py ${TKC_CLI_PACKAGE}.tgz ${TKC_CLI_PACKAGE}.tgz
-                        upload.py ${TKC_CLI_PACKAGE}.sha256 ${TKC_CLI_PACKAGE}.sha256
+                        tar -zcf ${TKCTL_CLI_PACKAGE}.tgz tkctl
+                        sha256sum ${TKCTL_CLI_PACKAGE}.tgz > ${TKCTL_CLI_PACKAGE}.sha256
+
+                        upload.py ${TKCTL_CLI_PACKAGE}.tgz ${TKCTL_CLI_PACKAGE}.tgz
+                        upload.py ${TKCTL_CLI_PACKAGE}.sha256 ${TKCTL_CLI_PACKAGE}.sha256
                         """
                     }
                 }
@@ -51,7 +51,7 @@ def call(BUILD_BRANCH, RELEASE_TAG) {
             slackSend channel: '#cloud_jenkins', color: 'danger', teamDomain: 'pingcap', tokenCredentialId: 'slack-pingcap-token', message: "${slackmsg}"
         } else {
             slackmsg = "${slackmsg}" + "\n" +
-                    "tkc cli tool build and debug image build failed for BRANCH:${BUILD_BRANCH} and TAG:${RELEASE_TAG}`"
+                    "tkctl cli tool build and debug image build failed for BRANCH:${BUILD_BRANCH} and TAG:${RELEASE_TAG}`"
             slackSend channel: '#cloud_jenkins', color: 'good', teamDomain: 'pingcap', tokenCredentialId: 'slack-pingcap-token', message: "${slackmsg}"
         }
     }
