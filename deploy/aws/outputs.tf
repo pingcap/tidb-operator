@@ -18,9 +18,14 @@ output "eks_endpoint" {
   value = "${module.eks.cluster_endpoint}"
 }
 
+#output "tidb_dns" {
+#  description = "tidb service dns name"
+#  value = "${data.kubernetes_service.tidb.load_balancer_ingress.0.hostname}"
+#}
+
 output "tidb_dns" {
   description = "tidb service dns name"
-  value = "${data.kubernetes_service.tidb.load_balancer_ingress.0.hostname}"
+  value = "${data.external.tidb_service.result["hostname"]}"
 }
 
 output "tidb_port" {
@@ -28,9 +33,14 @@ output "tidb_port" {
   value = "4000"
 }
 
+#output "monitor_endpoint" {
+#  description = "monitor service endpoint"
+#  value = "http://${data.kubernetes_service.monitor.load_balancer_ingress.0.hostname}:3000"
+#}
+
 output "monitor_endpoint" {
   description = "monitor service endpoint"
-  value = "http://${data.kubernetes_service.monitor.load_balancer_ingress.0.hostname}:3000"
+  value = "http://${data.external.monitor_service.result["hostname"]}:3000"
 }
 
 output "bastion_ip" {

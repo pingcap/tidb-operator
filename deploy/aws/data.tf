@@ -1,5 +1,16 @@
 data "aws_availability_zones" "available" {}
 
+data "aws_ami" "amazon-linux-2" {
+ most_recent = true
+
+ owners = ["amazon"]
+
+ filter {
+   name   = "name"
+   values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+ }
+}
+
 data "template_file" "tidb_cluster_values" {
   template = "${file("${path.module}/templates/tidb-cluster-values.yaml.tpl")}"
   vars  {
@@ -10,18 +21,32 @@ data "template_file" "tidb_cluster_values" {
   }
 }
 
-data "kubernetes_service" "tidb" {
-  depends_on = ["helm_release.tidb-cluster"]
-  metadata {
-    name = "tidb-cluster-tidb"
-    namespace = "tidb"
-  }
+# kubernetes provider can't use computed config_path right now, see issue:
+# https://github.com/terraform-providers/terraform-provider-kubernetes/issues/142
+# so we don't use kubernetes provider to retrieve tidb and monitor connection info,
+# instead we use external data source.
+# data "kubernetes_service" "tidb" {
+#   depends_on = ["helm_release.tidb-cluster"]
+#   metadata {
+#     name = "tidb-cluster-tidb"
+#     namespace = "tidb"
+#   }
+# }
+
+# data "kubernetes_service" "monitor" {
+#   depends_on = ["helm_release.tidb-cluster"]
+#   metadata {
+#     name = "tidb-cluster-grafana"
+#     namespace = "tidb"
+#   }
+# }
+
+data "external" "tidb_service" {
+  depends_on = ["null_resource.wait-tidb-ready"]
+  program = ["bash", "-c", "kubectl --kubeconfig credentials/kubeconfig_${var.cluster_name} get svc -n tidb tidb-cluster-tidb -ojson | jq '.status.loadBalancer.ingress[0]'"]
 }
 
-data "kubernetes_service" "monitor" {
-  depends_on = ["helm_release.tidb-cluster"]
-  metadata {
-    name = "tidb-cluster-grafana"
-    namespace = "tidb"
-  }
+data "external" "monitor_service" {
+  depends_on = ["null_resource.wait-tidb-ready"]
+  program = ["bash", "-c", "kubectl --kubeconfig credentials/kubeconfig_${var.cluster_name} get svc -n tidb tidb-cluster-grafana -ojson | jq '.status.loadBalancer.ingress[0]'"]
 }

@@ -4,6 +4,7 @@
 * [awscli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) >= 1.16.73
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.11
 * [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.0
+* [jq](https://stedolan.github.io/jq/download/)
 * [aws-iam-authenticator](https://github.com/kubernetes-sigs/aws-iam-authenticator#4-set-up-kubectl-to-use-authentication-tokens-provided-by-aws-iam-authenticator-for-kubernetes)
 
 ## Configure awscli
@@ -57,9 +58,13 @@ helm ls
 
 To upgrade TiDB cluster, modify `tidb_version` variable to a higher version in variables.tf and run `terraform apply`.
 
+> *Note*: The upgrading doesn't finish immediately. You can watch the upgrading process by `watch kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb`
+
 ## Scale TiDB cluster
 
 To scale TiDB cluster, modify `tikv_count` or `tidb_count` to your desired count, and then run `terraform apply`.
+
+> *Note*: Currently, scaling in is not supported since we cannot determine which node to scale. Scaling out needs a few minutes to complete, you can watch the scaling out by `watch kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb`
 
 ## Customize
 
@@ -73,9 +78,7 @@ Currently, the instance type of TiDB cluster component is not configurable becau
 
 ## TODO
 
-- [ ] auto-scaling group policy
-- [ ] Allow create a minimal TiDB cluster
-
-## Known issues
-
-There is possibility the helm install release fails the first time, but running `terraform apply` again will install tidb-operator and tidb-cluster release successfully.
+- [ ] Use [cluster autoscaler](https://github.com/kubernetes/autoscaler)
+- [ ] Allow create a minimal TiDB cluster for testing
+- [ ] Make the resource creation synchronously to follow Terraform convention
+- [ ] Make more parameters customizable

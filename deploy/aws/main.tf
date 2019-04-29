@@ -62,7 +62,7 @@ module "ec2" {
   version = "1.21.0"
   name = "${var.cluster_name}-bastion"
   instance_count = "${var.create_bastion ? 1:0}"
-  ami = "${var.bastion_ami}"
+  ami = "${data.aws_ami.amazon-linux-2.id}"
   instance_type = "${var.bastion_instance_type}"
   key_name = "${module.key-pair.key_name}"
   associate_public_ip_address = true
@@ -77,13 +77,15 @@ module "ec2" {
 }
 
 module "eks" {
-  source = "terraform-aws-modules/eks/aws"
-  version = "2.3.1"
+  # source = "terraform-aws-modules/eks/aws"
+  # version = "2.3.1"
+  # We can not use cluster autoscaler for pod with local PV due to the limitations listed here:
+  # https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md#i-have-a-couple-of-pending-pods-but-there-was-no-scale-up
+  # so we scale out by updating auto-scaling-group desired_capacity directly via the patched version of aws eks module
+  source = "github.com/tennix/terraform-aws-eks?ref=v2.3.1-patch"
   cluster_name = "${var.cluster_name}"
   cluster_version = "${var.k8s_version}"
-  # The output config can not be used by kubernetes and helm provider directly
-  # so using local_file resource to force kubernetes and helm provider to rely on
-  # config_output_path = "credentials/"
+  config_output_path = "credentials/"
   subnets = "${split(",", var.create_vpc ? join(",", module.vpc.private_subnets) : join(",", var.subnets))}"
   vpc_id = "${var.create_vpc ? module.vpc.vpc_id : var.vpc_id}"
 
@@ -159,9 +161,13 @@ resource "local_file" "kubeconfig" {
   filename = "${path.module}/credentials/kubeconfig_${var.cluster_name}"
 }
 
-provider "kubernetes" {
-  config_path = "${local_file.kubeconfig.filename}"
-}
+# kubernetes provider can't use computed config_path right now, see issue:
+# https://github.com/terraform-providers/terraform-provider-kubernetes/issues/142
+# so we don't use kubernetes provider to retrieve tidb and monitor connection info,
+# instead we use external data source.
+# provider "kubernetes" {
+#   config_path = "${local_file.kubeconfig.filename}"
+# }
 
 provider "helm" {
   insecure = true
@@ -209,4 +215,28 @@ resource "helm_release" "tidb-cluster" {
   values = [
     "${data.template_file.tidb_cluster_values.rendered}"
   ]
+}
+
+resource "null_resource" "wait-tidb-ready" {
+  depends_on = ["helm_release.tidb-cluster"]
+
+  provisioner "local-exec" {
+    command = <<EOS
+until kubectl get po -n tidb -lapp.kubernetes.io/component=tidb | grep Running; do
+  echo "Wait TiDB pod running"
+  sleep 5
+done
+until kubectl get svc -n tidb tidb-cluster-tidb | grep elb; do
+  echo "Wait TiDB service ready"
+  sleep 5
+done
+until kubectl get svc -n tidb tidb-cluster-grafana | grep elb; do
+  echo "Wait monitor service ready"
+  sleep 5
+done
+EOS
+    environment = {
+      KUBECONFIG = "${local_file.kubeconfig.filename}"
+    }
+  }
 }
