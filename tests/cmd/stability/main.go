@@ -44,9 +44,6 @@ func main() {
 	tidbVersion := conf.GetTiDBVersionOrDie()
 	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
 
-	// start a http server in goruntine
-	go oa.StartValidatingAdmissionWebhookServerOrDie()
-
 	// operator config
 	operatorCfg := &tests.OperatorConfig{
 		Namespace:          "pingcap",
@@ -59,6 +56,9 @@ func main() {
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
 	}
+
+	// start a http server in goruntine
+	go oa.StartValidatingAdmissionWebhookServerOrDie(operatorCfg)
 
 	// TODO remove this
 	// create database and table and insert a column for test backup and restore

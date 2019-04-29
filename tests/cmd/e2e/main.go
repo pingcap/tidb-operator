@@ -37,9 +37,6 @@ func main() {
 	cli, kubeCli := client.NewCliOrDie()
 	oa := tests.NewOperatorActions(cli, kubeCli, 5*time.Second, conf)
 
-	// start a http server in goruntine
-	go oa.StartValidatingAdmissionWebhookServerOrDie()
-
 	operatorInfo := &tests.OperatorConfig{
 		Namespace:          "pingcap",
 		ReleaseName:        "operator",
@@ -52,6 +49,9 @@ func main() {
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
 	}
+
+	// start a http server in goruntine
+	go oa.StartValidatingAdmissionWebhookServerOrDie(operatorInfo)
 
 	initTidbVersion, err := conf.GetTiDBVersion()
 	if err != nil {
