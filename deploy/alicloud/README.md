@@ -9,6 +9,8 @@
 - [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.1
 - [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) 0.11.*
 
+> You can use the Alibaba [Cloud Shell](https://shell.aliyun.com) service, which has all the tools pre-installed and properly configured.
+
 ## Overview 
 
 The default setup will create:

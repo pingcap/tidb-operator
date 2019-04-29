@@ -120,7 +120,10 @@ EOS
 # But we cannot ouput kubernetes and helm resources in this way.
 # TODO: use helm and kubernetes provider when upstream get this fixed
 resource "null_resource" "deploy-tidb-cluster" {
-  depends_on = ["null_resource.setup-env"]
+  depends_on = ["null_resource.setup-env","local_file.tidb-cluster-values"]
+  triggers {
+    values = "${data.template_file.tidb-cluster-values.rendered}"
+  }
 
   provisioner "local-exec" {
     command = <<EOS

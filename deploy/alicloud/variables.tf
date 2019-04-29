@@ -1,6 +1,6 @@
 variable "cluster_name" {
   description = "TiDB cluster name"
-  default     = "tidb-cluster-2"
+  default     = "tidb-cluster"
 }
 
 variable "tidb_version" {
@@ -30,7 +30,7 @@ variable "pd_storage_size" {
 
 variable "tikv_count" {
   description = "TiKV instance count, ranges: [3, 100]"
-  default     = 3
+  default     = 4
 }
 
 variable "tikv_instance_type_family" {
@@ -50,7 +50,7 @@ variable "tikv_storage_size" {
 
 variable "tidb_count" {
   description = "TiDB instance count, ranges: [1, 100]"
-  default     = 2
+  default     = 3
 }
 
 variable "tidb_instance_type" {

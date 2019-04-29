@@ -7,6 +7,8 @@
 - [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.1
 - [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) 0.11.*
 
+> 你可以使用阿里云的 [云命令行](https://shell.aliyun.com) 服务来进行操作，云命令行中已经预装并配置好了所有工具。
+
 ## 概览
 
 默认配置下，我们会创建：

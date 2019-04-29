@@ -10,7 +10,7 @@ curl -o attach_node.sh http://aliacs-k8s-${region}.oss-${region}-internal.aliyun
 # TODO: add attach_node.sh to project
 sed -i '/export AUTO_FDISK=/d' ./attach_node.sh
 chmod a+x ./attach_node.sh
-./attch_node.sh --ess "true" --openapi-token "${open_api_token}" %{ if node_labels != "" }--labels ${node_labels}%{ endif } %{ if node_taints != "" }--taints ${node_taints}%{ endif }
+./attach_node.sh --ess "true" --openapi-token "${open_api_token}" %{ if node_labels != "" }--labels ${node_labels}%{ endif } %{ if node_taints != "" }--taints ${node_taints}%{ endif }
 
 # Post userdata code
 ${post_userdata}
