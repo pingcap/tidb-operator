@@ -75,12 +75,12 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 	glog.Infof("scheduling pod: %s/%s", ns, podName)
 	var err error
 	for _, predicate := range s.predicates {
-		glog.V(4).Infof("entering predicate: %s, nodes: %v", predicate.Name(), getNodeNames(kubeNodes))
+		glog.Infof("entering predicate: %s, nodes: %v", predicate.Name(), predicates.GetNodeNames(kubeNodes))
 		kubeNodes, err = predicate.Filter(instanceName, pod, kubeNodes)
 		if err != nil {
 			return nil, err
 		}
-		glog.V(4).Infof("leaving predicate: %s, nodes: %v", predicate.Name(), getNodeNames(kubeNodes))
+		glog.Infof("leaving predicate: %s, nodes: %v", predicate.Name(), predicates.GetNodeNames(kubeNodes))
 	}
 
 	return &schedulerapiv1.ExtenderFilterResult{
@@ -105,11 +105,3 @@ func (s *scheduler) Priority(args *schedulerapiv1.ExtenderArgs) (schedulerapiv1.
 }
 
 var _ Scheduler = &scheduler{}
-
-func getNodeNames(nodes []apiv1.Node) []string {
-	nodeNames := make([]string, 0)
-	for _, node := range nodes {
-		nodeNames = append(nodeNames, node.GetName())
-	}
-	return nodeNames
-}
