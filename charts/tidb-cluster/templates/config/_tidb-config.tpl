@@ -181,8 +181,8 @@ networks = ""
 header-timeout = 5
 
 [prepared-plan-cache]
-enabled = false
-capacity = 100
+enabled = {{ .Values.tidb.preparedPlanCacheEnabled | default false }}
+capacity = {{ .Values.tidb.preparedPlanCacheCapacity | default 100 }}
 
 [opentracing]
 # Enable opentracing.

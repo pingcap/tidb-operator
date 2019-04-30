@@ -12,10 +12,10 @@ clusterName={{ template "cluster.name" . }}
 
 if [ $clusterName != "" ]
 then
-    sed -i 's/TIDB-Cluster-TiDB/'$clusterName'-TIDB/g'  /grafana-dashboard-definitions/tidb/tidb.json
+    sed -i 's/TIDB-Cluster-TiDB/'$clusterName'-TiDB/g'  /grafana-dashboard-definitions/tidb/tidb.json
     sed -i 's/TIDB-Cluster-PD/'$clusterName'-PD/g'  /grafana-dashboard-definitions/tidb/pd.json
-    sed -i 's/TIDB-Cluster-TiKV/'$clusterName'-TIKV/g'  /grafana-dashboard-definitions/tidb/tikv.json
-    sed -i 's/TIDB-Cluster-Overview/'$clusterName'-OVERVIEW/g'  /grafana-dashboard-definitions/tidb/overview.json
+    sed -i 's/TIDB-Cluster-TiKV/'$clusterName'-TiKV/g'  /grafana-dashboard-definitions/tidb/tikv.json
+    sed -i 's/TIDB-Cluster-Overview/'$clusterName'-Overview/g'  /grafana-dashboard-definitions/tidb/overview.json
 fi
 
 {{- end }}

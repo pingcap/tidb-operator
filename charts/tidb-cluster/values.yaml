@@ -148,6 +148,8 @@ tidb:
   # Image pull policy.
   imagePullPolicy: IfNotPresent
   logLevel: info
+  preparedPlanCacheEnabled: false
+  preparedPlanCacheCapacity: 100
   # Set the memory quota for a query in bytes. Default: 32GB
   memQuotaQuery: "34359738368"
   # The limitation of the number for the entries in one transaction.
@@ -163,7 +165,7 @@ tidb:
   # enableBatchDml enables batch commit for the DMLs
   enableBatchDml: false
   # check mb4 value in utf8 is used to control whether to check the mb4 characters when the charset is utf8.
-  checkMb4VauleInUtf8: true
+  checkMb4ValueInUtf8: true
   # treat-old-version-utf8-as-utf8mb4 use for upgrade compatibility. Set to true will treat old version table/column UTF8 charset as UTF8MB4.
   treatOldVersionUtf8AsUtf8mb4: true
   # lease is schema lease duration, very dangerous to change only if you know what you do.
