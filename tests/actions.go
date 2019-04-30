@@ -29,13 +29,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
-
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
+	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -615,7 +614,7 @@ func (oa *operatorActions) backupChartPath(tag string) string {
 }
 
 func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterConfig) error {
-	oa.EmitEvent(info, fmt.Sprintf("ScaleTidbCluster, pd: %s, tikv: %s, tidb: %s",
+	oa.EmitEvent(info, fmt.Sprintf("ScaleTidbCluster to pd: %s, tikv: %s, tidb: %s",
 		info.Args["pd.replicas"], info.Args["tikv.replicas"], info.Args["tidb.replicas"]))
 
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
@@ -2171,6 +2170,7 @@ func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
 	ce := oa.clusterEvents[info.String()]
 	ce.events = append(ce.events, ev)
 
+	// sleep a while to avoid overlapping time
 	time.Sleep(10 * time.Second)
 }
 
