@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/slack"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
 	"github.com/pingcap/errors"
@@ -117,7 +119,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 
 func (oa *operatorActions) TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) {
 	if err := oa.TruncateSSTFileThenCheckFailover(info, tikvFailoverPeriod); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -173,7 +175,7 @@ func (oa *operatorActions) CheckFailoverPendingOrDie(clusters []*TidbClusterConf
 		}
 		return true, nil
 	}); err != nil {
-		panic("failed to check failover pending")
+		slack.NotifyAndPanic(fmt.Errorf("failed to check failover pending"))
 	}
 }
 
@@ -244,7 +246,7 @@ func (oa *operatorActions) CheckFailoverOrDie(clusters []*TidbClusterConfig, fau
 		}
 		return true, nil
 	}); err != nil {
-		panic("failed to check failover")
+		slack.NotifyAndPanic(fmt.Errorf("failed to check failover"))
 	}
 }
 
@@ -284,7 +286,7 @@ func (oa *operatorActions) CheckRecoverOrDie(clusters []*TidbClusterConfig) {
 		}
 		return true, nil
 	}); err != nil {
-		panic("failed to check recover")
+		slack.NotifyAndPanic(fmt.Errorf("failed to check recover"))
 	}
 }
 

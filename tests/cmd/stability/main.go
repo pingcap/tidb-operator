@@ -19,6 +19,8 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/slack"
+
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
@@ -227,5 +229,6 @@ func main() {
 	if err != nil {
 		glog.Errorf("failed to clean temp dirs, this error can be ignored.")
 	}
-	glog.Infof("\nFinished.")
+
+	slack.NotifyAndCompleted("\nFinished.")
 }
