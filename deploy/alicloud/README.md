@@ -41,7 +41,7 @@ Apply the stack:
 
 ```shell
 $ git clone https://github.com/pingcap/tidb-operator
-$ cd tidb-operator/cloud/aws
+$ cd tidb-operator/deploy/alicloud
 $ terraform init
 $ terraform apply
 ```

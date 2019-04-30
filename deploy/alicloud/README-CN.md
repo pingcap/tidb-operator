@@ -38,7 +38,7 @@ export TF_VAR_ALICLOUD_SECRET_KEY=<YOUR_SECRET_KEY>
 
 ```shell
 $ git clone https://github.com/pingcap/tidb-operator
-$ cd tidb-operator/cloud/aws
+$ cd tidb-operator/deploy/alicloud
 $ terraform init
 $ terraform apply
 ```
