@@ -25,5 +25,3 @@ data:
 {{- include "setup" . | indent 4 }}
 {{- end }}
 {{- end }}
-
-

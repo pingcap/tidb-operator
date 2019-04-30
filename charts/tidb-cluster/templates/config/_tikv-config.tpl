@@ -20,11 +20,11 @@ log-level = {{ .Values.tikv.logLevel | default "info" | quote }}
 [readpool.storage]
 {{- if .Values.tikv.readpoolStorageConcurrency }}
 # size of thread pool for high-priority operations
-high-concurrency = {{ .Values.readpoolStorageConcurrency }}
+high-concurrency = {{ .Values.tikv.readpoolStorageConcurrency }}
 # size of thread pool for normal-priority operations
-normal-concurrency = {{ .Values.readpoolStorageConcurrency }}
+normal-concurrency = {{ .Values.tikv.readpoolStorageConcurrency }}
 # size of thread pool for low-priority operations
-low-concurrency = {{ .Values.readpoolStorageConcurrency }}
+low-concurrency = {{ .Values.tikv.readpoolStorageConcurrency }}
 {{- else }}
 # size of thread pool for high-priority operations
 # high-concurrency = 4
@@ -45,6 +45,7 @@ low-concurrency = {{ .Values.readpoolStorageConcurrency }}
 [readpool.coprocessor]
 # Notice: if CPU_NUM > 8, default thread pool size for coprocessors
 # will be set to CPU_NUM * 0.8.
+
 {{- if .Values.tikv.readpoolCoprocessorConcurrency }}
 high-concurrency = {{ .Values.tikv.readpoolCoprocessorConcurrency }}
 normal-concurrency = {{ .Values.tikv.readpoolCoprocessorConcurrency }}
@@ -128,10 +129,11 @@ status-addr = "0.0.0.0:20180"
 # scheduler's worker pool size, should increase it in heavy write cases,
 # also should less than total cpu cores.
 {{- if .Values.tikv.storageSchedulerWorkerPoolSize }}
-scheduler-worker-pool-size = {{ .Values.tikv.storageSchedulerWorkerPoolSize }}o
+scheduler-worker-pool-size = {{ .Values.tikv.storageSchedulerWorkerPoolSize }}
 {{- else }}
 # scheduler-worker-pool-size = 4
 {{- end }}
+
 # When the pending write bytes exceeds this threshold,
 # the "scheduler too busy" error is displayed.
 # scheduler-pending-write-threshold = "100MB"
