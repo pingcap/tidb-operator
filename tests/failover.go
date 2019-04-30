@@ -449,27 +449,29 @@ func (oa *operatorActions) GetNodeMap(info *TidbClusterConfig, component string)
 }
 
 func (oa *operatorActions) CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
+	glog.Infof("check k8s/operator/tidbCluster status when one etcd down")
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(nil, nil)
 		if err != nil {
 			return err
 		}
-		glog.Infof("k8s cluster is available.")
+		glog.V(4).Infof("k8s cluster is available.")
 		err = oa.CheckOperatorAvailable(operatorConfig)
 		if err != nil {
 			return err
 		}
-		glog.Infof("tidb operator is available.")
+		glog.V(4).Infof("tidb operator is available.")
 		err = oa.CheckTidbClustersAvailable(clusters)
 		if err != nil {
 			return err
 		}
-		glog.Infof("all clusters is available")
+		glog.V(4).Infof("all clusters is available")
 		return nil
 	})
 }
 
 func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
+	glog.Infof("check k8s/operator/tidbCluster status when one apiserver down")
 	affectedPods := map[string]*corev1.Pod{}
 	apiserverPod, err := GetApiserverPod(oa.kubeCli, faultNode)
 	if err != nil {
@@ -504,17 +506,17 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 		if err != nil {
 			return err
 		}
-		glog.Infof("k8s cluster is available.")
+		glog.V(4).Infof("k8s cluster is available.")
 		err = oa.CheckOperatorAvailable(operatorConfig)
 		if err != nil {
 			return err
 		}
-		glog.Infof("tidb operator is available.")
+		glog.V(4).Infof("tidb operator is available.")
 		err = oa.CheckTidbClustersAvailable(clusters)
 		if err != nil {
 			return err
 		}
-		glog.Infof("all clusters is available")
+		glog.V(4).Infof("all clusters is available")
 		return nil
 	})
 }
@@ -526,7 +528,7 @@ func (oa *operatorActions) CheckK8sAvailableOrDie(excludeNodes map[string]string
 }
 
 func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, excludePods map[string]*corev1.Pod) error {
-	return wait.Poll(3*time.Second, 3*time.Minute, func() (bool, error) {
+	return wait.Poll(3*time.Second, time.Minute, func() (bool, error) {
 		nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
 		if err != nil {
 			glog.Errorf("failed to list nodes,error:%v", err)
@@ -538,8 +540,7 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, exc
 			}
 			for _, condition := range node.Status.Conditions {
 				if condition.Type == corev1.NodeReady && condition.Status != corev1.ConditionTrue {
-					glog.Errorf("node: [%s] is not in running", node.GetName())
-					return false, nil
+					return false, fmt.Errorf("node: [%s] is not in running", node.GetName())
 				}
 			}
 		}
@@ -605,20 +606,20 @@ var testTableName = "testTable"
 func (op *operatorActions) addDataToCluster(info *TidbClusterConfig) (bool, error) {
 	db, err := sql.Open("mysql", getDSN(info.Namespace, info.ClusterName, "test", info.Password))
 	if err != nil {
-		glog.Infof("cluster:[%s] can't open connection to mysql: %v", info.FullName(), err)
+		glog.Errorf("cluster:[%s] can't open connection to mysql: %v", info.FullName(), err)
 		return false, nil
 	}
 	defer db.Close()
 
 	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s (name VARCHAR(64))", testTableName))
 	if err != nil && !tableAlreadyExist(err) {
-		glog.Infof("cluster:[%s] can't create table to mysql: %v", info.FullName(), err)
+		glog.Errorf("cluster:[%s] can't create table to mysql: %v", info.FullName(), err)
 		return false, nil
 	}
 
 	_, err = db.Exec(fmt.Sprintf("INSERT INTO %s VALUES (?)", testTableName), "testValue")
 	if err != nil {
-		glog.Infof("cluster:[%s] can't insert data to mysql: %v", info.FullName(), err)
+		glog.Errorf("cluster:[%s] can't insert data to mysql: %v", info.FullName(), err)
 		return false, nil
 	}
 

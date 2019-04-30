@@ -431,7 +431,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	patchPVCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s | awk '{print $1}' | "+
 		"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
 		info.Namespace, info.ClusterName)
-	glog.Info(patchPVCmd)
+	glog.V(4).Info(patchPVCmd)
 	if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to patch pv: %v, %s", err, string(res))
 	}
@@ -439,18 +439,18 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	pollFn := func() (bool, error) {
 		if res, err := exec.Command("kubectl", "get", "po", "--output=name", "-n", info.Namespace, "-l", setStr).
 			CombinedOutput(); err != nil || len(res) != 0 {
-			glog.Infof("waiting for tidbcluster: %s/%s pods deleting, %v, [%s]",
+			glog.V(4).Infof("waiting for tidbcluster: %s/%s pods deleting, %v, [%s]",
 				info.Namespace, info.ClusterName, err, string(res))
 			return false, nil
 		}
 
 		pvCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s 2>/dev/null|grep Released",
 			info.Namespace, info.ClusterName)
-		glog.Info(pvCmd)
+		glog.V(4).Info(pvCmd)
 		if res, err := exec.Command("/bin/sh", "-c", pvCmd).
 			CombinedOutput(); len(res) == 0 {
 		} else if err != nil {
-			glog.Infof("waiting for tidbcluster: %s/%s pv deleting, %v, %s",
+			glog.V(4).Infof("waiting for tidbcluster: %s/%s pv deleting, %v, %s",
 				info.Namespace, info.ClusterName, err, string(res))
 			return false, nil
 		}
@@ -485,42 +485,42 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 			return false, nil
 		}
 
-		glog.Infof("check tidb cluster begin tidbMembersReadyFn")
+		glog.V(4).Infof("check tidb cluster begin tidbMembersReadyFn")
 		if b, err := oa.tidbMembersReadyFn(tc); !b && err == nil {
 			return false, nil
 		}
 
-		glog.Infof("check tidb cluster begin reclaimPolicySyncFn")
+		glog.V(4).Infof("check tidb cluster begin reclaimPolicySyncFn")
 		if b, err := oa.reclaimPolicySyncFn(tc); !b && err == nil {
 			return false, nil
 		}
 
-		glog.Infof("check tidb cluster begin metaSyncFn")
+		glog.V(4).Infof("check tidb cluster begin metaSyncFn")
 		if b, err := oa.metaSyncFn(tc); err != nil {
 			return false, err
 		} else if !b && err == nil {
 			return false, nil
 		}
 
-		glog.Infof("check tidb cluster begin schedulerHAFn")
+		glog.V(4).Infof("check tidb cluster begin schedulerHAFn")
 		if b, err := oa.schedulerHAFn(tc); !b && err == nil {
 			return false, nil
 		}
 
-		glog.Infof("check tidb cluster begin passwordIsSet")
+		glog.V(4).Infof("check tidb cluster begin passwordIsSet")
 		if b, err := oa.passwordIsSet(info); !b && err == nil {
 			return false, nil
 		}
 
 		if info.Monitor {
-			glog.Infof("check tidb monitor normal")
+			glog.V(4).Infof("check tidb monitor normal")
 			if b, err := oa.monitorNormal(info); !b && err == nil {
 				return false, nil
 			}
 		}
 		return true, nil
 	}); err != nil {
-		glog.Infof("check tidb cluster status failed: %s", err.Error())
+		glog.Errorf("check tidb cluster status failed: %s", err.Error())
 		return fmt.Errorf("failed to waiting for tidbcluster %s/%s ready in 30 minutes", ns, tcName)
 	}
 
@@ -1449,12 +1449,11 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	glog.Infof("begin to deploy adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
 	sets := map[string]string{
-		"name":          info.BackupName,
-		"mode":          "backup",
-		"user":          "root",
-		"password":      info.Password,
-		"storage.size":  "10Gi",
-		"backupOptions": "'--chunk-filesize=100 --threads=1'",
+		"name":         info.BackupName,
+		"mode":         "backup",
+		"user":         "root",
+		"password":     info.Password,
+		"storage.size": "10Gi",
 	}
 
 	setString := info.BackupHelmSetString(sets)
@@ -1655,7 +1654,6 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 		"scheduledBackup.schedule":   cron,
 		"scheduledBackup.storage":    "10Gi",
 		"scheduledBackup.secretName": info.BackupSecretName,
-		"scheduledBackup.options":    "'--chunk-filesize=100 --threads=1'",
 	}
 
 	setString := info.TidbClusterHelmSetString(sets)
