@@ -84,7 +84,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		return &reviewResponse
 	}
 
-	glog.Infof("delete pod %s", pod.Labels[label.ComponentLabelKey])
+	glog.Infof("delete %s pod [%s]", pod.Labels[label.ComponentLabelKey], pod.GetName())
 
 	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(pod.Labels[label.InstanceLabelKey], metav1.GetOptions{})
 	if err != nil {
@@ -95,15 +95,14 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	pdClient := controller.NewDefaultPDControl().GetPDClient(tc)
 	tidbController := controller.NewDefaultTiDBControl()
 
+	// if the pod is deleting, allow the pod delete operation
+	if pod.DeletionTimestamp != nil {
+		glog.Infof("pod:[%s/%s] status is timestamp %s", namespace, name, pod.DeletionTimestamp)
+		reviewResponse.Allowed = true
+		return &reviewResponse
+	}
+
 	if pod.Labels[label.ComponentLabelKey] == "tidb" {
-
-		// if tidb pod is deleting, allow pod delete operation
-		if pod.DeletionTimestamp != nil {
-			glog.Infof("TIDB pod status is namespace %s name %s timestamp %s", namespace, name, pod.DeletionTimestamp)
-			reviewResponse.Allowed = true
-			return &reviewResponse
-		}
-
 		ordinal, err := strconv.ParseInt(strings.Split(name, "-")[len(strings.Split(name, "-"))-1], 10, 32)
 		if err != nil {
 			glog.Errorf("fail to convert string to int while deleting TiDB err %v", err)
@@ -125,7 +124,6 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		}
 
 	} else if pod.Labels[label.ComponentLabelKey] == "pd" {
-
 		leader, err := pdClient.GetPDLeader()
 		if err != nil {
 			glog.Errorf("fail to get pd leader %v", err)
@@ -141,7 +139,6 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		}
 
 	} else if pod.Labels[label.ComponentLabelKey] == "tikv" {
-
 		var storeID uint64
 		storeID = 0
 		for _, store := range tc.Status.TiKV.Stores {

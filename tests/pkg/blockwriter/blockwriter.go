@@ -123,13 +123,11 @@ func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []st
 		select {
 		case <-ctx.Done():
 			return
+		case queryChan <- querys:
+			continue
 		default:
-			if len(queryChan) < queryChanSize {
-				queryChan <- querys
-			} else {
-				glog.V(4).Infof("[%s] [%s] [action: generate Query] query channel is full, sleep 10 seconds", c, c.ClusterName)
-				util.Sleep(ctx, 10*time.Second)
-			}
+			glog.V(4).Infof("[%s] [%s] [action: generate Query] query channel is full, sleep 10 seconds", c, c.ClusterName)
+			util.Sleep(ctx, 10*time.Second)
 		}
 	}
 }
