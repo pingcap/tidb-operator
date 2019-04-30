@@ -28,8 +28,8 @@ compressor = ""
 [syncer]
 
 # Assume the upstream sql-mode.
-# If this is setted , will use the same sql-mode to parse DDL statment, and set the same sql-mode at downstream when db-type is mysql.
-# If this is not setted, it will not set any sql-mode.
+# If this is set , will use the same sql-mode to parse DDL statment, and set the same sql-mode at downstream when db-type is mysql.
+# The default value will not set any sql-mode.
 # sql-mode = "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION"
 
 # number of binlog events in a transaction batch
