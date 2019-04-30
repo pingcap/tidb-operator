@@ -159,6 +159,5 @@ func NotifyAndCompleted(msg string) {
 	if sendErr != nil {
 		glog.Errorf("failed to notify slack[%s] the massage: %s,error: %v", WebhookUrl, msg, sendErr)
 	}
-	time.Sleep(3 * time.Second)
 	glog.Infof(msg)
 }
