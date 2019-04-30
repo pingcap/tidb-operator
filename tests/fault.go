@@ -215,7 +215,7 @@ func (fa *faultTriggerActions) StopETCD(nodes ...string) error {
 
 func (fa *faultTriggerActions) StopETCDOrDie(nodes ...string) {
 	if err := fa.StopETCD(nodes...); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -239,7 +239,7 @@ func (fa *faultTriggerActions) StartETCD(nodes ...string) error {
 
 func (fa *faultTriggerActions) StartETCDOrDie(nodes ...string) {
 	if err := fa.StartETCD(nodes...); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -290,7 +290,7 @@ func (fa *faultTriggerActions) StopKubeAPIServer(node string) error {
 
 func (fa *faultTriggerActions) StopKubeAPIServerOrDie(node string) {
 	if err := fa.StopKubeAPIServer(node); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -301,7 +301,7 @@ func (fa *faultTriggerActions) StartKubeAPIServer(node string) error {
 
 func (fa *faultTriggerActions) StartKubeAPIServerOrDie(node string) {
 	if err := fa.StartKubeAPIServer(node); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 

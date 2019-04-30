@@ -477,7 +477,7 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 	affectedPods := map[string]*corev1.Pod{}
 	apiserverPod, err := GetApiserverPod(oa.kubeCli, faultNode)
 	if err != nil {
-		panic(fmt.Errorf("can't find apiserver in node:%s", faultNode))
+		slack.NotifyAndPanic(fmt.Errorf("can't find apiserver in node:%s", faultNode))
 	}
 	if apiserverPod != nil {
 		affectedPods[apiserverPod.GetName()] = apiserverPod
@@ -498,7 +498,7 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 	}
 	dnsPod, err := GetDnsPod(oa.kubeCli, faultNode)
 	if err != nil {
-		panic(fmt.Errorf("can't find controller-manager in node:%s", faultNode))
+		slack.NotifyAndPanic(fmt.Errorf("can't find controller-manager in node:%s", faultNode))
 	}
 	if dnsPod != nil {
 		affectedPods[dnsPod.GetName()] = dnsPod
@@ -525,7 +525,7 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 
 func (oa *operatorActions) CheckK8sAvailableOrDie(excludeNodes map[string]string, excludePods map[string]*corev1.Pod) {
 	if err := oa.CheckK8sAvailable(excludeNodes, excludePods); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 

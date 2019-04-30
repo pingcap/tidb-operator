@@ -17,6 +17,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/slack"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -32,7 +34,7 @@ func KeepOrDie(interval time.Duration, period time.Duration, fun func() error) {
 		}
 		err := fun()
 		if err != nil {
-			panic(err)
+			slack.NotifyAndPanic(err)
 		}
 		time.Sleep(interval)
 	}
