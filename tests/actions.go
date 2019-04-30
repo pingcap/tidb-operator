@@ -56,6 +56,13 @@ import (
 
 const (
 	period = 5 * time.Minute
+
+	tidbControllerName string = "tidb-controller-manager"
+	tidbSchedulerName  string = "tidb-scheduler"
+
+	// NodeUnreachablePodReason is defined in k8s.io/kubernetes/pkg/util/node
+	// but not in client-go and apimachinery, so we define it here
+	NodeUnreachablePodReason = "NodeLost"
 )
 
 func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, pollInterval time.Duration, cfg *Config) OperatorActions {
@@ -69,16 +76,17 @@ func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, p
 }
 
 const (
-	DefaultPollTimeout   time.Duration = 10 * time.Minute
-	DefaultPollInterval  time.Duration = 1 * time.Minute
-	getBackupDirPodName                = "get-backup-dir"
-	grafanaUsername                    = "admin"
-	grafanaPassword                    = "admin"
-	operartorChartName                 = "tidb-operator"
-	tidbClusterChartName               = "tidb-cluster"
-	backupChartName                    = "tidb-backup"
-	statbilityTestTag                  = "stability"
-	metricsPort                        = 8090
+	DefaultPollTimeout          time.Duration = 10 * time.Minute
+	DefaultPollInterval         time.Duration = 1 * time.Minute
+	BackupAndRestorePollTimeOut time.Duration = 30 * time.Minute
+	getBackupDirPodName                       = "get-backup-dir"
+	grafanaUsername                           = "admin"
+	grafanaPassword                           = "admin"
+	operartorChartName                        = "tidb-operator"
+	tidbClusterChartName                      = "tidb-cluster"
+	backupChartName                           = "tidb-backup"
+	statbilityTestTag                         = "stability"
+	metricsPort                               = 8090
 )
 
 type OperatorActions interface {
@@ -118,12 +126,18 @@ type OperatorActions interface {
 	GetNodeMap(info *TidbClusterConfig, component string) (map[string][]string, error)
 	TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error
 	TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration)
-	CheckFailoverPending(info *TidbClusterConfig, faultPoint *time.Time) (bool, error)
-	CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, faultPoint *time.Time)
+	CheckFailoverPending(info *TidbClusterConfig, node string, faultPoint *time.Time) (bool, error)
+	CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, node string, faultPoint *time.Time)
 	CheckFailover(info *TidbClusterConfig, faultNode string) (bool, error)
 	CheckFailoverOrDie(clusters []*TidbClusterConfig, faultNode string)
 	CheckRecover(cluster *TidbClusterConfig) (bool, error)
 	CheckRecoverOrDie(clusters []*TidbClusterConfig)
+	CheckK8sAvailable(excludeNodes map[string]string, excludePods map[string]*corev1.Pod) error
+	CheckK8sAvailableOrDie(excludeNodes map[string]string, excludePods map[string]*corev1.Pod)
+	CheckOperatorAvailable(operatorConfig *OperatorConfig) error
+	CheckTidbClustersAvailable(infos []*TidbClusterConfig) error
+	CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
+	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	RegisterWebHookAndService(info *OperatorConfig) error
 	RegisterWebHookAndServiceOrDie(info *OperatorConfig)
 	CleanWebHookAndService(info *OperatorConfig) error
@@ -417,7 +431,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	patchPVCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s | awk '{print $1}' | "+
 		"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
 		info.Namespace, info.ClusterName)
-	glog.Info(patchPVCmd)
+	glog.V(4).Info(patchPVCmd)
 	if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to patch pv: %v, %s", err, string(res))
 	}
@@ -430,13 +444,13 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 			return false, nil
 		}
 
-		pvCmd := fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s 2>/dev/null|grep Released",
-			label.NamespaceLabelKey, info.Namespace, label.InstanceLabelKey, info.ClusterName)
+		pvCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s 2>/dev/null|grep Released",
+			info.Namespace, info.ClusterName)
 		glog.V(4).Info(pvCmd)
 		if res, err := exec.Command("/bin/sh", "-c", pvCmd).
 			CombinedOutput(); len(res) == 0 {
 		} else if err != nil {
-			glog.Infof("waiting for tidbcluster: %s/%s pv deleting, %v, %s",
+			glog.V(4).Infof("waiting for tidbcluster: %s/%s pv deleting, %v, %s",
 				info.Namespace, info.ClusterName, err, string(res))
 			return false, nil
 		}
@@ -506,7 +520,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		}
 		return true, nil
 	}); err != nil {
-		glog.Infof("check tidb cluster status failed: %s", err.Error())
+		glog.Errorf("check tidb cluster status failed: %s", err.Error())
 		return fmt.Errorf("failed to waiting for tidbcluster %s/%s ready in 30 minutes", ns, tcName)
 	}
 
@@ -1474,9 +1488,9 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
 		return true, nil
 	}
 
-	err := wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
+	err := wait.Poll(DefaultPollInterval, BackupAndRestorePollTimeOut, fn)
 	if err != nil {
-		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
+		return fmt.Errorf("failed to launch backup job: %v", err)
 	}
 
 	return nil
@@ -1518,7 +1532,7 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 			return false, nil
 		}
 		if job.Status.Succeeded == 0 {
-			glog.Errorf("cluster [%s] back up job is not completed, please wait! ", to.ClusterName)
+			glog.Errorf("cluster [%s] restore job is not completed, please wait! ", to.ClusterName)
 			return false, nil
 		}
 
@@ -1542,9 +1556,9 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 		return true, nil
 	}
 
-	err := wait.Poll(oa.pollInterval, 30*time.Minute, fn)
+	err := wait.Poll(oa.pollInterval, BackupAndRestorePollTimeOut, fn)
 	if err != nil {
-		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
+		return fmt.Errorf("failed to launch restore job: %v", err)
 	}
 	return nil
 }
@@ -1726,7 +1740,7 @@ func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterConfig) error {
 		return false, nil
 	}
 
-	err := wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
+	err := wait.Poll(DefaultPollInterval, BackupAndRestorePollTimeOut, fn)
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
