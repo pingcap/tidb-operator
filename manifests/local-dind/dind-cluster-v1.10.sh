@@ -2401,7 +2401,7 @@ function dind::run_tiller {
     if [[ $? -eq 0 ]];then
         helm_version=$(helm version -c --template '{{.Client.SemVer}}')
         if [[ -n ${KUBE_REPO_PREFIX} ]];then
-            helm init --tiller-image ${KUBE_REPO_PREFIX}/tiller:${helm_version}
+            helm init --tiller-image ${KUBE_REPO_PREFIX}/tiller:${helm_version} --skip-refresh
         else
             helm init
         fi

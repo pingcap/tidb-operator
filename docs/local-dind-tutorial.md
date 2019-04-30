@@ -48,8 +48,7 @@ NAME                             AGE
 tidbclusters.pingcap.com         1m
 
 $ # Install TiDB Operator into Kubernetes
-$ helm install charts/tidb-operator --name=tidb-operator --namespace=tidb-admin
-
+$ helm install charts/tidb-operator --name=tidb-operator --namespace=tidb-admin --set scheduler.kubeSchedulerImageName=mirantis/hypokube --set scheduler.kubeSchedulerImageTag=final
 $ # wait operator running
 $ kubectl get pods --namespace tidb-admin -l app.kubernetes.io/instance=tidb-operator
 NAME                                       READY     STATUS    RESTARTS   AGE
