@@ -2110,7 +2110,12 @@ func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie(info *Oper
 	}
 	err = server.ListenAndServeTLS("", "")
 	if err != nil {
-		glog.Errorf("fail to start webhook server err %v", err)
+		err = fmt.Errorf("fail to start webhook server err %v", err)
+		glog.Error(err)
+		sendErr := slack.SendErrMsg(err.Error())
+		if sendErr != nil {
+			glog.Error(sendErr)
+		}
 		os.Exit(4)
 	}
 }
