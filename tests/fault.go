@@ -32,11 +32,15 @@ type FaultTriggerActions interface {
 	StartNode(physicalNode string, node string) error
 	StartNodeOrDie(physicalNode string, node string)
 	StopETCD(nodes ...string) error
+	StopETCDOrDie(nodes ...string)
 	StartETCD(nodes ...string) error
+	StartETCDOrDie(nodes ...string)
 	StopKubelet(node string) error
 	StartKubelet(node string) error
 	StopKubeAPIServer(node string) error
+	StopKubeAPIServerOrDie(node string)
 	StartKubeAPIServer(node string) error
+	StartKubeAPIServerOrDie(node string)
 	StopKubeControllerManager(node string) error
 	StartKubeControllerManager(node string) error
 	StopKubeScheduler(node string) error
@@ -180,7 +184,7 @@ func (fa *faultTriggerActions) StartNode(physicalNode string, node string) error
 		return err
 	}
 
-	glog.Infof("node %s on physical node %s is started", physicalNode, node)
+	glog.Infof("node %s on physical node %s is started", node, physicalNode)
 
 	return nil
 }
@@ -209,6 +213,12 @@ func (fa *faultTriggerActions) StopETCD(nodes ...string) error {
 	return nil
 }
 
+func (fa *faultTriggerActions) StopETCDOrDie(nodes ...string) {
+	if err := fa.StopETCD(nodes...); err != nil {
+		panic(err)
+	}
+}
+
 // StartETCD starts the etcd service.
 // If the `nodes` is empty, StartETCD will start all etcd service.
 func (fa *faultTriggerActions) StartETCD(nodes ...string) error {
@@ -225,6 +235,12 @@ func (fa *faultTriggerActions) StartETCD(nodes ...string) error {
 	}
 
 	return nil
+}
+
+func (fa *faultTriggerActions) StartETCDOrDie(nodes ...string) {
+	if err := fa.StartETCD(nodes...); err != nil {
+		panic(err)
+	}
 }
 
 // StopKubelet stops the kubelet service.
@@ -272,9 +288,21 @@ func (fa *faultTriggerActions) StopKubeAPIServer(node string) error {
 	return fa.serviceAction(node, manager.KubeAPIServerService, stopAction)
 }
 
+func (fa *faultTriggerActions) StopKubeAPIServerOrDie(node string) {
+	if err := fa.StopKubeAPIServer(node); err != nil {
+		panic(err)
+	}
+}
+
 // StartKubeAPIServer starts the apiserver service.
 func (fa *faultTriggerActions) StartKubeAPIServer(node string) error {
 	return fa.serviceAction(node, manager.KubeAPIServerService, startAction)
+}
+
+func (fa *faultTriggerActions) StartKubeAPIServerOrDie(node string) {
+	if err := fa.StartKubeAPIServer(node); err != nil {
+		panic(err)
+	}
 }
 
 func (fa *faultTriggerActions) serviceAction(node string, serverName string, action string) error {
@@ -325,7 +353,7 @@ func (fa *faultTriggerActions) serviceAction(node string, serverName string, act
 		return err
 	}
 
-	glog.V(4).Infof("%s %s %s successfully", action, serverName, node)
+	glog.Infof("%s %s %s successfully", action, serverName, node)
 
 	return nil
 }
