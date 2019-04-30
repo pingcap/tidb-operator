@@ -148,7 +148,7 @@ func SendWarnMsg(msg string) error {
 func NotifyAndPanic(err error) {
 	sendErr := SendErrMsg(err.Error())
 	if sendErr != nil {
-		glog.Errorf("failed to notify slack[%s] the massage: %v,error: %v", WebhookUrl, err, sendErr)
+		glog.Warningf("failed to notify slack[%s] the massage: %v,error: %v", WebhookUrl, err, sendErr)
 	}
 	time.Sleep(3 * time.Second)
 	panic(err)
@@ -157,7 +157,7 @@ func NotifyAndPanic(err error) {
 func NotifyAndCompleted(msg string) {
 	sendErr := SendGoodMsg(msg)
 	if sendErr != nil {
-		glog.Errorf("failed to notify slack[%s] the massage: %s,error: %v", WebhookUrl, msg, sendErr)
+		glog.Warningf("failed to notify slack[%s] the massage: %s,error: %v", WebhookUrl, msg, sendErr)
 	}
 	glog.Infof(msg)
 }
