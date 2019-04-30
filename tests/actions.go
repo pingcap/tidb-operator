@@ -1532,7 +1532,8 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
 }
 
 func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfig) error {
-	oa.EmitEvent(from, fmt.Sprintf("RestoreBackup: source: %s", from.ClusterName))
+	oa.EmitEvent(from, fmt.Sprintf("RestoreBackup: target: %s", to.ClusterName))
+	oa.EmitEvent(to, fmt.Sprintf("RestoreBackup: source: %s", from.ClusterName))
 	glog.Infof("deploying restore cluster[%s/%s]", from.Namespace, from.ClusterName)
 
 	sets := map[string]string{
