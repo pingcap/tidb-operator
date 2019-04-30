@@ -40,13 +40,6 @@ func (bc *BackupCase) Run() error {
 
 	// pause write pressure during backup
 	bc.operator.StopInsertDataTo(bc.srcCluster)
-	defer func() {
-		go func() {
-			if err := bc.operator.BeginInsertDataTo(bc.srcCluster); err != nil {
-				glog.Errorf("cluster:[%s] begin insert data failed,error: %v", bc.srcCluster.ClusterName, err)
-			}
-		}()
-	}()
 
 	err := bc.operator.DeployAdHocBackup(bc.srcCluster)
 	if err != nil {
@@ -77,6 +70,8 @@ func (bc *BackupCase) Run() error {
 		glog.Errorf("from cluster:[%s] to cluster [%s] restore failed error: %v", bc.srcCluster.ClusterName, bc.desCluster.ClusterName, err)
 		return err
 	}
+
+	go bc.operator.BeginInsertDataToOrDie(bc.srcCluster)
 
 	err = bc.operator.DeployScheduledBackup(bc.srcCluster)
 	if err != nil {

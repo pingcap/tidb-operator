@@ -19,6 +19,8 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/wait"
+
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
 	"github.com/pingcap/tidb-operator/tests"
@@ -37,10 +39,8 @@ func main() {
 
 	conf := tests.ParseConfigOrDie()
 	cli, kubeCli := client.NewCliOrDie()
-	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, conf)
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	fta.CheckAndRecoverEnvOrDie()
-	oa.CheckK8sAvailableOrDie(nil, nil)
 
 	tidbVersion := conf.GetTiDBVersionOrDie()
 	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
@@ -57,9 +57,6 @@ func main() {
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
 	}
-
-	// start a http server in goruntine
-	go oa.StartValidatingAdmissionWebhookServerOrDie(operatorCfg)
 
 	// TODO remove this
 	// create database and table and insert a column for test backup and restore
@@ -87,12 +84,12 @@ func main() {
 			"pd.resources.limits.memory":     "2Gi",
 			"pd.resources.requests.cpu":      "200m",
 			"pd.resources.requests.memory":   "1Gi",
-			"tikv.resources.limits.cpu":      "2000m",
-			"tikv.resources.limits.memory":   "4Gi",
+			"tikv.resources.limits.cpu":      "8000m",
+			"tikv.resources.limits.memory":   "8Gi",
 			"tikv.resources.requests.cpu":    "1000m",
 			"tikv.resources.requests.memory": "2Gi",
-			"tidb.resources.limits.cpu":      "2000m",
-			"tidb.resources.limits.memory":   "4Gi",
+			"tidb.resources.limits.cpu":      "8000m",
+			"tidb.resources.limits.memory":   "8Gi",
 			"tidb.resources.requests.cpu":    "500m",
 			"tidb.resources.requests.memory": "1Gi",
 			"monitor.persistent":             "true",
@@ -120,12 +117,12 @@ func main() {
 			"pd.resources.limits.memory":     "2Gi",
 			"pd.resources.requests.cpu":      "200m",
 			"pd.resources.requests.memory":   "1Gi",
-			"tikv.resources.limits.cpu":      "2000m",
-			"tikv.resources.limits.memory":   "4Gi",
+			"tikv.resources.limits.cpu":      "8000m",
+			"tikv.resources.limits.memory":   "8Gi",
 			"tikv.resources.requests.cpu":    "1000m",
 			"tikv.resources.requests.memory": "2Gi",
-			"tidb.resources.limits.cpu":      "2000m",
-			"tidb.resources.limits.memory":   "4Gi",
+			"tidb.resources.limits.cpu":      "8000m",
+			"tidb.resources.limits.memory":   "8Gi",
 			"tidb.resources.requests.cpu":    "500m",
 			"tidb.resources.requests.memory": "1Gi",
 			// TODO assert the the monitor's pvc exist and clean it when bootstrapping
@@ -143,6 +140,12 @@ func main() {
 	clusterRestoreTo.ClusterName = "cluster-restore"
 
 	allClusters := []*tests.TidbClusterConfig{cluster1, cluster2, clusterRestoreTo}
+
+	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, conf, allClusters)
+	oa.CheckK8sAvailableOrDie(nil, nil)
+	go wait.Forever(oa.EventWorker, 10*time.Second)
+	// start a http server in goruntine
+	go oa.StartValidatingAdmissionWebhookServerOrDie(operatorCfg)
 
 	defer func() {
 		oa.DumpAllLogs(operatorCfg, allClusters)
@@ -173,7 +176,6 @@ func main() {
 	oa.ScaleTidbClusterOrDie(cluster1)
 	cluster2.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
 	oa.ScaleTidbClusterOrDie(cluster2)
-	time.Sleep(30 * time.Second)
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
@@ -182,7 +184,6 @@ func main() {
 	oa.ScaleTidbClusterOrDie(cluster1)
 	cluster2.ScaleTiDB(2).ScaleTiKV(3).ScalePD(3)
 	oa.ScaleTidbClusterOrDie(cluster2)
-	time.Sleep(30 * time.Second)
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
@@ -195,7 +196,6 @@ func main() {
 	cluster2.UpgradeAll(firstUpgradeVersion)
 	oa.UpgradeTidbClusterOrDie(cluster1)
 	oa.UpgradeTidbClusterOrDie(cluster2)
-	time.Sleep(30 * time.Second)
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
@@ -211,10 +211,12 @@ func main() {
 
 	// stop a node and failover automatically
 	physicalNode, node, faultTime := fta.StopNodeOrDie()
+	oa.EmitEvent(nil, fmt.Sprintf("StopNode: %s on %s", node, physicalNode))
 	oa.CheckFailoverPendingOrDie(allClusters, node, &faultTime)
 	oa.CheckFailoverOrDie(allClusters, node)
 	time.Sleep(3 * time.Minute)
 	fta.StartNodeOrDie(physicalNode, node)
+	oa.EmitEvent(nil, fmt.Sprintf("StartNode: %s on %s", node, physicalNode))
 	oa.CheckRecoverOrDie(allClusters)
 	for _, cluster := range allClusters {
 		oa.CheckTidbClusterStatusOrDie(cluster)

@@ -61,7 +61,7 @@ func GetAllKVLeaders(versionCli versioned.Interface, namespace string, clusterNa
 // only allow pods to be delete when it is not ddlowner of tidb, not leader of pd and not
 // master of tikv.
 func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
-	glog.Infof("admitting pods")
+	glog.V(4).Infof("admitting pods")
 
 	podResource := metav1.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
 	if ar.Request.Resource != podResource {
@@ -84,7 +84,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		return &reviewResponse
 	}
 
-	glog.Infof("delete %s pod [%s]", pod.Labels[label.ComponentLabelKey], pod.GetName())
+	glog.V(4).Infof("delete %s pod [%s]", pod.Labels[label.ComponentLabelKey], pod.GetName())
 
 	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(pod.Labels[label.InstanceLabelKey], metav1.GetOptions{})
 	if err != nil {
@@ -95,7 +95,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	pdClient := controller.NewDefaultPDControl().GetPDClient(tc)
 	tidbController := controller.NewDefaultTiDBControl()
 
-	// if the pod is deleting, allow the pod delete operation
+	// if pod is already deleting, return Allowed
 	if pod.DeletionTimestamp != nil {
 		glog.Infof("pod:[%s/%s] status is timestamp %s", namespace, name, pod.DeletionTimestamp)
 		reviewResponse.Allowed = true
@@ -118,6 +118,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		if info.IsOwner && tc.Status.TiDB.StatefulSet.Replicas > 1 {
 			time.Sleep(10 * time.Second)
 			glog.Errorf("tidb is ddl owner, can't be deleted namespace %s name %s", namespace, name)
+			// TODO use context instead
 			os.Exit(3)
 		} else {
 			glog.Infof("savely delete pod namespace %s name %s isowner %t", namespace, name, info.IsOwner)
@@ -133,6 +134,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		if leader.Name == name && tc.Status.TiDB.StatefulSet.Replicas > 1 {
 			time.Sleep(10 * time.Second)
 			glog.Errorf("pd is leader, can't be deleted namespace %s name %s", namespace, name)
+			// TODO use context instead
 			os.Exit(3)
 		} else {
 			glog.Infof("savely delete pod namespace %s name %s leader name %s", namespace, name, leader.Name)
@@ -167,9 +169,11 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		beforeCount := kvLeaderMap[namespace][name]
 		afterCount := storeInfo.Status.LeaderCount
 
-		if beforeCount != 0 && beforeCount <= afterCount && tc.Status.TiKV.StatefulSet.Replicas > 1 {
+		if beforeCount != 0 && !(afterCount < beforeCount) && tc.Status.TiKV.StatefulSet.Replicas > 1 {
 			time.Sleep(10 * time.Second)
-			glog.Errorf("kv leader is not zero, can't be deleted namespace %s name %s leaderCount %d", namespace, name, storeInfo.Status.LeaderCount)
+			glog.Errorf("failed to evict leader from %s/%s, before: %d, now: %d",
+				namespace, name, beforeCount, afterCount)
+			// TODO use context instead
 			os.Exit(3)
 		} else {
 			glog.Infof("savely delete pod namespace %s name %s before count %d after count %d", namespace, name, beforeCount, afterCount)
