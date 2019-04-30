@@ -19,12 +19,10 @@ import (
 	_ "net/http/pprof"
 	"time"
 
-	"github.com/pingcap/tidb-operator/tests/backup"
-
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
-
 	"github.com/pingcap/tidb-operator/tests"
+	"github.com/pingcap/tidb-operator/tests/backup"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 
 	"k8s.io/apiserver/pkg/util/logs"

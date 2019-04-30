@@ -555,8 +555,7 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, exc
 			}
 			podState := GetPodStatus(&pod)
 			if podState != string(corev1.PodRunning) {
-				glog.Errorf("pod:[%s/%s] is unavailable,state is %s", pod.GetName(), pod.GetNamespace(), podState)
-				return false, nil
+				return false, fmt.Errorf("pod:[%s/%s] is unavailable,state is %s", pod.GetName(), pod.GetNamespace(), podState)
 			}
 		}
 		return true, nil
