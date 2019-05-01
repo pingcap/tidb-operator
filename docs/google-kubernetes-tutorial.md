@@ -157,8 +157,9 @@ To do so, use the following command:
 
     kubectl -n tidb port-forward svc/demo-grafana 3000:3000 &>/dev/null &
 
-Now, click on the Web Preview button of Cloud Shell and enter 3000 for the port. Alternatively,
-use the following URL https://ssh.cloud.google.com/devshell/proxy?port=3000.
+Now, click on the Web Preview button of Cloud Shell and enter 3000 for the port. This will open a new browser tab pointing to the Grafana dashboards.
+
+Alternatively, use the following URL https://ssh.cloud.google.com/devshell/proxy?port=3000 in a new tab or window.
 
 ## Destroy the TiDB cluster
 
