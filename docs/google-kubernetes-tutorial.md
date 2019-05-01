@@ -150,6 +150,15 @@ Now the number of TiKV pods is increased from the default 3 to 5. You can check 
 
 	kubectl get po -n tidb
 
+## Accessing the Grafana dashboard
+
+To access the Grafana dashboards, you can create a tunnel between the Grafana service and your shell.
+To do so, use the following command:
+
+    kubectl -n tidb port-forward svc/demo-grafana 3000:3000 &>/dev/null &
+
+Now, point a browser to `localhost:3000` to access the dashboards.
+
 ## Destroy the TiDB cluster
 
 When the TiDB cluster is not needed, you can delete it with the following command:
