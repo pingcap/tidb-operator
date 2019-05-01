@@ -2155,6 +2155,10 @@ func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
 	oa.lock.Lock()
 	defer oa.lock.Unlock()
 
+	if len(oa.clusterEvents) == 0 {
+		return
+	}
+
 	ev := event{
 		message: message,
 		ts:      time.Now().UnixNano() / int64(time.Millisecond),
