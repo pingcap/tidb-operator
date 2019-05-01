@@ -2161,7 +2161,7 @@ func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
 	}
 
 	if info == nil {
-		for k, _ := range oa.clusterEvents {
+		for k := range oa.clusterEvents {
 			ce := oa.clusterEvents[k]
 			ce.events = append(ce.events, ev)
 		}
