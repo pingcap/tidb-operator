@@ -81,7 +81,11 @@ status-addr = "0.0.0.0:20180"
 ## Compression type for gRPC channel: none, deflate or gzip.
 # grpc-compression-type = "none"
 # size of thread pool for grpc server.
+{{- if .Values.tikv.grpcConcurrency }}
+grpc-concurrency = {{ .Values.tikv.grpcConcurrency }}
+{{- else }}
 # grpc-concurrency = 4
+{{- end }}
 # The number of max concurrent streams/requests on a client connection.
 # grpc-concurrent-stream = 1024
 # The number of connections with each tikv server to send raft messages.

@@ -98,6 +98,8 @@ tikv:
   # syncLog is a bool value to enable or disable syc-log for raftstore, default is true
   # enable this can prevent data loss when power failure
   syncLog: true
+  # size of thread pool for grpc server.
+  grpcConcurrency: 4
   resources:
     limits: {}
     #   cpu: 16000m
@@ -150,6 +152,12 @@ tidb:
   logLevel: info
   preparedPlanCacheEnabled: false
   preparedPlanCacheCapacity: 100
+  # Enable local latches for transactions. Enable it when
+  # there are lots of conflicts between transactions.
+  txnLocalLatchesEnabled: false
+  txnLocalLatchesCapacity: "10240000"
+  # The limit of concurrent executed sessions.
+  tokenLimit: "1000"
   # Set the memory quota for a query in bytes. Default: 32GB
   memQuotaQuery: "34359738368"
   # The limitation of the number for the entries in one transaction.

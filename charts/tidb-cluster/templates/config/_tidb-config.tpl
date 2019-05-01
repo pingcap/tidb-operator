@@ -29,7 +29,7 @@ lease = {{ .Values.tidb.lease | default "45s" | quote }}
 split-table = true
 
 # The limit of concurrent executed sessions.
-token-limit = 1000
+token-limit = {{ .Values.tidb.tokenLimit | default "1000" | atoi }}
 
 # Only print a log when out of memory quota.
 # Valid options: ["log", "cancel"]
@@ -253,8 +253,8 @@ commit-timeout = "41s"
 [txn-local-latches]
 # Enable local latches for transactions. Enable it when
 # there are lots of conflicts between transactions.
-enabled = false
-capacity = 10240000
+enabled = {{ .Values.tidb.txnLocalLatchesEnabled | default false }}
+capacity = {{ .Values.tidb.txnLocalLatchesCapacity | default "10240000" | atoi }}
 
 [binlog]
 # enable to write binlog.
