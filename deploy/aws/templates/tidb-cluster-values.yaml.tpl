@@ -99,6 +99,8 @@ tikv:
   # syncLog is a bool value to enable or disable syc-log for raftstore, default is true
   # enable this can prevent data loss when power failure
   syncLog: true
+  # size of thread pool for grpc server.
+  # grpcConcurrency: 4
   resources:
     limits: {}
     #   cpu: 16000m
@@ -137,21 +139,10 @@ tikv:
   # also should less than total cpu cores.
   # storageSchedulerWorkerPoolSize: 4
 
-tikvPromGateway:
-  image: prom/pushgateway:v0.3.1
-  imagePullPolicy: IfNotPresent
-  resources:
-    limits: {}
-    #   cpu: 100m
-    #   memory: 100Mi
-    requests: {}
-    #   cpu: 50m
-    #   memory: 50Mi
-
 tidb:
   replicas: ${tidb_replicas}
   # The secret name of root password, you can create secret with following command:
-  # kubectl create secret generic tidb-secret --from-literal=root_password=<root-password>
+  # kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
   # If unset, the root password will be empty and you can set it after connecting
   # passwordSecretName: tidb-secret
   # initSql is the SQL statements executed after the TiDB cluster is bootstrapped.
@@ -161,6 +152,36 @@ tidb:
   # Image pull policy.
   imagePullPolicy: IfNotPresent
   logLevel: info
+  preparedPlanCacheEnabled: false
+  preparedPlanCacheCapacity: 100
+  # Enable local latches for transactions. Enable it when
+  # there are lots of conflicts between transactions.
+  txnLocalLatchesEnabled: false
+  txnLocalLatchesCapacity: "10240000"
+  # The limit of concurrent executed sessions.
+  tokenLimit: "1000"
+  # Set the memory quota for a query in bytes. Default: 32GB
+  memQuotaQuery: "34359738368"
+  # The limitation of the number for the entries in one transaction.
+  # If using TiKV as the storage, the entry represents a key/value pair.
+  # WARNING: Do not set the value too large, otherwise it will make a very large impact on the TiKV cluster.
+  # Please adjust this configuration carefully.
+  txnEntryCountLimit: "300000"
+  # The limitation of the size in byte for the entries in one transaction.
+  # If using TiKV as the storage, the entry represents a key/value pair.
+  # WARNING: Do not set the value too large, otherwise it will make a very large impact on the TiKV cluster.
+  # Please adjust this configuration carefully.
+  txnTotalSizeLimit: "104857600"
+  # enableBatchDml enables batch commit for the DMLs
+  enableBatchDml: false
+  # check mb4 value in utf8 is used to control whether to check the mb4 characters when the charset is utf8.
+  checkMb4ValueInUtf8: true
+  # treat-old-version-utf8-as-utf8mb4 use for upgrade compatibility. Set to true will treat old version table/column UTF8 charset as UTF8MB4.
+  treatOldVersionUtf8AsUtf8mb4: true
+  # lease is schema lease duration, very dangerous to change only if you know what you do.
+  lease: 45s
+  # Max CPUs to use, 0 use number of CPUs in the machine.
+  maxProcs: 0
   resources:
     limits: {}
     #   cpu: 16000m
@@ -184,6 +205,7 @@ tidb:
     exposeStatus: true
     annotations:
       service.beta.kubernetes.io/aws-load-balancer-internal: 0.0.0.0/0
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
   # separateSlowLog: true
   slowLogTailer:
     image: busybox:1.26.2
@@ -194,6 +216,15 @@ tidb:
       requests:
         cpu: 20m
         memory: 5Mi
+
+  # tidb plugin configuration
+  plugin:
+    # enable plugin or not
+    enable: false
+    # the start argument to specify the folder containing
+    directory: /plugins
+    # the start argument to specify the plugin id (name "-" version) that needs to be loaded, e.g. 'conn_limit-1'.
+    list: ["whitelist-1"]
 
 # mysqlClient is used to set password for TiDB
 # it must has Python MySQL client installed
@@ -224,6 +255,7 @@ monitor:
       #   memory: 4Gi
     username: admin
     password: admin
+    anonymousEnabled: true
     service:
       type: LoadBalancer
     # if grafana is running behind a reverse proxy with subpath http://foo.bar/grafana
@@ -268,6 +300,7 @@ binlog:
     # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
     storageClassName: local-storage
     storage: 10Gi
+    syncLog: true
     # a integer value to control expiry date of the binlog data, indicates for how long (in days) the binlog data would be stored.
     # must bigger than 0
     gc: 7
@@ -285,8 +318,8 @@ binlog:
     # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
     storageClassName: local-storage
     storage: 10Gi
-    # parallel worker count (default 1)
-    workerCount: 1
+    # parallel worker count (default 16)
+    workerCount: 16
     # the interval time (in seconds) of detect pumps' status (default 10)
     detectInterval: 10
     # disbale detect causality
@@ -299,8 +332,8 @@ binlog:
     initialCommitTs: 0
     # enable safe mode to make syncer reentrant
     safeMode: false
-    # number of binlog events in a transaction batch (default 1)
-    txnBatch: 1
+    # number of binlog events in a transaction batch (default 20)
+    txnBatch: 20
     # downstream storage, equal to --dest-db-type
     # valid values are "mysql", "pb", "kafka"
     destDBType: pb

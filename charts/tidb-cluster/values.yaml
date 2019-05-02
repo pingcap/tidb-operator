@@ -99,7 +99,7 @@ tikv:
   # enable this can prevent data loss when power failure
   syncLog: true
   # size of thread pool for grpc server.
-  grpcConcurrency: 4
+  # grpcConcurrency: 4
   resources:
     limits: {}
     #   cpu: 16000m

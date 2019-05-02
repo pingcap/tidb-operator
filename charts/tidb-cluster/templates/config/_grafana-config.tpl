@@ -207,10 +207,10 @@ root_url = %(protocol)s://%(domain)s:%(http_port)s/
 enabled = {{ .Values.monitor.grafana.anonymousEnabled | default true }}
 
 # specify organization name that should be used for unauthenticated users
-;org_name = Main Org.
+org_name = Main Org.
 
 # specify role for unauthenticated users
-;org_role = Viewer
+org_role = Viewer
 
 #################################### Github Auth ##########################
 [auth.github]

@@ -134,10 +134,8 @@ spec:
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
         volumeMounts:
-          # configmap is always mounted as read only volume in container
-          # grafana startup script will fail with read only configuration directory
-          # - name: grafana-config
-          #   mountPath: /etc/grafana
+          - name: grafana-config
+            mountPath: /etc/grafana
           - name: monitor-data
             mountPath: /data
           - mountPath: /etc/grafana/provisioning/datasources
