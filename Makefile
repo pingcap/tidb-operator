@@ -124,7 +124,7 @@ check-gosec:
 	CGO_ENABLED=0 retool do gosec $$($(PACKAGE_DIRECTORIES))
 
 cli:
-	$(GO) -ldflags '$(LDFLAGS)' -o tkc cmd/tkctl/main.go
+	$(GO) -ldflags '$(LDFLAGS)' -o tkctl cmd/tkctl/main.go
 
 debug-docker-push: debug-build-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/debug-launcher:latest"

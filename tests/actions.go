@@ -14,6 +14,7 @@
 package tests
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -31,6 +32,7 @@ import (
 	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
+	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -54,6 +56,13 @@ import (
 
 const (
 	period = 5 * time.Minute
+
+	tidbControllerName string = "tidb-controller-manager"
+	tidbSchedulerName  string = "tidb-scheduler"
+
+	// NodeUnreachablePodReason is defined in k8s.io/kubernetes/pkg/util/node
+	// but not in client-go and apimachinery, so we define it here
+	NodeUnreachablePodReason = "NodeLost"
 )
 
 func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, pollInterval time.Duration, cfg *Config) OperatorActions {
@@ -67,16 +76,17 @@ func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, p
 }
 
 const (
-	DefaultPollTimeout   time.Duration = 10 * time.Minute
-	DefaultPollInterval  time.Duration = 1 * time.Minute
-	getBackupDirPodName                = "get-backup-dir"
-	grafanaUsername                    = "admin"
-	grafanaPassword                    = "admin"
-	operartorChartName                 = "tidb-operator"
-	tidbClusterChartName               = "tidb-cluster"
-	backupChartName                    = "tidb-backup"
-	statbilityTestTag                  = "stability"
-	metricsPort                        = 8090
+	DefaultPollTimeout          time.Duration = 10 * time.Minute
+	DefaultPollInterval         time.Duration = 1 * time.Minute
+	BackupAndRestorePollTimeOut time.Duration = 30 * time.Minute
+	getBackupDirPodName                       = "get-backup-dir"
+	grafanaUsername                           = "admin"
+	grafanaPassword                           = "admin"
+	operartorChartName                        = "tidb-operator"
+	tidbClusterChartName                      = "tidb-cluster"
+	backupChartName                           = "tidb-backup"
+	statbilityTestTag                         = "stability"
+	metricsPort                               = 8090
 )
 
 type OperatorActions interface {
@@ -116,16 +126,22 @@ type OperatorActions interface {
 	GetNodeMap(info *TidbClusterConfig, component string) (map[string][]string, error)
 	TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error
 	TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration)
-	CheckFailoverPending(info *TidbClusterConfig, faultPoint *time.Time) (bool, error)
-	CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, faultPoint *time.Time)
+	CheckFailoverPending(info *TidbClusterConfig, node string, faultPoint *time.Time) (bool, error)
+	CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, node string, faultPoint *time.Time)
 	CheckFailover(info *TidbClusterConfig, faultNode string) (bool, error)
 	CheckFailoverOrDie(clusters []*TidbClusterConfig, faultNode string)
 	CheckRecover(cluster *TidbClusterConfig) (bool, error)
 	CheckRecoverOrDie(clusters []*TidbClusterConfig)
+	CheckK8sAvailable(excludeNodes map[string]string, excludePods map[string]*corev1.Pod) error
+	CheckK8sAvailableOrDie(excludeNodes map[string]string, excludePods map[string]*corev1.Pod)
+	CheckOperatorAvailable(operatorConfig *OperatorConfig) error
+	CheckTidbClustersAvailable(infos []*TidbClusterConfig) error
+	CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
+	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	RegisterWebHookAndService(info *OperatorConfig) error
 	RegisterWebHookAndServiceOrDie(info *OperatorConfig)
 	CleanWebHookAndService(info *OperatorConfig) error
-	StartValidatingAdmissionWebhookServerOrDie()
+	StartValidatingAdmissionWebhookServerOrDie(info *OperatorConfig)
 }
 
 type operatorActions struct {
@@ -149,6 +165,7 @@ type OperatorConfig struct {
 	WebhookServiceName string
 	WebhookSecretName  string
 	WebhookConfigName  string
+	Context            *apimachinery.CertContext
 }
 
 type TidbClusterConfig struct {
@@ -174,6 +191,16 @@ type TidbClusterConfig struct {
 
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
+}
+
+func (oi *OperatorConfig) ConfigTLS() *tls.Config {
+	sCert, err := tls.X509KeyPair(oi.Context.Cert, oi.Context.Key)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	return &tls.Config{
+		Certificates: []tls.Certificate{sCert},
+	}
 }
 
 func (tc *TidbClusterConfig) BackupHelmSetString(m map[string]string) string {
@@ -404,7 +431,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	patchPVCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s | awk '{print $1}' | "+
 		"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
 		info.Namespace, info.ClusterName)
-	glog.Info(patchPVCmd)
+	glog.V(4).Info(patchPVCmd)
 	if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to patch pv: %v, %s", err, string(res))
 	}
@@ -417,13 +444,13 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 			return false, nil
 		}
 
-		pvCmd := fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s 2>/dev/null|grep Released",
-			label.NamespaceLabelKey, info.Namespace, label.InstanceLabelKey, info.ClusterName)
+		pvCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s 2>/dev/null|grep Released",
+			info.Namespace, info.ClusterName)
 		glog.V(4).Info(pvCmd)
 		if res, err := exec.Command("/bin/sh", "-c", pvCmd).
 			CombinedOutput(); len(res) == 0 {
 		} else if err != nil {
-			glog.Infof("waiting for tidbcluster: %s/%s pv deleting, %v, %s",
+			glog.V(4).Infof("waiting for tidbcluster: %s/%s pv deleting, %v, %s",
 				info.Namespace, info.ClusterName, err, string(res))
 			return false, nil
 		}
@@ -493,7 +520,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		}
 		return true, nil
 	}); err != nil {
-		glog.Infof("check tidb cluster status failed: %s", err.Error())
+		glog.Errorf("check tidb cluster status failed: %s", err.Error())
 		return fmt.Errorf("failed to waiting for tidbcluster %s/%s ready in 30 minutes", ns, tcName)
 	}
 
@@ -629,6 +656,11 @@ func (oa *operatorActions) CheckScaledCorrectly(info *TidbClusterConfig, podUIDs
 }
 
 func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
+	// record tikv leader count in webhook first
+	err := webhook.GetAllKVLeaders(oa.cli, info.Namespace, info.ClusterName)
+	if err != nil {
+		return err
+	}
 	oa.emitEvent(info, "UpgradeTidbCluster")
 
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
@@ -1456,9 +1488,9 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
 		return true, nil
 	}
 
-	err := wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
+	err := wait.Poll(DefaultPollInterval, BackupAndRestorePollTimeOut, fn)
 	if err != nil {
-		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
+		return fmt.Errorf("failed to launch backup job: %v", err)
 	}
 
 	return nil
@@ -1500,7 +1532,7 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 			return false, nil
 		}
 		if job.Status.Succeeded == 0 {
-			glog.Errorf("cluster [%s] back up job is not completed, please wait! ", to.ClusterName)
+			glog.Errorf("cluster [%s] restore job is not completed, please wait! ", to.ClusterName)
 			return false, nil
 		}
 
@@ -1524,9 +1556,9 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 		return true, nil
 	}
 
-	err := wait.Poll(oa.pollInterval, 30*time.Minute, fn)
+	err := wait.Poll(oa.pollInterval, BackupAndRestorePollTimeOut, fn)
 	if err != nil {
-		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
+		return fmt.Errorf("failed to launch restore job: %v", err)
 	}
 	return nil
 }
@@ -1708,7 +1740,7 @@ func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterConfig) error {
 		return false, nil
 	}
 
-	err := wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
+	err := wait.Poll(DefaultPollInterval, BackupAndRestorePollTimeOut, fn)
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
 	}
@@ -1942,23 +1974,8 @@ func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error
 
 	namespace := os.Getenv("NAMESPACE")
 	configName := info.WebhookConfigName
-	filePath := "/webhook.local.config/certificates/ca.crt"
 
-	fd, err := os.Open(filePath)
-	if err != nil {
-		glog.Errorf("file can't open file path %s err %v", filePath, err)
-		return err
-	}
-	defer fd.Close()
-
-	ca, err := ioutil.ReadAll(fd)
-
-	if err != nil {
-		glog.Errorf("file can't read file path %s err %v", filePath, err)
-		return err
-	}
-
-	_, err = client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(&admissionV1beta1.ValidatingWebhookConfiguration{
+	_, err := client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(&admissionV1beta1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: configName,
 		},
@@ -1979,7 +1996,7 @@ func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error
 						Name:      info.WebhookServiceName,
 						Path:      strPtr("/pods"),
 					},
-					CABundle: ca,
+					CABundle: info.Context.SigningCert,
 				},
 			},
 		},
@@ -2076,13 +2093,21 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 	return len(healths.PumpPos) > 0 && healths.Synced
 }
 
-func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie() {
+func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie(info *OperatorConfig) {
+
+	context, err := apimachinery.SetupServerCert(os.Getenv("NAMESPACE"), info.WebhookServiceName)
+	if err != nil {
+		glog.Fatalf("fail to setup server cert: %v", err)
+	}
+
+	info.Context = context
+
 	http.HandleFunc("/pods", webhook.ServePods)
 	server := &http.Server{
 		Addr:      ":443",
-		TLSConfig: oa.cfg.ConfigTLS(),
+		TLSConfig: info.ConfigTLS(),
 	}
-	err := server.ListenAndServeTLS("", "")
+	err = server.ListenAndServeTLS("", "")
 	if err != nil {
 		glog.Errorf("fail to start webhook server err %v", err)
 		os.Exit(4)
