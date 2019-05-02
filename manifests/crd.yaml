@@ -101,13 +101,3 @@ spec:
                   properties:
                     cpu:
                       type: string
-            tikvPromGateway:
-              properties:
-                limits:
-                  properties:
-                    cpu:
-                      type: string
-                requests:
-                  properties:
-                    cpu:
-                      type: string
