@@ -251,6 +251,7 @@ monitor:
       #   memory: 4Gi
     username: admin
     password: admin
+    anonymousEnabled: true
     service:
       type: NodePort
     # if grafana is running behind a reverse proxy with subpath http://foo.bar/grafana

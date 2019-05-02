@@ -204,7 +204,7 @@ root_url = %(protocol)s://%(domain)s:%(http_port)s/
 #################################### Anonymous Auth ##########################
 [auth.anonymous]
 # enable anonymous access
-;enabled = false
+enabled = {{ .Values.monitor.grafana.anonymousEnabled | default true }}
 
 # specify organization name that should be used for unauthenticated users
 ;org_name = Main Org.
