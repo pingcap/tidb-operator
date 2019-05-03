@@ -114,18 +114,6 @@ spec:
           containerPort: 3000
           protocol: TCP
         env:
-        # The following two env (SERVER_ROOT_URL and SERVER_DOMAIN) should be configured in configuration file
-        # but grafana container startup script will chown of configuration directory
-        # this will be failed because configmap is mounted as readonly volume in container
-        # so they're temporarily set here as env
-        {{- if .Values.monitor.grafana.serverRootUrl }}
-        - name: GF_SERVER_ROOT_URL
-          value: {{ .Values.monitor.grafana.serverRootUrl | quote }}
-        {{- end }}
-        {{- if .Values.monitor.grafana.serverRootUrl }}
-        - name: GF_SERVER_DOMAIN
-          value: {{ .Values.monitor.grafana.serverDomain | quote }}
-        {{- end }}
         - name: GF_PATHS_DATA
           value: /data/grafana
         - name: GF_SECURITY_ADMIN_USER
@@ -138,6 +126,12 @@ spec:
             secretKeyRef:
               name: {{ template "cluster.name" . }}-monitor
               key: password
+         {{- if .Values.monitor.grafana.config }}
+         {{- range $key, $value := .Values.monitor.grafana.config }}
+         - name: GF_{{ $key | replace "." "_" | upper }}
+           value: {{ $value | quote }}
+         {{- end }}
+         {{- end }}
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
         volumeMounts:

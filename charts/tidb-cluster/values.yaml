@@ -221,6 +221,15 @@ monitor:
     image: grafana/grafana:6.0.1
     imagePullPolicy: IfNotPresent
     logLevel: info
+    # Here you can set any value in grafana.ini
+    # Note that these are set as environment variables
+    # There is a grafana.ini file in the chart mounted as a configmap that you can also customize
+    config:
+      # if grafana is running behind a reverse proxy with subpath http://foo.bar/grafana
+      # config the `serverDomain` and `serverRootUrl` as follows
+      # "server.domain": foo.bar
+      # "server.root_url": "%(protocol)s://%(domain)s/grafana/"
+
     resources:
       limits: {}
       #   cpu: 8000m
@@ -232,10 +241,6 @@ monitor:
     password: admin
     service:
       type: NodePort
-    # if grafana is running behind a reverse proxy with subpath http://foo.bar/grafana
-    # config the `serverDomain` and `serverRootUrl` as follows
-    # serverDomain: foo.bar
-    # serverRootUrl: "%(protocol)s://%(domain)s/grafana/"
   prometheus:
     image: prom/prometheus:v2.2.1
     imagePullPolicy: IfNotPresent
