@@ -15,17 +15,12 @@ variable "pd_count" {
 
 variable "pd_instance_type_family" {
   description = "PD instance type family, values: [ecs.i2, ecs.i1, ecs.i2g]"
-  default = "ecs.i2"
+  default     = "ecs.i2"
 }
 
 variable "pd_instance_memory_size" {
   description = "PD instance memory size in GB, must available in the type famliy"
-  default = 32
-}
-
-variable "pd_storage_size" {
-  description = "PD persistent volume size in Gi"
-  default     = 800
+  default     = 32
 }
 
 variable "tikv_count" {
@@ -35,17 +30,12 @@ variable "tikv_count" {
 
 variable "tikv_instance_type_family" {
   description = "TiKV instance memory in GB, must available in type family"
-  default = "ecs.i2"
+  default     = "ecs.i2"
 }
 
 variable "tikv_memory_size" {
   description = "TiKV instance memory in GB, must available in type family"
   default     = 64
-}
-
-variable "tikv_storage_size" {
-  description = "Persistent volume size in Gi of tikv"
-  default     = 1500
 }
 
 variable "tidb_count" {

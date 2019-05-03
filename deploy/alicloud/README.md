@@ -7,6 +7,7 @@
 - [aliyun-cli](https://github.com/aliyun/aliyun-cli) >= 3.0.15 and [configure aliyun-cli](https://www.alibabacloud.com/help/doc-detail/90766.htm?spm=a2c63.l28256.a3.4.7b52a893EFVglq)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.12
 - [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.1
+- [jq](https://stedolan.github.io/jq/download/) >= 1.6
 - [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) 0.11.*
 
 > You can use the Alibaba [Cloud Shell](https://shell.aliyun.com) service, which has all the tools pre-installed and properly configured.
@@ -54,30 +55,16 @@ $ kubectl version
 $ helm ls
 ```
 
-Then you can check whether the TiDB cluster is ready:
+Then you can connect the TiDB cluster via the bastion instance:
 
 ```shell
-$ watch kubectl get po -n tidb
-```
-
-Once all the pods are ready or complete, you can press `Ctrl-C` and proceed to connecting the TiDB cluster via the bastion instance:
-
-```shell
-# get the EXTERNAL-IP of tidb-cluster-tidb service
-$ kubectl get svc -n tidb
 $ ssh -i credentials/bastion-key.pem root@<bastion_ip>
-$ mysql -h <tidb_slb_ip> -P 4000 -u root
+$ mysql -h <tidb_slb_ip> -P <tidb_port> -u root
 ```
 
 ## Monitoring 
 
-You can get the public ip of monitoring service by kubectl:
-```shell
-# get the EXTERNAL-IP of tidb-cluster-grafana service
-$ kubectl get svc -n tidb
-```
-
-Visit `${EXTERNAL-IP}:3000` to view the grafana dashboards.
+Visit `<monitor_endpoint>` to view the grafana dashboards.
 
 > It is strongly recommended to set `monitor_slb_network_type` to `intranet` for security if you already have a VPN connecting to your VPC or plan to setup one.
 

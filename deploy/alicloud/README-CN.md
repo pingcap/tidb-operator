@@ -5,6 +5,7 @@
 - [aliyun-cli](https://github.com/aliyun/aliyun-cli) >= 3.0.15 并且[配置 aliyun-cli](https://www.alibabacloud.com/help/doc-detail/90766.htm?spm=a2c63.l28256.a3.4.7b52a893EFVglq)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.12
 - [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.1
+- [jq](https://stedolan.github.io/jq/download/) >= 1.6
 - [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) 0.11.*
 
 > 你可以使用阿里云的 [云命令行](https://shell.aliyun.com) 服务来进行操作，云命令行中已经预装并配置好了所有工具。
@@ -43,7 +44,7 @@ $ terraform init
 $ terraform apply
 ```
 
-整个安装过程大约需要 5 至 10 分钟，安装完成后，可以用 `kubectl` 或 `helm` 对集群进行操作：
+整个安装过程大约需要 5 至 10 分钟，安装完成后会输出集群的关键信息(想要重新查看这些信息，可以运行 `terraform output`)，接下来可以用 `kubectl` 或 `helm` 对集群进行操作：
 
 ```shell
 $ export KUBECONFIG=$PWD/credentials/kubeconfig_<cluster_name>
@@ -51,19 +52,11 @@ $ kubectl version
 $ helm ls
 ```
 
-接下来，确认 TiDB 集群是否就绪：
+并通过堡垒机连接 TiDB 集群进行测试：
 
 ```shell
-$ watch kubectl get po --n tidb
-```
-
-一旦所有的 Pod 都进入 `READY` 或 `COMPLETE` 状态，就可以通过堡垒机连接 TiDB 集群进行测试了：
-
-```shell
-# 获取 tidb-cluster-tidb service 的 EXTERNAL-IP
-$ kubectl get svc -n tidb
 $ ssh -i credentials/bastion-key.pem root@<bastion_ip>
-$ mysql -h <tidb_slb_ip> -P 4000 -u root
+$ mysql -h <tidb_slb_ip> -P <tidb_port> -u root
 ```
 
 ## 升级 TiDB 集群
@@ -84,13 +77,7 @@ $ terraform destroy
 
 ## 监控
 
-你可以通过 `kubectl` 获取监控系统的公网 IP:
-```shell
-# 获取 tidb-cluster-grafana 服务的 EXTERNAL-IP
-$ kubectl get svc -n tidb
-```
-
-访问 `${EXTERNAL-IP}:3000` 就可以查看相关的 Grafana 看板。
+访问 `<monitor_endpoint>` 就可以查看相关的 Grafana 看板。
 
 > 出于安全考虑，假如你已经或将要给 VPC 配置 VPN，强烈推荐将 `monitor_slb_network_type` 设置为 `intranet` 来禁止监控服务的公网访问。
 

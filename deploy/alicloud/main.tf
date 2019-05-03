@@ -120,7 +120,8 @@ EOS
 # But we cannot ouput kubernetes and helm resources in this way.
 # TODO: use helm and kubernetes provider when upstream get this fixed
 resource "null_resource" "deploy-tidb-cluster" {
-  depends_on = ["null_resource.setup-env","local_file.tidb-cluster-values"]
+  depends_on = ["null_resource.setup-env", "local_file.tidb-cluster-values"]
+
   triggers {
     values = "${data.template_file.tidb-cluster-values.rendered}"
   }
@@ -130,5 +131,26 @@ resource "null_resource" "deploy-tidb-cluster" {
 helm upgrade --install tidb-cluster ${path.module}/charts/tidb-cluster --namespace=tidb -f ${local.tidb_cluster_values_path}
 echo "TiDB cluster setup complete!"
 EOS
+
+    environment = {
+      KUBECONFIG = "${local.kubeconfig}"
+    }
+  }
+}
+
+resource "null_resource" "wait-tidb-ready" {
+  depends_on = ["null_resource.deploy-tidb-cluster"]
+
+  provisioner "local-exec" {
+    command = <<EOS
+until kubectl get po -n tidb -lapp.kubernetes.io/component=tidb | grep Running; do
+  echo "Wait TiDB pod running"
+  sleep 5
+done
+EOS
+
+    environment = {
+      KUBECONFIG = "${local.kubeconfig}"
+    }
   }
 }
