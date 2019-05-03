@@ -99,7 +99,7 @@ module "eks" {
       key_name = "${module.key-pair.key_name}"
       # WARNING: if you change instance type, you must also modify the corresponding disk mounting in pd-userdata.sh script
       # instance_type = "c5d.xlarge" # 4c, 8G, 100G NVMe SSD
-      instance_type = "m5d.xlarge" # 4c, 16G, 150G NVMe SSD
+      instance_type = "${var.pd_instance_type}" # 4c, 16G, 150G NVMe SSD
       root_volume_size = "50" # rest NVMe disk for PD data
       public_ip = false
       kubelet_extra_args = "--register-with-taints=dedicated=pd:NoSchedule --node-labels=dedicated=pd"
