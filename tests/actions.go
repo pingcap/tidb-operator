@@ -28,11 +28,6 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/golang/glog"
-	pingcapErrors "github.com/pingcap/errors"
-	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -44,14 +39,20 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang/glog"
+	pingcapErrors "github.com/pingcap/errors"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
+	"github.com/pingcap/tidb-operator/tests/slack"
 )
 
 const (
@@ -306,7 +307,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 
 func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 	if err := oa.DeployOperator(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -329,7 +330,7 @@ func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 
 func (oa *operatorActions) CleanOperatorOrDie(info *OperatorConfig) {
 	if err := oa.CleanOperator(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -385,7 +386,7 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) DeployTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.DeployTidbCluster(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -461,7 +462,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) CleanTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.CleanTidbCluster(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -529,7 +530,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 
 func (oa *operatorActions) CheckTidbClusterStatusOrDie(info *TidbClusterConfig) {
 	if err := oa.CheckTidbClusterStatus(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -553,7 +554,7 @@ func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 func (oa *operatorActions) BeginInsertDataToOrDie(info *TidbClusterConfig) {
 	err := oa.BeginInsertDataTo(info)
 	if err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -594,7 +595,7 @@ func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) ScaleTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.ScaleTidbCluster(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -675,7 +676,7 @@ func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) UpgradeTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.UpgradeTidbCluster(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -1964,7 +1965,7 @@ func strPtr(s string) *string { return &s }
 
 func (oa *operatorActions) RegisterWebHookAndServiceOrDie(info *OperatorConfig) {
 	if err := oa.RegisterWebHookAndService(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -2109,7 +2110,12 @@ func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie(info *Oper
 	}
 	err = server.ListenAndServeTLS("", "")
 	if err != nil {
-		glog.Errorf("fail to start webhook server err %v", err)
+		err = fmt.Errorf("fail to start webhook server err %v", err)
+		glog.Error(err)
+		sendErr := slack.SendErrMsg(err.Error())
+		if sendErr != nil {
+			glog.Error(sendErr)
+		}
 		os.Exit(4)
 	}
 }
