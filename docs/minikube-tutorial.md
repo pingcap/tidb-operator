@@ -28,7 +28,7 @@ Windows.
 ### Install minikube and start a Kubernetes cluster
 
 See [Installing Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) to install
-minikube on your machine.
+minikube (1.0.0+) on your machine.
 
 After you installed minikube, you can run the following command to start a
 Kubernetes cluster.
@@ -105,6 +105,10 @@ GitCommit:"618447cbf203d147601b4b9bd7f8c37a5d39fbb4", GitTreeState:"clean"}
 If it shows only the client version, `helm` cannot yet connect to the server. Use
 `kubectl` to see if any tiller pods are running.
 
+```
+kubectl -n kube-system get pods -l app=helm
+```
+
 ### Install TiDB operator in the Kubernetes cluster
 
 Clone tidb-operator repository:
@@ -179,7 +183,8 @@ mysql -h 127.0.0.1 -P 4000 -uroot -e 'select tidb_version();'
 
 ```
 helm delete --purge tidb-cluster
-kubectl delete pvc -l app.kubernetes.io/managed-by=tidb-operator # clean old PVs
+kubectl get pv -l app.kubernetes.io/instance=tidb-cluster -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}} # update reclaim policy of PVs used by tidb-cluster to Delete
+kubectl delete pvc -l app.kubernetes.io/managed-by=tidb-operator # delete PVCs
 ```
 
 ## FAQs
