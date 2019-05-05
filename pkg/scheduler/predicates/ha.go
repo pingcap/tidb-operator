@@ -200,13 +200,18 @@ func (h *ha) realAcquireLock(pod *apiv1.Pod) (*apiv1.PersistentVolumeClaim, *api
 	if schedulingPVC == currentPVC {
 		return schedulingPVC, currentPVC, nil
 	}
-	schedulingPodName := getPodNameFromPVC(schedulingPVC)
-	schedulingPod, err := h.podGetFn(ns, schedulingPodName)
-	if err != nil {
-		return schedulingPVC, currentPVC, err
-	}
-	if schedulingPVC.Status.Phase != apiv1.ClaimBound || schedulingPod.Spec.NodeName == "" {
-		return schedulingPVC, currentPVC, fmt.Errorf("waiting for Pod %s/%s scheduling", ns, strings.TrimPrefix(schedulingPVC.GetName(), component))
+
+	// if pvc is not defer deleting(has AnnPVCDeferDeleting annotation means defer deleting), we must wait for its scheduling
+	// else clear its AnnPVCPodScheduling annotation and acquire the lock
+	if schedulingPVC.Annotations[label.AnnPVCDeferDeleting] == "" {
+		schedulingPodName := getPodNameFromPVC(schedulingPVC)
+		schedulingPod, err := h.podGetFn(ns, schedulingPodName)
+		if err != nil {
+			return schedulingPVC, currentPVC, err
+		}
+		if schedulingPVC.Status.Phase != apiv1.ClaimBound || schedulingPod.Spec.NodeName == "" {
+			return schedulingPVC, currentPVC, fmt.Errorf("waiting for Pod %s/%s scheduling", ns, strings.TrimPrefix(schedulingPVC.GetName(), component))
+		}
 	}
 
 	delete(schedulingPVC.Annotations, label.AnnPVCPodScheduling)
