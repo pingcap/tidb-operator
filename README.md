@@ -54,6 +54,8 @@ Choose one of the following tutorials:
 
 * [Deploy TiDB by launching an AWS EKS cluster](./docs/aws-eks-tutorial.md)
 
+* [Deploy TiDB in the minikube cluster](./docs/minikube-tutorial.md)
+
 ## User guide
 
 Read the [user guide](./docs/user-guide.md).
