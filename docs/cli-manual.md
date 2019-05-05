@@ -6,6 +6,18 @@ The TiDB Kubernetes Control(tkc) is a command line utility for TiDB operators to
 
 - [Installation](#installation)
     - [Kubernetes Configuration](#kubernetes-configuration)
+- [Commands](#commands)
+    - [tkc list](#tkc-list)
+    - [tkc use](#tkc-use)
+    - [tkc info](#tkc-info)
+    - [tkc get](#tkc-get)
+    - [tkc debug](#tkc-debug)
+    - [tkc ctop](#tkc-ctop)
+    - [tkc help](#tkc-help)
+    - [tkc options](#tkc-options)
+- [Appendix](#appendix)
+    - [Use tkc as kubectl plugin](#use-tkc-as-a-kubectl-plugin)
+    - [Auto Completion](#auto-completion)
 
 # Installation
 
