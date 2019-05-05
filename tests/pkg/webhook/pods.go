@@ -97,14 +97,14 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	pdClient := controller.NewDefaultPDControl().GetPDClient(tc)
 	tidbController := controller.NewDefaultTiDBControl()
 
-	if pod.Labels[label.ComponentLabelKey] == "tidb" {
+	// if the pod is deleting, allow the pod delete operation
+	if pod.DeletionTimestamp != nil {
+		glog.Infof("pod:[%s/%s] status is timestamp %s", namespace, name, pod.DeletionTimestamp)
+		reviewResponse.Allowed = true
+		return &reviewResponse
+	}
 
-		// if tidb pod is deleting, allow pod delete operation
-		if pod.DeletionTimestamp != nil {
-			glog.Infof("TIDB pod status is namespace %s name %s timestamp %s", namespace, name, pod.DeletionTimestamp)
-			reviewResponse.Allowed = true
-			return &reviewResponse
-		}
+	if pod.Labels[label.ComponentLabelKey] == "tidb" {
 
 		ordinal, err := strconv.ParseInt(strings.Split(name, "-")[len(strings.Split(name, "-"))-1], 10, 32)
 		if err != nil {
