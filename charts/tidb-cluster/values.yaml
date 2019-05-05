@@ -251,13 +251,15 @@ monitor:
       #   memory: 4Gi
     username: admin
     password: admin
-    anonymousEnabled: true
+    config:
+      # Configure Grafana using environment variables except GF_PATHS_DATA, GF_SECURITY_ADMIN_USER and GF_SECURITY_ADMIN_PASSWORD
+      # Ref https://grafana.com/docs/installation/configuration/#using-environment-variables
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      # if grafana is running behind a reverse proxy with subpath http://foo.bar/grafana
+      # GF_SERVER_DOMAIN: foo.bar
+      # GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
     service:
       type: NodePort
-    # if grafana is running behind a reverse proxy with subpath http://foo.bar/grafana
-    # config the `serverDomain` and `serverRootUrl` as follows
-    # serverDomain: foo.bar
-    # serverRootUrl: "%(protocol)s://%(domain)s/grafana/"
   prometheus:
     image: prom/prometheus:v2.2.1
     imagePullPolicy: IfNotPresent
