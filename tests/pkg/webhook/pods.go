@@ -105,7 +105,6 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	}
 
 	if pod.Labels[label.ComponentLabelKey] == "tidb" {
-
 		ordinal, err := strconv.ParseInt(strings.Split(name, "-")[len(strings.Split(name, "-"))-1], 10, 32)
 		if err != nil {
 			glog.Errorf("fail to convert string to int while deleting TiDB err %v", err)
