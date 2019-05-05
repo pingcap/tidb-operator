@@ -17,6 +17,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/slack"
+
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -116,7 +118,7 @@ func (bc *BackupCase) Run() error {
 
 func (bc *BackupCase) RunOrDie() {
 	if err := bc.Run(); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
