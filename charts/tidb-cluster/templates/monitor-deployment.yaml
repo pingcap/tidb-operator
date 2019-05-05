@@ -121,7 +121,7 @@ spec:
               key: password
         {{- if .Values.monitor.grafana.config }}
         {{- range $key, $value := .Values.monitor.grafana.config }}
-        - name: GF_{{ $key | replace "." "_" | upper }}
+        - name: {{ $key }}
           value: {{ $value | quote }}
         {{- end }}
         {{- end }}
