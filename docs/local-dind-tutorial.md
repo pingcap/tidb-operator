@@ -37,7 +37,7 @@ $ KUBE_REPO_PREFIX=uhub.ucloud.cn/pingcap manifests/local-dind/dind-cluster-v1.1
 
 ## Step 2: Install TiDB Operator in the DinD Kubernetes cluster
 
-Uncomment the `scheduler.kubeSchedulerImage` in `values.yaml`, set it to the same as your kubernetes cluster version.
+Uncomment the `scheduler.kubeSchedulerImage` in `charts/tidb-operator/values.yaml`, set it to desired version if needed, it is default to matching your kubernetes cluster version.
 
 ```sh
 $ kubectl apply -f manifests/crd.yaml
@@ -64,8 +64,8 @@ $ watch kubectl get pods --namespace tidb -l app.kubernetes.io/instance=demo -o 
 $ # wait a few minutes to get all TiDB components created and ready
 
 $ kubectl get tidbcluster -n tidb
-NAME      AGE
-demo      3m
+NAME   PD                  STORAGE   READY   DESIRE   TIKV                  STORAGE   READY   DESIRE   TIDB                  READY   DESIRE
+demo   pingcap/pd:v2.1.0   1Gi       3       3        pingcap/tikv:v2.1.0   10Gi      3       3        pingcap/tidb:v2.1.0   2       2
 
 $ kubectl get statefulset -n tidb
 NAME        DESIRED   CURRENT   AGE
@@ -85,17 +85,17 @@ demo-tidb-peer    ClusterIP   None             <none>        10080/TCP          
 demo-tikv-peer    ClusterIP   None             <none>        20160/TCP                        1m
 
 $ kubectl get configmap -n tidb
-NAME           DATA      AGE
-demo-monitor   3         1m
-demo-pd        2         1m
-demo-tidb      2         1m
-demo-tikv      2         1m
+NAME                     DATA   AGE
+demo-monitor             5      5m48s
+demo-monitor-dashboard   0      5m48s
+demo-pd                  2      5m48s
+demo-tidb                2      5m48s
+demo-tikv                2      5m48s
 
 $ kubectl get pod -n tidb
 NAME                              READY     STATUS      RESTARTS   AGE
 demo-discovery-649c7bcbdc-t5r2k   2/2       Running     0          1m
 demo-monitor-58745cf54f-gb8kd     2/2       Running     0          1m
-demo-monitor-configurator-stvw6   0/1       Completed   0          1m
 demo-pd-0                         1/1       Running     0          1m
 demo-pd-1                         1/1       Running     0          1m
 demo-pd-2                         1/1       Running     0          1m
@@ -119,7 +119,7 @@ To access the TiDB cluster, use `kubectl port-forward` to expose the services to
     2. To connect to TiDB using the MySQL client, open a new terminal tab or window and run the following command:
 
         ```sh
-        $ mysql -h 127.0.0.1 -P 4000 -u root -p
+        $ mysql -h 127.0.0.1 -P 4000 -u root
         ```
 
 - View the monitor dashboard
