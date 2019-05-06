@@ -294,7 +294,6 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	set := map[string]string{
 		"operatorImage":                    oi.Image,
-		"imagePullPolicy":                  "Always",
 		"controllerManager.autoFailover":   "true",
 		"scheduler.kubeSchedulerImageName": oi.SchedulerImage,
 		"controllerManager.logLevel":       oi.LogLevel,
