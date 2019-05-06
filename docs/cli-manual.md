@@ -1,39 +1,86 @@
-# The TiDB Kubernete Contorl(tkc) User Manual
+# The TiDB Kubernete Contorl(tkctl) User Manual
 
-> **Disclaimer**: The tkc CLI tool is currently **Alpha**. The design and sub-commands may change in the future, use at your own risk.
+> **Disclaimer**: The tkctl CLI tool is currently **Alpha**. The design and sub-commands may change in the future, use at your own risk.
 
-The TiDB Kubernetes Control(tkc) is a command line utility for TiDB operators to operate and diagnose their TiDB clusters in kubernetes.
+The TiDB Kubernetes Control(tkctl) is a command line utility for TiDB operators to operate and diagnose their TiDB clusters in kubernetes.
 
 - [Installation](#installation)
+    - [Bash Completion](#bash-completion)
     - [Kubernetes Configuration](#kubernetes-configuration)
 - [Commands](#commands)
-    - [tkc list](#tkc-list)
-    - [tkc use](#tkc-use)
-    - [tkc info](#tkc-info)
-    - [tkc get](#tkc-get)
-    - [tkc debug](#tkc-debug)
-    - [tkc ctop](#tkc-ctop)
-    - [tkc help](#tkc-help)
-    - [tkc options](#tkc-options)
-- [Appendix](#appendix)
-    - [Use tkc as kubectl plugin](#use-tkc-as-a-kubectl-plugin)
-    - [Auto Completion](#auto-completion)
+    - [tkctl version](#tkctl-version)
+    - [tkctl list](#tkctl-list)
+    - [tkctl use](#tkctl-use)
+    - [tkctl info](#tkctl-info)
+    - [tkctl get](#tkctl-get)
+    - [tkctl debug](#tkctl-debug)
+    - [tkctl ctop](#tkctl-ctop)
+    - [tkctl help](#tkctl-help)
+    - [tkctl options](#tkctl-options)
 
 # Installation
 
-## Kubernetes Configuration
+You can download the pre-built binary or build `tkctl` from source:
 
-`tkc` reuse the kubeconfig(default to `~/.kube/config`) file to talk with kubernetes cluster. You don't have to set up `kubectl` to use `tkc`, but make sure you have `~/.kube/config` properly set. You can verify the configuration by executing:
+### Download the Pre-built Binary
+
+- [MacOS](http://download.pingcap.org/tkctl-darwin-amd64-latest.tgz)
+- [Linux](http://download.pingcap.org/tkctl-linux-amd64-latest.tgz)
+- [Windows](http://download.pingcap.org/tkctl-windows-amd64-latest.tgz)
+
+### Build from Source
 
 ```shell
-$ tkc version
+$ git clone https://github.com/pingcap/tidb-operator.git
+$ GOOS=${YOUR_GOOS} make cli
+$ mv tkctl /usr/local/bin/tkctl
 ```
 
-If you see the version of tkc tool and version of TiDB operator installed in target cluster or "No TiDB operator found, please install first.", `tkc` is correctly configured to access your cluster.
+## Bash Completion
+
+BASH
+```shell
+# setup autocomplete in bash into the current shell, bash-completion package should be installed first.
+source <(tkctl completion bash) 
+
+# add autocomplete permanently to your bash shell.
+echo "source <(tkctl completion bash)" >> ~/.bashrc 
+```
+
+ZSH
+```shell
+# setup autocomplete in zsh into the current shell
+source <(tkctl completion zsh)
+
+# add autocomplete permanently to your zsh shell
+echo "if [ $commands[tkctl] ]; then source <(tkctl completion zsh); fi" >> ~/.zshrc 
+```
+
+## Kubernetes Configuration
+
+`tkctl` reuse the kubeconfig(default to `~/.kube/config`) file to talk with kubernetes cluster. You don't have to set up `kubectl` to use `tkctl`, but make sure you have `~/.kube/config` properly set. You can verify the configuration by executing:
+
+```shell
+$ tkctl version
+```
+
+If you see the version of tkctl tool and version of TiDB operator installed in target cluster or "No TiDB Controller Manager found, please install one first.", `tkctl` is correctly configured to access your cluster.
 
 # Commands
 
-## tkc list
+## tkctl version
+
+This command used to show the version of **tkctl** and **tidb-operator** installed in target cluster.
+
+Example:
+```
+$ tkctl version
+Client Version: v1.0.0-beta.1-p2-93-g6598b4d3e75705-dirty
+TiDB Controller Manager Version: pingcap/tidb-operator:latest
+TiDB Scheduler Version: pingcap/tidb-operator:latest
+```
+
+## tkctl list
 
 This command used to list all tidb clusters installed.
 
@@ -45,24 +92,24 @@ This command used to list all tidb clusters installed.
 Example:
 
 ```
-$ tkc list -A
+$ tkctl list -A
 NAMESPACE NAME           PD    TIKV   TIDB   AGE
 foo       demo-cluster   3/3   3/3    2/2    11m
 bar       demo-cluster   3/3   3/3    1/2    11m
 ```
 
-## tkc use
+## tkctl use
 
 This command used to specify the current TiDB cluster to use, the other commands could omit `--tidbcluster` option and defaults to select current TiDB cluster if there is a current TiDB cluster set.
 
 Example:
 
 ```
-$ tkc use --namespace=foo demo-cluster
+$ tkctl use --namespace=foo demo-cluster
 Tidb cluster switched to foo/demo-cluster
 ```
 
-## tkc info
+## tkctl info
 
 This command used to get the information of TiDB cluster, the current TiDB cluster will be used if exists.
 
@@ -73,7 +120,7 @@ This command used to get the information of TiDB cluster, the current TiDB clust
 Example:
 
 ```
-$ tkc info
+$ tkctl info
 Name:               demo-cluster
 Namespace:          foo
 CreationTimestamp:  2019-04-17 17:33:41 +0800 CST
@@ -88,7 +135,7 @@ Endpoints(NodePort):
   - 172.16.4.155:31441
 ```
 
-## tkc get [component]
+## tkctl get [component]
 
 This is a group of commands used to get the details of TiDB cluster componentes, the current TiDB cluster will be used if exists.
 
@@ -102,13 +149,13 @@ Available components: `pd`, `tikv`, `tidb`, `volume`, `all`(query all components
 Example:
 
 ```
-$ tkc get tikv
+$ tkctl get tikv
 NAME                  READY   STATUS    MEMORY          CPU   RESTARTS   AGE     NODE
 demo-cluster-tikv-0   2/2     Running   2098Mi/4196Mi         0          3m19s   172.16.4.155
 demo-cluster-tikv-1   2/2     Running   2098Mi/4196Mi         0          4m8s    172.16.4.160
 demo-cluster-tikv-2   2/2     Running   2098Mi/4196Mi         0          4m45s   172.16.4.157
-$ tkc get volume
-tkc get volume
+$ tkctl get volume
+tkctl get volume
 VOLUME              CLAIM                      STATUS   CAPACITY   NODE           LOCAL
 local-pv-d5dad2cf   tikv-demo-cluster-tikv-0   Bound    1476Gi     172.16.4.155   /mnt/disks/local-pv56
 local-pv-5ade8580   tikv-demo-cluster-tikv-1   Bound    1476Gi     172.16.4.160   /mnt/disks/local-pv33
@@ -118,7 +165,7 @@ local-pv-842034e6   pd-demo-cluster-pd-1       Bound    1476Gi     172.16.4.158 
 local-pv-e54c122a   pd-demo-cluster-pd-2       Bound    1476Gi     172.16.4.156   /mnt/disks/local-pv72
 ```
 
-## tkc debug [pod_name]
+## tkctl debug [pod_name]
 
 This command used to diagnose the Pods of TiDB cluster. It launches a debug container for you which has the nessary troubleshooting tools installed.
 
@@ -133,13 +180,13 @@ The default image of debug container contains almost all the related tools you m
 
 Example:
 ```
-$ tkc debug demo-cluster-tikv-0
+$ tkctl debug demo-cluster-tikv-0
 # you may have to wait a few seconds or minutes for the debug container running, then you will get the shell prompt
 ```
 
-## tkc ctop [pod_name | node/node_name ]
+## tkctl ctop [pod_name | node/node_name ]
 
-This command used to view the real-time stats of target pod or node. Compare to `kubectl top`, `tkc ctop` provides network and disk stats, which are important for diagnosing TiDB cluster problem.
+This command used to view the real-time stats of target pod or node. Compare to `kubectl top`, `tkctl ctop` provides network and disk stats, which are important for diagnosing TiDB cluster problem.
 
 | Flags | Shorthand | Description |
 | ----- | --------- | ----------- |
@@ -149,27 +196,27 @@ This command used to view the real-time stats of target pod or node. Compare to 
 Example:
 
 ```
-$ tkc ctop demo-cluster-tikv-0
-$ tkc ctop node/172.16.4.155
+$ tkctl ctop demo-cluster-tikv-0
+$ tkctl ctop node/172.16.4.155
 ```
 
 If you don't see the prompt, please wait a few seconds or minutes.
 
-## tkc help [command]
+## tkctl help [command]
 
 This command used to print the help message of abitrary sub command.
 
 ```
-$ tkc help debug
+$ tkctl help debug
 ```
 
-## tkc options
+## tkctl options
 
-This command used to view the global flags of `tkc`.
+This command used to view the global flags of `tkctl`.
 
 Example:
 ```
-$ tkc options
+$ tkctl options
 The following options can be passed to any command:
 
       --alsologtostderr=false: log to standard error as well as files
@@ -203,8 +250,3 @@ These options are mainly used to talk with the kubernetes cluster, there are two
 - `--context`: choose the kubernetes cluster
 - `--namespace`: choose the kubernetes namespace
 
-# Appendix
-
-## Use tkc as a kubectl plugin
-
-## Auto Completion
