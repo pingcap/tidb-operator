@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/slack"
+
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -30,11 +32,15 @@ type FaultTriggerActions interface {
 	StartNode(physicalNode string, node string) error
 	StartNodeOrDie(physicalNode string, node string)
 	StopETCD(nodes ...string) error
+	StopETCDOrDie(nodes ...string)
 	StartETCD(nodes ...string) error
+	StartETCDOrDie(nodes ...string)
 	StopKubelet(node string) error
 	StartKubelet(node string) error
 	StopKubeAPIServer(node string) error
+	StopKubeAPIServerOrDie(node string)
 	StartKubeAPIServer(node string) error
+	StartKubeAPIServerOrDie(node string)
 	StopKubeControllerManager(node string) error
 	StartKubeControllerManager(node string) error
 	StopKubeScheduler(node string) error
@@ -150,7 +156,7 @@ func (fa *faultTriggerActions) StopNodeOrDie() (string, string, time.Time) {
 	var err error
 	var now time.Time
 	if pn, n, now, err = fa.StopNode(); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 	return pn, n, now
 }
@@ -165,8 +171,6 @@ func (fa *faultTriggerActions) StartNode(physicalNode string, node string) error
 		return err
 	}
 
-	glog.Infof("%+v", vms)
-
 	for _, vm := range vms {
 		if vm.IP == node && vm.Status == "running" {
 			return nil
@@ -180,14 +184,14 @@ func (fa *faultTriggerActions) StartNode(physicalNode string, node string) error
 		return err
 	}
 
-	glog.Infof("node %s on physical node %s is started", physicalNode, node)
+	glog.Infof("node %s on physical node %s is started", node, physicalNode)
 
 	return nil
 }
 
 func (fa *faultTriggerActions) StartNodeOrDie(physicalNode string, node string) {
 	if err := fa.StartNode(physicalNode, node); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -209,6 +213,12 @@ func (fa *faultTriggerActions) StopETCD(nodes ...string) error {
 	return nil
 }
 
+func (fa *faultTriggerActions) StopETCDOrDie(nodes ...string) {
+	if err := fa.StopETCD(nodes...); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
 // StartETCD starts the etcd service.
 // If the `nodes` is empty, StartETCD will start all etcd service.
 func (fa *faultTriggerActions) StartETCD(nodes ...string) error {
@@ -225,6 +235,12 @@ func (fa *faultTriggerActions) StartETCD(nodes ...string) error {
 	}
 
 	return nil
+}
+
+func (fa *faultTriggerActions) StartETCDOrDie(nodes ...string) {
+	if err := fa.StartETCD(nodes...); err != nil {
+		slack.NotifyAndPanic(err)
+	}
 }
 
 // StopKubelet stops the kubelet service.
@@ -272,9 +288,21 @@ func (fa *faultTriggerActions) StopKubeAPIServer(node string) error {
 	return fa.serviceAction(node, manager.KubeAPIServerService, stopAction)
 }
 
+func (fa *faultTriggerActions) StopKubeAPIServerOrDie(node string) {
+	if err := fa.StopKubeAPIServer(node); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
 // StartKubeAPIServer starts the apiserver service.
 func (fa *faultTriggerActions) StartKubeAPIServer(node string) error {
 	return fa.serviceAction(node, manager.KubeAPIServerService, startAction)
+}
+
+func (fa *faultTriggerActions) StartKubeAPIServerOrDie(node string) {
+	if err := fa.StartKubeAPIServer(node); err != nil {
+		slack.NotifyAndPanic(err)
+	}
 }
 
 func (fa *faultTriggerActions) serviceAction(node string, serverName string, action string) error {

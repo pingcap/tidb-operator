@@ -152,8 +152,6 @@ func (pmm *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1alpha1.Tid
 	if !equal {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
-		// TODO add unit test
-		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		err = SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
 			return err

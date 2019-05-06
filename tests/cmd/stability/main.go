@@ -19,33 +19,33 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/slack"
+
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
-	"github.com/pingcap/tidb-operator/tests/pkg/client"
-	"k8s.io/apiserver/pkg/util/logs"
-
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/backup"
+	"github.com/pingcap/tidb-operator/tests/pkg/client"
+
+	"k8s.io/apiserver/pkg/util/logs"
 )
 
 func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 	go func() {
-		glog.Info(http.ListenAndServe("localhost:6060", nil))
+		glog.Info(http.ListenAndServe(":6060", nil))
 	}()
 
 	conf := tests.ParseConfigOrDie()
 	cli, kubeCli := client.NewCliOrDie()
-	oa := tests.NewOperatorActions(cli, kubeCli, conf)
+	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, conf)
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	fta.CheckAndRecoverEnvOrDie()
+	oa.CheckK8sAvailableOrDie(nil, nil)
 
 	tidbVersion := conf.GetTiDBVersionOrDie()
 	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
-
-	// start a http server in goruntine
-	go oa.StartValidatingAdmissionWebhookServerOrDie()
 
 	// operator config
 	operatorCfg := &tests.OperatorConfig{
@@ -59,6 +59,9 @@ func main() {
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
 	}
+
+	// start a http server in goruntine
+	go oa.StartValidatingAdmissionWebhookServerOrDie(operatorCfg)
 
 	// TODO remove this
 	// create database and table and insert a column for test backup and restore
@@ -80,7 +83,7 @@ func main() {
 		UserName:         "root",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName1),
 		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName1),
-		BackupPVC:        "backup-pvc",
+		BackupName:       "backup",
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
@@ -113,7 +116,7 @@ func main() {
 		UserName:         "root",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName2),
 		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName2),
-		BackupPVC:        "backup-pvc",
+		BackupName:       "backup",
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
@@ -210,7 +213,7 @@ func main() {
 
 	// stop a node and failover automatically
 	physicalNode, node, faultTime := fta.StopNodeOrDie()
-	oa.CheckFailoverPendingOrDie(allClusters, &faultTime)
+	oa.CheckFailoverPendingOrDie(allClusters, node, &faultTime)
 	oa.CheckFailoverOrDie(allClusters, node)
 	time.Sleep(3 * time.Minute)
 	fta.StartNodeOrDie(physicalNode, node)
@@ -222,10 +225,20 @@ func main() {
 	// truncate a sst file and check failover
 	oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 5*time.Minute)
 
+	// stop one etcd node and k8s/operator/tidbcluster is available
+	faultEtcd := tests.SelectNode(conf.ETCDs)
+	fta.StopETCDOrDie(faultEtcd)
+	defer fta.StartETCDOrDie(faultEtcd)
+	// TODO make the pause interval as a argument
+	time.Sleep(3 * time.Minute)
+	oa.CheckOneEtcdDownOrDie(operatorCfg, allClusters, faultEtcd)
+	fta.StartETCDOrDie(faultEtcd)
+
 	//clean temp dirs when stability success
 	err := conf.CleanTempDirs()
 	if err != nil {
 		glog.Errorf("failed to clean temp dirs, this error can be ignored.")
 	}
-	glog.Infof("\nFinished.")
+
+	slack.NotifyAndCompleted("\nFinished.")
 }

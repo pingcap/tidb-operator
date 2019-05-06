@@ -1,12 +1,13 @@
 package tests
 
 import (
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"github.com/pingcap/tidb-operator/tests/slack"
 
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 
@@ -67,12 +68,8 @@ func NewConfig() (*Config, error) {
 	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v2.1.3,v2.1.4", "tidb versions")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
-	flag.StringVar(&cfg.CertFile, "tls-cert-file", cfg.CertFile, ""+
-		"File containing the default x509 Certificate for HTTPS. (CA cert, if any, concatenated "+
-		"after server cert).")
-	flag.StringVar(&cfg.KeyFile, "tls-private-key-file", cfg.KeyFile, ""+
-		"File containing the default x509 private key matching --tls-cert-file.")
 	flag.StringVar(&cfg.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
+	flag.StringVar(&slack.WebhookUrl, "slack-webhook-url", "", "slack webhook url")
 	flag.Parse()
 
 	operatorRepo, err := ioutil.TempDir("", "tidb-operator")
@@ -92,10 +89,10 @@ func NewConfig() (*Config, error) {
 func ParseConfigOrDie() *Config {
 	cfg, err := NewConfig()
 	if err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 	if err := cfg.Parse(); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 
 	glog.Infof("using config: %+v", cfg)
@@ -144,20 +141,10 @@ func (c *Config) GetTiDBVersion() (string, error) {
 func (c *Config) GetTiDBVersionOrDie() string {
 	v, err := c.GetTiDBVersion()
 	if err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 
 	return v
-}
-
-func (c *Config) ConfigTLS() *tls.Config {
-	sCert, err := tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
-	if err != nil {
-		glog.Fatal(err)
-	}
-	return &tls.Config{
-		Certificates: []tls.Certificate{sCert},
-	}
 }
 
 func (c *Config) GetUpgradeTidbVersions() []string {
@@ -169,7 +156,7 @@ func (c *Config) GetUpgradeTidbVersions() []string {
 func (c *Config) GetUpgradeTidbVersionsOrDie() []string {
 	versions := c.GetUpgradeTidbVersions()
 	if len(versions) < 1 {
-		panic("upgrade tidb verions is empty")
+		slack.NotifyAndPanic(fmt.Errorf("upgrade tidb verions is empty"))
 	}
 
 	return versions

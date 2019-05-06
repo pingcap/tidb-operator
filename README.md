@@ -1,7 +1,7 @@
 # TiDB Operator
 
 - [**Stack Overflow**](https://stackoverflow.com/questions/tagged/tidb)
-- [**Community Slack Channel**](http://bit.ly/tidbslack)
+- [**Community Slack Channel**](https://join.slack.com/t/tidbcommunity/shared_invite/enQtNjIyNjA5Njk0NTAxLTVmZDkxOWY1ZGZhMDg3YzcwNGU0YmM4ZjIyODRhOTg4MWEwZjJmMGQzZTJlNjllMGY1YzdlNzIxZGE2NzRlMGY)
 - [**Reddit**](https://www.reddit.com/r/TiDB/)
 - **Mailing list**: [Google Group](https://groups.google.com/forum/#!forum/tidb-user)
 - [**Blog**](https://www.pingcap.com/blog/)
@@ -55,6 +55,8 @@ Choose one of the following tutorials:
 * [Deploy TiDB by launching an AWS EKS cluster](./docs/aws-eks-tutorial.md)
 
 * [Deploy TiDB Operator and TiDB Cluster on Alibaba Cloud Kubernetes](./deploy/alicloud/README.md)
+
+* [Deploy TiDB in the minikube cluster](./docs/minikube-tutorial.md)
 
 ## User guide
 

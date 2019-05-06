@@ -25,6 +25,10 @@ func (tc *TidbCluster) TiKVUpgrading() bool {
 	return tc.Status.TiKV.Phase == UpgradePhase
 }
 
+func (tc *TidbCluster) TiDBUpgrading() bool {
+	return tc.Status.TiDB.Phase == UpgradePhase
+}
+
 func (tc *TidbCluster) PDAllPodsStarted() bool {
 	return tc.PDRealReplicas() == tc.Status.PD.StatefulSet.Replicas
 }

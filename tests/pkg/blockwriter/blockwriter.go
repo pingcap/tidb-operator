@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	queryChanSize int = 10000
+	queryChanSize int = 100
 )
 
 // BlockWriterCase is for concurrent writing blocks.
@@ -123,13 +123,11 @@ func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []st
 		select {
 		case <-ctx.Done():
 			return
+		case queryChan <- querys:
+			continue
 		default:
-			if len(queryChan) < queryChanSize {
-				queryChan <- querys
-			} else {
-				glog.Infof("[%s] [%s] [action: generate Query] query channel is full, sleep 10 seconds", c, c.ClusterName)
-				util.Sleep(ctx, 10*time.Second)
-			}
+			glog.V(4).Infof("[%s] [%s] [action: generate Query] query channel is full, sleep 10 seconds", c, c.ClusterName)
+			util.Sleep(ctx, 10*time.Second)
 		}
 	}
 }
@@ -164,7 +162,7 @@ func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan []str
 				return
 			default:
 				if err := bw.batchExecute(db, query); err != nil {
-					glog.Error(err)
+					glog.V(4).Info(err)
 					time.Sleep(5 * time.Second)
 					continue
 				}
