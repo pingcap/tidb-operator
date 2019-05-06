@@ -1615,14 +1615,14 @@ func (info *TidbClusterConfig) DataIsTheSameAs(otherInfo *TidbClusterConfig) (bo
 		}
 
 		if cnt != otherCnt {
-			err := fmt.Errorf("cluster %s/%s's table %s count(*) = %d and cluster %s's table %s count(*) = %d",
-				info.Namespace, info.ClusterName, cnt,
-				otherInfo.Namespace, otherInfo.ClusterName, otherCnt)
+			err := fmt.Errorf("cluster %s/%s's table %s count(*) = %d and cluster %s/%s's table %s count(*) = %d",
+				info.Namespace, info.ClusterName, tableName, cnt,
+				otherInfo.Namespace, otherInfo.ClusterName, tableName, otherCnt)
 			return false, err
 		}
-		glog.Infof("cluster %s/%s's table %s count(*) = %d and cluster %s's table %s count(*) = %d",
-			info.Namespace, info.ClusterName, cnt,
-			otherInfo.Namespace, otherInfo.ClusterName, otherCnt)
+		glog.Infof("cluster %s/%s's table %s count(*) = %d and cluster %s/%s's table %s count(*) = %d",
+			info.Namespace, info.ClusterName, tableName, cnt,
+			otherInfo.Namespace, otherInfo.ClusterName, tableName, otherCnt)
 	}
 
 	return true, nil
