@@ -531,9 +531,10 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		}
 
 		glog.V(4).Infof("check tidb cluster begin metaSyncFn")
-		if b, err := oa.metaSyncFn(tc); err != nil {
-			return false, err
-		} else if !b && err == nil {
+		if b, err := oa.metaSyncFn(tc); !b && err == nil {
+			return false, nil
+		} else if err != nil {
+			glog.Error(err)
 			return false, nil
 		}
 
