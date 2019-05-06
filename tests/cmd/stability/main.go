@@ -24,7 +24,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
 	"github.com/pingcap/tidb-operator/tests"
-	"github.com/pingcap/tidb-operator/tests/backup"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
@@ -206,8 +205,8 @@ func main() {
 	oa.DeployTidbClusterOrDie(clusterRestoreTo)
 	oa.CheckTidbClusterStatusOrDie(clusterRestoreTo)
 
-	// restore
-	backup.NewBackupCase(oa, clusterBackupFrom, clusterRestoreTo).RunOrDie()
+	// backup and restore
+	oa.BackupRestoreOrDie(clusterBackupFrom, clusterRestoreTo)
 
 	// stop a node and failover automatically
 	physicalNode, node, faultTime := fta.StopNodeOrDie()
