@@ -143,6 +143,8 @@ type OperatorActions interface {
 	RegisterWebHookAndServiceOrDie(info *OperatorConfig)
 	CleanWebHookAndService(info *OperatorConfig) error
 	StartValidatingAdmissionWebhookServerOrDie(info *OperatorConfig)
+	BackupRestore(from, to *TidbClusterConfig) error
+	BackupRestoreOrDie(from, to *TidbClusterConfig)
 }
 
 type operatorActions struct {
@@ -1537,24 +1539,15 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 			return false, nil
 		}
 
-		fromCount, err := from.QueryCount()
+		b, err := to.DataIsTheSameAs(from)
 		if err != nil {
-			glog.Errorf("cluster [%s] count err ", from.ClusterName)
+			glog.Error(err)
 			return false, nil
 		}
-
-		toCount, err := to.QueryCount()
-		if err != nil {
-			glog.Errorf("cluster [%s] count err ", to.ClusterName)
-			return false, nil
+		if b {
+			return true, nil
 		}
-
-		if fromCount != toCount {
-			glog.Errorf("cluster [%s] count %d cluster [%s] count %d is not equal ",
-				from.ClusterName, fromCount, to.ClusterName, toCount)
-			return false, nil
-		}
-		return true, nil
+		return false, nil
 	}
 
 	err := wait.Poll(oa.pollInterval, BackupAndRestorePollTimeOut, fn)
@@ -1576,29 +1569,65 @@ func (oa *operatorActions) ForceDeploy(info *TidbClusterConfig) error {
 	return nil
 }
 
-func (info *TidbClusterConfig) QueryCount() (int, error) {
-	tableName := "test"
-	db, err := sql.Open("mysql", getDSN(info.Namespace, info.ClusterName, "record", info.Password))
-	if err != nil {
-		return 0, err
-	}
-	defer db.Close()
+func (info *TidbClusterConfig) DataIsTheSameAs(otherInfo *TidbClusterConfig) (bool, error) {
+	tableNum := otherInfo.BlockWriteConfig.TableNum
 
-	rows, err := db.Query(fmt.Sprintf("SELECT count(*) FROM %s", tableName))
+	infoDb, err := sql.Open("mysql", getDSN(info.Namespace, info.ClusterName, "test", info.Password))
 	if err != nil {
-		glog.Infof("cluster:[%s], error: %v", info.ClusterName, err)
-		return 0, err
+		return false, err
 	}
+	defer infoDb.Close()
+	otherInfoDb, err := sql.Open("mysql", getDSN(otherInfo.Namespace, otherInfo.ClusterName, "test", otherInfo.Password))
+	if err != nil {
+		return false, err
+	}
+	defer otherInfoDb.Close()
 
-	for rows.Next() {
-		var count int
-		err := rows.Scan(&count)
+	getCntFn := func(db *sql.DB, tableName string) (int, error) {
+		var cnt int
+		rows, err := db.Query(fmt.Sprintf("SELECT count(*) FROM %s", tableName))
 		if err != nil {
-			glog.Infof("cluster:[%s], error :%v", info.ClusterName, err)
+			return cnt, fmt.Errorf("failed to select count(*) from %s, %v", tableName, err)
 		}
-		return count, nil
+		for rows.Next() {
+			err := rows.Scan(&cnt)
+			if err != nil {
+				return cnt, fmt.Errorf("failed to scan count from %s, %v", tableName, err)
+			}
+			return cnt, nil
+		}
+		return cnt, fmt.Errorf("can not find count of table %s", tableName)
 	}
-	return 0, fmt.Errorf("can not find count of ")
+
+	for i := 0; i < tableNum; i++ {
+		var tableName string
+		if i == 0 {
+			tableName = "block_writer"
+		} else {
+			tableName = fmt.Sprintf("block_writer%d", i)
+		}
+
+		cnt, err := getCntFn(infoDb, tableName)
+		if err != nil {
+			return false, err
+		}
+		otherCnt, err := getCntFn(otherInfoDb, tableName)
+		if err != nil {
+			return false, err
+		}
+
+		if cnt != otherCnt {
+			err := fmt.Errorf("cluster %s/%s's table %s count(*) = %d and cluster %s/%s's table %s count(*) = %d",
+				info.Namespace, info.ClusterName, tableName, cnt,
+				otherInfo.Namespace, otherInfo.ClusterName, tableName, otherCnt)
+			return false, err
+		}
+		glog.Infof("cluster %s/%s's table %s count(*) = %d and cluster %s/%s's table %s count(*) = %d",
+			info.Namespace, info.ClusterName, tableName, cnt,
+			otherInfo.Namespace, otherInfo.ClusterName, tableName, otherCnt)
+	}
+
+	return true, nil
 }
 
 func (oa *operatorActions) CreateSecret(info *TidbClusterConfig) error {
@@ -1875,6 +1904,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 		"binlog.drainer.mysql.user":     "root",
 		"binlog.drainer.mysql.password": to.Password,
 		"binlog.drainer.mysql.port":     "4000",
+		"binlog.drainer.ignoreSchemas":  "\"INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql\"",
 	}
 
 	setString := from.TidbClusterHelmSetString(sets)
