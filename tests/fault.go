@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/slack"
+
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -154,7 +156,7 @@ func (fa *faultTriggerActions) StopNodeOrDie() (string, string, time.Time) {
 	var err error
 	var now time.Time
 	if pn, n, now, err = fa.StopNode(); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 	return pn, n, now
 }
@@ -189,7 +191,7 @@ func (fa *faultTriggerActions) StartNode(physicalNode string, node string) error
 
 func (fa *faultTriggerActions) StartNodeOrDie(physicalNode string, node string) {
 	if err := fa.StartNode(physicalNode, node); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -213,7 +215,7 @@ func (fa *faultTriggerActions) StopETCD(nodes ...string) error {
 
 func (fa *faultTriggerActions) StopETCDOrDie(nodes ...string) {
 	if err := fa.StopETCD(nodes...); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -237,7 +239,7 @@ func (fa *faultTriggerActions) StartETCD(nodes ...string) error {
 
 func (fa *faultTriggerActions) StartETCDOrDie(nodes ...string) {
 	if err := fa.StartETCD(nodes...); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -288,7 +290,7 @@ func (fa *faultTriggerActions) StopKubeAPIServer(node string) error {
 
 func (fa *faultTriggerActions) StopKubeAPIServerOrDie(node string) {
 	if err := fa.StopKubeAPIServer(node); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -299,7 +301,7 @@ func (fa *faultTriggerActions) StartKubeAPIServer(node string) error {
 
 func (fa *faultTriggerActions) StartKubeAPIServerOrDie(node string) {
 	if err := fa.StartKubeAPIServer(node); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 

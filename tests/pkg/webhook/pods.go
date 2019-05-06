@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/slack"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/golang/glog"
@@ -84,7 +86,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		return &reviewResponse
 	}
 
-	glog.Infof("delete %s pod [%s]", pod.Labels[label.ComponentLabelKey], pod.GetName())
+	glog.Infof("delete pod %s", pod.Labels[label.ComponentLabelKey])
 
 	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(pod.Labels[label.InstanceLabelKey], metav1.GetOptions{})
 	if err != nil {
@@ -117,13 +119,19 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 		if info.IsOwner && tc.Status.TiDB.StatefulSet.Replicas > 1 {
 			time.Sleep(10 * time.Second)
-			glog.Errorf("tidb is ddl owner, can't be deleted namespace %s name %s", namespace, name)
+			err := fmt.Errorf("tidb is ddl owner, can't be deleted namespace %s name %s", namespace, name)
+			glog.Error(err)
+			sendErr := slack.SendErrMsg(err.Error())
+			if sendErr != nil {
+				glog.Error(sendErr)
+			}
 			os.Exit(3)
 		} else {
 			glog.Infof("savely delete pod namespace %s name %s isowner %t", namespace, name, info.IsOwner)
 		}
 
 	} else if pod.Labels[label.ComponentLabelKey] == "pd" {
+
 		leader, err := pdClient.GetPDLeader()
 		if err != nil {
 			glog.Errorf("fail to get pd leader %v", err)
@@ -132,13 +140,19 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 		if leader.Name == name && tc.Status.TiDB.StatefulSet.Replicas > 1 {
 			time.Sleep(10 * time.Second)
-			glog.Errorf("pd is leader, can't be deleted namespace %s name %s", namespace, name)
+			err := fmt.Errorf("pd is leader, can't be deleted namespace %s name %s", namespace, name)
+			glog.Error(err)
+			sendErr := slack.SendErrMsg(err.Error())
+			if sendErr != nil {
+				glog.Error(sendErr)
+			}
 			os.Exit(3)
 		} else {
 			glog.Infof("savely delete pod namespace %s name %s leader name %s", namespace, name, leader.Name)
 		}
 
 	} else if pod.Labels[label.ComponentLabelKey] == "tikv" {
+
 		var storeID uint64
 		storeID = 0
 		for _, store := range tc.Status.TiKV.Stores {
@@ -169,7 +183,12 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 		if beforeCount != 0 && beforeCount <= afterCount && tc.Status.TiKV.StatefulSet.Replicas > 1 {
 			time.Sleep(10 * time.Second)
-			glog.Errorf("kv leader is not zero, can't be deleted namespace %s name %s leaderCount %d", namespace, name, storeInfo.Status.LeaderCount)
+			err := fmt.Errorf("kv leader is not zero, can't be deleted namespace %s name %s leaderCount %d", namespace, name, storeInfo.Status.LeaderCount)
+			glog.Error(err)
+			sendErr := slack.SendErrMsg(err.Error())
+			if sendErr != nil {
+				glog.Error(sendErr)
+			}
 			os.Exit(3)
 		} else {
 			glog.Infof("savely delete pod namespace %s name %s before count %d after count %d", namespace, name, beforeCount, afterCount)

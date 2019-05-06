@@ -28,11 +28,6 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/golang/glog"
-	pingcapErrors "github.com/pingcap/errors"
-	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -44,14 +39,20 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang/glog"
+	pingcapErrors "github.com/pingcap/errors"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
+	"github.com/pingcap/tidb-operator/tests/slack"
 )
 
 const (
@@ -142,6 +143,8 @@ type OperatorActions interface {
 	RegisterWebHookAndServiceOrDie(info *OperatorConfig)
 	CleanWebHookAndService(info *OperatorConfig) error
 	StartValidatingAdmissionWebhookServerOrDie(info *OperatorConfig)
+	BackupRestore(from, to *TidbClusterConfig) error
+	BackupRestoreOrDie(from, to *TidbClusterConfig)
 }
 
 type operatorActions struct {
@@ -306,7 +309,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 
 func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 	if err := oa.DeployOperator(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -329,7 +332,7 @@ func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 
 func (oa *operatorActions) CleanOperatorOrDie(info *OperatorConfig) {
 	if err := oa.CleanOperator(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -385,7 +388,7 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) DeployTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.DeployTidbCluster(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -461,7 +464,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) CleanTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.CleanTidbCluster(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -529,7 +532,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 
 func (oa *operatorActions) CheckTidbClusterStatusOrDie(info *TidbClusterConfig) {
 	if err := oa.CheckTidbClusterStatus(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -553,7 +556,7 @@ func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 func (oa *operatorActions) BeginInsertDataToOrDie(info *TidbClusterConfig) {
 	err := oa.BeginInsertDataTo(info)
 	if err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -594,7 +597,7 @@ func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) ScaleTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.ScaleTidbCluster(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -675,7 +678,7 @@ func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) UpgradeTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.UpgradeTidbCluster(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -1536,24 +1539,15 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 			return false, nil
 		}
 
-		fromCount, err := from.QueryCount()
+		b, err := to.DataIsTheSameAs(from)
 		if err != nil {
-			glog.Errorf("cluster [%s] count err ", from.ClusterName)
+			glog.Error(err)
 			return false, nil
 		}
-
-		toCount, err := to.QueryCount()
-		if err != nil {
-			glog.Errorf("cluster [%s] count err ", to.ClusterName)
-			return false, nil
+		if b {
+			return true, nil
 		}
-
-		if fromCount != toCount {
-			glog.Errorf("cluster [%s] count %d cluster [%s] count %d is not equal ",
-				from.ClusterName, fromCount, to.ClusterName, toCount)
-			return false, nil
-		}
-		return true, nil
+		return false, nil
 	}
 
 	err := wait.Poll(oa.pollInterval, BackupAndRestorePollTimeOut, fn)
@@ -1575,29 +1569,65 @@ func (oa *operatorActions) ForceDeploy(info *TidbClusterConfig) error {
 	return nil
 }
 
-func (info *TidbClusterConfig) QueryCount() (int, error) {
-	tableName := "test"
-	db, err := sql.Open("mysql", getDSN(info.Namespace, info.ClusterName, "record", info.Password))
-	if err != nil {
-		return 0, err
-	}
-	defer db.Close()
+func (info *TidbClusterConfig) DataIsTheSameAs(otherInfo *TidbClusterConfig) (bool, error) {
+	tableNum := otherInfo.BlockWriteConfig.TableNum
 
-	rows, err := db.Query(fmt.Sprintf("SELECT count(*) FROM %s", tableName))
+	infoDb, err := sql.Open("mysql", getDSN(info.Namespace, info.ClusterName, "test", info.Password))
 	if err != nil {
-		glog.Infof("cluster:[%s], error: %v", info.ClusterName, err)
-		return 0, err
+		return false, err
 	}
+	defer infoDb.Close()
+	otherInfoDb, err := sql.Open("mysql", getDSN(otherInfo.Namespace, otherInfo.ClusterName, "test", otherInfo.Password))
+	if err != nil {
+		return false, err
+	}
+	defer otherInfoDb.Close()
 
-	for rows.Next() {
-		var count int
-		err := rows.Scan(&count)
+	getCntFn := func(db *sql.DB, tableName string) (int, error) {
+		var cnt int
+		rows, err := db.Query(fmt.Sprintf("SELECT count(*) FROM %s", tableName))
 		if err != nil {
-			glog.Infof("cluster:[%s], error :%v", info.ClusterName, err)
+			return cnt, fmt.Errorf("failed to select count(*) from %s, %v", tableName, err)
 		}
-		return count, nil
+		for rows.Next() {
+			err := rows.Scan(&cnt)
+			if err != nil {
+				return cnt, fmt.Errorf("failed to scan count from %s, %v", tableName, err)
+			}
+			return cnt, nil
+		}
+		return cnt, fmt.Errorf("can not find count of table %s", tableName)
 	}
-	return 0, fmt.Errorf("can not find count of ")
+
+	for i := 0; i < tableNum; i++ {
+		var tableName string
+		if i == 0 {
+			tableName = "block_writer"
+		} else {
+			tableName = fmt.Sprintf("block_writer%d", i)
+		}
+
+		cnt, err := getCntFn(infoDb, tableName)
+		if err != nil {
+			return false, err
+		}
+		otherCnt, err := getCntFn(otherInfoDb, tableName)
+		if err != nil {
+			return false, err
+		}
+
+		if cnt != otherCnt {
+			err := fmt.Errorf("cluster %s/%s's table %s count(*) = %d and cluster %s/%s's table %s count(*) = %d",
+				info.Namespace, info.ClusterName, tableName, cnt,
+				otherInfo.Namespace, otherInfo.ClusterName, tableName, otherCnt)
+			return false, err
+		}
+		glog.Infof("cluster %s/%s's table %s count(*) = %d and cluster %s/%s's table %s count(*) = %d",
+			info.Namespace, info.ClusterName, tableName, cnt,
+			otherInfo.Namespace, otherInfo.ClusterName, tableName, otherCnt)
+	}
+
+	return true, nil
 }
 
 func (oa *operatorActions) CreateSecret(info *TidbClusterConfig) error {
@@ -1874,6 +1904,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 		"binlog.drainer.mysql.user":     "root",
 		"binlog.drainer.mysql.password": to.Password,
 		"binlog.drainer.mysql.port":     "4000",
+		"binlog.drainer.ignoreSchemas":  "\"INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql\"",
 	}
 
 	setString := from.TidbClusterHelmSetString(sets)
@@ -1964,7 +1995,7 @@ func strPtr(s string) *string { return &s }
 
 func (oa *operatorActions) RegisterWebHookAndServiceOrDie(info *OperatorConfig) {
 	if err := oa.RegisterWebHookAndService(info); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -2109,7 +2140,12 @@ func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie(info *Oper
 	}
 	err = server.ListenAndServeTLS("", "")
 	if err != nil {
-		glog.Errorf("fail to start webhook server err %v", err)
+		err = fmt.Errorf("fail to start webhook server err %v", err)
+		glog.Error(err)
+		sendErr := slack.SendErrMsg(err.Error())
+		if sendErr != nil {
+			glog.Error(sendErr)
+		}
 		os.Exit(4)
 	}
 }

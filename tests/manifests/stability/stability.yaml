@@ -47,6 +47,7 @@ spec:
     command:
     - /usr/local/bin/stability-test
     - --config=/etc/tidb-operator-stability/config.yaml
+    - --slack-webhook-url=""
     volumeMounts:
     - mountPath: /logDir
       name: logdir
