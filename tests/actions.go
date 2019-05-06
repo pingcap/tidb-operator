@@ -143,6 +143,8 @@ type OperatorActions interface {
 	RegisterWebHookAndServiceOrDie(info *OperatorConfig)
 	CleanWebHookAndService(info *OperatorConfig) error
 	StartValidatingAdmissionWebhookServerOrDie(info *OperatorConfig)
+	BackupRestore(from, to *TidbClusterConfig) error
+	BackupRestoreOrDie(from, to *TidbClusterConfig)
 }
 
 type operatorActions struct {
@@ -1902,7 +1904,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 		"binlog.drainer.mysql.user":     "root",
 		"binlog.drainer.mysql.password": to.Password,
 		"binlog.drainer.mysql.port":     "4000",
-		"binlog.drainer.ignoreSchemas":  "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql",
+		"binlog.drainer.ignoreSchemas":  "\"INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql\"",
 	}
 
 	setString := from.TidbClusterHelmSetString(sets)
