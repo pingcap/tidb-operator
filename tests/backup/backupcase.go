@@ -14,7 +14,6 @@
 package backup
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/pingcap/tidb-operator/tests/slack"
@@ -124,24 +123,15 @@ func (bc *BackupCase) RunOrDie() {
 
 func (bc *BackupCase) EnsureBackupDataIsCorrect() error {
 	fn := func() (bool, error) {
-		srcCount, err := bc.srcCluster.QueryCount()
+		b, err := bc.desCluster.DataIsTheSameAs(bc.srcCluster)
 		if err != nil {
-			glog.Infof("failed to query count from src cluster: %s/%s",
-				bc.srcCluster.Namespace, bc.srcCluster.ClusterName)
+			glog.Error(err)
 			return false, nil
 		}
-		desCount, err := bc.desCluster.QueryCount()
-		if err != nil {
-			glog.Infof("failed to query count from dest cluster: %s/%s",
-				bc.desCluster.Namespace, bc.desCluster.ClusterName)
-			return false, nil
+		if b {
+			return true, nil
 		}
-
-		if srcCount != desCount {
-			return false, fmt.Errorf("cluster:[%s] the src cluster data[%d] is not equals des cluster data[%d]", bc.srcCluster.FullName(), srcCount, desCount)
-		}
-
-		return true, nil
+		return false, nil
 	}
 
 	return wait.Poll(tests.DefaultPollInterval, tests.DefaultPollTimeout, fn)
