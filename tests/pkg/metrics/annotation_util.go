@@ -25,6 +25,8 @@ import (
 	"path"
 	"sync"
 
+	"github.com/pingcap/tidb-operator/tests/slack"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -93,7 +95,7 @@ func initFunc(port int) {
 		l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "listening port %d failed, %v", port, err)
-			panic(err)
+			slack.NotifyAndPanic(err)
 		}
 
 		mux.Handle("/metrics", promhttp.Handler())

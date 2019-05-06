@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/slack"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/golang/glog"
@@ -117,7 +119,12 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 		if info.IsOwner && tc.Status.TiDB.StatefulSet.Replicas > 1 {
 			time.Sleep(10 * time.Second)
-			glog.Errorf("tidb is ddl owner, can't be deleted namespace %s name %s", namespace, name)
+			err := fmt.Errorf("tidb is ddl owner, can't be deleted namespace %s name %s", namespace, name)
+			glog.Error(err)
+			sendErr := slack.SendErrMsg(err.Error())
+			if sendErr != nil {
+				glog.Error(sendErr)
+			}
 			// TODO use context instead
 			os.Exit(3)
 		} else {
@@ -125,6 +132,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		}
 
 	} else if pod.Labels[label.ComponentLabelKey] == "pd" {
+
 		leader, err := pdClient.GetPDLeader()
 		if err != nil {
 			glog.Errorf("fail to get pd leader %v", err)
@@ -133,7 +141,12 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 		if leader.Name == name && tc.Status.TiDB.StatefulSet.Replicas > 1 {
 			time.Sleep(10 * time.Second)
-			glog.Errorf("pd is leader, can't be deleted namespace %s name %s", namespace, name)
+			err := fmt.Errorf("pd is leader, can't be deleted namespace %s name %s", namespace, name)
+			glog.Error(err)
+			sendErr := slack.SendErrMsg(err.Error())
+			if sendErr != nil {
+				glog.Error(sendErr)
+			}
 			// TODO use context instead
 			os.Exit(3)
 		} else {
@@ -141,6 +154,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		}
 
 	} else if pod.Labels[label.ComponentLabelKey] == "tikv" {
+
 		var storeID uint64
 		storeID = 0
 		for _, store := range tc.Status.TiKV.Stores {
@@ -171,8 +185,13 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 		if beforeCount != 0 && !(afterCount < beforeCount) && tc.Status.TiKV.StatefulSet.Replicas > 1 {
 			time.Sleep(10 * time.Second)
-			glog.Errorf("failed to evict leader from %s/%s, before: %d, now: %d",
+			err := fmt.Errorf("failed to evict leader from %s/%s, before: %d, now: %d",
 				namespace, name, beforeCount, afterCount)
+			glog.Error(err)
+			sendErr := slack.SendErrMsg(err.Error())
+			if sendErr != nil {
+				glog.Error(sendErr)
+			}
 			// TODO use context instead
 			os.Exit(3)
 		} else {

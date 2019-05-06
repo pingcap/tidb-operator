@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/slack"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
 	"github.com/pingcap/errors"
@@ -105,7 +107,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 
 func (oa *operatorActions) TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) {
 	if err := oa.TruncateSSTFileThenCheckFailover(info, tikvFailoverPeriod); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -179,7 +181,7 @@ func (oa *operatorActions) CheckFailoverPendingOrDie(clusters []*TidbClusterConf
 		}
 		return true, nil
 	}); err != nil {
-		panic("failed to check failover pending")
+		slack.NotifyAndPanic(fmt.Errorf("failed to check failover pending"))
 	}
 }
 
@@ -260,7 +262,7 @@ func (oa *operatorActions) CheckFailoverOrDie(clusters []*TidbClusterConfig, fau
 		}
 		return true, nil
 	}); err != nil {
-		panic("failed to check failover")
+		slack.NotifyAndPanic(fmt.Errorf("failed to check failover"))
 	}
 }
 
@@ -300,7 +302,7 @@ func (oa *operatorActions) CheckRecoverOrDie(clusters []*TidbClusterConfig) {
 		}
 		return true, nil
 	}); err != nil {
-		panic("failed to check recover")
+		slack.NotifyAndPanic(fmt.Errorf("failed to check recover"))
 	}
 }
 
@@ -457,7 +459,7 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 	affectedPods := map[string]*corev1.Pod{}
 	apiserverPod, err := GetApiserverPod(oa.kubeCli, faultNode)
 	if err != nil {
-		panic(fmt.Errorf("can't find apiserver in node:%s", faultNode))
+		slack.NotifyAndPanic(fmt.Errorf("can't find apiserver in node:%s", faultNode))
 	}
 	if apiserverPod != nil {
 		affectedPods[apiserverPod.GetName()] = apiserverPod
@@ -478,7 +480,7 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 	}
 	dnsPod, err := GetDnsPod(oa.kubeCli, faultNode)
 	if err != nil {
-		panic(fmt.Errorf("can't find controller-manager in node:%s", faultNode))
+		slack.NotifyAndPanic(fmt.Errorf("can't find controller-manager in node:%s", faultNode))
 	}
 	if dnsPod != nil {
 		affectedPods[dnsPod.GetName()] = dnsPod
@@ -505,7 +507,7 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 
 func (oa *operatorActions) CheckK8sAvailableOrDie(excludeNodes map[string]string, excludePods map[string]*corev1.Pod) {
 	if err := oa.CheckK8sAvailable(excludeNodes, excludePods); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
