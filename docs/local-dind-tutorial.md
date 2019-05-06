@@ -17,7 +17,7 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
     > **Note:** [Legacy Docker Toolbox](https://docs.docker.com/toolbox/toolbox_install_mac/) users must migrate to [Docker for Mac](https://store.docker.com/editions/community/docker-ce-desktop-mac) by uninstalling Legacy Docker Toolbox and installing Docker for Mac, because DinD cannot run on Docker Toolbox and Docker Machine.
 
 - [Helm Client](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client): 2.9.0 or later
-- [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl): 1.10 or later
+- [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl): at least 1.10 required, 1.13 or later recommended
 
     > **Note:** The outputs of different versions of `kubectl` might be slightly different.
 
@@ -108,6 +108,8 @@ demo-tikv-2                       2/2       Running     0          1m
 
 To access the TiDB cluster, use `kubectl port-forward` to expose the services to host.
 
+> **Note:** If you are deploying DinD on a remote machine rather than local PC, there may be problem accessing "localhost" of that remote system. When using `kubectl` 1.13 or later, it's possible to expose the port on `0.0.0.0` instead of `127.0.0.1` (which is default) by adding `--address 0.0.0.0` to the `kubectl port-forward` command.
+
 - Access TiDB using the MySQL client
 
     1. Use `kubectl` to forward the host machine port to the TiDB service port:
@@ -134,6 +136,31 @@ To access the TiDB cluster, use `kubectl port-forward` to expose the services to
 
         * Default username: admin
         * Default password: admin
+
+- Permanent remote access
+
+    Although this is a very simple demo cluster and not suitable for any serius usage, it may be useful if it can be accessed remotely without `kubectl port-forward`, which may require an open terminal.
+
+    By default, TiDB, Prometheus, and Grafana are exposed as `NodePort` Services, so it's possible to setup reverse proxy for them.
+
+    1. You can find their listing port numbers by:
+
+```
+$ kubectl get service -n tidb | grep NodePort
+demo-grafana      NodePort    10.111.80.73     <none>        3000:32503/TCP                   1m
+demo-prometheus   NodePort    10.104.97.84     <none>        9090:32448/TCP                   1m
+demo-tidb         NodePort    10.102.165.13    <none>        4000:32714/TCP,10080:32680/TCP   1m
+```
+
+    In this sample output, the ports are: 32503 for Grafana, 32448 for Prometheus, and 32714 for TiDB.
+
+    2. Find host IP address of the cluster.
+
+        DinD is a k8s cluster running inside docker containers, so Services expose ports to the containers' address, instead of the real host machine. We can find IP addresses of docker containers by `kubectl get nodes -o yaml | grep address`.
+
+    3. Setup reverse proxy
+
+        Either (or all) of the container IPs can be used as upstream for reverse proxy. You may use any reverse proxy server that supports TCP (for TiDB) or HTTP (for Grafana and Prometheus) to provide remote access. HAProxy and nginx are two common choises.
 
 ## Scale the TiDB cluster
 
