@@ -164,11 +164,11 @@ demo-tidb         NodePort    10.102.165.13    <none>        4000:32714/TCP,1008
 
 ## Scale the TiDB cluster
 
-You can scale out or scale in the TiDB cluster simply by modifying the number of `replicas`.
+You can scale up or scale down the TiDB cluster simply by modifying the number of `replicas`.
 
 1. Configure the `charts/tidb-cluster/values.yaml` file.
 
-    For example, to scale out the cluster, you can modify the number of TiKV `replicas` from 3 to 5, or the number of TiDB `replicas` from 2 to 3.
+    For example, to scale up the cluster, you can modify the number of TiKV `replicas` from 3 to 5, or the number of TiDB `replicas` from 2 to 3.
 
 2. Run the following command to apply the changes:
 
@@ -176,7 +176,7 @@ You can scale out or scale in the TiDB cluster simply by modifying the number of
     helm upgrade demo charts/tidb-cluster --namespace=tidb
     ```
 
-> **Note:** If you need to scale in TiKV, the consumed time depends on the volume of your existing data, because the data needs to be migrated safely.
+> **Note:** If you need to scale down TiKV, the consumed time depends on the volume of your existing data, because the data needs to be migrated safely.
 
 ## Upgrade the TiDB cluster
 
