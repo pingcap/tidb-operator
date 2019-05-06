@@ -15,6 +15,7 @@ package cmd
 
 import (
 	"flag"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/version"
 	"io"
 
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/completion"
@@ -67,6 +68,7 @@ func NewTkcCommand(streams genericclioptions.IOStreams) *cobra.Command {
 				get.NewCmdGet(tkcContext, streams),
 				info.NewCmdInfo(tkcContext, streams),
 				use.NewCmdUse(tkcContext, streams),
+				version.NewCmdVersion(tkcContext, streams.Out),
 			},
 		},
 		{
