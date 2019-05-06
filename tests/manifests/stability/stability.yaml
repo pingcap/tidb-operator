@@ -54,7 +54,7 @@ spec:
         echo "######################## $i begin ########################"
         /usr/local/bin/stability-test \
         --config=/etc/tidb-operator-stability/config.yaml \
-        --config=/etc/tidb-operator-stability/config.yaml
+        --slack-webhook-url=""
         echo "######################## $i end ##########################"
       done
     volumeMounts:
