@@ -15,11 +15,13 @@ package version
 
 import (
 	"fmt"
+	"io"
+
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/version"
 	"github.com/spf13/cobra"
-	"io"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/apis/core"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -41,9 +43,9 @@ func NewCmdVersion(tkcContext *config.TkcContext, out io.Writer) *cobra.Command 
 		Writer: out,
 	}
 	cmd := &cobra.Command{
-		Use: "version",
-		Short: "Print the client & server version",
-		Example : versionExample,
+		Use:     "version",
+		Short:   "Print the client & server version",
+		Example: versionExample,
 		Run: func(_ *cobra.Command, _ []string) {
 			cmdutil.CheckErr(options.runVersion(tkcContext))
 		},
@@ -67,7 +69,7 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 	controllers, err := kubeCli.AppsV1().
 		Deployments(core.NamespaceAll).
 		List(v1.ListOptions{
-			LabelSelector: "app.kubernetes.io/component=controller-manager,app.kubernetes.io/instance=tidb-operator",
+			LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.ComponentLabelKey, "controller-manager", label.InstanceLabelKey, "tidb-operator"),
 		})
 	if err != nil {
 		return err
@@ -75,7 +77,7 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 	schedulers, err := kubeCli.AppsV1().
 		Deployments(core.NamespaceAll).
 		List(v1.ListOptions{
-			LabelSelector: "app.kubernetes.io/component=scheduler,app.kubernetes.io/instance=tidb-operator",
+			LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.ComponentLabelKey, "scheduler", label.InstanceLabelKey, "tidb-operator"),
 		})
 	if err != nil {
 		return nil
@@ -85,7 +87,7 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 
 	// TODO: add version endpoint in tidb-controller-manager
 	// There's no version endpoint of tidb-controller-manager and tidb-scheduler, use image instead
-	if len(controllers.Items)  == 0 {
+	if len(controllers.Items) == 0 {
 		fmt.Fprintf(o, "No TiDB Controller Manager found, please install one first\n")
 	} else if len(controllers.Items) == 1 {
 		fmt.Fprintf(o, "TiDB Controller Manager Version: %s\n", controllers.Items[0].Spec.Template.Spec.Containers[0].Image)
