@@ -10,6 +10,10 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: monitor
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+  {{- if .Values.monitor.grafana.service.annotations }}
+  annotations:
+{{ toYaml .Values.monitor.grafana.service.annotations | indent 4 }}
+  {{- end }}
 spec:
   ports:
   - name: grafana
