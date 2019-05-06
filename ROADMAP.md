@@ -37,17 +37,34 @@ This document defines the roadmap for TiDB Operator development.
 - [x] Improve chaos test
 - [x] More User friendly
 
-## v1.0.0-beta.2: (2019-04-30)
+## v1.0.0-beta.2
+- [ ] AWS one-click deployment
+- [ ] Aliyun one-click deployment
+- [ ] GCP one-click deployment
+- [ ] Minikube deployment
 - [ ] Simple CLI tool
-- [ ] Deployment guide on AWS
-- [ ] Deployment guide on Aliyun
-- [ ] Improve operation document
+- [ ] TiDB 3.0-beta support
 
-## v1.0.0-rc: (2019-05-30)
+## v1.0.0-beta.3
+- [ ] Schedule TiDB pod on previous node
+- [ ] Rolling update when ConfigMap changes
+- [ ] Allow pausing during TiDB upgrade
+
+## v1.0.0-beta.4
+- [ ] Kustomize support
+- [ ] HA deployment document
+- [ ] Monitor deployment document
+- [ ] Detailed Backup/Restore document
+- [ ] Troubleshooting document
+
+## v1.0.0-rc
+- [ ] Architecture & design document
 - [ ] Automate Chaos tests
-- [ ] Add design document
-- [ ] Improve contribution document
+- [ ] Bugfix
 
 ## v1.0.0-ga: (2019-06-30)
-- [ ] Stabilize API
 - [ ] Stable for production deployment
+
+## v1.1.0: (2019-08-15)
+- [ ] Deploy Lightning
+- [ ] Deploy TiFlash beta
