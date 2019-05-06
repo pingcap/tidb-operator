@@ -16,15 +16,19 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 
     > **Note:** [Legacy Docker Toolbox](https://docs.docker.com/toolbox/toolbox_install_mac/) users must migrate to [Docker for Mac](https://store.docker.com/editions/community/docker-ce-desktop-mac) by uninstalling Legacy Docker Toolbox and installing Docker for Mac, because DinD cannot run on Docker Toolbox and Docker Machine.
 
+    > **Note:** `kubeadm` validates installed Docker version during installation process, if you are using Docker newer than 18.06, there would be warning messages, the cluster may still be working, but it's recommended to use Docker version between 17.03 and 18.06 for better compatiability.
+
 - [Helm Client](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client): 2.9.0 or later
 - [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl): at least 1.10 required, 1.13 or later recommended
 
     > **Note:** The outputs of different versions of `kubectl` might be slightly different.
 
+- For Linux users, `kubeadm` may produce warning messages during installation process if you are using kernel 5.x or later versions. The cluster may still be working, but it's recommended to use kernel version between 3.10 and 4.x for better compatiability.
+
 ## Step 1: Deploy a Kubernetes cluster using DinD
 
 ```sh
-$ git clone https://github.com/pingcap/tidb-operator
+$ git clone --depth=1 https://github.com/pingcap/tidb-operator
 $ cd tidb-operator
 $ manifests/local-dind/dind-cluster-v1.12.sh up
 ```
@@ -40,13 +44,6 @@ $ KUBE_REPO_PREFIX=uhub.ucloud.cn/pingcap manifests/local-dind/dind-cluster-v1.1
 Uncomment the `scheduler.kubeSchedulerImage` in `charts/tidb-operator/values.yaml`, set it to desired version if needed, it is default to matching your kubernetes cluster version.
 
 ```sh
-$ kubectl apply -f manifests/crd.yaml
-
-$ # This creates the custom resource for the cluster that the operator uses.
-$ kubectl get customresourcedefinitions
-NAME                             AGE
-tidbclusters.pingcap.com         1m
-
 $ # Install TiDB Operator into Kubernetes
 $ helm install charts/tidb-operator --name=tidb-operator --namespace=tidb-admin --set scheduler.kubeSchedulerImageName=mirantis/hypokube --set scheduler.kubeSchedulerImageTag=final
 $ # wait operator running
@@ -61,7 +58,7 @@ tidb-scheduler-56757c896c-clzdg            2/2       Running   0          1m
 ```sh
 $ helm install charts/tidb-cluster --name=demo --namespace=tidb
 $ watch kubectl get pods --namespace tidb -l app.kubernetes.io/instance=demo -o wide
-$ # wait a few minutes to get all TiDB components created and ready
+$ # wait a few minutes to get all TiDB components get created and ready
 
 $ kubectl get tidbcluster -n tidb
 NAME   PD                  STORAGE   READY   DESIRE   TIKV                  STORAGE   READY   DESIRE   TIDB                  READY   DESIRE
@@ -106,7 +103,7 @@ demo-tikv-1                       2/2       Running     0          1m
 demo-tikv-2                       2/2       Running     0          1m
 ```
 
-To access the TiDB cluster, use `kubectl port-forward` to expose the services to host.
+To access the TiDB cluster, use `kubectl port-forward` to expose the services to host. The port numbers in command are in `<host machine port>:<k8s service port>` format.
 
 > **Note:** If you are deploying DinD on a remote machine rather than local PC, there may be problem accessing "localhost" of that remote system. When using `kubectl` 1.13 or later, it's possible to expose the port on `0.0.0.0` instead of `127.0.0.1` (which is default) by adding `--address 0.0.0.0` to the `kubectl port-forward` command.
 
@@ -145,7 +142,7 @@ To access the TiDB cluster, use `kubectl port-forward` to expose the services to
 
     1. You can find their listing port numbers by:
 
-```
+```sh
 $ kubectl get service -n tidb | grep NodePort
 demo-grafana      NodePort    10.111.80.73     <none>        3000:32503/TCP                   1m
 demo-prometheus   NodePort    10.104.97.84     <none>        9090:32448/TCP                   1m
