@@ -169,9 +169,7 @@ func main() {
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
 	go oa.BeginInsertDataToOrDie(cluster1)
-	defer oa.StopInsertDataTo(cluster1)
 	go oa.BeginInsertDataToOrDie(cluster2)
-	defer oa.StopInsertDataTo(cluster2)
 
 	// scale out cluster1 and cluster2
 	cluster1.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
