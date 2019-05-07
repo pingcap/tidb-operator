@@ -113,7 +113,7 @@ module "eks" {
       # WARNING: if you change instance type, you must also modify the corresponding disk mounting in tikv-userdata.sh script
       instance_type = "${var.tikv_instance_type}" # i3.2xlarge 8c, 61G, 1.9T NVMe SSD
       root_volume_type = "gp2"
-      root_volume_size = "${var.tikv_root_volume_size}"
+      root_volume_size = "100"
       public_ip = false
       kubelet_extra_args = "--register-with-taints=dedicated=tikv:NoSchedule --node-labels=dedicated=tikv"
       asg_desired_capacity = "${var.tikv_count}"

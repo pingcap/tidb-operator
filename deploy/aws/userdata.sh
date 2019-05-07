@@ -25,6 +25,7 @@ EOF
         mount -a
     else
         mkfs -t ext4 /dev/nvme0n1
+        mkdir -p /mnt/disks/ssd1
         cat <<EOF >> /etc/fstab
 /dev/nvme0n1 /mnt/disks/ssd1 ext4 defaults,nofail,noatime,nodelalloc 0 2
 EOF
