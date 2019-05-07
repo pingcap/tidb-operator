@@ -23,9 +23,13 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 
     > **Note:** The outputs of different versions of `kubectl` might be slightly different.
 
-- For Linux users, `kubeadm` may produce warning messages during installation process if you are using kernel 5.x or later versions. The cluster may still be working, but it's recommended to use kernel version between 3.10 and 4.x for better compatiability.
+- For Linux users, `kubeadm` may produce warning messages during installation process if you are using kernel 5.x or later versions. The cluster may still be working, but it's recommended to use kernel version 3.10+ or 4.x for better compatiability.
+
+- `root` access or permissions to operate with Docker daemon.
 
 ## Step 1: Deploy a Kubernetes cluster using DinD
+
+There is a script in our repository that can help you install and setup a Kubernetes cluster (version 1.12) using DinD for TiDB Operator.
 
 ```sh
 $ git clone --depth=1 https://github.com/pingcap/tidb-operator
@@ -83,11 +87,11 @@ demo-tikv-peer    ClusterIP   None             <none>        20160/TCP          
 
 $ kubectl get configmap -n tidb
 NAME                     DATA   AGE
-demo-monitor             5      5m48s
-demo-monitor-dashboard   0      5m48s
-demo-pd                  2      5m48s
-demo-tidb                2      5m48s
-demo-tikv                2      5m48s
+demo-monitor             5      1m
+demo-monitor-dashboard   0      1m
+demo-pd                  2      1m
+demo-tidb                2      1m
+demo-tikv                2      1m
 
 $ kubectl get pod -n tidb
 NAME                              READY     STATUS      RESTARTS   AGE
@@ -103,7 +107,7 @@ demo-tikv-1                       2/2       Running     0          1m
 demo-tikv-2                       2/2       Running     0          1m
 ```
 
-To access the TiDB cluster, use `kubectl port-forward` to expose the services to host. The port numbers in command are in `<host machine port>:<k8s service port>` format.
+To access the TiDB cluster, use `kubectl port-forward` to expose services to host. The port numbers in command are in `<host machine port>:<k8s service port>` format.
 
 > **Note:** If you are deploying DinD on a remote machine rather than local PC, there may be problem accessing "localhost" of that remote system. When using `kubectl` 1.13 or later, it's possible to expose the port on `0.0.0.0` instead of `127.0.0.1` (which is default) by adding `--address 0.0.0.0` to the `kubectl port-forward` command.
 
@@ -149,7 +153,7 @@ To access the TiDB cluster, use `kubectl port-forward` to expose the services to
         demo-tidb         NodePort    10.102.165.13    <none>        4000:32714/TCP,10080:32680/TCP   1m
         ```
 
-    In this sample output, the ports are: 32503 for Grafana, 32448 for Prometheus, and 32714 for TiDB.
+        In this sample output, the ports are: 32503 for Grafana, 32448 for Prometheus, and 32714 for TiDB.
 
     2. Find host IP address of the cluster.
 
@@ -227,4 +231,4 @@ $ sudo rm -rf data/kube-node-*
 $ manifests/local-dind/dind-cluster-v1.12.sh up
 ```
 
-> **Warning:** You must clean the data after you destroy the DinD Kubernetes cluster, otherwise the TiDB cluster would fail to start when you bring it up again.
+> **Warning:** You must clean the data after you destroy the DinD Kubernetes cluster, otherwise the TiDB cluster would fail to start when you try to bring it up again.
