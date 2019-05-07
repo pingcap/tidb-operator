@@ -22,6 +22,7 @@ It takes you through these steps:
 
 - Standing up a Kubernetes cluster with TiDB running inside
 - Connecting to TiDB
+- Scale out the cluster
 - Shutting down down the Kubernetes cluster
 
 > Warning: Following this guide will create objects in your AWS account that will cost you money against your AWS bill.
