@@ -19,13 +19,14 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/slack"
+
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
-	"github.com/pingcap/tidb-operator/tests/pkg/client"
-	"k8s.io/apiserver/pkg/util/logs"
-
 	"github.com/pingcap/tidb-operator/tests"
-	"github.com/pingcap/tidb-operator/tests/backup"
+	"github.com/pingcap/tidb-operator/tests/pkg/client"
+
+	"k8s.io/apiserver/pkg/util/logs"
 )
 
 func main() {
@@ -40,6 +41,7 @@ func main() {
 	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, conf)
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	fta.CheckAndRecoverEnvOrDie()
+	oa.CheckK8sAvailableOrDie(nil, nil)
 
 	tidbVersion := conf.GetTiDBVersionOrDie()
 	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
@@ -205,12 +207,12 @@ func main() {
 	oa.DeployTidbClusterOrDie(clusterRestoreTo)
 	oa.CheckTidbClusterStatusOrDie(clusterRestoreTo)
 
-	// restore
-	backup.NewBackupCase(oa, clusterBackupFrom, clusterRestoreTo).RunOrDie()
+	// backup and restore
+	oa.BackupRestoreOrDie(clusterBackupFrom, clusterRestoreTo)
 
 	// stop a node and failover automatically
 	physicalNode, node, faultTime := fta.StopNodeOrDie()
-	oa.CheckFailoverPendingOrDie(allClusters, &faultTime)
+	oa.CheckFailoverPendingOrDie(allClusters, node, &faultTime)
 	oa.CheckFailoverOrDie(allClusters, node)
 	time.Sleep(3 * time.Minute)
 	fta.StartNodeOrDie(physicalNode, node)
@@ -222,10 +224,20 @@ func main() {
 	// truncate a sst file and check failover
 	oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 5*time.Minute)
 
+	// stop one etcd node and k8s/operator/tidbcluster is available
+	faultEtcd := tests.SelectNode(conf.ETCDs)
+	fta.StopETCDOrDie(faultEtcd)
+	defer fta.StartETCDOrDie(faultEtcd)
+	// TODO make the pause interval as a argument
+	time.Sleep(3 * time.Minute)
+	oa.CheckOneEtcdDownOrDie(operatorCfg, allClusters, faultEtcd)
+	fta.StartETCDOrDie(faultEtcd)
+
 	//clean temp dirs when stability success
 	err := conf.CleanTempDirs()
 	if err != nil {
 		glog.Errorf("failed to clean temp dirs, this error can be ignored.")
 	}
-	glog.Infof("\nFinished.")
+
+	slack.NotifyAndCompleted("\nFinished.")
 }

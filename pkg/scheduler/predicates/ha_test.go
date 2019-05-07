@@ -379,6 +379,45 @@ func TestHARealAcquireLockFn(t *testing.T) {
 				g.Expect(currentPVC.Annotations[label.AnnPVCPodScheduling]).NotTo(BeEmpty())
 			},
 		},
+		{
+			name:  "scheduling pvc is defer deleting, current pvc acquire lock",
+			podFn: newHAPDPod,
+			pvcListFn: func(ns, instanceName, component string) (*corev1.PersistentVolumeClaimList, error) {
+				return &corev1.PersistentVolumeClaimList{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaimList", APIVersion: "v1"},
+					Items: []corev1.PersistentVolumeClaim{
+						{
+							TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: metav1.NamespaceDefault,
+								Name:      "pd-cluster-1-pd-0",
+							},
+						},
+						{
+							TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: metav1.NamespaceDefault,
+								Name:      "pd-cluster-1-pd-1",
+								Annotations: map[string]string{
+									label.AnnPVCPodScheduling: "true",
+									label.AnnPVCDeferDeleting: "true",
+								},
+							},
+							Status: corev1.PersistentVolumeClaimStatus{Phase: corev1.ClaimBound},
+						},
+					},
+				}, nil
+			},
+			podGetFn: podGetErr(),
+			updatePVCFn: func(claim *corev1.PersistentVolumeClaim) error {
+				return nil
+			},
+			expectFn: func(schedulingPVC, currentPVC *apiv1.PersistentVolumeClaim, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(schedulingPVC.Annotations[label.AnnPVCPodScheduling]).To(BeEmpty())
+				g.Expect(currentPVC.Annotations[label.AnnPVCPodScheduling]).NotTo(BeEmpty())
+			},
+		},
 	}
 
 	for i := range tests {
