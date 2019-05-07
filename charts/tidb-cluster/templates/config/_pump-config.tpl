@@ -27,6 +27,9 @@ pd-urls = "http://{{ template "cluster.name" . }}-pd:2379"
 # Path of file that contains X509 key in PEM format for connection with cluster components.
 # ssl-key = "/path/to/drainer-key.pem"
 #
+[storage]
+# Set to `true` (default) for best reliability, which prevents data loss when there is a power failure.
+sync-log = {{ .Values.binlog.pump.syncLog | default true }}
 #
 # we suggest using the default config of the embedded LSM DB now, do not change it unless you know what you are doing
 # [storage.kv]
@@ -36,7 +39,7 @@ pd-urls = "http://{{ template "cluster.name" . }}-pd:2379"
 # compaction-L0-trigger = 8
 # compaction-table-size = 67108864
 # compaction-total-size = 536870912
-# compaction-total-size-multiplier = 8
+# compaction-total-size-multiplier = 8.0
 # write-buffer = 67108864
 # write-L0-pause-trigger = 24
 # write-L0-slowdown-trigger = 17
