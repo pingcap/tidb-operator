@@ -25,6 +25,8 @@ This document describes how to deploy a TiDB cluster in the [minikube](https://k
 Kubernetes cluster inside a VM on your laptop. It works on macOS, Linux, and
 Windows.
 
+> **Note:** Although Minikube supports `--vm-driver=none` that uses host docker instead of VM, it is not fully tested with TiDB Operator and may not work. If you want to try TiDB Operator on a system without virtualization support (e.g., on a VPS), you may consider using [DinD](local-dind-tutorial.md) instead.
+
 ### Install minikube and start a Kubernetes cluster
 
 See [Installing Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) to install
@@ -51,6 +53,8 @@ or configure HTTP/HTTPS proxy environments in your docker, e.g.
 minikube start --docker-env https_proxy=http://127.0.0.1:1086 \
   --docker-env http_proxy=http://127.0.0.1:1086
 ```
+
+> **Note:** If you are running minikube with VMs (default), the `127.0.0.1` is the VM itself, you might want to use your real IP address of the host machine in some cases.
 
 See [minikube setup](https://kubernetes.io/docs/setup/minikube/) for more options to
 configure your virtual machine and Kubernetes cluster.
@@ -114,7 +118,7 @@ kubectl -n kube-system get pods -l app=helm
 Clone tidb-operator repository:
 
 ```
-git clone https://github.com/pingcap/tidb-operator
+git clone --depth=1 https://github.com/pingcap/tidb-operator
 cd tidb-operator
 kubectl apply -f ./manifests/crd.yaml
 helm install charts/tidb-operator --name tidb-operator --namespace tidb-admin
@@ -183,8 +187,12 @@ mysql -h 127.0.0.1 -P 4000 -uroot -e 'select tidb_version();'
 
 ```
 helm delete --purge tidb-cluster
-kubectl get pv -l app.kubernetes.io/instance=tidb-cluster -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}} # update reclaim policy of PVs used by tidb-cluster to Delete
-kubectl delete pvc -l app.kubernetes.io/managed-by=tidb-operator # delete PVCs
+
+# update reclaim policy of PVs used by tidb-cluster to Delete
+kubectl get pv -l app.kubernetes.io/instance=tidb-cluster -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+
+# delete PVCs
+kubectl delete pvc -l app.kubernetes.io/managed-by=tidb-operator
 ```
 
 ## FAQs
