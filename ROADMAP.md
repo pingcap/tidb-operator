@@ -38,9 +38,9 @@ This document defines the roadmap for TiDB Operator development.
 - [x] More User friendly
 
 ## v1.0.0-beta.2
-- [ ] AWS one-click deployment
-- [ ] Aliyun one-click deployment
-- [ ] GCP one-click deployment
+- [ ] AWS one-command deployment
+- [ ] Aliyun one-command deployment
+- [ ] GCP one-command deployment
 - [ ] Minikube deployment
 - [ ] Simple CLI tool
 - [ ] TiDB 3.0-beta support
