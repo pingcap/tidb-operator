@@ -1659,7 +1659,7 @@ func (info *TidbClusterConfig) DataIsTheSameAs(otherInfo *TidbClusterConfig) (bo
 				otherInfo.Namespace, otherInfo.ClusterName, tableName, otherCnt)
 			return false, err
 		}
-		glog.V(4).Infof("cluster %s/%s's table %s count(*) = %d and cluster %s/%s's table %s count(*) = %d",
+		glog.Infof("cluster %s/%s's table %s count(*) = %d and cluster %s/%s's table %s count(*) = %d",
 			info.Namespace, info.ClusterName, tableName, cnt,
 			otherInfo.Namespace, otherInfo.ClusterName, tableName, otherCnt)
 	}
