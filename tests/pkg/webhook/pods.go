@@ -99,7 +99,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 	// if pod is already deleting, return Allowed
 	if pod.DeletionTimestamp != nil {
-		glog.Infof("pod:[%s/%s] status is timestamp %s", namespace, name, pod.DeletionTimestamp)
+		glog.V(4).Infof("pod:[%s/%s] status is timestamp %s", namespace, name, pod.DeletionTimestamp)
 		reviewResponse.Allowed = true
 		return &reviewResponse
 	}

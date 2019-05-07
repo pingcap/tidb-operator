@@ -1942,8 +1942,6 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 		"binlog.drainer.mysql.password": to.Password,
 		"binlog.drainer.mysql.port":     "4000",
 		"binlog.drainer.ignoreSchemas":  "",
-		"binlog.drainer.workerCount":    "1024",
-		"binlog.drainer.txnBatch":       "512",
 	}
 
 	setString := from.TidbClusterHelmSetString(sets)

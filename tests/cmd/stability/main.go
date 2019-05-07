@@ -93,7 +93,10 @@ func main() {
 			"tidb.resources.requests.memory": "1Gi",
 			"monitor.persistent":             "true",
 		},
-		Args:             map[string]string{},
+		Args: map[string]string{
+			"binlog.drainer.workerCount": "1024",
+			"binlog.drainer.txnBatch":    "512",
+		},
 		Monitor:          true,
 		BlockWriteConfig: conf.BlockWriter,
 	}
