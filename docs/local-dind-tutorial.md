@@ -45,8 +45,6 @@ $ KUBE_REPO_PREFIX=uhub.ucloud.cn/pingcap manifests/local-dind/dind-cluster-v1.1
 
 ## Step 2: Install TiDB Operator in the DinD Kubernetes cluster
 
-Uncomment the `scheduler.kubeSchedulerImage` in `charts/tidb-operator/values.yaml`, set it to desired version if needed, it is default to matching your kubernetes cluster version.
-
 ```sh
 $ # Install TiDB Operator into Kubernetes
 $ helm install charts/tidb-operator --name=tidb-operator --namespace=tidb-admin --set scheduler.kubeSchedulerImageName=mirantis/hypokube --set scheduler.kubeSchedulerImageTag=final
@@ -66,7 +64,7 @@ $ # wait a few minutes to get all TiDB components get created and ready
 
 $ kubectl get tidbcluster -n tidb
 NAME   PD                  STORAGE   READY   DESIRE   TIKV                  STORAGE   READY   DESIRE   TIDB                  READY   DESIRE
-demo   pingcap/pd:v2.1.0   1Gi       3       3        pingcap/tikv:v2.1.0   10Gi      3       3        pingcap/tidb:v2.1.0   2       2
+demo   pingcap/pd:v2.1.8   1Gi       3       3        pingcap/tikv:v2.1.8   10Gi      3       3        pingcap/tidb:v2.1.8   2       2
 
 $ kubectl get statefulset -n tidb
 NAME        DESIRED   CURRENT   AGE
@@ -95,7 +93,7 @@ demo-tikv                2      1m
 
 $ kubectl get pod -n tidb
 NAME                              READY     STATUS      RESTARTS   AGE
-demo-discovery-649c7bcbdc-t5r2k   2/2       Running     0          1m
+demo-discovery-649c7bcbdc-t5r2k   1/1       Running     0          1m
 demo-monitor-58745cf54f-gb8kd     2/2       Running     0          1m
 demo-pd-0                         1/1       Running     0          1m
 demo-pd-1                         1/1       Running     0          1m
