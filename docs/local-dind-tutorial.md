@@ -142,12 +142,12 @@ To access the TiDB cluster, use `kubectl port-forward` to expose the services to
 
     1. You can find their listing port numbers by:
 
-```sh
-$ kubectl get service -n tidb | grep NodePort
-demo-grafana      NodePort    10.111.80.73     <none>        3000:32503/TCP                   1m
-demo-prometheus   NodePort    10.104.97.84     <none>        9090:32448/TCP                   1m
-demo-tidb         NodePort    10.102.165.13    <none>        4000:32714/TCP,10080:32680/TCP   1m
-```
+        ```sh
+        $ kubectl get service -n tidb | grep NodePort
+        demo-grafana      NodePort    10.111.80.73     <none>        3000:32503/TCP                   1m
+        demo-prometheus   NodePort    10.104.97.84     <none>        9090:32448/TCP                   1m
+        demo-tidb         NodePort    10.102.165.13    <none>        4000:32714/TCP,10080:32680/TCP   1m
+        ```
 
     In this sample output, the ports are: 32503 for Grafana, 32448 for Prometheus, and 32714 for TiDB.
 
