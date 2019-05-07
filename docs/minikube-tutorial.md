@@ -144,14 +144,14 @@ can process to launch a TiDB cluster!
 ### Launch a TiDB cluster
 
 ```
-helm install charts/tidb-cluster --name tidb-cluster --set \
+helm install charts/tidb-cluster --name demo --set \
   schedulerName=default-scheduler,pd.storageClassName=standard,tikv.storageClassName=standard,pd.replicas=1,tikv.replicas=1,tidb.replicas=1
 ```
 
-Watch tidb-cluster up and running:
+Watch the cluster up and running:
 
 ```
-watch kubectl get pods --namespace default -l app.kubernetes.io/instance=tidb-cluster -o wide
+watch kubectl get pods --namespace default -l app.kubernetes.io/instance=demo -o wide
 ```
 
 ### Test TiDB cluster
@@ -163,12 +163,12 @@ is available. You can watch list services available with:
 watch kubectl get svc
 ```
 
-When you see `tidb-cluster-tidb` appear, it's ready to connect to TiDB server.
+When you see `demo-tidb` appear, it's ready to connect to TiDB server.
 
 After first, forward local port to tidb port:
 
 ```
-kubectl port-forward svc/tidb-cluster-tidb 4000:4000
+kubectl port-forward svc/demo-tidb 4000:4000
 ```
 
 In another terminal, connect to TiDB server with MySQL client:
@@ -186,10 +186,10 @@ mysql -h 127.0.0.1 -P 4000 -uroot -e 'select tidb_version();'
 ### Delete TiDB cluster
 
 ```
-helm delete --purge tidb-cluster
+helm delete --purge demo
 
-# update reclaim policy of PVs used by tidb-cluster to Delete
-kubectl get pv -l app.kubernetes.io/instance=tidb-cluster -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+# update reclaim policy of PVs used by demo to Delete
+kubectl get pv -l app.kubernetes.io/instance=demo -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
 
 # delete PVCs
 kubectl delete pvc -l app.kubernetes.io/managed-by=tidb-operator
