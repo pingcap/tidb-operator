@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"strconv"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -170,7 +171,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		}
 	}
 
-	if !statefulSetEqual(*newTiDBSet, *oldTiDBSet) {
+	if !statefulSetEqual(*newTiDBSet, *oldTiDBSet) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
 		set := *oldTiDBSet
 		set.Spec.Template = newTiDBSet.Spec.Template
 		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
@@ -180,6 +181,12 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 			return err
 		}
 		_, err = tmm.setControl.UpdateStatefulSet(tc, &set)
+
+		// if err is IsNotAcceptable, convert it to requeue error.
+		if apierrors.IsNotAcceptable(err) {
+			return controller.RequeueErrorf(err.Error())
+		}
+
 		return err
 	}
 
