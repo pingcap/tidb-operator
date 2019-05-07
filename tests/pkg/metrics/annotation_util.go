@@ -137,12 +137,7 @@ func (cli *Client) AddAnnotation(annotation Annotation) error {
 		return fmt.Errorf("add annotation faield, statusCode=%v", resp.Status)
 	}
 	_, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	// fmt.Println(all)
-
-	return nil
+	return err
 }
 
 func (cli *Client) IncrErrorCount() {
