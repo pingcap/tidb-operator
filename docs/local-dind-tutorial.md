@@ -161,15 +161,15 @@ To access the TiDB cluster, use `kubectl port-forward` to expose services to hos
 
     3. Setup reverse proxy
 
-        Either (or all) of the container IPs can be used as upstream for reverse proxy. You may use any reverse proxy server that supports TCP (for TiDB) or HTTP (for Grafana and Prometheus) to provide remote access. HAProxy and nginx are two common choises.
+        Either (or all) of the container IPs can be used as upstream for reverse proxy. You may use any reverse proxy server that supports TCP (for TiDB) or HTTP (for Grafana and Prometheus) to provide remote access. HAProxy and nginx are two common choices.
 
 ## Scale the TiDB cluster
 
-You can scale up or scale down the TiDB cluster simply by modifying the number of `replicas`.
+You can scale out or scale in the TiDB cluster simply by modifying the number of `replicas`.
 
 1. Configure the `charts/tidb-cluster/values.yaml` file.
 
-    For example, to scale up the cluster, you can modify the number of TiKV `replicas` from 3 to 5, or the number of TiDB `replicas` from 2 to 3.
+    For example, to scale out the cluster, you can modify the number of TiKV `replicas` from 3 to 5, or the number of TiDB `replicas` from 2 to 3.
 
 2. Run the following command to apply the changes:
 
@@ -177,7 +177,7 @@ You can scale up or scale down the TiDB cluster simply by modifying the number o
     helm upgrade demo charts/tidb-cluster --namespace=tidb
     ```
 
-> **Note:** If you need to scale down TiKV, the consumed time depends on the volume of your existing data, because the data needs to be migrated safely.
+> **Note:** If you need to scale in TiKV, the consumed time depends on the volume of your existing data, because the data needs to be migrated safely.
 
 ## Upgrade the TiDB cluster
 
