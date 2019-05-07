@@ -131,7 +131,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	tcName := tc.GetName()
 
 	newTiDBSet := tmm.getNewTiDBSetForTidbCluster(tc)
-	oldTiDBSet, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
+	oldTiDBSetTemp, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetLastAppliedConfigAnnotation(newTiDBSet)
 		if err != nil {
@@ -144,6 +144,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		tc.Status.TiDB.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
 	}
+	oldTiDBSet := oldTiDBSetTemp.DeepCopy()
 	if err != nil {
 		return err
 	}
