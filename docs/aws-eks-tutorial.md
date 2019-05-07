@@ -177,6 +177,8 @@ We can now point a browser to `localhost:3000` and view the dashboards.
 To scale out TiDB cluster, modify `tikv_count` or `tidb_count` in `aws-tutorial.tfvars` to your desired count, and then run `terraform apply -var-file=aws-tutorial.tfvars`.
 
 > *Note*: Currently, scaling in is not supported since we cannot determine which node to scale. Scaling out needs a few minutes to complete, you can watch the scaling out by `watch kubectl --kubeconfig credentials/kubeconfig_aws_tutorial get po -n tidb`
+
+> *Note*: There are taints and tolerations in place such that only a single pod will be scheduled per node. The count is also passed onto helm via terraform. For this reason attempting to scale out pods via helm or `kubectl scale` will not work as expected.
 ---
 
 ## Destroy
