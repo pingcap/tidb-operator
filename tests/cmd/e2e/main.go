@@ -23,7 +23,6 @@ import (
 	"k8s.io/apiserver/pkg/util/logs"
 
 	"github.com/pingcap/tidb-operator/tests"
-	"github.com/pingcap/tidb-operator/tests/backup"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 )
 
@@ -35,7 +34,7 @@ func main() {
 	conf.ChartDir = "/charts"
 
 	cli, kubeCli := client.NewCliOrDie()
-	oa := tests.NewOperatorActions(cli, kubeCli, 5*time.Second, conf)
+	oa := tests.NewOperatorActions(cli, kubeCli, 5*time.Second, conf, nil)
 
 	operatorInfo := &tests.OperatorConfig{
 		Namespace:          "pingcap",
@@ -245,11 +244,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	backupCase := backup.NewBackupCase(oa, backupClusterInfo, restoreClusterInfo)
-
-	if err := backupCase.Run(); err != nil {
-		glog.Fatal(err)
-	}
+	oa.BackupRestoreOrDie(backupClusterInfo, restoreClusterInfo)
 
 	//clean temp dirs when e2e success
 	err = conf.CleanTempDirs()

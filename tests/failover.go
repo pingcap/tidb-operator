@@ -35,17 +35,6 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		glog.Errorf("failed to get the cluster: ns=%s tc=%s err=%s", info.Namespace, info.ClusterName, err.Error())
 		return err
 	}
-	countUpStores := func(tc *v1alpha1.TidbCluster) int {
-		cnt := 0
-		for _, s := range tc.Status.TiKV.Stores {
-			if s.State == v1alpha1.TiKVStateUp {
-				cnt++
-			}
-		}
-		return cnt
-	}
-
-	origUps := countUpStores(tc)
 
 	// checkout pd config
 	pdCfg, err := oa.pdControl.GetPDClient(tc).GetConfig()
@@ -72,7 +61,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		glog.Infof("truncate sst file target store: id=%s pod=%s", store.ID, store.PodName)
 	}
 
-	oa.emitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s", store.PodName))
+	oa.EmitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s", store.PodName))
 	glog.Infof("deleting pod: [%s/%s] and wait 1 minute for the pod to terminate", info.Namespace, store.PodName)
 	err = cli.CoreV1().Pods(info.Namespace).Delete(store.PodName, nil)
 	if err != nil {
@@ -90,7 +79,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	if err != nil {
 		return err
 	}
-	oa.emitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s/%s", info.Namespace, store.PodName))
+	oa.EmitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s/%s", info.Namespace, store.PodName))
 
 	// delete tikv pod
 	glog.Infof("deleting pod: [%s/%s] again", info.Namespace, store.PodName)
@@ -110,13 +99,6 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 			glog.Infof("cluster: [%s/%s] check if target store failed: %t",
 				info.Namespace, info.ClusterName, ok)
 			if !ok {
-				return false, nil
-			}
-			ups := countUpStores(tc)
-			glog.Infof("cluster: [%s/%s] check up stores: current=%d origin=%d",
-				info.Namespace, info.ClusterName,
-				ups, origUps)
-			if ups < origUps {
 				return false, nil
 			}
 			return true, nil
