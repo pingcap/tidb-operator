@@ -107,7 +107,7 @@ demo-tikv-2                       1/1       Running     0          1m
 
 To access the TiDB cluster, use `kubectl port-forward` to expose services to the host. The port numbers in command are in `<host machine port>:<k8s service port>` format.
 
-> **Note:** If you are deploying DinD on a remote machine rather than local PC, there may be problem accessing "localhost" of that remote system. When using `kubectl` 1.13 or later, it's possible to expose the port on `0.0.0.0` instead of `127.0.0.1` (which is default) by adding `--address 0.0.0.0` to the `kubectl port-forward` command.
+> **Note:** If you are deploying DinD on a remote machine rather than a local PC, there might be problems accessing "localhost" of that remote system. When you use `kubectl` 1.13 or later, it is possible to expose the port on `0.0.0.0` instead of the default `127.0.0.1` by adding `--address 0.0.0.0` to the `kubectl port-forward` command.
 
 - Access TiDB using the MySQL client
 
@@ -138,7 +138,7 @@ To access the TiDB cluster, use `kubectl port-forward` to expose services to the
 
 - Permanent remote access
 
-    Although this is a very simple demo cluster and not suitable for any serius usage, it may be useful if it can be accessed remotely without `kubectl port-forward`, which may require an open terminal.
+    Although this is a very simple demo cluster and does not apply to any serious usage, it is useful if it can be accessed remotely without `kubectl port-forward`, which might require an open terminal.
 
     TiDB, Prometheus, and Grafana are exposed as `NodePort` Services by default, so it is possible to set up a reverse proxy for them.
 
@@ -153,7 +153,7 @@ To access the TiDB cluster, use `kubectl port-forward` to expose services to the
 
         In this sample output, the ports are: 32503 for Grafana, 32448 for Prometheus, and 32714 for TiDB.
 
-    2. Find host IP address of the cluster.
+    2. Find the host IP addresses of the cluster.
 
         DinD is a K8s cluster running inside Docker containers, so Services expose ports to the containers' address, instead of the real host machine. We can find IP addresses of Docker containers by `kubectl get nodes -o yaml | grep address`.
 
