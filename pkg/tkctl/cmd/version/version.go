@@ -35,6 +35,8 @@ const (
 )
 
 type VersionOptions struct {
+	ClientOnly bool
+
 	io.Writer
 }
 
@@ -51,6 +53,9 @@ func NewCmdVersion(tkcContext *config.TkcContext, out io.Writer) *cobra.Command 
 		},
 	}
 
+	cmd.Flags().BoolVarP(&options.ClientOnly, "client-only", "c", options.ClientOnly,
+		"show only client version")
+
 	return cmd
 }
 
@@ -65,6 +70,12 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 	}
 
 	clientVersion := version.Get()
+
+	fmt.Fprintf(o, "Client Version: %s\n", clientVersion)
+
+	if o.ClientOnly {
+		return nil
+	}
 
 	controllers, err := kubeCli.AppsV1().
 		Deployments(core.NamespaceAll).
@@ -83,8 +94,6 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 		return nil
 	}
 
-	fmt.Fprintf(o, "Client Version: %s\n", clientVersion.GitVersion)
-
 	// TODO: add version endpoint in tidb-controller-manager
 	// There's no version endpoint of tidb-controller-manager and tidb-scheduler, use image instead
 	if len(controllers.Items) == 0 {
@@ -100,7 +109,10 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 	if len(schedulers.Items) == 0 {
 		fmt.Fprintf(o, "No TiDB Scheduler found, please install one first\n")
 	} else if len(schedulers.Items) == 1 {
-		fmt.Fprintf(o, "TiDB Scheduler Version: %s\n", schedulers.Items[0].Spec.Template.Spec.Containers[0].Image)
+		fmt.Fprintf(o, "TiDB Scheduler Version:\n")
+		for _, container := range schedulers.Items[0].Spec.Template.Spec.Containers {
+			fmt.Fprintf(o, "\t%s: %s\n", container.Name, container.Image)
+		}
 	} else {
 		// warn for multiple scheduler
 		fmt.Fprintf(o, "WARN: more than one TiDB Scheduler instance found, this is un-supported and may lead to un-expected behavior:\n")
