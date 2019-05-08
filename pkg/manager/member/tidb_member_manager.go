@@ -96,7 +96,7 @@ func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1
 	tcName := tc.GetName()
 
 	newSvc := tmm.getNewTiDBHeadlessServiceForTidbCluster(tc)
-	oldSvc, err := tmm.svcLister.Services(ns).Get(controller.TiDBPeerMemberName(tcName))
+	oldSvcTmp, err := tmm.svcLister.Services(ns).Get(controller.TiDBPeerMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
@@ -107,6 +107,8 @@ func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1
 	if err != nil {
 		return err
 	}
+
+	oldSvc := oldSvcTmp.DeepCopy()
 
 	equal, err := serviceEqual(newSvc, oldSvc)
 	if err != nil {

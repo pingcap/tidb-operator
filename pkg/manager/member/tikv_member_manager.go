@@ -121,7 +121,7 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 	tcName := tc.GetName()
 
 	newSvc := tkmm.getNewServiceForTidbCluster(tc, svcConfig)
-	oldSvc, err := tkmm.svcLister.Services(ns).Get(svcConfig.MemberName(tcName))
+	oldSvcTmp, err := tkmm.svcLister.Services(ns).Get(svcConfig.MemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
@@ -132,6 +132,8 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 	if err != nil {
 		return err
 	}
+
+	oldSvc := oldSvcTmp.DeepCopy()
 
 	equal, err := serviceEqual(newSvc, oldSvc)
 	if err != nil {
@@ -162,7 +164,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 
-	oldSet, err := tkmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
+	oldSetTmp, err := tkmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
@@ -178,6 +180,8 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
 	}
+
+	oldSet := oldSetTmp.DeepCopy()
 
 	if err := tkmm.syncTidbClusterStatus(tc, oldSet); err != nil {
 		return err
