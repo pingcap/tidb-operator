@@ -140,7 +140,7 @@ To access the TiDB cluster, use `kubectl port-forward` to expose services to the
 
     Although this is a very simple demo cluster and not suitable for any serius usage, it may be useful if it can be accessed remotely without `kubectl port-forward`, which may require an open terminal.
 
-    By default, TiDB, Prometheus, and Grafana are exposed as `NodePort` Services, so it's possible to setup reverse proxy for them.
+    TiDB, Prometheus, and Grafana are exposed as `NodePort` Services by default, so it is possible to set up a reverse proxy for them.
 
     1. You can find their listing port numbers by:
 
