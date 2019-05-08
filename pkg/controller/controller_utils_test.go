@@ -21,7 +21,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -136,25 +135,6 @@ func TestTiKVCapacity(t *testing.T) {
 	for i := range tests {
 		testFn(&tests[i], t)
 	}
-}
-
-func TestDefaultPushGatewayRequest(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	rr := DefaultPushGatewayRequest()
-	g.Expect(rr.Requests[corev1.ResourceCPU]).To(Equal(resource.MustParse("50m")))
-	g.Expect(rr.Requests[corev1.ResourceMemory]).To(Equal(resource.MustParse("50Mi")))
-	g.Expect(rr.Limits[corev1.ResourceCPU]).To(Equal(resource.MustParse("100m")))
-	g.Expect(rr.Limits[corev1.ResourceMemory]).To(Equal(resource.MustParse("100Mi")))
-}
-
-func TestGetPushgatewayImage(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	tc := &v1alpha1.TidbCluster{}
-	g.Expect(GetPushgatewayImage(tc)).To(Equal(defaultPushgatewayImage))
-	tc.Spec.TiKVPromGateway.Image = "image-1"
-	g.Expect(GetPushgatewayImage(tc)).To(Equal("image-1"))
 }
 
 func TestGetSlowLogTailerImage(t *testing.T) {

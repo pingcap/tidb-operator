@@ -181,7 +181,7 @@ You can scale out or scale in the TiDB cluster simply by modifying the number of
 
 1. Configure the `charts/tidb-cluster/values.yaml` file.
 
-    For example, change the version of PD/TiKV/TiDB `image` to `v2.1.1`.
+    For example, change the version of PD/TiKV/TiDB `image` to `v2.1.9`.
 
 2. Run the following command to apply the changes:
 
