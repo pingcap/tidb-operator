@@ -157,7 +157,7 @@ To access the TiDB cluster, use `kubectl port-forward` to expose services to the
 
         DinD is a k8s cluster running inside docker containers, so Services expose ports to the containers' address, instead of the real host machine. We can find IP addresses of docker containers by `kubectl get nodes -o yaml | grep address`.
 
-    3. Setup reverse proxy
+    3. Set up a reverse proxy.
 
         Either (or all) of the container IPs can be used as upstream for reverse proxy. You may use any reverse proxy server that supports TCP (for TiDB) or HTTP (for Grafana and Prometheus) to provide remote access. HAProxy and nginx are two common choices.
 
