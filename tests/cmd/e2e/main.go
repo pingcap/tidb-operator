@@ -16,41 +16,41 @@ package main
 import (
 	"fmt"
 	_ "net/http/pprof"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
 	"k8s.io/apiserver/pkg/util/logs"
 
 	"github.com/pingcap/tidb-operator/tests"
-	"github.com/pingcap/tidb-operator/tests/backup"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
-	"github.com/pingcap/tidb-operator/tests/pkg/workload"
-	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
 )
 
 func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	conf := tests.NewConfig()
-	err := conf.Parse()
-	if err != nil {
-		glog.Fatalf("failed to parse config: %v", err)
-	}
+	conf := tests.ParseConfigOrDie()
+	conf.ChartDir = "/charts"
 
 	cli, kubeCli := client.NewCliOrDie()
-
-	oa := tests.NewOperatorActions(cli, kubeCli, conf)
+	oa := tests.NewOperatorActions(cli, kubeCli, 5*time.Second, conf, nil)
 
 	operatorInfo := &tests.OperatorConfig{
-		Namespace:      "pingcap",
-		ReleaseName:    "operator",
-		Image:          conf.OperatorImage,
-		Tag:            conf.OperatorTag,
-		SchedulerImage: "mirantis/hypokube",
-		SchedulerTag:   "final",
-		LogLevel:       "2",
+		Namespace:          "pingcap",
+		ReleaseName:        "operator",
+		Image:              conf.OperatorImage,
+		Tag:                conf.OperatorTag,
+		SchedulerImage:     "mirantis/hypokube",
+		SchedulerTag:       "final",
+		LogLevel:           "2",
+		WebhookServiceName: "webhook-service",
+		WebhookSecretName:  "webhook-secret",
+		WebhookConfigName:  "webhook-config",
 	}
+
+	// start a http server in goruntine
+	go oa.StartValidatingAdmissionWebhookServerOrDie(operatorInfo)
 
 	initTidbVersion, err := conf.GetTiDBVersion()
 	if err != nil {
@@ -75,7 +75,7 @@ func main() {
 			UserName:         "root",
 			InitSecretName:   fmt.Sprintf("%s-set-secret", name1),
 			BackupSecretName: fmt.Sprintf("%s-backup-secret", name1),
-			BackupPVC:        "backup-pvc",
+			BackupName:       "backup",
 			Resources: map[string]string{
 				"pd.resources.limits.cpu":        "1000m",
 				"pd.resources.limits.memory":     "2Gi",
@@ -83,11 +83,11 @@ func main() {
 				"pd.resources.requests.memory":   "1Gi",
 				"tikv.resources.limits.cpu":      "2000m",
 				"tikv.resources.limits.memory":   "4Gi",
-				"tikv.resources.requests.cpu":    "1000m",
-				"tikv.resources.requests.memory": "2Gi",
+				"tikv.resources.requests.cpu":    "200m",
+				"tikv.resources.requests.memory": "1Gi",
 				"tidb.resources.limits.cpu":      "2000m",
 				"tidb.resources.limits.memory":   "4Gi",
-				"tidb.resources.requests.cpu":    "500m",
+				"tidb.resources.requests.cpu":    "200m",
 				"tidb.resources.requests.memory": "1Gi",
 			},
 			Args:    map[string]string{},
@@ -106,7 +106,7 @@ func main() {
 			UserName:         "root",
 			InitSecretName:   fmt.Sprintf("%s-set-secret", name2),
 			BackupSecretName: fmt.Sprintf("%s-backup-secret", name2),
-			BackupPVC:        "backup-pvc",
+			BackupName:       "backup",
 			Resources: map[string]string{
 				"pd.resources.limits.cpu":        "1000m",
 				"pd.resources.limits.memory":     "2Gi",
@@ -114,11 +114,11 @@ func main() {
 				"pd.resources.requests.memory":   "1Gi",
 				"tikv.resources.limits.cpu":      "2000m",
 				"tikv.resources.limits.memory":   "4Gi",
-				"tikv.resources.requests.cpu":    "1000m",
-				"tikv.resources.requests.memory": "2Gi",
+				"tikv.resources.requests.cpu":    "200m",
+				"tikv.resources.requests.memory": "1Gi",
 				"tidb.resources.limits.cpu":      "2000m",
 				"tidb.resources.limits.memory":   "4Gi",
-				"tidb.resources.requests.cpu":    "500m",
+				"tidb.resources.requests.cpu":    "200m",
 				"tidb.resources.requests.memory": "1Gi",
 			},
 			Args:    map[string]string{},
@@ -156,83 +156,74 @@ func main() {
 		}
 	}
 
-	var workloads []workload.Workload
-	for _, clusterInfo := range clusterInfos {
-		workload := ddl.New(clusterInfo.DSN("test"), 1, 1)
-		workloads = append(workloads, workload)
+	// before upgrade cluster, register webhook first
+	oa.RegisterWebHookAndServiceOrDie(operatorInfo)
+
+	// upgrade test
+	upgradeTidbVersions := conf.GetUpgradeTidbVersions()
+	for _, upgradeTidbVersion := range upgradeTidbVersions {
+		for _, clusterInfo := range clusterInfos {
+			clusterInfo = clusterInfo.UpgradeAll(upgradeTidbVersion)
+			if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
+				glog.Fatal(err)
+			}
+		}
+		for _, clusterInfo := range clusterInfos {
+			if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+				glog.Fatal(err)
+			}
+		}
 	}
 
-	err = workload.Run(func() error {
+	// after upgrade cluster, clean webhook
+	oa.CleanWebHookAndService(operatorInfo)
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
+	}
+	for _, clusterInfo := range clusterInfos {
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
+	}
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScalePD(3)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.ScalePD(3)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
+	}
+	for _, clusterInfo := range clusterInfos {
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
+	}
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScaleTiKV(3)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.ScaleTiKV(3)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
+	}
+	for _, clusterInfo := range clusterInfos {
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
+	}
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScaleTiDB(1)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.ScaleTiDB(1)
+		if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
+	}
+	for _, clusterInfo := range clusterInfos {
+		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
-
-		// upgrade test
-		upgradeTidbVersions := conf.GetUpgradeTidbVersions()
-		for _, upgradeTidbVersion := range upgradeTidbVersions {
-			for _, clusterInfo := range clusterInfos {
-				clusterInfo = clusterInfo.UpgradeAll(upgradeTidbVersion)
-				if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
-					glog.Fatal(err)
-				}
-			}
-			for _, clusterInfo := range clusterInfos {
-				if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-					glog.Fatal(err)
-				}
-			}
-		}
-
-		return nil
-	}, workloads...)
-
-	if err != nil {
-		glog.Fatal(err)
 	}
 
 	// backup and restore
@@ -253,9 +244,12 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	backupCase := backup.NewBackupCase(oa, backupClusterInfo, restoreClusterInfo)
+	oa.BackupRestoreOrDie(backupClusterInfo, restoreClusterInfo)
 
-	if err := backupCase.Run(); err != nil {
-		glog.Fatal(err)
+	//clean temp dirs when e2e success
+	err = conf.CleanTempDirs()
+	if err != nil {
+		glog.Errorf("failed to clean temp dirs, this error can be ignored.")
 	}
+	glog.Infof("\nFinished.")
 }

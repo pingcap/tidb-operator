@@ -5,7 +5,9 @@ ifeq ($(GO111), 1)
 $(error Please upgrade your Go compiler to 1.11 or higher version)
 endif
 
-GOENV  := GO15VENDOREXPERIMENT="1" GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+GOOS := $(if $(GOOS),$(GOOS),linux)
+GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
+GOENV  := GO15VENDOREXPERIMENT="1" GO111MODULE=on CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO     := $(GOENV) go build
 GOTEST := CGO_ENABLED=0 GO111MODULE=on go test -v -cover
 
@@ -78,9 +80,6 @@ check-all: lint check-static check-shadow check-gosec megacheck errcheck
 check-setup:
 	@which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
 	@GO111MODULE=off retool sync
-	# govet doesn't work with retool for Go 1.11
-	# so install separately
-	@GO111MODULE=on CGO_ENABLED=0 go get github.com/dnephin/govet@4a96d43e39d340b63daa8bc5576985aa599885f6
 
 check: check-setup lint check-static
 
@@ -88,8 +87,8 @@ check-static:
 	@ # Not running vet and fmt through metalinter becauase it ends up looking at vendor
 	@echo "gofmt checking"
 	gofmt -s -l -w $(FILES) 2>&1| $(FAIL_ON_STDOUT)
-	@echo "govet check"
-	govet -all $$($(PACKAGE_DIRECTORIES)) 2>&1
+	@echo "go vet check"
+	@GO111MODULE=on go vet -all $$($(PACKAGE_LIST)) 2>&1
 	@echo "mispell and ineffassign checking"
 	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all \
 	  --enable misspell \
@@ -112,8 +111,9 @@ errcheck:
 
 # TODO: shadow check fails at the moment
 check-shadow:
-	@echo "govet shadow checking"
-	govet -shadow $$($(PACKAGE_DIRECTORIES))
+	@echo "go vet shadow checking"
+	go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
+	@GO111MODULE=on go vet -vettool=$(which shadow) $$($(PACKAGE_LIST))
 
 lint:
 	@echo "linting"
@@ -123,4 +123,20 @@ check-gosec:
 	@echo "security checking"
 	CGO_ENABLED=0 retool do gosec $$($(PACKAGE_DIRECTORIES))
 
-.PHONY: check check-setup check-all build e2e-build
+cli:
+	$(GO) -ldflags '$(LDFLAGS)' -o tkctl cmd/tkctl/main.go
+
+debug-docker-push: debug-build-docker
+	docker push "${DOCKER_REGISTRY}/pingcap/debug-launcher:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-control:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-debug:latest"
+
+debug-build-docker: debug-build
+	docker build -t "${DOCKER_REGISTRY}/pingcap/debug-launcher:latest" misc/images/debug-launcher
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-control:latest" misc/images/tidb-control
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-debug:latest" misc/images/tidb-debug
+
+debug-build:
+	$(GO) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
+
+.PHONY: check check-setup check-all build e2e-build debug-build cli

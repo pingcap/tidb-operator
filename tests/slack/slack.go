@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
+
+	"github.com/golang/glog"
 )
 
 var (
@@ -55,6 +58,9 @@ func (attachment *Attachment) AddField(field Field) *Attachment {
 }
 
 func Send(webhookUrl string, proxy string, payload Payload) error {
+	if webhookUrl == "" {
+		return fmt.Errorf("the webhookUrl have not set")
+	}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
@@ -137,4 +143,21 @@ func SendWarnMsg(msg string) error {
 		return err
 	}
 	return nil
+}
+
+func NotifyAndPanic(err error) {
+	sendErr := SendErrMsg(err.Error())
+	if sendErr != nil {
+		glog.Warningf("failed to notify slack[%s] the massage: %v,error: %v", WebhookUrl, err, sendErr)
+	}
+	time.Sleep(3 * time.Second)
+	panic(err)
+}
+
+func NotifyAndCompleted(msg string) {
+	sendErr := SendGoodMsg(msg)
+	if sendErr != nil {
+		glog.Warningf("failed to notify slack[%s] the massage: %s,error: %v", WebhookUrl, msg, sendErr)
+	}
+	glog.Infof(msg)
 }

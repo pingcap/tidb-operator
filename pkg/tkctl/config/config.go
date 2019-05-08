@@ -206,7 +206,7 @@ func (c *TkcContext) collectOverrides() *clientcmd.ConfigOverrides {
 	} else if c.TidbClusterConfig != nil && len(c.TidbClusterConfig.KubeContext) > 0 {
 		overrides.CurrentContext = c.TidbClusterConfig.KubeContext
 	}
-	if c.Namespace != nil {
+	if c.Namespace != nil && len(*c.Namespace) > 0 {
 		overrides.Context.Namespace = *c.Namespace
 	} else if c.TidbClusterConfig != nil && len(c.TidbClusterConfig.Namespace) > 0 {
 		overrides.Context.Namespace = c.TidbClusterConfig.Namespace

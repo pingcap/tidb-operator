@@ -293,7 +293,6 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 			}},
 		},
 	}
-	pgwVolMounts := []corev1.VolumeMount{} // pushgateway volumeMounts
 
 	var q resource.Quantity
 	var err error
@@ -328,7 +327,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      tikvLabel.Labels(),
-					Annotations: controller.AnnProm(9091),
+					Annotations: controller.AnnProm(20180),
 				},
 				Spec: corev1.PodSpec{
 					SchedulerName: tc.Spec.SchedulerName,
@@ -379,22 +378,6 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 									Value: tc.Spec.Timezone,
 								},
 							},
-						},
-						{
-							Name:            v1alpha1.PushGatewayMemberType.String(),
-							Image:           controller.GetPushgatewayImage(tc),
-							ImagePullPolicy: tc.Spec.TiKVPromGateway.ImagePullPolicy,
-							Ports: []corev1.ContainerPort{
-								{
-									Name:          "metrics",
-									ContainerPort: int32(9091),
-									Protocol:      corev1.ProtocolTCP,
-								},
-							},
-							VolumeMounts: pgwVolMounts,
-							Resources: util.ResourceRequirement(tc.Spec.TiKVPromGateway.ContainerSpec,
-								controller.DefaultPushGatewayRequest()),
-							Env: []corev1.EnvVar{{Name: "TZ", Value: tc.Spec.Timezone}}, // Note: `TZ` is unused in pushgateway image, we set it here just to keep consistency
 						},
 					},
 					RestartPolicy: corev1.RestartPolicyAlways,

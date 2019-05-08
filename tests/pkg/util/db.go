@@ -14,6 +14,6 @@ func OpenDB(dsn string, maxIdleConns int) (*sql.DB, error) {
 	}
 
 	db.SetMaxIdleConns(maxIdleConns)
-	glog.Info("DB opens successfully")
+	glog.V(4).Info("DB opens successfully")
 	return db, nil
 }

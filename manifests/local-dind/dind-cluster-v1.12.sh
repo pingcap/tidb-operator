@@ -516,7 +516,7 @@ DIND_NO_PARALLEL_E2E="${DIND_NO_PARALLEL_E2E:-}"
 DNS_SERVICE="${DNS_SERVICE:-coredns}"
 APISERVER_PORT="${APISERVER_PORT:-8080}"
 REGISTRY_PORT="${REGISTRY_PORT:-5000}"
-PV_NUMS="${PV_NUMS:-4}"
+PV_NUMS="${PV_NUMS:-9}"
 
 DIND_CA_CERT_URL="${DIND_CA_CERT_URL:-}"
 DIND_PROPAGATE_HTTP_PROXY="${DIND_PROPAGATE_HTTP_PROXY:-}"
@@ -2416,7 +2416,7 @@ function dind::run_tiller {
     if [[ $? -eq 0 ]];then
         helm_version=$(helm version -c --template '{{.Client.SemVer}}')
         if [[ -n ${KUBE_REPO_PREFIX} ]];then
-            helm init --tiller-image ${KUBE_REPO_PREFIX}/tiller:${helm_version}
+            helm init --tiller-image ${KUBE_REPO_PREFIX}/tiller:${helm_version} --skip-refresh
         else
             helm init
         fi
