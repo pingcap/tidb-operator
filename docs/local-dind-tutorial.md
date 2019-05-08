@@ -100,9 +100,9 @@ demo-pd-1                         1/1       Running     0          1m
 demo-pd-2                         1/1       Running     0          1m
 demo-tidb-0                       1/1       Running     0          1m
 demo-tidb-1                       1/1       Running     0          1m
-demo-tikv-0                       2/2       Running     0          1m
-demo-tikv-1                       2/2       Running     0          1m
-demo-tikv-2                       2/2       Running     0          1m
+demo-tikv-0                       1/1       Running     0          1m
+demo-tikv-1                       1/1       Running     0          1m
+demo-tikv-2                       1/1       Running     0          1m
 ```
 
 To access the TiDB cluster, use `kubectl port-forward` to expose services to host. The port numbers in command are in `<host machine port>:<k8s service port>` format.
