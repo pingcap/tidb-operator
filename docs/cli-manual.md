@@ -15,7 +15,7 @@ The TiDB Kubernetes Control(tkctl) is a command line utility for TiDB operators 
     - [tkctl info](#tkctl-info)
     - [tkctl get](#tkctl-get-component)
     - [tkctl debug](#tkctl-debug-podname)
-    - [tkctl ctop](#tkctl-ctop-podname--nodenodename-)
+    - [tkctl ctop](#tkctl-ctop)
     - [tkctl help](#tkctl-help-command)
     - [tkctl options](#tkctl-options)
 
@@ -185,7 +185,9 @@ $ tkctl debug demo-cluster-tikv-0
 # you may have to wait a few seconds or minutes for the debug container running, then you will get the shell prompt
 ```
 
-## tkctl ctop [pod_name | node/node_name ]
+## tkctl ctop
+
+`tkctl ctop [pod_name | node/node_name ]`
 
 This command used to view the real-time stats of target pod or node. Compare to `kubectl top`, `tkctl ctop` provides network and disk stats, which are important for diagnosing TiDB cluster problem.
 
