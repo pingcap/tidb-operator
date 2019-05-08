@@ -159,7 +159,7 @@ To access the TiDB cluster, use `kubectl port-forward` to expose services to the
 
     3. Set up a reverse proxy.
 
-        Either (or all) of the container IPs can be used as upstream for reverse proxy. You may use any reverse proxy server that supports TCP (for TiDB) or HTTP (for Grafana and Prometheus) to provide remote access. HAProxy and nginx are two common choices.
+        Either (or all) of the container IPs can be used as upstream for a reverse proxy. You can use any reverse proxy server that supports TCP (for TiDB) or HTTP (for Grafana and Prometheus) to provide remote access. HAProxy and NGINX are two common choices.
 
 ## Scale the TiDB cluster
 
