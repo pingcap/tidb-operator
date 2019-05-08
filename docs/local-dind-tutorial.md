@@ -105,7 +105,7 @@ demo-tikv-1                       1/1       Running     0          1m
 demo-tikv-2                       1/1       Running     0          1m
 ```
 
-To access the TiDB cluster, use `kubectl port-forward` to expose services to host. The port numbers in command are in `<host machine port>:<k8s service port>` format.
+To access the TiDB cluster, use `kubectl port-forward` to expose services to the host. The port numbers in command are in `<host machine port>:<k8s service port>` format.
 
 > **Note:** If you are deploying DinD on a remote machine rather than local PC, there may be problem accessing "localhost" of that remote system. When using `kubectl` 1.13 or later, it's possible to expose the port on `0.0.0.0` instead of `127.0.0.1` (which is default) by adding `--address 0.0.0.0` to the `kubectl port-forward` command.
 
