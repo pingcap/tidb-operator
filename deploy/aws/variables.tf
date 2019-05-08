@@ -84,6 +84,7 @@ variable "tidb_count" {
   default = 2
 }
 
+// Be careful about changing the instance types, it may break the user data and local volume setup
 variable "pd_instance_type" {
   default = "m5d.xlarge"
 }

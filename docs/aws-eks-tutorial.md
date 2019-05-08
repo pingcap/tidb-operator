@@ -138,6 +138,8 @@ tidb_dns = internal-a37a17c22710211e9b48c0ae40bc8d7b-1891023212.us-east-2.elb.am
 tidb_port = 4000
 tidb_version = v2.1.8
 ```
+
+> *NOTE*: Be careful about changing instance types for PD and TiKV worker groups as they rely on local SSD. Doing so may break user-data and local volume setup.
 ### Connecting to TiDB
 
 Access to TiDB is gated behind the bastion machine. First ssh into it and then use the mysql client
