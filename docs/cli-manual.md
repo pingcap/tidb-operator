@@ -1,28 +1,29 @@
-# The TiDB Kubernete Contorl(tkctl) User Manual
+# The TiDB Kubernetes Contorl(tkctl) User Manual
 
 > **Disclaimer**: The tkctl CLI tool is currently **Alpha**. The design and sub-commands may change in the future, use at your own risk.
 
 The TiDB Kubernetes Control(tkctl) is a command line utility for TiDB operators to operate and diagnose their TiDB clusters in kubernetes.
 
 - [Installation](#installation)
-    - [Bash Completion](#bash-completion)
+    - [Build from Source](#build-from-source)
+    - [Shell Completion](#shell-completion)
     - [Kubernetes Configuration](#kubernetes-configuration)
 - [Commands](#commands)
     - [tkctl version](#tkctl-version)
     - [tkctl list](#tkctl-list)
     - [tkctl use](#tkctl-use)
     - [tkctl info](#tkctl-info)
-    - [tkctl get](#tkctl-get)
-    - [tkctl debug](#tkctl-debug)
-    - [tkctl ctop](#tkctl-ctop)
-    - [tkctl help](#tkctl-help)
+    - [tkctl get](#tkctl-get-component)
+    - [tkctl debug](#tkctl-debug-podname)
+    - [tkctl ctop](#tkctl-ctop-podname--nodenodename-)
+    - [tkctl help](#tkctl-help-command)
     - [tkctl options](#tkctl-options)
 
 # Installation
 
 You can download the pre-built binary or build `tkctl` from source:
 
-### Download the Pre-built Binary
+### Download the Latest Pre-built Binary
 
 - [MacOS](http://download.pingcap.org/tkctl-darwin-amd64-latest.tgz)
 - [Linux](http://download.pingcap.org/tkctl-linux-amd64-latest.tgz)
@@ -36,7 +37,7 @@ $ GOOS=${YOUR_GOOS} make cli
 $ mv tkctl /usr/local/bin/tkctl
 ```
 
-## Bash Completion
+## Shell Completion
 
 BASH
 ```shell
@@ -44,7 +45,7 @@ BASH
 source <(tkctl completion bash) 
 
 # add autocomplete permanently to your bash shell.
-echo "source <(tkctl completion bash)" >> ~/.bashrc 
+echo "if hash tkctl 2>/dev/null; then source <(tkctl completion bash); fi" >> ~/.bashrc 
 ```
 
 ZSH
@@ -53,7 +54,7 @@ ZSH
 source <(tkctl completion zsh)
 
 # add autocomplete permanently to your zsh shell
-echo "if [ $commands[tkctl] ]; then source <(tkctl completion zsh); fi" >> ~/.zshrc 
+echo "if hash tkctl 2>/dev/null; then source <(tkctl completion zsh); fi" >> ~/.zshrc 
 ```
 
 ## Kubernetes Configuration
