@@ -16,7 +16,7 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 
     > **Note:** [Legacy Docker Toolbox](https://docs.docker.com/toolbox/toolbox_install_mac/) users must migrate to [Docker for Mac](https://store.docker.com/editions/community/docker-ce-desktop-mac) by uninstalling Legacy Docker Toolbox and installing Docker for Mac, because DinD cannot run on Docker Toolbox and Docker Machine.
 
-    > **Note:** `kubeadm` validates installed Docker version during installation process, if you are using Docker newer than 18.06, there would be warning messages, the cluster may still be working, but it's recommended to use Docker version between 17.03 and 18.06 for better compatiability.
+    > **Note:** `kubeadm` validates installed Docker version during the installation process. If you are using Docker later than 18.06, there would be warning messages. The cluster might still be working, but it is recommended to use a Docker version between 17.03 and 18.06 for better compatibility.
 
 - [Helm Client](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client): 2.9.0 or later
 - [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl): at least 1.10 required, 1.13 or later recommended
