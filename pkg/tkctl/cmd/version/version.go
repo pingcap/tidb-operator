@@ -103,7 +103,7 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 		fmt.Fprintf(o, "TiDB Scheduler Version: %s\n", schedulers.Items[0].Spec.Template.Spec.Containers[0].Image)
 	} else {
 		// warn for multiple scheduler
-		fmt.Fprintf(o, "WARN: more than one TiDB Scheduler instance found, this is un-supported and may lead to un-specified behavior:\n")
+		fmt.Fprintf(o, "WARN: more than one TiDB Scheduler instance found, this is un-supported and may lead to un-expected behavior:\n")
 		for _, item := range schedulers.Items {
 			fmt.Fprintf(o, "\t%s\n", item.Name)
 		}
