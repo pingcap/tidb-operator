@@ -29,7 +29,7 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 
 ## Step 1: Deploy a Kubernetes cluster using DinD
 
-There is a script in our repository that can help you install and setup a Kubernetes cluster (version 1.12) using DinD for TiDB Operator.
+There is a script in our repository that can help you install and set up a Kubernetes cluster (version 1.12) using DinD for TiDB Operator.
 
 ```sh
 $ git clone --depth=1 https://github.com/pingcap/tidb-operator
