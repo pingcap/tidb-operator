@@ -23,7 +23,7 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 
     > **Note:** The outputs of different versions of `kubectl` might be slightly different.
 
-- For Linux users, `kubeadm` may produce warning messages during installation process if you are using kernel 5.x or later versions. The cluster may still be working, but it's recommended to use kernel version 3.10+ or 4.x for better compatiability.
+- For Linux users, `kubeadm` might produce warning messages during the installation process if you are using kernel 5.x or later versions. The cluster might still be working, but it is recommended to use kernel version 3.10+ or 4.x for better compatibility.
 
 - `root` access or permissions to operate with the Docker daemon.
 
