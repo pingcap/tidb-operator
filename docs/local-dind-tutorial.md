@@ -155,7 +155,7 @@ To access the TiDB cluster, use `kubectl port-forward` to expose services to the
 
     2. Find host IP address of the cluster.
 
-        DinD is a k8s cluster running inside docker containers, so Services expose ports to the containers' address, instead of the real host machine. We can find IP addresses of docker containers by `kubectl get nodes -o yaml | grep address`.
+        DinD is a K8s cluster running inside Docker containers, so Services expose ports to the containers' address, instead of the real host machine. We can find IP addresses of Docker containers by `kubectl get nodes -o yaml | grep address`.
 
     3. Set up a reverse proxy.
 
