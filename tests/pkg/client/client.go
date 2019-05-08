@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/slack"
+
 	"github.com/juju/errors"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/typed/pingcap.com/v1alpha1"
@@ -30,7 +32,7 @@ func init() {
 func NewCliOrDie() (versioned.Interface, kubernetes.Interface) {
 	cfg, err := GetConfig()
 	if err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 
 	return buildClientsOrDie(cfg)
@@ -65,7 +67,7 @@ func Union(kube kubernetes.Interface, tidb versioned.Interface) Client {
 func NewOrDie() Client {
 	cfg, err := clientcmd.BuildConfigFromFlags(masterUrl, kubeconfigPath)
 	if err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 	return Union(kubernetes.NewForConfigOrDie(cfg), versioned.NewForConfigOrDie(cfg))
 }
@@ -96,12 +98,12 @@ func buildClientsOrDie(cfg *rest.Config) (versioned.Interface, kubernetes.Interf
 	cfg.Timeout = 30 * time.Second
 	cli, err := versioned.NewForConfig(cfg)
 	if err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 
 	kubeCli, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 
 	return cli, kubeCli

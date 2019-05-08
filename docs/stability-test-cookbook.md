@@ -2,6 +2,8 @@
 
 > Important notes: this guide is under heavy development and have complicated enviroment pre-requesites, things are ought to change in the future.
 
+## Run stability test
+
 The following commands assumes you are in the `tidb-operator` working directory:
 ```shell
 # image will be tagged as YOUR_DOCKER_REGISTRY/pingcap/tidb-operator-stability-test:latest
@@ -14,6 +16,35 @@ $ vi ./tests/manifests/stability/stability.yaml
 $ kubectl apply -f ./tests/manifests/stability/stability.yaml
 ```
 
+## Get test report
+
+```shell
+$ kubectl -n tidb-operator-stability logs tidb-operator-stability
+```
+
+## Inspect overall cluster stats under various operations
+
+It is useful to inspect how the cluster performs under various kind of operations or faults, you can access such information from the Grafana dashboard of each cluster:
+
+```shell
+$ kubectl port-forward -n ${CLUSTER_NAMESPACE} svc/${CLUSTER_GRAFANA_SERVICE} 3000:3000
+```
+
+Navigate to [localhost:3000](http://localhost:3000) to view the dashboards.
+ 
+Optionally, you can view the event annotations like `scale cluster`, `upgrade cluster`, `vm crash` by querying annotations in Grafana to get better understanding of the system, follow this step-by-step guide:
+
+1. click "Dashboard Setting" in the navigate bar
+2. click the big "Make Editable" button
+3. click "Annotations" in the sidebar
+4. click "Add Annotation Query"
+5. enter a name you like
+6. switch "Match Any" on
+7. add "stability" tag
+8. click "add"
+9. go back to dashboard and you will see the annotations trigger and the cluster events
+
+
 ## Alternative: run stability test in your local environment
 
 Deploy & witness flow can be tedious when developing stability-test, this document introduce that how to run stability-test out of the cluster(your local machine, usually) while still operating the remote cluster.
@@ -22,7 +53,7 @@ Deploy & witness flow can be tedious when developing stability-test, this docume
 ```shell
 $ telepresence --new-deployment ${POD_NAME}
 $ go build -o stability ./tests/cmd/stability/main.go
-$ ./stability --operator-repo-dir=${ABITRARY_EMPTY_DIR_TO_CLONE_OPERATOR_REPO} --kubeconfig=${YOUR_KUBE_CONFIG_PATH}
+$ ./stability --kubeconfig=${YOUR_KUBE_CONFIG_PATH}
 ```
 
 ### Explained
@@ -34,17 +65,7 @@ Generally we have three problems to solve:
     * if `KUBECONFIG` env variable set, use it
     * try loading `InClusterConfig()`
 so you have to specify the `kubeconfig` path by either command line option or  env variable if you want to test locally.
-2. **Privilege issue**: If you don't want to or cannot run stability test with root privilege, change the working dir or create it in advance:
-    * git repo dir can be overridden by option `--git-repo-dir=xxxx`, but helm dir must be created manually. 
-```shell
-# helm dir
-$ mkdir /charts
-$ chmod 777 /charts
-# git repo dir if you don't set command line option
-$ mkdir /tidb-operator
-$ chmod 777 /tidb-operator
-```
-3. **DNS and network issue**: Two-way proxy using Telepresence. We cannot resolve cluster dns name and access cluster ip easily, `telepresence` helps with that, it creates a proxy pod in the cluster and open a vpn connection to kubernetes cluster via this pod. Just run ([full documentations](https://www.telepresence.io/reference/install)):
+2. **DNS and network issue**: Two-way proxy using Telepresence. We cannot resolve cluster dns name and access cluster ip easily, `telepresence` helps with that, it creates a proxy pod in the cluster and open a vpn connection to kubernetes cluster via this pod. Just run ([full documentations](https://www.telepresence.io/reference/install)):
 ```shell
 $ brew cask install osxfuse
 $ brew install datawire/blackbird/telepresence

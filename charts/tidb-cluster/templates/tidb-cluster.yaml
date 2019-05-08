@@ -55,12 +55,6 @@ spec:
     tolerations:
 {{ toYaml .Values.tikv.tolerations | indent 4 }}
   {{- end }}
-  tikvPromGateway:
-    image: {{ .Values.tikvPromGateway.image }}
-    imagePullPolicy: {{ .Values.tikvPromGateway.imagePullPolicy | default "IfNotPresent" }}
-  {{- if .Values.tikvPromGateway.resources }}
-{{ toYaml .Values.tikvPromGateway.resources | indent 4 }}
-  {{- end }}
   tidb:
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}

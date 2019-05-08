@@ -70,10 +70,22 @@ low-concurrency = {{ .Values.tikv.readpoolCoprocessorConcurrency }}
 # maximum number of messages can be processed in one tick.
 # messages-per-tick = 4096
 
-# compression type for grpc channel, available values are none, deflate and gzip.
+## Status address.
+## This is used for reporting the status of TiKV directly through the HTTP address.
+## Empty string means disabling it.
+status-addr = "0.0.0.0:20180"
+
+## Set the maximum number of worker threads for the status report HTTP service.
+# status-thread-pool-size = 1
+
+## Compression type for gRPC channel: none, deflate or gzip.
 # grpc-compression-type = "none"
 # size of thread pool for grpc server.
+{{- if .Values.tikv.grpcConcurrency }}
+grpc-concurrency = {{ .Values.tikv.grpcConcurrency }}
+{{- else }}
 # grpc-concurrency = 4
+{{- end }}
 # The number of max concurrent streams/requests on a client connection.
 # grpc-concurrent-stream = 1024
 # The number of connections with each tikv server to send raft messages.
@@ -133,14 +145,6 @@ scheduler-worker-pool-size = {{ .Values.tikv.storageSchedulerWorkerPoolSize }}
 [pd]
 # pd endpoints
 # endpoints = []
-
-[metric]
-# the Prometheus client push interval. Setting the value to 0s stops Prometheus client from pushing.
-# interval = "15s"
-# the Prometheus pushgateway address. Leaving it empty stops Prometheus client from pushing.
-address = "http://localhost:9091" # empty or http://localhost:9091 to disable or enable tikv push metrics
-# the Prometheus client push job name. Note: A node id will automatically append, e.g., "tikv_1".
-# job = "tikv"
 
 [raftstore]
 # true (default value) for high reliability, this can prevent data loss when power failure.
@@ -261,7 +265,7 @@ sync-log = {{ .Values.tikv.syncLog }}
 
 # Max size of rocksdb's MANIFEST file.
 # For detailed explanation please refer to https://github.com/facebook/rocksdb/wiki/MANIFEST
-# max-manifest-file-size = "20MB"
+# max-manifest-file-size = "128MB"
 
 # If true, the database will be created if it is missing.
 # create-if-missing = true

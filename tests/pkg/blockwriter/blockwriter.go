@@ -29,27 +29,29 @@ import (
 )
 
 const (
-	queryChanSize int = 10000
+	queryChanSize int = 100
 )
 
 // BlockWriterCase is for concurrent writing blocks.
 type BlockWriterCase struct {
-	cfg Config
 	bws []*blockWriter
 
 	isRunning uint32
 	isInit    uint32
 	stopChan  chan struct{}
 
+	cfg         Config
+	ClusterName string
+
 	sync.RWMutex
 }
 
 // Config defines the config of BlockWriterCase
 type Config struct {
-	TableNum    int
-	Concurrency int
-	BatchSize   int
-	RawSize     int
+	TableNum    int `yaml:"table_num" json:"table_num"`
+	Concurrency int `yaml:"concurrency" json:"concurrency"`
+	BatchSize   int `yaml:"batch_size" json:"batch_size"`
+	RawSize     int `yaml:"raw_size" json:"raw_size"`
 }
 
 type blockWriter struct {
@@ -73,6 +75,10 @@ func NewBlockWriterCase(cfg Config) *BlockWriterCase {
 	return c
 }
 
+func (c *BlockWriterCase) GetConcurrency() int {
+	return c.cfg.Concurrency
+}
+
 func (c *BlockWriterCase) initBlocks() {
 	c.bws = make([]*blockWriter, c.cfg.Concurrency)
 	for i := 0; i < c.cfg.Concurrency; i++ {
@@ -90,7 +96,7 @@ func (c *BlockWriterCase) newBlockWriter() *blockWriter {
 
 func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []string, wg *sync.WaitGroup) {
 	defer func() {
-		glog.Infof("[%s] [action: generate Query] stopped", c)
+		glog.Infof("[%s] [%s] [action: generate Query] stopped", c, c.ClusterName)
 		wg.Done()
 	}()
 
@@ -117,13 +123,11 @@ func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []st
 		select {
 		case <-ctx.Done():
 			return
+		case queryChan <- querys:
+			continue
 		default:
-			if len(queryChan) < queryChanSize {
-				queryChan <- querys
-			} else {
-				glog.Infof("[%s] [action: generate Query] query channel is full, sleep 10 seconds", c)
-				util.Sleep(ctx, 10*time.Second)
-			}
+			glog.V(4).Infof("[%s] [%s] [action: generate Query] query channel is full, sleep 10 seconds", c, c.ClusterName)
+			util.Sleep(ctx, 10*time.Second)
 		}
 	}
 }
@@ -131,7 +135,7 @@ func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []st
 func (bw *blockWriter) batchExecute(db *sql.DB, query string) error {
 	_, err := db.Exec(query)
 	if err != nil {
-		glog.V(4).Infof("[block_writer] exec sql [%s] failed, err: %v", query, err)
+		glog.V(4).Infof("exec sql [%s] failed, err: %v", query, err)
 		return err
 	}
 
@@ -158,7 +162,7 @@ func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan []str
 				return
 			default:
 				if err := bw.batchExecute(db, query); err != nil {
-					glog.Error(err)
+					glog.V(4).Info(err)
 					time.Sleep(5 * time.Second)
 					continue
 				}
@@ -169,10 +173,10 @@ func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan []str
 
 // Initialize inits case
 func (c *BlockWriterCase) initialize(db *sql.DB) error {
-	glog.Infof("[%s] start to init...", c)
+	glog.Infof("[%s] [%s] start to init...", c, c.ClusterName)
 	defer func() {
 		atomic.StoreUint32(&c.isInit, 1)
-		glog.Infof("[%s] init end...", c)
+		glog.Infof("[%s] [%s] init end...", c, c.ClusterName)
 	}()
 
 	for i := 0; i < c.cfg.TableNum; i++ {
@@ -210,14 +214,14 @@ func (c *BlockWriterCase) initialize(db *sql.DB) error {
 // Start starts to run cases
 func (c *BlockWriterCase) Start(db *sql.DB) error {
 	if !atomic.CompareAndSwapUint32(&c.isRunning, 0, 1) {
-		err := fmt.Errorf("[%s] is running, you can't start it again", c)
+		err := fmt.Errorf("[%s] [%s] is running, you can't start it again", c, c.ClusterName)
 		glog.Error(err)
 		return nil
 	}
 
 	defer func() {
 		c.RLock()
-		glog.Infof("[%s] stopped", c)
+		glog.Infof("[%s] [%s] stopped", c, c.ClusterName)
 		atomic.SwapUint32(&c.isRunning, 0)
 	}()
 
@@ -227,7 +231,7 @@ func (c *BlockWriterCase) Start(db *sql.DB) error {
 		}
 	}
 
-	glog.Infof("[%s] start to execute case...", c)
+	glog.Infof("[%s] [%s] start to execute case...", c, c.ClusterName)
 
 	var wg sync.WaitGroup
 

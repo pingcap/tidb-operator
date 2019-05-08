@@ -15,23 +15,24 @@ package cmd
 
 import (
 	"flag"
+	"io"
+
+	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/completion"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/ctop"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/debug"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/get"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/info"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/list"
-	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/pdctl"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/use"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/spf13/cobra"
-	"io"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 )
 
 const (
 	tkcLongDescription = `
-		"tkc"(TiDB kubernetes control) is a command line interface for cloud tidb management and troubleshooting.
+		"tkctl"(TiDB kubernetes control) is a command line interface for cloud tidb management and troubleshooting.
 `
 )
 
@@ -42,7 +43,7 @@ func NewTkcCommand(streams genericclioptions.IOStreams) *cobra.Command {
 
 	// Root command that all the subcommands are added to
 	rootCmd := &cobra.Command{
-		Use:   "tkc",
+		Use:   "tkctl",
 		Short: "TiDB kubernetes control.",
 		Long:  tkcLongDescription,
 		Run:   runHelp,
@@ -72,8 +73,13 @@ func NewTkcCommand(streams genericclioptions.IOStreams) *cobra.Command {
 			Message: "Troubleshooting Commands:",
 			Commands: []*cobra.Command{
 				debug.NewCmdDebug(tkcContext, streams),
-				pdctl.NewCmdPdctl(tkcContext, streams),
 				ctop.NewCmdCtop(tkcContext, streams),
+			},
+		},
+		{
+			Message: "Settings Commands:",
+			Commands: []*cobra.Command{
+				completion.NewCmdCompletion(streams.Out),
 			},
 		},
 	}

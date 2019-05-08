@@ -23,4 +23,3 @@ import (
 	_ "k8s.io/gengo"
 	_ "k8s.io/klog"
 )
-

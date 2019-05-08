@@ -17,7 +17,7 @@ After TiDB Operator and Helm are deployed correctly, TiDB cluster can be deploye
 
 ```shell
 $ helm install charts/tidb-cluster --name=${releaseName} --namespace=${namespace}
-$ kubectl get po -n ${namespace} -l app.kubernetes.io/name=${releaseName}
+$ kubectl get po -n ${namespace} -l app.kubernetes.io/instance=${releaseName}
 ```
 
 The default deployment doesn't set CPU and memory requests or limits for any of the pods, and the storage used is `local-storage` with minimal size. These settings can make TiDB cluster run on a small Kubernetes cluster like DinD or the default GKE cluster for testing. But for production deployment, you would likely to adjust the cpu, memory and storage resources according to the [recommendations](https://github.com/pingcap/docs/blob/master/op-guide/recommendation.md).
@@ -34,10 +34,17 @@ By default TiDB service is exposed using [`NodePort`](https://kubernetes.io/docs
 $ kubectl get svc -n ${namespace} # check the available services
 ```
 
-By default the TiDB cluster has no password set. You can specify a password by setting `tidb.password` in `values.yaml` before deploying. You can retrieve the password from the initialization `Secret`:
+By default the TiDB cluster has no root password set. Setting a password in helm is insecure. Instead you can set the name of a K8s secret as `tidb.passwordSecretName` in `values.yaml`. Note that this is only used to initialize users: once your tidb cluster is initialized you may delete the secret. The format of the secret is `user=password`, so you can set the root user password with:
+
+```
+kubectl create namespace ${namespace}
+kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=${namespace}
+```
+
+You can retrieve the password from the initialization `Secret`:
 
 ```shell
-$ PASSWORD=$(kubectl get secret -n ${namespace} ${releaseName}-tidb -ojsonpath="{.data.password}" | base64 --decode | awk '{print $6}')
+$ PASSWORD=$(kubectl get secret -n ${namespace} tidb-secret -ojsonpath="{.data.root}" | base64 --decode)
 $ echo ${PASSWORD}
 ```
 
