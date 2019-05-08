@@ -117,8 +117,8 @@ The provisioning of all the infrastructure will take several minutes. We are cre
 * 1 internal ELB
 * 1 c5d.large for PD pods
 * 1 c5d.large for TiKV pods
-* 1 c5d.large for TiDB pods
-* 1 c5d.large for monitoring related pods
+* 1 c4.large for TiDB pods
+* 1 c5.large for monitoring related pods
 
 When everything has been successfully created, you will see something like this:
 
