@@ -5,6 +5,8 @@ metadata:
   name: tidb-operator-stability-config
 data:
   config: |-
+    block_writer:
+      concurrency: 12
     nodes:
       - physical_node: 172.16.4.38
         nodes:

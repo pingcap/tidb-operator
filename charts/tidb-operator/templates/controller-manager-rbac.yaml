@@ -40,7 +40,7 @@ rules:
   resources: ["statefulsets"]
   verbs: ["*"]
 - apiGroups: ["pingcap.com"]
-  resources: ["tidbclusters"]
+  resources: ["tidbclusters", "tidbclusters/finalizers"]
   verbs: ["*"]
 {{- end }}
 - apiGroups: [""]
@@ -99,7 +99,7 @@ rules:
   resources: ["statefulsets"]
   verbs: ["*"]
 - apiGroups: ["pingcap.com"]
-  resources: ["tidbclusters"]
+  resources: ["tidbclusters", "tidbclusters/finalizers"]
   verbs: ["*"]
 ---
 kind: RoleBinding

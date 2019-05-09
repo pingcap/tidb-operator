@@ -26,18 +26,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
-
-	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
-	"k8s.io/api/apps/v1beta1"
-	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
@@ -53,6 +43,16 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"github.com/pingcap/tidb-operator/tests/slack"
+	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
+	"k8s.io/api/apps/v1beta1"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -66,14 +66,27 @@ const (
 	NodeUnreachablePodReason = "NodeLost"
 )
 
-func NewOperatorActions(cli versioned.Interface, kubeCli kubernetes.Interface, pollInterval time.Duration, cfg *Config) OperatorActions {
-	return &operatorActions{
+func NewOperatorActions(cli versioned.Interface,
+	kubeCli kubernetes.Interface,
+	pollInterval time.Duration,
+	cfg *Config,
+	clusters []*TidbClusterConfig) OperatorActions {
+	oa := &operatorActions{
 		cli:          cli,
 		kubeCli:      kubeCli,
 		pdControl:    controller.NewDefaultPDControl(),
 		pollInterval: pollInterval,
 		cfg:          cfg,
 	}
+	oa.clusterEvents = make(map[string]*clusterEvent)
+	for _, c := range clusters {
+		oa.clusterEvents[c.String()] = &clusterEvent{
+			ns:          c.Namespace,
+			clusterName: c.ClusterName,
+			events:      make([]event, 0),
+		}
+	}
+	return oa
 }
 
 const (
@@ -143,16 +156,31 @@ type OperatorActions interface {
 	RegisterWebHookAndServiceOrDie(info *OperatorConfig)
 	CleanWebHookAndService(info *OperatorConfig) error
 	StartValidatingAdmissionWebhookServerOrDie(info *OperatorConfig)
+	EventWorker()
+	EmitEvent(info *TidbClusterConfig, msg string)
 	BackupRestore(from, to *TidbClusterConfig) error
 	BackupRestoreOrDie(from, to *TidbClusterConfig)
 }
 
 type operatorActions struct {
-	cli          versioned.Interface
-	kubeCli      kubernetes.Interface
-	pdControl    controller.PDControlInterface
-	pollInterval time.Duration
-	cfg          *Config
+	cli           versioned.Interface
+	kubeCli       kubernetes.Interface
+	pdControl     controller.PDControlInterface
+	pollInterval  time.Duration
+	cfg           *Config
+	clusterEvents map[string]*clusterEvent
+	lock          sync.Mutex
+}
+
+type clusterEvent struct {
+	ns          string
+	clusterName string
+	events      []event
+}
+
+type event struct {
+	message string
+	ts      int64
 }
 
 var _ = OperatorActions(&operatorActions{})
@@ -204,6 +232,10 @@ func (oi *OperatorConfig) ConfigTLS() *tls.Config {
 	return &tls.Config{
 		Certificates: []tls.Certificate{sCert},
 	}
+}
+
+func (tc *TidbClusterConfig) String() string {
+	return fmt.Sprintf("%s/%s", tc.Namespace, tc.ClusterName)
 }
 
 func (tc *TidbClusterConfig) BackupHelmSetString(m map[string]string) string {
@@ -268,6 +300,8 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"scheduler.kubeSchedulerImageName": oi.SchedulerImage,
 		"controllerManager.logLevel":       oi.LogLevel,
 		"scheduler.logLevel":               "2",
+		"controllerManager.replicas":       "2",
+		"scheduler.replicas":               "2",
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
@@ -354,7 +388,7 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 
 func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 	glog.Infof("deploying tidb cluster [%s/%s]", info.Namespace, info.ClusterName)
-	oa.emitEvent(info, "DeployTidbCluster")
+	oa.EmitEvent(info, "DeployTidbCluster")
 
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -394,7 +428,7 @@ func (oa *operatorActions) DeployTidbClusterOrDie(info *TidbClusterConfig) {
 
 func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	glog.Infof("cleaning tidbcluster %s/%s", info.Namespace, info.ClusterName)
-	oa.emitEvent(info, "CleanTidbCluster")
+	oa.EmitEvent(info, "CleanTidbCluster")
 
 	charts := []string{
 		info.ClusterName,
@@ -499,9 +533,10 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		}
 
 		glog.V(4).Infof("check tidb cluster begin metaSyncFn")
-		if b, err := oa.metaSyncFn(tc); err != nil {
-			return false, err
-		} else if !b && err == nil {
+		if b, err := oa.metaSyncFn(tc); !b && err == nil {
+			return false, nil
+		} else if err != nil {
+			glog.Error(err)
 			return false, nil
 		}
 
@@ -537,7 +572,7 @@ func (oa *operatorActions) CheckTidbClusterStatusOrDie(info *TidbClusterConfig) 
 }
 
 func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
-	oa.emitEvent(info, fmt.Sprintf("BeginInsertData: concurrency: %d", oa.cfg.BlockWriter.Concurrency))
+	oa.EmitEvent(info, fmt.Sprintf("BeginInsertData: concurrency: %d", oa.cfg.BlockWriter.Concurrency))
 
 	dsn := getDSN(info.Namespace, info.ClusterName, "test", info.Password)
 	if info.blockWriter == nil {
@@ -561,7 +596,7 @@ func (oa *operatorActions) BeginInsertDataToOrDie(info *TidbClusterConfig) {
 }
 
 func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
-	oa.emitEvent(info, "StopInsertData")
+	oa.EmitEvent(info, "StopInsertData")
 
 	info.blockWriter.Stop()
 }
@@ -583,7 +618,8 @@ func (oa *operatorActions) backupChartPath(tag string) string {
 }
 
 func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterConfig) error {
-	oa.emitEvent(info, fmt.Sprintf("ScaleTidbCluster"))
+	oa.EmitEvent(info, fmt.Sprintf("ScaleTidbCluster to pd: %s, tikv: %s, tidb: %s",
+		info.Args["pd.replicas"], info.Args["tikv.replicas"], info.Args["tidb.replicas"]))
 
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
 		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(nil))
@@ -664,7 +700,7 @@ func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 	if err != nil {
 		return err
 	}
-	oa.emitEvent(info, "UpgradeTidbCluster")
+	oa.EmitEvent(info, "UpgradeTidbCluster")
 
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
 		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(nil))
@@ -1361,7 +1397,7 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 	end := time.Now()
 	start := end.Add(-time.Minute)
 	values := url.Values{}
-	values.Set("query", `sum(tikv_pd_heartbeat_tick_total{type="leader"}) by (job)`)
+	values.Set("query", "histogram_quantile(0.999, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))")
 	values.Set("start", fmt.Sprintf("%d", start.Unix()))
 	values.Set("end", fmt.Sprintf("%d", end.Unix()))
 	values.Set("step", "30")
@@ -1448,7 +1484,7 @@ func (oa *operatorActions) checkoutTag(tagName string) error {
 }
 
 func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
-	oa.emitEvent(info, "DeployAdHocBackup")
+	oa.EmitEvent(info, "DeployAdHocBackup")
 	glog.Infof("begin to deploy adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
 	sets := map[string]string{
@@ -1474,7 +1510,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 }
 
 func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
-	glog.Infof("begin to clean adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
+	glog.Infof("checking adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
 	jobName := fmt.Sprintf("%s-%s", info.ClusterName, info.BackupName)
 	fn := func() (bool, error) {
@@ -1500,7 +1536,8 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
 }
 
 func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfig) error {
-	oa.emitEvent(to, fmt.Sprintf("RestoreBackup: source: %s", from.ClusterName))
+	oa.EmitEvent(from, fmt.Sprintf("RestoreBackup: target: %s", to.ClusterName))
+	oa.EmitEvent(to, fmt.Sprintf("RestoreBackup: source: %s", from.ClusterName))
 	glog.Infof("deploying restore cluster[%s/%s]", from.Namespace, from.ClusterName)
 
 	sets := map[string]string{
@@ -1672,7 +1709,7 @@ func releaseIsExist(err error) bool {
 }
 
 func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error {
-	oa.emitEvent(info, "DeploySchedulerBackup")
+	oa.EmitEvent(info, "DeploySchedulerBackup")
 	glog.Infof("begin to deploy scheduled backup")
 
 	cron := fmt.Sprintf("'*/1 * * * *'")
@@ -1893,7 +1930,7 @@ func (info *TidbClusterConfig) FullName() string {
 }
 
 func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig) error {
-	oa.emitEvent(from, fmt.Sprintf("DeployIncrementalBackup: slave: %s", to.ClusterName))
+	oa.EmitEvent(from, fmt.Sprintf("DeployIncrementalBackup: slave: %s", to.ClusterName))
 	glog.Infof("begin to deploy incremental backup cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
 
 	sets := map[string]string{
@@ -1904,7 +1941,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 		"binlog.drainer.mysql.user":     "root",
 		"binlog.drainer.mysql.password": to.Password,
 		"binlog.drainer.mysql.port":     "4000",
-		"binlog.drainer.ignoreSchemas":  "\"INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql\"",
+		"binlog.drainer.ignoreSchemas":  "",
 	}
 
 	setString := from.TidbClusterHelmSetString(sets)
@@ -2140,36 +2177,81 @@ func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie(info *Oper
 	}
 	err = server.ListenAndServeTLS("", "")
 	if err != nil {
-		err = fmt.Errorf("fail to start webhook server err %v", err)
+		err = fmt.Errorf("failed to start webhook server %v", err)
 		glog.Error(err)
 		sendErr := slack.SendErrMsg(err.Error())
 		if sendErr != nil {
 			glog.Error(sendErr)
 		}
+		// TODO use context instead
 		os.Exit(4)
 	}
 }
 
-func (oa *operatorActions) emitEvent(info *TidbClusterConfig, event string) {
-	if info.GrafanaClient == nil {
-		glog.V(4).Infof("cluster:[%s] grafana client not ready, skip recording event %s.",
-			info.ClusterName, event)
+func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
+	oa.lock.Lock()
+	defer oa.lock.Unlock()
+
+	if len(oa.clusterEvents) == 0 {
 		return
 	}
 
-	anno := metrics.Annotation{
-		Text:                event,
-		TimestampInMilliSec: time.Now().UnixNano() / int64(time.Millisecond),
-
-		Tags: []string{
-			statbilityTestTag,
-			fmt.Sprintf("cluster-%s", info.ClusterName),
-			fmt.Sprintf("ns-%s", info.Namespace),
-		},
+	ev := event{
+		message: message,
+		ts:      time.Now().UnixNano() / int64(time.Millisecond),
 	}
-	go func(anno metrics.Annotation) {
-		if err := info.GrafanaClient.AddAnnotation(anno); err != nil {
-			glog.Errorf("cluster:[%s] error recording event %s, reason: %v", info.ClusterName, event, err)
+
+	if info == nil {
+		for k := range oa.clusterEvents {
+			ce := oa.clusterEvents[k]
+			ce.events = append(ce.events, ev)
 		}
-	}(anno)
+		return
+	}
+
+	ce := oa.clusterEvents[info.String()]
+	ce.events = append(ce.events, ev)
+
+	// sleep a while to avoid overlapping time
+	time.Sleep(10 * time.Second)
+}
+
+func (oa *operatorActions) EventWorker() {
+	oa.lock.Lock()
+	defer oa.lock.Unlock()
+
+	for key, clusterEv := range oa.clusterEvents {
+		retryEvents := make([]event, 0)
+		for _, ev := range clusterEv.events {
+			ns := clusterEv.ns
+			clusterName := clusterEv.clusterName
+			grafanaUrl := fmt.Sprintf("http://%s-grafana.%s:3000", clusterName, ns)
+			client, err := metrics.NewClient(grafanaUrl, grafanaUsername, grafanaPassword, metricsPort)
+			if err != nil {
+				retryEvents = append(retryEvents, ev)
+				glog.V(4).Infof("failed to new grafana client: [%s/%s], %v", ns, clusterName, err)
+				continue
+			}
+
+			anno := metrics.Annotation{
+				Text:                ev.message,
+				TimestampInMilliSec: ev.ts,
+				Tags: []string{
+					statbilityTestTag,
+					fmt.Sprintf("clusterName: %s", clusterName),
+					fmt.Sprintf("namespace: %s", ns),
+				},
+			}
+			if err := client.AddAnnotation(anno); err != nil {
+				glog.V(4).Infof("cluster:[%s/%s] error recording event: %s, reason: %v",
+					ns, clusterName, ev.message, err)
+				retryEvents = append(retryEvents, ev)
+				continue
+			}
+			glog.Infof("cluster: [%s/%s] recoding event: %s", ns, clusterName, ev.message)
+		}
+
+		ce := oa.clusterEvents[key]
+		ce.events = retryEvents
+	}
 }

@@ -101,9 +101,9 @@ demo-pd-1                         1/1       Running     0          1m
 demo-pd-2                         1/1       Running     0          1m
 demo-tidb-0                       1/1       Running     0          1m
 demo-tidb-1                       1/1       Running     0          1m
-demo-tikv-0                       2/2       Running     0          1m
-demo-tikv-1                       2/2       Running     0          1m
-demo-tikv-2                       2/2       Running     0          1m
+demo-tikv-0                       1/1       Running     0          1m
+demo-tikv-1                       1/1       Running     0          1m
+demo-tikv-2                       1/1       Running     0          1m
 ```
 
 To access the TiDB cluster, use `kubectl port-forward` to expose the services to host.
@@ -155,7 +155,7 @@ You can scale out or scale in the TiDB cluster simply by modifying the number of
 
 1. Configure the `charts/tidb-cluster/values.yaml` file.
 
-    For example, change the version of PD/TiKV/TiDB `image` to `v2.1.1`.
+    For example, change the version of PD/TiKV/TiDB `image` to `v2.1.9`.
 
 2. Run the following command to apply the changes:
 
