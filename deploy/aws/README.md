@@ -23,7 +23,7 @@ The default setup will create a new VPC and a t2.micro instance as bastion machi
 
 ``` shell
 $ git clone https://github.com/pingcap/tidb-operator
-$ cd tidb-operator/cloud/aws
+$ cd tidb-operator/deploy/aws
 $ terraform init
 $ terraform apply
 ```

@@ -318,7 +318,8 @@ binlog:
     # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
     storageClassName: local-storage
     storage: 10Gi
-    # parallel worker count (default 16)
+    # the number of the concurrency of the downstream for synchronization. The bigger the value,
+    # the better throughput performance of the concurrency (16 by default)
     workerCount: 16
     # the interval time (in seconds) of detect pumps' status (default 10)
     detectInterval: 10
@@ -332,7 +333,7 @@ binlog:
     initialCommitTs: 0
     # enable safe mode to make syncer reentrant
     safeMode: false
-    # number of binlog events in a transaction batch (default 20)
+    # the number of SQL statements of a transaction that are output to the downstream database (20 by default)
     txnBatch: 20
     # downstream storage, equal to --dest-db-type
     # valid values are "mysql", "pb", "kafka"
