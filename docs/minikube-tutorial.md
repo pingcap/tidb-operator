@@ -25,6 +25,8 @@ This document describes how to deploy a TiDB cluster in the [minikube](https://k
 Kubernetes cluster inside a VM on your laptop. It works on macOS, Linux, and
 Windows.
 
+> **Note:** Although Minikube supports `--vm-driver=none` that uses host docker instead of VM, it is not fully tested with TiDB Operator and may not work. If you want to try TiDB Operator on a system without virtualization support (e.g., on a VPS), you may consider using [DinD](local-dind-tutorial.md) instead.
+
 ### Install minikube and start a Kubernetes cluster
 
 See [Installing Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) to install
@@ -51,6 +53,8 @@ or configure HTTP/HTTPS proxy environments in your docker, e.g.
 minikube start --docker-env https_proxy=http://127.0.0.1:1086 \
   --docker-env http_proxy=http://127.0.0.1:1086
 ```
+
+> **Note:** As minikube is running with VMs (default), the `127.0.0.1` is the VM itself, you might want to use your real IP address of the host machine in some cases.
 
 See [minikube setup](https://kubernetes.io/docs/setup/minikube/) for more options to
 configure your virtual machine and Kubernetes cluster.
@@ -114,7 +118,7 @@ kubectl -n kube-system get pods -l app=helm
 Clone tidb-operator repository:
 
 ```
-git clone https://github.com/pingcap/tidb-operator
+git clone --depth=1 https://github.com/pingcap/tidb-operator
 cd tidb-operator
 kubectl apply -f ./manifests/crd.yaml
 helm install charts/tidb-operator --name tidb-operator --namespace tidb-admin
@@ -140,14 +144,14 @@ can process to launch a TiDB cluster!
 ### Launch a TiDB cluster
 
 ```
-helm install charts/tidb-cluster --name tidb-cluster --set \
+helm install charts/tidb-cluster --name demo --set \
   schedulerName=default-scheduler,pd.storageClassName=standard,tikv.storageClassName=standard,pd.replicas=1,tikv.replicas=1,tidb.replicas=1
 ```
 
-Watch tidb-cluster up and running:
+Watch the cluster up and running:
 
 ```
-watch kubectl get pods --namespace default -l app.kubernetes.io/instance=tidb-cluster -o wide
+watch kubectl get pods --namespace default -l app.kubernetes.io/instance=demo -o wide
 ```
 
 ### Test TiDB cluster
@@ -159,12 +163,12 @@ is available. You can watch list services available with:
 watch kubectl get svc
 ```
 
-When you see `tidb-cluster-tidb` appear, it's ready to connect to TiDB server.
+When you see `demo-tidb` appear, it's ready to connect to TiDB server.
 
 After first, forward local port to tidb port:
 
 ```
-kubectl port-forward svc/tidb-cluster-tidb 4000:4000
+kubectl port-forward svc/demo-tidb 4000:4000
 ```
 
 In another terminal, connect to TiDB server with MySQL client:
@@ -182,9 +186,13 @@ mysql -h 127.0.0.1 -P 4000 -uroot -e 'select tidb_version();'
 ### Delete TiDB cluster
 
 ```
-helm delete --purge tidb-cluster
-kubectl get pv -l app.kubernetes.io/instance=tidb-cluster -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}} # update reclaim policy of PVs used by tidb-cluster to Delete
-kubectl delete pvc -l app.kubernetes.io/managed-by=tidb-operator # delete PVCs
+helm delete --purge demo
+
+# update reclaim policy of PVs used by demo to Delete
+kubectl get pv -l app.kubernetes.io/instance=demo -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+
+# delete PVCs
+kubectl delete pvc -l app.kubernetes.io/managed-by=tidb-operator
 ```
 
 ## FAQs
