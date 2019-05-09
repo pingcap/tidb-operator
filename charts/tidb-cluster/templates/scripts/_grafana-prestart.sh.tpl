@@ -1,10 +1,10 @@
 #!/bin/bash
 
 #check tidb cluster version
-tidbversion={{ .Values.tidb.image }}
-tikvversion={{ .Values.tikv.image }}
-pdversion={{ .Values.pd.image }}
-v3=v3
+TiDBVersion={{ .Values.tidb.image }}
+TiKVVersion={{ .Values.tikv.image }}
+PDVersion={{ .Values.pd.image }}
+v3=V3
 
 #check binlog switch
 enablePump={{ .Values.binlog.pump.create | default false }}
@@ -13,8 +13,8 @@ enablePump={{ .Values.binlog.pump.create | default false }}
 clusterName={{ template "cluster.name" . }}
 clusterName=${clusterName:-"TiDB-Cluster"}
 
-#TiDB dashboard copy and replace name
-if [[ $tidbversion =~ $v3 ]]
+#TiDB dashboard
+if [[ $TiDBVersion =~ $V3 ]]
 then
     cp /tmp/dashboard-v3/tidbV3.json /grafana-dashboard-definitions/tidb/
 else
@@ -22,8 +22,8 @@ else
 fi
 sed -i 's/TIDB-Cluster-TiDB/'$clusterName'-TiDB/g'  /grafana-dashboard-definitions/tidb/tidbV*.json
 
-#Overview dashboard copy and replace name
-if [[ $tidbversion =~ $v3 ]]
+#Overview dashboard
+if [[ $TiDBVersion =~ $V3 ]]
 then
     cp /tmp/dashboard-v3/overviewV3.json /grafana-dashboard-definitions/tidb/
 else
@@ -31,8 +31,8 @@ else
 fi
 sed -i 's/TIDB-Cluster-Overview/'$clusterName'-Overview/g'  /grafana-dashboard-definitions/tidb/overviewV*.json
 
-#PD dashboard copy and replace name
-if [[ $pdversion =~ $v3 ]]
+#PD dashboard
+if [[ $PDVersion =~ $V3 ]]
 then
     cp /tmp/dashboard-v3/pdV3.json /grafana-dashboard-definitions/tidb/
 else
@@ -40,8 +40,8 @@ else
 fi
 sed -i 's/TIDB-Cluster-PD/'$clusterName'-PD/g'  /grafana-dashboard-definitions/tidb/pdV*.json
 
-#TIKV dashboard copy and replace name
-if [[ $tikvversion =~ $v3 ]]
+#TIKV dashboard
+if [[ $TiKVVersion =~ $V3 ]]
 then
     cp /tmp/dashboard-v3/tikvV3.json /grafana-dashboard-definitions/tidb/
     cp /tmp/dashboard-v3/extra/tikvSummaryV3.json /grafana-dashboard-definitions/tidb/
@@ -54,15 +54,18 @@ fi
 sed -i 's/TIDB-Cluster-TiKV/'$clusterName'-TiKV/g'  /grafana-dashboard-definitions/tidb/tikvV*.json
 
 
-if [[ $tikvversion =~ $v3 ]] && $enablePump
+#Binlog dashboard
+if [[ $TiKVVersion =~ $V3 ]]
 then
     if $enablePump
     then
         cp /tmp/dashboard-v3/binlogV3.json /grafana-dashboard-definitions/tidb/
+        sed -i 's/TIDB-Cluster-Binlog/'$clusterName'-Binlog/g'  /grafana-dashboard-definitions/tidb/binlogV3.json
     fi
 else
     if $enablePump
     then
         cp /tmp/dashboard-v3/binlogV2.json /grafana-dashboard-definitions/tidb/
+        sed -i 's/TIDB-Cluster-Binlog/'$clusterName'-Binlog/g'  /grafana-dashboard-definitions/tidb/binlogV2.json
     fi
 fi
