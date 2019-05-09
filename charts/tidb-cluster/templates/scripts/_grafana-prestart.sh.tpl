@@ -4,6 +4,7 @@
 TiDBVersion={{ .Values.tidb.image }}
 TiKVVersion={{ .Values.tikv.image }}
 PDVersion={{ .Values.pd.image }}
+PumpVersion={{ .Values.binlog.pump.image }}
 v3=V3
 
 #check binlog switch
@@ -55,7 +56,7 @@ sed -i 's/TIDB-Cluster-TiKV/'$clusterName'-TiKV/g'  /grafana-dashboard-definitio
 
 
 #Binlog dashboard
-if [[ $TiKVVersion =~ $V3 ]]
+if [[ $PumpVersion =~ $V3 ]]
 then
     if $enablePump
     then
