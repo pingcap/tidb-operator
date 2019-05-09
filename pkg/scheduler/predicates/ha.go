@@ -29,8 +29,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
-	kubescheme "k8s.io/client-go/kubernetes/scheme"
-	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -49,10 +47,11 @@ type ha struct {
 }
 
 // NewHA returns a Predicate
-func NewHA(kubeCli kubernetes.Interface, cli versioned.Interface) Predicate {
+func NewHA(kubeCli kubernetes.Interface, cli versioned.Interface, recorder record.EventRecorder) Predicate {
 	h := &ha{
-		kubeCli: kubeCli,
-		cli:     cli,
+		kubeCli:  kubeCli,
+		cli:      cli,
+		recorder: recorder,
 	}
 	h.podListFn = h.realPodListFn
 	h.podGetFn = h.realPodGetFn
@@ -61,13 +60,6 @@ func NewHA(kubeCli kubernetes.Interface, cli versioned.Interface) Predicate {
 	h.pvcListFn = h.realPVCListFn
 	h.updatePVCFn = h.realUpdatePVCFn
 	h.acquireLockFn = h.realAcquireLock
-
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.Infof)
-	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
-		Interface: eventv1.New(h.kubeCli.CoreV1().RESTClient()).Events("")})
-	h.recorder = eventBroadcaster.NewRecorder(kubescheme.Scheme, apiv1.EventSource{Component: "tidb-scheduler"})
-
 	return h
 }
 
