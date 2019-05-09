@@ -19,7 +19,7 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
     > **Note:** `kubeadm` validates installed Docker version during the installation process. If you are using Docker later than 18.06, there would be warning messages. The cluster might still be working, but it is recommended to use a Docker version between 17.03 and 18.06 for better compatibility.
 
 - [Helm Client](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client): 2.9.0 or later
-- [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl): at least 1.10 required, 1.13 or later recommended
+- [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl): 1.10 at least, 1.13 or later recommended
 
     > **Note:** The outputs of different versions of `kubectl` might be slightly different.
 
