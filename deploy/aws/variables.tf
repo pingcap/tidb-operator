@@ -83,3 +83,25 @@ variable "tikv_count" {
 variable "tidb_count" {
   default = 2
 }
+
+// Be careful about changing the instance types, it may break the user data and local volume setup
+variable "pd_instance_type" {
+  default = "m5d.xlarge"
+}
+
+variable "tikv_instance_type" {
+  default = "i3.2xlarge"
+}
+
+variable "tidb_instance_type" {
+  default = "c4.4xlarge"
+}
+
+variable "monitor_instance_type" {
+  default = "c5.xlarge"
+}
+
+variable "tikv_root_volume_size" {
+  default = "100"
+}
+

@@ -99,31 +99,31 @@ module "eks" {
       key_name = "${module.key-pair.key_name}"
       # WARNING: if you change instance type, you must also modify the corresponding disk mounting in pd-userdata.sh script
       # instance_type = "c5d.xlarge" # 4c, 8G, 100G NVMe SSD
-      instance_type = "m5d.xlarge" # 4c, 16G, 150G NVMe SSD
+      instance_type = "${var.pd_instance_type}" # m5d.xlarge 4c, 16G, 150G NVMe SSD
       root_volume_size = "50" # rest NVMe disk for PD data
       public_ip = false
       kubelet_extra_args = "--register-with-taints=dedicated=pd:NoSchedule --node-labels=dedicated=pd"
       asg_desired_capacity = "${var.pd_count}"
       asg_max_size  = "${var.pd_count + 2}"
-      additional_userdata = "${file("pd-userdata.sh")}"
+      additional_userdata = "${file("userdata.sh")}"
     },
     { # tikv
       name = "tikv_worker_group"
       key_name = "${module.key-pair.key_name}"
       # WARNING: if you change instance type, you must also modify the corresponding disk mounting in tikv-userdata.sh script
-      instance_type = "i3.2xlarge" # 8c, 61G, 1.9T NVMe SSD
+      instance_type = "${var.tikv_instance_type}" # i3.2xlarge 8c, 61G, 1.9T NVMe SSD
       root_volume_type = "gp2"
       root_volume_size = "100"
       public_ip = false
       kubelet_extra_args = "--register-with-taints=dedicated=tikv:NoSchedule --node-labels=dedicated=tikv"
       asg_desired_capacity = "${var.tikv_count}"
       asg_max_size = "${var.tikv_count + 2}"
-      additional_userdata = "${file("tikv-userdata.sh")}"
+      additional_userdata = "${file("userdata.sh")}"
     },
     { # tidb
       name = "tidb_worker_group"
       key_name = "${module.key-pair.key_name}"
-      instance_type = "c4.4xlarge" # 16c, 30G
+      instance_type = "${var.tidb_instance_type}" # c4.4xlarge 16c, 30G
       root_volume_type = "gp2"
       root_volume_size = "100"
       public_ip = false
@@ -134,7 +134,7 @@ module "eks" {
     { # monitor
       name = "monitor_worker_group"
       key_name = "${module.key-pair.key_name}"
-      instance_type = "c5.xlarge" # 4c, 8G
+      instance_type = "${var.monitor_instance_type}" # c5.xlarge 4c, 8G
       root_volume_type = "gp2"
       root_volume_size = "100"
       public_ip = false
