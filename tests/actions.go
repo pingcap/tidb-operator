@@ -300,6 +300,8 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"scheduler.kubeSchedulerImageName": oi.SchedulerImage,
 		"controllerManager.logLevel":       oi.LogLevel,
 		"scheduler.logLevel":               "2",
+		"controllerManager.replicas":       "2",
+		"scheduler.replicas":               "2",
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
@@ -1395,7 +1397,7 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 	end := time.Now()
 	start := end.Add(-time.Minute)
 	values := url.Values{}
-	values.Set("query", `sum(tikv_pd_heartbeat_tick_total{type="leader"}) by (job)`)
+	values.Set("query", "histogram_quantile(0.999, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))")
 	values.Set("start", fmt.Sprintf("%d", start.Unix()))
 	values.Set("end", fmt.Sprintf("%d", end.Unix()))
 	values.Set("step", "30")
@@ -1508,7 +1510,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 }
 
 func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
-	glog.Infof("begin to clean adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
+	glog.Infof("checking adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
 	jobName := fmt.Sprintf("%s-%s", info.ClusterName, info.BackupName)
 	fn := func() (bool, error) {
