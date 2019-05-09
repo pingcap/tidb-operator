@@ -95,17 +95,17 @@ func (p *stableScheduling) Filter(instanceName string, pod *apiv1.Pod, nodes []a
 	nodeName := p.findPreviousNodeInTC(tc, pod)
 
 	if nodeName != "" {
-		glog.V(4).Infof("found previous node %q for pod %q in TiDB cluster %q", nodeName, podName, tcName)
+		glog.V(2).Infof("found previous node %q for pod %q in TiDB cluster %q", nodeName, podName, tcName)
 		for _, node := range nodes {
 			if node.Name == nodeName {
-				glog.V(4).Infof("previous node %q for pod %q in TiDB cluster %q exists in candicates, filter out other nodes", nodeName, podName, tcName)
+				glog.V(2).Infof("previous node %q for pod %q in TiDB cluster %q exists in candicates, filter out other nodes", nodeName, podName, tcName)
 				return []apiv1.Node{node}, nil
 			}
 		}
 		msg := fmt.Sprintf("cannot run on its previous node %q", nodeName)
 		p.recorder.Event(pod, apiv1.EventTypeWarning, UnableToRunOnPreviousNodeReason, msg)
 	} else {
-		glog.V(4).Infof("no previous node exists for pod %q in TiDB cluster %q", podName, tcName)
+		glog.V(2).Infof("no previous node exists for pod %q in TiDB cluster %s/%q", podName, ns, tcName)
 	}
 
 	return nodes, nil
