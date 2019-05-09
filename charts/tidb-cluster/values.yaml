@@ -66,16 +66,68 @@ pd:
       # cpu: 4000m
       # memory: 4Gi
       storage: 1Gi
-  # nodeSelector is used for scheduling pod,
-  # if nodeSelectorRequired is true, all the following labels must be matched
-  nodeSelector: {}
-    # kind: pd
-    # # zone is comma separated availability zone list
-    # zone: cn-bj1-01,cn-bj1-02
-    # # region is comma separated region list
-    # region: cn-bj1
-  # Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
-  # refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+
+  ## affinity defines pd scheduling rules,it's default settings is empty.
+  ## please read the affinity document before set your scheduling rule:
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+  ## The following is typical example of affinity settings:
+  ## The PodAntiAffinity setting of the example keeps PD pods does not co-locate on a topology node as far as possible to improve the high availability of PD on Kubernetes.
+  ## The NodeAffinity setting of the example ensure that the PD pods can only be scheduled to nodes with label:[type="pd"],
+  # affinity:
+  #   podAntiAffinity:
+  #     preferredDuringSchedulingIgnoredDuringExecution:
+  #     # this term work when the nodes have the label named region
+  #     - weight: 10
+  #       podAffinityTerm:
+  #         labelSelector:
+  #           matchLabels:
+  #             app.kubernetes.io/instance: <cluster.name>
+  #             app.kubernetes.io/component: "pd"
+  #         topologyKey: "region"
+  #         namespaces:
+  #         - <namespace of tidb cluster>
+  #     # this term work when the nodes have the label named zone
+  #     - weight: 20
+  #       podAffinityTerm:
+  #         labelSelector:
+  #           matchLabels:
+  #             app.kubernetes.io/instance: <cluster.name>
+  #             app.kubernetes.io/component: "pd"
+  #         topologyKey: "zone"
+  #         namespaces:
+  #         - <namespace of tidb cluster>
+  #     # this term work when the nodes have the label named rack
+  #     - weight: 40
+  #       podAffinityTerm:
+  #         labelSelector:
+  #           matchLabels:
+  #             app.kubernetes.io/instance: <cluster.name>
+  #             app.kubernetes.io/component: "pd"
+  #         topologyKey: "rack"
+  #         namespaces:
+  #         - <namespace of tidb cluster>
+  #     # this term work when the nodes have the label named kubernetes.io/hostname
+  #     - weight: 80
+  #       podAffinityTerm:
+  #         labelSelector:
+  #           matchLabels:
+  #             app.kubernetes.io/instance: <cluster.name>
+  #             app.kubernetes.io/component: "pd"
+  #         topologyKey: "kubernetes.io/hostname"
+  #         namespaces:
+  #         - <namespace of tidb cluster>
+  #   nodeAffinity:
+  #     requiredDuringSchedulingIgnoredDuringExecution:
+  #       nodeSelectorTerms:
+  #       - matchExpressions:
+  #         - key: "kind"
+  #           operator: In
+  #           values:
+  #           - "pd"
+
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
   tolerations: []
   # - key: node-role
   #   operator: Equal
@@ -107,10 +159,14 @@ tikv:
       # cpu: 12000m
       # memory: 24Gi
       storage: 10Gi
-  nodeSelector: {}
-    # kind: tikv
-    # zone: cn-bj1-01,cn-bj1-02
-    # region: cn-bj1
+
+  ## affinity defines tikv scheduling rules,affinity default settings is empty.
+  ## please read the affinity document before set your scheduling rule:
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
   tolerations: []
   # - key: node-role
   #   operator: Equal
@@ -166,10 +222,15 @@ tidb:
     requests: {}
     #   cpu: 12000m
     #   memory: 12Gi
-  nodeSelector: {}
-    # kind: tidb
-    # zone: cn-bj1-01,cn-bj1-02
-    # region: cn-bj1
+
+
+  ## affinity defines tikv scheduling rules,affinity default settings is empty.
+  ## please read the affinity document before set your scheduling rule:
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
   tolerations: []
   # - key: node-role
   #   operator: Equal

@@ -332,12 +332,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 				},
 				Spec: corev1.PodSpec{
 					SchedulerName: tc.Spec.SchedulerName,
-					Affinity: util.AffinityForNodeSelector(
-						ns,
-						tc.Spec.TiKV.NodeSelectorRequired,
-						tikvLabel,
-						tc.Spec.TiKV.NodeSelector,
-					),
+					Affinity:      tc.Spec.TiKV.Affinity,
 					Containers: []corev1.Container{
 						{
 							Name:            v1alpha1.TiKVMemberType.String(),

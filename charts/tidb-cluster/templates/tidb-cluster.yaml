@@ -27,11 +27,8 @@ spec:
   {{- if .Values.pd.resources }}
 {{ toYaml .Values.pd.resources | indent 4 }}
   {{- end }}
-  {{- if .Values.pd.nodeSelector }}
-    nodeSelector:
-{{ toYaml .Values.pd.nodeSelector | indent 6 }}
-  {{- end }}
-    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}
+    affinity:
+{{ toYaml .Values.pd.affinity | indent 6 }}
   {{- if .Values.pd.tolerations }}
     tolerations:
 {{ toYaml .Values.pd.tolerations | indent 4 }}
@@ -46,11 +43,8 @@ spec:
   {{- if .Values.tikv.resources }}
 {{ toYaml .Values.tikv.resources | indent 4 }}
   {{- end }}
-  {{- if .Values.tikv.nodeSelector }}
-    nodeSelector:
-{{ toYaml .Values.tikv.nodeSelector | indent 6 }}
-  {{- end }}
-    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}
+    affinity:
+{{ toYaml .Values.tikv.affinity | indent 6 }}
   {{- if .Values.tikv.tolerations }}
     tolerations:
 {{ toYaml .Values.tikv.tolerations | indent 4 }}
@@ -68,11 +62,8 @@ spec:
   {{- if .Values.tidb.resources }}
 {{ toYaml .Values.tidb.resources | indent 4 }}
   {{- end }}
-  {{- if .Values.tidb.nodeSelector }}
-    nodeSelector:
-{{ toYaml .Values.tidb.nodeSelector | indent 6 }}
-  {{- end }}
-    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}
+    affinity:
+{{ toYaml .Values.tidb.affinity | indent 6 }}
   {{- if .Values.tidb.tolerations }}
     tolerations:
 {{ toYaml .Values.tidb.tolerations | indent 4 }}

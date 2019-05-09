@@ -472,12 +472,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 				},
 				Spec: corev1.PodSpec{
 					SchedulerName: tc.Spec.SchedulerName,
-					Affinity: util.AffinityForNodeSelector(
-						ns,
-						tc.Spec.PD.NodeSelectorRequired,
-						label.New().Instance(instanceName).PD(),
-						tc.Spec.PD.NodeSelector,
-					),
+					Affinity:      tc.Spec.PD.Affinity,
 					Containers: []corev1.Container{
 						{
 							Name:            v1alpha1.PDMemberType.String(),

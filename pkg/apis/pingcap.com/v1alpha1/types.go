@@ -15,10 +15,9 @@ package v1alpha1
 
 import (
 	apps "k8s.io/api/apps/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -109,25 +108,23 @@ type TidbClusterStatus struct {
 // PDSpec contains details of PD member
 type PDSpec struct {
 	ContainerSpec
-	Replicas             int32               `json:"replicas"`
-	NodeSelector         map[string]string   `json:"nodeSelector,omitempty"`
-	NodeSelectorRequired bool                `json:"nodeSelectorRequired,omitempty"`
-	StorageClassName     string              `json:"storageClassName,omitempty"`
-	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
+	Replicas         int32               `json:"replicas"`
+	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
+	StorageClassName string              `json:"storageClassName,omitempty"`
+	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
 // TiDBSpec contains details of PD member
 type TiDBSpec struct {
 	ContainerSpec
-	Replicas             int32                 `json:"replicas"`
-	NodeSelector         map[string]string     `json:"nodeSelector,omitempty"`
-	NodeSelectorRequired bool                  `json:"nodeSelectorRequired,omitempty"`
-	StorageClassName     string                `json:"storageClassName,omitempty"`
-	Tolerations          []corev1.Toleration   `json:"tolerations,omitempty"`
-	BinlogEnabled        bool                  `json:"binlogEnabled,omitempty"`
-	MaxFailoverCount     int32                 `json:"maxFailoverCount,omitempty"`
-	SeparateSlowLog      bool                  `json:"separateSlowLog,omitempty"`
-	SlowLogTailer        TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
+	Replicas         int32                 `json:"replicas"`
+	Affinity         *corev1.Affinity      `json:"affinity,omitempty"`
+	StorageClassName string                `json:"storageClassName,omitempty"`
+	Tolerations      []corev1.Toleration   `json:"tolerations,omitempty"`
+	BinlogEnabled    bool                  `json:"binlogEnabled,omitempty"`
+	MaxFailoverCount int32                 `json:"maxFailoverCount,omitempty"`
+	SeparateSlowLog  bool                  `json:"separateSlowLog,omitempty"`
+	SlowLogTailer    TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
 }
 
 // TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB
@@ -138,11 +135,10 @@ type TiDBSlowLogTailerSpec struct {
 // TiKVSpec contains details of PD member
 type TiKVSpec struct {
 	ContainerSpec
-	Replicas             int32               `json:"replicas"`
-	NodeSelector         map[string]string   `json:"nodeSelector,omitempty"`
-	NodeSelectorRequired bool                `json:"nodeSelectorRequired,omitempty"`
-	StorageClassName     string              `json:"storageClassName,omitempty"`
-	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
+	Replicas         int32               `json:"replicas"`
+	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
+	StorageClassName string              `json:"storageClassName,omitempty"`
+	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
