@@ -1,0 +1,18 @@
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: admission-webhook-example-rbac
+subjects:
+- kind: ServiceAccount
+  namespace: pingcap
+  name: admission-webhook-example-sa
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  namespace: pingcap
+  name: admission-webhook-example-sa

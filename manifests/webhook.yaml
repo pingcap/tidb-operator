@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: admission-webhook-example-svc
+  namespace: pingcap
+  labels:
+    app: admission-webhook-example
+spec:
+  ports:
+  - port: 443
+    targetPort: 443
+  selector:
+    app: admission-webhook-example
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admission-webhook-example-deployment
+  namespace: pingcap
+  labels:
+    app: admission-webhook-example
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admission-webhook-example
+  template:
+    metadata:
+      namespace: pingcap
+      labels:
+        app: admission-webhook-example
+    spec:
+      serviceAccount: admission-webhook-example-sa
+      containers:
+        - name: admission-webhook-example
+          image: hub.pingcap.net/yinliang/pingcap/tidb-operator:latest
+          imagePullPolicy: Always
+          command: 
+          - /usr/local/bin/tidb-webhook
+          env:
+            - name: NAMESPACE
+              value: pingcap
+            - name: SERVICENAME
+              value: admission-webhook-example-svc
