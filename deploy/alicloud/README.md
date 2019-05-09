@@ -5,8 +5,9 @@
 ## Requirements
 
 - [aliyun-cli](https://github.com/aliyun/aliyun-cli) >= 3.0.15 and [configure aliyun-cli](https://www.alibabacloud.com/help/doc-detail/90766.htm?spm=a2c63.l28256.a3.4.7b52a893EFVglq)
+> **Note:** The access key used must be granted permissions to control resources.
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.12
-- [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.1
+- [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.1 and <= 2.11.0
 - [jq](https://stedolan.github.io/jq/download/) >= 1.6
 - [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) 0.11.*
 
@@ -38,6 +39,8 @@ export TF_VAR_ALICLOUD_ACCESS_KEY=<YOUR_ACCESS_KEY>
 export TF_VAR_ALICLOUD_SECRET_KEY=<YOUR_SECRET_KEY>
 ```
 
+The `variables.tf` file contains default settings of variables used for deploying the cluster, you can change it or use `-var` option to override a specific variable to fit your need.
+
 Apply the stack:
 
 ```shell
@@ -47,7 +50,27 @@ $ terraform init
 $ terraform apply
 ```
 
-`terraform apply` will take 5 to 10 minutes to create the whole stack, once complete, you can interact with the ACK cluster using `kubectl` and `helm`: 
+`terraform apply` will take 5 to 10 minutes to create the whole stack, once complete, basic cluster information will be printed:
+
+```
+Apply complete! Resources: 3 added, 0 changed, 1 destroyed.
+
+Outputs:
+
+bastion_ip = 1.2.3.4
+bastion_key_file = /root/tidb-operator/deploy/alicloud/credentials/tidb-cluster-bastion-key.pem
+cluster_id = ca57c6071f31f458da66965ceddd1c31b
+kubeconfig_file = /root/tidb-operator/deploy/alicloud/.terraform/modules/a2078f76522ae433133fc16e24bd21ae/kubeconfig_tidb-cluster
+monitor_endpoint = 1.2.3.4:3000
+region = cn-hangzhou
+tidb_port = 4000
+tidb_slb_ip = 192.168.5.53
+tidb_version = v2.1.0
+vpc_id = vpc-bp16wcbu0xhbg833fymmc
+worker_key_file = /root/tidb-operator/deploy/alicloud/credentials/tidb-cluster-node-key.pem
+```
+
+You can then interact with the ACK cluster using `kubectl` and `helm` (`cluster_name` is `tidb-cluster` by default): 
 
 ```shell
 $ export KUBECONFIG=$PWD/credentials/kubeconfig_<cluster_name>
@@ -55,34 +78,48 @@ $ kubectl version
 $ helm ls
 ```
 
-Then you can connect the TiDB cluster via the bastion instance:
+## Access the DB
+
+You can connect the TiDB cluster via the bastion instance, all necessary information are in the output printed after installation is finished:
 
 ```shell
-$ ssh -i credentials/bastion-key.pem root@<bastion_ip>
+$ ssh -i credentials/<cluster_name>-bastion-key.pem root@<bastion_ip>
 $ mysql -h <tidb_slb_ip> -P <tidb_port> -u root
 ```
 
 ## Monitoring 
 
-Visit `<monitor_endpoint>` to view the grafana dashboards.
+Visit `<monitor_endpoint>` to view the grafana dashboards. You can find this information in the output of installation.
 
-> It is strongly recommended to set `monitor_slb_network_type` to `intranet` for security if you already have a VPN connecting to your VPC or plan to setup one.
+The initial login credentials are:
+    - User: admin
+    - Password: admin
+
+> **Warning:** It is strongly recommended to set `monitor_slb_network_type` to `intranet` in `variables.tf` for security if you already have a VPN connecting to your VPC or plan to setup one.
 
 ## Upgrade TiDB cluster
 
-To upgrade TiDB cluster, modify `tidb_version` variable to a higher version in variables.tf and run `terraform apply`.
+To upgrade TiDB cluster, modify `tidb_version` variable to a higher version in `variables.tf` and run `terraform apply`.
+
+This may take a while to complete, watch the process using command:
+
+```
+watch kubectl get pods --namespace tidb -o wide
+```
 
 ## Scale TiDB cluster
 
-To scale TiDB cluster, modify `tikv_count` or `tidb_count` to your desired count, and then run `terraform apply`.
+To scale TiDB cluster, modify `tikv_count` or `tidb_count` to your desired numbers, and then run `terraform apply`.
 
 ## Destroy
+
+It may take some while to finish destroying the cluster.
 
 ```shell
 $ terraform destroy
 ```
 
-> Note: You have to manually delete the cloud disk used by monitoring node after destroying if you don't need it anymore.
+> **Note:** You have to manually delete the cloud disk used by monitoring node in Aliyun's console after destroying if you don't need it anymore.
 
 ## Customize
 
