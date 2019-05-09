@@ -200,25 +200,30 @@ type OperatorConfig struct {
 }
 
 type TidbClusterConfig struct {
-	BackupName       string
-	Namespace        string
-	ClusterName      string
-	OperatorTag      string
-	PDImage          string
-	TiKVImage        string
-	TiDBImage        string
-	StorageClassName string
-	Password         string
-	InitSql          string
-	RecordCount      string
-	InsertBatchSize  string
-	Resources        map[string]string
-	Args             map[string]string
-	blockWriter      *blockwriter.BlockWriterCase
-	Monitor          bool
-	UserName         string
-	InitSecretName   string
-	BackupSecretName string
+	BackupName             string
+	Namespace              string
+	ClusterName            string
+	OperatorTag            string
+	PDImage                string
+	TiKVImage              string
+	TiDBImage              string
+	StorageClassName       string
+	Password               string
+	InitSql                string
+	RecordCount            string
+	InsertBatchSize        string
+	Resources              map[string]string
+	Args                   map[string]string
+	blockWriter            *blockwriter.BlockWriterCase
+	Monitor                bool
+	UserName               string
+	InitSecretName         string
+	BackupSecretName       string
+	EnableConfigMapRollout bool
+
+	PDMaxReplicas       int
+	TiKVGrpcConcurrency int
+	TiDBTokenLimit      int
 
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
@@ -274,6 +279,17 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 		"tidb.passwordSecretName": tc.InitSecretName,
 		"tidb.initSql":            tc.InitSql,
 		"monitor.create":          strconv.FormatBool(tc.Monitor),
+		"enableConfigMapRollout":  strconv.FormatBool(tc.EnableConfigMapRollout),
+	}
+
+	if tc.PDMaxReplicas > 0 {
+		set["pd.maxRelicas"] = strconv.Itoa(tc.PDMaxReplicas)
+	}
+	if tc.TiKVGrpcConcurrency > 0 {
+		set["tikv.grpcConcurrency"] = strconv.Itoa(tc.TiKVGrpcConcurrency)
+	}
+	if tc.TiDBTokenLimit > 0 {
+		set["tidb.tokenLimit"] = strconv.Itoa(tc.TiDBTokenLimit)
 	}
 
 	for k, v := range tc.Resources {
@@ -553,6 +569,12 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		if info.Monitor {
 			glog.V(4).Infof("check tidb monitor normal")
 			if b, err := oa.monitorNormal(info); !b && err == nil {
+				return false, nil
+			}
+		}
+		if info.EnableConfigMapRollout {
+			glog.V(4).Info("check tidb cluster configuration synced")
+			if b, err := oa.checkTidbClusterConfigUpdated(tc, info); !b && err == nil {
 				return false, nil
 			}
 		}
@@ -1361,6 +1383,20 @@ func (oa *operatorActions) monitorNormal(clusterInfo *TidbClusterConfig) (bool, 
 		glog.Infof("check [%s/%s]'s grafana data failed: %v", ns, monitorDeploymentName, err)
 		return false, nil
 	}
+	return true, nil
+}
+
+func (oa *operatorActions) checkTidbClusterConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) (bool, error) {
+	pdCli := oa.pdControl.GetPDClient(tc)
+	config, err := pdCli.GetConfig()
+	if err != nil {
+		glog.Errorf("failed to get PD configuraion from tidb cluster [%s,%s]", tc.Namespace, tc.Name)
+		return false, nil
+	}
+	if config.Replication.MaxReplicas != uint64(clusterInfo.PDMaxReplicas) {
+		return false, nil
+	}
+	// TODO: check if the tikv & tidb configuration updated
 	return true, nil
 }
 

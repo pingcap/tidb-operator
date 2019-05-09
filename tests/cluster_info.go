@@ -52,6 +52,21 @@ func (tc *TidbClusterConfig) UpgradeAll(tag string) *TidbClusterConfig {
 		UpgradeTiDB("pingcap/tidb:" + tag)
 }
 
+func (tc *TidbClusterConfig) UpdatePdMaxReplicas(maxReplicas int) *TidbClusterConfig {
+	tc.PDMaxReplicas = maxReplicas
+	return tc
+}
+
+func (tc *TidbClusterConfig) UpdateTiKVGrpcConcurrency(concurrency int) *TidbClusterConfig {
+	tc.TiKVGrpcConcurrency = concurrency
+	return tc
+}
+
+func (tc *TidbClusterConfig) UpdateTiDBTokenLimit(tokenLimit int) *TidbClusterConfig {
+	tc.TiDBTokenLimit = tokenLimit
+	return tc
+}
+
 func (tc *TidbClusterConfig) DSN(dbName string) string {
 	return fmt.Sprintf("root:%s@tcp(%s-tidb.%s:4000)/%s", tc.Password, tc.ClusterName, tc.Namespace, dbName)
 }
