@@ -5,7 +5,7 @@ TiDBVersion={{ .Values.tidb.image }}
 TiKVVersion={{ .Values.tikv.image }}
 PDVersion={{ .Values.pd.image }}
 PumpVersion={{ .Values.binlog.pump.image }}
-v3=V3
+V3=v3
 
 #check binlog switch
 enablePump={{ .Values.binlog.pump.create | default false }}
@@ -66,7 +66,7 @@ then
 else
     if $enablePump
     then
-        cp /tmp/dashboard-v3/binlogV2.json /grafana-dashboard-definitions/tidb/
+        cp /tmp/dashboard-v2/binlogV2.json /grafana-dashboard-definitions/tidb/
         sed -i 's/TIDB-Cluster-Binlog/'$clusterName'-Binlog/g'  /grafana-dashboard-definitions/tidb/binlogV2.json
     fi
 fi
