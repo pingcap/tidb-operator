@@ -54,7 +54,7 @@ minikube start --docker-env https_proxy=http://127.0.0.1:1086 \
   --docker-env http_proxy=http://127.0.0.1:1086
 ```
 
-> **Note:** If you are running minikube with VMs (default), the `127.0.0.1` is the VM itself, you might want to use your real IP address of the host machine in some cases.
+> **Note:** As minikube is running with VMs (default), the `127.0.0.1` is the VM itself, you might want to use your real IP address of the host machine in some cases.
 
 See [minikube setup](https://kubernetes.io/docs/setup/minikube/) for more options to
 configure your virtual machine and Kubernetes cluster.
