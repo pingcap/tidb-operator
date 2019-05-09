@@ -93,7 +93,10 @@ func main() {
 			"tidb.resources.requests.memory": "1Gi",
 			"monitor.persistent":             "true",
 		},
-		Args:             map[string]string{},
+		Args: map[string]string{
+			"binlog.drainer.workerCount": "1024",
+			"binlog.drainer.txnBatch":    "512",
+		},
 		Monitor:          true,
 		BlockWriteConfig: conf.BlockWriter,
 	}
@@ -166,9 +169,7 @@ func main() {
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
 	go oa.BeginInsertDataToOrDie(cluster1)
-	defer oa.StopInsertDataTo(cluster1)
 	go oa.BeginInsertDataToOrDie(cluster2)
-	defer oa.StopInsertDataTo(cluster2)
 
 	// scale out cluster1 and cluster2
 	cluster1.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
