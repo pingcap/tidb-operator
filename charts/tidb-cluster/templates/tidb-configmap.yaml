@@ -13,4 +13,4 @@ metadata:
     app.kubernetes.io/component: tidb
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 data:
-{{ include "tidb-configmap.data" . | indent 2}}
+{{ include "tidb-configmap.data" . | indent 2 }}

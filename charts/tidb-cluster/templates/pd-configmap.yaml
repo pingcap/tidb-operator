@@ -13,4 +13,4 @@ metadata:
     app.kubernetes.io/component: pd
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 data:
-{{ include "pd-configmap.data" . | indent 2}}
+{{ include "pd-configmap.data" . | indent 2 }}
