@@ -43,19 +43,6 @@ func (oa *operatorActions) BackupRestore(from, to *TidbClusterConfig) error {
 		return err
 	}
 
-	go oa.BeginInsertDataToOrDie(from)
-	err = oa.DeployScheduledBackup(from)
-	if err != nil {
-		glog.Errorf("cluster:[%s] scheduler happen error: %v", from.ClusterName, err)
-		return err
-	}
-
-	err = oa.CheckScheduledBackup(from)
-	if err != nil {
-		glog.Errorf("cluster:[%s] scheduler failed error: %v", from.ClusterName, err)
-		return err
-	}
-
 	err = oa.DeployIncrementalBackup(from, to)
 	if err != nil {
 		return err
@@ -72,7 +59,8 @@ func (oa *operatorActions) BackupRestore(from, to *TidbClusterConfig) error {
 	glog.Infof("cluster[%s] begin insert data", from.ClusterName)
 	go oa.BeginInsertDataTo(from)
 
-	time.Sleep(5 * time.Minute)
+	glog.Infof("waiting 1 minutes to insert into more records")
+	time.Sleep(1 * time.Minute)
 
 	glog.Infof("cluster[%s] stop insert data", from.ClusterName)
 	oa.StopInsertDataTo(from)
@@ -89,7 +77,18 @@ func (oa *operatorActions) BackupRestore(from, to *TidbClusterConfig) error {
 		return false, nil
 	}
 
-	return wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
+	if err := wait.Poll(DefaultPollInterval, 30*time.Minute, fn); err != nil {
+		return err
+	}
+
+	go oa.BeginInsertDataToOrDie(from)
+	err = oa.DeployScheduledBackup(from)
+	if err != nil {
+		glog.Errorf("cluster:[%s] scheduler happen error: %v", from.ClusterName, err)
+		return err
+	}
+
+	return oa.CheckScheduledBackup(from)
 }
 
 func (oa *operatorActions) BackupRestoreOrDie(from, to *TidbClusterConfig) {
