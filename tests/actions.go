@@ -283,7 +283,7 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 	}
 
 	if tc.PDMaxReplicas > 0 {
-		set["pd.maxRelicas"] = strconv.Itoa(tc.PDMaxReplicas)
+		set["pd.maxReplicas"] = strconv.Itoa(tc.PDMaxReplicas)
 	}
 	if tc.TiKVGrpcConcurrency > 0 {
 		set["tikv.grpcConcurrency"] = strconv.Itoa(tc.TiKVGrpcConcurrency)
@@ -479,6 +479,12 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	allJobsSet := label.Label{}.Instance(info.ClusterName).String()
 	if res, err := exec.Command("kubectl", "delete", "jobs", "-n", info.Namespace, "-l", allJobsSet).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to delete jobs: %v, %s", err, string(res))
+	}
+
+	// delete all configmaps
+	allConfigMaps := label.Label{}.Instance(info.ClusterName).String()
+	if res, err := exec.Command("kubectl", "delete", "configmaps", "-n", info.Namespace, "-l", allConfigMaps).CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to delete configmaps: %v, %s", err, string(res))
 	}
 
 	patchPVCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s | awk '{print $1}' | "+
@@ -1393,7 +1399,12 @@ func (oa *operatorActions) checkTidbClusterConfigUpdated(tc *v1alpha1.TidbCluste
 		glog.Errorf("failed to get PD configuraion from tidb cluster [%s,%s]", tc.Namespace, tc.Name)
 		return false, nil
 	}
-	if config.Replication.MaxReplicas != uint64(clusterInfo.PDMaxReplicas) {
+	if clusterInfo.PDMaxReplicas > 0 && config.Replication.MaxReplicas != uint64(clusterInfo.PDMaxReplicas) {
+		glog.Errorf("check [%s/%s] configuration updated failed: desired [%d], actual [%d] not equal",
+			tc.Namespace,
+			tc.Name,
+			clusterInfo.PDMaxReplicas,
+			config.Replication.MaxReplicas)
 		return false, nil
 	}
 	// TODO: check if the tikv & tidb configuration updated
