@@ -44,7 +44,11 @@ spec:
       {{- if .Values.tidb.initSql }}
       - name: init-sql
         configMap:
+          {{- if .Values.enableConfigMapRollout }}
+          name: {{ template "cluster.name" . }}-tidb-{{ template "tidb-configmap.data-digest" . }}
+          {{- else }}
           name: {{ template "cluster.name" . }}-tidb
+          {{- end }}
           items:
           - key: init-sql
             path: init.sql
