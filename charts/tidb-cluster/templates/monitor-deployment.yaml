@@ -97,7 +97,7 @@ spec:
         lifecycle:
             postStart:
               exec:
-                command: ["/bin/sh", "/tmp/grafanaPrestart.sh"]
+                command: ["/bin/bash", "/tmp/grafanaPrestart.sh"]
         {{- if .Values.monitor.grafana.resources }}
         resources:
 {{ toYaml .Values.monitor.grafana.resources | indent 12 }}
@@ -136,8 +136,14 @@ spec:
           - mountPath: /etc/grafana/provisioning/dashboards
             name: dashboards-provisioning
             readOnly: false
-          - mountPath: /tmp/dashboard-gz
-            name: dashboard-gz
+          - mountPath: /tmp/dashboard-v2
+            name: dashboard-v2
+            readOnly: false
+          - mountPath: /tmp/dashboard-v3
+            name: dashboard-v3
+            readOnly: false
+          - mountPath: /tmp/dashboard-v3/extra
+            name: dashboard-extra-v3
             readOnly: false
           - mountPath: /grafana-dashboard-definitions/tidb
             name: grafana-dashboard
@@ -178,8 +184,14 @@ spec:
       - emptyDir: {}
         name: grafana-dashboard
       - configMap:
-          name: {{ template "cluster.name" . }}-monitor-dashboard
-        name: dashboard-gz
+          name: {{ template "cluster.name" . }}-monitor-dashboard-v2
+        name: dashboard-v2
+      - configMap:
+          name: {{ template "cluster.name" . }}-monitor-dashboard-v3
+        name: dashboard-v3
+      - configMap:
+          name: {{ template "cluster.name" . }}-monitor-dashboard-extra-v3
+        name: dashboard-extra-v3
       - configMap:
           name: {{ template "cluster.name" . }}-monitor
           items:
