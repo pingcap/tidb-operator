@@ -11,7 +11,7 @@ Greatly improved ease of use
 - One-command deployment for AWS, Aliyun
 - Minikube deployment for testing
 - Tkctl cli tool
-- Backup refactor
+- Refactor backup chart for ease use
 - Refine initializer job
 - Grafana monitor dashboard improved, support multi-version
 - Improved user guide
@@ -28,7 +28,6 @@ Bug fixes
 
 Other improvements
 
-- Refactor backup chart for ease use
 - Remove pushgateway from TiKV pod
 - Add GitHub templates for issue reporting and PR
 - Automatically set the scheduler K8s version
