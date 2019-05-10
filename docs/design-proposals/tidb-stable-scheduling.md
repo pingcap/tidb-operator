@@ -12,6 +12,7 @@ previous node in certain circumstances.
 - [Use Cases](#use-cases)
   * [No need to update IP addresses of TiDB in load balancer outside of the Kubernetes cluster](#no-need-to-update-ip-addresses-of-tidb-in-load-balancer-outside-of-the-kubernetes-cluster)
 - [Proposal](#proposal)
+  * [Feature gate](#feature-gate)
 - [Implementation](#implementation)
 - [Alternatives](#alternatives)
   * [Deploy TiDB members on all nodes](#deploy-tidb-members-on-all-nodes)
@@ -72,7 +73,7 @@ a rolling update, we prefer to schedule new pod of TiDB member to its previous n
 
 When a TiDB cluster is running in a dedicated Kubernetes cluster or nodes of
 TiDB cluster are reserved for it. After a rolling update of TiDB cluster is
-done, new pods of TiDB member will be scheduled to their previous nodes. User
+done, new pods of TiDB members will be scheduled to their previous nodes. User
 does not need to update IP addresses in load balancer.
 
 ## Proposal
@@ -86,6 +87,36 @@ Note that it's not possible for tidb-scheduler to schedule the new pod of TiDB
 member back to its node if the node does not meet the new scheduling
 requirements (e.g. CPU/Memory, Taints).
 
+Here is the workflow when the user performs a rolling update for TiDB cluster
+`demo` which has 3 replicas of TiDB members:
+
+- `demo-tidb-2` is running on the node kube-node-2
+- the user performs an update
+- after the pod of `demo-tidb-2` is terminated, the new pod of `demo-tidb-2` is
+  created
+- kube-scheduler sends feasible nodes which can run the pod `demo-tidb-2` to
+  tidb-scheduler (scheduler extender)
+- tidb-scheduler filters out other nodes if the original node exists in these
+  nodes, kube-scheduler will choose `kube-node-2` to run `demo-tidb-2`
+  - note that if `kube-node-2` exist in the nodes sent from kube-scheduler, it
+    meets all criteria to `demo-tidb-2`
+- tidb-scheduler does nothing if the original node does not exist in these
+  nodes (e.g. not enough resources left for demo-tidb-2 if another pod is
+  assigned to kube-node-2 after kube-demo-2 is deleted), kube-scheduler will
+  prioritize all feasible nodes to find the best match
+
+### Feature gate
+
+Add a new flag in tidb-scheduler which accepts a comma-separated list of
+string.
+
+```
+tidb-scheduler --features StableScheduling
+```
+
+tidb-scheduler will enable this functionality only when `StableScheduling`
+feature is enabled.
+
 ## Implementation
 
 At first, we track assigned node of TiDB member in status of TiDBCluster.
@@ -98,8 +129,9 @@ type TiDBMember struct {
 }
 ```
 
-In new predicate `StableScheduling`, we filter out other nodes for TiDB pod if
-previous node for this TiDB member exists in candidate nodes.
+In new predicate `StableScheduling` in tidb-scheduler, we filter out other
+nodes for TiDB pod if previous node for this TiDB member exists in candidate
+nodes.
 
 ## Alternatives
 
