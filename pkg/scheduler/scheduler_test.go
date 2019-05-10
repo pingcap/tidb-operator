@@ -41,13 +41,13 @@ func TestSchedulerFilter(t *testing.T) {
 
 		s := &scheduler{
 			predicates: map[string][]predicates.Predicate{
-				label.PDLabelVal: []predicates.Predicate{
+				label.PDLabelVal: {
 					newFakeErrPredicate(),
 				},
-				label.TiKVLabelVal: []predicates.Predicate{
+				label.TiKVLabelVal: {
 					newFakeErrPredicate(),
 				},
-				label.TiDBLabelVal: []predicates.Predicate{
+				label.TiDBLabelVal: {
 					newFakeErrPredicate(),
 				},
 			},

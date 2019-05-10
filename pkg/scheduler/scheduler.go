@@ -16,6 +16,7 @@ package scheduler
 import (
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/scheduler/predicates"
 	apiv1 "k8s.io/api/core/v1"
@@ -52,18 +53,21 @@ func NewScheduler(kubeCli kubernetes.Interface, cli versioned.Interface) Schedul
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(kubescheme.Scheme, apiv1.EventSource{Component: "tidb-scheduler"})
-	return &scheduler{
-		predicates: map[string][]predicates.Predicate{
-			label.PDLabelVal: []predicates.Predicate{
-				predicates.NewHA(kubeCli, cli, recorder),
-			},
-			label.TiKVLabelVal: []predicates.Predicate{
-				predicates.NewHA(kubeCli, cli, recorder),
-			},
-			label.TiDBLabelVal: []predicates.Predicate{
-				predicates.NewStableScheduling(kubeCli, cli, recorder),
-			},
+	predicatesByComponent := map[string][]predicates.Predicate{
+		label.PDLabelVal: {
+			predicates.NewHA(kubeCli, cli, recorder),
 		},
+		label.TiKVLabelVal: {
+			predicates.NewHA(kubeCli, cli, recorder),
+		},
+	}
+	if features.DefaultFeatureGate.Enabled(features.StableScheduling) {
+		predicatesByComponent[label.TiDBLabelVal] = []predicates.Predicate{
+			predicates.NewStableScheduling(kubeCli, cli, recorder),
+		}
+	}
+	return &scheduler{
+		predicates: predicatesByComponent,
 	}
 }
 
