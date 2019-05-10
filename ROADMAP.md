@@ -40,12 +40,12 @@ This document defines the roadmap for TiDB Operator development.
 ## v1.0.0-beta.2
 - [x] AWS one-command deployment
 - [x] Aliyun one-command deployment
-- [ ] GCP one-command deployment
 - [x] Minikube deployment
 - [x] Simple CLI tool
-- [ ] TiDB 3.0-beta support
+- [x] TiDB 3.0-beta support
 
 ## v1.0.0-beta.3
+- [ ] GCP one-command deployment
 - [ ] Schedule TiDB pod on previous node
 - [ ] Rolling update when ConfigMap changes
 - [ ] Allow pausing during TiDB upgrade
