@@ -138,3 +138,5 @@ Other improvements
 - docs/minikube: add instructions to access Grafana (#476)
 - support-multi-version-dashboard (#473)
 - docs/aliyun: update aliyun deploy docs after testing (#474)
+- GKE local SSD size warning (#467)
+- update roadmap (#376)
