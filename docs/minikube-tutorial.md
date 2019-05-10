@@ -183,6 +183,24 @@ Or run SQL command directly:
 mysql -h 127.0.0.1 -P 4000 -uroot -e 'select tidb_version();'
 ```
 
+### Monitoring
+
+Use `kubectl port-forward` to access Grafana:
+
+```
+kubectl port-forward svc/demo-grafana 3000:3000
+```
+
+And then access Grafana at `http://localhost:3000`.
+
+Alternatively, Minikube provides `minikube service` to expose service more conveniently, use:
+
+```
+minikube service demo-grafana
+```
+
+And it will automatically set up the proxy and open browser to the correct URL.
+
 ### Delete TiDB cluster
 
 ```
