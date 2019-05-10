@@ -92,6 +92,7 @@ func main() {
 			"tidb.resources.requests.cpu":    "500m",
 			"tidb.resources.requests.memory": "1Gi",
 			"monitor.persistent":             "true",
+			"discovery.image":                conf.OperatorImage,
 		},
 		Args: map[string]string{
 			"binlog.drainer.workerCount": "1024",
@@ -129,6 +130,7 @@ func main() {
 			"tidb.resources.requests.memory": "1Gi",
 			// TODO assert the the monitor's pvc exist and clean it when bootstrapping
 			"monitor.persistent": "true",
+			"discovery.image":    conf.OperatorImage,
 		},
 		Args:             map[string]string{},
 		Monitor:          true,
