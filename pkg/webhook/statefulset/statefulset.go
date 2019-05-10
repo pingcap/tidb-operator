@@ -20,15 +20,24 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	"k8s.io/api/admission/v1beta1"
 	apps "k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
+)
+
+var (
+	versionCli versioned.Interface
 )
 
 func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
-	glog.Infof("admit statefulsets")
+
+	name := ar.Request.Name
+	namespace := ar.Request.Namespace
+	glog.Infof("admit statefulsets [%s/%s]", name, namespace)
 
 	setResource := metav1.GroupVersionResource{Group: "apps", Version: "v1beta1", Resource: "statefulsets"}
 	if ar.Request.Resource != setResource {
@@ -37,30 +46,35 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		return util.ARFail(err)
 	}
 
-	cli, _, err := util.GetNewClient()
-	if err != nil {
-		glog.Errorf("failed to get kubernetes Clientset: %v", err)
-		return util.ARFail(err)
-	}
+	if versionCli == nil {
+		cfg, err := rest.InClusterConfig()
+		if err != nil {
+			glog.Errorf("failed to get config: %v", err)
+			return util.ARFail(err)
+		}
 
-	name := ar.Request.Name
-	namespace := ar.Request.Namespace
+		versionCli, err = versioned.NewForConfig(cfg)
+		if err != nil {
+			glog.Errorf("failed to create Clientset: %v", err)
+			return util.ARFail(err)
+		}
+	}
 
 	raw := ar.Request.OldObject.Raw
 	set := apps.StatefulSet{}
 	deserializer := util.GetCodec()
 	if _, _, err := deserializer.Decode(raw, nil, &set); err != nil {
-		glog.Error(err)
+		glog.Errorf("deseriralizer fail to decode request %v", err)
 		return util.ARFail(err)
 	}
 
-	tc, err := cli.PingcapV1alpha1().TidbClusters(namespace).Get(set.Labels[label.InstanceLabelKey], metav1.GetOptions{})
+	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(set.Labels[label.InstanceLabelKey], metav1.GetOptions{})
 	if err != nil {
 		glog.Errorf("fail to fetch tidbcluster info namespace %s clustername(instance) %s err %v", namespace, set.Labels[label.InstanceLabelKey], err)
 		return util.ARFail(err)
 	}
 
-	if set.Labels[label.ComponentLabelKey] == "tidb" {
+	if set.Labels[label.ComponentLabelKey] == label.TiDBLabelVal {
 		protect, ok := tc.Annotations[label.AnnTiDBPartition]
 
 		if ok {

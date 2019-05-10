@@ -1,44 +1,106 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: admission-webhook-cr
+  labels:
+    app: admission-webhook
+rules:
+- apiGroups: ["apps"]
+  resources: ["statefulsets"]
+  verbs: ["get"]
+- apiGroups: ["pingcap.com"]
+  resources: ["tidbclusters"]
+  verbs: ["get"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admission-webhook-sa
+  labels:
+    app: admission-webhook
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: admission-webhook-crb
+  labels:
+    app: admission-webhook
+subjects:
+- kind: ServiceAccount
+  name: admission-webhook-sa
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admission-webhook-cr
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: admission-webhook-example-svc
-  namespace: pingcap
+  name: admission-webhook-svc
   labels:
-    app: admission-webhook-example
+    app: admission-webhook
 spec:
   ports:
   - port: 443
     targetPort: 443
   selector:
-    app: admission-webhook-example
+    app: admission-webhook
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: admission-webhook-example-deployment
-  namespace: pingcap
+  name: admission-webhook-deployment
   labels:
-    app: admission-webhook-example
+    app: admission-webhook
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: admission-webhook-example
+      app: admission-webhook
   template:
     metadata:
-      namespace: pingcap
       labels:
-        app: admission-webhook-example
+        app: admission-webhook
     spec:
-      serviceAccount: admission-webhook-example-sa
+      serviceAccountName: admission-webhook-sa
       containers:
-        - name: admission-webhook-example
-          image: hub.pingcap.net/yinliang/pingcap/tidb-operator:latest
+        - name: admission-webhook-pod
+          image: pingcap/tidb-operator:latest
           imagePullPolicy: Always
-          command: 
-          - /usr/local/bin/tidb-webhook
-          env:
-            - name: NAMESPACE
-              value: pingcap
-            - name: SERVICENAME
-              value: admission-webhook-example-svc
+          command:
+            - /usr/local/bin/tidb-admission-controller
+            - -tlsCertFile=/etc/webhook/certs/cert.pem
+            - -tlsKeyFile=/etc/webhook/certs/key.pem
+            - -alsologtostderr
+            - -v=2
+            - 2>&1
+          volumeMounts:
+            - name: webhook-certs
+              mountPath: /etc/webhook/certs
+              readOnly: true
+      volumes:
+        - name: webhook-certs
+          secret:
+            secretName: admission-webhook-certs
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validation-webhook-cfg
+  labels:
+    app: admission-webhook
+webhooks:
+  - name: statefulset-webhook.pingcap.net
+    failurePolicy: Fail
+    clientConfig:
+      service:
+        name: admission-webhook-svc
+        namespace: default
+        path: "/statefulsets"
+      caBundle: ${CA_BUNDLE}
+    rules:
+      - operations: [ "UPDATE" ]
+        apiGroups: [ "apps", "" ]
+        apiVersions: ["v1beta1"]
+        resources: ["statefulsets"]

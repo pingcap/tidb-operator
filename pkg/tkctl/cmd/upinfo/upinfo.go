@@ -15,6 +15,8 @@ package upinfo
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -23,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/spf13/cobra"
-	"io"
 	apps "k8s.io/api/apps/v1beta1"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,7 +40,7 @@ const (
 		You can omit --tidbcluster=<name> option by running 'tkc use <clusterName>',
 `
 	upinfoExample = `
-		# get current tidb cluster info (set by tkc use)
+		# get current tidb cluster info (set by tkc user)
 		tkc upinfo
 
 		# get specified tidb cluster component upgrade info
@@ -162,6 +163,12 @@ func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podLis
 		w.WriteLine(readable.LEVEL_0, "Namespace:\t%s", tc.Namespace)
 		w.WriteLine(readable.LEVEL_0, "CreationTimestamp:\t%s", tc.CreationTimestamp)
 		w.WriteLine(readable.LEVEL_0, "Statu:\t%s", dbPhase)
+		if dbPhase == v1alpha1.UpgradePhase {
+			if len(podList.Items) != 0 {
+				pod := podList.Items[0]
+				w.WriteLine(readable.LEVEL_0, "Image:\t%s ---> %s", pod.Spec.Containers[0].Image, tc.Spec.TiDB.Image)
+			}
+		}
 		{
 			w.WriteLine(readable.LEVEL_1, "Name\tState\t")
 			w.WriteLine(readable.LEVEL_1, "----\t-----\t")

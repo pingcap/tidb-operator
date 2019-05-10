@@ -28,10 +28,22 @@ import (
 // admitFunc is the type we use for all of our validators
 type admitFunc func(v1beta1.AdmissionReview) *v1beta1.AdmissionResponse
 
+// marshal responseAdmissionReview and send back
+func marshalAndWrite(response v1beta1.AdmissionReview, w http.ResponseWriter) {
+
+	respBytes, err := json.Marshal(response)
+	if err != nil {
+		glog.Errorf("%v", err)
+	}
+	if _, err := w.Write(respBytes); err != nil {
+		glog.Errorf("%v", err)
+	}
+
+}
+
 // serve handles the http portion of a request prior to handing to an admit
 // function
 func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
-
 	var body []byte
 	var contentType string
 	responseAdmissionReview := v1beta1.AdmissionReview{}
@@ -44,12 +56,14 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 			body = data
 		} else {
 			responseAdmissionReview.Response = util.ARFail(err)
-			goto returnData
+			marshalAndWrite(responseAdmissionReview, w)
+			return
 		}
 	} else {
 		err := errors.New("request body is nil!")
 		responseAdmissionReview.Response = util.ARFail(err)
-		goto returnData
+		marshalAndWrite(responseAdmissionReview, w)
+		return
 	}
 
 	// verify the content type is accurate
@@ -57,7 +71,8 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 	if contentType != "application/json" {
 		err := errors.New("expect application/json")
 		responseAdmissionReview.Response = util.ARFail(err)
-		goto returnData
+		marshalAndWrite(responseAdmissionReview, w)
+		return
 	}
 
 	// The AdmissionReview that was sent to the webhook
@@ -71,14 +86,8 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 	// Return the same UID
 	responseAdmissionReview.Response.UID = requestedAdmissionReview.Request.UID
 
-returnData:
-	respBytes, err := json.Marshal(responseAdmissionReview)
-	if err != nil {
-		glog.Errorf("%v", err)
-	}
-	if _, err := w.Write(respBytes); err != nil {
-		glog.Errorf("%v", err)
-	}
+	marshalAndWrite(responseAdmissionReview, w)
+
 }
 
 func ServeStatefulSets(w http.ResponseWriter, r *http.Request) {

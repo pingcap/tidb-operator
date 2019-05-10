@@ -29,7 +29,7 @@ docker-push: docker
 docker: build
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest" images/tidb-operator
 
-build: controller-manager scheduler discovery webhook
+build: controller-manager scheduler discovery admission-controller
 
 controller-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
@@ -40,8 +40,8 @@ scheduler:
 discovery:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery cmd/discovery/main.go
 
-webhook:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-webhook cmd/webhook/main.go
+admission-controller:
+	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-controller cmd/admission-controller/main.go
 
 e2e-setup:
 	# ginkgo doesn't work with retool for Go 1.11

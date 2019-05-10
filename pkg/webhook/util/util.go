@@ -16,34 +16,9 @@ package util
 import (
 	"crypto/tls"
 
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
-
-func GetNewClient() (versioned.Interface, kubernetes.Interface, error) {
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		glog.Errorf("failed to get config: %v", err)
-		return nil, nil, err
-	}
-
-	cli, err := versioned.NewForConfig(cfg)
-	if err != nil {
-		glog.Errorf("failed to create Clientset: %v", err)
-		return nil, nil, err
-	}
-
-	kubeCli, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		glog.Errorf("failed to get kubernetes Clientset: %v", err)
-		return nil, nil, err
-	}
-	return cli, kubeCli, nil
-}
 
 // toAdmissionResponse is a helper function to create an AdmissionResponse
 // with an embedded error
@@ -65,8 +40,8 @@ func ARSuccess() *v1beta1.AdmissionResponse {
 }
 
 // config tls cert for server
-func ConfigTLS(cert []byte, key []byte) (*tls.Config, error) {
-	sCert, err := tls.X509KeyPair(cert, key)
+func ConfigTLS(certFile string, keyFile string) (*tls.Config, error) {
+	sCert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		return nil, err
 	}
