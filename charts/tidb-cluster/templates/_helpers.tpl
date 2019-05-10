@@ -51,7 +51,6 @@ Encapsulate TiKV configmap data for consistent digest calculation
 {{- define "tikv-configmap.data" -}}
 startup-script: |-
 {{ tuple "scripts/_start_tikv.sh.tpl" . | include "helm-toolkit.utils.template" | indent 2 }}
-
 config-file: |-
     {{- if .Values.tikv.config }}
 {{ .Values.tikv.config | indent 2 }}
@@ -74,7 +73,7 @@ startup-script: |-
 init-sql: |-
 {{ .Values.tidb.initSql | indent 2 }}
   {{- end }}
-  config-file: |-
+config-file: |-
     {{- if .Values.tidb.config }}
 {{ .Values.tidb.config | indent 2 }}
     {{- else }}
