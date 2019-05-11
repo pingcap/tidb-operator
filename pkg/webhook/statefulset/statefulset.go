@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -31,7 +32,12 @@ import (
 
 var (
 	versionCli versioned.Interface
+	deserializer runtime.Decoder
 )
+
+func init() {
+	deserializer = util.GetCodec()
+}
 
 func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
@@ -62,7 +68,6 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 	raw := ar.Request.OldObject.Raw
 	set := apps.StatefulSet{}
-	deserializer := util.GetCodec()
 	if _, _, err := deserializer.Decode(raw, nil, &set); err != nil {
 		glog.Errorf("deseriralizer fail to decode request %v", err)
 		return util.ARFail(err)
