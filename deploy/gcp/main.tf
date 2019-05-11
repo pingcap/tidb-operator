@@ -27,14 +27,22 @@ resource "google_compute_network" "vpc_network" {
 }
 
 resource "google_compute_subnetwork" "private_subnet" {
-  ip_cidr_range = "10.0.1.0/24"
+  ip_cidr_range = "172.31.252.0/22"
   name = "private-subnet"
   network = "${google_compute_network.vpc_network.self_link}"
   project = "${var.GCP_PROJECT}"
+  secondary_ip_range {
+    ip_cidr_range = "172.30.0.0/16"
+    range_name = "pods-${var.GCP_REGION}"
+  }
+  secondary_ip_range {
+    ip_cidr_range = "172.31.224.0/20"
+    range_name = "services-${var.GCP_REGION}"
+  }
 }
 
 resource "google_compute_subnetwork" "public_subnet" {
-  ip_cidr_range = "10.0.4.0/24"
+  ip_cidr_range = "172.29.252.0/22"
   name = "public-subnet"
   network = "${google_compute_network.vpc_network.self_link}"
   project = "${var.GCP_PROJECT}"
@@ -50,40 +58,74 @@ resource "google_container_cluster" "cluster" {
   private_cluster_config {
     enable_private_endpoint = false
     enable_private_nodes = true
-    master_ipv4_cidr_block = "172.16.0.0/28"
+    master_ipv4_cidr_block = "172.31.64.0/28"
   }
 
   ip_allocation_policy {
     use_ip_aliases = true
   }
 
-//  remove_default_node_pool = true
+  remove_default_node_pool = true
   initial_node_count = 1
 }
 
-//resource "google_container_node_pool" "node_pool" {
-//  cluster = "${google_container_cluster.cluster.name}"
-//  location = "${google_container_cluster.cluster.location}"
-//  name = "the-node-pool"
-//  initial_node_count = "3"
-//
-//  node_config {
-//    machine_type = "n1-standard-1"
-//  }
-//
-//}
+resource "google_container_node_pool" "pd_pool" {
+  project = "${var.GCP_PROJECT}"
+  cluster = "${google_container_cluster.cluster.name}"
+  location = "${google_container_cluster.cluster.location}"
+  name = "pd-pool"
+  initial_node_count = "1"
 
-resource "tls_private_key" "bastion" {
-  algorithm = "RSA"
-  rsa_bits = 4096
+  node_config {
+    machine_type = "n1-standard-1"
+    local_ssd_count = 1
+  }
+
 }
 
-resource "google_compute_project_metadata_item" "ssh-key" {
-  key = "ssh-key"
-  value = "${tls_private_key.bastion.public_key_openssh}"
+resource "google_container_node_pool" "tikv_pool" {
+  project = "${var.GCP_PROJECT}"
+  cluster = "${google_container_cluster.cluster.name}"
+  location = "${google_container_cluster.cluster.location}"
+  name = "tikv-pool"
+  initial_node_count = "1"
+
+  node_config {
+    machine_type = "n1-standard-1"
+    local_ssd_count = 1
+  }
+
+}
+
+resource "google_container_node_pool" "tidb_pool" {
+  project = "${var.GCP_PROJECT}"
+  cluster = "${google_container_cluster.cluster.name}"
+  location = "${google_container_cluster.cluster.location}"
+  name = "tidb-pool"
+  initial_node_count = "1"
+
+  node_config {
+    machine_type = "n1-standard-1"
+  }
+
+}
+
+resource "google_compute_firewall" "allow_ssh_bastion" {
+  name = "allow-ssh-bastion"
+  network = "${google_compute_network.vpc_network.self_link}"
+  project = "${var.GCP_PROJECT}"
+
+  allow {
+    protocol = "tcp"
+    ports = ["22"]
+  }
+  source_ranges = ["0.0.0.0/0"]
+  target_tags = ["bastion"]
 }
 
 resource "google_compute_instance" "bastion" {
+  project = "${var.GCP_PROJECT}"
+  zone = "${var.GCP_REGION}-a"
   machine_type = "f1-micro"
   name = "bastion"
   "boot_disk" {
@@ -93,9 +135,9 @@ resource "google_compute_instance" "bastion" {
   }
   "network_interface" {
     subnetwork = "${google_compute_subnetwork.public_subnet.self_link}"
+    access_config {}
   }
+  tags = ["bastion"]
 
-  metadata {
-    ssh-key = "${}"
-  }
+  metadata_startup_script = "sudo apt-get install -y mysql-client && curl -s https://packagecloud.io/install/repositories/akopytov/sysbench/script.rpm.sh | bash && sudo apt-get -y install sysbench"
 }
