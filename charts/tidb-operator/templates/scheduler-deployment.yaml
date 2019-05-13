@@ -35,6 +35,9 @@ spec:
           - /usr/local/bin/tidb-scheduler
           - -v={{ .Values.scheduler.logLevel }}
           - -port=10262
+        {{- if .Values.scheduler.extraArgs }}
+          {{ toYaml .Values.scheduler.extraArgs }}
+        {{- end }}
       - name: kube-scheduler
         image: {{ required "scheduler.kubeSchedulerImageName is required" .Values.scheduler.kubeSchedulerImageName }}:{{ .Values.scheduler.kubeSchedulerImageTag | default (split "-" .Capabilities.KubeVersion.GitVersion)._0 }}
         imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}

@@ -37,12 +37,15 @@ func main() {
 	oa := tests.NewOperatorActions(cli, kubeCli, 5*time.Second, conf, nil)
 
 	operatorInfo := &tests.OperatorConfig{
-		Namespace:          "pingcap",
-		ReleaseName:        "operator",
-		Image:              conf.OperatorImage,
-		Tag:                conf.OperatorTag,
-		SchedulerImage:     "mirantis/hypokube",
-		SchedulerTag:       "final",
+		Namespace:      "pingcap",
+		ReleaseName:    "operator",
+		Image:          conf.OperatorImage,
+		Tag:            conf.OperatorTag,
+		SchedulerImage: "mirantis/hypokube",
+		SchedulerTag:   "final",
+		SchedulerExtraArgs: []string{
+			"-features=StableScheduling",
+		},
 		LogLevel:           "2",
 		WebhookServiceName: "webhook-service",
 		WebhookSecretName:  "webhook-secret",
@@ -180,7 +183,13 @@ func main() {
 	// upgrade test
 	upgradeTidbVersions := conf.GetUpgradeTidbVersions()
 	for _, upgradeTidbVersion := range upgradeTidbVersions {
+		oldTidbMembersAssignedNodes := map[string]map[string]string{}
 		for _, clusterInfo := range clusterInfos {
+			assignedNodes, err := oa.GetTidbMemberAssignedNodes(clusterInfo)
+			if err != nil {
+				glog.Fatal(err)
+			}
+			oldTidbMembersAssignedNodes[clusterInfo.ClusterName] = assignedNodes
 			clusterInfo = clusterInfo.UpgradeAll(upgradeTidbVersion)
 			if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
 				glog.Fatal(err)
@@ -188,6 +197,9 @@ func main() {
 		}
 		for _, clusterInfo := range clusterInfos {
 			if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+				glog.Fatal(err)
+			}
+			if err = oa.CheckTidbMemberAssignedNodes(clusterInfo, oldTidbMembersAssignedNodes[clusterInfo.ClusterName]); err != nil {
 				glog.Fatal(err)
 			}
 		}
