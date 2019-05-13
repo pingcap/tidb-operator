@@ -102,7 +102,7 @@ Here is the workflow when the user performs a rolling update for TiDB cluster
     meets all criteria to `demo-tidb-2`
 - tidb-scheduler does nothing if the original node does not exist in these
   nodes (e.g. not enough resources left for demo-tidb-2 if another pod is
-  assigned to kube-node-2 after kube-demo-2 is deleted), kube-scheduler will
+  assigned to kube-node-2 after demo-tidb-2 is deleted), kube-scheduler will
   prioritize all feasible nodes to find the best match
 
 ### Feature gate
@@ -187,7 +187,7 @@ not fit.
 
 ### Cannot schedule new pod of TiDB member back to its node if the node does not meet new requirements
 
-If we upgrade TiDB pods to request more resources, it is possible that its node node
+If we upgrade TiDB pods to request more resources, it is possible that its node
 may not have enough resources for the new pod.
 
 It applies if some other scheduling requirements are changed, e.g.
