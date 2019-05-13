@@ -13,12 +13,15 @@
 package ops
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+const retryLimit = 15
 
 type TruncateOptions struct {
 	Namespace string
@@ -53,41 +56,52 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 		})
 	}
 
-	stdout, stderr, err := exec("find", "/var/lib/tikv/db", "-name", "*.sst", "-o", "-name", "*.save")
-	if err != nil {
-		glog.Errorf("list sst files: stderr=%s err=%s", stderr, err.Error())
-		return errors.Annotate(err, "list sst files")
-	}
-
-	sstCandidates := make(map[string]bool)
-
-	for _, f := range strings.Split(stdout, "\n") {
-		f = strings.TrimSpace(f)
-		if len(f) > 0 {
-			sstCandidates[f] = true
+	retryCount := 0
+	for ; retryCount < retryLimit; retryCount++ {
+		stdout, stderr, err := exec("find", "/var/lib/tikv/db", "-name", "*.sst", "-o", "-name", "*.save")
+		if err != nil {
+			glog.Errorf("list sst files: stderr=%s err=%s", stderr, err.Error())
+			return errors.Annotate(err, "list sst files")
 		}
-	}
 
-	sst := ""
-	for k := range sstCandidates {
-		if strings.HasSuffix(k, ".sst") && !sstCandidates[k+".save"] {
-			sst = k
+		sstCandidates := make(map[string]bool)
+
+		for _, f := range strings.Split(stdout, "\n") {
+			f = strings.TrimSpace(f)
+			if len(f) > 0 {
+				sstCandidates[f] = true
+			}
 		}
-	}
-	if len(sst) == 0 {
-		return errors.New("cannot find a sst file")
+
+		sst := ""
+		for k := range sstCandidates {
+			if strings.HasSuffix(k, ".sst") && !sstCandidates[k+".save"] {
+				sst = k
+			}
+		}
+		if len(sst) == 0 {
+			return errors.New("cannot find a sst file")
+		}
+
+		_, stderr, err = exec("cp", sst, sst+".save")
+		if err != nil {
+			glog.Warningf("backup sst file: stderr=%s err=%s", stderr, err.Error())
+			//return errors.Annotate(err, "backup sst file")
+			continue
+		}
+
+		_, stderr, err = exec("truncate", "-s", "0", sst)
+		if err != nil {
+			glog.Warningf("truncate sst file: stderr=%s err=%s", stderr, err.Error())
+			//return errors.Annotate(err, "truncate sst file")
+			continue
+		}
+
+		break
 	}
 
-	_, stderr, err = exec("cp", sst, sst+".save")
-	if err != nil {
-		glog.Errorf("backup sst file: stderr=%s err=%s", stderr, err.Error())
-		return errors.Annotate(err, "backup sst file")
-	}
-
-	_, stderr, err = exec("truncate", "-s", "0", sst)
-	if err != nil {
-		glog.Errorf("truncate sst file: stderr=%s err=%s", stderr, err.Error())
-		return errors.Annotate(err, "truncate sst file")
+	if retryCount == retryLimit {
+		return errors.New("failed to truncate sst file after " + strconv.Itoa(retryLimit) + " trials")
 	}
 
 	return nil
