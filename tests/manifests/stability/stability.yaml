@@ -45,8 +45,18 @@ spec:
     image: ""
     imagePullPolicy: Always
     command:
-    - /usr/local/bin/stability-test
-    - --config=/etc/tidb-operator-stability/config.yaml
+    - /bin/sh
+    - -c
+    - |
+      set -e
+      for i in `seq 1 100`
+      do
+        echo "######################## $i begin ########################"
+        /usr/local/bin/stability-test \
+        --config=/etc/tidb-operator-stability/config.yaml \
+        --slack-webhook-url=""
+        echo "######################## $i end ##########################"
+      done
     volumeMounts:
     - mountPath: /logDir
       name: logdir

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/slack"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
 	"github.com/pingcap/errors"
@@ -33,17 +35,6 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		glog.Errorf("failed to get the cluster: ns=%s tc=%s err=%s", info.Namespace, info.ClusterName, err.Error())
 		return err
 	}
-	countUpStores := func(tc *v1alpha1.TidbCluster) int {
-		cnt := 0
-		for _, s := range tc.Status.TiKV.Stores {
-			if s.State == v1alpha1.TiKVStateUp {
-				cnt++
-			}
-		}
-		return cnt
-	}
-
-	origUps := countUpStores(tc)
 
 	// checkout pd config
 	pdCfg, err := oa.pdControl.GetPDClient(tc).GetConfig()
@@ -70,7 +61,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		glog.Infof("truncate sst file target store: id=%s pod=%s", store.ID, store.PodName)
 	}
 
-	oa.emitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s", store.PodName))
+	oa.EmitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s", store.PodName))
 	glog.Infof("deleting pod: [%s/%s] and wait 1 minute for the pod to terminate", info.Namespace, store.PodName)
 	err = cli.CoreV1().Pods(info.Namespace).Delete(store.PodName, nil)
 	if err != nil {
@@ -88,7 +79,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	if err != nil {
 		return err
 	}
-	oa.emitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s/%s", info.Namespace, store.PodName))
+	oa.EmitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s/%s", info.Namespace, store.PodName))
 
 	// delete tikv pod
 	glog.Infof("deleting pod: [%s/%s] again", info.Namespace, store.PodName)
@@ -110,20 +101,13 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 			if !ok {
 				return false, nil
 			}
-			ups := countUpStores(tc)
-			glog.Infof("cluster: [%s/%s] check up stores: current=%d origin=%d",
-				info.Namespace, info.ClusterName,
-				ups, origUps)
-			if ups < origUps {
-				return false, nil
-			}
 			return true, nil
 		})
 }
 
 func (oa *operatorActions) TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) {
 	if err := oa.TruncateSSTFileThenCheckFailover(info, tikvFailoverPeriod); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -197,7 +181,7 @@ func (oa *operatorActions) CheckFailoverPendingOrDie(clusters []*TidbClusterConf
 		}
 		return true, nil
 	}); err != nil {
-		panic("failed to check failover pending")
+		slack.NotifyAndPanic(fmt.Errorf("failed to check failover pending"))
 	}
 }
 
@@ -278,7 +262,7 @@ func (oa *operatorActions) CheckFailoverOrDie(clusters []*TidbClusterConfig, fau
 		}
 		return true, nil
 	}); err != nil {
-		panic("failed to check failover")
+		slack.NotifyAndPanic(fmt.Errorf("failed to check failover"))
 	}
 }
 
@@ -318,7 +302,7 @@ func (oa *operatorActions) CheckRecoverOrDie(clusters []*TidbClusterConfig) {
 		}
 		return true, nil
 	}); err != nil {
-		panic("failed to check recover")
+		slack.NotifyAndPanic(fmt.Errorf("failed to check recover"))
 	}
 }
 
@@ -475,7 +459,7 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 	affectedPods := map[string]*corev1.Pod{}
 	apiserverPod, err := GetApiserverPod(oa.kubeCli, faultNode)
 	if err != nil {
-		panic(fmt.Errorf("can't find apiserver in node:%s", faultNode))
+		slack.NotifyAndPanic(fmt.Errorf("can't find apiserver in node:%s", faultNode))
 	}
 	if apiserverPod != nil {
 		affectedPods[apiserverPod.GetName()] = apiserverPod
@@ -496,7 +480,7 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 	}
 	dnsPod, err := GetDnsPod(oa.kubeCli, faultNode)
 	if err != nil {
-		panic(fmt.Errorf("can't find controller-manager in node:%s", faultNode))
+		slack.NotifyAndPanic(fmt.Errorf("can't find controller-manager in node:%s", faultNode))
 	}
 	if dnsPod != nil {
 		affectedPods[dnsPod.GetName()] = dnsPod
@@ -523,7 +507,7 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 
 func (oa *operatorActions) CheckK8sAvailableOrDie(excludeNodes map[string]string, excludePods map[string]*corev1.Pod) {
 	if err := oa.CheckK8sAvailable(excludeNodes, excludePods); err != nil {
-		panic(err)
+		slack.NotifyAndPanic(err)
 	}
 }
 

@@ -20,11 +20,10 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
-	"k8s.io/apiserver/pkg/util/logs"
-
 	"github.com/pingcap/tidb-operator/tests"
-	"github.com/pingcap/tidb-operator/tests/backup"
+	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
+	"k8s.io/apiserver/pkg/util/logs"
 )
 
 func main() {
@@ -35,7 +34,7 @@ func main() {
 	conf.ChartDir = "/charts"
 
 	cli, kubeCli := client.NewCliOrDie()
-	oa := tests.NewOperatorActions(cli, kubeCli, 5*time.Second, conf)
+	oa := tests.NewOperatorActions(cli, kubeCli, 5*time.Second, conf, nil)
 
 	operatorInfo := &tests.OperatorConfig{
 		Namespace:          "pingcap",
@@ -90,9 +89,16 @@ func main() {
 				"tidb.resources.limits.memory":   "4Gi",
 				"tidb.resources.requests.cpu":    "200m",
 				"tidb.resources.requests.memory": "1Gi",
+				"discovery.image":                conf.OperatorImage,
 			},
 			Args:    map[string]string{},
 			Monitor: true,
+			BlockWriteConfig: blockwriter.Config{
+				TableNum:    1,
+				Concurrency: 1,
+				BatchSize:   1,
+				RawSize:     1,
+			},
 		},
 		{
 			Namespace:        name2,
@@ -121,9 +127,16 @@ func main() {
 				"tidb.resources.limits.memory":   "4Gi",
 				"tidb.resources.requests.cpu":    "200m",
 				"tidb.resources.requests.memory": "1Gi",
+				"discovery.image":                conf.OperatorImage,
 			},
 			Args:    map[string]string{},
 			Monitor: true,
+			BlockWriteConfig: blockwriter.Config{
+				TableNum:    1,
+				Concurrency: 1,
+				BatchSize:   1,
+				RawSize:     1,
+			},
 		},
 	}
 
@@ -155,6 +168,10 @@ func main() {
 		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
 			glog.Fatal(err)
 		}
+	}
+
+	for _, clusterInfo := range clusterInfos {
+		go oa.BeginInsertDataToOrDie(clusterInfo)
 	}
 
 	// before upgrade cluster, register webhook first
@@ -245,11 +262,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	backupCase := backup.NewBackupCase(oa, backupClusterInfo, restoreClusterInfo)
-
-	if err := backupCase.Run(); err != nil {
-		glog.Fatal(err)
-	}
+	oa.BackupRestoreOrDie(backupClusterInfo, restoreClusterInfo)
 
 	//clean temp dirs when e2e success
 	err = conf.CleanTempDirs()

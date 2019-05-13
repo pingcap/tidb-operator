@@ -41,8 +41,6 @@ const (
 	TiDBMemberType MemberType = "tidb"
 	// TiKVMemberType is tikv container type
 	TiKVMemberType MemberType = "tikv"
-	// PushGatewayMemberType is pushgateway container type
-	PushGatewayMemberType MemberType = "pushgateway"
 	// SlowLogTailerMemberType is tidb log tailer container type
 	SlowLogTailerMemberType MemberType = "slowlog"
 	// UnknownMemberType is unknown container type
