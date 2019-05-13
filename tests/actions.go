@@ -75,6 +75,7 @@ func NewOperatorActions(cli versioned.Interface,
 		cli:          cli,
 		kubeCli:      kubeCli,
 		pdControl:    controller.NewDefaultPDControl(),
+		tidbControl:  controller.NewDefaultTiDBControl(),
 		pollInterval: pollInterval,
 		cfg:          cfg,
 	}
@@ -166,6 +167,7 @@ type operatorActions struct {
 	cli           versioned.Interface
 	kubeCli       kubernetes.Interface
 	pdControl     controller.PDControlInterface
+	tidbControl   controller.TiDBControlInterface
 	pollInterval  time.Duration
 	cfg           *Config
 	clusterEvents map[string]*clusterEvent
@@ -1393,22 +1395,57 @@ func (oa *operatorActions) monitorNormal(clusterInfo *TidbClusterConfig) (bool, 
 }
 
 func (oa *operatorActions) checkTidbClusterConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) (bool, error) {
-	pdCli := oa.pdControl.GetPDClient(tc)
-	config, err := pdCli.GetConfig()
-	if err != nil {
-		glog.Errorf("failed to get PD configuraion from tidb cluster [%s,%s]", tc.Namespace, tc.Name)
+	if ok := oa.checkPdConfigUpdated(tc, clusterInfo); !ok {
 		return false, nil
 	}
-	if clusterInfo.PDMaxReplicas > 0 && config.Replication.MaxReplicas != uint64(clusterInfo.PDMaxReplicas) {
-		glog.Errorf("check [%s/%s] configuration updated failed: desired [%d], actual [%d] not equal",
-			tc.Namespace,
-			tc.Name,
-			clusterInfo.PDMaxReplicas,
-			config.Replication.MaxReplicas)
+	if ok := oa.checkTiKVConfigUpdated(tc, clusterInfo); !ok {
 		return false, nil
 	}
-	// TODO: check if the tikv & tidb configuration updated
+	if ok := oa.checkTiDBConfigUpdated(tc, clusterInfo); !ok {
+		return false, nil
+	}
 	return true, nil
+}
+
+func (oa *operatorActions) checkPdConfigUpdated(tc *v1alpha1.TidbCluster, clusetrInfo *TidbClusterConfig) bool {
+
+	// TODO: fix #487 PD configuration update
+	//pdCli := oa.pdControl.GetPDClient(tc)
+	//config, err := pdCli.GetConfig()
+	//if err != nil {
+	//	glog.Errorf("failed to get PD configuraion from tidb cluster [%s/%s]", tc.Namespace, tc.Name)
+	//	return false
+	//}
+	//if clusterInfo.PDMaxReplicas > 0 && config.Replication.MaxReplicas != uint64(clusterInfo.PDMaxReplicas) {
+	//	glog.Errorf("check [%s/%s] PD configuration updated failed: desired [%d], actual [%d] not equal",
+	//		tc.Namespace,
+	//		tc.Name,
+	//		clusterInfo.PDMaxReplicas,
+	//		config.Replication.MaxReplicas)
+	//	return false
+	//}
+	return true
+}
+
+func (oa *operatorActions) checkTiDBConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
+	for i := int32(0); i < tc.Spec.TiDB.Replicas; i += 1 {
+		config, err := oa.tidbControl.GetSettings(tc, i)
+		if err != nil {
+			glog.Errorf("failed to get TiDB configuration from cluster [%s/%s], ordinal: %d, error: %v", tc.Namespace, tc.Name, i, err)
+			return false
+		}
+		if clusterInfo.TiDBTokenLimit > 0 && uint(clusterInfo.TiDBTokenLimit) != config.TokenLimit {
+			glog.Errorf("check [%s/%s] TiDB instance [%d] configuration updated failed: desired [%d], actual [%d] not equal",
+				tc.Namespace, tc.Name, i, clusterInfo.TiDBTokenLimit, config.TokenLimit)
+			return false
+		}
+	}
+	return true
+}
+
+func (oa *operatorActions) checkTiKVConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
+	// TODO: check if TiKV configuration updated
+	return true
 }
 
 func (oa *operatorActions) checkPrometheus(clusterInfo *TidbClusterConfig) error {

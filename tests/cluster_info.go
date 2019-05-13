@@ -52,6 +52,7 @@ func (tc *TidbClusterConfig) UpgradeAll(tag string) *TidbClusterConfig {
 		UpgradeTiDB("pingcap/tidb:" + tag)
 }
 
+// FIXME: update of PD configuration do not work now #487
 func (tc *TidbClusterConfig) UpdatePdMaxReplicas(maxReplicas int) *TidbClusterConfig {
 	tc.PDMaxReplicas = maxReplicas
 	return tc
