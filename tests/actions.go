@@ -194,7 +194,7 @@ type OperatorConfig struct {
 	Tag                string
 	SchedulerImage     string
 	SchedulerTag       string
-	SchedulerExtraArgs []string
+	SchedulerFeatures  []string
 	LogLevel           string
 	WebhookServiceName string
 	WebhookSecretName  string
@@ -308,6 +308,9 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
+	}
+	if len(oi.SchedulerFeatures) > 0 {
+		set["scheduler.features"] = fmt.Sprintf("{%s}", strings.Join(oi.SchedulerFeatures, ","))
 	}
 
 	arr := make([]string, 0, len(set))

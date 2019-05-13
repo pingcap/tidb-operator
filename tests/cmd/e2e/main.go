@@ -43,8 +43,8 @@ func main() {
 		Tag:            conf.OperatorTag,
 		SchedulerImage: "mirantis/hypokube",
 		SchedulerTag:   "final",
-		SchedulerExtraArgs: []string{
-			"-features=StableScheduling",
+		SchedulerFeatures: []string{
+			"StableScheduling",
 		},
 		LogLevel:           "2",
 		WebhookServiceName: "webhook-service",
