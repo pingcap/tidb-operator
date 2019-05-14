@@ -46,9 +46,9 @@ Now we can launch the script:
 
 ```bash
 git clone https://github.com/pingcap/tidb-operator
-$ cd tidb-operator/deploy/gcp
-$ terraform init
-$ terraform apply
+cd tidb-operator/deploy/gcp
+terraform init
+terraform apply
 ```
 
 After `terraform apply` is successful, the TiDB cluster can be accessed by SSHing into the bastion machine and connecting via MySQL:
