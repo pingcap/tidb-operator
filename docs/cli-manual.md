@@ -1,8 +1,8 @@
-# The TiDB Kubernetes Contorl(tkctl) User Manual
+# The TiDB Kubernetes Control(tkctl) User Manual
 
 > **Disclaimer**: The tkctl CLI tool is currently **Alpha**. The design and sub-commands may change in the future, use at your own risk.
 
-The TiDB Kubernetes Control(tkctl) is a command line utility for TiDB operators to operate and diagnose their TiDB clusters in kubernetes.
+The TiDB Kubernetes Control(tkctl) is a command line utility for TiDB operators to operate and diagnose their TiDB clusters in Kubernetes.
 
 - [Installation](#installation)
     - [Build from Source](#build-from-source)
