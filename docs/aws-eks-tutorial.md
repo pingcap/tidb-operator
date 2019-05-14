@@ -4,6 +4,8 @@ summary: Tutorial for deploying TiDB on Kubernetes via AWS EKS.
 category: operations
 ---
 
+> **Note:** This documentation is outdated and might not work, please see the latest version in the [deploy directory](deploy/aws/README.md).
+
 # Deploy TiDB, a distributed MySQL compatible database, on Kubernetes via AWS EKS
 
 ## Requirements:
