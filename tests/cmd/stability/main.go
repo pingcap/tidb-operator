@@ -143,7 +143,13 @@ func main() {
 	copier.Copy(clusterRestoreTo, clusterBackupFrom)
 	clusterRestoreTo.ClusterName = "cluster-restore"
 
-	allClusters := []*tests.TidbClusterConfig{cluster1, cluster2, clusterRestoreTo}
+	onePDCluster := &tests.TidbClusterConfig{}
+	copier.Copy(onePDCluster, cluster1)
+	onePDCluster.ClusterName = "pd-replicas-1"
+	onePDCluster.Namespace = "pd-replicas-1"
+	onePDCluster.Resources["pd.replicas"] = "1"
+
+	allClusters := []*tests.TidbClusterConfig{cluster1, cluster2, clusterRestoreTo, onePDCluster}
 
 	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, conf, allClusters)
 	oa.CheckK8sAvailableOrDie(nil, nil)
@@ -167,8 +173,10 @@ func main() {
 	// deploy and check cluster1, cluster2
 	oa.DeployTidbClusterOrDie(cluster1)
 	oa.DeployTidbClusterOrDie(cluster2)
+	oa.DeployTidbClusterOrDie(onePDCluster)
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
+	oa.CheckTidbClusterStatusOrDie(onePDCluster)
 
 	go oa.BeginInsertDataToOrDie(cluster1)
 	go oa.BeginInsertDataToOrDie(cluster2)
@@ -210,6 +218,10 @@ func main() {
 
 	// backup and restore
 	oa.BackupRestoreOrDie(clusterBackupFrom, clusterRestoreTo)
+
+	oa.CleanOperatorOrDie(operatorCfg)
+	oa.CheckOperatorDownOrDie(allClusters)
+	oa.DeployOperatorOrDie(operatorCfg)
 
 	// stop a node and failover automatically
 	physicalNode, node, faultTime := fta.StopNodeOrDie()

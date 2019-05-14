@@ -150,6 +150,7 @@ type OperatorActions interface {
 	CheckK8sAvailableOrDie(excludeNodes map[string]string, excludePods map[string]*corev1.Pod)
 	CheckOperatorAvailable(operatorConfig *OperatorConfig) error
 	CheckTidbClustersAvailable(infos []*TidbClusterConfig) error
+	CheckOperatorDownOrDie(infos []*TidbClusterConfig)
 	CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	RegisterWebHookAndService(info *OperatorConfig) error

@@ -61,6 +61,7 @@ func main() {
 
 	name1 := "e2e-cluster1"
 	name2 := "e2e-cluster2"
+	name3 := "e2e-pd-replicas-1"
 	clusterInfos := []*tests.TidbClusterConfig{
 		{
 			Namespace:        name1,
@@ -136,6 +137,23 @@ func main() {
 				Concurrency: 1,
 				BatchSize:   1,
 				RawSize:     1,
+			},
+		},
+		{
+			Namespace:        name2,
+			ClusterName:      name3,
+			OperatorTag:      conf.OperatorTag,
+			PDImage:          fmt.Sprintf("pingcap/pd:%s", initTidbVersion),
+			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", initTidbVersion),
+			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
+			StorageClassName: "local-storage",
+			Password:         "admin",
+			InitSql:          initSql,
+			UserName:         "root",
+			InitSecretName:   fmt.Sprintf("%s-set-secret", name2),
+			Resources: map[string]string{
+				"pd.replicas":     "1",
+				"discovery.image": conf.OperatorImage,
 			},
 		},
 	}

@@ -505,6 +505,22 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 	})
 }
 
+func (oa *operatorActions) CheckOperatorDownOrDie(clusters []*TidbClusterConfig) {
+	glog.Infof("checking k8s/tidbCluster status when operator down")
+
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckK8sAvailable(nil, nil)
+		if err != nil {
+			return err
+		}
+		err = oa.CheckTidbClustersAvailable(clusters)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
 func (oa *operatorActions) CheckK8sAvailableOrDie(excludeNodes map[string]string, excludePods map[string]*corev1.Pod) {
 	if err := oa.CheckK8sAvailable(excludeNodes, excludePods); err != nil {
 		slack.NotifyAndPanic(err)
