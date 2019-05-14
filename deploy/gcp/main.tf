@@ -5,13 +5,20 @@ variable "GCP_PROJECT" {}
 provider "google" {
   credentials = "${file("${var.GCP_CREDENTIALS_PATH}")}"
   region = "${var.GCP_REGION}"
+  project = "${var.GCP_PROJECT}"
+}
+
+// required for taints on node pools
+provider "google-beta" {
+  credentials = "${file("${var.GCP_CREDENTIALS_PATH}")}"
+  region = "${var.GCP_REGION}"
+  project = "${var.GCP_PROJECT}"
 }
 
 locals {
   credential_path = "${path.module}/credentials"
   kubeconfig                    = "${local.credential_path}/kubeconfig_${var.cluster_name}"
-  key_file                      = "${local.credential_path}/${var.cluster_name}-node-key.pem"
-  bastion_key_file              = "${local.credential_path}/${var.cluster_name}-bastion-key.pem"
+  tidb_cluster_values_path = "${path.module}/rendered/tidb-cluster-values.yaml"
 }
 
 resource "null_resource" "prepare-dir" {
@@ -55,11 +62,11 @@ resource "google_container_cluster" "cluster" {
   location = "${var.GCP_REGION}"
   project = "${var.GCP_PROJECT}"
 
-  private_cluster_config {
-    enable_private_endpoint = false
-    enable_private_nodes = true
-    master_ipv4_cidr_block = "172.31.64.0/28"
-  }
+//  private_cluster_config {
+//    enable_private_endpoint = false
+//    enable_private_nodes = true
+//    master_ipv4_cidr_block = "172.31.64.0/28"
+//  }
 
   master_auth {
     username = ""
@@ -82,45 +89,91 @@ resource "google_container_cluster" "cluster" {
   min_master_version = "latest"
 }
 
+
 resource "google_container_node_pool" "pd_pool" {
+  provider = "google-beta"
   project = "${var.GCP_PROJECT}"
   cluster = "${google_container_cluster.cluster.name}"
   location = "${google_container_cluster.cluster.location}"
   name = "pd-pool"
-  initial_node_count = "1"
+  initial_node_count = "${var.pd_count}"
 
   node_config {
-    machine_type = "n1-standard-1"
+    machine_type = "${var.pd_instance_type}"
     local_ssd_count = 1
+    taint {
+      effect = "NO_SCHEDULE"
+      key = "dedicated"
+      value = "pd"
+    }
+    labels {
+      dedicated = "pd"
+    }
 
+    oauth_scopes = ["storage-ro", "logging-write", "monitoring"]
   }
 
 }
 
 resource "google_container_node_pool" "tikv_pool" {
+  provider = "google-beta"
   project = "${var.GCP_PROJECT}"
   cluster = "${google_container_cluster.cluster.name}"
   location = "${google_container_cluster.cluster.location}"
   name = "tikv-pool"
-  initial_node_count = "1"
+  initial_node_count = "${var.tikv_count}"
 
   node_config {
-    machine_type = "n1-standard-1"
+    machine_type = "${var.tikv_instance_type}"
     local_ssd_count = 1
+    taint {
+      effect = "NO_SCHEDULE"
+      key = "dedicated"
+      value = "tikv"
+    }
+    labels {
+      dedicated = "tikv"
+    }
+    oauth_scopes = ["storage-ro", "logging-write", "monitoring"]
 
   }
 
 }
 
 resource "google_container_node_pool" "tidb_pool" {
+  provider = "google-beta"
   project = "${var.GCP_PROJECT}"
   cluster = "${google_container_cluster.cluster.name}"
   location = "${google_container_cluster.cluster.location}"
   name = "tidb-pool"
+  initial_node_count = "${var.tidb_count}"
+
+  node_config {
+    machine_type = "${var.tidb_instance_type}"
+    taint {
+      effect = "NO_SCHEDULE"
+      key = "dedicated"
+      value = "tidb"
+    }
+    labels {
+      dedicated = "tidb"
+    }
+    tags = ["tidb"]
+    oauth_scopes = ["storage-ro", "logging-write", "monitoring"]
+  }
+
+}
+
+resource "google_container_node_pool" "monitor_pool" {
+  project = "${var.GCP_PROJECT}"
+  cluster = "${google_container_cluster.cluster.name}"
+  location = "${google_container_cluster.cluster.location}"
+  name = "monitor-pool"
   initial_node_count = "1"
 
   node_config {
-    machine_type = "n1-standard-1"
+    machine_type = "${var.monitor_instance_type}"
+    oauth_scopes = ["storage-ro", "logging-write", "monitoring"]
   }
 
 }
@@ -136,6 +189,19 @@ resource "google_compute_firewall" "allow_ssh_bastion" {
   }
   source_ranges = ["0.0.0.0/0"]
   target_tags = ["bastion"]
+}
+
+resource "google_compute_firewall" "allow_mysql_from_bastion" {
+  name = "allow-mysql-from-bastion"
+  network = "${google_compute_network.vpc_network.self_link}"
+  project = "${var.GCP_PROJECT}"
+
+  allow {
+    protocol = "tcp"
+    ports = ["4000"]
+  }
+  source_tags = ["bastion"]
+  target_tags = ["tidb"]
 }
 
 resource "google_compute_instance" "bastion" {
@@ -166,6 +232,12 @@ resource "null_resource" "get-credentials" {
   }
 }
 
+resource "local_file" "tidb-cluster-values" {
+  depends_on = ["data.template_file.tidb_cluster_values"]
+  filename = "${local.tidb_cluster_values_path}"
+  content = "${data.template_file.tidb_cluster_values.rendered}"
+}
+
 resource "null_resource" "setup-env" {
   depends_on = ["google_container_cluster.cluster", "null_resource.get-credentials"]
 
@@ -174,9 +246,36 @@ resource "null_resource" "setup-env" {
     command = <<EOS
 kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-admin --user $$(gcloud config get-value account)
 kubectl create serviceaccount --namespace kube-system tiller
+kubectl apply -f manifests/crd.yaml
+kubectl apply -f manifests/local-volume-provisioner.yaml
+kubectl apply -f manifests/gke-storage.yml
+kubectl apply -f manifests/tiller-rbac.yaml
+helm init --service-account tiller --upgrade --wait
+until helm ls; do
+  echo "Wait until tiller is ready"
+done
+helm install --namespace tidb-admin --name tidb-operator ${path.module}/charts/tidb-operator
 EOS
     environment {
       KUBECONFIG= "${local.kubeconfig}"
+    }
+  }
+}
+
+resource "null_resource" "deploy-tidb-cluster" {
+  depends_on = ["null_resource.setup-env", "local_file.tidb-cluster-values"]
+
+  provisioner "local-exec" {
+    command = <<EOS
+helm upgrade --install tidb-cluster ${path.module}/charts/tidb-cluster --namespace=tidb -f ${local.tidb_cluster_values_path}
+until kubectl get po -n tidb -lapp.kubernetes.io/component=tidb | grep Running; do
+  echo "Wait for TiDB pod running"
+  sleep 5
+done
+EOS
+
+    environment {
+      KUBECONFIG = "${local.kubeconfig}"
     }
   }
 }
