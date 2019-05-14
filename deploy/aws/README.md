@@ -5,7 +5,7 @@
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.11
 * [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.0
 * [jq](https://stedolan.github.io/jq/download/)
-* [aws-iam-authenticator](https://github.com/kubernetes-sigs/aws-iam-authenticator#4-set-up-kubectl-to-use-authentication-tokens-provided-by-aws-iam-authenticator-for-kubernetes)
+* [aws-iam-authenticator](https://github.com/kubernetes-sigs/aws-iam-authenticator) installed in `PATH`
 
 ## Configure awscli
 
@@ -20,26 +20,29 @@ The default setup will create a new VPC and a t2.micro instance as bastion machi
 * 2 c4.4xlarge instances for TiDB
 * 1 c5.xlarge instance for monitor
 
+You can change default values in `variables.tf` (like cluster name and versions) as needed. The default `cluster_name` is `my-cluster`.
 
 ``` shell
-$ git clone https://github.com/pingcap/tidb-operator
+$ git clone --depth=1 https://github.com/pingcap/tidb-operator
 $ cd tidb-operator/deploy/aws
 $ terraform init
 $ terraform apply
 ```
 
-After `terraform apply` is executed successfully, you can access the `monitor_endpoint` using your web browser.
+It might take 10 minutes or more for the process to finish. After `terraform apply` is executed successfully, some basic information will be printed to the console, you can access the `monitor_endpoint` using your web browser.
+
+> **Note:** You can use `terraform output` command to get those information again.
 
 To access TiDB cluster, use the following command to first ssh into the bastion machine, and then connect it via MySQL client:
 
 ``` shell
-ssh -i credentials/k8s-prod-my-cluster.pem ec2-user@<bastion_ip>
+ssh -i credentials/k8s-prod-<cluster_name>.pem ec2-user@<bastion_ip>
 mysql -h <tidb_dns> -P <tidb_port> -u root
 ```
 
 If the DNS name is not resolvable, be patient and wait a few minutes.
 
-You can interact with the EKS cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_<cluster_name>`. The default `cluster_name` is `my-cluster`, you can change it in the variables.tf.
+You can interact with the EKS cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_<cluster_name>`.
 
 ``` shell
 # By specifying --kubeconfig argument
@@ -52,7 +55,15 @@ kubectl get po -n tidb
 helm ls
 ```
 
-> **NOTE:** You have to manually delete the EBS volumes after running `terraform destroy` if you don't need the data on the volumes any more.
+# Destory
+
+It may take some while to finish destroying the cluster.
+
+```shell
+$ terraform destroy
+```
+
+> **NOTE:** You have to manually delete the EBS volumes in AWS console after running `terraform destroy` if you don't need the data on the volumes any more.
 
 ## Upgrade TiDB cluster
 
