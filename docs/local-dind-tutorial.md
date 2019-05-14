@@ -43,6 +43,15 @@ $ manifests/local-dind/dind-cluster-v1.12.sh up
 $ KUBE_REPO_PREFIX=uhub.ucloud.cn/pingcap manifests/local-dind/dind-cluster-v1.12.sh up
 ```
 
+> **Note:** An alternative solution is to configure HTTP proxies in DinD.
+
+```
+$ export DIND_HTTP_PROXY=http://<ip>:<port>
+$ export DIND_HTTPS_PROXY=http://<ip>:<port>
+$ export DIND_NO_PROXY=.svc,.local,127.0.0.1,0,1,2,3,4,5,6,7,8,9 # whitelist internal domains and IP addresses
+$ manifests/local-dind/dind-cluster-v1.12.sh up
+```
+
 ## Step 2: Install TiDB Operator in the DinD Kubernetes cluster
 
 ```sh
