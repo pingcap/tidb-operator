@@ -13,6 +13,7 @@
 package ops
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -35,7 +36,7 @@ type TiKVOps struct {
 }
 
 func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
-	glog.Infof("truncate sst option: %+v", opts)
+	logHdr := fmt.Sprintf("store: %s cluster: [%s/%s] ", opts.Store, opts.Namespace, opts.Cluster)
 
 	tc, err := ops.PingcapV1alpha1().TidbClusters(opts.Namespace).Get(opts.Cluster, metav1.GetOptions{})
 	if err != nil {
@@ -64,7 +65,7 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 		}
 		stdout, stderr, err := exec("find", "/var/lib/tikv/db", "-name", "*.sst", "-o", "-name", "*.save")
 		if err != nil {
-			glog.Warningf("list sst files: stderr=%s err=%s", stderr, err.Error())
+			glog.Warningf(logHdr+"list sst files: stderr=%s err=%s", stderr, err.Error())
 			continue
 		}
 
@@ -84,19 +85,19 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 			}
 		}
 		if len(sst) == 0 {
-			glog.Warning("cannot find a sst file")
+			glog.Warning(logHdr + "cannot find a sst file")
 			continue
 		}
 
 		_, stderr, err = exec("cp", sst, sst+".save")
 		if err != nil {
-			glog.Warningf("backup sst file: stderr=%s err=%s", stderr, err.Error())
+			glog.Warningf(logHdr+"backup sst file: stderr=%s err=%s", stderr, err.Error())
 			continue
 		}
 
 		_, stderr, err = exec("truncate", "-s", "0", sst)
 		if err != nil {
-			glog.Warningf("truncate sst file: stderr=%s err=%s", stderr, err.Error())
+			glog.Warningf(logHdr+"truncate sst file: stderr=%s err=%s", stderr, err.Error())
 			continue
 		}
 
