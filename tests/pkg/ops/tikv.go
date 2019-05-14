@@ -15,6 +15,7 @@ package ops
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/errors"
@@ -58,10 +59,13 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 
 	retryCount := 0
 	for ; retryCount < retryLimit; retryCount++ {
+		if retryCount > 0 {
+			time.Sleep(10 * time.Second)
+		}
 		stdout, stderr, err := exec("find", "/var/lib/tikv/db", "-name", "*.sst", "-o", "-name", "*.save")
 		if err != nil {
-			glog.Errorf("list sst files: stderr=%s err=%s", stderr, err.Error())
-			return errors.Annotate(err, "list sst files")
+			glog.Warningf("list sst files: stderr=%s err=%s", stderr, err.Error())
+			continue
 		}
 
 		sstCandidates := make(map[string]bool)
@@ -80,20 +84,19 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 			}
 		}
 		if len(sst) == 0 {
-			return errors.New("cannot find a sst file")
+			glog.Warning("cannot find a sst file")
+			continue
 		}
 
 		_, stderr, err = exec("cp", sst, sst+".save")
 		if err != nil {
 			glog.Warningf("backup sst file: stderr=%s err=%s", stderr, err.Error())
-			//return errors.Annotate(err, "backup sst file")
 			continue
 		}
 
 		_, stderr, err = exec("truncate", "-s", "0", sst)
 		if err != nil {
 			glog.Warningf("truncate sst file: stderr=%s err=%s", stderr, err.Error())
-			//return errors.Annotate(err, "truncate sst file")
 			continue
 		}
 
