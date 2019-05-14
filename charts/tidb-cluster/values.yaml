@@ -72,7 +72,7 @@ pd:
   ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
   affinity: {}
   ## The following is typical example of affinity settings:
-  ## The PodAntiAffinity setting of the example keeps PD pods does not co-locate on a topology node as far as possible to improve the high availability of PD on Kubernetes.
+  ## The PodAntiAffinity setting of the example keeps PD pods does not co-locate on a topology node as far as possible to improve the disaster tolerance of PD on Kubernetes.
   ## The NodeAffinity setting of the example ensure that the PD pods can only be scheduled to nodes with label:[type="pd"],
   # affinity:
   #   podAntiAffinity:

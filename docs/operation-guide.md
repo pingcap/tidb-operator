@@ -31,24 +31,24 @@ TiDB Operator use `values.yaml` as TiDB cluster configuration file. It provides 
         $ kubectl get sc
         ```
 
-* HA setting
+* Disaster Tolerance setting
 
-    TiDB cluster is a distributed database. Its high availability means that when any physical node failed, not only to ensure TiDB server is available, but also ensure the data is complete and available.
+    TiDB cluster is a distributed database. Its Disaster Tolerance means that when any physical node failed, not only to ensure TiDB server is available, but also ensure the data is complete and available.
 
-    How to guarantee high availability of TiDB cluster work on Kubernetes?
+    How to guarantee Disaster Tolerance of TiDB cluster on Kubernetes?
 
     We mainly solve the problem from the scheduling of services and data.
 
-    * HA guarantee of TiDB server
+    * Disaster Tolerance of TiDB server
 
-        TiDB Operator provides a external scheduler to guarantee PD/TiKV/TiDB pods HA on host level. TiDB Cluster have set the external scheduler as default scheduler, you will find the setting in the variable `schedulerName` of `values.yaml`.
+        TiDB Operator provides a external scheduler to guarantee PD/TiKV/TiDB server disaster tolerance on host level. TiDB Cluster have set the external scheduler as default scheduler, you will find the setting in the variable `schedulerName` of `values.yaml`.
 
-        In the other hand use `PodAntiAffinity` term of `affinity` to ensure HA on the other topology levels (e.g. rack, zone, region). 
-        refer to the doc: [pod affnity & anti affinity](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#inter-pod-affinity-and-anti-affinity-beta-feature), moreover `values.yaml` also provides a typical HA setting example in the comments of `pd.affinity`.
+        In the other hand use `PodAntiAffinity` term of `affinity` to ensure disaster tolerance on the other topology levels (e.g. rack, zone, region). 
+        refer to the doc: [pod affnity & anti affinity](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#inter-pod-affinity-and-anti-affinity-beta-feature), moreover `values.yaml` also provides a typical disaster tolerance setting example in the comments of `pd.affinity`.
 
-    * HA guarantee of data
+    * Disaster Tolerance of data
 
-        HA of data is guaranteed by TiDB Cluster itself. The only work Operator needs to do is that collects topology info from specific labels of Kubernetes nodes where TiKV Pod runs on and then PD will schedule data replicas auto according to the topology info.
+        Disaster tolerance of data is guaranteed by TiDB Cluster itself. The only work Operator needs to do is that collects topology info from specific labels of Kubernetes nodes where TiKV Pod runs on and then PD will schedule data replicas auto according to the topology info.
         Cause currently TiDB Operator can only recognize some specific labels, so you can only set nodes topology info with the following particular labels
 
         * `region`: region where node is located
@@ -56,7 +56,7 @@ TiDB Operator use `values.yaml` as TiDB cluster configuration file. It provides 
         * `rack`: rack where node is located
         * `kubernetes.io/hostname`: hostname of the node
 
-        you can label topology info to nodes of Kubernetes cluster use the following command
+        you need label topology info to nodes of Kubernetes cluster use the following command
         ```shell
         # The labels are optional
         $ kubectl label node <nodeName> region=<regionName> zone=<zoneName> rack=<rackName> kubernetes.io/hostname=<hostName>
