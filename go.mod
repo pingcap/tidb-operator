@@ -82,6 +82,7 @@ require (
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20171017195756-830351dc03c6 // indirect
 	github.com/ugorji/go v1.1.1 // indirect
 	github.com/unrolled/render v0.0.0-20180807193321-4206df6ff701 // indirect
+	github.com/urfave/negroni v1.0.0 // indirect
 	github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18 // indirect
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect

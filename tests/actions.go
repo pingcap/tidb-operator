@@ -160,6 +160,10 @@ type OperatorActions interface {
 	EmitEvent(info *TidbClusterConfig, msg string)
 	BackupRestore(from, to *TidbClusterConfig) error
 	BackupRestoreOrDie(from, to *TidbClusterConfig)
+	LabelNodes() error
+	LabelNodesOrDie()
+	CheckDR(info *TidbClusterConfig) error
+	CheckDataRegionDR(info *TidbClusterConfig) error
 }
 
 type operatorActions struct {
