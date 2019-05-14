@@ -484,7 +484,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	}
 
 	// delete all configmaps
-	allConfigMaps := label.Label{}.Instance(info.ClusterName).String()
+	allConfigMaps := label.New().Instance(info.ClusterName).String()
 	if res, err := exec.Command("kubectl", "delete", "configmaps", "-n", info.Namespace, "-l", allConfigMaps).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to delete configmaps: %v, %s", err, string(res))
 	}
