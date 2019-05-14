@@ -54,7 +54,7 @@ Choose one of the following tutorials:
 
 * [Deploy TiDB by launching an AWS EKS cluster](./docs/aws-eks-tutorial.md)
 
-* [Deploy TiDB Operator and TiDB Cluster on Alibaba Cloud Kubernetes](./deploy/alicloud/README.md)
+* [Deploy TiDB Operator and TiDB Cluster on Alibaba Cloud Kubernetes](/deploy/aliyun/README.md)
 
 * [Deploy TiDB in the minikube cluster](./docs/minikube-tutorial.md)
 
