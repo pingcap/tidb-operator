@@ -61,12 +61,25 @@ resource "google_container_cluster" "cluster" {
     master_ipv4_cidr_block = "172.31.64.0/28"
   }
 
+  master_auth {
+    username = ""
+    password = ""
+  }
+
+  master_authorized_networks_config {
+    cidr_blocks {
+      cidr_block = "0.0.0.0/0"
+    }
+  }
+
   ip_allocation_policy {
     use_ip_aliases = true
   }
 
   remove_default_node_pool = true
   initial_node_count = 1
+
+  min_master_version = "latest"
 }
 
 resource "google_container_node_pool" "pd_pool" {
@@ -79,6 +92,7 @@ resource "google_container_node_pool" "pd_pool" {
   node_config {
     machine_type = "n1-standard-1"
     local_ssd_count = 1
+
   }
 
 }
@@ -93,6 +107,7 @@ resource "google_container_node_pool" "tikv_pool" {
   node_config {
     machine_type = "n1-standard-1"
     local_ssd_count = 1
+
   }
 
 }
@@ -140,4 +155,28 @@ resource "google_compute_instance" "bastion" {
   tags = ["bastion"]
 
   metadata_startup_script = "sudo apt-get install -y mysql-client && curl -s https://packagecloud.io/install/repositories/akopytov/sysbench/script.rpm.sh | bash && sudo apt-get -y install sysbench"
+}
+
+resource "null_resource" "get-credentials" {
+  provisioner "local-exec" {
+    command = "gcloud container clusters get-credentials ${google_container_cluster.cluster.name} --region ${var.GCP_REGION}"
+    environment {
+      KUBECONFIG= "${local.kubeconfig}"
+    }
+  }
+}
+
+resource "null_resource" "setup-env" {
+  depends_on = ["google_container_cluster.cluster", "null_resource.get-credentials"]
+
+  provisioner "local-exec" {
+    working_dir = "${path.module}"
+    command = <<EOS
+kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-admin --user $$(gcloud config get-value account)
+kubectl create serviceaccount --namespace kube-system tiller
+EOS
+    environment {
+      KUBECONFIG= "${local.kubeconfig}"
+    }
+  }
 }
