@@ -3,8 +3,9 @@
 ## 环境需求
 
 - [aliyun-cli](https://github.com/aliyun/aliyun-cli) >= 3.0.15 并且[配置 aliyun-cli](https://www.alibabacloud.com/help/doc-detail/90766.htm?spm=a2c63.l28256.a3.4.7b52a893EFVglq)
+> **注意：** Access Key 需要具有操作相应资源的权限
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.12
-- [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.1
+- [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.1 且 <= 2.11.0
 - [jq](https://stedolan.github.io/jq/download/) >= 1.6
 - [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) 0.11.*
 
@@ -13,7 +14,7 @@
 ## 概览
 
 默认配置下，我们会创建：
- 
+
 - 一个新的 VPC；
 - 一台 ECS 实例作为堡垒机；
 - 一个托管版 ACK(阿里云 Kubernetes)集群以及一系列 worker 节点：
@@ -35,6 +36,8 @@ export TF_VAR_ALICLOUD_ACCESS_KEY=<YOUR_ACCESS_KEY>
 export TF_VAR_ALICLOUD_SECRET_KEY=<YOUR_SECRET_KEY>
 ```
 
+用于部署集群的各变量的默认值存储在 `variables.tf` 文件中，如需定制可以修改此文件或在安装时通过 `-var` 参数覆盖。
+
 使用 Terraform 进行安装：
 
 ```shell
@@ -44,7 +47,27 @@ $ terraform init
 $ terraform apply
 ```
 
-整个安装过程大约需要 5 至 10 分钟，安装完成后会输出集群的关键信息(想要重新查看这些信息，可以运行 `terraform output`)，接下来可以用 `kubectl` 或 `helm` 对集群进行操作：
+整个安装过程大约需要 5 至 10 分钟，安装完成后会输出集群的关键信息(想要重新查看这些信息，可以运行 `terraform output`)：
+
+```
+Apply complete! Resources: 3 added, 0 changed, 1 destroyed.
+
+Outputs:
+
+bastion_ip = 1.2.3.4
+bastion_key_file = /root/tidb-operator/deploy/alicloud/credentials/tidb-cluster-bastion-key.pem
+cluster_id = ca57c6071f31f458da66965ceddd1c31b
+kubeconfig_file = /root/tidb-operator/deploy/alicloud/.terraform/modules/a2078f76522ae433133fc16e24bd21ae/kubeconfig_tidb-cluster
+monitor_endpoint = 1.2.3.4:3000
+region = cn-hangzhou
+tidb_port = 4000
+tidb_slb_ip = 192.168.5.53
+tidb_version = v2.1.0
+vpc_id = vpc-bp16wcbu0xhbg833fymmc
+worker_key_file = /root/tidb-operator/deploy/alicloud/credentials/tidb-cluster-node-key.pem
+```
+
+接下来可以用 `kubectl` 或 `helm` 对集群进行操作（其中 `cluster_name` 默认值为 `tidb-cluster`）：
 
 ```shell
 $ export KUBECONFIG=$PWD/credentials/kubeconfig_<cluster_name>
@@ -52,20 +75,37 @@ $ kubectl version
 $ helm ls
 ```
 
-并通过堡垒机连接 TiDB 集群进行测试：
+## 连接数据库
+
+通过堡垒机可连接 TiDB 集群进行测试，相关信息在安装完成后的输出中均可找到：
 
 ```shell
-$ ssh -i credentials/bastion-key.pem root@<bastion_ip>
+$ ssh -i credentials/<cluster_name>-bastion-key.pem root@<bastion_ip>
 $ mysql -h <tidb_slb_ip> -P <tidb_port> -u root
 ```
 
+## 监控
+
+访问 `<monitor_endpoint>` 就可以查看相关的 Grafana 大盘。相关信息可在安装完成后的输出中找到。默认帐号密码为：
+
+    - 用户名：admin
+    - 密码：admin
+
+> **警告：**出于安全考虑，假如你已经或将要配置 VPN 用于访问 VPC, 强烈建议将 `monitor_slb_network_type` 设置为 `intranet` 以禁止监控服务的公网访问。
+
 ## 升级 TiDB 集群
 
-设置 `variables.tf` 中的 `tidb_version` 参数，运行 `terraform apply` 即可完成升级。
+设置 `variables.tf` 中的 `tidb_version` 参数，并再次运行 `terraform apply` 即可完成升级。
+
+升级操作可能会执行较长时间，可以通过以下命令来持续观察进度：
+
+```
+watch kubectl get pods --namespace tidb -o wide
+```
 
 ## TiDB 集群水平伸缩
 
-设计 `variables.tf` 中的 `tikv_count` 和 `tidb_count`，运行 `terraform apply` 即可完成 TiDB 集群的水平伸缩。
+按需修改 `variables.tf` 中的 `tikv_count` 和 `tidb_count` 数值，再次运行 `terraform apply` 即可完成 TiDB 集群的水平伸缩。
 
 ## 销毁集群
 
@@ -73,13 +113,9 @@ $ mysql -h <tidb_slb_ip> -P <tidb_port> -u root
 $ terraform destroy
 ```
 
-> 注意：监控组件挂载的云盘需要手动删除。
+销毁集群操作需要执行较长时间。
 
-## 监控
-
-访问 `<monitor_endpoint>` 就可以查看相关的 Grafana 看板。
-
-> 出于安全考虑，假如你已经或将要给 VPC 配置 VPN，强烈推荐将 `monitor_slb_network_type` 设置为 `intranet` 来禁止监控服务的公网访问。
+> **注意：**监控组件挂载的云盘需要在阿里云管理控制台中手动删除。
 
 ## 自定义
 
