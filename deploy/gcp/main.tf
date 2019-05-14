@@ -56,17 +56,11 @@ resource "google_compute_subnetwork" "public_subnet" {
 }
 
 resource "google_container_cluster" "cluster" {
-  name = "the-cluster" // turn this into var
+  name = "${var.cluster_name}"
   network = "${google_compute_network.vpc_network.self_link}"
   subnetwork = "${google_compute_subnetwork.private_subnet.self_link}"
   location = "${var.GCP_REGION}"
   project = "${var.GCP_PROJECT}"
-
-//  private_cluster_config {
-//    enable_private_endpoint = false
-//    enable_private_nodes = true
-//    master_ipv4_cidr_block = "172.31.64.0/28"
-//  }
 
   master_auth {
     username = ""
@@ -207,7 +201,7 @@ resource "google_compute_firewall" "allow_mysql_from_bastion" {
 resource "google_compute_instance" "bastion" {
   project = "${var.GCP_PROJECT}"
   zone = "${var.GCP_REGION}-a"
-  machine_type = "f1-micro"
+  machine_type = "${var.bastion_instance_type}"
   name = "bastion"
   "boot_disk" {
     initialize_params {

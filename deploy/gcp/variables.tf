@@ -1,6 +1,6 @@
 variable "cluster_name" {
   description = "TiDB clustername"
-  default = "tidb-cluster"
+  default = "my-cluster"
 }
 
 variable "tidb_version" {
@@ -11,6 +11,18 @@ variable "tidb_version" {
 variable "pd_count" {
   description = "Number of PD nodes per availability zone"
   default = 1
+}
+
+variable "pd_replica_count" {
+  default = 3
+}
+
+variable "tikv_replica_count" {
+  default = 3
+}
+
+variable "tidb_replica_count" {
+  default = 3
 }
 
 variable "tikv_count" {
@@ -24,17 +36,21 @@ variable "tidb_count" {
 }
 
 variable "pd_instance_type" {
-  default = "n1-standard-1"
+  default = "n1-standard-4"
 }
 
 variable "tikv_instance_type" {
-  default = "n1-standard-1"
+  default = "n1-highmem-8"
 }
 
 variable "tidb_instance_type" {
-  default = "n1-standard-1"
+  default = "n1-standard-16"
 }
 
 variable "monitor_instance_type" {
-  default = "n1-standard-1"
+  default = "n1-standard-2"
+}
+
+variable "bastion_instance_type" {
+  default = "f1-micro"
 }
