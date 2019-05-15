@@ -251,6 +251,16 @@ resource "null_resource" "get-credentials" {
       KUBECONFIG = "${local.kubeconfig}"
     }
   }
+  provisioner "local-exec" {
+    when = "destroy"
+    command = <<EOS
+kubectl get pvc -n tidb -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl patch pv {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+kubectl delete namespace tidb
+EOS
+    environment {
+      KUBECONFIG = "${local.kubeconfig}"
+    }
+  }
 }
 
 resource "local_file" "tidb-cluster-values" {
