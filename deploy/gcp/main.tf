@@ -201,7 +201,7 @@ resource "google_compute_firewall" "allow_mysql_from_bastion" {
 }
 
 resource "google_compute_firewall" "allow_ssh_from_bastion" {
-  name = "allow-mysql-from-bastion"
+  name = "allow-ssh-from-bastion"
   network = "${google_compute_network.vpc_network.self_link}"
   project = "${var.GCP_PROJECT}"
 
