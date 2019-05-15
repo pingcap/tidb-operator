@@ -75,6 +75,7 @@ func NewOperatorActions(cli versioned.Interface,
 		cli:          cli,
 		kubeCli:      kubeCli,
 		pdControl:    controller.NewDefaultPDControl(),
+		tidbControl:  controller.NewDefaultTiDBControl(),
 		pollInterval: pollInterval,
 		cfg:          cfg,
 	}
@@ -166,6 +167,7 @@ type operatorActions struct {
 	cli           versioned.Interface
 	kubeCli       kubernetes.Interface
 	pdControl     controller.PDControlInterface
+	tidbControl   controller.TiDBControlInterface
 	pollInterval  time.Duration
 	cfg           *Config
 	clusterEvents map[string]*clusterEvent
@@ -200,25 +202,31 @@ type OperatorConfig struct {
 }
 
 type TidbClusterConfig struct {
-	BackupName       string
-	Namespace        string
-	ClusterName      string
-	OperatorTag      string
-	PDImage          string
-	TiKVImage        string
-	TiDBImage        string
-	StorageClassName string
-	Password         string
-	InitSql          string
-	RecordCount      string
-	InsertBatchSize  string
-	Resources        map[string]string
-	Args             map[string]string
-	blockWriter      *blockwriter.BlockWriterCase
-	Monitor          bool
-	UserName         string
-	InitSecretName   string
-	BackupSecretName string
+	BackupName             string
+	Namespace              string
+	ClusterName            string
+	OperatorTag            string
+	PDImage                string
+	TiKVImage              string
+	TiDBImage              string
+	StorageClassName       string
+	Password               string
+	InitSql                string
+	RecordCount            string
+	InsertBatchSize        string
+	Resources              map[string]string
+	Args                   map[string]string
+	blockWriter            *blockwriter.BlockWriterCase
+	Monitor                bool
+	UserName               string
+	InitSecretName         string
+	BackupSecretName       string
+	EnableConfigMapRollout bool
+
+	PDMaxReplicas       int
+	TiKVGrpcConcurrency int
+	TiDBTokenLimit      int
+	PDLogLevel          string
 
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
@@ -274,6 +282,20 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 		"tidb.passwordSecretName": tc.InitSecretName,
 		"tidb.initSql":            tc.InitSql,
 		"monitor.create":          strconv.FormatBool(tc.Monitor),
+		"enableConfigMapRollout":  strconv.FormatBool(tc.EnableConfigMapRollout),
+	}
+
+	if tc.PDMaxReplicas > 0 {
+		set["pd.maxReplicas"] = strconv.Itoa(tc.PDMaxReplicas)
+	}
+	if tc.TiKVGrpcConcurrency > 0 {
+		set["tikv.grpcConcurrency"] = strconv.Itoa(tc.TiKVGrpcConcurrency)
+	}
+	if tc.TiDBTokenLimit > 0 {
+		set["tidb.tokenLimit"] = strconv.Itoa(tc.TiDBTokenLimit)
+	}
+	if len(tc.PDLogLevel) > 0 {
+		set["pd.logLevel"] = tc.PDLogLevel
 	}
 
 	for k, v := range tc.Resources {
@@ -465,6 +487,12 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete jobs: %v, %s", err, string(res))
 	}
 
+	// delete all configmaps
+	allConfigMaps := label.New().Instance(info.ClusterName).String()
+	if res, err := exec.Command("kubectl", "delete", "configmaps", "-n", info.Namespace, "-l", allConfigMaps).CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to delete configmaps: %v, %s", err, string(res))
+	}
+
 	patchPVCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s | awk '{print $1}' | "+
 		"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
 		info.Namespace, info.ClusterName)
@@ -553,6 +581,12 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		if info.Monitor {
 			glog.V(4).Infof("check tidb monitor normal")
 			if b, err := oa.monitorNormal(info); !b && err == nil {
+				return false, nil
+			}
+		}
+		if info.EnableConfigMapRollout {
+			glog.V(4).Info("check tidb cluster configuration synced")
+			if b, err := oa.checkTidbClusterConfigUpdated(tc, info); !b && err == nil {
 				return false, nil
 			}
 		}
@@ -1362,6 +1396,68 @@ func (oa *operatorActions) monitorNormal(clusterInfo *TidbClusterConfig) (bool, 
 		return false, nil
 	}
 	return true, nil
+}
+
+func (oa *operatorActions) checkTidbClusterConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) (bool, error) {
+	if ok := oa.checkPdConfigUpdated(tc, clusterInfo); !ok {
+		return false, nil
+	}
+	if ok := oa.checkTiKVConfigUpdated(tc, clusterInfo); !ok {
+		return false, nil
+	}
+	if ok := oa.checkTiDBConfigUpdated(tc, clusterInfo); !ok {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (oa *operatorActions) checkPdConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
+
+	pdCli := oa.pdControl.GetPDClient(tc)
+	config, err := pdCli.GetConfig()
+	if err != nil {
+		glog.Errorf("failed to get PD configuraion from tidb cluster [%s/%s]", tc.Namespace, tc.Name)
+		return false
+	}
+	if len(clusterInfo.PDLogLevel) > 0 && clusterInfo.PDLogLevel != config.Log.Level {
+		glog.Errorf("check [%s/%s] PD logLevel configuration updated failed: desired [%s], actual [%s] not equal",
+			tc.Namespace,
+			tc.Name,
+			clusterInfo.PDLogLevel,
+			config.Log.Level)
+		return false
+	}
+	// TODO: fix #487 PD configuration update for persisted configurations
+	//if clusterInfo.PDMaxReplicas > 0 && config.Replication.MaxReplicas != uint64(clusterInfo.PDMaxReplicas) {
+	//	glog.Errorf("check [%s/%s] PD maxReplicas configuration updated failed: desired [%d], actual [%d] not equal",
+	//		tc.Namespace,
+	//		tc.Name,
+	//		clusterInfo.PDMaxReplicas,
+	//		config.Replication.MaxReplicas)
+	//	return false
+	//}
+	return true
+}
+
+func (oa *operatorActions) checkTiDBConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
+	for i := int32(0); i < tc.Spec.TiDB.Replicas; i += 1 {
+		config, err := oa.tidbControl.GetSettings(tc, i)
+		if err != nil {
+			glog.Errorf("failed to get TiDB configuration from cluster [%s/%s], ordinal: %d, error: %v", tc.Namespace, tc.Name, i, err)
+			return false
+		}
+		if clusterInfo.TiDBTokenLimit > 0 && uint(clusterInfo.TiDBTokenLimit) != config.TokenLimit {
+			glog.Errorf("check [%s/%s] TiDB instance [%d] configuration updated failed: desired [%d], actual [%d] not equal",
+				tc.Namespace, tc.Name, i, clusterInfo.TiDBTokenLimit, config.TokenLimit)
+			return false
+		}
+	}
+	return true
+}
+
+func (oa *operatorActions) checkTiKVConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
+	// TODO: check if TiKV configuration updated
+	return true
 }
 
 func (oa *operatorActions) checkPrometheus(clusterInfo *TidbClusterConfig) error {
