@@ -20,7 +20,7 @@ The default setup will create a new VPC and a t2.micro instance as bastion machi
 * 2 c4.4xlarge instances for TiDB
 * 1 c5.xlarge instance for monitor
 
-You can change default values in `variables.tf` (like cluster name and versions) as needed. The default `cluster_name` is `my-cluster`.
+You can change default values in `variables.tf` (like the cluster name and versions) as needed. The default value of `cluster_name` is `my-cluster`.
 
 ``` shell
 $ git clone --depth=1 https://github.com/pingcap/tidb-operator
@@ -29,9 +29,9 @@ $ terraform init
 $ terraform apply
 ```
 
-It might take 10 minutes or more for the process to finish. After `terraform apply` is executed successfully, some basic information will be printed to the console, you can access the `monitor_endpoint` using your web browser.
+It might take 10 minutes or more for the process to finish. After `terraform apply` is executed successfully, some basic information is printed to the console. You can access the `monitor_endpoint` using your web browser.
 
-> **Note:** You can use `terraform output` command to get those information again.
+> **Note:** You can use the `terraform output` command to get that information again.
 
 To access TiDB cluster, use the following command to first ssh into the bastion machine, and then connect it via MySQL client:
 
@@ -63,7 +63,7 @@ It may take some while to finish destroying the cluster.
 $ terraform destroy
 ```
 
-> **NOTE:** You have to manually delete the EBS volumes in AWS console after running `terraform destroy` if you don't need the data on the volumes any more.
+> **Note:** You have to manually delete the EBS volumes in AWS console after running `terraform destroy` if you do not need the data on the volumes anymore.
 
 ## Upgrade TiDB cluster
 
