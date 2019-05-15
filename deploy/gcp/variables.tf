@@ -1,16 +1,16 @@
 variable "cluster_name" {
   description = "TiDB clustername"
-  default = "my-cluster"
+  default     = "my-cluster"
 }
 
 variable "tidb_version" {
   description = "TiDB version"
-  default = "v2.1.8"
+  default     = "v2.1.8"
 }
 
 variable "pd_count" {
   description = "Number of PD nodes per availability zone"
-  default = 1
+  default     = 1
 }
 
 variable "pd_replica_count" {
@@ -27,12 +27,12 @@ variable "tidb_replica_count" {
 
 variable "tikv_count" {
   description = "Number of TiKV nodes per availability zone"
-  default = 1
+  default     = 1
 }
 
 variable "tidb_count" {
   description = "Number of TiDB nodes per availability zone"
-  default = 1
+  default     = 1
 }
 
 variable "pd_instance_type" {

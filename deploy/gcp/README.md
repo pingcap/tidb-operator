@@ -45,7 +45,7 @@ gcloud services enable container.googleapis.com
 Now we can launch the script:
 
 ```bash
-git clone https://github.com/pingcap/tidb-operator
+git clone --depth=1 https://github.com/pingcap/tidb-operator
 cd tidb-operator/deploy/gcp
 terraform init
 terraform apply
@@ -82,7 +82,7 @@ To upgrade TiDB cluster, modify `tidb_version` variable to a higher version in v
 
 ## Scale TiDB cluster
 
-To scale TiDB cluster, modify `tikv_count` or `tidb_count` to your desired count, and then run `terraform apply`.
+To scale TiDB cluster, modify `tikv_count`, `tikv_replica_count`, `tidb_count`, and `tidb_replica_count` to your desired count, and then run `terraform apply`.
 
 > *Note*: Currently, scaling in is not supported since we cannot determine which node to scale. Scaling out needs a few minutes to complete, you can watch the scaling out by `watch kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb`
 
