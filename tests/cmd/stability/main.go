@@ -19,15 +19,18 @@ import (
 	_ "net/http/pprof"
 	"time"
 
-	"github.com/pingcap/tidb-operator/tests/slack"
-
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
+	"github.com/pingcap/tidb-operator/tests/slack"
+	"github.com/robfig/cron"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
 )
+
+var successCount int
+var conf *tests.Config
 
 func main() {
 	logs.InitLogs()
@@ -36,7 +39,19 @@ func main() {
 		glog.Info(http.ListenAndServe(":6060", nil))
 	}()
 
-	conf := tests.ParseConfigOrDie()
+	conf = tests.ParseConfigOrDie()
+
+	c := cron.New()
+	c.AddFunc("0 0 18 * * *", func() {
+		slack.NotifyAndCompletedf("Succeed %d times in the past 24 hours.", successCount)
+		successCount = 0
+	})
+	go c.Start()
+
+	wait.Forever(mainfn, 5*time.Minute)
+}
+
+func mainfn() {
 	cli, kubeCli := client.NewCliOrDie()
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	fta.CheckAndRecoverEnvOrDie()
@@ -149,17 +164,13 @@ func main() {
 	onePDCluster.Namespace = "pd-replicas-1"
 	onePDCluster.Resources["pd.replicas"] = "1"
 
-	allClusters := []*tests.TidbClusterConfig{cluster1, cluster2, clusterRestoreTo, onePDCluster}
+	allClusters := []*tests.TidbClusterConfig{cluster1, cluster2, clusterRestoreTo}
 
 	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, conf, allClusters)
 	oa.CheckK8sAvailableOrDie(nil, nil)
 	go wait.Forever(oa.EventWorker, 10*time.Second)
 	// start a http server in goruntine
 	go oa.StartValidatingAdmissionWebhookServerOrDie(operatorCfg)
-
-	defer func() {
-		oa.DumpAllLogs(operatorCfg, allClusters)
-	}()
 
 	// clean and deploy operator
 	oa.CleanOperatorOrDie(operatorCfg)
@@ -169,6 +180,7 @@ func main() {
 	for _, cluster := range allClusters {
 		oa.CleanTidbClusterOrDie(cluster)
 	}
+	oa.CleanTidbClusterOrDie(onePDCluster)
 
 	// deploy and check cluster1, cluster2
 	oa.DeployTidbClusterOrDie(cluster1)
@@ -177,6 +189,8 @@ func main() {
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 	oa.CheckTidbClusterStatusOrDie(onePDCluster)
+
+	oa.CleanTidbClusterOrDie(onePDCluster)
 
 	go oa.BeginInsertDataToOrDie(cluster1)
 	go oa.BeginInsertDataToOrDie(cluster2)
@@ -254,5 +268,6 @@ func main() {
 		glog.Errorf("failed to clean temp dirs, this error can be ignored.")
 	}
 
-	slack.NotifyAndCompleted("\nFinished.")
+	successCount++
+	glog.Infof("Stability test finished at: %v\n\n\n\n", time.Now().Format(time.RFC3339))
 }

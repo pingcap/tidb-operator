@@ -154,7 +154,8 @@ func NotifyAndPanic(err error) {
 	panic(err)
 }
 
-func NotifyAndCompleted(msg string) {
+func NotifyAndCompletedf(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args)
 	sendErr := SendGoodMsg(msg)
 	if sendErr != nil {
 		glog.Warningf("failed to notify slack[%s] the massage: %s,error: %v", WebhookUrl, msg, sendErr)

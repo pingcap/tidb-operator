@@ -2210,7 +2210,10 @@ func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
 		return
 	}
 
-	ce := oa.clusterEvents[info.String()]
+	ce, ok := oa.clusterEvents[info.String()]
+	if !ok {
+		return
+	}
 	ce.events = append(ce.events, ev)
 
 	// sleep a while to avoid overlapping time
