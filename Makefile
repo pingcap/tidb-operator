@@ -63,6 +63,12 @@ stability-test-build:
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test tests/cmd/stability/*.go
 
 stability-test-docker: stability-test-build
+	[ -d tests/images/stability-test/tidb-operator ] && rm -r tests/images/stability-test/tidb-operator || true
+	[ -d tests/images/stability-test/tidb-cluster ] && rm -r tests/images/stability-test/tidb-cluster || true
+	[ -d tests/images/stability-test/tidb-backup ] && rm -r tests/images/stability-test/tidb-backup || true
+	cp -r charts/tidb-operator tests/images/stability-test
+	cp -r charts/tidb-cluster tests/images/stability-test
+	cp -r charts/tidb-backup tests/images/stability-test
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest" tests/images/stability-test
 
 stability-test-push: stability-test-docker
