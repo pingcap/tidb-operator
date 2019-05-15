@@ -31,7 +31,6 @@ func main() {
 	defer logs.FlushLogs()
 
 	conf := tests.ParseConfigOrDie()
-	conf.ChartDir = "/charts"
 
 	cli, kubeCli := client.NewCliOrDie()
 	oa := tests.NewOperatorActions(cli, kubeCli, 5*time.Second, conf, nil)

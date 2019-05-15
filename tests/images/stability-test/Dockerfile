@@ -14,4 +14,8 @@ RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VER
     rm -rf linux-amd64 && \
     rm helm-${HELM_VERSION}-linux-amd64.tar.gz
 
+ADD tidb-operator /charts/stability/tidb-operator
+ADD tidb-cluster /charts/stability/tidb-cluster
+ADD tidb-backup /charts/stability/tidb-backup
+
 ADD bin/stability-test /usr/local/bin/stability-test

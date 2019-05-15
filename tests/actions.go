@@ -162,8 +162,8 @@ type OperatorActions interface {
 	BackupRestoreOrDie(from, to *TidbClusterConfig)
 	LabelNodes() error
 	LabelNodesOrDie()
-	CheckDR(info *TidbClusterConfig) error
-	CheckDataRegionDR(info *TidbClusterConfig) error
+	CheckDT(info *TidbClusterConfig) error
+	CheckDataRegionDT(info *TidbClusterConfig) error
 }
 
 type operatorActions struct {
@@ -321,7 +321,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	glog.Infof("deploying tidb-operator %s", info.ReleaseName)
 
-	if info.Tag != "e2e" {
+	if info.Tag != "e2e" && info.Tag != "stability" {
 		if err := oa.cloneOperatorRepo(); err != nil {
 			return err
 		}

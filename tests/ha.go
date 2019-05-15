@@ -65,7 +65,7 @@ func (oa *operatorActions) LabelNodesOrDie() {
 	}
 }
 
-func (oa *operatorActions) CheckDR(cluster *TidbClusterConfig) error {
+func (oa *operatorActions) CheckDT(cluster *TidbClusterConfig) error {
 	nodeMap := map[string]corev1.Node{}
 	nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
@@ -82,7 +82,7 @@ func (oa *operatorActions) CheckDR(cluster *TidbClusterConfig) error {
 	if err != nil {
 		return err
 	}
-	err = oa.checkDR(pds.Items, nodeMap)
+	err = oa.checkDT(pds.Items, nodeMap)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (oa *operatorActions) CheckDR(cluster *TidbClusterConfig) error {
 	if err != nil {
 		return err
 	}
-	err = oa.checkDR(tikvs.Items, nodeMap)
+	err = oa.checkDT(tikvs.Items, nodeMap)
 	if err != nil {
 		return err
 	}
@@ -106,10 +106,10 @@ func (oa *operatorActions) CheckDR(cluster *TidbClusterConfig) error {
 	if err != nil {
 		return err
 	}
-	return oa.checkDR(tidbs.Items, nodeMap)
+	return oa.checkDT(tidbs.Items, nodeMap)
 }
 
-func (oa *operatorActions) checkDR(allPods []corev1.Pod, nodeMap map[string]corev1.Node) error {
+func (oa *operatorActions) checkDT(allPods []corev1.Pod, nodeMap map[string]corev1.Node) error {
 	rackPods := map[string][]corev1.Pod{}
 	for _, pod := range allPods {
 		if node, exist := nodeMap[pod.Spec.NodeName]; exist {
@@ -138,7 +138,7 @@ func (oa *operatorActions) checkDR(allPods []corev1.Pod, nodeMap map[string]core
 	return nil
 }
 
-func (oa *operatorActions) CheckDataRegionDR(cluster *TidbClusterConfig) error {
+func (oa *operatorActions) CheckDataRegionDT(cluster *TidbClusterConfig) error {
 	pdClient := http.Client{
 		Timeout: 10 * time.Second,
 	}
