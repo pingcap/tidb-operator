@@ -86,7 +86,7 @@ pd:
   #             app.kubernetes.io/component: "pd"
   #         topologyKey: "region"
   #         namespaces:
-  #         - <namespace of tidb cluster>
+  #         - <helm namespace>
   #     # this term work when the nodes have the label named zone
   #     - weight: 20
   #       podAffinityTerm:
