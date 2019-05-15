@@ -68,6 +68,11 @@ func (tc *TidbClusterConfig) UpdateTiDBTokenLimit(tokenLimit int) *TidbClusterCo
 	return tc
 }
 
+func (tc *TidbClusterConfig) UpdatePDLogLevel(logLevel string) *TidbClusterConfig {
+	tc.PDLogLevel = logLevel
+	return tc
+}
+
 func (tc *TidbClusterConfig) DSN(dbName string) string {
 	return fmt.Sprintf("root:%s@tcp(%s-tidb.%s:4000)/%s", tc.Password, tc.ClusterName, tc.Namespace, dbName)
 }

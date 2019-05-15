@@ -103,6 +103,7 @@ func main() {
 			PDMaxReplicas:          3,
 			TiKVGrpcConcurrency:    4,
 			TiDBTokenLimit:         1000,
+			PDLogLevel:             "info",
 		},
 		{
 			Namespace:        name2,
@@ -145,6 +146,7 @@ func main() {
 			PDMaxReplicas:          3,
 			TiKVGrpcConcurrency:    4,
 			TiDBTokenLimit:         1000,
+			PDLogLevel:             "info",
 		},
 	}
 
@@ -205,6 +207,7 @@ func main() {
 	for _, clusterInfo := range clusterInfos {
 		clusterInfo = clusterInfo.
 			UpdatePdMaxReplicas(conf.PDMaxReplicas).
+			UpdatePDLogLevel("debug").
 			UpdateTiKVGrpcConcurrency(conf.TiKVGrpcConcurrency).
 			UpdateTiDBTokenLimit(conf.TiDBTokenLimit)
 		if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {

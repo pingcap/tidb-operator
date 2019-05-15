@@ -226,6 +226,7 @@ type TidbClusterConfig struct {
 	PDMaxReplicas       int
 	TiKVGrpcConcurrency int
 	TiDBTokenLimit      int
+	PDLogLevel          string
 
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
@@ -292,6 +293,9 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 	}
 	if tc.TiDBTokenLimit > 0 {
 		set["tidb.tokenLimit"] = strconv.Itoa(tc.TiDBTokenLimit)
+	}
+	if len(tc.PDLogLevel) > 0 {
+		set["pd.logLevel"] = tc.PDLogLevel
 	}
 
 	for k, v := range tc.Resources {
@@ -1407,17 +1411,25 @@ func (oa *operatorActions) checkTidbClusterConfigUpdated(tc *v1alpha1.TidbCluste
 	return true, nil
 }
 
-func (oa *operatorActions) checkPdConfigUpdated(tc *v1alpha1.TidbCluster, clusetrInfo *TidbClusterConfig) bool {
+func (oa *operatorActions) checkPdConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
 
-	// TODO: fix #487 PD configuration update
-	//pdCli := oa.pdControl.GetPDClient(tc)
-	//config, err := pdCli.GetConfig()
-	//if err != nil {
-	//	glog.Errorf("failed to get PD configuraion from tidb cluster [%s/%s]", tc.Namespace, tc.Name)
-	//	return false
-	//}
+	pdCli := oa.pdControl.GetPDClient(tc)
+	config, err := pdCli.GetConfig()
+	if err != nil {
+		glog.Errorf("failed to get PD configuraion from tidb cluster [%s/%s]", tc.Namespace, tc.Name)
+		return false
+	}
+	if len(clusterInfo.PDLogLevel) > 0 && clusterInfo.PDLogLevel != config.Log.Level {
+		glog.Errorf("check [%s/%s] PD logLevel configuration updated failed: desired [%s], actual [%s] not equal",
+			tc.Namespace,
+			tc.Name,
+			clusterInfo.PDLogLevel,
+			config.Log.Level)
+		return false
+	}
+	// TODO: fix #487 PD configuration update for persisted configurations
 	//if clusterInfo.PDMaxReplicas > 0 && config.Replication.MaxReplicas != uint64(clusterInfo.PDMaxReplicas) {
-	//	glog.Errorf("check [%s/%s] PD configuration updated failed: desired [%d], actual [%d] not equal",
+	//	glog.Errorf("check [%s/%s] PD maxReplicas configuration updated failed: desired [%d], actual [%d] not equal",
 	//		tc.Namespace,
 	//		tc.Name,
 	//		clusterInfo.PDMaxReplicas,
