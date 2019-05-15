@@ -72,8 +72,6 @@ helm ls
 When done, the infrastructure can be torn down by running `terraform destroy`
 
 
-> *NOTE*: Any provisioned disks will have to be manually deleted after `terraform destroy`, assuming you do not need the data on the volumes anymore.
-
 ## Upgrade TiDB cluster
 
 To upgrade TiDB cluster, modify `tidb_version` variable to a higher version in variables.tf and run `terraform apply`.
