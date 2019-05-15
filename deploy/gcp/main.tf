@@ -295,6 +295,7 @@ until kubectl get po -n tidb -lapp.kubernetes.io/component=tidb | grep Running; 
   echo "Wait for TiDB pod running"
   sleep 5
 done
+kubectl get pv -l app.kubernetes.io/namespace=tidb -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
 EOS
 
     environment {

@@ -13,3 +13,8 @@ data "external" "tidb_ilb_ip" {
   depends_on = ["null_resource.deploy-tidb-cluster"]
   program    = ["bash", "-c", "kubectl --kubeconfig ${local.kubeconfig} get svc -n tidb tidb-cluster-tidb -o json | jq '.status.loadBalancer.ingress[0]'"]
 }
+
+data "external" "monitor_ilb_ip" {
+  depends_on = ["null_resource.deploy-tidb-cluster"]
+  program    = ["bash", "-c", "kubectl --kubeconfig ${local.kubeconfig} get svc -n tidb tidb-cluster-grafana -o json | jq '.status.loadBalancer.ingress[0]'"]
+}

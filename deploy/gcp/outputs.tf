@@ -21,3 +21,7 @@ output "tidb_version" {
 output "tidb_ilb_ip" {
   value = "${data.external.tidb_ilb_ip.result["ip"]}"
 }
+
+output "monitor_ilb_ip" {
+  value = "${data.external.monitor_ilb_ip.result["ip"]}"
+}
