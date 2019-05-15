@@ -82,7 +82,7 @@ pd:
   #       podAffinityTerm:
   #         labelSelector:
   #           matchLabels:
-  #             app.kubernetes.io/instance: <cluster.name>
+  #             app.kubernetes.io/instance: <release name>
   #             app.kubernetes.io/component: "pd"
   #         topologyKey: "region"
   #         namespaces:
@@ -92,7 +92,7 @@ pd:
   #       podAffinityTerm:
   #         labelSelector:
   #           matchLabels:
-  #             app.kubernetes.io/instance: <cluster.name>
+  #             app.kubernetes.io/instance: <release name>
   #             app.kubernetes.io/component: "pd"
   #         topologyKey: "zone"
   #         namespaces:
@@ -102,7 +102,7 @@ pd:
   #       podAffinityTerm:
   #         labelSelector:
   #           matchLabels:
-  #             app.kubernetes.io/instance: <cluster.name>
+  #             app.kubernetes.io/instance: <release name>
   #             app.kubernetes.io/component: "pd"
   #         topologyKey: "rack"
   #         namespaces:
@@ -112,7 +112,7 @@ pd:
   #       podAffinityTerm:
   #         labelSelector:
   #           matchLabels:
-  #             app.kubernetes.io/instance: <cluster.name>
+  #             app.kubernetes.io/instance: <release name>
   #             app.kubernetes.io/component: "pd"
   #         topologyKey: "kubernetes.io/hostname"
   #         namespaces:
