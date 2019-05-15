@@ -79,6 +79,8 @@ $ kubectl get po -n kube-system -l app=local-volume-provisioner
 $ kubectl get pv | grep local-storage
 ```
 
+The local-volume-provisioner creates a volume for each mounted disk. Note that for example on GKE this will create local volumes only of size 375GiB and that you need to manually alter the setup to create larger disks.
+
 ## Install TiDB Operator
 
 TiDB Operator uses [CRD](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/) to extend Kubernetes, so to use TiDB Operator, you should first create `TidbCluster` custom resource kind. This is a one-time job, namely you can only need to do this once in your Kubernetes cluster.
