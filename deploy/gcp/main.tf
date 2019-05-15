@@ -103,7 +103,7 @@ resource "google_container_node_pool" "pd_pool" {
     labels {
       dedicated = "pd"
     }
-
+    tags = ["pd"]
     oauth_scopes = ["storage-ro", "logging-write", "monitoring"]
   }
 
@@ -128,6 +128,7 @@ resource "google_container_node_pool" "tikv_pool" {
     labels {
       dedicated = "tikv"
     }
+    tags = ["tikv"]
     oauth_scopes = ["storage-ro", "logging-write", "monitoring"]
 
   }
@@ -167,6 +168,7 @@ resource "google_container_node_pool" "monitor_pool" {
 
   node_config {
     machine_type = "${var.monitor_instance_type}"
+    tags = ["monitor"]
     oauth_scopes = ["storage-ro", "logging-write", "monitoring"]
   }
 
@@ -196,6 +198,19 @@ resource "google_compute_firewall" "allow_mysql_from_bastion" {
   }
   source_tags = ["bastion"]
   target_tags = ["tidb"]
+}
+
+resource "google_compute_firewall" "allow_ssh_from_bastion" {
+  name = "allow-mysql-from-bastion"
+  network = "${google_compute_network.vpc_network.self_link}"
+  project = "${var.GCP_PROJECT}"
+
+  allow {
+    protocol = "tcp"
+    ports = ["22"]
+  }
+  source_tags = ["bastion"]
+  target_tags = ["tidb", "tikv", "pd", "monitor"]
 }
 
 resource "google_compute_instance" "bastion" {
