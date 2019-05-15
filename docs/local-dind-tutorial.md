@@ -27,6 +27,38 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 
 - `root` access or permissions to operate with the Docker daemon.
 
+- Supported filesystem
+
+    If the host machine uses an XFS filesystem (default in CentOS 7), it must be formatted with `ftype=1` to enable `d_type` support, see [Docker's documentation](https://docs.docker.com/storage/storagedriver/overlayfs-driver/) for details.
+    
+    You can check if your filesystem supports `d_type` using commaind `xfs_info / | grep ftype`, where `/` is the data directory of you installed Docker daemon.
+
+    If your root directory `/` uses XFS without `d_type` support, but there is another partition does, or is using another filesystem, it is also possible to change the data directory of Docker to use that partition.
+
+    Assume a supported filesystem is mounted at path `/data`, use the following instructions to let Docker use it:
+
+    ```sh
+    # Create a new directory for docker data storage
+    mkdir -p /data/docker
+
+    # Stop docker daemon
+    systemctl stop docker.service
+
+    # Make sure the systemd directory exist
+    mkdir -p /etc/systemd/system/docker.service.d/
+
+    # Overrite config
+    cat << EOF > /etc/systemd/system/docker.service.d/docker-storage.conf
+    [Service]
+    ExecStart= 
+    ExecStart=/usr/bin/dockerd -g /data/docker -H fd:// --containerd=/run/containerd/containerd.sock
+    EOF
+
+    # Restart docker daemon
+    systemctl daemon-reload
+    systemctl start docker.service
+    ```
+
 ## Step 1: Deploy a Kubernetes cluster using DinD
 
 There is a script in our repository that can help you install and set up a Kubernetes cluster (version 1.12) using DinD for TiDB Operator.
