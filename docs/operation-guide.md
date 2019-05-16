@@ -13,7 +13,7 @@ $ namespace="tidb"
 
 ## Configuration
 
-TiDB Operator use `values.yaml` as TiDB cluster configuration file. It provides the default basic configuration which you can use directly for quick deployment, but if you have specific configuration requirements or for production deployment, you need to manually modify the variables in the `value.yaml` file.
+TiDB Operator uses `values.yaml` as TiDB cluster configuration file. It provides the default basic configuration which you can use directly for quick deployment, but if you have specific configuration requirements or for production deployment, you need to manually modify the variables in the `value.yaml` file.
 
 * Resource setting
 
