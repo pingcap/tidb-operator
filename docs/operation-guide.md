@@ -49,7 +49,7 @@ TiDB Operator uses `values.yaml` as TiDB cluster configuration file. It provides
     * Disaster Tolerance of data
 
         Disaster tolerance of data is guaranteed by TiDB Cluster itself. The only work Operator needs to do is that collects topology info from specific labels of Kubernetes nodes where TiKV Pod runs on and then PD will schedule data replicas auto according to the topology info.
-        Cause currently TiDB Operator can only recognize some specific labels, so you can only set nodes topology info with the following particular labels
+        Because current TiDB Operator can only recognize some specific labels, so you can only set nodes topology info with the following particular labels
 
         * `region`: region where node is located
         * `zone`: zone where node is located
