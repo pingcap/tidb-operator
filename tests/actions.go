@@ -309,6 +309,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"scheduler.logLevel":               "2",
 		"controllerManager.replicas":       "2",
 		"scheduler.replicas":               "2",
+		"imagePullPolicy":                  "Always",
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
@@ -386,6 +387,7 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		--set operatorImage=%s`,
 		info.ReleaseName, oa.operatorChartPath(info.Tag),
 		info.Image)
+
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
@@ -641,8 +643,7 @@ func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, fmt.Sprintf("ScaleTidbCluster to pd: %s, tikv: %s, tidb: %s",
 		info.Args["pd.replicas"], info.Args["tikv.replicas"], info.Args["tidb.replicas"]))
 
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(nil))
+	cmd := oa.getHelmUpgradeClusterCmd(info, nil)
 	glog.Info("[SCALE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -722,8 +723,7 @@ func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 	}
 	oa.EmitEvent(info, "UpgradeTidbCluster")
 
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(nil))
+	cmd := oa.getHelmUpgradeClusterCmd(info, nil)
 	glog.Info("[UPGRADE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1743,10 +1743,7 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 		"scheduledBackup.secretName": info.BackupSecretName,
 	}
 
-	setString := info.TidbClusterHelmSetString(sets)
-
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), setString)
+	cmd := oa.getHelmUpgradeClusterCmd(info, sets)
 
 	glog.Infof("scheduled-backup delploy [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -1764,10 +1761,7 @@ func (oa *operatorActions) disableScheduledBackup(info *TidbClusterConfig) error
 		"scheduledBackup.create": "false",
 	}
 
-	setString := info.TidbClusterHelmSetString(sets)
-
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), setString)
+	cmd := oa.getHelmUpgradeClusterCmd(info, sets)
 
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1964,10 +1958,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 		"binlog.drainer.ignoreSchemas":  "",
 	}
 
-	setString := from.TidbClusterHelmSetString(sets)
-
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		from.ClusterName, oa.tidbClusterChartPath(from.OperatorTag), setString)
+	cmd := oa.getHelmUpgradeClusterCmd(from, sets)
 	glog.Infof(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -2274,4 +2265,15 @@ func (oa *operatorActions) EventWorker() {
 		ce := oa.clusterEvents[key]
 		ce.events = retryEvents
 	}
+}
+
+func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, set map[string]string) string {
+	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
+		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(set))
+	if strings.TrimSpace(info.SubValues) != "" {
+		subVaulesPath := fmt.Sprintf("%s/%s.yaml", oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName)
+		cmd = fmt.Sprintf(" %s --values %s", cmd, subVaulesPath)
+	}
+
+	return cmd
 }
