@@ -24,7 +24,7 @@ TiDB Operator uses `values.yaml` as TiDB cluster configuration file. It provides
 
     * Storage
 
-        The variables `pd.storageClassName` and `tikv.storageClassName` in `values.yaml` are used to set `StorageClass` of pd and tikv,their default setting are `local-storage` with minimal size.
+        The variables `pd.storageClassName` and `tikv.storageClassName` in `values.yaml` are used to set `StorageClass` of PD and TiKV,their default setting are `local-storage` with minimal size.
         If you don't want to use the default `StorageClass` or your Kubernetes cluster does not support `local-storage` class, please execute the following command to find an available `StorageClass` and select the ones you want to provide to TiDB cluster.
 
         ```shell
