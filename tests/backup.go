@@ -11,6 +11,9 @@ import (
 func (oa *operatorActions) BackupRestore(from, to *TidbClusterConfig) error {
 	oa.StopInsertDataTo(from)
 
+	// wait for insert stop fully
+	time.Sleep(1 * time.Minute)
+
 	err := oa.DeployAdHocBackup(from)
 	if err != nil {
 		glog.Errorf("cluster:[%s] deploy happen error: %v", from.ClusterName, err)

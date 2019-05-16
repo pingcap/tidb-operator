@@ -30,7 +30,6 @@ import (
 )
 
 var successCount int
-var conf *tests.Config
 
 func main() {
 	logs.InitLogs()
@@ -39,27 +38,11 @@ func main() {
 		glog.Info(http.ListenAndServe(":6060", nil))
 	}()
 
-	conf = tests.ParseConfigOrDie()
-
-	c := cron.New()
-	c.AddFunc("0 0 18 * * *", func() {
-		slack.NotifyAndCompletedf("Succeed %d times in the past 24 hours.", successCount)
-		successCount = 0
-	})
-	go c.Start()
-
-	wait.Forever(mainfn, 5*time.Minute)
-}
-
-func mainfn() {
+	conf := tests.ParseConfigOrDie()
 	cli, kubeCli := client.NewCliOrDie()
-	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
-	fta.CheckAndRecoverEnvOrDie()
-
 	tidbVersion := conf.GetTiDBVersionOrDie()
 	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
 
-	// operator config
 	operatorCfg := &tests.OperatorConfig{
 		Namespace:          "pingcap",
 		ReleaseName:        "operator",
@@ -72,11 +55,6 @@ func mainfn() {
 		WebhookConfigName:  "webhook-config",
 	}
 
-	// TODO remove this
-	// create database and table and insert a column for test backup and restore
-	initSql := `"create database record;use record;create table test(t char(32))"`
-
-	// two clusters in different namespaces
 	clusterName1 := "stability-cluster1"
 	clusterName2 := "stability-cluster2"
 	cluster1 := &tests.TidbClusterConfig{
@@ -88,7 +66,6 @@ func mainfn() {
 		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
 		StorageClassName: "local-storage",
 		Password:         "admin",
-		InitSql:          initSql,
 		UserName:         "root",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName1),
 		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName1),
@@ -125,7 +102,6 @@ func mainfn() {
 		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
 		StorageClassName: "local-storage",
 		Password:         "admin",
-		InitSql:          initSql,
 		UserName:         "root",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName2),
 		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName2),
@@ -166,12 +142,40 @@ func mainfn() {
 
 	allClusters := []*tests.TidbClusterConfig{cluster1, cluster2, clusterRestoreTo}
 
+	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
 	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, conf, allClusters)
+
+	fta.CheckAndRecoverEnvOrDie()
 	oa.CheckK8sAvailableOrDie(nil, nil)
 	go wait.Forever(oa.EventWorker, 10*time.Second)
-	// start a http server in goruntine
 	go oa.StartValidatingAdmissionWebhookServerOrDie(operatorCfg)
 
+	c := cron.New()
+	c.AddFunc("0 0 10 * * *", func() {
+		slack.NotifyAndCompletedf("Succeed %d times in the past 24 hours.", successCount)
+		successCount = 0
+	})
+	go c.Start()
+
+	fn := func() {
+		run(oa, fta, conf, operatorCfg, allClusters, cluster1, cluster2,
+			onePDCluster, upgardeTiDBVersions, clusterRestoreTo, clusterBackupFrom)
+	}
+	wait.Forever(fn, 5*time.Minute)
+}
+
+func run(oa tests.OperatorActions,
+	fta tests.FaultTriggerActions,
+	conf *tests.Config,
+	operatorCfg *tests.OperatorConfig,
+	allClusters []*tests.TidbClusterConfig,
+	cluster1 *tests.TidbClusterConfig,
+	cluster2 *tests.TidbClusterConfig,
+	onePDCluster *tests.TidbClusterConfig,
+	upgardeTiDBVersions []string,
+	clusterRestoreTo *tests.TidbClusterConfig,
+	clusterBackupFrom *tests.TidbClusterConfig,
+) {
 	// clean and deploy operator
 	oa.CleanOperatorOrDie(operatorCfg)
 	oa.DeployOperatorOrDie(operatorCfg)
