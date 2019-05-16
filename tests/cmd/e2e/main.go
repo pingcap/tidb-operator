@@ -100,6 +100,11 @@ func main() {
 				BatchSize:   1,
 				RawSize:     1,
 			},
+			EnableConfigMapRollout: true,
+			PDMaxReplicas:          3,
+			TiKVGrpcConcurrency:    4,
+			TiDBTokenLimit:         1000,
+			PDLogLevel:             "info",
 		},
 		{
 			Namespace:        name2,
@@ -138,6 +143,11 @@ func main() {
 				BatchSize:   1,
 				RawSize:     1,
 			},
+			EnableConfigMapRollout: false,
+			PDMaxReplicas:          3,
+			TiKVGrpcConcurrency:    4,
+			TiDBTokenLimit:         1000,
+			PDLogLevel:             "info",
 		},
 		{
 			Namespace:        name2,
@@ -203,6 +213,23 @@ func main() {
 			if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
 				glog.Fatal(err)
 			}
+		}
+		for _, clusterInfo := range clusterInfos {
+			if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+				glog.Fatal(err)
+			}
+		}
+	}
+
+	// update configuration on the fly
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.
+			UpdatePdMaxReplicas(conf.PDMaxReplicas).
+			UpdatePDLogLevel("debug").
+			UpdateTiKVGrpcConcurrency(conf.TiKVGrpcConcurrency).
+			UpdateTiDBTokenLimit(conf.TiDBTokenLimit)
+		if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
 		for _, clusterInfo := range clusterInfos {
 			if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
