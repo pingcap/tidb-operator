@@ -33,7 +33,7 @@ TiDB Operator uses `values.yaml` as TiDB cluster configuration file. It provides
 
 * Disaster Tolerance setting
 
-    TiDB cluster is a distributed database. Its Disaster Tolerance means that when any physical node failed, not only to ensure TiDB server is available, but also ensure the data is complete and available.
+    TiDB is a distributed database. Its disaster tolerance means that when any physical node failed, not only to ensure TiDB server is available, but also ensure the data is complete and available.
 
     How to guarantee Disaster Tolerance of TiDB cluster on Kubernetes?
 
