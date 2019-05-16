@@ -39,7 +39,7 @@ TiDB Operator uses `values.yaml` as TiDB cluster configuration file. It provides
 
     We mainly solve the problem from the scheduling of services and data.
 
-    * Disaster Tolerance of TiDB server
+    * Disaster Tolerance of TiDB instance
 
         TiDB Operator provides a external scheduler to guarantee PD/TiKV/TiDB server disaster tolerance on host level. TiDB Cluster have set the external scheduler as default scheduler, you will find the setting in the variable `schedulerName` of `values.yaml`.
 
