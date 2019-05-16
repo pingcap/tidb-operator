@@ -52,6 +52,8 @@ $ terraform apply
 
 `terraform apply` will take 5 to 10 minutes to create the whole stack, once complete, basic cluster information will be printed:
 
+> **Note:** You can use the `terraform output` command to get this information again.
+
 ```
 Apply complete! Resources: 3 added, 0 changed, 1 destroyed.
 
