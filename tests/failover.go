@@ -65,6 +65,8 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	glog.Infof("deleting pod: [%s/%s] and wait 1 minute for the pod to terminate", info.Namespace, store.PodName)
 	err = cli.CoreV1().Pods(info.Namespace).Delete(store.PodName, nil)
 	if err != nil {
+		glog.Errorf("failed to get delete the pod: ns=%s tc=%s pod=%s err=%s",
+			info.Namespace, info.ClusterName, store.PodName, err.Error())
 		return err
 	}
 
@@ -77,6 +79,8 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		Store:     store.ID,
 	})
 	if err != nil {
+		glog.Errorf("failed to truncate the sst file: ns=%s tc=%s store=%s err=%s",
+			info.Namespace, info.ClusterName, store.ID, err.Error())
 		return err
 	}
 	oa.EmitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s/%s", info.Namespace, store.PodName))
