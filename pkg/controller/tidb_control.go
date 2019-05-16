@@ -20,6 +20,7 @@ import (
 	"net/http"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb/config"
 )
 
 const (
@@ -40,6 +41,8 @@ type TiDBControlInterface interface {
 	ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error)
 	// Get TIDB info return tidb's dbInfo
 	GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*dbInfo, error)
+	// GetSettings return the TiDB instance settings
+	GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error)
 }
 
 // defaultTiDBControl is default implementation of TiDBControlInterface.
@@ -127,6 +130,37 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 	return &info, nil
 }
 
+func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error) {
+	tcName := tc.GetName()
+	ns := tc.GetNamespace()
+
+	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
+	url := fmt.Sprintf("http://%s.%s.%s:10080/settings", hostName, TiDBPeerMemberName(tcName), ns)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := tdc.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer DeferClose(res.Body, &err)
+	if res.StatusCode != http.StatusOK {
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v", res.StatusCode))
+		return nil, errMsg
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	info := config.Config{}
+	err = json.Unmarshal(body, &info)
+	if err != nil {
+		return nil, err
+	}
+	return &info, nil
+}
+
 func (tdc *defaultTiDBControl) getBodyOK(apiURL string) ([]byte, error) {
 	res, err := tdc.httpClient.Get(apiURL)
 	if err != nil {
@@ -152,6 +186,7 @@ type FakeTiDBControl struct {
 	notDDLOwner         bool
 	tidbInfo            *dbInfo
 	getInfoError        error
+	tidbConfig          *config.Config
 }
 
 // NewFakeTiDBControl returns a FakeTiDBControl instance
@@ -184,4 +219,8 @@ func (ftd *FakeTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int
 
 func (ftd *FakeTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*dbInfo, error) {
 	return ftd.tidbInfo, ftd.getInfoError
+}
+
+func (ftd *FakeTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error) {
+	return ftd.tidbConfig, ftd.getInfoError
 }

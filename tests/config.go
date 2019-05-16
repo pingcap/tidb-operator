@@ -37,6 +37,10 @@ type Config struct {
 	CertFile         string
 	KeyFile          string
 
+	PDMaxReplicas       int `yaml:"pd_max_replicas" json:"pd_max_replicas"`
+	TiKVGrpcConcurrency int `yaml:"tikv_grpc_concurrency" json:"tikv_grpc_concurrency"`
+	TiDBTokenLimit      int `yaml:"tidb_token_limit" json:"tidb_token_limit"`
+
 	// Block writer
 	BlockWriter blockwriter.Config `yaml:"block_writer,omitempty"`
 
@@ -55,6 +59,11 @@ type Nodes struct {
 // NewConfig creates a new config.
 func NewConfig() (*Config, error) {
 	cfg := &Config{
+
+		PDMaxReplicas:       5,
+		TiDBTokenLimit:      1024,
+		TiKVGrpcConcurrency: 8,
+
 		BlockWriter: blockwriter.Config{
 			TableNum:    defaultTableNum,
 			Concurrency: defaultConcurrency,

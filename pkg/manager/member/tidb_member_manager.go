@@ -221,7 +221,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
-	tidbConfigMap := controller.TiDBMemberName(tcName)
+	tidbConfigMap := controller.MemberConfigMapName(tc, v1alpha1.TiDBMemberType)
 
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
