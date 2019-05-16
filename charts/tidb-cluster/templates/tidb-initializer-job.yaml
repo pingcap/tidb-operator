@@ -3,6 +3,8 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ template "cluster.name" . }}-tidb-initializer
+  annotations:
+    "helm.sh/hook": post-install
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -44,7 +46,11 @@ spec:
       {{- if .Values.tidb.initSql }}
       - name: init-sql
         configMap:
+          {{- if .Values.enableConfigMapRollout }}
+          name: {{ template "cluster.name" . }}-tidb-{{ template "tidb-configmap.data-digest" . }}
+          {{- else }}
           name: {{ template "cluster.name" . }}-tidb
+          {{- end }}
           items:
           - key: init-sql
             path: init.sql

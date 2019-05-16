@@ -155,6 +155,24 @@ func AnnProm(port int32) map[string]string {
 	}
 }
 
+// MemberConfigMapName returns the default ConfigMap name of the specified member type
+func MemberConfigMapName(tc *v1alpha1.TidbCluster, member v1alpha1.MemberType) string {
+	nameKey := fmt.Sprintf("%s-%s", tc.Name, member)
+	return nameKey + getConfigMapSuffix(tc, member.String(), nameKey)
+}
+
+// getConfigMapSuffix return the ConfigMap name suffix
+func getConfigMapSuffix(tc *v1alpha1.TidbCluster, component string, name string) string {
+	if tc.Annotations == nil {
+		return ""
+	}
+	sha := tc.Annotations[fmt.Sprintf("pingcap.com/%s.%s.sha", component, name)]
+	if len(sha) == 0 {
+		return ""
+	}
+	return "-" + sha
+}
+
 // setIfNotEmpty set the value into map when value in not empty
 func setIfNotEmpty(container map[string]string, key, value string) {
 	if value != "" {
