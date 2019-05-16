@@ -403,9 +403,8 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 		if pod != nil && pod.Spec.NodeName != "" {
 			// Update assiged node
 			newTidbMember.NodeName = pod.Spec.NodeName
-		} else {
-			// Ignore if pod does not exist or not scheduled
 		}
+		// Ignore if pod does not exist or not scheduled
 		tidbStatus[name] = newTidbMember
 	}
 	tc.Status.TiDB.Members = tidbStatus
