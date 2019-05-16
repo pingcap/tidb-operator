@@ -1,7 +1,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
+{{- if .Values.enableConfigMapRollout }}
+  name: {{ template "cluster.name" . }}-tikv-{{ template "tikv-configmap.data-digest" . }}
+{{- else }}
   name: {{ template "cluster.name" . }}-tikv
+{{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -9,12 +13,4 @@ metadata:
     app.kubernetes.io/component: tikv
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 data:
-  startup-script: |-
-{{ tuple "scripts/_start_tikv.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-
-  config-file: |-
-    {{- if .Values.tikv.config }}
-{{ .Values.tikv.config | indent 4 }}
-    {{- else }}
-{{ tuple "config/_tikv-config.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-    {{- end -}}
+{{ include "tikv-configmap.data" . | indent 2 }}

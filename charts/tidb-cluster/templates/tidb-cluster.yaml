@@ -2,6 +2,12 @@ apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
   name: {{ template "cluster.name" . }}
+{{- if .Values.enableConfigMapRollout }}
+  annotations:
+    pingcap.com/pd.{{ template "cluster.name" . }}-pd.sha: {{ template "pd-configmap.data-digest" . }}
+    pingcap.com/tikv.{{ template "cluster.name" . }}-tikv.sha: {{ template "tikv-configmap.data-digest" . }}
+    pingcap.com/tidb.{{ template "cluster.name" . }}-tidb.sha: {{ template "tidb-configmap.data-digest" . }}
+{{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}

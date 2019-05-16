@@ -151,6 +151,12 @@ $ helm upgrade ${releaseName} charts/tidb-cluster
 
 For minor version upgrade, updating the `image` should be enough. When TiDB major version is out, the better way to update is to fetch the new charts from tidb-operator and then merge the old values.yaml with new values.yaml. And then upgrade as above.
 
+## Change TiDB cluster Configuration
+
+Since `v1.0.0`, TiDB operator can perform rolling-update on configuration updates. This feature is disabled by default in favor of backward compatibility, you can enable it by setting `enableConfigMapRollout` to `true` in your helm values file.
+
+> WARN: changing this variable against a running cluster will trigger an rolling-update of PD/TiKV/TiDB pods even if there's no configuration change.
+
 ## Destroy TiDB cluster
 
 To destroy TiDB cluster, run the following command:

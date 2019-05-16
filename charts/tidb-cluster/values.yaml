@@ -40,6 +40,13 @@ discovery:
       cpu: 80m
       memory: 50Mi
 
+# Whether enable ConfigMap Rollout management.
+# When enabling, change of ConfigMap will trigger a graceful rolling-update of the component.
+# This feature is only available in tidb-operator v1.0 or higher.
+# Note: Switch this variable against an existing cluster will cause an rolling-update of each component even
+# if the ConfigMap was not changed.
+enableConfigMapRollout: false
+
 pd:
   replicas: 3
   image: pingcap/pd:v2.1.8
