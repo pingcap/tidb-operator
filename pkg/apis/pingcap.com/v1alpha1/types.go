@@ -108,6 +108,7 @@ type PDSpec struct {
 	ContainerSpec
 	Replicas         int32               `json:"replicas"`
 	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
+	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
 	StorageClassName string              `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
 }
@@ -117,6 +118,7 @@ type TiDBSpec struct {
 	ContainerSpec
 	Replicas         int32                 `json:"replicas"`
 	Affinity         *corev1.Affinity      `json:"affinity,omitempty"`
+	NodeSelector     map[string]string     `json:"nodeSelector,omitempty"`
 	StorageClassName string                `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration   `json:"tolerations,omitempty"`
 	BinlogEnabled    bool                  `json:"binlogEnabled,omitempty"`
@@ -135,6 +137,7 @@ type TiKVSpec struct {
 	ContainerSpec
 	Replicas         int32               `json:"replicas"`
 	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
+	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
 	StorageClassName string              `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
 }

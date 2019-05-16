@@ -35,6 +35,8 @@ spec:
   {{- end }}
     affinity:
 {{ toYaml .Values.pd.affinity | indent 6 }}
+    nodeSelector:
+{{ toYaml .Values.pd.nodeSelector | indent 6 }}
   {{- if .Values.pd.tolerations }}
     tolerations:
 {{ toYaml .Values.pd.tolerations | indent 4 }}
@@ -51,6 +53,8 @@ spec:
   {{- end }}
     affinity:
 {{ toYaml .Values.tikv.affinity | indent 6 }}
+    nodeSelector:
+{{ toYaml .Values.tikv.nodeSelector | indent 6 }}
   {{- if .Values.tikv.tolerations }}
     tolerations:
 {{ toYaml .Values.tikv.tolerations | indent 4 }}
@@ -64,6 +68,8 @@ spec:
   {{- end }}
     affinity:
 {{ toYaml .Values.tidb.affinity | indent 6 }}
+    nodeSelector:
+{{ toYaml .Values.tidb.nodeSelector | indent 6 }}
   {{- if .Values.tidb.tolerations }}
     tolerations:
 {{ toYaml .Values.tidb.tolerations | indent 4 }}
