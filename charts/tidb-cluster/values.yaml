@@ -96,7 +96,7 @@ pd:
   #             app.kubernetes.io/component: "pd"
   #         topologyKey: "zone"
   #         namespaces:
-  #         - <namespace of tidb cluster>
+  #         - <helm namespace>
   #     # this term work when the nodes have the label named rack
   #     - weight: 40
   #       podAffinityTerm:
@@ -106,7 +106,7 @@ pd:
   #             app.kubernetes.io/component: "pd"
   #         topologyKey: "rack"
   #         namespaces:
-  #         - <namespace of tidb cluster>
+  #         - <helm namespace>
   #     # this term work when the nodes have the label named kubernetes.io/hostname
   #     - weight: 80
   #       podAffinityTerm:
@@ -116,7 +116,7 @@ pd:
   #             app.kubernetes.io/component: "pd"
   #         topologyKey: "kubernetes.io/hostname"
   #         namespaces:
-  #         - <namespace of tidb cluster>
+  #         - <helm namespace>
   #   nodeAffinity:
   #     requiredDuringSchedulingIgnoredDuringExecution:
   #       nodeSelectorTerms:
