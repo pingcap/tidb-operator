@@ -41,7 +41,7 @@ TiDB Operator uses `values.yaml` as TiDB cluster configuration file. It provides
 
     * Disaster Tolerance of TiDB instance
 
-        TiDB Operator provides a external scheduler to guarantee PD/TiKV/TiDB server disaster tolerance on host level. TiDB Cluster have set the external scheduler as default scheduler, you will find the setting in the variable `schedulerName` of `values.yaml`.
+        TiDB Operator provides an extended scheduler to guarantee PD/TiKV/TiDB instance disaster tolerance on host level. TiDB Cluster has set the extended scheduler as default scheduler, you will find the setting in the variable `schedulerName` of `values.yaml`.
 
         In the other hand use `PodAntiAffinity` term of `affinity` to ensure disaster tolerance on the other topology levels (e.g. rack, zone, region). 
         refer to the doc: [pod affnity & anti affinity](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#inter-pod-affinity-and-anti-affinity-beta-feature), moreover `values.yaml` also provides a typical disaster tolerance setting example in the comments of `pd.affinity`.
