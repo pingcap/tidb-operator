@@ -58,7 +58,7 @@ TiDB Operator uses `values.yaml` as TiDB cluster configuration file. It provides
 
         you need label topology info to nodes of Kubernetes cluster use the following command
         ```shell
-        # The labels are optional
+        # Not all tags are required
         $ kubectl label node <nodeName> region=<regionName> zone=<zoneName> rack=<rackName> kubernetes.io/hostname=<hostName>
         ```
 
