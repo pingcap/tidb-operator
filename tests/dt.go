@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -65,7 +66,7 @@ func (oa *operatorActions) LabelNodesOrDie() {
 	}
 }
 
-func (oa *operatorActions) CheckDT(cluster *TidbClusterConfig) error {
+func (oa *operatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) error {
 	nodeMap := map[string]corev1.Node{}
 	nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
@@ -82,7 +83,7 @@ func (oa *operatorActions) CheckDT(cluster *TidbClusterConfig) error {
 	if err != nil {
 		return err
 	}
-	err = oa.checkDT(pds.Items, nodeMap)
+	err = oa.checkDisasterTolerance(pds.Items, nodeMap)
 	if err != nil {
 		return err
 	}
@@ -94,7 +95,7 @@ func (oa *operatorActions) CheckDT(cluster *TidbClusterConfig) error {
 	if err != nil {
 		return err
 	}
-	err = oa.checkDT(tikvs.Items, nodeMap)
+	err = oa.checkDisasterTolerance(tikvs.Items, nodeMap)
 	if err != nil {
 		return err
 	}
@@ -106,10 +107,10 @@ func (oa *operatorActions) CheckDT(cluster *TidbClusterConfig) error {
 	if err != nil {
 		return err
 	}
-	return oa.checkDT(tidbs.Items, nodeMap)
+	return oa.checkDisasterTolerance(tidbs.Items, nodeMap)
 }
 
-func (oa *operatorActions) checkDT(allPods []corev1.Pod, nodeMap map[string]corev1.Node) error {
+func (oa *operatorActions) checkDisasterTolerance(allPods []corev1.Pod, nodeMap map[string]corev1.Node) error {
 	rackPods := map[string][]corev1.Pod{}
 	for _, pod := range allPods {
 		if node, exist := nodeMap[pod.Spec.NodeName]; exist {
@@ -134,11 +135,24 @@ func (oa *operatorActions) checkDT(allPods []corev1.Pod, nodeMap map[string]core
 			return fmt.Errorf("the rack:[%s] have pods more than %d", rack, maxPodsOneRack)
 		}
 	}
-
 	return nil
 }
 
-func (oa *operatorActions) CheckDataRegionDT(cluster *TidbClusterConfig) error {
+func (oa *operatorActions) CheckDisasterToleranceOrDie(cluster *TidbClusterConfig) {
+	err := oa.CheckDisasterTolerance(cluster)
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+func (oa *operatorActions) CheckDataRegionDisasterToleranceOrDie(cluster *TidbClusterConfig) {
+	err := oa.CheckDataRegionDisasterTolerance(cluster)
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+func (oa *operatorActions) CheckDataRegionDisasterTolerance(cluster *TidbClusterConfig) error {
 	pdClient := http.Client{
 		Timeout: 10 * time.Second,
 	}
@@ -162,7 +176,8 @@ func (oa *operatorActions) CheckDataRegionDT(cluster *TidbClusterConfig) error {
 	for _, region := range regions.Regions {
 		regionRacks := map[string]uint64{}
 		for _, peer := range region.Peers {
-			nodeName, err := oa.getNodeByStoreId(string(peer.StoreId), cluster)
+			storeID := strconv.FormatUint(peer.StoreId, 10)
+			nodeName, err := oa.getNodeByStoreId(storeID, cluster)
 			if err != nil {
 				return err
 			}

@@ -162,8 +162,10 @@ type OperatorActions interface {
 	BackupRestoreOrDie(from, to *TidbClusterConfig)
 	LabelNodes() error
 	LabelNodesOrDie()
-	CheckDT(info *TidbClusterConfig) error
-	CheckDataRegionDT(info *TidbClusterConfig) error
+	CheckDisasterTolerance(info *TidbClusterConfig) error
+	CheckDisasterToleranceOrDie(info *TidbClusterConfig)
+	CheckDataRegionDisasterTolerance(info *TidbClusterConfig) error
+	CheckDataRegionDisasterToleranceOrDie(info *TidbClusterConfig)
 }
 
 type operatorActions struct {
@@ -226,6 +228,7 @@ type TidbClusterConfig struct {
 
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
+	SubValues        string
 }
 
 func (oi *OperatorConfig) ConfigTLS() *tls.Config {
@@ -411,7 +414,20 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 
 	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s",
 		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
-	glog.Infof(cmd)
+	if strings.TrimSpace(info.SubValues) != "" {
+		subVaulesPath := fmt.Sprintf("%s/%s.yaml", oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName)
+		svFile, err := os.Create(subVaulesPath)
+		if err != nil {
+			return err
+		}
+		defer svFile.Close()
+		_, err = svFile.WriteString(info.SubValues)
+		if err != nil {
+			return err
+		}
+
+		cmd = fmt.Sprintf(" %s --values %s", cmd, subVaulesPath)
+	}
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
 			info.Namespace, info.ClusterName, err, string(res))

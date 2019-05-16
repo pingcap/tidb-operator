@@ -97,23 +97,49 @@ func main() {
 		Args: map[string]string{
 			"binlog.drainer.workerCount": "1024",
 			"binlog.drainer.txnBatch":    "512",
-			"pd.affinity": `
-  					 podAntiAffinity:
-  					     preferredDuringSchedulingIgnoredDuringExecution:
-  					     # this term work when the nodes have the label named region
-  					     - weight: 10
-  					       podAffinityTerm:
-  					         labelSelector:
-  					           matchLabels:
-  					             app.kubernetes.io/instance: stability-cluster1
-  					             app.kubernetes.io/component: "pd"
-  					         topologyKey: "rack"
-  					         namespaces:
-  					         - stability-cluster1
-				`,
 		},
 		Monitor:          true,
 		BlockWriteConfig: conf.BlockWriter,
+		SubValues: `pd:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 10
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: stability-cluster1
+              app.kubernetes.io/component: "pd"
+          topologyKey: "rack"
+          namespaces:
+          - stability-cluster1
+tikv:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 10
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: stability-cluster1
+              app.kubernetes.io/component: "tikv"
+          topologyKey: "rack"
+          namespaces:
+          - stability-cluster1
+tidb:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 10
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: stability-cluster1
+              app.kubernetes.io/component: "tidb"
+          topologyKey: "rack"
+          namespaces:
+          - stability-cluster1
+`,
 	}
 	cluster2 := &tests.TidbClusterConfig{
 		Namespace:        clusterName2,
@@ -149,6 +175,46 @@ func main() {
 		Args:             map[string]string{},
 		Monitor:          true,
 		BlockWriteConfig: conf.BlockWriter,
+		SubValues: `pd:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 10
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: stability-cluster2
+              app.kubernetes.io/component: "pd"
+          topologyKey: "rack"
+          namespaces:
+          - stability-cluster2
+tikv:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 10
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: stability-cluster2
+              app.kubernetes.io/component: "tikv"
+          topologyKey: "rack"
+          namespaces:
+          - stability-cluster2
+tidb:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 10
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: stability-cluster2
+              app.kubernetes.io/component: "tidb"
+          topologyKey: "rack"
+          namespaces:
+          - stability-cluster2
+`,
 	}
 
 	// cluster backup and restore
@@ -169,6 +235,8 @@ func main() {
 		oa.DumpAllLogs(operatorCfg, allClusters)
 	}()
 
+	oa.LabelNodesOrDie()
+
 	// clean and deploy operator
 	oa.CleanOperatorOrDie(operatorCfg)
 	oa.DeployOperatorOrDie(operatorCfg)
@@ -183,6 +251,10 @@ func main() {
 	oa.DeployTidbClusterOrDie(cluster2)
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
+
+	// check disaster tolerance
+	oa.CheckDisasterToleranceOrDie(cluster1)
+	oa.CheckDisasterToleranceOrDie(cluster2)
 
 	go oa.BeginInsertDataToOrDie(cluster1)
 	go oa.BeginInsertDataToOrDie(cluster2)
@@ -217,6 +289,10 @@ func main() {
 
 	// after upgrade cluster, clean webhook
 	oa.CleanWebHookAndService(operatorCfg)
+
+	// check data regions disaster tolerance
+	oa.CheckDataRegionDisasterToleranceOrDie(cluster1)
+	oa.CheckDataRegionDisasterToleranceOrDie(cluster2)
 
 	// deploy and check cluster restore
 	oa.DeployTidbClusterOrDie(clusterRestoreTo)
