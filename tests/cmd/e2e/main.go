@@ -60,7 +60,7 @@ func main() {
 		glog.Fatal(err)
 	}
 	// create database and table and insert a column for test backup and restore
-	initSql := `"create database record;use record;create table test(t char(32))"`
+	initSQL := `"create database record;use record;create table test(t char(32))"`
 
 	name1 := "e2e-cluster1"
 	name2 := "e2e-cluster2"
@@ -74,7 +74,7 @@ func main() {
 			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
 			StorageClassName: "local-storage",
 			Password:         "admin",
-			InitSql:          initSql,
+			InitSQL:          initSQL,
 			UserName:         "root",
 			InitSecretName:   fmt.Sprintf("%s-set-secret", name1),
 			BackupSecretName: fmt.Sprintf("%s-backup-secret", name1),
@@ -117,7 +117,7 @@ func main() {
 			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
 			StorageClassName: "local-storage",
 			Password:         "admin",
-			InitSql:          initSql,
+			InitSQL:          initSQL,
 			UserName:         "root",
 			InitSecretName:   fmt.Sprintf("%s-set-secret", name2),
 			BackupSecretName: fmt.Sprintf("%s-backup-secret", name2),

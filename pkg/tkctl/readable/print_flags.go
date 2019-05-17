@@ -14,12 +14,13 @@
 package readable
 
 import (
+	"strings"
+
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericclioptions/printers"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
 	kubeprinters "k8s.io/kubernetes/pkg/printers"
-	"strings"
 )
 
 type PrintFlags struct {
@@ -47,15 +48,14 @@ func (p *PrintFlags) ToPrinter(withKind, withNamespace bool) (printers.ResourceP
 			return nil, err
 		}
 		return printer, nil
-	} else {
-		// Reuse kubectl HumanReadablePrinter
-		printer := kubeprinters.NewHumanReadablePrinter(scheme.Codecs.UniversalDecoder(),
-			kubeprinters.PrintOptions{
-				WithNamespace: withNamespace,
-				WithKind:      withKind,
-			})
-		// Add custom handlers
-		AddHandlers(printer)
-		return printer, nil
 	}
+	// Reuse kubectl HumanReadablePrinter
+	printer := kubeprinters.NewHumanReadablePrinter(scheme.Codecs.UniversalDecoder(),
+		kubeprinters.PrintOptions{
+			WithNamespace: withNamespace,
+			WithKind:      withKind,
+		})
+	// Add custom handlers
+	AddHandlers(printer)
+	return printer, nil
 }
