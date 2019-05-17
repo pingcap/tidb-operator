@@ -35,6 +35,11 @@ variable "tidb_count" {
   default     = 1
 }
 
+variable "monitor_count" {
+  description = "Number of monitor nodes per availability zone"
+  default     = 1
+}
+
 variable "pd_instance_type" {
   default = "n1-standard-4"
 }

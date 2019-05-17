@@ -170,7 +170,7 @@ resource "google_container_node_pool" "monitor_pool" {
   cluster            = "${google_container_cluster.cluster.name}"
   location           = "${google_container_cluster.cluster.location}"
   name               = "monitor-pool"
-  initial_node_count = "1"
+  initial_node_count = "${var.monitor_count}"
 
   node_config {
     machine_type = "${var.monitor_instance_type}"
@@ -251,12 +251,15 @@ resource "null_resource" "get-credentials" {
       KUBECONFIG = "${local.kubeconfig}"
     }
   }
+
   provisioner "local-exec" {
     when = "destroy"
+
     command = <<EOS
 kubectl get pvc -n tidb -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl patch pv {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
 kubectl delete namespace tidb
 EOS
+
     environment {
       KUBECONFIG = "${local.kubeconfig}"
     }
