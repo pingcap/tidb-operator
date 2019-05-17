@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -27,11 +26,12 @@ import (
 	"k8s.io/api/admission/v1beta1"
 	apps "k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 )
 
 var (
-	versionCli versioned.Interface
+	versionCli   versioned.Interface
 	deserializer runtime.Decoder
 )
 

@@ -60,7 +60,7 @@ spec:
             - -tlsCertFile=/etc/webhook/certs/cert.pem
             - -tlsKeyFile=/etc/webhook/certs/key.pem
             - -alsologtostderr
-            - -v={{ .Values.admissionController.replicas }}
+            - -v={{ .Values.admissionController.logLevel }}
             - 2>&1
           volumeMounts:
             - name: webhook-certs

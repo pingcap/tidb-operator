@@ -698,7 +698,7 @@ func setPartitionAnnotation(tcName string, nameSpace string, ordinal int) error 
 	// add annotation to pause statefulset upgrade process
 	cmd := fmt.Sprintf("kubectl annotate tc %s -n %s tidb.pingcap.com/tidb-partition=%d --overwrite",
 		tcName, nameSpace, ordinal)
-	glog.Infof("%s",cmd)
+	glog.Infof("%s", cmd)
 	_, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return err
@@ -718,13 +718,13 @@ func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 	tidbSetName := controller.TiDBMemberName(info.ClusterName)
 	tidbSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(info.Namespace).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
-		return pingcapErrors.Wrapf(err,"failed to get stateful set [%s/%s] setName %s",info.Namespace, info.ClusterName,tidbSetName)
+		return pingcapErrors.Wrapf(err, "failed to get stateful set [%s/%s] setName %s", info.Namespace, info.ClusterName, tidbSetName)
 	}
 
 	// add annotation to pause statefulset upgrade process
-	err = setPartitionAnnotation(info.ClusterName, info.Namespace, int(tidbSet.Status.Replicas - 1))
+	err = setPartitionAnnotation(info.ClusterName, info.Namespace, int(tidbSet.Status.Replicas-1))
 	if err != nil {
-		return pingcapErrors.Wrapf(err,"failed to add annotation to [%s/%s]",info.Namespace, info.ClusterName)
+		return pingcapErrors.Wrapf(err, "failed to add annotation to [%s/%s]", info.Namespace, info.ClusterName)
 	}
 
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
@@ -746,12 +746,12 @@ func (oa *operatorActions) UpgradeTidbClusterOrDie(info *TidbClusterConfig) {
 func (oa *operatorActions) DeployMonitor(info *TidbClusterConfig) error { return nil }
 func (oa *operatorActions) CleanMonitor(info *TidbClusterConfig) error  { return nil }
 
-func getPodContainer (kubeCli kubernetes.Interface, namespace string, memberName string) (*corev1.Container , bool) {
+func getPodContainer(kubeCli kubernetes.Interface, namespace string, memberName string) (*corev1.Container, bool) {
 	name := fmt.Sprintf("%s-%d", memberName, 0)
 	pod, err := kubeCli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
-		glog.Errorf("fail to get pod [%s/%s]",namespace, name)
-		return nil,false
+		glog.Errorf("fail to get pod [%s/%s]", namespace, name)
+		return nil, false
 	}
 	return &pod.Spec.Containers[0], true
 }
@@ -894,7 +894,7 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	pauseCorrect := func(set *v1beta1.StatefulSet ) bool {
+	pauseCorrect := func(set *v1beta1.StatefulSet) bool {
 		return (*set.Spec.UpdateStrategy.RollingUpdate.Partition) >= int32(tidbUpgradeAnnotation)
 	}
 
@@ -916,7 +916,6 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 
 		return false
 	}
-
 
 	tidbSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
@@ -958,9 +957,9 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 
 	if upgradePaused() {
 		time.Sleep(30 * time.Second)
-		err := setPartitionAnnotation(tcName, ns, int(tidbUpgradeAnnotation - 1))
+		err := setPartitionAnnotation(tcName, ns, int(tidbUpgradeAnnotation-1))
 		if err != nil {
-			glog.Errorf("fail to set annotation for [%s/%s]", ns , tidbSetName)
+			glog.Errorf("fail to set annotation for [%s/%s]", ns, tidbSetName)
 			return false, nil
 		}
 		return false, nil
