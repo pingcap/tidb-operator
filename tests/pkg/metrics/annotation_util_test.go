@@ -15,16 +15,17 @@ package metrics
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/onsi/gomega"
 	"testing"
+
+	"github.com/onsi/gomega"
 )
 
 func TestAnnotationGetBody(t *testing.T) {
 	tags := []string{"1", "2", "3"}
 
 	options := AnnotationOptions{
-		DashboardId: 1,
-		PanelId:     2,
+		DashboardID: 1,
+		PanelID:     2,
 	}
 
 	annotation := Annotation{
