@@ -80,7 +80,7 @@ func NewConfig() (*Config, error) {
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
 	flag.StringVar(&cfg.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
-	flag.StringVar(&slack.WebhookUrl, "slack-webhook-url", "", "slack webhook url")
+	flag.StringVar(&slack.WebhookURL, "slack-webhook-url", "", "slack webhook url")
 	flag.Parse()
 
 	operatorRepo, err := ioutil.TempDir("", "tidb-operator")
@@ -133,11 +133,7 @@ func (c *Config) configFromFile(path string) error {
 		return err
 	}
 
-	if err = yaml.Unmarshal(data, c); err != nil {
-		return err
-	}
-
-	return nil
+	return yaml.Unmarshal(data, c)
 }
 
 func (c *Config) GetTiDBVersion() (string, error) {
