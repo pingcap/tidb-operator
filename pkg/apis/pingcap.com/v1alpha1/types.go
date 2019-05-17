@@ -216,6 +216,8 @@ type TiDBMember struct {
 	Health bool   `json:"health"`
 	// Last time the health transitioned from one to another.
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// Node hosting pod of this TiDB member.
+	NodeName string `json:"node,omitempty"`
 }
 
 // TiDBFailureMember is the tidb failure member information

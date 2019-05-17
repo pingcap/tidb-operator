@@ -42,27 +42,27 @@ func StartServer(cli versioned.Interface, port int) {
 }
 
 func (svr *server) newHandler(req *restful.Request, resp *restful.Response) {
-	encodedAdvertisePeerUrl := req.PathParameter("advertise-peer-url")
-	data, err := base64.StdEncoding.DecodeString(encodedAdvertisePeerUrl)
+	encodedAdvertisePeerURL := req.PathParameter("advertise-peer-url")
+	data, err := base64.StdEncoding.DecodeString(encodedAdvertisePeerURL)
 	if err != nil {
-		glog.Errorf("failed to decode advertise-peer-url: %s", encodedAdvertisePeerUrl)
+		glog.Errorf("failed to decode advertise-peer-url: %s", encodedAdvertisePeerURL)
 		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
 			glog.Errorf("failed to writeError: %v", err)
 		}
 		return
 	}
-	advertisePeerUrl := string(data)
+	advertisePeerURL := string(data)
 
-	result, err := svr.discovery.Discover(advertisePeerUrl)
+	result, err := svr.discovery.Discover(advertisePeerURL)
 	if err != nil {
-		glog.Errorf("failed to discover: %s, %v", advertisePeerUrl, err)
+		glog.Errorf("failed to discover: %s, %v", advertisePeerURL, err)
 		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
 			glog.Errorf("failed to writeError: %v", err)
 		}
 		return
 	}
 
-	glog.Infof("generated args for %s: %s", advertisePeerUrl, result)
+	glog.Infof("generated args for %s: %s", advertisePeerURL, result)
 	if _, err := io.WriteString(resp, result); err != nil {
 		glog.Errorf("failed to writeString: %s, %v", result, err)
 	}

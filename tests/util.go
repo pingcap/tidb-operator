@@ -56,7 +56,7 @@ func GetSchedulerPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, er
 	return GetKubeComponent(kubeCli, node, "kube-scheduler")
 }
 
-func GetDnsPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
+func GetDNSPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
 	return GetKubeComponent(kubeCli, node, "kube-dns")
 }
 

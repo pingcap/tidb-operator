@@ -16,10 +16,14 @@ package scheduler
 import (
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/scheduler/predicates"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
+	kubescheme "k8s.io/client-go/kubernetes/scheme"
+	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/record"
 	schedulerapiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
 )
 
@@ -38,15 +42,32 @@ type Scheduler interface {
 }
 
 type scheduler struct {
-	predicates []predicates.Predicate
+	// component => predicates
+	predicates map[string][]predicates.Predicate
 }
 
 // NewScheduler returns a Scheduler
 func NewScheduler(kubeCli kubernetes.Interface, cli versioned.Interface) Scheduler {
-	return &scheduler{
-		predicates: []predicates.Predicate{
-			predicates.NewHA(kubeCli, cli),
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(glog.Infof)
+	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
+		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
+	recorder := eventBroadcaster.NewRecorder(kubescheme.Scheme, apiv1.EventSource{Component: "tidb-scheduler"})
+	predicatesByComponent := map[string][]predicates.Predicate{
+		label.PDLabelVal: {
+			predicates.NewHA(kubeCli, cli, recorder),
 		},
+		label.TiKVLabelVal: {
+			predicates.NewHA(kubeCli, cli, recorder),
+		},
+	}
+	if features.DefaultFeatureGate.Enabled(features.StableScheduling) {
+		predicatesByComponent[label.TiDBLabelVal] = []predicates.Predicate{
+			predicates.NewStableScheduling(kubeCli, cli, recorder),
+		}
+	}
+	return &scheduler{
+		predicates: predicatesByComponent,
 	}
 }
 
@@ -66,7 +87,16 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 			Nodes: args.Nodes,
 		}, nil
 	}
-	if component := pod.Labels[label.ComponentLabelKey]; component != label.PDLabelVal && component != label.TiKVLabelVal {
+
+	component, ok := pod.Labels[label.ComponentLabelKey]
+	if !ok {
+		return &schedulerapiv1.ExtenderFilterResult{
+			Nodes: args.Nodes,
+		}, nil
+	}
+
+	predicatesByComponent, ok := s.predicates[component]
+	if !ok {
 		return &schedulerapiv1.ExtenderFilterResult{
 			Nodes: args.Nodes,
 		}, nil
@@ -74,7 +104,7 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 
 	glog.Infof("scheduling pod: %s/%s", ns, podName)
 	var err error
-	for _, predicate := range s.predicates {
+	for _, predicate := range predicatesByComponent {
 		glog.Infof("entering predicate: %s, nodes: %v", predicate.Name(), predicates.GetNodeNames(kubeNodes))
 		kubeNodes, err = predicate.Filter(instanceName, pod, kubeNodes)
 		if err != nil {
