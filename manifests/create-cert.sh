@@ -18,23 +18,13 @@ usage: ${0} [OPTIONS]
 
 The following flags are required.
 
-       --service          Service name of webhook.
        --namespace        Namespace where webhook service and secret reside.
-       --secret           Secret name for CA certificate and server certificate/key pair.
 EOF
     exit 1
 }
 
 while [[ $# -gt 0 ]]; do
     case ${1} in
-        --service)
-            service="$2"
-            shift
-            ;;
-        --secret)
-            secret="$2"
-            shift
-            ;;
         --namespace)
             namespace="$2"
             shift
@@ -46,9 +36,11 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-[ -z ${service} ] && service=admission-webhook-svc
-[ -z ${secret} ] && secret=admission-webhook-certs
-[ -z ${namespace} ] && namespace=default
+service=admission-controller-svc
+if [ -z ${namespace} ]; then
+	echo "need input namespace"
+	exit 1
+fi
 
 if [ ! -x "$(command -v openssl)" ]; then
     echo "openssl not found"
@@ -57,7 +49,6 @@ fi
 
 csrName=${service}.${namespace}
 tmpdir=$(mktemp -d)
-echo "creating certs in tmpdir ${tmpdir} "
 
 cat <<EOF >> ${tmpdir}/csr.conf
 [req]
@@ -119,12 +110,10 @@ if [[ ${serverCert} == '' ]]; then
     echo "ERROR: After approving csr ${csrName}, the signed certificate did not appear on the resource. Giving up after 10 attempts." >&2
     exit 1
 fi
+
 echo ${serverCert} | openssl base64 -d -A -out ${tmpdir}/server-cert.pem
 
-
-# create the secret with CA cert and server cert/key
-kubectl create secret generic ${secret} \
-        --from-file=key.pem=${tmpdir}/server-key.pem \
-        --from-file=cert.pem=${tmpdir}/server-cert.pem \
-        --dry-run -o yaml |
-    kubectl -n ${namespace} apply -f -
+CA_BUNDLE=$(kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n')
+echo ca: $CA_BUNDLE
+echo key: $(cat ${tmpdir}/server-key.pem | base64| tr -d '\n')
+echo cert: $(cat ${tmpdir}/server-cert.pem | base64| tr -d '\n')
