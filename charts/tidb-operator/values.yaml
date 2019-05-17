@@ -45,6 +45,8 @@ scheduler:
   logLevel: 2
   replicas: 1
   schedulerName: tidb-scheduler
+  # features:
+  # - StableScheduling
   resources:
     limits:
       cpu: 250m

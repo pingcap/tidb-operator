@@ -11,7 +11,6 @@ warningCode = 0
 [rule.error-strings]
 [rule.error-naming]
 [rule.if-return]
-[rule.var-naming]
 [rule.package-comments]
 [rule.range]
 [rule.receiver-naming]
@@ -21,6 +20,8 @@ warningCode = 0
 [rule.modifies-parameter]
 
 # Add these once issues are fixed
+[rule.var-naming]
+  severity = "warning"
 [rule.confusing-naming]
   severity = "warning"
 [rule.confusing-results]
