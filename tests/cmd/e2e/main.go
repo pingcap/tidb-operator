@@ -232,23 +232,6 @@ func main() {
 		}
 	}
 
-	// update configuration on the fly
-	for _, clusterInfo := range clusterInfos {
-		clusterInfo = clusterInfo.
-			UpdatePdMaxReplicas(conf.PDMaxReplicas).
-			UpdatePDLogLevel("debug").
-			UpdateTiKVGrpcConcurrency(conf.TiKVGrpcConcurrency).
-			UpdateTiDBTokenLimit(conf.TiDBTokenLimit)
-		if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-		for _, clusterInfo := range clusterInfos {
-			if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				glog.Fatal(err)
-			}
-		}
-	}
-
 	// after upgrade cluster, clean webhook
 	oa.CleanWebHookAndService(operatorInfo)
 
