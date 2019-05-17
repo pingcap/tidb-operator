@@ -42,7 +42,7 @@ spec:
   serviceAccount: tidb-operator-stability
   containers:
   - name: tidb-operator-stability
-    image: "hub.pingcap.net/aylei/tidb-operator-stability-test:latest"
+    image: ""
     imagePullPolicy: Always
     command:
     - /bin/sh

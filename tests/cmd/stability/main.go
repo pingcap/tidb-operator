@@ -43,7 +43,7 @@ func main() {
 	fta.CheckAndRecoverEnvOrDie()
 
 	tidbVersion := conf.GetTiDBVersionOrDie()
-	// upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
+	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
 
 	// operator config
 	operatorCfg := &tests.OperatorConfig{
@@ -265,7 +265,7 @@ func main() {
 
 	// truncate a sst file and check failover
 	oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 5*time.Minute)
-	//
+
 	// stop one etcd node and k8s/operator/tidbcluster is available
 	faultEtcd := tests.SelectNode(conf.ETCDs)
 	fta.StopETCDOrDie(faultEtcd)
