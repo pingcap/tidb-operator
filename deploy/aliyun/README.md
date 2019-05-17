@@ -106,7 +106,7 @@ To upgrade TiDB cluster, modify `tidb_version` variable to a higher version in `
 This may take a while to complete, watch the process using command:
 
 ```
-watch kubectl get pods --namespace tidb -o wide
+kubectl get pods --namespace tidb -o wide --watch
 ```
 
 ## Scale TiDB cluster

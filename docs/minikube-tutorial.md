@@ -127,7 +127,7 @@ helm install charts/tidb-operator --name tidb-operator --namespace tidb-admin
 Now, we can watch the operator come up with:
 
 ```
-watch kubectl get pods --namespace tidb-admin -o wide
+kubectl get pods --namespace tidb-admin -o wide --watch
 ```
 
 If you have limited access to gcr.io (pods failed with ErrImagePull), you can
@@ -151,7 +151,7 @@ helm install charts/tidb-cluster --name demo --set \
 Watch the cluster up and running:
 
 ```
-watch kubectl get pods --namespace default -l app.kubernetes.io/instance=demo -o wide
+kubectl get pods --namespace default -l app.kubernetes.io/instance=demo -o wide --watch
 ```
 
 ### Test TiDB cluster
@@ -160,7 +160,7 @@ There can be a small delay between the pod is up and running, and the service
 is available. You can watch list services available with:
 
 ```
-watch kubectl get svc
+kubectl get svc --watch
 ```
 
 When you see `demo-tidb` appear, it's ready to connect to TiDB server.

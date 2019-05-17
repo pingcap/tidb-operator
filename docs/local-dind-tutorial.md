@@ -100,7 +100,7 @@ tidb-scheduler-56757c896c-clzdg            2/2       Running   0          1m
 
 ```sh
 $ helm install charts/tidb-cluster --name=demo --namespace=tidb
-$ watch kubectl get pods --namespace tidb -l app.kubernetes.io/instance=demo -o wide
+$ kubectl get pods --namespace tidb -l app.kubernetes.io/instance=demo -o wide --watch
 $ # wait a few minutes to get all TiDB components get created and ready
 
 $ kubectl get tidbcluster -n tidb
