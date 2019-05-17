@@ -162,6 +162,8 @@ type OperatorActions interface {
 	EmitEvent(info *TidbClusterConfig, msg string)
 	BackupRestore(from, to *TidbClusterConfig) error
 	BackupRestoreOrDie(from, to *TidbClusterConfig)
+	GetTidbMemberAssignedNodes(info *TidbClusterConfig) (map[string]string, error)
+	CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error
 }
 
 type operatorActions struct {
@@ -195,6 +197,7 @@ type OperatorConfig struct {
 	Tag                string
 	SchedulerImage     string
 	SchedulerTag       string
+	SchedulerFeatures  []string
 	LogLevel           string
 	WebhookServiceName string
 	WebhookSecretName  string
@@ -328,6 +331,9 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
+	}
+	if len(oi.SchedulerFeatures) > 0 {
+		set["scheduler.features"] = fmt.Sprintf("{%s}", strings.Join(oi.SchedulerFeatures, ","))
 	}
 
 	arr := make([]string, 0, len(set))
@@ -529,6 +535,39 @@ func (oa *operatorActions) CleanTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.CleanTidbCluster(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
+}
+
+func (oa *operatorActions) GetTidbMemberAssignedNodes(info *TidbClusterConfig) (map[string]string, error) {
+	assignedNodes := make(map[string]string)
+	ns := info.Namespace
+	tcName := info.ClusterName
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(
+			label.New().Instance(tcName).Component(label.TiDBLabelVal).Labels()).String(),
+	}
+	podList, err := oa.kubeCli.CoreV1().Pods(ns).List(listOptions)
+	if err != nil {
+		glog.Errorf("failed to get tidb pods: %s/%s, %v", ns, tcName, err)
+		return nil, err
+	}
+	for _, pod := range podList.Items {
+		assignedNodes[pod.Name] = pod.Spec.NodeName
+	}
+	return assignedNodes, nil
+}
+
+func (oa *operatorActions) CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error {
+	assignedNodes, err := oa.GetTidbMemberAssignedNodes(info)
+	if err != nil {
+		return err
+	}
+	for member, node := range oldAssignedNodes {
+		newNode, ok := assignedNodes[member]
+		if !ok || newNode != node {
+			return fmt.Errorf("tidb member %s is not scheduled to %s, new node: %s", member, node, newNode)
+		}
+	}
+	return nil
 }
 
 func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error {
