@@ -8,9 +8,9 @@ variable "tidb_version" {
   default     = "v2.1.8"
 }
 
-variable "pd_count" {
-  description = "Number of PD nodes per availability zone"
-  default     = 1
+variable "tidb_operator_version" {
+  description = "TiDB operator version"
+  default     = "v1.0.0-beta.2"
 }
 
 variable "pd_replica_count" {
@@ -23,6 +23,11 @@ variable "tikv_replica_count" {
 
 variable "tidb_replica_count" {
   default = 3
+}
+
+variable "pd_count" {
+  description = "Number of PD nodes per availability zone"
+  default     = 1
 }
 
 variable "tikv_count" {

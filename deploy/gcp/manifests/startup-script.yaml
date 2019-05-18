@@ -1,41 +1,55 @@
-kind: DaemonSet
 apiVersion: extensions/v1beta1
+kind: DaemonSet
 metadata:
-  name: startup-script
+  name: local-ssd-startup
   namespace: kube-system
   labels:
-    app: startup-script
+    app: local-ssd-startup
 spec:
   template:
     metadata:
       labels:
-        app: startup-script
+        app: local-ssd-startup
     spec:
-      tolerations:
-        - key: dedicated
-          operator: Equal
-          value: pd
-          effect: "NoSchedule"
-        - key: dedicated
-          operator: Equal
-          value: tikv
-          effect: "NoSchedule"
       hostPID: true
+      nodeSelector:
+        cloud.google.com/gke-os-distribution: ubuntu
       containers:
-        - name: startup-script
+        - name: local-ssd-startup
           image: gcr.io/google-containers/startup-script:v1
-          imagePullPolicy: Always
           securityContext:
             privileged: true
           env:
             - name: STARTUP_SCRIPT
               value: |
-                #! /bin/bash
-                set -o errexit
-                set -o pipefail
-                set -o nounset
-                echo 'root        soft        nofile        1000000' >> /etc/security/limits.d/99-tidb.conf
-                echo 'root        hard        nofile        1000000' >> /etc/security/limits.d/99-tidb.conf
-                echo 'root        soft        core          unlimited' >> /etc/security/limits.d/99-tidb.conf
-                echo 'root        soft        stack         10240' >> /etc/security/limits.d/99-tidb.conf
-                echo done
+                #!/usr/bin/env bash
+                set -euo pipefail
+                apt-get update
+                apt-get install -y software-properties-common
+                apt-add-repository universe
+                apt-get update
+                declare -a PKG_LIST=(python-google-compute-engine \
+                python3-google-compute-engine \
+                google-compute-engine-oslogin \
+                gce-compute-image-packages)
+                for pkg in ${PKG_LIST[@]}; do
+                    apt-get install -y $pkg || echo "Not available: $pkg"
+                done
+                mount | grep -v nobarrier | awk '/ssd/{print $1}' | xargs -i mount {} -o remount,nobarrier
+                cat <<EOF > /etc/security/limits.d/99-tidb.conf
+                root        soft        nofile        1000000
+                root        hard        nofile        1000000
+                root        soft        core          unlimited
+                root        soft        stack         10240
+                EOF
+          volumeMounts:
+            - mountPath: /mnt/disks
+              name: local-ssd
+              mountPropagation: Bidirectional
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      volumes:
+        - name: local-ssd
+          hostPath:
+            path: /mnt/disks

@@ -36,7 +36,7 @@ resource "google_compute_network" "vpc_network" {
 resource "google_compute_subnetwork" "private_subnet" {
   ip_cidr_range = "172.31.252.0/22"
   name          = "private-subnet"
-  network       = "${google_compute_network.vpc_network.self_link}"
+  network       = "${google_compute_network.vpc_network.name}"
   project       = "${var.GCP_PROJECT}"
 
   secondary_ip_range {
@@ -48,25 +48,34 @@ resource "google_compute_subnetwork" "private_subnet" {
     ip_cidr_range = "172.31.224.0/20"
     range_name    = "services-${var.GCP_REGION}"
   }
+
+  lifecycle {
+    ignore_changes = ["secondary_ip_range"]
+  }
 }
 
 resource "google_compute_subnetwork" "public_subnet" {
   ip_cidr_range = "172.29.252.0/22"
   name          = "public-subnet"
-  network       = "${google_compute_network.vpc_network.self_link}"
+  network       = "${google_compute_network.vpc_network.name}"
   project       = "${var.GCP_PROJECT}"
 }
 
 resource "google_container_cluster" "cluster" {
   name       = "${var.cluster_name}"
-  network    = "${google_compute_network.vpc_network.self_link}"
-  subnetwork = "${google_compute_subnetwork.private_subnet.self_link}"
+  network    = "${google_compute_network.vpc_network.name}"
+  subnetwork = "${google_compute_subnetwork.private_subnet.name}"
   location   = "${var.GCP_REGION}"
   project    = "${var.GCP_PROJECT}"
 
   master_auth {
     username = ""
     password = ""
+
+    // due to https://github.com/terraform-providers/terraform-provider-google/issues/3369
+    client_certificate_config {
+      issue_client_certificate = false
+    }
   }
 
   master_authorized_networks_config {
@@ -83,6 +92,10 @@ resource "google_container_cluster" "cluster" {
   initial_node_count       = 1
 
   min_master_version = "latest"
+
+  lifecycle {
+    ignore_changes = ["master_auth"] // see above linked issue
+  }
 }
 
 resource "google_container_node_pool" "pd_pool" {
@@ -95,7 +108,7 @@ resource "google_container_node_pool" "pd_pool" {
 
   node_config {
     machine_type    = "${var.pd_instance_type}"
-    image_type = "UBUNTU"
+    image_type      = "UBUNTU"
     local_ssd_count = 1
 
     taint {
@@ -123,7 +136,7 @@ resource "google_container_node_pool" "tikv_pool" {
 
   node_config {
     machine_type    = "${var.tikv_instance_type}"
-    image_type = "UBUNTU"
+    image_type      = "UBUNTU"
     local_ssd_count = 1
 
     taint {
@@ -259,7 +272,6 @@ resource "null_resource" "get-credentials" {
 
     command = <<EOS
 kubectl get pvc -n tidb -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl patch pv {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
-kubectl delete namespace tidb
 EOS
 
     environment {
@@ -302,13 +314,17 @@ EOS
 }
 
 resource "null_resource" "deploy-tidb-cluster" {
-  depends_on = ["null_resource.setup-env", "local_file.tidb-cluster-values"]
+  depends_on = ["null_resource.setup-env", "local_file.tidb-cluster-values", "google_container_node_pool.pd_pool", "google_container_node_pool.tikv_pool", "google_container_node_pool.tidb_pool"]
 
   provisioner "local-exec" {
     command = <<EOS
 helm upgrade --install tidb-cluster ${path.module}/charts/tidb-cluster --namespace=tidb -f ${local.tidb_cluster_values_path}
 until kubectl get po -n tidb -lapp.kubernetes.io/component=tidb | grep Running; do
   echo "Wait for TiDB pod running"
+  sleep 5
+done
+until kubectl get svc -n tidb tidb-cluster-tidb -o json | jq '.status.loadBalancer.ingress[0]' | grep ip; do
+  echo "Wait for TiDB internal loadbalancer IP"
   sleep 5
 done
 EOS
