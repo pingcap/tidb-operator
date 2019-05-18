@@ -95,6 +95,7 @@ resource "google_container_node_pool" "pd_pool" {
 
   node_config {
     machine_type    = "${var.pd_instance_type}"
+    image_type = "UBUNTU"
     local_ssd_count = 1
 
     taint {
@@ -122,6 +123,7 @@ resource "google_container_node_pool" "tikv_pool" {
 
   node_config {
     machine_type    = "${var.tikv_instance_type}"
+    image_type = "UBUNTU"
     local_ssd_count = 1
 
     taint {
@@ -282,6 +284,7 @@ resource "null_resource" "setup-env" {
 kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-admin --user $$(gcloud config get-value account)
 kubectl create serviceaccount --namespace kube-system tiller
 kubectl apply -f manifests/crd.yaml
+kubectl apply -f manifests/startup-script.yaml
 kubectl apply -f manifests/local-volume-provisioner.yaml
 kubectl apply -f manifests/gke-storage.yml
 kubectl apply -f manifests/tiller-rbac.yaml

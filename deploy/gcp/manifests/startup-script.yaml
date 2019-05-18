@@ -1,0 +1,41 @@
+kind: DaemonSet
+apiVersion: extensions/v1beta1
+metadata:
+  name: startup-script
+  namespace: kube-system
+  labels:
+    app: startup-script
+spec:
+  template:
+    metadata:
+      labels:
+        app: startup-script
+    spec:
+      tolerations:
+        - key: dedicated
+          operator: Equal
+          value: pd
+          effect: "NoSchedule"
+        - key: dedicated
+          operator: Equal
+          value: tikv
+          effect: "NoSchedule"
+      hostPID: true
+      containers:
+        - name: startup-script
+          image: gcr.io/google-containers/startup-script:v1
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+          env:
+            - name: STARTUP_SCRIPT
+              value: |
+                #! /bin/bash
+                set -o errexit
+                set -o pipefail
+                set -o nounset
+                echo 'root        soft        nofile        1000000' >> /etc/security/limits.d/99-tidb.conf
+                echo 'root        hard        nofile        1000000' >> /etc/security/limits.d/99-tidb.conf
+                echo 'root        soft        core          unlimited' >> /etc/security/limits.d/99-tidb.conf
+                echo 'root        soft        stack         10240' >> /etc/security/limits.d/99-tidb.conf
+                echo done
