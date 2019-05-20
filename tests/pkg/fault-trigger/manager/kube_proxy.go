@@ -56,7 +56,7 @@ func (m *Manager) UpdateKubeProxyDaemonset(hostname string) error {
 		return err
 	}
 
-	// Render kub-proxy daemonset's template
+	// Render kube-proxy daemonset's template
 	kubeProxyManifestFullPath := filepath.Join(kubeProxyPath, kubeProxyManifest)
 	f, err := os.Create(kubeProxyManifestFullPath)
 	if err != nil {
