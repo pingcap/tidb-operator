@@ -152,13 +152,15 @@ To access the TiDB cluster, use `kubectl port-forward` to expose services to the
 
 - Access TiDB using the MySQL client
 
+    Before you start testing your TiDB cluster, make sure you have installed a MySQL client.
+
     1. Use `kubectl` to forward the host machine port to the TiDB service port:
 
         ```sh
         $ kubectl port-forward svc/demo-tidb 4000:4000 --namespace=tidb
         ```
 
-    2. To connect to TiDB using the MySQL client, open a new terminal tab or window and run the following command:
+    2. Then, to connect to TiDB using the MySQL client, open a new terminal tab or window and run the following command:
 
         ```sh
         $ mysql -h 127.0.0.1 -P 4000 -u root
