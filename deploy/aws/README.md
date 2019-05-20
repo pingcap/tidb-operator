@@ -1,15 +1,29 @@
 # Deploy TiDB Operator and TiDB cluster on AWS EKS
 
 ## Requirements:
-* [awscli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) >= 1.16.73
+* [awscli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) >= 1.16.73, to control AWS resources
+
+  The `awscli` must be [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) before it can interact with AWS. The fastest way to set up is using the `aws configure` command:
+  ```
+  # Replace AWS Access Key ID and AWS Secret Access Key to your own keys
+  $ aws configure
+  AWS Access Key ID [None]: AKIAIOSFODNN7EXAMPLE
+  AWS Secret Access Key [None]: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+  Default region name [None]: us-west-2
+  Default output format [None]: json
+  ```
+  > **Note:** The access key must have at least permissions to: create VPC, create EBS, create EC2 and create role
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.11
 * [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.0
 * [jq](https://stedolan.github.io/jq/download/)
-* [aws-iam-authenticator](https://github.com/kubernetes-sigs/aws-iam-authenticator) installed in `PATH`
+* [aws-iam-authenticator](https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html) installed in `PATH`, to authenticate with AWS
 
-## Configure awscli
-
-https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html
+  The easist way to install `aws-iam-authenticator` is to download the prebuilt binary:
+  ```
+  curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.12.7/2019-03-27/bin/linux/amd64/aws-iam-authenticator
+  chmod +x ./aws-iam-authenticator
+  sudo mv ./aws-iam-authenticator /usr/local/bin/aws-iam-authenticator
+  ```
 
 ## Setup
 
@@ -20,18 +34,19 @@ The default setup will create a new VPC and a t2.micro instance as bastion machi
 * 2 c4.4xlarge instances for TiDB
 * 1 c5.xlarge instance for monitor
 
-You can change default values in `variables.tf` (like the cluster name and versions) as needed. The default value of `cluster_name` is `my-cluster`.
-
 ``` shell
+# Get the code
 $ git clone --depth=1 https://github.com/pingcap/tidb-operator
 $ cd tidb-operator/deploy/aws
+
+# Apply the configs, note that you must answer "yes" to `terraform apply` to continue
 $ terraform init
 $ terraform apply
 ```
 
-It might take 10 minutes or more for the process to finish. After `terraform apply` is executed successfully, some basic information is printed to the console. You can access the `monitor_endpoint` using your web browser.
+It might take 10 minutes or more for the process to finish. After `terraform apply` is executed successfully, some useful information is printed to the console. You can access the `monitor_endpoint` address (printed in output) using your web browser to view monitoring metrics.
 
-> **Note:** You can use the `terraform output` command to get that information again.
+> **Note:** You can use the `terraform output` command to get the output information again.
 
 To access TiDB cluster, use the following command to first ssh into the bastion machine, and then connect it via MySQL client:
 
@@ -40,7 +55,7 @@ ssh -i credentials/k8s-prod-<cluster_name>.pem ec2-user@<bastion_ip>
 mysql -h <tidb_dns> -P <tidb_port> -u root
 ```
 
-If the DNS name is not resolvable, be patient and wait a few minutes.
+The default value of `cluster_name` is `my-cluster`. If the DNS name is not resolvable, be patient and wait a few minutes.
 
 You can interact with the EKS cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_<cluster_name>`.
 
@@ -55,7 +70,7 @@ kubectl get po -n tidb
 helm ls
 ```
 
-# Destory
+# Destroy
 
 It may take some while to finish destroying the cluster.
 
@@ -78,6 +93,8 @@ To scale TiDB cluster, modify `tikv_count` or `tidb_count` to your desired count
 > *Note*: Currently, scaling in is not supported since we cannot determine which node to scale. Scaling out needs a few minutes to complete, you can watch the scaling out by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
 
 ## Customize
+
+You can change default values in `variables.tf` (like the cluster name and versions) as needed.
 
 ### Customize AWS related resources
 
