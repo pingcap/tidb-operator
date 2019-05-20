@@ -52,7 +52,7 @@ if [[ $(uname) == Linux && -z ${DOCKER_HOST:-} ]]; then
     using_local_linuxdocker=1
 fi
 
-EMBEDDED_CONFIG=y;DIND_IMAGE=mirantis/kubeadm-dind-cluster@sha256:8e679951101f3f2030e77a1146cc514631f21f424027fcc003fc78a0337eb730
+EMBEDDED_CONFIG=y;DIND_IMAGE=mirantis/kubeadm-dind-cluster@sha256:48782c23bedd3f9c3d42af0ab0417eeff7d7884eac20a67adcb0c8534a97fce1
 
 KUBE_REPO_PREFIX="${KUBE_REPO_PREFIX:-}"
 if [[ -n ${KUBE_REPO_PREFIX} ]];then

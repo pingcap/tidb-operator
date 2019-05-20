@@ -404,7 +404,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 	ns := tc.Namespace
 	tcName := tc.Name
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
-	pdConfigMap := controller.PDMemberName(tcName)
+	pdConfigMap := controller.MemberConfigMapName(tc, v1alpha1.PDMemberType)
 
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
