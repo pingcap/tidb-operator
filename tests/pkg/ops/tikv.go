@@ -24,7 +24,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const retryLimit = 15
+const (
+	retryLimit            = 15
+	maxSSTFilesToTruncate = 20
+)
 
 type TruncateOptions struct {
 	Namespace string
@@ -79,29 +82,36 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 			}
 		}
 
-		sst := ""
+		ssts := make([]string, 0, maxSSTFilesToTruncate)
 		for k := range sstCandidates {
+			if len(ssts) >= maxSSTFilesToTruncate {
+				break
+			}
 			if strings.HasSuffix(k, ".sst") && !sstCandidates[k+".save"] {
-				sst = k
+				ssts = append(ssts, k)
 			}
 		}
-		if len(sst) == 0 {
+		if len(ssts) == 0 {
 			glog.Warning(logHdr + "cannot find a sst file")
 			continue
 		}
 
-		_, stderr, err = exec("cp", sst, sst+".save")
-		if err != nil {
-			glog.Warningf(logHdr+"backup sst file: stderr=%s err=%s", stderr, err.Error())
+		truncated := 0
+		for _, sst := range ssts {
+			_, stderr, err = exec("sh", "-c",
+				fmt.Sprintf("cp %s %s.save && truncate -s 0 %s", sst, sst, sst))
+			if err != nil {
+				glog.Warningf(logHdr+"truncate sst file: sst=%s stderr=%s err=%s", sst, stderr, err.Error())
+				continue
+			}
+			truncated++
+		}
+		if truncated == 0 {
+			glog.Warningf(logHdr + "no sst file has been truncated")
 			continue
 		}
 
-		_, stderr, err = exec("truncate", "-s", "0", sst)
-		if err != nil {
-			glog.Warningf(logHdr+"truncate sst file: stderr=%s err=%s", stderr, err.Error())
-			continue
-		}
-
+		glog.Infof(logHdr+"%d sst files got truncated", truncated)
 		break
 	}
 
