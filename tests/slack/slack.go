@@ -12,7 +12,7 @@ import (
 
 var (
 	Channel    string
-	WebhookUrl string
+	WebhookURL string
 )
 
 type Field struct {
@@ -31,7 +31,7 @@ type Attachment struct {
 	Title      string   `json:"title"`
 	TitleLink  string   `json:"title_link"`
 	Text       string   `json:"text"`
-	ImageUrl   string   `json:"image_url"`
+	ImageURL   string   `json:"image_url"`
 	Fields     []*Field `json:"fields"`
 	Footer     string   `json:"footer"`
 	FooterIcon string   `json:"footer_icon"`
@@ -42,7 +42,7 @@ type Attachment struct {
 type Payload struct {
 	Parse       string       `json:"parse,omitempty"`
 	Username    string       `json:"username,omitempty"`
-	IconUrl     string       `json:"icon_url,omitempty"`
+	IconURL     string       `json:"icon_url,omitempty"`
 	IconEmoji   string       `json:"icon_emoji,omitempty"`
 	Channel     string       `json:"channel,omitempty"`
 	Text        string       `json:"text,omitempty"`
@@ -57,15 +57,15 @@ func (attachment *Attachment) AddField(field Field) *Attachment {
 	return attachment
 }
 
-func Send(webhookUrl string, proxy string, payload Payload) error {
-	if webhookUrl == "" {
-		return fmt.Errorf("the webhookUrl have not set")
+func Send(webhookURL string, proxy string, payload Payload) error {
+	if webhookURL == "" {
+		return fmt.Errorf("the webhookURL have not set")
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("POST", webhookUrl, bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", webhookURL, bytes.NewBuffer(body))
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func SendErrMsg(msg string) error {
 		IconEmoji:   ":ghost:",
 		Attachments: []Attachment{attachment},
 	}
-	err := Send(WebhookUrl, "", payload)
+	err := Send(WebhookURL, "", payload)
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func SendGoodMsg(msg string) error {
 		IconEmoji:   ":sun_with_face:",
 		Attachments: []Attachment{attachment},
 	}
-	err := Send(WebhookUrl, "", payload)
+	err := Send(WebhookURL, "", payload)
 	if err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func SendWarnMsg(msg string) error {
 		IconEmoji:   ":imp:",
 		Attachments: []Attachment{attachment},
 	}
-	err := Send(WebhookUrl, "", payload)
+	err := Send(WebhookURL, "", payload)
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func SendWarnMsg(msg string) error {
 func NotifyAndPanic(err error) {
 	sendErr := SendErrMsg(err.Error())
 	if sendErr != nil {
-		glog.Warningf("failed to notify slack[%s] the massage: %v,error: %v", WebhookUrl, err, sendErr)
+		glog.Warningf("failed to notify slack[%s] the massage: %v,error: %v", WebhookURL, err, sendErr)
 	}
 	time.Sleep(3 * time.Second)
 	panic(err)
@@ -157,7 +157,7 @@ func NotifyAndPanic(err error) {
 func NotifyAndCompleted(msg string) {
 	sendErr := SendGoodMsg(msg)
 	if sendErr != nil {
-		glog.Warningf("failed to notify slack[%s] the massage: %s,error: %v", WebhookUrl, msg, sendErr)
+		glog.Warningf("failed to notify slack[%s] the massage: %s,error: %v", WebhookURL, msg, sendErr)
 	}
 	glog.Infof(msg)
 }

@@ -48,16 +48,16 @@ type Annotation struct {
 
 //AnnotationOptions is the query options to a standard REST list call.
 type AnnotationOptions struct {
-	DashboardId int   `json:"dashboardId,omitempty"`
-	PanelId     int   `json:"panelId,omitempty"`
+	DashboardID int   `json:"dashboardId,omitempty"`
+	PanelID     int   `json:"panelId,omitempty"`
 	IsRegin     bool  `json:"isRegion,omitempty"`
 	TimeEnd     int64 `json:"timeEnd,omitempty"`
 }
 
 //NewClient creats a new grafanaClient. This client performs rest functions
 //such as Get, Post on specified paths.
-func NewClient(grafanaUrl string, userName string, password string, prometheusExporterPort int) (*Client, error) {
-	u, err := url.Parse(grafanaUrl)
+func NewClient(grafanaURL string, userName string, password string, prometheusExporterPort int) (*Client, error) {
+	u, err := url.Parse(grafanaURL)
 	if err != nil {
 		return nil, err
 	}

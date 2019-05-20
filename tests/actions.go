@@ -29,6 +29,7 @@ import (
 	"sync"
 	"time"
 
+	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
@@ -75,6 +76,7 @@ func NewOperatorActions(cli versioned.Interface,
 		cli:          cli,
 		kubeCli:      kubeCli,
 		pdControl:    controller.NewDefaultPDControl(),
+		tidbControl:  controller.NewDefaultTiDBControl(),
 		pollInterval: pollInterval,
 		cfg:          cfg,
 	}
@@ -160,12 +162,15 @@ type OperatorActions interface {
 	EmitEvent(info *TidbClusterConfig, msg string)
 	BackupRestore(from, to *TidbClusterConfig) error
 	BackupRestoreOrDie(from, to *TidbClusterConfig)
+	GetTidbMemberAssignedNodes(info *TidbClusterConfig) (map[string]string, error)
+	CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error
 }
 
 type operatorActions struct {
 	cli           versioned.Interface
 	kubeCli       kubernetes.Interface
 	pdControl     controller.PDControlInterface
+	tidbControl   controller.TiDBControlInterface
 	pollInterval  time.Duration
 	cfg           *Config
 	clusterEvents map[string]*clusterEvent
@@ -192,6 +197,7 @@ type OperatorConfig struct {
 	Tag                string
 	SchedulerImage     string
 	SchedulerTag       string
+	SchedulerFeatures  []string
 	LogLevel           string
 	WebhookServiceName string
 	WebhookSecretName  string
@@ -200,25 +206,31 @@ type OperatorConfig struct {
 }
 
 type TidbClusterConfig struct {
-	BackupName       string
-	Namespace        string
-	ClusterName      string
-	OperatorTag      string
-	PDImage          string
-	TiKVImage        string
-	TiDBImage        string
-	StorageClassName string
-	Password         string
-	InitSql          string
-	RecordCount      string
-	InsertBatchSize  string
-	Resources        map[string]string
-	Args             map[string]string
-	blockWriter      *blockwriter.BlockWriterCase
-	Monitor          bool
-	UserName         string
-	InitSecretName   string
-	BackupSecretName string
+	BackupName             string
+	Namespace              string
+	ClusterName            string
+	OperatorTag            string
+	PDImage                string
+	TiKVImage              string
+	TiDBImage              string
+	StorageClassName       string
+	Password               string
+	InitSQL                string
+	RecordCount            string
+	InsertBatchSize        string
+	Resources              map[string]string
+	Args                   map[string]string
+	blockWriter            *blockwriter.BlockWriterCase
+	Monitor                bool
+	UserName               string
+	InitSecretName         string
+	BackupSecretName       string
+	EnableConfigMapRollout bool
+
+	PDMaxReplicas       int
+	TiKVGrpcConcurrency int
+	TiDBTokenLimit      int
+	PDLogLevel          string
 
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
@@ -272,8 +284,22 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 		"tikv.image":              tc.TiKVImage,
 		"tidb.image":              tc.TiDBImage,
 		"tidb.passwordSecretName": tc.InitSecretName,
-		"tidb.initSql":            tc.InitSql,
+		"tidb.initSql":            tc.InitSQL,
 		"monitor.create":          strconv.FormatBool(tc.Monitor),
+		"enableConfigMapRollout":  strconv.FormatBool(tc.EnableConfigMapRollout),
+	}
+
+	if tc.PDMaxReplicas > 0 {
+		set["pd.maxReplicas"] = strconv.Itoa(tc.PDMaxReplicas)
+	}
+	if tc.TiKVGrpcConcurrency > 0 {
+		set["tikv.grpcConcurrency"] = strconv.Itoa(tc.TiKVGrpcConcurrency)
+	}
+	if tc.TiDBTokenLimit > 0 {
+		set["tidb.tokenLimit"] = strconv.Itoa(tc.TiDBTokenLimit)
+	}
+	if len(tc.PDLogLevel) > 0 {
+		set["pd.logLevel"] = tc.PDLogLevel
 	}
 
 	for k, v := range tc.Resources {
@@ -305,6 +331,9 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
+	}
+	if len(oi.SchedulerFeatures) > 0 {
+		set["scheduler.features"] = fmt.Sprintf("{%s}", strings.Join(oi.SchedulerFeatures, ","))
 	}
 
 	arr := make([]string, 0, len(set))
@@ -465,6 +494,12 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete jobs: %v, %s", err, string(res))
 	}
 
+	// delete all configmaps
+	allConfigMaps := label.New().Instance(info.ClusterName).String()
+	if res, err := exec.Command("kubectl", "delete", "configmaps", "-n", info.Namespace, "-l", allConfigMaps).CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to delete configmaps: %v, %s", err, string(res))
+	}
+
 	patchPVCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s | awk '{print $1}' | "+
 		"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
 		info.Namespace, info.ClusterName)
@@ -484,8 +519,8 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		pvCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s 2>/dev/null|grep Released",
 			info.Namespace, info.ClusterName)
 		glog.V(4).Info(pvCmd)
-		if res, err := exec.Command("/bin/sh", "-c", pvCmd).
-			CombinedOutput(); len(res) == 0 {
+		if res, err := exec.Command("/bin/sh", "-c", pvCmd).CombinedOutput(); len(res) == 0 {
+			return true, nil
 		} else if err != nil {
 			glog.V(4).Infof("waiting for tidbcluster: %s/%s pv deleting, %v, %s",
 				info.Namespace, info.ClusterName, err, string(res))
@@ -500,6 +535,39 @@ func (oa *operatorActions) CleanTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.CleanTidbCluster(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
+}
+
+func (oa *operatorActions) GetTidbMemberAssignedNodes(info *TidbClusterConfig) (map[string]string, error) {
+	assignedNodes := make(map[string]string)
+	ns := info.Namespace
+	tcName := info.ClusterName
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(
+			label.New().Instance(tcName).Component(label.TiDBLabelVal).Labels()).String(),
+	}
+	podList, err := oa.kubeCli.CoreV1().Pods(ns).List(listOptions)
+	if err != nil {
+		glog.Errorf("failed to get tidb pods: %s/%s, %v", ns, tcName, err)
+		return nil, err
+	}
+	for _, pod := range podList.Items {
+		assignedNodes[pod.Name] = pod.Spec.NodeName
+	}
+	return assignedNodes, nil
+}
+
+func (oa *operatorActions) CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error {
+	assignedNodes, err := oa.GetTidbMemberAssignedNodes(info)
+	if err != nil {
+		return err
+	}
+	for member, node := range oldAssignedNodes {
+		newNode, ok := assignedNodes[member]
+		if !ok || newNode != node {
+			return fmt.Errorf("tidb member %s is not scheduled to %s, new node: %s", member, node, newNode)
+		}
+	}
+	return nil
 }
 
 func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error {
@@ -553,6 +621,12 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		if info.Monitor {
 			glog.V(4).Infof("check tidb monitor normal")
 			if b, err := oa.monitorNormal(info); !b && err == nil {
+				return false, nil
+			}
+		}
+		if info.EnableConfigMapRollout {
+			glog.V(4).Info("check tidb cluster configuration synced")
+			if b, err := oa.checkTidbClusterConfigUpdated(tc, info); !b && err == nil {
 				return false, nil
 			}
 		}
@@ -1364,6 +1438,68 @@ func (oa *operatorActions) monitorNormal(clusterInfo *TidbClusterConfig) (bool, 
 	return true, nil
 }
 
+func (oa *operatorActions) checkTidbClusterConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) (bool, error) {
+	if ok := oa.checkPdConfigUpdated(tc, clusterInfo); !ok {
+		return false, nil
+	}
+	if ok := oa.checkTiKVConfigUpdated(tc, clusterInfo); !ok {
+		return false, nil
+	}
+	if ok := oa.checkTiDBConfigUpdated(tc, clusterInfo); !ok {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (oa *operatorActions) checkPdConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
+
+	pdCli := oa.pdControl.GetPDClient(tc)
+	config, err := pdCli.GetConfig()
+	if err != nil {
+		glog.Errorf("failed to get PD configuraion from tidb cluster [%s/%s]", tc.Namespace, tc.Name)
+		return false
+	}
+	if len(clusterInfo.PDLogLevel) > 0 && clusterInfo.PDLogLevel != config.Log.Level {
+		glog.Errorf("check [%s/%s] PD logLevel configuration updated failed: desired [%s], actual [%s] not equal",
+			tc.Namespace,
+			tc.Name,
+			clusterInfo.PDLogLevel,
+			config.Log.Level)
+		return false
+	}
+	// TODO: fix #487 PD configuration update for persisted configurations
+	//if clusterInfo.PDMaxReplicas > 0 && config.Replication.MaxReplicas != uint64(clusterInfo.PDMaxReplicas) {
+	//	glog.Errorf("check [%s/%s] PD maxReplicas configuration updated failed: desired [%d], actual [%d] not equal",
+	//		tc.Namespace,
+	//		tc.Name,
+	//		clusterInfo.PDMaxReplicas,
+	//		config.Replication.MaxReplicas)
+	//	return false
+	//}
+	return true
+}
+
+func (oa *operatorActions) checkTiDBConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
+	for i := int32(0); i < tc.Spec.TiDB.Replicas; i += 1 {
+		config, err := oa.tidbControl.GetSettings(tc, i)
+		if err != nil {
+			glog.Errorf("failed to get TiDB configuration from cluster [%s/%s], ordinal: %d, error: %v", tc.Namespace, tc.Name, i, err)
+			return false
+		}
+		if clusterInfo.TiDBTokenLimit > 0 && uint(clusterInfo.TiDBTokenLimit) != config.TokenLimit {
+			glog.Errorf("check [%s/%s] TiDB instance [%d] configuration updated failed: desired [%d], actual [%d] not equal",
+				tc.Namespace, tc.Name, i, clusterInfo.TiDBTokenLimit, config.TokenLimit)
+			return false
+		}
+	}
+	return true
+}
+
+func (oa *operatorActions) checkTiKVConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
+	// TODO: check if TiKV configuration updated
+	return true
+}
+
 func (oa *operatorActions) checkPrometheus(clusterInfo *TidbClusterConfig) error {
 	ns := clusterInfo.Namespace
 	tcName := clusterInfo.ClusterName
@@ -1438,8 +1574,8 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 
 	// Grafana ready, init grafana client, no more sync logic because race condition is okay here
 	if clusterInfo.GrafanaClient == nil {
-		grafanaUrl := fmt.Sprintf("http://%s.%s:3000", svcName, ns)
-		client, err := metrics.NewClient(grafanaUrl, grafanaUsername, grafanaPassword, metricsPort)
+		grafanaURL := fmt.Sprintf("http://%s.%s:3000", svcName, ns)
+		client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword, metricsPort)
 		if err != nil {
 			return err
 		}
@@ -1599,17 +1735,13 @@ func (oa *operatorActions) ForceDeploy(info *TidbClusterConfig) error {
 		return err
 	}
 
-	if err := oa.DeployTidbCluster(info); err != nil {
-		return err
-	}
-
-	return nil
+	return oa.DeployTidbCluster(info)
 }
 
-func (info *TidbClusterConfig) DataIsTheSameAs(otherInfo *TidbClusterConfig) (bool, error) {
+func (tc *TidbClusterConfig) DataIsTheSameAs(otherInfo *TidbClusterConfig) (bool, error) {
 	tableNum := otherInfo.BlockWriteConfig.TableNum
 
-	infoDb, err := sql.Open("mysql", getDSN(info.Namespace, info.ClusterName, "test", info.Password))
+	infoDb, err := sql.Open("mysql", getDSN(tc.Namespace, tc.ClusterName, "test", tc.Password))
 	if err != nil {
 		return false, err
 	}
@@ -1655,12 +1787,12 @@ func (info *TidbClusterConfig) DataIsTheSameAs(otherInfo *TidbClusterConfig) (bo
 
 		if cnt != otherCnt {
 			err := fmt.Errorf("cluster %s/%s's table %s count(*) = %d and cluster %s/%s's table %s count(*) = %d",
-				info.Namespace, info.ClusterName, tableName, cnt,
+				tc.Namespace, tc.ClusterName, tableName, cnt,
 				otherInfo.Namespace, otherInfo.ClusterName, tableName, otherCnt)
 			return false, err
 		}
 		glog.Infof("cluster %s/%s's table %s count(*) = %d and cluster %s/%s's table %s count(*) = %d",
-			info.Namespace, info.ClusterName, tableName, cnt,
+			tc.Namespace, tc.ClusterName, tableName, cnt,
 			otherInfo.Namespace, otherInfo.ClusterName, tableName, otherCnt)
 	}
 
@@ -1821,7 +1953,7 @@ func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterConfig) error {
 	}
 
 	if len(dirs) <= 2 {
-		return fmt.Errorf("scheduler job failed!")
+		return fmt.Errorf("scheduler job failed")
 	}
 
 	return oa.disableScheduledBackup(info)
@@ -1925,8 +2057,8 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	return dirs, nil
 }
 
-func (info *TidbClusterConfig) FullName() string {
-	return fmt.Sprintf("%s/%s", info.Namespace, info.ClusterName)
+func (tc *TidbClusterConfig) FullName() string {
+	return fmt.Sprintf("%s/%s", tc.Namespace, tc.ClusterName)
 }
 
 func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig) error {
@@ -2099,10 +2231,10 @@ type nodeStatus struct {
 }
 
 func (oa *operatorActions) pumpHealth(info *TidbClusterConfig, hostName string) bool {
-	pumpHealthUrl := fmt.Sprintf("%s.%s-pump.%s:8250/status", hostName, info.ClusterName, info.Namespace)
-	res, err := http.Get(pumpHealthUrl)
+	pumpHealthURL := fmt.Sprintf("%s.%s-pump.%s:8250/status", hostName, info.ClusterName, info.Namespace)
+	res, err := http.Get(pumpHealthURL)
 	if err != nil {
-		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, pumpHealthUrl, err)
+		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, pumpHealthURL, err)
 		return false
 	}
 	if res.StatusCode >= 400 {
@@ -2137,10 +2269,10 @@ type drainerStatus struct {
 }
 
 func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName string) bool {
-	drainerHealthUrl := fmt.Sprintf("%s.%s-drainer.%s:8249/status", hostName, info.ClusterName, info.Namespace)
-	res, err := http.Get(drainerHealthUrl)
+	drainerHealthURL := fmt.Sprintf("%s.%s-drainer.%s:8249/status", hostName, info.ClusterName, info.Namespace)
+	res, err := http.Get(drainerHealthURL)
 	if err != nil {
-		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthUrl, err)
+		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthURL, err)
 		return false
 	}
 	if res.StatusCode >= 400 {
@@ -2225,8 +2357,8 @@ func (oa *operatorActions) EventWorker() {
 		for _, ev := range clusterEv.events {
 			ns := clusterEv.ns
 			clusterName := clusterEv.clusterName
-			grafanaUrl := fmt.Sprintf("http://%s-grafana.%s:3000", clusterName, ns)
-			client, err := metrics.NewClient(grafanaUrl, grafanaUsername, grafanaPassword, metricsPort)
+			grafanaURL := fmt.Sprintf("http://%s-grafana.%s:3000", clusterName, ns)
+			client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword, metricsPort)
 			if err != nil {
 				retryEvents = append(retryEvents, ev)
 				glog.V(4).Infof("failed to new grafana client: [%s/%s], %v", ns, clusterName, err)
