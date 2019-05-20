@@ -102,7 +102,6 @@ const (
 	tidbClusterChartName                      = "tidb-cluster"
 	backupChartName                           = "tidb-backup"
 	statbilityTestTag                         = "stability"
-	metricsPort                               = 8090
 )
 
 type OperatorActions interface {
@@ -154,6 +153,7 @@ type OperatorActions interface {
 	CheckTidbClustersAvailable(infos []*TidbClusterConfig) error
 	CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
+	CheckKubeProxyDownOrDie(clusters []*TidbClusterConfig)
 	RegisterWebHookAndService(info *OperatorConfig) error
 	RegisterWebHookAndServiceOrDie(info *OperatorConfig)
 	CleanWebHookAndService(info *OperatorConfig) error
@@ -1575,7 +1575,7 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 	// Grafana ready, init grafana client, no more sync logic because race condition is okay here
 	if clusterInfo.GrafanaClient == nil {
 		grafanaURL := fmt.Sprintf("http://%s.%s:3000", svcName, ns)
-		client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword, metricsPort)
+		client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword)
 		if err != nil {
 			return err
 		}
@@ -2311,12 +2311,7 @@ func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie(info *Oper
 	if err != nil {
 		err = fmt.Errorf("failed to start webhook server %v", err)
 		glog.Error(err)
-		sendErr := slack.SendErrMsg(err.Error())
-		if sendErr != nil {
-			glog.Error(sendErr)
-		}
-		// TODO use context instead
-		os.Exit(4)
+		slack.NotifyAndPanic(err)
 	}
 }
 
@@ -2358,11 +2353,10 @@ func (oa *operatorActions) EventWorker() {
 			ns := clusterEv.ns
 			clusterName := clusterEv.clusterName
 			grafanaURL := fmt.Sprintf("http://%s-grafana.%s:3000", clusterName, ns)
-			client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword, metricsPort)
+			client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword)
 			if err != nil {
-				retryEvents = append(retryEvents, ev)
-				glog.V(4).Infof("failed to new grafana client: [%s/%s], %v", ns, clusterName, err)
-				continue
+				// If parse grafana URL failed, this error cannot be recovered by retrying, so send error msg and panic
+				slack.NotifyAndPanic(fmt.Errorf("failed to parse grafana URL so can't new grafana client: %s, %v", grafanaURL, err))
 			}
 
 			anno := metrics.Annotation{
