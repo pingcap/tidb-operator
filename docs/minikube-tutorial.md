@@ -168,7 +168,7 @@ Use Ctrl+C to quit the watch mode.
 
 ### Test TiDB cluster
 
-There can be a small delay between the time when the pod is up and running, and when the service
+Before you start testing your TiDB cluster, make sure you have installed a MySQL client. Note that there can be a small delay between the time when the pod is up and running, and when the service
 is available. You can watch the list of available services with:
 
 ```
