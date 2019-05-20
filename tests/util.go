@@ -48,24 +48,28 @@ func SelectNode(nodes []Nodes) string {
 	return vmNodes[index2]
 }
 
-func GetApiserverPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
-	return GetKubeComponent(kubeCli, node, "kube-apiserver")
+func GetKubeApiserverPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
+	return GetPodsByLabels(kubeCli, node, map[string]string{"component": "kube-apiserver"})
 }
 
-func GetSchedulerPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
-	return GetKubeComponent(kubeCli, node, "kube-scheduler")
+func GetKubeSchedulerPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
+	return GetPodsByLabels(kubeCli, node, map[string]string{"component": "kube-scheduler"})
 }
 
-func GetDNSPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
-	return GetKubeComponent(kubeCli, node, "kube-dns")
+func GetKubeControllerManagerPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
+	return GetPodsByLabels(kubeCli, node, map[string]string{"component": "kube-controller-manager"})
 }
 
-func GetControllerManagerPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
-	return GetKubeComponent(kubeCli, node, "kube-controller-manager")
+func GetKubeDNSPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
+	return GetPodsByLabels(kubeCli, node, map[string]string{"k8s-app": "kube-dns"})
 }
 
-func GetKubeComponent(kubeCli kubernetes.Interface, node string, componentName string) (*corev1.Pod, error) {
-	selector := labels.Set(map[string]string{"component": componentName}).AsSelector()
+func GetKubeProxyPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
+	return GetPodsByLabels(kubeCli, node, map[string]string{"k8s-app": "kube-proxy"})
+}
+
+func GetPodsByLabels(kubeCli kubernetes.Interface, node string, lables map[string]string) (*corev1.Pod, error) {
+	selector := labels.Set(lables).AsSelector()
 	options := metav1.ListOptions{LabelSelector: selector.String()}
 	componentPods, err := kubeCli.CoreV1().Pods("kube-system").List(options)
 	if err != nil {

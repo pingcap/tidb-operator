@@ -45,9 +45,11 @@ type FaultTriggerActions interface {
 	StartKubeControllerManager(node string) error
 	StopKubeScheduler(node string) error
 	StartKubeScheduler(node string) error
+	StopKubeProxy(nodes ...string) error
+	StopKubeProxyOrDie(nodes ...string)
+	StartKubeProxy(nodes ...string) error
+	StartKubeProxyOrDie(nodes ...string)
 	// TODO: support more faults
-	// StopKubeProxy(node string) error
-	// StartKubeProxy(node string) error
 	// DiskCorruption(node string) error
 	// NetworkPartition(fromNode, toNode string) error
 	// NetworkDelay(fromNode, toNode string) error
@@ -85,13 +87,13 @@ func (fa *faultTriggerActions) CheckAndRecoverEnv() error {
 	if err != nil {
 		return err
 	}
+
+	allK8sNodes := getAllK8sNodes(fa.cfg)
 	glog.Infof("ensure all kubelets are running")
-	for _, physicalNode := range fa.cfg.Nodes {
-		for _, vNode := range physicalNode.Nodes {
-			err := fa.StartKubelet(vNode)
-			if err != nil {
-				return err
-			}
+	for _, node := range allK8sNodes {
+		err := fa.StartKubelet(node)
+		if err != nil {
+			return err
 		}
 	}
 	glog.Infof("ensure all static pods are running")
@@ -109,6 +111,13 @@ func (fa *faultTriggerActions) CheckAndRecoverEnv() error {
 			if err != nil {
 				return err
 			}
+		}
+	}
+	glog.Infof("ensure all kube-proxy are running")
+	for _, node := range allK8sNodes {
+		err := fa.StartKubeProxy(node)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -195,6 +204,58 @@ func (fa *faultTriggerActions) StartNodeOrDie(physicalNode string, node string) 
 	}
 }
 
+// StopKubeProxy stops the kube-proxy service.
+func (fa *faultTriggerActions) StopKubeProxy(nodes ...string) error {
+	if len(nodes) == 0 {
+		nodes = getAllK8sNodes(fa.cfg)
+	}
+	faultCli := client.NewClient(client.Config{
+		Addr: fa.genFaultTriggerAddr(nodes[0]),
+	})
+	for _, node := range nodes {
+		err := faultCli.StopKubeProxy(node)
+		if err != nil {
+			glog.Errorf("failed to stop kube-proxy on vm node %s: %v", node, err)
+			return err
+		}
+	}
+	glog.Infof("kube-proxy on vm nodes %v are stopped", nodes)
+	return nil
+}
+
+func (fa *faultTriggerActions) StopKubeProxyOrDie(nodes ...string) {
+	if err := fa.StopKubeProxy(nodes...); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+// StartKubeProxy starts the kube-proxy service.
+func (fa *faultTriggerActions) StartKubeProxy(nodes ...string) error {
+	if len(nodes) == 0 {
+		nodes = getAllK8sNodes(fa.cfg)
+	}
+	faultCli := client.NewClient(client.Config{
+		Addr: fa.genFaultTriggerAddr(nodes[0]),
+	})
+
+	for _, node := range nodes {
+		err := faultCli.StartKubeProxy(node)
+		if err != nil {
+			glog.Errorf("failed to start kube-proxy on vm node %s: %v", node, err)
+			return err
+		}
+	}
+
+	glog.Infof("kube-proxy on vm nodes %v are started", nodes)
+	return nil
+}
+
+func (fa *faultTriggerActions) StartKubeProxyOrDie(nodes ...string) {
+	if err := fa.StartKubeProxy(nodes...); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
 // StopETCD stops the etcd service.
 // If the `nodes` is empty, StopEtcd will stop all etcd service.
 func (fa *faultTriggerActions) StopETCD(nodes ...string) error {
@@ -252,16 +313,6 @@ func (fa *faultTriggerActions) StopKubelet(node string) error {
 func (fa *faultTriggerActions) StartKubelet(node string) error {
 	return fa.serviceAction(node, manager.KubeletService, startAction)
 }
-
-// // StopKubeProxy stops the kube-proxy service.
-//func (fa *faultTriggerActions) StopKubeProxy(node string) error {
-//	return fa.serviceAction(node, manager.KubeProxyService, stopAction)
-//}
-//
-//// StartKubeProxy starts the kube-proxy service.
-//func (fa *faultTriggerActions) StartKubeProxy(node string) error {
-//	return fa.serviceAction(node, manager.KubeProxyService, startAction)
-//}
 
 // StopKubeScheduler stops the kube-scheduler service.
 func (fa *faultTriggerActions) StopKubeScheduler(node string) error {
@@ -422,4 +473,12 @@ func getPhysicalNode(faultNode string, cfg *Config) string {
 	}
 
 	return physicalNode
+}
+
+func getAllK8sNodes(cfg *Config) []string {
+	var allNodes []string
+	for _, nodes := range cfg.Nodes {
+		allNodes = append(allNodes, nodes.Nodes...)
+	}
+	return allNodes
 }

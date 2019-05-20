@@ -40,7 +40,6 @@ type Client interface {
 	StartKubeControllerManager() error
 	// StopKubeControllerManager stops the kube-controller-manager service
 	StopKubeControllerManager() error
-	// TODO: support controller kube-proxy
 	// StartKubeProxy starts the kube-proxy of the specific node
 	StartKubeProxy(nodeName string) error
 	// // StopKubeProxy stops the kube-proxy of the specific node

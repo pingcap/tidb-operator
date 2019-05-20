@@ -230,11 +230,17 @@ func main() {
 	// stop one etcd node and k8s/operator/tidbcluster is available
 	faultEtcd := tests.SelectNode(conf.ETCDs)
 	fta.StopETCDOrDie(faultEtcd)
-	defer fta.StartETCDOrDie(faultEtcd)
 	// TODO make the pause interval as a argument
 	time.Sleep(3 * time.Minute)
 	oa.CheckOneEtcdDownOrDie(operatorCfg, allClusters, faultEtcd)
 	fta.StartETCDOrDie(faultEtcd)
+
+	// stop all kube-proxy and k8s/operator/tidbcluster is available
+	fta.StopKubeProxy()
+	// Waiting for kube-proxy to exit completely
+	time.Sleep(3 * time.Minute)
+	oa.CheckKubeProxyDownOrDie(allClusters)
+	fta.StartKubeProxy()
 
 	//clean temp dirs when stability success
 	err := conf.CleanTempDirs()
