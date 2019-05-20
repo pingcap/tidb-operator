@@ -179,7 +179,6 @@ When you see `demo-tidb` appear, it's ready to connect to TiDB server.
 
 To connect your MySQL client to the TiDB server, take the following steps:
 
-
 1. Forward a local port to the TiDB port.
 
 ```
