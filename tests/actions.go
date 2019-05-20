@@ -507,7 +507,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 
 	ns := info.Namespace
 	tcName := info.ClusterName
-	if err := wait.Poll(oa.pollInterval, 30*time.Minute, func() (bool, error) {
+	if err := wait.Poll(oa.pollInterval, 35*time.Minute, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -753,7 +753,19 @@ func getPodContainer(kubeCli kubernetes.Interface, namespace string, memberName 
 		glog.Errorf("fail to get pod [%s/%s]", namespace, name)
 		return nil, false
 	}
-	return &pod.Spec.Containers[0], true
+	if len(pod.Spec.Containers) == 0 {
+		glog.Errorf("no container in this pod [%s/%s]", namespace, name)
+		return nil, false
+	}
+
+	for _, container := range pod.Spec.Containers {
+		if container.Name == label.TiDBLabelVal ||
+			container.Name == label.TiKVLabelVal ||
+			container.Name == label.PDLabelVal {
+				return &container, true
+			}
+	}
+	return nil, false
 }
 
 func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
@@ -950,14 +962,16 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if !pauseCorrect(tidbSet) {
-		return false, fmt.Errorf("pause partition is not correct in upgrade phase [%s/%s] partition %d annotation %d",
-			ns, tidbSetName, (*tidbSet.Spec.UpdateStrategy.RollingUpdate.Partition), tidbUpgradeAnnotation)
-	}
-
 	if upgradePaused() {
-		time.Sleep(30 * time.Second)
-		err := setPartitionAnnotation(tcName, ns, int(tidbUpgradeAnnotation-1))
+
+		time.Sleep(5 * time.Minute)
+
+		if !pauseCorrect(tidbSet) {
+			return false, fmt.Errorf("pause partition is not correct in upgrade phase [%s/%s] partition %d annotation %d",
+			ns, tidbSetName, (*tidbSet.Spec.UpdateStrategy.RollingUpdate.Partition), tidbUpgradeAnnotation)
+		}
+
+		err := setPartitionAnnotation(tcName, ns, 0)
 		if err != nil {
 			glog.Errorf("fail to set annotation for [%s/%s]", ns, tidbSetName)
 			return false, nil
