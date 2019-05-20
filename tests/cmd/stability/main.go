@@ -198,6 +198,8 @@ func run(oa tests.OperatorActions,
 
 	go oa.BeginInsertDataToOrDie(cluster1)
 	go oa.BeginInsertDataToOrDie(cluster2)
+	defer oa.StopInsertDataTo(cluster1)
+	defer oa.StopInsertDataTo(cluster2)
 
 	// scale out cluster1 and cluster2
 	cluster1.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
@@ -273,5 +275,5 @@ func run(oa tests.OperatorActions,
 	}
 
 	successCount++
-	glog.Infof("Stability test finished at: %v\n\n\n\n", time.Now().Format(time.RFC3339))
+	glog.Infof("################## Stability test finished at: %v\n\n\n\n", time.Now().Format(time.RFC3339))
 }
