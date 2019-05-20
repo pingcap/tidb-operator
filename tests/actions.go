@@ -762,8 +762,8 @@ func getPodContainer(kubeCli kubernetes.Interface, namespace string, memberName 
 		if container.Name == label.TiDBLabelVal ||
 			container.Name == label.TiKVLabelVal ||
 			container.Name == label.PDLabelVal {
-				return &container, true
-			}
+			return &container, true
+		}
 	}
 	return nil, false
 }
@@ -968,7 +968,7 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 
 		if !pauseCorrect(tidbSet) {
 			return false, fmt.Errorf("pause partition is not correct in upgrade phase [%s/%s] partition %d annotation %d",
-			ns, tidbSetName, (*tidbSet.Spec.UpdateStrategy.RollingUpdate.Partition), tidbUpgradeAnnotation)
+				ns, tidbSetName, (*tidbSet.Spec.UpdateStrategy.RollingUpdate.Partition), tidbUpgradeAnnotation)
 		}
 
 		err := setPartitionAnnotation(tcName, ns, 0)
