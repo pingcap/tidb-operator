@@ -105,3 +105,7 @@ variable "tikv_root_volume_size" {
   default = "100"
 }
 
+variable "monitor_enable_anonymous_user" {
+  description = "Whether enabling anonymous user visiting for monitoring"
+  default = false
+}
