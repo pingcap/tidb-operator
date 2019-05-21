@@ -155,6 +155,8 @@ For minor version upgrade, updating the `image` should be enough. When TiDB majo
 
 Since `v1.0.0`, TiDB operator can perform rolling-update on configuration updates. This feature is disabled by default in favor of backward compatibility, you can enable it by setting `enableConfigMapRollout` to `true` in your helm values file.
 
+> **Note**: currently, changing PD's `scheduler` and `replication` configurations(`maxStoreDownTime` and `maxReplicas` in `values.yaml`, and all the configuration key under `[scheduler]` and `[replication]` section if you override the pd config file) after cluster creation has no effect. You have to configure these variables via `pd-ctl` after the cluster creation, see: [pd-ctl](https://pingcap.com/docs/dev/reference/tools/pd-control/)
+
 > WARN: changing this variable against a running cluster will trigger an rolling-update of PD/TiKV/TiDB pods even if there's no configuration change.
 
 ## Destroy TiDB cluster
