@@ -206,12 +206,11 @@ func tidbPodName(tcName string, ordinal int32) string {
 
 // CombineAnnotations merges two annotations maps
 func CombineAnnotations(a, b map[string]string) map[string]string {
-	m := make(map[string]string)
-	for k, v := range a {
-		m[k] = v
+	if a == nil {
+		a = make(map[string]string)
 	}
 	for k, v := range b {
-		m[k] = v
+		a[k] = v
 	}
-	return m
+	return a
 }
