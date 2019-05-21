@@ -46,6 +46,8 @@ module "ack" {
   vpc_id           = "${var.vpc_id}"
   group_id         = "${var.group_id}"
 
+  default_worker_cpu_core_count = "${var.default_worker_core_count}"
+
   worker_groups = [
     {
       name          = "pd_worker_group"
