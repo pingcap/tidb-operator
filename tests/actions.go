@@ -322,7 +322,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"controllerManager.autoFailover":   "true",
 		"scheduler.kubeSchedulerImageName": oi.SchedulerImage,
 		"controllerManager.logLevel":       oi.LogLevel,
-		"scheduler.logLevel":               "2",
+		"scheduler.logLevel":               "4",
 		"controllerManager.replicas":       "2",
 		"scheduler.replicas":               "2",
 	}
