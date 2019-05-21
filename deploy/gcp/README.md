@@ -21,6 +21,7 @@ The default setup will create a new VPC, two subnetworks, and an f1-micro instan
 * 3 n1-standard-2 instances for monitor
 
 > *NOTE*: The number of nodes created depends on how many availability zones there are in the chosen region. Most have 3 zones, but us-central1 has 4. See https://cloud.google.com/compute/docs/regions-zones/ for more information.
+
 > *NOTE*: The default setup, as listed above, will exceed the default CPU quota of a GCP project. To increase your project's quota, please follow the instructions [here](https://cloud.google.com/compute/quotas). The default setup will require at least 91 CPUs, more if you need to scale out.
 
 The terraform script expects three environment variables. You can let Terraform prompt you for them, or `export` them ahead of time. If you choose to export them, they are:
