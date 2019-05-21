@@ -29,6 +29,7 @@ import (
 	"sync"
 	"time"
 
+	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
@@ -161,6 +162,8 @@ type OperatorActions interface {
 	EmitEvent(info *TidbClusterConfig, msg string)
 	BackupRestore(from, to *TidbClusterConfig) error
 	BackupRestoreOrDie(from, to *TidbClusterConfig)
+	GetTidbMemberAssignedNodes(info *TidbClusterConfig) (map[string]string, error)
+	CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error
 }
 
 type operatorActions struct {
@@ -194,6 +197,7 @@ type OperatorConfig struct {
 	Tag                string
 	SchedulerImage     string
 	SchedulerTag       string
+	SchedulerFeatures  []string
 	LogLevel           string
 	WebhookServiceName string
 	WebhookSecretName  string
@@ -211,7 +215,7 @@ type TidbClusterConfig struct {
 	TiDBImage              string
 	StorageClassName       string
 	Password               string
-	InitSql                string
+	InitSQL                string
 	RecordCount            string
 	InsertBatchSize        string
 	Resources              map[string]string
@@ -280,7 +284,7 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 		"tikv.image":              tc.TiKVImage,
 		"tidb.image":              tc.TiDBImage,
 		"tidb.passwordSecretName": tc.InitSecretName,
-		"tidb.initSql":            tc.InitSql,
+		"tidb.initSql":            tc.InitSQL,
 		"monitor.create":          strconv.FormatBool(tc.Monitor),
 		"enableConfigMapRollout":  strconv.FormatBool(tc.EnableConfigMapRollout),
 	}
@@ -327,6 +331,9 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
+	}
+	if len(oi.SchedulerFeatures) > 0 {
+		set["scheduler.features"] = fmt.Sprintf("{%s}", strings.Join(oi.SchedulerFeatures, ","))
 	}
 
 	arr := make([]string, 0, len(set))
@@ -512,8 +519,8 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		pvCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s 2>/dev/null|grep Released",
 			info.Namespace, info.ClusterName)
 		glog.V(4).Info(pvCmd)
-		if res, err := exec.Command("/bin/sh", "-c", pvCmd).
-			CombinedOutput(); len(res) == 0 {
+		if res, err := exec.Command("/bin/sh", "-c", pvCmd).CombinedOutput(); len(res) == 0 {
+			return true, nil
 		} else if err != nil {
 			glog.V(4).Infof("waiting for tidbcluster: %s/%s pv deleting, %v, %s",
 				info.Namespace, info.ClusterName, err, string(res))
@@ -528,6 +535,39 @@ func (oa *operatorActions) CleanTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.CleanTidbCluster(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
+}
+
+func (oa *operatorActions) GetTidbMemberAssignedNodes(info *TidbClusterConfig) (map[string]string, error) {
+	assignedNodes := make(map[string]string)
+	ns := info.Namespace
+	tcName := info.ClusterName
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(
+			label.New().Instance(tcName).Component(label.TiDBLabelVal).Labels()).String(),
+	}
+	podList, err := oa.kubeCli.CoreV1().Pods(ns).List(listOptions)
+	if err != nil {
+		glog.Errorf("failed to get tidb pods: %s/%s, %v", ns, tcName, err)
+		return nil, err
+	}
+	for _, pod := range podList.Items {
+		assignedNodes[pod.Name] = pod.Spec.NodeName
+	}
+	return assignedNodes, nil
+}
+
+func (oa *operatorActions) CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error {
+	assignedNodes, err := oa.GetTidbMemberAssignedNodes(info)
+	if err != nil {
+		return err
+	}
+	for member, node := range oldAssignedNodes {
+		newNode, ok := assignedNodes[member]
+		if !ok || newNode != node {
+			return fmt.Errorf("tidb member %s is not scheduled to %s, new node: %s", member, node, newNode)
+		}
+	}
+	return nil
 }
 
 func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error {
@@ -1534,8 +1574,8 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 
 	// Grafana ready, init grafana client, no more sync logic because race condition is okay here
 	if clusterInfo.GrafanaClient == nil {
-		grafanaUrl := fmt.Sprintf("http://%s.%s:3000", svcName, ns)
-		client, err := metrics.NewClient(grafanaUrl, grafanaUsername, grafanaPassword, metricsPort)
+		grafanaURL := fmt.Sprintf("http://%s.%s:3000", svcName, ns)
+		client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword, metricsPort)
 		if err != nil {
 			return err
 		}
@@ -1695,17 +1735,13 @@ func (oa *operatorActions) ForceDeploy(info *TidbClusterConfig) error {
 		return err
 	}
 
-	if err := oa.DeployTidbCluster(info); err != nil {
-		return err
-	}
-
-	return nil
+	return oa.DeployTidbCluster(info)
 }
 
-func (info *TidbClusterConfig) DataIsTheSameAs(otherInfo *TidbClusterConfig) (bool, error) {
+func (tc *TidbClusterConfig) DataIsTheSameAs(otherInfo *TidbClusterConfig) (bool, error) {
 	tableNum := otherInfo.BlockWriteConfig.TableNum
 
-	infoDb, err := sql.Open("mysql", getDSN(info.Namespace, info.ClusterName, "test", info.Password))
+	infoDb, err := sql.Open("mysql", getDSN(tc.Namespace, tc.ClusterName, "test", tc.Password))
 	if err != nil {
 		return false, err
 	}
@@ -1751,12 +1787,12 @@ func (info *TidbClusterConfig) DataIsTheSameAs(otherInfo *TidbClusterConfig) (bo
 
 		if cnt != otherCnt {
 			err := fmt.Errorf("cluster %s/%s's table %s count(*) = %d and cluster %s/%s's table %s count(*) = %d",
-				info.Namespace, info.ClusterName, tableName, cnt,
+				tc.Namespace, tc.ClusterName, tableName, cnt,
 				otherInfo.Namespace, otherInfo.ClusterName, tableName, otherCnt)
 			return false, err
 		}
 		glog.Infof("cluster %s/%s's table %s count(*) = %d and cluster %s/%s's table %s count(*) = %d",
-			info.Namespace, info.ClusterName, tableName, cnt,
+			tc.Namespace, tc.ClusterName, tableName, cnt,
 			otherInfo.Namespace, otherInfo.ClusterName, tableName, otherCnt)
 	}
 
@@ -1917,7 +1953,7 @@ func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterConfig) error {
 	}
 
 	if len(dirs) <= 2 {
-		return fmt.Errorf("scheduler job failed!")
+		return fmt.Errorf("scheduler job failed")
 	}
 
 	return oa.disableScheduledBackup(info)
@@ -2021,8 +2057,8 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	return dirs, nil
 }
 
-func (info *TidbClusterConfig) FullName() string {
-	return fmt.Sprintf("%s/%s", info.Namespace, info.ClusterName)
+func (tc *TidbClusterConfig) FullName() string {
+	return fmt.Sprintf("%s/%s", tc.Namespace, tc.ClusterName)
 }
 
 func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig) error {
@@ -2195,10 +2231,10 @@ type nodeStatus struct {
 }
 
 func (oa *operatorActions) pumpHealth(info *TidbClusterConfig, hostName string) bool {
-	pumpHealthUrl := fmt.Sprintf("%s.%s-pump.%s:8250/status", hostName, info.ClusterName, info.Namespace)
-	res, err := http.Get(pumpHealthUrl)
+	pumpHealthURL := fmt.Sprintf("%s.%s-pump.%s:8250/status", hostName, info.ClusterName, info.Namespace)
+	res, err := http.Get(pumpHealthURL)
 	if err != nil {
-		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, pumpHealthUrl, err)
+		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, pumpHealthURL, err)
 		return false
 	}
 	if res.StatusCode >= 400 {
@@ -2233,10 +2269,10 @@ type drainerStatus struct {
 }
 
 func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName string) bool {
-	drainerHealthUrl := fmt.Sprintf("%s.%s-drainer.%s:8249/status", hostName, info.ClusterName, info.Namespace)
-	res, err := http.Get(drainerHealthUrl)
+	drainerHealthURL := fmt.Sprintf("%s.%s-drainer.%s:8249/status", hostName, info.ClusterName, info.Namespace)
+	res, err := http.Get(drainerHealthURL)
 	if err != nil {
-		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthUrl, err)
+		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthURL, err)
 		return false
 	}
 	if res.StatusCode >= 400 {
@@ -2321,8 +2357,8 @@ func (oa *operatorActions) EventWorker() {
 		for _, ev := range clusterEv.events {
 			ns := clusterEv.ns
 			clusterName := clusterEv.clusterName
-			grafanaUrl := fmt.Sprintf("http://%s-grafana.%s:3000", clusterName, ns)
-			client, err := metrics.NewClient(grafanaUrl, grafanaUsername, grafanaPassword, metricsPort)
+			grafanaURL := fmt.Sprintf("http://%s-grafana.%s:3000", clusterName, ns)
+			client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword, metricsPort)
 			if err != nil {
 				retryEvents = append(retryEvents, ev)
 				glog.V(4).Infof("failed to new grafana client: [%s/%s], %v", ns, clusterName, err)
