@@ -6,7 +6,7 @@
   The `awscli` must be [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) before it can interact with AWS. The fastest way to set up is using the `aws configure` command:
 
   ``` shell
-  # Replace AWS Access Key ID and AWS Secret Access Key to your own keys
+  # Replace AWS Access Key ID and AWS Secret Access Key with your own keys
   $ aws configure
   AWS Access Key ID [None]: AKIAIOSFODNN7EXAMPLE
   AWS Secret Access Key [None]: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
@@ -115,7 +115,7 @@ To scale TiDB cluster, modify `tikv_count` or `tidb_count` to your desired count
 
 ## Customize
 
-You can change default values in `variables.tf` (like the cluster name and versions) as needed.
+You can change default values in `variables.tf` (like the cluster name and image versions) as needed.
 
 ### Customize AWS related resources
 
