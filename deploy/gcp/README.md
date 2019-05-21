@@ -26,11 +26,11 @@ The default setup will create a new VPC, two subnetworks, and an f1-micro instan
 
 The terraform script expects three environment variables. You can let Terraform prompt you for them, or `export` them ahead of time. If you choose to export them, they are:
 
-* `TF_VAR_GCP_CREDENTIALS_PATH`: Path to a valid GCP credentials file
+* `TF_VAR_GCP_CREDENTIALS_PATH`: Path to a valid GCP credentials file. It is generally considered a good idea to create a service account to be used by Terraform. See [this page](https://cloud.google.com/iam/docs/creating-managing-service-accounts) for more information on how to manage them. See [this page](https://cloud.google.com/iam/docs/creating-managing-service-account-keys) for creating and managing service account keys which, when downloaded, will be the needed credentials file.
 * `TF_VAR_GCP_REGION`: The region to create the resources in, for example: `us-west1`
 * `TF_VAR_GCP_PROJECT`: The name of the GCP project
 
-It is generally considered a good idea to create a service account to be used by Terraform. See https://cloud.google.com/iam/docs/creating-managing-service-accounts for more information on how to manage them.
+
 
 The service account should have sufficient permissions to create resources in the project. The `Project Editor` primitive will accomplish this.
 

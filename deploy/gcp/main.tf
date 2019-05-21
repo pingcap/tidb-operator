@@ -316,6 +316,10 @@ EOS
 resource "null_resource" "deploy-tidb-cluster" {
   depends_on = ["null_resource.setup-env", "local_file.tidb-cluster-values", "google_container_node_pool.pd_pool", "google_container_node_pool.tikv_pool", "google_container_node_pool.tidb_pool"]
 
+  triggers {
+    values = "${data.template_file.tidb_cluster_values.rendered}"
+  }
+
   provisioner "local-exec" {
     command = <<EOS
 helm upgrade --install tidb-cluster ${path.module}/charts/tidb-cluster --namespace=tidb -f ${local.tidb_cluster_values_path}
