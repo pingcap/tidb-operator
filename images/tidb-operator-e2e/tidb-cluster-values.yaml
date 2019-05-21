@@ -47,9 +47,13 @@ pd:
 
   # maxStoreDownTime is how long a store will be considered `down` when disconnected
   # if a store is considered `down`, the regions will be migrated to other stores
+  # Note: changing this value after cluster creation has no effect, instead, you have to configure this using pd-ctl
+  # see https://pingcap.com/docs/dev/reference/tools/pd-control/
   maxStoreDownTime: 1h
   # maxReplicas is the number of replicas for each region
+  # Note: same as maxStoreDownTime, change of this value should be made using pd-ctl after cluster creation
   maxReplicas: 3
+
   resources:
     limits: {}
     #   cpu: 8000m
