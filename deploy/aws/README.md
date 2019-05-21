@@ -4,7 +4,8 @@
 * [awscli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) >= 1.16.73, to control AWS resources
 
   The `awscli` must be [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) before it can interact with AWS. The fastest way to set up is using the `aws configure` command:
-  ```
+
+  ``` shell
   # Replace AWS Access Key ID and AWS Secret Access Key to your own keys
   $ aws configure
   AWS Access Key ID [None]: AKIAIOSFODNN7EXAMPLE
@@ -19,7 +20,8 @@
 * [aws-iam-authenticator](https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html) installed in `PATH`, to authenticate with AWS
 
   The easist way to install `aws-iam-authenticator` is to download the prebuilt binary:
-  ```
+
+  ``` shell
   curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.12.7/2019-03-27/bin/linux/amd64/aws-iam-authenticator
   chmod +x ./aws-iam-authenticator
   sudo mv ./aws-iam-authenticator /usr/local/bin/aws-iam-authenticator
@@ -46,9 +48,28 @@ $ terraform apply
 
 It might take 10 minutes or more for the process to finish. After `terraform apply` is executed successfully, some useful information is printed to the console. You can access the `monitor_endpoint` address (printed in output) using your web browser to view monitoring metrics.
 
-> **Note:** You can use the `terraform output` command to get the output information again.
+A successful deploy will print output like:
 
-To access TiDB cluster, use the following command to first ssh into the bastion machine, and then connect it via MySQL client:
+```
+Apply complete! Resources: 67 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+bastion_ip = [
+    52.14.50.145
+]
+eks_endpoint = https://E10A1D0368FFD6E1E32E11573E5CE619.sk1.us-east-2.eks.amazonaws.com
+eks_version = 1.12
+monitor_endpoint = http://abd299cc47af411e98aae02938da0762-1989524000.us-east-2.elb.amazonaws.com:3000
+region = us-east-2
+tidb_dns = abd2e3f7c7af411e98aae02938da0762-17499b76b312be02.elb.us-east-2.amazonaws.com
+tidb_port = 4000
+tidb_version = v3.0.0-rc.1
+```
+
+> **Note:** You can use the `terraform output` command to get the output again.
+
+To access TiDB cluster, use the following command to first ssh into the bastion machine, and then connect it via MySQL client (replace the `<>` parts with values from the output):
 
 ``` shell
 ssh -i credentials/k8s-prod-<cluster_name>.pem ec2-user@<bastion_ip>
@@ -74,7 +95,7 @@ helm ls
 
 It may take some while to finish destroying the cluster.
 
-```shell
+``` shell
 $ terraform destroy
 ```
 

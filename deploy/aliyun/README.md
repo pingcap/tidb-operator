@@ -52,7 +52,7 @@ $ terraform apply
 
 `terraform apply` will take 5 to 10 minutes to create the whole stack, once complete, basic cluster information will be printed:
 
-> **Note:** You can use the `terraform output` command to get this information again.
+> **Note:** You can use the `terraform output` command to get the output again.
 
 ```
 Apply complete! Resources: 3 added, 0 changed, 1 destroyed.
@@ -82,7 +82,7 @@ $ helm ls
 
 ## Access the DB
 
-You can connect the TiDB cluster via the bastion instance, all necessary information are in the output printed after installation is finished:
+You can connect the TiDB cluster via the bastion instance, all necessary information are in the output printed after installation is finished (replace the `<>` parts with values from the output):
 
 ```shell
 $ ssh -i credentials/<cluster_name>-bastion-key.pem root@<bastion_ip>
