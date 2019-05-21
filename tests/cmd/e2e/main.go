@@ -37,12 +37,15 @@ func main() {
 	oa := tests.NewOperatorActions(cli, kubeCli, 5*time.Second, conf, nil)
 
 	operatorInfo := &tests.OperatorConfig{
-		Namespace:          "pingcap",
-		ReleaseName:        "operator",
-		Image:              conf.OperatorImage,
-		Tag:                conf.OperatorTag,
-		SchedulerImage:     "mirantis/hypokube",
-		SchedulerTag:       "final",
+		Namespace:      "pingcap",
+		ReleaseName:    "operator",
+		Image:          conf.OperatorImage,
+		Tag:            conf.OperatorTag,
+		SchedulerImage: "mirantis/hypokube",
+		SchedulerTag:   "final",
+		SchedulerFeatures: []string{
+			"StableScheduling",
+		},
 		LogLevel:           "2",
 		WebhookServiceName: "webhook-service",
 		WebhookSecretName:  "webhook-secret",
@@ -57,7 +60,7 @@ func main() {
 		glog.Fatal(err)
 	}
 	// create database and table and insert a column for test backup and restore
-	initSql := `"create database record;use record;create table test(t char(32))"`
+	initSQL := `"create database record;use record;create table test(t char(32))"`
 
 	name1 := "e2e-cluster1"
 	name2 := "e2e-cluster2"
@@ -71,7 +74,7 @@ func main() {
 			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
 			StorageClassName: "local-storage",
 			Password:         "admin",
-			InitSql:          initSql,
+			InitSQL:          initSQL,
 			UserName:         "root",
 			InitSecretName:   fmt.Sprintf("%s-set-secret", name1),
 			BackupSecretName: fmt.Sprintf("%s-backup-secret", name1),
@@ -99,6 +102,11 @@ func main() {
 				BatchSize:   1,
 				RawSize:     1,
 			},
+			EnableConfigMapRollout: true,
+			PDMaxReplicas:          3,
+			TiKVGrpcConcurrency:    4,
+			TiDBTokenLimit:         1000,
+			PDLogLevel:             "info",
 		},
 		{
 			Namespace:        name2,
@@ -109,7 +117,7 @@ func main() {
 			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
 			StorageClassName: "local-storage",
 			Password:         "admin",
-			InitSql:          initSql,
+			InitSQL:          initSQL,
 			UserName:         "root",
 			InitSecretName:   fmt.Sprintf("%s-set-secret", name2),
 			BackupSecretName: fmt.Sprintf("%s-backup-secret", name2),
@@ -137,6 +145,11 @@ func main() {
 				BatchSize:   1,
 				RawSize:     1,
 			},
+			EnableConfigMapRollout: false,
+			PDMaxReplicas:          3,
+			TiKVGrpcConcurrency:    4,
+			TiDBTokenLimit:         1000,
+			PDLogLevel:             "info",
 		},
 	}
 
@@ -180,11 +193,37 @@ func main() {
 	// upgrade test
 	upgradeTidbVersions := conf.GetUpgradeTidbVersions()
 	for _, upgradeTidbVersion := range upgradeTidbVersions {
+		oldTidbMembersAssignedNodes := map[string]map[string]string{}
 		for _, clusterInfo := range clusterInfos {
+			assignedNodes, err := oa.GetTidbMemberAssignedNodes(clusterInfo)
+			if err != nil {
+				glog.Fatal(err)
+			}
+			oldTidbMembersAssignedNodes[clusterInfo.ClusterName] = assignedNodes
 			clusterInfo = clusterInfo.UpgradeAll(upgradeTidbVersion)
 			if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
 				glog.Fatal(err)
 			}
+		}
+		for _, clusterInfo := range clusterInfos {
+			if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
+				glog.Fatal(err)
+			}
+			if err = oa.CheckTidbMemberAssignedNodes(clusterInfo, oldTidbMembersAssignedNodes[clusterInfo.ClusterName]); err != nil {
+				glog.Fatal(err)
+			}
+		}
+	}
+
+	// update configuration on the fly
+	for _, clusterInfo := range clusterInfos {
+		clusterInfo = clusterInfo.
+			UpdatePdMaxReplicas(conf.PDMaxReplicas).
+			UpdatePDLogLevel("debug").
+			UpdateTiKVGrpcConcurrency(conf.TiKVGrpcConcurrency).
+			UpdateTiDBTokenLimit(conf.TiDBTokenLimit)
+		if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
+			glog.Fatal(err)
 		}
 		for _, clusterInfo := range clusterInfos {
 			if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {

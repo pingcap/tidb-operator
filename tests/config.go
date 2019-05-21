@@ -37,6 +37,10 @@ type Config struct {
 	CertFile         string
 	KeyFile          string
 
+	PDMaxReplicas       int `yaml:"pd_max_replicas" json:"pd_max_replicas"`
+	TiKVGrpcConcurrency int `yaml:"tikv_grpc_concurrency" json:"tikv_grpc_concurrency"`
+	TiDBTokenLimit      int `yaml:"tidb_token_limit" json:"tidb_token_limit"`
+
 	// Block writer
 	BlockWriter blockwriter.Config `yaml:"block_writer,omitempty"`
 
@@ -55,6 +59,11 @@ type Nodes struct {
 // NewConfig creates a new config.
 func NewConfig() (*Config, error) {
 	cfg := &Config{
+
+		PDMaxReplicas:       5,
+		TiDBTokenLimit:      1024,
+		TiKVGrpcConcurrency: 8,
+
 		BlockWriter: blockwriter.Config{
 			TableNum:    defaultTableNum,
 			Concurrency: defaultConcurrency,
@@ -69,7 +78,7 @@ func NewConfig() (*Config, error) {
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
 	flag.StringVar(&cfg.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
-	flag.StringVar(&slack.WebhookUrl, "slack-webhook-url", "", "slack webhook url")
+	flag.StringVar(&slack.WebhookURL, "slack-webhook-url", "", "slack webhook url")
 	flag.Parse()
 
 	operatorRepo, err := ioutil.TempDir("", "tidb-operator")
@@ -122,11 +131,7 @@ func (c *Config) configFromFile(path string) error {
 		return err
 	}
 
-	if err = yaml.Unmarshal(data, c); err != nil {
-		return err
-	}
-
-	return nil
+	return yaml.Unmarshal(data, c)
 }
 
 func (c *Config) GetTiDBVersion() (string, error) {

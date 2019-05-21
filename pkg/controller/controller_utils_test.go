@@ -185,6 +185,82 @@ func TestAnnProm(t *testing.T) {
 	g.Expect(ann["prometheus.io/port"]).To(Equal("9090"))
 }
 
+func TestMemberConfigMapName(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name        string
+		annotations map[string]string
+		tcName      string
+		member      v1alpha1.MemberType
+		expectFn    func(*GomegaWithT, string)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+		tc := &v1alpha1.TidbCluster{}
+		tc.Name = test.tcName
+		tc.Annotations = test.annotations
+		test.expectFn(g, MemberConfigMapName(tc, test.member))
+	}
+	tests := []testcase{
+		{
+			name:        "backward compatible when no annotations set",
+			annotations: map[string]string{},
+			tcName:      "cluster-name",
+			member:      v1alpha1.TiKVMemberType,
+			expectFn: func(g *GomegaWithT, s string) {
+				g.Expect(s).To(Equal("cluster-name-tikv"))
+			},
+		},
+		{
+			name: "configmap digest presented",
+			annotations: map[string]string{
+				"pingcap.com/tikv.cluster-name-tikv.sha": "uuuuuuuu",
+			},
+			tcName: "cluster-name",
+			member: v1alpha1.TiKVMemberType,
+			expectFn: func(g *GomegaWithT, s string) {
+				g.Expect(s).To(Equal("cluster-name-tikv-uuuuuuuu"))
+			},
+		},
+		{
+			name:        "nil annotations",
+			annotations: nil,
+			tcName:      "cluster-name",
+			member:      v1alpha1.TiKVMemberType,
+			expectFn: func(g *GomegaWithT, s string) {
+				g.Expect(s).To(Equal("cluster-name-tikv"))
+			},
+		},
+		{
+			name: "annotation presented with empty value empty",
+			annotations: map[string]string{
+				"pingcap.com/tikv.cluster-name-tikv.sha": "",
+			},
+			tcName: "cluster-name",
+			member: v1alpha1.TiKVMemberType,
+			expectFn: func(g *GomegaWithT, s string) {
+				g.Expect(s).To(Equal("cluster-name-tikv"))
+			},
+		},
+		{
+			name: "no matched annotation key",
+			annotations: map[string]string{
+				"pingcap.com/pd.cluster-name-tikv.sha": "",
+			},
+			tcName: "cluster-name",
+			member: v1alpha1.TiKVMemberType,
+			expectFn: func(g *GomegaWithT, s string) {
+				g.Expect(s).To(Equal("cluster-name-tikv"))
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
 func TestSetIfNotEmpty(t *testing.T) {
 	g := NewGomegaWithT(t)
 
