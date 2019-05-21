@@ -258,7 +258,7 @@ monitor:
     config:
       # Configure Grafana using environment variables except GF_PATHS_DATA, GF_SECURITY_ADMIN_USER and GF_SECURITY_ADMIN_PASSWORD
       # Ref https://grafana.com/docs/installation/configuration/#using-environment-variables
-      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: %{ if monitor_enable_anonymous_user }"true"%{ else }"false"%{ endif }
       GF_AUTH_ANONYMOUS_ORG_NAME: "Main Org."
       GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
       # if grafana is running behind a reverse proxy with subpath http://foo.bar/grafana

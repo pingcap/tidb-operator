@@ -13,6 +13,7 @@ This document describes how to deploy a TiDB cluster in the [minikube](https://k
   * [Install TiDB operator in the Kubernetes cluster](#install-tidb-operator-in-the-kubernetes-cluster)
   * [Launch a TiDB cluster](#launch-a-tidb-cluster)
   * [Test TiDB cluster](#test-tidb-cluster)
+  * [Monitor TiDB cluster](#monitor-tidb-cluster)
   * [Delete TiDB cluster](#delete-tidb-cluster)
 - [FAQs](#faqs)
   * [TiDB cluster in minikube is not responding or responds slow](#tidb-cluster-in-minikube-is-not-responding-or-responds-slow)
@@ -25,7 +26,9 @@ This document describes how to deploy a TiDB cluster in the [minikube](https://k
 Kubernetes cluster inside a VM on your laptop. It works on macOS, Linux, and
 Windows.
 
-> **Note:** Although Minikube supports `--vm-driver=none` that uses host docker instead of VM, it is not fully tested with TiDB Operator and may not work. If you want to try TiDB Operator on a system without virtualization support (e.g., on a VPS), you may consider using [DinD](local-dind-tutorial.md) instead.
+> **Note:**
+>
+> Although Minikube supports `--vm-driver=none` that uses host docker instead of VM, it is not fully tested with TiDB Operator and may not work. If you want to try TiDB Operator on a system without virtualization support (e.g., on a VPS), you may consider using [DinD](local-dind-tutorial.md) instead.
 
 ### Install minikube and start a Kubernetes cluster
 
@@ -54,7 +57,9 @@ minikube start --docker-env https_proxy=http://127.0.0.1:1086 \
   --docker-env http_proxy=http://127.0.0.1:1086
 ```
 
-> **Note:** As minikube is running with VMs (default), the `127.0.0.1` is the VM itself, you might want to use your real IP address of the host machine in some cases.
+> **Note:** 
+>
+> As minikube is running with VMs (default), the `127.0.0.1` is the VM itself, you might want to use your real IP address of the host machine in some cases.
 
 See [minikube setup](https://kubernetes.io/docs/setup/minikube/) for more options to
 configure your virtual machine and Kubernetes cluster.
@@ -129,6 +134,9 @@ Now, we can watch the operator come up with:
 ```
 kubectl get pods --namespace tidb-admin -o wide --watch
 ```
+> **Note:**
+>
+> For Mac OS, if you are prompted "watch: command not found", you need to install the `watch` command using `brew install watch`. The same applies to other `watch` commands in this document.
 
 If you have limited access to gcr.io (pods failed with ErrImagePull), you can
 try a mirror of kube-scheduler image. You can upgrade tidb-operator like this:
@@ -143,21 +151,25 @@ can process to launch a TiDB cluster!
 
 ### Launch a TiDB cluster
 
+To launch a TiDB cluster, use the following command: 
+
 ```
 helm install charts/tidb-cluster --name demo --set \
   schedulerName=default-scheduler,pd.storageClassName=standard,tikv.storageClassName=standard,pd.replicas=1,tikv.replicas=1,tidb.replicas=1
 ```
 
-Watch the cluster up and running:
+You can watch the cluster up and running using:
 
 ```
 kubectl get pods --namespace default -l app.kubernetes.io/instance=demo -o wide --watch
 ```
 
+Use Ctrl+C to quit the watch mode.
+
 ### Test TiDB cluster
 
-There can be a small delay between the pod is up and running, and the service
-is available. You can watch list services available with:
+Before you start testing your TiDB cluster, make sure you have installed a MySQL client. Note that there can be a small delay between the time when the pod is up and running, and when the service
+is available. You can watch the list of available services with:
 
 ```
 kubectl get svc --watch
@@ -165,43 +177,49 @@ kubectl get svc --watch
 
 When you see `demo-tidb` appear, it's ready to connect to TiDB server.
 
-After first, forward local port to tidb port:
+To connect your MySQL client to the TiDB server, take the following steps:
+
+1. Forward a local port to the TiDB port.
 
 ```
 kubectl port-forward svc/demo-tidb 4000:4000
 ```
 
-In another terminal, connect to TiDB server with MySQL client:
+2. In another terminal window, connect the TiDB server with a MySQL client:
 
 ```
 mysql -h 127.0.0.1 -P 4000 -uroot
 ```
 
-Or run SQL command directly:
+Or you can run a SQL command directly:
 
 ```
 mysql -h 127.0.0.1 -P 4000 -uroot -e 'select tidb_version();'
 ```
 
-### Monitoring
+### Monitor TiDB cluster
 
-Use `kubectl port-forward` to access Grafana:
+To monitor the status of the TiDB cluster, take the following steps. 
+
+1. Forward a local port to the Grafana port.
 
 ```
 kubectl port-forward svc/demo-grafana 3000:3000
 ```
 
-And then access Grafana at `http://localhost:3000`.
+2. Open your browser, and access Grafana at `http://localhost:3000`.
 
-Alternatively, Minikube provides `minikube service` to expose service more conveniently, use:
+Alternatively, Minikube provides `minikube service` that exposes Grafana as a service for you to access more conveniently. 
 
 ```
 minikube service demo-grafana
 ```
 
-And it will automatically set up the proxy and open browser to the correct URL.
+And it will automatically set up the proxy and open the browser for Grafana.
 
 ### Delete TiDB cluster
+
+Use the following commands to delete the demo cluster:
 
 ```
 helm delete --purge demo
@@ -218,7 +236,7 @@ kubectl delete pvc -l app.kubernetes.io/managed-by=tidb-operator
 ### TiDB cluster in minikube is not responding or responds slow
 
 The minikube VM is configured by default to only use 2048MB of memory and 2
-CPUs. You can pass more during `minikube start` with the `--memory` and `--cpus` flag.
+CPUs. You can allocate more resources during `minikube start` using the `--memory` and `--cpus` flag.
 Note that you'll need to recreate minikube VM for this to take effect.
 
 ```
