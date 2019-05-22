@@ -34,7 +34,7 @@
 
 ## Deploy
 
-The default setup will create a new VPC and a t2.micro instance as bastion machine. And EKS cluster with the following ec2 instance worker nodes:
+The default setup will create a new VPC and a t2.micro instance as bastion machine, and an EKS cluster with the following ec2 instances as worker nodes:
 
 * 3 m5d.xlarge instances for PD
 * 3 i3.2xlarge instances for TiKV
