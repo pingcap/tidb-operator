@@ -51,7 +51,7 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
     cat << EOF > /etc/systemd/system/docker.service.d/docker-storage.conf
     [Service]
     ExecStart= 
-    ExecStart=/usr/bin/dockerd -g /data/docker -H fd:// --containerd=/run/containerd/containerd.sock
+    ExecStart=/usr/bin/dockerd --data-root /data/docker -H fd:// --containerd=/run/containerd/containerd.sock
     EOF
 
     # Restart docker daemon

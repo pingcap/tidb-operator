@@ -22,7 +22,12 @@
   The easist way to install `aws-iam-authenticator` is to download the prebuilt binary:
 
   ``` shell
+  # Download binary for Linux
   curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.12.7/2019-03-27/bin/linux/amd64/aws-iam-authenticator
+
+  # Or, download binary for macOS
+  curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.12.7/2019-03-27/bin/darwin/amd64/aws-iam-authenticator
+
   chmod +x ./aws-iam-authenticator
   sudo mv ./aws-iam-authenticator /usr/local/bin/aws-iam-authenticator
   ```
