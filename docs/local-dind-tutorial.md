@@ -31,7 +31,7 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 
     If the host machine uses an XFS filesystem (default in CentOS 7), it must be formatted with `ftype=1` to enable `d_type` support, see [Docker's documentation](https://docs.docker.com/storage/storagedriver/overlayfs-driver/) for details.
     
-    You can check if your filesystem supports `d_type` using commaind `xfs_info / | grep ftype`, where `/` is the data directory of you installed Docker daemon.
+    You can check if your filesystem supports `d_type` using command `xfs_info / | grep ftype`, where `/` is the data directory of you installed Docker daemon.
 
     If your root directory `/` uses XFS without `d_type` support, but there is another partition does, or is using another filesystem, it is also possible to change the data directory of Docker to use that partition.
 
