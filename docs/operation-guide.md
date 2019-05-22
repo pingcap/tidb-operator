@@ -20,11 +20,13 @@ TiDB Operator uses `values.yaml` as TiDB cluster configuration file. It provides
     * CPU & Memory
 
         The default deployment doesn't set CPU and memory requests or limits for any of the pods, these settings can make TiDB cluster run on a small Kubernetes cluster like DinD or the default GKE cluster for testing. But for production deployment, you would likely to adjust the cpu, memory and storage resources according to the [recommendations](https://pingcap.com/docs/dev/how-to/deploy/hardware-recommendations/#software-and-hardware-recommendations).
+        
         The resource limits should be equal or bigger than the resource requests, it is suggested to set limit and request equal to get [`Guaranteed` QoS]( https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#create-a-pod-that-gets-assigned-a-qos-class-of-guaranteed).
 
     * Storage
 
         The variables `pd.storageClassName` and `tikv.storageClassName` in `values.yaml` are used to set `StorageClass` of PD and TiKV,their default setting are `local-storage` with minimal size.
+        
         If you don't want to use the default `StorageClass` or your Kubernetes cluster does not support `local-storage` class, please execute the following command to find an available `StorageClass` and select the ones you want to provide to TiDB cluster.
 
         ```shell
