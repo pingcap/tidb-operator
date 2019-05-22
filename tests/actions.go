@@ -367,7 +367,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	// create cert and secret for webhook
-	cmd = fmt.Sprintf("%s/create-cert.sh",oa.manifestPath(info.Tag))
+	cmd = fmt.Sprintf("%s/create-cert.sh", oa.manifestPath(info.Tag))
 	glog.Info(cmd)
 
 	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -376,7 +376,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	// patch cabundle to validating admission configuration
-	cmd = fmt.Sprintf("%s/patch-ca.sh",oa.manifestPath(info.Tag))
+	cmd = fmt.Sprintf("%s/patch-ca.sh", oa.manifestPath(info.Tag))
 	glog.Info(cmd)
 
 	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -385,7 +385,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
-	cmd = fmt.Sprintf("kubectl apply -f %s/webhook.yaml",oa.manifestPath(info.Tag))
+	cmd = fmt.Sprintf("kubectl apply -f %s/webhook.yaml", oa.manifestPath(info.Tag))
 	glog.Info(cmd)
 
 	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -411,7 +411,7 @@ func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 	}
 
 	// delete statefulset update webhook and configuration
-	cmd := fmt.Sprintf("kubectl delete -f %s/webhook.yaml",oa.manifestPath(info.Tag))
+	cmd := fmt.Sprintf("kubectl delete -f %s/webhook.yaml", oa.manifestPath(info.Tag))
 	glog.Info(cmd)
 
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -710,7 +710,7 @@ func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
 	info.blockWriter.Stop()
 }
 
-func (oa *operatorActions) manifestPath( tag string) string {
+func (oa *operatorActions) manifestPath(tag string) string {
 	return filepath.Join(oa.cfg.ManifestDir, tag)
 }
 
@@ -1596,7 +1596,7 @@ func (oa *operatorActions) cloneOperatorRepo() error {
 func (oa *operatorActions) checkoutTag(tagName string) error {
 	cmd := fmt.Sprintf("cd %s && git stash -u && git checkout %s && "+
 		"mkdir -p %s && cp -rf charts/tidb-operator %s && "+
-		"cp -rf charts/tidb-cluster %s && cp -rf charts/tidb-backup %s &&" +
+		"cp -rf charts/tidb-cluster %s && cp -rf charts/tidb-backup %s &&"+
 		"cp -rf manifests %s",
 		oa.cfg.OperatorRepoDir, tagName,
 		filepath.Join(oa.cfg.ChartDir, tagName), oa.operatorChartPath(tagName),
