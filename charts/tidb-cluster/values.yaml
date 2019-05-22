@@ -40,6 +40,13 @@ discovery:
       cpu: 80m
       memory: 50Mi
 
+# Whether enable ConfigMap Rollout management.
+# When enabling, change of ConfigMap will trigger a graceful rolling-update of the component.
+# This feature is only available in tidb-operator v1.0 or higher.
+# Note: Switch this variable against an existing cluster will cause an rolling-update of each component even
+# if the ConfigMap was not changed.
+enableConfigMapRollout: false
+
 pd:
   replicas: 3
   image: pingcap/pd:v2.1.8
@@ -72,7 +79,11 @@ pd:
   ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
   affinity: {}
   ## The following is typical example of affinity settings:
+<<<<<<< HEAD
   ## The PodAntiAffinity setting of the example keeps PD pods does not co-locate on a topology node as far as possible to improve the high availability of PD on Kubernetes.
+=======
+  ## The PodAntiAffinity setting of the example keeps PD pods does not co-locate on a topology node as far as possible to improve the disaster tolerance of PD on Kubernetes.
+>>>>>>> master
   ## The NodeAffinity setting of the example ensure that the PD pods can only be scheduled to nodes with label:[type="pd"],
   # affinity:
   #   podAntiAffinity:
@@ -82,41 +93,73 @@ pd:
   #       podAffinityTerm:
   #         labelSelector:
   #           matchLabels:
+<<<<<<< HEAD
   #             app.kubernetes.io/instance: <cluster.name>
   #             app.kubernetes.io/component: "pd"
   #         topologyKey: "region"
   #         namespaces:
   #         - <namespace of tidb cluster>
+=======
+  #             app.kubernetes.io/instance: <release name>
+  #             app.kubernetes.io/component: "pd"
+  #         topologyKey: "region"
+  #         namespaces:
+  #         - <helm namespace>
+>>>>>>> master
   #     # this term work when the nodes have the label named zone
   #     - weight: 20
   #       podAffinityTerm:
   #         labelSelector:
   #           matchLabels:
+<<<<<<< HEAD
   #             app.kubernetes.io/instance: <cluster.name>
   #             app.kubernetes.io/component: "pd"
   #         topologyKey: "zone"
   #         namespaces:
   #         - <namespace of tidb cluster>
+=======
+  #             app.kubernetes.io/instance: <release name>
+  #             app.kubernetes.io/component: "pd"
+  #         topologyKey: "zone"
+  #         namespaces:
+  #         - <helm namespace>
+>>>>>>> master
   #     # this term work when the nodes have the label named rack
   #     - weight: 40
   #       podAffinityTerm:
   #         labelSelector:
   #           matchLabels:
+<<<<<<< HEAD
   #             app.kubernetes.io/instance: <cluster.name>
   #             app.kubernetes.io/component: "pd"
   #         topologyKey: "rack"
   #         namespaces:
   #         - <namespace of tidb cluster>
+=======
+  #             app.kubernetes.io/instance: <release name>
+  #             app.kubernetes.io/component: "pd"
+  #         topologyKey: "rack"
+  #         namespaces:
+  #         - <helm namespace>
+>>>>>>> master
   #     # this term work when the nodes have the label named kubernetes.io/hostname
   #     - weight: 80
   #       podAffinityTerm:
   #         labelSelector:
   #           matchLabels:
+<<<<<<< HEAD
   #             app.kubernetes.io/instance: <cluster.name>
   #             app.kubernetes.io/component: "pd"
   #         topologyKey: "kubernetes.io/hostname"
   #         namespaces:
   #         - <namespace of tidb cluster>
+=======
+  #             app.kubernetes.io/instance: <release name>
+  #             app.kubernetes.io/component: "pd"
+  #         topologyKey: "kubernetes.io/hostname"
+  #         namespaces:
+  #         - <helm namespace>
+>>>>>>> master
   #   nodeAffinity:
   #     requiredDuringSchedulingIgnoredDuringExecution:
   #       nodeSelectorTerms:
@@ -126,6 +169,13 @@ pd:
   #           values:
   #           - "pd"
 
+<<<<<<< HEAD
+=======
+  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+  ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
+  nodeSelector: {}
+
+>>>>>>> master
   ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
   ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
   tolerations: []
@@ -133,6 +183,7 @@ pd:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
 
 tikv:
   replicas: 3
@@ -167,6 +218,13 @@ tikv:
   ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
   affinity: {}
 
+<<<<<<< HEAD
+=======
+  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+  ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
+  nodeSelector: {}
+
+>>>>>>> master
   ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
   ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
   tolerations: []
@@ -174,6 +232,7 @@ tikv:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
 
   # block-cache used to cache uncompressed blocks, big block-cache can speed up read.
   # in normal cases should tune to 30%-50% tikv.resources.limits.memory
@@ -250,6 +309,13 @@ tidb:
   ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
   affinity: {}
 
+<<<<<<< HEAD
+=======
+  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+  ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
+  nodeSelector: {}
+
+>>>>>>> master
   ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
   ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
   tolerations: []
@@ -257,6 +323,7 @@ tidb:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
   maxFailoverCount: 3
   service:
     type: NodePort

@@ -59,7 +59,7 @@ func main() {
 
 	// TODO remove this
 	// create database and table and insert a column for test backup and restore
-	initSql := `"create database record;use record;create table test(t char(32))"`
+	initSQL := `"create database record;use record;create table test(t char(32))"`
 
 	// two clusters in different namespaces
 	clusterName1 := "stability-cluster1"
@@ -73,7 +73,7 @@ func main() {
 		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
 		StorageClassName: "local-storage",
 		Password:         "admin",
-		InitSql:          initSql,
+		InitSQL:          initSQL,
 		UserName:         "root",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName1),
 		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName1),
@@ -150,7 +150,7 @@ tidb:
 		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
 		StorageClassName: "local-storage",
 		Password:         "admin",
-		InitSql:          initSql,
+		InitSQL:          initSQL,
 		UserName:         "root",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName2),
 		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName2),

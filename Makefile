@@ -16,7 +16,6 @@ LDFLAGS = $(shell ./hack/version.sh)
 DOCKER_REGISTRY := $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY),localhost:5000)
 
 PACKAGE_LIST := go list ./... | grep -vE "pkg/client" | grep -vE "zz_generated"
-PACKAGES := $$($(PACKAGE_LIST))
 PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
 FILES := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go")
 FAIL_ON_STDOUT := awk '{ print } END { if (NR > 0) { exit 1 } }'
@@ -123,7 +122,7 @@ check-shadow:
 
 lint:
 	@echo "linting"
-	CGO_ENABLED=0 retool do revive -formatter friendly -config revive.toml $$($(PACKAGES))
+	CGO_ENABLED=0 retool do revive -formatter friendly -config revive.toml $$($(PACKAGE_LIST))
 
 check-gosec:
 	@echo "security checking"

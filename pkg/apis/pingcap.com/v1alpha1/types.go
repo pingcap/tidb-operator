@@ -108,8 +108,10 @@ type PDSpec struct {
 	ContainerSpec
 	Replicas         int32               `json:"replicas"`
 	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
+	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
 	StorageClassName string              `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
+	Annotations      map[string]string   `json:"annotations,omitempty"`
 }
 
 // TiDBSpec contains details of PD member
@@ -117,8 +119,10 @@ type TiDBSpec struct {
 	ContainerSpec
 	Replicas         int32                 `json:"replicas"`
 	Affinity         *corev1.Affinity      `json:"affinity,omitempty"`
+	NodeSelector     map[string]string     `json:"nodeSelector,omitempty"`
 	StorageClassName string                `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration   `json:"tolerations,omitempty"`
+	Annotations      map[string]string     `json:"annotations,omitempty"`
 	BinlogEnabled    bool                  `json:"binlogEnabled,omitempty"`
 	MaxFailoverCount int32                 `json:"maxFailoverCount,omitempty"`
 	SeparateSlowLog  bool                  `json:"separateSlowLog,omitempty"`
@@ -135,8 +139,10 @@ type TiKVSpec struct {
 	ContainerSpec
 	Replicas         int32               `json:"replicas"`
 	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
+	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
 	StorageClassName string              `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
+	Annotations      map[string]string   `json:"annotations,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
@@ -213,6 +219,8 @@ type TiDBMember struct {
 	Health bool   `json:"health"`
 	// Last time the health transitioned from one to another.
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// Node hosting pod of this TiDB member.
+	NodeName string `json:"node,omitempty"`
 }
 
 // TiDBFailureMember is the tidb failure member information

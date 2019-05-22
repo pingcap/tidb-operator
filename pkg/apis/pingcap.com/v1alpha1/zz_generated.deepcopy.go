@@ -94,11 +94,25 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 		*out = new(v1.Affinity)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.NodeSelector != nil {
+		in, out := &in.NodeSelector, &out.NodeSelector
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations
 		*out = make([]v1.Toleration, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.Annotations != nil {
+		in, out := &in.Annotations, &out.Annotations
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
 		}
 	}
 	return
@@ -241,11 +255,25 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = new(v1.Affinity)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.NodeSelector != nil {
+		in, out := &in.NodeSelector, &out.NodeSelector
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations
 		*out = make([]v1.Toleration, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.Annotations != nil {
+		in, out := &in.Annotations, &out.Annotations
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
 		}
 	}
 	in.SlowLogTailer.DeepCopyInto(&out.SlowLogTailer)
@@ -339,11 +367,25 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		*out = new(v1.Affinity)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.NodeSelector != nil {
+		in, out := &in.NodeSelector, &out.NodeSelector
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations
 		*out = make([]v1.Toleration, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.Annotations != nil {
+		in, out := &in.Annotations, &out.Annotations
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
 		}
 	}
 	return

@@ -2,6 +2,12 @@ apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
   name: {{ template "cluster.name" . }}
+{{- if .Values.enableConfigMapRollout }}
+  annotations:
+    pingcap.com/pd.{{ template "cluster.name" . }}-pd.sha: {{ template "pd-configmap.data-digest" . }}
+    pingcap.com/tikv.{{ template "cluster.name" . }}-tikv.sha: {{ template "tikv-configmap.data-digest" . }}
+    pingcap.com/tidb.{{ template "cluster.name" . }}-tidb.sha: {{ template "tidb-configmap.data-digest" . }}
+{{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -29,9 +35,18 @@ spec:
   {{- end }}
     affinity:
 {{ toYaml .Values.pd.affinity | indent 6 }}
+<<<<<<< HEAD
+=======
+    nodeSelector:
+{{ toYaml .Values.pd.nodeSelector | indent 6 }}
+>>>>>>> master
   {{- if .Values.pd.tolerations }}
     tolerations:
 {{ toYaml .Values.pd.tolerations | indent 4 }}
+  {{- end }}
+  {{- if .Values.pd.annotations }}
+    annotations:
+{{ toYaml .Values.pd.annotations | indent 6 }}
   {{- end }}
   tikv:
     replicas: {{ .Values.tikv.replicas }}
@@ -45,9 +60,18 @@ spec:
   {{- end }}
     affinity:
 {{ toYaml .Values.tikv.affinity | indent 6 }}
+<<<<<<< HEAD
+=======
+    nodeSelector:
+{{ toYaml .Values.tikv.nodeSelector | indent 6 }}
+>>>>>>> master
   {{- if .Values.tikv.tolerations }}
     tolerations:
 {{ toYaml .Values.tikv.tolerations | indent 4 }}
+  {{- end }}
+  {{- if .Values.tikv.annotations }}
+    annotations:
+{{ toYaml .Values.tikv.annotations | indent 6 }}
   {{- end }}
   tidb:
     replicas: {{ .Values.tidb.replicas }}
@@ -58,9 +82,18 @@ spec:
   {{- end }}
     affinity:
 {{ toYaml .Values.tidb.affinity | indent 6 }}
+<<<<<<< HEAD
+=======
+    nodeSelector:
+{{ toYaml .Values.tidb.nodeSelector | indent 6 }}
+>>>>>>> master
   {{- if .Values.tidb.tolerations }}
     tolerations:
 {{ toYaml .Values.tidb.tolerations | indent 4 }}
+  {{- end }}
+  {{- if .Values.tidb.annotations }}
+    annotations:
+{{ toYaml .Values.tidb.annotations | indent 6 }}
   {{- end }}
     binlogEnabled: {{ .Values.binlog.pump.create | default false }}
     maxFailoverCount: {{ .Values.tidb.maxFailoverCount | default 3 }}

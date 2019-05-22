@@ -270,7 +270,7 @@ func (tkmm *tikvMemberManager) getNewServiceForTidbCluster(tc *v1alpha1.TidbClus
 func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	tikvConfigMap := controller.TiKVMemberName(tcName)
+	tikvConfigMap := controller.MemberConfigMapName(tc, v1alpha1.TiKVMemberType)
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
 		annMount,
@@ -311,6 +311,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 
 	tikvLabel := tkmm.labelTiKV(tc)
 	setName := controller.TiKVMemberName(tcName)
+	podAnnotations := CombineAnnotations(controller.AnnProm(20180), tc.Spec.TiKV.Annotations)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
 	storageClassName := tc.Spec.TiKV.StorageClassName
@@ -331,11 +332,12 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      tikvLabel.Labels(),
-					Annotations: controller.AnnProm(20180),
+					Annotations: podAnnotations,
 				},
 				Spec: corev1.PodSpec{
 					SchedulerName: tc.Spec.SchedulerName,
 					Affinity:      tc.Spec.TiKV.Affinity,
+					NodeSelector:  tc.Spec.TiKV.NodeSelector,
 					Containers: []corev1.Container{
 						{
 							Name:            v1alpha1.TiKVMemberType.String(),
