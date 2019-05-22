@@ -20,7 +20,7 @@ The default setup will create:
 - A new VPC 
 - An ECS instance as bastion machine
 - A managed ACK(Alibaba Cloud Kubernetes) cluster with the following ECS instance worker nodes:
-  - An auto-scaling group of 2 * instances(1c1g) as ACK mandatory workers for system service like CoreDNS
+  - An auto-scaling group of 2 * instances(2c2g) as ACK mandatory workers for system service like CoreDNS
   - An auto-scaling group of 3 * `ecs.i2.xlarge` instances for PD
   - An auto-scaling group of 3 * `ecs.i2.2xlarge` instances for TiKV
   - An auto-scaling group of 2 * instances(16c32g) for TiDB
@@ -51,6 +51,8 @@ $ terraform apply
 ```
 
 `terraform apply` will take 5 to 10 minutes to create the whole stack, once complete, basic cluster information will be printed:
+
+> **Note:** You can use the `terraform output` command to get this information again.
 
 ```
 Apply complete! Resources: 3 added, 0 changed, 1 destroyed.

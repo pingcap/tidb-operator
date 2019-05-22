@@ -40,6 +40,13 @@ discovery:
       cpu: 80m
       memory: 50Mi
 
+# Whether enable ConfigMap Rollout management.
+# When enabling, change of ConfigMap will trigger a graceful rolling-update of the component.
+# This feature is only available in tidb-operator v1.0 or higher.
+# Note: Switch this variable against an existing cluster will cause an rolling-update of each component even
+# if the ConfigMap was not changed.
+enableConfigMapRollout: false
+
 pd:
   replicas: 3
   image: pingcap/pd:v2.1.8
@@ -81,6 +88,7 @@ pd:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
 
 tikv:
   replicas: 3
@@ -118,6 +126,7 @@ tikv:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
 
   # block-cache used to cache uncompressed blocks, big block-cache can speed up read.
   # in normal cases should tune to 30%-50% tikv.resources.limits.memory
@@ -196,6 +205,7 @@ tidb:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
   maxFailoverCount: 3
   service:
     type: NodePort

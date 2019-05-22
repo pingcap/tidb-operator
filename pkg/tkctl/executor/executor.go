@@ -16,6 +16,8 @@ package executor
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,7 +32,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/kubectl/cmd"
 	"k8s.io/kubernetes/pkg/util/interrupt"
-	"time"
 )
 
 const (
@@ -91,10 +92,7 @@ func (t *PodExecutor) attachPod(pod *v1.Pod) error {
 	attachOpts.Config = t.RestConfig
 	setKubernetesDefaults(attachOpts.Config)
 
-	if err := attachOpts.Run(); err != nil {
-		return err
-	}
-	return nil
+	return attachOpts.Run()
 }
 
 func (t *PodExecutor) removePod(pod *v1.Pod) error {

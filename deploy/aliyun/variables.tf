@@ -5,7 +5,7 @@ variable "cluster_name" {
 
 variable "tidb_version" {
   description = "TiDB cluster version"
-  default     = "v2.1.0"
+  default     = "v2.1.8"
 }
 
 variable "pd_count" {
@@ -25,7 +25,7 @@ variable "pd_instance_memory_size" {
 
 variable "tikv_count" {
   description = "TiKV instance count, ranges: [3, 100]"
-  default     = 4
+  default     = 3
 }
 
 variable "tikv_instance_type_family" {
@@ -40,7 +40,7 @@ variable "tikv_memory_size" {
 
 variable "tidb_count" {
   description = "TiDB instance count, ranges: [1, 100]"
-  default     = 3
+  default     = 2
 }
 
 variable "tidb_instance_type" {
@@ -86,6 +86,11 @@ variable "monitor_reserve_days" {
   default     = 14
 }
 
+variable "default_worker_core_count" {
+  description = "CPU core count of default kubernetes workers"
+  default = 2
+}
+
 variable "create_bastion" {
   description = "Whether create bastion server"
   default     = true
@@ -115,6 +120,11 @@ variable "monitor_slb_network_type" {
   default     = "internet"
 }
 
+variable "monitor_enable_anonymous_user" {
+  description = "Whether enabling anonymous user visiting for monitoring"
+  default = false
+}
+
 variable "vpc_id" {
   description = "VPC id, specify this variable to use an exsiting VPC and the vswitches in the VPC. Note that when using existing vpc, it is recommended to use a existing security group too. Otherwise you have to set vpc_cidr according to the existing VPC settings to get correct in-cluster security rule."
   default     = ""
@@ -142,5 +152,5 @@ variable "k8s_service_cidr" {
 
 variable "vpc_cidr" {
   description = "VPC cidr_block, options: [192.168.0.0.0/16, 172.16.0.0/16, 10.0.0.0/8], cannot collidate with kubernetes service cidr and pod cidr. Cannot change once the vpc created."
-  default     = "192.168.0.0/16"
+  default = "192.168.0.0/16"
 }

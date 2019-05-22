@@ -42,7 +42,7 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 			goto returnData
 		}
 	} else {
-		err := errors.New("request body is nil!")
+		err := errors.New("request body is nil")
 		responseAdmissionReview.Response = toAdmissionResponse(err)
 		goto returnData
 	}

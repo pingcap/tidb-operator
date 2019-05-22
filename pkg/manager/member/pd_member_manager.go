@@ -404,7 +404,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 	ns := tc.Namespace
 	tcName := tc.Name
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
-	pdConfigMap := controller.PDMemberName(tcName)
+	pdConfigMap := controller.MemberConfigMapName(tc, v1alpha1.PDMemberType)
 
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
@@ -448,6 +448,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 	}
 	pdLabel := label.New().Instance(instanceName).PD()
 	setName := controller.PDMemberName(tcName)
+	podAnnotations := CombineAnnotations(controller.AnnProm(2379), tc.Spec.PD.Annotations)
 	storageClassName := tc.Spec.PD.StorageClassName
 	if storageClassName == "" {
 		storageClassName = controller.DefaultStorageClassName
@@ -472,7 +473,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      pdLabel.Labels(),
-					Annotations: controller.AnnProm(2379),
+					Annotations: podAnnotations,
 				},
 				Spec: corev1.PodSpec{
 					SchedulerName: tc.Spec.SchedulerName,
