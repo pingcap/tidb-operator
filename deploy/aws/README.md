@@ -51,7 +51,7 @@ $ terraform init
 $ terraform apply
 ```
 
-It might take 10 minutes or more to finish the process. After `terraform apply` is executed successfully, some useful information is printed to the console. You can access the `monitor_endpoint` address (printed in outputs) using your web browser to view monitoring metrics.
+It might take 10 minutes or more to finish the process. After `terraform apply` is executed successfully, some useful information is printed to the console.
 
 A successful deployment will give the output like:
 
@@ -74,6 +74,8 @@ tidb_version = v3.0.0-rc.1
 
 > **Note:** You can use the `terraform output` command to get the output again.
 
+## Access the DB
+
 To access the deployed TiDB cluster, use the following commands to first `ssh` into the bastion machine, and then connect it via MySQL client (replace the `<>` parts with values from the output):
 
 ``` shell
@@ -95,6 +97,14 @@ export KUBECONFIG=$PWD/credentials/kubeconfig_<cluster_name>
 kubectl get po -n tidb
 helm ls
 ```
+
+## Monitoring
+
+You can access the `monitor_endpoint` address (printed in outputs) using your web browser to view monitoring metrics.
+
+The initial Grafana login credentials are:
+    - User: admin
+    - Password: admin
 
 # Destroy
 
@@ -135,10 +145,3 @@ Currently, the instance type of TiDB cluster component is not configurable becau
 ### Customize TiDB parameters
 
 Currently, there are not much parameters exposed to be customizable. If you need to customize these, you should modify the `templates/tidb-cluster-values.yaml.tpl` files before deploying. Or if you modify it and run `terraform apply` again after the cluster is running, it will not take effect unless you manually delete the pod via `kubectl delete po -n tidb --all`. This will be resolved when issue [#255](https://github.com/pingcap/tidb-operator/issues/225) is fixed.
-
-## TODO
-
-- [ ] Use [cluster autoscaler](https://github.com/kubernetes/autoscaler)
-- [ ] Allow create a minimal TiDB cluster for testing
-- [ ] Make the resource creation synchronously to follow Terraform convention
-- [ ] Make more parameters customizable
