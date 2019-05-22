@@ -22,6 +22,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/scheduler/server"
 	"github.com/pingcap/tidb-operator/version"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -39,6 +40,7 @@ func init() {
 	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.IntVar(&port, "port", 10262, "The port that the tidb scheduler's http service runs on (default 10262)")
+	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 	flag.Parse()
 }
 

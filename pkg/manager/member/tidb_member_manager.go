@@ -25,6 +25,7 @@ import (
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/listers/apps/v1beta1"
@@ -329,6 +330,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 	})
 
 	tidbLabel := label.New().Instance(instanceName).TiDB()
+	podAnnotations := CombineAnnotations(controller.AnnProm(10080), tc.Spec.TiDB.Annotations)
 	tidbSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            controller.TiDBMemberName(tcName),
@@ -342,7 +344,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      tidbLabel.Labels(),
-					Annotations: controller.AnnProm(10080),
+					Annotations: podAnnotations,
 				},
 				Spec: corev1.PodSpec{
 					SchedulerName: tc.Spec.SchedulerName,
@@ -395,6 +397,15 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 		if !exist || oldTidbMember.Health != newTidbMember.Health {
 			newTidbMember.LastTransitionTime = metav1.Now()
 		}
+		pod, err := tmm.podLister.Pods(tc.GetNamespace()).Get(name)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		if pod != nil && pod.Spec.NodeName != "" {
+			// Update assiged node
+			newTidbMember.NodeName = pod.Spec.NodeName
+		}
+		// Ignore if pod does not exist or not scheduled
 		tidbStatus[name] = newTidbMember
 	}
 	tc.Status.TiDB.Members = tidbStatus

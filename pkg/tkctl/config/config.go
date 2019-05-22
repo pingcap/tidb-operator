@@ -14,17 +14,18 @@
 package config
 
 import (
-	"github.com/golang/glog"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	"os/user"
 	"path/filepath"
 	"sync"
+
+	"github.com/golang/glog"
+	"gopkg.in/yaml.v2"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 
 	restclient "k8s.io/client-go/rest"
 )
@@ -189,10 +190,7 @@ func (c *TkcContext) SwitchTidbCluster(context, namespace, clusterName string) e
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(tcConfigFile, content, 0644); err != nil {
-		return err
-	}
-	return nil
+	return ioutil.WriteFile(tcConfigFile, content, 0644)
 }
 
 func (c *TkcContext) collectOverrides() *clientcmd.ConfigOverrides {
