@@ -1,9 +1,9 @@
 # Deploy TiDB Operator and TiDB cluster on AWS EKS
 
-## Requirements:
+## Requirements
 * [awscli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) >= 1.16.73, to control AWS resources
 
-  The `awscli` must be [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) before it can interact with AWS. The fastest way to set up is using the `aws configure` command:
+  The `awscli` must be [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) before it can interact with AWS. The fastest way is using the `aws configure` command:
 
   ``` shell
   # Replace AWS Access Key ID and AWS Secret Access Key with your own keys
@@ -19,7 +19,7 @@
 * [jq](https://stedolan.github.io/jq/download/)
 * [aws-iam-authenticator](https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html) installed in `PATH`, to authenticate with AWS
 
-  The easist way to install `aws-iam-authenticator` is to download the prebuilt binary:
+  The easiest way to install `aws-iam-authenticator` is to download the prebuilt binary:
 
   ``` shell
   # Download binary for Linux
@@ -32,7 +32,7 @@
   sudo mv ./aws-iam-authenticator /usr/local/bin/aws-iam-authenticator
   ```
 
-## Setup
+## Deploy
 
 The default setup will create a new VPC and a t2.micro instance as bastion machine. And EKS cluster with the following ec2 instance worker nodes:
 
@@ -51,9 +51,9 @@ $ terraform init
 $ terraform apply
 ```
 
-It might take 10 minutes or more for the process to finish. After `terraform apply` is executed successfully, some useful information is printed to the console. You can access the `monitor_endpoint` address (printed in output) using your web browser to view monitoring metrics.
+It might take 10 minutes or more to finish the process. After `terraform apply` is executed successfully, some useful information is printed to the console. You can access the `monitor_endpoint` address (printed in outputs) using your web browser to view monitoring metrics.
 
-A successful deploy will print output like:
+A successful deployment will give the output like:
 
 ```
 Apply complete! Resources: 67 added, 0 changed, 0 destroyed.
@@ -74,7 +74,7 @@ tidb_version = v3.0.0-rc.1
 
 > **Note:** You can use the `terraform output` command to get the output again.
 
-To access TiDB cluster, use the following command to first ssh into the bastion machine, and then connect it via MySQL client (replace the `<>` parts with values from the output):
+To access the deployed TiDB cluster, use the following commands to first `ssh` into the bastion machine, and then connect it via MySQL client (replace the `<>` parts with values from the output):
 
 ``` shell
 ssh -i credentials/k8s-prod-<cluster_name>.pem ec2-user@<bastion_ip>
@@ -83,7 +83,7 @@ mysql -h <tidb_dns> -P <tidb_port> -u root
 
 The default value of `cluster_name` is `my-cluster`. If the DNS name is not resolvable, be patient and wait a few minutes.
 
-You can interact with the EKS cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_<cluster_name>`.
+You can interact with the EKS cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_<cluster_name>`:
 
 ``` shell
 # By specifying --kubeconfig argument
@@ -108,19 +108,19 @@ $ terraform destroy
 
 ## Upgrade TiDB cluster
 
-To upgrade TiDB cluster, modify `tidb_version` variable to a higher version in variables.tf and run `terraform apply`.
+To upgrade the TiDB cluster, modify the `tidb_version` variable to a higher version in the `variables.tf` file, and then run `terraform apply`.
 
 > *Note*: The upgrading doesn't finish immediately. You can watch the upgrading process by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
 
 ## Scale TiDB cluster
 
-To scale TiDB cluster, modify `tikv_count` or `tidb_count` to your desired count, and then run `terraform apply`.
+To scale the TiDB cluster, modify the `tikv_count` or `tidb_count` variable to your desired count in the `variables.tf` file, and then run `terraform apply`.
 
 > *Note*: Currently, scaling in is not supported since we cannot determine which node to scale. Scaling out needs a few minutes to complete, you can watch the scaling out by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
 
 ## Customize
 
-You can change default values in `variables.tf` (like the cluster name and image versions) as needed.
+You can change default values in `variables.tf` (such as the cluster name and image versions) as needed.
 
 ### Customize AWS related resources
 
