@@ -22,11 +22,6 @@ namespace=default
 service=admission-controller-svc
 secret=admission-controller-certs
 
-if [ -z ${namespace} ]; then
-	echo "need input namespace"
-	exit 1
-fi
-
 if [ ! -x "$(command -v openssl)" ]; then
     echo "openssl not found"
     exit 1
