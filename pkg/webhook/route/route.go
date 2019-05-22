@@ -52,13 +52,14 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 
 	// The AdmissionReview that will be returned
 	if r.Body == nil {
-		err := errors.New("request body is nil!")
+		err := errors.New("requeset body is nil")
 		responseAdmissionReview.Response = util.ARFail(err)
 		marshalAndWrite(responseAdmissionReview, w)
 		return
 	}
 
 	data, err := ioutil.ReadAll(r.Body)
+
 	if err != nil {
 		responseAdmissionReview.Response = util.ARFail(err)
 		marshalAndWrite(responseAdmissionReview, w)
