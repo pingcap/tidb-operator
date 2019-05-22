@@ -44,8 +44,11 @@ The `variables.tf` file contains default settings of variables used for deployin
 Apply the stack:
 
 ```shell
+# Get the code
 $ git clone https://github.com/pingcap/tidb-operator
-$ cd tidb-operator/deploy/alicloud
+$ cd tidb-operator/deploy/aliyun
+
+# Apply the configs, note that you must answer "yes" to `terraform apply` to continue
 $ terraform init
 $ terraform apply
 ```
