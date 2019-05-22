@@ -144,6 +144,7 @@ pd:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
 
 tikv:
   replicas: 3
@@ -189,6 +190,7 @@ tikv:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
 
   # block-cache used to cache uncompressed blocks, big block-cache can speed up read.
   # in normal cases should tune to 30%-50% tikv.resources.limits.memory
@@ -276,6 +278,7 @@ tidb:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
   maxFailoverCount: 3
   service:
     type: NodePort

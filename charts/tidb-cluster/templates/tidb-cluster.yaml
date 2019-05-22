@@ -41,6 +41,10 @@ spec:
     tolerations:
 {{ toYaml .Values.pd.tolerations | indent 4 }}
   {{- end }}
+  {{- if .Values.pd.annotations }}
+    annotations:
+{{ toYaml .Values.pd.annotations | indent 6 }}
+  {{- end }}
   tikv:
     replicas: {{ .Values.tikv.replicas }}
     image: {{ .Values.tikv.image }}
@@ -59,6 +63,10 @@ spec:
     tolerations:
 {{ toYaml .Values.tikv.tolerations | indent 4 }}
   {{- end }}
+  {{- if .Values.tikv.annotations }}
+    annotations:
+{{ toYaml .Values.tikv.annotations | indent 6 }}
+  {{- end }}
   tidb:
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}
@@ -73,6 +81,10 @@ spec:
   {{- if .Values.tidb.tolerations }}
     tolerations:
 {{ toYaml .Values.tidb.tolerations | indent 4 }}
+  {{- end }}
+  {{- if .Values.tidb.annotations }}
+    annotations:
+{{ toYaml .Values.tidb.annotations | indent 6 }}
   {{- end }}
     binlogEnabled: {{ .Values.binlog.pump.create | default false }}
     maxFailoverCount: {{ .Values.tidb.maxFailoverCount | default 3 }}

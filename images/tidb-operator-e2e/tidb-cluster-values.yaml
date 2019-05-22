@@ -77,6 +77,7 @@ pd:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
 
 tikv:
   replicas: 3
@@ -110,6 +111,7 @@ tikv:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
 
 tikvPromGateway:
   image: prom/pushgateway:v0.3.1
@@ -150,6 +152,7 @@ tidb:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
   maxFailoverCount: 3
   service:
     type: NodePort

@@ -111,6 +111,7 @@ type PDSpec struct {
 	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
 	StorageClassName string              `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
+	Annotations      map[string]string   `json:"annotations,omitempty"`
 }
 
 // TiDBSpec contains details of PD member
@@ -121,6 +122,7 @@ type TiDBSpec struct {
 	NodeSelector     map[string]string     `json:"nodeSelector,omitempty"`
 	StorageClassName string                `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration   `json:"tolerations,omitempty"`
+	Annotations      map[string]string     `json:"annotations,omitempty"`
 	BinlogEnabled    bool                  `json:"binlogEnabled,omitempty"`
 	MaxFailoverCount int32                 `json:"maxFailoverCount,omitempty"`
 	SeparateSlowLog  bool                  `json:"separateSlowLog,omitempty"`
@@ -140,6 +142,7 @@ type TiKVSpec struct {
 	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
 	StorageClassName string              `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
+	Annotations      map[string]string   `json:"annotations,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
