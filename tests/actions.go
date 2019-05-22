@@ -301,7 +301,6 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"scheduler.logLevel":               "2",
 		"controllerManager.replicas":       "2",
 		"scheduler.replicas":               "2",
-		"admissionController.create":       "true",
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
@@ -338,6 +337,33 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
 
+	// create cert and secret for webhook
+	cmd = fmt.Sprintf("%s/create-cert.sh",oa.manifestPath(info.Tag))
+	glog.Info(cmd)
+
+	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to create cert: %v, %s", err, string(res))
+	}
+
+	// patch cabundle to validating admission configuration
+	cmd = fmt.Sprintf("%s/patch-ca.sh",oa.manifestPath(info.Tag))
+	glog.Info(cmd)
+
+	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to patch cabundle : %v, %s", err, string(res))
+	}
+
+	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
+	cmd = fmt.Sprintf("kubectl apply -f %s/webhook.yaml",oa.manifestPath(info.Tag))
+	glog.Info(cmd)
+
+	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to create statefulset webhook and configuration : %v, %s", err, string(res))
+	}
+
 	return nil
 }
 
@@ -355,7 +381,16 @@ func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 		return err
 	}
 
-	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
+	// delete statefulset update webhook and configuration
+	cmd := fmt.Sprintf("kubectl delete -f %s/webhook.yaml",oa.manifestPath(info.Tag))
+	glog.Info(cmd)
+
+	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil && !notFound(string(res)) {
+		return fmt.Errorf("failed to delete statefulset webhook and configuration : %v, %s", err, string(res))
+	}
+
+	res, err = exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
 
 	if err == nil || !releaseIsNotFound(err) {
 		return nil
@@ -601,6 +636,10 @@ func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
 	info.blockWriter.Stop()
 }
 
+func (oa *operatorActions) manifestPath( tag string) string {
+	return filepath.Join(oa.cfg.ManifestDir, tag)
+}
+
 func (oa *operatorActions) chartPath(name string, tag string) string {
 	return filepath.Join(oa.cfg.ChartDir, tag, name)
 }
@@ -746,7 +785,7 @@ func (oa *operatorActions) UpgradeTidbClusterOrDie(info *TidbClusterConfig) {
 func (oa *operatorActions) DeployMonitor(info *TidbClusterConfig) error { return nil }
 func (oa *operatorActions) CleanMonitor(info *TidbClusterConfig) error  { return nil }
 
-func getPodContainer(kubeCli kubernetes.Interface, namespace string, memberName string) (*corev1.Container, bool) {
+func getMemberContainer(kubeCli kubernetes.Interface, namespace string, memberName string) (*corev1.Container, bool) {
 	name := fmt.Sprintf("%s-%d", memberName, 0)
 	pod, err := kubeCli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -759,9 +798,9 @@ func getPodContainer(kubeCli kubernetes.Interface, namespace string, memberName 
 	}
 
 	for _, container := range pod.Spec.Containers {
-		if container.Name == label.TiDBLabelVal ||
-			container.Name == label.TiKVLabelVal ||
-			container.Name == label.PDLabelVal {
+		if container.Name == v1alpha1.PDMemberType.String() ||
+			container.Name == v1alpha1.TiKVMemberType.String() ||
+			container.Name == v1alpha1.TiDBMemberType.String() {
 			return &container, true
 		}
 	}
@@ -805,7 +844,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 			ns, pdSetName, pdSet.Status.ReadyReplicas, pdSet.Status.Replicas)
 		return false, nil
 	}
-	if c, ok := getPodContainer(oa.kubeCli, ns, pdSetName); !ok || tc.Spec.PD.Image != c.Image {
+	if c, ok := getMemberContainer(oa.kubeCli, ns, pdSetName); !ok || tc.Spec.PD.Image != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
 			ns, pdSetName, c.Image, tc.Spec.PD.Image)
 		return false, nil
@@ -870,7 +909,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 			ns, tikvSetName, tikvSet.Status.ReadyReplicas, tikvSet.Status.Replicas)
 		return false, nil
 	}
-	if c, ok := getPodContainer(oa.kubeCli, ns, tikvSetName); !ok || tc.Spec.TiKV.Image != c.Image {
+	if c, ok := getMemberContainer(oa.kubeCli, ns, tikvSetName); !ok || tc.Spec.TiKV.Image != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
 			ns, tikvSetName, c.Image, tc.Spec.TiKV.Image)
 		return false, nil
@@ -979,7 +1018,7 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if c, ok := getPodContainer(oa.kubeCli, ns, tidbSetName); !ok || tc.Spec.TiDB.Image != c.Image {
+	if c, ok := getMemberContainer(oa.kubeCli, ns, tidbSetName); !ok || tc.Spec.TiDB.Image != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
 			ns, tidbSetName, c.Image, tc.Spec.TiDB.Image)
 		return false, nil
@@ -1403,6 +1442,10 @@ func releaseIsNotFound(err error) bool {
 	return strings.Contains(err.Error(), "not found")
 }
 
+func notFound(res string) bool {
+	return strings.Contains(res, "not found")
+}
+
 func (oa *operatorActions) cloneOperatorRepo() error {
 	cmd := fmt.Sprintf("git clone https://github.com/pingcap/tidb-operator.git %s", oa.cfg.OperatorRepoDir)
 	glog.Info(cmd)
@@ -1417,10 +1460,12 @@ func (oa *operatorActions) cloneOperatorRepo() error {
 func (oa *operatorActions) checkoutTag(tagName string) error {
 	cmd := fmt.Sprintf("cd %s && git stash -u && git checkout %s && "+
 		"mkdir -p %s && cp -rf charts/tidb-operator %s && "+
-		"cp -rf charts/tidb-cluster %s && cp -rf charts/tidb-backup %s",
+		"cp -rf charts/tidb-cluster %s && cp -rf charts/tidb-backup %s &&" +
+		"cp -rf manifests %s",
 		oa.cfg.OperatorRepoDir, tagName,
 		filepath.Join(oa.cfg.ChartDir, tagName), oa.operatorChartPath(tagName),
-		oa.tidbClusterChartPath(tagName), oa.backupChartPath(tagName))
+		oa.tidbClusterChartPath(tagName), oa.backupChartPath(tagName),
+		oa.manifestPath(tagName))
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {

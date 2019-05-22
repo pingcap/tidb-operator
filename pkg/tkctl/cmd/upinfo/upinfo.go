@@ -142,7 +142,7 @@ func (o *UpInfoOptions) Run() error {
 		return err
 	}
 	podList, err := o.KubeCli.CoreV1().Pods(o.Namespace).List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.InstanceLabelKey, tc.Name, label.ComponentLabelKey, "tidb"),
+		LabelSelector: label.New().Instance(tc.Name).TiDB().String(),
 	})
 	if err != nil {
 		return err
@@ -162,7 +162,7 @@ func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podLis
 		w.WriteLine(readable.LEVEL_0, "Name:\t%s", tc.Name)
 		w.WriteLine(readable.LEVEL_0, "Namespace:\t%s", tc.Namespace)
 		w.WriteLine(readable.LEVEL_0, "CreationTimestamp:\t%s", tc.CreationTimestamp)
-		w.WriteLine(readable.LEVEL_0, "Statu:\t%s", dbPhase)
+		w.WriteLine(readable.LEVEL_0, "Status:\t%s", dbPhase)
 		if dbPhase == v1alpha1.UpgradePhase {
 			if len(podList.Items) != 0 {
 				pod := podList.Items[0]

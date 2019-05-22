@@ -51,20 +51,21 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 	deserializer := util.GetCodec()
 
 	// The AdmissionReview that will be returned
-	if r.Body != nil {
-		if data, err := ioutil.ReadAll(r.Body); err == nil {
-			body = data
-		} else {
-			responseAdmissionReview.Response = util.ARFail(err)
-			marshalAndWrite(responseAdmissionReview, w)
-			return
-		}
-	} else {
+	if r.Body == nil {
 		err := errors.New("request body is nil!")
 		responseAdmissionReview.Response = util.ARFail(err)
 		marshalAndWrite(responseAdmissionReview, w)
 		return
 	}
+
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		responseAdmissionReview.Response = util.ARFail(err)
+		marshalAndWrite(responseAdmissionReview, w)
+		return
+	}
+
+	body = data
 
 	// verify the content type is accurate
 	contentType = r.Header.Get("Content-Type")

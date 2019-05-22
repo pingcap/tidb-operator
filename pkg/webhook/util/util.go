@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// toAdmissionResponse is a helper function to create an AdmissionResponse
+// ARFail is a helper function to create an AdmissionResponse
 // with an embedded error
 func ARFail(err error) *v1beta1.AdmissionResponse {
 	return &v1beta1.AdmissionResponse{
@@ -32,7 +32,7 @@ func ARFail(err error) *v1beta1.AdmissionResponse {
 	}
 }
 
-// toAdmissionResponse return allow to action
+// ARSuccess return allow to action
 func ARSuccess() *v1beta1.AdmissionResponse {
 	return &v1beta1.AdmissionResponse{
 		Allowed: true,
