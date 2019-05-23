@@ -318,7 +318,9 @@ When you are done with your test, use the following command to destroy the TiDB 
 $ helm delete demo --purge
 ```
 
-> **Note:** This only deletes the running pods and other resources, the data is persisted. If you do not need the data anymore, run the following commands to clean up the data. (Be careful, this permanently deletes the data).
+> **Note:** This only deletes the running pods and other resources, the data is persisted.
+
+If you do not need the data anymore, run the following commands to clean up the data. (Be careful, this permanently deletes the data).
 
 ```sh
 $ kubectl get pv -l app.kubernetes.io/namespace=tidb -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
@@ -343,7 +345,7 @@ $ kubectl delete pvc --namespace tidb --all
 
 ## Destroy the DinD Kubernetes cluster
 
-If you want to clean up the DinD Kubernetes cluster and bring up a new cluster, run the following commands:
+If you want to clean up the DinD Kubernetes cluster, run the following commands:
 
 ```sh
 $ manifests/local-dind/dind-cluster-v1.12.sh clean
