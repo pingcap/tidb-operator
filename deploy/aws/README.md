@@ -151,4 +151,7 @@ Currently, the instance type of TiDB cluster component is not configurable becau
 
 ### Customize TiDB parameters
 
-Currently, there are not much parameters exposed to be customizable. If you need to customize these, you should modify the `templates/tidb-cluster-values.yaml.tpl` files before deploying. Or if you modify it and run `terraform apply` again after the cluster is running, it will not take effect unless you manually delete the pod via `kubectl delete po -n tidb --all`. This will be resolved when issue [#255](https://github.com/pingcap/tidb-operator/issues/225) is fixed.
+Currently, there are not many customizable TiDB parameters. And there are two ways to customize the parameters:
+
+* Before deploying the cluster, you can directly modify the `templates/tidb-cluster-values.yaml.tpl` file and then deploy the cluster with customized configs.
+* After the cluster is running, you must run `terraform apply` again every time you make changes to the `templates/tidb-cluster-values.yaml.tpl` file, or the cluster will still be using old configs.
