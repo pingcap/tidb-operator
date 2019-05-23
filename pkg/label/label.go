@@ -50,6 +50,8 @@ const (
 	AnnPVCDeferDeleting = "tidb.pingcap.com/pvc-defer-deleting"
 	// AnnPVCPodScheduling is pod scheduling annotation key, it represents whether the pod is scheduling
 	AnnPVCPodScheduling = "tidb.pingcap.com/pod-scheduling"
+	// AnnTiDBPartition is pod annotation which TiDB pod chould upgrade to
+	AnnTiDBPartition string = "tidb.pingcap.com/tidb-partition"
 
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
