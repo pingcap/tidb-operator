@@ -45,6 +45,8 @@ The default setup will create a new VPC and a t2.micro instance as bastion machi
 * 2 c4.4xlarge instances for TiDB
 * 1 c5.xlarge instance for monitor
 
+Use the following commands to set up the cluster:
+
 ``` shell
 # Get the code
 $ git clone --depth=1 https://github.com/pingcap/tidb-operator
