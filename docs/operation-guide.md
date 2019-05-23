@@ -11,20 +11,69 @@ $ namespace="tidb"
 
 > **Note:** The rest of the document will use `values.yaml` to reference `charts/tidb-cluster/values.yaml`
 
+## Configuration
+
+TiDB Operator uses `values.yaml` as TiDB cluster configuration file. It provides the default basic configuration which you can use directly for quick deployment, but if you have specific configuration requirements or for production deployment, you need to manually modify the variables in the `values.yaml` file.
+
+* Resource setting
+
+    * CPU & Memory
+
+        The default deployment doesn't set CPU and memory requests or limits for any of the pods, these settings can make TiDB cluster run on a small Kubernetes cluster like DinD or the default GKE cluster for testing. But for production deployment, you would likely to adjust the cpu, memory and storage resources according to the [recommendations](https://pingcap.com/docs/dev/how-to/deploy/hardware-recommendations/#software-and-hardware-recommendations).
+        
+        The resource limits should be equal or bigger than the resource requests, it is suggested to set limit and request equal to get [`Guaranteed` QoS]( https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#create-a-pod-that-gets-assigned-a-qos-class-of-guaranteed).
+
+    * Storage
+
+        The variables `pd.storageClassName` and `tikv.storageClassName` in `values.yaml` are used to set `StorageClass` of PD and TiKV,their default setting are `local-storage` with minimal size.
+        
+        If you don't want to use the default `StorageClass` or your Kubernetes cluster does not support `local-storage` class, please execute the following command to find an available `StorageClass` and select the ones you want to provide to TiDB cluster.
+
+        ```shell
+        $ kubectl get sc
+        ```
+
+* Disaster Tolerance setting
+
+    TiDB is a distributed database. Its disaster tolerance means that when any physical node failed, not only to ensure TiDB server is available, but also ensure the data is complete and available.
+
+    How to guarantee Disaster Tolerance of TiDB cluster on Kubernetes?
+
+    We mainly solve the problem from the scheduling of services and data.
+
+    * Disaster Tolerance of TiDB instance
+
+        TiDB Operator provides an extended scheduler to guarantee PD/TiKV/TiDB instance disaster tolerance on host level. TiDB Cluster has set the extended scheduler as default scheduler, you will find the setting in the variable `schedulerName` of `values.yaml`.
+
+        In the other hand use `PodAntiAffinity` term of `affinity` to ensure disaster tolerance on the other topology levels (e.g. rack, zone, region). 
+        refer to the doc: [pod affnity & anti affinity](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#inter-pod-affinity-and-anti-affinity-beta-feature), moreover `values.yaml` also provides a typical disaster tolerance setting example in the comments of `pd.affinity`.
+
+    * Disaster Tolerance of data
+
+        Disaster tolerance of data is guaranteed by TiDB Cluster itself. The only work Operator needs to do is that collects topology info from specific labels of Kubernetes nodes where TiKV Pod runs on and then PD will schedule data replicas auto according to the topology info.
+        Because current TiDB Operator can only recognize some specific labels, so you can only set nodes topology info with the following particular labels
+
+        * `region`: region where node is located
+        * `zone`: zone where node is located
+        * `rack`: rack where node is located
+        * `kubernetes.io/hostname`: hostname of the node
+
+        you need label topology info to nodes of Kubernetes cluster use the following command
+        ```shell
+        # Not all tags are required
+        $ kubectl label node <nodeName> region=<regionName> zone=<zoneName> rack=<rackName> kubernetes.io/hostname=<hostName>
+        ```
+
+For other settings, the variables in `values.yaml` are self-explanatory with comments. You can modify them according to your need before installing the charts.
+
 ## Deploy TiDB cluster
 
-After TiDB Operator and Helm are deployed correctly, TiDB cluster can be deployed using following command:
+After TiDB Operator and Helm are deployed correctly and configuration completed, TiDB cluster can be deployed using following command:
 
 ```shell
 $ helm install charts/tidb-cluster --name=${releaseName} --namespace=${namespace}
 $ kubectl get po -n ${namespace} -l app.kubernetes.io/instance=${releaseName}
 ```
-
-The default deployment doesn't set CPU and memory requests or limits for any of the pods, and the storage used is `local-storage` with minimal size. These settings can make TiDB cluster run on a small Kubernetes cluster like DinD or the default GKE cluster for testing. But for production deployment, you would likely to adjust the cpu, memory and storage resources according to the [recommendations](https://github.com/pingcap/docs/blob/master/op-guide/recommendation.md).
-
-The resource limits should be equal or bigger than the resource requests, it is suggested to set limit and request equal to get [`Guaranteed` QoS]( https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#create-a-pod-that-gets-assigned-a-qos-class-of-guaranteed).
-
-For other settings, the variables in `values.yaml` are self-explanatory with comments. You can modify them according to your need before installing the charts.
 
 ## Access TiDB cluster
 
@@ -107,6 +156,8 @@ For minor version upgrade, updating the `image` should be enough. When TiDB majo
 ## Change TiDB cluster Configuration
 
 Since `v1.0.0`, TiDB operator can perform rolling-update on configuration updates. This feature is disabled by default in favor of backward compatibility, you can enable it by setting `enableConfigMapRollout` to `true` in your helm values file.
+
+> **Note**: currently, changing PD's `scheduler` and `replication` configurations(`maxStoreDownTime` and `maxReplicas` in `values.yaml`, and all the configuration key under `[scheduler]` and `[replication]` section if you override the pd config file) after cluster creation has no effect. You have to configure these variables via `pd-ctl` after the cluster creation, see: [pd-ctl](https://pingcap.com/docs/dev/reference/tools/pd-control/)
 
 > WARN: changing this variable against a running cluster will trigger an rolling-update of PD/TiKV/TiDB pods even if there's no configuration change.
 

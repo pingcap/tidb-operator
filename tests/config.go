@@ -49,6 +49,8 @@ type Config struct {
 	OperatorRepoDir string `yaml:"operator_repo_dir" json:"operator_repo_dir"`
 	// chart dir
 	ChartDir string `yaml:"chart_dir" json:"chart_dir"`
+	// manifest dir
+	ManifestDir string `yaml:"manifest_dir" json:"manifest_dir"`
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
@@ -94,6 +96,13 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 	cfg.ChartDir = chartDir
+
+	manifestDir, err := ioutil.TempDir("", "manifests")
+	if err != nil {
+		return nil, err
+	}
+	cfg.ManifestDir = manifestDir
+
 	return cfg, nil
 }
 

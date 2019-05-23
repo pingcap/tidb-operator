@@ -18,6 +18,7 @@ data "template_file" "tidb_cluster_values" {
     pd_replicas = "${var.pd_count}"
     tikv_replicas = "${var.tikv_count}"
     tidb_replicas = "${var.tidb_count}"
+    monitor_enable_anonymous_user = "${var.monitor_enable_anonymous_user}"
   }
 }
 

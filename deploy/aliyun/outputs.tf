@@ -6,6 +6,10 @@ output "cluster_id" {
   value = "${module.ack.cluster_id}"
 }
 
+output "cluster_name" {
+  value = "${var.cluster_name}"
+}
+
 output "kubeconfig_file" {
   value = "${module.ack.kubeconfig_filename}"
 }
