@@ -350,7 +350,6 @@ If you want to clean up the DinD Kubernetes cluster, run the following commands:
 ```sh
 $ manifests/local-dind/dind-cluster-v1.12.sh clean
 $ sudo rm -rf data/kube-node-*
-$ manifests/local-dind/dind-cluster-v1.12.sh up
 ```
 
-> **Warning:** You must clean the data after you destroy the DinD Kubernetes cluster, otherwise the TiDB cluster would fail to start when you try to bring it up again.
+> **Warning:** You must clean the data after you destroy the DinD Kubernetes cluster, otherwise the TiDB cluster would fail to start when you try to bring a new cluster up again.
