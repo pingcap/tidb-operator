@@ -11,15 +11,15 @@ provider "alicloud" {}
 
 resource "alicloud_key_pair" "default" {
   count           = "${var.key_pair_name == "" ? 1 : 0}"
-  key_name_prefix = "${var.cluster_name}-key"
-  key_file        = "${var.key_file != "" ? var.key_file : format("%s/%s-key", path.module, var.cluster_name)}"
+  key_name_prefix = "${var.cluster_name_prefix}-key"
+  key_file        = "${var.key_file != "" ? var.key_file : format("%s/%s-key", path.module, var.cluster_name_prefix)}"
 }
 
 # If there is not specifying vpc_id, create a new one
 resource "alicloud_vpc" "vpc" {
   count      = "${var.vpc_id == "" ? 1 : 0}"
   cidr_block = "${var.vpc_cidr}"
-  name       = "${var.cluster_name}-vpc"
+  name       = "${var.cluster_name_prefix}-vpc"
 
   lifecycle {
     ignore_changes = ["cidr_block"]
@@ -32,12 +32,12 @@ resource "alicloud_vswitch" "all" {
   vpc_id            = "${alicloud_vpc.vpc.0.id}"
   cidr_block        = "${cidrsubnet(alicloud_vpc.vpc.0.cidr_block, var.vpc_cidr_newbits, count.index)}"
   availability_zone = "${lookup(data.alicloud_zones.all.zones[count.index%length(data.alicloud_zones.all.zones)], "id")}"
-  name              = "${format("vsw-%s-%d", var.cluster_name, count.index+1)}"
+  name              = "${format("vsw-%s-%d", var.cluster_name_prefix, count.index+1)}"
 }
 
 resource "alicloud_security_group" "group" {
   count       = "${var.group_id == "" ? 1 : 0}"
-  name        = "${var.cluster_name}-sg"
+  name        = "${var.cluster_name_prefix}-sg"
   vpc_id      = "${var.vpc_id != "" ? var.vpc_id : alicloud_vpc.vpc.0.id}"
   description = "Security group for ACK worker nodes"
 }
@@ -55,7 +55,8 @@ resource "alicloud_security_group_rule" "cluster_worker_ingress" {
 
 # Create a managed Kubernetes cluster
 resource "alicloud_cs_managed_kubernetes" "k8s" {
-  name                  = "${var.cluster_name}"
+  name_prefix = "${var.cluster_name_prefix}"
+
   // split and join: workaround for terraform's limitation of conditional list choice, similarly hereinafter
   vswitch_ids           = ["${element(split(",", var.vpc_id != "" && (length(data.alicloud_vswitches.default.vswitches) != 0) ? join(",", data.template_file.vswitch_id.*.rendered) : join(",", alicloud_vswitch.all.*.id)), 0)}"]
   key_name              = "${alicloud_key_pair.default.key_name}"
@@ -97,7 +98,7 @@ resource "alicloud_ess_scaling_group" "workers" {
   # Remove the newest instance in the oldest scaling configuration
   removal_policies = [
     "OldestScalingConfiguration",
-    "NewestInstance"
+    "NewestInstance",
   ]
 
   lifecycle {
