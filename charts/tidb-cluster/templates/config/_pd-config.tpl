@@ -82,7 +82,7 @@ max-replicas = {{ .Values.pd.maxReplicas }}
 # The placement priorities is implied by the order of label keys.
 # For example, ["zone", "rack"] means that we should place replicas to
 # different zones first, then to different racks if we don't have enough zones.
-location-labels = ["zone", "rack", "host"]
+location-labels = ["region", "zone", "rack", "host"]
 
 [label-property]
 # Do not assign region leaders to stores that have these tags.
