@@ -80,7 +80,7 @@ tidb_version = v3.0.0-rc.1
 
 > **Note:** You can use the `terraform output` command to get the output again.
 
-## Access the DB
+## Access the database
 
 To access the deployed TiDB cluster, use the following commands to first `ssh` into the bastion machine, and then connect it via MySQL client (replace the `<>` parts with values from the output):
 

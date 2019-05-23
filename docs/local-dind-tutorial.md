@@ -16,7 +16,7 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 
     > **Note:** [Legacy Docker Toolbox](https://docs.docker.com/toolbox/toolbox_install_mac/) users must migrate to [Docker for Mac](https://store.docker.com/editions/community/docker-ce-desktop-mac) by uninstalling Legacy Docker Toolbox and installing Docker for Mac, because DinD cannot run on Docker Toolbox and Docker Machine.
 
-    > **Note:** `kubeadm` validates installed Docker version during the installation process. If you are using Docker later than 18.06, there would be warning messages. The cluster might still be working, but it is recommended to use a Docker version between 17.03 and 18.06 for better compatibility. You can find older versions of docker at [here](https://download.docker.com/).
+    > **Note:** `kubeadm` validates installed Docker version during the installation process. If you are using Docker later than 18.06, there would be warning messages. The cluster might still be working, but it is recommended to use a Docker version between 17.03 and 18.06 for better compatibility. You can find older versions of docker [here](https://download.docker.com/).
 
 - [Helm Client](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client): 2.9.0 or later
 - [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl): 1.10 at least, 1.13 or later recommended
@@ -61,7 +61,7 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 
 ## Step 1: Deploy a Kubernetes cluster using DinD
 
-Install and set up a Kubernetes cluster (version 1.12) using DinD for TiDB Operator with the script in our repository.
+First, make sure that the docker daemon is running, and you can install and set up a Kubernetes cluster (version 1.12) using DinD for TiDB Operator with the script in our repository:
 
 ```sh
 # Get the code
@@ -113,7 +113,7 @@ Once the k8s cluster is up and running, we can install TiDB Operator into it usi
 $ helm install charts/tidb-operator --name=tidb-operator --namespace=tidb-admin --set scheduler.kubeSchedulerImageName=mirantis/hypokube --set scheduler.kubeSchedulerImageTag=final
 ```
 
-Then wait few minutes until operator is running:
+Then wait a few minutes until TiDB Operator is running:
 
 ```sh
 $ kubectl get pods --namespace tidb-admin -l app.kubernetes.io/instance=tidb-operator
@@ -130,10 +130,10 @@ By using `helm` along with TiDB Operator, we can easily set up a TiDB cluster:
 $ helm install charts/tidb-cluster --name=demo --namespace=tidb
 ```
 
-And wait a few minutes for all TiDB components get created and ready:
+And wait a few minutes for all TiDB components to get created and ready:
 
 ```sh
-# Use Ctrl + C to exit watch mode
+# Use `Ctrl + C` to exit watch mode
 $ kubectl get pods --namespace tidb -l app.kubernetes.io/instance=demo -o wide --watch
 
 # Get basic information of the TiDB cluster
@@ -216,7 +216,7 @@ To access the TiDB cluster, use `kubectl port-forward` to expose services to the
 
         > **Note:** If the proxy is set up sucessfully, it will print something like `Forwarding from 0.0.0.0:3000 -> 3000`. After testing, press `Ctrl + C` to stop the proxy and exit.
 
-    2. Open your web browser at http://localhost:3000 to access the Grafana monitoring interface.
+    2. Then, open your web browser at http://localhost:3000 to access the Grafana monitoring interface.
 
         * Default username: admin
         * Default password: admin
@@ -268,7 +268,7 @@ To access the TiDB cluster, use `kubectl port-forward` to expose services to the
 
 You can scale out or scale in the TiDB cluster simply by modifying the number of `replicas`.
 
-1. Edit the `charts/tidb-cluster/values.yaml` file with your preffered text editor.
+1. Edit the `charts/tidb-cluster/values.yaml` file with your preferred text editor.
 
     For example, to scale out the cluster, you can modify the number of TiKV `replicas` from 3 to 5, or the number of TiDB `replicas` from 2 to 3.
 
@@ -284,7 +284,7 @@ Use `kubectl get pod -n tidb` to verify the number of each compoments equal to v
 
 ## Upgrade the TiDB cluster
 
-1. Edit the `charts/tidb-cluster/values.yaml` file with your preffered text editor.
+1. Edit the `charts/tidb-cluster/values.yaml` file with your preferred text editor.
 
     For example, change the version of PD/TiKV/TiDB `image` to `v2.1.10`.
 
@@ -333,7 +333,7 @@ $ kubectl delete pvc --namespace tidb --all
     $ manifests/local-dind/dind-cluster-v1.12.sh stop
     ```
 
-    You can use `docker ps` to verify there are no docker container running.
+    You can use `docker ps` to verify that there is no docker container running.
 
 * If you want to restart the DinD Kubernetes after you stop it, run the following command:
 
