@@ -1,6 +1,10 @@
 # Deploy TiDB Operator and TiDB cluster on AWS EKS
 
-## Requirements
+This document describes how to deploy TiDB Operator and a TiDB cluster on AWS EKS with your laptop (Linux or macOS) for development or testing.
+
+## Prerequisites
+
+Before deploying a TiDB cluster on AWS EKS, make sure the following requirements are satisfied:
 * [awscli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) >= 1.16.73, to control AWS resources
 
   The `awscli` must be [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) before it can interact with AWS. The fastest way is using the `aws configure` command:
@@ -98,15 +102,16 @@ kubectl get po -n tidb
 helm ls
 ```
 
-## Monitoring
+## Monitor
 
 You can access the `monitor_endpoint` address (printed in outputs) using your web browser to view monitoring metrics.
 
 The initial Grafana login credentials are:
-    - User: admin
-    - Password: admin
 
-# Destroy
+- User: admin
+- Password: admin
+
+## Destroy
 
 It may take some while to finish destroying the cluster.
 
@@ -116,13 +121,13 @@ $ terraform destroy
 
 > **Note:** You have to manually delete the EBS volumes in AWS console after running `terraform destroy` if you do not need the data on the volumes anymore.
 
-## Upgrade TiDB cluster
+## Upgrade
 
 To upgrade the TiDB cluster, modify the `tidb_version` variable to a higher version in the `variables.tf` file, and then run `terraform apply`.
 
 > *Note*: The upgrading doesn't finish immediately. You can watch the upgrading process by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
 
-## Scale TiDB cluster
+## Scale
 
 To scale the TiDB cluster, modify the `tikv_count` or `tidb_count` variable to your desired count in the `variables.tf` file, and then run `terraform apply`.
 
