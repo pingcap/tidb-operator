@@ -12,6 +12,7 @@ tests/images/e2e/tidb-operator/
 tests/images/stability-test/tidb-cluster/
 tests/images/stability-test/tidb-backup/
 tests/images/stability-test/tidb-operator/
+tests/images/e2e/manifests/
 *.tar
 tmp/
 data/
