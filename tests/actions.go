@@ -126,7 +126,6 @@ type OperatorActions interface {
 	CheckScaledCorrectly(info *TidbClusterConfig, podUIDsBeforeScale map[string]types.UID) error
 	UpgradeTidbCluster(info *TidbClusterConfig) error
 	UpgradeTidbClusterOrDie(info *TidbClusterConfig)
-	CheckUpgradeProgress(info *TidbClusterConfig) error
 	DeployAdHocBackup(info *TidbClusterConfig) error
 	CheckAdHocBackup(info *TidbClusterConfig) error
 	DeployScheduledBackup(info *TidbClusterConfig) error
@@ -367,6 +366,33 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
 
+	// create cert and secret for webhook
+	cmd = fmt.Sprintf("%s/create-cert.sh", oa.manifestPath(info.Tag))
+	glog.Info(cmd)
+
+	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to create cert: %v, %s", err, string(res))
+	}
+
+	// patch cabundle to validating admission configuration
+	cmd = fmt.Sprintf("%s/patch-ca.sh", oa.manifestPath(info.Tag))
+	glog.Info(cmd)
+
+	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to patch cabundle : %v, %s", err, string(res))
+	}
+
+	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
+	cmd = fmt.Sprintf("kubectl apply -f %s/webhook.yaml", oa.manifestPath(info.Tag))
+	glog.Info(cmd)
+
+	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to create statefulset webhook and configuration : %v, %s", err, string(res))
+	}
+
 	return nil
 }
 
@@ -384,7 +410,16 @@ func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 		return err
 	}
 
-	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
+	// delete statefulset update webhook and configuration
+	cmd := fmt.Sprintf("kubectl delete -f %s/webhook.yaml", oa.manifestPath(info.Tag))
+	glog.Info(cmd)
+
+	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil && !notFound(string(res)) {
+		return fmt.Errorf("failed to delete statefulset webhook and configuration : %v, %s", err, string(res))
+	}
+
+	res, err = exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
 
 	if err == nil || !releaseIsNotFound(err) {
 		return nil
@@ -575,7 +610,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 
 	ns := info.Namespace
 	tcName := info.ClusterName
-	if err := wait.Poll(oa.pollInterval, 30*time.Minute, func() (bool, error) {
+	if err := wait.Poll(oa.pollInterval, 35*time.Minute, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -675,6 +710,10 @@ func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
 	info.blockWriter.Stop()
 }
 
+func (oa *operatorActions) manifestPath(tag string) string {
+	return filepath.Join(oa.cfg.ManifestDir, tag)
+}
+
 func (oa *operatorActions) chartPath(name string, tag string) string {
 	return filepath.Join(oa.cfg.ChartDir, tag, name)
 }
@@ -768,6 +807,18 @@ func (oa *operatorActions) CheckScaledCorrectly(info *TidbClusterConfig, podUIDs
 	})
 }
 
+func setPartitionAnnotation(tcName string, nameSpace string, ordinal int) error {
+	// add annotation to pause statefulset upgrade process
+	cmd := fmt.Sprintf("kubectl annotate tc %s -n %s tidb.pingcap.com/tidb-partition=%d --overwrite",
+		tcName, nameSpace, ordinal)
+	glog.Infof("%s", cmd)
+	_, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 	// record tikv leader count in webhook first
 	err := webhook.GetAllKVLeaders(oa.cli, info.Namespace, info.ClusterName)
@@ -775,6 +826,19 @@ func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 		return err
 	}
 	oa.EmitEvent(info, "UpgradeTidbCluster")
+
+	// get tidbSet from apiserver
+	tidbSetName := controller.TiDBMemberName(info.ClusterName)
+	tidbSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(info.Namespace).Get(tidbSetName, metav1.GetOptions{})
+	if err != nil {
+		return pingcapErrors.Wrapf(err, "failed to get stateful set [%s/%s] setName %s", info.Namespace, info.ClusterName, tidbSetName)
+	}
+
+	// add annotation to pause statefulset upgrade process
+	err = setPartitionAnnotation(info.ClusterName, info.Namespace, int(tidbSet.Status.Replicas-1))
+	if err != nil {
+		return pingcapErrors.Wrapf(err, "failed to add annotation to [%s/%s]", info.Namespace, info.ClusterName)
+	}
 
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
 		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(nil))
@@ -792,157 +856,29 @@ func (oa *operatorActions) UpgradeTidbClusterOrDie(info *TidbClusterConfig) {
 	}
 }
 
-func (oa *operatorActions) CheckUpgradeProgress(info *TidbClusterConfig) error {
-	return wait.Poll(oa.pollInterval, DefaultPollTimeout, func() (done bool, err error) {
-		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
-		if err != nil {
-			glog.Infof("failed to get tidbcluster: [%s], error: %v", info.ClusterName, err)
-			return false, nil
-		}
-
-		pdSetName := controller.PDMemberName(info.ClusterName)
-		pdSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(info.Namespace).Get(pdSetName, metav1.GetOptions{})
-		if err != nil {
-			glog.Infof("failed to get pd statefulset: [%s], error: %v", pdSetName, err)
-			return false, nil
-		}
-
-		tikvSetName := controller.TiKVMemberName(info.ClusterName)
-		tikvSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(info.Namespace).Get(tikvSetName, metav1.GetOptions{})
-		if err != nil {
-			glog.Infof("failed to get tikvSet statefulset: [%s], error: %v", tikvSetName, err)
-			return false, nil
-		}
-
-		tidbSetName := controller.TiDBMemberName(info.ClusterName)
-		tidbSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(info.Namespace).Get(tidbSetName, metav1.GetOptions{})
-		if err != nil {
-			glog.Infof("failed to get tidbSet statefulset: [%s], error: %v", tidbSetName, err)
-			return false, nil
-		}
-
-		imageUpgraded := func(memberType v1alpha1.MemberType, set *v1beta1.StatefulSet) bool {
-			image := ""
-			switch memberType {
-			case v1alpha1.PDMemberType:
-				image = tc.Spec.PD.Image
-			case v1alpha1.TiKVMemberType:
-				image = tc.Spec.TiKV.Image
-			case v1alpha1.TiDBMemberType:
-				image = tc.Spec.TiDB.Image
-			}
-			memberName := string(memberType)
-			c, ok := getComponentContainer(set)
-			if !ok || c.Image != image {
-				glog.Infof("check %s image: getContainer(set).Image(%s) != tc.Spec.%s.Image(%s)",
-					memberName, c.Image, strings.ToUpper(memberName), image)
-			}
-			return ok && c.Image == image
-		}
-		setUpgraded := func(set *v1beta1.StatefulSet) bool {
-			return set.Generation <= *set.Status.ObservedGeneration && set.Status.CurrentRevision == set.Status.UpdateRevision
-		}
-
-		// check upgrade order
-		if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
-			glog.Infof("pd is upgrading")
-			if tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-				return false, pingcapErrors.New("tikv is upgrading while pd is upgrading")
-			}
-			if tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-				return false, pingcapErrors.New("tidb is upgrading while pd is upgrading")
-			}
-			if !imageUpgraded(v1alpha1.PDMemberType, pdSet) {
-				return false, pingcapErrors.New("pd image is not updated while pd is upgrading")
-			}
-			if !setUpgraded(pdSet) {
-				if imageUpgraded(v1alpha1.TiKVMemberType, tikvSet) {
-					return false, pingcapErrors.New("tikv image is updated while pd is upgrading")
-				}
-				if imageUpgraded(v1alpha1.TiDBMemberType, tidbSet) {
-					return false, pingcapErrors.New("tidb image is updated while pd is upgrading")
-				}
-			}
-			return false, nil
-		} else if tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-			glog.Infof("tikv is upgrading")
-			if tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-				return false, pingcapErrors.New("tidb is upgrading while tikv is upgrading")
-			}
-			if !imageUpgraded(v1alpha1.PDMemberType, pdSet) {
-				return false, pingcapErrors.New("pd image is not updated while tikv is upgrading")
-			}
-			if !setUpgraded(pdSet) {
-				return false, pingcapErrors.New("pd stateful set is not upgraded while tikv is upgrading")
-			}
-			if !imageUpgraded(v1alpha1.TiKVMemberType, tikvSet) {
-				return false, pingcapErrors.New("tikv image is not updated while tikv is upgrading")
-			}
-			if !setUpgraded(tikvSet) {
-				if imageUpgraded(v1alpha1.TiDBMemberType, tidbSet) {
-					return false, pingcapErrors.New("tidb image is updated while tikv is upgrading")
-				}
-			}
-			return false, nil
-		} else if tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-			glog.Infof("tidb is upgrading")
-			if !imageUpgraded(v1alpha1.PDMemberType, pdSet) {
-				return false, pingcapErrors.New("pd image is not updated while tidb is upgrading")
-			}
-			if !setUpgraded(pdSet) {
-				return false, pingcapErrors.New("pd stateful set is not upgraded while tidb is upgrading")
-			}
-			if !imageUpgraded(v1alpha1.TiKVMemberType, tikvSet) {
-				return false, pingcapErrors.New("tikv image is not updated while tidb is upgrading")
-			}
-			if !setUpgraded(tikvSet) {
-				return false, pingcapErrors.New("tikv stateful set is not upgraded while tidb is upgrading")
-			}
-			if !imageUpgraded(v1alpha1.TiDBMemberType, tidbSet) {
-				return false, pingcapErrors.New("tidb image is not updated while tikv is upgrading")
-			}
-			return false, nil
-		}
-
-		// check pd final state
-		if !imageUpgraded(v1alpha1.PDMemberType, pdSet) {
-			return false, nil
-		}
-		if !setUpgraded(pdSet) {
-			glog.Infof("check pd stateful set upgraded failed")
-			return false, nil
-		}
-		// check tikv final state
-		if !imageUpgraded(v1alpha1.TiKVMemberType, tikvSet) {
-			return false, nil
-		}
-		if !setUpgraded(tikvSet) {
-			glog.Infof("check tikv stateful set upgraded failed")
-			return false, nil
-		}
-		// check tidb final state
-		if !imageUpgraded(v1alpha1.TiDBMemberType, tidbSet) {
-			return false, nil
-		}
-		if !setUpgraded(tidbSet) {
-			glog.Infof("check tidb stateful set upgraded failed")
-			return false, nil
-		}
-		return true, nil
-	})
-}
-
 func (oa *operatorActions) DeployMonitor(info *TidbClusterConfig) error { return nil }
 func (oa *operatorActions) CleanMonitor(info *TidbClusterConfig) error  { return nil }
 
-func getComponentContainer(set *v1beta1.StatefulSet) (corev1.Container, bool) {
-	name := set.Labels[label.ComponentLabelKey]
-	for _, c := range set.Spec.Template.Spec.Containers {
-		if c.Name == name {
-			return c, true
+func getMemberContainer(kubeCli kubernetes.Interface, namespace string, memberName string) (*corev1.Container, bool) {
+	name := fmt.Sprintf("%s-%d", memberName, 0)
+	pod, err := kubeCli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		glog.Errorf("fail to get pod [%s/%s]", namespace, name)
+		return nil, false
+	}
+	if len(pod.Spec.Containers) == 0 {
+		glog.Errorf("no container in this pod [%s/%s]", namespace, name)
+		return nil, false
+	}
+
+	for _, container := range pod.Spec.Containers {
+		if container.Name == v1alpha1.PDMemberType.String() ||
+			container.Name == v1alpha1.TiKVMemberType.String() ||
+			container.Name == v1alpha1.TiDBMemberType.String() {
+			return &container, true
 		}
 	}
-	return corev1.Container{}, false
+	return nil, false
 }
 
 func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
@@ -982,7 +918,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 			ns, pdSetName, pdSet.Status.ReadyReplicas, pdSet.Status.Replicas)
 		return false, nil
 	}
-	if c, ok := getComponentContainer(pdSet); !ok || tc.Spec.PD.Image != c.Image {
+	if c, ok := getMemberContainer(oa.kubeCli, ns, pdSetName); !ok || tc.Spec.PD.Image != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
 			ns, pdSetName, c.Image, tc.Spec.PD.Image)
 		return false, nil
@@ -1047,7 +983,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 			ns, tikvSetName, tikvSet.Status.ReadyReplicas, tikvSet.Status.Replicas)
 		return false, nil
 	}
-	if c, ok := getComponentContainer(tikvSet); !ok || tc.Spec.TiKV.Image != c.Image {
+	if c, ok := getMemberContainer(oa.kubeCli, ns, tikvSetName); !ok || tc.Spec.TiKV.Image != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
 			ns, tikvSetName, c.Image, tc.Spec.TiKV.Image)
 		return false, nil
@@ -1073,6 +1009,38 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	tidbSetName := controller.TiDBMemberName(tcName)
+	tidbUpgradeAnnotationStr, ok := tc.Annotations[label.AnnTiDBPartition]
+	if !ok {
+		tidbUpgradeAnnotationStr = "0"
+	}
+
+	tidbUpgradeAnnotation, err := strconv.ParseInt(tidbUpgradeAnnotationStr, 10, 32)
+	if err != nil {
+		return false, nil
+	}
+
+	pauseCorrect := func(set *v1beta1.StatefulSet) bool {
+		return (*set.Spec.UpdateStrategy.RollingUpdate.Partition) >= int32(tidbUpgradeAnnotation)
+	}
+
+	upgradePaused := func() bool {
+
+		podName := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.Name), tidbUpgradeAnnotation)
+
+		tidbPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+		if err != nil {
+			glog.Errorf("fail to get tidb po name %s namespace %s ", podName, ns)
+			return false
+		}
+		if tidbPod.Labels[v1beta1.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision &&
+			tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+			if member, ok := tc.Status.TiDB.Members[tidbPod.Name]; ok && member.Health {
+				return true
+			}
+		}
+
+		return false
+	}
 
 	tidbSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
@@ -1106,8 +1074,26 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 			ns, tidbSetName, tidbSet.Status.ReadyReplicas, tidbSet.Status.Replicas)
 		return false, nil
 	}
-	if c, ok := getComponentContainer(tidbSet); !ok || tc.Spec.TiDB.Image != c.Image {
-		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
+
+	if upgradePaused() {
+
+		time.Sleep(5 * time.Minute)
+
+		if !pauseCorrect(tidbSet) {
+			return false, fmt.Errorf("pause partition is not correct in upgrade phase [%s/%s] partition %d annotation %d",
+				ns, tidbSetName, (*tidbSet.Spec.UpdateStrategy.RollingUpdate.Partition), tidbUpgradeAnnotation)
+		}
+
+		err := setPartitionAnnotation(tcName, ns, 0)
+		if err != nil {
+			glog.Errorf("fail to set annotation for [%s/%s]", ns, tidbSetName)
+			return false, nil
+		}
+		return false, nil
+	}
+
+	if c, ok := getMemberContainer(oa.kubeCli, ns, tidbSetName); !ok || tc.Spec.TiDB.Image != c.Image {
+		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
 			ns, tidbSetName, c.Image, tc.Spec.TiDB.Image)
 		return false, nil
 	}
@@ -1592,6 +1578,10 @@ func releaseIsNotFound(err error) bool {
 	return strings.Contains(err.Error(), "not found")
 }
 
+func notFound(res string) bool {
+	return strings.Contains(res, "not found")
+}
+
 func (oa *operatorActions) cloneOperatorRepo() error {
 	cmd := fmt.Sprintf("git clone https://github.com/pingcap/tidb-operator.git %s", oa.cfg.OperatorRepoDir)
 	glog.Info(cmd)
@@ -1606,10 +1596,12 @@ func (oa *operatorActions) cloneOperatorRepo() error {
 func (oa *operatorActions) checkoutTag(tagName string) error {
 	cmd := fmt.Sprintf("cd %s && git stash -u && git checkout %s && "+
 		"mkdir -p %s && cp -rf charts/tidb-operator %s && "+
-		"cp -rf charts/tidb-cluster %s && cp -rf charts/tidb-backup %s",
+		"cp -rf charts/tidb-cluster %s && cp -rf charts/tidb-backup %s &&"+
+		"cp -rf manifests %s",
 		oa.cfg.OperatorRepoDir, tagName,
 		filepath.Join(oa.cfg.ChartDir, tagName), oa.operatorChartPath(tagName),
-		oa.tidbClusterChartPath(tagName), oa.backupChartPath(tagName))
+		oa.tidbClusterChartPath(tagName), oa.backupChartPath(tagName),
+		oa.manifestPath(tagName))
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {

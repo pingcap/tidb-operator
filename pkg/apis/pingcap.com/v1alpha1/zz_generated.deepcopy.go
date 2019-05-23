@@ -89,6 +89,11 @@ func (in *PDMember) DeepCopy() *PDMember {
 func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 	*out = *in
 	in.ContainerSpec.DeepCopyInto(&out.ContainerSpec)
+	if in.Affinity != nil {
+		in, out := &in.Affinity, &out.Affinity
+		*out = new(v1.Affinity)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.NodeSelector != nil {
 		in, out := &in.NodeSelector, &out.NodeSelector
 		*out = make(map[string]string, len(*in))
@@ -101,6 +106,13 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 		*out = make([]v1.Toleration, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.Annotations != nil {
+		in, out := &in.Annotations, &out.Annotations
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
 		}
 	}
 	return
@@ -238,6 +250,11 @@ func (in *TiDBSlowLogTailerSpec) DeepCopy() *TiDBSlowLogTailerSpec {
 func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 	*out = *in
 	in.ContainerSpec.DeepCopyInto(&out.ContainerSpec)
+	if in.Affinity != nil {
+		in, out := &in.Affinity, &out.Affinity
+		*out = new(v1.Affinity)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.NodeSelector != nil {
 		in, out := &in.NodeSelector, &out.NodeSelector
 		*out = make(map[string]string, len(*in))
@@ -250,6 +267,13 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = make([]v1.Toleration, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.Annotations != nil {
+		in, out := &in.Annotations, &out.Annotations
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
 		}
 	}
 	in.SlowLogTailer.DeepCopyInto(&out.SlowLogTailer)
@@ -338,6 +362,11 @@ func (in *TiKVPromGatewaySpec) DeepCopy() *TiKVPromGatewaySpec {
 func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 	*out = *in
 	in.ContainerSpec.DeepCopyInto(&out.ContainerSpec)
+	if in.Affinity != nil {
+		in, out := &in.Affinity, &out.Affinity
+		*out = new(v1.Affinity)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.NodeSelector != nil {
 		in, out := &in.NodeSelector, &out.NodeSelector
 		*out = make(map[string]string, len(*in))
@@ -350,6 +379,13 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		*out = make([]v1.Toleration, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.Annotations != nil {
+		in, out := &in.Annotations, &out.Annotations
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
 		}
 	}
 	return

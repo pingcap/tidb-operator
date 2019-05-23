@@ -18,7 +18,7 @@
 - 一个新的 VPC；
 - 一台 ECS 实例作为堡垒机；
 - 一个托管版 ACK(阿里云 Kubernetes)集群以及一系列 worker 节点：
-  - 属于一个伸缩组的 2 台 ECS 实例(1核1G), 托管版 Kubernetes 的默认伸缩组中必须至少有两台实例, 用于承载整个的系统服务, 比如 CoreDNS
+  - 属于一个伸缩组的 2 台 ECS 实例(2核2G), 托管版 Kubernetes 的默认伸缩组中必须至少有两台实例, 用于承载整个的系统服务, 比如 CoreDNS
   - 属于一个伸缩组的 3 台 `ecs.i2.xlarge` 实例, 用于部署 PD
   - 属于一个伸缩组的 3 台 `ecs.i2.2xlarge` 实例, 用于部署 TiKV
   - 属于一个伸缩组的 2 台 ECS 实例(16核32G)用于部署 TiDB
