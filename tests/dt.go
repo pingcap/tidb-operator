@@ -143,7 +143,8 @@ func (oa *operatorActions) checkPodsDisasterTolerance(allPods []corev1.Pod, node
 	}
 
 	podNum := len(allPods)
-	maxPodsOneRack := podNum / RackNum
+	minPodsOneRack := podNum / RackNum
+	maxPodsOneRack := minPodsOneRack
 	mod := podNum % RackNum
 	if mod > 0 {
 		maxPodsOneRack = maxPodsOneRack + 1
@@ -154,7 +155,7 @@ func (oa *operatorActions) checkPodsDisasterTolerance(allPods []corev1.Pod, node
 		if podNumOnRack > maxPodsOneRack {
 			return fmt.Errorf("the rack:[%s] have pods more than %d", rack, maxPodsOneRack)
 		}
-		if podNumOnRack < mod {
+		if podNumOnRack < minPodsOneRack {
 			return fmt.Errorf("the rack:[%s] have pods less than %d", rack, mod)
 		}
 	}
