@@ -97,17 +97,17 @@ var affinityTemp string = `{{.Kind}}:
           - {{.Namespace}}
 `
 
+type AffinityInfo struct {
+	ClusterName string
+	Kind        string
+	Weight      int
+	Namespace   string
+}
+
 func GetAffinityConfigOrDie(clusterName, namespace string) string {
 	temp, err := template.New("dt-affinity").Parse(affinityTemp)
 	if err != nil {
 		slack.NotifyAndPanic(err)
-	}
-
-	type AffinityInfo struct {
-		ClusterName string
-		Kind        string
-		Weight      int
-		Namespace   string
 	}
 
 	pdbuff := new(bytes.Buffer)
