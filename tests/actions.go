@@ -151,6 +151,7 @@ type OperatorActions interface {
 	CheckK8sAvailableOrDie(excludeNodes map[string]string, excludePods map[string]*corev1.Pod)
 	CheckOperatorAvailable(operatorConfig *OperatorConfig) error
 	CheckTidbClustersAvailable(infos []*TidbClusterConfig) error
+	CheckTidbClustersAvailableOrDie(infos []*TidbClusterConfig)
 	CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	RegisterWebHookAndService(info *OperatorConfig) error
@@ -208,6 +209,7 @@ type OperatorConfig struct {
 	WebhookSecretName  string
 	WebhookConfigName  string
 	Context            *apimachinery.CertContext
+	ImagePullPolicy    corev1.PullPolicy
 }
 
 type TidbClusterConfig struct {
@@ -236,6 +238,10 @@ type TidbClusterConfig struct {
 	TiKVGrpcConcurrency int
 	TiDBTokenLimit      int
 	PDLogLevel          string
+
+	PDPreStartScript   string
+	TiDBPreStartScript string
+	TiKVPreStartScript string
 
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
@@ -293,6 +299,9 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 		"tidb.initSql":            tc.InitSQL,
 		"monitor.create":          strconv.FormatBool(tc.Monitor),
 		"enableConfigMapRollout":  strconv.FormatBool(tc.EnableConfigMapRollout),
+		"pd.preStartScript":       tc.PDPreStartScript,
+		"tikv.preStartScript":     tc.TiKVPreStartScript,
+		"tidb.preStartScript":     tc.TiDBPreStartScript,
 	}
 
 	if tc.PDMaxReplicas > 0 {
@@ -334,6 +343,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"scheduler.logLevel":               "2",
 		"controllerManager.replicas":       "2",
 		"scheduler.replicas":               "2",
+		"imagePullPolicy":                  string(oi.ImagePullPolicy),
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
@@ -1602,7 +1612,7 @@ func notFound(res string) bool {
 }
 
 func (oa *operatorActions) cloneOperatorRepo() error {
-	cmd := fmt.Sprintf("git clone https://github.com/pingcap/tidb-operator.git %s", oa.cfg.OperatorRepoDir)
+	cmd := fmt.Sprintf("git clone %s %s", oa.cfg.OperatorRepoUrl, oa.cfg.OperatorRepoDir)
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil && !strings.Contains(string(res), "already exists") {

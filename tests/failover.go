@@ -584,6 +584,12 @@ func (oa *operatorActions) CheckTidbClustersAvailable(infos []*TidbClusterConfig
 
 }
 
+func (oa *operatorActions) CheckTidbClustersAvailableOrDie(infos []*TidbClusterConfig) {
+	if err := oa.CheckTidbClustersAvailable(infos); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
 var testTableName = "testTable"
 
 func (oa *operatorActions) addDataToCluster(info *TidbClusterConfig) (bool, error) {
