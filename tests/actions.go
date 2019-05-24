@@ -362,7 +362,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	glog.Infof("deploying tidb-operator %s", info.ReleaseName)
 
-	if info.Tag != "e2e" && info.Tag != "stability" {
+	if info.Tag != "e2e" {
 		if err := oa.cloneOperatorRepo(); err != nil {
 			return err
 		}
