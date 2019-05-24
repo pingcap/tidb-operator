@@ -17,7 +17,7 @@ image:
 # secretName is the name of the secret which stores user and password used for backup/restore
 # Note: you must give the user enough privilege to do the backup and restore
 # you can create the secret by:
-# kubectl create secret generic backup-secret --from-literal=user=root --from-literal=password=<password>
+# kubectl create secret generic backup-secret --namespace=<namespace> --from-literal=user=root --from-literal=password=<password>
 secretName: backup-secret
 
 storage:
@@ -39,7 +39,8 @@ gcp: {}
   # The service account must have read/write permission to the above bucket.
   # Read the following document to create the service account and download the credentials file as credentials.json:
   # https://cloud.google.com/docs/authentication/production#obtaining_and_providing_service_account_credentials_manually
-  # And then create the secret by: kubectl create secret generic gcp-backup-secret --from-file=./credentials.json
+  # And then create the secret by:
+  # kubectl create secret generic gcp-backup-secret --namespace=<namespace> --from-file=./credentials.json
   # secretName: gcp-backup-secret
 
 # backup to or restore from ceph bucket,  the backup path is in the form of <clusterName>-<name>
@@ -48,5 +49,5 @@ ceph: {}
   # bucket: ""
   # secretName is the name of the secret which stores ceph object store access key and secret key
   # You can create the secret by:
-  # kubectl create secret generic ceph-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
+  # kubectl create secret generic ceph-backup-secret --namespace=<namespace> --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
   # secretName: ceph-backup-secret
