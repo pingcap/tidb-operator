@@ -32,6 +32,7 @@ func main() {
 
 	conf := tests.ParseConfigOrDie()
 	conf.ChartDir = "/charts"
+	conf.ManifestDir = "/manifests"
 
 	cli, kubeCli := client.NewCliOrDie()
 	oa := tests.NewOperatorActions(cli, kubeCli, 5*time.Second, conf, nil)

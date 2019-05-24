@@ -33,14 +33,17 @@ spec:
   {{- if .Values.pd.resources }}
 {{ toYaml .Values.pd.resources | indent 4 }}
   {{- end }}
-  {{- if .Values.pd.nodeSelector }}
+    affinity:
+{{ toYaml .Values.pd.affinity | indent 6 }}
     nodeSelector:
 {{ toYaml .Values.pd.nodeSelector | indent 6 }}
-  {{- end }}
-    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}
   {{- if .Values.pd.tolerations }}
     tolerations:
 {{ toYaml .Values.pd.tolerations | indent 4 }}
+  {{- end }}
+  {{- if .Values.pd.annotations }}
+    annotations:
+{{ toYaml .Values.pd.annotations | indent 6 }}
   {{- end }}
   tikv:
     replicas: {{ .Values.tikv.replicas }}
@@ -52,14 +55,17 @@ spec:
   {{- if .Values.tikv.resources }}
 {{ toYaml .Values.tikv.resources | indent 4 }}
   {{- end }}
-  {{- if .Values.tikv.nodeSelector }}
+    affinity:
+{{ toYaml .Values.tikv.affinity | indent 6 }}
     nodeSelector:
 {{ toYaml .Values.tikv.nodeSelector | indent 6 }}
-  {{- end }}
-    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}
   {{- if .Values.tikv.tolerations }}
     tolerations:
 {{ toYaml .Values.tikv.tolerations | indent 4 }}
+  {{- end }}
+  {{- if .Values.tikv.annotations }}
+    annotations:
+{{ toYaml .Values.tikv.annotations | indent 6 }}
   {{- end }}
   tidb:
     replicas: {{ .Values.tidb.replicas }}
@@ -68,14 +74,17 @@ spec:
   {{- if .Values.tidb.resources }}
 {{ toYaml .Values.tidb.resources | indent 4 }}
   {{- end }}
-  {{- if .Values.tidb.nodeSelector }}
+    affinity:
+{{ toYaml .Values.tidb.affinity | indent 6 }}
     nodeSelector:
 {{ toYaml .Values.tidb.nodeSelector | indent 6 }}
-  {{- end }}
-    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}
   {{- if .Values.tidb.tolerations }}
     tolerations:
 {{ toYaml .Values.tidb.tolerations | indent 4 }}
+  {{- end }}
+  {{- if .Values.tidb.annotations }}
+    annotations:
+{{ toYaml .Values.tidb.annotations | indent 6 }}
   {{- end }}
     binlogEnabled: {{ .Values.binlog.pump.create | default false }}
     maxFailoverCount: {{ .Values.tidb.maxFailoverCount | default 3 }}
