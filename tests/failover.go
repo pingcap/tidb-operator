@@ -513,11 +513,8 @@ func (oa *operatorActions) CheckOperatorDownOrDie(clusters []*TidbClusterConfig)
 		if err != nil {
 			return err
 		}
-		err = oa.CheckTidbClustersAvailable(clusters)
-		if err != nil {
-			return err
-		}
-		return nil
+
+		return oa.CheckTidbClustersAvailable(clusters)
 	})
 }
 
