@@ -8,6 +8,9 @@
 #   runmode="normal/debug"
 #
 set -uo pipefail
+
+{{ .Values.tidb.preStartScript }}
+
 ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]

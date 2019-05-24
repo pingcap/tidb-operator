@@ -132,7 +132,7 @@ helm install charts/tidb-operator --name tidb-operator --namespace tidb-admin
 Now, we can watch the operator come up with:
 
 ```
-watch kubectl get pods --namespace tidb-admin -o wide
+kubectl get pods --namespace tidb-admin -o wide --watch
 ```
 > **Note:**
 >
@@ -161,7 +161,7 @@ helm install charts/tidb-cluster --name demo --set \
 You can watch the cluster up and running using:
 
 ```
-watch kubectl get pods --namespace default -l app.kubernetes.io/instance=demo -o wide
+kubectl get pods --namespace default -l app.kubernetes.io/instance=demo -o wide --watch
 ```
 
 Use Ctrl+C to quit the watch mode.
@@ -172,7 +172,7 @@ Before you start testing your TiDB cluster, make sure you have installed a MySQL
 is available. You can watch the list of available services with:
 
 ```
-watch kubectl get svc
+kubectl get svc --watch
 ```
 
 When you see `demo-tidb` appear, it's ready to connect to TiDB server.
