@@ -102,46 +102,7 @@ func main() {
 				BatchSize:   1,
 				RawSize:     1,
 			},
-			SubValues: `pd:
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 10
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: e2e-cluster1
-              app.kubernetes.io/component: "pd"
-          topologyKey: "rack"
-          namespaces:
-          - e2e-cluster1
-tikv:
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 10
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: e2e-cluster1
-              app.kubernetes.io/component: "tikv"
-          topologyKey: "rack"
-          namespaces:
-          - e2e-cluster1
-tidb:
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 10
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: e2e-cluster1
-              app.kubernetes.io/component: "tidb"
-          topologyKey: "rack"
-          namespaces:
-          - e2e-cluster1
-`,
+			SubValues:              tests.GetAffinityConfigOrDie(name1, name1),
 			EnableConfigMapRollout: true,
 			PDMaxReplicas:          3,
 			TiKVGrpcConcurrency:    4,
@@ -185,46 +146,7 @@ tidb:
 				BatchSize:   1,
 				RawSize:     1,
 			},
-			SubValues: `pd:
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 10
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: e2e-cluster2
-              app.kubernetes.io/component: "pd"
-          topologyKey: "rack"
-          namespaces:
-          - e2e-cluster2
-tikv:
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 10
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: e2e-cluster2
-              app.kubernetes.io/component: "tikv"
-          topologyKey: "rack"
-          namespaces:
-          - e2e-cluster2
-tidb:
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 10
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: e2e-cluster2
-              app.kubernetes.io/component: "tidb"
-          topologyKey: "rack"
-          namespaces:
-          - e2e-cluster2
-`,
+			SubValues:              tests.GetAffinityConfigOrDie(name2, name2),
 			EnableConfigMapRollout: false,
 			PDMaxReplicas:          3,
 			TiKVGrpcConcurrency:    4,

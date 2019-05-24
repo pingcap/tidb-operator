@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/golang/glog"
+
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -67,7 +69,11 @@ func (oa *operatorActions) LabelNodes() error {
 	for i, node := range nodes.Items {
 		index := i % RackNum
 		node.Labels[RackLabel] = fmt.Sprintf("rack%d", index)
-		oa.kubeCli.CoreV1().Nodes().Update(&node)
+		_, err = oa.kubeCli.CoreV1().Nodes().Update(&node)
+		if err != nil {
+			glog.Errorf("label node:[%s] failed!", node.Name)
+			return err
+		}
 	}
 	return nil
 }
@@ -96,7 +102,7 @@ func (oa *operatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) er
 	if err != nil {
 		return err
 	}
-	err = oa.checkDisasterTolerance(pds.Items, nodeMap)
+	err = oa.checkPodsDisasterTolerance(pds.Items, nodeMap)
 	if err != nil {
 		return err
 	}
@@ -108,7 +114,7 @@ func (oa *operatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) er
 	if err != nil {
 		return err
 	}
-	err = oa.checkDisasterTolerance(tikvs.Items, nodeMap)
+	err = oa.checkPodsDisasterTolerance(tikvs.Items, nodeMap)
 	if err != nil {
 		return err
 	}
@@ -120,10 +126,10 @@ func (oa *operatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) er
 	if err != nil {
 		return err
 	}
-	return oa.checkDisasterTolerance(tidbs.Items, nodeMap)
+	return oa.checkPodsDisasterTolerance(tidbs.Items, nodeMap)
 }
 
-func (oa *operatorActions) checkDisasterTolerance(allPods []corev1.Pod, nodeMap map[string]corev1.Node) error {
+func (oa *operatorActions) checkPodsDisasterTolerance(allPods []corev1.Pod, nodeMap map[string]corev1.Node) error {
 	rackPods := map[string][]corev1.Pod{}
 	for _, pod := range allPods {
 		if node, exist := nodeMap[pod.Spec.NodeName]; exist {
@@ -144,8 +150,12 @@ func (oa *operatorActions) checkDisasterTolerance(allPods []corev1.Pod, nodeMap 
 	}
 
 	for rack, pods := range rackPods {
-		if len(pods) > maxPodsOneRack {
+		podNumOnRack := len(pods)
+		if podNumOnRack > maxPodsOneRack {
 			return fmt.Errorf("the rack:[%s] have pods more than %d", rack, maxPodsOneRack)
+		}
+		if podNumOnRack < mod {
+			return fmt.Errorf("the rack:[%s] have pods less than %d", rack, mod)
 		}
 	}
 	return nil
@@ -185,8 +195,11 @@ func (oa *operatorActions) CheckDataRegionDisasterTolerance(cluster *TidbCluster
 	if err != nil {
 		return err
 	}
-
+	// check peers of region are located on difference racks
+	// by default region replicas is 3 and rack num is also 3
+	// so each rack only have one peer of each data region; if not,return error
 	for _, region := range regions.Regions {
+		// regionRacks is map of rackName and the peerID
 		regionRacks := map[string]uint64{}
 		for _, peer := range region.Peers {
 			storeID := strconv.FormatUint(peer.StoreId, 10)
@@ -195,9 +208,11 @@ func (oa *operatorActions) CheckDataRegionDisasterTolerance(cluster *TidbCluster
 				return err
 			}
 			rackName := rackNodeMap[nodeName]
+			// if the rack have more than one peer of the region, return error
 			if otherID, exist := regionRacks[rackName]; exist {
 				return fmt.Errorf("region[%d]'s peer: [%d]and[%d] are in same rack:[%s]", region.ID, otherID, peer.Id, rackName)
 			}
+			// add a new pair of rack and peer
 			regionRacks[rackName] = peer.Id
 		}
 	}
@@ -220,6 +235,7 @@ func (oa *operatorActions) getNodeByStoreId(storeID string, cluster *TidbCluster
 	return "", fmt.Errorf("the storeID:[%s] is not exist in tidbCluster:[%s] Status", storeID, cluster.FullName())
 }
 
+// getNodeRackMap return the map of node and rack
 func (oa *operatorActions) getNodeRackMap() (map[string]string, error) {
 	rackNodeMap := map[string]string{}
 	nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})

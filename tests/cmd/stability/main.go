@@ -100,47 +100,9 @@ func main() {
 		},
 		Monitor:          true,
 		BlockWriteConfig: conf.BlockWriter,
-		SubValues: `pd:
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 10
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: stability-cluster1
-              app.kubernetes.io/component: "pd"
-          topologyKey: "rack"
-          namespaces:
-          - stability-cluster1
-tikv:
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 10
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: stability-cluster1
-              app.kubernetes.io/component: "tikv"
-          topologyKey: "rack"
-          namespaces:
-          - stability-cluster1
-tidb:
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 10
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: stability-cluster1
-              app.kubernetes.io/component: "tidb"
-          topologyKey: "rack"
-          namespaces:
-          - stability-cluster1
-`,
 	}
+	cluster1.SubValues = tests.GetAffinityConfigOrDie(cluster1.ClusterName, cluster1.Namespace)
+
 	cluster2 := &tests.TidbClusterConfig{
 		Namespace:        clusterName2,
 		ClusterName:      clusterName2,
@@ -175,47 +137,8 @@ tidb:
 		Args:             map[string]string{},
 		Monitor:          true,
 		BlockWriteConfig: conf.BlockWriter,
-		SubValues: `pd:
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 10
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: stability-cluster2
-              app.kubernetes.io/component: "pd"
-          topologyKey: "rack"
-          namespaces:
-          - stability-cluster2
-tikv:
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 10
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: stability-cluster2
-              app.kubernetes.io/component: "tikv"
-          topologyKey: "rack"
-          namespaces:
-          - stability-cluster2
-tidb:
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 10
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: stability-cluster2
-              app.kubernetes.io/component: "tidb"
-          topologyKey: "rack"
-          namespaces:
-          - stability-cluster2
-`,
 	}
+	cluster2.SubValues = tests.GetAffinityConfigOrDie(cluster2.ClusterName, cluster2.Namespace)
 
 	// cluster backup and restore
 	clusterBackupFrom := cluster1
