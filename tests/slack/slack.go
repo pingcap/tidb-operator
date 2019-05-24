@@ -59,7 +59,7 @@ func (attachment *Attachment) AddField(field Field) *Attachment {
 
 func Send(webhookURL string, proxy string, payload Payload) error {
 	if webhookURL == "" {
-		return fmt.Errorf("the webhookURL have not set")
+		return nil
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
