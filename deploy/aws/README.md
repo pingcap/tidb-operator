@@ -1,48 +1,98 @@
 # Deploy TiDB Operator and TiDB cluster on AWS EKS
 
-## Requirements:
-* [awscli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) >= 1.16.73
+This document describes how to deploy TiDB Operator and a TiDB cluster on AWS EKS with your laptop (Linux or macOS) for development or testing.
+
+## Prerequisites
+
+Before deploying a TiDB cluster on AWS EKS, make sure the following requirements are satisfied:
+* [awscli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) >= 1.16.73, to control AWS resources
+
+  The `awscli` must be [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) before it can interact with AWS. The fastest way is using the `aws configure` command:
+
+  ``` shell
+  # Replace AWS Access Key ID and AWS Secret Access Key with your own keys
+  $ aws configure
+  AWS Access Key ID [None]: AKIAIOSFODNN7EXAMPLE
+  AWS Secret Access Key [None]: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+  Default region name [None]: us-west-2
+  Default output format [None]: json
+  ```
+  > **Note:** The access key must have at least permissions to: create VPC, create EBS, create EC2 and create role
+* [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.11
 * [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.0
 * [jq](https://stedolan.github.io/jq/download/)
-* [aws-iam-authenticator](https://github.com/kubernetes-sigs/aws-iam-authenticator) installed in `PATH`
+* [aws-iam-authenticator](https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html) installed in `PATH`, to authenticate with AWS
 
-## Configure awscli
+  The easiest way to install `aws-iam-authenticator` is to download the prebuilt binary:
 
-https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html
+  ``` shell
+  # Download binary for Linux
+  curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.12.7/2019-03-27/bin/linux/amd64/aws-iam-authenticator
 
-## Setup
+  # Or, download binary for macOS
+  curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.12.7/2019-03-27/bin/darwin/amd64/aws-iam-authenticator
 
-The default setup will create a new VPC and a t2.micro instance as bastion machine. And EKS cluster with the following ec2 instance worker nodes:
+  chmod +x ./aws-iam-authenticator
+  sudo mv ./aws-iam-authenticator /usr/local/bin/aws-iam-authenticator
+  ```
+
+## Deploy
+
+The default setup will create a new VPC and a t2.micro instance as bastion machine, and an EKS cluster with the following ec2 instances as worker nodes:
 
 * 3 m5d.xlarge instances for PD
 * 3 i3.2xlarge instances for TiKV
 * 2 c4.4xlarge instances for TiDB
 * 1 c5.xlarge instance for monitor
 
-You can change default values in `variables.tf` (like the cluster name and versions) as needed. The default value of `cluster_name` is `my-cluster`.
+Use the following commands to set up the cluster:
 
 ``` shell
+# Get the code
 $ git clone --depth=1 https://github.com/pingcap/tidb-operator
 $ cd tidb-operator/deploy/aws
+
+# Apply the configs, note that you must answer "yes" to `terraform apply` to continue
 $ terraform init
 $ terraform apply
 ```
 
-It might take 10 minutes or more for the process to finish. After `terraform apply` is executed successfully, some basic information is printed to the console. You can access the `monitor_endpoint` using your web browser.
+It might take 10 minutes or more to finish the process. After `terraform apply` is executed successfully, some useful information is printed to the console.
 
-> **Note:** You can use the `terraform output` command to get that information again.
+A successful deployment will give the output like:
 
-To access TiDB cluster, use the following command to first ssh into the bastion machine, and then connect it via MySQL client:
+```
+Apply complete! Resources: 67 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+bastion_ip = [
+    52.14.50.145
+]
+eks_endpoint = https://E10A1D0368FFD6E1E32E11573E5CE619.sk1.us-east-2.eks.amazonaws.com
+eks_version = 1.12
+monitor_endpoint = http://abd299cc47af411e98aae02938da0762-1989524000.us-east-2.elb.amazonaws.com:3000
+region = us-east-2
+tidb_dns = abd2e3f7c7af411e98aae02938da0762-17499b76b312be02.elb.us-east-2.amazonaws.com
+tidb_port = 4000
+tidb_version = v3.0.0-rc.1
+```
+
+> **Note:** You can use the `terraform output` command to get the output again.
+
+## Access the database
+
+To access the deployed TiDB cluster, use the following commands to first `ssh` into the bastion machine, and then connect it via MySQL client (replace the `<>` parts with values from the output):
 
 ``` shell
 ssh -i credentials/k8s-prod-<cluster_name>.pem ec2-user@<bastion_ip>
 mysql -h <tidb_dns> -P <tidb_port> -u root
 ```
 
-If the DNS name is not resolvable, be patient and wait a few minutes.
+The default value of `cluster_name` is `my-cluster`. If the DNS name is not resolvable, be patient and wait a few minutes.
 
-You can interact with the EKS cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_<cluster_name>`.
+You can interact with the EKS cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_<cluster_name>`:
 
 ``` shell
 # By specifying --kubeconfig argument
@@ -55,29 +105,47 @@ kubectl get po -n tidb
 helm ls
 ```
 
-# Destory
+## Monitor
 
-It may take some while to finish destroying the cluster.
+You can access the `monitor_endpoint` address (printed in outputs) using your web browser to view monitoring metrics.
 
-```shell
-$ terraform destroy
+The initial Grafana login credentials are:
+
+- User: admin
+- Password: admin
+
+## Upgrade
+
+To upgrade the TiDB cluster, edit the `variables.tf` file with your preferred text editor and modify the `tidb_version` variable to a higher version, and then run `terraform apply`.
+
+For example, to upgrade the cluster to version 2.1.10, modify the `tidb_version` to `v2.1.10`:
+
+```
+ variable "tidb_version" {
+   description = "tidb cluster version"
+   default = "v2.1.10"
+ }
 ```
 
-> **Note:** You have to manually delete the EBS volumes in AWS console after running `terraform destroy` if you do not need the data on the volumes anymore.
+> *Note*: The upgrading doesn't finish immediately. You can watch the upgrading process by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
 
-## Upgrade TiDB cluster
+## Scale
 
-To upgrade TiDB cluster, modify `tidb_version` variable to a higher version in variables.tf and run `terraform apply`.
+To scale the TiDB cluster, edit the `variables.tf` file with your preferred text editor and modify the `tikv_count` or `tidb_count` variable to your desired count, and then run `terraform apply`.
 
-> *Note*: The upgrading doesn't finish immediately. You can watch the upgrading process by `watch kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb`
+For example, to scale out the cluster, you can modify the number of TiDB instances from 2 to 3:
 
-## Scale TiDB cluster
+```
+ variable "tidb_count" {
+   default = 4
+ }
+```
 
-To scale TiDB cluster, modify `tikv_count` or `tidb_count` to your desired count, and then run `terraform apply`.
-
-> *Note*: Currently, scaling in is not supported since we cannot determine which node to scale. Scaling out needs a few minutes to complete, you can watch the scaling out by `watch kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb`
+> *Note*: Currently, scaling in is NOT supported since we cannot determine which node to scale. Scaling out needs a few minutes to complete, you can watch the scaling out by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
 
 ## Customize
+
+You can change default values in `variables.tf` (such as the cluster name and image versions) as needed.
 
 ### Customize AWS related resources
 
@@ -91,11 +159,17 @@ Currently, the instance type of TiDB cluster component is not configurable becau
 
 ### Customize TiDB parameters
 
-Currently, there are not much parameters exposed to be customizable. If you need to customize these, you should modify the `templates/tidb-cluster-values.yaml.tpl` files before deploying. Or if you modify it and run `terraform apply` again after the cluster is running, it will not take effect unless you manually delete the pod via `kubectl delete po -n tidb --all`. This will be resolved when issue [#255](https://github.com/pingcap/tidb-operator/issues/225) is fixed.
+Currently, there are not many customizable TiDB parameters. And there are two ways to customize the parameters:
 
-## TODO
+* Before deploying the cluster, you can directly modify the `templates/tidb-cluster-values.yaml.tpl` file and then deploy the cluster with customized configs.
+* After the cluster is running, you must run `terraform apply` again every time you make changes to the `templates/tidb-cluster-values.yaml.tpl` file, or the cluster will still be using old configs.
 
-- [ ] Use [cluster autoscaler](https://github.com/kubernetes/autoscaler)
-- [ ] Allow create a minimal TiDB cluster for testing
-- [ ] Make the resource creation synchronously to follow Terraform convention
-- [ ] Make more parameters customizable
+## Destroy
+
+It may take some while to finish destroying the cluster.
+
+``` shell
+$ terraform destroy
+```
+
+> **Note:** You have to manually delete the EBS volumes in AWS console after running `terraform destroy` if you do not need the data on the volumes anymore.
