@@ -334,7 +334,6 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"scheduler.logLevel":               "2",
 		"controllerManager.replicas":       "2",
 		"scheduler.replicas":               "2",
-		"imagePullPolicy":                  "Always",
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
