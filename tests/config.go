@@ -45,6 +45,7 @@ type Config struct {
 	BlockWriter blockwriter.Config `yaml:"block_writer,omitempty"`
 
 	// For local test
+	OperatorRepoUrl string `yaml:"operator_repo_url" json:"operator_repo_url"`
 	OperatorRepoDir string `yaml:"operator_repo_dir" json:"operator_repo_dir"`
 	// chart dir
 	ChartDir string `yaml:"chart_dir" json:"chart_dir"`
@@ -61,6 +62,7 @@ type Nodes struct {
 // NewConfig creates a new config.
 func NewConfig() (*Config, error) {
 	cfg := &Config{
+		OperatorRepoUrl: "https://github.com/pingcap/tidb-operator.git",
 
 		PDMaxReplicas:       5,
 		TiDBTokenLimit:      1024,
