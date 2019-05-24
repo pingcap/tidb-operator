@@ -18,6 +18,7 @@ Before deploying a TiDB cluster on AWS EKS, make sure the following requirements
   Default output format [None]: json
   ```
   > **Note:** The access key must have at least permissions to: create VPC, create EBS, create EC2 and create role
+* [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.11
 * [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.0
 * [jq](https://stedolan.github.io/jq/download/)
@@ -113,27 +114,34 @@ The initial Grafana login credentials are:
 - User: admin
 - Password: admin
 
-## Destroy
-
-It may take some while to finish destroying the cluster.
-
-``` shell
-$ terraform destroy
-```
-
-> **Note:** You have to manually delete the EBS volumes in AWS console after running `terraform destroy` if you do not need the data on the volumes anymore.
-
 ## Upgrade
 
-To upgrade the TiDB cluster, modify the `tidb_version` variable to a higher version in the `variables.tf` file, and then run `terraform apply`.
+To upgrade the TiDB cluster, edit the `variables.tf` file with your preferred text editor and modify the `tidb_version` variable to a higher version, and then run `terraform apply`.
+
+For example, to upgrade the cluster to version 2.1.10, modify the `tidb_version` to `v2.1.10`:
+
+```
+ variable "tidb_version" {
+   description = "tidb cluster version"
+   default = "v2.1.10"
+ }
+```
 
 > *Note*: The upgrading doesn't finish immediately. You can watch the upgrading process by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
 
 ## Scale
 
-To scale the TiDB cluster, modify the `tikv_count` or `tidb_count` variable to your desired count in the `variables.tf` file, and then run `terraform apply`.
+To scale the TiDB cluster, edit the `variables.tf` file with your preferred text editor and modify the `tikv_count` or `tidb_count` variable to your desired count, and then run `terraform apply`.
 
-> *Note*: Currently, scaling in is not supported since we cannot determine which node to scale. Scaling out needs a few minutes to complete, you can watch the scaling out by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
+For example, to scale out the cluster, you can modify the number of TiDB instances from 2 to 3:
+
+```
+ variable "tidb_count" {
+   default = 4
+ }
+```
+
+> *Note*: Currently, scaling in is NOT supported since we cannot determine which node to scale. Scaling out needs a few minutes to complete, you can watch the scaling out by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
 
 ## Customize
 
@@ -155,3 +163,13 @@ Currently, there are not many customizable TiDB parameters. And there are two wa
 
 * Before deploying the cluster, you can directly modify the `templates/tidb-cluster-values.yaml.tpl` file and then deploy the cluster with customized configs.
 * After the cluster is running, you must run `terraform apply` again every time you make changes to the `templates/tidb-cluster-values.yaml.tpl` file, or the cluster will still be using old configs.
+
+## Destroy
+
+It may take some while to finish destroying the cluster.
+
+``` shell
+$ terraform destroy
+```
+
+> **Note:** You have to manually delete the EBS volumes in AWS console after running `terraform destroy` if you do not need the data on the volumes anymore.
