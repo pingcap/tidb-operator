@@ -13,7 +13,7 @@ Currently, tidb-operator only supports automatic [restore operation](#restore) f
 
 Full backup using `mydumper` to take the logical backup of TiDB cluster. The backup job will create a PVC to store backup data.
 
-By default, the backup uses PV to store the backup data. You can also store the backup data to [Google Cloud Storage](https://cloud.google.com/storage/) bucket or [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/) by changing the configuration. This way the PV temporarily stores backup data before it is placed in object storage. Refer to [TiDB cluster Backup configuration] for full configuration guide of backup and restore.
+By default, the backup uses PV to store the backup data. You can also store the backup data to [Google Cloud Storage](https://cloud.google.com/storage/) bucket or [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/) by changing the configuration. This way the PV temporarily stores backup data before it is placed in object storage. Refer to [TiDB cluster Backup configuration](./references/tidb-backup-configuration.md) for full configuration guide of backup and restore.
 
 You can either setup a scheduled full backup or take a full backup in ad-hoc manner.
 
@@ -70,7 +70,7 @@ For backups stored in PV, you can view the PVs by the following command:
 $ kubectl get pvc -n ${namespace} -l app.kubernetes.io/component=backup,pingcap.com/backup-cluster-name=${cluster_name}
 ```
 
-If you store your backup data to [Google Cloud Storage] or [Ceph Object Storage], you may view the backups by the related GUI or CLI tool.
+If you store your backup data to [Google Cloud Storage](https://cloud.google.com/storage/) or [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/), you may view the backups by the related GUI or CLI tool.
 
 ## Restore
 
