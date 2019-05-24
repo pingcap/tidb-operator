@@ -32,6 +32,7 @@ func main() {
 
 	conf := tests.ParseConfigOrDie()
 	conf.ChartDir = "/charts"
+	conf.ManifestDir = "/manifests"
 
 	cli, kubeCli := client.NewCliOrDie()
 	oa := tests.NewOperatorActions(cli, kubeCli, 5*time.Second, conf, nil)
@@ -157,9 +158,9 @@ func main() {
 			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
 			StorageClassName: "local-storage",
 			Password:         "admin",
-			InitSql:          initSql,
 			UserName:         "root",
 			InitSecretName:   fmt.Sprintf("%s-set-secret", name2),
+			BackupSecretName: fmt.Sprintf("%s-backup-secret", name2),
 			Resources: map[string]string{
 				"pd.replicas":     "1",
 				"discovery.image": conf.OperatorImage,

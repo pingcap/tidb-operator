@@ -30,7 +30,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.0.0-beta.2
+  image: pingcap/tidb-operator:${operator_version}
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -40,16 +40,9 @@ discovery:
       cpu: 80m
       memory: 50Mi
 
-# Whether enable ConfigMap Rollout management.
-# When enabling, change of ConfigMap will trigger a graceful rolling-update of the component.
-# This feature is only available in tidb-operator v1.0 or higher.
-# Note: Switch this variable against an existing cluster will cause an rolling-update of each component even
-# if the ConfigMap was not changed.
-enableConfigMapRollout: false
-
 pd:
-  replicas: 3
-  image: pingcap/pd:v2.1.8
+  replicas: ${pd_replicas}
+  image: "pingcap/pd:${cluster_version}"
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -73,82 +66,26 @@ pd:
       # cpu: 4000m
       # memory: 4Gi
       storage: 1Gi
-
-  ## affinity defines pd scheduling rules,it's default settings is empty.
-  ## please read the affinity document before set your scheduling rule:
-  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
-  affinity: {}
-  ## The following is typical example of affinity settings:
-  ## The PodAntiAffinity setting of the example keeps PD pods does not co-locate on a topology node as far as possible to improve the disaster tolerance of PD on Kubernetes.
-  ## The NodeAffinity setting of the example ensure that the PD pods can only be scheduled to nodes with label:[type="pd"],
-  # affinity:
-  #   podAntiAffinity:
-  #     preferredDuringSchedulingIgnoredDuringExecution:
-  #     # this term work when the nodes have the label named region
-  #     - weight: 10
-  #       podAffinityTerm:
-  #         labelSelector:
-  #           matchLabels:
-  #             app.kubernetes.io/instance: <release name>
-  #             app.kubernetes.io/component: "pd"
-  #         topologyKey: "region"
-  #         namespaces:
-  #         - <helm namespace>
-  #     # this term work when the nodes have the label named zone
-  #     - weight: 20
-  #       podAffinityTerm:
-  #         labelSelector:
-  #           matchLabels:
-  #             app.kubernetes.io/instance: <release name>
-  #             app.kubernetes.io/component: "pd"
-  #         topologyKey: "zone"
-  #         namespaces:
-  #         - <helm namespace>
-  #     # this term work when the nodes have the label named rack
-  #     - weight: 40
-  #       podAffinityTerm:
-  #         labelSelector:
-  #           matchLabels:
-  #             app.kubernetes.io/instance: <release name>
-  #             app.kubernetes.io/component: "pd"
-  #         topologyKey: "rack"
-  #         namespaces:
-  #         - <helm namespace>
-  #     # this term work when the nodes have the label named kubernetes.io/hostname
-  #     - weight: 80
-  #       podAffinityTerm:
-  #         labelSelector:
-  #           matchLabels:
-  #             app.kubernetes.io/instance: <release name>
-  #             app.kubernetes.io/component: "pd"
-  #         topologyKey: "kubernetes.io/hostname"
-  #         namespaces:
-  #         - <helm namespace>
-  #   nodeAffinity:
-  #     requiredDuringSchedulingIgnoredDuringExecution:
-  #       nodeSelectorTerms:
-  #       - matchExpressions:
-  #         - key: "kind"
-  #           operator: In
-  #           values:
-  #           - "pd"
-
-  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
-  ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
-  nodeSelector: {}
-
-  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
-  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
-  tolerations: []
-  # - key: node-role
-  #   operator: Equal
-  #   value: tidb
-  #   effect: "NoSchedule"
-  annotations: {}
+  # nodeSelector is used for scheduling pod,
+  # if nodeSelectorRequired is true, all the following labels must be matched
+  nodeSelector:
+    dedicated: pd
+    # kind: pd
+    # # zone is comma separated availability zone list
+    # zone: cn-bj1-01,cn-bj1-02
+    # # region is comma separated region list
+    # region: cn-bj1
+  # Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  # refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+  tolerations:
+  - key: dedicated
+    operator: Equal
+    value: pd
+    effect: "NoSchedule"
 
 tikv:
-  replicas: 3
-  image: pingcap/tikv:v2.1.8
+  replicas: ${tikv_replicas}
+  image: "pingcap/tikv:${cluster_version}"
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -173,24 +110,16 @@ tikv:
       # cpu: 12000m
       # memory: 24Gi
       storage: 10Gi
-
-  ## affinity defines tikv scheduling rules,affinity default settings is empty.
-  ## please read the affinity document before set your scheduling rule:
-  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
-  affinity: {}
-
-  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
-  ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
-  nodeSelector: {}
-
-  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
-  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
-  tolerations: []
-  # - key: node-role
-  #   operator: Equal
-  #   value: tidb
-  #   effect: "NoSchedule"
-  annotations: {}
+  nodeSelector:
+    dedicated: tikv
+    # kind: tikv
+    # zone: cn-bj1-01,cn-bj1-02
+    # region: cn-bj1
+  tolerations:
+  - key: dedicated
+    operator: Equal
+    value: tikv
+    effect: "NoSchedule"
 
   # block-cache used to cache uncompressed blocks, big block-cache can speed up read.
   # in normal cases should tune to 30%-50% tikv.resources.limits.memory
@@ -211,7 +140,7 @@ tikv:
   # storageSchedulerWorkerPoolSize: 4
 
 tidb:
-  replicas: 2
+  replicas: ${tidb_replicas}
   # The secret name of root password, you can create secret with following command:
   # kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
   # If unset, the root password will be empty and you can set it after connecting
@@ -219,7 +148,7 @@ tidb:
   # initSql is the SQL statements executed after the TiDB cluster is bootstrapped.
   # initSql: |-
   #   create database app;
-  image: pingcap/tidb:v2.1.8
+  image: "pingcap/tidb:${cluster_version}"
   # Image pull policy.
   imagePullPolicy: IfNotPresent
   logLevel: info
@@ -260,31 +189,22 @@ tidb:
     requests: {}
     #   cpu: 12000m
     #   memory: 12Gi
-
-
-  ## affinity defines tikv scheduling rules,affinity default settings is empty.
-  ## please read the affinity document before set your scheduling rule:
-  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
-  affinity: {}
-
-  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
-  ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
-  nodeSelector: {}
-
-  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
-  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
-  tolerations: []
-  # - key: node-role
-  #   operator: Equal
-  #   value: tidb
-  #   effect: "NoSchedule"
-  annotations: {}
+  nodeSelector:
+    dedicated: tidb
+    # kind: tidb
+    # zone: cn-bj1-01,cn-bj1-02
+    # region: cn-bj1
+  tolerations:
+  - key: dedicated
+    operator: Equal
+    value: tidb
+    effect: "NoSchedule"
   maxFailoverCount: 3
   service:
-    type: NodePort
+    type: LoadBalancer
     exposeStatus: true
-    # annotations:
-      # cloud.google.com/load-balancer-type: Internal
+    annotations:
+      cloud.google.com/load-balancer-type: "Internal"
   # separateSlowLog: true
   slowLogTailer:
     image: busybox:1.26.2
@@ -317,9 +237,9 @@ monitor:
   # If you set rbac.create to false, you need to provide a value here.
   # If you set rbac.create to true, you should leave this empty.
   # serviceAccount:
-  persistent: false
-  storageClassName: local-storage
-  storage: 10Gi
+  persistent: true
+  storageClassName: pd-ssd
+  storage: 500Gi
   grafana:
     create: true
     image: grafana/grafana:6.0.1
@@ -344,7 +264,7 @@ monitor:
       # GF_SERVER_DOMAIN: foo.bar
       # GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
     service:
-      type: NodePort
+      type: LoadBalancer
   prometheus:
     image: prom/prometheus:v2.2.1
     imagePullPolicy: IfNotPresent
@@ -374,7 +294,7 @@ binlog:
   pump:
     create: false
     replicas: 1
-    image: pingcap/tidb-binlog:v2.1.8
+    image: "pingcap/tidb-binlog:${cluster_version}"
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -392,7 +312,7 @@ binlog:
 
   drainer:
     create: false
-    image: pingcap/tidb-binlog:v2.1.8
+    image: "pingcap/tidb-binlog:${cluster_version}"
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -401,8 +321,7 @@ binlog:
     # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
     storageClassName: local-storage
     storage: 10Gi
-    # the number of the concurrency of the downstream for synchronization. The bigger the value,
-    # the better throughput performance of the concurrency (16 by default)
+    # parallel worker count (default 16)
     workerCount: 16
     # the interval time (in seconds) of detect pumps' status (default 10)
     detectInterval: 10
@@ -416,7 +335,7 @@ binlog:
     initialCommitTs: 0
     # enable safe mode to make syncer reentrant
     safeMode: false
-    # the number of SQL statements of a transaction that are output to the downstream database (20 by default)
+    # number of binlog events in a transaction batch (default 20)
     txnBatch: 20
     # downstream storage, equal to --dest-db-type
     # valid values are "mysql", "pb", "kafka"
@@ -437,7 +356,7 @@ binlog:
 
 scheduledBackup:
   create: false
-  binlogImage: pingcap/tidb-binlog:v2.1.8
+  binlogImage: "pingcap/tidb-binlog:${cluster_version}"
   binlogImagePullPolicy: IfNotPresent
   # https://github.com/tennix/tidb-cloud-backup
   mydumperImage: pingcap/tidb-cloud-backup:latest
