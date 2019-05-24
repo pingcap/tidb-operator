@@ -15,6 +15,7 @@ package main
 
 import (
 	"fmt"
+	"k8s.io/api/core/v1"
 	"net/http"
 	_ "net/http/pprof"
 	"strconv"
@@ -56,6 +57,7 @@ func main() {
 		WebhookServiceName: "webhook-service",
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
+		ImagePullPolicy:    v1.PullAlways,
 	}
 
 	// TODO remove this
