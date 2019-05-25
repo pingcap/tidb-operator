@@ -49,7 +49,7 @@ enableConfigMapRollout: false
 
 pd:
   replicas: 3
-  image: pingcap/pd:v2.1.8
+  image: pingcap/pd:v3.0.0-rc.1
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -148,7 +148,7 @@ pd:
 
 tikv:
   replicas: 3
-  image: pingcap/tikv:v2.1.8
+  image: pingcap/tikv:v3.0.0-rc.1
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -219,7 +219,7 @@ tidb:
   # initSql is the SQL statements executed after the TiDB cluster is bootstrapped.
   # initSql: |-
   #   create database app;
-  image: pingcap/tidb:v2.1.8
+  image: pingcap/tidb:v3.0.0-rc.1
   # Image pull policy.
   imagePullPolicy: IfNotPresent
   logLevel: info
@@ -374,7 +374,7 @@ binlog:
   pump:
     create: false
     replicas: 1
-    image: pingcap/tidb-binlog:v2.1.8
+    image: pingcap/tidb-binlog:v3.0.0-rc.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -392,7 +392,7 @@ binlog:
 
   drainer:
     create: false
-    image: pingcap/tidb-binlog:v2.1.8
+    image: pingcap/tidb-binlog:v3.0.0-rc.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -437,7 +437,7 @@ binlog:
 
 scheduledBackup:
   create: false
-  binlogImage: pingcap/tidb-binlog:v2.1.8
+  binlogImage: pingcap/tidb-binlog:v3.0.0-rc.1
   binlogImagePullPolicy: IfNotPresent
   # https://github.com/tennix/tidb-cloud-backup
   mydumperImage: pingcap/tidb-cloud-backup:latest
