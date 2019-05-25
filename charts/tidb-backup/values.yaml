@@ -10,7 +10,7 @@ mode: backup # backup | restore
 name: fullbackup-20190306
 image:
   pullPolicy: IfNotPresent
-  binlog: pingcap/tidb-binlog:v2.1.8
+  binlog: pingcap/tidb-binlog:v3.0.0-rc.1
   # https://github.com/tennix/tidb-cloud-backup
   backup: pingcap/tidb-cloud-backup:latest
 
