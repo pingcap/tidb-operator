@@ -76,5 +76,5 @@
 - You can create the secret by:
 
     ```shell
-    $ kubectl create secret generic ceph-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
+    $ kubectl create secret generic ceph-backup-secret -n ${namespace} --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
     ```

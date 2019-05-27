@@ -32,9 +32,9 @@ To configure a scheduled full backup, modify the `scheduledBackup` section in th
 * Configure `scheduledBackup.schedule` in the [Cron](https://en.wikipedia.org/wiki/Cron) format to define the scheduling.
 * Create a Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) containing the username and password that has the privilege to backup the database:
 
-```shell
-$ kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=<user> --from-literal=password=<password>
-```
+    ```shell
+    $ kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=<user> --from-literal=password=<password>
+    ```
 
 Then, create a new cluster with the scheduled full backup configured by `helm install`, or enabling scheduled full backup for the existing cluster by `helm upgrade`:
 
@@ -85,7 +85,7 @@ The helm chart `charts/tidb-backup` helps restore a TiDB cluster using backup da
 
 * Set `clusterName` to the target TiDB cluster name
 * Set `mode` to `restore`
-* Set `name` to the backup name you want to restore([view backups](#view-backups) helps you view all the backups available). If the backup is stored in `Google Cloud Storage` or `Ceph Object Storage`, you must configure the corresponding section too(you might continue to use the same configuration you set in the [adhoc full backup](#ad-hoc-full-backup)).
+* Set `name` to the backup name you want to restore([view backups](#view-backups) helps you view all the backups available). If the backup is stored in `Google Cloud Storage` or `Ceph Object Storage`, you must configure the corresponding section too (you might continue to use the same configuration you set in the [adhoc full backup](#ad-hoc-full-backup)).
 
 Create a Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) containing the user and password that has the privilege to restore the database (skip this if you have already created one in the [adhoc full backup](#ad-hoc-full-backup) section):
 
@@ -112,5 +112,5 @@ Incremental backup is disabled in the TiDB cluster by default. To create a TiDB 
 Three types of downstream platforms available for incremental backup:
 
 * PersistenceVolume: default downstream. You can consider configuring a large PV for `drainer` (the `binlog.drainer.storage` variable) in this case
-* MySQL compatible database: enabled by setting the `binlog.drainer.destDBType` to `mysql`. You have to configure the target address and credential in the `binlog.drainer.mysql` section too.
-* Kafka: enable by setting `binlog.drainer.destDBType` to `kafka`. You have to configure the zookeeper address and kafka address in the `binlog.drainer.kafka` section too.
+* MySQL compatible database: enabled by setting `binlog.drainer.destDBType` to `mysql`. You must configure the target address and credential in the `binlog.drainer.mysql` section too.
+* Kafka: enable by setting `binlog.drainer.destDBType` to `kafka`. You must configure the zookeeper address and Kafka address in the `binlog.drainer.kafka` section too.
