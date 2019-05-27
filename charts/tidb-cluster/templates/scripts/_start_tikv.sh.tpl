@@ -9,6 +9,9 @@
 #
 
 set -uo pipefail
+
+{{ .Values.tikv.preStartScript }}
+
 ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
