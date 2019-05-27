@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pingcap/tidb-operator/tests/slack"
-
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
@@ -17,6 +15,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/ops"
+	"github.com/pingcap/tidb-operator/tests/slack"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
