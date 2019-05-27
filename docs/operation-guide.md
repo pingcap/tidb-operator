@@ -222,8 +222,8 @@ To retrieve logs from multiple pods, [`stern`](https://github.com/wercker/stern)
 $ stern -n ${namespace} tidb -c slowlog
 ```
 
-## Backup and Restore
+## Backup and restore
 
-TiDB Operator provides highly automated backup and recovery operations for TiDB cluster. You can easily take full backup or setup incremental backup of TiDB cluster, and restore the TiDB cluster when the cluster fails.
+TiDB Operator provides highly automated backup and recovery operations for a TiDB cluster. You can easily take full backup or setup incremental backup of a TiDB cluster, and restore the TiDB cluster when the cluster fails.
 
-For detail operation guides of backup and restore, please refer to [Backup and Restore TiDB Cluster](./backup-restore.md).
+For detailed operation guides of backup and restore, refer to [Backup and Restore TiDB Cluster](./backup-restore.md).

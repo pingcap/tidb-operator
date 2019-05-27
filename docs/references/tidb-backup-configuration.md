@@ -1,8 +1,8 @@
 # TiDB Backup Configuration Reference
 
-`TiDB-Backup` is a helm chart designed for TiDB cluster backup and restore via the [`mydumper`](https://www.pingcap.com/docs/dev/reference/tools/mydumper/) and [`loader`](https://www.pingcap.com/docs-cn/tools/loader/). This documentation will explain the configurations of `TiDB-Backup`, you may refer to [Restore and Backup TiDB cluster](#tidb-backup-configuration-reference) for user guide with example.
+`TiDB-Backup` is a helm chart designed for TiDB cluster backup and restore via the [`mydumper`](https://www.pingcap.com/docs/dev/reference/tools/mydumper/) and [`loader`](https://www.pingcap.com/docs-cn/tools/loader/). This documentation explains `TiDB-Backup` configuration. Refer to [Restore and Backup TiDB cluster](#tidb-backup-configuration-reference) for user guide with example.
 
-## Configurations
+## Configuration
 
 ### `mode`
 
@@ -11,7 +11,7 @@
 
 ### `clusterName`
 
-- The TiDB cluster name that should backup from or restore to, required
+- The name of the TiDB cluster that data is backed up from or restore to, required
 - Default: "demo"
 
 ### `name`
@@ -37,19 +37,21 @@
 
 ### `backupOptions`
 
-- The options that passed to [`mydumper`](https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options)
+- The options that are passed to [`mydumper`](https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options)
 - Default: "--chunk-filesize=100"
 
 ### `restoreOptions`
 
-- The options that passed to [`loader`](https://www.pingcap.com/docs-cn/tools/loader/)
+- The options that are passed to [`loader`](https://www.pingcap.com/docs-cn/tools/loader/)
 - Default: "-t 16"
 
 ### `gcp.bucket`
 
-- The GCP bucket name to store backup data
+- The name of the GCP bucket used to store backup data
 
-> **Note**: Once you set any variables under `gcp` section, the backup data will be uploaded to Google Cloud Storage, namely, you have to keep the configuration intact.
+> **Note:**
+
+> Once you set any variables under `gcp` section, the backup data will be uploaded to Google Cloud Storage, namely, you have to keep the configuration intact.
 
 ### `gcp.secretName`
 
@@ -60,7 +62,9 @@
 
 - The endpoint of ceph object storage
 
-> **Note**: Once you set any variables under `ceph` section, the backup data will be uploaded to ceph object storage, namely, you have to keep the configuration intact.
+> **Note:**
+ 
+> Once you set any variables under `ceph` section, the backup data will be uploaded to ceph object storage, namely, you have to keep the configuration intact.
 
 ### `ceph.bucket`
 
@@ -71,6 +75,6 @@
 - The name of the secret which stores ceph object store access key and secret key
 - You can create the secret by:
 
-```shell
-$ kubectl create secret generic ceph-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
-```
+    ```shell
+    $ kubectl create secret generic ceph-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
+    ```
