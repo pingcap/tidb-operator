@@ -35,13 +35,11 @@ The terraform script expects three environment variables. You can let Terraform 
 To set the three environment variables, you can first run `vi ~/.bash_profile` and insert the following `export` statements in it. Here is an example in `~/.bash_profile`:
  
 ```bash
-# Replace the values with the path to the JSON file you download, the GCP region and your GCP project name.
+# Replace the values with the path to the JSON file you have downloaded, the GCP region and your GCP project name.
 export TF_VAR_GCP_CREDENTIALS_PATH="/Path/to/my-project.json"
 export TF_VAR_GCP_REGION="us-west1"
 export TF_VAR_GCP_PROJECT="my-project"
 ```
-
-
 
 ### Configure APIs
 
