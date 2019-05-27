@@ -450,7 +450,6 @@ func (oa *operatorActions) CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig,
 			return err
 		}
 		glog.V(4).Infof("all clusters are available")
-		return nil
 	})
 }
 
@@ -469,7 +468,6 @@ func (oa *operatorActions) CheckKubeProxyDownOrDie(clusters []*TidbClusterConfig
 			return err
 		}
 		glog.V(4).Infof("all clusters are available.")
-		return nil
 	})
 }
 
@@ -531,7 +529,6 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 			return err
 		}
 		glog.V(4).Infof("all clusters is available")
-		return nil
 	})
 }
 
