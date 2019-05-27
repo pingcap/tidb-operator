@@ -19,7 +19,7 @@ You can either set up a scheduled full backup or take a full backup in an ad-hoc
 
 ### Scheduled full backup
 
-Scheduled full backup is created along side the TiDB cluster, and it runs periodically like the crontab job.
+Scheduled full backup is created alongside the TiDB cluster, and it runs periodically like the crontab job.
 
 To configure a scheduled full backup, modify the `scheduledBackup` section in the `charts/tidb-cluster/values.yaml` file of the TiDB cluster:
 
