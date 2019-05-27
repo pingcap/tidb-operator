@@ -22,20 +22,26 @@ After you have installed Google Cloud SDK, you need to [perform initial setup ta
 
 ### Configure Terraform
 
-The terraform script expects three environment variables. You can let Terraform prompt you for them, or `export` them ahead of time. If you choose to export them, they are:
+The terraform script expects three environment variables. You can let Terraform prompt you for them, or `export` them in the `~/.bash_profile` file ahead of time. If you choose to export them, they are:
 
-* `TF_VAR_GCP_CREDENTIALS_PATH`: Path to a valid GCP credentials file. It is generally considered a good idea to create a service account to be used by Terraform. See [this page](https://cloud.google.com/iam/docs/creating-managing-service-accounts) to create a service account and grant `Project Editor` role to it. See [this page](https://cloud.google.com/iam/docs/creating-managing-service-account-keys) to create service account keys, choose  `JSON`  key type during creation, the auto-downloaded json key file will be the needed credentials file.
-* `TF_VAR_GCP_REGION`: The region to create the resources in, for example: `us-west1`
-* `TF_VAR_GCP_PROJECT`: The name of the GCP project
+* `TF_VAR_GCP_CREDENTIALS_PATH`: Path to a valid GCP credentials file. 
+    - It is recommended to create a new service account to be used by Terraform. See [this page](https://cloud.google.com/iam/docs/creating-managing-service-accounts) to create a service account and grant `Project Editor` role to it. 
+    - See [this page](https://cloud.google.com/iam/docs/creating-managing-service-account-keys) to create service account keys, and choose `JSON` key type during creation. The downloaded `JSON` file that contains the private key is the credentials file you need.
+* `TF_VAR_GCP_REGION`: The region to create the resources in, for example: `us-west1`.
+* `TF_VAR_GCP_PROJECT`: The name of the GCP project.
 
-Here is an example in ~/.bash_profile:
+> *Note*: The service account must have sufficient permissions to create resources in the project. The `Project Editor` primitive will accomplish this.
+
+To set the three environment variables, you can first run `vi ~/.bash_profile` and insert the following `export` statements in it. Here is an example in `~/.bash_profile`:
+ 
 ```bash
-export TF_VAR_GCP_CREDENTIALS_PATH="/Path/to/key"
+# Replace the values with the path to the JSON file you download, the GCP region and your GCP project name.
+export TF_VAR_GCP_CREDENTIALS_PATH="/Path/to/my-project.json"
 export TF_VAR_GCP_REGION="us-west1"
 export TF_VAR_GCP_PROJECT="my-project"
 ```
 
-The service account should have sufficient permissions to create resources in the project. The `Project Editor` primitive will accomplish this.
+
 
 ### Configure APIs
 
