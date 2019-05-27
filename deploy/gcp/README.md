@@ -14,7 +14,7 @@ First of all, make sure the following items are installed on your machine:
 
 ## Configure
 
-Before deploying, you need to configure the following items to guarantee a smooth deployment.
+Before deploying, you need to configure several items to guarantee a smooth deployment.
 
 ### Configure Cloud SDK
 
@@ -55,7 +55,7 @@ export TF_VAR_GCP_PROJECT="my-project"
 
 ## Deploy
 
-The default setup will create a new VPC, two subnetworks, and an f1-micro instance as a bastion machine. The GKE cluster is created with the following instance types as worker nodes:
+The default setup creates a new VPC, two subnetworks, and an f1-micro instance as a bastion machine. The GKE cluster is created with the following instance types as worker nodes:
 
 * 3 n1-standard-4 instances for PD
 * 3 n1-highmem-8 instances for TiKV
@@ -87,7 +87,7 @@ Outputs:
 cluster_id = my-cluster
 cluster_name = my-cluster
 how_to_connect_to_mysql_from_bastion = mysql -h 172.31.252.20 -P 4000 -u root
-how_to_ssh_to_bastion = gcloud compute ssh bastion --zone us-west1-a
+how_to_ssh_to_bastion = gcloud compute ssh bastion --zone us-west1-b
 kubeconfig_file = ./credentials/kubeconfig_my-cluster
 monitor_ilb_ip = 35.227.134.146
 monitor_port = 3000
@@ -126,7 +126,7 @@ helm ls
 
 ## Upgrade
 
-To upgrade the TiDB cluster, modify the `tidb_version` variable to a higher version in `variables.tf` and run `terraform apply`.
+To upgrade the TiDB cluster, modify the `tidb_version` variable to a higher version in the `variables.tf` file and run `terraform apply`.
 
 For example, to upgrade the cluster to the 2.1.10 version, modify the `tidb_version` to `v2.1.10`:
 
@@ -137,11 +137,25 @@ default = "v2.1.10"
 }
 ```
 
-The upgrading does not finish immediately. You can watch the upgrading process by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
+The upgrading does not finish immediately. You can run `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch` to verify that all pods are in `Running` state. Then you can [access the database](#access-the-database) and use `tidb_version()` to see whether the TiDB cluster has been successfully upgraded:
+
+```sh
+MySQL [(none)]> select tidb_version()\G
+*************************** 1. row ***************************
+tidb_version(): Release Version: 2.1.10
+Git Commit Hash: v2.1.10
+Git Branch: master
+UTC Build Time: 2019-05-22 11:12:14
+GoVersion: go version go1.12.4 linux/amd64
+Race Enabled: false
+TiKV Min Version: 2.1.0-alpha.1-ff3dd160846b7d1aed9079c389fc188f7f5ea13e
+Check Table Before Drop: false
+1 row in set (0.001 sec)
+```
 
 ## Scale
 
-To scale the TiDB cluster, modify `tikv_count`, `tikv_replica_count`, `tidb_count`, and `tidb_replica_count` to your desired count, and run `terraform apply`.
+To scale the TiDB cluster, modify `tikv_count`, `tikv_replica_count`, `tidb_count`, and `tidb_replica_count` to your desired count in the `variables.tf` file, and run `terraform apply`.
 
 Currently, scaling in is not supported since we cannot determine which node to remove. Scaling out needs a few minutes to complete, you can watch the scaling-out process by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
 
@@ -153,27 +167,27 @@ default = 3
 }
 ```
 
-> *Note*: Incrementing the node count will create a node per GCP availability zone.
+> *Note*: Incrementing the node count creates a node per GCP availability zone.
 
 ## Customize
 
-You can change default values in the `variables.tf` file (such as the cluster name and image versions) as needed.
+You can change default values in `variables.tf` (such as the cluster name and the TiDB version) as needed.
 
 ### Customize GCP resources
 
 GCP allows attaching a local SSD to any instance type that is `n1-standard-1` or greater. This allows for good customizability.
 
-### Customize TiDB Parameters
+### Customize TiDB parameters
 
-Currently, there are not too many parameters exposed to be customized. However, you can modify `templates/tidb-cluster-values.yaml.tpl` before deploying. If you modify it after the cluster is created and then run `terraform apply`, it will not take effect unless the pod(s) is manually deleted.
+Currently, there are not too many parameters exposed to be customized. However, you can modify `templates/tidb-cluster-values.yaml.tpl` before deploying. If you modify it after the cluster is created and then run `terraform apply`, it can not take effect unless the pod(s) is manually deleted.
 
 ### Customize node pools
 
-The cluster is created as a regional, as opposed to a zonal cluster. This means that GKE will replicate node pools to each availability zone. This is desired to maintain high availability, however for the monitoring services, like Grafana, this is potentially unnecessary. It is possible to manually remove nodes if desired via `gcloud`.
+The cluster is created as a regional, as opposed to a zonal cluster. This means that GKE replicates node pools to each availability zone. This is desired to maintain high availability, however for the monitoring services, like Grafana, this is potentially unnecessary. It is possible to manually remove nodes if desired via `gcloud`.
 
 > *NOTE*: GKE node pools are managed instance groups, so a node deleted by `gcloud compute instances delete` will be automatically recreated and added back to the cluster.
 
-Suppose we wish to delete a node from the monitor pool, we can do:
+Suppose you need to delete a node from the monitor pool, and you can do:
 
 ```bash
 $ gcloud compute instance-groups managed list | grep monitor
@@ -187,15 +201,22 @@ gke-my-cluster-monitor-pool-7e31100f-grp  us-west1-c  zone   gke-my-cluster-moni
 gke-my-cluster-monitor-pool-78a961e5-grp  us-west1-a  zone   gke-my-cluster-monitor-pool-78a961e5  1     1            gke-my-cluster-monitor-pool-78a961e5  no
 ```
 
-The first column is the name of the managed instance group, and the second column is the zone it was created in. We will also need the name of the instance in that group, we can get it as follows:
+The first column is the name of the managed instance group, and the second column is the zone it was created in. You also need the name of the instance in that group, and you can get it as follows:
+
+```bash
+gcloud compute instance-groups managed list-instances <the-name-of-the-managed-instance-group> --zone <zone>
+```
+
+For example:
 
 ```bash
 $ gcloud compute instance-groups managed list-instances gke-my-cluster-monitor-pool-08578e18-grp --zone us-west1-b
+
 NAME                                       ZONE        STATUS   ACTION  INSTANCE_TEMPLATE                     VERSION_NAME  LAST_ERROR
 gke-my-cluster-monitor-pool-08578e18-c7vd  us-west1-b  RUNNING  NONE    gke-my-cluster-monitor-pool-08578e18
 ```
 
-Now we can delete the instance:
+Now you can delete the instance by specifying the name of the managed instance group and the name of the instance, for example:
 
 ```bash
 $ gcloud compute instance-groups managed delete-instances gke-my-cluster-monitor-pool-08578e18-grp --instances=gke-my-cluster-monitor-pool-08578e18-c7vd --zone us-west1-b
