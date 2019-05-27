@@ -21,7 +21,7 @@ You can either set up a scheduled full backup or take a full backup in an ad-hoc
 
 Scheduled full backup is created along side the TiDB cluster, and it runs periodically like the crontab job.
 
-To configure a scheduled full backup, modify the `scheduledBackup` section in the `charts/tidb-cluster/values.yaml` of the tidb cluster:
+To configure a scheduled full backup, modify the `scheduledBackup` section in the `charts/tidb-cluster/values.yaml` file of the TiDB cluster:
 
 * Set `scheduledBackup.create` to `true`
 * Set `scheduledBackup.storageClassName` to the PV storage class name used for backup data
