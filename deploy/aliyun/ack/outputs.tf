@@ -5,7 +5,7 @@ output "cluster_id" {
 
 output "cluster_name" {
   description = "The name of ACK cluster"
-  value       = "${alicloud_cs_managed_kubernetes.k8s.*.id}"
+  value       = "${alicloud_cs_managed_kubernetes.k8s.*.name}"
 }
 
 output "cluster_nodes" {
