@@ -64,7 +64,7 @@ The default setup creates a new VPC, two subnetworks, and an f1-micro instance a
 * 3 n1-standard-16 instances for TiDB
 * 3 n1-standard-2 instances for monitor
 
-> *NOTE*: The number of nodes created depends on how many availability zones there are in the chosen region. Most have 3 zones, but us-central1 has 4. See [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones/) for more information and see the [Customize](#customize) section on how to customize node pools in a regional cluster.
+> *Note*: The number of nodes created depends on how many availability zones there are in the chosen region. Most have 3 zones, but us-central1 has 4. See [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones/) for more information and see the [Customize](#customize) section on how to customize node pools in a regional cluster.
 
 The default setup, as listed above, requires at least 91 CPUs which exceed the default CPU quota of a GCP project. To increase your project's quota, follow the instructions [here](https://cloud.google.com/compute/quotas). You need more CPUs if you need to scale out. 
 
@@ -109,7 +109,7 @@ gcloud compute ssh bastion --zone <zone>
 mysql -h <tidb_ilb_ip> -P 4000 -u root
 ```
 
-> *NOTE*: You need to install the MySQL client before you connect to TiDB via MySQL.
+> *Note*: You need to install the MySQL client before you connect to TiDB via MySQL.
 
 ## Interact with the cluster
 
@@ -188,12 +188,12 @@ Currently, there are not too many parameters exposed to be customized. However, 
 
 The cluster is created as a regional, as opposed to a zonal cluster. This means that GKE replicates node pools to each availability zone. This is desired to maintain high availability, however for the monitoring services, like Grafana, this is potentially unnecessary. It is possible to manually remove nodes if desired via `gcloud`.
 
-> *NOTE*: GKE node pools are managed instance groups, so a node deleted by `gcloud compute instances delete` will be automatically recreated and added back to the cluster.
+> *Note*: GKE node pools are managed instance groups, so a node deleted by `gcloud compute instances delete` will be automatically recreated and added back to the cluster.
 
 Suppose you need to delete a node from the monitor pool, and you can do:
 
 ```bash
-$ gcloud compute instance-groups managed list | grep monitor
+gcloud compute instance-groups managed list | grep monitor
 ```
 
 And the result will be something like this:
@@ -222,7 +222,7 @@ gke-my-cluster-monitor-pool-08578e18-c7vd  us-west1-b  RUNNING  NONE    gke-my-c
 Now you can delete the instance by specifying the name of the managed instance group and the name of the instance, for example:
 
 ```bash
-$ gcloud compute instance-groups managed delete-instances gke-my-cluster-monitor-pool-08578e18-grp --instances=gke-my-cluster-monitor-pool-08578e18-c7vd --zone us-west1-b
+gcloud compute instance-groups managed delete-instances gke-my-cluster-monitor-pool-08578e18-grp --instances=gke-my-cluster-monitor-pool-08578e18-c7vd --zone us-west1-b
 ```
 
 ## Destroy
@@ -230,5 +230,5 @@ $ gcloud compute instance-groups managed delete-instances gke-my-cluster-monitor
 When you are done, the infrastructure can be torn down by running:
 
 ```bash
-$ terraform destroy
+terraform destroy
 ```
