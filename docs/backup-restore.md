@@ -26,7 +26,9 @@ To configure a scheduled full backup, modify the `scheduledBackup` section in th
 * Set `scheduledBackup.create` to `true`
 * Set `scheduledBackup.storageClassName` to the PV storage class name used for backup data
 
-> **Note:** You must set the scheduled full backup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to keep your backup data safe.
+> **Note:**
+>
+> You must set the scheduled full backup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to keep your backup data safe.
 
 * Configure `scheduledBackup.schedule` in the [Cron](https://en.wikipedia.org/wiki/Cron) format to define the scheduling
 * `scheduledBakcup.user` and `scheduledBackup.password` must be set to the correct user which has the permission to read the database to be backuped.
