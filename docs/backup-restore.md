@@ -15,7 +15,7 @@ Full backup using `mydumper` to take the logical backup of TiDB cluster. The bac
 
 By default, the backup uses PV to store the backup data. You can also store the backup data to [Google Cloud Storage](https://cloud.google.com/storage/) bucket or [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/) by changing the configuration. This way the PV temporarily stores backup data before it is placed in object storage. Refer to [TiDB cluster Backup configuration](./references/tidb-backup-configuration.md) for full configuration guide of backup and restore.
 
-You can either setup a scheduled full backup or take a full backup in ad-hoc manner.
+You can either set up a scheduled full backup or take a full backup in an ad-hoc manner.
 
 ### Scheduled full backup
 
