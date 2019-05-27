@@ -151,6 +151,7 @@ type OperatorActions interface {
 	CheckK8sAvailableOrDie(excludeNodes map[string]string, excludePods map[string]*corev1.Pod)
 	CheckOperatorAvailable(operatorConfig *OperatorConfig) error
 	CheckTidbClustersAvailable(infos []*TidbClusterConfig) error
+	CheckOperatorDownOrDie(infos []*TidbClusterConfig)
 	CheckTidbClustersAvailableOrDie(infos []*TidbClusterConfig)
 	CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
@@ -340,7 +341,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"controllerManager.autoFailover":   "true",
 		"scheduler.kubeSchedulerImageName": oi.SchedulerImage,
 		"controllerManager.logLevel":       oi.LogLevel,
-		"scheduler.logLevel":               "2",
+		"scheduler.logLevel":               "4",
 		"controllerManager.replicas":       "2",
 		"scheduler.replicas":               "2",
 		"imagePullPolicy":                  string(oi.ImagePullPolicy),
@@ -2353,7 +2354,10 @@ func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
 		return
 	}
 
-	ce := oa.clusterEvents[info.String()]
+	ce, ok := oa.clusterEvents[info.String()]
+	if !ok {
+		return
+	}
 	ce.events = append(ce.events, ev)
 
 	// sleep a while to avoid overlapping time
