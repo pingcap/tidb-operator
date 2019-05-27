@@ -4,7 +4,7 @@ exists when ConfigMapRollout feature is enabled.
 Another option is make the initializer job as post-install hook to avoid further updating, which is not ideal because
 post-install hook will block the install operation util the hook complete.
 */}}
-{{- if ((.Values.tidb.passwordSecretName) or (.Values.tidb.initSql)) and (.Values.enableConfigMapRollout) }}
+{{- if and (or .Values.tidb.passwordSecretName .Values.tidb.initSql) .Values.enableConfigMapRollout }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

@@ -1,4 +1,4 @@
-{{- if (.Values.tidb.passwordSecretName) or (.Values.tidb.initSql) }}
+{{- if or .Values.tidb.passwordSecretName .Values.tidb.initSql }}
 apiVersion: batch/v1
 kind: Job
 metadata:
