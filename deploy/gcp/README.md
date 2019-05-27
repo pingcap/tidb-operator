@@ -141,7 +141,7 @@ variable "tidb_version" {
 
 The upgrading does not finish immediately. You can run `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch` to verify that all pods are in `Running` state. Then you can [access the database](#access-the-database) and use `tidb_version()` to see whether the cluster has been upgraded successfully:
 
-```sh
+```sql
 MySQL [(none)]> select tidb_version()\G
 *************************** 1. row ***************************
 tidb_version(): Release Version: 2.1.10
