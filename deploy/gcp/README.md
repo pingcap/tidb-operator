@@ -4,7 +4,7 @@ This document describes how to deploy TiDB Operator and a TiDB cluster on GCP GK
 
 ## Prerequisites
 
-First of all, make sure the following items are installed:
+First of all, make sure the following items are installed on your machine:
 
 * [Google Cloud SDK](https://cloud.google.com/sdk/install)
 * [terraform](https://www.terraform.io/downloads.html)
@@ -18,7 +18,7 @@ Before deploying, you need to configure the following items to guarantee a smoot
 
 ### Configure Cloud SDK
 
-After you have installed Google Cloud SDK, you need to [perform initial setup tasks](https://cloud.google.com/sdk/docs/initializing). 
+After you have installed Google Cloud SDK, you need to run `gcloud init` to [perform initial setup tasks](https://cloud.google.com/sdk/docs/initializing). 
 
 ### Configure APIs
 
@@ -64,7 +64,7 @@ The default setup will create a new VPC, two subnetworks, and an f1-micro instan
 
 > *NOTE*: The number of nodes created depends on how many availability zones there are in the chosen region. Most have 3 zones, but us-central1 has 4. See [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones/) for more information and see the [Customize](#customize) section on how to customize node pools in a regional cluster.
 
-The default setup, as listed above, will exceed the default CPU quota of a GCP project. To increase your project's quota, please follow the instructions [here](https://cloud.google.com/compute/quotas). The default setup will require at least 91 CPUs, more if you need to scale out.
+The default setup, as listed above, requires at least 91 CPUs which exceed the default CPU quota of a GCP project. To increase your project's quota, follow the instructions [here](https://cloud.google.com/compute/quotas). You need more CPUs if you need to scale out. 
 
 Now that you have configured everything needed, you can launch the script to deploy the TiDB cluster:
 
@@ -75,20 +75,43 @@ terraform init
 terraform apply
 ```
 
-When you run `terraform apply`, you may be asked to set three environment variables for the script to run if you don't export them in advance. See [Configure Terraform](#configure-terraform) for details.
+When you run `terraform apply`, you may be asked to set three environment variables for the script to run if you have not exported them in advance. See [Configure Terraform](#configure-terraform) for details.
+
+It might take 10 minutes or more to finish the process. A successful deployment gives the output like:
+
+```
+Apply complete! Resources: 8 added, 0 changed, 1 destroyed.
+
+Outputs:
+
+cluster_id = my-cluster
+cluster_name = my-cluster
+how_to_connect_to_mysql_from_bastion = mysql -h 172.31.252.20 -P 4000 -u root
+how_to_ssh_to_bastion = gcloud compute ssh bastion --zone us-west1-a
+kubeconfig_file = ./credentials/kubeconfig_my-cluster
+monitor_ilb_ip = 35.227.134.146
+monitor_port = 3000
+region = us-west1
+tidb_ilb_ip = 172.31.252.20
+tidb_port = 4000
+tidb_version = v2.1.8
+```
  
 ## Access the database
 
 After `terraform apply` is successful, the TiDB cluster can be accessed by SSHing into the bastion machine and connecting via MySQL:
 
 ```bash
+# Replace the `<>` parts with values from the output.
 gcloud compute ssh bastion --zone <zone>
 mysql -h <tidb_ilb_ip> -P 4000 -u root
 ```
 
+> *NOTE*: Make sure that you have installed the MySQL client before you connect to TiDB via MySQL.
+
 ## Interact with the cluster
 
-It is possible to interact with the cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_<cluster_name>`. The default `cluster_name` is `my-cluster`, it can be changed in `variables.tf`:
+It is possible to interact with the cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_<cluster_name>`. The default `cluster_name` is `my-cluster`, and it can be changed in `variables.tf`:
 
 ```bash
 # By specifying --kubeconfig argument
@@ -103,19 +126,38 @@ helm ls
 
 ## Upgrade
 
-To upgrade TiDB cluster, modify `tidb_version` variable to a higher version in variables.tf and run `terraform apply`.
+To upgrade the TiDB cluster, modify the `tidb_version` variable to a higher version in `variables.tf` and run `terraform apply`.
 
-> *Note*: The upgrading doesn't finish immediately. You can watch the upgrading process by `watch kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb`
+For example, to upgrade the cluster to version 2.1.10, modify the `tidb_version` to `v2.1.10`:
+
+```
+variable "tidb_version" {
+description = "tidb cluster version"
+default = "v2.1.10"
+}
+```
+
+The upgrading does not finish immediately. You can watch the upgrading process by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
 
 ## Scale
 
-To scale TiDB cluster, modify `tikv_count`, `tikv_replica_count`, `tidb_count`, and `tidb_replica_count` to your desired count, and then run `terraform apply`.
+To scale the TiDB cluster, modify `tikv_count`, `tikv_replica_count`, `tidb_count`, and `tidb_replica_count` to your desired count, and then run `terraform apply`.
 
-> *Note*: Currently, scaling in is not supported since we cannot determine which node to remove. Scaling out needs a few minutes to complete, you can watch the scaling out by `watch kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb`
+Currently, scaling in is not supported since we cannot determine which node to remove. Scaling out needs a few minutes to complete, you can watch the scaling out by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
 
-> *Note*: Incrementing the node count will create a node per GCP availability zones.
+For example, to scale out the cluster, you can modify the number of TiDB instances from 2 to 3:
+
+```
+variable "tidb_count" {
+default = 3
+}
+```
+
+> *Note*: Incrementing the node count will create a node per GCP availability zone.
 
 ## Customize
+
+You can change default values in the `variables.tf` file (such as the cluster name and image versions) as needed.
 
 ### Customize GCP resources
 
@@ -136,6 +178,7 @@ Suppose we wish to delete a node from the monitor pool, we can do:
 ```bash
 $ gcloud compute instance-groups managed list | grep monitor
 ```
+
 And the result will be something like this:
 
 ```bash
