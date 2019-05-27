@@ -1087,7 +1087,7 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 
 	if upgradePaused() {
 
-		time.Sleep(5 * time.Minute)
+		time.Sleep(30 * time.Second)
 
 		if !pauseCorrect(tidbSet) {
 			return false, fmt.Errorf("pause partition is not correct in upgrade phase [%s/%s] partition %d annotation %d",
