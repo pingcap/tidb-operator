@@ -45,6 +45,7 @@ type Config struct {
 	BlockWriter blockwriter.Config `yaml:"block_writer,omitempty"`
 
 	// For local test
+	OperatorRepoUrl string `yaml:"operator_repo_url" json:"operator_repo_url"`
 	OperatorRepoDir string `yaml:"operator_repo_dir" json:"operator_repo_dir"`
 	// chart dir
 	ChartDir string `yaml:"chart_dir" json:"chart_dir"`
@@ -61,6 +62,7 @@ type Nodes struct {
 // NewConfig creates a new config.
 func NewConfig() (*Config, error) {
 	cfg := &Config{
+		OperatorRepoUrl: "https://github.com/pingcap/tidb-operator.git",
 
 		PDMaxReplicas:       5,
 		TiDBTokenLimit:      1024,
@@ -76,7 +78,7 @@ func NewConfig() (*Config, error) {
 	flag.StringVar(&cfg.configFile, "config", "", "Config file")
 	flag.StringVar(&cfg.LogDir, "log-dir", "/logDir", "log directory")
 	flag.IntVar(&cfg.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
-	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v2.1.7,v2.1.8", "tidb versions")
+	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v3.0.0-beta.1,v3.0.0-rc.1", "tidb versions")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
 	flag.StringVar(&cfg.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
