@@ -190,7 +190,7 @@ The cluster is created as a regional, as opposed to a zonal cluster. This means 
 
 > *Note*: GKE node pools are managed instance groups, so a node deleted by `gcloud compute instances delete` will be automatically recreated and added back to the cluster.
 
-Suppose you need to delete a node from the monitor pool, and you can do:
+Suppose that you need to delete a node from the monitor pool. You can first do:
 
 ```bash
 gcloud compute instance-groups managed list | grep monitor
@@ -204,7 +204,7 @@ gke-my-cluster-monitor-pool-7e31100f-grp  us-west1-c  zone   gke-my-cluster-moni
 gke-my-cluster-monitor-pool-78a961e5-grp  us-west1-a  zone   gke-my-cluster-monitor-pool-78a961e5  1     1            gke-my-cluster-monitor-pool-78a961e5  no
 ```
 
-The first column is the name of the managed instance group, and the second column is the zone it was created in. You also need the name of the instance in that group, and you can get it as follows:
+The first column is the name of the managed instance group, and the second column is the zone in which it was created. You also need the name of the instance in that group, and you can get it by running:
 
 ```bash
 gcloud compute instance-groups managed list-instances <the-name-of-the-managed-instance-group> --zone <zone>
