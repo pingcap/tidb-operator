@@ -376,6 +376,15 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
 
+	// delete statefulset update webhook and configuration
+	cmd = fmt.Sprintf("kubectl delete -f %s/webhook.yaml", oa.manifestPath(info.Tag))
+	glog.Info(cmd)
+
+	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil && !notFound(string(res)) {
+		return fmt.Errorf("failed to delete statefulset webhook and configuration : %v, %s", err, string(res))
+	}
+
 	// create cert and secret for webhook
 	cmd = fmt.Sprintf("%s/create-cert.sh", oa.manifestPath(info.Tag))
 	glog.Info(cmd)
@@ -420,16 +429,7 @@ func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 		return err
 	}
 
-	// delete statefulset update webhook and configuration
-	cmd := fmt.Sprintf("kubectl delete -f %s/webhook.yaml", oa.manifestPath(info.Tag))
-	glog.Info(cmd)
-
-	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil && !notFound(string(res)) {
-		return fmt.Errorf("failed to delete statefulset webhook and configuration : %v, %s", err, string(res))
-	}
-
-	res, err = exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
+	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
 
 	if err == nil || !releaseIsNotFound(err) {
 		return nil
