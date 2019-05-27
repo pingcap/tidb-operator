@@ -1,0 +1,23 @@
+{{/*
+The pod spec of job is immutable, so, for backward compatiability, we should keep the configmap <cluster.name>-tidb
+exists when ConfigMapRollout feature is enabled.
+Another option is make the initializer job as post-install hook to avoid further updating, which is not ideal because
+post-install hook will block the install operation util the hook complete.
+*/}}
+{{- if (.Values.tidb.passwordSecretName) or (.Values.tidb.initSql) and (.Values.enableConfigMapRollout) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "cluster.name" . }}-tidb
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: tidb-initializer-job
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+data:
+  {{- if .Values.tidb.initSql }}
+  init-sql: |-
+{{ .Values.tidb.initSql | indent 4 }}
+  {{- end }}
+{{- end }}
