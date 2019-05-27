@@ -24,9 +24,16 @@ After you have installed Google Cloud SDK, you need to [perform initial setup ta
 
 The terraform script expects three environment variables. You can let Terraform prompt you for them, or `export` them ahead of time. If you choose to export them, they are:
 
-* `TF_VAR_GCP_CREDENTIALS_PATH`: Path to a valid GCP credentials file. It is generally considered a good idea to create a service account to be used by Terraform. See [this page](https://cloud.google.com/iam/docs/creating-managing-service-accounts) for more information on how to manage them. See [this page](https://cloud.google.com/iam/docs/creating-managing-service-account-keys) for creating and managing service account keys which, when downloaded, will be the needed credentials file.
+* `TF_VAR_GCP_CREDENTIALS_PATH`: Path to a valid GCP credentials file. It is generally considered a good idea to create a service account to be used by Terraform. See [this page](https://cloud.google.com/iam/docs/creating-managing-service-accounts) to create a service account and grant `Project Editor` role to it. See [this page](https://cloud.google.com/iam/docs/creating-managing-service-account-keys) to create service account keys, choose  `JSON`  key type during creation, the auto-downloaded json key file will be the needed credentials file.
 * `TF_VAR_GCP_REGION`: The region to create the resources in, for example: `us-west1`
 * `TF_VAR_GCP_PROJECT`: The name of the GCP project
+
+Here is an example in ~/.bash_profile:
+```bash
+export TF_VAR_GCP_CREDENTIALS_PATH="/Path/to/key"
+export TF_VAR_GCP_REGION="us-west1"
+export TF_VAR_GCP_PROJECT="my-project"
+```
 
 The service account should have sufficient permissions to create resources in the project. The `Project Editor` primitive will accomplish this.
 
@@ -72,6 +79,8 @@ After `terraform apply` is successful, the TiDB cluster can be accessed by SSHin
 gcloud compute ssh bastion --zone <zone>
 mysql -h <tidb_ilb_ip> -P 4000 -u root
 ```
+
+## Interact with the cluster
 
 It is possible to interact with the cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_<cluster_name>`. The default `cluster_name` is `my-cluster`, it can be changed in `variables.tf`:
 
@@ -147,6 +156,6 @@ $ gcloud compute instance-groups managed delete-instances gke-my-cluster-monitor
 
 When you are done, the infrastructure can be torn down by running:
 
-``` shell
+```bash
 $ terraform destroy
 ```
