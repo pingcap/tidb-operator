@@ -44,7 +44,7 @@ The terraform script expects three environment variables. You can let Terraform 
 
 > *Note*: The service account must have sufficient permissions to create resources in the project. The `Project Editor` primitive will accomplish this.
 
-To set the three environment variables, you can first run `vi ~/.bash_profile` and insert the following `export` statements in it. Here is an example in `~/.bash_profile`:
+To set the three environment variables, you can first run `vi ~/.bash_profile` and insert the `export` statements in it. Here is an example in `~/.bash_profile`:
  
 ```bash
 # Replace the values with the path to the JSON file you have downloaded, the GCP region and your GCP project name.
@@ -75,7 +75,7 @@ terraform init
 terraform apply
 ```
 
-When you run `terraform apply`, you may be asked to set three environment variables for the terraform script to run if you don't export them in advance. See [Configure Terraform](#configure-terraform) for details.
+When you run `terraform apply`, you may be asked to set three environment variables for the script to run if you don't export them in advance. See [Configure Terraform](#configure-terraform) for details.
  
 ## Access the database
 
