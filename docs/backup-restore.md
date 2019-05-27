@@ -4,7 +4,7 @@
 
 TiDB Operator supports two kinds of backup:
 
-* [Full backup](#full-backup)(scheduled or ad-hoc) via [`mydumper`](https://www.pingcap.com/docs/dev/reference/tools/mydumper/), which helps you logical backup the TiDB cluster.
+* [Full backup](#full-backup)(scheduled or ad-hoc) via [`mydumper`](https://www.pingcap.com/docs/dev/reference/tools/mydumper/), which helps you to logically back up a TiDB cluster.
 * [Incremental backup](#incremental-backup) via [`TiDB-Binlog`](https://www.pingcap.com/docs/dev/reference/tools/tidb-binlog/overview/), which helps you synchronize the data in the TiDB cluster to other database or backup the data at real-time.
 
 Currently, tidb-operator only supports automatic [restore operation](#restore) for full backup taken by `mydumper`. Restore the backup data captured by `TiDB-Binlog` requires human intervention.
