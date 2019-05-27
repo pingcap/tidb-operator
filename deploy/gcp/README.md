@@ -34,7 +34,7 @@ gcloud services enable container.googleapis.com
 
 ### Configure Terraform
 
-The terraform script expects three environment variables. You can let Terraform prompt you for them, or `export` them in the `~/.bash_profile` file ahead of time. If you choose to export them, they are:
+The terraform script expects three environment variables. You can let Terraform prompt you for them, or `export` them in the `~/.bash_profile` file ahead of time. The required environment variables are:
 
 * `TF_VAR_GCP_CREDENTIALS_PATH`: Path to a valid GCP credentials file. 
     - It is recommended to create a new service account to be used by Terraform. See [this page](https://cloud.google.com/iam/docs/creating-managing-service-accounts) to create a service account and grant `Project Editor` role to it. 
