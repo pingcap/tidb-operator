@@ -46,11 +46,14 @@ func main() {
 	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
 
 	operatorCfg := &tests.OperatorConfig{
-		Namespace:          "pingcap",
-		ReleaseName:        "operator",
-		Image:              conf.OperatorImage,
-		Tag:                conf.OperatorTag,
-		SchedulerImage:     "gcr.io/google-containers/hyperkube",
+		Namespace:      "pingcap",
+		ReleaseName:    "operator",
+		Image:          conf.OperatorImage,
+		Tag:            conf.OperatorTag,
+		SchedulerImage: "gcr.io/google-containers/hyperkube",
+		SchedulerFeatures: []string{
+			"StableScheduling",
+		},
 		LogLevel:           "2",
 		WebhookServiceName: "webhook-service",
 		WebhookSecretName:  "webhook-secret",
@@ -235,12 +238,16 @@ func run(oa tests.OperatorActions,
 
 	// upgrade cluster1 and cluster2
 	firstUpgradeVersion := upgardeTiDBVersions[0]
+	assignedNodes1 := oa.GetTidbMemberAssignedNodesOrDie(cluster1)
+	assignedNodes2 := oa.GetTidbMemberAssignedNodesOrDie(cluster2)
 	cluster1.UpgradeAll(firstUpgradeVersion)
 	cluster2.UpgradeAll(firstUpgradeVersion)
 	oa.UpgradeTidbClusterOrDie(cluster1)
 	oa.UpgradeTidbClusterOrDie(cluster2)
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
+	oa.CheckTidbMemberAssignedNodesOrDie(cluster1, assignedNodes1)
+	oa.CheckTidbMemberAssignedNodesOrDie(cluster2, assignedNodes2)
 
 	// after upgrade cluster, clean webhook
 	oa.CleanWebHookAndService(operatorCfg)
