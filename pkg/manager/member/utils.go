@@ -203,3 +203,14 @@ func pdPodName(tcName string, ordinal int32) string {
 func tidbPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiDBMemberName(tcName), ordinal)
 }
+
+// CombineAnnotations merges two annotations maps
+func CombineAnnotations(a, b map[string]string) map[string]string {
+	if a == nil {
+		a = make(map[string]string)
+	}
+	for k, v := range b {
+		a[k] = v
+	}
+	return a
+}

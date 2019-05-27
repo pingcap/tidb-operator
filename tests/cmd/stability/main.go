@@ -15,8 +15,10 @@ package main
 
 import (
 	"fmt"
+	"k8s.io/api/core/v1"
 	"net/http"
 	_ "net/http/pprof"
+	"strconv"
 	"time"
 
 	"github.com/pingcap/tidb-operator/tests/slack"
@@ -55,6 +57,7 @@ func main() {
 		WebhookServiceName: "webhook-service",
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
+		ImagePullPolicy:    v1.PullAlways,
 	}
 
 	// TODO remove this
@@ -98,8 +101,13 @@ func main() {
 			"binlog.drainer.workerCount": "1024",
 			"binlog.drainer.txnBatch":    "512",
 		},
-		Monitor:          true,
-		BlockWriteConfig: conf.BlockWriter,
+		Monitor:                true,
+		BlockWriteConfig:       conf.BlockWriter,
+		PDMaxReplicas:          3,
+		TiKVGrpcConcurrency:    4,
+		TiDBTokenLimit:         1000,
+		PDLogLevel:             "info",
+		EnableConfigMapRollout: true,
 	}
 	cluster2 := &tests.TidbClusterConfig{
 		Namespace:        clusterName2,
@@ -132,9 +140,14 @@ func main() {
 			"monitor.persistent": "true",
 			"discovery.image":    conf.OperatorImage,
 		},
-		Args:             map[string]string{},
-		Monitor:          true,
-		BlockWriteConfig: conf.BlockWriter,
+		Args:                   map[string]string{},
+		Monitor:                true,
+		BlockWriteConfig:       conf.BlockWriter,
+		PDMaxReplicas:          3,
+		TiKVGrpcConcurrency:    4,
+		TiDBTokenLimit:         1000,
+		PDLogLevel:             "info",
+		EnableConfigMapRollout: false,
 	}
 
 	// cluster backup and restore
@@ -199,6 +212,34 @@ func main() {
 	oa.UpgradeTidbClusterOrDie(cluster1)
 	oa.UpgradeTidbClusterOrDie(cluster2)
 	oa.CheckTidbClusterStatusOrDie(cluster1)
+	oa.CheckTidbClusterStatusOrDie(cluster2)
+
+	// cluster1: bad configuration change case
+	cluster1.TiDBPreStartScript = strconv.Quote("exit 1")
+	oa.UpgradeTidbClusterOrDie(cluster1)
+	cluster1.TiKVPreStartScript = strconv.Quote("exit 1")
+	oa.UpgradeTidbClusterOrDie(cluster1)
+	cluster1.PDPreStartScript = strconv.Quote("exit 1")
+	oa.UpgradeTidbClusterOrDie(cluster1)
+
+	time.Sleep(30 * time.Second)
+	oa.CheckTidbClustersAvailableOrDie([]*tests.TidbClusterConfig{cluster1})
+
+	// rollback cluster1
+	cluster1.PDPreStartScript = strconv.Quote("")
+	cluster1.TiKVPreStartScript = strconv.Quote("")
+	cluster1.TiDBPreStartScript = strconv.Quote("")
+	oa.UpgradeTidbClusterOrDie(cluster1)
+	oa.CheckTidbClusterStatusOrDie(cluster1)
+
+	// cluster2: enable and normal configuration change case
+	cluster2.EnableConfigMapRollout = true
+	oa.UpgradeTidbClusterOrDie(cluster2)
+	oa.CheckTidbClusterStatusOrDie(cluster2)
+	cluster2.UpdatePdMaxReplicas(conf.PDMaxReplicas).
+		UpdateTiKVGrpcConcurrency(conf.TiKVGrpcConcurrency).
+		UpdateTiDBTokenLimit(conf.TiDBTokenLimit)
+	oa.UpgradeTidbClusterOrDie(cluster2)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
 	// after upgrade cluster, clean webhook

@@ -15,6 +15,7 @@ data "template_file" "tidb-cluster-values" {
     tikv_writecf_block_cache_size   = "${var.tikv_memory_size * 0.2}GB"
     monitor_reserve_days            = "${var.monitor_reserve_days}"
     monitor_slb_network_type        = "${var.monitor_slb_network_type}"
+    monitor_enable_anonymous_user   = "${var.monitor_enable_anonymous_user}"
   }
 }
 

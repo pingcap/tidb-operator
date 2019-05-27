@@ -20,7 +20,7 @@ The default setup will create:
 - A new VPC 
 - An ECS instance as bastion machine
 - A managed ACK(Alibaba Cloud Kubernetes) cluster with the following ECS instance worker nodes:
-  - An auto-scaling group of 2 * instances(1c1g) as ACK mandatory workers for system service like CoreDNS
+  - An auto-scaling group of 2 * instances(2c2g) as ACK mandatory workers for system service like CoreDNS
   - An auto-scaling group of 3 * `ecs.i2.xlarge` instances for PD
   - An auto-scaling group of 3 * `ecs.i2.2xlarge` instances for TiKV
   - An auto-scaling group of 2 * instances(16c32g) for TiDB
@@ -44,15 +44,18 @@ The `variables.tf` file contains default settings of variables used for deployin
 Apply the stack:
 
 ```shell
+# Get the code
 $ git clone https://github.com/pingcap/tidb-operator
-$ cd tidb-operator/deploy/alicloud
+$ cd tidb-operator/deploy/aliyun
+
+# Apply the configs, note that you must answer "yes" to `terraform apply` to continue
 $ terraform init
 $ terraform apply
 ```
 
 `terraform apply` will take 5 to 10 minutes to create the whole stack, once complete, basic cluster information will be printed:
 
-> **Note:** You can use the `terraform output` command to get this information again.
+> **Note:** You can use the `terraform output` command to get the output again.
 
 ```
 Apply complete! Resources: 3 added, 0 changed, 1 destroyed.
@@ -82,7 +85,7 @@ $ helm ls
 
 ## Access the DB
 
-You can connect the TiDB cluster via the bastion instance, all necessary information are in the output printed after installation is finished:
+You can connect the TiDB cluster via the bastion instance, all necessary information are in the output printed after installation is finished (replace the `<>` parts with values from the output):
 
 ```shell
 $ ssh -i credentials/<cluster_name>-bastion-key.pem root@<bastion_ip>
@@ -106,7 +109,7 @@ To upgrade TiDB cluster, modify `tidb_version` variable to a higher version in `
 This may take a while to complete, watch the process using command:
 
 ```
-watch kubectl get pods --namespace tidb -o wide
+kubectl get pods --namespace tidb -o wide --watch
 ```
 
 ## Scale TiDB cluster

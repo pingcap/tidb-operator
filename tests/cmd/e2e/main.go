@@ -15,6 +15,7 @@ package main
 
 import (
 	"fmt"
+	"k8s.io/api/core/v1"
 	_ "net/http/pprof"
 	"time"
 
@@ -32,6 +33,7 @@ func main() {
 
 	conf := tests.ParseConfigOrDie()
 	conf.ChartDir = "/charts"
+	conf.ManifestDir = "/manifests"
 
 	cli, kubeCli := client.NewCliOrDie()
 	oa := tests.NewOperatorActions(cli, kubeCli, 5*time.Second, conf, nil)
@@ -50,6 +52,7 @@ func main() {
 		WebhookServiceName: "webhook-service",
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
+		ImagePullPolicy:    v1.PullIfNotPresent,
 	}
 
 	// start a http server in goruntine
