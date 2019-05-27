@@ -18,7 +18,7 @@ Before deploying, you need to configure several items to guarantee a smooth depl
 
 ### Configure Cloud SDK
 
-After you have installed Google Cloud SDK, you need to run `gcloud init` to [perform initial setup tasks](https://cloud.google.com/sdk/docs/initializing). 
+After you install Google Cloud SDK, you need to run `gcloud init` to [perform initial setup tasks](https://cloud.google.com/sdk/docs/initializing). 
 
 ### Configure APIs
 
@@ -75,7 +75,7 @@ terraform init
 terraform apply
 ```
 
-When you run `terraform apply`, you may be asked to set three environment variables for the script to run if you have not exported them in advance. See [Configure Terraform](#configure-terraform) for details.
+When you run `terraform apply`, you may be asked to set three environment variables if you have not exported them in advance. See [Configure Terraform](#configure-terraform) for details.
 
 It might take 10 minutes or more to finish the process. A successful deployment gives the output like:
 
@@ -107,18 +107,18 @@ gcloud compute ssh bastion --zone <zone>
 mysql -h <tidb_ilb_ip> -P 4000 -u root
 ```
 
-> *NOTE*: Make sure that you have installed the MySQL client before you connect to TiDB via MySQL.
+> *NOTE*: You need to install the MySQL client before you connect to TiDB via MySQL.
 
 ## Interact with the cluster
 
-It is possible to interact with the cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_<cluster_name>`. The default `cluster_name` is `my-cluster`, which can be changed in `variables.tf`:
+You can interact with the cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_<cluster_name>`. The default `cluster_name` is `my-cluster`, which can be changed in `variables.tf`:
 
 ```bash
-# By specifying --kubeconfig argument
+# By specifying --kubeconfig argument.
 kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb
 helm --kubeconfig credentials/kubeconfig_<cluster_name> ls
 
-# Or setting KUBECONFIG environment variable
+# Or setting KUBECONFIG environment variable.
 export KUBECONFIG=$PWD/credentials/kubeconfig_<cluster_name>
 kubectl get po -n tidb
 helm ls
@@ -126,18 +126,18 @@ helm ls
 
 ## Upgrade
 
-To upgrade the TiDB cluster, modify the `tidb_version` variable to a higher version in the `variables.tf` file and run `terraform apply`.
+To upgrade the TiDB cluster, modify the `tidb_version` variable to a higher version in the `variables.tf` file, and run `terraform apply`.
 
 For example, to upgrade the cluster to the 2.1.10 version, modify the `tidb_version` to `v2.1.10`:
 
 ```
 variable "tidb_version" {
-description = "tidb cluster version"
-default = "v2.1.10"
+  description = "TiDB version"
+  default     = "v2.1.10"
 }
 ```
 
-The upgrading does not finish immediately. You can run `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch` to verify that all pods are in `Running` state. Then you can [access the database](#access-the-database) and use `tidb_version()` to see whether the TiDB cluster has been successfully upgraded:
+The upgrading does not finish immediately. You can run `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch` to verify that all pods are in `Running` state. Then you can [access the database](#access-the-database) and use `tidb_version()` to see whether the cluster has been upgraded successfully:
 
 ```sh
 MySQL [(none)]> select tidb_version()\G
@@ -155,15 +155,16 @@ Check Table Before Drop: false
 
 ## Scale
 
-To scale the TiDB cluster, modify `tikv_count`, `tikv_replica_count`, `tidb_count`, and `tidb_replica_count` to your desired count in the `variables.tf` file, and run `terraform apply`.
+To scale the TiDB cluster, modify `tikv_count`, `tikv_replica_count`, `tidb_count`, and `tidb_replica_count` in the `variables.tf` file to your desired count, and run `terraform apply`.
 
 Currently, scaling in is not supported since we cannot determine which node to remove. Scaling out needs a few minutes to complete, you can watch the scaling-out process by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
 
-For example, to scale out the cluster, you can modify the number of TiDB instances from 2 to 3:
+For example, to scale out the cluster, you can modify the number of TiDB instances from 1 to 2:
 
 ```
 variable "tidb_count" {
-default = 3
+  description = "Number of TiDB nodes per availability zone"
+  default     = 2
 }
 ```
 
