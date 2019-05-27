@@ -20,6 +20,18 @@ Before deploying, you need to configure the following items to guarantee a smoot
 
 After you have installed Google Cloud SDK, you need to [perform initial setup tasks](https://cloud.google.com/sdk/docs/initializing). 
 
+### Configure APIs
+
+If the GCP project is new, make sure the relevant APIs are enabled:
+
+```bash
+gcloud services enable cloudresourcemanager.googleapis.com && \
+gcloud services enable cloudbilling.googleapis.com && \
+gcloud services enable iam.googleapis.com && \
+gcloud services enable compute.googleapis.com && \
+gcloud services enable container.googleapis.com
+```
+
 ### Configure Terraform
 
 The terraform script expects three environment variables. You can let Terraform prompt you for them, or `export` them in the `~/.bash_profile` file ahead of time. If you choose to export them, they are:
@@ -39,18 +51,6 @@ To set the three environment variables, you can first run `vi ~/.bash_profile` a
 export TF_VAR_GCP_CREDENTIALS_PATH="/Path/to/my-project.json"
 export TF_VAR_GCP_REGION="us-west1"
 export TF_VAR_GCP_PROJECT="my-project"
-```
-
-### Configure APIs
-
-If the GCP project is new, make sure the relevant APIs are enabled:
-
-```bash
-gcloud services enable cloudresourcemanager.googleapis.com && \
-gcloud services enable cloudbilling.googleapis.com && \
-gcloud services enable iam.googleapis.com && \
-gcloud services enable compute.googleapis.com && \
-gcloud services enable container.googleapis.com
 ```
 
 ## Deploy
@@ -75,6 +75,8 @@ terraform init
 terraform apply
 ```
 
+When you run `terraform apply`, you may be asked to set three environment variables for the terraform script to run if you don't export them in advance. See [Configure Terraform](#configure-terraform) for details.
+ 
 ## Access the database
 
 After `terraform apply` is successful, the TiDB cluster can be accessed by SSHing into the bastion machine and connecting via MySQL:
