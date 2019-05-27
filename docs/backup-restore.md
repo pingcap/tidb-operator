@@ -1,4 +1,4 @@
-# Backup and Restore TiDB Cluster
+# Backup and Restore a TiDB Cluster
 
 ## Overview
 
