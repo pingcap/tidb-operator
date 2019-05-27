@@ -62,11 +62,10 @@ func main() {
 	if err != nil {
 		glog.Fatal(err)
 	}
-	// create database and table and insert a column for test backup and restore
-	initSQL := `"create database record;use record;create table test(t char(32))"`
 
 	name1 := "e2e-cluster1"
 	name2 := "e2e-cluster2"
+	name3 := "e2e-pd-replicas-1"
 	clusterInfos := []*tests.TidbClusterConfig{
 		{
 			Namespace:        name1,
@@ -77,7 +76,6 @@ func main() {
 			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
 			StorageClassName: "local-storage",
 			Password:         "admin",
-			InitSQL:          initSQL,
 			UserName:         "root",
 			InitSecretName:   fmt.Sprintf("%s-set-secret", name1),
 			BackupSecretName: fmt.Sprintf("%s-backup-secret", name1),
@@ -120,7 +118,6 @@ func main() {
 			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
 			StorageClassName: "local-storage",
 			Password:         "admin",
-			InitSQL:          initSQL,
 			UserName:         "root",
 			InitSecretName:   fmt.Sprintf("%s-set-secret", name2),
 			BackupSecretName: fmt.Sprintf("%s-backup-secret", name2),
@@ -153,6 +150,23 @@ func main() {
 			TiKVGrpcConcurrency:    4,
 			TiDBTokenLimit:         1000,
 			PDLogLevel:             "info",
+		},
+		{
+			Namespace:        name2,
+			ClusterName:      name3,
+			OperatorTag:      conf.OperatorTag,
+			PDImage:          fmt.Sprintf("pingcap/pd:%s", initTidbVersion),
+			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", initTidbVersion),
+			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
+			StorageClassName: "local-storage",
+			Password:         "admin",
+			UserName:         "root",
+			InitSecretName:   fmt.Sprintf("%s-set-secret", name2),
+			BackupSecretName: fmt.Sprintf("%s-backup-secret", name2),
+			Resources: map[string]string{
+				"pd.replicas":     "1",
+				"discovery.image": conf.OperatorImage,
+			},
 		},
 	}
 

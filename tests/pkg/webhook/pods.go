@@ -138,7 +138,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 			return &reviewResponse
 		}
 
-		if leader.Name == name && tc.Status.TiDB.StatefulSet.Replicas > 1 {
+		if leader.Name == name && tc.Status.PD.StatefulSet.Replicas > 1 {
 			time.Sleep(10 * time.Second)
 			err := fmt.Errorf("pd is leader, can't be deleted namespace %s name %s", namespace, name)
 			glog.Error(err)
