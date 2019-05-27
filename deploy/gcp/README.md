@@ -111,7 +111,7 @@ mysql -h <tidb_ilb_ip> -P 4000 -u root
 
 ## Interact with the cluster
 
-It is possible to interact with the cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_<cluster_name>`. The default `cluster_name` is `my-cluster`, and it can be changed in `variables.tf`:
+It is possible to interact with the cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_<cluster_name>`. The default `cluster_name` is `my-cluster`, which can be changed in `variables.tf`:
 
 ```bash
 # By specifying --kubeconfig argument
@@ -128,7 +128,7 @@ helm ls
 
 To upgrade the TiDB cluster, modify the `tidb_version` variable to a higher version in `variables.tf` and run `terraform apply`.
 
-For example, to upgrade the cluster to version 2.1.10, modify the `tidb_version` to `v2.1.10`:
+For example, to upgrade the cluster to the 2.1.10 version, modify the `tidb_version` to `v2.1.10`:
 
 ```
 variable "tidb_version" {
@@ -141,9 +141,9 @@ The upgrading does not finish immediately. You can watch the upgrading process b
 
 ## Scale
 
-To scale the TiDB cluster, modify `tikv_count`, `tikv_replica_count`, `tidb_count`, and `tidb_replica_count` to your desired count, and then run `terraform apply`.
+To scale the TiDB cluster, modify `tikv_count`, `tikv_replica_count`, `tidb_count`, and `tidb_replica_count` to your desired count, and run `terraform apply`.
 
-Currently, scaling in is not supported since we cannot determine which node to remove. Scaling out needs a few minutes to complete, you can watch the scaling out by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
+Currently, scaling in is not supported since we cannot determine which node to remove. Scaling out needs a few minutes to complete, you can watch the scaling-out process by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
 
 For example, to scale out the cluster, you can modify the number of TiDB instances from 2 to 3:
 
