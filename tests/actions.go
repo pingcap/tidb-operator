@@ -504,6 +504,8 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 
 		cmd = fmt.Sprintf(" %s --values %s", cmd, subVaulesPath)
 	}
+	glog.Info(cmd)
+
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
 			info.Namespace, info.ClusterName, err, string(res))

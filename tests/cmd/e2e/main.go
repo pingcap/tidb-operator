@@ -15,9 +15,10 @@ package main
 
 import (
 	"fmt"
-	"k8s.io/api/core/v1"
 	_ "net/http/pprof"
 	"time"
+
+	"k8s.io/api/core/v1"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
@@ -168,6 +169,7 @@ func main() {
 				"pd.replicas":     "1",
 				"discovery.image": conf.OperatorImage,
 			},
+			SubValues: tests.GetAffinityConfigOrDie(name3, name2),
 		},
 	}
 
