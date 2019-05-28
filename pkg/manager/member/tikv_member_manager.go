@@ -346,7 +346,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 							ImagePullPolicy: tc.Spec.TiKV.ImagePullPolicy,
 							Ports: []corev1.ContainerPort{
 								{
-									Name:          "server",
+									Name:          label.ServerVal,
 									ContainerPort: int32(20160),
 									Protocol:      corev1.ProtocolTCP,
 								},

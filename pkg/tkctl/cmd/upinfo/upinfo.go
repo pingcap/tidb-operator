@@ -14,6 +14,7 @@
 package upinfo
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -155,6 +156,38 @@ func (o *UpInfoOptions) Run() error {
 	return nil
 }
 
+func getState(updateReplicas int32, ordinal int32, tc *v1alpha1.TidbCluster, pod *v1.Pod) string {
+
+	var state string
+
+	if updateReplicas < ordinal {
+		state = UPDATED
+	} else if updateReplicas == ordinal {
+
+		state = UPDATING
+
+		if pod.Labels[apps.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision {
+			if member, exist := tc.Status.TiDB.Members[pod.Name]; exist && member.Health {
+				state = UPDATED
+			}
+		}
+
+	} else {
+		state = WAITING
+	}
+
+	return state
+}
+
+func getServerPort(container *v1.Container) (int32, bool) {
+	for _, port := range container.Ports {
+		if port.Name == label.ServerVal {
+			return port.ContainerPort, true
+		}
+	}
+	return 0, false
+}
+
 func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podList *v1.PodList) (string, error) {
 	return readable.TabbedString(func(out io.Writer) error {
 		w := readable.NewPrefixWriter(out)
@@ -170,8 +203,8 @@ func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podLis
 			}
 		}
 		{
-			w.WriteLine(readable.LEVEL_1, "Name\tState\t")
-			w.WriteLine(readable.LEVEL_1, "----\t-----\t")
+			w.WriteLine(readable.LEVEL_1, "Name\tState\tNodeIP\tPodIP\tPort\t")
+			w.WriteLine(readable.LEVEL_1, "----\t-----\t------\t-----\t----\t")
 			{
 				updateReplicas := set.Spec.UpdateStrategy.RollingUpdate.Partition
 
@@ -183,25 +216,21 @@ func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podLis
 							return err
 						}
 						if dbPhase == v1alpha1.UpgradePhase {
-							if (*updateReplicas) < ordinal {
-								state = UPDATED
-							} else if (*updateReplicas) == ordinal {
-
-								state = UPDATING
-
-								if pod.Labels[apps.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision {
-									if member, exist := tc.Status.TiDB.Members[pod.Name]; exist && member.Health {
-										state = UPDATED
-									}
-								}
-
-							} else {
-								state = WAITING
-							}
+							state = getState(*updateReplicas, ordinal, tc, &pod)
 						} else {
 							state = UPDATED
 						}
-						w.WriteLine(readable.LEVEL_1, "%s\t%s\t", pod.Name, state)
+
+						container, ok := util.GetContainerViaName(v1alpha1.TiDBMemberType.String(), &pod)
+						if !ok {
+							return errors.New("no tidb container")
+						}
+						port, ok := getServerPort(container)
+						if !ok {
+							return errors.New("no server port")
+						}
+
+						w.WriteLine(readable.LEVEL_1, "%s\t%s\t%s\t%s\t%d\t", pod.Name, state, pod.Status.HostIP, pod.Status.PodIP, port)
 					}
 				} else {
 					w.WriteLine(readable.LEVEL_1, "no resource found")

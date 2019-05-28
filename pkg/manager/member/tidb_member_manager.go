@@ -305,7 +305,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		ImagePullPolicy: tc.Spec.TiDB.ImagePullPolicy,
 		Ports: []corev1.ContainerPort{
 			{
-				Name:          "server",
+				Name:          label.ServerVal,
 				ContainerPort: int32(4000),
 				Protocol:      corev1.ProtocolTCP,
 			},
