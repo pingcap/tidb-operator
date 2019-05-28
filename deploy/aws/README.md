@@ -76,7 +76,7 @@ monitor_endpoint = http://abd299cc47af411e98aae02938da0762-1989524000.us-east-2.
 region = us-east-2
 tidb_dns = abd2e3f7c7af411e98aae02938da0762-17499b76b312be02.elb.us-east-2.amazonaws.com
 tidb_port = 4000
-tidb_version = v3.0.0-rc.1
+tidb_version = v2.1.8
 ```
 
 > **Note:** You can use the `terraform output` command to get the output again.
@@ -149,7 +149,9 @@ You can change default values in `variables.tf` (such as the cluster name and im
 
 ### Customize AWS related resources
 
-By default, the terraform script will create a new VPC. You can use an existing VPC by setting `create_vpc` to `false` and specify your existing VPC id and subnet ids to `vpc_id` and `subnets` variables.
+By default, the terraform script will create a new VPC. You can use an existing VPC by setting `create_vpc` to `false` and specify your existing VPC id and subnet ids to `vpc_id`, `private_subnet_ids` and `public_subnet_ids` variables.
+
+**Note:** Reusing VPC and subnets of an existing EKS cluster is not supported yet due to limitations of AWS and Terraform, so only change this option if you have to use a manually created VPC.
 
 An ec2 instance is also created by default as bastion machine to connect to the created TiDB cluster, because the TiDB service is exposed as an [Internal Elastic Load Balancer](https://aws.amazon.com/blogs/aws/internal-elastic-load-balancers/). The ec2 instance has MySQL and Sysbench pre-installed, so you can SSH into the ec2 instance and connect to TiDB using the ELB endpoint. You can disable the bastion instance creation by setting `create_bastion` to `false` if you already have an ec2 instance in the VPC.
 
