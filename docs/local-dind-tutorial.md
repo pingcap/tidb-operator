@@ -297,7 +297,7 @@ Use `kubectl get pod -n tidb` to verify the number of each compoments equal to v
 Use `kubectl get pod -n tidb` to verify that all pods are in `Running` state. Then you can connect to the database and use `tidb_version()` function to verify the version:
 
 ```sh
-MySQL [(none)]> select tidb_version()\G
+MySQL [(none)]> select tidb_version();
 *************************** 1. row ***************************
 tidb_version(): Release Version: 2.1.10
 Git Commit Hash: v2.1.10
