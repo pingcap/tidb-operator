@@ -242,6 +242,9 @@ func run(oa tests.OperatorActions,
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
+	// after upgrade cluster, clean webhook
+	oa.CleanWebHookAndService(operatorCfg)
+
 	// cluster1: bad configuration change case
 	cluster1.TiDBPreStartScript = strconv.Quote("exit 1")
 	oa.UpgradeTidbClusterOrDie(cluster1)
@@ -269,9 +272,6 @@ func run(oa tests.OperatorActions,
 		UpdateTiDBTokenLimit(conf.TiDBTokenLimit)
 	oa.UpgradeTidbClusterOrDie(cluster2)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
-
-	// after upgrade cluster, clean webhook
-	oa.CleanWebHookAndService(operatorCfg)
 
 	// deploy and check cluster restore
 	oa.DeployTidbClusterOrDie(clusterRestoreTo)
