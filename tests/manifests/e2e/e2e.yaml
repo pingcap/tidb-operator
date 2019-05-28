@@ -50,7 +50,6 @@ spec:
     - --operator-image=pingcap/tidb-operator:latest
     - --tidb-versions=v3.0.0-beta.1,v3.0.0-rc.1
     - --chart-dir=/charts
-    - --manifest-dir=/manifests
     volumeMounts:
     - mountPath: /logDir
       name: logdir
