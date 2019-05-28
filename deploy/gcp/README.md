@@ -53,6 +53,8 @@ export TF_VAR_GCP_REGION="us-west1"
 export TF_VAR_GCP_PROJECT="my-project"
 ```
 
+You can also append them in your `~/.bash_profile` so they will be exported automatically next time.
+
 ## Deploy
 
 The default setup creates a new VPC, two subnetworks, and an f1-micro instance as a bastion machine. The GKE cluster is created with the following instance types as worker nodes:
@@ -80,7 +82,7 @@ When you run `terraform apply`, you may be asked to set three environment variab
 It might take 10 minutes or more to finish the process. A successful deployment gives the output like:
 
 ```
-Apply complete! Resources: 8 added, 0 changed, 1 destroyed.
+Apply complete! Resources: 17 added, 0 changed, 0 destroyed.
 
 Outputs:
 
