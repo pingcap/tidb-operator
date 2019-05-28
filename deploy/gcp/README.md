@@ -44,9 +44,7 @@ The terraform script expects three environment variables. You can let Terraform 
 
 > *Note*: The service account must have sufficient permissions to create resources in the project. The `Project Editor` primitive will accomplish this.
 
-To set the three environment variables, you can first run `vi ~/.bash_profile`, append the `export` statements to it and run `source ~/.bash_profile`. 
-
-Here is an example of `~/.bash_profile`:
+To set the three environment variables, for example, you can enter in your terminal:
  
 ```bash
 # Replace the values with the path to the JSON file you have downloaded, the GCP region and your GCP project name.
@@ -232,7 +230,9 @@ When you are done, the infrastructure can be torn down by running:
 ```bash
 terraform destroy
 ```
-> *NOTE*: You have to manually delete disks in the Google Cloud Console, or with `gcloud` after running `terraform destroy` if you do not need the data anymore.
+
+You have to manually delete disks in the Google Cloud Console, or with `gcloud` after running `terraform destroy` if you do not need the data anymore.
+
 > *NOTE*: When `terraform destroy` is running, an error with the following message might occur: `Error reading Container Cluster "my-cluster": Cluster "my-cluster" has status "RECONCILING" with message""`. This happens when GCP is upgrading the kubernetes master node, which it does automatically at times. While this is happening, it is not possible to delete the cluster. When it is done, run `terraform destroy` again.
 
 > *NOTE*: When `terraform destroy` is running, an error with the following message might occur: `Error deleting NodePool: googleapi: Error 400: Operation operation-1558952543255-89695179 is currently deleting a node pool for cluster my-cluster. Please wait and try again once it is done., failedPrecondition`. This happens when terraform issues delete requests to cluster resources concurrently. To resolve, wait a little bit and then run `terraform destroy` again.
