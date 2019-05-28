@@ -387,7 +387,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	// create cert and secret for webhook
-	cmd = fmt.Sprintf("%s/create-cert.sh --namespace=%s", oa.manifestPath(info.Tag),info.Namespace)
+	cmd = fmt.Sprintf("%s/create-cert.sh --namespace=%s", oa.manifestPath(info.Tag), info.Namespace)
 	glog.Info(cmd)
 
 	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
