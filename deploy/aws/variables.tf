@@ -8,11 +8,17 @@ variable "ingress_cidr" {
   default = ["0.0.0.0/0"]	# Note: Please restrict your ingress to only necessary IPs. Opening to 0.0.0.0/0 can lead to security vulnerabilities.
 }
 
+# If you have an exist VPC that you'd like to use, set this value to `false` and
+# adjust `vpc_id`, `private_subnet_ids` and `public_subnet_ids` to your exist ones
+# Please note that this is only for manually created VPCs, deploying multiple EKS
+# clusters in one VPC is NOT supported now.
 variable "create_vpc" {
-  description = "Create a new VPC or not, if true the vpc_cidr/private_subnets/public_subnets must be set correctly, otherwise vpc_id/subnet_ids must be set correctly"
+  description = "Create a new VPC or not, if true the vpc_cidr/private_subnets/public_subnets must be set correctly, otherwise vpc_id/private_subnet_ids/public_subnet_ids must be set correctly"
   default = true
 }
 
+# The networks you'd like to use within the VPC.
+# This value will be ignored if `create_vpc=false`
 variable "vpc_cidr" {
   description = "vpc cidr"
   default = "10.0.0.0/16"
@@ -30,14 +36,27 @@ variable "public_subnets" {
   default = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]
 }
 
+# The ID of exist VPC
+# This value will be ignored if `create_vpc=true`
 variable "vpc_id" {
   description = "VPC id"
   type = "string"
   default = "vpc-c679deae"
 }
 
-variable "subnets" {
-  description = "subnet id list"
+# The subnet IDs of your private and public networks, if you want
+# to use the same subnets for both private and public usage, just
+# set their values identical.
+# These values will be ignored if `create_vpc=true`
+variable "private_subnet_ids" {
+  description = "private subnet id list"
+  type = "list"
+  default = ["subnet-899e79f3", "subnet-a72d80cf", "subnet-a76d34ea"]
+}
+
+
+variable "public_subnet_ids" {
+  description = "public subnet id list"
   type = "list"
   default = ["subnet-899e79f3", "subnet-a72d80cf", "subnet-a76d34ea"]
 }

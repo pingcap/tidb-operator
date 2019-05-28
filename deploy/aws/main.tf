@@ -69,7 +69,7 @@ module "ec2" {
   monitoring = false
   user_data = "${file("bastion-userdata")}"
   vpc_security_group_ids = ["${aws_security_group.ssh.id}"]
-  subnet_ids = "${split(",", var.create_vpc ? join(",", module.vpc.public_subnets) : join(",", var.subnets))}"
+  subnet_ids = "${split(",", var.create_vpc ? join(",", module.vpc.public_subnets) : join(",", var.public_subnet_ids))}"
 
   tags = {
     app = "tidb"
@@ -86,7 +86,7 @@ module "eks" {
   cluster_name = "${var.cluster_name}"
   cluster_version = "${var.k8s_version}"
   config_output_path = "credentials/"
-  subnets = "${split(",", var.create_vpc ? join(",", module.vpc.private_subnets) : join(",", var.subnets))}"
+  subnets = "${split(",", var.create_vpc ? join(",", module.vpc.private_subnets) : join(",", var.private_subnet_ids))}"
   vpc_id = "${var.create_vpc ? module.vpc.vpc_id : var.vpc_id}"
 
   # instance types: https://aws.amazon.com/ec2/instance-types/
