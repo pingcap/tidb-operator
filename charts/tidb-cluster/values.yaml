@@ -47,6 +47,7 @@ discovery:
 # if the ConfigMap was not changed.
 enableConfigMapRollout: false
 
+
 pd:
   replicas: 3
   image: pingcap/pd:v3.0.0-rc.1
@@ -191,6 +192,14 @@ tikv:
   #   value: tidb
   #   effect: "NoSchedule"
   annotations: {}
+
+  ## storeLabels is used to define store label keys
+  # The label keys specified the location of a store.
+  # The placement priorities is implied by the order of label keys.
+  # For example, ["zone", "rack"] means that we should place replicas to
+  # different zones first, then to different racks if we don't have enough zones.
+  # default value is ["region", "zone", "rack", "host"]
+  # storeLabels: ["region", "zone", "rack", "host"]
 
   # block-cache used to cache uncompressed blocks, big block-cache can speed up read.
   # in normal cases should tune to 30%-50% tikv.resources.limits.memory
