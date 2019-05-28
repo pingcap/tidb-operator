@@ -209,7 +209,7 @@ resource "helm_release" "tidb-operator" {
 
 resource "helm_release" "tidb-cluster" {
   depends_on = ["helm_release.tidb-operator"]
-  name = "tidb-cluster"
+  name = "tidb-cluster-${var.cluster_name}"
   namespace = "tidb"
   chart = "${path.module}/charts/tidb-cluster"
   values = [
@@ -226,11 +226,11 @@ until kubectl get po -n tidb -lapp.kubernetes.io/component=tidb | grep Running; 
   echo "Wait TiDB pod running"
   sleep 5
 done
-until kubectl get svc -n tidb tidb-cluster-tidb | grep elb; do
+until kubectl get svc -n tidb tidb-cluster-${var.cluster_name}-tidb | grep elb; do
   echo "Wait TiDB service ready"
   sleep 5
 done
-until kubectl get svc -n tidb tidb-cluster-grafana | grep elb; do
+until kubectl get svc -n tidb tidb-cluster-${var.cluster_name}-grafana | grep elb; do
   echo "Wait monitor service ready"
   sleep 5
 done
