@@ -223,7 +223,6 @@ type TidbClusterConfig struct {
 	TiDBImage              string
 	StorageClassName       string
 	Password               string
-	InitSQL                string
 	RecordCount            string
 	InsertBatchSize        string
 	Resources              map[string]string
@@ -297,7 +296,6 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 		"tikv.image":              tc.TiKVImage,
 		"tidb.image":              tc.TiDBImage,
 		"tidb.passwordSecretName": tc.InitSecretName,
-		"tidb.initSql":            tc.InitSQL,
 		"monitor.create":          strconv.FormatBool(tc.Monitor),
 		"enableConfigMapRollout":  strconv.FormatBool(tc.EnableConfigMapRollout),
 		"pd.preStartScript":       tc.PDPreStartScript,
