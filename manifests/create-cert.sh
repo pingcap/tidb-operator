@@ -22,24 +22,24 @@ EOF
 optstring=":-:n"
 
 while getopts "$optstring" opt; do
-	case $opt in
-		-)
-			case "$OPTARG" in
-				namespace)
-					namespace="${2}"
-					;;
-				*)
-					usage
-					;;
-			esac
-			;;
-		n)
-			namespace="${2}"
-			;;
-		*)
-			usage
-			;;
-	esac
+    case $opt in
+        -)
+            case "$OPTARG" in
+                namespace)
+                    namespace="${2}"
+                    ;;
+                *)
+                    usage
+                    ;;
+            esac
+            ;;
+        n)
+            namespace="${2}"
+            ;;
+        *)
+            usage
+            ;;
+    esac
 done
 
 namespace=${namespace:-tidb-admin}
