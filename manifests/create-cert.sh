@@ -45,7 +45,7 @@ fi
 CURDIR=$(cd $(dirname ${BASH_SOURCE[0]}); pwd )
 
 # reset namespace and ca_bundle of webhook.yaml
-sed -i "/caBundle:*/c\      caBundle: \${CA_BUNDLE}" $CURDIR/webhook.yaml
+sed -i "s/caBundle:.*/caBundle: \${CA_BUNDLE}/g" $CURDIR/webhook.yaml
 sed -i "s/namespace:.*/namespace: \${NAMESPACE}/g" $CURDIR/webhook.yaml
 
 csrName=${service}.${namespace}
