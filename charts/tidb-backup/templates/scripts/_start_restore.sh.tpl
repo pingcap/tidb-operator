@@ -22,9 +22,9 @@ downloader \
 {{- end }}
 
 /loader \
-  -d ${dirname} \
-  -h `eval echo '${'$host'}'` \
-  -u ${TIDB_USER} \
-  -p ${TIDB_PASSWORD} \
-  -P 4000 \
+  -d=${dirname} \
+  -h=`eval echo '${'$host'}'` \
+  -u=${TIDB_USER} \
+  -p=${TIDB_PASSWORD} \
+  -P=4000 \
   {{ .Values.restoreOptions }}

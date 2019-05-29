@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pingcap/tidb-operator/tests/slack"
-
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
@@ -17,6 +15,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/ops"
+	"github.com/pingcap/tidb-operator/tests/slack"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -65,6 +64,8 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	glog.Infof("deleting pod: [%s/%s] and wait 1 minute for the pod to terminate", info.Namespace, store.PodName)
 	err = cli.CoreV1().Pods(info.Namespace).Delete(store.PodName, nil)
 	if err != nil {
+		glog.Errorf("failed to get delete the pod: ns=%s tc=%s pod=%s err=%s",
+			info.Namespace, info.ClusterName, store.PodName, err.Error())
 		return err
 	}
 
@@ -77,6 +78,8 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		Store:     store.ID,
 	})
 	if err != nil {
+		glog.Errorf("failed to truncate the sst file: ns=%s tc=%s store=%s err=%s",
+			info.Namespace, info.ClusterName, store.ID, err.Error())
 		return err
 	}
 	oa.EmitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s/%s", info.Namespace, store.PodName))
@@ -505,6 +508,19 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 	})
 }
 
+func (oa *operatorActions) CheckOperatorDownOrDie(clusters []*TidbClusterConfig) {
+	glog.Infof("checking k8s/tidbCluster status when operator down")
+
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckK8sAvailable(nil, nil)
+		if err != nil {
+			return err
+		}
+
+		return oa.CheckTidbClustersAvailable(clusters)
+	})
+}
+
 func (oa *operatorActions) CheckK8sAvailableOrDie(excludeNodes map[string]string, excludePods map[string]*corev1.Pod) {
 	if err := oa.CheckK8sAvailable(excludeNodes, excludePods); err != nil {
 		slack.NotifyAndPanic(err)
@@ -582,6 +598,12 @@ func (oa *operatorActions) CheckTidbClustersAvailable(infos []*TidbClusterConfig
 		return true, nil
 	})
 
+}
+
+func (oa *operatorActions) CheckTidbClustersAvailableOrDie(infos []*TidbClusterConfig) {
+	if err := oa.CheckTidbClustersAvailable(infos); err != nil {
+		slack.NotifyAndPanic(err)
+	}
 }
 
 var testTableName = "testTable"
