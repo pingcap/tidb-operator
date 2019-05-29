@@ -389,6 +389,7 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 		oldTidbMember, exist := tc.Status.TiDB.Members[name]
 		if exist {
 			newTidbMember.LastTransitionTime = oldTidbMember.LastTransitionTime
+			newTidbMember.NodeName = oldTidbMember.NodeName
 		}
 		if !exist || oldTidbMember.Health != newTidbMember.Health {
 			newTidbMember.LastTransitionTime = metav1.Now()
@@ -398,10 +399,9 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 			return err
 		}
 		if pod != nil && pod.Spec.NodeName != "" {
-			// Update assiged node
+			// Update assiged node if pod exists and is scheduled
 			newTidbMember.NodeName = pod.Spec.NodeName
 		}
-		// Ignore if pod does not exist or not scheduled
 		tidbStatus[name] = newTidbMember
 	}
 	tc.Status.TiDB.Members = tidbStatus
