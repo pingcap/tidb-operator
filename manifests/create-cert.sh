@@ -14,28 +14,39 @@ detailed explantion and additional instructions.
 
 The server key/cert k8s CA cert are stored in a k8s secret.
 
-       --namespace        Namespace where webhook service and secret reside.
+       -n,--namespace        Namespace where webhook service and secret reside.
 EOF
     exit 1
 }
 
-while [[ $# -gt 0 ]]; do
-    case ${1} in
-        --namespace)
-            namespace="$2"
-            shift
+namespace=default
+service=admission-controller-svc
+secret=admission-controller-certs
+
+optstring=":-:n"
+
+while getopts "$optstring" opt; do
+    case $opt in
+		-)
+			case "$OPTARG" in
+				namespace)
+					namespace="${2}"
+					;;
+				*)
+					usage
+					;;
+			esac
+			;;
+        n)
+            namespace="${2}"
             ;;
         *)
             usage
             ;;
     esac
-    shift
 done
 
-
-[ -z ${namespace} ] && namespace=default
-service=admission-controller-svc
-secret=admission-controller-certs
+echo $namespace
 
 if [ ! -x "$(command -v openssl)" ]; then
     echo "openssl not found"
