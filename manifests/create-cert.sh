@@ -26,7 +26,7 @@ secret=admission-controller-certs
 optstring=":-:n"
 
 while getopts "$optstring" opt; do
-    case $opt in
+	case $opt in
 		-)
 			case "$OPTARG" in
 				namespace)
