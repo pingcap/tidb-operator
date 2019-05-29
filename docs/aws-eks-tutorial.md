@@ -45,7 +45,7 @@ For simplicity you can just assign `AdministratorAccess` to the group this user
 belongs to. With more detailed permissions, you will have to be sure you also have
 `AmazonEKSClusterPolicy` and `AmazonEKSServicePolicy` for this user.
 
-Then generate a pair of access keys and keep them safe locally. 
+Then generate a pair of access keys and keep them safe locally.
 
 ## A bit more about Terraform
 
@@ -138,7 +138,7 @@ monitor_endpoint = http://a37987df9710211e9b48c0ae40bc8d7b-1847612729.us-east-2.
 region = us-east-2
 tidb_dns = internal-a37a17c22710211e9b48c0ae40bc8d7b-1891023212.us-east-2.elb.amazonaws.com
 tidb_port = 4000
-tidb_version = v2.1.8
+tidb_version = v3.0.0-rc.1
 ```
 
 > *NOTE*: Be careful about changing instance types for PD and TiKV worker groups as they rely on local SSD. Doing so may break user-data and local volume setup.
@@ -154,7 +154,7 @@ mysql -h <tidb_dns> -P <tidb_port> -u root
 
 It is possible to interact with the cluster via `kubectl` and `helm` with the kubeconfig file that is created `credentials/kubeconfig_aws_tutorial`.
 
-```sh 
+```sh
 # By specifying --kubeconfig
 kubectl --kubeconfig credentials/kubeconfig_aws_tutorial get po -n tidb
 helm --kubeconfig credentials/kubeconfig_aws_tutorial ls
