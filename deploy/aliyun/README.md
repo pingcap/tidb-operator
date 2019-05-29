@@ -24,11 +24,11 @@ The following permissions are required:
 - AliyunVPNGatewayFullAccess
 - AliyunNATGatewayFullAccess
 
-## Overview 
+## Overview
 
 The default setup will create:
- 
-- A new VPC 
+
+- A new VPC
 - An ECS instance as bastion machine
 - A managed ACK(Alibaba Cloud Kubernetes) cluster with the following ECS instance worker nodes:
   - An auto-scaling group of 2 * instances(2c2g) as ACK mandatory workers for system service like CoreDNS
@@ -83,12 +83,12 @@ monitor_endpoint = 1.2.3.4:3000
 region = cn-hangzhou
 tidb_port = 4000
 tidb_slb_ip = 192.168.5.53
-tidb_version = v2.1.0
+tidb_version = v3.0.0-rc.1
 vpc_id = vpc-bp16wcbu0xhbg833fymmc
 worker_key_file = /root/tidb-operator/deploy/aliyun/credentials/tidb-cluster-node-key.pem
 ```
 
-You can then interact with the ACK cluster using `kubectl` and `helm` (`cluster_name` is `tidb-cluster` by default): 
+You can then interact with the ACK cluster using `kubectl` and `helm` (`cluster_name` is `tidb-cluster` by default):
 
 ```shell
 $ export KUBECONFIG=$PWD/credentials/kubeconfig_<cluster_name>
@@ -105,7 +105,7 @@ $ ssh -i credentials/<cluster_name>-bastion-key.pem root@<bastion_ip>
 $ mysql -h <tidb_slb_ip> -P <tidb_port> -u root
 ```
 
-## Monitoring 
+## Monitoring
 
 Visit `<monitor_endpoint>` to view the grafana dashboards. You can find this information in the output of installation.
 
@@ -148,7 +148,7 @@ $ terraform state rm module.ack.alicloud_cs_managed_kubernetes.k8s
 
 ## Customize
 
-By default, the terraform script will create a new VPC. You can use an existing VPC by setting `vpc_id` to use an existing VPC. Note that kubernetes node will only be created in available zones that has vswitch existed when using existing VPC. 
+By default, the terraform script will create a new VPC. You can use an existing VPC by setting `vpc_id` to use an existing VPC. Note that kubernetes node will only be created in available zones that has vswitch existed when using existing VPC.
 
 An ecs instance is also created by default as bastion machine to connect to the created TiDB cluster, because the TiDB service is only exposed to intranet. The bastion instance has mysql-cli and sysbench installed that helps you use and test TiDB.
 
@@ -168,4 +168,3 @@ For more customization options, please refer to `variables.tf`
 ## Limitations
 
 You cannot change pod cidr, service cidr and worker instance types once the cluster created.
-
