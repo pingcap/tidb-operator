@@ -19,10 +19,6 @@ EOF
     exit 1
 }
 
-namespace=default
-service=admission-controller-svc
-secret=admission-controller-certs
-
 optstring=":-:n"
 
 while getopts "$optstring" opt; do
@@ -46,7 +42,9 @@ while getopts "$optstring" opt; do
 	esac
 done
 
-echo $namespace
+namespace=${namespace:-tidb-admin}
+service=admission-controller-svc
+secret=admission-controller-certs
 
 if [ ! -x "$(command -v openssl)" ]; then
     echo "openssl not found"
