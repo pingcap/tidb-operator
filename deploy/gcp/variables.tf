@@ -5,7 +5,7 @@ variable "cluster_name" {
 
 variable "tidb_version" {
   description = "TiDB version"
-  default     = "v2.1.8"
+  default     = "v3.0.0-rc.1"
 }
 
 variable "tidb_operator_version" {
