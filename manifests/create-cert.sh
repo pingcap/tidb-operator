@@ -37,13 +37,13 @@ while getopts "$optstring" opt; do
 					;;
 			esac
 			;;
-        n)
-            namespace="${2}"
-            ;;
-        *)
-            usage
-            ;;
-    esac
+		n)
+			namespace="${2}"
+			;;
+		*)
+			usage
+			;;
+	esac
 done
 
 echo $namespace
