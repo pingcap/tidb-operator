@@ -1627,11 +1627,12 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	glog.Infof("begin to deploy adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
 	sets := map[string]string{
-		"name":         info.BackupName,
-		"mode":         "backup",
-		"user":         "root",
-		"password":     info.Password,
-		"storage.size": "10Gi",
+		"name":          info.BackupName,
+		"mode":          "backup",
+		"user":          "root",
+		"password":      info.Password,
+		"storage.size":  "10Gi",
+		"backupOptions": "\"--chunk-filesize=10 --verbose=3\"",
 	}
 
 	setString := info.BackupHelmSetString(sets)

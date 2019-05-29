@@ -25,7 +25,7 @@ storage:
   size: 100Gi
 
 # backupOptions is the options of mydumper https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
-backupOptions: "--chunk-filesize=100"
+backupOptions: "--chunk-filesize=10 --verbose=3"
 # restoreOptions is the options of loader https://www.pingcap.com/docs-cn/tools/loader/
 restoreOptions: "-t 16"
 
