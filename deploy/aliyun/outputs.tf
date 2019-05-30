@@ -7,7 +7,7 @@ output "cluster_id" {
 }
 
 output "cluster_name" {
-  value = "${var.cluster_name}"
+  value = "${var.cluster_name_prefix}"
 }
 
 output "kubeconfig_file" {
