@@ -164,7 +164,9 @@ type OperatorActions interface {
 	BackupRestore(from, to *TidbClusterConfig) error
 	BackupRestoreOrDie(from, to *TidbClusterConfig)
 	GetTidbMemberAssignedNodes(info *TidbClusterConfig) (map[string]string, error)
+	GetTidbMemberAssignedNodesOrDie(info *TidbClusterConfig) map[string]string
 	CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error
+	CheckTidbMemberAssignedNodesOrDie(info *TidbClusterConfig, oldAssignedNodes map[string]string)
 }
 
 type operatorActions struct {
@@ -602,7 +604,16 @@ func (oa *operatorActions) GetTidbMemberAssignedNodes(info *TidbClusterConfig) (
 	return assignedNodes, nil
 }
 
+func (oa *operatorActions) GetTidbMemberAssignedNodesOrDie(info *TidbClusterConfig) map[string]string {
+	result, err := oa.GetTidbMemberAssignedNodes(info)
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+	return result
+}
+
 func (oa *operatorActions) CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error {
+	glog.Infof("checking tidb member [%s/%s] assigned nodes", info.Namespace, info.ClusterName)
 	assignedNodes, err := oa.GetTidbMemberAssignedNodes(info)
 	if err != nil {
 		return err
@@ -614,6 +625,12 @@ func (oa *operatorActions) CheckTidbMemberAssignedNodes(info *TidbClusterConfig,
 		}
 	}
 	return nil
+}
+
+func (oa *operatorActions) CheckTidbMemberAssignedNodesOrDie(info *TidbClusterConfig, oldAssignedNodes map[string]string) {
+	if err := oa.CheckTidbMemberAssignedNodes(info, oldAssignedNodes); err != nil {
+		slack.NotifyAndPanic(err)
+	}
 }
 
 func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error {
