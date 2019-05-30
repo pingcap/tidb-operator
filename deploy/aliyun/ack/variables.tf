@@ -2,7 +2,7 @@ variable "region" {
   description = "Alicloud region"
 }
 
-variable "cluster_name" {
+variable "cluster_name_prefix" {
   description = "Kubernetes cluster name"
   default     = "ack-cluster"
 }
@@ -142,8 +142,8 @@ EOS
     "internet_charge_type"       = "PayByTraffic"
     "internet_max_bandwidth_in"  = 10
     "internet_max_bandwidth_out" = 10
-    "node_taints" = ""
-    "node_labels" = ""
+    "node_taints"                = ""
+    "node_labels"                = ""
   }
 }
 
