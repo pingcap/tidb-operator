@@ -14,11 +14,35 @@ detailed explantion and additional instructions.
 
 The server key/cert k8s CA cert are stored in a k8s secret.
 
+       -n,--namespace        Namespace where webhook service and secret reside.
 EOF
     exit 1
 }
 
-namespace=default
+optstring=":-:n"
+
+while getopts "$optstring" opt; do
+    case $opt in
+        -)
+            case "$OPTARG" in
+                namespace)
+                    namespace="${2}"
+                    ;;
+                *)
+                    usage
+                    ;;
+            esac
+            ;;
+        n)
+            namespace="${2}"
+            ;;
+        *)
+            usage
+            ;;
+    esac
+done
+
+namespace=${namespace:-tidb-admin}
 service=admission-controller-svc
 secret=admission-controller-certs
 
@@ -26,6 +50,12 @@ if [ ! -x "$(command -v openssl)" ]; then
     echo "openssl not found"
     exit 1
 fi
+
+CURDIR=$(cd $(dirname ${BASH_SOURCE[0]}); pwd )
+
+# reset namespace and ca_bundle of webhook.yaml
+sed -i "s/caBundle:.*/caBundle: \${CA_BUNDLE}/g" $CURDIR/webhook.yaml
+sed -i "s/namespace:.*/namespace: \${NAMESPACE}/g" $CURDIR/webhook.yaml
 
 csrName=${service}.${namespace}
 tmpdir=$(mktemp -d)
@@ -99,3 +129,5 @@ kubectl create secret generic ${secret} \
         --from-file=cert.pem=${tmpdir}/server-cert.pem \
         --dry-run -o yaml |
     kubectl -n ${namespace} apply -f -
+
+sed -i "s/namespace: .*$/namespace: ${namespace}/g" $CURDIR/webhook.yaml
