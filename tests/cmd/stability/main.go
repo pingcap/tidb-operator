@@ -15,11 +15,12 @@ package main
 
 import (
 	"fmt"
-	"k8s.io/api/core/v1"
 	"net/http"
 	_ "net/http/pprof"
 	"strconv"
 	"time"
+
+	"k8s.io/api/core/v1"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
@@ -104,6 +105,8 @@ func main() {
 		PDLogLevel:             "info",
 		EnableConfigMapRollout: true,
 	}
+	cluster1.SubValues = tests.GetAffinityConfigOrDie(cluster1.ClusterName, cluster1.Namespace)
+
 	cluster2 := &tests.TidbClusterConfig{
 		Namespace:        clusterName2,
 		ClusterName:      clusterName2,
@@ -143,6 +146,7 @@ func main() {
 		PDLogLevel:             "info",
 		EnableConfigMapRollout: false,
 	}
+	cluster2.SubValues = tests.GetAffinityConfigOrDie(cluster2.ClusterName, cluster2.Namespace)
 
 	// cluster backup and restore
 	clusterBackupFrom := cluster1
@@ -172,6 +176,8 @@ func main() {
 		successCount = 0
 	})
 	go c.Start()
+
+	oa.LabelNodesOrDie()
 
 	fn := func() {
 		run(oa, fta, conf, operatorCfg, allClusters, cluster1, cluster2,
@@ -211,6 +217,10 @@ func run(oa tests.OperatorActions,
 	oa.CheckTidbClusterStatusOrDie(onePDCluster)
 
 	oa.CleanTidbClusterOrDie(onePDCluster)
+
+	// check disaster tolerance
+	oa.CheckDisasterToleranceOrDie(cluster1)
+	oa.CheckDisasterToleranceOrDie(cluster2)
 
 	go oa.BeginInsertDataToOrDie(cluster1)
 	go oa.BeginInsertDataToOrDie(cluster2)
@@ -279,6 +289,13 @@ func run(oa tests.OperatorActions,
 		UpdateTiDBTokenLimit(conf.TiDBTokenLimit)
 	oa.UpgradeTidbClusterOrDie(cluster2)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
+
+	// after upgrade cluster, clean webhook
+	oa.CleanWebHookAndService(operatorCfg)
+
+	// check data regions disaster tolerance
+	oa.CheckDataRegionDisasterToleranceOrDie(cluster1)
+	oa.CheckDataRegionDisasterToleranceOrDie(cluster2)
 
 	// deploy and check cluster restore
 	oa.DeployTidbClusterOrDie(clusterRestoreTo)

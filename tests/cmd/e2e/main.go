@@ -15,9 +15,10 @@ package main
 
 import (
 	"fmt"
-	"k8s.io/api/core/v1"
 	_ "net/http/pprof"
 	"time"
+
+	"k8s.io/api/core/v1"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
@@ -32,7 +33,6 @@ func main() {
 	defer logs.FlushLogs()
 
 	conf := tests.ParseConfigOrDie()
-	conf.ChartDir = "/charts"
 	conf.ManifestDir = "/manifests"
 
 	cli, kubeCli := client.NewCliOrDie()
@@ -103,6 +103,7 @@ func main() {
 				BatchSize:   1,
 				RawSize:     1,
 			},
+			SubValues:              tests.GetAffinityConfigOrDie(name1, name1),
 			EnableConfigMapRollout: true,
 			PDMaxReplicas:          3,
 			TiKVGrpcConcurrency:    4,
@@ -145,6 +146,7 @@ func main() {
 				BatchSize:   1,
 				RawSize:     1,
 			},
+			SubValues:              tests.GetAffinityConfigOrDie(name2, name2),
 			EnableConfigMapRollout: false,
 			PDMaxReplicas:          3,
 			TiKVGrpcConcurrency:    4,
@@ -167,12 +169,15 @@ func main() {
 				"pd.replicas":     "1",
 				"discovery.image": conf.OperatorImage,
 			},
+			SubValues: tests.GetAffinityConfigOrDie(name3, name2),
 		},
 	}
 
 	defer func() {
 		oa.DumpAllLogs(operatorInfo, clusterInfos)
 	}()
+
+	oa.LabelNodesOrDie()
 
 	// deploy operator
 	if err := oa.CleanOperator(operatorInfo); err != nil {
@@ -198,6 +203,11 @@ func main() {
 		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
 			glog.Fatal(err)
 		}
+	}
+
+	// check disaster tolerance
+	for _, clusterInfo := range clusterInfos {
+		oa.CheckDisasterToleranceOrDie(clusterInfo)
 	}
 
 	for _, clusterInfo := range clusterInfos {
@@ -298,6 +308,11 @@ func main() {
 		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
 			glog.Fatal(err)
 		}
+	}
+
+	// check data regions disaster tolerance
+	for _, clusterInfo := range clusterInfos {
+		oa.CheckDataRegionDisasterToleranceOrDie(clusterInfo)
 	}
 
 	// backup and restore
