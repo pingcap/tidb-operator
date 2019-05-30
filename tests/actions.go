@@ -128,11 +128,11 @@ type OperatorActions interface {
 	UpgradeTidbCluster(info *TidbClusterConfig) error
 	UpgradeTidbClusterOrDie(info *TidbClusterConfig)
 	DeployAdHocBackup(info *TidbClusterConfig) error
-	CheckAdHocBackup(info *TidbClusterConfig) error
+	CheckAdHocBackup(info *TidbClusterConfig) (string, error)
 	DeployScheduledBackup(info *TidbClusterConfig) error
 	CheckScheduledBackup(info *TidbClusterConfig) error
-	DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig) error
-	CheckIncrementalBackup(info *TidbClusterConfig) error
+	DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig, withDrainer bool, ts string) error
+	CheckIncrementalBackup(info *TidbClusterConfig, withDrainer bool) error
 	Restore(from *TidbClusterConfig, to *TidbClusterConfig) error
 	CheckRestore(from *TidbClusterConfig, to *TidbClusterConfig) error
 	ForceDeploy(info *TidbClusterConfig) error
@@ -1632,7 +1632,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 		"user":          "root",
 		"password":      info.Password,
 		"storage.size":  "10Gi",
-		"backupOptions": "\"--chunk-filesize=10 --verbose=3\"",
+		"backupOptions": "\"--chunk-filesize=1 --verbose=3\"",
 	}
 
 	setString := info.BackupHelmSetString(sets)
@@ -1649,9 +1649,11 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	return nil
 }
 
-func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
+func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) (string, error) {
 	glog.Infof("checking adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
+	ns := info.Namespace
+	var ts string
 	jobName := fmt.Sprintf("%s-%s", info.ClusterName, info.BackupName)
 	fn := func() (bool, error) {
 		job, err := oa.kubeCli.BatchV1().Jobs(info.Namespace).Get(jobName, metav1.GetOptions{})
@@ -1664,15 +1666,51 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
 			return false, nil
 		}
 
+		listOptions := metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("%s=%s", label.InstanceLabelKey, jobName),
+		}
+		podList, err := oa.kubeCli.CoreV1().Pods(ns).List(listOptions)
+		if err != nil {
+			glog.Errorf("failed to list pods: %v", err)
+			return false, nil
+		}
+
+		var podName string
+		for _, pod := range podList.Items {
+			ref := pod.OwnerReferences[0]
+			if ref.Kind == "Job" && ref.Name == jobName {
+				podName = pod.GetName()
+				break
+			}
+		}
+		if podName == "" {
+			glog.Errorf("failed to find the ad-hoc backup: %s podName", jobName)
+			return false, nil
+		}
+
+		getTsCmd := fmt.Sprintf("kubectl logs -n %s %s | grep 'Set to tidb_snapshot' | cut -d \"'\"  -f2", ns, podName)
+		tsData, err := exec.Command("/bin/sh", "-c", getTsCmd).CombinedOutput()
+		if err != nil {
+			glog.Errorf("failed to get ts of pod %s, %v", podName, err)
+			return false, nil
+		}
+		if string(tsData) == "" {
+			glog.Errorf("ts is empty pod %s", podName)
+			return false, nil
+		}
+
+		ts = strings.TrimSpace(string(tsData))
+		glog.Infof("ad-hoc backup ts: %s", ts)
+
 		return true, nil
 	}
 
 	err := wait.Poll(DefaultPollInterval, BackupAndRestorePollTimeOut, fn)
 	if err != nil {
-		return fmt.Errorf("failed to launch backup job: %v", err)
+		return ts, fmt.Errorf("failed to launch backup job: %v", err)
 	}
 
-	return nil
+	return ts, nil
 }
 
 func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfig) error {
@@ -1716,15 +1754,7 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 			return false, nil
 		}
 
-		b, err := to.DataIsTheSameAs(from)
-		if err != nil {
-			glog.Error(err)
-			return false, nil
-		}
-		if b {
-			return true, nil
-		}
-		return false, nil
+		return true, nil
 	}
 
 	err := wait.Poll(oa.pollInterval, BackupAndRestorePollTimeOut, fn)
@@ -2065,19 +2095,24 @@ func (tc *TidbClusterConfig) FullName() string {
 	return fmt.Sprintf("%s/%s", tc.Namespace, tc.ClusterName)
 }
 
-func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig) error {
+func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig, withDrainer bool, ts string) error {
 	oa.EmitEvent(from, fmt.Sprintf("DeployIncrementalBackup: slave: %s", to.ClusterName))
 	glog.Infof("begin to deploy incremental backup cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
 
 	sets := map[string]string{
 		"binlog.pump.create":            "true",
 		"binlog.drainer.destDBType":     "mysql",
-		"binlog.drainer.create":         "true",
 		"binlog.drainer.mysql.host":     fmt.Sprintf("%s-tidb.%s", to.ClusterName, to.Namespace),
 		"binlog.drainer.mysql.user":     "root",
 		"binlog.drainer.mysql.password": to.Password,
 		"binlog.drainer.mysql.port":     "4000",
 		"binlog.drainer.ignoreSchemas":  "",
+	}
+	if withDrainer {
+		sets["binlog.drainer.create"] = "true"
+	}
+	if ts != "" {
+		sets["binlog.drainer.initialCommitTs"] = ts
 	}
 
 	setString := from.TidbClusterHelmSetString(sets)
@@ -2092,7 +2127,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	return nil
 }
 
-func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig) error {
+func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withDrainer bool) error {
 	glog.Infof("begin to check incremental backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
 	pumpStatefulSetName := fmt.Sprintf("%s-pump", info.ClusterName)
@@ -2124,6 +2159,10 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig) error
 				glog.Errorf("some pods is not health %s ,%v", pumpStatefulSetName, err)
 				return false, nil
 			}
+		}
+
+		if !withDrainer {
+			return true, nil
 		}
 
 		drainerStatefulSetName := fmt.Sprintf("%s-drainer", info.ClusterName)

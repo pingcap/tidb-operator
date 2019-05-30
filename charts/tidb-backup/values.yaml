@@ -10,7 +10,6 @@ mode: backup # backup | restore
 name: fullbackup-20190306
 image:
   pullPolicy: IfNotPresent
-  binlog: pingcap/tidb-binlog:v3.0.0-rc.1
   # https://github.com/tennix/tidb-cloud-backup
   backup: pingcap/tidb-cloud-backup:latest
 
@@ -25,7 +24,7 @@ storage:
   size: 100Gi
 
 # backupOptions is the options of mydumper https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
-backupOptions: "--chunk-filesize=10 --verbose=3"
+backupOptions: "--chunk-filesize=1 --verbose=3"
 # restoreOptions is the options of loader https://www.pingcap.com/docs-cn/tools/loader/
 restoreOptions: "-t 16"
 

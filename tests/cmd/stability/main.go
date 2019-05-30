@@ -15,11 +15,12 @@ package main
 
 import (
 	"fmt"
-	"k8s.io/api/core/v1"
 	"net/http"
 	_ "net/http/pprof"
 	"strconv"
 	"time"
+
+	"k8s.io/api/core/v1"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
@@ -79,7 +80,7 @@ func main() {
 			"pd.resources.requests.cpu":      "200m",
 			"pd.resources.requests.memory":   "1Gi",
 			"tikv.resources.limits.cpu":      "8000m",
-			"tikv.resources.limits.memory":   "8Gi",
+			"tikv.resources.limits.memory":   "16Gi",
 			"tikv.resources.requests.cpu":    "1000m",
 			"tikv.resources.requests.memory": "2Gi",
 			"tidb.resources.limits.cpu":      "8000m",
