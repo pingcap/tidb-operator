@@ -44,7 +44,7 @@ $ helm upgrade ${RELEASE_NAME} charts/tidb-cluster -f charts/tidb-cluster/values
 
 ### Ad-Hoc full backup
 
-Ad-hoc backup runs to complete for once. This functionality is encapsulated in another helm chart, `charts/tidb-backup`. According to the `mode` in `charts/tidb-backup/values.yaml`, this chart can perform either full backup or restore. We will cover restore operation in the [restore section](#restore) of this document. 
+Ad-hoc backup is encapsulated in another helm chart, `charts/tidb-backup`. According to the `mode` in `charts/tidb-backup/values.yaml`, this chart can perform either full backup or restore. We will cover restore operation in the [restore section](#restore) of this document. 
 
 To create an ad-hoc full backup job, modify the `charts/tidb-backup/values.yaml` file:
 

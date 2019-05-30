@@ -23,7 +23,7 @@
 
 - The name of the secret which stores user and password used for backup/restore
 - Default: "backup-secret"
-- You can create the secret by `kubectl create secret generic backup-secret --from-literal=user=root --from-literal=password=<password>`
+- You can create the secret by `kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=root --from-literal=password=<password>`
 
 ### `storage.className`
 
@@ -56,7 +56,7 @@
 ### `gcp.secretName`
 
 - The name of the secret which stores the gcp service account credentials json file
-- You can create the secret by `kubectl create secret generic gcp-backup-secret --from-file=./credentials.json`. To download credentials json, refer to [Google Cloud Documentation](https://cloud.google.com/docs/authentication/production#obtaining_and_providing_service_account_credentials_manually)
+- You can create the secret by `kubectl create secret generic gcp-backup-secret -n ${namespace} --from-file=./credentials.json`. To download credentials json, refer to [Google Cloud Documentation](https://cloud.google.com/docs/authentication/production#obtaining_and_providing_service_account_credentials_manually)
 
 ### `ceph.endpoint`
 
