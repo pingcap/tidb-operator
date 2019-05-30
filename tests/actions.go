@@ -163,6 +163,12 @@ type OperatorActions interface {
 	EmitEvent(info *TidbClusterConfig, msg string)
 	BackupRestore(from, to *TidbClusterConfig) error
 	BackupRestoreOrDie(from, to *TidbClusterConfig)
+	LabelNodes() error
+	LabelNodesOrDie()
+	CheckDisasterTolerance(info *TidbClusterConfig) error
+	CheckDisasterToleranceOrDie(info *TidbClusterConfig)
+	CheckDataRegionDisasterTolerance(info *TidbClusterConfig) error
+	CheckDataRegionDisasterToleranceOrDie(info *TidbClusterConfig)
 	GetTidbMemberAssignedNodes(info *TidbClusterConfig) (map[string]string, error)
 	GetTidbMemberAssignedNodesOrDie(info *TidbClusterConfig) map[string]string
 	CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error
@@ -219,7 +225,6 @@ type TidbClusterConfig struct {
 	TiDBImage              string
 	StorageClassName       string
 	Password               string
-	InitSQL                string
 	RecordCount            string
 	InsertBatchSize        string
 	Resources              map[string]string
@@ -242,6 +247,7 @@ type TidbClusterConfig struct {
 
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
+	SubValues        string
 }
 
 func (oi *OperatorConfig) ConfigTLS() *tls.Config {
@@ -292,7 +298,6 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 		"tikv.image":              tc.TiKVImage,
 		"tidb.image":              tc.TiDBImage,
 		"tidb.passwordSecretName": tc.InitSecretName,
-		"tidb.initSql":            tc.InitSQL,
 		"monitor.create":          strconv.FormatBool(tc.Monitor),
 		"enableConfigMapRollout":  strconv.FormatBool(tc.EnableConfigMapRollout),
 		"pd.preStartScript":       tc.PDPreStartScript,
@@ -389,7 +394,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	// create cert and secret for webhook
-	cmd = fmt.Sprintf("%s/create-cert.sh", oa.manifestPath(info.Tag))
+	cmd = fmt.Sprintf("%s/create-cert.sh --namespace %s", oa.manifestPath(info.Tag), info.Namespace)
 	glog.Info(cmd)
 
 	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -456,6 +461,7 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		--set operatorImage=%s`,
 		info.ReleaseName, oa.operatorChartPath(info.Tag),
 		info.Image)
+
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
@@ -484,7 +490,22 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 
 	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s",
 		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
-	glog.Infof(cmd)
+	if strings.TrimSpace(info.SubValues) != "" {
+		subVaulesPath := fmt.Sprintf("%s/%s.yaml", oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName)
+		svFile, err := os.Create(subVaulesPath)
+		if err != nil {
+			return err
+		}
+		defer svFile.Close()
+		_, err = svFile.WriteString(info.SubValues)
+		if err != nil {
+			return err
+		}
+
+		cmd = fmt.Sprintf(" %s --values %s", cmd, subVaulesPath)
+	}
+	glog.Info(cmd)
+
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
 			info.Namespace, info.ClusterName, err, string(res))
@@ -762,8 +783,7 @@ func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, fmt.Sprintf("ScaleTidbCluster to pd: %s, tikv: %s, tidb: %s",
 		info.Args["pd.replicas"], info.Args["tikv.replicas"], info.Args["tidb.replicas"]))
 
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(nil))
+	cmd := oa.getHelmUpgradeClusterCmd(info, nil)
 	glog.Info("[SCALE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -868,8 +888,7 @@ func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 		return pingcapErrors.Wrapf(err, "failed to add annotation to [%s/%s]", info.Namespace, info.ClusterName)
 	}
 
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(nil))
+	cmd := oa.getHelmUpgradeClusterCmd(info, nil)
 	glog.Info("[UPGRADE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1875,10 +1894,7 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 		"scheduledBackup.secretName": info.BackupSecretName,
 	}
 
-	setString := info.TidbClusterHelmSetString(sets)
-
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), setString)
+	cmd := oa.getHelmUpgradeClusterCmd(info, sets)
 
 	glog.Infof("scheduled-backup delploy [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -1896,10 +1912,7 @@ func (oa *operatorActions) disableScheduledBackup(info *TidbClusterConfig) error
 		"scheduledBackup.create": "false",
 	}
 
-	setString := info.TidbClusterHelmSetString(sets)
-
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), setString)
+	cmd := oa.getHelmUpgradeClusterCmd(info, sets)
 
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -2096,10 +2109,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 		"binlog.drainer.ignoreSchemas":  "",
 	}
 
-	setString := from.TidbClusterHelmSetString(sets)
-
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		from.ClusterName, oa.tidbClusterChartPath(from.OperatorTag), setString)
+	cmd := oa.getHelmUpgradeClusterCmd(from, sets)
 	glog.Infof(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -2409,4 +2419,15 @@ func (oa *operatorActions) EventWorker() {
 		ce := oa.clusterEvents[key]
 		ce.events = retryEvents
 	}
+}
+
+func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, set map[string]string) string {
+	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
+		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(set))
+	if strings.TrimSpace(info.SubValues) != "" {
+		subVaulesPath := fmt.Sprintf("%s/%s.yaml", oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName)
+		cmd = fmt.Sprintf(" %s --values %s", cmd, subVaulesPath)
+	}
+
+	return cmd
 }
