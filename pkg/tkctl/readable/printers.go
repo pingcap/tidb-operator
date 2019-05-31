@@ -38,7 +38,6 @@ type PodBasicColumns struct {
 	Reason   string
 	Restarts int64
 	Memory   string
-	CPU      string
 	Age      string
 	PodIP    string
 	HostIP   string
@@ -141,7 +140,7 @@ func printPod(pod *v1.Pod, options printers.PrintOptions) ([]metav1beta1.TableRo
 		columns.Ready,
 		columns.Reason,
 		columns.MemInfo,
-		columns.CPU,
+		columns.CPUInfo,
 		columns.Restarts,
 		columns.Age,
 		columns.HostIP)
