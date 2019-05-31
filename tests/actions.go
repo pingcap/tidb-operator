@@ -819,6 +819,9 @@ func (oa *operatorActions) CheckScaledCorrectly(info *TidbClusterConfig, podUIDs
 }
 
 func setPartitionAnnotation(tcName string, nameSpace string, ordinal int) error {
+	// FIXME
+	// will fixed by: https://github.com/pingcap/tidb-operator/pull/542
+	ordinal = 0
 	// add annotation to pause statefulset upgrade process
 	cmd := fmt.Sprintf("kubectl annotate tc %s -n %s tidb.pingcap.com/tidb-partition=%d --overwrite",
 		tcName, nameSpace, ordinal)
@@ -1034,24 +1037,26 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return (*set.Spec.UpdateStrategy.RollingUpdate.Partition) >= int32(tidbUpgradeAnnotation)
 	}
 
-	upgradePaused := func() bool {
+	// FIXME
+	// will fixed by: https://github.com/pingcap/tidb-operator/pull/542
+	//upgradePaused := func() bool {
 
-		podName := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.Name), tidbUpgradeAnnotation)
+	//	podName := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.Name), tidbUpgradeAnnotation)
 
-		tidbPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
-		if err != nil {
-			glog.Errorf("fail to get tidb po name %s namespace %s ", podName, ns)
-			return false
-		}
-		if tidbPod.Labels[v1beta1.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision &&
-			tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-			if member, ok := tc.Status.TiDB.Members[tidbPod.Name]; ok && member.Health {
-				return true
-			}
-		}
+	//	tidbPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+	//	if err != nil {
+	//		glog.Errorf("fail to get tidb po name %s namespace %s ", podName, ns)
+	//		return false
+	//	}
+	//	if tidbPod.Labels[v1beta1.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision &&
+	//		tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+	//		if member, ok := tc.Status.TiDB.Members[tidbPod.Name]; ok && member.Health {
+	//			return true
+	//		}
+	//	}
 
-		return false
-	}
+	//	return false
+	//}
 
 	tidbSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
@@ -1086,7 +1091,9 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if upgradePaused() {
+	// FIXME
+	// will fixed by: https://github.com/pingcap/tidb-operator/pull/542
+	if false {
 
 		time.Sleep(30 * time.Second)
 
@@ -1632,7 +1639,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 		"user":          "root",
 		"password":      info.Password,
 		"storage.size":  "10Gi",
-		"backupOptions": "\"--chunk-filesize=1 --verbose=3\"",
+		"backupOptions": "\"--verbose=3\"",
 	}
 
 	setString := info.BackupHelmSetString(sets)
@@ -1752,6 +1759,12 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 		if job.Status.Succeeded == 0 {
 			glog.Errorf("cluster [%s] restore job is not completed, please wait! ", to.ClusterName)
 			return false, nil
+		}
+
+		_, err = to.DataIsTheSameAs(from)
+		if err != nil {
+			// ad-hoc restore don't check the data really, just logging
+			glog.Infof("check restore: %v", err)
 		}
 
 		return true, nil

@@ -89,6 +89,8 @@ func main() {
 			"tidb.resources.requests.memory": "1Gi",
 			"monitor.persistent":             "true",
 			"discovery.image":                conf.OperatorImage,
+			"tikv.defaultcfBlockCacheSize":   "8GB",
+			"tikv.writecfBlockCacheSize":     "2GB",
 		},
 		Args: map[string]string{
 			"binlog.drainer.workerCount": "1024",
