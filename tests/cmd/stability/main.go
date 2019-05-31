@@ -47,11 +47,14 @@ func main() {
 	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
 
 	operatorCfg := &tests.OperatorConfig{
-		Namespace:          "pingcap",
-		ReleaseName:        "operator",
-		Image:              conf.OperatorImage,
-		Tag:                conf.OperatorTag,
-		SchedulerImage:     "gcr.io/google-containers/hyperkube",
+		Namespace:      "pingcap",
+		ReleaseName:    "operator",
+		Image:          conf.OperatorImage,
+		Tag:            conf.OperatorTag,
+		SchedulerImage: "gcr.io/google-containers/hyperkube",
+		SchedulerFeatures: []string{
+			"StableScheduling",
+		},
 		LogLevel:           "2",
 		WebhookServiceName: "webhook-service",
 		WebhookSecretName:  "webhook-secret",
@@ -104,6 +107,8 @@ func main() {
 		PDLogLevel:             "info",
 		EnableConfigMapRollout: true,
 	}
+	cluster1.SubValues = tests.GetAffinityConfigOrDie(cluster1.ClusterName, cluster1.Namespace)
+
 	cluster2 := &tests.TidbClusterConfig{
 		Namespace:        clusterName2,
 		ClusterName:      clusterName2,
@@ -143,6 +148,7 @@ func main() {
 		PDLogLevel:             "info",
 		EnableConfigMapRollout: false,
 	}
+	cluster2.SubValues = tests.GetAffinityConfigOrDie(cluster2.ClusterName, cluster2.Namespace)
 
 	// cluster backup and restore
 	clusterBackupFrom := cluster1
@@ -172,6 +178,8 @@ func main() {
 		successCount = 0
 	})
 	go c.Start()
+
+	oa.LabelNodesOrDie()
 
 	fn := func() {
 		run(oa, fta, conf, operatorCfg, allClusters, cluster1, cluster2,
@@ -212,6 +220,10 @@ func run(oa tests.OperatorActions,
 
 	oa.CleanTidbClusterOrDie(onePDCluster)
 
+	// check disaster tolerance
+	oa.CheckDisasterToleranceOrDie(cluster1)
+	oa.CheckDisasterToleranceOrDie(cluster2)
+
 	go oa.BeginInsertDataToOrDie(cluster1)
 	go oa.BeginInsertDataToOrDie(cluster2)
 	defer oa.StopInsertDataTo(cluster1)
@@ -238,12 +250,16 @@ func run(oa tests.OperatorActions,
 
 	// upgrade cluster1 and cluster2
 	firstUpgradeVersion := upgardeTiDBVersions[0]
+	assignedNodes1 := oa.GetTidbMemberAssignedNodesOrDie(cluster1)
+	assignedNodes2 := oa.GetTidbMemberAssignedNodesOrDie(cluster2)
 	cluster1.UpgradeAll(firstUpgradeVersion)
 	cluster2.UpgradeAll(firstUpgradeVersion)
 	oa.UpgradeTidbClusterOrDie(cluster1)
 	oa.UpgradeTidbClusterOrDie(cluster2)
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
+	oa.CheckTidbMemberAssignedNodesOrDie(cluster1, assignedNodes1)
+	oa.CheckTidbMemberAssignedNodesOrDie(cluster2, assignedNodes2)
 
 	// after upgrade cluster, clean webhook
 	oa.CleanWebHookAndService(operatorCfg)
@@ -275,6 +291,13 @@ func run(oa tests.OperatorActions,
 		UpdateTiDBTokenLimit(conf.TiDBTokenLimit)
 	oa.UpgradeTidbClusterOrDie(cluster2)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
+
+	// after upgrade cluster, clean webhook
+	oa.CleanWebHookAndService(operatorCfg)
+
+	// check data regions disaster tolerance
+	oa.CheckDataRegionDisasterToleranceOrDie(cluster1)
+	oa.CheckDataRegionDisasterToleranceOrDie(cluster2)
 
 	// deploy and check cluster restore
 	oa.DeployTidbClusterOrDie(clusterRestoreTo)

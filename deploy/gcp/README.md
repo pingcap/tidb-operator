@@ -18,7 +18,7 @@ Before deploying, you need to configure several items to guarantee a smooth depl
 
 ### Configure Cloud SDK
 
-After you install Google Cloud SDK, you need to run `gcloud init` to [perform initial setup tasks](https://cloud.google.com/sdk/docs/initializing). 
+After you install Google Cloud SDK, you need to run `gcloud init` to [perform initial setup tasks](https://cloud.google.com/sdk/docs/initializing).
 
 ### Configure APIs
 
@@ -36,8 +36,8 @@ gcloud services enable container.googleapis.com
 
 The terraform script expects three environment variables. You can let Terraform prompt you for them, or `export` them in the `~/.bash_profile` file ahead of time. The required environment variables are:
 
-* `TF_VAR_GCP_CREDENTIALS_PATH`: Path to a valid GCP credentials file. 
-    - It is recommended to create a new service account to be used by Terraform. See [this page](https://cloud.google.com/iam/docs/creating-managing-service-accounts) to create a service account and grant `Project Editor` role to it. 
+* `TF_VAR_GCP_CREDENTIALS_PATH`: Path to a valid GCP credentials file.
+    - It is recommended to create a new service account to be used by Terraform. See [this page](https://cloud.google.com/iam/docs/creating-managing-service-accounts) to create a service account and grant `Project Editor` role to it.
     - See [this page](https://cloud.google.com/iam/docs/creating-managing-service-account-keys) to create service account keys, and choose `JSON` key type during creation. The downloaded `JSON` file that contains the private key is the credentials file you need.
 * `TF_VAR_GCP_REGION`: The region to create the resources in, for example: `us-west1`.
 * `TF_VAR_GCP_PROJECT`: The name of the GCP project.
@@ -45,7 +45,7 @@ The terraform script expects three environment variables. You can let Terraform 
 > *Note*: The service account must have sufficient permissions to create resources in the project. The `Project Editor` primitive will accomplish this.
 
 To set the three environment variables, for example, you can enter in your terminal:
- 
+
 ```bash
 # Replace the values with the path to the JSON file you have downloaded, the GCP region and your GCP project name.
 export TF_VAR_GCP_CREDENTIALS_PATH="/Path/to/my-project.json"
@@ -66,7 +66,7 @@ The default setup creates a new VPC, two subnetworks, and an f1-micro instance a
 
 > *Note*: The number of nodes created depends on how many availability zones there are in the chosen region. Most have 3 zones, but us-central1 has 4. See [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones/) for more information and see the [Customize](#customize) section on how to customize node pools in a regional cluster.
 
-The default setup, as listed above, requires at least 91 CPUs which exceed the default CPU quota of a GCP project. To increase your project's quota, follow the instructions [here](https://cloud.google.com/compute/quotas). You need more CPUs if you need to scale out. 
+The default setup, as listed above, requires at least 91 CPUs which exceed the default CPU quota of a GCP project. To increase your project's quota, follow the instructions [here](https://cloud.google.com/compute/quotas). You need more CPUs if you need to scale out.
 
 Now that you have configured everything needed, you can launch the script to deploy the TiDB cluster:
 
@@ -96,9 +96,9 @@ monitor_port = 3000
 region = us-west1
 tidb_ilb_ip = 172.31.252.20
 tidb_port = 4000
-tidb_version = v2.1.8
+tidb_version = v3.0.0-rc.1
 ```
- 
+
 ## Access the database
 
 After `terraform apply` is successful, the TiDB cluster can be accessed by SSHing into the bastion machine and connecting via MySQL:
@@ -130,12 +130,12 @@ helm ls
 
 To upgrade the TiDB cluster, modify the `tidb_version` variable to a higher version in the `variables.tf` file, and run `terraform apply`.
 
-For example, to upgrade the cluster to the 2.1.10 version, modify the `tidb_version` to `v2.1.10`:
+For example, to upgrade the cluster to the 3.0.0-rc.2 version, modify the `tidb_version` to `v3.0.0-rc.2`:
 
 ```
 variable "tidb_version" {
   description = "TiDB version"
-  default     = "v2.1.10"
+  default     = "v3.0.0-rc.2"
 }
 ```
 
@@ -144,11 +144,11 @@ The upgrading does not finish immediately. You can run `kubectl --kubeconfig cre
 ```sql
 MySQL [(none)]> select tidb_version();
 *************************** 1. row ***************************
-tidb_version(): Release Version: 2.1.10
-Git Commit Hash: v2.1.10
-Git Branch: master
-UTC Build Time: 2019-05-22 11:12:14
-GoVersion: go version go1.12.4 linux/amd64
+tidb_version(): Release Version: v3.0.0-rc.2
+Git Commit Hash: 06f3f63d5a87e7f0436c0618cf524fea7172eb93
+Git Branch: HEAD
+UTC Build Time: 2019-05-28 12:48:52
+GoVersion: go version go1.12 linux/amd64
 Race Enabled: false
 TiKV Min Version: 2.1.0-alpha.1-ff3dd160846b7d1aed9079c389fc188f7f5ea13e
 Check Table Before Drop: false
