@@ -14,9 +14,9 @@
 package upinfo
 
 import (
-	"errors"
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -188,6 +188,20 @@ func getServerPort(container *v1.Container) (int32, bool) {
 	return 0, false
 }
 
+func getTiDBServerPort(pod *v1.Pod) string {
+
+	container, ok := util.GetContainerViaName(v1alpha1.TiDBMemberType.String(), pod)
+	if !ok {
+		return "NONE"
+	}
+	port, ok := getServerPort(container)
+	if !ok {
+		return "NONE"
+	}
+
+	return strconv.Itoa(int(port))
+}
+
 func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podList *v1.PodList) (string, error) {
 	return readable.TabbedString(func(out io.Writer) error {
 		w := readable.NewPrefixWriter(out)
@@ -221,16 +235,9 @@ func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podLis
 							state = UPDATED
 						}
 
-						container, ok := util.GetContainerViaName(v1alpha1.TiDBMemberType.String(), &pod)
-						if !ok {
-							return errors.New("no tidb container")
-						}
-						port, ok := getServerPort(container)
-						if !ok {
-							return errors.New("no server port")
-						}
+						port := getTiDBServerPort(&pod)
 
-						w.WriteLine(readable.LEVEL_1, "%s\t%s\t%s\t%s\t%d\t", pod.Name, state, pod.Status.HostIP, pod.Status.PodIP, port)
+						w.WriteLine(readable.LEVEL_1, "%s\t%s\t%s\t%s\t%s\t", pod.Name, state, pod.Status.HostIP, pod.Status.PodIP, port)
 					}
 				} else {
 					w.WriteLine(readable.LEVEL_1, "no resource found")

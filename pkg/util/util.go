@@ -95,10 +95,6 @@ func GetNextOrdinalPodName(podName string, ordinal int32) string {
 // Get container via container name
 func GetContainerViaName(name string, pod *corev1.Pod) (*corev1.Container, bool) {
 
-	if len(pod.Spec.Containers) == 0 {
-		return nil, false
-	}
-
 	for _, container := range pod.Spec.Containers {
 		if container.Name == name {
 			return &container, true
