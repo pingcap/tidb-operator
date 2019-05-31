@@ -322,6 +322,7 @@ func main() {
 	restoreClusterInfo.ClusterName = restoreClusterInfo.ClusterName + "-other"
 	restoreClusterInfo.InitSecretName = fmt.Sprintf("%s-set-secret", restoreClusterInfo.ClusterName)
 	restoreClusterInfo.BackupSecretName = fmt.Sprintf("%s-backup-secret", restoreClusterInfo.ClusterName)
+	restoreClusterInfo.SubValues = tests.GetAffinityConfigOrDie(restoreClusterInfo.ClusterName, restoreClusterInfo.Namespace)
 
 	if err = oa.CleanTidbCluster(restoreClusterInfo); err != nil {
 		glog.Fatal(err)

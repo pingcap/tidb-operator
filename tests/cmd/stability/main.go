@@ -153,6 +153,7 @@ func main() {
 	clusterRestoreTo := &tests.TidbClusterConfig{}
 	copier.Copy(clusterRestoreTo, clusterBackupFrom)
 	clusterRestoreTo.ClusterName = "cluster-restore"
+	clusterRestoreTo.SubValues = tests.GetAffinityConfigOrDie(clusterRestoreTo.ClusterName, clusterRestoreTo.Namespace)
 
 	onePDCluster := &tests.TidbClusterConfig{}
 	copier.Copy(onePDCluster, cluster1)
