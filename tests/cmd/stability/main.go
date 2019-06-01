@@ -256,8 +256,13 @@ func run(oa tests.OperatorActions,
 	cluster2.UpgradeAll(firstUpgradeVersion)
 	oa.UpgradeTidbClusterOrDie(cluster1)
 	oa.UpgradeTidbClusterOrDie(cluster2)
+
+	// check pause upgrade feature in cluster2
+	oa.CheckManualPauseTiDBOrDie(cluster2)
+
 	oa.CheckTidbClusterStatusOrDie(cluster1)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
+
 	oa.CheckTidbMemberAssignedNodesOrDie(cluster1, assignedNodes1)
 	oa.CheckTidbMemberAssignedNodesOrDie(cluster2, assignedNodes2)
 
