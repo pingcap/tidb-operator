@@ -235,7 +235,7 @@ func main() {
 
 		// only check manual pause for 1 cluster
 		if len(clusterInfos) >= 1 {
-			oa.CheckManualPauseTiDB(clusterInfos[0])
+			oa.CheckManualPauseTiDBOrDie(clusterInfos[0])
 		}
 
 		for _, clusterInfo := range clusterInfos {
