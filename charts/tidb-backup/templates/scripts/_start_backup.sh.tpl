@@ -4,6 +4,7 @@ host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]' | tr
 
 dirname=/data/${BACKUP_NAME}
 mkdir -p ${dirname}
+cp /savepoint-dir/savepoint ${dirname}/
 
 /mydumper \
   --outputdir=${dirname} \
