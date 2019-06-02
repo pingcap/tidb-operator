@@ -40,6 +40,7 @@ type pdMemberManager struct {
 	setLister    v1beta1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
 	podLister    corelisters.PodLister
+	epsLister     corelisters.EndpointsLister
 	podControl   controller.PodControlInterface
 	pvcLister    corelisters.PersistentVolumeClaimLister
 	pdScaler     Scaler
@@ -55,6 +56,7 @@ func NewPDMemberManager(pdControl controller.PDControlInterface,
 	setLister v1beta1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
+	epsLister corelisters.EndpointsLister,
 	podControl controller.PodControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pdScaler Scaler,
@@ -68,6 +70,7 @@ func NewPDMemberManager(pdControl controller.PDControlInterface,
 		setLister,
 		svcLister,
 		podLister,
+		epsLister,
 		podControl,
 		pvcLister,
 		pdScaler,
@@ -258,18 +261,27 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 
 	pdClient := pmm.pdControl.GetPDClient(tc)
 
+	healthInfo, err := pdClient.GetHealth()
+	if err != nil {
+		tc.Status.PD.Synced = false
+		// get endpoints info
+		eps, epErr := pmm.epsLister.Endpoints(ns).Get(controller.PDMemberName(tcName))
+		if epErr != nil {
+			return fmt.Errorf("%s, %s", err, epErr)
+		}
+		// pd service has no endpoints
+		if eps != nil && len(eps.Subsets) == 0 {
+			return fmt.Errorf("%s, service %s/%s has no endpoints", err, ns, controller.PDMemberName(tcName))
+		}
+		return err
+	}
+
 	cluster, err := pdClient.GetCluster()
 	if err != nil {
 		tc.Status.PD.Synced = false
 		return err
 	}
 	tc.Status.ClusterID = strconv.FormatUint(cluster.Id, 10)
-
-	healthInfo, err := pdClient.GetHealth()
-	if err != nil {
-		tc.Status.PD.Synced = false
-		return err
-	}
 	leader, err := pdClient.GetPDLeader()
 	if err != nil {
 		tc.Status.PD.Synced = false
