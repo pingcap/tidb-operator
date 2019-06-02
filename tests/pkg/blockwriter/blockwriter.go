@@ -143,6 +143,7 @@ func (bw *blockWriter) batchExecute(db *sql.DB, query string) error {
 }
 
 func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan []string) {
+	defer glog.Infof("run stopped")
 	for {
 		select {
 		case <-ctx.Done():

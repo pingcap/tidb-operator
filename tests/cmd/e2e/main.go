@@ -15,9 +15,10 @@ package main
 
 import (
 	"fmt"
-	"k8s.io/api/core/v1"
 	_ "net/http/pprof"
 	"time"
+
+	"k8s.io/api/core/v1"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
@@ -32,7 +33,6 @@ func main() {
 	defer logs.FlushLogs()
 
 	conf := tests.ParseConfigOrDie()
-	conf.ChartDir = "/charts"
 	conf.ManifestDir = "/manifests"
 
 	cli, kubeCli := client.NewCliOrDie()
@@ -62,11 +62,10 @@ func main() {
 	if err != nil {
 		glog.Fatal(err)
 	}
-	// create database and table and insert a column for test backup and restore
-	initSQL := `"create database record;use record;create table test(t char(32))"`
 
 	name1 := "e2e-cluster1"
 	name2 := "e2e-cluster2"
+	name3 := "e2e-pd-replicas-1"
 	clusterInfos := []*tests.TidbClusterConfig{
 		{
 			Namespace:        name1,
@@ -77,7 +76,6 @@ func main() {
 			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
 			StorageClassName: "local-storage",
 			Password:         "admin",
-			InitSQL:          initSQL,
 			UserName:         "root",
 			InitSecretName:   fmt.Sprintf("%s-set-secret", name1),
 			BackupSecretName: fmt.Sprintf("%s-backup-secret", name1),
@@ -105,6 +103,7 @@ func main() {
 				BatchSize:   1,
 				RawSize:     1,
 			},
+			SubValues:              tests.GetAffinityConfigOrDie(name1, name1),
 			EnableConfigMapRollout: true,
 			PDMaxReplicas:          3,
 			TiKVGrpcConcurrency:    4,
@@ -120,7 +119,6 @@ func main() {
 			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
 			StorageClassName: "local-storage",
 			Password:         "admin",
-			InitSQL:          initSQL,
 			UserName:         "root",
 			InitSecretName:   fmt.Sprintf("%s-set-secret", name2),
 			BackupSecretName: fmt.Sprintf("%s-backup-secret", name2),
@@ -148,17 +146,38 @@ func main() {
 				BatchSize:   1,
 				RawSize:     1,
 			},
+			SubValues:              tests.GetAffinityConfigOrDie(name2, name2),
 			EnableConfigMapRollout: false,
 			PDMaxReplicas:          3,
 			TiKVGrpcConcurrency:    4,
 			TiDBTokenLimit:         1000,
 			PDLogLevel:             "info",
 		},
+		{
+			Namespace:        name2,
+			ClusterName:      name3,
+			OperatorTag:      conf.OperatorTag,
+			PDImage:          fmt.Sprintf("pingcap/pd:%s", initTidbVersion),
+			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", initTidbVersion),
+			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
+			StorageClassName: "local-storage",
+			Password:         "admin",
+			UserName:         "root",
+			InitSecretName:   fmt.Sprintf("%s-set-secret", name2),
+			BackupSecretName: fmt.Sprintf("%s-backup-secret", name2),
+			Resources: map[string]string{
+				"pd.replicas":     "1",
+				"discovery.image": conf.OperatorImage,
+			},
+			SubValues: tests.GetAffinityConfigOrDie(name3, name2),
+		},
 	}
 
 	defer func() {
 		oa.DumpAllLogs(operatorInfo, clusterInfos)
 	}()
+
+	oa.LabelNodesOrDie()
 
 	// deploy operator
 	if err := oa.CleanOperator(operatorInfo); err != nil {
@@ -186,6 +205,11 @@ func main() {
 		}
 	}
 
+	// check disaster tolerance
+	for _, clusterInfo := range clusterInfos {
+		oa.CheckDisasterToleranceOrDie(clusterInfo)
+	}
+
 	for _, clusterInfo := range clusterInfos {
 		go oa.BeginInsertDataToOrDie(clusterInfo)
 	}
@@ -208,6 +232,12 @@ func main() {
 				glog.Fatal(err)
 			}
 		}
+
+		// only check manual pause for 1 cluster
+		if len(clusterInfos) >= 1 {
+			oa.CheckManualPauseTiDBOrDie(clusterInfos[0])
+		}
+
 		for _, clusterInfo := range clusterInfos {
 			if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
 				glog.Fatal(err)
@@ -284,6 +314,11 @@ func main() {
 		if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
 			glog.Fatal(err)
 		}
+	}
+
+	// check data regions disaster tolerance
+	for _, clusterInfo := range clusterInfos {
+		oa.CheckDataRegionDisasterToleranceOrDie(clusterInfo)
 	}
 
 	// backup and restore

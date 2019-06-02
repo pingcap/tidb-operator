@@ -42,10 +42,10 @@ $ mv tkctl /usr/local/bin/tkctl
 BASH
 ```shell
 # setup autocomplete in bash into the current shell, bash-completion package should be installed first.
-source <(tkctl completion bash) 
+source <(tkctl completion bash)
 
 # add autocomplete permanently to your bash shell.
-echo "if hash tkctl 2>/dev/null; then source <(tkctl completion bash); fi" >> ~/.bashrc 
+echo "if hash tkctl 2>/dev/null; then source <(tkctl completion bash); fi" >> ~/.bashrc
 ```
 
 ZSH
@@ -54,7 +54,7 @@ ZSH
 source <(tkctl completion zsh)
 
 # add autocomplete permanently to your zsh shell
-echo "if hash tkctl 2>/dev/null; then source <(tkctl completion zsh); fi" >> ~/.zshrc 
+echo "if hash tkctl 2>/dev/null; then source <(tkctl completion zsh); fi" >> ~/.zshrc
 ```
 
 ## Kubernetes Configuration
@@ -128,9 +128,9 @@ CreationTimestamp:  2019-04-17 17:33:41 +0800 CST
 Overview:
          Phase    Ready  Desired  CPU    Memory  Storage  Version
          -----    -----  -------  ---    ------  -------  -------
-  PD:    Normal   3      3        200m   1Gi     1Gi      pingcap/pd:v2.1.4
-  TiKV:  Normal   3      3        1000m  2Gi     10Gi     pingcap/tikv:v2.1.4
-  TiDB   Upgrade  1      2        500m   1Gi              pingcap/tidb:v2.1.4
+  PD:    Normal   3      3        200m   1Gi     1Gi      pingcap/pd:v3.0.0-rc.1
+  TiKV:  Normal   3      3        1000m  2Gi     10Gi     pingcap/tikv:v3.0.0-rc.1
+  TiDB   Upgrade  1      2        500m   1Gi              pingcap/tidb:v3.0.0-rc.1
 Endpoints(NodePort):
   - 172.16.4.158:31441
   - 172.16.4.155:31441
@@ -152,9 +152,9 @@ Example:
 ```
 $ tkctl get tikv
 NAME                  READY   STATUS    MEMORY          CPU   RESTARTS   AGE     NODE
-demo-cluster-tikv-0   2/2     Running   2098Mi/4196Mi         0          3m19s   172.16.4.155
-demo-cluster-tikv-1   2/2     Running   2098Mi/4196Mi         0          4m8s    172.16.4.160
-demo-cluster-tikv-2   2/2     Running   2098Mi/4196Mi         0          4m45s   172.16.4.157
+demo-cluster-tikv-0   2/2     Running   2098Mi/4196Mi   2/2   0          3m19s   172.16.4.155
+demo-cluster-tikv-1   2/2     Running   2098Mi/4196Mi   2/2   0          4m8s    172.16.4.160
+demo-cluster-tikv-2   2/2     Running   2098Mi/4196Mi   2/2   0          4m45s   172.16.4.157
 $ tkctl get volume
 tkctl get volume
 VOLUME              CLAIM                      STATUS   CAPACITY   NODE           LOCAL
@@ -252,4 +252,3 @@ These options are mainly used to talk with the kubernetes cluster, there are two
 
 - `--context`: choose the kubernetes cluster
 - `--namespace`: choose the kubernetes namespace
-
