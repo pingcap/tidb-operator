@@ -10,6 +10,11 @@ data "template_file" "tidb_cluster_values" {
   }
 }
 
+data external "available_zones_in_region" {
+  depends_on = [null_resource.prepare-dir]
+  program = ["bash", "-c", "gcloud compute regions describe ${var.GCP_REGION} --format=json | jq -r '.\"zones\" | .[0]' | grep -o '[^/]*$'"]
+}
+
 data "external" "tidb_ilb_ip" {
   depends_on = [null_resource.deploy-tidb-cluster]
   program    = ["bash", "-c", "kubectl --kubeconfig ${local.kubeconfig} get svc -n tidb tidb-cluster-tidb -o json | jq '.status.loadBalancer.ingress[0]'"]

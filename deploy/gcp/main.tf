@@ -32,6 +32,12 @@ resource "null_resource" "prepare-dir" {
   }
 }
 
+resource "null_resource" "set-gcloud-project" {
+  provisioner "local-exec" {
+    command = "gcloud config set project ${var.GCP_PROJECT}"
+  }
+}
+
 resource "google_compute_network" "vpc_network" {
   name                    = "vpc-network"
   auto_create_subnetworks = false
@@ -104,6 +110,7 @@ resource "google_container_cluster" "cluster" {
 }
 
 resource "google_container_node_pool" "pd_pool" {
+  depends_on = [google_container_cluster.cluster]
   provider           = google-beta
   project            = var.GCP_PROJECT
   cluster            = google_container_cluster.cluster.name
@@ -132,6 +139,7 @@ resource "google_container_node_pool" "pd_pool" {
 }
 
 resource "google_container_node_pool" "tikv_pool" {
+  depends_on = [google_container_node_pool.pd_pool]
   provider           = google-beta
   project            = var.GCP_PROJECT
   cluster            = google_container_cluster.cluster.name
@@ -160,6 +168,7 @@ resource "google_container_node_pool" "tikv_pool" {
 }
 
 resource "google_container_node_pool" "tidb_pool" {
+  depends_on = [google_container_node_pool.tikv_pool]
   provider           = google-beta
   project            = var.GCP_PROJECT
   cluster            = google_container_cluster.cluster.name
@@ -186,6 +195,7 @@ resource "google_container_node_pool" "tidb_pool" {
 }
 
 resource "google_container_node_pool" "monitor_pool" {
+  depends_on = [google_container_node_pool.tidb_pool]
   project            = var.GCP_PROJECT
   cluster            = google_container_cluster.cluster.name
   location           = google_container_cluster.cluster.location

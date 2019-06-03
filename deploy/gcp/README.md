@@ -7,7 +7,7 @@ This document describes how to deploy TiDB Operator and a TiDB cluster on GCP GK
 First of all, make sure the following items are installed on your machine:
 
 * [Google Cloud SDK](https://cloud.google.com/sdk/install)
-* [terraform](https://www.terraform.io/downloads.html)
+* [terraform](https://www.terraform.io/downloads.html) >= 0.12
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.11
 * [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.0
 * [jq](https://stedolan.github.io/jq/download/)
