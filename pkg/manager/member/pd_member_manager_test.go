@@ -78,19 +78,27 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 		g.Expect(tc.Spec).To(Equal(oldSpec))
 
 		svc1, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
+		eps1, eperr := pmm.epsLister.Endpoints(ns).Get(controller.PDMemberName(tcName))
 		if test.pdSvcCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(svc1).NotTo(Equal(nil))
+			g.Expect(eperr).NotTo(HaveOccurred())
+			g.Expect(eps1).NotTo(Equal(nil))
 		} else {
 			expectErrIsNotFound(g, err)
+			expectErrIsNotFound(g, eperr)
 		}
 
 		svc2, err := pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
+		eps2, eperr := pmm.epsLister.Endpoints(ns).Get(controller.PDPeerMemberName(tcName))
 		if test.pdPeerSvcCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(svc2).NotTo(Equal(nil))
+			g.Expect(eperr).NotTo(HaveOccurred())
+			g.Expect(eps2).NotTo(Equal(nil))
 		} else {
 			expectErrIsNotFound(g, err)
+			expectErrIsNotFound(g, eperr)
 		}
 
 		tc1, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
@@ -243,8 +251,14 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 
 		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
+		_, err = pmm.epsLister.Endpoints(ns).Get(controller.PDMemberName(tcName))
+		g.Expect(err).NotTo(HaveOccurred())
+
 		_, err = pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
+		_, err = pmm.epsLister.Endpoints(ns).Get(controller.PDPeerMemberName(tcName))
+		g.Expect(err).NotTo(HaveOccurred())
+
 		_, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
 
@@ -638,7 +652,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, tcInformer)
+	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
 	podControl := controller.NewFakePodControl(podInformer)
 	pdControl := controller.NewFakePDControl()
 	pdScaler := NewFakePDScaler()
