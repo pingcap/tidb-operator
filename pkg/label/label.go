@@ -59,8 +59,6 @@ const (
 	TiDBLabelVal string = "tidb"
 	// TiKVLabelVal is TiKV label value
 	TiKVLabelVal string = "tikv"
-	// Container port name of TiDB components
-	ServerVal string = "server"
 )
 
 // Label is the label field in metadata

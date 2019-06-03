@@ -487,7 +487,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 							ImagePullPolicy: tc.Spec.PD.ImagePullPolicy,
 							Ports: []corev1.ContainerPort{
 								{
-									Name:          label.ServerVal,
+									Name:          "server",
 									ContainerPort: int32(2380),
 									Protocol:      corev1.ProtocolTCP,
 								},

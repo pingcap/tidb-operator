@@ -91,14 +91,3 @@ func GetNextOrdinalPodName(podName string, ordinal int32) string {
 	basicStr := podName[:strings.LastIndex(podName, "-")]
 	return fmt.Sprintf("%s-%d", basicStr, ordinal+1)
 }
-
-// Get container via container name
-func GetContainerViaName(name string, pod *corev1.Pod) (*corev1.Container, bool) {
-
-	for _, container := range pod.Spec.Containers {
-		if container.Name == name {
-			return &container, true
-		}
-	}
-	return nil, false
-}

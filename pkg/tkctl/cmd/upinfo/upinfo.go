@@ -16,7 +16,6 @@ package upinfo
 import (
 	"fmt"
 	"io"
-	"strconv"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -24,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
+	tkctlUtil "github.com/pingcap/tidb-operator/pkg/tkctl/util"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/spf13/cobra"
 	apps "k8s.io/api/apps/v1beta1"
@@ -148,7 +148,12 @@ func (o *UpInfoOptions) Run() error {
 	if err != nil {
 		return err
 	}
-	msg, err := renderTCUpgradeInfo(tc, set, podList)
+	svcName := tkctlUtil.GetTidbServiceName(tc.Name)
+	svc, err := o.KubeCli.CoreV1().Services(o.Namespace).Get(svcName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	msg, err := renderTCUpgradeInfo(tc, set, podList, svc)
 	if err != nil {
 		return err
 	}
@@ -179,30 +184,19 @@ func getState(updateReplicas int32, ordinal int32, tc *v1alpha1.TidbCluster, pod
 	return state
 }
 
-func getServerPort(container *v1.Container) (int32, bool) {
-	for _, port := range container.Ports {
-		if port.Name == label.ServerVal {
-			return port.ContainerPort, true
+func getTiDBServerPort(svc *v1.Service) string {
+	for _, port := range svc.Spec.Ports {
+		if port.Name == "mysql-client" {
+			if port.NodePort != 0 {
+				return fmt.Sprintf("%d:%d/%s", port.Port, port.NodePort, port.Protocol)
+			}
+			return fmt.Sprintf("%d/%s", port.Port, port.Protocol)
 		}
 	}
-	return 0, false
+	return "<none>"
 }
 
-func getTiDBServerPort(pod *v1.Pod) string {
-
-	container, ok := util.GetContainerViaName(v1alpha1.TiDBMemberType.String(), pod)
-	if !ok {
-		return "NONE"
-	}
-	port, ok := getServerPort(container)
-	if !ok {
-		return "NONE"
-	}
-
-	return strconv.Itoa(int(port))
-}
-
-func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podList *v1.PodList) (string, error) {
+func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podList *v1.PodList, svc *v1.Service) (string, error) {
 	return readable.TabbedString(func(out io.Writer) error {
 		w := readable.NewPrefixWriter(out)
 		dbPhase := tc.Status.TiDB.Phase
@@ -235,7 +229,7 @@ func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podLis
 							state = UPDATED
 						}
 
-						port := getTiDBServerPort(&pod)
+						port := getTiDBServerPort(svc)
 
 						w.WriteLine(readable.LEVEL_1, "%s\t%s\t%s\t%s\t%s\t", pod.Name, state, pod.Status.HostIP, pod.Status.PodIP, port)
 					}
