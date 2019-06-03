@@ -75,6 +75,7 @@ require (
 	github.com/prometheus/common v0.0.0-20180801064454-c7de2306084e // indirect
 	github.com/prometheus/procfs v0.0.0-20180725123919-05ee40e3a273 // indirect
 	github.com/renstrom/dedent v1.1.0 // indirect
+	github.com/robfig/cron v1.1.0
 	github.com/russross/blackfriday v1.5.2+incompatible // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.0.6
@@ -86,6 +87,7 @@ require (
 	github.com/uber/jaeger-lib v2.0.0+incompatible // indirect
 	github.com/ugorji/go v1.1.1 // indirect
 	github.com/unrolled/render v0.0.0-20180807193321-4206df6ff701 // indirect
+	github.com/urfave/negroni v1.0.0 // indirect
 	github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18 // indirect
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect

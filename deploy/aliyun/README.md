@@ -11,13 +11,24 @@
 - [jq](https://stedolan.github.io/jq/download/) >= 1.6
 - [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) 0.11.*
 
-> You can use the Alibaba [Cloud Shell](https://shell.aliyun.com) service, which has all the tools pre-installed and properly configured.
+### Permissions
 
-## Overview 
+The following permissions are required:
+- AliyunECSFullAccess
+- AliyunESSFullAccess
+- AliyunVPCFullAccess
+- AliyunSLBFullAccess
+- AliyunCSFullAccess
+- AliyunEIPFullAccess
+- AliyunECIFullAccess
+- AliyunVPNGatewayFullAccess
+- AliyunNATGatewayFullAccess
+
+## Overview
 
 The default setup will create:
- 
-- A new VPC 
+
+- A new VPC
 - An ECS instance as bastion machine
 - A managed ACK(Alibaba Cloud Kubernetes) cluster with the following ECS instance worker nodes:
   - An auto-scaling group of 2 * instances(2c2g) as ACK mandatory workers for system service like CoreDNS
@@ -53,6 +64,8 @@ $ terraform init
 $ terraform apply
 ```
 
+If you get an error while running `terraform apply`, fix the error(e.g. lack of permission) according to the description and run `terraform apply` again.
+
 `terraform apply` will take 5 to 10 minutes to create the whole stack, once complete, basic cluster information will be printed:
 
 > **Note:** You can use the `terraform output` command to get the output again.
@@ -63,19 +76,19 @@ Apply complete! Resources: 3 added, 0 changed, 1 destroyed.
 Outputs:
 
 bastion_ip = 1.2.3.4
-bastion_key_file = /root/tidb-operator/deploy/alicloud/credentials/tidb-cluster-bastion-key.pem
+bastion_key_file = /root/tidb-operator/deploy/aliyun/credentials/tidb-cluster-bastion-key.pem
 cluster_id = ca57c6071f31f458da66965ceddd1c31b
-kubeconfig_file = /root/tidb-operator/deploy/alicloud/.terraform/modules/a2078f76522ae433133fc16e24bd21ae/kubeconfig_tidb-cluster
+kubeconfig_file = /root/tidb-operator/deploy/aliyun/.terraform/modules/a2078f76522ae433133fc16e24bd21ae/kubeconfig_tidb-cluster
 monitor_endpoint = 1.2.3.4:3000
 region = cn-hangzhou
 tidb_port = 4000
 tidb_slb_ip = 192.168.5.53
-tidb_version = v2.1.0
+tidb_version = v3.0.0-rc.1
 vpc_id = vpc-bp16wcbu0xhbg833fymmc
-worker_key_file = /root/tidb-operator/deploy/alicloud/credentials/tidb-cluster-node-key.pem
+worker_key_file = /root/tidb-operator/deploy/aliyun/credentials/tidb-cluster-node-key.pem
 ```
 
-You can then interact with the ACK cluster using `kubectl` and `helm` (`cluster_name` is `tidb-cluster` by default): 
+You can then interact with the ACK cluster using `kubectl` and `helm` (`cluster_name` is `tidb-cluster` by default):
 
 ```shell
 $ export KUBECONFIG=$PWD/credentials/kubeconfig_<cluster_name>
@@ -92,7 +105,7 @@ $ ssh -i credentials/<cluster_name>-bastion-key.pem root@<bastion_ip>
 $ mysql -h <tidb_slb_ip> -P <tidb_port> -u root
 ```
 
-## Monitoring 
+## Monitoring
 
 Visit `<monitor_endpoint>` to view the grafana dashboards. You can find this information in the output of installation.
 
@@ -124,11 +137,18 @@ It may take some while to finish destroying the cluster.
 $ terraform destroy
 ```
 
+Alibaba cloud terraform provider do not handle kubernetes creation error properly, which will cause an error when destroying. In that case, you can remove the kubernetes resource from the local state manually and proceed to destroy the rest resources:
+
+```shell
+$ terraform state list
+$ terraform state rm module.ack.alicloud_cs_managed_kubernetes.k8s
+```
+
 > **Note:** You have to manually delete the cloud disk used by monitoring node in Aliyun's console after destroying if you don't need it anymore.
 
 ## Customize
 
-By default, the terraform script will create a new VPC. You can use an existing VPC by setting `vpc_id` to use an existing VPC. Note that kubernetes node will only be created in available zones that has vswitch existed when using existing VPC. 
+By default, the terraform script will create a new VPC. You can use an existing VPC by setting `vpc_id` to use an existing VPC. Note that kubernetes node will only be created in available zones that has vswitch existed when using existing VPC.
 
 An ecs instance is also created by default as bastion machine to connect to the created TiDB cluster, because the TiDB service is only exposed to intranet. The bastion instance has mysql-cli and sysbench installed that helps you use and test TiDB.
 
@@ -148,4 +168,3 @@ For more customization options, please refer to `variables.tf`
 ## Limitations
 
 You cannot change pod cidr, service cidr and worker instance types once the cluster created.
-

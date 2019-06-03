@@ -82,6 +82,7 @@ func NewConfig() (*Config, error) {
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
 	flag.StringVar(&cfg.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
+	flag.StringVar(&cfg.ChartDir, "chart-dir", "", "chart dir")
 	flag.StringVar(&slack.WebhookURL, "slack-webhook-url", "", "slack webhook url")
 	flag.Parse()
 
@@ -91,11 +92,13 @@ func NewConfig() (*Config, error) {
 	}
 	cfg.OperatorRepoDir = operatorRepo
 
-	chartDir, err := ioutil.TempDir("", "charts")
-	if err != nil {
-		return nil, err
+	if strings.TrimSpace(cfg.ChartDir) == "" {
+		chartDir, err := ioutil.TempDir("", "charts")
+		if err != nil {
+			return nil, err
+		}
+		cfg.ChartDir = chartDir
 	}
-	cfg.ChartDir = chartDir
 
 	manifestDir, err := ioutil.TempDir("", "manifests")
 	if err != nil {

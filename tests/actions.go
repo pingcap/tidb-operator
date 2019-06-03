@@ -150,6 +150,7 @@ type OperatorActions interface {
 	CheckK8sAvailableOrDie(excludeNodes map[string]string, excludePods map[string]*corev1.Pod)
 	CheckOperatorAvailable(operatorConfig *OperatorConfig) error
 	CheckTidbClustersAvailable(infos []*TidbClusterConfig) error
+	CheckOperatorDownOrDie(infos []*TidbClusterConfig)
 	CheckTidbClustersAvailableOrDie(infos []*TidbClusterConfig)
 	CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
@@ -162,8 +163,19 @@ type OperatorActions interface {
 	EmitEvent(info *TidbClusterConfig, msg string)
 	BackupRestore(from, to *TidbClusterConfig) error
 	BackupRestoreOrDie(from, to *TidbClusterConfig)
+	LabelNodes() error
+	LabelNodesOrDie()
+	CheckDisasterTolerance(info *TidbClusterConfig) error
+	CheckDisasterToleranceOrDie(info *TidbClusterConfig)
+	CheckDataRegionDisasterTolerance(info *TidbClusterConfig) error
+	CheckDataRegionDisasterToleranceOrDie(info *TidbClusterConfig)
 	GetTidbMemberAssignedNodes(info *TidbClusterConfig) (map[string]string, error)
+	GetTidbMemberAssignedNodesOrDie(info *TidbClusterConfig) map[string]string
 	CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error
+	CheckTidbMemberAssignedNodesOrDie(info *TidbClusterConfig, oldAssignedNodes map[string]string)
+	SetPartitionAnnotation(tcName string, nameSpace string, ordinal int) error
+	CheckManualPauseTiDB(info *TidbClusterConfig) error
+	CheckManualPauseTiDBOrDie(info *TidbClusterConfig)
 }
 
 type operatorActions struct {
@@ -216,7 +228,6 @@ type TidbClusterConfig struct {
 	TiDBImage              string
 	StorageClassName       string
 	Password               string
-	InitSQL                string
 	RecordCount            string
 	InsertBatchSize        string
 	Resources              map[string]string
@@ -239,6 +250,7 @@ type TidbClusterConfig struct {
 
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
+	SubValues        string
 }
 
 func (oi *OperatorConfig) ConfigTLS() *tls.Config {
@@ -289,7 +301,6 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 		"tikv.image":              tc.TiKVImage,
 		"tidb.image":              tc.TiDBImage,
 		"tidb.passwordSecretName": tc.InitSecretName,
-		"tidb.initSql":            tc.InitSQL,
 		"monitor.create":          strconv.FormatBool(tc.Monitor),
 		"enableConfigMapRollout":  strconv.FormatBool(tc.EnableConfigMapRollout),
 		"pd.preStartScript":       tc.PDPreStartScript,
@@ -333,7 +344,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"controllerManager.autoFailover":   "true",
 		"scheduler.kubeSchedulerImageName": oi.SchedulerImage,
 		"controllerManager.logLevel":       oi.LogLevel,
-		"scheduler.logLevel":               "2",
+		"scheduler.logLevel":               "4",
 		"controllerManager.replicas":       "2",
 		"scheduler.replicas":               "2",
 		"imagePullPolicy":                  string(oi.ImagePullPolicy),
@@ -376,8 +387,17 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
 
+	// delete statefulset update webhook and configuration
+	cmd = fmt.Sprintf("kubectl delete -f %s/webhook.yaml", oa.manifestPath(info.Tag))
+	glog.Info(cmd)
+
+	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil && !notFound(string(res)) {
+		return fmt.Errorf("failed to delete statefulset webhook and configuration : %v, %s", err, string(res))
+	}
+
 	// create cert and secret for webhook
-	cmd = fmt.Sprintf("%s/create-cert.sh", oa.manifestPath(info.Tag))
+	cmd = fmt.Sprintf("%s/create-cert.sh --namespace %s", oa.manifestPath(info.Tag), info.Namespace)
 	glog.Info(cmd)
 
 	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -420,16 +440,7 @@ func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 		return err
 	}
 
-	// delete statefulset update webhook and configuration
-	cmd := fmt.Sprintf("kubectl delete -f %s/webhook.yaml", oa.manifestPath(info.Tag))
-	glog.Info(cmd)
-
-	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil && !notFound(string(res)) {
-		return fmt.Errorf("failed to delete statefulset webhook and configuration : %v, %s", err, string(res))
-	}
-
-	res, err = exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
+	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
 
 	if err == nil || !releaseIsNotFound(err) {
 		return nil
@@ -453,6 +464,7 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		--set operatorImage=%s`,
 		info.ReleaseName, oa.operatorChartPath(info.Tag),
 		info.Image)
+
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
@@ -481,7 +493,22 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 
 	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s",
 		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
-	glog.Infof(cmd)
+	if strings.TrimSpace(info.SubValues) != "" {
+		subVaulesPath := fmt.Sprintf("%s/%s.yaml", oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName)
+		svFile, err := os.Create(subVaulesPath)
+		if err != nil {
+			return err
+		}
+		defer svFile.Close()
+		_, err = svFile.WriteString(info.SubValues)
+		if err != nil {
+			return err
+		}
+
+		cmd = fmt.Sprintf(" %s --values %s", cmd, subVaulesPath)
+	}
+	glog.Info(cmd)
+
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
 			info.Namespace, info.ClusterName, err, string(res))
@@ -601,7 +628,16 @@ func (oa *operatorActions) GetTidbMemberAssignedNodes(info *TidbClusterConfig) (
 	return assignedNodes, nil
 }
 
+func (oa *operatorActions) GetTidbMemberAssignedNodesOrDie(info *TidbClusterConfig) map[string]string {
+	result, err := oa.GetTidbMemberAssignedNodes(info)
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+	return result
+}
+
 func (oa *operatorActions) CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error {
+	glog.Infof("checking tidb member [%s/%s] assigned nodes", info.Namespace, info.ClusterName)
 	assignedNodes, err := oa.GetTidbMemberAssignedNodes(info)
 	if err != nil {
 		return err
@@ -615,12 +651,18 @@ func (oa *operatorActions) CheckTidbMemberAssignedNodes(info *TidbClusterConfig,
 	return nil
 }
 
+func (oa *operatorActions) CheckTidbMemberAssignedNodesOrDie(info *TidbClusterConfig, oldAssignedNodes map[string]string) {
+	if err := oa.CheckTidbMemberAssignedNodes(info, oldAssignedNodes); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
 func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error {
 	glog.Infof("checking tidb cluster [%s/%s] status", info.Namespace, info.ClusterName)
 
 	ns := info.Namespace
 	tcName := info.ClusterName
-	if err := wait.Poll(oa.pollInterval, 35*time.Minute, func() (bool, error) {
+	if err := wait.Poll(oa.pollInterval, 30*time.Minute, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -744,8 +786,7 @@ func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, fmt.Sprintf("ScaleTidbCluster to pd: %s, tikv: %s, tidb: %s",
 		info.Args["pd.replicas"], info.Args["tikv.replicas"], info.Args["tidb.replicas"]))
 
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(nil))
+	cmd := oa.getHelmUpgradeClusterCmd(info, nil)
 	glog.Info("[SCALE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -817,7 +858,7 @@ func (oa *operatorActions) CheckScaledCorrectly(info *TidbClusterConfig, podUIDs
 	})
 }
 
-func setPartitionAnnotation(tcName string, nameSpace string, ordinal int) error {
+func (oa *operatorActions) SetPartitionAnnotation(tcName string, nameSpace string, ordinal int) error {
 	// add annotation to pause statefulset upgrade process
 	cmd := fmt.Sprintf("kubectl annotate tc %s -n %s tidb.pingcap.com/tidb-partition=%d --overwrite",
 		tcName, nameSpace, ordinal)
@@ -837,21 +878,7 @@ func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 	}
 	oa.EmitEvent(info, "UpgradeTidbCluster")
 
-	// get tidbSet from apiserver
-	tidbSetName := controller.TiDBMemberName(info.ClusterName)
-	tidbSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(info.Namespace).Get(tidbSetName, metav1.GetOptions{})
-	if err != nil {
-		return pingcapErrors.Wrapf(err, "failed to get stateful set [%s/%s] setName %s", info.Namespace, info.ClusterName, tidbSetName)
-	}
-
-	// add annotation to pause statefulset upgrade process
-	err = setPartitionAnnotation(info.ClusterName, info.Namespace, int(tidbSet.Status.Replicas-1))
-	if err != nil {
-		return pingcapErrors.Wrapf(err, "failed to add annotation to [%s/%s]", info.Namespace, info.ClusterName)
-	}
-
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(nil))
+	cmd := oa.getHelmUpgradeClusterCmd(info, nil)
 	glog.Info("[UPGRADE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1019,38 +1046,6 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	tidbSetName := controller.TiDBMemberName(tcName)
-	tidbUpgradeAnnotationStr, ok := tc.Annotations[label.AnnTiDBPartition]
-	if !ok {
-		tidbUpgradeAnnotationStr = "0"
-	}
-
-	tidbUpgradeAnnotation, err := strconv.ParseInt(tidbUpgradeAnnotationStr, 10, 32)
-	if err != nil {
-		return false, nil
-	}
-
-	pauseCorrect := func(set *v1beta1.StatefulSet) bool {
-		return (*set.Spec.UpdateStrategy.RollingUpdate.Partition) >= int32(tidbUpgradeAnnotation)
-	}
-
-	upgradePaused := func() bool {
-
-		podName := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.Name), tidbUpgradeAnnotation)
-
-		tidbPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
-		if err != nil {
-			glog.Errorf("fail to get tidb po name %s namespace %s ", podName, ns)
-			return false
-		}
-		if tidbPod.Labels[v1beta1.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision &&
-			tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-			if member, ok := tc.Status.TiDB.Members[tidbPod.Name]; ok && member.Health {
-				return true
-			}
-		}
-
-		return false
-	}
 
 	tidbSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
@@ -1082,23 +1077,6 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	if tidbSet.Status.ReadyReplicas != tidbSet.Status.Replicas {
 		glog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
 			ns, tidbSetName, tidbSet.Status.ReadyReplicas, tidbSet.Status.Replicas)
-		return false, nil
-	}
-
-	if upgradePaused() {
-
-		time.Sleep(5 * time.Minute)
-
-		if !pauseCorrect(tidbSet) {
-			return false, fmt.Errorf("pause partition is not correct in upgrade phase [%s/%s] partition %d annotation %d",
-				ns, tidbSetName, (*tidbSet.Spec.UpdateStrategy.RollingUpdate.Partition), tidbUpgradeAnnotation)
-		}
-
-		err := setPartitionAnnotation(tcName, ns, 0)
-		if err != nil {
-			glog.Errorf("fail to set annotation for [%s/%s]", ns, tidbSetName)
-			return false, nil
-		}
 		return false, nil
 	}
 
@@ -1857,10 +1835,7 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 		"scheduledBackup.secretName": info.BackupSecretName,
 	}
 
-	setString := info.TidbClusterHelmSetString(sets)
-
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), setString)
+	cmd := oa.getHelmUpgradeClusterCmd(info, sets)
 
 	glog.Infof("scheduled-backup delploy [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -1878,10 +1853,7 @@ func (oa *operatorActions) disableScheduledBackup(info *TidbClusterConfig) error
 		"scheduledBackup.create": "false",
 	}
 
-	setString := info.TidbClusterHelmSetString(sets)
-
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), setString)
+	cmd := oa.getHelmUpgradeClusterCmd(info, sets)
 
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -2078,10 +2050,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 		"binlog.drainer.ignoreSchemas":  "",
 	}
 
-	setString := from.TidbClusterHelmSetString(sets)
-
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		from.ClusterName, oa.tidbClusterChartPath(from.OperatorTag), setString)
+	cmd := oa.getHelmUpgradeClusterCmd(from, sets)
 	glog.Infof(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -2338,7 +2307,10 @@ func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
 		return
 	}
 
-	ce := oa.clusterEvents[info.String()]
+	ce, ok := oa.clusterEvents[info.String()]
+	if !ok {
+		return
+	}
 	ce.events = append(ce.events, ev)
 
 	// sleep a while to avoid overlapping time
@@ -2381,5 +2353,89 @@ func (oa *operatorActions) EventWorker() {
 
 		ce := oa.clusterEvents[key]
 		ce.events = retryEvents
+	}
+}
+
+func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, set map[string]string) string {
+	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
+		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(set))
+	if strings.TrimSpace(info.SubValues) != "" {
+		subVaulesPath := fmt.Sprintf("%s/%s.yaml", oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName)
+		cmd = fmt.Sprintf(" %s --values %s", cmd, subVaulesPath)
+	}
+
+	return cmd
+}
+
+func (oa *operatorActions) CheckManualPauseTiDB(info *TidbClusterConfig) error {
+
+	var tc *v1alpha1.TidbCluster
+	var tidbSet *v1beta1.StatefulSet
+	var err error
+	ns := info.Namespace
+
+	// set partition annotation to protect tidb pod
+	if err = oa.SetPartitionAnnotation(info.ClusterName, ns, 1); err != nil {
+		return fmt.Errorf("failed to SetPartitionAnnotation: [%s/%s], %v", ns, info.ClusterName, err)
+	}
+
+	fn := func() (bool, error) {
+
+		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(info.ClusterName, metav1.GetOptions{}); err != nil {
+			glog.Infof("failed to get tidbcluster: [%s/%s], %v", ns, info.ClusterName, err)
+			return false, nil
+		}
+
+		podName := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.Name), 1)
+
+		tidbPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+		if err != nil {
+			glog.Infof("fail to get pod in CheckManualPauseTiDB [%s/%s]", ns, podName)
+			return false, nil
+		}
+
+		if tidbPod.Labels[v1beta1.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision &&
+			tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+			if member, ok := tc.Status.TiDB.Members[tidbPod.Name]; !ok || !member.Health {
+				glog.Infof("wait for tidb pod [%s/%s] ready member health %t ok %t", ns, podName, member.Health, ok)
+			} else {
+				return true, nil
+			}
+		} else {
+			glog.Infof("tidbset is not in upgrade phase or pod is not upgrade done [%s/%s]", ns, podName)
+		}
+
+		return false, nil
+	}
+
+	// wait for the tidb statefulset is upgrade to the protect one
+	if err = wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn); err != nil {
+		return fmt.Errorf("fail to upgrade to annotation TiDB pod : %v", err)
+	}
+
+	time.Sleep(30 * time.Second)
+
+	tidbSetName := controller.TiDBMemberName(info.ClusterName)
+	if tidbSet, err = oa.kubeCli.AppsV1beta1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{}); err != nil {
+		return fmt.Errorf("failed to get statefulset: [%s/%s], %v", ns, tidbSetName, err)
+	}
+
+	if (*tidbSet.Spec.UpdateStrategy.RollingUpdate.Partition) < 1 {
+		return fmt.Errorf("pause partition is not correct in upgrade phase [%s/%s] partition %d annotation %d",
+			ns, tidbSetName, (*tidbSet.Spec.UpdateStrategy.RollingUpdate.Partition), 1)
+	}
+
+	if err = oa.SetPartitionAnnotation(tc.Name, ns, 0); err != nil {
+		return fmt.Errorf("fail to set annotation for [%s/%s]", ns, tidbSetName)
+	}
+
+	return nil
+}
+
+func (oa *operatorActions) CheckManualPauseTiDBOrDie(info *TidbClusterConfig) {
+	// add annotation to pause statefulset upgrade process and check
+	err := oa.CheckManualPauseTiDB(info)
+	if err != nil {
+		slack.NotifyAndPanic(err)
 	}
 }

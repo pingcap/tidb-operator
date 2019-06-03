@@ -59,7 +59,7 @@ func (attachment *Attachment) AddField(field Field) *Attachment {
 
 func Send(webhookURL string, proxy string, payload Payload) error {
 	if webhookURL == "" {
-		return fmt.Errorf("the webhookURL have not set")
+		return nil
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -154,7 +154,8 @@ func NotifyAndPanic(err error) {
 	panic(err)
 }
 
-func NotifyAndCompleted(msg string) {
+func NotifyAndCompletedf(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
 	sendErr := SendGoodMsg(msg)
 	if sendErr != nil {
 		glog.Warningf("failed to notify slack[%s] the massage: %s,error: %v", WebhookURL, msg, sendErr)
