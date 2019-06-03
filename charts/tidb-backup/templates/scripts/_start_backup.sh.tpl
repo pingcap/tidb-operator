@@ -5,6 +5,7 @@ host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]' | tr
 dirname=/data/${BACKUP_NAME}
 mkdir -p ${dirname}
 cp /savepoint-dir/savepoint ${dirname}/
+savepoint=`cat ${dirname}/savepoint | cut -d "=" -f2`
 
 /mydumper \
   --outputdir=${dirname} \
@@ -12,6 +13,7 @@ cp /savepoint-dir/savepoint ${dirname}/
   --port=4000 \
   --user=${TIDB_USER} \
   --password=${TIDB_PASSWORD} \
+  --tidb-snapshot=${savepoint} \
   {{ .Values.backupOptions }}
 
 {{- if .Values.gcp }}
