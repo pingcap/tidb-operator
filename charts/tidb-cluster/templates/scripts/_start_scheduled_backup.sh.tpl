@@ -4,6 +4,9 @@ host=`echo {{ template "cluster.name" . }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]
 
 mkdir -p /data/${dirname}/
 cp /savepoint-dir/savepoint /data/${dirname}/
+
+# the content of savepoint file is:
+# commitTS = 408824443621605409
 savepoint=`cat /data/${dirname}/savepoint | cut -d "=" -f2`
 
 /mydumper \
