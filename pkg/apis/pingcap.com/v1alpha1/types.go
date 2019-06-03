@@ -137,13 +137,13 @@ type TiDBSlowLogTailerSpec struct {
 // TiKVSpec contains details of PD member
 type TiKVSpec struct {
 	ContainerSpec
-	Privileged           bool                `json:"privileged,omitempty"`
-	Replicas             int32               `json:"replicas"`
-	Affinity             *corev1.Affinity    `json:"affinity,omitempty"`
-	NodeSelector         map[string]string   `json:"nodeSelector,omitempty"`
-	StorageClassName     string              `json:"storageClassName,omitempty"`
-	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
-	Annotations          map[string]string   `json:"annotations,omitempty"`
+	Privileged       bool                `json:"privileged,omitempty"`
+	Replicas         int32               `json:"replicas"`
+	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
+	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
+	StorageClassName string              `json:"storageClassName,omitempty"`
+	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
+	Annotations      map[string]string   `json:"annotations,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
