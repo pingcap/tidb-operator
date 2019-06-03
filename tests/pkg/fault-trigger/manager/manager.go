@@ -13,10 +13,40 @@
 
 package manager
 
+import (
+	"fmt"
+	"sync"
+)
+
 // Manager to manager fault trigger
-type Manager struct{}
+type Manager struct {
+	sync.RWMutex
+	vmCache         map[string]string
+	kubeProxyImages string
+}
 
 // NewManager returns a manager instance
-func NewManager() *Manager {
-	return &Manager{}
+func NewManager(kubeProxyImage string) *Manager {
+	return &Manager{
+		kubeProxyImages: kubeProxyImage,
+		vmCache:         make(map[string]string),
+	}
+}
+
+func (m *Manager) setVMCache(key, val string) {
+	m.Lock()
+	m.vmCache[key] = val
+	m.Unlock()
+}
+
+func (m *Manager) getVMCache(key string) (string, error) {
+	m.RLock()
+	defer m.RUnlock()
+
+	val, ok := m.vmCache[key]
+	if !ok {
+		return "", fmt.Errorf("vm %s not in cache", key)
+	}
+
+	return val, nil
 }

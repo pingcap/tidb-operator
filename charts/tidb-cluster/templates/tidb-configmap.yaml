@@ -1,7 +1,10 @@
+{{/*
+tidb-initializer-job need a stable configmap name
+*/}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Values.clusterName }}-tidb
+  name: {{ template "cluster.name" . }}-tidb
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -9,15 +12,4 @@ metadata:
     app.kubernetes.io/component: tidb
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 data:
-  startup-script: |-
-{{ tuple "scripts/_start_tidb.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-  {{- if .Values.tidb.initSql }}
-  init-sql: |-
-{{ .Values.tidb.initSql | indent 4 }}
-  {{- end }}
-  config-file: |-
-    {{- if .Values.tidb.config }}
-{{ .Values.tidb.config | indent 4 }}
-    {{- else }}
-{{ tuple "config/_tidb-config.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-    {{- end -}}
+{{ include "tidb-configmap.data" . | indent 2 }}

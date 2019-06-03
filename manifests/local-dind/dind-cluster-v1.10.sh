@@ -52,7 +52,7 @@ if [[ $(uname) == Linux && -z ${DOCKER_HOST:-} ]]; then
     using_local_linuxdocker=1
 fi
 
-EMBEDDED_CONFIG=y;DIND_IMAGE=mirantis/kubeadm-dind-cluster@sha256:ba1b61973fb4761f209580c599c17eab7c2e1bead5dfe496aab47c5ff672b05f
+EMBEDDED_CONFIG=y;DIND_IMAGE=mirantis/kubeadm-dind-cluster@sha256:0a68bdc682af3e102bafb9efa304a1b50aec0b2c64c086c34004d4d289e5b173
 
 KUBE_REPO_PREFIX="${KUBE_REPO_PREFIX:-}"
 if [[ -n ${KUBE_REPO_PREFIX} ]];then
@@ -2401,7 +2401,7 @@ function dind::run_tiller {
     if [[ $? -eq 0 ]];then
         helm_version=$(helm version -c --template '{{.Client.SemVer}}')
         if [[ -n ${KUBE_REPO_PREFIX} ]];then
-            helm init --tiller-image ${KUBE_REPO_PREFIX}/tiller:${helm_version}
+            helm init --tiller-image ${KUBE_REPO_PREFIX}/tiller:${helm_version} --skip-refresh
         else
             helm init
         fi

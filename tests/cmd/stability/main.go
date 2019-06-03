@@ -17,322 +17,333 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
+	"strconv"
 	"time"
+
+	"k8s.io/api/core/v1"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/tests"
-	"github.com/pingcap/tidb-operator/tests/backup"
-	"github.com/pingcap/tidb-operator/tests/pkg/workload"
-	"github.com/pingcap/tidb-operator/tests/pkg/workload/ddl"
+	"github.com/pingcap/tidb-operator/tests/pkg/client"
+	"github.com/pingcap/tidb-operator/tests/slack"
+	"github.com/robfig/cron"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
+
+var successCount int
 
 func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
-
-	conf := tests.NewConfig()
-	err := conf.Parse()
-	if err != nil {
-		glog.Fatalf("failed to parse config: %v", err)
-	}
-
 	go func() {
-		glog.Info(http.ListenAndServe("localhost:6060", nil))
+		glog.Info(http.ListenAndServe(":6060", nil))
 	}()
 
-	// TODO read these args from config
-	beginTidbVersion := "v2.1.0"
-	toTidbVersion := "v2.1.4"
-	operatorTag := "master"
-	operatorImage := "pingcap/tidb-operator:latest"
+	conf := tests.ParseConfigOrDie()
+	cli, kubeCli := client.NewCliOrDie()
+	tidbVersion := conf.GetTiDBVersionOrDie()
+	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
 
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		glog.Fatalf("failed to get config: %v", err)
-	}
-	cli, err := versioned.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("failed to create Clientset: %v", err)
-	}
-	kubeCli, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
-	}
-
-	oa := tests.NewOperatorActions(cli, kubeCli, conf)
-
-	operatorInfo := &tests.OperatorInfo{
+	operatorCfg := &tests.OperatorConfig{
 		Namespace:      "pingcap",
 		ReleaseName:    "operator",
-		Image:          operatorImage,
-		Tag:            operatorTag,
-		SchedulerImage: "gcr.io/google-containers/hyperkube:v1.12.1",
-		LogLevel:       "2",
-	}
-
-	// create database and table and insert a column for test backup and restore
-	initSql := `"create database record;use record;create table test(t char(32))"`
-
-	clusterInfos := []*tests.TidbClusterInfo{
-		{
-			Namespace:        "e2e-cluster1",
-			ClusterName:      "e2e-cluster1",
-			OperatorTag:      operatorTag,
-			PDImage:          fmt.Sprintf("pingcap/pd:%s", beginTidbVersion),
-			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", beginTidbVersion),
-			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", beginTidbVersion),
-			StorageClassName: "local-storage",
-			Password:         "admin",
-			InitSql:          initSql,
-			UserName:         "root",
-			InitSecretName:   "demo-set-secret",
-			BackupSecretName: "demo-backup-secret",
-			BackupPVC:        "test-backup",
-			Resources: map[string]string{
-				"pd.resources.limits.cpu":        "1000m",
-				"pd.resources.limits.memory":     "2Gi",
-				"pd.resources.requests.cpu":      "200m",
-				"pd.resources.requests.memory":   "1Gi",
-				"tikv.resources.limits.cpu":      "2000m",
-				"tikv.resources.limits.memory":   "4Gi",
-				"tikv.resources.requests.cpu":    "1000m",
-				"tikv.resources.requests.memory": "2Gi",
-				"tidb.resources.limits.cpu":      "2000m",
-				"tidb.resources.limits.memory":   "4Gi",
-				"tidb.resources.requests.cpu":    "500m",
-				"tidb.resources.requests.memory": "1Gi",
-			},
-			Args:    map[string]string{},
-			Monitor: true,
+		Image:          conf.OperatorImage,
+		Tag:            conf.OperatorTag,
+		SchedulerImage: "gcr.io/google-containers/hyperkube",
+		SchedulerFeatures: []string{
+			"StableScheduling",
 		},
-		{
-			Namespace:        "e2e-cluster2",
-			ClusterName:      "e2e-cluster2",
-			OperatorTag:      "master",
-			PDImage:          fmt.Sprintf("pingcap/pd:%s", beginTidbVersion),
-			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", beginTidbVersion),
-			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", beginTidbVersion),
-			StorageClassName: "local-storage",
-			Password:         "admin",
-			InitSql:          initSql,
-			UserName:         "root",
-			InitSecretName:   "demo-set-secret",
-			BackupSecretName: "demo-backup-secret",
-			BackupPVC:        "test-backup",
-			Resources: map[string]string{
-				"pd.resources.limits.cpu":        "1000m",
-				"pd.resources.limits.memory":     "2Gi",
-				"pd.resources.requests.cpu":      "200m",
-				"pd.resources.requests.memory":   "1Gi",
-				"tikv.resources.limits.cpu":      "2000m",
-				"tikv.resources.limits.memory":   "4Gi",
-				"tikv.resources.requests.cpu":    "1000m",
-				"tikv.resources.requests.memory": "2Gi",
-				"tidb.resources.limits.cpu":      "2000m",
-				"tidb.resources.limits.memory":   "4Gi",
-				"tidb.resources.requests.cpu":    "500m",
-				"tidb.resources.requests.memory": "1Gi",
-			},
-			Args:    map[string]string{},
-			Monitor: true,
+		LogLevel:           "2",
+		WebhookServiceName: "webhook-service",
+		WebhookSecretName:  "webhook-secret",
+		WebhookConfigName:  "webhook-config",
+		ImagePullPolicy:    v1.PullAlways,
+	}
+
+	clusterName1 := "stability-cluster1"
+	clusterName2 := "stability-cluster2"
+	cluster1 := &tests.TidbClusterConfig{
+		Namespace:        clusterName1,
+		ClusterName:      clusterName1,
+		OperatorTag:      conf.OperatorTag,
+		PDImage:          fmt.Sprintf("pingcap/pd:%s", tidbVersion),
+		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
+		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
+		StorageClassName: "local-storage",
+		Password:         "admin",
+		UserName:         "root",
+		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName1),
+		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName1),
+		BackupName:       "backup",
+		Resources: map[string]string{
+			"pd.resources.limits.cpu":        "1000m",
+			"pd.resources.limits.memory":     "2Gi",
+			"pd.resources.requests.cpu":      "200m",
+			"pd.resources.requests.memory":   "1Gi",
+			"tikv.resources.limits.cpu":      "8000m",
+			"tikv.resources.limits.memory":   "8Gi",
+			"tikv.resources.requests.cpu":    "1000m",
+			"tikv.resources.requests.memory": "2Gi",
+			"tidb.resources.limits.cpu":      "8000m",
+			"tidb.resources.limits.memory":   "8Gi",
+			"tidb.resources.requests.cpu":    "500m",
+			"tidb.resources.requests.memory": "1Gi",
+			"monitor.persistent":             "true",
+			"discovery.image":                conf.OperatorImage,
 		},
+		Args: map[string]string{
+			"binlog.drainer.workerCount": "1024",
+			"binlog.drainer.txnBatch":    "512",
+		},
+		Monitor:                true,
+		BlockWriteConfig:       conf.BlockWriter,
+		PDMaxReplicas:          3,
+		TiKVGrpcConcurrency:    4,
+		TiDBTokenLimit:         1000,
+		PDLogLevel:             "info",
+		EnableConfigMapRollout: true,
 	}
+	cluster1.SubValues = tests.GetAffinityConfigOrDie(cluster1.ClusterName, cluster1.Namespace)
 
-	defer func() {
-		oa.DumpAllLogs(operatorInfo, clusterInfos)
-	}()
-
-	// deploy operator
-	if err := oa.CleanOperator(operatorInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, nil)
-		glog.Fatal(err)
+	cluster2 := &tests.TidbClusterConfig{
+		Namespace:        clusterName2,
+		ClusterName:      clusterName2,
+		OperatorTag:      conf.OperatorTag,
+		PDImage:          fmt.Sprintf("pingcap/pd:%s", tidbVersion),
+		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
+		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
+		StorageClassName: "local-storage",
+		Password:         "admin",
+		UserName:         "root",
+		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName2),
+		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName2),
+		BackupName:       "backup",
+		Resources: map[string]string{
+			"pd.resources.limits.cpu":        "1000m",
+			"pd.resources.limits.memory":     "2Gi",
+			"pd.resources.requests.cpu":      "200m",
+			"pd.resources.requests.memory":   "1Gi",
+			"tikv.resources.limits.cpu":      "8000m",
+			"tikv.resources.limits.memory":   "8Gi",
+			"tikv.resources.requests.cpu":    "1000m",
+			"tikv.resources.requests.memory": "2Gi",
+			"tidb.resources.limits.cpu":      "8000m",
+			"tidb.resources.limits.memory":   "8Gi",
+			"tidb.resources.requests.cpu":    "500m",
+			"tidb.resources.requests.memory": "1Gi",
+			// TODO assert the the monitor's pvc exist and clean it when bootstrapping
+			"monitor.persistent": "true",
+			"discovery.image":    conf.OperatorImage,
+		},
+		Args:                   map[string]string{},
+		Monitor:                true,
+		BlockWriteConfig:       conf.BlockWriter,
+		PDMaxReplicas:          3,
+		TiKVGrpcConcurrency:    4,
+		TiDBTokenLimit:         1000,
+		PDLogLevel:             "info",
+		EnableConfigMapRollout: false,
 	}
-	if err = oa.DeployOperator(operatorInfo); err != nil {
-		oa.DumpAllLogs(operatorInfo, nil)
-		glog.Fatal(err)
+	cluster2.SubValues = tests.GetAffinityConfigOrDie(cluster2.ClusterName, cluster2.Namespace)
+
+	// cluster backup and restore
+	clusterBackupFrom := cluster1
+	clusterRestoreTo := &tests.TidbClusterConfig{}
+	copier.Copy(clusterRestoreTo, clusterBackupFrom)
+	clusterRestoreTo.ClusterName = "cluster-restore"
+
+	onePDCluster := &tests.TidbClusterConfig{}
+	copier.Copy(onePDCluster, cluster1)
+	onePDCluster.ClusterName = "pd-replicas-1"
+	onePDCluster.Namespace = "pd-replicas-1"
+	onePDCluster.Resources["pd.replicas"] = "1"
+
+	allClusters := []*tests.TidbClusterConfig{cluster1, cluster2, clusterRestoreTo}
+
+	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
+	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, conf, allClusters)
+
+	fta.CheckAndRecoverEnvOrDie()
+	oa.CheckK8sAvailableOrDie(nil, nil)
+	go wait.Forever(oa.EventWorker, 10*time.Second)
+	go oa.StartValidatingAdmissionWebhookServerOrDie(operatorCfg)
+
+	c := cron.New()
+	c.AddFunc("0 0 10 * * *", func() {
+		slack.NotifyAndCompletedf("Succeed %d times in the past 24 hours.", successCount)
+		successCount = 0
+	})
+	go c.Start()
+
+	oa.LabelNodesOrDie()
+
+	fn := func() {
+		run(oa, fta, conf, operatorCfg, allClusters, cluster1, cluster2,
+			onePDCluster, upgardeTiDBVersions, clusterRestoreTo, clusterBackupFrom)
 	}
+	wait.Forever(fn, 5*time.Minute)
+}
 
-	// deploy tidbclusters
-	for _, clusterInfo := range clusterInfos {
-		if err = oa.CleanTidbCluster(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-		if err = oa.DeployTidbCluster(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
+func run(oa tests.OperatorActions,
+	fta tests.FaultTriggerActions,
+	conf *tests.Config,
+	operatorCfg *tests.OperatorConfig,
+	allClusters []*tests.TidbClusterConfig,
+	cluster1 *tests.TidbClusterConfig,
+	cluster2 *tests.TidbClusterConfig,
+	onePDCluster *tests.TidbClusterConfig,
+	upgardeTiDBVersions []string,
+	clusterRestoreTo *tests.TidbClusterConfig,
+	clusterBackupFrom *tests.TidbClusterConfig,
+) {
+	// clean and deploy operator
+	oa.CleanOperatorOrDie(operatorCfg)
+	oa.DeployOperatorOrDie(operatorCfg)
+
+	// clean all clusters
+	for _, cluster := range allClusters {
+		oa.CleanTidbClusterOrDie(cluster)
 	}
+	oa.CleanTidbClusterOrDie(onePDCluster)
 
-	for _, clusterInfo := range clusterInfos {
-		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-	}
+	// deploy and check cluster1, cluster2
+	oa.DeployTidbClusterOrDie(cluster1)
+	oa.DeployTidbClusterOrDie(cluster2)
+	oa.DeployTidbClusterOrDie(onePDCluster)
+	oa.CheckTidbClusterStatusOrDie(cluster1)
+	oa.CheckTidbClusterStatusOrDie(cluster2)
+	oa.CheckTidbClusterStatusOrDie(onePDCluster)
 
-	var workloads []workload.Workload
-	for _, clusterInfo := range clusterInfos {
-		workload := ddl.New(clusterInfo.DSN("test"), 1, 1)
-		workloads = append(workloads, workload)
-	}
+	oa.CleanTidbClusterOrDie(onePDCluster)
 
-	err = workload.Run(func() error {
+	// check disaster tolerance
+	oa.CheckDisasterToleranceOrDie(cluster1)
+	oa.CheckDisasterToleranceOrDie(cluster2)
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
-		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
-		}
+	go oa.BeginInsertDataToOrDie(cluster1)
+	go oa.BeginInsertDataToOrDie(cluster2)
+	defer oa.StopInsertDataTo(cluster1)
+	defer oa.StopInsertDataTo(cluster2)
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScalePD(3)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
-		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
-		}
+	// scale out cluster1 and cluster2
+	cluster1.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
+	oa.ScaleTidbClusterOrDie(cluster1)
+	cluster2.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
+	oa.ScaleTidbClusterOrDie(cluster2)
+	oa.CheckTidbClusterStatusOrDie(cluster1)
+	oa.CheckTidbClusterStatusOrDie(cluster2)
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScaleTiKV(3)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
-		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
-		}
+	// scale in cluster1 and cluster2
+	cluster1.ScaleTiDB(2).ScaleTiKV(3).ScalePD(3)
+	oa.ScaleTidbClusterOrDie(cluster1)
+	cluster2.ScaleTiDB(2).ScaleTiKV(3).ScalePD(3)
+	oa.ScaleTidbClusterOrDie(cluster2)
+	oa.CheckTidbClusterStatusOrDie(cluster1)
+	oa.CheckTidbClusterStatusOrDie(cluster2)
 
-		for _, clusterInfo := range clusterInfos {
-			clusterInfo = clusterInfo.ScaleTiDB(1)
-			if err := oa.ScaleTidbCluster(clusterInfo); err != nil {
-				return err
-			}
-		}
-		for _, clusterInfo := range clusterInfos {
-			if err := oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-				return err
-			}
-		}
+	// before upgrade cluster, register webhook first
+	oa.RegisterWebHookAndServiceOrDie(operatorCfg)
 
-		return nil
-	}, workloads...)
+	// upgrade cluster1 and cluster2
+	firstUpgradeVersion := upgardeTiDBVersions[0]
+	assignedNodes1 := oa.GetTidbMemberAssignedNodesOrDie(cluster1)
+	assignedNodes2 := oa.GetTidbMemberAssignedNodesOrDie(cluster2)
+	cluster1.UpgradeAll(firstUpgradeVersion)
+	cluster2.UpgradeAll(firstUpgradeVersion)
+	oa.UpgradeTidbClusterOrDie(cluster1)
+	oa.UpgradeTidbClusterOrDie(cluster2)
 
-	if err != nil {
-		glog.Fatal(err)
-	}
+	// check pause upgrade feature in cluster2
+	oa.CheckManualPauseTiDBOrDie(cluster2)
 
-	for _, clusterInfo := range clusterInfos {
-		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-	}
+	oa.CheckTidbClusterStatusOrDie(cluster1)
+	oa.CheckTidbClusterStatusOrDie(cluster2)
 
-	for _, clusterInfo := range clusterInfos {
-		clusterInfo = clusterInfo.UpgradeAll(toTidbVersion)
-		if err = oa.UpgradeTidbCluster(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-	}
+	oa.CheckTidbMemberAssignedNodesOrDie(cluster1, assignedNodes1)
+	oa.CheckTidbMemberAssignedNodesOrDie(cluster2, assignedNodes2)
 
-	for _, clusterInfo := range clusterInfos {
-		if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
-			glog.Fatal(err)
-		}
-	}
+	// after upgrade cluster, clean webhook
+	oa.CleanWebHookAndService(operatorCfg)
+
+	// cluster1: bad configuration change case
+	cluster1.TiDBPreStartScript = strconv.Quote("exit 1")
+	oa.UpgradeTidbClusterOrDie(cluster1)
+	cluster1.TiKVPreStartScript = strconv.Quote("exit 1")
+	oa.UpgradeTidbClusterOrDie(cluster1)
+	cluster1.PDPreStartScript = strconv.Quote("exit 1")
+	oa.UpgradeTidbClusterOrDie(cluster1)
+
+	time.Sleep(30 * time.Second)
+	oa.CheckTidbClustersAvailableOrDie([]*tests.TidbClusterConfig{cluster1})
+
+	// rollback cluster1
+	cluster1.PDPreStartScript = strconv.Quote("")
+	cluster1.TiKVPreStartScript = strconv.Quote("")
+	cluster1.TiDBPreStartScript = strconv.Quote("")
+	oa.UpgradeTidbClusterOrDie(cluster1)
+	oa.CheckTidbClusterStatusOrDie(cluster1)
+
+	// cluster2: enable and normal configuration change case
+	cluster2.EnableConfigMapRollout = true
+	oa.UpgradeTidbClusterOrDie(cluster2)
+	oa.CheckTidbClusterStatusOrDie(cluster2)
+	cluster2.UpdatePdMaxReplicas(conf.PDMaxReplicas).
+		UpdateTiKVGrpcConcurrency(conf.TiKVGrpcConcurrency).
+		UpdateTiDBTokenLimit(conf.TiDBTokenLimit)
+	oa.UpgradeTidbClusterOrDie(cluster2)
+	oa.CheckTidbClusterStatusOrDie(cluster2)
+
+	// after upgrade cluster, clean webhook
+	oa.CleanWebHookAndService(operatorCfg)
+
+	// check data regions disaster tolerance
+	oa.CheckDataRegionDisasterToleranceOrDie(cluster1)
+	oa.CheckDataRegionDisasterToleranceOrDie(cluster2)
+
+	// deploy and check cluster restore
+	oa.DeployTidbClusterOrDie(clusterRestoreTo)
+	oa.CheckTidbClusterStatusOrDie(clusterRestoreTo)
 
 	// backup and restore
-	backupClusterInfo := clusterInfos[0]
-	restoreClusterInfo := &tests.TidbClusterInfo{}
-	copier.Copy(restoreClusterInfo, backupClusterInfo)
-	restoreClusterInfo.ClusterName = restoreClusterInfo.ClusterName + "-restore"
+	oa.BackupRestoreOrDie(clusterBackupFrom, clusterRestoreTo)
 
-	if err = oa.CleanTidbCluster(restoreClusterInfo); err != nil {
-		glog.Fatal(err)
-	}
-	if err = oa.DeployTidbCluster(restoreClusterInfo); err != nil {
-		glog.Fatal(err)
-	}
-	if err = oa.CheckTidbClusterStatus(restoreClusterInfo); err != nil {
-		glog.Fatal(err)
-	}
+	oa.CleanOperatorOrDie(operatorCfg)
+	oa.CheckOperatorDownOrDie(allClusters)
+	oa.DeployOperatorOrDie(operatorCfg)
 
-	backupCase := backup.NewBackupCase(oa, backupClusterInfo, restoreClusterInfo)
-
-	if err := backupCase.Run(); err != nil {
-		glog.Fatal(err)
+	// stop a node and failover automatically
+	physicalNode, node, faultTime := fta.StopNodeOrDie()
+	oa.EmitEvent(nil, fmt.Sprintf("StopNode: %s on %s", node, physicalNode))
+	oa.CheckFailoverPendingOrDie(allClusters, node, &faultTime)
+	oa.CheckFailoverOrDie(allClusters, node)
+	time.Sleep(3 * time.Minute)
+	fta.StartNodeOrDie(physicalNode, node)
+	oa.EmitEvent(nil, fmt.Sprintf("StartNode: %s on %s", node, physicalNode))
+	oa.CheckRecoverOrDie(allClusters)
+	for _, cluster := range allClusters {
+		oa.CheckTidbClusterStatusOrDie(cluster)
 	}
 
-	fa := tests.NewFaultTriggerAction(cli, kubeCli, conf)
-	if err := fa.StopETCD("172.16.4.171"); err != nil {
-		glog.Fatal(err)
+	// truncate a sst file and check failover
+	oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 5*time.Minute)
+
+	// stop one etcd node and k8s/operator/tidbcluster is available
+	faultEtcd := tests.SelectNode(conf.ETCDs)
+	fta.StopETCDOrDie(faultEtcd)
+	defer fta.StartETCDOrDie(faultEtcd)
+	// TODO make the pause interval as a argument
+	time.Sleep(3 * time.Minute)
+	oa.CheckOneEtcdDownOrDie(operatorCfg, allClusters, faultEtcd)
+	fta.StartETCDOrDie(faultEtcd)
+
+	//clean temp dirs when stability success
+	err := conf.CleanTempDirs()
+	if err != nil {
+		glog.Errorf("failed to clean temp dirs, this error can be ignored.")
 	}
 
-	time.Sleep(30 * time.Second)
-
-	if err := fa.StartETCD("172.16.4.171"); err != nil {
-		glog.Fatal(err)
-	}
-
-	time.Sleep(10 * time.Second)
-
-	if err := fa.StopKubeAPIServer("172.16.4.171"); err != nil {
-		glog.Fatal(err)
-	}
-
-	time.Sleep(30 * time.Second)
-
-	if err := fa.StartKubeAPIServer("172.16.4.171"); err != nil {
-		glog.Fatal(err)
-	}
-
-	time.Sleep(10 * time.Second)
-
-	if err := fa.StopKubeScheduler("172.16.4.171"); err != nil {
-		glog.Fatal(err)
-	}
-
-	time.Sleep(30 * time.Second)
-
-	if err := fa.StartKubeScheduler("172.16.4.171"); err != nil {
-		glog.Fatal(err)
-	}
-
-	time.Sleep(10 * time.Second)
-
-	if err := fa.StopKubeControllerManager("172.16.4.171"); err != nil {
-		glog.Fatal(err)
-	}
-
-	time.Sleep(30 * time.Second)
-
-	if err := fa.StartKubeControllerManager("172.16.4.171"); err != nil {
-		glog.Fatal(err)
-	}
-
-	time.Sleep(10 * time.Second)
-
-	if err := fa.StopKubelet("172.16.4.171"); err != nil {
-		glog.Fatal(err)
-	}
-
-	time.Sleep(30 * time.Second)
-
-	if err := fa.StartKubelet("172.16.4.171"); err != nil {
-		glog.Fatal(err)
-	}
+	successCount++
+	glog.Infof("################## Stability test finished at: %v\n\n\n\n", time.Now().Format(time.RFC3339))
 }

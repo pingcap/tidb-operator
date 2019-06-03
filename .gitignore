@@ -3,6 +3,13 @@ images/tidb-operator/bin/
 images/tidb-operator-e2e/bin/
 images/tidb-operator-e2e/tidb-cluster/
 images/tidb-operator-e2e/tidb-operator/
+tests/images/stability-test/bin/
+tests/images/e2e/bin/
+tests/images/fault-trigger/bin/
+tests/images/e2e/tidb-cluster/
+tests/images/e2e/tidb-backup/
+tests/images/e2e/tidb-operator/
+tests/images/e2e/manifests/
 *.tar
 tmp/
 data/
@@ -21,3 +28,6 @@ coverage.txt
 /_tools/
 vendor
 tests/e2e/e2e.test
+.orig
+tkc
+

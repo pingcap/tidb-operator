@@ -1,0 +1,14 @@
+{{- if .Values.enableConfigMapRollout }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "cluster.name" . }}-tidb-{{ template "tidb-configmap.data-digest" . }}
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: tidb
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+data:
+{{ include "tidb-configmap.data" . | indent 2 }}
+{{- end }}

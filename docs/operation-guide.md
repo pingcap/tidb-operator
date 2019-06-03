@@ -1,31 +1,79 @@
 # TiDB Cluster Operation Guide
 
-TiDB Operator can manage multiple clusters in the same Kubernetes cluster. Clusters are qualified by `namespace` and `clusterName`, namely different clusters may have same `namespace` or `clusterName` but not both.
+TiDB Operator can manage multiple clusters in the same Kubernetes cluster.
 
-The default `clusterName` is `demo` which is defined in charts/tidb-cluster/values.yaml. The following variables will be used in the rest of the document:
+The following variables will be used in the rest of the document:
 
 ```shell
-$ releaseName="tidb-cluster"
+$ releaseName="demo"
 $ namespace="tidb"
-$ clusterName="demo" # Make sure this is the same as variable defined in charts/tidb-cluster/values.yaml
 ```
 
 > **Note:** The rest of the document will use `values.yaml` to reference `charts/tidb-cluster/values.yaml`
 
+## Configuration
+
+TiDB Operator uses `values.yaml` as TiDB cluster configuration file. It provides the default basic configuration which you can use directly for quick deployment, but if you have specific configuration requirements or for production deployment, you need to manually modify the variables in the `values.yaml` file.
+
+* Resource setting
+
+    * CPU & Memory
+
+        The default deployment doesn't set CPU and memory requests or limits for any of the pods, these settings can make TiDB cluster run on a small Kubernetes cluster like DinD or the default GKE cluster for testing. But for production deployment, you would likely to adjust the cpu, memory and storage resources according to the [recommendations](https://pingcap.com/docs/dev/how-to/deploy/hardware-recommendations/#software-and-hardware-recommendations).
+        
+        The resource limits should be equal or bigger than the resource requests, it is suggested to set limit and request equal to get [`Guaranteed` QoS]( https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#create-a-pod-that-gets-assigned-a-qos-class-of-guaranteed).
+
+    * Storage
+
+        The variables `pd.storageClassName` and `tikv.storageClassName` in `values.yaml` are used to set `StorageClass` of PD and TiKV,their default setting are `local-storage` with minimal size.
+        
+        If you don't want to use the default `StorageClass` or your Kubernetes cluster does not support `local-storage` class, please execute the following command to find an available `StorageClass` and select the ones you want to provide to TiDB cluster.
+
+        ```shell
+        $ kubectl get sc
+        ```
+
+* Disaster Tolerance setting
+
+    TiDB is a distributed database. Its disaster tolerance means that when any physical node failed, not only to ensure TiDB server is available, but also ensure the data is complete and available.
+
+    How to guarantee Disaster Tolerance of TiDB cluster on Kubernetes?
+
+    We mainly solve the problem from the scheduling of services and data.
+
+    * Disaster Tolerance of TiDB instance
+
+        TiDB Operator provides an extended scheduler to guarantee PD/TiKV/TiDB instance disaster tolerance on host level. TiDB Cluster has set the extended scheduler as default scheduler, you will find the setting in the variable `schedulerName` of `values.yaml`.
+
+        In the other hand use `PodAntiAffinity` term of `affinity` to ensure disaster tolerance on the other topology levels (e.g. rack, zone, region). 
+        refer to the doc: [pod affnity & anti affinity](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#inter-pod-affinity-and-anti-affinity-beta-feature), moreover `values.yaml` also provides a typical disaster tolerance setting example in the comments of `pd.affinity`.
+
+    * Disaster Tolerance of data
+
+        Disaster tolerance of data is guaranteed by TiDB Cluster itself. The only work Operator needs to do is that collects topology info from specific labels of Kubernetes nodes where TiKV Pod runs on and then PD will schedule data replicas auto according to the topology info.
+        Because current TiDB Operator can only recognize some specific labels, so you can only set nodes topology info with the following particular labels
+
+        * `region`: region where node is located
+        * `zone`: zone where node is located
+        * `rack`: rack where node is located
+        * `kubernetes.io/hostname`: hostname of the node
+
+        you need label topology info to nodes of Kubernetes cluster use the following command
+        ```shell
+        # Not all tags are required
+        $ kubectl label node <nodeName> region=<regionName> zone=<zoneName> rack=<rackName> kubernetes.io/hostname=<hostName>
+        ```
+
+For other settings, the variables in `values.yaml` are self-explanatory with comments. You can modify them according to your need before installing the charts.
+
 ## Deploy TiDB cluster
 
-After TiDB Operator and Helm are deployed correctly, TiDB cluster can be deployed using following command:
+After TiDB Operator and Helm are deployed correctly and configuration completed, TiDB cluster can be deployed using following command:
 
 ```shell
 $ helm install charts/tidb-cluster --name=${releaseName} --namespace=${namespace}
-$ kubectl get po -n ${namespace} -l app.kubernetes.io/name=${releaseName}
+$ kubectl get po -n ${namespace} -l app.kubernetes.io/instance=${releaseName}
 ```
-
-The default deployment doesn't set CPU and memory requests or limits for any of the pods, and the storage used is `local-storage` with minimal size. These settings can make TiDB cluster run on a small Kubernetes cluster like DinD or the default GKE cluster for testing. But for production deployment, you would likely to adjust the cpu, memory and storage resources according to the [recommendations](https://github.com/pingcap/docs/blob/master/op-guide/recommendation.md).
-
-The resource limits should be equal or bigger than the resource requests, it is suggested to set limit and request equal to get [`Guaranteed` QoS]( https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#create-a-pod-that-gets-assigned-a-qos-class-of-guaranteed).
-
-For other settings, the variables in `values.yaml` are self-explanatory with comments. You can modify them according to your need before installing the charts.
 
 ## Access TiDB cluster
 
@@ -35,23 +83,30 @@ By default TiDB service is exposed using [`NodePort`](https://kubernetes.io/docs
 $ kubectl get svc -n ${namespace} # check the available services
 ```
 
-By default the TiDB cluster has no password set. You can specify a password by setting `tidb.password` in `values.yaml` before deploying. You can retrieve the password from the initialization `Secret`:
+By default the TiDB cluster has no root password set. Setting a password in helm is insecure. Instead you can set the name of a K8s secret as `tidb.passwordSecretName` in `values.yaml`. Note that this is only used to initialize users: once your tidb cluster is initialized you may delete the secret. The format of the secret is `user=password`, so you can set the root user password with:
+
+```
+kubectl create namespace ${namespace}
+kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=${namespace}
+```
+
+You can retrieve the password from the initialization `Secret`:
 
 ```shell
-$ PASSWORD=$(kubectl get secret -n ${namespace} ${clusterName}-tidb -ojsonpath="{.data.password}" | base64 --decode | awk '{print $6}')
+$ PASSWORD=$(kubectl get secret -n ${namespace} tidb-secret -ojsonpath="{.data.root}" | base64 --decode)
 $ echo ${PASSWORD}
 ```
 
 * Access inside of the Kubernetes cluster
 
-    When your application is deployed in the same Kubernetes cluster, you can access TiDB via domain name `demo-tidb.tidb.svc` with port `4000`. Here `demo` is the `clusterName` which can be modified in `values.yaml`. And the latter `tidb` is the namespace you specified when using `helm install` to deploy TiDB cluster.
+    When your application is deployed in the same Kubernetes cluster, you can access TiDB via domain name `demo-tidb.tidb.svc` with port `4000`. Here `demo` is the `releaseName`. And the latter `tidb` is the namespace you specified when using `helm install` to deploy TiDB cluster.
 
 * Access outside of the Kubernetes cluster
 
     * Using kubectl portforward
 
         ```shell
-        $ kubectl port-forward -n ${namespace} svc/${clusterName}-tidb 4000:4000 &>/tmp/portforward-tidb.log
+        $ kubectl port-forward -n ${namespace} svc/${releaseName}-tidb 4000:4000 &>/tmp/portforward-tidb.log
         $ mysql -h 127.0.0.1 -P 4000 -u root -p
         ```
 
@@ -98,6 +153,14 @@ $ helm upgrade ${releaseName} charts/tidb-cluster
 
 For minor version upgrade, updating the `image` should be enough. When TiDB major version is out, the better way to update is to fetch the new charts from tidb-operator and then merge the old values.yaml with new values.yaml. And then upgrade as above.
 
+## Change TiDB cluster Configuration
+
+Since `v1.0.0`, TiDB operator can perform rolling-update on configuration updates. This feature is disabled by default in favor of backward compatibility, you can enable it by setting `enableConfigMapRollout` to `true` in your helm values file.
+
+> **Note**: currently, changing PD's `scheduler` and `replication` configurations(`maxStoreDownTime` and `maxReplicas` in `values.yaml`, and all the configuration key under `[scheduler]` and `[replication]` section if you override the pd config file) after cluster creation has no effect. You have to configure these variables via `pd-ctl` after the cluster creation, see: [pd-ctl](https://pingcap.com/docs/dev/reference/tools/pd-control/)
+
+> WARN: changing this variable against a running cluster will trigger an rolling-update of PD/TiKV/TiDB pods even if there's no configuration change.
+
 ## Destroy TiDB cluster
 
 To destroy TiDB cluster, run the following command:
@@ -125,7 +188,7 @@ By default the monitor data is not persistent, when the monitor pod is killed fo
 You can view the dashboard using `kubectl portforward`:
 
 ```shell
-$ kubectl port-forward -n ${namespace} svc/${clusterName}-grafana 3000:3000 &>/tmp/portforward-grafana.log
+$ kubectl port-forward -n ${namespace} svc/${releaseName}-grafana 3000:3000 &>/tmp/portforward-grafana.log
 ```
 
 Then open your browser at http://localhost:3000 The default username and password are both `admin`
@@ -159,68 +222,8 @@ To retrieve logs from multiple pods, [`stern`](https://github.com/wercker/stern)
 $ stern -n ${namespace} tidb -c slowlog
 ```
 
-## Backup
+## Backup and restore
 
-Currently, TiDB Operator supports two kinds of backup: incremental backup via binlog and full backup(scheduled or ad-hoc) via [Mydumper](https://github.com/maxbube/mydumper).
+TiDB Operator provides highly automated backup and recovery operations for a TiDB cluster. You can easily take full backup or setup incremental backup of a TiDB cluster, and restore the TiDB cluster when the cluster fails.
 
-### Incremental backup
-
-To enable incremental backup, set `binlog.pump.create` and `binlog.drainer.create` to `true`. By default the incremental backup data is stored in protobuffer format in a PV. You can change `binlog.drainer.destDBType` from `pb` to `mysql` or `kafka` and configure the corresponding downstream.
-
-### Full backup
-
-Currently, full backup requires a PersistentVolume. The backup job will create a PVC to store backup data.
-
-By default, the backup uses PV to store the backup data.
-> **Note:** You must set the ad-hoc full backup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to keep your backup data safe.
-
-You can also store the backup data to [Google Cloud Storage](https://cloud.google.com/storage/) bucket or [Ceph object storage](https://ceph.com/ceph-storage/object-storage/) by configuring the corresponding section in `values.yaml`. This way the PV temporarily stores backup data before it is placed in object storage.
-
-The comments in `values.yaml` is self-explanatory for both GCP backup and Ceph backup.
-
-### Scheduled full backup
-
-Scheduled full backup can be ran periodically just like crontab job.
-
-To create a scheduled full backup job, modify `scheduledBackup` section in `values.yaml` file.
-
-* `create` must be set to `true`
-* Set `storageClassName` to the PV storage class name used for backup data
-* `schedule` takes the [Cron](https://en.wikipedia.org/wiki/Cron) format
-* `user` and `password` must be set to the correct user which has the permission to read the database to be backuped.
-
-> **Note:** You must set the scheduled full backup PV's [reclaim policy](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy) to `Retain` to keep your backup data safe.
-
-
-### Ad-Hoc full backup
-
-> **Note:** The rest of the document will use `values.yaml` to reference `charts/tidb-backup/values.yaml`
-
-Ad-Hoc full backup can be done once just like job.
-
-To create an ad-hoc full backup job, modify `backup` section in `values.yaml` file.
-
-* `mode` must be set to `backup`
-* Set `storage.className` to the PV storage class name used for backup data
-
-Create a secret containing the user and password that has the permission to backup the database:
-
-```shell
-$ kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=<user> --from-literal=password=<password>
-```
-
-Then run the following command to create an ad-hoc backup job:
-
-```shell
-$ helm install charts/tidb-backup --name=<backup-name> --namespace=${namespace}
-```
-
-## Restore
-
-Restore is similar to backup. See the `values.yaml` file for details.
-
-Modified the variables in `values.yaml` and then create restore job using the following command:
-
-```shell
-$ helm install charts/tidb-backup --name=<backup-name> --namespace=${namespace}
-```
+For detailed operation guides of backup and restore, refer to [Backup and Restore TiDB Cluster](./backup-restore.md).

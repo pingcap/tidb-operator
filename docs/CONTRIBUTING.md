@@ -96,14 +96,6 @@ $ git checkout -b myfeature
 
 ### Step 4: Develop
 
-#### Setup
-
-Make sure all the related tools are properly installed.
-
-```sh
-$ make check-setup
-```
-
 #### Edit the code
 
 You can now edit the code on the `myfeature` branch.
@@ -130,7 +122,7 @@ $ make e2e-docker-push
 After Docker images are pushed to the DinD Docker registry, run e2e tests:
 
 ```sh
-$ kubectl apply -f manifests/tidb-operator-e2e.yaml
+$ kubectl apply -f tests/manifests/e2e/e2e.yaml
 ```
 
 You can get the e2e test report from the log of testing pod: 
@@ -152,7 +144,14 @@ $ git rebase upstream/master
 
 ### Step 6: Commit
 
-Commit your changes.
+Before you commit, make sure that all the checks and unit tests are passed:
+
+```sh
+$ make check
+$ meke test
+```
+
+Then commit your changes.
 
 ```sh
 $ git commit

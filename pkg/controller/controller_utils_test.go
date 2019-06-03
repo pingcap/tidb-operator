@@ -21,7 +21,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -138,25 +137,6 @@ func TestTiKVCapacity(t *testing.T) {
 	}
 }
 
-func TestDefaultPushGatewayRequest(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	rr := DefaultPushGatewayRequest()
-	g.Expect(rr.Requests[corev1.ResourceCPU]).To(Equal(resource.MustParse("50m")))
-	g.Expect(rr.Requests[corev1.ResourceMemory]).To(Equal(resource.MustParse("50Mi")))
-	g.Expect(rr.Limits[corev1.ResourceCPU]).To(Equal(resource.MustParse("100m")))
-	g.Expect(rr.Limits[corev1.ResourceMemory]).To(Equal(resource.MustParse("100Mi")))
-}
-
-func TestGetPushgatewayImage(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	tc := &v1alpha1.TidbCluster{}
-	g.Expect(GetPushgatewayImage(tc)).To(Equal(defaultPushgatewayImage))
-	tc.Spec.TiKVPromGateway.Image = "image-1"
-	g.Expect(GetPushgatewayImage(tc)).To(Equal("image-1"))
-}
-
 func TestGetSlowLogTailerImage(t *testing.T) {
 	g := NewGomegaWithT(t)
 
@@ -203,6 +183,82 @@ func TestAnnProm(t *testing.T) {
 	g.Expect(ann["prometheus.io/scrape"]).To(Equal("true"))
 	g.Expect(ann["prometheus.io/path"]).To(Equal("/metrics"))
 	g.Expect(ann["prometheus.io/port"]).To(Equal("9090"))
+}
+
+func TestMemberConfigMapName(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name        string
+		annotations map[string]string
+		tcName      string
+		member      v1alpha1.MemberType
+		expectFn    func(*GomegaWithT, string)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+		tc := &v1alpha1.TidbCluster{}
+		tc.Name = test.tcName
+		tc.Annotations = test.annotations
+		test.expectFn(g, MemberConfigMapName(tc, test.member))
+	}
+	tests := []testcase{
+		{
+			name:        "backward compatible when no annotations set",
+			annotations: map[string]string{},
+			tcName:      "cluster-name",
+			member:      v1alpha1.TiKVMemberType,
+			expectFn: func(g *GomegaWithT, s string) {
+				g.Expect(s).To(Equal("cluster-name-tikv"))
+			},
+		},
+		{
+			name: "configmap digest presented",
+			annotations: map[string]string{
+				"pingcap.com/tikv.cluster-name-tikv.sha": "uuuuuuuu",
+			},
+			tcName: "cluster-name",
+			member: v1alpha1.TiKVMemberType,
+			expectFn: func(g *GomegaWithT, s string) {
+				g.Expect(s).To(Equal("cluster-name-tikv-uuuuuuuu"))
+			},
+		},
+		{
+			name:        "nil annotations",
+			annotations: nil,
+			tcName:      "cluster-name",
+			member:      v1alpha1.TiKVMemberType,
+			expectFn: func(g *GomegaWithT, s string) {
+				g.Expect(s).To(Equal("cluster-name-tikv"))
+			},
+		},
+		{
+			name: "annotation presented with empty value empty",
+			annotations: map[string]string{
+				"pingcap.com/tikv.cluster-name-tikv.sha": "",
+			},
+			tcName: "cluster-name",
+			member: v1alpha1.TiKVMemberType,
+			expectFn: func(g *GomegaWithT, s string) {
+				g.Expect(s).To(Equal("cluster-name-tikv"))
+			},
+		},
+		{
+			name: "no matched annotation key",
+			annotations: map[string]string{
+				"pingcap.com/pd.cluster-name-tikv.sha": "",
+			},
+			tcName: "cluster-name",
+			member: v1alpha1.TiKVMemberType,
+			expectFn: func(g *GomegaWithT, s string) {
+				g.Expect(s).To(Equal("cluster-name-tikv"))
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
 }
 
 func TestSetIfNotEmpty(t *testing.T) {

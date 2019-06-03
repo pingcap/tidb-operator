@@ -9,7 +9,7 @@ rbac:
   create: true
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:latest
+operatorImage: pingcap/tidb-operator:v1.0.0-beta.2
 imagePullPolicy: IfNotPresent
 
 defaultStorageClassName: local-storage
@@ -32,6 +32,8 @@ controllerManager:
   autoFailover: false
   # pd failover period default(5m)
   pdFailoverPeriod: 5m
+  # tikv failover period default(5m)
+  tikvFailoverPeriod: 5m
   # tidb failover period default(5m)
   tidbFailoverPeriod: 5m
 
@@ -43,6 +45,8 @@ scheduler:
   logLevel: 2
   replicas: 1
   schedulerName: tidb-scheduler
+  # features:
+  # - StableScheduling
   resources:
     limits:
       cpu: 250m

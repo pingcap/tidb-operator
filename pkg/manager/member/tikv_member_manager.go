@@ -121,7 +121,7 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 	tcName := tc.GetName()
 
 	newSvc := tkmm.getNewServiceForTidbCluster(tc, svcConfig)
-	oldSvc, err := tkmm.svcLister.Services(ns).Get(svcConfig.MemberName(tcName))
+	oldSvcTmp, err := tkmm.svcLister.Services(ns).Get(svcConfig.MemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
@@ -132,6 +132,8 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 	if err != nil {
 		return err
 	}
+
+	oldSvc := oldSvcTmp.DeepCopy()
 
 	equal, err := serviceEqual(newSvc, oldSvc)
 	if err != nil {
@@ -162,7 +164,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 
-	oldSet, err := tkmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
+	oldSetTmp, err := tkmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
@@ -178,6 +180,8 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
 	}
+
+	oldSet := oldSetTmp.DeepCopy()
 
 	if err := tkmm.syncTidbClusterStatus(tc, oldSet); err != nil {
 		return err
@@ -266,7 +270,7 @@ func (tkmm *tikvMemberManager) getNewServiceForTidbCluster(tc *v1alpha1.TidbClus
 func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	tikvConfigMap := controller.TiKVMemberName(tcName)
+	tikvConfigMap := controller.MemberConfigMapName(tc, v1alpha1.TiKVMemberType)
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
 		annMount,
@@ -293,7 +297,6 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 			}},
 		},
 	}
-	pgwVolMounts := []corev1.VolumeMount{} // pushgateway volumeMounts
 
 	var q resource.Quantity
 	var err error
@@ -308,6 +311,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 
 	tikvLabel := tkmm.labelTiKV(tc)
 	setName := controller.TiKVMemberName(tcName)
+	podAnnotations := CombineAnnotations(controller.AnnProm(20180), tc.Spec.TiKV.Annotations)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
 	storageClassName := tc.Spec.TiKV.StorageClassName
@@ -328,16 +332,12 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      tikvLabel.Labels(),
-					Annotations: controller.AnnProm(9091),
+					Annotations: podAnnotations,
 				},
 				Spec: corev1.PodSpec{
 					SchedulerName: tc.Spec.SchedulerName,
-					Affinity: util.AffinityForNodeSelector(
-						ns,
-						tc.Spec.TiKV.NodeSelectorRequired,
-						tikvLabel,
-						tc.Spec.TiKV.NodeSelector,
-					),
+					Affinity:      tc.Spec.TiKV.Affinity,
+					NodeSelector:  tc.Spec.TiKV.NodeSelector,
 					Containers: []corev1.Container{
 						{
 							Name:            v1alpha1.TiKVMemberType.String(),
@@ -382,22 +382,6 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 									Value: tc.Spec.Timezone,
 								},
 							},
-						},
-						{
-							Name:            v1alpha1.PushGatewayMemberType.String(),
-							Image:           controller.GetPushgatewayImage(tc),
-							ImagePullPolicy: tc.Spec.TiKVPromGateway.ImagePullPolicy,
-							Ports: []corev1.ContainerPort{
-								{
-									Name:          "metrics",
-									ContainerPort: int32(9091),
-									Protocol:      corev1.ProtocolTCP,
-								},
-							},
-							VolumeMounts: pgwVolMounts,
-							Resources: util.ResourceRequirement(tc.Spec.TiKVPromGateway.ContainerSpec,
-								controller.DefaultPushGatewayRequest()),
-							Env: []corev1.EnvVar{{Name: "TZ", Value: tc.Spec.Timezone}}, // Note: `TZ` is unused in pushgateway image, we set it here just to keep consistency
 						},
 					},
 					RestartPolicy: corev1.RestartPolicyAlways,

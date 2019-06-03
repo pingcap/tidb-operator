@@ -3,7 +3,7 @@ FROM alpine:3.5
 ENV KUBECTL_VERSION=v1.12.2
 ENV HELM_VERSION=v2.9.1
 
-RUN apk update && apk add --no-cache ca-certificates curl git
+RUN apk update && apk add --no-cache ca-certificates curl git openssl bash
 RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl \
     -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
@@ -13,5 +13,10 @@ RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VER
     mv linux-amd64/helm /usr/local/bin/helm && \
     rm -rf linux-amd64 && \
     rm helm-${HELM_VERSION}-linux-amd64.tar.gz
+
+ADD tidb-operator /charts/e2e/tidb-operator
+ADD tidb-cluster /charts/e2e/tidb-cluster
+ADD tidb-backup /charts/e2e/tidb-backup
+ADD manifests /manifests/e2e
 
 ADD bin/e2e /usr/local/bin/e2e

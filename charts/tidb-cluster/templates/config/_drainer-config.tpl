@@ -11,7 +11,10 @@ detect-interval = {{ .Values.binlog.drainer.detectInterval | default 10 }}
 data-dir = "/data"
 
 # a comma separated list of PD endpoints
-pd-urls = "http://{{ .Values.clusterName }}-pd:2379"
+pd-urls = "http://{{ template "cluster.name" . }}-pd:2379"
+
+# Use the specified compressor to compress payload between pump and drainer
+compressor = ""
 
 #[security]
 # Path of file that contains list of trusted SSL CAs for connection with cluster components.
@@ -24,14 +27,18 @@ pd-urls = "http://{{ .Values.clusterName }}-pd:2379"
 # syncer Configuration.
 [syncer]
 
-# disable sync these schema
-ignore-schemas = {{ .Values.binlog.drainer.ignoreSchemas | default "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql" | quote }}
+# Assume the upstream sql-mode.
+# If this is set , will use the same sql-mode to parse DDL statment, and set the same sql-mode at downstream when db-type is mysql.
+# The default value will not set any sql-mode.
+# sql-mode = "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION"
 
 # number of binlog events in a transaction batch
-txn-batch = {{ .Values.binlog.drainer.txnBatch | default 1 }}
+txn-batch = {{ .Values.binlog.drainer.txnBatch | default 20 }}
 
 # work count to execute binlogs
-worker-count = {{ .Values.binlog.drainer.workerCount | default 1 }}
+# if the latency between drainer and downstream(mysql or tidb) are too high, you might want to increase this
+# to get higher throughput by higher concurrent write to the downstream
+worker-count = {{ .Values.binlog.drainer.workerCount | default 16 }}
 
 disable-dispatch = {{ .Values.binlog.drainer.disableDispatch | default false }}
 
@@ -42,10 +49,14 @@ safe-mode = {{ .Values.binlog.drainer.safeMode | default false }}
 # valid values are "mysql", "pb", "tidb", "flash", "kafka"
 db-type = "{{ .Values.binlog.drainer.destDBType }}"
 
+# disable sync these schema
+ignore-schemas = {{ .Values.binlog.drainer.ignoreSchemas | default "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql" | quote }}
+
 ##replicate-do-db priority over replicate-do-table if have same db name
 ##and we support regex expression , start with '~' declare use regex expression.
 #
 #replicate-do-db = ["~^b.*","s1"]
+
 #[[syncer.replicate-do-table]]
 #db-name ="test"
 #tbl-name = "log"
@@ -54,6 +65,11 @@ db-type = "{{ .Values.binlog.drainer.destDBType }}"
 #db-name ="test"
 #tbl-name = "~^a.*"
 
+# disable sync these table
+#[[syncer.ignore-table]]
+#db-name = "test"
+#tbl-name = "log"
+
 {{- if eq .Values.binlog.drainer.destDBType "mysql" }}
 # the downstream mysql protocol database
 [syncer.to]
@@ -61,10 +77,9 @@ host = {{ .Values.binlog.drainer.mysql.host | quote }}
 user = {{ .Values.binlog.drainer.mysql.user | default "root" | quote }}
 password = {{ .Values.binlog.drainer.mysql.password | quote }}
 port = {{ .Values.binlog.drainer.mysql.port | default 3306 }}
-# Time and size limits for flash batch write
-time-limit = {{ .Values.binlog.drainer.mysql.timeLimit | default "30s" | quote }}
-size-limit = {{ .Values.binlog.drainer.mysql.sizeLimit | default 100000 | quote }}
+
 [syncer.to.checkpoint]
+# you can uncomment this to change the database to save checkpoint when the downstream is mysql or tidb
 #schema = "tidb_binlog"
 {{- end }}
 
@@ -73,6 +88,7 @@ size-limit = {{ .Values.binlog.drainer.mysql.sizeLimit | default 100000 | quote 
 # Compress compresses output file, like pb and sql file. Now it supports "gzip" algorithm only.
 # Values can be "gzip". Leave it empty to disable compression.
 [syncer.to]
+# directory to save pb file, default same as data-dir(save checkpoint file) if this is not configured.
 dir = "/data/pb"
 compression = "gzip"
 {{- end }}

@@ -5,7 +5,9 @@ ifeq ($(GO111), 1)
 $(error Please upgrade your Go compiler to 1.11 or higher version)
 endif
 
-GOENV  := GO15VENDOREXPERIMENT="1" GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+GOOS := $(if $(GOOS),$(GOOS),linux)
+GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
+GOENV  := GO15VENDOREXPERIMENT="1" GO111MODULE=on CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO     := $(GOENV) go build
 GOTEST := CGO_ENABLED=0 GO111MODULE=on go test -v -cover
 
@@ -14,7 +16,6 @@ LDFLAGS = $(shell ./hack/version.sh)
 DOCKER_REGISTRY := $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY),localhost:5000)
 
 PACKAGE_LIST := go list ./... | grep -vE "pkg/client" | grep -vE "zz_generated"
-PACKAGES := $$($(PACKAGE_LIST))
 PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
 FILES := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go")
 FAIL_ON_STDOUT := awk '{ print } END { if (NR > 0) { exit 1 } }'
@@ -27,7 +28,7 @@ docker-push: docker
 docker: build
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest" images/tidb-operator
 
-build: controller-manager scheduler discovery
+build: controller-manager scheduler discovery admission-controller
 
 controller-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
@@ -38,28 +39,51 @@ scheduler:
 discovery:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery cmd/discovery/main.go
 
+admission-controller:
+	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-controller cmd/admission-controller/main.go
+
+e2e-setup:
+	# ginkgo doesn't work with retool for Go 1.11
+	@GO111MODULE=on CGO_ENABLED=0 go get github.com/onsi/ginkgo@v1.6.0
+
 e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest"
 
 e2e-docker: e2e-build
+	[ -d tests/images/e2e/tidb-operator ] && rm -r tests/images/e2e/tidb-operator || true
+	[ -d tests/images/e2e/tidb-cluster ] && rm -r tests/images/e2e/tidb-cluster || true
+	[ -d tests/images/e2e/tidb-backup ] && rm -r tests/images/e2e/tidb-backup || true
+	[ -d tests/images/e2e/manifests ] && rm -r tests/images/e2e/manifests || true
+	cp -r charts/tidb-operator tests/images/e2e
+	cp -r charts/tidb-cluster tests/images/e2e
+	cp -r charts/tidb-backup tests/images/e2e
+	cp -r manifests tests/images/e2e
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" tests/images/e2e
 
-e2e-build:
-	$(GOENV) ginkgo build tests/e2e
+e2e-build: e2e-setup
+	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
+
+stability-test-build:
+	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test tests/cmd/stability/*.go
+
+stability-test-docker: stability-test-build
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest" tests/images/stability-test
+
+stability-test-push: stability-test-docker
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest"
+
+fault-trigger:
+	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/fault-trigger/bin/fault-trigger tests/cmd/fault-trigger/*.go
 
 test:
 	@echo "Run unit tests"
 	@$(GOTEST) ./pkg/... -coverprofile=coverage.txt -covermode=atomic && echo "\nUnit tests run successfully!"
 
-check-all: lint check-static check-shadow check-gosec megacheck errcheck
+check-all: lint check-static check-shadow check-gosec staticcheck errcheck
 
 check-setup:
 	@which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
 	@GO111MODULE=off retool sync
-	# ginkgo and govet doesn't work with retool for Go 1.11
-	# so install separately
-	@GO111MODULE=on CGO_ENABLED=0 go get github.com/dnephin/govet@4a96d43e39d340b63daa8bc5576985aa599885f6
-	@GO111MODULE=on CGO_ENABLED=0 go get github.com/onsi/ginkgo@v1.6.0
 
 check: check-setup lint check-static
 
@@ -67,19 +91,19 @@ check-static:
 	@ # Not running vet and fmt through metalinter becauase it ends up looking at vendor
 	@echo "gofmt checking"
 	gofmt -s -l -w $(FILES) 2>&1| $(FAIL_ON_STDOUT)
-	@echo "govet check"
-	govet -all $$($(PACKAGE_DIRECTORIES)) 2>&1
+	@echo "go vet check"
+	@GO111MODULE=on go vet -all $$($(PACKAGE_LIST)) 2>&1
 	@echo "mispell and ineffassign checking"
 	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all \
 	  --enable misspell \
 	  --enable ineffassign \
 	  $$($(PACKAGE_DIRECTORIES))
 
-# TODO: megacheck is too slow currently
-megacheck:
-	@echo "gometalinter megacheck"
+# TODO: staticcheck is too slow currently
+staticcheck:
+	@echo "gometalinter staticcheck"
 	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all --deadline 120s \
-	  --enable megacheck \
+	  --enable staticcheck \
 	  $$($(PACKAGE_DIRECTORIES))
 
 # TODO: errcheck is too slow currently
@@ -91,15 +115,32 @@ errcheck:
 
 # TODO: shadow check fails at the moment
 check-shadow:
-	@echo "govet shadow checking"
-	govet -shadow $$($(PACKAGE_DIRECTORIES))
+	@echo "go vet shadow checking"
+	go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
+	@GO111MODULE=on go vet -vettool=$(which shadow) $$($(PACKAGE_LIST))
 
 lint:
 	@echo "linting"
-	CGO_ENABLED=0 retool do revive -formatter friendly -config revive.toml $$($(PACKAGES))
+	CGO_ENABLED=0 retool do revive -formatter friendly -config revive.toml $$($(PACKAGE_LIST))
 
 check-gosec:
 	@echo "security checking"
 	CGO_ENABLED=0 retool do gosec $$($(PACKAGE_DIRECTORIES))
 
-.PHONY: check check-setup check-all build e2e-build
+cli:
+	$(GO) -ldflags '$(LDFLAGS)' -o tkctl cmd/tkctl/main.go
+
+debug-docker-push: debug-build-docker
+	docker push "${DOCKER_REGISTRY}/pingcap/debug-launcher:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-control:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-debug:latest"
+
+debug-build-docker: debug-build
+	docker build -t "${DOCKER_REGISTRY}/pingcap/debug-launcher:latest" misc/images/debug-launcher
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-control:latest" misc/images/tidb-control
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-debug:latest" misc/images/tidb-debug
+
+debug-build:
+	$(GO) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
+
+.PHONY: check check-setup check-all build e2e-build debug-build cli

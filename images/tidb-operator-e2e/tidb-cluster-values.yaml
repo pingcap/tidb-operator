@@ -11,6 +11,10 @@ rbac:
 # if multiple clusters are deployed in the same namespace.
 clusterName: demo-cluster
 
+# Add additional TidbCluster labels
+# ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+extraLabels: {}
+
 # schedulerName must be same with charts/tidb-operator/values#scheduler.schedulerName
 schedulerName: tidb-scheduler
 
@@ -32,7 +36,7 @@ discovery:
 
 pd:
   replicas: 3
-  image: pingcap/pd:v2.1.0
+  image: pingcap/pd:v3.0.0-rc.1
   imagePullPolicy: IfNotPresent
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -43,9 +47,13 @@ pd:
 
   # maxStoreDownTime is how long a store will be considered `down` when disconnected
   # if a store is considered `down`, the regions will be migrated to other stores
+  # Note: changing this value after cluster creation has no effect, instead, you have to configure this using pd-ctl
+  # see https://pingcap.com/docs/dev/reference/tools/pd-control/
   maxStoreDownTime: 1h
   # maxReplicas is the number of replicas for each region
+  # Note: same as maxStoreDownTime, change of this value should be made using pd-ctl after cluster creation
   maxReplicas: 3
+
   resources:
     limits: {}
     #   cpu: 8000m
@@ -69,10 +77,11 @@ pd:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
 
 tikv:
   replicas: 3
-  image: pingcap/tikv:v2.1.0
+  image: pingcap/tikv:v3.0.0-rc.1
   imagePullPolicy: IfNotPresent
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -102,6 +111,7 @@ tikv:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
 
 tikvPromGateway:
   image: prom/pushgateway:v0.3.1
@@ -117,13 +127,13 @@ tikvPromGateway:
 tidb:
   replicas: 2
   # The secret name of root password, you can create secret with following command:
-  # kubectl create secret generic tidb-secret --from-literal=root_password=<root-password>
+  # kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
   # If unset, the root password will be empty and you can set it after connecting
   # passwordSecretName: tidb-secret
   # initSql is the SQL statements executed after the TiDB cluster is bootstrapped.
   # initSql: |-
   #   create database app;
-  image: pingcap/tidb:v2.1.0
+  image: pingcap/tidb:v3.0.0-rc.1
   imagePullPolicy: IfNotPresent
   logLevel: info
   resources:
@@ -142,6 +152,7 @@ tidb:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
   maxFailoverCount: 3
   service:
     type: NodePort
@@ -210,7 +221,7 @@ monitor:
 
 fullbackup:
   create: false
-  binlogImage: pingcap/tidb-binlog:v2.1.0
+  binlogImage: pingcap/tidb-binlog:v3.0.0-rc.1
   binlogImagePullPolicy: IfNotPresent
   # https://github.com/tennix/tidb-cloud-backup
   mydumperImage: pingcap/tidb-cloud-backup:latest
@@ -251,7 +262,7 @@ binlog:
   pump:
     create: false
     replicas: 1
-    image: pingcap/tidb-binlog:v2.1.0
+    image: pingcap/tidb-binlog:v3.0.0-rc.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -268,7 +279,7 @@ binlog:
 
   drainer:
     create: false
-    image: pingcap/tidb-binlog:v2.1.0
+    image: pingcap/tidb-binlog:v3.0.0-rc.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.

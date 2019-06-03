@@ -20,6 +20,51 @@ spec:
     # shortNames allow shorter string to match your resource on the CLI
     shortNames:
     - tc
+  additionalPrinterColumns:
+  - name: PD
+    type: string
+    description: The image for PD cluster
+    JSONPath: .spec.pd.image
+  - name: Storage
+    type: string
+    description: The storage size specified for PD node
+    JSONPath: .spec.pd.requests.storage
+  - name: Ready
+    type: integer
+    description: The ready replicas number of PD cluster
+    JSONPath: .status.pd.statefulSet.readyReplicas
+  - name: Desire
+    type: integer
+    description: The desired replicas number of PD cluster
+    JSONPath: .spec.pd.replicas
+  - name: TiKV
+    type: string
+    description: The image for TiKV cluster
+    JSONPath: .spec.tikv.image
+  - name: Storage
+    type: string
+    description: The storage size specified for TiKV node
+    JSONPath: .spec.tikv.requests.storage
+  - name: Ready
+    type: integer
+    description: The ready replicas number of TiKV cluster
+    JSONPath: .status.tikv.statefulSet.readyReplicas
+  - name: Desire
+    type: integer
+    description: The desired replicas number of TiKV cluster
+    JSONPath: .spec.tikv.replicas
+  - name: TiDB
+    type: string
+    description: The image for TiDB cluster
+    JSONPath: .spec.tidb.image
+  - name: Ready
+    type: integer
+    description: The ready replicas number of TiDB cluster
+    JSONPath: .status.tidb.statefulSet.readyReplicas
+  - name: Desire
+    type: integer
+    description: The desired replicas number of TiDB cluster
+    JSONPath: .spec.tidb.replicas
   validation:
    # openAPIV3Schema is the schema for validating custom objects.
     openAPIV3Schema:
@@ -47,16 +92,6 @@ spec:
                     cpu:
                       type: string
             tidb:
-              properties:
-                limits:
-                  properties:
-                    cpu:
-                      type: string
-                requests:
-                  properties:
-                    cpu:
-                      type: string
-            tikvPromGateway:
               properties:
                 limits:
                   properties:

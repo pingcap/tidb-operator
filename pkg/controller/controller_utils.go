@@ -34,8 +34,6 @@ var (
 )
 
 const (
-	// defaultPushgatewayImage is default image of pushgateway
-	defaultPushgatewayImage = "prom/pushgateway:v0.3.1"
 	// defaultTiDBSlowLogImage is default image of tidb log tailer
 	defaultTiDBLogTailerImage = "busybox:1.26.2"
 )
@@ -111,26 +109,6 @@ func TiKVCapacity(limits *v1alpha1.ResourceRequirement) string {
 	return fmt.Sprintf("%dGB", int(float64(i)/math.Pow(2, 30)))
 }
 
-// DefaultPushGatewayRequest for the TiKV sidecar
-func DefaultPushGatewayRequest() corev1.ResourceRequirements {
-	rr := corev1.ResourceRequirements{}
-	rr.Requests = make(map[corev1.ResourceName]resource.Quantity)
-	rr.Limits = make(map[corev1.ResourceName]resource.Quantity)
-	rr.Requests[corev1.ResourceCPU] = resource.MustParse("50m")
-	rr.Requests[corev1.ResourceMemory] = resource.MustParse("50Mi")
-	rr.Limits[corev1.ResourceCPU] = resource.MustParse("100m")
-	rr.Limits[corev1.ResourceMemory] = resource.MustParse("100Mi")
-	return rr
-}
-
-// GetPushgatewayImage returns TidbCluster's pushgateway image
-func GetPushgatewayImage(cluster *v1alpha1.TidbCluster) string {
-	if img := cluster.Spec.TiKVPromGateway.Image; img != "" {
-		return img
-	}
-	return defaultPushgatewayImage
-}
-
 func GetSlowLogTailerImage(cluster *v1alpha1.TidbCluster) string {
 	if img := cluster.Spec.TiDB.SlowLogTailer.Image; img != "" {
 		return img
@@ -175,6 +153,24 @@ func AnnProm(port int32) map[string]string {
 		"prometheus.io/path":   "/metrics",
 		"prometheus.io/port":   fmt.Sprintf("%d", port),
 	}
+}
+
+// MemberConfigMapName returns the default ConfigMap name of the specified member type
+func MemberConfigMapName(tc *v1alpha1.TidbCluster, member v1alpha1.MemberType) string {
+	nameKey := fmt.Sprintf("%s-%s", tc.Name, member)
+	return nameKey + getConfigMapSuffix(tc, member.String(), nameKey)
+}
+
+// getConfigMapSuffix return the ConfigMap name suffix
+func getConfigMapSuffix(tc *v1alpha1.TidbCluster, component string, name string) string {
+	if tc.Annotations == nil {
+		return ""
+	}
+	sha := tc.Annotations[fmt.Sprintf("pingcap.com/%s.%s.sha", component, name)]
+	if len(sha) == 0 {
+		return ""
+	}
+	return "-" + sha
 }
 
 // setIfNotEmpty set the value into map when value in not empty

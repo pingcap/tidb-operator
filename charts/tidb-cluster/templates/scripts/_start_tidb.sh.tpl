@@ -8,6 +8,9 @@
 #   runmode="normal/debug"
 #
 set -uo pipefail
+
+{{ .Values.tidb.preStartScript }}
+
 ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
@@ -39,6 +42,10 @@ if [[ ! -z "${SLOW_LOG_FILE}" ]]
 then
     ARGS="${ARGS} --log-slow-query=${SLOW_LOG_FILE:-}"
 fi
+
+{{- if .Values.tidb.plugin.enable | default false }}
+ARGS="${ARGS}  --plugin-dir  {{ .Values.tidb.plugin.directory  }} --plugin-load {{ .Values.tidb.plugin.list  | join ","  }}  "
+{{- end }}
 
 echo "start tidb-server ..."
 echo "/tidb-server ${ARGS}"

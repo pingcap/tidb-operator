@@ -14,7 +14,9 @@
 package predicates
 
 import (
+	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -27,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/record"
 )
 
 type ha struct {
@@ -34,20 +37,24 @@ type ha struct {
 	kubeCli       kubernetes.Interface
 	cli           versioned.Interface
 	podListFn     func(ns, instanceName, component string) (*apiv1.PodList, error)
+	podGetFn      func(ns, podName string) (*apiv1.Pod, error)
 	pvcGetFn      func(ns, pvcName string) (*apiv1.PersistentVolumeClaim, error)
 	tcGetFn       func(ns, tcName string) (*v1alpha1.TidbCluster, error)
 	pvcListFn     func(ns, instanceName, component string) (*apiv1.PersistentVolumeClaimList, error)
 	updatePVCFn   func(*apiv1.PersistentVolumeClaim) error
 	acquireLockFn func(*apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error)
+	recorder      record.EventRecorder
 }
 
 // NewHA returns a Predicate
-func NewHA(kubeCli kubernetes.Interface, cli versioned.Interface) Predicate {
+func NewHA(kubeCli kubernetes.Interface, cli versioned.Interface, recorder record.EventRecorder) Predicate {
 	h := &ha{
-		kubeCli: kubeCli,
-		cli:     cli,
+		kubeCli:  kubeCli,
+		cli:      cli,
+		recorder: recorder,
 	}
 	h.podListFn = h.realPodListFn
+	h.podGetFn = h.realPodGetFn
 	h.pvcGetFn = h.realPVCGetFn
 	h.tcGetFn = h.realTCGetFn
 	h.pvcListFn = h.realPVCListFn
@@ -118,6 +125,12 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	min := -1
 	minNodeNames := make([]string, 0)
 	for nodeName, podNames := range nodeMap {
+		// replicas less than 3 cannot achieve high availability
+		if replicas < 3 {
+			minNodeNames = append(minNodeNames, nodeName)
+			continue
+		}
+
 		podsCount := len(podNames)
 		if podsCount+1 >= int(replicas+1)/2 {
 			continue
@@ -137,11 +150,16 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	}
 
 	if len(minNodeNames) == 0 {
-		return nil, fmt.Errorf("can't find a node from: %v, nodeMap: %v", nodes, nodeMap)
+		msg := fmt.Sprintf("can't scheduled to nodes: %v, because these pods had been scheduled to nodes: %v", GetNodeNames(nodes), nodeMap)
+		h.recorder.Event(pod, apiv1.EventTypeWarning, "FailedScheduling", msg)
+		return nil, errors.New(msg)
 	}
 	return getNodeFromNames(nodes, minNodeNames), nil
 }
 
+// kubernetes scheduling is parallel, to achieve HA, we must ensure the scheduling is serial,
+// so when a pod is scheduling, we set an annotation to its PVC, other pods can't be scheduled at this time,
+// delete the PVC's annotation when the pod is scheduled(PVC is bound and the pod's nodeName is set)
 func (h *ha) realAcquireLock(pod *apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error) {
 	ns := pod.GetNamespace()
 	component := pod.Labels[label.ComponentLabelKey]
@@ -174,8 +192,18 @@ func (h *ha) realAcquireLock(pod *apiv1.Pod) (*apiv1.PersistentVolumeClaim, *api
 	if schedulingPVC == currentPVC {
 		return schedulingPVC, currentPVC, nil
 	}
-	if schedulingPVC.Status.Phase != apiv1.ClaimBound {
-		return schedulingPVC, currentPVC, fmt.Errorf("waiting for Pod %s/%s scheduling", ns, strings.TrimPrefix(schedulingPVC.GetName(), component))
+
+	// if pvc is not defer deleting(has AnnPVCDeferDeleting annotation means defer deleting), we must wait for its scheduling
+	// else clear its AnnPVCPodScheduling annotation and acquire the lock
+	if schedulingPVC.Annotations[label.AnnPVCDeferDeleting] == "" {
+		schedulingPodName := getPodNameFromPVC(schedulingPVC)
+		schedulingPod, err := h.podGetFn(ns, schedulingPodName)
+		if err != nil {
+			return schedulingPVC, currentPVC, err
+		}
+		if schedulingPVC.Status.Phase != apiv1.ClaimBound || schedulingPod.Spec.NodeName == "" {
+			return schedulingPVC, currentPVC, fmt.Errorf("waiting for Pod %s/%s scheduling", ns, strings.TrimPrefix(schedulingPVC.GetName(), component))
+		}
 	}
 
 	delete(schedulingPVC.Annotations, label.AnnPVCPodScheduling)
@@ -191,6 +219,10 @@ func (h *ha) realPodListFn(ns, instanceName, component string) (*apiv1.PodList, 
 	return h.kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(selector).String(),
 	})
+}
+
+func (h *ha) realPodGetFn(ns, podName string) (*apiv1.Pod, error) {
+	return h.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 }
 
 func (h *ha) realPVCListFn(ns, instanceName, component string) (*apiv1.PersistentVolumeClaimList, error) {
@@ -235,4 +267,17 @@ func getReplicasFrom(tc *v1alpha1.TidbCluster, component string) int32 {
 
 func pvcName(component, podName string) string {
 	return fmt.Sprintf("%s-%s", component, podName)
+}
+
+func GetNodeNames(nodes []apiv1.Node) []string {
+	nodeNames := make([]string, 0)
+	for _, node := range nodes {
+		nodeNames = append(nodeNames, node.GetName())
+	}
+	sort.Strings(nodeNames)
+	return nodeNames
+}
+
+func getPodNameFromPVC(pvc *apiv1.PersistentVolumeClaim) string {
+	return strings.TrimPrefix(pvc.Name, fmt.Sprintf("%s-", pvc.Labels[label.ComponentLabelKey]))
 }

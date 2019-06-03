@@ -63,40 +63,13 @@ You can follow Helm official [documentation](https://helm.sh) to install Helm in
 
 ## Local Persistent Volume
 
-Local disks are recommended to be formatted as ext4 filesystem. The local persistent volume directory must be a mount point: a whole disk mount or a [bind mount](https://unix.stackexchange.com/questions/198590/what-is-a-bind-mount):
+### Prepare local volumes
 
-### Disk mount
+See the [operations guide in sig-storage-local-static-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/operations.md) which explains setup and cleanup of local volumes on the nodes.
 
-Mount local ssd disks of your Kubernetes nodes at subdirectory of /mnt/disks. For example if your data disk is `/dev/nvme0n1`, you can format and mount with the following commands:
+It also provides some [best practices](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/best-practices.md) for production.
 
-```shell
-$ sudo mkdir -p /mnt/disks/disk0
-$ sudo mkfs.ext4 /dev/nvme0n1
-$ sudo mount -t ext4 -o nodelalloc /dev/nvme0n1 /mnt/disks/disk0
-```
-
-### Bind mount
-
-The disadvantages of bind mount for TiDB: all the volumes has the size of the whole disk and there is no quota and isolation of bind mount volumes. If your data directory is `/data`, you can create a bind mount with the following commands:
-
-```shell
-$ sudo mkdir -p /data/local-pv01
-$ sudo mkdir -p /mnt/disks/local-pv01
-$ sudo mount --bind /data/local-pv01 /mnt/disks/local-pv01
-```
-
-Use this command to confirm the mount point exist:
-
-```shell
-$ mount | grep /mnt/disks/local-pv01
-```
-
-To auto-mount disks when your operating system is booted, you should edit `/etc/fstab` to include these mounting info:
-
-```shell
-$ echo "/dev/nvme0n1 /mnt/disks/disk0 none bind 0 0" >> /etc/fstab
-$ echo "/data/local-pv01 /mnt/disks/local-pv01 none bind 0 0" >> /etc/fstab
-```
+### Deploy local-static-provisioner
 
 After mounting all data disks on Kubernetes nodes, you can deploy [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) to automatically provision the mounted disks as Local PersistentVolumes.
 
@@ -105,6 +78,8 @@ $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/maste
 $ kubectl get po -n kube-system -l app=local-volume-provisioner
 $ kubectl get pv | grep local-storage
 ```
+
+The local-volume-provisioner creates a volume for each mounted disk. Note that for example on GKE this will create local volumes only of size 375GiB and that you need to manually alter the setup to create larger disks.
 
 ## Install TiDB Operator
 

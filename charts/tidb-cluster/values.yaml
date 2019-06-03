@@ -7,9 +7,12 @@
 rbac:
   create: true
 
-# clusterName is the TiDB cluster name, it is required and should be unique
-# if multiple clusters are deployed in the same namespace.
-clusterName: demo
+# clusterName is the TiDB cluster name, if not specified, the chart release name will be used
+# clusterName: demo
+
+# Add additional TidbCluster labels
+# ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+extraLabels: {}
 
 # schedulerName must be same with charts/tidb-operator/values#scheduler.schedulerName
 schedulerName: tidb-scheduler
@@ -27,7 +30,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:latest
+  image: pingcap/tidb-operator:v1.0.0-beta.2
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -37,9 +40,16 @@ discovery:
       cpu: 80m
       memory: 50Mi
 
+# Whether enable ConfigMap Rollout management.
+# When enabling, change of ConfigMap will trigger a graceful rolling-update of the component.
+# This feature is only available in tidb-operator v1.0 or higher.
+# Note: Switch this variable against an existing cluster will cause an rolling-update of each component even
+# if the ConfigMap was not changed.
+enableConfigMapRollout: false
+
 pd:
   replicas: 3
-  image: pingcap/pd:v2.1.0
+  image: pingcap/pd:v3.0.0-rc.1
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -52,7 +62,7 @@ pd:
 
   # maxStoreDownTime is how long a store will be considered `down` when disconnected
   # if a store is considered `down`, the regions will be migrated to other stores
-  maxStoreDownTime: 1h
+  maxStoreDownTime: 30m
   # maxReplicas is the number of replicas for each region
   maxReplicas: 3
   resources:
@@ -63,25 +73,82 @@ pd:
       # cpu: 4000m
       # memory: 4Gi
       storage: 1Gi
-  # nodeSelector is used for scheduling pod,
-  # if nodeSelectorRequired is true, all the following labels must be matched
+
+  ## affinity defines pd scheduling rules,it's default settings is empty.
+  ## please read the affinity document before set your scheduling rule:
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+  ## The following is typical example of affinity settings:
+  ## The PodAntiAffinity setting of the example keeps PD pods does not co-locate on a topology node as far as possible to improve the disaster tolerance of PD on Kubernetes.
+  ## The NodeAffinity setting of the example ensure that the PD pods can only be scheduled to nodes with label:[type="pd"],
+  # affinity:
+  #   podAntiAffinity:
+  #     preferredDuringSchedulingIgnoredDuringExecution:
+  #     # this term work when the nodes have the label named region
+  #     - weight: 10
+  #       podAffinityTerm:
+  #         labelSelector:
+  #           matchLabels:
+  #             app.kubernetes.io/instance: <release name>
+  #             app.kubernetes.io/component: "pd"
+  #         topologyKey: "region"
+  #         namespaces:
+  #         - <helm namespace>
+  #     # this term work when the nodes have the label named zone
+  #     - weight: 20
+  #       podAffinityTerm:
+  #         labelSelector:
+  #           matchLabels:
+  #             app.kubernetes.io/instance: <release name>
+  #             app.kubernetes.io/component: "pd"
+  #         topologyKey: "zone"
+  #         namespaces:
+  #         - <helm namespace>
+  #     # this term work when the nodes have the label named rack
+  #     - weight: 40
+  #       podAffinityTerm:
+  #         labelSelector:
+  #           matchLabels:
+  #             app.kubernetes.io/instance: <release name>
+  #             app.kubernetes.io/component: "pd"
+  #         topologyKey: "rack"
+  #         namespaces:
+  #         - <helm namespace>
+  #     # this term work when the nodes have the label named kubernetes.io/hostname
+  #     - weight: 80
+  #       podAffinityTerm:
+  #         labelSelector:
+  #           matchLabels:
+  #             app.kubernetes.io/instance: <release name>
+  #             app.kubernetes.io/component: "pd"
+  #         topologyKey: "kubernetes.io/hostname"
+  #         namespaces:
+  #         - <helm namespace>
+  #   nodeAffinity:
+  #     requiredDuringSchedulingIgnoredDuringExecution:
+  #       nodeSelectorTerms:
+  #       - matchExpressions:
+  #         - key: "kind"
+  #           operator: In
+  #           values:
+  #           - "pd"
+
+  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+  ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
   nodeSelector: {}
-    # kind: pd
-    # # zone is comma separated availability zone list
-    # zone: cn-bj1-01,cn-bj1-02
-    # # region is comma separated region list
-    # region: cn-bj1
-  # Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
-  # refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
   tolerations: []
   # - key: node-role
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
 
 tikv:
   replicas: 3
-  image: pingcap/tikv:v2.1.0
+  image: pingcap/tikv:v3.0.0-rc.1
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -95,6 +162,8 @@ tikv:
   # syncLog is a bool value to enable or disable syc-log for raftstore, default is true
   # enable this can prevent data loss when power failure
   syncLog: true
+  # size of thread pool for grpc server.
+  # grpcConcurrency: 4
   resources:
     limits: {}
     #   cpu: 16000m
@@ -104,15 +173,24 @@ tikv:
       # cpu: 12000m
       # memory: 24Gi
       storage: 10Gi
+
+  ## affinity defines tikv scheduling rules,affinity default settings is empty.
+  ## please read the affinity document before set your scheduling rule:
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+
+  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+  ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
   nodeSelector: {}
-    # kind: tikv
-    # zone: cn-bj1-01,cn-bj1-02
-    # region: cn-bj1
+
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
   tolerations: []
   # - key: node-role
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
 
   # block-cache used to cache uncompressed blocks, big block-cache can speed up read.
   # in normal cases should tune to 30%-50% tikv.resources.limits.memory
@@ -132,30 +210,49 @@ tikv:
   # also should less than total cpu cores.
   # storageSchedulerWorkerPoolSize: 4
 
-tikvPromGateway:
-  image: prom/pushgateway:v0.3.1
-  imagePullPolicy: IfNotPresent
-  resources:
-    limits: {}
-    #   cpu: 100m
-    #   memory: 100Mi
-    requests: {}
-    #   cpu: 50m
-    #   memory: 50Mi
-
 tidb:
   replicas: 2
   # The secret name of root password, you can create secret with following command:
-  # kubectl create secret generic tidb-secret --from-literal=root_password=<root-password>
+  # kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
   # If unset, the root password will be empty and you can set it after connecting
   # passwordSecretName: tidb-secret
   # initSql is the SQL statements executed after the TiDB cluster is bootstrapped.
   # initSql: |-
   #   create database app;
-  image: pingcap/tidb:v2.1.0
+  image: pingcap/tidb:v3.0.0-rc.1
   # Image pull policy.
   imagePullPolicy: IfNotPresent
   logLevel: info
+  preparedPlanCacheEnabled: false
+  preparedPlanCacheCapacity: 100
+  # Enable local latches for transactions. Enable it when
+  # there are lots of conflicts between transactions.
+  txnLocalLatchesEnabled: false
+  txnLocalLatchesCapacity: "10240000"
+  # The limit of concurrent executed sessions.
+  tokenLimit: "1000"
+  # Set the memory quota for a query in bytes. Default: 32GB
+  memQuotaQuery: "34359738368"
+  # The limitation of the number for the entries in one transaction.
+  # If using TiKV as the storage, the entry represents a key/value pair.
+  # WARNING: Do not set the value too large, otherwise it will make a very large impact on the TiKV cluster.
+  # Please adjust this configuration carefully.
+  txnEntryCountLimit: "300000"
+  # The limitation of the size in byte for the entries in one transaction.
+  # If using TiKV as the storage, the entry represents a key/value pair.
+  # WARNING: Do not set the value too large, otherwise it will make a very large impact on the TiKV cluster.
+  # Please adjust this configuration carefully.
+  txnTotalSizeLimit: "104857600"
+  # enableBatchDml enables batch commit for the DMLs
+  enableBatchDml: false
+  # check mb4 value in utf8 is used to control whether to check the mb4 characters when the charset is utf8.
+  checkMb4ValueInUtf8: true
+  # treat-old-version-utf8-as-utf8mb4 use for upgrade compatibility. Set to true will treat old version table/column UTF8 charset as UTF8MB4.
+  treatOldVersionUtf8AsUtf8mb4: true
+  # lease is schema lease duration, very dangerous to change only if you know what you do.
+  lease: 45s
+  # Max CPUs to use, 0 use number of CPUs in the machine.
+  maxProcs: 0
   resources:
     limits: {}
     #   cpu: 16000m
@@ -163,15 +260,25 @@ tidb:
     requests: {}
     #   cpu: 12000m
     #   memory: 12Gi
+
+
+  ## affinity defines tikv scheduling rules,affinity default settings is empty.
+  ## please read the affinity document before set your scheduling rule:
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+
+  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+  ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
   nodeSelector: {}
-    # kind: tidb
-    # zone: cn-bj1-01,cn-bj1-02
-    # region: cn-bj1
+
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
   tolerations: []
   # - key: node-role
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+  annotations: {}
   maxFailoverCount: 3
   service:
     type: NodePort
@@ -189,6 +296,15 @@ tidb:
         cpu: 20m
         memory: 5Mi
 
+  # tidb plugin configuration
+  plugin:
+    # enable plugin or not
+    enable: false
+    # the start argument to specify the folder containing
+    directory: /plugins
+    # the start argument to specify the plugin id (name "-" version) that needs to be loaded, e.g. 'conn_limit-1'.
+    list: ["whitelist-1"]
+
 # mysqlClient is used to set password for TiDB
 # it must has Python MySQL client installed
 mysqlClient:
@@ -204,12 +320,9 @@ monitor:
   persistent: false
   storageClassName: local-storage
   storage: 10Gi
-  dashboardInstaller:
-    image: pingcap/tidb-dashboard-installer:v2.0.0
-    imagePullPolicy: IfNotPresent
   grafana:
     create: true
-    image: grafana/grafana:4.6.5
+    image: grafana/grafana:6.0.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     resources:
@@ -221,12 +334,17 @@ monitor:
       #   memory: 4Gi
     username: admin
     password: admin
+    config:
+      # Configure Grafana using environment variables except GF_PATHS_DATA, GF_SECURITY_ADMIN_USER and GF_SECURITY_ADMIN_PASSWORD
+      # Ref https://grafana.com/docs/installation/configuration/#using-environment-variables
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_NAME: "Main Org."
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
+      # if grafana is running behind a reverse proxy with subpath http://foo.bar/grafana
+      # GF_SERVER_DOMAIN: foo.bar
+      # GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
     service:
       type: NodePort
-    # if grafana is running behind a reverse proxy with subpath http://foo.bar/grafana
-    # config the `serverDomain` and `serverRootUrl` as follows
-    # serverDomain: foo.bar
-    # serverRootUrl: "%(protocol)s://%(domain)s/grafana/"
   prometheus:
     image: prom/prometheus:v2.2.1
     imagePullPolicy: IfNotPresent
@@ -256,7 +374,7 @@ binlog:
   pump:
     create: false
     replicas: 1
-    image: pingcap/tidb-binlog:v2.1.0
+    image: pingcap/tidb-binlog:v3.0.0-rc.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -265,6 +383,7 @@ binlog:
     # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
     storageClassName: local-storage
     storage: 10Gi
+    syncLog: true
     # a integer value to control expiry date of the binlog data, indicates for how long (in days) the binlog data would be stored.
     # must bigger than 0
     gc: 7
@@ -273,7 +392,7 @@ binlog:
 
   drainer:
     create: false
-    image: pingcap/tidb-binlog:v2.1.0
+    image: pingcap/tidb-binlog:v3.0.0-rc.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -282,8 +401,9 @@ binlog:
     # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
     storageClassName: local-storage
     storage: 10Gi
-    # parallel worker count (default 1)
-    workerCount: 1
+    # the number of the concurrency of the downstream for synchronization. The bigger the value,
+    # the better throughput performance of the concurrency (16 by default)
+    workerCount: 16
     # the interval time (in seconds) of detect pumps' status (default 10)
     detectInterval: 10
     # disbale detect causality
@@ -296,8 +416,8 @@ binlog:
     initialCommitTs: 0
     # enable safe mode to make syncer reentrant
     safeMode: false
-    # number of binlog events in a transaction batch (default 1)
-    txnBatch: 1
+    # the number of SQL statements of a transaction that are output to the downstream database (20 by default)
+    txnBatch: 20
     # downstream storage, equal to --dest-db-type
     # valid values are "mysql", "pb", "kafka"
     destDBType: pb
@@ -317,7 +437,7 @@ binlog:
 
 scheduledBackup:
   create: false
-  binlogImage: pingcap/tidb-binlog:v2.1.0
+  binlogImage: pingcap/tidb-binlog:v3.0.0-rc.1
   binlogImagePullPolicy: IfNotPresent
   # https://github.com/tennix/tidb-cloud-backup
   mydumperImage: pingcap/tidb-cloud-backup:latest

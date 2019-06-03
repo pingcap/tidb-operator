@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-func (tc *TidbClusterInfo) set(name string, value string) (string, bool) {
+func (tc *TidbClusterConfig) set(name string, value string) (string, bool) {
 	// NOTE: not thread-safe, maybe make info struct immutable
 	if tc.Args == nil {
 		tc.Args = make(map[string]string)
@@ -15,43 +15,64 @@ func (tc *TidbClusterInfo) set(name string, value string) (string, bool) {
 	return origVal, ok
 }
 
-func (tc *TidbClusterInfo) ScalePD(replicas uint) *TidbClusterInfo {
+func (tc *TidbClusterConfig) ScalePD(replicas uint) *TidbClusterConfig {
 	tc.set("pd.replicas", strconv.Itoa(int(replicas)))
 	return tc
 }
 
-func (tc *TidbClusterInfo) ScaleTiKV(replicas uint) *TidbClusterInfo {
+func (tc *TidbClusterConfig) ScaleTiKV(replicas uint) *TidbClusterConfig {
 	tc.set("tikv.replicas", strconv.Itoa(int(replicas)))
 	return tc
 }
 
-func (tc *TidbClusterInfo) ScaleTiDB(replicas uint) *TidbClusterInfo {
+func (tc *TidbClusterConfig) ScaleTiDB(replicas uint) *TidbClusterConfig {
 	tc.set("tidb.replicas", strconv.Itoa(int(replicas)))
 	return tc
 }
 
-func (tc *TidbClusterInfo) UpgradePD(image string) *TidbClusterInfo {
+func (tc *TidbClusterConfig) UpgradePD(image string) *TidbClusterConfig {
 	tc.PDImage = image
 	return tc
 }
 
-func (tc *TidbClusterInfo) UpgradeTiKV(image string) *TidbClusterInfo {
+func (tc *TidbClusterConfig) UpgradeTiKV(image string) *TidbClusterConfig {
 	tc.TiKVImage = image
 	return tc
 }
 
-func (tc *TidbClusterInfo) UpgradeTiDB(image string) *TidbClusterInfo {
+func (tc *TidbClusterConfig) UpgradeTiDB(image string) *TidbClusterConfig {
 	tc.TiDBImage = image
 	return tc
 }
 
-func (tc *TidbClusterInfo) UpgradeAll(tag string) *TidbClusterInfo {
+func (tc *TidbClusterConfig) UpgradeAll(tag string) *TidbClusterConfig {
 	return tc.
 		UpgradePD("pingcap/pd:" + tag).
 		UpgradeTiKV("pingcap/tikv:" + tag).
 		UpgradeTiDB("pingcap/tidb:" + tag)
 }
 
-func (tc *TidbClusterInfo) DSN(dbName string) string {
+// FIXME: update of PD configuration do not work now #487
+func (tc *TidbClusterConfig) UpdatePdMaxReplicas(maxReplicas int) *TidbClusterConfig {
+	tc.PDMaxReplicas = maxReplicas
+	return tc
+}
+
+func (tc *TidbClusterConfig) UpdateTiKVGrpcConcurrency(concurrency int) *TidbClusterConfig {
+	tc.TiKVGrpcConcurrency = concurrency
+	return tc
+}
+
+func (tc *TidbClusterConfig) UpdateTiDBTokenLimit(tokenLimit int) *TidbClusterConfig {
+	tc.TiDBTokenLimit = tokenLimit
+	return tc
+}
+
+func (tc *TidbClusterConfig) UpdatePDLogLevel(logLevel string) *TidbClusterConfig {
+	tc.PDLogLevel = logLevel
+	return tc
+}
+
+func (tc *TidbClusterConfig) DSN(dbName string) string {
 	return fmt.Sprintf("root:%s@tcp(%s-tidb.%s:4000)/%s", tc.Password, tc.ClusterName, tc.Namespace, dbName)
 }

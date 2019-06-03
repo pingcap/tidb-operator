@@ -3,13 +3,17 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Values.clusterName }}-grafana
+  name: {{ template "cluster.name" . }}-grafana
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: monitor
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+  {{- if .Values.monitor.grafana.service.annotations }}
+  annotations:
+{{ toYaml .Values.monitor.grafana.service.annotations | indent 4 }}
+  {{- end }}
 spec:
   ports:
   - name: grafana
@@ -26,7 +30,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Values.clusterName }}-prometheus
+  name: {{ template "cluster.name" . }}-prometheus
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}

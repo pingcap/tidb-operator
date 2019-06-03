@@ -25,6 +25,7 @@ import (
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/listers/apps/v1beta1"
@@ -96,7 +97,7 @@ func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1
 	tcName := tc.GetName()
 
 	newSvc := tmm.getNewTiDBHeadlessServiceForTidbCluster(tc)
-	oldSvc, err := tmm.svcLister.Services(ns).Get(controller.TiDBPeerMemberName(tcName))
+	oldSvcTmp, err := tmm.svcLister.Services(ns).Get(controller.TiDBPeerMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
@@ -108,6 +109,8 @@ func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1
 		return err
 	}
 
+	oldSvc := oldSvcTmp.DeepCopy()
+
 	equal, err := serviceEqual(newSvc, oldSvc)
 	if err != nil {
 		return err
@@ -115,8 +118,6 @@ func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1
 	if !equal {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
-		// TODO add unit test
-		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		err = SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
 			return err
@@ -133,7 +134,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	tcName := tc.GetName()
 
 	newTiDBSet := tmm.getNewTiDBSetForTidbCluster(tc)
-	oldTiDBSet, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
+	oldTiDBSetTemp, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetLastAppliedConfigAnnotation(newTiDBSet)
 		if err != nil {
@@ -146,6 +147,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		tc.Status.TiDB.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
 	}
+	oldTiDBSet := oldTiDBSetTemp.DeepCopy()
 	if err != nil {
 		return err
 	}
@@ -219,7 +221,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
-	tidbConfigMap := controller.TiDBMemberName(tcName)
+	tidbConfigMap := controller.MemberConfigMapName(tc, v1alpha1.TiDBMemberType)
 
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
@@ -328,6 +330,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 	})
 
 	tidbLabel := label.New().Instance(instanceName).TiDB()
+	podAnnotations := CombineAnnotations(controller.AnnProm(10080), tc.Spec.TiDB.Annotations)
 	tidbSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            controller.TiDBMemberName(tcName),
@@ -341,16 +344,12 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      tidbLabel.Labels(),
-					Annotations: controller.AnnProm(10080),
+					Annotations: podAnnotations,
 				},
 				Spec: corev1.PodSpec{
 					SchedulerName: tc.Spec.SchedulerName,
-					Affinity: util.AffinityForNodeSelector(
-						ns,
-						tc.Spec.TiDB.NodeSelectorRequired,
-						label.New().Instance(instanceName).TiDB(),
-						tc.Spec.TiDB.NodeSelector,
-					),
+					Affinity:      tc.Spec.TiDB.Affinity,
+					NodeSelector:  tc.Spec.TiDB.NodeSelector,
 					Containers:    containers,
 					RestartPolicy: corev1.RestartPolicyAlways,
 					Tolerations:   tc.Spec.TiDB.Tolerations,
@@ -390,9 +389,18 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 		oldTidbMember, exist := tc.Status.TiDB.Members[name]
 		if exist {
 			newTidbMember.LastTransitionTime = oldTidbMember.LastTransitionTime
+			newTidbMember.NodeName = oldTidbMember.NodeName
 		}
 		if !exist || oldTidbMember.Health != newTidbMember.Health {
 			newTidbMember.LastTransitionTime = metav1.Now()
+		}
+		pod, err := tmm.podLister.Pods(tc.GetNamespace()).Get(name)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		if pod != nil && pod.Spec.NodeName != "" {
+			// Update assiged node if pod exists and is scheduled
+			newTidbMember.NodeName = pod.Spec.NodeName
 		}
 		tidbStatus[name] = newTidbMember
 	}
