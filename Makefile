@@ -79,7 +79,7 @@ test:
 	@echo "Run unit tests"
 	@$(GOTEST) ./pkg/... -coverprofile=coverage.txt -covermode=atomic && echo "\nUnit tests run successfully!"
 
-check-all: lint check-static check-shadow check-gosec megacheck errcheck
+check-all: lint check-static check-shadow check-gosec staticcheck errcheck
 
 check-setup:
 	@which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
@@ -99,11 +99,11 @@ check-static:
 	  --enable ineffassign \
 	  $$($(PACKAGE_DIRECTORIES))
 
-# TODO: megacheck is too slow currently
-megacheck:
-	@echo "gometalinter megacheck"
+# TODO: staticcheck is too slow currently
+staticcheck:
+	@echo "gometalinter staticcheck"
 	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all --deadline 120s \
-	  --enable megacheck \
+	  --enable staticcheck \
 	  $$($(PACKAGE_DIRECTORIES))
 
 # TODO: errcheck is too slow currently
