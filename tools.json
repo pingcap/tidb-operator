@@ -13,8 +13,8 @@
       "Commit": "7bae11eba15a3285c75e388f77eb6357a2d73ee2"
     },
     {
-      "Repository": "honnef.co/go/tools/cmd/megacheck",
-      "Commit": "88497007e8588ea5b6baee991f74a1607e809487"
+      "Repository": "honnef.co/go/tools/cmd/staticcheck",
+      "Commit": "5a4a2f4a438d01ba03c591f88ef312005a05063b"
     },
     {
       "Repository": "github.com/kisielk/errcheck",
