@@ -40,7 +40,7 @@ type pdMemberManager struct {
 	setLister    v1beta1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
 	podLister    corelisters.PodLister
-	epsLister     corelisters.EndpointsLister
+	epsLister    corelisters.EndpointsLister
 	podControl   controller.PodControlInterface
 	pvcLister    corelisters.PersistentVolumeClaimLister
 	pdScaler     Scaler
