@@ -232,6 +232,12 @@ func main() {
 				glog.Fatal(err)
 			}
 		}
+
+		// only check manual pause for 1 cluster
+		if len(clusterInfos) >= 1 {
+			oa.CheckManualPauseTiDBOrDie(clusterInfos[0])
+		}
+
 		for _, clusterInfo := range clusterInfos {
 			if err = oa.CheckTidbClusterStatus(clusterInfo); err != nil {
 				glog.Fatal(err)
