@@ -33,6 +33,7 @@ import (
 )
 
 var successCount int
+var cfg *tests.Config
 
 func main() {
 	logs.InitLogs()
@@ -40,17 +41,28 @@ func main() {
 	go func() {
 		glog.Info(http.ListenAndServe(":6060", nil))
 	}()
+	cfg = tests.ParseConfigOrDie()
 
-	conf := tests.ParseConfigOrDie()
+	c := cron.New()
+	c.AddFunc("0 0 10 * * *", func() {
+		slack.NotifyAndCompletedf("Succeed %d times in the past 24 hours.", successCount)
+		successCount = 0
+	})
+	go c.Start()
+
+	wait.Forever(run, 5*time.Minute)
+}
+
+func run() {
 	cli, kubeCli := client.NewCliOrDie()
-	tidbVersion := conf.GetTiDBVersionOrDie()
-	upgardeTiDBVersions := conf.GetUpgradeTidbVersionsOrDie()
+	tidbVersion := cfg.GetTiDBVersionOrDie()
+	upgardeTiDBVersions := cfg.GetUpgradeTidbVersionsOrDie()
 
 	operatorCfg := &tests.OperatorConfig{
 		Namespace:      "pingcap",
 		ReleaseName:    "operator",
-		Image:          conf.OperatorImage,
-		Tag:            conf.OperatorTag,
+		Image:          cfg.OperatorImage,
+		Tag:            cfg.OperatorTag,
 		SchedulerImage: "gcr.io/google-containers/hyperkube",
 		SchedulerFeatures: []string{
 			"StableScheduling",
@@ -67,7 +79,7 @@ func main() {
 	cluster1 := &tests.TidbClusterConfig{
 		Namespace:        clusterName1,
 		ClusterName:      clusterName1,
-		OperatorTag:      conf.OperatorTag,
+		OperatorTag:      cfg.OperatorTag,
 		PDImage:          fmt.Sprintf("pingcap/pd:%s", tidbVersion),
 		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
 		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
@@ -91,7 +103,7 @@ func main() {
 			"tidb.resources.requests.cpu":    "500m",
 			"tidb.resources.requests.memory": "1Gi",
 			"monitor.persistent":             "true",
-			"discovery.image":                conf.OperatorImage,
+			"discovery.image":                cfg.OperatorImage,
 			"tikv.defaultcfBlockCacheSize":   "8GB",
 			"tikv.writecfBlockCacheSize":     "2GB",
 		},
@@ -100,7 +112,7 @@ func main() {
 			"binlog.drainer.txnBatch":    "512",
 		},
 		Monitor:                true,
-		BlockWriteConfig:       conf.BlockWriter,
+		BlockWriteConfig:       cfg.BlockWriter,
 		PDMaxReplicas:          3,
 		TiKVGrpcConcurrency:    4,
 		TiDBTokenLimit:         1000,
@@ -112,7 +124,7 @@ func main() {
 	cluster2 := &tests.TidbClusterConfig{
 		Namespace:        clusterName2,
 		ClusterName:      clusterName2,
-		OperatorTag:      conf.OperatorTag,
+		OperatorTag:      cfg.OperatorTag,
 		PDImage:          fmt.Sprintf("pingcap/pd:%s", tidbVersion),
 		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
 		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
@@ -137,11 +149,11 @@ func main() {
 			"tidb.resources.requests.memory": "1Gi",
 			// TODO assert the the monitor's pvc exist and clean it when bootstrapping
 			"monitor.persistent": "true",
-			"discovery.image":    conf.OperatorImage,
+			"discovery.image":    cfg.OperatorImage,
 		},
 		Args:                   map[string]string{},
 		Monitor:                true,
-		BlockWriteConfig:       conf.BlockWriter,
+		BlockWriteConfig:       cfg.BlockWriter,
 		PDMaxReplicas:          3,
 		TiKVGrpcConcurrency:    4,
 		TiDBTokenLimit:         1000,
@@ -164,42 +176,16 @@ func main() {
 
 	allClusters := []*tests.TidbClusterConfig{cluster1, cluster2, clusterRestoreTo}
 
-	fta := tests.NewFaultTriggerAction(cli, kubeCli, conf)
-	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, conf, allClusters)
+	fta := tests.NewFaultTriggerAction(cli, kubeCli, cfg)
+	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, cfg, allClusters)
 
 	fta.CheckAndRecoverEnvOrDie()
 	oa.CheckK8sAvailableOrDie(nil, nil)
 	go wait.Forever(oa.EventWorker, 10*time.Second)
 	go oa.StartValidatingAdmissionWebhookServerOrDie(operatorCfg)
 
-	c := cron.New()
-	c.AddFunc("0 0 10 * * *", func() {
-		slack.NotifyAndCompletedf("Succeed %d times in the past 24 hours.", successCount)
-		successCount = 0
-	})
-	go c.Start()
-
 	oa.LabelNodesOrDie()
 
-	fn := func() {
-		run(oa, fta, conf, operatorCfg, allClusters, cluster1, cluster2,
-			onePDCluster, upgardeTiDBVersions, clusterRestoreTo, clusterBackupFrom)
-	}
-	wait.Forever(fn, 5*time.Minute)
-}
-
-func run(oa tests.OperatorActions,
-	fta tests.FaultTriggerActions,
-	conf *tests.Config,
-	operatorCfg *tests.OperatorConfig,
-	allClusters []*tests.TidbClusterConfig,
-	cluster1 *tests.TidbClusterConfig,
-	cluster2 *tests.TidbClusterConfig,
-	onePDCluster *tests.TidbClusterConfig,
-	upgardeTiDBVersions []string,
-	clusterRestoreTo *tests.TidbClusterConfig,
-	clusterBackupFrom *tests.TidbClusterConfig,
-) {
 	// clean and deploy operator
 	oa.CleanOperatorOrDie(operatorCfg)
 	oa.DeployOperatorOrDie(operatorCfg)
@@ -291,9 +277,9 @@ func run(oa tests.OperatorActions,
 	cluster2.EnableConfigMapRollout = true
 	oa.UpgradeTidbClusterOrDie(cluster2)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
-	cluster2.UpdatePdMaxReplicas(conf.PDMaxReplicas).
-		UpdateTiKVGrpcConcurrency(conf.TiKVGrpcConcurrency).
-		UpdateTiDBTokenLimit(conf.TiDBTokenLimit)
+	cluster2.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
+		UpdateTiKVGrpcConcurrency(cfg.TiKVGrpcConcurrency).
+		UpdateTiDBTokenLimit(cfg.TiDBTokenLimit)
 	oa.UpgradeTidbClusterOrDie(cluster2)
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
@@ -332,7 +318,7 @@ func run(oa tests.OperatorActions,
 	oa.TruncateSSTFileThenCheckFailoverOrDie(cluster1, 5*time.Minute)
 
 	// stop one etcd node and k8s/operator/tidbcluster is available
-	faultEtcd := tests.SelectNode(conf.ETCDs)
+	faultEtcd := tests.SelectNode(cfg.ETCDs)
 	fta.StopETCDOrDie(faultEtcd)
 	defer fta.StartETCDOrDie(faultEtcd)
 	// TODO make the pause interval as a argument
@@ -341,7 +327,7 @@ func run(oa tests.OperatorActions,
 	fta.StartETCDOrDie(faultEtcd)
 
 	//clean temp dirs when stability success
-	err := conf.CleanTempDirs()
+	err := cfg.CleanTempDirs()
 	if err != nil {
 		glog.Errorf("failed to clean temp dirs, this error can be ignored.")
 	}

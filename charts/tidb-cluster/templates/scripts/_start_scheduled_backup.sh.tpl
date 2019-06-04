@@ -7,7 +7,7 @@ cp /savepoint-dir/savepoint /data/${dirname}/
 
 # the content of savepoint file is:
 # commitTS = 408824443621605409
-savepoint=`cat /data/${dirname}/savepoint | cut -d "=" -f2`
+savepoint=`cat /data/${dirname}/savepoint | cut -d "=" -f2 | sed 's/ *//g'`
 
 /mydumper \
   --outputdir=/data/${dirname} \
