@@ -157,8 +157,8 @@ type OperatorActions interface {
 	CheckTidbClustersAvailableOrDie(infos []*TidbClusterConfig)
 	CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
-	RegisterWebHookAndService(info *OperatorConfig) error
-	RegisterWebHookAndServiceOrDie(info *OperatorConfig)
+	RegisterWebHookAndService(context *apimachinery.CertContext, info *OperatorConfig) error
+	RegisterWebHookAndServiceOrDie(context *apimachinery.CertContext, info *OperatorConfig)
 	CleanWebHookAndService(info *OperatorConfig) error
 	EventWorker()
 	EmitEvent(info *TidbClusterConfig, msg string)
@@ -2170,13 +2170,13 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 
 func strPtr(s string) *string { return &s }
 
-func (oa *operatorActions) RegisterWebHookAndServiceOrDie(info *OperatorConfig) {
-	if err := oa.RegisterWebHookAndService(info); err != nil {
+func (oa *operatorActions) RegisterWebHookAndServiceOrDie(context *apimachinery.CertContext, info *OperatorConfig) {
+	if err := oa.RegisterWebHookAndService(context, info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
 
-func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error {
+func (oa *operatorActions) RegisterWebHookAndService(context *apimachinery.CertContext, info *OperatorConfig) error {
 	client := oa.kubeCli
 	glog.Infof("Registering the webhook via the AdmissionRegistration API")
 
@@ -2204,7 +2204,7 @@ func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error
 						Name:      info.WebhookServiceName,
 						Path:      strPtr("/pods"),
 					},
-					CABundle: info.Context.SigningCert,
+					CABundle: context.SigningCert,
 				},
 			},
 		},
@@ -2456,12 +2456,7 @@ func (oa *operatorActions) CheckManualPauseTiDBOrDie(info *TidbClusterConfig) {
 	}
 }
 
-func StartValidatingAdmissionWebhookServerOrDie(ns, svcName string) {
-	context, err := apimachinery.SetupServerCert(ns, svcName)
-	if err != nil {
-		panic(err)
-	}
-
+func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext) {
 	sCert, err := tls.X509KeyPair(context.Cert, context.Key)
 	if err != nil {
 		panic(err)

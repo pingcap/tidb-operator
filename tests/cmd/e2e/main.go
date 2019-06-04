@@ -19,6 +19,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
+
 	"k8s.io/api/core/v1"
 
 	"github.com/golang/glog"
@@ -57,7 +59,11 @@ func main() {
 	}
 
 	ns := os.Getenv("NAMESPACE")
-	go tests.StartValidatingAdmissionWebhookServerOrDie(ns, tests.WebhookServiceName)
+	context, err := apimachinery.SetupServerCert(ns, tests.WebhookServiceName)
+	if err != nil {
+		panic(err)
+	}
+	go tests.StartValidatingAdmissionWebhookServerOrDie(context)
 
 	initTidbVersion, err := conf.GetTiDBVersion()
 	if err != nil {
@@ -216,7 +222,7 @@ func main() {
 	}
 
 	// before upgrade cluster, register webhook first
-	oa.RegisterWebHookAndServiceOrDie(operatorInfo)
+	oa.RegisterWebHookAndServiceOrDie(context, operatorInfo)
 
 	// upgrade test
 	upgradeTidbVersions := conf.GetUpgradeTidbVersions()

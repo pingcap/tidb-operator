@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
+
 	"k8s.io/api/core/v1"
 
 	"github.com/golang/glog"
@@ -35,6 +37,7 @@ import (
 
 var successCount int
 var cfg *tests.Config
+var context *apimachinery.CertContext
 
 func main() {
 	logs.InitLogs()
@@ -45,7 +48,12 @@ func main() {
 	cfg = tests.ParseConfigOrDie()
 	ns := os.Getenv("NAMESPACE")
 
-	go tests.StartValidatingAdmissionWebhookServerOrDie(ns, tests.WebhookServiceName)
+	var err error
+	context, err = apimachinery.SetupServerCert(ns, tests.WebhookServiceName)
+	if err != nil {
+		panic(err)
+	}
+	go tests.StartValidatingAdmissionWebhookServerOrDie(context)
 
 	c := cron.New()
 	c.AddFunc("0 0 10 * * *", func() {
@@ -236,7 +244,7 @@ func run() {
 	oa.CheckTidbClusterStatusOrDie(cluster2)
 
 	// before upgrade cluster, register webhook first
-	oa.RegisterWebHookAndServiceOrDie(operatorCfg)
+	oa.RegisterWebHookAndServiceOrDie(context, operatorCfg)
 
 	// upgrade cluster1 and cluster2
 	firstUpgradeVersion := upgardeTiDBVersions[0]
