@@ -83,6 +83,7 @@ max-replicas = {{ .Values.pd.maxReplicas }}
 # For example, ["zone", "rack"] means that we should place replicas to
 # different zones first, then to different racks if we don't have enough zones.
 location-labels = ["region", "zone", "rack", "host"]
+strictly-match-label = false
 
 [label-property]
 # Do not assign region leaders to stores that have these tags.
