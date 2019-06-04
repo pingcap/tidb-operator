@@ -35,7 +35,7 @@ output "monitor_port" {
 }
 
 output "how_to_ssh_to_bastion" {
-  value = "gcloud compute ssh bastion --zone ${var.GCP_REGION}-a"
+  value = "gcloud compute ssh bastion --zone ${google_compute_instance.bastion.zone}"
 }
 
 output "how_to_connect_to_mysql_from_bastion" {

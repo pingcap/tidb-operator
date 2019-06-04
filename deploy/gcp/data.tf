@@ -12,7 +12,7 @@ data "template_file" "tidb_cluster_values" {
 
 data external "available_zones_in_region" {
   depends_on = [null_resource.prepare-dir]
-  program = ["bash", "-c", "gcloud compute regions describe ${var.GCP_REGION} --format=json | jq -r '.\"zones\" | .[0]' | grep -o '[^/]*$'"]
+  program    = ["bash", "-c", "gcloud compute regions describe ${var.GCP_REGION} --format=json | jq '{zone: .zones|.[0]|match(\"[^/]*$\"; \"g\")|.string}'"]
 }
 
 data "external" "tidb_ilb_ip" {

@@ -110,7 +110,7 @@ resource "google_container_cluster" "cluster" {
 }
 
 resource "google_container_node_pool" "pd_pool" {
-  depends_on = [google_container_cluster.cluster]
+  depends_on         = [google_container_cluster.cluster]
   provider           = google-beta
   project            = var.GCP_PROJECT
   cluster            = google_container_cluster.cluster.name
@@ -139,7 +139,7 @@ resource "google_container_node_pool" "pd_pool" {
 }
 
 resource "google_container_node_pool" "tikv_pool" {
-  depends_on = [google_container_node_pool.pd_pool]
+  depends_on         = [google_container_node_pool.pd_pool]
   provider           = google-beta
   project            = var.GCP_PROJECT
   cluster            = google_container_cluster.cluster.name
@@ -168,7 +168,7 @@ resource "google_container_node_pool" "tikv_pool" {
 }
 
 resource "google_container_node_pool" "tidb_pool" {
-  depends_on = [google_container_node_pool.tikv_pool]
+  depends_on         = [google_container_node_pool.tikv_pool]
   provider           = google-beta
   project            = var.GCP_PROJECT
   cluster            = google_container_cluster.cluster.name
@@ -195,7 +195,7 @@ resource "google_container_node_pool" "tidb_pool" {
 }
 
 resource "google_container_node_pool" "monitor_pool" {
-  depends_on = [google_container_node_pool.tidb_pool]
+  depends_on         = [google_container_node_pool.tidb_pool]
   project            = var.GCP_PROJECT
   cluster            = google_container_cluster.cluster.name
   location           = google_container_cluster.cluster.location
@@ -253,7 +253,7 @@ resource "google_compute_firewall" "allow_ssh_from_bastion" {
 
 resource "google_compute_instance" "bastion" {
   project      = var.GCP_PROJECT
-  zone         = "${var.GCP_REGION}-a"
+  zone         = data.external.available_zones_in_region.result["zone"]
   machine_type = var.bastion_instance_type
   name         = "bastion"
 
