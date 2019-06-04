@@ -65,6 +65,8 @@ const (
 	// NodeUnreachablePodReason is defined in k8s.io/kubernetes/pkg/util/node
 	// but not in client-go and apimachinery, so we define it here
 	NodeUnreachablePodReason = "NodeLost"
+
+	WebhookServiceName = "webhook-service"
 )
 
 func NewOperatorActions(cli versioned.Interface,
@@ -158,7 +160,6 @@ type OperatorActions interface {
 	RegisterWebHookAndService(info *OperatorConfig) error
 	RegisterWebHookAndServiceOrDie(info *OperatorConfig)
 	CleanWebHookAndService(info *OperatorConfig) error
-	StartValidatingAdmissionWebhookServerOrDie(info *OperatorConfig)
 	EventWorker()
 	EmitEvent(info *TidbClusterConfig, msg string)
 	BackupRestore(from, to *TidbClusterConfig) error
@@ -251,16 +252,6 @@ type TidbClusterConfig struct {
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
 	SubValues        string
-}
-
-func (oi *OperatorConfig) ConfigTLS() *tls.Config {
-	sCert, err := tls.X509KeyPair(oi.Context.Cert, oi.Context.Key)
-	if err != nil {
-		glog.Fatal(err)
-	}
-	return &tls.Config{
-		Certificates: []tls.Certificate{sCert},
-	}
 }
 
 func (tc *TidbClusterConfig) String() string {
@@ -1665,7 +1656,7 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) (string, er
 			return false, nil
 		}
 
-		getTsCmd := fmt.Sprintf("kubectl logs -n %s %s | grep 'Set to tidb_snapshot' | cut -d \"'\"  -f2", ns, podName)
+		getTsCmd := fmt.Sprintf("kubectl logs -n %s %s | grep 'commitTS = ' | cut -d '=' -f2 | sed 's/ *//g'", ns, podName)
 		tsData, err := exec.Command("/bin/sh", "-c", getTsCmd).CombinedOutput()
 		if err != nil {
 			glog.Errorf("failed to get ts of pod %s, %v", podName, err)
@@ -2310,33 +2301,6 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 	return len(healths.PumpPos) > 0 && healths.Synced
 }
 
-func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie(info *OperatorConfig) {
-
-	context, err := apimachinery.SetupServerCert(os.Getenv("NAMESPACE"), info.WebhookServiceName)
-	if err != nil {
-		glog.Fatalf("fail to setup server cert: %v", err)
-	}
-
-	info.Context = context
-
-	http.HandleFunc("/pods", webhook.ServePods)
-	server := &http.Server{
-		Addr:      ":443",
-		TLSConfig: info.ConfigTLS(),
-	}
-	err = server.ListenAndServeTLS("", "")
-	if err != nil {
-		err = fmt.Errorf("failed to start webhook server %v", err)
-		glog.Error(err)
-		sendErr := slack.SendErrMsg(err.Error())
-		if sendErr != nil {
-			glog.Error(sendErr)
-		}
-		// TODO use context instead
-		os.Exit(4)
-	}
-}
-
 func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
 	oa.lock.Lock()
 	defer oa.lock.Unlock()
@@ -2489,5 +2453,32 @@ func (oa *operatorActions) CheckManualPauseTiDBOrDie(info *TidbClusterConfig) {
 	err := oa.CheckManualPauseTiDB(info)
 	if err != nil {
 		slack.NotifyAndPanic(err)
+	}
+}
+
+func StartValidatingAdmissionWebhookServerOrDie(ns, svcName string) {
+	context, err := apimachinery.SetupServerCert(ns, svcName)
+	if err != nil {
+		panic(err)
+	}
+
+	sCert, err := tls.X509KeyPair(context.Cert, context.Key)
+	if err != nil {
+		panic(err)
+	}
+
+	http.HandleFunc("/pods", webhook.ServePods)
+	server := &http.Server{
+		Addr: ":443",
+		TLSConfig: &tls.Config{
+			Certificates: []tls.Certificate{sCert},
+		},
+	}
+	if err := server.ListenAndServeTLS("", ""); err != nil {
+		sendErr := slack.SendErrMsg(err.Error())
+		if sendErr != nil {
+			glog.Error(sendErr)
+		}
+		panic(fmt.Sprintf("failed to start webhook server %v", err))
 	}
 }

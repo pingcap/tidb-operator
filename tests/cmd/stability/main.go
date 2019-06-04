@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"strconv"
 	"time"
 
@@ -42,6 +43,9 @@ func main() {
 		glog.Info(http.ListenAndServe(":6060", nil))
 	}()
 	cfg = tests.ParseConfigOrDie()
+	ns := os.Getenv("NAMESPACE")
+
+	go tests.StartValidatingAdmissionWebhookServerOrDie(ns, tests.WebhookServiceName)
 
 	c := cron.New()
 	c.AddFunc("0 0 10 * * *", func() {
@@ -68,7 +72,7 @@ func run() {
 			"StableScheduling",
 		},
 		LogLevel:           "2",
-		WebhookServiceName: "webhook-service",
+		WebhookServiceName: tests.WebhookServiceName,
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
 		ImagePullPolicy:    v1.PullAlways,
@@ -182,7 +186,6 @@ func run() {
 	fta.CheckAndRecoverEnvOrDie()
 	oa.CheckK8sAvailableOrDie(nil, nil)
 	go wait.Forever(oa.EventWorker, 10*time.Second)
-	go oa.StartValidatingAdmissionWebhookServerOrDie(operatorCfg)
 
 	oa.LabelNodesOrDie()
 

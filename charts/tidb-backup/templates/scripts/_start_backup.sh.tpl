@@ -10,6 +10,8 @@ cp /savepoint-dir/savepoint ${dirname}/
 # commitTS = 408824443621605409
 savepoint=`cat ${dirname}/savepoint | cut -d "=" -f2 | sed 's/ *//g'`
 
+cat ${dirname}/savepoint
+
 /mydumper \
   --outputdir=${dirname} \
   --host=`eval echo '${'$host'}'` \

@@ -16,6 +16,7 @@ package main
 import (
 	"fmt"
 	_ "net/http/pprof"
+	"os"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -55,8 +56,8 @@ func main() {
 		ImagePullPolicy:    v1.PullIfNotPresent,
 	}
 
-	// start a http server in goruntine
-	go oa.StartValidatingAdmissionWebhookServerOrDie(operatorInfo)
+	ns := os.Getenv("NAMESPACE")
+	go tests.StartValidatingAdmissionWebhookServerOrDie(ns, tests.WebhookServiceName)
 
 	initTidbVersion, err := conf.GetTiDBVersion()
 	if err != nil {
