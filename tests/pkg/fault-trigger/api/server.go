@@ -137,34 +137,6 @@ func (s *Server) stopKubeAPIServer(req *restful.Request, resp *restful.Response)
 	s.action(req, resp, s.mgr.StopKubeAPIServer, "stopKubeAPIServer")
 }
 
-func (s *Server) startKubeProxy(req *restful.Request, resp *restful.Response) {
-	res := newResponse("startKubeProxy")
-	nodeName := req.PathParameter("nodeName")
-	if len(nodeName) == 0 {
-		res.message(fmt.Sprintf("nodeName can't be empty")).statusCode(http.StatusBadRequest)
-		if err := resp.WriteEntity(res); err != nil {
-			glog.Errorf("failed to response, methods: startKubeProxy, error: %v", err)
-		}
-		return
-	}
-
-	s.kubeProxyAction(req, resp, res, nodeName, s.mgr.StartKubeProxy, "startKubeProxy")
-}
-
-func (s *Server) stopKubeProxy(req *restful.Request, resp *restful.Response) {
-	res := newResponse("stopKubeProxy")
-	nodeName := req.PathParameter("nodeName")
-	if len(nodeName) == 0 {
-		res.message(fmt.Sprintf("nodeName can't be empty")).statusCode(http.StatusBadRequest)
-		if err := resp.WriteEntity(res); err != nil {
-			glog.Errorf("failed to response, methods: stopKubeProxy, error: %v", err)
-		}
-		return
-	}
-
-	s.kubeProxyAction(req, resp, res, nodeName, s.mgr.StopKubeProxy, "stopKubeProxy")
-}
-
 func (s *Server) startKubeScheduler(req *restful.Request, resp *restful.Response) {
 	s.action(req, resp, s.mgr.StartKubeScheduler, "startKubeScheduler")
 }
