@@ -9,18 +9,24 @@ import (
 )
 
 func (oa *operatorActions) BackupRestore(from, to *TidbClusterConfig) error {
-	oa.StopInsertDataTo(from)
+	var ts string
+	err := oa.DeployIncrementalBackup(from, to, false, ts)
+	if err != nil {
+		return err
+	}
 
-	// wait for insert stop fully
-	time.Sleep(1 * time.Minute)
+	err = oa.CheckIncrementalBackup(from, false)
+	if err != nil {
+		return err
+	}
 
-	err := oa.DeployAdHocBackup(from)
+	err = oa.DeployAdHocBackup(from)
 	if err != nil {
 		glog.Errorf("cluster:[%s] deploy happen error: %v", from.ClusterName, err)
 		return err
 	}
 
-	err = oa.CheckAdHocBackup(from)
+	ts, err = oa.CheckAdHocBackup(from)
 	if err != nil {
 		glog.Errorf("cluster:[%s] deploy happen error: %v", from.ClusterName, err)
 		return err
@@ -46,21 +52,15 @@ func (oa *operatorActions) BackupRestore(from, to *TidbClusterConfig) error {
 		return err
 	}
 
-	err = oa.DeployIncrementalBackup(from, to)
+	err = oa.DeployIncrementalBackup(from, to, true, ts)
 	if err != nil {
 		return err
 	}
 
-	err = oa.CheckIncrementalBackup(from)
+	err = oa.CheckIncrementalBackup(from, true)
 	if err != nil {
 		return err
 	}
-
-	glog.Infof("waiting 1 minutes for binlog to work")
-	time.Sleep(1 * time.Minute)
-
-	glog.Infof("cluster[%s] begin insert data", from.ClusterName)
-	go oa.BeginInsertDataTo(from)
 
 	glog.Infof("waiting 1 minutes to insert into more records")
 	time.Sleep(1 * time.Minute)

@@ -65,6 +65,8 @@ const (
 	// NodeUnreachablePodReason is defined in k8s.io/kubernetes/pkg/util/node
 	// but not in client-go and apimachinery, so we define it here
 	NodeUnreachablePodReason = "NodeLost"
+
+	WebhookServiceName = "webhook-service"
 )
 
 func NewOperatorActions(cli versioned.Interface,
@@ -128,11 +130,11 @@ type OperatorActions interface {
 	UpgradeTidbCluster(info *TidbClusterConfig) error
 	UpgradeTidbClusterOrDie(info *TidbClusterConfig)
 	DeployAdHocBackup(info *TidbClusterConfig) error
-	CheckAdHocBackup(info *TidbClusterConfig) error
+	CheckAdHocBackup(info *TidbClusterConfig) (string, error)
 	DeployScheduledBackup(info *TidbClusterConfig) error
 	CheckScheduledBackup(info *TidbClusterConfig) error
-	DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig) error
-	CheckIncrementalBackup(info *TidbClusterConfig) error
+	DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig, withDrainer bool, ts string) error
+	CheckIncrementalBackup(info *TidbClusterConfig, withDrainer bool) error
 	Restore(from *TidbClusterConfig, to *TidbClusterConfig) error
 	CheckRestore(from *TidbClusterConfig, to *TidbClusterConfig) error
 	ForceDeploy(info *TidbClusterConfig) error
@@ -155,10 +157,9 @@ type OperatorActions interface {
 	CheckTidbClustersAvailableOrDie(infos []*TidbClusterConfig)
 	CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
-	RegisterWebHookAndService(info *OperatorConfig) error
-	RegisterWebHookAndServiceOrDie(info *OperatorConfig)
+	RegisterWebHookAndService(context *apimachinery.CertContext, info *OperatorConfig) error
+	RegisterWebHookAndServiceOrDie(context *apimachinery.CertContext, info *OperatorConfig)
 	CleanWebHookAndService(info *OperatorConfig) error
-	StartValidatingAdmissionWebhookServerOrDie(info *OperatorConfig)
 	EventWorker()
 	EmitEvent(info *TidbClusterConfig, msg string)
 	BackupRestore(from, to *TidbClusterConfig) error
@@ -251,16 +252,6 @@ type TidbClusterConfig struct {
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
 	SubValues        string
-}
-
-func (oi *OperatorConfig) ConfigTLS() *tls.Config {
-	sCert, err := tls.X509KeyPair(oi.Context.Cert, oi.Context.Key)
-	if err != nil {
-		glog.Fatal(err)
-	}
-	return &tls.Config{
-		Certificates: []tls.Certificate{sCert},
-	}
 }
 
 func (tc *TidbClusterConfig) String() string {
@@ -1604,11 +1595,12 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	glog.Infof("begin to deploy adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
 	sets := map[string]string{
-		"name":         info.BackupName,
-		"mode":         "backup",
-		"user":         "root",
-		"password":     info.Password,
-		"storage.size": "10Gi",
+		"name":          info.BackupName,
+		"mode":          "backup",
+		"user":          "root",
+		"password":      info.Password,
+		"storage.size":  "10Gi",
+		"backupOptions": "\"--verbose=3\"",
 	}
 
 	setString := info.BackupHelmSetString(sets)
@@ -1625,9 +1617,11 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	return nil
 }
 
-func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
+func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) (string, error) {
 	glog.Infof("checking adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
+	ns := info.Namespace
+	var ts string
 	jobName := fmt.Sprintf("%s-%s", info.ClusterName, info.BackupName)
 	fn := func() (bool, error) {
 		job, err := oa.kubeCli.BatchV1().Jobs(info.Namespace).Get(jobName, metav1.GetOptions{})
@@ -1640,15 +1634,51 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) error {
 			return false, nil
 		}
 
+		listOptions := metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("%s=%s", label.InstanceLabelKey, jobName),
+		}
+		podList, err := oa.kubeCli.CoreV1().Pods(ns).List(listOptions)
+		if err != nil {
+			glog.Errorf("failed to list pods: %v", err)
+			return false, nil
+		}
+
+		var podName string
+		for _, pod := range podList.Items {
+			ref := pod.OwnerReferences[0]
+			if ref.Kind == "Job" && ref.Name == jobName {
+				podName = pod.GetName()
+				break
+			}
+		}
+		if podName == "" {
+			glog.Errorf("failed to find the ad-hoc backup: %s podName", jobName)
+			return false, nil
+		}
+
+		getTsCmd := fmt.Sprintf("kubectl logs -n %s %s | grep 'commitTS = ' | cut -d '=' -f2 | sed 's/ *//g'", ns, podName)
+		tsData, err := exec.Command("/bin/sh", "-c", getTsCmd).CombinedOutput()
+		if err != nil {
+			glog.Errorf("failed to get ts of pod %s, %v", podName, err)
+			return false, nil
+		}
+		if string(tsData) == "" {
+			glog.Errorf("ts is empty pod %s", podName)
+			return false, nil
+		}
+
+		ts = strings.TrimSpace(string(tsData))
+		glog.Infof("ad-hoc backup ts: %s", ts)
+
 		return true, nil
 	}
 
 	err := wait.Poll(DefaultPollInterval, BackupAndRestorePollTimeOut, fn)
 	if err != nil {
-		return fmt.Errorf("failed to launch backup job: %v", err)
+		return ts, fmt.Errorf("failed to launch backup job: %v", err)
 	}
 
-	return nil
+	return ts, nil
 }
 
 func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfig) error {
@@ -1692,15 +1722,13 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 			return false, nil
 		}
 
-		b, err := to.DataIsTheSameAs(from)
+		_, err = to.DataIsTheSameAs(from)
 		if err != nil {
-			glog.Error(err)
-			return false, nil
+			// ad-hoc restore don't check the data really, just logging
+			glog.Infof("check restore: %v", err)
 		}
-		if b {
-			return true, nil
-		}
-		return false, nil
+
+		return true, nil
 	}
 
 	err := wait.Poll(oa.pollInterval, BackupAndRestorePollTimeOut, fn)
@@ -2035,19 +2063,24 @@ func (tc *TidbClusterConfig) FullName() string {
 	return fmt.Sprintf("%s/%s", tc.Namespace, tc.ClusterName)
 }
 
-func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig) error {
+func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig, withDrainer bool, ts string) error {
 	oa.EmitEvent(from, fmt.Sprintf("DeployIncrementalBackup: slave: %s", to.ClusterName))
 	glog.Infof("begin to deploy incremental backup cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
 
 	sets := map[string]string{
 		"binlog.pump.create":            "true",
 		"binlog.drainer.destDBType":     "mysql",
-		"binlog.drainer.create":         "true",
 		"binlog.drainer.mysql.host":     fmt.Sprintf("%s-tidb.%s", to.ClusterName, to.Namespace),
 		"binlog.drainer.mysql.user":     "root",
 		"binlog.drainer.mysql.password": to.Password,
 		"binlog.drainer.mysql.port":     "4000",
 		"binlog.drainer.ignoreSchemas":  "",
+	}
+	if withDrainer {
+		sets["binlog.drainer.create"] = "true"
+	}
+	if ts != "" {
+		sets["binlog.drainer.initialCommitTs"] = ts
 	}
 
 	cmd := oa.getHelmUpgradeClusterCmd(from, sets)
@@ -2059,7 +2092,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	return nil
 }
 
-func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig) error {
+func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withDrainer bool) error {
 	glog.Infof("begin to check incremental backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
 	pumpStatefulSetName := fmt.Sprintf("%s-pump", info.ClusterName)
@@ -2091,6 +2124,10 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig) error
 				glog.Errorf("some pods is not health %s ,%v", pumpStatefulSetName, err)
 				return false, nil
 			}
+		}
+
+		if !withDrainer {
+			return true, nil
 		}
 
 		drainerStatefulSetName := fmt.Sprintf("%s-drainer", info.ClusterName)
@@ -2133,13 +2170,13 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig) error
 
 func strPtr(s string) *string { return &s }
 
-func (oa *operatorActions) RegisterWebHookAndServiceOrDie(info *OperatorConfig) {
-	if err := oa.RegisterWebHookAndService(info); err != nil {
+func (oa *operatorActions) RegisterWebHookAndServiceOrDie(context *apimachinery.CertContext, info *OperatorConfig) {
+	if err := oa.RegisterWebHookAndService(context, info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
 
-func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error {
+func (oa *operatorActions) RegisterWebHookAndService(context *apimachinery.CertContext, info *OperatorConfig) error {
 	client := oa.kubeCli
 	glog.Infof("Registering the webhook via the AdmissionRegistration API")
 
@@ -2167,7 +2204,7 @@ func (oa *operatorActions) RegisterWebHookAndService(info *OperatorConfig) error
 						Name:      info.WebhookServiceName,
 						Path:      strPtr("/pods"),
 					},
-					CABundle: info.Context.SigningCert,
+					CABundle: context.SigningCert,
 				},
 			},
 		},
@@ -2262,33 +2299,6 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 		return false
 	}
 	return len(healths.PumpPos) > 0 && healths.Synced
-}
-
-func (oa *operatorActions) StartValidatingAdmissionWebhookServerOrDie(info *OperatorConfig) {
-
-	context, err := apimachinery.SetupServerCert(os.Getenv("NAMESPACE"), info.WebhookServiceName)
-	if err != nil {
-		glog.Fatalf("fail to setup server cert: %v", err)
-	}
-
-	info.Context = context
-
-	http.HandleFunc("/pods", webhook.ServePods)
-	server := &http.Server{
-		Addr:      ":443",
-		TLSConfig: info.ConfigTLS(),
-	}
-	err = server.ListenAndServeTLS("", "")
-	if err != nil {
-		err = fmt.Errorf("failed to start webhook server %v", err)
-		glog.Error(err)
-		sendErr := slack.SendErrMsg(err.Error())
-		if sendErr != nil {
-			glog.Error(sendErr)
-		}
-		// TODO use context instead
-		os.Exit(4)
-	}
 }
 
 func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
@@ -2443,5 +2453,27 @@ func (oa *operatorActions) CheckManualPauseTiDBOrDie(info *TidbClusterConfig) {
 	err := oa.CheckManualPauseTiDB(info)
 	if err != nil {
 		slack.NotifyAndPanic(err)
+	}
+}
+
+func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext) {
+	sCert, err := tls.X509KeyPair(context.Cert, context.Key)
+	if err != nil {
+		panic(err)
+	}
+
+	http.HandleFunc("/pods", webhook.ServePods)
+	server := &http.Server{
+		Addr: ":443",
+		TLSConfig: &tls.Config{
+			Certificates: []tls.Certificate{sCert},
+		},
+	}
+	if err := server.ListenAndServeTLS("", ""); err != nil {
+		sendErr := slack.SendErrMsg(err.Error())
+		if sendErr != nil {
+			glog.Error(sendErr)
+		}
+		panic(fmt.Sprintf("failed to start webhook server %v", err))
 	}
 }
