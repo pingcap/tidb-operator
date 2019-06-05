@@ -439,7 +439,7 @@ scheduledBackup:
   create: false
   binlogImage: pingcap/tidb-binlog:v3.0.0-rc.1
   binlogImagePullPolicy: IfNotPresent
-  # https://github.com/tennix/tidb-cloud-backup
+  # https://github.com/pingcap/tidb-cloud-backup
   mydumperImage: pingcap/tidb-cloud-backup:latest
   mydumperImagePullPolicy: IfNotPresent
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.

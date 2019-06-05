@@ -64,13 +64,29 @@ spec:
               readOnly: true
           {{- end }}
             env:
-            - name: MY_POD_NAME
+            - name: POD_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           {{- if .Values.scheduledBackup.gcp }}
             - name: GOOGLE_APPLICATION_CREDENTIALS
               value: /gcp/credentials.json
+          {{- end }}
+          {{- if .Values.scheduledBackup.ceph }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.scheduledBackup.ceph.secretName }}
+                  key: access_key
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.scheduledBackup.ceph.secretName }}
+                  key: secret_key
           {{- end }}
             - name: TIDB_USER
               valueFrom:
