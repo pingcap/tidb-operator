@@ -69,7 +69,7 @@ module "ec2" {
   monitoring = false
   user_data = "${file("bastion-userdata")}"
   vpc_security_group_ids = ["${aws_security_group.ssh.id}"]
-  subnet_ids = "${split(",", var.create_vpc ? join(",", module.vpc.public_subnets) : join(",", var.subnets))}"
+  subnet_ids = "${split(",", var.create_vpc ? join(",", module.vpc.public_subnets) : join(",", var.public_subnet_ids))}"
 
   tags = {
     app = "tidb"
@@ -86,7 +86,7 @@ module "eks" {
   cluster_name = "${var.cluster_name}"
   cluster_version = "${var.k8s_version}"
   config_output_path = "credentials/"
-  subnets = "${split(",", var.create_vpc ? join(",", module.vpc.private_subnets) : join(",", var.subnets))}"
+  subnets = "${split(",", var.create_vpc ? join(",", module.vpc.private_subnets) : join(",", var.private_subnet_ids))}"
   vpc_id = "${var.create_vpc ? module.vpc.vpc_id : var.vpc_id}"
 
   # instance types: https://aws.amazon.com/ec2/instance-types/
@@ -209,7 +209,7 @@ resource "helm_release" "tidb-operator" {
 
 resource "helm_release" "tidb-cluster" {
   depends_on = ["helm_release.tidb-operator"]
-  name = "tidb-cluster"
+  name = "tidb-cluster-${var.cluster_name}"
   namespace = "tidb"
   chart = "${path.module}/charts/tidb-cluster"
   values = [
@@ -226,11 +226,11 @@ until kubectl get po -n tidb -lapp.kubernetes.io/component=tidb | grep Running; 
   echo "Wait TiDB pod running"
   sleep 5
 done
-until kubectl get svc -n tidb tidb-cluster-tidb | grep elb; do
+until kubectl get svc -n tidb tidb-cluster-${var.cluster_name}-tidb | grep elb; do
   echo "Wait TiDB service ready"
   sleep 5
 done
-until kubectl get svc -n tidb tidb-cluster-grafana | grep elb; do
+until kubectl get svc -n tidb tidb-cluster-${var.cluster_name}-grafana | grep elb; do
   echo "Wait monitor service ready"
   sleep 5
 done
