@@ -16,7 +16,10 @@ package main
 import (
 	"fmt"
 	_ "net/http/pprof"
+	"os"
 	"time"
+
+	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 
 	"k8s.io/api/core/v1"
 
@@ -55,8 +58,12 @@ func main() {
 		ImagePullPolicy:    v1.PullIfNotPresent,
 	}
 
-	// start a http server in goruntine
-	go oa.StartValidatingAdmissionWebhookServerOrDie(operatorInfo)
+	ns := os.Getenv("NAMESPACE")
+	context, err := apimachinery.SetupServerCert(ns, tests.WebhookServiceName)
+	if err != nil {
+		panic(err)
+	}
+	go tests.StartValidatingAdmissionWebhookServerOrDie(context)
 
 	initTidbVersion, err := conf.GetTiDBVersion()
 	if err != nil {
@@ -215,7 +222,7 @@ func main() {
 	}
 
 	// before upgrade cluster, register webhook first
-	oa.RegisterWebHookAndServiceOrDie(operatorInfo)
+	oa.RegisterWebHookAndServiceOrDie(context, operatorInfo)
 
 	// upgrade test
 	upgradeTidbVersions := conf.GetUpgradeTidbVersions()

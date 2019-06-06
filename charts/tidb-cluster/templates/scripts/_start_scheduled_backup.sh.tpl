@@ -5,12 +5,19 @@ host=`echo {{ template "cluster.name" . }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]
 mkdir -p /data/${dirname}/
 cp /savepoint-dir/savepoint /data/${dirname}/
 
+# the content of savepoint file is:
+# commitTS = 408824443621605409
+savepoint=`cat /data/${dirname}/savepoint | cut -d "=" -f2 | sed 's/ *//g'`
+
+cat /data/${dirname}/savepoint
+
 /mydumper \
   --outputdir=/data/${dirname} \
   --host=`eval echo '${'$host'}'` \
   --port=4000 \
   --user={{ .Values.scheduledBackup.user }} \
   --password=${TIDB_PASSWORD} \
+  --tidb-snapshot=${savepoint} \
   {{ .Values.scheduledBackup.options }}
 
 {{- if .Values.scheduledBackup.gcp }}
