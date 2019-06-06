@@ -9,7 +9,7 @@ This document describes how to deploy a TiDB cluster in the [minikube](https://k
   * [Install minikube and start a Kubernetes cluster](#install-minikube-and-start-a-kubernetes-cluster)
   * [Install kubectl to access the cluster](#install-kubectl-to-access-the-cluster)
 - [Install TiDB operator and run a TiDB cluster with it](#install-tidb-operator-and-run-a-tidb-cluster-with-it)
-  * [Install helm](#install-helm)
+  * [Install helm](#install-helm) version >= 2.9.0 and < 3.0.0
   * [Install TiDB operator in the Kubernetes cluster](#install-tidb-operator-in-the-kubernetes-cluster)
   * [Launch a TiDB cluster](#launch-a-tidb-cluster)
   * [Test TiDB cluster](#test-tidb-cluster)
