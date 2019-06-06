@@ -94,7 +94,7 @@ func NewOperatorActions(cli versioned.Interface,
 const (
 	DefaultPollTimeout          time.Duration = 10 * time.Minute
 	DefaultPollInterval         time.Duration = 1 * time.Minute
-	BackupAndRestorePollTimeOut time.Duration = 30 * time.Minute
+	BackupAndRestorePollTimeOut time.Duration = 60 * time.Minute
 	getBackupDirPodName                       = "get-backup-dir"
 	grafanaUsername                           = "admin"
 	grafanaPassword                           = "admin"
@@ -1893,7 +1893,7 @@ func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterConfig) error {
 
 		succededJobCount := 0
 		for _, j := range backupJobs {
-			if j.Status.Failed > 0 {
+			if j.Status.Failed > 3 {
 				return false, fmt.Errorf("cluster [%s/%s] scheduled backup job failed, job: [%s] failed count is: %d",
 					info.Namespace, info.ClusterName, j.Name, j.Status.Failed)
 			}
