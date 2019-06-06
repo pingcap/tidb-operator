@@ -35,9 +35,17 @@
 - Adhoc backup now appends the start time to the PVC name by default.
 - add the privileged option for TiKV pod
 - `tkctl upinfo` can show nodeIP podIP port now
+- get TS and use it before full backup using mydumper
+- Fix capabilities issue for `tkctl debug` command
 
 ## Detailed Bug Fixes And Changes
 
+- Add capabilities and privilege mode for debug container ([#537](https://github.com/pingcap/tidb-operator/pull/537))
+- docs: note helm versions in deployment docs ([#553](https://github.com/pingcap/tidb-operator/pull/553))
+- deploy/aws: split public and private subnets when using existing vpc ([#530](https://github.com/pingcap/tidb-operator/pull/530))
+- release v1.0.0-beta.3 ([#557](https://github.com/pingcap/tidb-operator/pull/557))
+- Gke terraform upgrade to 0.12 and fix bastion instance zone to be region agnostic ([#554](https://github.com/pingcap/tidb-operator/pull/554))
+- get TS and use it before full backup using mydumper ([#534](https://github.com/pingcap/tidb-operator/pull/534))
 - Add port podip nodeip to tkctl upinfo ([#538](https://github.com/pingcap/tidb-operator/pull/538))
 - fix disaster tolerance of stability test ([#543](https://github.com/pingcap/tidb-operator/pull/543))
 - add privileged option for tikv pod template ([#550](https://github.com/pingcap/tidb-operator/pull/550))
