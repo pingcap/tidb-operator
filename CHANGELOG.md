@@ -10,7 +10,7 @@
 - ConfigMap rollout
 - One PD replicas
 - Stop TiDB Operator itself
-- TiDB stabile scheduling
+- TiDB stable scheduling
 - Disaster tolerance and data regions disaster tolerance
 - Fix many bugs of stability test
 
