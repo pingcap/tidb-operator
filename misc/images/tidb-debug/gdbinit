@@ -1,0 +1,3 @@
+set auto-load safe-path /
+set libthread-db-search-path /usr/lib64/
+set sysroot /proc/1/root/

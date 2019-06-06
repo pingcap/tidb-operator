@@ -29,6 +29,9 @@ import (
 const (
 	defaultDockerSocket   = "unix:///var/run/docker.sock"
 	dockerContainerPrefix = "docker://"
+
+	CAP_SYS_PTRACE = "SYS_PTRACE"
+	CAP_SYS_ADMIN = "SYS_ADMIN"
 )
 
 type IOStreams struct {
@@ -45,6 +48,8 @@ type Launcher struct {
 	image             string
 	dockerSocket      string
 	ctx               context.Context
+
+	privileged        bool
 
 	client *dockerclient.Client
 }
@@ -74,6 +79,8 @@ func NewLauncherCmd(streams IOStreams) *cobra.Command {
 		"debug container image")
 	cmd.Flags().StringVar(&launcher.dockerSocket, "docker-socket", launcher.dockerSocket,
 		"docker socket to bind")
+	cmd.Flags().BoolVar(&launcher.privileged, "privileged", launcher.privileged,
+		"whether launch container in privileged mode (full container capabilities)")
 	return cmd
 }
 
@@ -136,6 +143,8 @@ func (l *Launcher) createContainer(command []string) (*container.ContainerCreate
 		UsernsMode:  container.UsernsMode(containerMode(dockerContainerID)),
 		IpcMode:     container.IpcMode(containerMode(dockerContainerID)),
 		PidMode:     container.PidMode(containerMode(dockerContainerID)),
+		CapAdd:      strslice.StrSlice([]string{CAP_SYS_PTRACE, CAP_SYS_ADMIN}),
+		Privileged:  l.privileged,
 	}
 	body, err := l.client.ContainerCreate(l.ctx, config, hostConfig, nil, "")
 	if err != nil {
