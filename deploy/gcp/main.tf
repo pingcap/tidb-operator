@@ -1,18 +1,23 @@
-variable "GCP_CREDENTIALS_PATH" {}
-variable "GCP_REGION" {}
-variable "GCP_PROJECT" {}
+variable "GCP_CREDENTIALS_PATH" {
+}
+
+variable "GCP_REGION" {
+}
+
+variable "GCP_PROJECT" {
+}
 
 provider "google" {
-  credentials = "${file("${var.GCP_CREDENTIALS_PATH}")}"
-  region      = "${var.GCP_REGION}"
-  project     = "${var.GCP_PROJECT}"
+  credentials = file(var.GCP_CREDENTIALS_PATH)
+  region      = var.GCP_REGION
+  project     = var.GCP_PROJECT
 }
 
 // required for taints on node pools
 provider "google-beta" {
-  credentials = "${file("${var.GCP_CREDENTIALS_PATH}")}"
-  region      = "${var.GCP_REGION}"
-  project     = "${var.GCP_PROJECT}"
+  credentials = file(var.GCP_CREDENTIALS_PATH)
+  region      = var.GCP_REGION
+  project     = var.GCP_PROJECT
 }
 
 locals {
@@ -27,17 +32,23 @@ resource "null_resource" "prepare-dir" {
   }
 }
 
+resource "null_resource" "set-gcloud-project" {
+  provisioner "local-exec" {
+    command = "gcloud config set project ${var.GCP_PROJECT}"
+  }
+}
+
 resource "google_compute_network" "vpc_network" {
   name                    = "vpc-network"
   auto_create_subnetworks = false
-  project                 = "${var.GCP_PROJECT}"
+  project                 = var.GCP_PROJECT
 }
 
 resource "google_compute_subnetwork" "private_subnet" {
   ip_cidr_range = "172.31.252.0/22"
   name          = "private-subnet"
-  network       = "${google_compute_network.vpc_network.name}"
-  project       = "${var.GCP_PROJECT}"
+  network       = google_compute_network.vpc_network.name
+  project       = var.GCP_PROJECT
 
   secondary_ip_range {
     ip_cidr_range = "172.30.0.0/16"
@@ -50,23 +61,23 @@ resource "google_compute_subnetwork" "private_subnet" {
   }
 
   lifecycle {
-    ignore_changes = ["secondary_ip_range"]
+    ignore_changes = [secondary_ip_range]
   }
 }
 
 resource "google_compute_subnetwork" "public_subnet" {
   ip_cidr_range = "172.29.252.0/22"
   name          = "public-subnet"
-  network       = "${google_compute_network.vpc_network.name}"
-  project       = "${var.GCP_PROJECT}"
+  network       = google_compute_network.vpc_network.name
+  project       = var.GCP_PROJECT
 }
 
 resource "google_container_cluster" "cluster" {
-  name       = "${var.cluster_name}"
-  network    = "${google_compute_network.vpc_network.name}"
-  subnetwork = "${google_compute_subnetwork.private_subnet.name}"
-  location   = "${var.GCP_REGION}"
-  project    = "${var.GCP_PROJECT}"
+  name       = var.cluster_name
+  network    = google_compute_network.vpc_network.name
+  subnetwork = google_compute_subnetwork.private_subnet.name
+  location   = var.GCP_REGION
+  project    = var.GCP_PROJECT
 
   master_auth {
     username = ""
@@ -94,20 +105,21 @@ resource "google_container_cluster" "cluster" {
   min_master_version = "latest"
 
   lifecycle {
-    ignore_changes = ["master_auth"] // see above linked issue
+    ignore_changes = [master_auth] // see above linked issue
   }
 }
 
 resource "google_container_node_pool" "pd_pool" {
-  provider           = "google-beta"
-  project            = "${var.GCP_PROJECT}"
-  cluster            = "${google_container_cluster.cluster.name}"
-  location           = "${google_container_cluster.cluster.location}"
+  depends_on         = [google_container_cluster.cluster]
+  provider           = google-beta
+  project            = var.GCP_PROJECT
+  cluster            = google_container_cluster.cluster.name
+  location           = google_container_cluster.cluster.location
   name               = "pd-pool"
-  initial_node_count = "${var.pd_count}"
+  initial_node_count = var.pd_count
 
   node_config {
-    machine_type    = "${var.pd_instance_type}"
+    machine_type    = var.pd_instance_type
     image_type      = "UBUNTU"
     local_ssd_count = 1
 
@@ -117,7 +129,7 @@ resource "google_container_node_pool" "pd_pool" {
       value  = "pd"
     }
 
-    labels {
+    labels = {
       dedicated = "pd"
     }
 
@@ -127,15 +139,16 @@ resource "google_container_node_pool" "pd_pool" {
 }
 
 resource "google_container_node_pool" "tikv_pool" {
-  provider           = "google-beta"
-  project            = "${var.GCP_PROJECT}"
-  cluster            = "${google_container_cluster.cluster.name}"
-  location           = "${google_container_cluster.cluster.location}"
+  depends_on         = [google_container_node_pool.pd_pool]
+  provider           = google-beta
+  project            = var.GCP_PROJECT
+  cluster            = google_container_cluster.cluster.name
+  location           = google_container_cluster.cluster.location
   name               = "tikv-pool"
-  initial_node_count = "${var.tikv_count}"
+  initial_node_count = var.tikv_count
 
   node_config {
-    machine_type    = "${var.tikv_instance_type}"
+    machine_type    = var.tikv_instance_type
     image_type      = "UBUNTU"
     local_ssd_count = 1
 
@@ -145,7 +158,7 @@ resource "google_container_node_pool" "tikv_pool" {
       value  = "tikv"
     }
 
-    labels {
+    labels = {
       dedicated = "tikv"
     }
 
@@ -155,15 +168,16 @@ resource "google_container_node_pool" "tikv_pool" {
 }
 
 resource "google_container_node_pool" "tidb_pool" {
-  provider           = "google-beta"
-  project            = "${var.GCP_PROJECT}"
-  cluster            = "${google_container_cluster.cluster.name}"
-  location           = "${google_container_cluster.cluster.location}"
+  depends_on         = [google_container_node_pool.tikv_pool]
+  provider           = google-beta
+  project            = var.GCP_PROJECT
+  cluster            = google_container_cluster.cluster.name
+  location           = google_container_cluster.cluster.location
   name               = "tidb-pool"
-  initial_node_count = "${var.tidb_count}"
+  initial_node_count = var.tidb_count
 
   node_config {
-    machine_type = "${var.tidb_instance_type}"
+    machine_type = var.tidb_instance_type
 
     taint {
       effect = "NO_SCHEDULE"
@@ -171,7 +185,7 @@ resource "google_container_node_pool" "tidb_pool" {
       value  = "tidb"
     }
 
-    labels {
+    labels = {
       dedicated = "tidb"
     }
 
@@ -181,14 +195,15 @@ resource "google_container_node_pool" "tidb_pool" {
 }
 
 resource "google_container_node_pool" "monitor_pool" {
-  project            = "${var.GCP_PROJECT}"
-  cluster            = "${google_container_cluster.cluster.name}"
-  location           = "${google_container_cluster.cluster.location}"
+  depends_on         = [google_container_node_pool.tidb_pool]
+  project            = var.GCP_PROJECT
+  cluster            = google_container_cluster.cluster.name
+  location           = google_container_cluster.cluster.location
   name               = "monitor-pool"
-  initial_node_count = "${var.monitor_count}"
+  initial_node_count = var.monitor_count
 
   node_config {
-    machine_type = "${var.monitor_instance_type}"
+    machine_type = var.monitor_instance_type
     tags         = ["monitor"]
     oauth_scopes = ["storage-ro", "logging-write", "monitoring"]
   }
@@ -196,8 +211,8 @@ resource "google_container_node_pool" "monitor_pool" {
 
 resource "google_compute_firewall" "allow_ssh_bastion" {
   name    = "allow-ssh-bastion"
-  network = "${google_compute_network.vpc_network.self_link}"
-  project = "${var.GCP_PROJECT}"
+  network = google_compute_network.vpc_network.self_link
+  project = var.GCP_PROJECT
 
   allow {
     protocol = "tcp"
@@ -210,8 +225,8 @@ resource "google_compute_firewall" "allow_ssh_bastion" {
 
 resource "google_compute_firewall" "allow_mysql_from_bastion" {
   name    = "allow-mysql-from-bastion"
-  network = "${google_compute_network.vpc_network.self_link}"
-  project = "${var.GCP_PROJECT}"
+  network = google_compute_network.vpc_network.self_link
+  project = var.GCP_PROJECT
 
   allow {
     protocol = "tcp"
@@ -224,8 +239,8 @@ resource "google_compute_firewall" "allow_mysql_from_bastion" {
 
 resource "google_compute_firewall" "allow_ssh_from_bastion" {
   name    = "allow-ssh-from-bastion"
-  network = "${google_compute_network.vpc_network.self_link}"
-  project = "${var.GCP_PROJECT}"
+  network = google_compute_network.vpc_network.self_link
+  project = var.GCP_PROJECT
 
   allow {
     protocol = "tcp"
@@ -237,20 +252,21 @@ resource "google_compute_firewall" "allow_ssh_from_bastion" {
 }
 
 resource "google_compute_instance" "bastion" {
-  project      = "${var.GCP_PROJECT}"
-  zone         = "${var.GCP_REGION}-a"
-  machine_type = "${var.bastion_instance_type}"
+  project      = var.GCP_PROJECT
+  zone         = data.external.available_zones_in_region.result["zone"]
+  machine_type = var.bastion_instance_type
   name         = "bastion"
 
-  "boot_disk" {
+  boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-1804-lts"
     }
   }
 
-  "network_interface" {
-    subnetwork    = "${google_compute_subnetwork.public_subnet.self_link}"
-    access_config = {}
+  network_interface {
+    subnetwork = google_compute_subnetwork.public_subnet.self_link
+    access_config {
+    }
   }
 
   tags = ["bastion"]
@@ -262,38 +278,42 @@ resource "null_resource" "get-credentials" {
   provisioner "local-exec" {
     command = "gcloud container clusters get-credentials ${google_container_cluster.cluster.name} --region ${var.GCP_REGION}"
 
-    environment {
-      KUBECONFIG = "${local.kubeconfig}"
+    environment = {
+      KUBECONFIG = local.kubeconfig
     }
   }
 
   provisioner "local-exec" {
-    when = "destroy"
+    when = destroy
 
     command = <<EOS
 kubectl get pvc -n tidb -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl patch pv {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
 EOS
 
-    environment {
-      KUBECONFIG = "${local.kubeconfig}"
+
+    environment = {
+      KUBECONFIG = local.kubeconfig
     }
   }
 }
 
 resource "local_file" "tidb-cluster-values" {
-  depends_on = ["data.template_file.tidb_cluster_values"]
-  filename   = "${local.tidb_cluster_values_path}"
-  content    = "${data.template_file.tidb_cluster_values.rendered}"
+  depends_on = [data.template_file.tidb_cluster_values]
+  filename = local.tidb_cluster_values_path
+  content = data.template_file.tidb_cluster_values.rendered
 }
 
 resource "null_resource" "setup-env" {
-  depends_on = ["google_container_cluster.cluster", "null_resource.get-credentials"]
+  depends_on = [
+    google_container_cluster.cluster,
+    null_resource.get-credentials,
+  ]
 
   provisioner "local-exec" {
-    working_dir = "${path.module}"
+    working_dir = path.module
 
     command = <<EOS
-kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-admin --user $$(gcloud config get-value account)
+kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-admin --user $(gcloud config get-value account)
 kubectl create serviceaccount --namespace kube-system tiller
 kubectl apply -f manifests/crd.yaml
 kubectl apply -f manifests/startup-script.yaml
@@ -307,21 +327,28 @@ done
 helm install --namespace tidb-admin --name tidb-operator ${path.module}/charts/tidb-operator
 EOS
 
-    environment {
-      KUBECONFIG = "${local.kubeconfig}"
-    }
-  }
+
+environment = {
+KUBECONFIG = local.kubeconfig
+}
+}
 }
 
 resource "null_resource" "deploy-tidb-cluster" {
-  depends_on = ["null_resource.setup-env", "local_file.tidb-cluster-values", "google_container_node_pool.pd_pool", "google_container_node_pool.tikv_pool", "google_container_node_pool.tidb_pool"]
+depends_on = [
+null_resource.setup-env,
+local_file.tidb-cluster-values,
+google_container_node_pool.pd_pool,
+google_container_node_pool.tikv_pool,
+google_container_node_pool.tidb_pool,
+]
 
-  triggers {
-    values = "${data.template_file.tidb_cluster_values.rendered}"
-  }
+triggers = {
+values = data.template_file.tidb_cluster_values.rendered
+}
 
-  provisioner "local-exec" {
-    command = <<EOS
+provisioner "local-exec" {
+command = <<EOS
 helm upgrade --install tidb-cluster ${path.module}/charts/tidb-cluster --namespace=tidb -f ${local.tidb_cluster_values_path}
 until kubectl get po -n tidb -lapp.kubernetes.io/component=tidb | grep Running; do
   echo "Wait for TiDB pod running"
@@ -333,8 +360,10 @@ until kubectl get svc -n tidb tidb-cluster-tidb -o json | jq '.status.loadBalanc
 done
 EOS
 
-    environment {
-      KUBECONFIG = "${local.kubeconfig}"
-    }
-  }
+
+environment = {
+KUBECONFIG = local.kubeconfig
 }
+}
+}
+

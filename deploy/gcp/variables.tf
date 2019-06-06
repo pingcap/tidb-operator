@@ -64,3 +64,4 @@ variable "monitor_instance_type" {
 variable "bastion_instance_type" {
   default = "f1-micro"
 }
+
