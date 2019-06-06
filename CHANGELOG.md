@@ -3,7 +3,7 @@
 ## v1.0.0-beta.3 What’s New
 
 ### Action Required
-- ACTION REQUIRED: `nodeSelectorRequired` was remove from values.yaml.
+- ACTION REQUIRED: `nodeSelectorRequired` was removed from values.yaml.
 - ACTION REQUIRED:  Comma-separated values support in `nodeSelector` has been dropped, please use new-added `affinity` field which has a more expressive syntax.
 
 ### A lot of stability cases added
