@@ -11,9 +11,9 @@ provider "alicloud" {
 
 locals {
   credential_path               = "${path.module}/credentials"
-  kubeconfig                    = "${local.credential_path}/kubeconfig_${var.cluster_name}"
-  key_file                      = "${local.credential_path}/${var.cluster_name}-node-key.pem"
-  bastion_key_file              = "${local.credential_path}/${var.cluster_name}-bastion-key.pem"
+  kubeconfig                    = "${local.credential_path}/kubeconfig_${var.cluster_name_prefix}"
+  key_file                      = "${local.credential_path}/${var.cluster_name_prefix}-node-key.pem"
+  bastion_key_file              = "${local.credential_path}/${var.cluster_name_prefix}-bastion-key.pem"
   tidb_cluster_values_path      = "${path.module}/rendered/tidb-cluster-values.yaml"
   local_volume_provisioner_path = "${path.module}/rendered/local-volume-provisioner.yaml"
 }
@@ -34,17 +34,17 @@ module "ack" {
   }
 
   # TODO: support non-public apiserver
-  region           = "${var.ALICLOUD_REGION}"
-  cluster_name     = "${var.cluster_name}"
-  public_apiserver = true
-  kubeconfig_file  = "${local.kubeconfig}"
-  key_file         = "${local.key_file}"
-  vpc_cidr         = "${var.vpc_cidr}"
-  k8s_pod_cidr     = "${var.k8s_pod_cidr}"
-  k8s_service_cidr = "${var.k8s_service_cidr}"
-  vpc_cidr_newbits = "${var.vpc_cidr_newbits}"
-  vpc_id           = "${var.vpc_id}"
-  group_id         = "${var.group_id}"
+  region              = "${var.ALICLOUD_REGION}"
+  cluster_name_prefix = "${var.cluster_name_prefix}"
+  public_apiserver    = true
+  kubeconfig_file     = "${local.kubeconfig}"
+  key_file            = "${local.key_file}"
+  vpc_cidr            = "${var.vpc_cidr}"
+  k8s_pod_cidr        = "${var.k8s_pod_cidr}"
+  k8s_service_cidr    = "${var.k8s_service_cidr}"
+  vpc_cidr_newbits    = "${var.vpc_cidr_newbits}"
+  vpc_id              = "${var.vpc_id}"
+  group_id            = "${var.group_id}"
 
   default_worker_cpu_core_count = "${var.default_worker_core_count}"
 

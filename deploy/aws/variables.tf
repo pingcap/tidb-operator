@@ -80,7 +80,7 @@ variable "k8s_version" {
 
 variable "tidb_version" {
   description = "tidb cluster version"
-  default = "v2.1.8"
+  default = "v3.0.0-rc.1"
 }
 
 variable "pd_count" {

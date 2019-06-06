@@ -118,12 +118,12 @@ The initial Grafana login credentials are:
 
 To upgrade the TiDB cluster, edit the `variables.tf` file with your preferred text editor and modify the `tidb_version` variable to a higher version, and then run `terraform apply`.
 
-For example, to upgrade the cluster to version 2.1.10, modify the `tidb_version` to `v2.1.10`:
+For example, to upgrade the cluster to version 3.0.0-rc.1, modify the `tidb_version` to `v3.0.0-rc.2`:
 
 ```
  variable "tidb_version" {
    description = "tidb cluster version"
-   default = "v2.1.10"
+   default = "v3.0.0-rc.2"
  }
 ```
 

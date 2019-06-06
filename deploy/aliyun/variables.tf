@@ -1,11 +1,11 @@
-variable "cluster_name" {
+variable "cluster_name_prefix" {
   description = "TiDB cluster name"
   default     = "tidb-cluster"
 }
 
 variable "tidb_version" {
   description = "TiDB cluster version"
-  default     = "v2.1.8"
+  default     = "v3.0.0-rc.1"
 }
 
 variable "pd_count" {
@@ -88,7 +88,7 @@ variable "monitor_reserve_days" {
 
 variable "default_worker_core_count" {
   description = "CPU core count of default kubernetes workers"
-  default = 2
+  default     = 2
 }
 
 variable "create_bastion" {
@@ -122,7 +122,7 @@ variable "monitor_slb_network_type" {
 
 variable "monitor_enable_anonymous_user" {
   description = "Whether enabling anonymous user visiting for monitoring"
-  default = false
+  default     = false
 }
 
 variable "vpc_id" {
@@ -152,5 +152,5 @@ variable "k8s_service_cidr" {
 
 variable "vpc_cidr" {
   description = "VPC cidr_block, options: [192.168.0.0.0/16, 172.16.0.0/16, 10.0.0.0/8], cannot collidate with kubernetes service cidr and pod cidr. Cannot change once the vpc created."
-  default = "192.168.0.0/16"
+  default     = "192.168.0.0/16"
 }

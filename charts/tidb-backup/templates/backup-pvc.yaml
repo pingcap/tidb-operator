@@ -2,12 +2,13 @@
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: {{ .Values.name }}
+  name: {{ tpl .Values.name . }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: tidb-operator
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: backup
+    pingcap.com/backup-cluster-name: {{ .Values.clusterName }}
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   accessModes:

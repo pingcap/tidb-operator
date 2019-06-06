@@ -5,12 +5,12 @@ variable "cluster_name" {
 
 variable "tidb_version" {
   description = "TiDB version"
-  default     = "v2.1.8"
+  default     = "v3.0.0-rc.1"
 }
 
 variable "tidb_operator_version" {
   description = "TiDB operator version"
-  default     = "v1.0.0-beta.2"
+  default     = "v1.0.0-beta.3"
 }
 
 variable "pd_replica_count" {
@@ -64,3 +64,4 @@ variable "monitor_instance_type" {
 variable "bastion_instance_type" {
   default = "f1-micro"
 }
+
