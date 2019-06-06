@@ -29,7 +29,7 @@ data "template_file" "tidb_cluster_values" {
 # data "kubernetes_service" "tidb" {
 #   depends_on = ["helm_release.tidb-cluster"]
 #   metadata {
-#     name = "tidb-cluster-tidb"
+#     name = "tidb-cluster-${var.cluster_name}-tidb"
 #     namespace = "tidb"
 #   }
 # }
@@ -37,17 +37,17 @@ data "template_file" "tidb_cluster_values" {
 # data "kubernetes_service" "monitor" {
 #   depends_on = ["helm_release.tidb-cluster"]
 #   metadata {
-#     name = "tidb-cluster-grafana"
+#     name = "tidb-cluster-${var.cluster_name}-grafana"
 #     namespace = "tidb"
 #   }
 # }
 
 data "external" "tidb_service" {
   depends_on = ["null_resource.wait-tidb-ready"]
-  program = ["bash", "-c", "kubectl --kubeconfig credentials/kubeconfig_${var.cluster_name} get svc -n tidb tidb-cluster-tidb -ojson | jq '.status.loadBalancer.ingress[0]'"]
+  program = ["bash", "-c", "kubectl --kubeconfig credentials/kubeconfig_${var.cluster_name} get svc -n tidb tidb-cluster-${var.cluster_name}-tidb -ojson | jq '.status.loadBalancer.ingress[0]'"]
 }
 
 data "external" "monitor_service" {
   depends_on = ["null_resource.wait-tidb-ready"]
-  program = ["bash", "-c", "kubectl --kubeconfig credentials/kubeconfig_${var.cluster_name} get svc -n tidb tidb-cluster-grafana -ojson | jq '.status.loadBalancer.ingress[0]'"]
+  program = ["bash", "-c", "kubectl --kubeconfig credentials/kubeconfig_${var.cluster_name} get svc -n tidb tidb-cluster-${var.cluster_name}-grafana -ojson | jq '.status.loadBalancer.ingress[0]'"]
 }
