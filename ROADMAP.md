@@ -45,13 +45,12 @@ This document defines the roadmap for TiDB Operator development.
 - [x] TiDB 3.0-beta support
 
 ## v1.0.0-beta.3
-- [ ] GCP one-command deployment
-- [ ] Schedule TiDB pod on previous node
-- [ ] Rolling update when ConfigMap changes
-- [ ] Allow pausing during TiDB upgrade
+- [x] GCP one-command deployment
+- [x] Schedule TiDB pod on previous node
+- [x] Rolling update when ConfigMap changes
+- [x] Allow pausing during TiDB upgrade
 
 ## v1.0.0-beta.4
-- [ ] Kustomize support
 - [ ] HA deployment document
 - [ ] Monitor deployment document
 - [ ] Detailed Backup/Restore document

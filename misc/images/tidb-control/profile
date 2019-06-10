@@ -6,6 +6,7 @@ export LS_OPTIONS='--color=auto'
 
 # aliases
 alias ls='ls $LS_OPTIONS'
+alias ll='ls -alF'
 
 function prompt {
  local GREENBOLD="\[\033[1;32m\]"
