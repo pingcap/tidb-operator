@@ -74,6 +74,7 @@ type DebugOptions struct {
 	Command          []string
 	HostDockerSocket string
 	LauncherImage    string
+	Privileged       bool
 
 	KubeCli *kubernetes.Clientset
 
@@ -114,7 +115,8 @@ func NewCmdDebug(tkcContext *config.TkcContext, streams genericclioptions.IOStre
 		"docker socket path of kubernetes node")
 	cmd.Flags().StringVar(&options.LauncherImage, "launcher-image", options.LauncherImage,
 		"image for launcher pod which is responsible to launch the debug container")
-
+	cmd.Flags().BoolVar(&options.Privileged, "privileged", options.Privileged,
+		"whether launch container in privileged mode (full container capabilities)")
 	return cmd
 }
 
@@ -193,8 +195,11 @@ func (o *DebugOptions) makeLauncherPod(nodeName, containerID string, command []s
 		o.Image,
 		"--docker-socket",
 		fmt.Sprintf("unix://%s", util.DockerSocket),
-		"--",
 	}
+	if o.Privileged {
+		launchArgs = append(launchArgs, "--privileged")
+	}
+	launchArgs = append(launchArgs, "--")
 	launchArgs = append(launchArgs, command...)
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

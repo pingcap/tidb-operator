@@ -8,7 +8,7 @@ Before deploying the TiDB Operator, make sure the following requirements are sat
 * [DNS addons](https://kubernetes.io/docs/tasks/access-application-cluster/configure-dns-cluster/)
 * [PersistentVolume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 * [RBAC](https://kubernetes.io/docs/admin/authorization/rbac) enabled (optional)
-* [Helm](https://helm.sh) v2.8.2 or greater
+* [Helm](https://helm.sh) version >= v2.8.2 and < v3.0.0
 * Kubernetes v1.12 is required for zone-aware persistent volumes.
 
 > **Note:** Allthough TiDB Operator can use network volume to persist TiDB data, this is slower due to redundant replication. It is highly recommended to set up [local volume](https://kubernetes.io/docs/concepts/storage/volumes/#local) for better performance.
