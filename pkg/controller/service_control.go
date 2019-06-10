@@ -23,6 +23,7 @@ import (
 	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -122,6 +123,7 @@ var _ ServiceControlInterface = &realServiceControl{}
 type FakeServiceControl struct {
 	SvcLister                corelisters.ServiceLister
 	SvcIndexer               cache.Indexer
+	EpsIndexer               cache.Indexer
 	TcLister                 v1listers.TidbClusterLister
 	TcIndexer                cache.Indexer
 	createServiceTracker     requestTracker
@@ -130,10 +132,11 @@ type FakeServiceControl struct {
 }
 
 // NewFakeServiceControl returns a FakeServiceControl
-func NewFakeServiceControl(svcInformer coreinformers.ServiceInformer, tcInformer tcinformers.TidbClusterInformer) *FakeServiceControl {
+func NewFakeServiceControl(svcInformer coreinformers.ServiceInformer, epsInformer coreinformers.EndpointsInformer, tcInformer tcinformers.TidbClusterInformer) *FakeServiceControl {
 	return &FakeServiceControl{
 		svcInformer.Lister(),
 		svcInformer.Informer().GetIndexer(),
+		epsInformer.Informer().GetIndexer(),
 		tcInformer.Lister(),
 		tcInformer.Informer().GetIndexer(),
 		requestTracker{0, nil, 0},
@@ -168,7 +171,21 @@ func (ssc *FakeServiceControl) CreateService(_ *v1alpha1.TidbCluster, svc *corev
 		return ssc.createServiceTracker.err
 	}
 
-	return ssc.SvcIndexer.Add(svc)
+	err := ssc.SvcIndexer.Add(svc)
+	if err != nil {
+		return err
+	}
+	// add a new endpoint to indexer if svc has selector
+	if svc.Spec.Selector != nil {
+		eps := &corev1.Endpoints{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      svc.Name,
+				Namespace: svc.Namespace,
+			},
+		}
+		return ssc.EpsIndexer.Add(eps)
+	}
+	return nil
 }
 
 // UpdateService updates the service of SvcIndexer
@@ -179,6 +196,18 @@ func (ssc *FakeServiceControl) UpdateService(_ *v1alpha1.TidbCluster, svc *corev
 		return nil, ssc.updateServiceTracker.err
 	}
 
+	if svc.Spec.Selector != nil {
+		eps := &corev1.Endpoints{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      svc.Name,
+				Namespace: svc.Namespace,
+			},
+		}
+		err := ssc.EpsIndexer.Update(eps)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return svc, ssc.SvcIndexer.Update(svc)
 }
 
