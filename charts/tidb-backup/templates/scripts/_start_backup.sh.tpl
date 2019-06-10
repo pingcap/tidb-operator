@@ -6,12 +6,19 @@ dirname=/data/${BACKUP_NAME}
 mkdir -p ${dirname}
 cp /savepoint-dir/savepoint ${dirname}/
 
+# the content of savepoint file is:
+# commitTS = 408824443621605409
+savepoint=`cat ${dirname}/savepoint | cut -d "=" -f2 | sed 's/ *//g'`
+
+cat ${dirname}/savepoint
+
 /mydumper \
   --outputdir=${dirname} \
   --host=`eval echo '${'$host'}'` \
   --port=4000 \
   --user=${TIDB_USER} \
   --password=${TIDB_PASSWORD} \
+  --tidb-snapshot=${savepoint} \
   {{ .Values.backupOptions }}
 
 {{- if .Values.gcp }}

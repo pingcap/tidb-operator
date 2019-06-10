@@ -85,6 +85,7 @@ func NewController(
 	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
+	epsInformer := kubeInformerFactory.Core().V1().Endpoints()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
@@ -119,6 +120,7 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
+				epsInformer.Lister(),
 				podControl,
 				pvcInformer.Lister(),
 				pdScaler,
