@@ -36,14 +36,10 @@ spec:
           - name: get-ts
             image: {{ .Values.scheduledBackup.binlogImage }}
             imagePullPolicy: {{ .Values.scheduledBackup.binlogImagePullPolicy | default "IfNotPresent" }}
-            command:
-            - /binlogctl
-            - -pd-urls=http://{{ template "cluster.name" . }}-pd:2379
-            - -cmd=generate_meta
-            - -data-dir=/savepoint-dir
+            command: ["/bin/sh", "-c", "cp /binlogctl /shared-dir/"]
             volumeMounts:
-            - name: savepoint-dir
-              mountPath: "/savepoint-dir"
+            - name: shared-dir
+              mountPath: "/shared-dir"
           containers:
           - name: scheduled-backup
             image: {{ .Values.scheduledBackup.mydumperImage }}
@@ -54,8 +50,8 @@ spec:
             - |-
 {{ tuple "scripts/_start_scheduled_backup.sh.tpl" . | include "helm-toolkit.utils.template" | indent 14 }}
             volumeMounts:
-            - name: savepoint-dir
-              mountPath: "/savepoint-dir"
+            - name: shared-dir
+              mountPath: "/shared-dir"
             - name: data
               mountPath: "/data"
           {{- if .Values.scheduledBackup.gcp }}
@@ -84,7 +80,7 @@ spec:
                   key: password
           restartPolicy: OnFailure
           volumes:
-          - name: savepoint-dir
+          - name: shared-dir
             emptyDir: {}
           - name: data
             persistentVolumeClaim:
