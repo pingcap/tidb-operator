@@ -34,7 +34,8 @@ RUN wget https://github.com/brendangregg/FlameGraph/archive/master.zip \
     && unzip master.zip \
     && mv FlameGraph-master /opt/FlameGraph \
     && rm master.zip
-ADD run_flamegraph.sh /run_flamegraph.sh
+COPY run_flamegraph.sh /run_flamegraph.sh
+COPY gdbinit /root/.gdbinit
 
 # used for go pprof
 ENV GOLANG_VERSION 1.12.4

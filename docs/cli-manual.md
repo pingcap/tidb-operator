@@ -175,9 +175,12 @@ This command used to diagnose the Pods of TiDB cluster. It launches a debug cont
 | --image |    | specify the docker image of debug container, default to `pingcap/tidb-debug:lastest` |
 | --container | -c | select the container to diagnose, default to the first container of target Pod |
 | --docker-socket |    | specify the docker socket of cluster node, default to `/var/run/docker.sock` |
+| --privileged |    | whether launch container in privileged mode (full container capabilities) |
 
 
 The default image of debug container contains almost all the related tools you may use then diagnosing, however, the image size can be kinda big. You may use `--image=pingcap/tidb-control:latest` if your just need a basic shell, `pd-ctl` and `tidb-ctl`.
+
+For the guide of using the default debug image (`tidb-debug`), refer to [tidb-debug](/misc/images/tidb-debug/README.md).
 
 Example:
 ```
