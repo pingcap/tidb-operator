@@ -10,7 +10,7 @@ variable "tidb_version" {
 
 variable "tidb_operator_version" {
   description = "TiDB operator version"
-  default     = "v1.0.0-beta.2"
+  default     = "v1.0.0-beta.3"
 }
 
 variable "pd_replica_count" {
@@ -64,3 +64,4 @@ variable "monitor_instance_type" {
 variable "bastion_instance_type" {
   default = "f1-micro"
 }
+

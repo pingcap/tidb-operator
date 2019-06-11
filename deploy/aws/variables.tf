@@ -4,40 +4,51 @@ variable "region" {
 }
 
 variable "ingress_cidr" {
-  description = "IP cidr that allowed to access bastion ec2 instance"
+  description = "IP CIDR that allowed to access bastion ec2 instance"
   default = ["0.0.0.0/0"]	# Note: Please restrict your ingress to only necessary IPs. Opening to 0.0.0.0/0 can lead to security vulnerabilities.
 }
 
+# Please note that this is only for manually created VPCs, deploying multiple EKS
+# clusters in one VPC is NOT supported now.
 variable "create_vpc" {
-  description = "Create a new VPC or not, if true the vpc_cidr/private_subnets/public_subnets must be set correctly, otherwise vpc_id/subnet_ids must be set correctly"
+  description = "Create a new VPC or not. If there is an existing VPC that you'd like to use, set this value to `false` and adjust `vpc_id`, `private_subnet_ids` and `public_subnet_ids` to the existing ones."
   default = true
 }
 
 variable "vpc_cidr" {
-  description = "vpc cidr"
+  description = "The network to use within the VPC. This value is ignored if `create_vpc=false`."
   default = "10.0.0.0/16"
 }
 
 variable "private_subnets" {
-  description = "vpc private subnets"
+  description = "The networks to use for private subnets. This value is ignored if `create_vpc=false`."
   type = "list"
   default = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
 }
 
 variable "public_subnets" {
-  description = "vpc public subnets"
+  description = "The networks to use for public subnets. This value is ignored if `create_vpc=false`."
   type = "list"
   default = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]
 }
 
 variable "vpc_id" {
-  description = "VPC id"
+  description = "ID of the existing VPC. This value is ignored if `create_vpc=true`."
   type = "string"
   default = "vpc-c679deae"
 }
 
-variable "subnets" {
-  description = "subnet id list"
+# To use the same subnets for both private and public usage,
+# just set their values identical.
+variable "private_subnet_ids" {
+  description = "The subnet ID(s) of the existing private networks. This value is ignored if `create_vpc=true`."
+  type = "list"
+  default = ["subnet-899e79f3", "subnet-a72d80cf", "subnet-a76d34ea"]
+}
+
+
+variable "public_subnet_ids" {
+  description = "The subnet ID(s) of the existing public networks. This value is ignored if `create_vpc=true`."
   type = "list"
   default = ["subnet-899e79f3", "subnet-a72d80cf", "subnet-a76d34ea"]
 }

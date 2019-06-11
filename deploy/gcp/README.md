@@ -7,9 +7,9 @@ This document describes how to deploy TiDB Operator and a TiDB cluster on GCP GK
 First of all, make sure the following items are installed on your machine:
 
 * [Google Cloud SDK](https://cloud.google.com/sdk/install)
-* [terraform](https://www.terraform.io/downloads.html)
+* [terraform](https://www.terraform.io/downloads.html) >= 0.12
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.11
-* [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.0
+* [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.0 and < 3.0.0
 * [jq](https://stedolan.github.io/jq/download/)
 
 ## Configure
@@ -236,5 +236,3 @@ terraform destroy
 You have to manually delete disks in the Google Cloud Console, or with `gcloud` after running `terraform destroy` if you do not need the data anymore.
 
 > *Note*: When `terraform destroy` is running, an error with the following message might occur: `Error reading Container Cluster "my-cluster": Cluster "my-cluster" has status "RECONCILING" with message""`. This happens when GCP is upgrading the kubernetes master node, which it does automatically at times. While this is happening, it is not possible to delete the cluster. When it is done, run `terraform destroy` again.
-
-> *Note*: When `terraform destroy` is running, an error with the following message might occur: `Error deleting NodePool: googleapi: Error 400: Operation operation-1558952543255-89695179 is currently deleting a node pool for cluster my-cluster. Please wait and try again once it is done., failedPrecondition`. This happens when terraform issues delete requests to cluster resources concurrently. To resolve, wait a little bit and then run `terraform destroy` again.
