@@ -1,0 +1,57 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: local-ssd-startup
+  namespace: kube-system
+  labels:
+    app: local-ssd-startup
+spec:
+  template:
+    metadata:
+      labels:
+        app: local-ssd-startup
+    spec:
+      hostPID: true
+      nodeSelector:
+        cloud.google.com/gke-os-distribution: ubuntu
+        cloud.google.com/gke-local-ssd: "true"
+      containers:
+        - name: local-ssd-startup
+          image: gcr.io/google-containers/startup-script:v1
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
+          env:
+          - name: STARTUP_SCRIPT
+            value: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              apt-get update
+              apt-get install -y software-properties-common
+              apt-add-repository universe
+              apt-get update
+              declare -a PKG_LIST=(python-google-compute-engine \
+              python3-google-compute-engine \
+              google-compute-engine-oslogin \
+              gce-compute-image-packages)
+              for pkg in ${PKG_LIST[@]}; do
+                  apt-get install -y $pkg || echo "Not available: $pkg"
+              done
+              mount | grep -v nobarrier | awk '/ssd/{print $1}' | xargs -i mount {} -o remount,nobarrier
+          volumeMounts:
+          - mountPath: /mnt/disks
+            name: local-ssd
+            mountPropagation: Bidirectional
+      tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      volumes:
+      - name: local-ssd
+        hostPath:
+          path: /mnt/disks
