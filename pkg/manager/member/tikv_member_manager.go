@@ -620,7 +620,12 @@ func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl contr
 		}
 	}
 
-	return false, nil
+	evictLeaderSchedulers, err := pdControl.GetPDClient(tc).GetEvictLeaderSchedulers()
+	if err != nil {
+		return false, err
+	}
+
+	return evictLeaderSchedulers != nil && len(evictLeaderSchedulers) > 0, nil
 }
 
 type FakeTiKVMemberManager struct {
