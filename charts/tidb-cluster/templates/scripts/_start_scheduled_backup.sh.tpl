@@ -4,7 +4,7 @@ set -euo pipefail
 
 timestamp=$(echo ${POD_NAME}|awk -F- '{print $(NF-1)}')
 ## use UTC time zone to resolve timestamp, avoiding different parsing results due to different default time zones
-backupName=scheduled-backup-`date -u -d @${timestamp}  "+%Y-%m-%dT%H%M%S"`-${POD_NAME}
+backupName=scheduled-backup-`date -u -d @${timestamp}  "+%Y%m%d-%H%M%S"`
 backupPath=/data/${backupName}
 host=`echo {{ template "cluster.name" . }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]' | tr '-' '_'`
 
@@ -24,6 +24,7 @@ cat ${backupPath}/savepoint
   --user=${TIDB_USER} \
   --password=${TIDB_PASSWORD} \
   --tidb-snapshot=${savepoint} \
+  --regex '^(?!(mysql\.))' \
   {{ .Values.scheduledBackup.options }}
 
 {{- if .Values.scheduledBackup.gcp }}
