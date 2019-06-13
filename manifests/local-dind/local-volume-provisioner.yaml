@@ -53,6 +53,13 @@ spec:
                 fieldPath: metadata.namespace
           - name: JOB_CONTAINER_IMAGE
             value: "quay.io/external_storage/local-volume-provisioner:v2.2.0"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
           volumeMounts:
             - mountPath: /etc/provisioner/config
               name: provisioner-config
