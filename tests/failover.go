@@ -360,7 +360,7 @@ func (oa *operatorActions) tikvFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluste
 			healthCount++
 		}
 	}
-	if tc.Status.TiKV.Synced && healthCount >= int(tc.Spec.TiKV.Replicas) {
+	if tc.Status.TiKV.Synced && healthCount == int(tc.Spec.TiKV.Replicas) {
 		return true
 	}
 
