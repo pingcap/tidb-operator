@@ -58,7 +58,7 @@ func (m *Manager) StartKubeControllerManager() error {
 	return m.startStaticPodService(KubeControllerManagerService, kubeControllerManagerManifest)
 }
 
-// StopKubeControllerManager stops the kube-proxy service
+// StopKubeControllerManager stops the kube-controller-manager service
 func (m *Manager) StopKubeControllerManager() error {
 	return m.stopStaticPodService(KubeControllerManagerService, kubeControllerManagerManifest)
 }
