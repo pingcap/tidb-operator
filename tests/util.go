@@ -20,7 +20,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests/slack"
 
 	corev1 "k8s.io/api/core/v1"
@@ -29,8 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	"k8s.io/kubernetes/pkg/client/conditions"
 )
 
 // Keep will keep the fun running in the period, otherwise the fun return error
@@ -144,34 +141,6 @@ const (
 	PodTimeout = 5 * time.Minute
 )
 
-type podCondition func(pod *corev1.Pod) (bool, error)
-
-// WaitForPodCondition waits a pods to be matched to the given condition.
-func WaitForPodCondition(c kubernetes.Interface, ns, podName, desc string, timeout time.Duration, condition podCondition) error {
-	glog.Infof("Waiting up to %v for pod %q in namespace %q to be %q", timeout, podName, ns, desc)
-	for start := time.Now(); time.Since(start) < timeout; time.Sleep(PodPollInterval) {
-		pod, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				glog.Infof("Pod %q in namespace %q not found. Error: %v", podName, ns, err)
-				return err
-			}
-			glog.Infof("Get pod %q in namespace %q failed, ignoring for %v. Error: %v", podName, ns, PodPollInterval, err)
-			continue
-		}
-		// log now so that current pod info is reported before calling `condition()`
-		glog.Infof("Pod %q: Phase=%q, Reason=%q, readiness=%t. Elapsed: %v",
-			podName, pod.Status.Phase, pod.Status.Reason, podutil.IsPodReady(pod), time.Since(start))
-		if done, err := condition(pod); done {
-			if err == nil {
-				glog.Infof("Pod %q satisfied condition %q", podName, desc)
-			}
-			return err
-		}
-	}
-	return fmt.Errorf("Gave up after waiting %v for pod %q to be %q", timeout, podName, desc)
-}
-
 func waitForPodNotFoundInNamespace(c kubernetes.Interface, podName, ns string, timeout time.Duration) error {
 	return wait.PollImmediate(PodPollInterval, timeout, func() (bool, error) {
 		_, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
@@ -183,25 +152,4 @@ func waitForPodNotFoundInNamespace(c kubernetes.Interface, podName, ns string, t
 		}
 		return false, nil
 	})
-}
-
-// WaitTimeoutForPodRunningInNamespace waits the given timeout duration for the specified pod to become running.
-func WaitTimeoutForPodRunningInNamespace(c kubernetes.Interface, podName, namespace string, timeout time.Duration) error {
-	return wait.PollImmediate(PodPollInterval, timeout, podRunning(c, podName, namespace))
-}
-
-func podRunning(c kubernetes.Interface, podName, namespace string) wait.ConditionFunc {
-	return func() (bool, error) {
-		pod, err := c.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
-		if err != nil {
-			return false, err
-		}
-		switch pod.Status.Phase {
-		case corev1.PodRunning:
-			return true, nil
-		case corev1.PodFailed, corev1.PodSucceeded:
-			return false, conditions.ErrPodCompleted
-		}
-		return false, nil
-	}
 }
