@@ -1,4 +1,4 @@
-set -euo pipefail
+set -uo pipefail
 
 dirname=/data/${BACKUP_NAME}
 mkdir -p ${dirname}
@@ -20,6 +20,19 @@ downloader \
   --srcDir=${BACKUP_NAME} \
   --destDir=${dirname}
 {{- end }}
+
+count=0
+while ! mysql -u ${TIDB_USER} -h `eval echo '${'$host'}'` -P 4000 -p${TIDB_PASSWORD} -e 'select version();'
+do
+  echo "waiting for tidb ..."
+  sleep 10
+  if [ ${count} -ge 180 ];then
+    echo "30 minutes timeout"
+    exit 1
+  fi
+  let "count++"
+  echo ${count}
+done
 
 /loader \
   -d=${dirname} \
