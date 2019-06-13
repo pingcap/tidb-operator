@@ -23,13 +23,14 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"sync"
 
 	"github.com/pingcap/tidb-operator/tests/slack"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+const metricPort = 8090
 
 //Client request grafana API on a set of resource paths.
 type Client struct {
@@ -56,13 +57,12 @@ type AnnotationOptions struct {
 
 //NewClient creats a new grafanaClient. This client performs rest functions
 //such as Get, Post on specified paths.
-func NewClient(grafanaURL string, userName string, password string, prometheusExporterPort int) (*Client, error) {
+func NewClient(grafanaURL string, userName string, password string) (*Client, error) {
 	u, err := url.Parse(grafanaURL)
 	if err != nil {
 		return nil, err
 	}
 
-	initFunc(prometheusExporterPort)
 	u.User = url.UserPassword(userName, password)
 	return &Client{
 		baseUrl: *u,
@@ -80,29 +80,9 @@ func (annotation Annotation) getBody() ([]byte, error) {
 }
 
 var (
-	initedOnce        sync.Once
 	counterMetric     prometheus.Counter
 	annotationSubPath = "api/annotations"
 )
-
-//initFunc is called with sync.Once, we use sync.Once to keep the thread safe.
-func initFunc(port int) {
-	initedOnce.Do(func() {
-		counterMetric = initErrorMetric()
-		prometheus.MustRegister(counterMetric)
-		mux := http.NewServeMux()
-
-		l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "listening port %d failed, %v", port, err)
-			slack.NotifyAndPanic(err)
-		}
-
-		mux.Handle("/metrics", promhttp.Handler())
-		srv := &http.Server{Handler: mux}
-		go srv.Serve(l)
-	})
-}
 
 func initErrorMetric() prometheus.Counter {
 	return prometheus.NewCounter(prometheus.CounterOpts{
@@ -148,4 +128,20 @@ func (cli *Client) getAnnotationPath() string {
 	u := cli.baseUrl
 	u.Path = path.Join(cli.baseUrl.Path, annotationSubPath)
 	return u.String()
+}
+
+func init() {
+	counterMetric = initErrorMetric()
+	prometheus.MustRegister(counterMetric)
+	mux := http.NewServeMux()
+
+	l, err := net.Listen("tcp", fmt.Sprintf(":%d", metricPort))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "listening port %d failed, %v", metricPort, err)
+		slack.NotifyAndPanic(err)
+	}
+
+	mux.Handle("/metrics", promhttp.Handler())
+	srv := &http.Server{Handler: mux}
+	go srv.Serve(l)
 }

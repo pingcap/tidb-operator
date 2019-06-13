@@ -23,7 +23,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
@@ -332,11 +332,15 @@ func run() {
 	// stop one etcd node and k8s/operator/tidbcluster is available
 	faultEtcd := tests.SelectNode(cfg.ETCDs)
 	fta.StopETCDOrDie(faultEtcd)
-	defer fta.StartETCDOrDie(faultEtcd)
 	// TODO make the pause interval as a argument
 	time.Sleep(3 * time.Minute)
 	oa.CheckOneEtcdDownOrDie(operatorCfg, allClusters, faultEtcd)
 	fta.StartETCDOrDie(faultEtcd)
+
+	// stop all kube-proxy and k8s/operator/tidbcluster is available
+	fta.StopKubeProxyOrDie()
+	oa.CheckKubeProxyDownOrDie(allClusters)
+	fta.StartKubeProxyOrDie()
 
 	//clean temp dirs when stability success
 	err := cfg.CleanTempDirs()
