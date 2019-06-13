@@ -47,11 +47,13 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 
 	// find an up store
 	var store v1alpha1.TiKVStore
+	var podName string
 	for _, v := range tc.Status.TiKV.Stores {
 		if v.State != v1alpha1.TiKVStateUp {
 			continue
 		}
 		store = v
+		podName = v.PodName
 		break
 	}
 	if len(store.ID) == 0 {
@@ -96,7 +98,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 
 	tikvOps.SetPoll(DefaultPollInterval, maxStoreDownTime+tikvFailoverPeriod+failoverTimeout)
 
-	return tikvOps.PollTiDBCluster(info.Namespace, info.ClusterName,
+	err = tikvOps.PollTiDBCluster(info.Namespace, info.ClusterName,
 		func(tc *v1alpha1.TidbCluster, err error) (bool, error) {
 			_, ok := tc.Status.TiKV.FailureStores[store.ID]
 			glog.Infof("cluster: [%s/%s] check if target store failed: %t",
@@ -106,6 +108,30 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 			}
 			return true, nil
 		})
+	if err != nil {
+		glog.Errorf("failed to check truncate sst file: %v", err)
+		return err
+	}
+
+	if err := wait.Poll(1*time.Minute, 30*time.Minute, func() (bool, error) {
+		if err := tikvOps.RecoverSSTFile(info.Namespace, podName); err != nil {
+			glog.Errorf("failed to recovery sst file %s/%s", info.Namespace, podName)
+			return false, nil
+		}
+
+		return true, nil
+	}); err != nil {
+		return err
+	}
+
+	glog.Infof("deleting pod: [%s/%s] again", info.Namespace, store.PodName)
+	return wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
+		err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(store.PodName, &metav1.DeleteOptions{})
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
 }
 
 func (oa *operatorActions) TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) {
