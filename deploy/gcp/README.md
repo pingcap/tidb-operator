@@ -240,4 +240,4 @@ You have to manually delete disks in the Google Cloud Console, or with `gcloud` 
 
 ## More information
 
-Please view our [operation guide](./operation-guide.md).
+Please view our [operation guide](../../docs/operation-guide.md).

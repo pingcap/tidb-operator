@@ -182,4 +182,4 @@ Once you have finished experimenting, you can delete the Kubernetes cluster with
 ## More information
 
 For production deployments, view our [operation guide](./operation-guide.md), and look at the GKE section.
-We also have a simple [terraform based deployment](./deploy/gcp/README.md).
+We also have a simple [terraform based deployment](../deploy/gcp/README.md).
