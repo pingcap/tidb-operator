@@ -1,0 +1,5 @@
+tidb_operator_version = "v1.0.0-beta.3.start-immediate"
+tidb_operator_registry = "gcr.io/pingcap-tidb-alpha"
+pd_instance_type = "n1-standard-4"
+tikv_instance_type = "n1-highmem-8"
+tidb_instance_type = "n1-standard-16"

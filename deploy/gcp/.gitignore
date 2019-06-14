@@ -2,3 +2,4 @@
 *.tfstate*
 credentials
 rendered
+terraform-key.json

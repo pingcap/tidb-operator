@@ -254,7 +254,7 @@ resource "google_compute_firewall" "allow_ssh_from_bastion" {
 
 resource "google_compute_instance" "bastion" {
   project      = var.GCP_PROJECT
-  zone         = data.external.available_zones_in_region.result["zone"]
+  zone         = data.google_compute_zones.available.names[0]
   machine_type = var.bastion_instance_type
   name         = "bastion"
 
@@ -308,62 +308,77 @@ resource "null_resource" "setup-env" {
   depends_on = [
     google_container_cluster.cluster,
     null_resource.get-credentials,
+    var.tidb_operator_registry,
+    var.tidb_operator_version,
   ]
 
   provisioner "local-exec" {
     working_dir = path.module
+    interpreter = ["bash", "-c"]
 
     command = <<EOS
-kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-admin --user $(gcloud config get-value account)
-kubectl create serviceaccount --namespace kube-system tiller
+set -euo pipefail
+
+if ! kubectl get clusterrolebinding cluster-admin-binding 2>/dev/null; then
+  kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-admin --user $(gcloud config get-value account)
+fi
+
+if ! kubectl get serviceaccount -n kube-system tiller 2>/dev/null ; then
+  kubectl create serviceaccount --namespace kube-system tiller
+fi
+
 kubectl apply -f manifests/crd.yaml
 kubectl apply -k manifests/local-ssd
 kubectl apply -f manifests/gke/persistent-disk.yaml
 kubectl apply -f manifests/tiller-rbac.yaml
+
 helm init --service-account tiller --upgrade --wait
 until helm ls; do
   echo "Wait until tiller is ready"
 done
-helm install --namespace tidb-admin --name tidb-operator ${path.module}/charts/tidb-operator
+helm upgrade --install tidb-operator --namespace tidb-admin ${path.module}/charts/tidb-operator --set operatorImage=${var.tidb_operator_registry}/tidb-operator:${var.tidb_operator_version}
 EOS
 
 
-environment = {
-KUBECONFIG = local.kubeconfig
-}
-}
+    environment = {
+      KUBECONFIG = local.kubeconfig
+    }
+  }
 }
 
 resource "null_resource" "deploy-tidb-cluster" {
-depends_on = [
-null_resource.setup-env,
-local_file.tidb-cluster-values,
-google_container_node_pool.pd_pool,
-google_container_node_pool.tikv_pool,
-google_container_node_pool.tidb_pool,
-]
+  depends_on = [
+    null_resource.setup-env,
+    local_file.tidb-cluster-values,
+    google_container_node_pool.pd_pool,
+    google_container_node_pool.tikv_pool,
+    google_container_node_pool.tidb_pool,
+  ]
 
-triggers = {
-values = data.template_file.tidb_cluster_values.rendered
-}
+  triggers = {
+    values = data.template_file.tidb_cluster_values.rendered
+  }
 
-provisioner "local-exec" {
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
 command = <<EOS
+set -euo pipefail
+
 helm upgrade --install tidb-cluster ${path.module}/charts/tidb-cluster --namespace=tidb -f ${local.tidb_cluster_values_path}
 until kubectl get po -n tidb -lapp.kubernetes.io/component=tidb | grep Running; do
   echo "Wait for TiDB pod running"
   sleep 5
 done
+
 until kubectl get svc -n tidb tidb-cluster-tidb -o json | jq '.status.loadBalancer.ingress[0]' | grep ip; do
   echo "Wait for TiDB internal loadbalancer IP"
   sleep 5
 done
 EOS
 
-
-environment = {
-KUBECONFIG = local.kubeconfig
-}
-}
+    environment = {
+      KUBECONFIG = local.kubeconfig
+    }
+  }
 }
 

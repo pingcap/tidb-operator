@@ -7,13 +7,11 @@ data "template_file" "tidb_cluster_values" {
     tikv_replicas    = var.tikv_replica_count
     tidb_replicas    = var.tidb_replica_count
     operator_version = var.tidb_operator_version
+    tidb_operator_registry = var.tidb_operator_registry
   }
 }
 
-data external "available_zones_in_region" {
-  depends_on = [null_resource.prepare-dir]
-  program    = ["bash", "-c", "gcloud compute regions describe ${var.GCP_REGION} --format=json | jq '{zone: .zones|.[0]|match(\"[^/]*$\"; \"g\")|.string}'"]
-}
+data "google_compute_zones" "available" { }
 
 data "external" "tidb_ilb_ip" {
   depends_on = [null_resource.deploy-tidb-cluster]
