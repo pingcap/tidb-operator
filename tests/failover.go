@@ -457,7 +457,7 @@ func (oa *operatorActions) CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig,
 	})
 }
 
-func (oa *operatorActions) CheckKubeProxyDownOrDie(clusters []*TidbClusterConfig) {
+func (oa *operatorActions) CheckKubeProxyDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
 	glog.Infof("checking k8s/tidbCluster status when kube-proxy down")
 
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
@@ -467,6 +467,51 @@ func (oa *operatorActions) CheckKubeProxyDownOrDie(clusters []*TidbClusterConfig
 
 		}
 		glog.V(4).Infof("k8s cluster is available.")
+
+		err = oa.CheckOperatorAvailable(operatorConfig)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("tidb operator is available.")
+
+		err = oa.CheckTidbClustersAvailable(clusters)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("all clusters are available.")
+		return nil
+	})
+}
+
+func (oa *operatorActions) CheckKubeSchedulerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
+	glog.Infof("checking operator/tidbCluster status when kube-scheduler is not available")
+
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckOperatorAvailable(operatorConfig)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("tidb operator is available.")
+
+		err = oa.CheckTidbClustersAvailable(clusters)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("all clusters are available.")
+		return nil
+	})
+}
+
+func (oa *operatorActions) CheckKubeControllerManagerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
+	glog.Infof("checking operator/tidbCluster status when kube-controller-manager is not available")
+
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckOperatorAvailable(operatorConfig)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("tidb operator is available.")
+
 		err = oa.CheckTidbClustersAvailable(clusters)
 		if err != nil {
 			return err
