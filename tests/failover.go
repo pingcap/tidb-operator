@@ -484,6 +484,12 @@ func (oa *operatorActions) CheckKubeProxyDownOrDie(operatorConfig *OperatorConfi
 }
 
 func (oa *operatorActions) CheckKubeSchedulerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
+	glog.Infof("verify kube-scheduler is not avaiavble")
+
+	if err := waitForComponentStatus(oa.kubeCli, "scheduler", corev1.ComponentHealthy, corev1.ConditionFalse); err != nil {
+		slack.NotifyAndPanic(fmt.Errorf("failed to stop kube-scheduler: %v", err))
+	}
+
 	glog.Infof("checking operator/tidbCluster status when kube-scheduler is not available")
 
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
@@ -503,6 +509,12 @@ func (oa *operatorActions) CheckKubeSchedulerDownOrDie(operatorConfig *OperatorC
 }
 
 func (oa *operatorActions) CheckKubeControllerManagerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
+	glog.Infof("verify kube-controller-manager is not avaiavble")
+
+	if err := waitForComponentStatus(oa.kubeCli, "controller-manager", corev1.ComponentHealthy, corev1.ConditionFalse); err != nil {
+		slack.NotifyAndPanic(fmt.Errorf("failed to stop kube-controller-manager: %v", err))
+	}
+
 	glog.Infof("checking operator/tidbCluster status when kube-controller-manager is not available")
 
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
