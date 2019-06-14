@@ -13,6 +13,8 @@ spec:
   schedule: {{ .Values.scheduledBackup.schedule | quote }}
   concurrencyPolicy: Forbid
   suspend: {{ .Values.scheduledBackup.suspend }}
+  successfulJobsHistoryLimit: {{ .Values.scheduledBackup.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.scheduledBackup.failedJobsHistoryLimit }}
   startingDeadlineSeconds: {{ .Values.scheduledBackup.startingDeadlineSeconds }}
   jobTemplate:
     metadata:

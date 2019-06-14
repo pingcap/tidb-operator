@@ -9,9 +9,6 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: backup
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
-    {{- if .Values.extraLabels }}
-{{ toYaml .Values.extraLabels | indent 4 }}
-    {{- end }}
 spec:
   template:
     metadata:
@@ -21,6 +18,9 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: backup
         helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+    {{- if .Values.extraLabels }}
+{{ toYaml .Values.extraLabels | indent 8 }}
+    {{- end }}
     spec:
       initContainers:
       - name: get-ts

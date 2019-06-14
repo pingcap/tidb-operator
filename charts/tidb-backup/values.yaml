@@ -14,7 +14,7 @@ image:
   # https://github.com/tennix/tidb-cloud-backup
   backup: pingcap/tidb-cloud-backup:latest
 
-# Add additional job labels
+# Add additional labels for backup/restore job's pod
 # ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 extraLabels: {}
 
