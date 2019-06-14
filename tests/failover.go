@@ -452,7 +452,26 @@ func (oa *operatorActions) CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig,
 		if err != nil {
 			return err
 		}
-		glog.V(4).Infof("all clusters is available")
+		glog.V(4).Infof("all clusters are available")
+		return nil
+	})
+}
+
+func (oa *operatorActions) CheckKubeProxyDownOrDie(clusters []*TidbClusterConfig) {
+	glog.Infof("checking k8s/tidbCluster status when kube-proxy down")
+
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckK8sAvailable(nil, nil)
+		if err != nil {
+			return err
+
+		}
+		glog.V(4).Infof("k8s cluster is available.")
+		err = oa.CheckTidbClustersAvailable(clusters)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("all clusters are available.")
 		return nil
 	})
 }
@@ -460,33 +479,44 @@ func (oa *operatorActions) CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig,
 func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
 	glog.Infof("check k8s/operator/tidbCluster status when one apiserver down")
 	affectedPods := map[string]*corev1.Pod{}
-	apiserverPod, err := GetApiserverPod(oa.kubeCli, faultNode)
+	apiserverPod, err := GetKubeApiserverPod(oa.kubeCli, faultNode)
 	if err != nil {
-		slack.NotifyAndPanic(fmt.Errorf("can't find apiserver in node:%s", faultNode))
+		slack.NotifyAndPanic(fmt.Errorf("can't find apiserver in k8s cluster"))
 	}
 	if apiserverPod != nil {
 		affectedPods[apiserverPod.GetName()] = apiserverPod
 	}
-	controllerPod, err := GetControllerManagerPod(oa.kubeCli, faultNode)
+
+	controllerPod, err := GetKubeControllerManagerPod(oa.kubeCli, faultNode)
 	if err != nil {
-		glog.Infof("can't find controllerManager in node:%s", faultNode)
+		slack.NotifyAndPanic(fmt.Errorf("can't find kube-controller-manager in k8s cluster"))
 	}
 	if controllerPod != nil {
 		affectedPods[controllerPod.GetName()] = controllerPod
 	}
-	schedulerPod, err := GetSchedulerPod(oa.kubeCli, faultNode)
+
+	schedulerPod, err := GetKubeSchedulerPod(oa.kubeCli, faultNode)
 	if err != nil {
-		glog.Infof("can't find scheduler in node:%s", faultNode)
+		slack.NotifyAndPanic(fmt.Errorf("can't find kube-scheduler in k8s cluster"))
 	}
 	if schedulerPod != nil {
 		affectedPods[schedulerPod.GetName()] = schedulerPod
 	}
-	dnsPod, err := GetDNSPod(oa.kubeCli, faultNode)
+
+	dnsPod, err := GetKubeDNSPod(oa.kubeCli, faultNode)
 	if err != nil {
-		slack.NotifyAndPanic(fmt.Errorf("can't find controller-manager in node:%s", faultNode))
+		slack.NotifyAndPanic(fmt.Errorf("can't find kube-dns in k8s cluster"))
 	}
 	if dnsPod != nil {
 		affectedPods[dnsPod.GetName()] = dnsPod
+	}
+
+	proxyPod, err := GetKubeProxyPod(oa.kubeCli, faultNode)
+	if err != nil {
+		slack.NotifyAndPanic(fmt.Errorf("can't find kube-proxy in k8s cluster"))
+	}
+	if proxyPod != nil {
+		affectedPods[dnsPod.GetName()] = proxyPod
 	}
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(map[string]string{faultNode: faultNode}, affectedPods)
@@ -555,7 +585,7 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, exc
 			}
 			podState := GetPodStatus(&pod)
 			if podState != string(corev1.PodRunning) {
-				return false, fmt.Errorf("pod:[%s/%s] is unavailable,state is %s", pod.GetName(), pod.GetNamespace(), podState)
+				return false, fmt.Errorf("pod:[%s/%s] is unavailable,state is %s", pod.GetNamespace(), pod.GetName(), podState)
 			}
 		}
 		return true, nil
