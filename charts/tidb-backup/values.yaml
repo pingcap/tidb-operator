@@ -14,6 +14,10 @@ image:
   # https://github.com/tennix/tidb-cloud-backup
   backup: pingcap/tidb-cloud-backup:latest
 
+# Add additional job labels
+# ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+extraLabels: {}
+
 # secretName is the name of the secret which stores user and password used for backup/restore
 # Note: you must give the user enough privilege to do the backup and restore
 # you can create the secret by:
