@@ -19,14 +19,6 @@ spec:
         app.kubernetes.io/component: backup
         helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
     spec:
-      initContainers:
-      - name: get-ts
-        image: {{ .Values.image.binlog }}
-        imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
-        command: ["/bin/sh", "-c", "cp /binlogctl /shared-dir/"]
-        volumeMounts:
-        - name: shared-dir
-          mountPath: "/shared-dir"
       containers:
       - name: backup
         image: {{ .Values.image.backup }}
@@ -37,8 +29,6 @@ spec:
         - |-
 {{ tuple "scripts/_start_backup.sh.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
         volumeMounts:
-        - name: shared-dir
-          mountPath: "/shared-dir"
         - name: data
           mountPath: "/data"
       {{- if .Values.gcp }}
@@ -77,8 +67,6 @@ spec:
               key: password
       restartPolicy: OnFailure
       volumes:
-      - name: shared-dir
-        emptyDir: {}
       - name: data
         persistentVolumeClaim:
           claimName: {{ .Values.name }}

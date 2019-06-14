@@ -32,14 +32,6 @@ spec:
             app.kubernetes.io/component: scheduled-backup
             helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
         spec:
-          initContainers:
-          - name: get-ts
-            image: {{ .Values.scheduledBackup.binlogImage }}
-            imagePullPolicy: {{ .Values.scheduledBackup.binlogImagePullPolicy | default "IfNotPresent" }}
-            command: ["/bin/sh", "-c", "cp /binlogctl /shared-dir/"]
-            volumeMounts:
-            - name: shared-dir
-              mountPath: "/shared-dir"
           containers:
           - name: scheduled-backup
             image: {{ .Values.scheduledBackup.mydumperImage }}
@@ -50,8 +42,6 @@ spec:
             - |-
 {{ tuple "scripts/_start_scheduled_backup.sh.tpl" . | include "helm-toolkit.utils.template" | indent 14 }}
             volumeMounts:
-            - name: shared-dir
-              mountPath: "/shared-dir"
             - name: data
               mountPath: "/data"
           {{- if .Values.scheduledBackup.gcp }}
@@ -80,8 +70,6 @@ spec:
                   key: password
           restartPolicy: OnFailure
           volumes:
-          - name: shared-dir
-            emptyDir: {}
           - name: data
             persistentVolumeClaim:
               claimName: {{ template "cluster.name" . }}-scheduled-backup
