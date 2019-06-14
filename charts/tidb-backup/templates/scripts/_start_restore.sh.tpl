@@ -9,7 +9,7 @@ downloader \
   --cloud=gcp \
   --bucket={{ .Values.gcp.bucket }} \
   --srcDir=${BACKUP_NAME} \
-  --destDir=${dirname}
+  --destDir=/data
 {{- end }}
 
 {{- if .Values.ceph }}
@@ -18,7 +18,7 @@ downloader \
   --bucket={{ .Values.ceph.bucket }} \
   --endpoint={{ .Values.ceph.endpoint }} \
   --srcDir=${BACKUP_NAME} \
-  --destDir=${dirname}
+  --destDir=/data
 {{- end }}
 
 count=0
