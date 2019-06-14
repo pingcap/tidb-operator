@@ -89,7 +89,7 @@ When you see `Running`, it's time to hit <kbd>Ctrl</kbd>+<kbd>C</kbd> and procee
 The first TiDB component we are going to install is the TiDB Operator, using a Helm Chart. TiDB Operator is the management system that works with Kubernetes to bootstrap your TiDB cluster and keep it running. This step assumes you are in the `tidb-operator` working directory:
 
 	kubectl apply -f ./manifests/crd.yaml &&
-	kubectl apply -f ./manifests/gke-storage.yml &&
+	kubectl apply -f ./manifests/gke/persistent-disk.yml &&
 	helm install ./charts/tidb-operator -n tidb-admin --namespace=tidb-admin
 
 We can watch the operator come up with:
@@ -177,3 +177,9 @@ The above commands only delete the running pods, the data is persistent. If you 
 Once you have finished experimenting, you can delete the Kubernetes cluster with:
 
 	gcloud container clusters delete tidb
+
+
+## More information
+
+For production deployments, view our [operation guide](./operation-guide.md), and look at the GKE section.
+We also have a simple [terraform based deployment](../deploy/gcp/README.md).
