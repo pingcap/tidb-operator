@@ -48,7 +48,7 @@ pd:
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
   # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
-  storageClassName: local-storage
+  storageClassName: pd-ssd
 
   # Image pull policy.
   imagePullPolicy: IfNotPresent
