@@ -34,33 +34,23 @@ gcloud services enable container.googleapis.com
 
 ### Configure Terraform
 
-The terraform script expects three environment variables. You can let Terraform prompt you for them, or `export` them in the `~/.bash_profile` file ahead of time. The required environment variables are:
+The terraform script expects three variables to be set.
 
 * `TF_VAR_GCP_REGION`: The region to create the resources in, for example: `us-west1`.
 * `TF_VAR_GCP_PROJECT`: The name of the GCP project.
 * `TF_VAR_GCP_CREDENTIALS_PATH`: Path to a valid GCP credentials file.
     - It is recommended to create a new service account to be used by Terraform as shown in the below example.
 
+Below we will set these environment variables
+
 ```bash
 # Replace the region with your GCP region and your GCP project name.
-export TF_VAR_GCP_REGION=us-west1
+echo GCP_REGION=us-west1 >> terraform.tfvars
 # First make sure you are connected to the correct project. gcloud config set project $PROJECT
-export TF_VAR_GCP_PROJECT=$(gcloud config get-value project)
-gcloud iam service-accounts create --display-name terraform terraform
-email="terraform@${TF_VAR_GCP_PROJECT}.iam.gserviceaccount.com"
-gcloud projects add-iam-policy-binding "$TF_VAR_GCP_PROJECT" --member "$email" --role roles/container.clusterAdmin
-gcloud projects add-iam-policy-binding "$TF_VAR_GCP_PROJECT" --member "$email" --role roles/compute.networkAdmin
-gcloud projects add-iam-policy-binding "$TF_VAR_GCP_PROJECT" --member "$email" --role roles/compute.viewer
-gcloud projects add-iam-policy-binding "$TF_VAR_GCP_PROJECT" --member "$email" --role roles/compute.securityAdmin
-gcloud projects add-iam-policy-binding "$TF_VAR_GCP_PROJECT" --member "$email" --role roles/iam.serviceAccountUser
-gcloud projects add-iam-policy-binding "$TF_VAR_GCP_PROJECT" --member "$email" --role roles/compute.instanceAdmin.v1
-
-gcloud iam service-accounts keys create terraform-key.json --iam-account "$email"
-export TF_VAR_GCP_CREDENTIALS_PATH="$(pwd)/terraform-key.json"
+echo "GCP_PROJECT=$(gcloud config get-value project)" >> terraform.tfvars
+# Create a service account for terraform with restricted permissions and set the credentails path
+./create-service-account.sh
 ```
-
-You can also append them in your `~/.bash_profile` so they will be exported automatically next time.
-
 
 ## Deploy
 
@@ -74,11 +64,11 @@ cd tidb-operator/deploy/gcp
 
 You need to decide on instance types. If you just want to just get a feel for a TiDB deployment and lower your cost, you can use the small settings.
 
-    cp small.tfvars terraform.tfvars
+    cat small.tfvars >> terraform.tfvars
 
 If you want to benchmark a production deployment, run:
 
-    cp prod.tfvars terraform.tfvars
+    cat prod.tfvars >> terraform.tfvars
 
 The terraform creates a new VPC, two subnetworks, and an f1-micro instance as a bastion machine.
 The production setup used the following instance types:
