@@ -40,12 +40,7 @@ type Client interface {
 	StartKubeControllerManager() error
 	// StopKubeControllerManager stops the kube-controller-manager service
 	StopKubeControllerManager() error
-	// TODO: support controller kube-proxy
-	// StartKubeProxy starts the kube-proxy of the specific node
-	StartKubeProxy(nodeName string) error
-	// // StopKubeProxy stops the kube-proxy of the specific node
-	StopKubeProxy(nodeName string) error
-	// // StartKubeScheduler starts the kube-scheduler service
+	// StartKubeScheduler starts the kube-scheduler service
 }
 
 // client is used to communicate with the fault-trigger
@@ -217,26 +212,6 @@ func (c *client) StartKubeAPIServer() error {
 
 func (c *client) StopKubeAPIServer() error {
 	return c.stopService(manager.KubeAPIServerService)
-}
-
-func (c *client) StartKubeProxy(nodeName string) error {
-	url := util.GenURL(fmt.Sprintf("%s%s/kube-proxy/%s/start", c.cfg.Addr, api.APIPrefix, nodeName))
-	if _, err := c.post(url, nil); err != nil {
-		glog.Errorf("failed to post %s: %v", url, err)
-		return err
-	}
-
-	return nil
-}
-
-func (c *client) StopKubeProxy(nodeName string) error {
-	url := util.GenURL(fmt.Sprintf("%s%s/kube-proxy/%s/stop", c.cfg.Addr, api.APIPrefix, nodeName))
-	if _, err := c.post(url, nil); err != nil {
-		glog.Errorf("failed to post %s: %v", url, err)
-		return err
-	}
-
-	return nil
 }
 
 func (c *client) StartKubeScheduler() error {

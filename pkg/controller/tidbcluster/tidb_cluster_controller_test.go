@@ -223,6 +223,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
+	epsInformer := kubeInformerFactory.Core().V1().Endpoints()
 	autoFailover := true
 
 	tcc := NewController(
@@ -272,6 +273,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			setInformer.Lister(),
 			svcInformer.Lister(),
 			podInformer.Lister(),
+			epsInformer.Lister(),
 			podControl,
 			pvcInformer.Lister(),
 			pdScaler,

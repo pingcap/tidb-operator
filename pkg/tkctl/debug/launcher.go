@@ -31,7 +31,7 @@ const (
 	dockerContainerPrefix = "docker://"
 
 	CAP_SYS_PTRACE = "SYS_PTRACE"
-	CAP_SYS_ADMIN = "SYS_ADMIN"
+	CAP_SYS_ADMIN  = "SYS_ADMIN"
 )
 
 type IOStreams struct {
@@ -49,7 +49,7 @@ type Launcher struct {
 	dockerSocket      string
 	ctx               context.Context
 
-	privileged        bool
+	privileged bool
 
 	client *dockerclient.Client
 }
