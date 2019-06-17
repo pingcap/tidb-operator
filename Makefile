@@ -85,7 +85,7 @@ check-setup:
 	@which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
 	@GO111MODULE=off retool sync
 
-check: check-setup lint check-static
+check: check-setup lint tidy check-static
 
 check-static:
 	@ # Not running vet and fmt through metalinter becauase it ends up looking at vendor
@@ -122,6 +122,11 @@ check-shadow:
 lint:
 	@echo "linting"
 	CGO_ENABLED=0 retool do revive -formatter friendly -config revive.toml $$($(PACKAGE_LIST))
+
+tidy:
+	@echo "go mod tidy"
+	GO111MODULE=on go mod tidy
+	git diff --quiet go.mod go.sum
 
 check-gosec:
 	@echo "security checking"

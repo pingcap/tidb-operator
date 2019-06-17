@@ -3,5 +3,6 @@ kind: StorageClass
 metadata:
   name: "pd-ssd"
 provisioner: kubernetes.io/gce-pd
+volumeBindingMode: WaitForFirstConsumer
 parameters:
   type: pd-ssd

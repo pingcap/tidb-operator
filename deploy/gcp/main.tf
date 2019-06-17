@@ -120,8 +120,7 @@ resource "google_container_node_pool" "pd_pool" {
 
   node_config {
     machine_type    = var.pd_instance_type
-    image_type      = "UBUNTU"
-    local_ssd_count = 1
+    local_ssd_count = 0
 
     taint {
       effect = "NO_SCHEDULE"
@@ -150,6 +149,8 @@ resource "google_container_node_pool" "tikv_pool" {
   node_config {
     machine_type    = var.tikv_instance_type
     image_type      = "UBUNTU"
+    // This value cannot be changed (instead a new node pool is needed)
+    // 1 SSD is 375 GiB
     local_ssd_count = 1
 
     taint {
@@ -316,9 +317,8 @@ resource "null_resource" "setup-env" {
 kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-admin --user $(gcloud config get-value account)
 kubectl create serviceaccount --namespace kube-system tiller
 kubectl apply -f manifests/crd.yaml
-kubectl apply -f manifests/startup-script.yaml
-kubectl apply -f manifests/local-volume-provisioner.yaml
-kubectl apply -f manifests/gke-storage.yml
+kubectl apply -k manifests/local-ssd
+kubectl apply -f manifests/gke/persistent-disk.yaml
 kubectl apply -f manifests/tiller-rbac.yaml
 helm init --service-account tiller --upgrade --wait
 until helm ls; do

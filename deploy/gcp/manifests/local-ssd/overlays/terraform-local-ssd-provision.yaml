@@ -1,0 +1,12 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: local-volume-provisioner
+spec:
+  template:
+    spec:
+      tolerations:
+        - operator: Exists
+          effect: "NoSchedule"
+        - operator: Exists
+          effect: "NoSchedule"
