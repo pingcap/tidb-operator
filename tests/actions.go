@@ -1622,7 +1622,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	cmd := fmt.Sprintf("helm install -n %s --namespace %s %s --set-string %s",
 		fullbackupName, info.Namespace, oa.backupChartPath(info.OperatorTag), setString)
 	glog.Infof("install adhoc deployment [%s]", cmd)
-	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to launch adhoc backup job: %v, %s", err, string(res))
 	}
