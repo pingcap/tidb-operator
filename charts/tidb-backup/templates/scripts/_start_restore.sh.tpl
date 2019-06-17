@@ -1,4 +1,4 @@
-set -uo pipefail
+set -euo pipefail
 
 dirname=/data/${BACKUP_NAME}
 mkdir -p ${dirname}
@@ -21,6 +21,7 @@ downloader \
   --destDir=/data
 {{- end }}
 
+set +e
 count=1
 while ! mysql -u ${TIDB_USER} -h `eval echo '${'$host'}'` -P 4000 -p${TIDB_PASSWORD} -e 'select version();'
 do
@@ -33,6 +34,7 @@ do
   let "count++"
 done
 
+set -e
 /loader \
   -d=${dirname} \
   -h=`eval echo '${'$host'}'` \
