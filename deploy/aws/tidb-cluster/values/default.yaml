@@ -1,0 +1,9 @@
+timezone: UTC
+
+pd:
+  logLevel: info
+tikv:
+  logLevel: info
+  syncLog: true
+tidb:
+  logLevel: info

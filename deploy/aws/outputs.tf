@@ -1,49 +1,49 @@
 output "region" {
   description = "AWS region."
-  value = "${var.region}"
+  value       = var.region
 }
 
 output "eks_version" {
   description = "The Kubernetes server version for the EKS cluster."
-  value = "${var.k8s_version}"
-}
-
-output "tidb_version" {
-  description = "tidb cluster version"
-  value = "${var.tidb_version}"
+  value       = var.eks_version
 }
 
 output "eks_endpoint" {
   description = "Endpoint for EKS control plane."
-  value = "${module.eks.cluster_endpoint}"
+  value       = module.eks.cluster_endpoint
 }
 
-#output "tidb_dns" {
-#  description = "tidb service dns name"
-#  value = "${data.kubernetes_service.tidb.load_balancer_ingress.0.hostname}"
-#}
-
-output "tidb_dns" {
-  description = "tidb service dns name"
-  value = "${data.external.tidb_service.result["hostname"]}"
+output "demo-cluster_tidb-dns" {
+  description = "tidb service endpoints"
+  value       = module.demo-cluster.tidb_dns
 }
 
-output "tidb_port" {
-  description = "tidb service port"
-  value = "4000"
+output "demo-cluster_monitor-dns" {
+  description = "tidb service endpoint"
+  value       = module.demo-cluster.monitor_dns
 }
 
-#output "monitor_endpoint" {
-#  description = "monitor service endpoint"
-#  value = "http://${data.kubernetes_service.monitor.load_balancer_ingress.0.hostname}:3000"
-#}
-
-output "monitor_endpoint" {
-  description = "monitor service endpoint"
-  value = "http://${data.external.monitor_service.result["hostname"]}:3000"
+output "test-cluster_tidb-dns" {
+  description = "tidb service endpoints"
+  value       = module.test-cluster.tidb_dns
 }
 
-output "bastion_ip" {
-  description = "Bastion IP address"
-  value = "${module.ec2.public_ip}"
+output "test-cluster_monitor-dns" {
+  description = "tidb service endpoint"
+  value       = module.test-cluster.monitor_dns
 }
+
+output "prod-cluster_tidb-dns" {
+  description = "tidb service endpoints"
+  value       = module.prod-cluster.tidb_dns
+}
+
+output "prod-cluster_monitor-dns" {
+  description = "tidb service endpoint"
+  value       = module.prod-cluster.monitor_dns
+}
+
+# output "bastion_ip" {
+#   description = "Bastion IP address"
+#   value       = module.ec2.public_ip
+# }
