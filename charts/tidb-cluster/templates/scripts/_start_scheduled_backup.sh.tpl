@@ -1,5 +1,3 @@
-#!/bin/sh
-
 set -euo pipefail
 
 timestamp=$(echo ${POD_NAME}|awk -F- '{print $(NF-1)}')
