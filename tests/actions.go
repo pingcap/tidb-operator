@@ -1594,12 +1594,13 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, "DeployAdHocBackup")
 	glog.Infof("begin to deploy adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
-	getTSCmd := fmt.Sprintf("mysql -u%s -p%s -h%s-tidb.%s -P 4000 -Nse 'show master status;' | awk '{print $2}'",
+	getTSCmd := fmt.Sprintf("set -euo pipefail; mysql -u%s -p%s -h%s-tidb.%s -P 4000 -Nse 'show master status;' | awk '{print $2}'",
 		info.UserName,
 		info.Password,
 		info.ClusterName,
 		info.Namespace,
 	)
+	glog.Info(getTSCmd)
 
 	res, err := exec.Command("/bin/sh", "-c", getTSCmd).CombinedOutput()
 	if err != nil {
