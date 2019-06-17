@@ -62,7 +62,7 @@ git clone --depth=1 https://github.com/pingcap/tidb-operator
 cd tidb-operator/deploy/gcp
 ```
 
-You need to decide on instance types. If you just want to just get a feel for a TiDB deployment and lower your cost, you can use the small settings.
+You need to decide on instance types. If you just want to get a feel for a TiDB deployment and lower your cost, you can use the small settings.
 
     cat small.tfvars >> terraform.tfvars
 
