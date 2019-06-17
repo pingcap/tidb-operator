@@ -1602,9 +1602,20 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	)
 	glog.Info(getTSCmd)
 
-	res, err := exec.Command("/bin/sh", "-c", getTSCmd).CombinedOutput()
+	var tsStr string
+	getTSFn := func() (bool, error) {
+		res, err := exec.Command("/bin/sh", "-c", getTSCmd).CombinedOutput()
+		if err != nil {
+			glog.Errorf("failed to get ts %v, %s", err, string(res))
+			return false, nil
+		}
+		tsStr = string(res)
+		return true, nil
+	}
+
+	err := wait.Poll(DefaultPollInterval, BackupAndRestorePollTimeOut, getTSFn)
 	if err != nil {
-		return fmt.Errorf("failed to get ts %v", err)
+		return err
 	}
 
 	sets := map[string]string{
@@ -1614,7 +1625,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 		"password":        info.Password,
 		"storage.size":    "10Gi",
 		"backupOptions":   "\"--verbose=3\"",
-		"initialCommitTs": strings.TrimSpace(string(res)),
+		"initialCommitTs": strings.TrimSpace(tsStr),
 	}
 
 	setString := info.BackupHelmSetString(sets)
@@ -1623,7 +1634,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	cmd := fmt.Sprintf("helm install -n %s --namespace %s %s --set-string %s",
 		fullbackupName, info.Namespace, oa.backupChartPath(info.OperatorTag), setString)
 	glog.Infof("install adhoc deployment [%s]", cmd)
-	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to launch adhoc backup job: %v, %s", err, string(res))
 	}
