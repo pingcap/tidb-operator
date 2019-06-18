@@ -339,10 +339,36 @@ func run() {
 
 	// stop all kube-proxy and k8s/operator/tidbcluster is available
 	fta.StopKubeProxyOrDie()
-	oa.CheckKubeProxyDownOrDie(allClusters)
+	oa.CheckKubeProxyDownOrDie(operatorCfg, allClusters)
 	fta.StartKubeProxyOrDie()
 
-	//clean temp dirs when stability success
+	// stop all kube-scheduler pods
+	for _, physicalNode := range cfg.APIServers {
+		for _, vNode := range physicalNode.Nodes {
+			fta.StopKubeSchedulerOrDie(vNode)
+		}
+	}
+	oa.CheckKubeSchedulerDownOrDie(operatorCfg, allClusters)
+	for _, physicalNode := range cfg.APIServers {
+		for _, vNode := range physicalNode.Nodes {
+			fta.StartKubeSchedulerOrDie(vNode)
+		}
+	}
+
+	// stop all kube-controller-manager pods
+	for _, physicalNode := range cfg.APIServers {
+		for _, vNode := range physicalNode.Nodes {
+			fta.StopKubeControllerManagerOrDie(vNode)
+		}
+	}
+	oa.CheckKubeControllerManagerDownOrDie(operatorCfg, allClusters)
+	for _, physicalNode := range cfg.APIServers {
+		for _, vNode := range physicalNode.Nodes {
+			fta.StartKubeControllerManagerOrDie(vNode)
+		}
+	}
+
+	// clean temp dirs when stability success
 	err := cfg.CleanTempDirs()
 	if err != nil {
 		glog.Errorf("failed to clean temp dirs, this error can be ignored.")
