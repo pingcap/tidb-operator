@@ -666,7 +666,7 @@ func TestHAFilter(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(1))
 				g.Expect(events[0]).To(ContainSubstring("FailedScheduling"))
-				g.Expect(strings.Contains(err.Error(), "can't scheduled to nodes:")).To(BeTrue())
+				g.Expect(strings.Contains(err.Error(), "can't schedule to nodes:")).To(BeTrue())
 				g.Expect(len(nodes)).To(Equal(0))
 			},
 		},
@@ -695,7 +695,7 @@ func TestHAFilter(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(1))
 				g.Expect(events[0]).To(ContainSubstring("FailedScheduling"))
-				g.Expect(strings.Contains(err.Error(), "can't scheduled to nodes:")).To(BeTrue())
+				g.Expect(strings.Contains(err.Error(), "can't schedule to nodes:")).To(BeTrue())
 				g.Expect(len(nodes)).To(Equal(0))
 			},
 		},
@@ -767,7 +767,7 @@ func TestHAFilter(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(1))
 				g.Expect(events[0]).To(ContainSubstring("FailedScheduling"))
-				g.Expect(strings.Contains(err.Error(), "can't scheduled to nodes:")).To(BeTrue())
+				g.Expect(strings.Contains(err.Error(), "can't schedule to nodes:")).To(BeTrue())
 				g.Expect(len(nodes)).To(Equal(0))
 			},
 		},
