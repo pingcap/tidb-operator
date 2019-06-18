@@ -107,6 +107,12 @@ resource "google_container_cluster" "cluster" {
   lifecycle {
     ignore_changes = [master_auth] // see above linked issue
   }
+
+  maintenance_policy {
+    daily_maintenance_window {
+      start_time = "01:00"
+    }
+  }
 }
 
 resource "google_container_node_pool" "pd_pool" {
