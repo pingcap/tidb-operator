@@ -104,7 +104,6 @@ const (
 	tidbClusterChartName                      = "tidb-cluster"
 	backupChartName                           = "tidb-backup"
 	statbilityTestTag                         = "stability"
-	metricsPort                               = 8090
 )
 
 type OperatorActions interface {
@@ -157,6 +156,9 @@ type OperatorActions interface {
 	CheckTidbClustersAvailableOrDie(infos []*TidbClusterConfig)
 	CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
+	CheckKubeProxyDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
+	CheckKubeSchedulerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
+	CheckKubeControllerManagerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
 	RegisterWebHookAndService(context *apimachinery.CertContext, info *OperatorConfig) error
 	RegisterWebHookAndServiceOrDie(context *apimachinery.CertContext, info *OperatorConfig)
 	CleanWebHookAndService(info *OperatorConfig) error
@@ -1540,7 +1542,7 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 	// Grafana ready, init grafana client, no more sync logic because race condition is okay here
 	if clusterInfo.GrafanaClient == nil {
 		grafanaURL := fmt.Sprintf("http://%s.%s:3000", svcName, ns)
-		client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword, metricsPort)
+		client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword)
 		if err != nil {
 			return err
 		}
@@ -1594,13 +1596,38 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, "DeployAdHocBackup")
 	glog.Infof("begin to deploy adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
+	getTSCmd := fmt.Sprintf("set -euo pipefail; mysql -u%s -p%s -h%s-tidb.%s -P 4000 -Nse 'show master status;' | awk '{print $2}'",
+		info.UserName,
+		info.Password,
+		info.ClusterName,
+		info.Namespace,
+	)
+	glog.Info(getTSCmd)
+
+	var tsStr string
+	getTSFn := func() (bool, error) {
+		res, err := exec.Command("/bin/sh", "-c", getTSCmd).CombinedOutput()
+		if err != nil {
+			glog.Errorf("failed to get ts %v, %s", err, string(res))
+			return false, nil
+		}
+		tsStr = string(res)
+		return true, nil
+	}
+
+	err := wait.Poll(DefaultPollInterval, BackupAndRestorePollTimeOut, getTSFn)
+	if err != nil {
+		return err
+	}
+
 	sets := map[string]string{
-		"name":          info.BackupName,
-		"mode":          "backup",
-		"user":          "root",
-		"password":      info.Password,
-		"storage.size":  "10Gi",
-		"backupOptions": "\"--verbose=3\"",
+		"name":            info.BackupName,
+		"mode":            "backup",
+		"user":            "root",
+		"password":        info.Password,
+		"storage.size":    "10Gi",
+		"backupOptions":   "\"--verbose=3\"",
+		"initialCommitTs": strings.TrimSpace(tsStr),
 	}
 
 	setString := info.BackupHelmSetString(sets)
@@ -2342,11 +2369,10 @@ func (oa *operatorActions) EventWorker() {
 			ns := clusterEv.ns
 			clusterName := clusterEv.clusterName
 			grafanaURL := fmt.Sprintf("http://%s-grafana.%s:3000", clusterName, ns)
-			client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword, metricsPort)
+			client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword)
 			if err != nil {
-				retryEvents = append(retryEvents, ev)
-				glog.V(4).Infof("failed to new grafana client: [%s/%s], %v", ns, clusterName, err)
-				continue
+				// If parse grafana URL failed, this error cannot be recovered by retrying, so send error msg and panic
+				slack.NotifyAndPanic(fmt.Errorf("failed to parse grafana URL so can't new grafana client: %s, %v", grafanaURL, err))
 			}
 
 			anno := metrics.Annotation{

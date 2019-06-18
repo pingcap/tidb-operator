@@ -23,7 +23,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
@@ -332,13 +332,43 @@ func run() {
 	// stop one etcd node and k8s/operator/tidbcluster is available
 	faultEtcd := tests.SelectNode(cfg.ETCDs)
 	fta.StopETCDOrDie(faultEtcd)
-	defer fta.StartETCDOrDie(faultEtcd)
 	// TODO make the pause interval as a argument
 	time.Sleep(3 * time.Minute)
 	oa.CheckOneEtcdDownOrDie(operatorCfg, allClusters, faultEtcd)
 	fta.StartETCDOrDie(faultEtcd)
 
-	//clean temp dirs when stability success
+	// stop all kube-proxy and k8s/operator/tidbcluster is available
+	fta.StopKubeProxyOrDie()
+	oa.CheckKubeProxyDownOrDie(operatorCfg, allClusters)
+	fta.StartKubeProxyOrDie()
+
+	// stop all kube-scheduler pods
+	for _, physicalNode := range cfg.APIServers {
+		for _, vNode := range physicalNode.Nodes {
+			fta.StopKubeSchedulerOrDie(vNode)
+		}
+	}
+	oa.CheckKubeSchedulerDownOrDie(operatorCfg, allClusters)
+	for _, physicalNode := range cfg.APIServers {
+		for _, vNode := range physicalNode.Nodes {
+			fta.StartKubeSchedulerOrDie(vNode)
+		}
+	}
+
+	// stop all kube-controller-manager pods
+	for _, physicalNode := range cfg.APIServers {
+		for _, vNode := range physicalNode.Nodes {
+			fta.StopKubeControllerManagerOrDie(vNode)
+		}
+	}
+	oa.CheckKubeControllerManagerDownOrDie(operatorCfg, allClusters)
+	for _, physicalNode := range cfg.APIServers {
+		for _, vNode := range physicalNode.Nodes {
+			fta.StartKubeControllerManagerOrDie(vNode)
+		}
+	}
+
+	// clean temp dirs when stability success
 	err := cfg.CleanTempDirs()
 	if err != nil {
 		glog.Errorf("failed to clean temp dirs, this error can be ignored.")
