@@ -5,7 +5,7 @@
 # clusterName is the TiDB cluster name that should backup from or restore to.
 clusterName: demo
 
-mode: backup # backup | restore
+mode: backup # backup | restore | scheduled-restore
 # name is the backup name
 name: fullbackup-{{ date "200601021504" .Release.Time }}
 image:

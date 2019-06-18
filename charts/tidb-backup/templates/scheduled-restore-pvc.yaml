@@ -1,4 +1,4 @@
-{{- if eq .Values.mode "backup" }}
+{{- if eq .Values.mode "scheduled-restore" }}
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: tidb-operator
     app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/component: backup
+    app.kubernetes.io/component: scheduled-restore
     pingcap.com/backup-cluster-name: {{ .Values.clusterName }}
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:

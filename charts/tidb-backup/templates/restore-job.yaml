@@ -1,4 +1,4 @@
-{{- if eq .Values.mode "restore" }}
+{{- if (or (eq .Values.mode "restore") (eq .Values.mode "scheduled-restore")) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
