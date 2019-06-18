@@ -30,7 +30,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:${operator_version}
+  image: ${tidb_operator_registry}/tidb-operator:${operator_version}
   imagePullPolicy: IfNotPresent
   resources:
     limits:
