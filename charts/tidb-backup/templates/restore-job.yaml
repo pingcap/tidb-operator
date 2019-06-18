@@ -1,4 +1,4 @@
-{{- if eq .Values.mode "restore" }}
+{{- if (or (eq .Values.mode "restore") (eq .Values.mode "scheduled-restore")) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -16,6 +16,9 @@ spec:
         app.kubernetes.io/name: {{ template "chart.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: restore
+    {{- if .Values.extraLabels }}
+{{ toYaml .Values.extraLabels | indent 8 }}
+    {{- end }}
     spec:
       restartPolicy: OnFailure
       containers:
