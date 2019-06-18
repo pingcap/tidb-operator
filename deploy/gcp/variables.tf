@@ -1,6 +1,6 @@
 variable "cluster_name" {
   description = "TiDB clustername"
-  default     = "my-cluster"
+  default     = "tidb"
 }
 
 variable "tidb_version" {
@@ -11,6 +11,11 @@ variable "tidb_version" {
 variable "tidb_operator_version" {
   description = "TiDB operator version"
   default     = "v1.0.0-beta.3"
+}
+
+variable "tidb_operator_registry" {
+  description = "TiDB operator registry"
+  default     = "pingcap"
 }
 
 variable "pd_replica_count" {
@@ -44,18 +49,11 @@ variable "monitor_count" {
   description = "Number of monitor nodes per availability zone"
   default     = 1
 }
+variable "pd_instance_type" { }
 
-variable "pd_instance_type" {
-  default = "n1-standard-4"
-}
+variable "tikv_instance_type" { }
 
-variable "tikv_instance_type" {
-  default = "n1-highmem-8"
-}
-
-variable "tidb_instance_type" {
-  default = "n1-standard-16"
-}
+variable "tidb_instance_type" { }
 
 variable "monitor_instance_type" {
   default = "n1-standard-2"
