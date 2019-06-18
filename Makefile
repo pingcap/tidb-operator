@@ -79,13 +79,13 @@ test:
 	@echo "Run unit tests"
 	@$(GOTEST) ./pkg/... -coverprofile=coverage.txt -covermode=atomic && echo "\nUnit tests run successfully!"
 
-check-all: lint check-static check-shadow check-gosec megacheck errcheck
+check-all: lint check-static check-shadow check-gosec staticcheck errcheck
 
 check-setup:
 	@which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
 	@GO111MODULE=off retool sync
 
-check: check-setup lint check-static
+check: check-setup lint tidy check-static
 
 check-static:
 	@ # Not running vet and fmt through metalinter becauase it ends up looking at vendor
@@ -99,11 +99,11 @@ check-static:
 	  --enable ineffassign \
 	  $$($(PACKAGE_DIRECTORIES))
 
-# TODO: megacheck is too slow currently
-megacheck:
-	@echo "gometalinter megacheck"
+# TODO: staticcheck is too slow currently
+staticcheck:
+	@echo "gometalinter staticcheck"
 	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all --deadline 120s \
-	  --enable megacheck \
+	  --enable staticcheck \
 	  $$($(PACKAGE_DIRECTORIES))
 
 # TODO: errcheck is too slow currently
@@ -122,6 +122,11 @@ check-shadow:
 lint:
 	@echo "linting"
 	CGO_ENABLED=0 retool do revive -formatter friendly -config revive.toml $$($(PACKAGE_LIST))
+
+tidy:
+	@echo "go mod tidy"
+	GO111MODULE=on go mod tidy
+	git diff --quiet go.mod go.sum
 
 check-gosec:
 	@echo "security checking"

@@ -69,6 +69,13 @@ spec:
           value: "${access_key_id}"
         - name: ACCESS_KEY_SECRET
           value: "${access_key_secret}"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 100m
+            memory: 100Mi
         volumeMounts:
         - mountPath: /etc/provisioner/config
           name: provisioner-config

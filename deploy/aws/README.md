@@ -20,7 +20,7 @@ Before deploying a TiDB cluster on AWS EKS, make sure the following requirements
   > **Note:** The access key must have at least permissions to: create VPC, create EBS, create EC2 and create role
 * [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.11
-* [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.0
+* [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.0 and < 3.0.0
 * [jq](https://stedolan.github.io/jq/download/)
 * [aws-iam-authenticator](https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html) installed in `PATH`, to authenticate with AWS
 
@@ -118,16 +118,16 @@ The initial Grafana login credentials are:
 
 To upgrade the TiDB cluster, edit the `variables.tf` file with your preferred text editor and modify the `tidb_version` variable to a higher version, and then run `terraform apply`.
 
-For example, to upgrade the cluster to version 2.1.10, modify the `tidb_version` to `v2.1.10`:
+For example, to upgrade the cluster to version 3.0.0-rc.1, modify the `tidb_version` to `v3.0.0-rc.2`:
 
 ```
  variable "tidb_version" {
    description = "tidb cluster version"
-   default = "v2.1.10"
+   default = "v3.0.0-rc.2"
  }
 ```
 
-> *Note*: The upgrading doesn't finish immediately. You can watch the upgrading process by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
+> **Note**: The upgrading doesn't finish immediately. You can watch the upgrading process by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
 
 ## Scale
 
@@ -141,7 +141,7 @@ For example, to scale out the cluster, you can modify the number of TiDB instanc
  }
 ```
 
-> *Note*: Currently, scaling in is NOT supported since we cannot determine which node to scale. Scaling out needs a few minutes to complete, you can watch the scaling out by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
+> **Note**: Currently, scaling in is NOT supported since we cannot determine which node to scale. Scaling out needs a few minutes to complete, you can watch the scaling out by `kubectl --kubeconfig credentials/kubeconfig_<cluster_name> get po -n tidb --watch`.
 
 ## Customize
 
@@ -149,7 +149,9 @@ You can change default values in `variables.tf` (such as the cluster name and im
 
 ### Customize AWS related resources
 
-By default, the terraform script will create a new VPC. You can use an existing VPC by setting `create_vpc` to `false` and specify your existing VPC id and subnet ids to `vpc_id` and `subnets` variables.
+By default, the terraform script will create a new VPC. You can use an existing VPC by setting `create_vpc` to `false` and specify your existing VPC id and subnet ids to `vpc_id`, `private_subnet_ids` and `public_subnet_ids` variables.
+
+> **Note:** Reusing VPC and subnets of an existing EKS cluster is not supported yet due to limitations of AWS and Terraform, so only change this option if you have to use a manually created VPC.
 
 An ec2 instance is also created by default as bastion machine to connect to the created TiDB cluster, because the TiDB service is exposed as an [Internal Elastic Load Balancer](https://aws.amazon.com/blogs/aws/internal-elastic-load-balancers/). The ec2 instance has MySQL and Sysbench pre-installed, so you can SSH into the ec2 instance and connect to TiDB using the ELB endpoint. You can disable the bastion instance creation by setting `create_bastion` to `false` if you already have an ec2 instance in the VPC.
 

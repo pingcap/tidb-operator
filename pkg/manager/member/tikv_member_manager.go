@@ -344,6 +344,9 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 							Image:           tc.Spec.TiKV.Image,
 							Command:         []string{"/bin/sh", "/usr/local/bin/tikv_start_script.sh"},
 							ImagePullPolicy: tc.Spec.TiKV.ImagePullPolicy,
+							SecurityContext: &corev1.SecurityContext{
+								Privileged: &tc.Spec.TiKV.Privileged,
+							},
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "server",

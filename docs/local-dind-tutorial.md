@@ -18,7 +18,7 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 
     > **Note:** `kubeadm` validates installed Docker version during the installation process. If you are using Docker later than 18.06, there would be warning messages. The cluster might still be working, but it is recommended to use a Docker version between 17.03 and 18.06 for better compatibility. You can find older versions of docker [here](https://download.docker.com/).
 
-- [Helm Client](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client): 2.9.0 or later
+- [Helm Client](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client): version >= 2.9.0 and < 3.0.0
 - [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl): 1.10 at least, 1.13 or later recommended
 
     > **Note:** The outputs of different versions of `kubectl` might be slightly different.
@@ -30,7 +30,7 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
 - Supported filesystem
 
     For Linux users, if the host machine uses an XFS filesystem (default in CentOS 7), it must be formatted with `ftype=1` to enable `d_type` support, see [Docker's documentation](https://docs.docker.com/storage/storagedriver/overlayfs-driver/) for details.
-    
+
     You can check if your filesystem supports `d_type` using command `xfs_info / | grep ftype`, where `/` is the data directory of you installed Docker daemon.
 
     If your root directory `/` uses XFS without `d_type` support, but there is another partition does, or is using another filesystem, it is also possible to change the data directory of Docker to use that partition.
@@ -50,7 +50,7 @@ Before deploying a TiDB cluster to Kubernetes, make sure the following requireme
     # Overrite config
     cat << EOF > /etc/systemd/system/docker.service.d/docker-storage.conf
     [Service]
-    ExecStart= 
+    ExecStart=
     ExecStart=/usr/bin/dockerd --data-root /data/docker -H fd:// --containerd=/run/containerd/containerd.sock
     EOF
 
@@ -138,8 +138,8 @@ $ kubectl get pods --namespace tidb -l app.kubernetes.io/instance=demo -o wide -
 
 # Get basic information of the TiDB cluster
 $ kubectl get tidbcluster -n tidb
-NAME   PD                  STORAGE   READY   DESIRE   TIKV                  STORAGE   READY   DESIRE   TIDB                  READY   DESIRE
-demo   pingcap/pd:v2.1.8   1Gi       3       3        pingcap/tikv:v2.1.8   10Gi      3       3        pingcap/tidb:v2.1.8   2       2
+NAME   PD                       STORAGE   READY   DESIRE   TIKV                       STORAGE   READY   DESIRE   TIDB                       READY   DESIRE
+demo   pingcap/pd:v3.0.0-rc.1   1Gi       3       3        pingcap/tikv:v3.0.0-rc.1   10Gi      3       3        pingcap/tidb:v3.0.0-rc.1   2       2
 
 $ kubectl get statefulset -n tidb
 NAME        DESIRED   CURRENT   AGE
@@ -286,7 +286,7 @@ Use `kubectl get pod -n tidb` to verify the number of each compoments equal to v
 
 1. Edit the `charts/tidb-cluster/values.yaml` file with your preferred text editor.
 
-    For example, change the version of PD/TiKV/TiDB `image` to `v2.1.10`.
+    For example, change the version of PD/TiKV/TiDB `image` to `v3.0.0-rc.2`.
 
 2. Run the following command to apply the changes:
 
@@ -297,13 +297,13 @@ Use `kubectl get pod -n tidb` to verify the number of each compoments equal to v
 Use `kubectl get pod -n tidb` to verify that all pods are in `Running` state. Then you can connect to the database and use `tidb_version()` function to verify the version:
 
 ```sh
-MySQL [(none)]> select tidb_version()\G
+MySQL [(none)]> select tidb_version();
 *************************** 1. row ***************************
-tidb_version(): Release Version: 2.1.10
-Git Commit Hash: v2.1.10
-Git Branch: master
-UTC Build Time: 2019-05-22 11:12:14
-GoVersion: go version go1.12.4 linux/amd64
+tidb_version(): Release Version: v3.0.0-rc.2
+Git Commit Hash: 06f3f63d5a87e7f0436c0618cf524fea7172eb93
+Git Branch: HEAD
+UTC Build Time: 2019-05-28 12:48:52
+GoVersion: go version go1.12 linux/amd64
 Race Enabled: false
 TiKV Min Version: 2.1.0-alpha.1-ff3dd160846b7d1aed9079c389fc188f7f5ea13e
 Check Table Before Drop: false

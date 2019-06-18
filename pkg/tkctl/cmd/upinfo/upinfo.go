@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
+	tkctlUtil "github.com/pingcap/tidb-operator/pkg/tkctl/util"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/spf13/cobra"
 	apps "k8s.io/api/apps/v1beta1"
@@ -147,7 +148,12 @@ func (o *UpInfoOptions) Run() error {
 	if err != nil {
 		return err
 	}
-	msg, err := renderTCUpgradeInfo(tc, set, podList)
+	svcName := tkctlUtil.GetTidbServiceName(tc.Name)
+	svc, err := o.KubeCli.CoreV1().Services(o.Namespace).Get(svcName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	msg, err := renderTCUpgradeInfo(tc, set, podList, svc)
 	if err != nil {
 		return err
 	}
@@ -155,7 +161,42 @@ func (o *UpInfoOptions) Run() error {
 	return nil
 }
 
-func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podList *v1.PodList) (string, error) {
+func getState(updateReplicas int32, ordinal int32, tc *v1alpha1.TidbCluster, pod *v1.Pod) string {
+
+	var state string
+
+	if updateReplicas < ordinal {
+		state = UPDATED
+	} else if updateReplicas == ordinal {
+
+		state = UPDATING
+
+		if pod.Labels[apps.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision {
+			if member, exist := tc.Status.TiDB.Members[pod.Name]; exist && member.Health {
+				state = UPDATED
+			}
+		}
+
+	} else {
+		state = WAITING
+	}
+
+	return state
+}
+
+func getTiDBServerPort(svc *v1.Service) string {
+	for _, port := range svc.Spec.Ports {
+		if port.Name == "mysql-client" {
+			if port.NodePort != 0 {
+				return fmt.Sprintf("%d:%d/%s", port.Port, port.NodePort, port.Protocol)
+			}
+			return fmt.Sprintf("%d/%s", port.Port, port.Protocol)
+		}
+	}
+	return "<none>"
+}
+
+func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podList *v1.PodList, svc *v1.Service) (string, error) {
 	return readable.TabbedString(func(out io.Writer) error {
 		w := readable.NewPrefixWriter(out)
 		dbPhase := tc.Status.TiDB.Phase
@@ -170,8 +211,8 @@ func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podLis
 			}
 		}
 		{
-			w.WriteLine(readable.LEVEL_1, "Name\tState\t")
-			w.WriteLine(readable.LEVEL_1, "----\t-----\t")
+			w.WriteLine(readable.LEVEL_1, "Name\tState\tNodeIP\tPodIP\tPort\t")
+			w.WriteLine(readable.LEVEL_1, "----\t-----\t------\t-----\t----\t")
 			{
 				updateReplicas := set.Spec.UpdateStrategy.RollingUpdate.Partition
 
@@ -183,25 +224,14 @@ func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podLis
 							return err
 						}
 						if dbPhase == v1alpha1.UpgradePhase {
-							if (*updateReplicas) < ordinal {
-								state = UPDATED
-							} else if (*updateReplicas) == ordinal {
-
-								state = UPDATING
-
-								if pod.Labels[apps.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision {
-									if member, exist := tc.Status.TiDB.Members[pod.Name]; exist && member.Health {
-										state = UPDATED
-									}
-								}
-
-							} else {
-								state = WAITING
-							}
+							state = getState(*updateReplicas, ordinal, tc, &pod)
 						} else {
 							state = UPDATED
 						}
-						w.WriteLine(readable.LEVEL_1, "%s\t%s\t", pod.Name, state)
+
+						port := getTiDBServerPort(svc)
+
+						w.WriteLine(readable.LEVEL_1, "%s\t%s\t%s\t%s\t%s\t", pod.Name, state, pod.Status.HostIP, pod.Status.PodIP, port)
 					}
 				} else {
 					w.WriteLine(readable.LEVEL_1, "no resource found")

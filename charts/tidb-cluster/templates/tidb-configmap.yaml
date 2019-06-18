@@ -1,11 +1,10 @@
+{{/*
+tidb-initializer-job need a stable configmap name
+*/}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-{{- if .Values.enableConfigMapRollout }}
-  name: {{ template "cluster.name" . }}-tidb-{{ template "tidb-configmap.data-digest" . }}
-{{- else }}
   name: {{ template "cluster.name" . }}-tidb
-{{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
