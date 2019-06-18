@@ -57,7 +57,9 @@ spec:
                 set -x
 
                 # Install the linux guest environment tools
+                export DEBIAN_FRONTEND=noninteractive
                 cat /etc/apt/sources.list
+                dpkg --configure -a
                 apt-get update
                 apt-get install -y software-properties-common || echo "could not install software-properties-common"
                 apt-add-repository universe
