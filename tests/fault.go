@@ -44,9 +44,13 @@ type FaultTriggerActions interface {
 	StartKubeAPIServer(node string) error
 	StartKubeAPIServerOrDie(node string)
 	StopKubeControllerManager(node string) error
+	StopKubeControllerManagerOrDie(node string)
 	StartKubeControllerManager(node string) error
-	StopKubeScheduler(node string) error
+	StartKubeControllerManagerOrDie(node string)
 	StartKubeScheduler(node string) error
+	StartKubeSchedulerOrDie(node string)
+	StopKubeScheduler(node string) error
+	StopKubeSchedulerOrDie(node string)
 	StopKubeProxy() error
 	StopKubeProxyOrDie()
 	StartKubeProxy() error
@@ -373,9 +377,23 @@ func (fa *faultTriggerActions) StopKubeScheduler(node string) error {
 	return fa.serviceAction(node, manager.KubeSchedulerService, stopAction)
 }
 
+// StopKubeScheduler stops the kube-scheduler service or dies.
+func (fa *faultTriggerActions) StopKubeSchedulerOrDie(node string) {
+	if err := fa.serviceAction(node, manager.KubeSchedulerService, stopAction); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
 // StartKubeScheduler starts the kube-scheduler service.
 func (fa *faultTriggerActions) StartKubeScheduler(node string) error {
 	return fa.serviceAction(node, manager.KubeSchedulerService, startAction)
+}
+
+// StartKubeScheduler starts the kube-scheduler service or dies
+func (fa *faultTriggerActions) StartKubeSchedulerOrDie(node string) {
+	if err := fa.serviceAction(node, manager.KubeSchedulerService, startAction); err != nil {
+		slack.NotifyAndPanic(err)
+	}
 }
 
 // StopKubeControllerManager stops the kube-controller-manager service.
@@ -383,9 +401,23 @@ func (fa *faultTriggerActions) StopKubeControllerManager(node string) error {
 	return fa.serviceAction(node, manager.KubeControllerManagerService, stopAction)
 }
 
+// StopKubeControllerManager stops the kube-controller-manager service or dies
+func (fa *faultTriggerActions) StopKubeControllerManagerOrDie(node string) {
+	if err := fa.serviceAction(node, manager.KubeControllerManagerService, stopAction); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
 // StartKubeControllerManager starts the kube-controller-manager service.
 func (fa *faultTriggerActions) StartKubeControllerManager(node string) error {
 	return fa.serviceAction(node, manager.KubeControllerManagerService, startAction)
+}
+
+// StartKubeControllerManager starts the kube-controller-manager service or dies.
+func (fa *faultTriggerActions) StartKubeControllerManagerOrDie(node string) {
+	if err := fa.serviceAction(node, manager.KubeControllerManagerService, startAction); err != nil {
+		slack.NotifyAndPanic(err)
+	}
 }
 
 // StopKubeAPIServer stops the apiserver service.

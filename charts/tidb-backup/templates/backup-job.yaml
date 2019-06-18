@@ -18,19 +18,10 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: backup
         helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+    {{- if .Values.extraLabels }}
+{{ toYaml .Values.extraLabels | indent 8 }}
+    {{- end }}
     spec:
-      initContainers:
-      - name: get-ts
-        image: {{ .Values.image.binlog }}
-        imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
-        command:
-        - /binlogctl
-        - -pd-urls=http://{{ .Values.clusterName }}-pd:2379
-        - -cmd=generate_meta
-        - -data-dir=/savepoint-dir
-        volumeMounts:
-        - name: savepoint-dir
-          mountPath: "/savepoint-dir"
       containers:
       - name: backup
         image: {{ .Values.image.backup }}
@@ -41,8 +32,6 @@ spec:
         - |-
 {{ tuple "scripts/_start_backup.sh.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
         volumeMounts:
-        - name: savepoint-dir
-          mountPath: "/savepoint-dir"
         - name: data
           mountPath: "/data"
       {{- if .Values.gcp }}
@@ -81,8 +70,6 @@ spec:
               key: password
       restartPolicy: OnFailure
       volumes:
-      - name: savepoint-dir
-        emptyDir: {}
       - name: data
         persistentVolumeClaim:
           claimName: {{ .Values.name }}

@@ -153,3 +153,20 @@ func waitForPodNotFoundInNamespace(c kubernetes.Interface, podName, ns string, t
 		return false, nil
 	})
 }
+
+func waitForComponentStatus(c kubernetes.Interface, component string, statusType corev1.ComponentConditionType, status corev1.ConditionStatus) error {
+	return wait.PollImmediate(time.Second, 5*time.Minute, func() (bool, error) {
+		componentStatus, err := c.CoreV1().ComponentStatuses().Get(component, metav1.GetOptions{})
+		if err != nil {
+			return true, err // stop wait with error
+		}
+		found := false
+		for _, condition := range componentStatus.Conditions {
+			if condition.Type == statusType && condition.Status == status {
+				found = true
+				break
+			}
+		}
+		return found, nil
+	})
+}

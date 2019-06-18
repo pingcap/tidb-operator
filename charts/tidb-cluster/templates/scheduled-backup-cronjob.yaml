@@ -13,6 +13,8 @@ spec:
   schedule: {{ .Values.scheduledBackup.schedule | quote }}
   concurrencyPolicy: Forbid
   suspend: {{ .Values.scheduledBackup.suspend }}
+  successfulJobsHistoryLimit: {{ .Values.scheduledBackup.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.scheduledBackup.failedJobsHistoryLimit }}
   startingDeadlineSeconds: {{ .Values.scheduledBackup.startingDeadlineSeconds }}
   jobTemplate:
     metadata:
@@ -32,18 +34,6 @@ spec:
             app.kubernetes.io/component: scheduled-backup
             helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
         spec:
-          initContainers:
-          - name: get-ts
-            image: {{ .Values.scheduledBackup.binlogImage }}
-            imagePullPolicy: {{ .Values.scheduledBackup.binlogImagePullPolicy | default "IfNotPresent" }}
-            command:
-            - /binlogctl
-            - -pd-urls=http://{{ template "cluster.name" . }}-pd:2379
-            - -cmd=generate_meta
-            - -data-dir=/savepoint-dir
-            volumeMounts:
-            - name: savepoint-dir
-              mountPath: "/savepoint-dir"
           containers:
           - name: scheduled-backup
             image: {{ .Values.scheduledBackup.mydumperImage }}
@@ -54,8 +44,6 @@ spec:
             - |-
 {{ tuple "scripts/_start_scheduled_backup.sh.tpl" . | include "helm-toolkit.utils.template" | indent 14 }}
             volumeMounts:
-            - name: savepoint-dir
-              mountPath: "/savepoint-dir"
             - name: data
               mountPath: "/data"
           {{- if .Values.scheduledBackup.gcp }}
@@ -64,13 +52,29 @@ spec:
               readOnly: true
           {{- end }}
             env:
-            - name: MY_POD_NAME
+            - name: POD_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           {{- if .Values.scheduledBackup.gcp }}
             - name: GOOGLE_APPLICATION_CREDENTIALS
               value: /gcp/credentials.json
+          {{- end }}
+          {{- if .Values.scheduledBackup.ceph }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.scheduledBackup.ceph.secretName }}
+                  key: access_key
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.scheduledBackup.ceph.secretName }}
+                  key: secret_key
           {{- end }}
             - name: TIDB_USER
               valueFrom:
@@ -84,8 +88,6 @@ spec:
                   key: password
           restartPolicy: OnFailure
           volumes:
-          - name: savepoint-dir
-            emptyDir: {}
           - name: data
             persistentVolumeClaim:
               claimName: {{ template "cluster.name" . }}-scheduled-backup
