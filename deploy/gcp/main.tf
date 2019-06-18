@@ -118,6 +118,11 @@ resource "google_container_node_pool" "pd_pool" {
   name               = "pd-pool"
   initial_node_count = var.pd_count
 
+  management {
+    auto_repair = false
+    auto_upgrade = false
+  }
+
   node_config {
     machine_type    = var.pd_instance_type
     local_ssd_count = 0
@@ -145,6 +150,11 @@ resource "google_container_node_pool" "tikv_pool" {
   location           = google_container_cluster.cluster.location
   name               = "tikv-pool"
   initial_node_count = var.tikv_count
+
+  management {
+    auto_repair = false
+    auto_upgrade = false
+  }
 
   node_config {
     machine_type    = var.tikv_instance_type
@@ -177,6 +187,11 @@ resource "google_container_node_pool" "tidb_pool" {
   name               = "tidb-pool"
   initial_node_count = var.tidb_count
 
+  management {
+    auto_repair = false
+    auto_upgrade = false
+  }
+
   node_config {
     machine_type = var.tidb_instance_type
 
@@ -202,6 +217,11 @@ resource "google_container_node_pool" "monitor_pool" {
   location           = google_container_cluster.cluster.location
   name               = "monitor-pool"
   initial_node_count = var.monitor_count
+
+  management {
+    auto_repair = false
+    auto_upgrade = false
+  }
 
   node_config {
     machine_type = var.monitor_instance_type
