@@ -437,8 +437,6 @@ binlog:
 
 scheduledBackup:
   create: false
-  binlogImage: pingcap/tidb-binlog:v3.0.0-rc.1
-  binlogImagePullPolicy: IfNotPresent
   # https://github.com/pingcap/tidb-cloud-backup
   mydumperImage: pingcap/tidb-cloud-backup:20190610
   mydumperImagePullPolicy: IfNotPresent

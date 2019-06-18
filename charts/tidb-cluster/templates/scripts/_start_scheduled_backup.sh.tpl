@@ -1,29 +1,36 @@
 set -euo pipefail
 
+host=$(getent hosts {{ template "cluster.name" . }}-tidb | head | awk '{print $1}')
+
 timestamp=$(echo ${POD_NAME}|awk -F- '{print $(NF-1)}')
 ## use UTC time zone to resolve timestamp, avoiding different parsing results due to different default time zones
 backupName=scheduled-backup-`date -u -d @${timestamp}  "+%Y%m%d-%H%M%S"`
 backupPath=/data/${backupName}
-host=`echo {{ template "cluster.name" . }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]' | tr '-' '_'`
 
+echo "making dir ${backupPath}"
 mkdir -p ${backupPath}
-cp /savepoint-dir/savepoint ${backupPath}
 
-# the content of savepoint file is:
-# commitTS = 408824443621605409
-savepoint=`cat ${backupPath}/savepoint | cut -d "=" -f2 | sed 's/ *//g'`
+gc_life_time=`/usr/bin/mysql -h${host} -P4000 -u{{ .Values.scheduledBackup.user }} -p${TIDB_PASSWORD} -Nse "select variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"`
+echo "Old TiKV GC life time is ${gc_life_time}"
 
-cat ${backupPath}/savepoint
+echo "Increase TiKV GC life time to 3h"
+/usr/bin/mysql -h${host} -P4000 -u{{ .Values.scheduledBackup.user }} -p${TIDB_PASSWORD} -Nse "update mysql.tidb set variable_value='3h' where variable_name='tikv_gc_life_time';"
+/usr/bin/mysql -h${host} -P4000 -u{{ .Values.scheduledBackup.user }} -p${TIDB_PASSWORD} -Nse "select variable_name,variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"
 
 /mydumper \
   --outputdir=${backupPath} \
-  --host=`eval echo '${'$host'}'` \
+  --host=${host} \
   --port=4000 \
   --user=${TIDB_USER} \
   --password=${TIDB_PASSWORD} \
-  --tidb-snapshot=${savepoint} \
+  --long-query-guard=3600 \
+  --tidb-force-priority=LOW_PRIORITY \
   --regex '^(?!(mysql\.))' \
   {{ .Values.scheduledBackup.options }}
+
+echo "Reset TiKV GC life time to ${gc_life_time}"
+/usr/bin/mysql -h${host} -P4000 -u{{ .Values.scheduledBackup.user }} -p${TIDB_PASSWORD} -Nse "update mysql.tidb set variable_value='${gc_life_time}' where variable_name='tikv_gc_life_time';"
+/usr/bin/mysql -h${host} -P4000 -u{{ .Values.scheduledBackup.user }} -p${TIDB_PASSWORD} -Nse "select variable_name,variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"
 
 {{- if .Values.scheduledBackup.gcp }}
 uploader \

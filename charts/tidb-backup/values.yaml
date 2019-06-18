@@ -10,9 +10,8 @@ mode: backup # backup | restore | scheduled-restore
 name: fullbackup-{{ date "200601021504" .Release.Time }}
 image:
   pullPolicy: IfNotPresent
-  binlog: pingcap/tidb-binlog:v3.0.0-rc.1
-  # https://github.com/tennix/tidb-cloud-backup
-  backup: pingcap/tidb-cloud-backup:latest
+  # https://github.com/pingcap/tidb-cloud-backup
+  backup: pingcap/tidb-cloud-backup:20190610
 
 # Add additional labels for backup/restore job's pod
 # ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
@@ -30,6 +29,17 @@ storage:
 
 # backupOptions is the options of mydumper https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
 backupOptions: "--verbose=3"
+# Set the tidb_snapshot to be used for the backup
+# Use `show master status` to get the ts:
+#   MySQL [(none)]> show master status;
+#   +-------------+--------------------+--------------+------------------+-------------------+
+#   | File        | Position           | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |
+#   +-------------+--------------------+--------------+------------------+-------------------+
+#   | tidb-binlog | 409076965619269635 |              |                  |                   |
+#   +-------------+--------------------+--------------+------------------+-------------------+
+#   1 row in set (0.01 sec)
+# For this example, "409076965619269635" is the initialCommitTs
+initialCommitTs: ""
 # restoreOptions is the options of loader https://www.pingcap.com/docs-cn/tools/loader/
 restoreOptions: "-t 16"
 
