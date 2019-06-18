@@ -33,6 +33,7 @@ type Client interface {
 	StartKubeAPIServer() error
 	// StopKubeAPIServer stops the apiserver service
 	StopKubeAPIServer() error
+	// StartKubeScheduler starts the kube-scheduler service
 	StartKubeScheduler() error
 	// StopKubeScheduler stops the kube-scheduler service
 	StopKubeScheduler() error
@@ -40,7 +41,6 @@ type Client interface {
 	StartKubeControllerManager() error
 	// StopKubeControllerManager stops the kube-controller-manager service
 	StopKubeControllerManager() error
-	// StartKubeScheduler starts the kube-scheduler service
 }
 
 // client is used to communicate with the fault-trigger

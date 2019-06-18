@@ -221,8 +221,34 @@ func run() {
 
 		// stop all kube-proxy and k8s/operator/tidbcluster is available
 		fta.StopKubeProxyOrDie()
-		oa.CheckKubeProxyDownOrDie(clusters)
+		oa.CheckKubeProxyDownOrDie(ocfg, clusters)
 		fta.StartKubeProxyOrDie()
+
+		// stop all kube-scheduler pods
+		for _, physicalNode := range cfg.APIServers {
+			for _, vNode := range physicalNode.Nodes {
+				fta.StopKubeSchedulerOrDie(vNode)
+			}
+		}
+		oa.CheckKubeSchedulerDownOrDie(ocfg, clusters)
+		for _, physicalNode := range cfg.APIServers {
+			for _, vNode := range physicalNode.Nodes {
+				fta.StartKubeSchedulerOrDie(vNode)
+			}
+		}
+
+		// stop all kube-controller-manager pods
+		for _, physicalNode := range cfg.APIServers {
+			for _, vNode := range physicalNode.Nodes {
+				fta.StopKubeControllerManagerOrDie(vNode)
+			}
+		}
+		oa.CheckKubeControllerManagerDownOrDie(ocfg, clusters)
+		for _, physicalNode := range cfg.APIServers {
+			for _, vNode := range physicalNode.Nodes {
+				fta.StartKubeControllerManagerOrDie(vNode)
+			}
+		}
 	}
 
 	// before operator upgrade
