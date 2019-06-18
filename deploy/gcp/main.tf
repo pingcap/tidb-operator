@@ -110,7 +110,8 @@ resource "google_container_cluster" "cluster" {
 }
 
 resource "google_container_node_pool" "pd_pool" {
-  depends_on         = [google_container_cluster.cluster]
+  // The monitor pool is where tiller must first be deployed to.
+  depends_on         = [google_container_node_pool.monitor_pool]
   provider           = google-beta
   project            = var.GCP_PROJECT
   cluster            = google_container_cluster.cluster.name
@@ -143,7 +144,6 @@ resource "google_container_node_pool" "pd_pool" {
 }
 
 resource "google_container_node_pool" "tikv_pool" {
-  depends_on         = [google_container_node_pool.pd_pool]
   provider           = google-beta
   project            = var.GCP_PROJECT
   cluster            = google_container_cluster.cluster.name
@@ -179,7 +179,8 @@ resource "google_container_node_pool" "tikv_pool" {
 }
 
 resource "google_container_node_pool" "tidb_pool" {
-  depends_on         = [google_container_node_pool.tikv_pool]
+  // The pool order is monitor -> tikv -> pd -> tidb
+  depends_on         = [google_container_node_pool.pd_pool]
   provider           = google-beta
   project            = var.GCP_PROJECT
   cluster            = google_container_cluster.cluster.name
@@ -211,7 +212,9 @@ resource "google_container_node_pool" "tidb_pool" {
 }
 
 resource "google_container_node_pool" "monitor_pool" {
-  depends_on         = [google_container_node_pool.tidb_pool]
+  // Setup local SSD on TiKV nodes first (this can take some time)
+  // Create the monitor pool next because that is where tiller will be deployed to
+  depends_on         = [google_container_node_pool.tikv_pool]
   project            = var.GCP_PROJECT
   cluster            = google_container_cluster.cluster.name
   location           = google_container_cluster.cluster.location
@@ -352,9 +355,10 @@ kubectl apply -k manifests/local-ssd
 kubectl apply -f manifests/gke/persistent-disk.yaml
 kubectl apply -f manifests/tiller-rbac.yaml
 
-helm init --service-account tiller --upgrade --wait
+helm init --service-account tiller --upgrade
 until helm ls; do
   echo "Wait until tiller is ready"
+  sleep 1
 done
 helm upgrade --install tidb-operator --namespace tidb-admin ${path.module}/charts/tidb-operator --set operatorImage=${var.tidb_operator_registry}/tidb-operator:${var.tidb_operator_version}
 EOS
@@ -371,8 +375,6 @@ resource "null_resource" "deploy-tidb-cluster" {
     null_resource.setup-env,
     local_file.tidb-cluster-values,
     google_container_node_pool.pd_pool,
-    google_container_node_pool.tikv_pool,
-    google_container_node_pool.tidb_pool,
   ]
 
   triggers = {
