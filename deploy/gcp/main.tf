@@ -185,7 +185,7 @@ resource "google_container_node_pool" "tikv_pool" {
 }
 
 resource "google_container_node_pool" "tidb_pool" {
-  // The pool order is monitor -> tikv -> pd -> tidb
+  // The pool order is tikv -> monitor -> pd -> tidb
   depends_on         = [google_container_node_pool.pd_pool]
   provider           = google-beta
   project            = var.GCP_PROJECT
