@@ -451,6 +451,7 @@ func (oa *operatorActions) CleanOperatorOrDie(info *OperatorConfig) {
 }
 
 func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
+	glog.Infof("upgrading tidb-operator %s", info.ReleaseName)
 	if err := oa.checkoutTag(info.Tag); err != nil {
 		return err
 	}

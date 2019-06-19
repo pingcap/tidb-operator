@@ -31,7 +31,6 @@ import (
 	"k8s.io/apiserver/pkg/util/logs"
 )
 
-var successCount int
 var cfg *tests.Config
 var context *apimachinery.CertContext
 var upgradeVersions []string
@@ -55,8 +54,8 @@ func main() {
 
 	c := cron.New()
 	c.AddFunc("0 0 10 * * *", func() {
-		slack.NotifyAndCompletedf("Succeed %d times in the past 24 hours.", successCount)
-		successCount = 0
+		slack.NotifyAndCompletedf("Succeed %d times in the past 24 hours.", slack.SuccessCount)
+		slack.SuccessCount = 0
 	})
 	go c.Start()
 
@@ -89,7 +88,15 @@ func run() {
 		onePDCluster1,
 		onePDCluster2,
 	}
-	deployedClusers := make([]*tests.TidbClusterConfig, 0)
+	deployedClusters := make([]*tests.TidbClusterConfig, 0)
+	addDeployedClusterFn := func(cluster *tests.TidbClusterConfig) {
+		for _, tc := range deployedClusters {
+			if tc.Namespace == cluster.Namespace && tc.ClusterName == cluster.ClusterName {
+				return
+			}
+		}
+		deployedClusters = append(deployedClusters, cluster)
+	}
 
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, cfg)
 
@@ -113,7 +120,7 @@ func run() {
 		// deploy
 		for _, cluster := range clusters {
 			oa.DeployTidbClusterOrDie(cluster)
-			deployedClusers = append(deployedClusers, cluster)
+			addDeployedClusterFn(cluster)
 		}
 		for _, cluster := range clusters {
 			oa.CheckTidbClusterStatusOrDie(cluster)
@@ -186,25 +193,25 @@ func run() {
 
 		// backup and restore
 		oa.DeployTidbClusterOrDie(restoreCluster)
-		deployedClusers = append(deployedClusers, restoreCluster)
+		addDeployedClusterFn(restoreCluster)
 		oa.CheckTidbClusterStatusOrDie(restoreCluster)
 		oa.BackupRestoreOrDie(clusters[0], restoreCluster)
 
 		// delete operator
 		oa.CleanOperatorOrDie(ocfg)
-		oa.CheckOperatorDownOrDie(deployedClusers)
+		oa.CheckOperatorDownOrDie(deployedClusters)
 		oa.DeployOperatorOrDie(ocfg)
 
 		// stop node
 		physicalNode, node, faultTime := fta.StopNodeOrDie()
 		oa.EmitEvent(nil, fmt.Sprintf("StopNode: %s on %s", node, physicalNode))
-		oa.CheckFailoverPendingOrDie(deployedClusers, node, &faultTime)
-		oa.CheckFailoverOrDie(deployedClusers, node)
+		oa.CheckFailoverPendingOrDie(deployedClusters, node, &faultTime)
+		oa.CheckFailoverOrDie(deployedClusters, node)
 		time.Sleep(3 * time.Minute)
 		fta.StartNodeOrDie(physicalNode, node)
 		oa.EmitEvent(nil, fmt.Sprintf("StartNode: %s on %s", node, physicalNode))
-		oa.CheckRecoverOrDie(deployedClusers)
-		for _, cluster := range deployedClusers {
+		oa.CheckRecoverOrDie(deployedClusters)
+		for _, cluster := range deployedClusters {
 			oa.CheckTidbClusterStatusOrDie(cluster)
 		}
 
@@ -216,7 +223,7 @@ func run() {
 		fta.StopETCDOrDie(faultEtcd)
 		defer fta.StartETCDOrDie(faultEtcd)
 		time.Sleep(3 * time.Minute)
-		oa.CheckOneEtcdDownOrDie(ocfg, deployedClusers, faultEtcd)
+		oa.CheckOneEtcdDownOrDie(ocfg, deployedClusters, faultEtcd)
 		fta.StartETCDOrDie(faultEtcd)
 
 		// stop all kube-proxy and k8s/operator/tidbcluster is available
@@ -272,7 +279,7 @@ func run() {
 			cluster2,
 			onePDCluster1,
 		}
-		var v string
+		v := upgradeVersions[0]
 		if len(upgradeVersions) == 2 {
 			v = upgradeVersions[1]
 		}
@@ -284,6 +291,6 @@ func run() {
 		oa.StopInsertDataTo(cluster)
 	}
 
-	successCount++
+	slack.SuccessCount++
 	glog.Infof("################## Stability test finished at: %v\n\n\n\n", time.Now().Format(time.RFC3339))
 }
