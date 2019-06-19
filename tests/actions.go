@@ -455,10 +455,9 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		return err
 	}
 
-	cmd := fmt.Sprintf(`helm upgrade %s %s
-		--set operatorImage=%s`,
+	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
 		info.ReleaseName, oa.operatorChartPath(info.Tag),
-		info.Image)
+		info.OperatorHelmSetString(nil))
 
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -765,6 +764,9 @@ func (oa *operatorActions) BeginInsertDataToOrDie(info *TidbClusterConfig) {
 }
 
 func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
+	if info.blockWriter == nil {
+		return
+	}
 	oa.EmitEvent(info, "StopInsertData")
 
 	info.blockWriter.Stop()

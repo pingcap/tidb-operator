@@ -115,7 +115,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 
 	if err := wait.Poll(1*time.Minute, 30*time.Minute, func() (bool, error) {
 		if err := tikvOps.RecoverSSTFile(info.Namespace, podName); err != nil {
-			glog.Errorf("failed to recovery sst file %s/%s", info.Namespace, podName)
+			glog.Errorf("failed to recovery sst file %s/%s, %v", info.Namespace, podName, err)
 			return false, nil
 		}
 

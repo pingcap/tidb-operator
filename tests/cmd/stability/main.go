@@ -280,6 +280,10 @@ func run() {
 		caseFn(postUpgrade, restoreCluster2, v)
 	}
 
+	for _, cluster := range allClusters {
+		oa.StopInsertDataTo(cluster)
+	}
+
 	successCount++
 	glog.Infof("################## Stability test finished at: %v\n\n\n\n", time.Now().Format(time.RFC3339))
 }
