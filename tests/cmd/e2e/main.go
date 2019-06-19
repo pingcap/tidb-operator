@@ -73,6 +73,7 @@ func main() {
 	name1 := "e2e-cluster1"
 	name2 := "e2e-cluster2"
 	name3 := "e2e-pd-replicas-1"
+	topologyKey := "rack"
 	clusterInfos := []*tests.TidbClusterConfig{
 		{
 			Namespace:        name1,
@@ -110,7 +111,8 @@ func main() {
 				BatchSize:   1,
 				RawSize:     1,
 			},
-			SubValues:              tests.GetAffinityConfigOrDie(name1, name1),
+			TopologyKey:            topologyKey,
+			SubValues:              fmt.Sprintf("%s%s", tests.GetStoreLabels([]string{topologyKey}), tests.GetAffinityConfigOrDie(name1, name1, topologyKey)),
 			EnableConfigMapRollout: true,
 			PDMaxReplicas:          3,
 			TiKVGrpcConcurrency:    4,
@@ -153,7 +155,8 @@ func main() {
 				BatchSize:   1,
 				RawSize:     1,
 			},
-			SubValues:              tests.GetAffinityConfigOrDie(name2, name2),
+			TopologyKey:            topologyKey,
+			SubValues:              fmt.Sprintf("%s%s", tests.GetStoreLabels([]string{topologyKey}), tests.GetAffinityConfigOrDie(name2, name2, topologyKey)),
 			EnableConfigMapRollout: false,
 			PDMaxReplicas:          3,
 			TiKVGrpcConcurrency:    4,
@@ -176,7 +179,9 @@ func main() {
 				"pd.replicas":     "1",
 				"discovery.image": conf.OperatorImage,
 			},
-			SubValues: tests.GetAffinityConfigOrDie(name3, name2),
+
+			TopologyKey: topologyKey,
+			SubValues:   fmt.Sprintf("%s%s", tests.GetStoreLabels([]string{topologyKey}), tests.GetAffinityConfigOrDie(name3, name2, topologyKey)),
 		},
 	}
 
@@ -335,7 +340,7 @@ func main() {
 	restoreClusterInfo.ClusterName = restoreClusterInfo.ClusterName + "-other"
 	restoreClusterInfo.InitSecretName = fmt.Sprintf("%s-set-secret", restoreClusterInfo.ClusterName)
 	restoreClusterInfo.BackupSecretName = fmt.Sprintf("%s-backup-secret", restoreClusterInfo.ClusterName)
-	restoreClusterInfo.SubValues = tests.GetAffinityConfigOrDie(restoreClusterInfo.ClusterName, restoreClusterInfo.Namespace)
+	restoreClusterInfo.SubValues = fmt.Sprintf("%s%s", tests.GetAffinityConfigOrDie(restoreClusterInfo.ClusterName, restoreClusterInfo.Namespace, topologyKey))
 
 	if err = oa.CleanTidbCluster(restoreClusterInfo); err != nil {
 		glog.Fatal(err)

@@ -88,7 +88,31 @@ func GetPodsByLabels(kubeCli kubernetes.Interface, node string, lables map[strin
 	return nil, nil
 }
 
+var storeLabels string = `tikv:
+  storeLabels:
+{{range .}}  - {{.}}
+{{end}}
+`
+
+func GetStoreLabels(labels []string) string {
+	if labels == nil || len(labels) == 0 {
+		return ""
+	}
+	temp, err := template.New("storeLabels").Parse(storeLabels)
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+	buff := new(bytes.Buffer)
+	err = temp.Execute(buff, &labels)
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+	return buff.String()
+}
+
 var affinityTemp string = `{{.Kind}}:
+{{if .Kind eq "tikv"}}
+
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
@@ -98,7 +122,7 @@ var affinityTemp string = `{{.Kind}}:
             matchLabels:
               app.kubernetes.io/instance: {{.ClusterName}}
               app.kubernetes.io/component: {{.Kind}}
-          topologyKey: "rack"
+          topologyKey: {{.TopologyKey}}
           namespaces:
           - {{.Namespace}}
 `
@@ -108,26 +132,27 @@ type AffinityInfo struct {
 	Kind        string
 	Weight      int
 	Namespace   string
+	TopologyKey string
 }
 
-func GetAffinityConfigOrDie(clusterName, namespace string) string {
+func GetAffinityConfigOrDie(clusterName, namespace, topologyKey string) string {
 	temp, err := template.New("dt-affinity").Parse(affinityTemp)
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 
 	pdbuff := new(bytes.Buffer)
-	err = temp.Execute(pdbuff, &AffinityInfo{ClusterName: clusterName, Kind: "pd", Weight: 50, Namespace: namespace})
+	err = temp.Execute(pdbuff, &AffinityInfo{ClusterName: clusterName, Kind: "pd", Weight: 50, Namespace: namespace, TopologyKey: topologyKey})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 	tikvbuff := new(bytes.Buffer)
-	err = temp.Execute(tikvbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tikv", Weight: 50, Namespace: namespace})
+	err = temp.Execute(tikvbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tikv", Weight: 50, Namespace: namespace, TopologyKey: topologyKey})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 	tidbbuff := new(bytes.Buffer)
-	err = temp.Execute(tidbbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tidb", Weight: 50, Namespace: namespace})
+	err = temp.Execute(tidbbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tidb", Weight: 50, Namespace: namespace, TopologyKey: topologyKey})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}

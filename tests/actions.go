@@ -254,6 +254,7 @@ type TidbClusterConfig struct {
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
 	SubValues        string
+	TopologyKey      string
 }
 
 func (tc *TidbClusterConfig) String() string {
@@ -691,6 +692,13 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		glog.V(4).Infof("check tidb cluster begin schedulerHAFn")
 		if b, err := oa.schedulerHAFn(tc); !b && err == nil {
 			return false, nil
+		}
+
+		glog.V(4).Infof("check store labels")
+		if b, err := oa.storeLabelsSeted(tc, info.TopologyKey); !b && err == nil {
+			return false, nil
+		} else if err != nil {
+			return false, err
 		}
 
 		glog.V(4).Infof("check tidb cluster begin passwordIsSet")
@@ -1346,6 +1354,29 @@ func (oa *operatorActions) schedulerHAFn(tc *v1alpha1.TidbCluster) (bool, error)
 		}
 	}
 
+	return true, nil
+}
+
+func (oa *operatorActions) storeLabelsSeted(tc *v1alpha1.TidbCluster, topologyKey string) (bool, error) {
+	pdCli := oa.pdControl.GetPDClient(tc)
+	for _, store := range tc.Status.TiKV.Stores {
+		storeID, err := strconv.ParseUint(store.ID, 10, 64)
+		if err != nil {
+			return false, err
+		}
+		storeInfo, err := pdCli.GetStore(storeID)
+		if err != nil {
+			return false, nil
+		}
+		if len(storeInfo.Store.Labels) == 0 {
+			return false, nil
+		}
+		for _, label := range storeInfo.Store.Labels {
+			if label.Key != topologyKey {
+				return false, nil
+			}
+		}
+	}
 	return true, nil
 }
 
