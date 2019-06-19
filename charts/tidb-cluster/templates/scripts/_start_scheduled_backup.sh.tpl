@@ -2,9 +2,13 @@ set -euo pipefail
 
 host=$(getent hosts {{ template "cluster.name" . }}-tidb | head | awk '{print $1}')
 
-dirname=/data/scheduled-backup-`date +%Y-%m-%dT%H%M%S`-${MY_POD_NAME}
-echo "making dir ${dirname}"
-mkdir -p ${dirname}
+timestamp=$(echo ${POD_NAME}|awk -F- '{print $(NF-1)}')
+## use UTC time zone to resolve timestamp, avoiding different parsing results due to different default time zones
+backupName=scheduled-backup-`date -u -d @${timestamp}  "+%Y%m%d-%H%M%S"`
+backupPath=/data/${backupName}
+
+echo "making dir ${backupPath}"
+mkdir -p ${backupPath}
 
 gc_life_time=`/usr/bin/mysql -h${host} -P4000 -u{{ .Values.scheduledBackup.user }} -p${TIDB_PASSWORD} -Nse "select variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"`
 echo "Old TiKV GC life time is ${gc_life_time}"
@@ -14,13 +18,14 @@ echo "Increase TiKV GC life time to 3h"
 /usr/bin/mysql -h${host} -P4000 -u{{ .Values.scheduledBackup.user }} -p${TIDB_PASSWORD} -Nse "select variable_name,variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"
 
 /mydumper \
-  --outputdir=${dirname} \
+  --outputdir=${backupPath} \
   --host=${host} \
   --port=4000 \
-  --user={{ .Values.scheduledBackup.user }} \
+  --user=${TIDB_USER} \
   --password=${TIDB_PASSWORD} \
   --long-query-guard=3600 \
   --tidb-force-priority=LOW_PRIORITY \
+  --regex '^(?!(mysql\.))' \
   {{ .Values.scheduledBackup.options }}
 
 echo "Reset TiKV GC life time to ${gc_life_time}"
@@ -31,7 +36,7 @@ echo "Reset TiKV GC life time to ${gc_life_time}"
 uploader \
   --cloud=gcp \
   --bucket={{ .Values.scheduledBackup.gcp.bucket }} \
-  --backup-dir=${dirname}
+  --backup-dir=${backupPath}
 {{- end }}
 
 {{- if .Values.scheduledBackup.ceph }}
@@ -39,5 +44,5 @@ uploader \
   --cloud=ceph \
   --bucket={{ .Values.scheduledBackup.ceph.bucket }} \
   --endpoint={{ .Values.scheduledBackup.ceph.endpoint }} \
-  --backup-dir=${dirname}
+  --backup-dir=${backupPath}
 {{- end }}
