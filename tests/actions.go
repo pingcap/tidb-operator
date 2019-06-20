@@ -695,7 +695,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		}
 
 		glog.V(4).Infof("check store labels")
-		if b, err := oa.storeLabelsSeted(tc, info.TopologyKey); !b && err == nil {
+		if b, err := oa.storeLabelsIsSet(tc, info.TopologyKey); !b && err == nil {
 			return false, nil
 		} else if err != nil {
 			return false, err
@@ -1357,7 +1357,7 @@ func (oa *operatorActions) schedulerHAFn(tc *v1alpha1.TidbCluster) (bool, error)
 	return true, nil
 }
 
-func (oa *operatorActions) storeLabelsSeted(tc *v1alpha1.TidbCluster, topologyKey string) (bool, error) {
+func (oa *operatorActions) storeLabelsIsSet(tc *v1alpha1.TidbCluster, topologyKey string) (bool, error) {
 	pdCli := oa.pdControl.GetPDClient(tc)
 	for _, store := range tc.Status.TiKV.Stores {
 		storeID, err := strconv.ParseUint(store.ID, 10, 64)

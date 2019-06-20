@@ -131,8 +131,9 @@ func run() {
 		TiDBTokenLimit:         1000,
 		PDLogLevel:             "info",
 		EnableConfigMapRollout: true,
+		TopologyKey:            topologyKey,
 	}
-	cluster1.SubValues = fmt.Sprintf("%s%s", tests.GetStoreLabels([]string{topologyKey}), tests.GetAffinityConfigOrDie(cluster1.ClusterName, cluster1.Namespace, topologyKey))
+	cluster1.SubValues = fmt.Sprintf("%s", tests.GetAffinityConfigOrDie(cluster1.ClusterName, cluster1.Namespace, topologyKey, []string{topologyKey}))
 
 	cluster2 := &tests.TidbClusterConfig{
 		Namespace:        clusterName2,
@@ -172,15 +173,16 @@ func run() {
 		TiDBTokenLimit:         1000,
 		PDLogLevel:             "info",
 		EnableConfigMapRollout: false,
+		TopologyKey:            topologyKey,
 	}
-	cluster2.SubValues = fmt.Sprintf("%s%s", tests.GetStoreLabels([]string{topologyKey}), tests.GetAffinityConfigOrDie(cluster2.ClusterName, cluster2.Namespace, topologyKey))
+	cluster2.SubValues = fmt.Sprintf("%s", tests.GetAffinityConfigOrDie(cluster2.ClusterName, cluster2.Namespace, topologyKey, []string{topologyKey}))
 
 	// cluster backup and restore
 	clusterBackupFrom := cluster1
 	clusterRestoreTo := &tests.TidbClusterConfig{}
 	copier.Copy(clusterRestoreTo, clusterBackupFrom)
 	clusterRestoreTo.ClusterName = "cluster-restore"
-	clusterRestoreTo.SubValues = fmt.Sprintf("%s%s", tests.GetStoreLabels([]string{topologyKey}), tests.GetAffinityConfigOrDie(clusterRestoreTo.ClusterName, clusterRestoreTo.Namespace, topologyKey))
+	clusterRestoreTo.SubValues = fmt.Sprintf("%s", tests.GetAffinityConfigOrDie(clusterRestoreTo.ClusterName, clusterRestoreTo.Namespace, topologyKey, []string{topologyKey}))
 
 	onePDCluster := &tests.TidbClusterConfig{}
 	copier.Copy(onePDCluster, cluster1)
