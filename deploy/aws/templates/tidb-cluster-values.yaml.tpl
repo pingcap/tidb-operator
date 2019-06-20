@@ -403,6 +403,15 @@ scheduledBackup:
   # kubectl create secret generic ceph-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
   # secretName: ceph-backup-secret
 
+  # backup to s3
+  s3: {}
+  # region: ""
+  # bucket: ""
+  # secretName is the name of the secret which stores s3 object store access key and secret key
+  # You can create the secret by:
+  # kubectl create secret generic s3-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
+  # secretName: s3-backup-secret
+
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"
 metaValue: "{{ $value }}"
