@@ -115,7 +115,7 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 	}
 	defer DeferClose(res.Body, &err)
 	if res.StatusCode != http.StatusOK {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v", res.StatusCode))
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL: %s", res.StatusCode, url))
 		return nil, errMsg
 	}
 	body, err := ioutil.ReadAll(res.Body)
@@ -146,7 +146,7 @@ func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int
 	}
 	defer DeferClose(res.Body, &err)
 	if res.StatusCode != http.StatusOK {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v", res.StatusCode))
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL: %s", res.StatusCode, url))
 		return nil, errMsg
 	}
 	body, err := ioutil.ReadAll(res.Body)
@@ -167,7 +167,7 @@ func (tdc *defaultTiDBControl) getBodyOK(apiURL string) ([]byte, error) {
 		return nil, err
 	}
 	if res.StatusCode >= 400 {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v", res.StatusCode))
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL %s", res.StatusCode, apiURL))
 		return nil, errMsg
 	}
 
