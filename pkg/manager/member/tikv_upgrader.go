@@ -193,6 +193,9 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 	if err != nil {
 		return err
 	}
+	if ordinal == 0 {
+		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+	}
 	return nil
 }
 
