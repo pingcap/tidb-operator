@@ -53,10 +53,12 @@ func main() {
 	go tests.StartValidatingAdmissionWebhookServerOrDie(context)
 
 	c := cron.New()
-	c.AddFunc("0 0 10 * * *", func() {
+	if err := c.AddFunc("0 0 10 * * *", func() {
 		slack.NotifyAndCompletedf("Succeed %d times in the past 24 hours.", slack.SuccessCount)
 		slack.SuccessCount = 0
-	})
+	}); err != nil {
+		panic(err)
+	}
 	go c.Start()
 
 	wait.Forever(run, 5*time.Minute)
@@ -69,7 +71,7 @@ func run() {
 
 	cluster1 := newTidbClusterConfig("ns1", "cluster1")
 	cluster2 := newTidbClusterConfig("ns2", "cluster2")
-	cluster3 := newTidbClusterConfig("ns1", "cluster3")
+	cluster3 := newTidbClusterConfig("ns2", "cluster3")
 
 	restoreCluster1 := newTidbClusterConfig("ns1", "restore1")
 	restoreCluster2 := newTidbClusterConfig("ns2", "restore2")
@@ -99,8 +101,10 @@ func run() {
 	}
 
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, cfg)
+	fta.CheckAndRecoverEnvOrDie()
 
 	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, cfg, allClusters)
+	oa.CheckK8sAvailableOrDie(nil, nil)
 	oa.LabelNodesOrDie()
 
 	go wait.Forever(oa.EventWorker, 10*time.Second)
@@ -112,10 +116,15 @@ func run() {
 		oa.CleanTidbClusterOrDie(cluster)
 	}
 
-	caseFn := func(clusters []*tests.TidbClusterConfig, restoreCluster *tests.TidbClusterConfig, upgradeVersion string) {
+	caseFn := func(clusters []*tests.TidbClusterConfig, onePDClsuter *tests.TidbClusterConfig, restoreCluster *tests.TidbClusterConfig, upgradeVersion string) {
 		// check env
 		fta.CheckAndRecoverEnvOrDie()
 		oa.CheckK8sAvailableOrDie(nil, nil)
+
+		// deploy and clean the one-pd-cluster
+		oa.DeployTidbClusterOrDie(onePDClsuter)
+		oa.CheckTidbClusterStatusOrDie(onePDClsuter)
+		oa.CleanTidbClusterOrDie(onePDClsuter)
 
 		// deploy
 		for _, cluster := range clusters {
@@ -262,9 +271,8 @@ func run() {
 	preUpgrade := []*tests.TidbClusterConfig{
 		cluster1,
 		cluster2,
-		onePDCluster1,
 	}
-	caseFn(preUpgrade, restoreCluster1, upgradeVersions[0])
+	caseFn(preUpgrade, onePDCluster1, restoreCluster1, upgradeVersions[0])
 
 	// after operator upgrade
 	if cfg.UpgradeOperatorImage != "" && cfg.UpgradeOperatorTag != "" {
@@ -274,17 +282,15 @@ func run() {
 		time.Sleep(5 * time.Minute)
 		postUpgrade := []*tests.TidbClusterConfig{
 			cluster3,
-			onePDCluster2,
 			cluster1,
 			cluster2,
-			onePDCluster1,
 		}
 		v := upgradeVersions[0]
 		if len(upgradeVersions) == 2 {
 			v = upgradeVersions[1]
 		}
 		// caseFn(postUpgrade, restoreCluster2, tidbUpgradeVersion)
-		caseFn(postUpgrade, restoreCluster2, v)
+		caseFn(postUpgrade, onePDCluster2, restoreCluster2, v)
 	}
 
 	for _, cluster := range allClusters {

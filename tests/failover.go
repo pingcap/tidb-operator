@@ -311,6 +311,16 @@ func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 		return false, nil
 	}
 
+	// recover tikv manually
+	if tc.Status.TiKV.FailureStores != nil {
+		tc.Status.TiKV.FailureStores = nil
+		tc, err = oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Update(tc)
+		if err != nil {
+			glog.Errorf("failed to set status.tikv.failureStore to nil, %v", err)
+			return false, nil
+		}
+	}
+
 	return true, nil
 }
 
