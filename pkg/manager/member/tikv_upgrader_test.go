@@ -384,7 +384,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
-					if pod.GetName() == tikvPodName(upgradeTcName, 2) {
+					if pod.GetName() == tikvPodName(upgradeTcName, 1) {
 						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
@@ -407,9 +407,6 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
-				// set leader to 0
-				store := tc.Status.TiKV.Stores["2"]
-				tc.Status.TiKV.Stores["2"] = store
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				SetLastAppliedConfigAnnotation(oldSet)
