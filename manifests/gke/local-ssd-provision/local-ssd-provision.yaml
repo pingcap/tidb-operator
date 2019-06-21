@@ -66,9 +66,8 @@ spec:
                 cat /etc/apt/sources.list.orig | awk '/bionic main|bionic-updates main|bionic-updates universe/' > /etc/apt/sources.list
                 apt-get update
                 # Install required packages
-                apt-get install -y lvm2 python-google-compute-engine python3-google-compute-engine google-compute-engine-oslogin gce-compute-image-packages \
-                  || apt-get update \
-                  && apt-get install -y lvm2 python-google-compute-engine python3-google-compute-engine google-compute-engine-oslogin gce-compute-image-packages
+                apt-get install -y lvm2 python-google-compute-engine python3-google-compute-engine google-compute-engine-oslogin gce-compute-image-packages
+                # Restore original repository listings
                 cp /etc/apt/sources.list.orig /etc/apt/sources.list
 
                 if ! findmnt -n -a -l | grep /mnt/disks/ssd ; then
