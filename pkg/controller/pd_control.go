@@ -556,7 +556,7 @@ func (pc *pdClient) getBodyOK(apiURL string) ([]byte, error) {
 	}
 	defer DeferClose(res.Body, &err)
 	if res.StatusCode >= 400 {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v", res.StatusCode))
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL %s", res.StatusCode, apiURL))
 		return nil, errMsg
 	}
 	body, err := ioutil.ReadAll(res.Body)
