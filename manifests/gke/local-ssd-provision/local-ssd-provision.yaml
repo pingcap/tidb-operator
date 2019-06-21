@@ -61,14 +61,16 @@ spec:
                 # Fix any issues
                 dpkg --configure -a
                 apt-get -y autoremove
-                # Add universe repository
-                apt-get install -y software-properties-common || apt-get update && apt-get install -y software-properties-common
-                apt-add-repository universe
-                # Install required packages
+                # Avoid unecessary repository listings
+                test -f /etc/apt/sources.list.orig || cp /etc/apt/sources.list /etc/apt/sources.list.orig
+                cat /etc/apt/sources.list.orig | awk '/bionic main|bionic-updates main|bionic-updates universe/' > /etc/apt/sources.list
                 apt-get update
-                apt-get install -y lvm2 python-google-compute-engine python3-google-compute-engine google-compute-engine-oslogin gce-compute-image-packages
+                # Install required packages
+                apt-get install -y lvm2 python-google-compute-engine python3-google-compute-engine google-compute-engine-oslogin gce-compute-image-packages \
+                  || apt-get update \
+                  && apt-get install -y lvm2 python-google-compute-engine python3-google-compute-engine google-compute-engine-oslogin gce-compute-image-packages
+                cp /etc/apt/sources.list.orig /etc/apt/sources.list
 
-                set -x
                 if ! findmnt -n -a -l | grep /mnt/disks/ssd ; then
                   if test -f /etc/ssd_mounts ; then
                     ssd_mounts=$(cat /etc/ssd_mounts)
