@@ -377,18 +377,16 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name             string
-		setUpdate        func(*apps.StatefulSet)
-		hasPod           bool
-		updatePod        func(*corev1.Pod)
-		errWhenGetLeader bool
-		hasLeader        bool
-		errExpectFn      func(*GomegaWithT, error)
-		expectUpgrading  bool
+		name            string
+		setUpdate       func(*apps.StatefulSet)
+		hasPod          bool
+		updatePod       func(*corev1.Pod)
+		errExpectFn     func(*GomegaWithT, error)
+		expectUpgrading bool
 	}
 	testFn := func(test *testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
-		pmm, _, _, pdClient, podIndexer, _ := newFakeTiKVMemberManager(tc)
+		pmm, _, _, _, podIndexer, _ := newFakeTiKVMemberManager(tc)
 		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{
 			UpdateRevision: "v3",
 		}
@@ -417,19 +415,6 @@ func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 			}
 			podIndexer.Add(pod)
 		}
-		if test.errWhenGetLeader {
-			pdClient.AddReaction(controller.GetEvictLeaderSchedulersActionType, func(action *controller.Action) (interface{}, error) {
-				return []string{}, fmt.Errorf("failed to get leader")
-			})
-		} else if test.hasLeader {
-			pdClient.AddReaction(controller.GetEvictLeaderSchedulersActionType, func(action *controller.Action) (interface{}, error) {
-				return []string{"leader"}, nil
-			})
-		} else {
-			pdClient.AddReaction(controller.GetEvictLeaderSchedulersActionType, func(action *controller.Action) (interface{}, error) {
-				return []string{}, nil
-			})
-		}
 		b, err := pmm.tikvStatefulSetIsUpgradingFn(pmm.podLister, pmm.pdControl, set, tc)
 		if test.errExpectFn != nil {
 			test.errExpectFn(g, err)
@@ -448,22 +433,18 @@ func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 				set.Status.UpdateRevision = "v2"
 				set.Status.ObservedGeneration = func() *int64 { var i int64; i = 1000; return &i }()
 			},
-			hasPod:           false,
-			updatePod:        nil,
-			errWhenGetLeader: false,
-			hasLeader:        false,
-			errExpectFn:      errExpectNil,
-			expectUpgrading:  true,
+			hasPod:          false,
+			updatePod:       nil,
+			errExpectFn:     errExpectNil,
+			expectUpgrading: true,
 		},
 		{
-			name:             "pod don't have revision hash",
-			setUpdate:        nil,
-			hasPod:           true,
-			updatePod:        nil,
-			errWhenGetLeader: false,
-			hasLeader:        false,
-			errExpectFn:      errExpectNil,
-			expectUpgrading:  false,
+			name:            "pod don't have revision hash",
+			setUpdate:       nil,
+			hasPod:          true,
+			updatePod:       nil,
+			errExpectFn:     errExpectNil,
+			expectUpgrading: false,
 		},
 		{
 			name:      "pod have revision hash, not equal statefulset's",
@@ -472,10 +453,8 @@ func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 			updatePod: func(pod *corev1.Pod) {
 				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v2"
 			},
-			errWhenGetLeader: false,
-			hasLeader:        false,
-			errExpectFn:      errExpectNil,
-			expectUpgrading:  true,
+			errExpectFn:     errExpectNil,
+			expectUpgrading: true,
 		},
 		{
 			name:      "pod have revision hash, equal statefulset's",
@@ -484,49 +463,8 @@ func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 			updatePod: func(pod *corev1.Pod) {
 				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v3"
 			},
-			errWhenGetLeader: false,
-			hasLeader:        false,
-			errExpectFn:      errExpectNil,
-			expectUpgrading:  false,
-		},
-		{
-			name:      "error when get leader schedulers",
-			setUpdate: nil,
-			hasPod:    true,
-			updatePod: func(pod *corev1.Pod) {
-				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v3"
-			},
-			errWhenGetLeader: true,
-			hasLeader:        false,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "failed to get leader")).To(Equal(true))
-			},
+			errExpectFn:     errExpectNil,
 			expectUpgrading: false,
-		},
-		{
-			name:      "has no leader",
-			setUpdate: nil,
-			hasPod:    true,
-			updatePod: func(pod *corev1.Pod) {
-				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v3"
-			},
-			errWhenGetLeader: false,
-			hasLeader:        false,
-			errExpectFn:      errExpectNil,
-			expectUpgrading:  false,
-		},
-		{
-			name:      "has leader",
-			setUpdate: nil,
-			hasPod:    true,
-			updatePod: func(pod *corev1.Pod) {
-				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v3"
-			},
-			errWhenGetLeader: false,
-			hasLeader:        true,
-			errExpectFn:      errExpectNil,
-			expectUpgrading:  true,
 		},
 	}
 
