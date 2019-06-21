@@ -95,10 +95,7 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 			if store.State != v1alpha1.TiKVStateUp {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
 			}
-			err := tku.endEvictLeader(tc, i)
-			if err != nil {
-				return err
-			}
+
 			continue
 		}
 
@@ -126,6 +123,10 @@ func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32,
 			_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
 
 			if tku.readyToUpgrade(upgradePod, store) {
+				err := tku.endEvictLeader(tc, ordinal)
+				if err != nil {
+					return err
+				}
 				setUpgradePartition(newSet, ordinal)
 				return nil
 			}
@@ -193,6 +194,7 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
