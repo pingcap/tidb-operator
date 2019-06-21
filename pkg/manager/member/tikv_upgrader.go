@@ -182,6 +182,12 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 	if err != nil {
 		return err
 	}
+
+	err = tku.pdControl.GetPDClient(tc).EndEvictLeader(storeID)
+	if err != nil {
+		return err
+	}
+
 	_, evicting := upgradedPod.Annotations[EvictLeaderBeginTime]
 	if evicting {
 		delete(upgradedPod.Annotations, EvictLeaderBeginTime)
@@ -189,10 +195,6 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 		if err != nil {
 			return err
 		}
-	}
-	err = tku.pdControl.GetPDClient(tc).EndEvictLeader(storeID)
-	if err != nil {
-		return err
 	}
 
 	return nil
