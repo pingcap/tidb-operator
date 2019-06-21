@@ -15,6 +15,7 @@ package ops
 
 import (
 	"fmt"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -117,6 +118,39 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 
 	if retryCount == retryLimit {
 		return errors.New("failed to truncate sst file after " + strconv.Itoa(retryLimit) + " trials")
+	}
+
+	return nil
+}
+
+func (ops *TiKVOps) RecoverSSTFile(ns, podName string) error {
+	annotateCmd := fmt.Sprintf("kubectl annotate pod %s -n %s runmode=debug --overwrite", podName, ns)
+	glog.Info(annotateCmd)
+	res, err := exec.Command("/bin/sh", "-c", annotateCmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to annotation pod: %s/%s, %v, %s", ns, podName, err, string(res))
+	}
+
+	findCmd := fmt.Sprintf("kubectl exec -n %s %s -- find /var/lib/tikv/db -name '*.sst.save'", ns, podName)
+	glog.Info(findCmd)
+	findData, err := exec.Command("/bin/sh", "-c", findCmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to find .save files: %s/%s, %v, %s", ns, podName, err, string(findData))
+	}
+
+	for _, saveFile := range strings.Split(string(findData), "\n") {
+		saveFile = strings.TrimSpace(saveFile)
+		if saveFile == "" {
+			continue
+		}
+		sstFile := strings.TrimSuffix(saveFile, ".save")
+		mvCmd := fmt.Sprintf("kubectl exec -n %s %s -- mv %s %s", ns, podName, saveFile, sstFile)
+		glog.Info(mvCmd)
+		res, err := exec.Command("/bin/sh", "-c", mvCmd).CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("failed to recovery .sst files: %s/%s, %s, %s, %v, %s",
+				ns, podName, sstFile, saveFile, err, string(res))
+		}
 	}
 
 	return nil
