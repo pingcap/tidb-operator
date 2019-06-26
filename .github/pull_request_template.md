@@ -4,7 +4,7 @@ Thank you for contributing to TiDB Operator! Please read TiDB Operator's [CONTRI
 
 ### What problem does this PR solve? <!--add and issue link with summary if exists-->
 
-### What is changed and how it works?
+### What is changed and how does it work?
 
 ### Check List <!--REMOVE the items that are not applicable-->
 
