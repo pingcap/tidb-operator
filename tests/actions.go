@@ -14,6 +14,7 @@
 package tests
 
 import (
+	"context"
 	"crypto/tls"
 	"database/sql"
 	"encoding/json"
@@ -127,6 +128,8 @@ type OperatorActions interface {
 	ScaleTidbClusterOrDie(info *TidbClusterConfig)
 	CheckScaleInSafely(info *TidbClusterConfig) error
 	CheckScaledCorrectly(info *TidbClusterConfig, podUIDsBeforeScale map[string]types.UID) error
+	CheckUpgradeOrDie(ctx context.Context, info *TidbClusterConfig)
+	CheckUpgrade(ctx context.Context, info *TidbClusterConfig) error
 	UpgradeTidbCluster(info *TidbClusterConfig) error
 	UpgradeTidbClusterOrDie(info *TidbClusterConfig)
 	DeployAdHocBackup(info *TidbClusterConfig) error
@@ -900,6 +903,70 @@ func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) UpgradeTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.UpgradeTidbCluster(info); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterConfig) error {
+	ns := info.Namespace
+	tcName := info.ClusterName
+
+	findStoreFn := func(tc *v1alpha1.TidbCluster, podName string) string {
+		for storeID, store := range tc.Status.TiKV.Stores {
+			if store.PodName == podName {
+				return storeID
+			}
+		}
+
+		return ""
+	}
+
+	for {
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		if err != nil {
+			glog.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+			continue
+		}
+		pdClient := controller.NewDefaultPDControl().GetPDClient(tc)
+
+		replicas := tc.Spec.TiKV.Replicas
+		for i := replicas - 1; i > 0; i-- {
+			if err := wait.PollImmediate(10*time.Millisecond, 5*time.Minute, func() (done bool, err error) {
+				schedulers, err := pdClient.GetEvictLeaderSchedulers()
+				if err != nil {
+					glog.Errorf("failed to get evict leader schedulers, %v", err)
+					return false, nil
+				}
+				if len(schedulers) > 1 {
+					return true, fmt.Errorf("there are too many evict leader schedulers: %v", schedulers)
+				}
+				if len(schedulers) == 0 {
+					return false, nil
+				}
+				podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
+				glog.Info(schedulers)
+				glog.Info(podName)
+				glog.Info(tc.Status.TiKV.Stores)
+				scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
+				glog.Info(scheduler)
+				glog.Info(replicas)
+				if schedulers[0] == scheduler {
+					return true, nil
+				}
+				return true, fmt.Errorf("the scheduler: %s != %s", schedulers[0], scheduler)
+			}); err != nil {
+				glog.Errorf("failed to check upgrade %s/%s, %v", ns, tcName, err)
+				return err
+			}
+		}
+		break
+	}
+
+	return nil
+}
+
+func (oa *operatorActions) CheckUpgradeOrDie(ctx context.Context, info *TidbClusterConfig) {
+	if err := oa.CheckUpgrade(ctx, info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }

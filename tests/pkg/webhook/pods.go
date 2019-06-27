@@ -151,49 +151,49 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		}
 		glog.Infof("savely delete pod namespace %s name %s leader name %s", namespace, name, leader.Name)
 
-	} else if pod.Labels[label.ComponentLabelKey] == "tikv" {
+		//} else if pod.Labels[label.ComponentLabelKey] == "tikv" {
 
-		var storeID uint64
-		storeID = 0
-		for _, store := range tc.Status.TiKV.Stores {
-			if store.PodName == name {
-				storeID, err = strconv.ParseUint(store.ID, 10, 64)
-				if err != nil {
-					glog.Errorf("fail to convert string to int while deleting PD err %v", err)
-					return &reviewResponse
-				}
-				break
-			}
-		}
+		//	var storeID uint64
+		//	storeID = 0
+		//	for _, store := range tc.Status.TiKV.Stores {
+		//		if store.PodName == name {
+		//			storeID, err = strconv.ParseUint(store.ID, 10, 64)
+		//			if err != nil {
+		//				glog.Errorf("fail to convert string to int while deleting PD err %v", err)
+		//				return &reviewResponse
+		//			}
+		//			break
+		//		}
+		//	}
 
-		// Fail to get store in stores
-		if storeID == 0 {
-			glog.Errorf("fail to find store in TIKV.Stores podname %s", name)
-			return &reviewResponse
-		}
+		//	// Fail to get store in stores
+		//	if storeID == 0 {
+		//		glog.Errorf("fail to find store in TIKV.Stores podname %s", name)
+		//		return &reviewResponse
+		//	}
 
-		storeInfo, err := pdClient.GetStore(storeID)
-		if err != nil {
-			glog.Errorf("fail to read storeID %d response %v", storeID, err)
-			return &reviewResponse
-		}
+		//	storeInfo, err := pdClient.GetStore(storeID)
+		//	if err != nil {
+		//		glog.Errorf("fail to read storeID %d response %v", storeID, err)
+		//		return &reviewResponse
+		//	}
 
-		beforeCount := kvLeaderMap[namespace][name]
-		afterCount := storeInfo.Status.LeaderCount
+		//	beforeCount := kvLeaderMap[namespace][name]
+		//	afterCount := storeInfo.Status.LeaderCount
 
-		if beforeCount != 0 && !(afterCount < beforeCount) && tc.Status.TiKV.StatefulSet.Replicas > 1 {
-			time.Sleep(10 * time.Second)
-			err := fmt.Errorf("failed to evict leader from %s/%s, before: %d, now: %d",
-				namespace, name, beforeCount, afterCount)
-			glog.Error(err)
-			sendErr := slack.SendErrMsg(err.Error())
-			if sendErr != nil {
-				glog.Error(sendErr)
-			}
-			// TODO use context instead
-			os.Exit(3)
-		}
-		glog.Infof("savely delete pod namespace %s name %s before count %d after count %d", namespace, name, beforeCount, afterCount)
+		//	if beforeCount != 0 && !(afterCount < beforeCount) && tc.Status.TiKV.StatefulSet.Replicas > 1 {
+		//		time.Sleep(10 * time.Second)
+		//		err := fmt.Errorf("failed to evict leader from %s/%s, before: %d, now: %d",
+		//			namespace, name, beforeCount, afterCount)
+		//		glog.Error(err)
+		//		sendErr := slack.SendErrMsg(err.Error())
+		//		if sendErr != nil {
+		//			glog.Error(sendErr)
+		//		}
+		//		// TODO use context instead
+		//		os.Exit(3)
+		//	}
+		//	glog.Infof("savely delete pod namespace %s name %s before count %d after count %d", namespace, name, beforeCount, afterCount)
 	}
 	reviewResponse.Allowed = true
 	return &reviewResponse

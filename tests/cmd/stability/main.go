@@ -14,6 +14,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -32,7 +33,7 @@ import (
 )
 
 var cfg *tests.Config
-var context *apimachinery.CertContext
+var certCtx *apimachinery.CertContext
 var upgradeVersions []string
 
 func main() {
@@ -46,11 +47,11 @@ func main() {
 	ns := os.Getenv("NAMESPACE")
 
 	var err error
-	context, err = apimachinery.SetupServerCert(ns, tests.WebhookServiceName)
+	certCtx, err = apimachinery.SetupServerCert(ns, tests.WebhookServiceName)
 	if err != nil {
 		panic(err)
 	}
-	go tests.StartValidatingAdmissionWebhookServerOrDie(context)
+	go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx)
 
 	c := cron.New()
 	if err := c.AddFunc("0 0 10 * * *", func() {
@@ -137,38 +138,43 @@ func run() {
 			go oa.BeginInsertDataToOrDie(cluster)
 		}
 
-		// scale out
-		for _, cluster := range clusters {
-			cluster.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
-			oa.ScaleTidbClusterOrDie(cluster)
-		}
-		for _, cluster := range clusters {
-			oa.CheckTidbClusterStatusOrDie(cluster)
-			oa.CheckDisasterToleranceOrDie(cluster)
-		}
+		if false {
+			// scale out
+			for _, cluster := range clusters {
+				cluster.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
+				oa.ScaleTidbClusterOrDie(cluster)
+			}
+			for _, cluster := range clusters {
+				oa.CheckTidbClusterStatusOrDie(cluster)
+				oa.CheckDisasterToleranceOrDie(cluster)
+			}
 
-		// scale in
-		for _, cluster := range clusters {
-			cluster.ScaleTiDB(2).ScaleTiKV(3).ScalePD(3)
-			oa.ScaleTidbClusterOrDie(cluster)
-		}
-		for _, cluster := range clusters {
-			oa.CheckTidbClusterStatusOrDie(cluster)
-			oa.CheckDisasterToleranceOrDie(cluster)
+			// scale in
+			for _, cluster := range clusters {
+				cluster.ScaleTiDB(2).ScaleTiKV(3).ScalePD(3)
+				oa.ScaleTidbClusterOrDie(cluster)
+			}
+			for _, cluster := range clusters {
+				oa.CheckTidbClusterStatusOrDie(cluster)
+				oa.CheckDisasterToleranceOrDie(cluster)
+			}
 		}
 
 		// upgrade
-		oa.RegisterWebHookAndServiceOrDie(context, ocfg)
+		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
+		ctx, cancel := context.WithCancel(context.Background())
 		for idx, cluster := range clusters {
 			assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(cluster)
 			cluster.UpgradeAll(upgradeVersion)
 			oa.UpgradeTidbClusterOrDie(cluster)
+			oa.CheckUpgradeOrDie(ctx, cluster)
 			if idx == 0 {
 				oa.CheckManualPauseTiDBOrDie(cluster)
 			}
 			oa.CheckTidbClusterStatusOrDie(cluster)
 			oa.CheckTidbMemberAssignedNodesOrDie(cluster, assignedNodes)
 		}
+		cancel()
 
 		// configuration change
 		for _, cluster := range clusters {
