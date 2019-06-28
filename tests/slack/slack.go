@@ -11,8 +11,9 @@ import (
 )
 
 var (
-	Channel    string
-	WebhookURL string
+	Channel      string
+	WebhookURL   string
+	SuccessCount int
 )
 
 type Field struct {
@@ -146,7 +147,7 @@ func SendWarnMsg(msg string) error {
 }
 
 func NotifyAndPanic(err error) {
-	sendErr := SendErrMsg(err.Error())
+	sendErr := SendErrMsg(fmt.Sprintf("Succeed %d times, then failed: %s", SuccessCount, err.Error()))
 	if sendErr != nil {
 		glog.Warningf("failed to notify slack[%s] the massage: %v,error: %v", WebhookURL, err, sendErr)
 	}
