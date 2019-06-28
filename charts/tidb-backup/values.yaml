@@ -5,13 +5,17 @@
 # clusterName is the TiDB cluster name that should backup from or restore to.
 clusterName: demo
 
-mode: backup # backup | restore
+mode: backup # backup | restore | scheduled-restore
 # name is the backup name
 name: fullbackup-{{ date "200601021504" .Release.Time }}
 image:
   pullPolicy: IfNotPresent
   # https://github.com/pingcap/tidb-cloud-backup
   backup: pingcap/tidb-cloud-backup:20190610
+
+# Add additional labels for backup/restore job's pod
+# ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+extraLabels: {}
 
 # secretName is the name of the secret which stores user and password used for backup/restore
 # Note: you must give the user enough privilege to do the backup and restore

@@ -77,7 +77,7 @@ then
 elif [[ ! -d /var/lib/pd/member/wal ]]
 then
     until result=$(wget -qO- -T 3 http://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
-        echo "waiting for discovery service returns start args ..."
+        echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done
     ARGS="${ARGS}${result}"

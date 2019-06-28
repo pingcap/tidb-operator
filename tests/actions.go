@@ -112,6 +112,7 @@ type OperatorActions interface {
 	CleanOperator(info *OperatorConfig) error
 	CleanOperatorOrDie(info *OperatorConfig)
 	UpgradeOperator(info *OperatorConfig) error
+	UpgradeOperatorOrDie(info *OperatorConfig)
 	DumpAllLogs(info *OperatorConfig, clusterInfos []*TidbClusterConfig) error
 	DeployTidbCluster(info *TidbClusterConfig) error
 	DeployTidbClusterOrDie(info *TidbClusterConfig)
@@ -162,6 +163,7 @@ type OperatorActions interface {
 	RegisterWebHookAndService(context *apimachinery.CertContext, info *OperatorConfig) error
 	RegisterWebHookAndServiceOrDie(context *apimachinery.CertContext, info *OperatorConfig)
 	CleanWebHookAndService(info *OperatorConfig) error
+	CleanWebHookAndServiceOrDie(info *OperatorConfig)
 	EventWorker()
 	EmitEvent(info *TidbClusterConfig, msg string)
 	BackupRestore(from, to *TidbClusterConfig) error
@@ -450,14 +452,14 @@ func (oa *operatorActions) CleanOperatorOrDie(info *OperatorConfig) {
 }
 
 func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
+	glog.Infof("upgrading tidb-operator %s", info.ReleaseName)
 	if err := oa.checkoutTag(info.Tag); err != nil {
 		return err
 	}
 
-	cmd := fmt.Sprintf(`helm upgrade %s %s
-		--set operatorImage=%s`,
+	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
 		info.ReleaseName, oa.operatorChartPath(info.Tag),
-		info.Image)
+		info.OperatorHelmSetString(nil))
 
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -466,7 +468,20 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 	return nil
 }
 
+func (oa *operatorActions) UpgradeOperatorOrDie(info *OperatorConfig) {
+	if err := oa.UpgradeOperator(info); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
 func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
+	ns := info.Namespace
+	tcName := info.ClusterName
+	if _, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err == nil {
+		// already deployed
+		return nil
+	}
+
 	glog.Infof("deploying tidb cluster [%s/%s]", info.Namespace, info.ClusterName)
 	oa.EmitEvent(info, "DeployTidbCluster")
 
@@ -758,6 +773,9 @@ func (oa *operatorActions) BeginInsertDataToOrDie(info *TidbClusterConfig) {
 }
 
 func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
+	if info.blockWriter == nil {
+		return
+	}
 	oa.EmitEvent(info, "StopInsertData")
 
 	info.blockWriter.Stop()
@@ -2286,6 +2304,13 @@ func (oa *operatorActions) CleanWebHookAndService(info *OperatorConfig) error {
 		return fmt.Errorf("failed to delete webhook config %v", err)
 	}
 	return nil
+}
+
+func (oa *operatorActions) CleanWebHookAndServiceOrDie(info *OperatorConfig) {
+	err := oa.CleanWebHookAndService(info)
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
 }
 
 type pumpStatus struct {
