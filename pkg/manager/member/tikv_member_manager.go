@@ -571,11 +571,14 @@ func (tkmm *tikvMemberManager) getNodeLabels(nodeName string, storeLabels []stri
 			labels[storeLabel] = value
 			continue
 		}
+
+		// TODO after pd supports storeLabel containing slash character, these codes should be deleted
 		if storeLabel == "host" {
 			if host, found := ls[apis.LabelHostname]; found {
 				labels[storeLabel] = host
 			}
 		}
+
 	}
 	return labels, nil
 }
