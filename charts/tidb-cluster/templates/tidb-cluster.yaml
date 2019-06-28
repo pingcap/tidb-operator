@@ -76,7 +76,7 @@ spec:
       - zone
       - rack
       - host
-  {{- end}}
+  {{- end }}
   tidb:
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}
