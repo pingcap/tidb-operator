@@ -47,7 +47,6 @@ discovery:
 # if the ConfigMap was not changed.
 enableConfigMapRollout: false
 
-
 pd:
   replicas: 3
   image: pingcap/pd:v3.0.0-rc.1
