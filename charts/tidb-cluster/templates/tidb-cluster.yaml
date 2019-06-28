@@ -67,7 +67,7 @@ spec:
     annotations:
 {{ toYaml .Values.tikv.annotations | indent 6 }}
   {{- end }}
-  {{- if .Values.tikv.storeLabels}}
+  {{- if .Values.tikv.storeLabels }}
     storeLabels:
 {{ toYaml .Values.tikv.storeLabels | indent 4 }}
   {{- else }}
