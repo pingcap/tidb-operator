@@ -18,15 +18,6 @@ resource "aws_autoscaling_group" "workers" {
     local.workers_group_defaults["asg_min_size"],
   )
   force_delete = false
-  # target_group_arns = compact(
-  #   split(
-  #     ",",
-  #     coalesce(
-  #       lookup(local.tidb_cluster_worker_groups[count.index], "target_group_arns", ""),
-  #       local.workers_group_defaults["target_group_arns"],
-  #     ),
-  #   ),
-  # )
   launch_configuration = element(aws_launch_configuration.workers.*.id, count.index)
   vpc_zone_identifier = split(
     ",",
@@ -36,8 +27,6 @@ resource "aws_autoscaling_group" "workers" {
     ),
   )
   protect_from_scale_in = false
-  # suspended_processes = "" # A comma delimited string of processes to to suspend. i.e. AZRebalance,HealthCheck,ReplaceUnhealthy
-  # enabled_metrics = ""  # A comma delimited list of metrics to be collected i.e. GroupMinSize,GroupMaxSize,GroupDesiredCapacity
   count = local.worker_group_count
   placement_group = "" # The name of the placement group into which to launch the instances, if any.
 

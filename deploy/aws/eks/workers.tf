@@ -22,15 +22,6 @@ resource "aws_autoscaling_group" "workers" {
     "asg_force_delete",
     local.workers_group_defaults["asg_force_delete"],
   )
-  # target_group_arns = compact(
-  #   split(
-  #     ",",
-  #     coalesce(
-  #       lookup(local.control_worker_groups[count.index], "target_group_arns", ""),
-  #       local.workers_group_defaults["target_group_arns"],
-  #     ),
-  #   ),
-  # )
   launch_configuration = element(aws_launch_configuration.workers.*.id, count.index)
   vpc_zone_identifier = split(
     ",",
@@ -44,24 +35,6 @@ resource "aws_autoscaling_group" "workers" {
     "protect_from_scale_in",
     local.workers_group_defaults["protect_from_scale_in"],
   )
-  # suspended_processes = compact(
-  #   split(
-  #     ",",
-  #     coalesce(
-  #       lookup(local.control_worker_groups[count.index], "suspended_processes", ""),
-  #       local.workers_group_defaults["suspended_processes"],
-  #     ),
-  #   ),
-  # )
-  # enabled_metrics = compact(
-  #   split(
-  #     ",",
-  #     coalesce(
-  #       lookup(local.control_worker_groups[count.index], "enabled_metrics", ""),
-  #       local.workers_group_defaults["enabled_metrics"],
-  #     ),
-  #   ),
-  # )
   count = var.worker_group_count
   placement_group = lookup(
     local.control_worker_groups[count.index],
