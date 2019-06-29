@@ -74,10 +74,12 @@ data "template_file" "launch_template_userdata" {
 
 data "external" "tidb_elb" {
   depends_on = [null_resource.deploy-cluster]
-  program    = ["bash", "-c", "kubectl --kubeconfig ${path.module}/kubeconfig_${var.cluster_name}.yaml get svc -n ${var.cluster_name} ${var.cluster_name}-tidb -o json | jq '.status.loadBalancer.ingress[0]'"]
+  working_dir = path.cwd
+  program    = ["bash", "-c", "kubectl --kubeconfig ${var.eks_info.kubeconfig_file} get svc -n ${var.cluster_name} ${var.cluster_name}-tidb -o json | jq '.status.loadBalancer.ingress[0]'"]
 }
 
 data "external" "monitor_elb" {
   depends_on = [null_resource.deploy-cluster]
-  program    = ["bash", "-c", "kubectl --kubeconfig ${path.module}/kubeconfig_${var.cluster_name}.yaml get svc -n ${var.cluster_name} ${var.cluster_name}-grafana -o json | jq '.status.loadBalancer.ingress[0]'"]
+  working_dir = path.cwd
+  program    = ["bash", "-c", "kubectl --kubeconfig ${var.eks_info.kubeconfig_file} get svc -n ${var.cluster_name} ${var.cluster_name}-grafana -o json | jq '.status.loadBalancer.ingress[0]'"]
 }

@@ -4,7 +4,7 @@ resource "local_file" "config_map_aws_auth" {
   count    = var.write_aws_auth_config ? 1 : 0
 }
 
-resource "null_resource" "update_config_map_aws_auth" {
+resource "null_resource" "update_aws_auth_and_install_operator" {
   depends_on = [aws_eks_cluster.this]
 
   provisioner "local-exec" {
@@ -12,8 +12,8 @@ resource "null_resource" "update_config_map_aws_auth" {
 
     command = <<EOT
 for i in `seq 1 10`; do
-    echo "${null_resource.update_config_map_aws_auth[0].triggers.kube_config_map_rendered}" > kube_config.yaml
-    echo "${null_resource.update_config_map_aws_auth[0].triggers.config_map_rendered}" > aws_auth_configmap.yaml
+    echo "${null_resource.update_aws_auth_and_install_operator[0].triggers.kube_config_map_rendered}" > kube_config.yaml
+    echo "${null_resource.update_aws_auth_and_install_operator[0].triggers.config_map_rendered}" > aws_auth_configmap.yaml
     kubectl apply -f aws_auth_configmap.yaml --kubeconfig kube_config.yaml && break || sleep 10
 done
 kubectl apply -f manifests/crd.yaml
@@ -37,7 +37,6 @@ EOT
   }
 
   triggers = {
-    # timestamp = timestamp()
     kube_config_map_rendered = data.template_file.kubeconfig.rendered
     config_map_rendered = data.template_file.config_map_aws_auth.rendered
     endpoint = aws_eks_cluster.this.endpoint

@@ -60,11 +60,12 @@ locals {
       name                 = "${var.cluster_name}-tikv"
       key_name             = var.ssh_key_name
       instance_type        = var.tikv_instance_type
-      root_volume_size     = "100"
+      root_volume_size     = "50"
       public_ip            = false
       kubelet_extra_args   = "--register-with-taints=dedicated=${var.cluster_name}-tikv:NoSchedule --node-labels=dedicated=${var.cluster_name}-tikv"
       asg_desired_capacity = var.tikv_count
       asg_max_size         = var.tikv_count + 2
+      pre_userdata         = file("${path.module}/pre_userdata")
       # additional_userdata  = file("userdata.sh")
     },
     {
@@ -72,7 +73,7 @@ locals {
       key_name             = var.ssh_key_name
       instance_type        = var.tidb_instance_type
       root_volume_type     = "gp2"
-      root_volume_size     = "100"
+      root_volume_size     = "50"
       public_ip            = false
       kubelet_extra_args   = "--register-with-taints=dedicated=${var.cluster_name}-tidb:NoSchedule --node-labels=dedicated=${var.cluster_name}-tidb"
       asg_desired_capacity = var.tidb_count
@@ -83,7 +84,7 @@ locals {
       key_name             = var.ssh_key_name
       instance_type        = var.monitor_instance_type
       root_volume_type     = "gp2"
-      root_volume_size     = "100"
+      root_volume_size     = "50"
       public_ip            = false
       asg_desired_capacity = 1
       asg_max_size         = 3

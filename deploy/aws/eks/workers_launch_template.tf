@@ -26,19 +26,6 @@ resource "aws_autoscaling_group" "workers_launch_template" {
     "asg_force_delete",
     local.workers_group_launch_template_defaults["asg_force_delete"],
   )
-  # target_group_arns = compact(
-  #   split(
-  #     ",",
-  #     coalesce(
-  #       lookup(
-  #         var.worker_groups_launch_template[count.index],
-  #         "target_group_arns",
-  #         "",
-  #       ),
-  #       local.workers_group_launch_template_defaults["target_group_arns"],
-  #     ),
-  #   ),
-  # )
 
   mixed_instances_policy {
     instances_distribution {
@@ -148,27 +135,27 @@ resource "aws_autoscaling_group" "workers_launch_template" {
   tags = concat(
     [
       {
-        "key" = "Name"
-        "value" = "${aws_eks_cluster.this.name}-${lookup(
+        key = "Name"
+        value = "${aws_eks_cluster.this.name}-${lookup(
           var.worker_groups_launch_template[count.index],
           "name",
           count.index,
         )}-eks_asg"
-        "propagate_at_launch" = true
+        propagate_at_launch = true
       },
       {
-        "key"                 = "kubernetes.io/cluster/${aws_eks_cluster.this.name}"
-        "value"               = "owned"
-        "propagate_at_launch" = true
+        key = "kubernetes.io/cluster/${aws_eks_cluster.this.name}"
+        value = "owned"
+        propagate_at_launch = true
       },
       {
-        "key" = "k8s.io/cluster-autoscaler/${lookup(
+        key = "k8s.io/cluster-autoscaler/${lookup(
           var.worker_groups_launch_template[count.index],
           "autoscaling_enabled",
           local.workers_group_launch_template_defaults["autoscaling_enabled"],
         ) == 1 ? "enabled" : "disabled"}"
-        "value"               = "true"
-        "propagate_at_launch" = false
+        value = "true"
+        propagate_at_launch = false
       },
       # {
       #   "key"                 = "k8s.io/cluster-autoscaler/${aws_eks_cluster.this.name}"
@@ -176,13 +163,13 @@ resource "aws_autoscaling_group" "workers_launch_template" {
       #   "propagate_at_launch" = false
       # },
       {
-        "key" = "k8s.io/cluster-autoscaler/node-template/resources/ephemeral-storage"
-        "value" = "${lookup(
+        key = "k8s.io/cluster-autoscaler/node-template/resources/ephemeral-storage"
+        value = "${lookup(
           var.worker_groups_launch_template[count.index],
           "root_volume_size",
           local.workers_group_launch_template_defaults["root_volume_size"],
         )}Gi"
-        "propagate_at_launch" = false
+        propagate_at_launch = false
       },
     ],
     local.asg_tags,

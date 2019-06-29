@@ -148,27 +148,27 @@ resource "aws_autoscaling_group" "workers_launch_template" {
   tags = concat(
     [
       {
-        "key" = "Name"
-        "value" = "${var.eks_info.name}-${lookup(
+        key = "Name"
+        value = "${var.eks_info.name}-${lookup(
           var.worker_groups_launch_template[count.index],
           "name",
           count.index,
         )}-eks_asg"
-        "propagate_at_launch" = true
+        propagate_at_launch = true
       },
       {
-        "key"                 = "kubernetes.io/cluster/${var.eks_info.name}"
-        "value"               = "owned"
-        "propagate_at_launch" = true
+        key = "kubernetes.io/cluster/${var.eks_info.name}"
+        value = "owned"
+        propagate_at_launch = true
       },
       {
-        "key" = "k8s.io/cluster-autoscaler/${lookup(
+        key = "k8s.io/cluster-autoscaler/${lookup(
           var.worker_groups_launch_template[count.index],
           "autoscaling_enabled",
           local.workers_group_launch_template_defaults["autoscaling_enabled"],
         ) == 1 ? "enabled" : "disabled"}"
-        "value"               = "true"
-        "propagate_at_launch" = false
+        value = "true"
+        propagate_at_launch = false
       },
       # {
       #   "key"                 = "k8s.io/cluster-autoscaler/${var.eks_info.name}"
@@ -176,13 +176,13 @@ resource "aws_autoscaling_group" "workers_launch_template" {
       #   "propagate_at_launch" = false
       # },
       {
-        "key" = "k8s.io/cluster-autoscaler/node-template/resources/ephemeral-storage"
-        "value" = "${lookup(
+        key = "k8s.io/cluster-autoscaler/node-template/resources/ephemeral-storage"
+        value = "${lookup(
           var.worker_groups_launch_template[count.index],
           "root_volume_size",
           local.workers_group_launch_template_defaults["root_volume_size"],
         )}Gi"
-        "propagate_at_launch" = false
+        propagate_at_launch = false
       },
     ],
     local.asg_tags,

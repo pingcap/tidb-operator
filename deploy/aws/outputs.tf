@@ -13,37 +13,22 @@ output "eks_endpoint" {
   value       = module.eks.cluster_endpoint
 }
 
-output "demo-cluster_tidb-dns" {
+output "kubeconfig_filename" {
+  description = "The filename of the generated kubectl config."
+  value       = module.eks.kubeconfig_filename
+}
+
+output "default-cluster_tidb-dns" {
   description = "tidb service endpoints"
-  value       = module.demo-cluster.tidb_dns
+  value       = module.default-cluster.tidb_dns
 }
 
-output "demo-cluster_monitor-dns" {
+output "default-cluster_monitor-dns" {
   description = "tidb service endpoint"
-  value       = module.demo-cluster.monitor_dns
+  value       = module.default-cluster.monitor_dns
 }
 
-output "test-cluster_tidb-dns" {
-  description = "tidb service endpoints"
-  value       = module.test-cluster.tidb_dns
+output "bastion_ip" {
+  description = "Bastion IP address"
+  value       = module.ec2.public_ip
 }
-
-output "test-cluster_monitor-dns" {
-  description = "tidb service endpoint"
-  value       = module.test-cluster.monitor_dns
-}
-
-output "prod-cluster_tidb-dns" {
-  description = "tidb service endpoints"
-  value       = module.prod-cluster.tidb_dns
-}
-
-output "prod-cluster_monitor-dns" {
-  description = "tidb service endpoint"
-  value       = module.prod-cluster.monitor_dns
-}
-
-# output "bastion_ip" {
-#   description = "Bastion IP address"
-#   value       = module.ec2.public_ip
-# }

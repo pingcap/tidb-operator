@@ -1,69 +1,39 @@
-module "demo-cluster" {
-  source                                 = "./tidb-cluster"
-  eks_info = module.eks.eks_info
-  subnets = split(
-    ",",
-    var.create_vpc ? join(",", module.vpc.private_subnets) : join(",", var.subnets),
-  )
+# TiDB cluster declaration example
+#module "example-cluster" {
+#  source   = "./tidb-cluster"
+#  eks_info = local.default_eks
+#  subnets = local.default_subnets
+#
+#  # NOTE: cluster_name cannot be changed after creation
+#  cluster_name                  = "demo-cluster"
+#  cluster_version               = "v3.0.0"
+#  ssh_key_name                  = module.key-pair.key_name
+#  pd_count                      = 1
+#  pd_instance_type              = "t2.xlarge"
+#  tikv_count                    = 1
+#  tikv_instance_type            = "t2.xlarge"
+#  tidb_count                    = 1
+#  tidb_instance_type            = "t2.xlarge"
+#  monitor_instance_type         = "t2.xlarge"
+#  # yaml file that passed to helm to customize the release
+#  override_values               = "values/default.yaml"
+#}
 
-  cluster_name                  = "demo-cluster"
-  cluster_version               = "v3.0.0-rc.2"
-  ssh_key_name                  = module.key-pair.key_name
-  pd_count                      = 1
-  pd_instance_type              = "t2.xlarge"
-  tikv_count                    = 1
-  tikv_instance_type            = "t2.xlarge"
-  tidb_count                    = 1
-  tidb_instance_type            = "t2.xlarge"
-  monitor_instance_type         = "t2.xlarge"
-  monitor_storage_size          = "100Gi"
-  monitor_enable_anonymous_user = true
-  override_values               = "values/default.yaml"
-}
 
-module "test-cluster" {
-  source                                 = "./tidb-cluster"
-  eks_info = module.eks.eks_info
-  subnets = split(
-    ",",
-    var.create_vpc ? join(",", module.vpc.private_subnets) : join(",", var.subnets),
-  )
+module "default-cluster" {
+  source   = "./tidb-cluster"
+  eks_info = local.default_eks
+  subnets  = local.default_subnets
 
-  cluster_name                  = "test-cluster"
-  cluster_version               = "v3.0.0-rc.1"
-  ssh_key_name                  = module.key-pair.key_name
-  pd_count                      = 1
-  pd_instance_type              = "t2.xlarge"
-  tikv_count                    = 1
-  tikv_instance_type            = "t2.xlarge"
-  tidb_count                    = 1
-  tidb_instance_type            = "t2.xlarge"
-  monitor_instance_type         = "t2.xlarge"
-  monitor_storage_size          = "100Gi"
-  monitor_enable_anonymous_user = true
-  override_values               = "values/default.yaml"
-}
-
-module "prod-cluster" {
-  source                                 = "./tidb-cluster"
-  eks_info = module.eks.eks_info
-  subnets = ["subnet-0043bd7c0ce42020b"]
-  # subnets = split(
-  #   ",",
-  #   var.create_vpc ? join(",", module.vpc.private_subnets) : join(",", var.subnets),
-  # )
-
-  cluster_name                  = "prod-cluster"
-  cluster_version               = "v3.0.0-rc.1"
-  ssh_key_name                  = module.key-pair.key_name
-  pd_count                      = 1
-  pd_instance_type              = "t2.xlarge"
-  tikv_count                    = 3
-  tikv_instance_type            = "t2.xlarge"
-  tidb_count                    = 1
-  tidb_instance_type            = "t2.xlarge"
-  monitor_instance_type         = "t2.xlarge"
-  monitor_storage_size          = "100Gi"
-  monitor_enable_anonymous_user = true
-  override_values               = "values/default.yaml"
+  cluster_name          = var.default_cluster_name
+  cluster_version       = var.default_cluster_version
+  ssh_key_name          = module.key-pair.key_name
+  pd_count              = var.default_cluster_pd_count
+  pd_instance_type      = var.default_cluster_pd_instance_type
+  tikv_count            = var.default_cluster_tikv_count
+  tikv_instance_type    = var.default_cluster_tidb_instance_type
+  tidb_count            = var.default_cluster_tidb_count
+  tidb_instance_type    = var.default_cluster_tidb_instance_type
+  monitor_instance_type = var.default_cluster_monitor_instance_type
+  override_values       = "values/default.yaml"
 }

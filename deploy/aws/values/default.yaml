@@ -1,0 +1,24 @@
+# Basic customization for tidb-cluster chart that suits AWS environment
+# It is recommended to make a copy of this file and customize for each of your TiDB cluster
+timezone: UTC
+
+pd:
+  logLevel: info
+tikv:
+  logLevel: info
+  syncLog: true
+tidb:
+  logLevel: info
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-internal: '0.0.0.0/0'
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+
+monitor:
+  storage: 100Gi
+  grafana:
+    config:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    service:
+      type: LoadBalancer

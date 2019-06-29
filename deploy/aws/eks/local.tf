@@ -1,17 +1,9 @@
 locals {
   asg_tags = null_resource.tags_as_list_of_maps.*.triggers
 
-  # Followed recommendation http://67bricks.com/blog/?p=85
-  # to workaround terraform not supporting short circut evaluation
-  cluster_security_group_id = coalesce(
-    join("", aws_security_group.cluster.*.id),
-    var.cluster_security_group_id,
-  )
+  cluster_security_group_id = var.cluster_security_group_id == "" ? join("", aws_security_group.cluster.*.id) : var.cluster_security_group_id
 
-  worker_security_group_id = coalesce(
-    join("", aws_security_group.workers.*.id),
-    var.worker_security_group_id,
-  )
+  worker_security_group_id = var.worker_security_group_id == "" ? join("", aws_security_group.workers.*.id) : var.worker_security_group_id
 
   default_iam_role_id = element(concat(aws_iam_role.workers.*.id, [""]), 0)
   kubeconfig_name     = var.kubeconfig_name == "" ? "eks_${var.cluster_name}" : var.kubeconfig_name
@@ -112,15 +104,16 @@ locals {
   )
 
   eks_info = {
-    name = aws_eks_cluster.this.name
-    version = var.cluster_version
-    endpoint = aws_eks_cluster.this.endpoint
-    ca = aws_eks_cluster.this.certificate_authority[0].data
-    kubeconfig = data.template_file.kubeconfig.rendered
-    worker_iam_role = aws_iam_role.workers
-    worker_security_group_id = local.worker_security_group_id
+    name                        = aws_eks_cluster.this.name
+    version                     = var.cluster_version
+    endpoint                    = aws_eks_cluster.this.endpoint
+    ca                          = aws_eks_cluster.this.certificate_authority[0].data
+    kubeconfig                  = data.template_file.kubeconfig.rendered
+    kubeconfig_file             = "${var.config_output_path}kubeconfig_${var.cluster_name}"
+    worker_iam_role             = aws_iam_role.workers
+    worker_security_group_id    = local.worker_security_group_id
     worker_iam_instance_profile = aws_iam_instance_profile.workers
-    vpc_id = var.vpc_id
+    vpc_id                      = var.vpc_id
   }
 
   ebs_optimized = {

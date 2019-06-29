@@ -2,10 +2,6 @@ provider "aws" {
   region = var.region
 }
 
-locals {
-  kubeconfig = "${path.module}/credentials/kubeconfig-${var.eks_name}"
-}
-
 module "key-pair" {
   source = "./aws-key-pair"
   name   = var.eks_name
@@ -45,11 +41,8 @@ module "eks" {
   operator_version   = var.operator_version
   ssh_key_name       = module.key-pair.key_name
   config_output_path = "credentials/"
-  subnets = split(
-    ",",
-    var.create_vpc ? join(",", module.vpc.private_subnets) : join(",", var.subnets),
-  )
-  vpc_id = var.create_vpc ? module.vpc.vpc_id : var.vpc_id
+  subnets            = local.default_subnets
+  vpc_id             = var.create_vpc ? module.vpc.vpc_id : var.vpc_id
 
   tags = {
     app = "tidb"

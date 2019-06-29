@@ -1,7 +1,7 @@
 output "tidb_dns" {
-  value = data.external.tidb_elb.result["hostname"]
+  value = lookup(data.external.tidb_elb.result, "hostname", "empty")
 }
 
 output "monitor_dns" {
-  value = data.external.monitor_elb.result["hostname"]
+  value = lookup(data.external.monitor_elb.result, "hostname", "emtpy")
 }

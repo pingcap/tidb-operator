@@ -36,7 +36,7 @@ resource "aws_security_group" "cluster" {
   tags = merge(
     var.tags,
     {
-      "Name" = "${var.cluster_name}-eks_cluster_sg"
+      Name = "${var.cluster_name}-eks_cluster_sg"
     },
   )
   count = var.cluster_create_security_group ? 1 : 0
@@ -81,33 +81,3 @@ resource "aws_iam_role_policy_attachment" "cluster_AmazonEKSServicePolicy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
   role       = aws_iam_role.cluster.name
 }
-
-# resource "null_resource" "setup-env" {
-#   depends_on = [aws_eks_cluster.this]
-
-#   # Always execute
-#   # triggers = {
-#   #   deploy_timestamp = timestamp()
-#   # }
-
-#   provisioner "local-exec" {
-#     working_dir = path.module
-#     command     = <<EOT
-# kubectl apply -f manifests/crd.yaml
-# kubectl apply -f manifests/local-volume-provisioner.yaml
-# kubectl apply -f manifests/gp2-storageclass.yaml
-# kubectl apply -f manifests/tiller-rbac.yaml
-# helm init --service-account tiller --upgrade --wait
-# until helm ls; do
-#   echo "Wait tiller ready"
-# done
-# helm repo add pingcap http://charts.pingcap.org/
-# helm upgrade --install tidb-operator pingcap/tidb-operator --version=${var.operator_version} --namespace=tidb-admin --wait
-# helm version
-# EOT
-
-#     environment = {
-#       KUBECONFIG = local.kubeconfig
-#     }
-#   }
-# }

@@ -1,46 +1,10 @@
 variable "region" {
-  description = "aws region"
+  description = "AWS region"
   # supported regions:
   # US: us-east-1, us-east-2, us-west-2
   # Asia Pacific: ap-south-1, ap-northeast-2, ap-southeast-1, ap-southeast-2, ap-northeast-1
   # Europe: eu-central-1, eu-west-1, eu-west-2, eu-west-3, eu-north-1
   default = "us-west-2"
-}
-
-# Please note that this is only for manually created VPCs, deploying multiple EKS
-# clusters in one VPC is NOT supported now.
-variable "create_vpc" {
-  description = "Create a new VPC or not, if true the vpc_cidr/private_subnets/public_subnets must be set correctly, otherwise vpc_id/subnet_ids must be set correctly"
-  default     = true
-}
-
-variable "vpc_cidr" {
-  description = "vpc cidr"
-  default     = "10.0.0.0/16"
-}
-
-variable "private_subnets" {
-  description = "vpc private subnets"
-  type        = list(string)
-  default     = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-}
-
-variable "public_subnets" {
-  description = "vpc public subnets"
-  type        = list(string)
-  default     = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]
-}
-
-variable "vpc_id" {
-  description = "VPC id"
-  type        = string
-  default     = "vpc-c679deae"
-}
-
-variable "subnets" {
-  description = "subnet id list"
-  type        = list(string)
-  default     = ["subnet-899e79f3", "subnet-a72d80cf", "subnet-a76d34ea"]
 }
 
 variable "eks_name" {
@@ -54,6 +18,94 @@ variable "eks_version" {
 }
 
 variable "operator_version" {
-  description = "tidb operator version"
+  description = "TiDB operator version"
   default     = "v1.0.0-beta.3"
+}
+
+# Please note that this is only for manually created VPCs, deploying multiple EKS
+# clusters in one VPC is NOT supported now.
+variable "create_vpc" {
+  description = "Create a new VPC or not, if true the vpc_id/subnet_ids must be set correctly, otherwise the vpc_cidr/private_subnets/public_subnets must be set correctly"
+  default     = true
+}
+
+variable "vpc_cidr" {
+  description = "VPC cidr, must be set correctly if create_vpc is true"
+  default     = "10.0.0.0/16"
+}
+
+variable "private_subnets" {
+  description = "VPC private subnets, must be set correctly if create_vpc is true"
+  type        = list(string)
+  default     = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+}
+
+variable "public_subnets" {
+  description = "VPC public subnets, must be set correctly if create_vpc is true"
+  type        = list(string)
+  default     = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]
+}
+
+variable "vpc_id" {
+  description = "VPC id, must be set correctly if create_vpc is false"
+  type        = string
+  default     = ""
+}
+
+variable "subnets" {
+  description = "subnet id list, must be set correctly if create_vpc is false"
+  type        = list(string)
+  default     = []
+}
+
+variable "bastion_ingress_cidr" {
+  description = "IP cidr that allowed to access bastion ec2 instance"
+  default     = ["0.0.0.0/0"] # Note: Please restrict your ingress to only necessary IPs. Opening to 0.0.0.0/0 can lead to security vulnerabilities.
+}
+
+variable "create_bastion" {
+  description = "Create bastion ec2 instance to access TiDB cluster"
+  default     = true
+}
+
+variable "bastion_instance_type" {
+  description = "bastion ec2 instance type"
+  default     = "t2.micro"
+}
+
+# For aws tutorials compatiablity
+variable "default_cluster_version" {
+  default = "3.0.0"
+}
+
+variable "default_cluster_pd_count" {
+  default = 3
+}
+
+variable "default_cluster_tikv_count" {
+  default = 3
+}
+
+variable "default_cluster_tidb_count" {
+  default = 2
+}
+
+variable "default_cluster_pd_instance_type" {
+  default = "m5.xlarge"
+}
+
+variable "default_cluster_tikv_instance_type" {
+  default = "c5d.4xlarge"
+}
+
+variable "default_cluster_tidb_instance_type" {
+  default = "c5.4xlarge"
+}
+
+variable "default_cluster_monitor_instance_type" {
+  default = "c5.2xlarge"
+}
+
+variable "default_cluster_name" {
+  default = "my-cluster"
 }

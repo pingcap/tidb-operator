@@ -1,21 +1,25 @@
-resource "local_file" "kubeconfig" {
-    content     = var.eks_info.kubeconfig
-    filename = "${path.module}/kubeconfig_${var.cluster_name}.yaml"
-}
+#resource "local_file" "kubeconfig_for_cleanup" {
+#  content  = var.eks_info.kubeconfig
+#  filename = "${var.eks_info.kubeconfig_file}_for_${var.cluster_name}_cleanup"
+#}
 
 resource "null_resource" "deploy-cluster" {
-  depends_on = [local_file.kubeconfig]
 
   provisioner "local-exec" {
-    working_dir = path.module
+    # EKS writes kube_config to path.cwd/kubeconfig_file
+    # Helm values files are managed in path.cwd
+    working_dir = path.cwd
 
     command = <<EOT
+until helm ls; do
+  echo "Wait tiller ready"
+  sleep 5
+done
 helm upgrade --install ${var.cluster_name} pingcap/tidb-cluster \
---version=${var.operator_version} --namespace=${var.cluster_name} \
---set enableConfigMapRollout=true \
+--version=${var.tidb_cluster_chart_version} --namespace=${var.cluster_name} \
 --set pd.image=pingcap/pd:${var.cluster_version} \
 --set pd.replicas=${var.pd_count} \
---set pd.storageClassName=ebs-gp2 \
+--set pd.storageClassName=${var.pd_storage_class} \
 --set pd.nodeSelector.dedicated=${var.cluster_name}-pd \
 --set pd.tolerations[0].key=dedicated \
 --set pd.tolerations[0].value=${var.cluster_name}-pd \
@@ -23,7 +27,7 @@ helm upgrade --install ${var.cluster_name} pingcap/tidb-cluster \
 --set pd.tolerations[0].effect=NoSchedule \
 --set tikv.image=pingcap/tikv:${var.cluster_version} \
 --set tikv.replicas=${var.tikv_count} \
---set tikv.storageClassName=ebs-gp2 \
+--set tikv.storageClassName=${var.tikv_storage_class} \
 --set tikv.nodeSelector.dedicated=${var.cluster_name}-tikv \
 --set tikv.tolerations[0].key=dedicated \
 --set tikv.tolerations[0].value=${var.cluster_name}-tikv \
@@ -36,51 +40,72 @@ helm upgrade --install ${var.cluster_name} pingcap/tidb-cluster \
 --set tidb.tolerations[0].value=${var.cluster_name}-tidb \
 --set tidb.tolerations[0].operator=Equal \
 --set tidb.tolerations[0].effect=NoSchedule \
---set tidb.service.type=LoadBalancer \
---set tidb.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-internal"="0.0.0.0/0" \
---set tidb.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"=nlb \
---set monitor.grafana.service.type=LoadBalancer \
 --set monitor.persistent=true \
---set monitor.storageClassName=ebs-gp2 \
---set monitor.storage=${var.monitor_storage_size} \
---set monitor.grafana.config.GF_AUTH_ANONYMOUS_ENABLED=${var.monitor_enable_anonymous_user} \
+--set monitor.storageClassName=${var.monitor_storage_class} \
 -f ${var.override_values} \
 --wait
 EOT
 
     interpreter = var.local_exec_interpreter
     environment = {
-      KUBECONFIG = "kubeconfig_${var.cluster_name}.yaml"
+      KUBECONFIG = var.eks_info.kubeconfig_file
     }
   }
 
   triggers = {
-    # timestamp = timestamp()
+    values_file_content = file(var.override_values)
     cluster_name = var.cluster_name
-    operator_version = var.operator_version
     pd_count = var.pd_count
     tikv_count = var.tikv_count
     tidb_count = var.tidb_count
-    monitor_storage_size = var.monitor_storage_size
-    monitor_enable_anonymous_user = var.monitor_enable_anonymous_user
+    cluster_version = var.cluster_version
     kubeconfig = var.eks_info.kubeconfig
+    override_values = var.override_values
+    monitor_storage_class = var.monitor_storage_class
+    tikv_storage_class = var.tikv_storage_class
+    pd_stroage_class = var.pd_storage_class
   }
 }
 
-# resource "null_resource" "destroy-cluster" {
-#   depends_on = [local_file.kubeconfig]
+resource "null_resource" "wait-tidb-ready" {
+  depends_on = ["null_resource.deploy-cluster"]
 
-#   provisioner "local-exec" {
-#     when = "destroy"
-#     command = <<EOT
-# helm delete ${var.cluster_name} --purge
-# kubectl get pvc -n ${var.cluster_name} -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl patch pv {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
-# kubectl delete pvc -n ${var.cluster_name} --all
-# EOT
+  provisioner "local-exec" {
+    working_dir = path.cwd
+    command = <<EOS
+until kubectl get po -n tidb -lapp.kubernetes.io/component=tidb | grep Running; do
+  echo "Wait TiDB pod running"
+  sleep 5
+done
+EOS
+    environment = {
+      KUBECONFIG = var.eks_info.kubeconfig_file
+    }
+  }
+}
 
-#     interpreter = var.local_exec_interpreter
-#     environment = {
-#       KUBECONFIG = "kubeconfig_${var.cluster_name}.yaml"
-#     }
-#   }
-# }
+
+#resource "null_resource" "destroy-cluster" {
+#  depends_on = [aws_autoscaling_group.workers, null_resource.deploy-cluster]
+#
+#  provisioner "local-exec" {
+#    working_dir = path.cwd
+#    when = "destroy"
+#
+#    # We cannot specify the destruction order of kubeconfig file and this provsioner,
+#    # the workaround here is to re-generate the kubeconfig file locally
+#    command = <<EOT
+#echo "${var.eks_info.kubeconfig}" > kubeconfig_cleanup_${var.cluster_name}
+#kubectl delete -n ${var.cluster_name} svc ${var.cluster_name}-pd
+#kubectl delete -n ${var.cluster_name} svc ${var.cluster_name}-grafana
+#kubectl get pvc -n ${var.cluster_name} -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl patch pv {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+#kubectl delete pvc -n ${var.cluster_name} --all
+#rm kubeconfig_cleanup_${var.cluster_name}
+#EOT
+#
+#    interpreter = var.local_exec_interpreter
+#    environment = {
+#      KUBECONFIG = "kubeconfig_cleanup_${var.cluster_name}"
+#    }
+#  }
+#}

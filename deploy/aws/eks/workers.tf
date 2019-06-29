@@ -72,23 +72,23 @@ resource "aws_autoscaling_group" "workers" {
   tags = concat(
     [
       {
-        "key"                 = "Name"
-        "value"               = "${aws_eks_cluster.this.name}-${lookup(local.control_worker_groups[count.index], "name", count.index)}-eks_asg"
-        "propagate_at_launch" = true
+        key = "Name"
+        value = "${aws_eks_cluster.this.name}-${lookup(local.control_worker_groups[count.index], "name", count.index)}-eks_asg"
+        propagate_at_launch = true
       },
       {
-        "key"                 = "kubernetes.io/cluster/${aws_eks_cluster.this.name}"
-        "value"               = "owned"
-        "propagate_at_launch" = true
+        key = "kubernetes.io/cluster/${aws_eks_cluster.this.name}"
+        value = "owned"
+        propagate_at_launch = true
       },
       {
-        "key" = "k8s.io/cluster-autoscaler/${lookup(
+        key = "k8s.io/cluster-autoscaler/${lookup(
           local.control_worker_groups[count.index],
           "autoscaling_enabled",
           local.workers_group_defaults["autoscaling_enabled"],
         ) == 1 ? "enabled" : "disabled"}"
-        "value"               = "true"
-        "propagate_at_launch" = false
+        value = "true"
+        propagate_at_launch = false
       },
       # {
       #   "key"                 = "k8s.io/cluster-autoscaler/${aws_eks_cluster.this.name}"
@@ -96,13 +96,13 @@ resource "aws_autoscaling_group" "workers" {
       #   "propagate_at_launch" = false
       # },
       {
-        "key" = "k8s.io/cluster-autoscaler/node-template/resources/ephemeral-storage"
-        "value" = "${lookup(
+        key = "k8s.io/cluster-autoscaler/node-template/resources/ephemeral-storage"
+        value = "${lookup(
           local.control_worker_groups[count.index],
           "root_volume_size",
           local.workers_group_defaults["root_volume_size"],
         )}Gi"
-        "propagate_at_launch" = false
+        propagate_at_launch = false
       },
     ],
     local.asg_tags,
@@ -215,7 +215,7 @@ resource "aws_security_group" "workers" {
   tags = merge(
     var.tags,
     {
-      "Name"                                               = "${aws_eks_cluster.this.name}-eks_worker_sg"
+      Name = "${aws_eks_cluster.this.name}-eks_worker_sg"
       "kubernetes.io/cluster/${aws_eks_cluster.this.name}" = "owned"
     },
   )

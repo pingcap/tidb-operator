@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # set ulimits
 cat <<EOF > /etc/security/limits.d/99-tidb.conf
 root        soft        nofile        1000000

@@ -14,8 +14,8 @@ metadata:
 data:
   storageClassMap: |
     local-storage:
-      hostDir: /mnt/disks
-      mountDir: /mnt/disks
+      hostDir: /mnt/local-ssd
+      mountDir: /mnt/local-ssd
 
 ---
 apiVersion: extensions/v1beta1
@@ -36,12 +36,7 @@ spec:
     spec:
       tolerations:
         - key: dedicated
-          operator: Equal
-          value: pd
-          effect: "NoSchedule"
-        - key: dedicated
-          operator: Equal
-          value: tikv
+          operator: Exists
           effect: "NoSchedule"
       serviceAccountName: local-storage-admin
       containers:
@@ -74,7 +69,7 @@ spec:
             # mounting /dev in DinD environment would fail
             # - mountPath: /dev
             #   name: provisioner-dev
-            - mountPath: /mnt/disks
+            - mountPath: /mnt/local-ssd
               name: local-disks
               mountPropagation: "HostToContainer"
       volumes:
@@ -86,7 +81,7 @@ spec:
         #     path: /dev
         - name: local-disks
           hostPath:
-            path: /mnt/disks
+            path: /mnt/local-ssd
 
 ---
 apiVersion: v1
