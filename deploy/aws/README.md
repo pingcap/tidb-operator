@@ -161,13 +161,11 @@ Currently, the instance type of TiDB cluster component is not configurable becau
 
 ### Customize TiDB parameters
 
-By default, the terraform script will pass `./values/default.yaml` to the tidb-cluster helm chart. You change the `overrides_values` of the tidb cluster module to specify a customized values file.
-
-The reference of the values file can be found [here]()
+By default, the terraform script will pass `./values/default.yaml` to the tidb-cluster helm chart. You can change the `overrides_values` of the tidb cluster module to specify a customized values file.
 
 ## Multiple Cluster Management
 
-An instance of `./tidb-cluster` module correspond to a TiDB cluster in the EKS cluster. If you want to add a new TiDB cluster, you can edit `./cluster.tf` and add a new instance of `./tidb-cluster` module:
+An instance of `./tidb-cluster` module corresponds to a TiDB cluster in the EKS cluster. If you want to add a new TiDB cluster, you can edit `./cluster.tf` and add a new instance of `./tidb-cluster` module:
 
 ```hcl
 module example-cluster {
