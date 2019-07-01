@@ -295,7 +295,7 @@ tidb:
     exposeStatus: true
     # annotations:
       # cloud.google.com/load-balancer-type: Internal
-  # separateSlowLog: true
+  separateSlowLog: true
   slowLogTailer:
     image: busybox:1.26.2
     resources:
