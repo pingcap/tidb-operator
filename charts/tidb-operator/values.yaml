@@ -54,6 +54,6 @@ scheduler:
     requests:
       cpu: 80m
       memory: 50Mi
-  kubeSchedulerImageName: gcr.io/google-containers/hyperkube
+  kubeSchedulerImageName: k8s.gcr.io/kube-scheduler
   # This will default to matching your kubernetes version
   # kubeSchedulerImageTag:
