@@ -931,7 +931,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 
 		replicas := tc.Spec.TiKV.Replicas
 		for i := replicas - 1; i > 0; i-- {
-			if err := wait.PollImmediate(10*time.Millisecond, 5*time.Minute, func() (done bool, err error) {
+			if err := wait.PollImmediate(1*time.Second, 6*time.Minute, func() (done bool, err error) {
 				schedulers, err := pdClient.GetEvictLeaderSchedulers()
 				if err != nil {
 					glog.Errorf("failed to get evict leader schedulers, %v", err)
@@ -953,11 +953,27 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 				if schedulers[0] == scheduler {
 					return true, nil
 				}
-				return true, fmt.Errorf("the scheduler: %s != %s", schedulers[0], scheduler)
+				glog.Errorf("the scheduler: %s != %s", schedulers[0], scheduler)
+				return false, nil
 			}); err != nil {
 				glog.Errorf("failed to check upgrade %s/%s, %v", ns, tcName, err)
 				return err
 			}
+		}
+		if err := wait.PollImmediate(10*time.Millisecond, 6*time.Minute, func() (done bool, err error) {
+			schedulers, err := pdClient.GetEvictLeaderSchedulers()
+			if err != nil {
+				glog.Errorf("failed to get evict leader schedulers, %v", err)
+				return false, nil
+			}
+			if len(schedulers) == 0 {
+				return true, nil
+			}
+			glog.Errorf("schedulers: %v is not empty")
+			return false, nil
+		}); err != nil {
+			glog.Errorf("failed to wait all schedulers deleted %s/%s, %v", ns, tcName, err)
+			return err
 		}
 		break
 	}

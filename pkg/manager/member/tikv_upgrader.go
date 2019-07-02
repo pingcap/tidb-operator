@@ -184,9 +184,13 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 		return err
 	}
 
-	err = tku.pdControl.GetPDClient(tc).EndEvictLeader(storeID)
-	if err != nil {
-		return err
+	for i := 3; i > 0; i-- {
+		err = tku.pdControl.GetPDClient(tc).EndEvictLeader(storeID)
+		if err != nil {
+			return err
+		}
+		glog.Infof("storeID: %d", storeID)
+		time.Sleep(5 * time.Second)
 	}
 	glog.Infof("ppppppppppppppppppp%s", storeID)
 
