@@ -2032,7 +2032,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 			Containers: []corev1.Container{
 				{
 					Name:    getBackupDirPodName,
-					Image:   "pingcap/tidb-cloud-backup:latest",
+					Image:   "pingcap/tidb-cloud-backup:20190610",
 					Command: []string{"sleep", "3000"},
 					VolumeMounts: []corev1.VolumeMount{
 						{

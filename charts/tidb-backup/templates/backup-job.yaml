@@ -46,16 +46,16 @@ spec:
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: /gcp/credentials.json
       {{- end }}
-      {{- if .Values.ceph }}
+      {{- if or .Values.ceph .Values.s3 }}
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:
-              name: {{ .Values.ceph.secretName }}
+              name: {{ or .Values.ceph.secretName .Values.s3.secretName }}
               key: access_key
         - name: AWS_SECRET_ACCESS_KEY
           valueFrom:
             secretKeyRef:
-              name: {{ .Values.ceph.secretName }}
+              name: {{ or .Values.ceph.secretName .Values.s3.secretName }}
               key: secret_key
       {{- end }}
         - name: TIDB_USER
