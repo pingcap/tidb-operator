@@ -1,16 +1,7 @@
 locals {
   asg_tags = null_resource.tags_as_list_of_maps.*.triggers
 
-  # cluster_security_group_id = coalesce(
-  #   join("", aws_security_group.cluster.*.id),
-  #   var.cluster_security_group_id,
-  # )
-
-  #   worker_security_group_id = coalesce(
-  #   join("", aws_security_group.workers.*.id),
-  #   var.worker_security_group_id,
-  # )
-  default_iam_role_id = element(concat(var.eks_info.worker_iam_role.*.id, [""]), 0)
+  default_iam_role_id = var.eks.worker_iam_role_name
 
   workers_group_defaults_defaults = {
     name                          = "count.index"              # Name of the worker group. Literal count.index will never be used but if name is not set, the count.index interpolation will be used.
@@ -145,6 +136,7 @@ locals {
     var.workers_group_launch_template_defaults,
   )
 
+  # Taken from https://amazon-eks.s3-us-west-2.amazonaws.com/1.10.3/2018-06-05/amazon-eks-nodegroup.yaml
   ebs_optimized = {
     "c1.medium"    = false
     "c1.xlarge"    = true

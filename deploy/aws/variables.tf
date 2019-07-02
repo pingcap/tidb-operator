@@ -22,6 +22,11 @@ variable "operator_version" {
   default     = "v1.0.0-beta.3"
 }
 
+variable "operator_values" {
+  description = "The helm values of TiDB Operator"
+  default     = ""
+}
+
 # Please note that this is only for manually created VPCs, deploying multiple EKS
 # clusters in one VPC is NOT supported now.
 variable "create_vpc" {
@@ -37,13 +42,13 @@ variable "vpc_cidr" {
 variable "private_subnets" {
   description = "VPC private subnets, must be set correctly if create_vpc is true"
   type        = list(string)
-  default     = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  default     = ["10.0.16.0/20", "10.0.32.0/20", "10.0.48.0/20"]
 }
 
 variable "public_subnets" {
   description = "VPC public subnets, must be set correctly if create_vpc is true"
   type        = list(string)
-  default     = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]
+  default     = ["10.0.64.0/20", "10.0.80.0/20", "10.0.96.0/20"]
 }
 
 variable "vpc_id" {
@@ -75,7 +80,7 @@ variable "bastion_instance_type" {
 
 # For aws tutorials compatiablity
 variable "default_cluster_version" {
-  default = "3.0.0"
+  default = "v3.0.0"
 }
 
 variable "default_cluster_pd_count" {
@@ -109,3 +114,4 @@ variable "default_cluster_monitor_instance_type" {
 variable "default_cluster_name" {
   default = "my-cluster"
 }
+

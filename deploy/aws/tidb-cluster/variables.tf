@@ -100,16 +100,16 @@ variable "iam_path" {
 
 variable "tidb_cluster_chart_version" {
   description = "tidb-cluster chart version"
-  default = "v1.0.0-beta.3"
+  default     = "v1.0.0-beta.3"
 }
 
 variable "cluster_name" {
-  type = string
+  type        = string
   description = "tidb cluster name"
 }
 
 variable "cluster_version" {
-  type = string
+  type    = string
   default = "v3.0.0-rc.2"
 }
 
@@ -118,59 +118,45 @@ variable "ssh_key_name" {
 }
 
 variable "pd_count" {
-  type = number
+  type    = number
   default = 1
 }
 
 variable "tikv_count" {
-  type = number
+  type    = number
   default = 1
 }
 
 variable "tidb_count" {
-  type = number
+  type    = number
   default = 1
 }
 
 variable "pd_instance_type" {
-  type = string
+  type    = string
   default = "c5d.large"
 }
 
 variable "tikv_instance_type" {
-  type = string
+  type    = string
   default = "c5d.large"
 }
 
 variable "tidb_instance_type" {
-  type = string
+  type    = string
   default = "c5d.large"
 }
 
 variable "monitor_instance_type" {
-  type = string
+  type    = string
   default = "c5d.large"
 }
 
-variable "monitor_storage_class" {
-  type = string
-  default = "ebs-gp2"
-}
-
-variable "pd_storage_class" {
-  type = string
-  default = "ebs-gp2"
-}
-
-variable "tikv_storage_class" {
-  type = string
-  default = "local-storage"
-}
-
 variable "override_values" {
-  type = string
+  type    = string
+  default = ""
 }
 
-variable "eks_info" {
+variable "eks" {
   description = "eks info"
 }

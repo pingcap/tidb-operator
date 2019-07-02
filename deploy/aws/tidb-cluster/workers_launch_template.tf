@@ -1,7 +1,7 @@
 # Worker Groups using Launch Templates
 
 resource "aws_autoscaling_group" "workers_launch_template" {
-  name_prefix = "${var.eks_info.name}-${lookup(
+  name_prefix = "${var.eks.cluster_id}-${lookup(
     var.worker_groups_launch_template[count.index],
     "name",
     count.index,
@@ -111,7 +111,7 @@ resource "aws_autoscaling_group" "workers_launch_template" {
     [
       {
         key = "Name"
-        value = "${var.eks_info.name}-${lookup(
+        value = "${var.eks.cluster_id}-${lookup(
           var.worker_groups_launch_template[count.index],
           "name",
           count.index,
@@ -119,8 +119,8 @@ resource "aws_autoscaling_group" "workers_launch_template" {
         propagate_at_launch = true
       },
       {
-        key = "kubernetes.io/cluster/${var.eks_info.name}"
-        value = "owned"
+        key                 = "kubernetes.io/cluster/${var.eks.cluster_id}"
+        value               = "owned"
         propagate_at_launch = true
       },
       {
@@ -129,7 +129,7 @@ resource "aws_autoscaling_group" "workers_launch_template" {
           "autoscaling_enabled",
           local.workers_group_launch_template_defaults["autoscaling_enabled"],
         ) == 1 ? "enabled" : "disabled"}"
-        value = "true"
+        value               = "true"
         propagate_at_launch = false
       },
       {
@@ -165,7 +165,7 @@ resource "aws_autoscaling_group" "workers_launch_template" {
 }
 
 resource "aws_launch_template" "workers_launch_template" {
-  name_prefix = "${var.eks_info.name}-${lookup(
+  name_prefix = "${var.eks.cluster_id}-${lookup(
     var.worker_groups_launch_template[count.index],
     "name",
     count.index,
@@ -177,7 +177,7 @@ resource "aws_launch_template" "workers_launch_template" {
       "public_ip",
       local.workers_group_launch_template_defaults["public_ip"],
     )
-    security_groups = concat([var.eks_info.worker_security_group_id], var.worker_additional_security_group_ids, compact(
+    security_groups = concat([var.eks.worker_security_group_id], var.worker_additional_security_group_ids, compact(
       split(
         ",",
         lookup(
@@ -288,7 +288,7 @@ resource "aws_launch_template" "workers_launch_template" {
 }
 
 resource "aws_iam_instance_profile" "workers_launch_template" {
-  name_prefix = var.eks_info.name
+  name_prefix = var.eks.cluster_id
   role = lookup(
     var.worker_groups_launch_template[count.index],
     "iam_role_id",

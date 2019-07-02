@@ -2,6 +2,11 @@ provider "aws" {
   region = var.region
 }
 
+locals {
+  default_subnets = split(",", var.create_vpc ? join(",", module.vpc.private_subnets) : join(",", var.subnets))
+  default_eks     = module.tidb-operator.eks
+}
+
 module "key-pair" {
   source = "./aws-key-pair"
   name   = var.eks_name
@@ -11,11 +16,10 @@ module "key-pair" {
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
-  version    = "2.6.0"
-  name       = var.eks_name
-  cidr       = var.vpc_cidr
-  create_vpc = var.create_vpc
-  # azs                = [data.aws_availability_zones.available.names[0], data.aws_availability_zones.available.names[1], data.aws_availability_zones.available.names[2]]
+  version            = "2.6.0"
+  name               = var.eks_name
+  cidr               = var.vpc_cidr
+  create_vpc         = var.create_vpc
   azs                = data.aws_availability_zones.available.names
   private_subnets    = var.private_subnets
   public_subnets     = var.public_subnets
@@ -34,17 +38,14 @@ module "vpc" {
   }
 }
 
-module "eks" {
-  source             = "./eks"
-  cluster_name       = var.eks_name
-  cluster_version    = var.eks_version
+module "tidb-operator" {
+  source = "./tidb-operator"
+
+  eks_name           = var.eks_name
+  eks_version        = var.eks_version
   operator_version   = var.operator_version
-  ssh_key_name       = module.key-pair.key_name
   config_output_path = "credentials/"
   subnets            = local.default_subnets
   vpc_id             = var.create_vpc ? module.vpc.vpc_id : var.vpc_id
-
-  tags = {
-    app = "tidb"
-  }
+  ssh_key_name       = module.key-pair.key_name
 }

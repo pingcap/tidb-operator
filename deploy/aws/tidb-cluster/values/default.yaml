@@ -1,11 +1,12 @@
 # Basic customization for tidb-cluster chart that suits AWS environment
-# It is recommended to make a copy of this file and customize for each of your TiDB cluster
 timezone: UTC
 
 pd:
   logLevel: info
+  storageClassName: ebs-gp2
 tikv:
   logLevel: info
+  stroageClassName: local-storage
   syncLog: true
 tidb:
   logLevel: info
@@ -17,6 +18,8 @@ tidb:
 
 monitor:
   storage: 100Gi
+  storageClassName: ebs-gp2
+  persistent: true
   grafana:
     config:
       GF_AUTH_ANONYMOUS_ENABLED: "true"

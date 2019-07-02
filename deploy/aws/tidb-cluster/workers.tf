@@ -1,7 +1,7 @@
 # Worker Groups using Launch Configurations
 
 resource "aws_autoscaling_group" "workers" {
-  name_prefix = "${var.eks_info.name}-${lookup(local.tidb_cluster_worker_groups[count.index], "name", count.index)}"
+  name_prefix = "${var.eks.cluster_id}-${lookup(local.tidb_cluster_worker_groups[count.index], "name", count.index)}"
   desired_capacity = lookup(
     local.tidb_cluster_worker_groups[count.index],
     "asg_desired_capacity",
@@ -17,7 +17,7 @@ resource "aws_autoscaling_group" "workers" {
     "asg_min_size",
     local.workers_group_defaults["asg_min_size"],
   )
-  force_delete = false
+  force_delete         = false
   launch_configuration = element(aws_launch_configuration.workers.*.id, count.index)
   vpc_zone_identifier = split(
     ",",
@@ -27,19 +27,19 @@ resource "aws_autoscaling_group" "workers" {
     ),
   )
   protect_from_scale_in = false
-  count = local.worker_group_count
-  placement_group = "" # The name of the placement group into which to launch the instances, if any.
+  count                 = local.worker_group_count
+  placement_group       = "" # The name of the placement group into which to launch the instances, if any.
 
   tags = concat(
     [
       {
-        key = "Name"
-        value = "${var.eks_info.name}-${lookup(local.tidb_cluster_worker_groups[count.index], "name", count.index)}-eks_asg"
+        key                 = "Name"
+        value               = "${var.eks.cluster_id}-${lookup(local.tidb_cluster_worker_groups[count.index], "name", count.index)}-eks_asg"
         propagate_at_launch = true
       },
       {
-        key = "kubernetes.io/cluster/${var.eks_info.name}"
-        value = "owned"
+        key                 = "kubernetes.io/cluster/${var.eks.cluster_id}"
+        value               = "owned"
         propagate_at_launch = true
       },
       {
@@ -48,14 +48,9 @@ resource "aws_autoscaling_group" "workers" {
           "autoscaling_enabled",
           local.workers_group_defaults["autoscaling_enabled"],
         ) == 1 ? "enabled" : "disabled"}"
-        value = "true"
+        value               = "true"
         propagate_at_launch = false
       },
-      # {
-      #   "key"                 = "k8s.io/cluster-autoscaler/${var.eks_info.name}"
-      #   "value"               = ""
-      #   "propagate_at_launch" = false
-      # },
       {
         key = "k8s.io/cluster-autoscaler/node-template/resources/ephemeral-storage"
         value = "${lookup(
@@ -81,13 +76,13 @@ resource "aws_autoscaling_group" "workers" {
 }
 
 resource "aws_launch_configuration" "workers" {
-  name_prefix = "${var.eks_info.name}-${lookup(local.tidb_cluster_worker_groups[count.index], "name", count.index)}"
+  name_prefix = "${var.eks.cluster_id}-${lookup(local.tidb_cluster_worker_groups[count.index], "name", count.index)}"
   associate_public_ip_address = lookup(
     local.tidb_cluster_worker_groups[count.index],
     "public_ip",
     local.workers_group_defaults["public_ip"],
   )
-  security_groups = concat([var.eks_info.worker_security_group_id], var.worker_additional_security_group_ids, compact(
+  security_groups = concat([var.eks.worker_security_group_id], var.worker_additional_security_group_ids, compact(
     split(
       ",",
       lookup(
@@ -97,7 +92,7 @@ resource "aws_launch_configuration" "workers" {
       ),
     ),
   ))
-  iam_instance_profile = element(var.eks_info.worker_iam_instance_profile.*.id, count.index)
+  iam_instance_profile = element(var.eks.worker_iam_instance_profile_names, count.index)
   image_id = lookup(
     local.tidb_cluster_worker_groups[count.index],
     "ami_id",

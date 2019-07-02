@@ -10,12 +10,12 @@ output "eks_version" {
 
 output "eks_endpoint" {
   description = "Endpoint for EKS control plane."
-  value       = module.eks.cluster_endpoint
+  value       = module.tidb-operator.eks.cluster_endpoint
 }
 
 output "kubeconfig_filename" {
   description = "The filename of the generated kubectl config."
-  value       = module.eks.kubeconfig_filename
+  value       = module.tidb-operator.eks.kubeconfig_filename
 }
 
 output "default-cluster_tidb-dns" {

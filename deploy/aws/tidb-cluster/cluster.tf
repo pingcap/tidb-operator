@@ -1,74 +1,145 @@
-#resource "local_file" "kubeconfig_for_cleanup" {
-#  content  = var.eks_info.kubeconfig
-#  filename = "${var.eks_info.kubeconfig_file}_for_${var.cluster_name}_cleanup"
-#}
+# kubernetes and helm providers rely on EKS, but terraform provider doesn't support depends_on
+# follow this link https://github.com/hashicorp/terraform/issues/2430#issuecomment-370685911
+# we have the following hack
+resource "local_file" "kubeconfig" {
+  depends_on        = [var.eks]
+  sensitive_content = var.eks.kubeconfig
+  filename          = var.eks.kubeconfig_filename
+}
 
-resource "null_resource" "deploy-cluster" {
+provider "helm" {
+  insecure = true
+  # service_account = "tiller"
+  # install_tiller = true # currently this doesn't work, so we install tiller in the local-exec provisioner. See https://github.com/terraform-providers/terraform-provider-helm/issues/148
+  kubernetes {
+    config_path = local_file.kubeconfig.filename
+  }
+}
+
+resource "null_resource" "wait-tiller-ready" {
+  depends_on = [var.eks]
 
   provisioner "local-exec" {
-    # EKS writes kube_config to path.cwd/kubeconfig_file
-    # Helm values files are managed in path.cwd
     working_dir = path.cwd
-
-    command = <<EOT
+    command     = <<EOS
 until helm ls; do
   echo "Wait tiller ready"
-  sleep 5
 done
-helm upgrade --install ${var.cluster_name} pingcap/tidb-cluster \
---version=${var.tidb_cluster_chart_version} --namespace=${var.cluster_name} \
---set pd.image=pingcap/pd:${var.cluster_version} \
---set pd.replicas=${var.pd_count} \
---set pd.storageClassName=${var.pd_storage_class} \
---set pd.nodeSelector.dedicated=${var.cluster_name}-pd \
---set pd.tolerations[0].key=dedicated \
---set pd.tolerations[0].value=${var.cluster_name}-pd \
---set pd.tolerations[0].operator=Equal \
---set pd.tolerations[0].effect=NoSchedule \
---set tikv.image=pingcap/tikv:${var.cluster_version} \
---set tikv.replicas=${var.tikv_count} \
---set tikv.storageClassName=${var.tikv_storage_class} \
---set tikv.nodeSelector.dedicated=${var.cluster_name}-tikv \
---set tikv.tolerations[0].key=dedicated \
---set tikv.tolerations[0].value=${var.cluster_name}-tikv \
---set tikv.tolerations[0].operator=Equal \
---set tikv.tolerations[0].effect=NoSchedule \
---set tidb.image=pingcap/tidb:${var.cluster_version} \
---set tidb.replicas=${var.tidb_count} \
---set tidb.nodeSelector.dedicated=${var.cluster_name}-tidb \
---set tidb.tolerations[0].key=dedicated \
---set tidb.tolerations[0].value=${var.cluster_name}-tidb \
---set tidb.tolerations[0].operator=Equal \
---set tidb.tolerations[0].effect=NoSchedule \
---set monitor.persistent=true \
---set monitor.storageClassName=${var.monitor_storage_class} \
--f ${var.override_values} \
---wait
-EOT
-
-    interpreter = var.local_exec_interpreter
+EOS
     environment = {
-      KUBECONFIG = var.eks_info.kubeconfig_file
+      KUBECONFIG = "${local_file.kubeconfig.filename}"
     }
   }
+}
 
-  triggers = {
-    values_file_content = file(var.override_values)
-    cluster_name = var.cluster_name
-    pd_count = var.pd_count
-    tikv_count = var.tikv_count
-    tidb_count = var.tidb_count
-    cluster_version = var.cluster_version
-    kubeconfig = var.eks_info.kubeconfig
-    override_values = var.override_values
-    monitor_storage_class = var.monitor_storage_class
-    tikv_storage_class = var.tikv_storage_class
-    pd_stroage_class = var.pd_storage_class
+data "helm_repository" "pingcap" {
+  depends_on = [null_resource.wait-tiller-ready]
+  name = "pingcap"
+  url = "http://charts.pingcap.org/"
+}
+
+resource "helm_release" "tidb-cluster" {
+  depends_on = [null_resource.wait-tiller-ready]
+
+  repository = data.helm_repository.pingcap.name
+  chart = "tidb-cluster"
+  version = var.tidb_cluster_chart_version
+  namespace = var.cluster_name
+  name = var.cluster_name
+
+  values = [
+    file("${path.module}/values/default.yaml"),
+    var.override_values
+  ]
+
+  set {
+    name = "pd.image"
+    value = "pingcap/pd:${var.cluster_version}"
+  }
+  set {
+    name = "pd.replicas"
+    value = var.pd_count
+  }
+  set {
+    name = "pd.nodeSelector.dedicated"
+    value = "${var.cluster_name}-pd"
+  }
+  set {
+    name = "pd.tolerations[0].key"
+    value = "dedicated"
+  }
+  set {
+    name = "pd.tolerations[0].value"
+    value = "${var.cluster_name}-pd"
+  }
+  set {
+    name = "pd.tolerations[0].operator"
+    value = "Equal"
+  }
+  set {
+    name = "pd.tolerations[0].effect"
+    value = "NoSchedule"
+  }
+  set {
+    name = "tikv.image"
+    value = "pingcap/tikv:${var.cluster_version}"
+  }
+  set {
+    name = "tikv.replicas"
+    value = var.tikv_count
+  }
+  set {
+    name = "tikv.nodeSelector.dedicated"
+    value = "${var.cluster_name}-tikv"
+  }
+  set {
+    name = "tikv.tolerations[0].key"
+    value = "dedicated"
+  }
+  set {
+    name = "tikv.tolerations[0].value"
+    value = "${var.cluster_name}-tikv"
+  }
+  set {
+    name = "tikv.tolerations[0].operator"
+    value = "Equal"
+  }
+  set {
+    name = "tikv.tolerations[0].effect"
+    value = "NoSchedule"
+  }
+  set {
+    name = "tidb.image"
+    value = "pingcap/tidb:${var.cluster_version}"
+  }
+  set {
+    name = "tidb.replicas"
+    value = var.tidb_count
+  }
+  set {
+    name = "tidb.nodeSelector.dedicated"
+    value = "${var.cluster_name}-tidb"
+  }
+  set {
+    name = "tidb.tolerations[0].key"
+    value = "dedicated"
+  }
+  set {
+    name = "tidb.tolerations[0].value"
+    value = "${var.cluster_name}-tidb"
+  }
+  set {
+    name = "tidb.tolerations[0].operator"
+    value = "Equal"
+  }
+  set {
+    name = "tidb.tolerations[0].effect"
+    value = "NoSchedule"
   }
 }
 
 resource "null_resource" "wait-tidb-ready" {
-  depends_on = ["null_resource.deploy-cluster"]
+  depends_on = [helm_release.tidb-cluster]
 
   provisioner "local-exec" {
     working_dir = path.cwd
@@ -79,33 +150,7 @@ until kubectl get po -n tidb -lapp.kubernetes.io/component=tidb | grep Running; 
 done
 EOS
     environment = {
-      KUBECONFIG = var.eks_info.kubeconfig_file
+      KUBECONFIG = var.eks.kubeconfig_filename
     }
   }
 }
-
-
-#resource "null_resource" "destroy-cluster" {
-#  depends_on = [aws_autoscaling_group.workers, null_resource.deploy-cluster]
-#
-#  provisioner "local-exec" {
-#    working_dir = path.cwd
-#    when = "destroy"
-#
-#    # We cannot specify the destruction order of kubeconfig file and this provsioner,
-#    # the workaround here is to re-generate the kubeconfig file locally
-#    command = <<EOT
-#echo "${var.eks_info.kubeconfig}" > kubeconfig_cleanup_${var.cluster_name}
-#kubectl delete -n ${var.cluster_name} svc ${var.cluster_name}-pd
-#kubectl delete -n ${var.cluster_name} svc ${var.cluster_name}-grafana
-#kubectl get pvc -n ${var.cluster_name} -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl patch pv {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
-#kubectl delete pvc -n ${var.cluster_name} --all
-#rm kubeconfig_cleanup_${var.cluster_name}
-#EOT
-#
-#    interpreter = var.local_exec_interpreter
-#    environment = {
-#      KUBECONFIG = "kubeconfig_cleanup_${var.cluster_name}"
-#    }
-#  }
-#}

@@ -159,9 +159,24 @@ The TiDB version and component count are also configurable in variables.tf, you 
 
 Currently, the instance type of TiDB cluster component is not configurable because PD and TiKV relies on [NVMe SSD instance store](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html), different instance types have different disks.
 
-### Customize TiDB parameters
+### Customize TiDB Cluster
 
-By default, the terraform script will pass `./values/default.yaml` to the tidb-cluster helm chart. You can change the `overrides_values` of the tidb cluster module to specify a customized values file.
+The values file ([`./tidb-cluster/values/default.yaml`](./tidb-cluster/values/default.yaml)) provide proper default for TiDB cluster in EKS. You can specify an overriding values file in [`clusters.tf`](./clusters.tf) for each TiDB cluster. Values of this file will override the default ones. 
+
+For example, the default cluster specify using `./default-cluster.yaml` as the overriding values file, and enable the ConfigMap rollout feature in this file.
+
+In EKS, some values are not customizable as usual, including the cluster version, replicas, node selectors and taints. These variables are controlled by the terraform instead in favor of consistency. To customize these variables, you can edit the [`clusters.tf`](./clusters.tf) and change the variables of each `./tidb-cluster` module directly.
+
+### Customized TiDB Operator
+
+You can customize the TiDB operator by specifying a helm values file through the `operator_values` variable. For example:
+
+```hcl
+variable "operator_values" {
+  description = "The helm values of TiDB Operator"
+  default     = file("operator_values.yaml")
+}
+```
 
 ## Multiple Cluster Management
 
@@ -175,12 +190,11 @@ module example-cluster {
   eks_info = local.default_eks
   # The subnets of node pools of this TiDB cluster, required
   subnets = local.default_subnets
-  
   # TiDB cluster name, required
   cluster_name    = "example-cluster"
-  # Helm values file, required
-  override_values = "values/example-cluster.yaml"
   
+  # Helm values file
+  override_values = file("example-cluster.yaml")
   # TiDB cluster version
   cluster_version               = "v3.0.0"
   # SSH key of cluster nodes
@@ -189,15 +203,11 @@ module example-cluster {
   pd_count                      = 3
   # TiKV instance type
   pd_instance_type              = "t2.xlarge"
-  # The storage class used by PD
-  pd_storage_class              = "ebs-gp2"
   # TiKV replica number
   tikv_count                    = 3
   # TiKV instance type
   tikv_instance_type            = "t2.xlarge"
   # The storage class used by TiKV, if the TiKV instance type do not have local SSD, you should change it to storage class 
-  # of cloud disks like 'ebs-gp2'. Note that TiKV without local storage is strongly not recommended in production env.
-  tikv_storage_class            = "local-storage"
   # TiDB replica number
   tidb_count                    = 2
   # TiDB instance type
@@ -212,7 +222,7 @@ module other-cluster {
   source   = "./tidb-cluster"
   
   cluster_name    = "other-cluster"
-  override_values = "values/other-cluster.yaml"
+  override_values = file("other-cluster.yaml")
   #......
 }
 ```
@@ -223,17 +233,15 @@ module other-cluster {
 
 You can refer to [./tidb-cluster/variables.tf](./tidb-cluster/variables.tf) for the complete configuration reference of `./tidb-cluster` module.
 
-It is recommended to provide a dedicated values file for each TiDB cluster in favor of the ease of management. You can copy the `values/default.yaml` to get a reasonable default.
-
 You can get the DNS name of TiDB service and grafana service via kubectl. If you want terraform to print these information like the `default-cluster`, you can add `output` sections in `outputs.tf`:
 
 ```hcl
 output "example-cluster_tidb-dns" {
-  value       = module.example-cluster.tidb_dns
+  value = module.example-cluster.tidb_dns
 }
 
 output "example-cluster_monitor-dns" {
-  value       = module.example-cluster.monitor_dns
+  value = module.example-cluster.monitor_dns
 }
 ```
 
@@ -248,10 +256,6 @@ $ terraform destroy
 > **Note:**
 >
 > This will destroy your EKS cluster along with all the TiDB clusters you deployed on it.
-
-> **Note:**
->
-> If you specify service type `LoadBalancer` for the services like the default configuration do, you have to delete these services before destroy, otherwise they will block the subnets from being destroyed.
 
 > **Note:**
 >

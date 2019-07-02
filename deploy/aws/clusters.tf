@@ -16,14 +16,13 @@
 #  tidb_instance_type            = "t2.xlarge"
 #  monitor_instance_type         = "t2.xlarge"
 #  # yaml file that passed to helm to customize the release
-#  override_values               = "values/default.yaml"
+#  override_values               = file("values/example.yaml")
 #}
 
-
 module "default-cluster" {
-  source   = "./tidb-cluster"
-  eks_info = module.eks
-  subnets  = local.default_subnets
+  source  = "./tidb-cluster"
+  eks     = local.default_eks
+  subnets = local.default_subnets
 
   cluster_name          = var.default_cluster_name
   cluster_version       = var.default_cluster_version
@@ -31,9 +30,9 @@ module "default-cluster" {
   pd_count              = var.default_cluster_pd_count
   pd_instance_type      = var.default_cluster_pd_instance_type
   tikv_count            = var.default_cluster_tikv_count
-  tikv_instance_type    = var.default_cluster_tidb_instance_type
+  tikv_instance_type    = var.default_cluster_tikv_instance_type
   tidb_count            = var.default_cluster_tidb_count
   tidb_instance_type    = var.default_cluster_tidb_instance_type
   monitor_instance_type = var.default_cluster_monitor_instance_type
-  override_values       = "values/default.yaml"
+  override_values       = file("default-cluster.yaml")
 }
