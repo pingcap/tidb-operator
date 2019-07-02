@@ -19,6 +19,7 @@ import (
 
 	"github.com/golang/glog"
 	perrors "github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/pkg/apis/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -92,7 +93,7 @@ func NewController(
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 
 	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
-	pdControl := controller.NewDefaultPDControl()
+	pdControl := pdapi.NewDefaultPDControl()
 	tidbControl := controller.NewDefaultTiDBControl()
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)

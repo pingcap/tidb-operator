@@ -34,6 +34,7 @@ import (
 	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
+	"github.com/pingcap/tidb-operator/pkg/apis/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -77,7 +78,7 @@ func NewOperatorActions(cli versioned.Interface,
 	oa := &operatorActions{
 		cli:          cli,
 		kubeCli:      kubeCli,
-		pdControl:    controller.NewDefaultPDControl(),
+		pdControl:    pdapi.NewDefaultPDControl(),
 		tidbControl:  controller.NewDefaultTiDBControl(),
 		pollInterval: pollInterval,
 		cfg:          cfg,
@@ -186,7 +187,7 @@ type OperatorActions interface {
 type operatorActions struct {
 	cli           versioned.Interface
 	kubeCli       kubernetes.Interface
-	pdControl     controller.PDControlInterface
+	pdControl     pdapi.PDControlInterface
 	tidbControl   controller.TiDBControlInterface
 	pollInterval  time.Duration
 	cfg           *Config
@@ -827,7 +828,7 @@ func (oa *operatorActions) CheckScaleInSafely(info *TidbClusterConfig) error {
 			return false, nil
 		}
 
-		pdClient := controller.NewDefaultPDControl().GetPDClient(tc)
+		pdClient := pdapi.NewDefaultPDControl().GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
 		stores, err := pdClient.GetStores()
 		if err != nil {
 			glog.Infof("pdClient.GetStores failed,error: %v", err)
@@ -1144,7 +1145,7 @@ func (oa *operatorActions) metaSyncFn(tc *v1alpha1.TidbCluster) (bool, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	pdCli := oa.pdControl.GetPDClient(tc)
+	pdCli := oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
 	var cluster *metapb.Cluster
 	var err error
 	if cluster, err = pdCli.GetCluster(); err != nil {
@@ -1437,8 +1438,7 @@ func (oa *operatorActions) checkTidbClusterConfigUpdated(tc *v1alpha1.TidbCluste
 }
 
 func (oa *operatorActions) checkPdConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
-
-	pdCli := oa.pdControl.GetPDClient(tc)
+	pdCli := oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
 	config, err := pdCli.GetConfig()
 	if err != nil {
 		glog.Errorf("failed to get PD configuraion from tidb cluster [%s/%s]", tc.Namespace, tc.Name)

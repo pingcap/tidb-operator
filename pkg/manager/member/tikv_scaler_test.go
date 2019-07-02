@@ -19,6 +19,7 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -176,11 +177,10 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		}
 		podIndexer.Add(pod)
 
-		pdClient := controller.NewFakePDClient()
-		pdControl.SetPDClient(tc, pdClient)
+		pdClient := controller.NewFakePDClient(pdControl, tc)
 
 		if test.delStoreErr {
-			pdClient.AddReaction(controller.DeleteStoreActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.DeleteStoreActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("delete store error")
 			})
 		}
@@ -360,13 +360,13 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 	}
 }
 
-func newFakeTiKVScaler() (*tikvScaler, *controller.FakePDControl, cache.Indexer, cache.Indexer, *controller.FakePVCControl) {
+func newFakeTiKVScaler() (*tikvScaler, *pdapi.FakePDControl, cache.Indexer, cache.Indexer, *controller.FakePVCControl) {
 	kubeCli := kubefake.NewSimpleClientset()
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
-	pdControl := controller.NewFakePDControl()
+	pdControl := pdapi.NewFakePDControl()
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
 
 	return &tikvScaler{generalScaler{pdControl, pvcInformer.Lister(), pvcControl}, podInformer.Lister()},

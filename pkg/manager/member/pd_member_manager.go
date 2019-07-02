@@ -18,6 +18,7 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/apis/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -34,7 +35,7 @@ import (
 )
 
 type pdMemberManager struct {
-	pdControl    controller.PDControlInterface
+	pdControl    pdapi.PDControlInterface
 	setControl   controller.StatefulSetControlInterface
 	svcControl   controller.ServiceControlInterface
 	setLister    v1beta1.StatefulSetLister
@@ -50,7 +51,7 @@ type pdMemberManager struct {
 }
 
 // NewPDMemberManager returns a *pdMemberManager
-func NewPDMemberManager(pdControl controller.PDControlInterface,
+func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	setLister v1beta1.StatefulSetLister,
@@ -259,7 +260,7 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 	}
 
-	pdClient := pmm.pdControl.GetPDClient(tc)
+	pdClient := controller.GetPDClient(pmm.pdControl, tc)
 
 	healthInfo, err := pdClient.GetHealth()
 	if err != nil {

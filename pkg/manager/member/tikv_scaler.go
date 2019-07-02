@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/apis/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -32,7 +33,7 @@ type tikvScaler struct {
 }
 
 // NewTiKVScaler returns a tikv Scaler
-func NewTiKVScaler(pdControl controller.PDControlInterface,
+func NewTiKVScaler(pdControl pdapi.PDControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pvcControl controller.PVCControlInterface,
 	podLister corelisters.PodLister) Scaler {
@@ -86,7 +87,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 				return err
 			}
 			if state != v1alpha1.TiKVStateOffline {
-				if err := tsd.pdControl.GetPDClient(tc).DeleteStore(id); err != nil {
+				if err := controller.GetPDClient(tsd.pdControl, tc).DeleteStore(id); err != nil {
 					resetReplicas(newSet, oldSet)
 					return err
 				}

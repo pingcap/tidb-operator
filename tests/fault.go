@@ -9,8 +9,8 @@ import (
 	"github.com/pingcap/tidb-operator/tests/slack"
 
 	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/apis/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
 	v1 "k8s.io/api/core/v1"
@@ -66,7 +66,7 @@ func NewFaultTriggerAction(cli versioned.Interface, kubeCli kubernetes.Interface
 	return &faultTriggerActions{
 		cli:       cli,
 		kubeCli:   kubeCli,
-		pdControl: controller.NewDefaultPDControl(),
+		pdControl: pdapi.NewDefaultPDControl(),
 		cfg:       cfg,
 	}
 }
@@ -74,7 +74,7 @@ func NewFaultTriggerAction(cli versioned.Interface, kubeCli kubernetes.Interface
 type faultTriggerActions struct {
 	cli       versioned.Interface
 	kubeCli   kubernetes.Interface
-	pdControl controller.PDControlInterface
+	pdControl pdapi.PDControlInterface
 	cfg       *Config
 }
 

@@ -16,6 +16,7 @@ package member
 import (
 	"fmt"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -39,7 +40,7 @@ type Scaler interface {
 }
 
 type generalScaler struct {
-	pdControl  controller.PDControlInterface
+	pdControl  pdapi.PDControlInterface
 	pvcLister  corelisters.PersistentVolumeClaimLister
 	pvcControl controller.PVCControlInterface
 }

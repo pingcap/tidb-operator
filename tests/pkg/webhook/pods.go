@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/apis/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -41,7 +42,7 @@ func GetAllKVLeaders(versionCli versioned.Interface, namespace string, clusterNa
 		return err
 	}
 
-	pdClient := controller.NewDefaultPDControl().GetPDClient(tc)
+	pdClient := pdapi.NewDefaultPDControl().GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
 
 	for _, store := range tc.Status.TiKV.Stores {
 		storeID, err := strconv.ParseUint(store.ID, 10, 64)
@@ -94,7 +95,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		return &reviewResponse
 	}
 
-	pdClient := controller.NewDefaultPDControl().GetPDClient(tc)
+	pdClient := pdapi.NewDefaultPDControl().GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
 	tidbController := controller.NewDefaultTiDBControl()
 
 	// if pod is already deleting, return Allowed

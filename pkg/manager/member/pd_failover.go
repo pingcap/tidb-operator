@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -29,7 +30,7 @@ import (
 // TODO add maxFailoverCount
 type pdFailover struct {
 	cli              versioned.Interface
-	pdControl        controller.PDControlInterface
+	pdControl        pdapi.PDControlInterface
 	pdFailoverPeriod time.Duration
 	podLister        corelisters.PodLister
 	podControl       controller.PodControlInterface
@@ -40,7 +41,7 @@ type pdFailover struct {
 
 // NewPDFailover returns a pd Failover
 func NewPDFailover(cli versioned.Interface,
-	pdControl controller.PDControlInterface,
+	pdControl pdapi.PDControlInterface,
 	pdFailoverPeriod time.Duration,
 	podLister corelisters.PodLister,
 	podControl controller.PodControlInterface,
@@ -162,7 +163,7 @@ func (pf *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error 
 		return err
 	}
 	// invoke deleteMember api to delete a member from the pd cluster
-	err = pf.pdControl.GetPDClient(tc).DeleteMemberByID(memberID)
+	err = controller.GetPDClient(pf.pdControl, tc).DeleteMemberByID(memberID)
 	if err != nil {
 		return err
 	}

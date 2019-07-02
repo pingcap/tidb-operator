@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/apis/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1beta1"
@@ -34,13 +35,13 @@ const (
 )
 
 type tikvUpgrader struct {
-	pdControl  controller.PDControlInterface
+	pdControl  pdapi.PDControlInterface
 	podControl controller.PodControlInterface
 	podLister  corelisters.PodLister
 }
 
 // NewTiKVUpgrader returns a tikv Upgrader
-func NewTiKVUpgrader(pdControl controller.PDControlInterface,
+func NewTiKVUpgrader(pdControl pdapi.PDControlInterface,
 	podControl controller.PodControlInterface,
 	podLister corelisters.PodLister) Upgrader {
 	return &tikvUpgrader{
@@ -159,7 +160,7 @@ func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.T
 }
 
 func (tku *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
-	err := tku.pdControl.GetPDClient(tc).BeginEvictLeader(storeID)
+	err := controller.GetPDClient(tku.pdControl, tc).BeginEvictLeader(storeID)
 	if err != nil {
 		return err
 	}
@@ -190,7 +191,7 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 			return err
 		}
 	}
-	err = tku.pdControl.GetPDClient(tc).EndEvictLeader(storeID)
+	err = controller.GetPDClient(tku.pdControl, tc).EndEvictLeader(storeID)
 	if err != nil {
 		return err
 	}

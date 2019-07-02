@@ -21,8 +21,8 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/pdpb"
+	"github.com/pingcap/tidb-operator/pkg/apis/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -35,19 +35,19 @@ func TestDiscoveryDiscovery(t *testing.T) {
 		url          string
 		clusters     map[string]*clusterInfo
 		tcFn         func() (*v1alpha1.TidbCluster, error)
-		getMembersFn func() (*controller.MembersInfo, error)
+		getMembersFn func() (*pdapi.MembersInfo, error)
 		expectFn     func(*GomegaWithT, *tidbDiscovery, string, error)
 	}
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		fakePDControl := controller.NewFakePDControl()
-		pdClient := controller.NewFakePDClient()
+		fakePDControl := pdapi.NewFakePDControl()
+		pdClient := pdapi.NewFakePDClient()
 		tc, err := test.tcFn()
 		if err == nil {
-			fakePDControl.SetPDClient(tc, pdClient)
+			fakePDControl.SetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), pdClient)
 		}
-		pdClient.AddReaction(controller.GetMembersActionType, func(action *controller.Action) (interface{}, error) {
+		pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
 			return test.getMembersFn()
 		})
 
@@ -119,7 +119,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			url:      "demo-pd-0.demo-pd-peer.default.svc:2380",
 			clusters: map[string]*clusterInfo{},
 			tcFn:     newTC,
-			getMembersFn: func() (*controller.MembersInfo, error) {
+			getMembersFn: func() (*pdapi.MembersInfo, error) {
 				return nil, fmt.Errorf("get members failed")
 			},
 			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
@@ -135,7 +135,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			ns:   "default",
 			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
 			tcFn: newTC,
-			getMembersFn: func() (*controller.MembersInfo, error) {
+			getMembersFn: func() (*pdapi.MembersInfo, error) {
 				return nil, fmt.Errorf("getMembers failed")
 			},
 			clusters: map[string]*clusterInfo{
@@ -161,7 +161,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			url:      "demo-pd-0.demo-pd-peer.default.svc:2380",
 			clusters: map[string]*clusterInfo{},
 			tcFn:     newTC,
-			getMembersFn: func() (*controller.MembersInfo, error) {
+			getMembersFn: func() (*pdapi.MembersInfo, error) {
 				return nil, fmt.Errorf("there are no pd members")
 			},
 			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
@@ -177,7 +177,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			ns:   "default",
 			url:  "demo-pd-1.demo-pd-peer.default.svc:2380",
 			tcFn: newTC,
-			getMembersFn: func() (*controller.MembersInfo, error) {
+			getMembersFn: func() (*pdapi.MembersInfo, error) {
 				return nil, fmt.Errorf("there are no pd members 2")
 			},
 			clusters: map[string]*clusterInfo{
@@ -225,7 +225,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			ns:   "default",
 			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
 			tcFn: newTC,
-			getMembersFn: func() (*controller.MembersInfo, error) {
+			getMembersFn: func() (*pdapi.MembersInfo, error) {
 				return nil, fmt.Errorf("there are no pd members 3")
 			},
 			clusters: map[string]*clusterInfo{
@@ -251,8 +251,8 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			ns:   "default",
 			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
 			tcFn: newTC,
-			getMembersFn: func() (*controller.MembersInfo, error) {
-				return &controller.MembersInfo{
+			getMembersFn: func() (*pdapi.MembersInfo, error) {
+				return &pdapi.MembersInfo{
 					Members: []*pdpb.Member{
 						{
 							PeerUrls: []string{"demo-pd-2.demo-pd-peer.default.svc:2380"},
@@ -282,8 +282,8 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			ns:   "default",
 			url:  "demo-pd-1.demo-pd-peer.default.svc:2380",
 			tcFn: newTC,
-			getMembersFn: func() (*controller.MembersInfo, error) {
-				return &controller.MembersInfo{
+			getMembersFn: func() (*pdapi.MembersInfo, error) {
+				return &pdapi.MembersInfo{
 					Members: []*pdpb.Member{
 						{
 							PeerUrls: []string{"demo-pd-0.demo-pd-peer.default.svc:2380"},
@@ -318,8 +318,8 @@ func TestDiscoveryDiscovery(t *testing.T) {
 				tc.Spec.PD.Replicas = 5
 				return tc, nil
 			},
-			getMembersFn: func() (*controller.MembersInfo, error) {
-				return &controller.MembersInfo{
+			getMembersFn: func() (*pdapi.MembersInfo, error) {
+				return &pdapi.MembersInfo{
 					Members: []*pdpb.Member{
 						{
 							PeerUrls: []string{"demo-pd-0.demo-pd-peer.default.svc:2380"},
@@ -355,8 +355,8 @@ func TestDiscoveryDiscovery(t *testing.T) {
 				tc.Spec.PD.Replicas = 5
 				return tc, nil
 			},
-			getMembersFn: func() (*controller.MembersInfo, error) {
-				return &controller.MembersInfo{
+			getMembersFn: func() (*pdapi.MembersInfo, error) {
+				return &pdapi.MembersInfo{
 					Members: []*pdpb.Member{
 						{
 							PeerUrls: []string{"demo-pd-0.demo-pd-peer.default.svc:2380"},

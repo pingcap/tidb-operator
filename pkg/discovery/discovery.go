@@ -20,9 +20,9 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/apis/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -36,7 +36,7 @@ type tidbDiscovery struct {
 	lock      sync.Mutex
 	clusters  map[string]*clusterInfo
 	tcGetFn   func(ns, tcName string) (*v1alpha1.TidbCluster, error)
-	pdControl controller.PDControlInterface
+	pdControl pdapi.PDControlInterface
 }
 
 type clusterInfo struct {
@@ -48,7 +48,7 @@ type clusterInfo struct {
 func NewTiDBDiscovery(cli versioned.Interface) TiDBDiscovery {
 	td := &tidbDiscovery{
 		cli:       cli,
-		pdControl: controller.NewDefaultPDControl(),
+		pdControl: pdapi.NewDefaultPDControl(),
 		clusters:  map[string]*clusterInfo{},
 	}
 	td.tcGetFn = td.realTCGetFn
@@ -97,7 +97,7 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		return fmt.Sprintf("--initial-cluster=%s=http://%s", podName, advertisePeerUrl), nil
 	}
 
-	pdClient := td.pdControl.GetPDClient(tc)
+	pdClient := td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
 	membersInfo, err := pdClient.GetMembers()
 	if err != nil {
 		return "", err

@@ -16,6 +16,7 @@ package member
 import (
 	"fmt"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -24,13 +25,13 @@ import (
 )
 
 type pdUpgrader struct {
-	pdControl  controller.PDControlInterface
+	pdControl  pdapi.PDControlInterface
 	podControl controller.PodControlInterface
 	podLister  corelisters.PodLister
 }
 
 // NewPDUpgrader returns a pdUpgrader
-func NewPDUpgrader(pdControl controller.PDControlInterface,
+func NewPDUpgrader(pdControl pdapi.PDControlInterface,
 	podControl controller.PodControlInterface,
 	podLister corelisters.PodLister) Upgrader {
 	return &pdUpgrader{
@@ -149,7 +150,7 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 }
 
 func (pu *pdUpgrader) transferPDLeaderTo(tc *v1alpha1.TidbCluster, targetName string) error {
-	return pu.pdControl.GetPDClient(tc).TransferPDLeader(targetName)
+	return controller.GetPDClient(pu.pdControl, tc).TransferPDLeader(targetName)
 }
 
 type fakePDUpgrader struct{}
