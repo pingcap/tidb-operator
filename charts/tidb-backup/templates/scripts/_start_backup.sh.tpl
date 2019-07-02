@@ -48,3 +48,11 @@ uploader \
   --endpoint={{ .Values.ceph.endpoint }} \
   --backup-dir=${dirname}
 {{- end }}
+
+{{- if .Values.s3 }}
+uploader \
+  --cloud=aws \
+  --region={{ .Values.s3.region }} \
+  --bucket={{ .Values.s3.bucket }} \
+  --backup-dir=${dirname}
+{{- end }}
