@@ -57,24 +57,3 @@ module "default-cluster" {
   monitor_instance_type = var.default_cluster_monitor_instance_type
   override_values       = file("default-cluster.yaml")
 }
-
-module "test-cluster" {
-  providers = {
-    helm = "helm.eks"
-  }
-  source  = "./tidb-cluster"
-  eks     = local.default_eks
-  subnets = local.default_subnets
-
-  cluster_name          = "test-cluster"
-  cluster_version       = var.default_cluster_version
-  ssh_key_name          = module.key-pair.key_name
-  pd_count              = var.default_cluster_pd_count
-  pd_instance_type      = var.default_cluster_pd_instance_type
-  tikv_count            = var.default_cluster_tikv_count
-  tikv_instance_type    = var.default_cluster_tikv_instance_type
-  tidb_count            = var.default_cluster_tidb_count
-  tidb_instance_type    = var.default_cluster_tidb_instance_type
-  monitor_instance_type = var.default_cluster_monitor_instance_type
-  override_values       = file("default-cluster.yaml")
-}

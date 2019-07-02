@@ -127,7 +127,7 @@ resource "null_resource" "wait-tidb-ready" {
   provisioner "local-exec" {
     working_dir = path.cwd
     command = <<EOS
-until kubectl get po -n tidb -lapp.kubernetes.io/component=tidb | grep Running; do
+until kubectl get po -n ${var.cluster_name} -lapp.kubernetes.io/component=tidb | grep Running; do
   echo "Wait TiDB pod running"
   sleep 5
 done
