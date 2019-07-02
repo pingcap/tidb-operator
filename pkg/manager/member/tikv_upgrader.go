@@ -130,6 +130,18 @@ func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32,
 				return nil
 			}
 
+			if ordinal < tc.Spec.TiKV.Replicas-1 {
+				nextPodName := tikvPodName(tcName, ordinal+1)
+				nextPod, err := tku.podLister.Pods(ns).Get(nextPodName)
+				if err != nil {
+					return err
+				}
+				_, nextPodEvicting := nextPod.Annotations[EvictLeaderBeginTime]
+				if nextPodEvicting {
+					return controller.RequeueErrorf("waiting for tidbcluster[%s/%s]'s tikv pod: [%s] is evicting leader", ns, tcName, nextPodName)
+				}
+			}
+
 			_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
 			if !evicting {
 				glog.Infof("@@@@@@@@@@@@@@@@@ %s", storeID)
@@ -178,30 +190,27 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 	if err != nil {
 		return err
 	}
-	upgradedPodName := tikvPodName(tc.GetName(), ordinal)
-	upgradedPod, err := tku.podLister.Pods(tc.GetNamespace()).Get(upgradedPodName)
+	// upgradedPodName := tikvPodName(tc.GetName(), ordinal)
+	// upgradedPod, err := tku.podLister.Pods(tc.GetNamespace()).Get(upgradedPodName)
+	// if err != nil {
+	// 	return err
+	// }
+
+	err = tku.pdControl.GetPDClient(tc).EndEvictLeader(storeID)
 	if err != nil {
 		return err
 	}
-
-	for i := 3; i > 0; i-- {
-		err = tku.pdControl.GetPDClient(tc).EndEvictLeader(storeID)
-		if err != nil {
-			return err
-		}
-		glog.Infof("storeID: %d", storeID)
-		time.Sleep(5 * time.Second)
-	}
+	glog.Infof("storeID: %d", storeID)
 	glog.Infof("ppppppppppppppppppp%s", storeID)
 
-	_, evicting := upgradedPod.Annotations[EvictLeaderBeginTime]
-	if evicting {
-		delete(upgradedPod.Annotations, EvictLeaderBeginTime)
-		_, err = tku.podControl.UpdatePod(tc, upgradedPod)
-		if err != nil {
-			return err
-		}
-	}
+	// _, evicting := upgradedPod.Annotations[EvictLeaderBeginTime]
+	// if evicting {
+	// 	delete(upgradedPod.Annotations, EvictLeaderBeginTime)
+	// 	_, err = tku.podControl.UpdatePod(tc, upgradedPod)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	return nil
 }

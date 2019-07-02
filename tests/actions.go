@@ -960,7 +960,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 				return err
 			}
 		}
-		if err := wait.PollImmediate(10*time.Millisecond, 6*time.Minute, func() (done bool, err error) {
+		if err := wait.PollImmediate(5*time.Second, 6*time.Minute, func() (done bool, err error) {
 			schedulers, err := pdClient.GetEvictLeaderSchedulers()
 			if err != nil {
 				glog.Errorf("failed to get evict leader schedulers, %v", err)

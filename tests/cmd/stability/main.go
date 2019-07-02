@@ -73,6 +73,13 @@ func run() {
 	cluster1 := newTidbClusterConfig("ns1", "cluster1")
 	cluster2 := newTidbClusterConfig("ns2", "cluster2")
 	cluster3 := newTidbClusterConfig("ns2", "cluster3")
+	cluster4 := newTidbClusterConfig("ns2", "cluster4")
+	cluster5 := newTidbClusterConfig("ns2", "cluster5")
+	cluster6 := newTidbClusterConfig("ns2", "cluster6")
+	cluster7 := newTidbClusterConfig("ns2", "cluster7")
+	cluster8 := newTidbClusterConfig("ns2", "cluster8")
+	cluster9 := newTidbClusterConfig("ns2", "cluster9")
+	cluster10 := newTidbClusterConfig("ns2", "cluster10")
 
 	restoreCluster1 := newTidbClusterConfig("ns1", "restore1")
 	restoreCluster2 := newTidbClusterConfig("ns2", "restore2")
@@ -86,6 +93,13 @@ func run() {
 		cluster1,
 		cluster2,
 		cluster3,
+		cluster4,
+		cluster5,
+		cluster6,
+		cluster7,
+		cluster8,
+		cluster9,
+		cluster10,
 		restoreCluster1,
 		restoreCluster2,
 		onePDCluster1,
@@ -277,6 +291,14 @@ func run() {
 	preUpgrade := []*tests.TidbClusterConfig{
 		cluster1,
 		cluster2,
+		cluster3,
+		cluster4,
+		cluster5,
+		cluster6,
+		cluster7,
+		cluster8,
+		cluster9,
+		cluster10,
 	}
 	caseFn(preUpgrade, onePDCluster1, restoreCluster1, upgradeVersions[0])
 
