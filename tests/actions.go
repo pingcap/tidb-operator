@@ -931,7 +931,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 
 		replicas := tc.Spec.TiKV.Replicas
 		for i := replicas - 1; i > 0; i-- {
-			if err := wait.PollImmediate(1*time.Second, 6*time.Minute, func() (done bool, err error) {
+			if err := wait.PollImmediate(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 				schedulers, err := pdClient.GetEvictLeaderSchedulers()
 				if err != nil {
 					glog.Errorf("failed to get evict leader schedulers, %v", err)
