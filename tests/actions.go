@@ -2076,11 +2076,13 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	}
 
 	fn = func() (bool, error) {
-		_, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(getBackupDirPodName, metav1.GetOptions{})
-		if errors.IsNotFound(err) {
-			return false, nil
+		pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(getBackupDirPodName, metav1.GetOptions{})
+		if err == nil && pod.Status.Phase == corev1.PodRunning {
+			return true, nil
+		} else if err != nil && !errors.IsNotFound(err) {
+			return false, err
 		}
-		return true, nil
+		return false, nil
 	}
 
 	err = wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
@@ -2090,9 +2092,6 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	}
 
 	cmd := fmt.Sprintf("kubectl exec %s -n %s ls /data", getBackupDirPodName, info.Namespace)
-
-	time.Sleep(20 * time.Second)
-
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		glog.Errorf("cluster:[%s/%s] exec :%s failed,error:%v,result:%s", info.Namespace, info.ClusterName, cmd, err, string(res))
