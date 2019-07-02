@@ -251,7 +251,7 @@ $ terraform destroy
 
 > **Note:**
 >
-> If you specify service type `LoadBalancer` for the services like the default configuration do, you have to delete these services before destroy, otherwise they will block the subnets to be destroyed.
+> If you specify service type `LoadBalancer` for the services like the default configuration do, you have to delete these services before destroy, otherwise they will block the subnets from being destroyed.
 
 > **Note:**
 >
