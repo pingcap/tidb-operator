@@ -42,7 +42,7 @@ locals {
       instance_type        = var.pd_instance_type
       root_volume_size     = "50"
       public_ip            = true
-      kubelet_extra_args   = "--register-with-taints=dedicated=${var.cluster_name}-pd:NoSchedule --node-labels=dedicated=${var.cluster_name}-pd"
+      kubelet_extra_args   = "--register-with-taints=dedicated=${var.cluster_name}-pd:NoSchedule --node-labels=dedicated=${var.cluster_name}-pd,localVolume=true"
       asg_desired_capacity = var.pd_count
       asg_max_size         = var.pd_count + 2
       # additional_userdata  = file("userdata.sh")
@@ -53,7 +53,7 @@ locals {
       instance_type        = var.tikv_instance_type
       root_volume_size     = "50"
       public_ip            = false
-      kubelet_extra_args   = "--register-with-taints=dedicated=${var.cluster_name}-tikv:NoSchedule --node-labels=dedicated=${var.cluster_name}-tikv"
+      kubelet_extra_args   = "--register-with-taints=dedicated=${var.cluster_name}-tikv:NoSchedule --node-labels=dedicated=${var.cluster_name}-tikv,localVolume=true"
       asg_desired_capacity = var.tikv_count
       asg_max_size         = var.tikv_count + 2
       pre_userdata         = file("${path.module}/pre_userdata")

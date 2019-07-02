@@ -38,6 +38,8 @@ spec:
         - key: dedicated
           operator: Exists
           effect: "NoSchedule"
+      nodeSelector:
+        localVolume: "true"
       serviceAccountName: local-storage-admin
       containers:
         - image: "quay.io/external_storage/local-volume-provisioner:v2.2.0"

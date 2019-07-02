@@ -33,9 +33,10 @@ resource "local_file" "kubeconfig" {
 }
 
 provider "helm" {
+  alias = "initial"
   insecure = true
   # service_account = "tiller"
-  # install_tiller = true # currently this doesn't work, so we install tiller in the local-exec provisioner. See https://github.com/terraform-providers/terraform-provider-helm/issues/148
+  install_tiller = false # currently this doesn't work, so we install tiller in the local-exec provisioner. See https://github.com/terraform-providers/terraform-provider-helm/issues/148
   kubernetes {
     config_path = local_file.kubeconfig.filename
   }
@@ -55,7 +56,7 @@ kubectl apply -f manifests/gp2-storageclass.yaml
 helm init --service-account tiller --upgrade --wait
 until helm ls; do
   echo "Wait tiller ready"
-  sleep 1
+  sleep 5
 done
 rm kube_config.yaml
 EOS
@@ -66,12 +67,14 @@ EOS
 }
 
 data "helm_repository" "pingcap" {
+  provider = "helm.initial"
   depends_on = ["null_resource.setup-env"]
   name = "pingcap"
   url = "http://charts.pingcap.org/"
 }
 
 resource "helm_release" "tidb-operator" {
+  provider = "helm.initial"
   depends_on = ["null_resource.setup-env"]
 
   repository = data.helm_repository.pingcap.name
