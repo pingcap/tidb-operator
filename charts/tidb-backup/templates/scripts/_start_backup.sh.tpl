@@ -28,7 +28,7 @@ fi
   --password=${TIDB_PASSWORD} \
   --long-query-guard=3600 \
   --tidb-force-priority=LOW_PRIORITY \
-  {{ .Values.backupOptions }} ${snapshot_args}
+  {{ .Values.backupOptions }} ${snapshot_args:-}
 
 echo "Reset TiKV GC life time to ${gc_life_time}"
 /usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} -p${TIDB_PASSWORD} -Nse "update mysql.tidb set variable_value='${gc_life_time}' where variable_name='tikv_gc_life_time';"
@@ -46,5 +46,13 @@ uploader \
   --cloud=ceph \
   --bucket={{ .Values.ceph.bucket }} \
   --endpoint={{ .Values.ceph.endpoint }} \
+  --backup-dir=${dirname}
+{{- end }}
+
+{{- if .Values.s3 }}
+uploader \
+  --cloud=aws \
+  --region={{ .Values.s3.region }} \
+  --bucket={{ .Values.s3.bucket }} \
   --backup-dir=${dirname}
 {{- end }}
