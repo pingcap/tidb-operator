@@ -46,3 +46,11 @@ uploader \
   --endpoint={{ .Values.scheduledBackup.ceph.endpoint }} \
   --backup-dir=${backupPath}
 {{- end }}
+
+{{- if .Values.scheduledBackup.s3 }}
+uploader \
+  --cloud=aws \
+  --region={{ .Values.scheduledBackup.s3.region }} \
+  --bucket={{ .Values.scheduledBackup.s3.bucket }} \
+  --backup-dir=${backupPath}
+{{- end }}

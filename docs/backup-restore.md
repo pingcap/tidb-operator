@@ -12,7 +12,7 @@ Currently, TiDB Operator only supports automatic [restore operation](#restore) f
 
 Full backup uses `mydumper` to make a logical backup of TiDB cluster. The backup job will create a PVC([PersistentVolumeClaim](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims), the same below) to store backup data.
 
-By default, the backup uses PV ([Persistent Volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistent-volumes)) to store the backup data. You can also store the backup data to [Google Cloud Storage](https://cloud.google.com/storage/) bucket or [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/) by changing the configuration. This way the PV temporarily stores backup data before it is placed in object storage. Refer to [TiDB cluster Backup configuration](./references/tidb-backup-configuration.md) for full configuration guide of backup and restore.
+By default, the backup uses PV ([Persistent Volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistent-volumes)) to store the backup data. You can also store the backup data to [Google Cloud Storage](https://cloud.google.com/storage/) bucket, [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/) or [Amazon S3](https://aws.amazon.com/s3/) by changing the configuration. This way the PV temporarily stores backup data before it is placed in object storage. Refer to [TiDB cluster Backup configuration](./references/tidb-backup-configuration.md) for full configuration guide of backup and restore.
 
 You can either set up a scheduled full backup or take a full backup in an ad-hoc manner.
 
@@ -77,7 +77,7 @@ For backups stored in PV, you can view the PVs by using the following command:
 $ kubectl get pvc -n ${namespace} -l app.kubernetes.io/component=backup,pingcap.com/backup-cluster-name=${cluster_name}
 ```
 
-If you store your backup data to [Google Cloud Storage](https://cloud.google.com/storage/) or [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/), you can view the backups by using the related GUI or CLI tool.
+If you store your backup data to [Google Cloud Storage](https://cloud.google.com/storage/), [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/) or [Amazon S3](https://aws.amazon.com/s3/), you can view the backups by using the related GUI or CLI tool.
 
 ## Restore
 
@@ -85,7 +85,7 @@ The helm chart `charts/tidb-backup` helps restore a TiDB cluster using backup da
 
 * Set `clusterName` to the target TiDB cluster name
 * Set `mode` to `restore`
-* Set `name` to the backup name you want to restore([view backups](#view-backups) helps you view all the backups available). If the backup is stored in `Google Cloud Storage` or `Ceph Object Storage`, you must configure the corresponding section too (you might continue to use the same configuration you set in the [adhoc full backup](#ad-hoc-full-backup)).
+* Set `name` to the backup name you want to restore([view backups](#view-backups) helps you view all the backups available). If the backup is stored in `Google Cloud Storage`, `Ceph Object Storage` or `Amazon S3`, you must configure the corresponding section too (you might continue to use the same configuration you set in the [adhoc full backup](#ad-hoc-full-backup)).
 
 Create a Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) containing the user and password that has the privilege to restore the database (skip this if you have already created one in the [adhoc full backup](#ad-hoc-full-backup) section):
 
