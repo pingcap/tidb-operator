@@ -54,6 +54,11 @@ output "kubeconfig_filename" {
   value       = element(concat(local_file.kubeconfig.*.filename, [""]), 0)
 }
 
+output "kubeconfig_file" {
+  description = "The filename of the generated kubectl config."
+  value       = element(concat(local_file.kubeconfig.*.filename, [""]), 0)
+}
+
 output "workers_asg_arns" {
   description = "IDs of the autoscaling groups containing workers."
   value = concat(

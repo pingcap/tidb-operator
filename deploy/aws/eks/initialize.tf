@@ -16,10 +16,10 @@ for i in `seq 1 10`; do
     echo "${null_resource.update_aws_auth_and_install_operator[0].triggers.config_map_rendered}" > aws_auth_configmap.yaml
     kubectl apply -f aws_auth_configmap.yaml --kubeconfig kube_config.yaml && break || sleep 10
 done
-kubectl apply -f manifests/crd.yaml
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.0.0-beta.3/manifests/crd.yaml
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.0.0-beta.3/manifests/tiller-rbac.yaml
 kubectl apply -f manifests/local-volume-provisioner.yaml
 kubectl apply -f manifests/gp2-storageclass.yaml
-kubectl apply -f manifests/tiller-rbac.yaml
 helm init --service-account tiller --upgrade --wait
 until helm ls; do
   echo "Wait tiller ready"

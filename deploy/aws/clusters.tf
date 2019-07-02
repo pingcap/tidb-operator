@@ -22,7 +22,7 @@
 
 module "default-cluster" {
   source   = "./tidb-cluster"
-  eks_info = local.default_eks
+  eks_info = module.eks
   subnets  = local.default_subnets
 
   cluster_name          = var.default_cluster_name

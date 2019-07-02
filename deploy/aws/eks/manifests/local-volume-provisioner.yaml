@@ -66,9 +66,6 @@ spec:
             - mountPath: /etc/provisioner/config
               name: provisioner-config
               readOnly: true
-            # mounting /dev in DinD environment would fail
-            # - mountPath: /dev
-            #   name: provisioner-dev
             - mountPath: /mnt/local-ssd
               name: local-disks
               mountPropagation: "HostToContainer"
@@ -76,9 +73,6 @@ spec:
         - name: provisioner-config
           configMap:
             name: local-provisioner-config
-        # - name: provisioner-dev
-        #   hostPath:
-        #     path: /dev
         - name: local-disks
           hostPath:
             path: /mnt/local-ssd

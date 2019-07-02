@@ -116,6 +116,7 @@ locals {
     vpc_id                      = var.vpc_id
   }
 
+  # Taken from https://amazon-eks.s3-us-west-2.amazonaws.com/1.10.3/2018-06-05/amazon-eks-nodegroup.yaml
   ebs_optimized = {
     "c1.medium"    = false
     "c1.xlarge"    = true
