@@ -944,12 +944,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 					return false, nil
 				}
 				podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
-				glog.Info(schedulers)
-				glog.Info(podName)
-				glog.Info(tc.Status.TiKV.Stores)
 				scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
-				glog.Info(scheduler)
-				glog.Info(replicas)
 				if schedulers[0] == scheduler {
 					return true, nil
 				}

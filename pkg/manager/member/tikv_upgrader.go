@@ -122,7 +122,6 @@ func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32,
 			}
 			_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
 			if !evicting {
-				glog.Infof("@@@@@@@@@@@@@@@@@ %s", storeID)
 				return tku.beginEvictLeader(tc, storeID, upgradePod)
 			}
 
@@ -160,15 +159,16 @@ func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.T
 }
 
 func (tku *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
+	err := tku.pdControl.GetPDClient(tc).BeginEvictLeader(storeID)
+	if err != nil {
+		return err
+	}
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
 	pod.Annotations[EvictLeaderBeginTime] = time.Now().Format(time.RFC3339)
-	_, err := tku.podControl.UpdatePod(tc, pod)
-	if err != nil {
-		return err
-	}
-	return tku.pdControl.GetPDClient(tc).BeginEvictLeader(storeID)
+	_, err = tku.podControl.UpdatePod(tc, pod)
+	return err
 }
 
 func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32) error {
@@ -178,27 +178,11 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 	if err != nil {
 		return err
 	}
-	// upgradedPodName := tikvPodName(tc.GetName(), ordinal)
-	// upgradedPod, err := tku.podLister.Pods(tc.GetNamespace()).Get(upgradedPodName)
-	// if err != nil {
-	// 	return err
-	// }
 
 	err = tku.pdControl.GetPDClient(tc).EndEvictLeader(storeID)
 	if err != nil {
 		return err
 	}
-	glog.Infof("storeID: %d", storeID)
-	glog.Infof("ppppppppppppppppppp%s", storeID)
-
-	// _, evicting := upgradedPod.Annotations[EvictLeaderBeginTime]
-	// if evicting {
-	// 	delete(upgradedPod.Annotations, EvictLeaderBeginTime)
-	// 	_, err = tku.podControl.UpdatePod(tc, upgradedPod)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
 
 	return nil
 }
