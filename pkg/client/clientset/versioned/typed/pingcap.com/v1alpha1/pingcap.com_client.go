@@ -28,6 +28,7 @@ import (
 type PingcapV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	TidbClustersGetter
+	TidbSidecarsGetter
 }
 
 // PingcapV1alpha1Client is used to interact with features provided by the pingcap.com group.
@@ -37,6 +38,10 @@ type PingcapV1alpha1Client struct {
 
 func (c *PingcapV1alpha1Client) TidbClusters(namespace string) TidbClusterInterface {
 	return newTidbClusters(c, namespace)
+}
+
+func (c *PingcapV1alpha1Client) TidbSidecars(namespace string) TidbSidecarInterface {
+	return newTidbSidecars(c, namespace)
 }
 
 // NewForConfig creates a new PingcapV1alpha1Client for the given config.

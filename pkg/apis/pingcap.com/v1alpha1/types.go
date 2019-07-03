@@ -257,3 +257,45 @@ type TiKVFailureStore struct {
 	PodName string `json:"podName,omitempty"`
 	StoreID string `json:"storeID,omitempty"`
 }
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// TidbSidecar is a resource that defines additional sidecar containers for a pod.
+type TidbSidecar struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// +optional
+	Spec TidbSidecarSpec `json:"spec,omitempty"`
+}
+
+// TidbSidecarSpec is a description of a tidb sidecar.
+type TidbSidecarSpec struct {
+	// Selector is a label query over a set of resources, in this case pods.
+	// Required.
+	Selector metav1.LabelSelector `json:"selector,omitempty"`
+
+	// List of sidecar containers
+	// Required.
+	Containers []corev1.Container `json:"containers"`
+
+	// Volumes defines the collection of Volume to inject into the pod.
+	// +optional
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// TidbSidecarList is a list of TidbSidecar objects.
+type TidbSidecarList struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard list metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	// Items is a list of schema objects.
+	Items []TidbSidecar `json:"items"`
+}

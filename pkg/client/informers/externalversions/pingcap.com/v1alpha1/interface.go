@@ -26,6 +26,8 @@ import (
 type Interface interface {
 	// TidbClusters returns a TidbClusterInformer.
 	TidbClusters() TidbClusterInformer
+	// TidbSidecars returns a TidbSidecarInformer.
+	TidbSidecars() TidbSidecarInformer
 }
 
 type version struct {
@@ -42,4 +44,9 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // TidbClusters returns a TidbClusterInformer.
 func (v *version) TidbClusters() TidbClusterInformer {
 	return &tidbClusterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TidbSidecars returns a TidbSidecarInformer.
+func (v *version) TidbSidecars() TidbSidecarInformer {
+	return &tidbSidecarInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

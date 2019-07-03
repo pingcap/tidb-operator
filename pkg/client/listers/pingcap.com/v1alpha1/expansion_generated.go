@@ -25,3 +25,11 @@ type TidbClusterListerExpansion interface{}
 // TidbClusterNamespaceListerExpansion allows custom methods to be added to
 // TidbClusterNamespaceLister.
 type TidbClusterNamespaceListerExpansion interface{}
+
+// TidbSidecarListerExpansion allows custom methods to be added to
+// TidbSidecarLister.
+type TidbSidecarListerExpansion interface{}
+
+// TidbSidecarNamespaceListerExpansion allows custom methods to be added to
+// TidbSidecarNamespaceLister.
+type TidbSidecarNamespaceListerExpansion interface{}
