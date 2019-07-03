@@ -21,6 +21,15 @@ downloader \
   --destDir=/data
 {{- end }}
 
+{{- if .Values.s3 }}
+downloader \
+  --cloud=aws \
+  --region={{ .Values.s3.region }} \
+  --bucket={{ .Values.s3.bucket }} \
+  --srcDir=${BACKUP_NAME} \
+  --destDir=/data
+{{- end }}
+
 count=1
 while ! mysql -u ${TIDB_USER} -h `eval echo '${'$host'}'` -P 4000 -p${TIDB_PASSWORD} -e 'select version();'
 do

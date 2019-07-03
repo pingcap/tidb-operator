@@ -257,6 +257,7 @@ type TidbClusterConfig struct {
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
 	SubValues        string
+	TopologyKey      string
 }
 
 func (tc *TidbClusterConfig) String() string {
@@ -707,6 +708,13 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		glog.V(4).Infof("check tidb cluster begin schedulerHAFn")
 		if b, err := oa.schedulerHAFn(tc); !b && err == nil {
 			return false, nil
+		}
+
+		glog.V(4).Infof("check store labels")
+		if b, err := oa.storeLabelsIsSet(tc, info.TopologyKey); !b && err == nil {
+			return false, nil
+		} else if err != nil {
+			return false, err
 		}
 
 		glog.V(4).Infof("check tidb cluster begin passwordIsSet")
@@ -1365,6 +1373,29 @@ func (oa *operatorActions) schedulerHAFn(tc *v1alpha1.TidbCluster) (bool, error)
 		}
 	}
 
+	return true, nil
+}
+
+func (oa *operatorActions) storeLabelsIsSet(tc *v1alpha1.TidbCluster, topologyKey string) (bool, error) {
+	pdCli := oa.pdControl.GetPDClient(tc)
+	for _, store := range tc.Status.TiKV.Stores {
+		storeID, err := strconv.ParseUint(store.ID, 10, 64)
+		if err != nil {
+			return false, err
+		}
+		storeInfo, err := pdCli.GetStore(storeID)
+		if err != nil {
+			return false, nil
+		}
+		if len(storeInfo.Store.Labels) == 0 {
+			return false, nil
+		}
+		for _, label := range storeInfo.Store.Labels {
+			if label.Key != topologyKey {
+				return false, nil
+			}
+		}
+	}
 	return true, nil
 }
 
@@ -2032,7 +2063,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 			Containers: []corev1.Container{
 				{
 					Name:    getBackupDirPodName,
-					Image:   "pingcap/tidb-cloud-backup:latest",
+					Image:   "pingcap/tidb-cloud-backup:20190610",
 					Command: []string{"sleep", "3000"},
 					VolumeMounts: []corev1.VolumeMount{
 						{
@@ -2076,11 +2107,13 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	}
 
 	fn = func() (bool, error) {
-		_, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(getBackupDirPodName, metav1.GetOptions{})
-		if errors.IsNotFound(err) {
-			return false, nil
+		pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(getBackupDirPodName, metav1.GetOptions{})
+		if err == nil && pod.Status.Phase == corev1.PodRunning {
+			return true, nil
+		} else if err != nil && !errors.IsNotFound(err) {
+			return false, err
 		}
-		return true, nil
+		return false, nil
 	}
 
 	err = wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
@@ -2090,9 +2123,6 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	}
 
 	cmd := fmt.Sprintf("kubectl exec %s -n %s ls /data", getBackupDirPodName, info.Namespace)
-
-	time.Sleep(20 * time.Second)
-
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		glog.Errorf("cluster:[%s/%s] exec :%s failed,error:%v,result:%s", info.Namespace, info.ClusterName, cmd, err, string(res))

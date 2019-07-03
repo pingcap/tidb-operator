@@ -538,8 +538,8 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 		}
 
 		nodeName := pod.Spec.NodeName
-		ls, err := tkmm.getNodeLabels(nodeName)
-		if err != nil {
+		ls, err := tkmm.getNodeLabels(nodeName, tc.Spec.TiKV.StoreLabels)
+		if err != nil || len(ls) == 0 {
 			glog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
 			continue
 		}
@@ -560,28 +560,28 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 	return setCount, nil
 }
 
-func (tkmm *tikvMemberManager) getNodeLabels(nodeName string) (map[string]string, error) {
+func (tkmm *tikvMemberManager) getNodeLabels(nodeName string, storeLabels []string) (map[string]string, error) {
 	node, err := tkmm.nodeLister.Get(nodeName)
 	if err != nil {
 		return nil, err
 	}
-	if ls := node.GetLabels(); ls != nil {
-		labels := map[string]string{}
-		if region, found := ls["region"]; found {
-			labels["region"] = region
+	labels := map[string]string{}
+	ls := node.GetLabels()
+	for _, storeLabel := range storeLabels {
+		if value, found := ls[storeLabel]; found {
+			labels[storeLabel] = value
+			continue
 		}
-		if zone, found := ls["zone"]; found {
-			labels["zone"] = zone
+
+		// TODO after pd supports storeLabel containing slash character, these codes should be deleted
+		if storeLabel == "host" {
+			if host, found := ls[apis.LabelHostname]; found {
+				labels[storeLabel] = host
+			}
 		}
-		if rack, found := ls["rack"]; found {
-			labels["rack"] = rack
-		}
-		if host, found := ls[apis.LabelHostname]; found {
-			labels["host"] = host
-		}
-		return labels, nil
+
 	}
-	return nil, fmt.Errorf("labels not found")
+	return labels, nil
 }
 
 // storeLabelsEqualNodeLabels compares store labels with node labels

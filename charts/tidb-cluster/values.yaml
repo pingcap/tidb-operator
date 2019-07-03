@@ -192,6 +192,16 @@ tikv:
   #   effect: "NoSchedule"
   annotations: {}
 
+  ## storeLabels is used to define store label keys
+  ## The label keys specified the location of a store.
+  ## In order to use the location awareness feature of TiKV, users have to label their k8s nodes with the same labels.
+  ## Note: current can not support these labels contains "/"
+  ## The placement priorities is implied by the order of label keys.
+  ## For example, ["zone", "rack"] means that we should place replicas to
+  ## different zones first, then to different racks if we don't have enough zones.
+  ## default value is ["region", "zone", "rack", "host"]
+  ## storeLabels: ["region", "zone", "rack", "host"]
+
   # block-cache used to cache uncompressed blocks, big block-cache can speed up read.
   # in normal cases should tune to 30%-50% tikv.resources.limits.memory
   # defaultcfBlockCacheSize: "1GB"
@@ -285,7 +295,7 @@ tidb:
     exposeStatus: true
     # annotations:
       # cloud.google.com/load-balancer-type: Internal
-  # separateSlowLog: true
+  separateSlowLog: true
   slowLogTailer:
     image: busybox:1.26.2
     resources:
@@ -480,6 +490,15 @@ scheduledBackup:
   # You can create the secret by:
   # kubectl create secret generic ceph-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
   # secretName: ceph-backup-secret
+
+  # backup to s3
+  s3: {}
+  # region: ""
+  # bucket: ""
+  # secretName is the name of the secret which stores s3 object store access key and secret key
+  # You can create the secret by:
+  # kubectl create secret generic s3-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
+  # secretName: s3-backup-secret
 
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"
