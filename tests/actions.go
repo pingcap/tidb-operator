@@ -959,7 +959,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 			if len(schedulers) == 0 {
 				return true, nil
 			}
-			glog.Errorf("schedulers: %v is not empty")
+			glog.Errorf("schedulers: %v is not empty", schedulers)
 			return false, nil
 		}); err != nil {
 			glog.Errorf("failed to wait all schedulers deleted %s/%s, %v", ns, tcName, err)
