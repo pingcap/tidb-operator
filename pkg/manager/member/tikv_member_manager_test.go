@@ -488,6 +488,7 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 	}
 	testFn := func(test *testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
+		tc.Spec.TiKV.StoreLabels = []string{"region", "zone", "rack"}
 		pmm, _, _, pdClient, podIndexer, nodeIndexer := newFakeTiKVMemberManager(tc)
 
 		if test.errWhenGetStores {
