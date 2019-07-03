@@ -41,10 +41,10 @@ Before deploying a TiDB cluster on AWS EKS, make sure the following requirements
 
 The default setup will create a new VPC and a t2.micro instance as bastion machine, and an EKS cluster with the following ec2 instances as worker nodes:
 
-* 3 m5d.xlarge instances for PD
-* 3 i3.2xlarge instances for TiKV
-* 2 c4.4xlarge instances for TiDB
-* 1 c5.xlarge instance for monitor
+* 3 m5.large instances for PD
+* 3 c5d.4xlarge instances for TiKV
+* 2 c5.4xlarge instances for TiDB
+* 1 c5.2xlarge instance for monitor
 
 Use the following commands to set up the cluster:
 
@@ -76,7 +76,7 @@ monitor_endpoint = http://abd299cc47af411e98aae02938da0762-1989524000.us-east-2.
 region = us-east-2
 tidb_dns = abd2e3f7c7af411e98aae02938da0762-17499b76b312be02.elb.us-east-2.amazonaws.com
 tidb_port = 4000
-tidb_version = v3.0.0-rc.1
+tidb_version = v3.0.0
 ```
 
 > **Note:** You can use the `terraform output` command to get the output again.
@@ -86,7 +86,7 @@ tidb_version = v3.0.0-rc.1
 To access the deployed TiDB cluster, use the following commands to first `ssh` into the bastion machine, and then connect it via MySQL client (replace the `<>` parts with values from the output):
 
 ``` shell
-ssh -i credentials/k8s-prod-<cluster_name>.pem ec2-user@<bastion_ip>
+ssh -i credentials/<cluster_name>.pem ec2-user@<bastion_ip>
 mysql -h <tidb_dns> -P <tidb_port> -u root
 ```
 
@@ -118,12 +118,12 @@ The initial Grafana login credentials are:
 
 To upgrade the TiDB cluster, edit the `variables.tf` file with your preferred text editor and modify the `tidb_version` variable to a higher version, and then run `terraform apply`.
 
-For example, to upgrade the cluster to version 3.0.0-rc.1, modify the `tidb_version` to `v3.0.0-rc.2`:
+For example, to upgrade the cluster to version 3.0.0-rc.1, modify the `tidb_version` to `v3.0.0`:
 
 ```
  variable "tidb_version" {
    description = "tidb cluster version"
-   default = "v3.0.0-rc.2"
+   default = "v3.0.0"
  }
 ```
 
@@ -131,12 +131,12 @@ For example, to upgrade the cluster to version 3.0.0-rc.1, modify the `tidb_vers
 
 ## Scale
 
-To scale the TiDB cluster, edit the `variables.tf` file with your preferred text editor and modify the `tikv_count` or `tidb_count` variable to your desired count, and then run `terraform apply`.
+To scale the TiDB cluster, edit the `variables.tf` file with your preferred text editor and modify the `default_cluster_tikv_count` or `default_cluster_tidb_count` variable to your desired count, and then run `terraform apply`.
 
 For example, to scale out the cluster, you can modify the number of TiDB instances from 2 to 3:
 
 ```
- variable "tidb_count" {
+ variable "default_cluster_tidb_count" {
    default = 4
  }
 ```
@@ -145,7 +145,7 @@ For example, to scale out the cluster, you can modify the number of TiDB instanc
 
 ## Customize
 
-You can change default values in `variables.tf` (such as the cluster name and image versions) as needed.
+You can change default values in `variables.tf` (such as the default cluster name and image versions) as needed.
 
 ### Customize AWS related resources
 
@@ -159,12 +159,91 @@ The TiDB version and component count are also configurable in variables.tf, you 
 
 Currently, the instance type of TiDB cluster component is not configurable because PD and TiKV relies on [NVMe SSD instance store](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html), different instance types have different disks.
 
-### Customize TiDB parameters
+### Customize TiDB Cluster
 
-Currently, there are not many customizable TiDB parameters. And there are two ways to customize the parameters:
+The values file ([`./tidb-cluster/values/default.yaml`](./tidb-cluster/values/default.yaml)) provide proper default for TiDB cluster in EKS. You can specify an overriding values file in [`clusters.tf`](./clusters.tf) for each TiDB cluster. Values of this file will override the default ones. 
 
-* Before deploying the cluster, you can directly modify the `templates/tidb-cluster-values.yaml.tpl` file and then deploy the cluster with customized configs.
-* After the cluster is running, you must run `terraform apply` again every time you make changes to the `templates/tidb-cluster-values.yaml.tpl` file, or the cluster will still be using old configs.
+For example, the default cluster specify using `./default-cluster.yaml` as the overriding values file, and enable the ConfigMap rollout feature in this file.
+
+In EKS, some values are not customizable as usual, including the cluster version, replicas, node selectors and taints. These variables are controlled by the terraform instead in favor of consistency. To customize these variables, you can edit the [`clusters.tf`](./clusters.tf) and change the variables of each `./tidb-cluster` module directly.
+
+### Customized TiDB Operator
+
+You can customize the TiDB operator by specifying a helm values file through the `operator_values` variable. For example:
+
+```hcl
+variable "operator_values" {
+  description = "The helm values of TiDB Operator"
+  default     = file("operator_values.yaml")
+}
+```
+
+## Multiple TiDB Cluster Management
+
+An instance of `./tidb-cluster` module corresponds to a TiDB cluster in the EKS cluster. If you want to add a new TiDB cluster, you can edit `./cluster.tf` and add a new instance of `./tidb-cluster` module:
+
+```hcl
+module example-cluster {
+  source = "./tidb-cluster"
+  
+  # The target EKS, required
+  eks_info = local.default_eks
+  # The subnets of node pools of this TiDB cluster, required
+  subnets = local.default_subnets
+  # TiDB cluster name, required
+  cluster_name    = "example-cluster"
+  
+  # Helm values file
+  override_values = file("example-cluster.yaml")
+  # TiDB cluster version
+  cluster_version               = "v3.0.0"
+  # SSH key of cluster nodes
+  ssh_key_name                  = module.key-pair.key_name
+  # PD replica number
+  pd_count                      = 3
+  # TiKV instance type
+  pd_instance_type              = "t2.xlarge"
+  # TiKV replica number
+  tikv_count                    = 3
+  # TiKV instance type
+  tikv_instance_type            = "t2.xlarge"
+  # The storage class used by TiKV, if the TiKV instance type do not have local SSD, you should change it to storage class 
+  # TiDB replica number
+  tidb_count                    = 2
+  # TiDB instance type
+  tidb_instance_type            = "t2.xlarge"
+  # Monitor instance type
+  monitor_instance_type         = "t2.xlarge"
+  # The version of tidb-cluster helm chart
+  tidb_cluster_chart_version    = "v1.0.0-beta.3"
+}
+
+module other-cluster {
+  source   = "./tidb-cluster"
+  
+  cluster_name    = "other-cluster"
+  override_values = file("other-cluster.yaml")
+  #......
+}
+```
+
+> **Note:**
+> 
+> The `cluster_name` of each cluster must be unique.
+
+You can refer to [./tidb-cluster/variables.tf](./tidb-cluster/variables.tf) for the complete configuration reference of `./tidb-cluster` module.
+
+You can get the DNS name of TiDB service and grafana service via kubectl. If you want terraform to print these information like the `default-cluster`, you can add `output` sections in `outputs.tf`:
+
+```hcl
+output "example-cluster_tidb-dns" {
+  value = module.example-cluster.tidb_dns
+}
+
+output "example-cluster_monitor-dns" {
+  value = module.example-cluster.monitor_dns
+}
+```
 
 ## Destroy
 
@@ -174,4 +253,35 @@ It may take some while to finish destroying the cluster.
 $ terraform destroy
 ```
 
-> **Note:** You have to manually delete the EBS volumes in AWS console after running `terraform destroy` if you do not need the data on the volumes anymore.
+> **Note:**
+>
+> This will destroy your EKS cluster along with all the TiDB clusters you deployed on it.
+
+> **Note:**
+>
+> You have to manually delete the EBS volumes in AWS console after running terraform destroy if you do not need the data on the volumes anymore.
+
+## Advanced Guide: Use the tidb-cluster and tidb-operator Modules
+
+Under the hood, this terraform module composes two sub-modules:
+
+- [tidb-operator](./tidb-operator/README.md), which provisions the Kubernetes control plane for TiDB cluster
+- [tidb-cluster](./tidb-cluster/README.md), which provisions a TiDB cluster in the target Kubernetes cluster
+
+You can use these modules separately in your own terraform scripts, by either referencing these modules locally or publish these modules to your terraform module registry.
+
+For example, let's say you create a terraform module in `/deploy/aws/staging`, you can reference the tidb-operator and tidb-cluster modules as following:
+
+```hcl
+module "setup-control-plane" {
+  source = "../tidb-operator"
+}
+
+module "tidb-cluster-a" {
+  source = "../tidb-cluster"
+}
+
+module "tidb-cluster-b" {
+  source = "../tidb-cluster"
+}
+``` 
