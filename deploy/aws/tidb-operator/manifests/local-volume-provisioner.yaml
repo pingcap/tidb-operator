@@ -14,8 +14,8 @@ metadata:
 data:
   storageClassMap: |
     local-storage:
-      hostDir: /mnt/disks
-      mountDir: /mnt/disks
+      hostDir: /mnt/local-ssd
+      mountDir: /mnt/local-ssd
 
 ---
 apiVersion: extensions/v1beta1
@@ -36,13 +36,10 @@ spec:
     spec:
       tolerations:
         - key: dedicated
-          operator: Equal
-          value: pd
+          operator: Exists
           effect: "NoSchedule"
-        - key: dedicated
-          operator: Equal
-          value: tikv
-          effect: "NoSchedule"
+      nodeSelector:
+        pingcap.com/aws-local-ssd: "true"
       serviceAccountName: local-storage-admin
       containers:
         - image: "quay.io/external_storage/local-volume-provisioner:v2.2.0"
@@ -71,22 +68,16 @@ spec:
             - mountPath: /etc/provisioner/config
               name: provisioner-config
               readOnly: true
-            # mounting /dev in DinD environment would fail
-            # - mountPath: /dev
-            #   name: provisioner-dev
-            - mountPath: /mnt/disks
+            - mountPath: /mnt/local-ssd
               name: local-disks
               mountPropagation: "HostToContainer"
       volumes:
         - name: provisioner-config
           configMap:
             name: local-provisioner-config
-        # - name: provisioner-dev
-        #   hostPath:
-        #     path: /dev
         - name: local-disks
           hostPath:
-            path: /mnt/disks
+            path: /mnt/local-ssd
 
 ---
 apiVersion: v1
