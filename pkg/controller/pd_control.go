@@ -23,7 +23,7 @@ func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) p
 	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
 }
 
-// NewFakePDClient creates a fake pdclient taht is set as the pd client
+// NewFakePDClient creates a fake pdclient that is set as the pd client
 func NewFakePDClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster) *pdapi.FakePDClient {
 	pdClient := pdapi.NewFakePDClient()
 	pdControl.SetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), pdClient)
