@@ -14,8 +14,8 @@
 package controller
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 )
 
 // GetPDClient gets the pd client from the TidbCluster
