@@ -172,7 +172,6 @@ func (tku *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint
 }
 
 func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32) error {
-	time.Sleep(30 * time.Second)
 	store := tku.getStoreByOrdinal(tc, ordinal)
 	storeID, err := strconv.ParseUint(store.ID, 10, 64)
 	if err != nil {
