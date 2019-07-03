@@ -18,11 +18,6 @@ import (
 	"k8s.io/api/admission/v1beta1"
 )
 
-var (
-	// Pod name may the same in different namespaces
-	kvLeaderMap map[string]map[string]int
-)
-
 // only allow pods to be delete when it is not ddlowner of tidb, not leader of pd and not
 // master of tikv.
 func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
