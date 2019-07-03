@@ -836,7 +836,7 @@ func (oa *operatorActions) CheckScaleInSafely(info *TidbClusterConfig) error {
 			return false, nil
 		}
 
-		pdClient := pdapi.NewDefaultPDControl().GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
+		pdClient := controller.GetPDClient(pdapi.NewDefaultPDControl(), tc)
 		stores, err := pdClient.GetStores()
 		if err != nil {
 			glog.Infof("pdClient.GetStores failed,error: %v", err)
@@ -1153,7 +1153,7 @@ func (oa *operatorActions) metaSyncFn(tc *v1alpha1.TidbCluster) (bool, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	pdCli := oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
+	pdCli := controller.GetPDClient(oa.pdControl, tc)
 	var cluster *metapb.Cluster
 	var err error
 	if cluster, err = pdCli.GetCluster(); err != nil {
@@ -1377,7 +1377,7 @@ func (oa *operatorActions) schedulerHAFn(tc *v1alpha1.TidbCluster) (bool, error)
 }
 
 func (oa *operatorActions) storeLabelsIsSet(tc *v1alpha1.TidbCluster, topologyKey string) (bool, error) {
-	pdCli := oa.pdControl.GetPDClient(tc)
+	pdCli := controller.GetPDClient(oa.pdControl, tc)
 	for _, store := range tc.Status.TiKV.Stores {
 		storeID, err := strconv.ParseUint(store.ID, 10, 64)
 		if err != nil {
@@ -1469,7 +1469,7 @@ func (oa *operatorActions) checkTidbClusterConfigUpdated(tc *v1alpha1.TidbCluste
 }
 
 func (oa *operatorActions) checkPdConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
-	pdCli := oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
+	pdCli := controller.GetPDClient(oa.pdControl, tc)
 	config, err := pdCli.GetConfig()
 	if err != nil {
 		glog.Errorf("failed to get PD configuraion from tidb cluster [%s/%s]", tc.Namespace, tc.Name)
