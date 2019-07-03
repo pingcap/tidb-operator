@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
@@ -31,7 +32,7 @@ type pdScaler struct {
 }
 
 // NewPDScaler returns a Scaler
-func NewPDScaler(pdControl controller.PDControlInterface,
+func NewPDScaler(pdControl pdapi.PDControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pvcControl controller.PVCControlInterface) Scaler {
 	return &pdScaler{generalScaler{pdControl, pvcLister, pvcControl}}
@@ -99,7 +100,7 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed,can't scale in now", ns, tcName)
 	}
 
-	err := psd.pdControl.GetPDClient(tc).DeleteMember(memberName)
+	err := controller.GetPDClient(psd.pdControl, tc).DeleteMember(memberName)
 	if err != nil {
 		resetReplicas(newSet, oldSet)
 		return err

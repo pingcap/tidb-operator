@@ -21,6 +21,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
@@ -41,7 +42,7 @@ type PodControlInterface interface {
 
 type realPodControl struct {
 	kubeCli   kubernetes.Interface
-	pdControl PDControlInterface
+	pdControl pdapi.PDControlInterface
 	podLister corelisters.PodLister
 	recorder  record.EventRecorder
 }
@@ -49,7 +50,7 @@ type realPodControl struct {
 // NewRealPodControl creates a new PodControlInterface
 func NewRealPodControl(
 	kubeCli kubernetes.Interface,
-	pdControl PDControlInterface,
+	pdControl pdapi.PDControlInterface,
 	podLister corelisters.PodLister,
 	recorder record.EventRecorder,
 ) PodControlInterface {
@@ -110,7 +111,7 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 	clusterID := labels[label.ClusterIDLabelKey]
 	memberID := labels[label.MemberIDLabelKey]
 	storeID := labels[label.StoreIDLabelKey]
-	pdClient := rpc.pdControl.GetPDClient(tc)
+	pdClient := rpc.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tcName)
 	if labels[label.ClusterIDLabelKey] == "" {
 		cluster, err := pdClient.GetCluster()
 		if err != nil {

@@ -1,3 +1,8 @@
+#!/bin/bash -xe
+
+# Allow user supplied pre userdata code
+${pre_userdata}
+
 # set ulimits
 cat <<EOF > /etc/security/limits.d/99-tidb.conf
 root        soft        nofile        1000000
@@ -12,24 +17,8 @@ sed -i 's/LimitNPROC=infinity/LimitNPROC=1048576/' /etc/systemd/system/docker.se
 systemctl daemon-reload
 systemctl restart docker
 
-# format and mount nvme disk
-if grep nvme0n1 /etc/fstab || grep nvme1n1 /etc/fstab; then
-    echo "disk already mounted"
-else
-    if mkfs -t ext4 /dev/nvme1n1 ; then
+# Bootstrap and join the cluster
+/etc/eks/bootstrap.sh --b64-cluster-ca '${cluster_auth_base64}' --apiserver-endpoint '${endpoint}' ${bootstrap_extra_args} --kubelet-extra-args '${kubelet_extra_args}' '${cluster_name}'
 
-        mkdir -p /mnt/disks/ssd1
-        cat <<EOF >> /etc/fstab
-/dev/nvme1n1 /mnt/disks/ssd1 ext4 defaults,nofail,noatime,nodelalloc 0 2
-EOF
-        mount -a
-    else
-        mkfs -t ext4 /dev/nvme0n1
-        mkdir -p /mnt/disks/ssd1
-        cat <<EOF >> /etc/fstab
-/dev/nvme0n1 /mnt/disks/ssd1 ext4 defaults,nofail,noatime,nodelalloc 0 2
-EOF
-        mount -a
-    fi
-fi
-
+# Allow user supplied userdata code
+${additional_userdata}

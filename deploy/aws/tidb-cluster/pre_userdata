@@ -1,0 +1,29 @@
+# According to https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nvme-ebs-volumes.html
+# NVMe device names are in the format /dev/nvme[0-26]n1
+# and when the device is parted, it has /dev/nvme[0-26]n1p[1-xxx]
+# if the disk is parted, we will ignore the entire device
+# and if the disk is already formatted, then it will have a blkid, it should also be ignored
+for i in `seq 0 26`; do
+  if [ -e "/dev/nvme${i}" ]; then # find the device
+    if [ -e "/dev/nvme${i}n1" ]; then
+      if ls /dev/nvme${i}n1p* > /dev/null 2>&1; then
+        echo "disk /dev/nvme${i}n1 already parted, skipping"
+      else
+        echo "disk /dev/nvme${i}n1 is not parted"
+        if ! blkid /dev/nvme${i}n1 > /dev/null; then
+          echo "/dev/nvme${i}n1 not formatted"
+          mkfs -t ext4 /dev/nvme${i}n1
+          DISK_UUID=$(blkid -s UUID -o value /dev/nvme${i}n1)
+          mkdir -p /mnt/local-ssd/$DISK_UUID
+          echo UUID=`blkid -s UUID -o value /dev/nvme${i}n1` /mnt/local-ssd/$DISK_UUID ext4 defaults 0 2 | tee -a /etc/fstab
+        fi
+      fi
+    fi
+  fi
+done
+
+# mount local ssd disks
+mount -a
+
+# ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
+# AWS_DEFAULT_REGION=$(echo $ZONE | awk '{print substr($0, 1, length($0)-1)}')
