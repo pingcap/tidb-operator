@@ -260,3 +260,28 @@ $ terraform destroy
 > **Note:**
 >
 > You have to manually delete the EBS volumes in AWS console after running terraform destroy if you do not need the data on the volumes anymore.
+
+## Advanced Guide: Use the tidb-cluster and tidb-operator Modules
+
+Under the hood, this terraform module composes two sub-modules:
+
+- [tidb-operator](./tidb-operator/README.md), which provisions the Kubernetes control plane for TiDB cluster
+- [tidb-cluster](./tidb-cluster/README.md), which provisions a TiDB cluster in the target Kubernetes cluster
+
+You can use these modules separately in your own terraform scripts, by either referencing these modules locally or publish these modules to your terraform module registry.
+
+For example, let's say you create a terraform module in `/deploy/aws/staging`, you can reference the tidb-operator and tidb-cluster modules as following:
+
+```hcl
+module "setup-control-plane" {
+  source = "../tidb-operator"
+}
+
+module "tidb-cluster-a" {
+  source = "../tidb-cluster"
+}
+
+module "tidb-cluster-b" {
+  source = "../tidb-cluster"
+}
+``` 
