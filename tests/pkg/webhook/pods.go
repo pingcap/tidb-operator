@@ -113,7 +113,6 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 			os.Exit(3)
 		}
 		glog.Infof("savely delete pod namespace %s name %s leader name %s", namespace, name, leader.Name)
-
 	}
 	reviewResponse.Allowed = true
 	return &reviewResponse

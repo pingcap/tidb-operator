@@ -32,17 +32,19 @@ spec:
             value: |
               #!/usr/bin/env bash
               set -euo pipefail
+              export DEBIAN_FRONTEND=noninteractive
+              # Fix any issues
+              dpkg --configure -a
+              apt-get -y autoremove
               apt-get update
-              apt-get install -y software-properties-common
-              apt-add-repository universe
+              # Avoid unecessary repository listings
+              test -f /etc/apt/sources.list.orig || cp /etc/apt/sources.list /etc/apt/sources.list.orig
+              cat /etc/apt/sources.list.orig | awk '/bionic main|bionic-updates main|bionic-updates universe/' > /etc/apt/sources.list
               apt-get update
-              declare -a PKG_LIST=(python-google-compute-engine \
-              python3-google-compute-engine \
-              google-compute-engine-oslogin \
-              gce-compute-image-packages)
-              for pkg in ${PKG_LIST[@]}; do
-                  apt-get install -y $pkg || echo "Not available: $pkg"
-              done
+              # Install required packages
+              apt-get install -y lvm2 python-google-compute-engine python3-google-compute-engine google-compute-engine-oslogin gce-compute-image-packages
+              # Restore original repository listings
+              cp /etc/apt/sources.list.orig /etc/apt/sources.list
               mount | grep -v nobarrier | awk '/ssd/{print $1}' | xargs -i mount {} -o remount,nobarrier
           volumeMounts:
           - mountPath: /mnt/disks
