@@ -885,11 +885,6 @@ func (oa *operatorActions) SetPartitionAnnotation(tcName string, nameSpace strin
 }
 
 func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
-	// record tikv leader count in webhook first
-	err := webhook.GetAllKVLeaders(oa.cli, info.Namespace, info.ClusterName)
-	if err != nil {
-		return err
-	}
 	oa.EmitEvent(info, "UpgradeTidbCluster")
 
 	cmd := oa.getHelmUpgradeClusterCmd(info, nil)

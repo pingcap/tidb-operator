@@ -73,10 +73,6 @@ func run() {
 	cluster1 := newTidbClusterConfig("ns1", "cluster1")
 	cluster2 := newTidbClusterConfig("ns2", "cluster2")
 	cluster3 := newTidbClusterConfig("ns2", "cluster3")
-	cluster4 := newTidbClusterConfig("ns2", "cluster4")
-	cluster5 := newTidbClusterConfig("ns2", "cluster5")
-	cluster6 := newTidbClusterConfig("ns2", "cluster6")
-	cluster7 := newTidbClusterConfig("ns2", "cluster7")
 
 	restoreCluster1 := newTidbClusterConfig("ns1", "restore1")
 	restoreCluster2 := newTidbClusterConfig("ns2", "restore2")
@@ -90,10 +86,6 @@ func run() {
 		cluster1,
 		cluster2,
 		cluster3,
-		cluster4,
-		cluster5,
-		cluster6,
-		cluster7,
 		restoreCluster1,
 		restoreCluster2,
 		onePDCluster1,
@@ -146,26 +138,24 @@ func run() {
 			go oa.BeginInsertDataToOrDie(cluster)
 		}
 
-		if false {
-			// scale out
-			for _, cluster := range clusters {
-				cluster.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
-				oa.ScaleTidbClusterOrDie(cluster)
-			}
-			for _, cluster := range clusters {
-				oa.CheckTidbClusterStatusOrDie(cluster)
-				oa.CheckDisasterToleranceOrDie(cluster)
-			}
+		// scale out
+		for _, cluster := range clusters {
+			cluster.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
+			oa.ScaleTidbClusterOrDie(cluster)
+		}
+		for _, cluster := range clusters {
+			oa.CheckTidbClusterStatusOrDie(cluster)
+			oa.CheckDisasterToleranceOrDie(cluster)
+		}
 
-			// scale in
-			for _, cluster := range clusters {
-				cluster.ScaleTiDB(2).ScaleTiKV(3).ScalePD(3)
-				oa.ScaleTidbClusterOrDie(cluster)
-			}
-			for _, cluster := range clusters {
-				oa.CheckTidbClusterStatusOrDie(cluster)
-				oa.CheckDisasterToleranceOrDie(cluster)
-			}
+		// scale in
+		for _, cluster := range clusters {
+			cluster.ScaleTiDB(2).ScaleTiKV(3).ScalePD(3)
+			oa.ScaleTidbClusterOrDie(cluster)
+		}
+		for _, cluster := range clusters {
+			oa.CheckTidbClusterStatusOrDie(cluster)
+			oa.CheckDisasterToleranceOrDie(cluster)
 		}
 
 		// upgrade
@@ -286,10 +276,6 @@ func run() {
 		cluster1,
 		cluster2,
 		cluster3,
-		cluster4,
-		cluster5,
-		cluster6,
-		cluster7,
 	}
 	caseFn(preUpgrade, onePDCluster1, restoreCluster1, upgradeVersions[0])
 
