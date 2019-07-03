@@ -27,7 +27,7 @@ import (
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/pd/pkg/typeutil"
 	"github.com/pingcap/pd/server"
-	"github.com/pingcap/tidb-operator/pkg/apis/httputil"
+	"github.com/pingcap/tidb-operator/pkg/httputil"
 )
 
 const (
