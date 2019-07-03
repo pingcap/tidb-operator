@@ -178,7 +178,7 @@ variable "operator_values" {
 }
 ```
 
-## Multiple Cluster Management
+## Multiple TiDB Cluster Management
 
 An instance of `./tidb-cluster` module corresponds to a TiDB cluster in the EKS cluster. If you want to add a new TiDB cluster, you can edit `./cluster.tf` and add a new instance of `./tidb-cluster` module:
 

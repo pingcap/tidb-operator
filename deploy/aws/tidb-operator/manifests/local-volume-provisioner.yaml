@@ -39,7 +39,7 @@ spec:
           operator: Exists
           effect: "NoSchedule"
       nodeSelector:
-        localVolume: "true"
+        pingcap.com/aws-local-ssd: "true"
       serviceAccountName: local-storage-admin
       containers:
         - image: "quay.io/external_storage/local-volume-provisioner:v2.2.0"

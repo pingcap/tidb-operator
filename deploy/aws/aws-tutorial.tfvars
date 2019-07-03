@@ -7,4 +7,4 @@ default_cluster_pd_count   = 1
 default_cluster_tikv_count = 1
 default_cluster_tidb_count = 1
 
-default_cluster_cluster_name = "aws_tutorial"
+default_cluster_cluster_name = "aws-tutorial"
