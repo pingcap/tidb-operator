@@ -19,7 +19,7 @@ import (
 
 	"github.com/golang/glog"
 	perrors "github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/apis/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"

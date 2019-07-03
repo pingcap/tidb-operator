@@ -21,7 +21,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/tidb-operator/pkg/apis/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
