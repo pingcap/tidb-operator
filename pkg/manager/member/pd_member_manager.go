@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -34,7 +35,7 @@ import (
 )
 
 type pdMemberManager struct {
-	pdControl    controller.PDControlInterface
+	pdControl    pdapi.PDControlInterface
 	setControl   controller.StatefulSetControlInterface
 	svcControl   controller.ServiceControlInterface
 	setLister    v1beta1.StatefulSetLister
@@ -50,7 +51,7 @@ type pdMemberManager struct {
 }
 
 // NewPDMemberManager returns a *pdMemberManager
-func NewPDMemberManager(pdControl controller.PDControlInterface,
+func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	setLister v1beta1.StatefulSetLister,
@@ -259,7 +260,7 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 	}
 
-	pdClient := pmm.pdControl.GetPDClient(tc)
+	pdClient := controller.GetPDClient(pmm.pdControl, tc)
 
 	healthInfo, err := pdClient.GetHealth()
 	if err != nil {

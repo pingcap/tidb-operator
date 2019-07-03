@@ -19,6 +19,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -39,7 +40,7 @@ type Scaler interface {
 }
 
 type generalScaler struct {
-	pdControl  controller.PDControlInterface
+	pdControl  pdapi.PDControlInterface
 	pvcLister  corelisters.PersistentVolumeClaimLister
 	pvcControl controller.PVCControlInterface
 }
