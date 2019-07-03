@@ -275,7 +275,6 @@ func run() {
 	preUpgrade := []*tests.TidbClusterConfig{
 		cluster1,
 		cluster2,
-		cluster3,
 	}
 	caseFn(preUpgrade, onePDCluster1, restoreCluster1, upgradeVersions[0])
 
