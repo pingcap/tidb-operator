@@ -225,6 +225,7 @@ type OperatorConfig struct {
 	WebhookConfigName  string
 	Context            *apimachinery.CertContext
 	ImagePullPolicy    corev1.PullPolicy
+	TestMode           bool
 }
 
 type TidbClusterConfig struct {
@@ -348,6 +349,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"controllerManager.replicas":       "2",
 		"scheduler.replicas":               "2",
 		"imagePullPolicy":                  string(oi.ImagePullPolicy),
+		"testMode":                         strconv.FormatBool(oi.TestMode),
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
@@ -935,7 +937,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 
 		replicas := tc.Spec.TiKV.Replicas
 		for i := replicas - 1; i > 0; i-- {
-			if err := wait.PollImmediate(5*time.Second, 10*time.Minute, func() (done bool, err error) {
+			if err := wait.PollImmediate(1*time.Second, 10*time.Minute, func() (done bool, err error) {
 				schedulers, err := pdClient.GetEvictLeaderSchedulers()
 				if err != nil {
 					glog.Errorf("failed to get evict leader schedulers, %v", err)
@@ -959,7 +961,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 				return err
 			}
 		}
-		if err := wait.PollImmediate(5*time.Second, 6*time.Minute, func() (done bool, err error) {
+		if err := wait.PollImmediate(1*time.Second, 6*time.Minute, func() (done bool, err error) {
 			schedulers, err := pdClient.GetEvictLeaderSchedulers()
 			if err != nil {
 				glog.Errorf("failed to get evict leader schedulers, %v", err)

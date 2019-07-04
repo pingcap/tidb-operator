@@ -173,6 +173,10 @@ func (tku *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint
 }
 
 func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32) error {
+	// wait 5 second before delete evict scheduler，it is for auto test can catch these info
+	if controller.TestMode {
+		time.Sleep(5 * time.Second)
+	}
 	store := tku.getStoreByOrdinal(tc, ordinal)
 	storeID, err := strconv.ParseUint(store.ID, 10, 64)
 	if err != nil {
