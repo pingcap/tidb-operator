@@ -704,7 +704,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 				cluster.Spec.PD.Image = "pd-test-image:v2"
 				cluster.Spec.PD.Replicas = 1
 				cluster.ObjectMeta.Annotations = make(map[string]string)
-				cluster.ObjectMeta.Annotations["tidb.pingcap.com/forceUpgrade"] = "true"
+				cluster.ObjectMeta.Annotations["tidb.pingcap.com/force-upgrade"] = "true"
 			},
 			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
 				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: false},

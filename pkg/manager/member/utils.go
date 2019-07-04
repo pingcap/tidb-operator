@@ -219,7 +219,7 @@ func CombineAnnotations(a, b map[string]string) map[string]string {
 
 // needForceUpgrade check if force upgrade is necessary
 func needForceUpgrade(tc *v1alpha1.TidbCluster) bool {
-	// Check if annotation 'pingcap.com/forceUpgrade: "true"' is set
+	// Check if annotation 'pingcap.com/force-upgrade: "true"' is set
 	if tc.Annotations != nil {
 		forceVal, ok := tc.Annotations[label.AnnForceUpgradeKey]
 		if ok && (forceVal == label.AnnForceUpgradeVal) {
