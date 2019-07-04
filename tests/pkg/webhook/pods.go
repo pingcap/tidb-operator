@@ -14,6 +14,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"k8s.io/api/admission/v1beta1"
 )
@@ -52,7 +53,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		return &reviewResponse
 	}
 
-	pdClient := controller.NewDefaultPDControl().GetPDClient(tc)
+	pdClient := pdapi.NewDefaultPDControl().GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
 	tidbController := controller.NewDefaultTiDBControl()
 
 	// if pod is already deleting, return Allowed

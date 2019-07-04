@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -67,23 +68,22 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 		}
 		newSet := newStatefulSetForTiKVUpgrader()
 
-		pdClient := controller.NewFakePDClient()
-		pdControl.SetPDClient(tc, pdClient)
+		pdClient := controller.NewFakePDClient(pdControl, tc)
 		if test.beginEvictLeaderErr {
-			pdClient.AddReaction(controller.BeginEvictLeaderActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.BeginEvictLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("failed to begin evict leader")
 			})
 		} else {
-			pdClient.AddReaction(controller.BeginEvictLeaderActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.BeginEvictLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, nil
 			})
 		}
 		if test.endEvictLeaderErr {
-			pdClient.AddReaction(controller.EndEvictLeaderActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.EndEvictLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("failed to end evict leader")
 			})
 		} else {
-			pdClient.AddReaction(controller.EndEvictLeaderActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.EndEvictLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, nil
 			})
 		}
@@ -468,11 +468,11 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 	}
 }
 
-func newTiKVUpgrader() (Upgrader, *controller.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
+func newTiKVUpgrader() (Upgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
 	kubeCli := kubefake.NewSimpleClientset()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	podControl := controller.NewFakePodControl(podInformer)
-	pdControl := controller.NewFakePDControl()
+	pdControl := pdapi.NewFakePDControl()
 	return &tikvUpgrader{
 		pdControl:  pdControl,
 		podControl: podControl,
