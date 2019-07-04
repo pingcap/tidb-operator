@@ -15,9 +15,10 @@ package label
 
 import (
 	"fmt"
+	"strings"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"strings"
 )
 
 const (
@@ -52,6 +53,11 @@ const (
 	AnnPVCPodScheduling = "tidb.pingcap.com/pod-scheduling"
 	// AnnTiDBPartition is pod annotation which TiDB pod chould upgrade to
 	AnnTiDBPartition string = "tidb.pingcap.com/tidb-partition"
+	// AnnForceUpgradeKey is tc annotation key to indicate whether force upgrade should be done
+	AnnForceUpgradeKey = "tidb.pingcap.com/forceUpgrade"
+
+	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
+	AnnForceUpgradeVal = "true"
 
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
