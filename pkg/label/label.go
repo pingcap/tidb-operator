@@ -54,7 +54,7 @@ const (
 	// AnnTiDBPartition is pod annotation which TiDB pod chould upgrade to
 	AnnTiDBPartition string = "tidb.pingcap.com/tidb-partition"
 	// AnnForceUpgradeKey is tc annotation key to indicate whether force upgrade should be done
-	AnnForceUpgradeKey = "tidb.pingcap.com/forceUpgrade"
+	AnnForceUpgradeKey = "tidb.pingcap.com/force-upgrade"
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"
