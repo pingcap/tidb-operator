@@ -22,6 +22,7 @@ func newOperatorConfig() *tests.OperatorConfig {
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
 		ImagePullPolicy:    v1.PullAlways,
+		TestMode:           true,
 	}
 }
 
