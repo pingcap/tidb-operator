@@ -936,7 +936,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 		pdClient := pdapi.NewDefaultPDControl().GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
 
 		replicas := tc.Spec.TiKV.Replicas
-		for i := replicas - 1; i > 0; i-- {
+		for i := replicas - 1; i >= 0; i-- {
 			if err := wait.PollImmediate(1*time.Second, 10*time.Minute, func() (done bool, err error) {
 				schedulers, err := pdClient.GetEvictLeaderSchedulers()
 				if err != nil {
