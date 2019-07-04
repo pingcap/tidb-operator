@@ -943,18 +943,21 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 					glog.Errorf("failed to get evict leader schedulers, %v", err)
 					return false, nil
 				}
+				glog.Infof("index:%d,schedulers: %v, error: %v", i, schedulers, err)
 				if len(schedulers) > 1 {
 					return true, fmt.Errorf("there are too many evict leader schedulers: %v", schedulers)
 				}
 				if len(schedulers) == 0 {
+					glog.Infof("schedulers count is zero,%v", schedulers)
 					return false, nil
 				}
 				podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
 				scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
 				if schedulers[0] == scheduler {
+					glog.Infof("index: %d,the schedulers: %s = %s", i, schedulers[0], scheduler)
 					return true, nil
 				}
-				glog.Errorf("the scheduler: %s != %s", schedulers[0], scheduler)
+				glog.Errorf("index: %d,the scheduler: %s != %s", i, schedulers[0], scheduler)
 				return false, nil
 			}); err != nil {
 				glog.Errorf("failed to check upgrade %s/%s, %v", ns, tcName, err)
