@@ -28,6 +28,7 @@ func newOperatorConfig() *tests.OperatorConfig {
 func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 	tidbVersion := cfg.GetTiDBVersionOrDie()
 
+	topologyKey := "rack"
 	return &tests.TidbClusterConfig{
 		Namespace:        ns,
 		ClusterName:      clusterName,
@@ -69,6 +70,6 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 		TiKVGrpcConcurrency: 4,
 		TiDBTokenLimit:      1000,
 		PDLogLevel:          "info",
-		SubValues:           tests.GetAffinityConfigOrDie(clusterName, ns),
+		SubValues:           tests.GetAffinityConfigOrDie(clusterName, ns, topologyKey, []string{topologyKey}),
 	}
 }

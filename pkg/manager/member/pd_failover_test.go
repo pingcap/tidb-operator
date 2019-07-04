@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,10 +56,9 @@ func TestPDFailoverFailover(t *testing.T) {
 		test.update(tc)
 
 		pdFailover, pvcIndexer, podIndexer, fakePDControl, fakePodControl, fakePVCControl := newFakePDFailover()
-		pdClient := controller.NewFakePDClient()
-		fakePDControl.SetPDClient(tc, pdClient)
+		pdClient := controller.NewFakePDClient(fakePDControl, tc)
 
-		pdClient.AddReaction(controller.DeleteMemberByIDActionType, func(action *controller.Action) (interface{}, error) {
+		pdClient.AddReaction(pdapi.DeleteMemberByIDActionType, func(action *pdapi.Action) (interface{}, error) {
 			if test.delMemberFailed {
 				return nil, fmt.Errorf("failed to delete member")
 			}
@@ -520,10 +520,10 @@ func TestPDFailoverRecovery(t *testing.T) {
 	}
 }
 
-func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, *controller.FakePDControl, *controller.FakePodControl, *controller.FakePVCControl) {
+func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, *pdapi.FakePDControl, *controller.FakePodControl, *controller.FakePVCControl) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
-	pdControl := controller.NewFakePDControl()
+	pdControl := pdapi.NewFakePDControl()
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
