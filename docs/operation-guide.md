@@ -73,14 +73,18 @@ On GKE, local SSD volumes by default are limited to 375 GiB size and perform wor
 
 For proper performance, you must:
 
-* install the Linux guest environment, which can only be done on the Ubuntu image, not the COS image
+* install the Linux guest environment on the Ubuntu image or use a recent COS image
 * make sure SSD is mounted with the `nobarrier` option.
 
-We have a [daemonset which does the above performance fixes](../manifests/gke/local-ssd-optimize.yaml).
-We also have a [daemonset that fixes performance and combines all SSD disks together with lvm](../manifests/gke/local-ssd-provision.yaml).
+We also have a [daemonset](../manifests/gke/local-ssd-provision.yaml) that
+* fixes any performance issues
+* remounts local SSD disks with a UUID for safety
+* On Ubuntu combines all local SSD disks into one large disk with lvm tools.
+* Run the local-volume-provisioner
+
 The terraform deployment will automatically install that.
 
-> **Note**: This setup that combines local SSD assumes you are running only one process that needs local SSD per VM.
+> **Note**: On Ubuntu this setup that combines local SSD assumes you are running only one process that needs local SSD per VM.
 
 
 ## Deploy TiDB cluster
