@@ -21,9 +21,6 @@ import (
 )
 
 var (
-	// tidbVersion and tidbVersion will be set during make
-	tidbVersion = "None"
-
 	gitVersion   = "v0.0.0-master+$Format:%h$"
 	gitCommit    = "$Format:%H$" // sha1 from git, output of $(git rev-parse HEAD)
 	gitTreeState = ""            // state of git tree, either "clean" or "dirty"
@@ -47,7 +44,6 @@ func LogVersionInfo() {
 func Get() Info {
 	// These variables typically come from -ldflags settings and in
 	return Info{
-		TiDBVersion:  tidbVersion,
 		GitVersion:   gitVersion,
 		GitCommit:    gitCommit,
 		GitTreeState: gitTreeState,
