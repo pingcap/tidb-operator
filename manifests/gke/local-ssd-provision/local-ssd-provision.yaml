@@ -18,21 +18,148 @@ data:
       mountDir: /mnt/disks
 
 ---
+# COS provisioner.
+# This will not combine disks, and startup delay is minimal. Recommended if you have 1 SSD.
+# Remount disks with a UUID
+# Ensure the nobarrier options is set
 apiVersion: extensions/v1beta1
 kind: DaemonSet
 metadata:
-  name: local-volume-provisioner
+  name: local-volume-provisioner-cos
   namespace: kube-system
   labels:
-    app: local-volume-provisioner
+    app: local-volume-provisioner-cos
 spec:
   selector:
     matchLabels:
-      app: local-volume-provisioner
+      app: local-volume-provisioner-cos
   template:
     metadata:
       labels:
-        app: local-volume-provisioner
+        app: local-volume-provisioner-cos
+    spec:
+      hostPID: true
+      nodeSelector:
+        cloud.google.com/gke-os-distribution: cos
+        cloud.google.com/gke-local-ssd: "true"
+      serviceAccountName: local-storage-admin
+      initContainers:
+        - name: local-ssd-startup
+          image: alpine
+          command: ['/bin/sh', '-c', 'nsenter -t 1 -m -u -i -n -p -- bash -c "${STARTUP_SCRIPT}"']
+          securityContext:
+            privileged: true
+          volumeMounts:
+          - mountPath: /mnt/disks
+            name: local-disks
+            mountPropagation: Bidirectional
+          env:
+          - name: STARTUP_SCRIPT
+            value: |
+                #!/usr/bin/env bash
+                set -euo pipefail
+                set -x
+
+                if ! findmnt -n -a -l | grep /mnt/disks/ssd ; then
+                  if test -f /var/ssd_mounts ; then
+                    ssd_mounts=$(cat /var/ssd_mounts)
+                  else
+                    echo "no ssds mounted yet"
+                    exit 1
+                  fi
+                else
+                  ssd_mounts=$(findmnt -n -a -l --nofsroot | grep /mnt/disks/ssd)
+                  echo "$ssd_mounts" > /var/ssd_mounts
+                fi
+
+                # Re-mount all disks with a UUID
+                if old_mounts=$(findmnt -n -a -l --nofsroot | grep /mnt/disks/ssd) ; then
+                  echo "$old_mounts" | awk '{print $1}' | while read -r ssd ; do
+                    umount $ssd
+                  done
+                fi
+                echo "$ssd_mounts" | awk '{print $1}' | while read -r ssd ; do
+                  if test -d "$ssd"; then
+                    rm -r "$ssd"
+                  fi
+                done
+                devs=$(echo "$ssd_mounts" | awk '{print $2}')
+                echo "$devs" | while read -r dev ; do
+                  if ! $(findmnt -n -a -l --nofsroot | grep "$dev") ; then
+                    dev_basename=$(basename "$dev")
+                    mkdir -p /var/dev_wiped/
+                    if ! test -f /var/dev_wiped/$dev_basename ; then
+                      dd if=/dev/zero of="$dev" bs=512 count=1 conv=notrunc
+                      touch /var/dev_wiped/$dev_basename
+                    fi
+                    uuid=$(blkid -s UUID -o value "$dev")
+                    mnt_dir="/mnt/disks/$uuid"
+                    mkdir -p "$mnt_dir"
+                    mount -U "$uuid" -t ext4 --target "$mnt_dir" --options 'rw,relatime,discard,nobarrier,data=ordered'
+                  fi
+                done
+      containers:
+        - image: "quay.io/external_storage/local-volume-provisioner:v2.2.0"
+          name: provisioner
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
+          env:
+          - name: MY_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: MY_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: JOB_CONTAINER_IMAGE
+            value: "quay.io/external_storage/local-volume-provisioner:v2.2.0"
+          volumeMounts:
+            - mountPath: /etc/provisioner/config
+              name: provisioner-config
+              readOnly: true
+            - mountPath: /mnt/disks
+              name: local-disks
+              mountPropagation: "HostToContainer"
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      volumes:
+        - name: provisioner-config
+          configMap:
+            name: local-provisioner-config
+        - name: local-disks
+          hostPath:
+            path: /mnt/disks
+
+---
+# Ubuntu provisioner
+# This will combine disks with LVM. Recommended if you have > 1 SSD.
+# Note that there is a ~2 minute startup delay to install packages.
+# Remount disks with a UUID.
+# Ensure the nobarrier options is set.
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: local-volume-provisioner-ubuntu
+  namespace: kube-system
+  labels:
+    app: local-volume-provisioner-ubuntu
+spec:
+  selector:
+    matchLabels:
+      app: local-volume-provisioner-ubuntu
+  template:
+    metadata:
+      labels:
+        app: local-volume-provisioner-ubuntu
     spec:
       hostPID: true
       nodeSelector:
