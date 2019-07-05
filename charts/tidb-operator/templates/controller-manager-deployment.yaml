@@ -47,3 +47,5 @@ spec:
                 fieldPath: metadata.namespace
           - name: TZ
             value: {{ .Values.timezone | default "UTC" }}
+          - name: MY_IMAGE
+            value: "{{ .Values.operatorImage }}"

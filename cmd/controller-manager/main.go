@@ -99,6 +99,10 @@ func main() {
 	if err != nil {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
+	operatorImage := os.Getenv("MY_IMAGE")
+	if operatorImage == "" {
+		glog.Fatal("MY_IMAGE env variable not set")
+	}
 
 	var informerFactory informers.SharedInformerFactory
 	var kubeInformerFactory kubeinformers.SharedInformerFactory
@@ -129,7 +133,7 @@ func main() {
 		},
 	}
 
-	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
+	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, operatorImage, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go informerFactory.Start(controllerCtx.Done())

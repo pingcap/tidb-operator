@@ -101,7 +101,7 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			},
 			errWhenCreateStatefulSet: false,
 			err:                      true,
-			setCreated:               false,
+			setCreated:               true,
 		},
 		{
 			name:                     "error when create statefulset",
@@ -534,6 +534,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	tidbUpgrader := NewFakeTiDBUpgrader()
 	tidbFailover := NewFakeTiDBFailover()
 	tidbControl := controller.NewFakeTiDBControl()
+	operatorImage := "pingcap/tidb-operator:latest"
 
 	tmm := &tidbMemberManager{
 		setControl,
@@ -544,6 +545,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		podInformer.Lister(),
 		tidbUpgrader,
 		true,
+		operatorImage,
 		tidbFailover,
 		tidbStatefulSetIsUpgrading,
 	}

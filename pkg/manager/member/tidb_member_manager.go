@@ -47,6 +47,7 @@ type tidbMemberManager struct {
 	podLister                    corelisters.PodLister
 	tidbUpgrader                 Upgrader
 	autoFailover                 bool
+	operatorImage                string
 	tidbFailover                 Failover
 	tidbStatefulSetIsUpgradingFn func(corelisters.PodLister, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
@@ -60,6 +61,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	podLister corelisters.PodLister,
 	tidbUpgrader Upgrader,
 	autoFailover bool,
+	operatorImage string,
 	tidbFailover Failover) manager.Manager {
 	return &tidbMemberManager{
 		setControl:                   setControl,
@@ -70,6 +72,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 		podLister:                    podLister,
 		tidbUpgrader:                 tidbUpgrader,
 		autoFailover:                 autoFailover,
+		operatorImage:                operatorImage,
 		tidbFailover:                 tidbFailover,
 		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
 	}
@@ -79,17 +82,17 @@ func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
+	// Sync Tidb StatefulSet
+	if err := tmm.syncTiDBStatefulSetForTidbCluster(tc); err != nil {
+		return err
+	}
+
 	if !tc.TiKVIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
 
 	// Sync TiDB Headless Service
-	if err := tmm.syncTiDBHeadlessServiceForTidbCluster(tc); err != nil {
-		return err
-	}
-
-	// Sync Tidb StatefulSet
-	return tmm.syncTiDBStatefulSetForTidbCluster(tc)
+	return tmm.syncTiDBHeadlessServiceForTidbCluster(tc)
 }
 
 func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
@@ -147,6 +150,11 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		tc.Status.TiDB.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
 	}
+
+	if !tc.TiKVIsAvailable() {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
+	}
+
 	oldTiDBSet := oldTiDBSetTemp.DeepCopy()
 	if err != nil {
 		return err
@@ -347,13 +355,14 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 					Annotations: podAnnotations,
 				},
 				Spec: corev1.PodSpec{
-					SchedulerName: tc.Spec.SchedulerName,
-					Affinity:      tc.Spec.TiDB.Affinity,
-					NodeSelector:  tc.Spec.TiDB.NodeSelector,
-					Containers:    containers,
-					RestartPolicy: corev1.RestartPolicyAlways,
-					Tolerations:   tc.Spec.TiDB.Tolerations,
-					Volumes:       vols,
+					SchedulerName:  tc.Spec.SchedulerName,
+					Affinity:       tc.Spec.TiDB.Affinity,
+					NodeSelector:   tc.Spec.TiDB.NodeSelector,
+					InitContainers: []corev1.Container{WaitForPDContainer(tc.GetName(), tmm.operatorImage)},
+					Containers:     containers,
+					RestartPolicy:  corev1.RestartPolicyAlways,
+					Tolerations:    tc.Spec.TiDB.Tolerations,
+					Volumes:        vols,
 				},
 			},
 			ServiceName:         controller.TiDBPeerMemberName(tcName),

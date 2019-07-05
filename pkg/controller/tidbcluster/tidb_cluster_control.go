@@ -14,6 +14,7 @@
 package tidbcluster
 
 import (
+	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
@@ -84,6 +85,19 @@ func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster
 }
 
 func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) error {
+	// When the error is a RequeError, do not immediately return
+	// This allows us to immediately create all the statefulsets
+	var requeueError error
+	checkRequeue := func(err error) error {
+		if perrors.Find(err, controller.IsRequeueError) != nil {
+			if requeueError == nil {
+				requeueError = err
+			}
+			return nil
+		}
+		return err
+	}
+
 	// syncing all PVs managed by operator's reclaim policy to Retain
 	if err := tcc.reclaimPolicyManager.Sync(tc); err != nil {
 		return err
@@ -105,7 +119,7 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	//   - upgrade the pd cluster
 	//   - scale out/in the pd cluster
 	//   - failover the pd cluster
-	if err := tcc.pdMemberManager.Sync(tc); err != nil {
+	if err := checkRequeue(tcc.pdMemberManager.Sync(tc)); err != nil {
 		return err
 	}
 
@@ -118,7 +132,7 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	//   - upgrade the tikv cluster
 	//   - scale out/in the tikv cluster
 	//   - failover the tikv cluster
-	if err := tcc.tikvMemberManager.Sync(tc); err != nil {
+	if err := checkRequeue(tcc.tikvMemberManager.Sync(tc)); err != nil {
 		return err
 	}
 
@@ -130,7 +144,7 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	//   - upgrade the tidb cluster
 	//   - scale out/in the tidb cluster
 	//   - failover the tidb cluster
-	if err := tcc.tidbMemberManager.Sync(tc); err != nil {
+	if err := checkRequeue(tcc.tidbMemberManager.Sync(tc)); err != nil {
 		return err
 	}
 
@@ -138,5 +152,9 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	//   - label.StoreIDLabelKey
 	//   - label.MemberIDLabelKey
 	//   - label.NamespaceLabelKey
-	return tcc.metaManager.Sync(tc)
+	if err := tcc.metaManager.Sync(tc); err != nil {
+		return err
+	}
+
+	return requeueError
 }

@@ -226,6 +226,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 	epsInformer := kubeInformerFactory.Core().V1().Endpoints()
 	autoFailover := true
+	operatorImage := "pingcap/tidb-operator:latest"
 
 	tcc := NewController(
 		kubeCli,
@@ -233,6 +234,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 		informerFactory,
 		kubeInformerFactory,
 		autoFailover,
+		operatorImage,
 		5*time.Minute,
 		5*time.Minute,
 		5*time.Minute,
@@ -291,6 +293,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			podInformer.Lister(),
 			nodeInformer.Lister(),
 			autoFailover,
+			operatorImage,
 			tikvFailover,
 			tikvScaler,
 			tikvUpgrader,
@@ -308,6 +311,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			podInformer.Lister(),
 			tidbUpgrader,
 			autoFailover,
+			operatorImage,
 			tidbFailover,
 		),
 		meta.NewReclaimPolicyManager(

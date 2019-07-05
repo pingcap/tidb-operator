@@ -197,7 +197,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	oldPDSet := oldPDSetTmp.DeepCopy()
 
 	if err := pmm.syncTidbClusterStatus(tc, oldPDSet); err != nil {
-		glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
+		return err
 	}
 
 	if !templateEqual(newPDSet.Spec.Template, oldPDSet.Spec.Template) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
@@ -268,13 +268,14 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		// get endpoints info
 		eps, epErr := pmm.epsLister.Endpoints(ns).Get(controller.PDMemberName(tcName))
 		if epErr != nil {
-			return fmt.Errorf("%s, %s", err, epErr)
+			err = fmt.Errorf("%s, %s", err, epErr)
+		} else {
+			// pd service has no endpoints
+			if eps != nil && len(eps.Subsets) == 0 {
+				err = fmt.Errorf("%s, service %s/%s has no endpoints", err, ns, controller.PDMemberName(tcName))
+			}
 		}
-		// pd service has no endpoints
-		if eps != nil && len(eps.Subsets) == 0 {
-			return fmt.Errorf("%s, service %s/%s has no endpoints", err, ns, controller.PDMemberName(tcName))
-		}
-		return err
+		return controller.RequeueErrorf("error getting PD health: %v", err)
 	}
 
 	cluster, err := pdClient.GetCluster()

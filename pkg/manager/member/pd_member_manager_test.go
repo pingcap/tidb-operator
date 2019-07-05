@@ -402,7 +402,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			errWhenUpdatePDService:     false,
 			errWhenUpdatePDPeerService: false,
 			errWhenGetPDHealth:         true,
-			err:                        false,
+			err:                        true,
 			expectPDServiceFn:          nil,
 			expectPDPeerServiceFn:      nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
@@ -423,7 +423,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			errWhenUpdatePDPeerService: false,
 			errWhenGetCluster:          true,
 			errWhenGetPDHealth:         false,
-			err:                        false,
+			err:                        true,
 			expectPDServiceFn:          nil,
 			expectPDPeerServiceFn:      nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {

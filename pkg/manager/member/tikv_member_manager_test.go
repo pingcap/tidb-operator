@@ -139,8 +139,8 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			prepare: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Members = map[string]v1alpha1.PDMember{}
 			},
-			errWhenCreateStatefulSet:     false,
-			errWhenCreateTiKVPeerService: false,
+			errWhenCreateStatefulSet:     true,
+			errWhenCreateTiKVPeerService: true,
 			err:                          true,
 			tikvPeerSvcCreated:           false,
 			setCreated:                   false,
@@ -152,10 +152,10 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			prepare: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiKV.Requests.Storage = "100xxxxi"
 			},
-			errWhenCreateStatefulSet:     false,
+			errWhenCreateStatefulSet:     true,
 			errWhenCreateTiKVPeerService: false,
 			err:                          true,
-			tikvPeerSvcCreated:           true,
+			tikvPeerSvcCreated:           false,
 			setCreated:                   false,
 			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
 			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
@@ -164,9 +164,9 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			name:                         "error when create statefulset",
 			prepare:                      nil,
 			errWhenCreateStatefulSet:     true,
-			errWhenCreateTiKVPeerService: false,
+			errWhenCreateTiKVPeerService: true,
 			err:                          true,
-			tikvPeerSvcCreated:           true,
+			tikvPeerSvcCreated:           false,
 			setCreated:                   false,
 			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
 			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
@@ -174,7 +174,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 		{
 			name:                         "error when create tikv peer service",
 			prepare:                      nil,
-			errWhenCreateStatefulSet:     false,
+			errWhenCreateStatefulSet:     true,
 			errWhenCreateTiKVPeerService: true,
 			err:                          true,
 			tikvPeerSvcCreated:           false,
