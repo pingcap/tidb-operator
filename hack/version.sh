@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TIDB_VERSION=${TIDB_VERSION:-2.1.0}
-
 # -----------------------------------------------------------------------------
 # Version management helpers.  These functions help to set the
 # following variables:
@@ -79,10 +77,6 @@ function tidb_operator::version::ldflags() {
 
   if [[ -n ${GIT_VERSION-} ]]; then
     ldflags+=($(tidb_operator::version::ldflag "gitVersion" "${GIT_VERSION}"))
-  fi
-
-  if [[ -n ${TIDB_VERSION-} ]]; then
-    ldflags+=($(tidb_operator::version::ldflag "tidbVersion" "${TIDB_VERSION}"))
   fi
 
   # The -ldflags parameter takes a single string, so join the output.
