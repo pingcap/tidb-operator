@@ -943,6 +943,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 					glog.Errorf("failed to get evict leader schedulers, %v", err)
 					return false, nil
 				}
+				glog.V(4).Infof("index:%d,schedulers:%v,error:%v", i, schedulers, err)
 				if len(schedulers) > 1 {
 					return true, fmt.Errorf("there are too many evict leader schedulers: %v", schedulers)
 				}
