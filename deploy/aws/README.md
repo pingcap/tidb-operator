@@ -165,6 +165,8 @@ The values file ([`./tidb-cluster/values/default.yaml`](./tidb-cluster/values/de
 
 For example, the default cluster specify using `./default-cluster.yaml` as the overriding values file, and enable the ConfigMap rollout feature in this file.
 
+To customize TiDB cluster, follow the [cluster configuration](https://pingcap.com/docs-cn/v3.0/reference/configuration/tidb-in-kubernetes/cluster-configuration/) to see the detail of each parameter and customize your values file.
+
 In EKS, some values are not customizable as usual, including the cluster version, replicas, node selectors and taints. These variables are controlled by the terraform instead in favor of consistency. To customize these variables, you can edit the [`clusters.tf`](./clusters.tf) and change the variables of each `./tidb-cluster` module directly.
 
 ### Customized TiDB Operator

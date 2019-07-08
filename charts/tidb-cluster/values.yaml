@@ -57,6 +57,8 @@ pd:
   config: |
     [log]
     level = "info"
+    [replication]
+    location-labels = ["region", "zone", "rack", "host"]
   
   replicas: 3
   image: pingcap/pd:v3.0.0-rc.1
@@ -159,8 +161,6 @@ tikv:
   # (choose the version matching your tikv) for detailed explanation of each parameter.
   config: |
     log-level = "info"
-    [replication]
-    location-labels = ["region", "zone", "rack", "host"]
   
   # Here are some parameters you may want to customize (Please configure in the above 'config' section):
   # [readpool.storage]

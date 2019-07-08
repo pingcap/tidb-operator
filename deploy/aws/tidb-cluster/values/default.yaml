@@ -2,19 +2,39 @@
 timezone: UTC
 
 pd:
-  logLevel: info
+  config: |
+    [log]
+    level = "info"
+    [replication]
+    location-labels = ["region", "zone", "rack", "host"]
+
   storageClassName: ebs-gp2
 tikv:
-  logLevel: info
+  config: |
+    log-level = "info"
+
   stroageClassName: local-storage
   syncLog: true
 tidb:
-  logLevel: info
+  config: |
+    [log]
+    level = "info"
+
   service:
     type: LoadBalancer
     annotations:
       service.beta.kubernetes.io/aws-load-balancer-internal: '0.0.0.0/0'
       service.beta.kubernetes.io/aws-load-balancer-type: nlb
+  separateSlowLog: true
+  slowLogTailer:
+    image: busybox:1.26.2
+    resources:
+      limits:
+        cpu: 100m
+        memory: 50Mi
+      requests:
+        cpu: 20m
+        memory: 5Mi
 
 monitor:
   storage: 100Gi
