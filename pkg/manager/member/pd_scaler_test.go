@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -240,11 +241,10 @@ func TestPDScalerScaleIn(t *testing.T) {
 			pvcIndexer.Add(pvc)
 		}
 
-		pdClient := controller.NewFakePDClient()
-		pdControl.SetPDClient(tc, pdClient)
+		pdClient := controller.NewFakePDClient(pdControl, tc)
 
 		if test.deleteMemberErr {
-			pdClient.AddReaction(controller.DeleteMemberActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.DeleteMemberActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("error")
 			})
 		}
@@ -335,12 +335,12 @@ func TestPDScalerScaleIn(t *testing.T) {
 	}
 }
 
-func newFakePDScaler() (*pdScaler, *controller.FakePDControl, cache.Indexer, *controller.FakePVCControl) {
+func newFakePDScaler() (*pdScaler, *pdapi.FakePDControl, cache.Indexer, *controller.FakePVCControl) {
 	kubeCli := kubefake.NewSimpleClientset()
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pdControl := controller.NewFakePDControl()
+	pdControl := pdapi.NewFakePDControl()
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
 
 	return &pdScaler{generalScaler{pdControl, pvcInformer.Lister(), pvcControl}},
