@@ -15,7 +15,6 @@ package version
 
 // Info contains versioning information.
 type Info struct {
-	TiDBVersion  string `json:"tidbVersion"`
 	GitVersion   string `json:"gitVersion"`
 	GitCommit    string `json:"gitCommit"`
 	GitTreeState string `json:"gitTreeState"`
