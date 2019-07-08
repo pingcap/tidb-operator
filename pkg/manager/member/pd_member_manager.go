@@ -323,11 +323,10 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		}
 
 		oldPDMember, exist := tc.Status.PD.Members[name]
-		if exist {
+
+		status.LastTransitionTime = metav1.Now()
+		if exist && status.Health == oldPDMember.Health {
 			status.LastTransitionTime = oldPDMember.LastTransitionTime
-		}
-		if !exist || status.Health != oldPDMember.Health {
-			status.LastTransitionTime = metav1.Now()
 		}
 
 		pdStatus[name] = status
