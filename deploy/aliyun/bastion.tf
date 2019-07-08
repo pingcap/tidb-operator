@@ -1,14 +1,14 @@
 data "alicloud_instance_types" "bastion" {
-  provider       = "alicloud.this"
-  count          = "${var.create_bastion ? 1 : 0}"
-  cpu_core_count = "${var.bastion_cpu_core_count}"
+  provider       = alicloud.this
+  count          = var.create_bastion ? 1 : 0
+  cpu_core_count = var.bastion_cpu_core_count
 }
 
 resource "alicloud_key_pair" "bastion" {
-  provider        = "alicloud.this"
-  count           = "${var.create_bastion ? 1 : 0}"
-  key_name_prefix = "${var.bastion_key_prefix}"
-  key_file        = "${local.bastion_key_file}"
+  provider        = alicloud.this
+  count           = var.create_bastion ? 1 : 0
+  key_name_prefix = var.bastion_key_prefix
+  key_file        = local.bastion_key_file
 }
 
 module "bastion-group" {
@@ -16,11 +16,11 @@ module "bastion-group" {
   version = "1.2.0"
 
   providers = {
-    alicloud = "alicloud.this"
+    alicloud = alicloud.this
   }
 
-  vpc_id            = "${join("", module.ack.vpc_id)}"
-  cidr_ips          = ["${var.bastion_ingress_cidr}"]
+  vpc_id            = join("", module.ack.vpc_id)
+  cidr_ips          = [var.bastion_ingress_cidr]
   group_description = "Allow internet SSH connections to bastion node"
   ip_protocols      = ["tcp"]
   port_ranges       = ["22/22"]
@@ -28,16 +28,25 @@ module "bastion-group" {
 }
 
 resource "alicloud_instance" "bastion" {
-  provider                   = "alicloud.this"
-  count                      = "${var.create_bastion ? 1 : 0}"
-  instance_name              = "${var.cluster_name_prefix}-bastion"
-  image_id                   = "${var.bastion_image_name}"
-  instance_type              = "${data.alicloud_instance_types.bastion.instance_types.0.id}"
-  security_groups            = ["${module.bastion-group.security_group_id}"]
-  vswitch_id                 = "${element(module.ack.vswitch_ids[0], 0)}"
-  key_name                   = "${alicloud_key_pair.bastion.key_name}"
+  provider      = alicloud.this
+  count         = var.create_bastion ? 1 : 0
+  instance_name = "${var.cluster_name_prefix}-bastion"
+  image_id      = var.bastion_image_name
+  instance_type = data.alicloud_instance_types.bastion[0].instance_types[0].id
+  # TF-UPGRADE-TODO: In Terraform v0.10 and earlier, it was sometimes necessary to
+  # force an interpolation expression to be interpreted as a list by wrapping it
+  # in an extra set of list brackets. That form was supported for compatibilty in
+  # v0.11, but is no longer supported in Terraform v0.12.
+  #
+  # If the expression in the following list itself returns a list, remove the
+  # brackets to avoid interpretation as a list of lists. If the expression
+  # returns a single list item then leave it as-is and remove this TODO comment.
+  security_groups            = [module.bastion-group.security_group_id]
+  vswitch_id                 = element(module.ack.vswitch_ids[0], 0)
+  key_name                   = alicloud_key_pair.bastion[0].key_name
   internet_charge_type       = "PayByTraffic"
   internet_max_bandwidth_in  = 10
   internet_max_bandwidth_out = 10
-  user_data                  = "${file("userdata/bastion-userdata")}"
+  user_data                  = file("userdata/bastion-userdata")
 }
+

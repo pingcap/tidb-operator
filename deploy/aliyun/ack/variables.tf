@@ -19,7 +19,7 @@ variable "span_all_zones" {
 
 variable "worker_zones" {
   description = "Available zones of worker nodes, used when span_all_zones=false. It is highly recommended to guarantee the instance type of workers is available in at least two zones in favor of HA."
-  type        = "list"
+  type        = list(string)
   default     = []
 }
 
@@ -29,7 +29,7 @@ variable "public_apiserver" {
 }
 
 variable "kubeconfig_file" {
-  description = "The path that kubeconfig file write to, default to $${path.module}/kubeconfig if empty."
+  description = "The path that kubeconfig file write to, default to $$${path.module}/kubeconfig if empty."
   default     = ""
 }
 
@@ -49,7 +49,7 @@ variable "vpc_cidr" {
 }
 
 variable "key_file" {
-  description = "The path that new key file write to, defaul to $${path.module}/$${cluster_name}-key.pem if empty"
+  description = "The path that new key file write to, defaul to $$${path.module}/$$${cluster_name}-key.pem if empty"
   default     = ""
 }
 
@@ -95,11 +95,11 @@ variable "default_worker_type" {
 
 variable "worker_groups" {
   description = "A list of maps defining worker group configurations to be defined using alicloud ESS. See group_default for validate keys."
-  type        = "list"
+  type        = list(string)
 
   default = [
     {
-      "name" = "default"
+      name = "default"
     },
   ]
 }
@@ -125,36 +125,38 @@ The default values for all worker groups, overriden by per group arguments:
   - node_labels: kubernetes node labels, format: k1=v1,k2=v2
 EOS
 
-  type = "map"
+
+  type = map(string)
 
   default = {
-    "min_size"                   = 0
-    "max_size"                   = 100
-    "default_cooldown"           = 300
-    "multi_az_policy"            = "BALANCE"
-    "image_id"                   = "centos_7_06_64_20G_alibase_20190218.vhd"
-    "instance_type"              = "ecs.g5.large"
-    "system_disk_category"       = "cloud_efficiency"
-    "system_disk_size"           = 50
-    "pre_userdata"               = ""
-    "post_userdata"              = ""
-    "autoscaling_enabled"        = false
-    "internet_charge_type"       = "PayByTraffic"
-    "internet_max_bandwidth_in"  = 10
+    "min_size" = 0
+    "max_size" = 100
+    "default_cooldown" = 300
+    "multi_az_policy" = "BALANCE"
+    "image_id" = "centos_7_06_64_20G_alibase_20190218.vhd"
+    "instance_type" = "ecs.g5.large"
+    "system_disk_category" = "cloud_efficiency"
+    "system_disk_size" = 50
+    "pre_userdata" = ""
+    "post_userdata" = ""
+    "autoscaling_enabled" = false
+    "internet_charge_type" = "PayByTraffic"
+    "internet_max_bandwidth_in" = 10
     "internet_max_bandwidth_out" = 10
-    "node_taints"                = ""
-    "node_labels"                = ""
+    "node_taints" = ""
+    "node_labels" = ""
   }
 }
 
 variable "default_group_tags" {
   description = "A map of tags to add to all ecs instances."
-  type        = "map"
-  default     = {}
+  type = map(string)
+  default = {}
 }
 
 variable "worker_group_tags" {
   description = "A list of tags to add to ecs instances of the spcific group, mapping by index with mod."
-  type        = "list"
-  default     = [{}]
+  type = list(string)
+  default = [{}]
 }
+
