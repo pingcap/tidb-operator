@@ -18,7 +18,9 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -213,4 +215,16 @@ func CombineAnnotations(a, b map[string]string) map[string]string {
 		a[k] = v
 	}
 	return a
+}
+
+// needForceUpgrade check if force upgrade is necessary
+func needForceUpgrade(tc *v1alpha1.TidbCluster) bool {
+	// Check if annotation 'pingcap.com/force-upgrade: "true"' is set
+	if tc.Annotations != nil {
+		forceVal, ok := tc.Annotations[label.AnnForceUpgradeKey]
+		if ok && (forceVal == label.AnnForceUpgradeVal) {
+			return true
+		}
+	}
+	return false
 }

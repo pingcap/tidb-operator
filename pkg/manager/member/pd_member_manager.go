@@ -200,6 +200,16 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
 	}
 
+	if !tc.Status.PD.Synced {
+		force := needForceUpgrade(tc)
+		if force {
+			tc.Status.PD.Phase = v1alpha1.UpgradePhase
+			setUpgradePartition(newPDSet, 0)
+			errSTS := pmm.updateStatefulSet(tc, newPDSet, oldPDSet)
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
+		}
+	}
+
 	if !templateEqual(newPDSet.Spec.Template, oldPDSet.Spec.Template) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
 		if err := pmm.pdUpgrader.Upgrade(tc, oldPDSet, newPDSet); err != nil {
 			return err
@@ -227,7 +237,9 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		}
 	}
 
-	// TODO FIXME equal is false every time
+	return pmm.updateStatefulSet(tc, newPDSet, oldPDSet)
+}
+func (pmm *pdMemberManager) updateStatefulSet(tc *v1alpha1.TidbCluster, newPDSet, oldPDSet *apps.StatefulSet) error {
 	if !statefulSetEqual(*newPDSet, *oldPDSet) {
 		set := *oldPDSet
 		set.Spec.Template = newPDSet.Spec.Template
