@@ -387,12 +387,13 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 			Health: health,
 		}
 		oldTidbMember, exist := tc.Status.TiDB.Members[name]
+
+		newTidbMember.LastTransitionTime = metav1.Now()
 		if exist {
-			newTidbMember.LastTransitionTime = oldTidbMember.LastTransitionTime
 			newTidbMember.NodeName = oldTidbMember.NodeName
-		}
-		if !exist || oldTidbMember.Health != newTidbMember.Health {
-			newTidbMember.LastTransitionTime = metav1.Now()
+			if oldTidbMember.Health == newTidbMember.Health {
+				newTidbMember.LastTransitionTime = oldTidbMember.LastTransitionTime
+			}
 		}
 		pod, err := tmm.podLister.Pods(tc.GetNamespace()).Get(name)
 		if err != nil && !apierrors.IsNotFound(err) {
