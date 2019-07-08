@@ -123,6 +123,7 @@ func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32,
 			}
 			_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
 			if !evicting {
+				glog.Infof("index:%d,upgradePodName:%s,@@@@@@@@@@@@@@@@@ %s", ordinal, upgradePodName, storeID)
 				return tku.beginEvictLeader(tc, storeID, upgradePod)
 			}
 
@@ -187,6 +188,8 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 	if err != nil {
 		return err
 	}
+
+	glog.Infof("ordinal:%d,ppppppppppppppppppp%s", ordinal, storeID)
 
 	return nil
 }
