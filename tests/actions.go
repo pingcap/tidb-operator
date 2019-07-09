@@ -560,6 +560,11 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete dir pod %v", err)
 	}
 
+	err = oa.kubeCli.CoreV1().Secrets(info.Namespace).Delete(info.InitSecretName, &metav1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete secret: %s, %v", info.InitSecretName, err)
+	}
+
 	setStr := label.New().Instance(info.ClusterName).String()
 
 	resources := []string{"pvc"}
