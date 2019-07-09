@@ -7,7 +7,7 @@ resource "local_file" "kubeconfig" {
 # The helm provider for TiDB clusters must be configured in the top level, otherwise removing clusters will failed due to
 # the helm provider configuration is removed too.
 provider "helm" {
-  alias = "eks"
+  alias    = "eks"
   insecure = true
   # service_account = "tiller"
   install_tiller = false # currently this doesn't work, so we install tiller in the local-exec provisioner. See https://github.com/terraform-providers/terraform-provider-helm/issues/148
