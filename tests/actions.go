@@ -14,6 +14,7 @@
 package tests
 
 import (
+	"context"
 	"crypto/tls"
 	"database/sql"
 	"encoding/json"
@@ -128,6 +129,8 @@ type OperatorActions interface {
 	ScaleTidbClusterOrDie(info *TidbClusterConfig)
 	CheckScaleInSafely(info *TidbClusterConfig) error
 	CheckScaledCorrectly(info *TidbClusterConfig, podUIDsBeforeScale map[string]types.UID) error
+	CheckUpgradeOrDie(ctx context.Context, info *TidbClusterConfig)
+	CheckUpgrade(ctx context.Context, info *TidbClusterConfig) error
 	UpgradeTidbCluster(info *TidbClusterConfig) error
 	UpgradeTidbClusterOrDie(info *TidbClusterConfig)
 	DeployAdHocBackup(info *TidbClusterConfig) error
@@ -222,6 +225,7 @@ type OperatorConfig struct {
 	WebhookConfigName  string
 	Context            *apimachinery.CertContext
 	ImagePullPolicy    corev1.PullPolicy
+	TestMode           bool
 }
 
 type TidbClusterConfig struct {
@@ -345,6 +349,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"controllerManager.replicas":       "2",
 		"scheduler.replicas":               "2",
 		"imagePullPolicy":                  string(oi.ImagePullPolicy),
+		"testMode":                         strconv.FormatBool(oi.TestMode),
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
@@ -672,7 +677,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 
 	ns := info.Namespace
 	tcName := info.ClusterName
-	if err := wait.Poll(oa.pollInterval, 30*time.Minute, func() (bool, error) {
+	if err := wait.Poll(oa.pollInterval, 120*time.Minute, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -737,7 +742,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		return true, nil
 	}); err != nil {
 		glog.Errorf("check tidb cluster status failed: %s", err.Error())
-		return fmt.Errorf("failed to waiting for tidbcluster %s/%s ready in 30 minutes", ns, tcName)
+		return fmt.Errorf("failed to waiting for tidbcluster %s/%s ready in 120 minutes", ns, tcName)
 	}
 
 	return nil
@@ -891,11 +896,6 @@ func (oa *operatorActions) SetPartitionAnnotation(tcName string, nameSpace strin
 }
 
 func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
-	// record tikv leader count in webhook first
-	err := webhook.GetAllKVLeaders(oa.cli, info.Namespace, info.ClusterName)
-	if err != nil {
-		return err
-	}
 	oa.EmitEvent(info, "UpgradeTidbCluster")
 
 	cmd := oa.getHelmUpgradeClusterCmd(info, nil)
@@ -909,6 +909,83 @@ func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) UpgradeTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.UpgradeTidbCluster(info); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterConfig) error {
+	ns := info.Namespace
+	tcName := info.ClusterName
+
+	findStoreFn := func(tc *v1alpha1.TidbCluster, podName string) string {
+		for storeID, store := range tc.Status.TiKV.Stores {
+			if store.PodName == podName {
+				return storeID
+			}
+		}
+
+		return ""
+	}
+
+	for {
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		if err != nil {
+			glog.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+			continue
+		}
+		pdClient := pdapi.NewDefaultPDControl().GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
+
+		replicas := tc.TiKVRealReplicas()
+		for i := replicas - 1; i >= 0; i-- {
+			if err := wait.PollImmediate(1*time.Second, 10*time.Minute, func() (done bool, err error) {
+				schedulers, err := pdClient.GetEvictLeaderSchedulers()
+				if err != nil {
+					glog.Errorf("failed to get evict leader schedulers, %v", err)
+					return false, nil
+				}
+				glog.V(4).Infof("index:%d,schedulers:%v,error:%v", i, schedulers, err)
+				if len(schedulers) > 1 {
+					return true, fmt.Errorf("there are too many evict leader schedulers: %v", schedulers)
+				}
+				if len(schedulers) == 0 {
+					return false, nil
+				}
+				podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
+				scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
+				if schedulers[0] == scheduler {
+					glog.Infof("index: %d,the schedulers: %s = %s", i, schedulers[0], scheduler)
+					return true, nil
+				}
+				glog.Errorf("index: %d,the scheduler: %s != %s", i, schedulers[0], scheduler)
+				return false, nil
+			}); err != nil {
+				glog.Errorf("failed to check upgrade %s/%s, %v", ns, tcName, err)
+				return err
+			}
+		}
+		if err := wait.PollImmediate(1*time.Second, 6*time.Minute, func() (done bool, err error) {
+			schedulers, err := pdClient.GetEvictLeaderSchedulers()
+			if err != nil {
+				glog.Errorf("failed to get evict leader schedulers, %v", err)
+				return false, nil
+			}
+			if len(schedulers) == 0 {
+				return true, nil
+			}
+			glog.Errorf("schedulers: %v is not empty", schedulers)
+			return false, nil
+		}); err != nil {
+			glog.Errorf("failed to wait all schedulers deleted %s/%s, %v", ns, tcName, err)
+			return err
+		}
+		break
+	}
+
+	return nil
+}
+
+func (oa *operatorActions) CheckUpgradeOrDie(ctx context.Context, info *TidbClusterConfig) {
+	if err := oa.CheckUpgrade(ctx, info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
