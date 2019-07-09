@@ -29,6 +29,7 @@ resource "helm_release" "tidb-cluster" {
   version = var.tidb_cluster_chart_version
   namespace = var.cluster_name
   name = var.cluster_name
+  wait = false
 
   values = [
     file("${path.module}/values/default.yaml"),
