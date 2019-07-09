@@ -18,7 +18,7 @@ Before deploying a TiDB cluster on AWS EKS, make sure the following requirements
   Default output format [None]: json
   ```
   > **Note:** The access key must have at least permissions to: create VPC, create EBS, create EC2 and create role
-* [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html)
+* [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) >= 0.12
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.11
 * [helm](https://github.com/helm/helm/blob/master/docs/install.md#installing-the-helm-client) >= 2.9.0 and < 3.0.0
 * [jq](https://stedolan.github.io/jq/download/)
