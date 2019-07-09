@@ -31,6 +31,8 @@ var (
 	DefaultStorageClassName string
 	// ClusterScoped controls whether operator should manage kubernetes cluster wide TiDB clusters
 	ClusterScoped bool
+	// TestMode defines whether tidb operator run in test mode, test mode is only open when test
+	TestMode bool
 )
 
 const (
