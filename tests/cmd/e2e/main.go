@@ -112,7 +112,7 @@ func main() {
 				RawSize:     1,
 			},
 			TopologyKey:            topologyKey,
-			SubValues:              fmt.Sprintf("%s", tests.GetAffinityConfigOrDie(name1, name1, topologyKey, []string{topologyKey})),
+			SubValues:              fmt.Sprintf("%s", tests.GetAffinityConfigOrDie(name1, name1, topologyKey)),
 			EnableConfigMapRollout: true,
 			PDMaxReplicas:          3,
 			TiKVGrpcConcurrency:    4,
@@ -156,7 +156,7 @@ func main() {
 				RawSize:     1,
 			},
 			TopologyKey:            topologyKey,
-			SubValues:              fmt.Sprintf("%s", tests.GetAffinityConfigOrDie(name2, name2, topologyKey, []string{topologyKey})),
+			SubValues:              fmt.Sprintf("%s", tests.GetAffinityConfigOrDie(name2, name2, topologyKey)),
 			EnableConfigMapRollout: false,
 			PDMaxReplicas:          3,
 			TiKVGrpcConcurrency:    4,
@@ -181,7 +181,7 @@ func main() {
 			},
 
 			TopologyKey: topologyKey,
-			SubValues:   fmt.Sprintf("%s", tests.GetAffinityConfigOrDie(name3, name2, topologyKey, []string{topologyKey})),
+			SubValues:   fmt.Sprintf("%s", tests.GetAffinityConfigOrDie(name3, name2, topologyKey)),
 		},
 	}
 
@@ -340,7 +340,7 @@ func main() {
 	restoreClusterInfo.ClusterName = restoreClusterInfo.ClusterName + "-other"
 	restoreClusterInfo.InitSecretName = fmt.Sprintf("%s-set-secret", restoreClusterInfo.ClusterName)
 	restoreClusterInfo.BackupSecretName = fmt.Sprintf("%s-backup-secret", restoreClusterInfo.ClusterName)
-	restoreClusterInfo.SubValues = fmt.Sprintf("%s", tests.GetAffinityConfigOrDie(restoreClusterInfo.ClusterName, restoreClusterInfo.Namespace, topologyKey, []string{topologyKey}))
+	restoreClusterInfo.SubValues = fmt.Sprintf("%s", tests.GetAffinityConfigOrDie(restoreClusterInfo.ClusterName, restoreClusterInfo.Namespace, topologyKey))
 
 	if err = oa.CleanTidbCluster(restoreClusterInfo); err != nil {
 		glog.Fatal(err)

@@ -89,12 +89,6 @@ func GetPodsByLabels(kubeCli kubernetes.Interface, node string, lables map[strin
 }
 
 var affinityTemp string = `{{.Kind}}:
-{{ $length := len .StoreLabels}} {{ if or (not .StoreLabels) (eq $length 0)}}
-{{else if eq .Kind "tikv"}}
-  storeLabels:
-{{range .StoreLabels}}  - {{.}}
-{{end}}
-{{end}}
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
@@ -115,27 +109,26 @@ type AffinityInfo struct {
 	Weight      int
 	Namespace   string
 	TopologyKey string
-	StoreLabels []string
 }
 
-func GetAffinityConfigOrDie(clusterName, namespace, topologyKey string, storeLabels []string) string {
+func GetAffinityConfigOrDie(clusterName, namespace, topologyKey string) string {
 	temp, err := template.New("dt-affinity").Parse(affinityTemp)
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 
 	pdbuff := new(bytes.Buffer)
-	err = temp.Execute(pdbuff, &AffinityInfo{ClusterName: clusterName, Kind: "pd", Weight: 50, Namespace: namespace, TopologyKey: topologyKey, StoreLabels: storeLabels})
+	err = temp.Execute(pdbuff, &AffinityInfo{ClusterName: clusterName, Kind: "pd", Weight: 50, Namespace: namespace, TopologyKey: topologyKey})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 	tikvbuff := new(bytes.Buffer)
-	err = temp.Execute(tikvbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tikv", Weight: 50, Namespace: namespace, TopologyKey: topologyKey, StoreLabels: storeLabels})
+	err = temp.Execute(tikvbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tikv", Weight: 50, Namespace: namespace, TopologyKey: topologyKey})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 	tidbbuff := new(bytes.Buffer)
-	err = temp.Execute(tidbbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tidb", Weight: 50, Namespace: namespace, TopologyKey: topologyKey, StoreLabels: storeLabels})
+	err = temp.Execute(tidbbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tidb", Weight: 50, Namespace: namespace, TopologyKey: topologyKey})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}

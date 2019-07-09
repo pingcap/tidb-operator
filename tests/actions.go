@@ -710,13 +710,6 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 			return false, nil
 		}
 
-		glog.V(4).Infof("check store labels")
-		if b, err := oa.storeLabelsIsSet(tc, info.TopologyKey); !b && err == nil {
-			return false, nil
-		} else if err != nil {
-			return false, err
-		}
-
 		glog.V(4).Infof("check tidb cluster begin passwordIsSet")
 		if b, err := oa.passwordIsSet(info); !b && err == nil {
 			return false, nil
