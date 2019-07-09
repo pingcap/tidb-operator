@@ -22,6 +22,7 @@ func newOperatorConfig() *tests.OperatorConfig {
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
 		ImagePullPolicy:    v1.PullAlways,
+		TestMode:           true,
 	}
 }
 
@@ -70,6 +71,7 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 		TiKVGrpcConcurrency: 4,
 		TiDBTokenLimit:      1000,
 		PDLogLevel:          "info",
+		TopologyKey:         topologyKey,
 		SubValues:           tests.GetAffinityConfigOrDie(clusterName, ns, topologyKey, []string{topologyKey}),
 	}
 }

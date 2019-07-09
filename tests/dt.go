@@ -181,6 +181,10 @@ func (oa *operatorActions) CheckDataRegionDisasterTolerance(cluster *TidbCluster
 		// regionRacks is map of rackName and the peerID
 		regionRacks := map[string]uint64{}
 		for _, peer := range region.Peers {
+			if len(region.Peers) != 3 {
+				glog.Infof("cluster[%s] region[%d]'s peers not equal 3,[%v]. May be the failover happened", cluster.ClusterName, region.ID, region.Peers)
+				continue
+			}
 			storeID := strconv.FormatUint(peer.StoreId, 10)
 			nodeName, err := oa.getNodeByStoreId(storeID, cluster)
 			if err != nil {
@@ -189,7 +193,7 @@ func (oa *operatorActions) CheckDataRegionDisasterTolerance(cluster *TidbCluster
 			rackName := rackNodeMap[nodeName]
 			// if the rack have more than one peer of the region, return error
 			if otherID, exist := regionRacks[rackName]; exist {
-				return fmt.Errorf("region[%d]'s peer: [%d]and[%d] are in same rack:[%s]", region.ID, otherID, peer.Id, rackName)
+				return fmt.Errorf("cluster[%s] region[%d]'s peer: [%d]and[%d] are in same rack:[%s]", cluster.ClusterName, region.ID, otherID, peer.Id, rackName)
 			}
 			// add a new pair of rack and peer
 			regionRacks[rackName] = peer.Id
