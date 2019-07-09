@@ -350,7 +350,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 					SchedulerName:  tc.Spec.SchedulerName,
 					Affinity:       tc.Spec.TiKV.Affinity,
 					NodeSelector:   tc.Spec.TiKV.NodeSelector,
-					InitContainers: []corev1.Container{WaitForPDContainer(tc.GetName(), tkmm.operatorImage)},
+					InitContainers: []corev1.Container{WaitForPDContainer(tc.GetName(), tkmm.operatorImage, []string{"-" + pdapi.WaitForLeaderFlag})},
 					Containers: []corev1.Container{
 						{
 							Name:            v1alpha1.TiKVMemberType.String(),

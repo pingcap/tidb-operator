@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -358,7 +359,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 					SchedulerName:  tc.Spec.SchedulerName,
 					Affinity:       tc.Spec.TiDB.Affinity,
 					NodeSelector:   tc.Spec.TiDB.NodeSelector,
-					InitContainers: []corev1.Container{WaitForPDContainer(tc.GetName(), tmm.operatorImage)},
+					InitContainers: []corev1.Container{WaitForPDContainer(tc.GetName(), tmm.operatorImage, []string{"-" + pdapi.WaitForInitializationFlag})},
 					Containers:     containers,
 					RestartPolicy:  corev1.RestartPolicyAlways,
 					Tolerations:    tc.Spec.TiDB.Tolerations,

@@ -32,6 +32,11 @@ import (
 
 const (
 	timeout = 5 * time.Second
+
+	// WaitForInitializationFlag is located here only because it is convenient
+	WaitForInitializationFlag = "initialization"
+	// WaitForLeaderFlag is located here only because it is convenient
+	WaitForLeaderFlag = "leader"
 )
 
 // Namespace is a newtype of a string
@@ -83,6 +88,8 @@ type PDClient interface {
 	GetConfig() (*server.Config, error)
 	// GetCluster returns used when syncing pod labels.
 	GetCluster() (*metapb.Cluster, error)
+	// GetClusterStatus is used to determine if the cluster is initialized
+	GetClusterStatus() (*ClusterStatus, error)
 	// GetMembers returns all PD members from cluster
 	GetMembers() (*MembersInfo, error)
 	// GetStores lists all TiKV stores from cluster
@@ -120,6 +127,7 @@ var (
 	storePrefix            = "pd/api/v1/store"
 	configPrefix           = "pd/api/v1/config"
 	clusterIDPrefix        = "pd/api/v1/cluster"
+	clusterStatusPrefix    = "pd/api/v1/cluster/status"
 	schedulersPrefix       = "pd/api/v1/schedulers"
 	pdLeaderPrefix         = "pd/api/v1/leader"
 	pdLeaderTransferPrefix = "pd/api/v1/leader/transfer"
@@ -137,6 +145,13 @@ func NewPDClient(url string, timeout time.Duration) PDClient {
 		url:        url,
 		httpClient: &http.Client{Timeout: timeout},
 	}
+}
+
+// ClusterStatus is the same as server.ClusterStatus except that IsInitialized is nullable.
+// This allows for backwards compatibility testing.
+type ClusterStatus struct {
+	RaftBootstrapTime time.Time `json:"raft_bootstrap_time,omitempty"`
+	IsInitialized     *bool     `json:"is_initialized"`
 }
 
 // following struct definitions are copied from github.com/pingcap/pd/server/api/store
@@ -231,6 +246,20 @@ func (pc *pdClient) GetConfig() (*server.Config, error) {
 		return nil, err
 	}
 	return config, nil
+}
+
+func (pc *pdClient) GetClusterStatus() (*ClusterStatus, error) {
+	apiURL := fmt.Sprintf("%s/%s", pc.url, clusterStatusPrefix)
+	body, err := httputil.GetBodyOK(pc.httpClient, apiURL)
+	if err != nil {
+		return nil, err
+	}
+	clusterStatus := &ClusterStatus{}
+	err = json.Unmarshal(body, clusterStatus)
+	if err != nil {
+		return nil, err
+	}
+	return clusterStatus, nil
 }
 
 func (pc *pdClient) GetCluster() (*metapb.Cluster, error) {
@@ -594,6 +623,7 @@ const (
 	GetHealthActionType                ActionType = "GetHealth"
 	GetConfigActionType                ActionType = "GetConfig"
 	GetClusterActionType               ActionType = "GetCluster"
+	GetClusterStatusActionType         ActionType = "GetClusterStatus"
 	GetMembersActionType               ActionType = "GetMembers"
 	GetStoresActionType                ActionType = "GetStores"
 	GetTombStoneStoresActionType       ActionType = "GetTombStoneStores"
@@ -674,6 +704,15 @@ func (pc *FakePDClient) GetCluster() (*metapb.Cluster, error) {
 		return nil, err
 	}
 	return result.(*metapb.Cluster), nil
+}
+
+func (pc *FakePDClient) GetClusterStatus() (*ClusterStatus, error) {
+	action := &Action{}
+	result, err := pc.fakeAPI(GetClusterStatusActionType, action)
+	if err != nil {
+		return nil, err
+	}
+	return result.(*ClusterStatus), nil
 }
 
 func (pc *FakePDClient) GetMembers() (*MembersInfo, error) {

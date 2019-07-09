@@ -5,7 +5,7 @@ import (
 )
 
 // WaitForPDContainer gives the container spec for the wait-for-pd init container
-func WaitForPDContainer(tcName string, operatorImage string) corev1.Container {
+func WaitForPDContainer(tcName string, operatorImage string, arguments []string) corev1.Container {
 	initEnvs := []corev1.EnvVar{
 		{
 			Name: "NAMESPACE",
@@ -24,7 +24,7 @@ func WaitForPDContainer(tcName string, operatorImage string) corev1.Container {
 	return corev1.Container{
 		Name:    "wait-for-pd",
 		Image:   operatorImage,
-		Command: []string{"wait-for-pd"},
+		Command: append([]string{"wait-for-pd"}, arguments...),
 		Env:     initEnvs,
 	}
 }

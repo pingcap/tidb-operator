@@ -16,9 +16,11 @@ package main
 import (
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/version"
 	"k8s.io/apiserver/pkg/util/logs"
 
 	"flag"
+	"fmt"
 	"os"
 	"time"
 )
@@ -27,12 +29,55 @@ const (
 	timeout = 5 * time.Second
 )
 
+var (
+	printVersion          bool
+	waitForInitialization bool
+	waitForLeader         bool
+)
+
 func init() {
+	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
+	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
+	flag.BoolVar(&waitForInitialization, pdapi.WaitForInitializationFlag, false, "Wait for initialization of the cluster. This means all replicas have come online")
+	flag.BoolVar(&waitForLeader, pdapi.WaitForLeaderFlag, false, "Wait for just the presence of a PD leader.")
 	flag.Parse()
+}
+
+func pdHasLeader(pdClient pdapi.PDClient) (bool, error) {
+	memberInfo, err := pdClient.GetPDLeader()
+	if err != nil {
+		return false, err
+	}
+	return memberInfo != nil, nil
+}
+
+func pdIsInitialized(pdClient pdapi.PDClient) (*bool, error) {
+	status, err := pdClient.GetClusterStatus()
+	if err != nil {
+		f := false
+		return &f, err
+	}
+	return status.IsInitialized, nil
+}
+
+// On older versions this will return the empty semver version 0.0.0
+// Most tidb-operator users will be using version 3.0+ which has the version field.
+func pdVersion(pdClient pdapi.PDClient) (string, error) {
+	conf, err := pdClient.GetConfig()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s", conf.ClusterVersion), nil
 }
 
 // wait-for-pd waits for 1 PD to be running
 func main() {
+	if printVersion {
+		version.PrintVersionInfo()
+		os.Exit(0)
+	}
+	version.LogVersionInfo()
+
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
@@ -52,12 +97,51 @@ func main() {
 
 	pdClient := pdapi.NewPDClient(pdapi.PdClientURL(pdapi.Namespace(namespace), tcName), timeout)
 
-	for {
-		membersInfo, err := pdClient.GetMembers()
+	var waitFunction func() bool
+
+	waitForLeaderFunc := func() bool {
+		hasLeader, err := pdHasLeader(pdClient)
 		if err != nil {
-			glog.Errorf("Error using pdClient to get members %v", err)
-		} else if membersInfo.Leader != nil {
+			glog.Infof("Error using pdClient to get members %v", err)
+		} else if hasLeader {
 			glog.Infof("Found a PD member. Exiting now.")
+			return true
+		} else {
+			glog.Infof("PD Leader not found")
+		}
+		return false
+	}
+
+	waitForInitializationFunc := func() bool {
+		isInit, err := pdIsInitialized(pdClient)
+		if err != nil {
+			glog.Infof("Error using pdClient to get cluster status %v", err)
+		} else if isInit == nil {
+			version, verr := pdVersion(pdClient)
+			if verr != nil || version == "" {
+				glog.Errorf("Error using pdClient to get cluster version %v", verr)
+			}
+			glog.Warningf("For this PD version %s the cluster status API does not support is_initialized. Will now wait for just a PD leader", version)
+			waitFunction = waitForLeaderFunc
+		} else if *isInit {
+			glog.Infof("Cluster is inititialized. Exiting now.")
+			return true
+		} else {
+			glog.Infof("PD is not initialized")
+		}
+		return false
+	}
+
+	if waitForInitialization {
+		waitFunction = waitForInitializationFunc
+	} else if waitForLeader {
+		waitFunction = waitForLeaderFunc
+	} else {
+		glog.Fatalf("Expected either the flag --initialization or --leader")
+	}
+
+	for {
+		if waitFunction() {
 			break
 		}
 		time.Sleep(oneSecond)
