@@ -62,6 +62,7 @@ func init() {
 	flag.DurationVar(&pdFailoverPeriod, "pd-failover-period", time.Duration(5*time.Minute), "PD failover period default(5m)")
 	flag.DurationVar(&tikvFailoverPeriod, "tikv-failover-period", time.Duration(5*time.Minute), "TiKV failover period default(5m)")
 	flag.DurationVar(&tidbFailoverPeriod, "tidb-failover-period", time.Duration(5*time.Minute), "TiDB failover period")
+	flag.BoolVar(&controller.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
 
 	flag.Parse()
 }

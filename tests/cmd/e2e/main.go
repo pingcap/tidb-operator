@@ -56,6 +56,7 @@ func main() {
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
 		ImagePullPolicy:    v1.PullIfNotPresent,
+		TestMode:           true,
 	}
 
 	ns := os.Getenv("NAMESPACE")
