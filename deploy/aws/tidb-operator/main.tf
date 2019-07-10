@@ -33,7 +33,7 @@ resource "local_file" "kubeconfig" {
 }
 
 provider "helm" {
-  alias = "initial"
+  alias    = "initial"
   insecure = true
   # service_account = "tiller"
   install_tiller = false # currently this doesn't work, so we install tiller in the local-exec provisioner. See https://github.com/terraform-providers/terraform-provider-helm/issues/148
@@ -49,8 +49,8 @@ resource "null_resource" "setup-env" {
     working_dir = path.module
     command     = <<EOS
 echo "${local_file.kubeconfig.sensitive_content}" > kube_config.yaml
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.0.0-beta.3/manifests/crd.yaml
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.0.0-beta.3/manifests/tiller-rbac.yaml
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.operator_version}/manifests/crd.yaml
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.operator_version}/manifests/tiller-rbac.yaml
 kubectl apply -f manifests/local-volume-provisioner.yaml
 kubectl apply -f manifests/gp2-storageclass.yaml
 helm init --service-account tiller --upgrade --wait
