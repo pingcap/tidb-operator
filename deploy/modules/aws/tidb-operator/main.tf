@@ -46,13 +46,13 @@ resource "null_resource" "setup-env" {
   depends_on = [local_file.kubeconfig]
 
   provisioner "local-exec" {
-    working_dir = path.module
+    working_dir = path.cwd
     command     = <<EOS
 echo "${local_file.kubeconfig.sensitive_content}" > kube_config.yaml
 kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.operator_version}/manifests/crd.yaml
 kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.operator_version}/manifests/tiller-rbac.yaml
-kubectl apply -f manifests/local-volume-provisioner.yaml
-kubectl apply -f manifests/gp2-storageclass.yaml
+kubectl apply -f ${path.module}/manifests/local-volume-provisioner.yaml
+kubectl apply -f ${path.module}/manifests/gp2-storageclass.yaml
 helm init --service-account tiller --upgrade --wait
 until helm ls; do
   echo "Wait tiller ready"

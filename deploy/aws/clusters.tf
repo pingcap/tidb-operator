@@ -41,9 +41,9 @@ module "default-cluster" {
   providers = {
     helm = "helm.eks"
   }
-  source  = "./tidb-cluster"
-  eks     = local.default_eks
-  subnets = local.default_subnets
+  source  = "../modules/aws/tidb-cluster"
+  eks     = local.eks
+  subnets = local.subnets
 
   cluster_name          = var.default_cluster_name
   cluster_version       = var.default_cluster_version

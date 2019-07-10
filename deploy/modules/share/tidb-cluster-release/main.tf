@@ -1,5 +1,5 @@
 resource "null_resource" "wait-tiller-ready" {
-  depends_on = [var.eks]
+  depends_on = [var.kubeconfig_filename, var.kubeconfig]
 
   provisioner "local-exec" {
     working_dir = path.cwd
@@ -10,7 +10,7 @@ until helm ls; do
 done
 EOS
     environment = {
-      KUBECONFIG = var.eks.kubeconfig_filename
+      KUBECONFIG = var.kubeconfig_filename
     }
   }
 }
@@ -32,7 +32,7 @@ resource "helm_release" "tidb-cluster" {
   wait = false
 
   values = [
-    file("${path.module}/values/default.yaml"),
+    var.base_values,
     var.override_values
   ]
 
@@ -133,8 +133,9 @@ until kubectl get po -n ${var.cluster_name} -lapp.kubernetes.io/component=tidb |
   sleep 5
 done
 EOS
+    interpreter = var.local_exec_interpreter
     environment = {
-      KUBECONFIG = var.eks.kubeconfig_filename
+      KUBECONFIG = var.kubeconfig_filename
     }
   }
 }
