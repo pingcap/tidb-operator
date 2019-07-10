@@ -478,11 +478,10 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		}
 
 		oldStore, exist := previousStores[status.ID]
-		if exist {
+
+		status.LastTransitionTime = metav1.Now()
+		if exist && status.State == oldStore.State {
 			status.LastTransitionTime = oldStore.LastTransitionTime
-		}
-		if !exist || status.State != oldStore.State {
-			status.LastTransitionTime = metav1.Now()
 		}
 
 		stores[status.ID] = *status

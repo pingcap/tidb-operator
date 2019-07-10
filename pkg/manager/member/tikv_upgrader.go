@@ -122,6 +122,10 @@ func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32,
 				return err
 			}
 			_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
+			if !evicting {
+				glog.Infof("start to evict leader:index:%d,upgradePodName:%s,storeID:%d", ordinal, upgradePodName, storeID)
+				return tku.beginEvictLeader(tc, storeID, upgradePod)
+			}
 
 			if tku.readyToUpgrade(upgradePod, store) {
 				err := tku.endEvictLeader(tc, ordinal)
@@ -132,9 +136,6 @@ func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32,
 				return nil
 			}
 
-			if !evicting {
-				return tku.beginEvictLeader(tc, storeID, upgradePod)
-			}
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] is evicting leader", ns, tcName, upgradePodName)
 		}
 	}
@@ -173,28 +174,22 @@ func (tku *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint
 }
 
 func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32) error {
+	// wait 5 second before delete evict scheduler，it is for auto test can catch these info
+	if controller.TestMode {
+		time.Sleep(5 * time.Second)
+	}
 	store := tku.getStoreByOrdinal(tc, ordinal)
 	storeID, err := strconv.ParseUint(store.ID, 10, 64)
 	if err != nil {
 		return err
 	}
-	upgradedPodName := tikvPodName(tc.GetName(), ordinal)
-	upgradedPod, err := tku.podLister.Pods(tc.GetNamespace()).Get(upgradedPodName)
+
+	err = tku.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName()).EndEvictLeader(storeID)
 	if err != nil {
 		return err
 	}
-	_, evicting := upgradedPod.Annotations[EvictLeaderBeginTime]
-	if evicting {
-		delete(upgradedPod.Annotations, EvictLeaderBeginTime)
-		_, err = tku.podControl.UpdatePod(tc, upgradedPod)
-		if err != nil {
-			return err
-		}
-	}
-	err = controller.GetPDClient(tku.pdControl, tc).EndEvictLeader(storeID)
-	if err != nil {
-		return err
-	}
+
+	glog.Infof("successed to remove evict leader,ordinal:%d,storeID:%d", ordinal, storeID)
 
 	return nil
 }
