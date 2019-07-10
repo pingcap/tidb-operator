@@ -8,11 +8,6 @@ output "cluster_name" {
   value       = alicloud_cs_managed_kubernetes.k8s.*.name
 }
 
-output "cluster_nodes" {
-  description = "The cluster worker node ids of ACK cluster"
-  value       = alicloud_ess_scaling_configuration.workers.*.id
-}
-
 output "vpc_id" {
   description = "The vpc id of ACK cluster"
   value       = alicloud_cs_managed_kubernetes.k8s.*.vpc_id
@@ -28,9 +23,14 @@ output "security_group_id" {
   value       = alicloud_cs_managed_kubernetes.k8s.*.security_group_id
 }
 
+output "key_name" {
+  description = "The key pair for ACK worker nodes"
+  value       = var.key_pair_name == "" ? alicloud_key_pair.default.key_name : var.key_pair_name
+}
+
 output "kubeconfig" {
-  description = "The kubeconfig file"
-  value = ""
+  description = "The kubeconfig file content"
+  value       = file(var.kubeconfig_file)
 }
 
 output "kubeconfig_filename" {

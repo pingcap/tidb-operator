@@ -2,7 +2,7 @@ variable "region" {
   description = "Alicloud region"
 }
 
-variable "cluster_name_prefix" {
+variable "cluster_name" {
   description = "Kubernetes cluster name"
   default     = "ack-cluster"
 }
@@ -10,6 +10,18 @@ variable "cluster_name_prefix" {
 variable "cluster_network_type" {
   description = "Kubernetes network plugin, options: [flannel, terway]. Cannot change once created."
   default     = "flannel"
+}
+
+variable "operator_version" {
+  description = "TiDB Operator version"
+  type        = string
+  default     = "v1.0.0-beta.3"
+}
+
+variable "operator_helm_values" {
+  description = "Operator helm values"
+  type        = string
+  default     = ""
 }
 
 variable "span_all_zones" {
@@ -29,7 +41,7 @@ variable "public_apiserver" {
 }
 
 variable "kubeconfig_file" {
-  description = "The path that kubeconfig file write to, default to $$${path.module}/kubeconfig if empty."
+  description = "The path that kubeconfig file write to, default to $$${path.cwd}/kubeconfig if empty."
   default     = ""
 }
 
@@ -89,74 +101,10 @@ variable "default_worker_cpu_core_count" {
 }
 
 variable "default_worker_type" {
-  description = "The instance type of kubernets default worker nodes, it is recommend to use default_worker_cpu_core_count to select flexible instance type"
+  description = "The instance type of kubernetes default worker nodes, it is recommend to use default_worker_cpu_core_count to select flexible instance type"
   default     = ""
 }
 
-variable "worker_groups" {
-  description = "A list of maps defining worker group configurations to be defined using alicloud ESS. See group_default for validate keys."
-  type        = list(string)
+variable "access_key" {}
 
-  default = [
-    {
-      name = "default"
-    },
-  ]
-}
-
-variable "group_default" {
-  description = <<EOS
-The default values for all worker groups, overriden by per group arguments:
-  - min_size: min size of scaling group
-  - max_size: max size of scaling group
-  - default_cooldown: cooldown peroid between scaling operation
-  - multi_az_policy: options [BALANCE, PRIORITY]
-  - image_id: OS image of worker instance
-  - instance_type:
-  - system_disk_category: self-explained
-  - systen_disk_size: system disk size in GB
-  - pre_userdata: customized instance initialization actions before register instance to k8s cluster
-  - post_userdata: customized instance initialization actions after register instance to k8s cluster
-  - autoscaling_enables: whether enable autoscaling using cluster scaler
-  - internet_charge_type: network billing type, Values: [PayByBandwidth, PayByTraffic]
-  - internet_max_bandwith_in: self-explained, range [1,200]
-  - internet_max_bandwith_out: self-explained, range [1,200]
-  - node_taints: kubernetes node tains, format: k1=v1,k2=v2
-  - node_labels: kubernetes node labels, format: k1=v1,k2=v2
-EOS
-
-
-  type = map(string)
-
-  default = {
-    "min_size" = 0
-    "max_size" = 100
-    "default_cooldown" = 300
-    "multi_az_policy" = "BALANCE"
-    "image_id" = "centos_7_06_64_20G_alibase_20190218.vhd"
-    "instance_type" = "ecs.g5.large"
-    "system_disk_category" = "cloud_efficiency"
-    "system_disk_size" = 50
-    "pre_userdata" = ""
-    "post_userdata" = ""
-    "autoscaling_enabled" = false
-    "internet_charge_type" = "PayByTraffic"
-    "internet_max_bandwidth_in" = 10
-    "internet_max_bandwidth_out" = 10
-    "node_taints" = ""
-    "node_labels" = ""
-  }
-}
-
-variable "default_group_tags" {
-  description = "A map of tags to add to all ecs instances."
-  type = map(string)
-  default = {}
-}
-
-variable "worker_group_tags" {
-  description = "A list of tags to add to ecs instances of the spcific group, mapping by index with mod."
-  type = list(string)
-  default = [{}]
-}
-
+variable "access_secret" {}

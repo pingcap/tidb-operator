@@ -24,34 +24,3 @@ data "external" "token" {
   # Terraform use map[string]string to unmarshal the result, transform the json to conform
   program = ["bash", "-c", "aliyun --region ${var.region} cs POST /clusters/${alicloud_cs_managed_kubernetes.k8s.id}/token --body '{\"is_permanently\": true}' | jq \"{token: .token}\""]
 }
-
-data "template_file" "userdata" {
-  template = file("${path.module}/templates/user_data.sh.tpl")
-  count    = length(var.worker_groups)
-
-  vars = {
-    pre_userdata = lookup(
-      var.worker_groups[count.index],
-      "pre_userdata",
-      var.group_default["pre_userdata"],
-    )
-    post_userdata = lookup(
-      var.worker_groups[count.index],
-      "post_userdata",
-      var.group_default["post_userdata"],
-    )
-    open_api_token = data.external.token.result["token"]
-    node_taints = lookup(
-      var.worker_groups[count.index],
-      "node_taints",
-      var.group_default["node_taints"],
-    )
-    node_labels = lookup(
-      var.worker_groups[count.index],
-      "node_labels",
-      var.group_default["node_labels"],
-    )
-    region = var.region
-  }
-}
-

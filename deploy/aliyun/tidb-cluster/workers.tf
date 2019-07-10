@@ -78,8 +78,8 @@ resource "alicloud_ess_scaling_configuration" "workers" {
     "instance_type",
     local.group_default["instance_type"],
   )
-  security_group_id = var.group_id
-  key_name          = var.key_name
+  security_group_id = var.ack.security_group_id
+  key_name          = var.ack.key_name
   system_disk_category = lookup(
     local.tidb_cluster_worker_groups[count.index],
     "system_disk_category",

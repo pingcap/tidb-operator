@@ -2,20 +2,12 @@ output "region" {
   value = var.ALICLOUD_REGION
 }
 
-output "cluster_id" {
-  value = module.ack.cluster_id
-}
-
-output "cluster_name" {
-  value = var.cluster_name_prefix
-}
-
 output "kubeconfig_file" {
-  value = module.ack.kubeconfig_filename
+  value = module.tidb-operator.kubeconfig_filename
 }
 
 output "vpc_id" {
-  value = module.ack.vpc_id
+  value = module.tidb-operator.vpc_id
 }
 
 output "bastion_ip" {
@@ -30,19 +22,15 @@ output "worker_key_file" {
   value = local.key_file
 }
 
-output "tidb_version" {
-  value = var.tidb_version
+output "default_cluster_tidb_slb_ip" {
+  value = module.default-cluster.tidb_slb_ip
 }
 
-output "tidb_slb_ip" {
-  value = data.external.tidb_slb_ip.result["ip"]
+output "default_cluster_tidb_port" {
+  value = module.default-cluster.tidb_port
 }
 
-output "tidb_port" {
-  value = data.external.tidb_port.result["port"]
-}
-
-output "monitor_endpoint" {
-  value = "${data.external.monitor_slb_ip.result["ip"]}:${data.external.monitor_port.result["port"]}"
+output "default_cluster_monitor_endpoint" {
+  value = module.default-cluster.monitor_endpoint
 }
 

@@ -6,17 +6,14 @@ variable "cluster_name" {
   description = "The TiDB cluster name"
 }
 
-variable "key_name" {
-  description = "The SSH key name for worker instances"
+variable "tidb_cluster_chart_version" {
+  description = "tidb-cluster chart version"
+  default     = "v1.0.0-beta.3"
 }
 
-variable "group_id" {
-  description = "The security group id for worker instances"
-}
-
-variable "tidb_version" {
-  description = "TiDB cluster version"
-  default     = "v3.0.0"
+variable "cluster_version" {
+  type    = string
+  default = "v3.0.0"
 }
 
 variable "pd_count" {
@@ -52,4 +49,9 @@ variable "tidb_instance_type" {
 variable "monitor_instance_type" {
   description = "Monitor instance type"
   default = "ecs.c5.xlarge"
+}
+
+variable "override_values" {
+  type    = string
+  default = ""
 }
