@@ -271,7 +271,7 @@ Under the hood, this terraform module composes several sub-modules:
 - [tidb-cluster](../modules/aws/tidb-cluster/README.md), which provisions a TiDB cluster in the target Kubernetes cluster
 - ...and a `VPC` module, a `bastion` module and a `key-pair` module that are dedicated to TiDB on AWS
 
-The best practice is creating a new directory for each of your Kubernetes cluster and composing these modules via terraform scripts, so that the terraform state and cluster credentials of each of the clusters won't be screwed. here's an example:
+The best practice is creating a new directory for each of your Kubernetes cluster and composing these modules via terraform scripts, so that the terraform state and cluster credentials of each cluster won't be screwed. Here's an example:
 
 ```shell
 # assume we are in the project root
@@ -279,7 +279,7 @@ $ mkdir -p deploy/aws-staging
 $ vim deploy/aws-staging/main.tf
 ```
 
-The content of `deploy/aws/aws-staging/main.tf` could be:
+The content of `deploy/aws-staging/main.tf` could be:
 
 ```hcl
 provider "aws" {
