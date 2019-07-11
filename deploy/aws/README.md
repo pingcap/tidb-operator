@@ -187,9 +187,9 @@ module example-cluster {
   source = "./tidb-cluster"
   
   # The target EKS, required
-  eks_info = local.default_eks
+  eks_info = local.eks
   # The subnets of node pools of this TiDB cluster, required
-  subnets = local.default_subnets
+  subnets = local.subnets
   # TiDB cluster name, required
   cluster_name    = "example-cluster"
   

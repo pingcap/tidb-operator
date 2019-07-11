@@ -1,5 +1,5 @@
 resource "null_resource" "wait-tiller-ready" {
-  depends_on = [var.kubeconfig_filename, var.kubeconfig]
+  depends_on = [var.kubeconfig_filename]
 
   provisioner "local-exec" {
     working_dir = path.cwd

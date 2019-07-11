@@ -75,7 +75,7 @@ data "helm_repository" "pingcap" {
 
 resource "helm_release" "tidb-operator" {
   provider = "helm.initial"
-  depends_on = ["null_resource.setup-env"]
+  depends_on = [null_resource.setup-env, local_file.kubeconfig]
 
   repository = data.helm_repository.pingcap.name
   chart = "tidb-operator"
