@@ -5,13 +5,15 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/golang/glog"
 )
 
 // DeferClose captures the error returned from closing (if an error occurs).
 // This is designed to be used in a defer statement.
-func DeferClose(c io.Closer, err *error) {
-	if cerr := c.Close(); cerr != nil && *err == nil {
-		*err = cerr
+func DeferClose(c io.Closer) {
+	if err := c.Close(); err != nil {
+		glog.Error(err)
 	}
 }
 
@@ -31,7 +33,7 @@ func GetBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer DeferClose(res.Body, &err)
+	defer DeferClose(res.Body)
 	if res.StatusCode >= 400 {
 		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL %s", res.StatusCode, apiURL))
 		return nil, errMsg

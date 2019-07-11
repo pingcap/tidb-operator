@@ -327,7 +327,7 @@ func (pc *pdClient) DeleteStore(storeID uint64) error {
 	if err != nil {
 		return err
 	}
-	defer httputil.DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 
 	// Remove an offline store should returns http.StatusOK
 	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
@@ -365,7 +365,7 @@ func (pc *pdClient) DeleteMemberByID(memberID uint64) error {
 	if err != nil {
 		return err
 	}
-	defer httputil.DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
 		return nil
 	}
@@ -397,7 +397,7 @@ func (pc *pdClient) DeleteMember(name string) error {
 	if err != nil {
 		return err
 	}
-	defer httputil.DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
 		return nil
 	}
@@ -415,7 +415,7 @@ func (pc *pdClient) SetStoreLabels(storeID uint64, labels map[string]string) (bo
 	if err != nil {
 		return false, err
 	}
-	defer httputil.DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 	if res.StatusCode == http.StatusOK {
 		return true, nil
 	}
@@ -434,7 +434,7 @@ func (pc *pdClient) BeginEvictLeader(storeID uint64) error {
 	if err != nil {
 		return err
 	}
-	defer httputil.DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 	if res.StatusCode == http.StatusOK {
 		return nil
 	}
@@ -471,7 +471,7 @@ func (pc *pdClient) EndEvictLeader(storeID uint64) error {
 	if err != nil {
 		return err
 	}
-	defer httputil.DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
 		return nil
 	}
@@ -541,7 +541,7 @@ func (pc *pdClient) TransferPDLeader(memberName string) error {
 	if err != nil {
 		return err
 	}
-	defer httputil.DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
 		return nil
 	}
@@ -554,7 +554,7 @@ func (pc *pdClient) getBodyOK(apiURL string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer httputil.DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 	if res.StatusCode >= 400 {
 		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL %s", res.StatusCode, apiURL))
 		return nil, errMsg
