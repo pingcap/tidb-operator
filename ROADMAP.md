@@ -50,20 +50,14 @@ This document defines the roadmap for TiDB Operator development.
 - [x] Rolling update when ConfigMap changes
 - [x] Allow pausing during TiDB upgrade
 
-## v1.0.0-beta.4
-- [ ] HA deployment document
-- [ ] Monitor deployment document
-- [ ] Detailed Backup/Restore document
-- [ ] Troubleshooting document
+## v1.0.0-rc.1
+- [x] HA deployment document
+- [x] Monitor deployment document
+- [x] Detailed Backup/Restore document
+- [x] Troubleshooting document
+- [x] Automate Chaos tests
+- [x] Bugfix
 
-## v1.0.0-rc
-- [ ] Architecture & design document
-- [ ] Automate Chaos tests
-- [ ] Bugfix
-
-## v1.0.0-ga: (2019-06-30)
+## v1.0.0-ga: (2019-07-26)
 - [ ] Stable for production deployment
-
-## v1.1.0: (2019-08-15)
-- [ ] Deploy Lightning
-- [ ] Deploy TiFlash beta
+- [ ] Architecture & design document
