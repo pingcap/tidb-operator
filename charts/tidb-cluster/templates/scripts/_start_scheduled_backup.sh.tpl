@@ -10,12 +10,18 @@ backupPath=/data/${backupName}
 echo "making dir ${backupPath}"
 mkdir -p ${backupPath}
 
-gc_life_time=`/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} -p${TIDB_PASSWORD} -Nse "select variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"`
+password_str=""
+if [ -n "${TIDB_PASSWORD}" ];
+then
+    password_str="-p${TIDB_PASSWORD}"
+fi
+
+gc_life_time=`/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "select variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"`
 echo "Old TiKV GC life time is ${gc_life_time}"
 
 echo "Increase TiKV GC life time to 3h"
-/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} -p${TIDB_PASSWORD} -Nse "update mysql.tidb set variable_value='3h' where variable_name='tikv_gc_life_time';"
-/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} -p${TIDB_PASSWORD} -Nse "select variable_name,variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"
+/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "update mysql.tidb set variable_value='3h' where variable_name='tikv_gc_life_time';"
+/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "select variable_name,variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"
 
 /mydumper \
   --outputdir=${backupPath} \
@@ -29,8 +35,8 @@ echo "Increase TiKV GC life time to 3h"
   {{ .Values.scheduledBackup.options }}
 
 echo "Reset TiKV GC life time to ${gc_life_time}"
-/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} -p${TIDB_PASSWORD} -Nse "update mysql.tidb set variable_value='${gc_life_time}' where variable_name='tikv_gc_life_time';"
-/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} -p${TIDB_PASSWORD} -Nse "select variable_name,variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"
+/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "update mysql.tidb set variable_value='${gc_life_time}' where variable_name='tikv_gc_life_time';"
+/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "select variable_name,variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"
 
 {{- if .Values.scheduledBackup.gcp }}
 uploader \
