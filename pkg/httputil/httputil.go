@@ -9,7 +9,7 @@ import (
 	"github.com/golang/glog"
 )
 
-// DeferClose captures the error returned from closing (if an error occurs).
+// DeferClose captures and prints the error from closing (if an error occurs).
 // This is designed to be used in a defer statement.
 func DeferClose(c io.Closer) {
 	if err := c.Close(); err != nil {
