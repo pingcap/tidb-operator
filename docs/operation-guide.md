@@ -69,17 +69,16 @@ For other settings, the variables in `values.yaml` are self-explanatory with com
 
 ## GKE
 
-On GKE, local SSD volumes by default are limited to 375 GiB size and perform worse than persistent disk.
+On GKE, local SSD volumes by default are limited to 375 GiB size and can perform sub-optimally.
 
 For proper performance, you must:
 
-* install the Linux guest environment on the Ubuntu image or use a recent COS image
-* make sure SSD is mounted with the `nobarrier` option.
+* make sure SSD is mounted with the `nobarrier` option (it is not on COS)
 
-We also have a [daemonset](../manifests/gke/local-ssd-provision.yaml) that
+We have a [daemonset](../manifests/gke/local-ssd-provision.yaml) that
 * fixes any performance issues
-* remounts local SSD disks with a UUID for safety
-* On Ubuntu combines all local SSD disks into one large disk with lvm tools.
+* remounts local SSD disks with a UUID for safety and ensures that the nobarrier option is set
+* combines all local SSD disks into one large disk with lvm tools.
 * Run the local-volume-provisioner
 
 The terraform deployment will automatically install that.
