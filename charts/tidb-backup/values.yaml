@@ -13,12 +13,19 @@ mode: backup # backup | restore | scheduled-restore
 # name is the backup dir name and pvc name for ad-hoc backup and restore
 name: fullbackup-{{ date "200601021504" .Release.Time }}
 
+# The default jobName is clusterName-name
+# jobName:
+
+# The TiDB host to connect to
+# By default this will match a normal tidb-operator deploy
+# host:
+
 # scheduledBackupName is the name of a scheduled backup directory,
 # used to restore the tidb cluster from scheduled backup.
 # scheduledBackupName: scheduled-backup-20190822-041004
 
 image:
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   # https://github.com/pingcap/tidb-cloud-backup
   backup: pingcap/tidb-cloud-backup:20190828
 
@@ -40,6 +47,9 @@ resources:
     cpu: 2000m
     memory: 4Gi
 
+# Kubernetes service account to use
+# serviceAccount:
+
 storage:
   className: local-storage
   size: 100Gi
@@ -48,7 +58,8 @@ storage:
 # -F is the chunk size, a big table is partitioned into many chunks.
 # Other useful options are -B for database, and -T for tables.
 # See https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options for more options.
-backupOptions: "-t 16 -F 256 --skip-tz-utc --verbose=3"
+backupOptions: "--compress-protocol -t 16 -F 256 --skip-tz-utc --verbose=3"
+
 # Set the tidb_snapshot to be used for the backup
 # Use `show master status` to get the ts:
 #   MySQL [(none)]> show master status;
@@ -72,6 +83,7 @@ tikvGCLifeTime: 720h
 # backup to or restore from gcp bucket, the backup path is in the form of <clusterName>-<name>
 gcp: {}
   # bucket: ""
+  # secretName is not necessary on GKE if you use the workload identity feature
   # secretName is the name of the secret which stores the gcp service account credentials json file
   # The service account must have read/write permission to the above bucket.
   # Read the following document to create the service account and download the credentials file as credentials.json:
@@ -94,6 +106,7 @@ s3: {}
   # region: ""
   # bucket: ""
   # secretName is the name of the secret which stores s3 object store access key and secret key
+  # This is not necessary on AWS. Instead you should be able to get the credentials from the EKS service IAM role.
   # You can create the secret by:
   # kubectl create secret generic s3-backup-secret --namespace=<namespace> --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
   # secretName: s3-backup-secret

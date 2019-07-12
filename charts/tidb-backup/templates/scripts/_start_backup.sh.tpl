@@ -1,6 +1,10 @@
 set -euo pipefail
 
+{{- if .Values.host }}
+host={{ .Values.host }}
+{{- else }}
 host=$(getent hosts {{ .Values.clusterName }}-tidb | head | awk '{print $1}')
+{{- end }}
 
 dirname=/data/${BACKUP_NAME}
 echo "making dir ${dirname}"
@@ -14,6 +18,13 @@ fi
 
 gc_life_time=`/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "select variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"`
 echo "Old TiKV GC life time is ${gc_life_time}"
+
+function reset_gc_lifetime() {
+echo "Reset TiKV GC life time to ${gc_life_time}"
+/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "update mysql.tidb set variable_value='${gc_life_time}' where variable_name='tikv_gc_life_time';"
+/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "select variable_name,variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"
+}
+trap "reset_gc_lifetime" EXIT
 
 echo "Increase TiKV GC life time to {{ .Values.tikvGCLifeTime | default "720h" }}"
 /usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "update mysql.tidb set variable_value='{{ .Values.tikvGCLifeTime | default "720h" }}' where variable_name='tikv_gc_life_time';"
@@ -36,15 +47,28 @@ fi
   --tidb-force-priority=LOW_PRIORITY \
   {{ .Values.backupOptions }} ${snapshot_args:-}
 
-echo "Reset TiKV GC life time to ${gc_life_time}"
-/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "update mysql.tidb set variable_value='${gc_life_time}' where variable_name='tikv_gc_life_time';"
-/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "select variable_name,variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"
 
+backup_name="$(basename "${dirname}")"
+backup_base_dir="$(dirname "${dirname}")"
 {{- if .Values.gcp }}
-uploader \
-  --cloud=gcp \
-  --bucket={{ .Values.gcp.bucket }} \
-  --backup-dir=${dirname}
+# Once we know there are no more credentials that will be logged we can run with -x
+set -x
+bucket={{ .Values.gcp.bucket }}
+creds=${GOOGLE_APPLICATION_CREDENTIALS:-""}
+if ! [[ -z $creds ]] ; then
+creds = "service_account_file = ${creds}"
+fi
+
+cat <<EOF > /tmp/rclone.conf
+[gcp]
+type = google cloud storage
+bucket_policy_only = true
+$creds
+EOF
+
+  cd "${backup_base_dir}"
+  tar -cf - "${backup_name}" | pigz -p 16 \
+  | rclone --config /tmp/rclone.conf rcat gcp:${bucket}/${backup_name}/${backup_name}.tgz
 {{- end }}
 
 {{- if .Values.ceph }}
