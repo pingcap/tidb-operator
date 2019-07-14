@@ -11,4 +11,5 @@ module "tidb-cluster" {
   local_exec_interpreter     = var.local_exec_interpreter
   base_values                = file("${path.module}/values/default.yaml")
   kubeconfig_filename        = var.ack.kubeconfig_filename
+  service_ingress_key        = "ip"
 }

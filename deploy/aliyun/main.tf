@@ -16,7 +16,7 @@ provider "alicloud" {
 locals {
   credential_path = "${path.cwd}/credentials"
   kubeconfig      = "${local.credential_path}/kubeconfig"
-  key_file        = "${local.credential_path}/${var.cluster_name}-key-${timestamp()}.pem"
+  key_file        = "${local.credential_path}/${var.cluster_name}-key.pem"
 }
 
 // AliCloud resource requires path existing
