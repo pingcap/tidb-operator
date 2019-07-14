@@ -30,8 +30,14 @@ downloader \
   --destDir=/data
 {{- end }}
 
+password_str=""
+if [ -n "${TIDB_PASSWORD}" ];
+then
+    password_str="-p${TIDB_PASSWORD}"
+fi
+
 count=1
-while ! mysql -u ${TIDB_USER} -h `eval echo '${'$host'}'` -P 4000 -p${TIDB_PASSWORD} -e 'select version();'
+while ! mysql -u ${TIDB_USER} -h `eval echo '${'$host'}'` -P 4000 ${password_str} -e 'select version();'
 do
   echo "waiting for tidb, retry ${count} times ..."
   sleep 10
