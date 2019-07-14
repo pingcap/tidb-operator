@@ -261,7 +261,7 @@ $ terraform destroy
 >
 > You have to manually delete the EBS volumes in AWS console after running terraform destroy if you do not need the data on the volumes anymore.
 
-## Advanced: Multiple Kubernetes Management
+## Multiple Kubernetes Management
 
 In this section, we will investigate the best practice to manage multiple Kubernetes clusters, each with one or more TiDB clusters installed. 
 
