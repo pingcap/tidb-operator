@@ -24,3 +24,12 @@ data "external" "token" {
   # Terraform use map[string]string to unmarshal the result, transform the json to conform
   program = ["bash", "-c", "aliyun --region ${var.region} cs POST /clusters/${alicloud_cs_managed_kubernetes.k8s.id}/token --body '{\"is_permanently\": true}' | jq \"{token: .token}\""]
 }
+
+data "template_file" "local-volume-provisioner" {
+  template = file("${path.module}/templates/local-volume-provisioner.yaml.tpl")
+
+  vars = {
+    access_key_id     = var.access_key
+    access_key_secret = var.access_secret
+  }
+}

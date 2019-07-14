@@ -6,14 +6,18 @@ variable "cluster_name" {
   description = "The TiDB cluster name"
 }
 
+variable "image_id" {
+  default = "centos_7_06_64_20G_alibase_20190218.vhd"
+}
+
+variable "tidb_version" {
+  description = "TiDB cluster version"
+  default     = "v3.0.0"
+}
+
 variable "tidb_cluster_chart_version" {
   description = "tidb-cluster chart version"
   default     = "v1.0.0-beta.3"
-}
-
-variable "cluster_version" {
-  type    = string
-  default = "v3.0.0"
 }
 
 variable "pd_count" {
@@ -43,15 +47,21 @@ variable "tidb_count" {
 
 variable "tidb_instance_type" {
   description = "TiDB instance type"
-  default = "ecs.c5.4xlarge"
+  default     = "ecs.c5.4xlarge"
 }
 
 variable "monitor_instance_type" {
   description = "Monitor instance type"
-  default = "ecs.c5.xlarge"
+  default     = "ecs.c5.xlarge"
 }
 
 variable "override_values" {
   type    = string
   default = ""
+}
+
+variable "local_exec_interpreter" {
+  description = "Command to run for local-exec resources. Must be a shell-style interpreter. If you are on Windows Git Bash is a good choice."
+  type        = list(string)
+  default     = ["/bin/sh", "-c"]
 }

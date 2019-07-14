@@ -2,6 +2,10 @@ output "region" {
   value = var.ALICLOUD_REGION
 }
 
+output "cluster_id" {
+  value = module.tidb-operator.cluster_id
+}
+
 output "kubeconfig_file" {
   value = module.tidb-operator.kubeconfig_filename
 }
@@ -11,26 +15,22 @@ output "vpc_id" {
 }
 
 output "bastion_ip" {
-  value = join(",", alicloud_instance.bastion.*.public_ip)
+  value = module.bastion.bastion_ip
 }
 
-output "bastion_key_file" {
-  value = local.bastion_key_file
-}
-
-output "worker_key_file" {
+output "ssh_key_file" {
   value = local.key_file
 }
 
-output "default_cluster_tidb_slb_ip" {
-  value = module.default-cluster.tidb_slb_ip
+output "tidb_version" {
+  value = var.tidb_version
 }
 
-output "default_cluster_tidb_port" {
-  value = module.default-cluster.tidb_port
+output "tidb_hostname" {
+  value = module.tidb-cluster.tidb_hostname
 }
 
-output "default_cluster_monitor_endpoint" {
-  value = module.default-cluster.monitor_endpoint
+output "monitor_hostname" {
+  value = module.tidb-cluster.monitor_hostname
 }
 

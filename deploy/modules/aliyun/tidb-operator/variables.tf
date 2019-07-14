@@ -2,9 +2,17 @@ variable "region" {
   description = "Alicloud region"
 }
 
+variable "access_key" {
+  type = string
+}
+
+variable "access_secret" {
+  type = string
+}
+
 variable "cluster_name" {
   description = "Kubernetes cluster name"
-  default     = "ack-cluster"
+  default     = "my-cluster"
 }
 
 variable "cluster_network_type" {
@@ -13,35 +21,22 @@ variable "cluster_network_type" {
 }
 
 variable "operator_version" {
-  description = "TiDB Operator version"
-  type        = string
-  default     = "v1.0.0-beta.3"
+  type = string
+  default = "v1.0.0-beta.3"
 }
 
 variable "operator_helm_values" {
-  description = "Operator helm values"
-  type        = string
-  default     = ""
-}
-
-variable "span_all_zones" {
-  description = "Whether span worker nodes in all avaiable zones, worker_zones will be ignored if span_all_zones=true"
-  default     = true
-}
-
-variable "worker_zones" {
-  description = "Available zones of worker nodes, used when span_all_zones=false. It is highly recommended to guarantee the instance type of workers is available in at least two zones in favor of HA."
-  type        = list(string)
-  default     = []
+  type = string
+  default = ""
 }
 
 variable "public_apiserver" {
   description = "Whether enable apiserver internet access"
-  default     = false
+  default     = true
 }
 
 variable "kubeconfig_file" {
-  description = "The path that kubeconfig file write to, default to $$${path.cwd}/kubeconfig if empty."
+  description = "The path that kubeconfig file write to, default to $$${path.module}/kubeconfig if empty."
   default     = ""
 }
 
@@ -101,10 +96,6 @@ variable "default_worker_cpu_core_count" {
 }
 
 variable "default_worker_type" {
-  description = "The instance type of kubernetes default worker nodes, it is recommend to use default_worker_cpu_core_count to select flexible instance type"
+  description = "The instance type of kubernets default worker nodes, it is recommend to use default_worker_cpu_core_count to select flexible instance type"
   default     = ""
 }
-
-variable "access_key" {}
-
-variable "access_secret" {}
