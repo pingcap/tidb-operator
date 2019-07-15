@@ -392,7 +392,7 @@ binlog:
     # or to arbitrary policies determined by the cluster administrators.
     # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
     storageClassName: local-storage
-    storage: 10Gi
+    storage: 20Gi
     syncLog: true
     # a integer value to control expiry date of the binlog data, indicates for how long (in days) the binlog data would be stored.
     # must bigger than 0
