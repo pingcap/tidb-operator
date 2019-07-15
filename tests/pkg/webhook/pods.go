@@ -12,54 +12,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"k8s.io/api/admission/v1beta1"
 )
-
-var (
-	// Pod name may the same in different namespaces
-	kvLeaderMap map[string]map[string]int
-)
-
-func GetAllKVLeaders(versionCli versioned.Interface, namespace string, clusterName string) error {
-
-	if kvLeaderMap == nil {
-		kvLeaderMap = make(map[string]map[string]int)
-	}
-
-	if kvLeaderMap[namespace] == nil {
-		kvLeaderMap[namespace] = make(map[string]int)
-	}
-
-	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(clusterName, metav1.GetOptions{})
-
-	if err != nil {
-		glog.Infof("fail to get tc clustername %s namesapce %s %v", clusterName, namespace, err)
-		return err
-	}
-
-	pdClient := pdapi.NewDefaultPDControl().GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
-
-	for _, store := range tc.Status.TiKV.Stores {
-		storeID, err := strconv.ParseUint(store.ID, 10, 64)
-		if err != nil {
-			glog.Errorf("fail to convert string to int while deleting TIKV err %v", err)
-			return err
-		}
-		storeInfo, err := pdClient.GetStore(storeID)
-		if err != nil {
-			glog.Errorf("fail to read response %v", err)
-			return err
-		}
-		kvLeaderMap[namespace][store.PodName] = storeInfo.Status.LeaderCount
-	}
-
-	return nil
-}
 
 // only allow pods to be delete when it is not ddlowner of tidb, not leader of pd and not
 // master of tikv.
@@ -151,51 +109,6 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 			os.Exit(3)
 		}
 		glog.Infof("savely delete pod namespace %s name %s leader name %s", namespace, name, leader.Name)
-
-		// } else if pod.Labels[label.ComponentLabelKey] == "tikv" {
-	} else if false {
-
-		var storeID uint64
-		storeID = 0
-		for _, store := range tc.Status.TiKV.Stores {
-			if store.PodName == name {
-				storeID, err = strconv.ParseUint(store.ID, 10, 64)
-				if err != nil {
-					glog.Errorf("fail to convert string to int while deleting PD err %v", err)
-					return &reviewResponse
-				}
-				break
-			}
-		}
-
-		// Fail to get store in stores
-		if storeID == 0 {
-			glog.Errorf("fail to find store in TIKV.Stores podname %s", name)
-			return &reviewResponse
-		}
-
-		storeInfo, err := pdClient.GetStore(storeID)
-		if err != nil {
-			glog.Errorf("fail to read storeID %d response %v", storeID, err)
-			return &reviewResponse
-		}
-
-		beforeCount := kvLeaderMap[namespace][name]
-		afterCount := storeInfo.Status.LeaderCount
-
-		if beforeCount != 0 && !(afterCount < beforeCount) && tc.Status.TiKV.StatefulSet.Replicas > 1 {
-			time.Sleep(10 * time.Second)
-			err := fmt.Errorf("failed to evict leader from %s/%s, before: %d, now: %d",
-				namespace, name, beforeCount, afterCount)
-			glog.Error(err)
-			sendErr := slack.SendErrMsg(err.Error())
-			if sendErr != nil {
-				glog.Error(sendErr)
-			}
-			// TODO use context instead
-			os.Exit(3)
-		}
-		glog.Infof("savely delete pod namespace %s name %s before count %d after count %d", namespace, name, beforeCount, afterCount)
 	}
 	reviewResponse.Allowed = true
 	return &reviewResponse

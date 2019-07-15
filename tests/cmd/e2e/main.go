@@ -56,6 +56,7 @@ func main() {
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
 		ImagePullPolicy:    v1.PullIfNotPresent,
+		TestMode:           true,
 	}
 
 	ns := os.Getenv("NAMESPACE")
@@ -83,7 +84,7 @@ func main() {
 			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", initTidbVersion),
 			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
 			StorageClassName: "local-storage",
-			Password:         "admin",
+			Password:         "",
 			UserName:         "root",
 			InitSecretName:   fmt.Sprintf("%s-set-secret", name1),
 			BackupSecretName: fmt.Sprintf("%s-backup-secret", name1),

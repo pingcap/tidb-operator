@@ -41,7 +41,7 @@ locals {
       key_name             = var.ssh_key_name
       instance_type        = var.pd_instance_type
       root_volume_size     = "50"
-      public_ip            = true
+      public_ip            = false
       kubelet_extra_args   = "--register-with-taints=dedicated=${var.cluster_name}-pd:NoSchedule --node-labels=dedicated=${var.cluster_name}-pd,pingcap.com/aws-local-ssd=true"
       asg_desired_capacity = var.pd_count
       asg_max_size         = var.pd_count + 2

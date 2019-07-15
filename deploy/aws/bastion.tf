@@ -29,5 +29,8 @@ module "ec2" {
   monitoring                  = false
   user_data                   = file("bastion-userdata")
   vpc_security_group_ids      = [aws_security_group.ssh.id]
-  subnet_ids                  = local.default_subnets
+  subnet_ids = split(
+    ",",
+    var.create_vpc ? join(",", module.vpc.public_subnets) : join(",", var.subnets),
+  )
 }

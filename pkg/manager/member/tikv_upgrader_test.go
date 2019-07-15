@@ -128,7 +128,13 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				SetLastAppliedConfigAnnotation(oldSet)
 			},
-			changePods:          nil,
+			changePods: func(pods []*corev1.Pod) {
+				for _, pod := range pods {
+					if pod.GetName() == tikvPodName(upgradeTcName, 2) {
+						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Add(-1 * time.Minute).Format(time.RFC3339)}
+					}
+				}
+			},
 			beginEvictLeaderErr: false,
 			endEvictLeaderErr:   false,
 			updatePodErr:        false,
@@ -138,10 +144,6 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.UpgradePhase))
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
-				if pods[tikvPodName(upgradeTcName, 2)].Annotations != nil {
-					_, exist := pods[tikvPodName(upgradeTcName, 2)].Annotations[EvictLeaderBeginTime]
-					g.Expect(exist).To(BeFalse())
-				}
 			},
 		},
 		{
@@ -163,7 +165,13 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				oldSet.Status.UpdatedReplicas = 1
 				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = func() *int32 { i := int32(2); return &i }()
 			},
-			changePods:          nil,
+			changePods: func(pods []*corev1.Pod) {
+				for _, pod := range pods {
+					if pod.GetName() == tikvPodName(upgradeTcName, 1) {
+						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Add(-1 * time.Minute).Format(time.RFC3339)}
+					}
+				}
+			},
 			beginEvictLeaderErr: false,
 			endEvictLeaderErr:   false,
 			updatePodErr:        false,
@@ -172,10 +180,6 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(1)))
-				if pods[tikvPodName(upgradeTcName, 1)].Annotations != nil {
-					_, exist := pods[tikvPodName(upgradeTcName, 1)].Annotations[EvictLeaderBeginTime]
-					g.Expect(exist).To(BeFalse())
-				}
 			},
 		},
 		{
