@@ -96,7 +96,7 @@ var affinityTemp string = `{{.Kind}}:
 {{end}}
 {{end}}
   config: |
-{{range .Config}}	   {{.}}
+{{range .Config}}    {{.}}
 {{end}}
   affinity:
     podAntiAffinity:
