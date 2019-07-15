@@ -249,18 +249,17 @@ type TidbClusterConfig struct {
 	BackupSecretName       string
 	EnableConfigMapRollout bool
 
+	PDPreStartScript   string
+	TiDBPreStartScript string
+	TiKVPreStartScript string
+
 	PDMaxReplicas       int
 	TiKVGrpcConcurrency int
 	TiDBTokenLimit      int
 	PDLogLevel          string
 
-	PDPreStartScript   string
-	TiDBPreStartScript string
-	TiKVPreStartScript string
-
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
-	SubValues        string
 	TopologyKey      string
 }
 
@@ -307,19 +306,6 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 		"pd.preStartScript":       tc.PDPreStartScript,
 		"tikv.preStartScript":     tc.TiKVPreStartScript,
 		"tidb.preStartScript":     tc.TiDBPreStartScript,
-	}
-
-	if tc.PDMaxReplicas > 0 {
-		set["pd.maxReplicas"] = strconv.Itoa(tc.PDMaxReplicas)
-	}
-	if tc.TiKVGrpcConcurrency > 0 {
-		set["tikv.grpcConcurrency"] = strconv.Itoa(tc.TiKVGrpcConcurrency)
-	}
-	if tc.TiDBTokenLimit > 0 {
-		set["tidb.tokenLimit"] = strconv.Itoa(tc.TiDBTokenLimit)
-	}
-	if len(tc.PDLogLevel) > 0 {
-		set["pd.logLevel"] = tc.PDLogLevel
 	}
 
 	for k, v := range tc.Resources {
@@ -508,14 +494,16 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 
 	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s",
 		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
-	if strings.TrimSpace(info.SubValues) != "" {
+
+	subValues := info.SubValues()
+	if strings.TrimSpace(subValues) != "" {
 		subVaulesPath := fmt.Sprintf("%s/%s.yaml", oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName)
 		svFile, err := os.Create(subVaulesPath)
 		if err != nil {
 			return err
 		}
 		defer svFile.Close()
-		_, err = svFile.WriteString(info.SubValues)
+		_, err = svFile.WriteString(subValues)
 		if err != nil {
 			return err
 		}
@@ -2542,7 +2530,7 @@ func (oa *operatorActions) EventWorker() {
 func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, set map[string]string) string {
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
 		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(set))
-	if strings.TrimSpace(info.SubValues) != "" {
+	if strings.TrimSpace(info.SubValues()) != "" {
 		subVaulesPath := fmt.Sprintf("%s/%s.yaml", oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName)
 		cmd = fmt.Sprintf(" %s --values %s", cmd, subVaulesPath)
 	}
