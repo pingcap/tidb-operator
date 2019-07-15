@@ -100,7 +100,7 @@ variable "iam_path" {
 
 variable "tidb_cluster_chart_version" {
   description = "tidb-cluster chart version"
-  default     = "v1.0.0-beta.3"
+  default     = "v1.0.0-rc.1"
 }
 
 variable "cluster_name" {
