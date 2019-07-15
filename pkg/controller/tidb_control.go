@@ -91,7 +91,7 @@ func (tdc *defaultTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal 
 	if err != nil {
 		return false, err
 	}
-	defer httputil.DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 	if res.StatusCode == http.StatusOK {
 		return false, nil
 	}
@@ -116,7 +116,7 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 	if err != nil {
 		return nil, err
 	}
-	defer httputil.DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 	if res.StatusCode != http.StatusOK {
 		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL: %s", res.StatusCode, url))
 		return nil, errMsg
@@ -147,7 +147,7 @@ func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int
 	if err != nil {
 		return nil, err
 	}
-	defer httputil.DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 	if res.StatusCode != http.StatusOK {
 		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL: %s", res.StatusCode, url))
 		return nil, errMsg
@@ -174,7 +174,7 @@ func (tdc *defaultTiDBControl) getBodyOK(apiURL string) ([]byte, error) {
 		return nil, errMsg
 	}
 
-	defer httputil.DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err

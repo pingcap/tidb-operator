@@ -10,7 +10,7 @@ variable "tidb_version" {
 
 variable "tidb_operator_version" {
   description = "TiDB operator version"
-  default     = "v1.0.0-beta.3"
+  default     = "v1.0.0-rc.1"
 }
 
 variable "tidb_operator_registry" {
