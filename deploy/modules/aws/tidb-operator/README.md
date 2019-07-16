@@ -2,5 +2,6 @@ The `tidb-operator` module for AWS spins up a control plane for TiDB in Kubernet
 
 - An EKS cluster
 - A auto scaling group to run the control pods listed below
+- TiDB operator, including `tidb-controller-manager` and `tidb-scheduler`
 - local-volume-provisioner
 - Tiller for Helm
