@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 )
 
@@ -77,7 +78,7 @@ func (tc *TidbClusterConfig) DSN(dbName string) string {
 	return fmt.Sprintf("root:%s@tcp(%s-tidb.%s:4000)/%s", tc.Password, tc.ClusterName, tc.Namespace, dbName)
 }
 
-func (tc *TidbClusterConfig) SubValues() string {
+func (tc *TidbClusterConfig) BuildSubValues(path string) (string, error) {
 	pdLogLevel := tc.PDLogLevel
 	if pdLogLevel == "" {
 		pdLogLevel = "info"
@@ -112,5 +113,26 @@ func (tc *TidbClusterConfig) SubValues() string {
 		"[log]",
 		`level = "info"`,
 	}
-	return GetAffinityConfigOrDie(tc.ClusterName, tc.Namespace, tc.TopologyKey, []string{tc.TopologyKey}, pdConfig, tikvConfig, tidbConfig)
+	subValues := GetAffinityConfigOrDie(tc.ClusterName, tc.Namespace, tc.TopologyKey, []string{tc.TopologyKey}, pdConfig, tikvConfig, tidbConfig)
+	subVaulesPath := fmt.Sprintf("%s/%s.yaml", path, tc.ClusterName)
+	_, err := os.Stat(subVaulesPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			_, err = os.Create(subVaulesPath)
+			if err != nil {
+				return "", err
+			}
+		}
+	}
+
+	svFile, err := os.OpenFile(subVaulesPath, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0666)
+	if err != nil {
+		return "", err
+	}
+	defer svFile.Close()
+	_, err = svFile.WriteString(subValues)
+	if err != nil {
+		return "", err
+	}
+	return subVaulesPath, nil
 }

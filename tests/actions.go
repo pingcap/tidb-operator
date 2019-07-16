@@ -495,21 +495,13 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s",
 		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
 
-	subValues := info.SubValues()
-	if strings.TrimSpace(subValues) != "" {
-		subVaulesPath := fmt.Sprintf("%s/%s.yaml", oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName)
-		svFile, err := os.Create(subVaulesPath)
-		if err != nil {
-			return err
-		}
-		defer svFile.Close()
-		_, err = svFile.WriteString(subValues)
-		if err != nil {
-			return err
-		}
-
-		cmd = fmt.Sprintf(" %s --values %s", cmd, subVaulesPath)
+	svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
+	if err != nil {
+		return err
 	}
+
+	cmd = fmt.Sprintf(" %s --values %s", cmd, svFilePath)
+
 	glog.Info(cmd)
 
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
@@ -804,7 +796,10 @@ func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, fmt.Sprintf("ScaleTidbCluster to pd: %s, tikv: %s, tidb: %s",
 		info.Args["pd.replicas"], info.Args["tikv.replicas"], info.Args["tidb.replicas"]))
 
-	cmd := oa.getHelmUpgradeClusterCmd(info, nil)
+	cmd, err := oa.getHelmUpgradeClusterCmd(info, nil)
+	if err != nil {
+		return err
+	}
 	glog.Info("[SCALE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -891,7 +886,10 @@ func (oa *operatorActions) SetPartitionAnnotation(tcName string, nameSpace strin
 func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, "UpgradeTidbCluster")
 
-	cmd := oa.getHelmUpgradeClusterCmd(info, nil)
+	cmd, err := oa.getHelmUpgradeClusterCmd(info, nil)
+	if err != nil {
+		return err
+	}
 	glog.Info("[UPGRADE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -2013,7 +2011,10 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 		"scheduledBackup.secretName": info.BackupSecretName,
 	}
 
-	cmd := oa.getHelmUpgradeClusterCmd(info, sets)
+	cmd, err := oa.getHelmUpgradeClusterCmd(info, sets)
+	if err != nil {
+		return err
+	}
 
 	glog.Infof("scheduled-backup delploy [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -2031,7 +2032,10 @@ func (oa *operatorActions) disableScheduledBackup(info *TidbClusterConfig) error
 		"scheduledBackup.create": "false",
 	}
 
-	cmd := oa.getHelmUpgradeClusterCmd(info, sets)
+	cmd, err := oa.getHelmUpgradeClusterCmd(info, sets)
+	if err != nil {
+		return err
+	}
 
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -2232,7 +2236,10 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 		sets["binlog.drainer.initialCommitTs"] = ts
 	}
 
-	cmd := oa.getHelmUpgradeClusterCmd(from, sets)
+	cmd, err := oa.getHelmUpgradeClusterCmd(from, sets)
+	if err != nil {
+		return err
+	}
 	glog.Infof(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -2527,15 +2534,14 @@ func (oa *operatorActions) EventWorker() {
 	}
 }
 
-func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, set map[string]string) string {
+func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, set map[string]string) (string, error) {
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
 		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(set))
-	if strings.TrimSpace(info.SubValues()) != "" {
-		subVaulesPath := fmt.Sprintf("%s/%s.yaml", oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName)
-		cmd = fmt.Sprintf(" %s --values %s", cmd, subVaulesPath)
+	svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
+	if err != nil {
+		return "", err
 	}
-
-	return cmd
+	return fmt.Sprintf(" %s --values %s", cmd, svFilePath), nil
 }
 
 func (oa *operatorActions) CheckManualPauseTiDB(info *TidbClusterConfig) error {
