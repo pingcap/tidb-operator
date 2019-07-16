@@ -16,8 +16,8 @@ package tests
 import (
 	"bytes"
 	"fmt"
-	"html/template"
 	"math/rand"
+	"text/template"
 	"time"
 
 	"github.com/pingcap/tidb-operator/tests/slack"

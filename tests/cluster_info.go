@@ -96,21 +96,21 @@ func (tc *TidbClusterConfig) SubValues() string {
 	}
 	pdConfig := []string{
 		"[log]",
-		fmt.Sprintf("level = %s", pdLogLevel),
+		fmt.Sprintf(`level = "%s"`, pdLogLevel),
 		"[replication]",
 		fmt.Sprintf("max-replicas = %d", pdMaxReplicas),
 		`location-labels = ["region", "zone", "rack", "host"]`,
 	}
 	tikvConfig := []string{
 		"[log]",
-		"level = info",
+		`level = "info"`,
 		"[server]",
 		fmt.Sprintf("grpc-concurrency = %d", tikvGrpcConcurrency),
 	}
 	tidbConfig := []string{
 		fmt.Sprintf("token-limit = %d", tidbTokenLimit),
 		"[log]",
-		"level = info",
+		`level = "info"`,
 	}
 	return GetAffinityConfigOrDie(tc.ClusterName, tc.Namespace, tc.TopologyKey, []string{tc.TopologyKey}, pdConfig, tikvConfig, tidbConfig)
 }
