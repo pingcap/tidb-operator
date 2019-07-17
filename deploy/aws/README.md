@@ -187,9 +187,9 @@ module example-cluster {
   source = "./tidb-cluster"
   
   # The target EKS, required
-  eks_info = local.default_eks
+  eks_info = local.eks
   # The subnets of node pools of this TiDB cluster, required
-  subnets = local.default_subnets
+  subnets = local.subnets
   # TiDB cluster name, required
   cluster_name    = "example-cluster"
   
@@ -261,27 +261,144 @@ $ terraform destroy
 >
 > You have to manually delete the EBS volumes in AWS console after running terraform destroy if you do not need the data on the volumes anymore.
 
-## Advanced Guide: Use the tidb-cluster and tidb-operator Modules
+## Multiple Kubernetes Management
 
-Under the hood, this terraform module composes two sub-modules:
+In this section, we will investigate the best practice to manage multiple Kubernetes clusters, each with one or more TiDB clusters installed. 
 
-- [tidb-operator](./tidb-operator/README.md), which provisions the Kubernetes control plane for TiDB cluster
-- [tidb-cluster](./tidb-cluster/README.md), which provisions a TiDB cluster in the target Kubernetes cluster
+Under the hood, this terraform module composes several sub-modules:
 
-You can use these modules separately in your own terraform scripts, by either referencing these modules locally or publish these modules to your terraform module registry.
+- [tidb-operator](../modules/aws/tidb-operator/README.md), which provisions the Kubernetes control plane for TiDB cluster
+- [tidb-cluster](../modules/aws/tidb-cluster/README.md), which provisions a TiDB cluster in the target Kubernetes cluster
+- ...and a `VPC` module, a `bastion` module and a `key-pair` module that are dedicated to TiDB on AWS
 
-For example, let's say you create a terraform module in `/deploy/aws/staging`, you can reference the tidb-operator and tidb-cluster modules as following:
+The best practice is creating a new directory for each of your Kubernetes cluster and composing these modules via terraform scripts, so that the terraform state and cluster credentials of each cluster won't be screwed. Here's an example:
+
+```shell
+# assume we are in the project root
+$ mkdir -p deploy/aws-staging
+$ vim deploy/aws-staging/main.tf
+```
+
+The content of `deploy/aws-staging/main.tf` could be:
 
 ```hcl
-module "setup-control-plane" {
-  source = "../tidb-operator"
+provider "aws" {
+  region = "us-west-1"
 }
 
+# create a key pair for ssh to bastion, also for ssh from bastion to worker nodes
+module "key-pair" {
+  source = "../modules/aws/key-pair"
+
+  name = "another-eks-cluster"
+  path = "${path.cwd}/credentials/"
+}
+
+# provision a VPC
+module "vpc" {
+  source = "../modules/aws/vpc"
+
+  vpc_name = "another-eks-cluster"
+}
+
+# provision a EKS control plane with tidb-opeartor installed
+module "tidb-operator" {
+  source = "../modules/aws/tidb-operator"
+
+  eks_name           = "another-eks-cluster"
+  config_output_path = "credentials/"
+  subnets            = module.vpc.private_subnets
+  vpc_id             = module.vpc.vpc_id
+  ssh_key_name       = module.key-pair.key_name
+}
+
+# HACK: enforce helm to depend on the EKS
+resource "local_file" "kubeconfig" {
+  depends_on        = [module.tidb-operator.eks]
+  sensitive_content = module.tidb-operator.eks.kubeconfig
+  filename          = module.tidb-operator.eks.kubeconfig_filename
+}
+provider "helm" {
+  alias    = "eks"
+  insecure = true
+  install_tiller = false
+  kubernetes {
+    config_path = local_file.kubeconfig.filename
+  }
+}
+
+# provision a tidb-cluster in the eks cluster
 module "tidb-cluster-a" {
-  source = "../tidb-cluster"
+  source = "../modules/aws/tidb-cluster"
+  providers = { 
+    helm = "helm.eks"
+  }
+
+  cluster_name = "tidb-cluster-a"
+  eks          = module.tidb-operator.eks
+  ssh_key_name = module.key-pair.key_name
+  subnets      = module.vpc.private_subnets
 }
 
+# provision another tidb-cluster in the eks cluster
 module "tidb-cluster-b" {
-  source = "../tidb-cluster"
+  source = "../modules/aws/tidb-cluster"
+  providers = { 
+    helm = "helm.eks"
+  }
+  
+  cluster_name = "tidb-cluster-b"
+  eks          = module.tidb-operator.eks
+  ssh_key_name = module.key-pair.key_name
+  subnets      = module.vpc.private_subnets
 }
-``` 
+
+# provision a bastion machine to access the TiDB service and worker nodes
+module "bastion" {
+  source = "../modules/aws/bastion"
+
+  bastion_name             = "another-eks-cluster-bastion"
+  key_name                 = module.key-pair.key_name
+  public_subnets           = module.vpc.public_subnets
+  vpc_id                   = module.vpc.vpc_id
+  target_security_group_id = module.tidb-operator.eks.worker_security_group_id
+  enable_ssh_to_workers    = true
+}
+
+# print the tidb hostname of tidb-cluster-a
+output "cluster-a_tidb-dns" {
+  description = "tidb service endpoints"
+  value       = module.tidb-cluster-a.tidb_hostname
+}
+
+# print the monitor hostname of tidb-cluster-b
+output "cluster-b_monitor-dns" {
+  description = "tidb service endpoint"
+  value       = module.tidb-cluster-b.monitor_hostname
+}
+
+output "bastion_ip" {
+  description = "Bastion IP address"
+  value       = module.bastion.bastion_ip
+}
+```
+
+As shown in the code above, you can omit most of the parameters in each of the module calls because there are reasonable defaults, and it is easy to customize the setup: you just delete the bastion module call if you don't need it.
+
+To customize each fields, you can refer to this terraform module as a great example, also, you can always refer to the `variables.tf` of each of the modules to investigate all the available parameters.
+
+Also, it requires little effort if you want to integrate these modules into your own terraform codebase, and this is what these modules are designed for.
+
+> **Note:**
+>
+> If you create the new directory elsewhere, please take care of the relative path of modules.
+
+> **Note:**
+>
+> If you want to use these modules outside of the tidb-operator project, make sure you copy the whole `modules` directory and keep the relative path of each module inside the directory unchanged.
+
+> **Note:**
+>
+> The hack of helm provider is necessary in case of [hashicorp/terraform#2430](https://github.com/hashicorp/terraform/issues/2430#issuecomment-370685911), please keep it in your terraform scripts.
+
+If you are unwilling to touch the terraform code, copy this directory for each of your Kubernetes clusters also make sense.
