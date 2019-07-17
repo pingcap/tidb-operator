@@ -2,20 +2,17 @@
 timezone: UTC
 
 pd:
-  logLevel: info
   storageClassName: ebs-gp2
 tikv:
-  logLevel: info
   stroageClassName: local-storage
   syncLog: true
 tidb:
-  logLevel: info
   service:
     type: LoadBalancer
     annotations:
       service.beta.kubernetes.io/aws-load-balancer-internal: '0.0.0.0/0'
       service.beta.kubernetes.io/aws-load-balancer-type: nlb
-
+  separateSlowLog: true
 monitor:
   storage: 100Gi
   storageClassName: ebs-gp2
