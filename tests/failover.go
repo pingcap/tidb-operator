@@ -173,7 +173,7 @@ func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node st
 				if _, exist := affectedPods[failureStore.PodName]; exist {
 					err := fmt.Errorf("cluster: [%s] the tikv store[%s] should be mark failure after %s", info.FullName(), failureStore.PodName, deadline.Format(time.RFC3339))
 					glog.Errorf(err.Error())
-					return false, err
+					return false, nil
 				}
 			}
 
@@ -472,8 +472,32 @@ func (oa *operatorActions) GetNodeMap(info *TidbClusterConfig, component string)
 	return nodeMap, nil
 }
 
-func (oa *operatorActions) CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
-	glog.Infof("check k8s/operator/tidbCluster status when one etcd down")
+func (oa *operatorActions) CheckKubeletDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
+	glog.Infof("check k8s/operator/tidbCluster status when kubelet down")
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckK8sAvailable(nil, nil)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("k8s cluster is available.")
+		err = oa.CheckOperatorAvailable(operatorConfig)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("tidb operator is available.")
+		err = oa.CheckTidbClustersAvailable(clusters)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("all clusters are available")
+		return nil
+	})
+}
+
+func (oa *operatorActions) CheckEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
+	glog.Infof("check k8s/operator/tidbCluster status when etcd down")
+	// kube-apiserver may block 15 min
+	time.Sleep(20 * time.Minute)
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(nil, nil)
 		if err != nil {
