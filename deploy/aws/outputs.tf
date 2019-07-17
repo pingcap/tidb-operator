@@ -20,15 +20,15 @@ output "kubeconfig_filename" {
 
 output "default-cluster_tidb-dns" {
   description = "tidb service endpoints"
-  value       = module.default-cluster.tidb_dns
+  value       = module.default-cluster.tidb_hostname
 }
 
 output "default-cluster_monitor-dns" {
   description = "tidb service endpoint"
-  value       = module.default-cluster.monitor_dns
+  value       = module.default-cluster.monitor_hostname
 }
 
 output "bastion_ip" {
   description = "Bastion IP address"
-  value       = module.ec2.public_ip
+  value       = module.bastion.bastion_ip
 }
