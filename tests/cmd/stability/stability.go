@@ -66,7 +66,6 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 		},
 		Monitor:          true,
 		BlockWriteConfig: cfg.BlockWriter,
-
-		TopologyKey: topologyKey,
+		TopologyKey:      topologyKey,
 	}
 }

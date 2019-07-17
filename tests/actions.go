@@ -499,9 +499,7 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 	if err != nil {
 		return err
 	}
-
 	cmd = fmt.Sprintf(" %s --values %s", cmd, svFilePath)
-
 	glog.Info(cmd)
 
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
