@@ -19,12 +19,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pingcap/pd/pkg/typeutil"
-
-	"github.com/pingcap/pd/server"
-
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
+	"github.com/pingcap/pd/pkg/typeutil"
+	"github.com/pingcap/pd/server"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
