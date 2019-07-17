@@ -16,8 +16,8 @@ package tests
 import (
 	"bytes"
 	"fmt"
-	"html/template"
 	"math/rand"
+	"text/template"
 	"time"
 
 	"github.com/pingcap/tidb-operator/tests/slack"
@@ -89,6 +89,9 @@ func GetPodsByLabels(kubeCli kubernetes.Interface, node string, lables map[strin
 }
 
 var affinityTemp string = `{{.Kind}}:
+  config: |
+{{range .Config}}    {{.}}
+{{end}}
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
@@ -109,26 +112,27 @@ type AffinityInfo struct {
 	Weight      int
 	Namespace   string
 	TopologyKey string
+	Config      []string
 }
 
-func GetAffinityConfigOrDie(clusterName, namespace, topologyKey string) string {
+func GetAffinityConfigOrDie(clusterName, namespace, topologyKey string, pdConfig []string, tikvConfig []string, tidbConfig []string) string {
 	temp, err := template.New("dt-affinity").Parse(affinityTemp)
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 
 	pdbuff := new(bytes.Buffer)
-	err = temp.Execute(pdbuff, &AffinityInfo{ClusterName: clusterName, Kind: "pd", Weight: 50, Namespace: namespace, TopologyKey: topologyKey})
+	err = temp.Execute(pdbuff, &AffinityInfo{ClusterName: clusterName, Kind: "pd", Weight: 50, Namespace: namespace, TopologyKey: topologyKey, Config: pdConfig})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 	tikvbuff := new(bytes.Buffer)
-	err = temp.Execute(tikvbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tikv", Weight: 50, Namespace: namespace, TopologyKey: topologyKey})
+	err = temp.Execute(tikvbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tikv", Weight: 50, Namespace: namespace, TopologyKey: topologyKey, Config: tikvConfig})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 	tidbbuff := new(bytes.Buffer)
-	err = temp.Execute(tidbbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tidb", Weight: 50, Namespace: namespace, TopologyKey: topologyKey})
+	err = temp.Execute(tidbbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tidb", Weight: 50, Namespace: namespace, TopologyKey: topologyKey, Config: tidbConfig})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}

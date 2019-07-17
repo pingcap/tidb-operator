@@ -28,7 +28,6 @@ func newOperatorConfig() *tests.OperatorConfig {
 
 func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 	tidbVersion := cfg.GetTiDBVersionOrDie()
-
 	topologyKey := "rack"
 	return &tests.TidbClusterConfig{
 		Namespace:        ns,
@@ -65,12 +64,8 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 			"binlog.drainer.workerCount": "1024",
 			"binlog.drainer.txnBatch":    "512",
 		},
-		Monitor:             true,
-		BlockWriteConfig:    cfg.BlockWriter,
-		PDMaxReplicas:       3,
-		TiKVGrpcConcurrency: 4,
-		TiDBTokenLimit:      1000,
-		PDLogLevel:          "info",
-		SubValues:           tests.GetAffinityConfigOrDie(clusterName, ns, topologyKey),
+		Monitor:          true,
+		BlockWriteConfig: cfg.BlockWriter,
+		TopologyKey:      topologyKey,
 	}
 }

@@ -1,3 +1,73 @@
+variable "tidb_cluster_chart_version" {
+  description = "tidb-cluster chart version"
+  default     = "v1.0.0-beta.3"
+}
+
+variable "create_tidb_cluster_release" {
+  description = "Whether create tidb-cluster release in the node pools automatically"
+  default = true
+}
+
+variable "cluster_name" {
+  type        = string
+  description = "tidb cluster name"
+}
+
+variable "cluster_version" {
+  type    = string
+  default = "v3.0.0-rc.2"
+}
+
+variable "ssh_key_name" {
+  type = string
+}
+
+variable "pd_count" {
+  type    = number
+  default = 3
+}
+
+variable "tikv_count" {
+  type    = number
+  default = 3
+}
+
+variable "tidb_count" {
+  type    = number
+  default = 2
+}
+
+variable "pd_instance_type" {
+  type    = string
+  default = "m5.xlarge"
+}
+
+variable "tikv_instance_type" {
+  type    = string
+  default = "c5d.4xlarge"
+}
+
+variable "tidb_instance_type" {
+  type    = string
+  default = "c5.4xlarge"
+}
+
+variable "monitor_instance_type" {
+  type    = string
+  default = "c5.2xlarge"
+}
+
+variable "override_values" {
+  description = "The helm values of TiDB cluster, it is recommended to use the 'file()' function call to read the content from a local file, e.g. 'file(\"my-cluster.yaml\")'"
+  type    = string
+  default = ""
+}
+
+variable "eks" {
+  description = "eks info"
+}
+
+# Advanced customization below
 variable "subnets" {
   description = "A list of subnets to place the EKS cluster and workers within."
   type        = list(string)
@@ -7,23 +77,6 @@ variable "tags" {
   description = "A map of tags to add to all resources."
   type        = map(string)
   default     = {}
-}
-
-variable "worker_groups" {
-  description = "A list of maps defining worker group configurations to be defined using AWS Launch Configurations. See workers_group_defaults for valid keys."
-  type        = list(map(string))
-
-  default = [
-    {
-      name = "default"
-    },
-  ]
-}
-
-variable "worker_group_count" {
-  description = "The number of maps contained within the worker_groups list."
-  type        = string
-  default     = "1"
 }
 
 variable "workers_group_defaults" {
@@ -93,70 +146,4 @@ variable "local_exec_interpreter" {
 variable "iam_path" {
   description = "If provided, all IAM roles will be created on this path."
   default     = "/"
-}
-
-
-
-
-variable "tidb_cluster_chart_version" {
-  description = "tidb-cluster chart version"
-  default     = "v1.0.0-rc.1"
-}
-
-variable "cluster_name" {
-  type        = string
-  description = "tidb cluster name"
-}
-
-variable "cluster_version" {
-  type    = string
-  default = "v3.0.0-rc.2"
-}
-
-variable "ssh_key_name" {
-  type = string
-}
-
-variable "pd_count" {
-  type    = number
-  default = 1
-}
-
-variable "tikv_count" {
-  type    = number
-  default = 1
-}
-
-variable "tidb_count" {
-  type    = number
-  default = 1
-}
-
-variable "pd_instance_type" {
-  type    = string
-  default = "c5d.large"
-}
-
-variable "tikv_instance_type" {
-  type    = string
-  default = "c5d.large"
-}
-
-variable "tidb_instance_type" {
-  type    = string
-  default = "c5d.large"
-}
-
-variable "monitor_instance_type" {
-  type    = string
-  default = "c5d.large"
-}
-
-variable "override_values" {
-  type    = string
-  default = ""
-}
-
-variable "eks" {
-  description = "eks info"
 }
