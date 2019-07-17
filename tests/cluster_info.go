@@ -100,7 +100,7 @@ func (tc *TidbClusterConfig) BuildSubValues(path string) (string, error) {
 		fmt.Sprintf(`level = "%s"`, pdLogLevel),
 		"[replication]",
 		fmt.Sprintf("max-replicas = %d", pdMaxReplicas),
-		`location-labels = ["region", "zone", "rack", "host"]`,
+		fmt.Sprintf(`location-labels = ["%s"]`, tc.TopologyKey),
 	}
 	tikvConfig := []string{
 		"[log]",
@@ -113,7 +113,7 @@ func (tc *TidbClusterConfig) BuildSubValues(path string) (string, error) {
 		"[log]",
 		`level = "info"`,
 	}
-	subValues := GetAffinityConfigOrDie(tc.ClusterName, tc.Namespace, tc.TopologyKey, pdConfig, tikvConfig, tidbConfig)
+	subValues := GetSubValuesOrDie(tc.ClusterName, tc.Namespace, tc.TopologyKey, pdConfig, tikvConfig, tidbConfig)
 	subVaulesPath := fmt.Sprintf("%s/%s.yaml", path, tc.ClusterName)
 	_, err := os.Stat(subVaulesPath)
 	if err != nil {

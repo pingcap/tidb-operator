@@ -115,7 +115,7 @@ type AffinityInfo struct {
 	Config      []string
 }
 
-func GetAffinityConfigOrDie(clusterName, namespace, topologyKey string, pdConfig []string, tikvConfig []string, tidbConfig []string) string {
+func GetSubValuesOrDie(clusterName, namespace, topologyKey string, pdConfig []string, tikvConfig []string, tidbConfig []string) string {
 	temp, err := template.New("dt-affinity").Parse(affinityTemp)
 	if err != nil {
 		slack.NotifyAndPanic(err)
