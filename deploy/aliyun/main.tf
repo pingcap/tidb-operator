@@ -31,7 +31,7 @@ module "tidb-operator" {
 
   region                        = var.ALICLOUD_REGION
   access_key                    = var.ALICLOUD_ACCESS_KEY
-  access_secret                 = var.ALICLOUD_SECRET_KEY
+  secret_key                 = var.ALICLOUD_SECRET_KEY
   cluster_name                  = var.cluster_name
   operator_version              = var.operator_version
   operator_helm_values          = var.operator_helm_values

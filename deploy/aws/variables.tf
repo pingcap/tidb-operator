@@ -19,11 +19,11 @@ variable "eks_version" {
 
 variable "operator_version" {
   description = "TiDB operator version"
-  default     = "v1.0.0-beta.3"
+  default     = "v1.0.0-rc.1"
 }
 
 variable "operator_values" {
-  description = "The helm values of TiDB Operator"
+  description = "The helm values of TiDB Operator, it is recommended to use the 'file()' function call to read the content from a local file, e.g. 'file(\"my-cluster.yaml\")'"
   default     = ""
 }
 

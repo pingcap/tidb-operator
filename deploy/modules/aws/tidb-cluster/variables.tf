@@ -58,6 +58,7 @@ variable "monitor_instance_type" {
 }
 
 variable "override_values" {
+  description = "The helm values of TiDB cluster, it is recommended to use the 'file()' function call to read the content from a local file, e.g. 'file(\"my-cluster.yaml\")'"
   type    = string
   default = ""
 }

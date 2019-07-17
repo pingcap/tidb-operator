@@ -565,6 +565,11 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete dir pod %v", err)
 	}
 
+	err = oa.kubeCli.CoreV1().Secrets(info.Namespace).Delete(info.InitSecretName, &metav1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete secret: %s, %v", info.InitSecretName, err)
+	}
+
 	setStr := label.New().Instance(info.ClusterName).String()
 
 	resources := []string{"pvc"}
@@ -1722,9 +1727,13 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, "DeployAdHocBackup")
 	glog.Infof("begin to deploy adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
-	getTSCmd := fmt.Sprintf("set -euo pipefail; mysql -u%s -p%s -h%s-tidb.%s -P 4000 -Nse 'show master status;' | awk '{print $2}'",
+	passwdStr := ""
+	if info.Password != "" {
+		passwdStr = fmt.Sprintf("-p%s", info.Password)
+	}
+	getTSCmd := fmt.Sprintf("set -euo pipefail; mysql -u%s %s -h%s-tidb.%s -P 4000 -Nse 'show master status;' | awk '{print $2}'",
 		info.UserName,
-		info.Password,
+		passwdStr,
 		info.ClusterName,
 		info.Namespace,
 	)

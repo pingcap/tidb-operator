@@ -215,7 +215,7 @@ module example-cluster {
   # Monitor instance type
   monitor_instance_type         = "t2.xlarge"
   # The version of tidb-cluster helm chart
-  tidb_cluster_chart_version    = "v1.0.0-beta.3"
+  tidb_cluster_chart_version    = "v1.0.0-rc.1"
 }
 
 module other-cluster {
@@ -261,7 +261,7 @@ $ terraform destroy
 >
 > You have to manually delete the EBS volumes in AWS console after running terraform destroy if you do not need the data on the volumes anymore.
 
-## Advanced: Multiple Kubernetes Management
+## Multiple Kubernetes Management
 
 In this section, we will investigate the best practice to manage multiple Kubernetes clusters, each with one or more TiDB clusters installed. 
 

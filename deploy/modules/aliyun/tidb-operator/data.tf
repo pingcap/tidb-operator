@@ -30,6 +30,6 @@ data "template_file" "local-volume-provisioner" {
 
   vars = {
     access_key_id     = var.access_key
-    access_key_secret = var.access_secret
+    access_key_secret = var.secret_key
   }
 }
