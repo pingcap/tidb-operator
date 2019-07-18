@@ -474,6 +474,7 @@ func (oa *operatorActions) GetNodeMap(info *TidbClusterConfig, component string)
 
 func (oa *operatorActions) CheckKubeletDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
 	glog.Infof("check k8s/operator/tidbCluster status when kubelet down")
+	time.Sleep(10 * time.Minute)
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(nil, nil)
 		if err != nil {
@@ -711,14 +712,22 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, exc
 }
 
 func (oa *operatorActions) CheckOperatorAvailable(operatorConfig *OperatorConfig) error {
-	return wait.Poll(3*time.Second, 3*time.Minute, func() (bool, error) {
+	var errCount int
+	var e error
+	return wait.Poll(10*time.Second, 3*time.Minute, func() (bool, error) {
+		if errCount >= 10 {
+			return true, e
+		}
 		controllerDeployment, err := oa.kubeCli.AppsV1().Deployments(operatorConfig.Namespace).Get(tidbControllerName, metav1.GetOptions{})
 		if err != nil {
 			glog.Errorf("failed to get deployment：%s failed,error:%v", tidbControllerName, err)
 			return false, nil
 		}
 		if controllerDeployment.Status.AvailableReplicas != *controllerDeployment.Spec.Replicas {
-			return false, fmt.Errorf("the %s is not available", tidbControllerName)
+			e = fmt.Errorf("the %s is not available", tidbControllerName)
+			glog.Error(e)
+			errCount++
+			return false, nil
 		}
 		schedulerDeployment, err := oa.kubeCli.AppsV1().Deployments(operatorConfig.Namespace).Get(tidbSchedulerName, metav1.GetOptions{})
 		if err != nil {
@@ -726,7 +735,10 @@ func (oa *operatorActions) CheckOperatorAvailable(operatorConfig *OperatorConfig
 			return false, nil
 		}
 		if schedulerDeployment.Status.AvailableReplicas != *schedulerDeployment.Spec.Replicas {
-			return false, fmt.Errorf("the %s is not available", tidbSchedulerName)
+			e = fmt.Errorf("the %s is not available", tidbSchedulerName)
+			glog.Error(e)
+			errCount++
+			return false, nil
 		}
 		return true, nil
 	})
