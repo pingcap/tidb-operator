@@ -330,6 +330,10 @@ monitor:
   persistent: false
   storageClassName: local-storage
   storage: 10Gi
+  initializer:
+    create: true
+    image: pingcap/tidb-monitor-initializer:v3.0.0-rc.1
+    imagePullPolicy: IfNotPresent
   grafana:
     create: true
     image: grafana/grafana:6.0.1
