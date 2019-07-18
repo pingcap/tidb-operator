@@ -388,11 +388,6 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 			(*out)[key] = val
 		}
 	}
-	if in.StoreLabels != nil {
-		in, out := &in.StoreLabels, &out.StoreLabels
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
 	return
 }
 
