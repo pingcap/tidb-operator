@@ -73,12 +73,6 @@ spec:
           value: {{ .Values.binlog.pump.create | default false | quote }}
         - name:  PROM_CONFIG_PATH
           value: /prometheus-rules
-        - name: META_INSTANCE
-          value: {{ .Values.metaInstance | quote }}
-        - name: META_VALUE
-          value: {{ .Values.metaValue | quote }}
-        - name: META_TYPE
-          value: {{ .Values.metaType | quote }}
         volumeMounts:
         - mountPath: /grafana-dashboard-definitions/tidb
           name: grafana-dashboard
