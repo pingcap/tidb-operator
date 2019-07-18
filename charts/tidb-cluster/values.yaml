@@ -241,17 +241,6 @@ tikv:
   #   effect: "NoSchedule"
   annotations: {}
 
-  ## storeLabels is used to define store label keys
-  ## The label keys specified the location of a store.
-  ## In order to use the location awareness feature of TiKV, users have to label their k8s nodes with the same labels.
-  ## Note: current can not support these labels contains "/"
-  ## The placement priorities is implied by the order of label keys.
-  ## For example, ["zone", "rack"] means that we should place replicas to
-  ## different zones first, then to different racks if we don't have enough zones.
-  ## default value is ["region", "zone", "rack", "host"]
-  ## If you change the default value below, please do sync the change to pd.config.[replication].location-labels
-  ## storeLabels: ["region", "zone", "rack", "host"]
-
 tidb:
   # Please refer to https://github.com/pingcap/tidb/blob/master/config/config.toml.example for the default
   # tidb configurations(change to the tags of your tidb version),
