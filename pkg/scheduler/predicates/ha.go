@@ -132,7 +132,14 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		}
 
 		podsCount := len(podNames)
-		if podsCount+1 >= int(replicas+1)/2 {
+		// When replicas equals 3, pods on each node should not be greater than 1.
+		maxPodsPerNode := 1
+		if replicas > 3 {
+			// When replicas is greater than 3, we allow more than one pods on one node.
+			maxPodsPerNode = int((replicas + 1) / 2)
+		}
+		if podsCount+1 > maxPodsPerNode {
+			// pods on this node exceeds the limit, skip
 			continue
 		}
 		if min == -1 {

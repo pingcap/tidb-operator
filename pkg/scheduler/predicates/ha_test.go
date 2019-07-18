@@ -752,7 +752,7 @@ func TestHAFilter(t *testing.T) {
 			},
 		},
 		{
-			name:          "three nodes, three pods scheduled on these three nodes, replicas is 4, can't scheduled",
+			name:          "three nodes, three pods scheduled on these three nodes, replicas is 4, return all the three nodes",
 			podFn:         newHAPDPod,
 			nodesFn:       fakeThreeNodes,
 			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {2}}),
@@ -763,12 +763,9 @@ func TestHAFilter(t *testing.T) {
 				return tc, nil
 			},
 			expectFn: func(nodes []apiv1.Node, err error, recorder record.FakeRecorder) {
-				g.Expect(err).To(HaveOccurred())
-				events := collectEvents(recorder.Events)
-				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring("FailedScheduling"))
-				g.Expect(strings.Contains(err.Error(), "can't schedule to nodes:")).To(BeTrue())
-				g.Expect(len(nodes)).To(Equal(0))
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(3))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
 			},
 		},
 		{
