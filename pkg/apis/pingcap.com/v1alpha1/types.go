@@ -144,7 +144,6 @@ type TiKVSpec struct {
 	StorageClassName string              `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
 	Annotations      map[string]string   `json:"annotations,omitempty"`
-	StoreLabels      []string            `json:"storeLabels,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
