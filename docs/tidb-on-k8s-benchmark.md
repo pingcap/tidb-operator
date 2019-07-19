@@ -17,11 +17,11 @@
 ## 集群拓扑
 | 机器 IP | 部署实例 |
 |----|----|
-|x.x.x.2 | 3* sysbench 1*pd|
-|x.x.x.3 | 1*tikv |
-|x.x.x.4 | 1*tidb 1*pd 1*tikv|
-|x.x.x.5 | 1*tikv |
-|x.x.x.6 | 1*tidb 1*pd 1*monitor|
+|x.x.x.2 | 3\*sysbench 1\*pd|
+|x.x.x.3 | 1\*tikv |
+|x.x.x.4 | 1\*tidb 1\*pd 1\*tikv|
+|x.x.x.5 | 1\*tikv |
+|x.x.x.6 | 1\*tidb 1\*pd 1\*monitor|
 ## 压测命令
 | 类别 | 名称 |
 | ---- | ----|
