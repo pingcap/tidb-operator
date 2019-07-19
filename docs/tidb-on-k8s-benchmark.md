@@ -31,7 +31,7 @@
 | Read-only | sysbench --config-file=config oltp_read_only --tables=32 --table-size=10000000 run |
 ## 压测结果
 |类型|Thread|TPS|QPS|avg.latency(ms)|.95.latency(ms)|max.latency(ms)|
-|----|----|----|----|----|----|----|
+|----|:----:|:----:|:----:|:----:|:----:|:----:|
 |Point select | 3*16 | 91346.93	| 91346.93 | 0.52 | 0.70 | 17.65|
 |Update index | 3*16 | 9708.47 | 9708.47 | 4.94 | 8.95| 4600|
 |Read-only | 3*16 | 2862.34 | 45797.58 | 16.76 | 16.76 |45.87|
