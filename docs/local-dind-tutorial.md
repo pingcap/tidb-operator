@@ -139,7 +139,7 @@ $ kubectl get pods --namespace tidb -l app.kubernetes.io/instance=demo -o wide -
 # Get basic information of the TiDB cluster
 $ kubectl get tidbcluster -n tidb
 NAME   PD                       STORAGE   READY   DESIRE   TIKV                       STORAGE   READY   DESIRE   TIDB                       READY   DESIRE
-demo   pingcap/pd:v3.0.0-rc.1   1Gi       3       3        pingcap/tikv:v3.0.0-rc.1   10Gi      3       3        pingcap/tidb:v3.0.0-rc.1   2       2
+demo   pingcap/pd:v3.0.1        1Gi       3       3        pingcap/tikv:v3.0.1        10Gi      3       3        pingcap/tidb:v3.0.1        2       2
 
 $ kubectl get statefulset -n tidb
 NAME        DESIRED   CURRENT   AGE
