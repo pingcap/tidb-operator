@@ -108,7 +108,7 @@ monitor_port = 3000
 region = us-west1
 tidb_ilb_ip = 172.31.252.20
 tidb_port = 4000
-tidb_version = v3.0.0-rc.1
+tidb_version = v3.0.1
 ```
 
 ## Access the database
@@ -142,12 +142,12 @@ helm ls
 
 To upgrade the TiDB cluster, modify the `tidb_version` variable to a higher version in the `variables.tf` file, and run `terraform apply`.
 
-For example, to upgrade the cluster to the 3.0.0-rc.2 version, modify the `tidb_version` to `v3.0.0-rc.2`:
+For example, to upgrade the cluster to the 3.0.1 version, modify the `tidb_version` to `v3.0.1`:
 
 ```
 variable "tidb_version" {
   description = "TiDB version"
-  default     = "v3.0.0-rc.2"
+  default     = "v3.0.1"
 }
 ```
 
@@ -156,7 +156,7 @@ The upgrading does not finish immediately. You can run `kubectl --kubeconfig cre
 ```sql
 MySQL [(none)]> select tidb_version();
 *************************** 1. row ***************************
-tidb_version(): Release Version: v3.0.0-rc.2
+tidb_version(): Release Version: v3.0.1
 Git Commit Hash: 06f3f63d5a87e7f0436c0618cf524fea7172eb93
 Git Branch: HEAD
 UTC Build Time: 2019-05-28 12:48:52
