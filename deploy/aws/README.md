@@ -76,7 +76,7 @@ monitor_endpoint = http://abd299cc47af411e98aae02938da0762-1989524000.us-east-2.
 region = us-east-2
 tidb_dns = abd2e3f7c7af411e98aae02938da0762-17499b76b312be02.elb.us-east-2.amazonaws.com
 tidb_port = 4000
-tidb_version = v3.0.0
+tidb_version = v3.0.1
 ```
 
 > **Note:** You can use the `terraform output` command to get the output again.
@@ -118,12 +118,12 @@ The initial Grafana login credentials are:
 
 To upgrade the TiDB cluster, edit the `variables.tf` file with your preferred text editor and modify the `tidb_version` variable to a higher version, and then run `terraform apply`.
 
-For example, to upgrade the cluster to version 3.0.0-rc.1, modify the `tidb_version` to `v3.0.0`:
+For example, to upgrade the cluster to version 3.0.1, modify the `tidb_version` to `v3.0.1`:
 
 ```
  variable "tidb_version" {
    description = "tidb cluster version"
-   default = "v3.0.0"
+   default = "v3.0.1"
  }
 ```
 
@@ -198,7 +198,7 @@ module example-cluster {
   # Helm values file
   override_values = file("example-cluster.yaml")
   # TiDB cluster version
-  cluster_version               = "v3.0.0"
+  cluster_version               = "v3.0.1"
   # SSH key of cluster nodes
   ssh_key_name                  = module.key-pair.key_name
   # PD replica number
