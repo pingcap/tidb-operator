@@ -138,7 +138,7 @@ monitor_endpoint = http://a37987df9710211e9b48c0ae40bc8d7b-1847612729.us-east-2.
 region = us-east-2
 tidb_dns = internal-a37a17c22710211e9b48c0ae40bc8d7b-1891023212.us-east-2.elb.amazonaws.com
 tidb_port = 4000
-tidb_version = v3.0.0-rc.1
+tidb_version = v3.0.1
 ```
 
 > *NOTE*: Be careful about changing instance types for PD and TiKV worker groups as they rely on local SSD. Doing so may break user-data and local volume setup.

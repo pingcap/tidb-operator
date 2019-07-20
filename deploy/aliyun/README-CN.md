@@ -77,7 +77,7 @@ monitor_endpoint = 1.2.3.4:3000
 region = cn-hangzhou
 tidb_port = 4000
 tidb_slb_ip = 192.168.5.53
-tidb_version = v3.0.0-rc.1
+tidb_version = v3.0.1
 vpc_id = vpc-bp16wcbu0xhbg833fymmc
 worker_key_file = /root/tidb-operator/deploy/aliyun/credentials/tidb-cluster-node-key.pem
 ```
