@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,20 +47,19 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 	testFn := func(test *testcase) {
 		t.Log(test.name)
 		upgrader, pdControl, _, podInformer := newPDUpgrader()
-		pdClient := controller.NewFakePDClient()
 		tc := newTidbClusterForPDUpgrader()
-		pdControl.SetPDClient(tc, pdClient)
+		pdClient := controller.NewFakePDClient(pdControl, tc)
 
 		if test.changeFn != nil {
 			test.changeFn(tc)
 		}
 
 		if test.transferLeaderErr {
-			pdClient.AddReaction(controller.TransferPDLeaderActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.TransferPDLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("failed to transfer leader")
 			})
 		} else {
-			pdClient.AddReaction(controller.TransferPDLeaderActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.TransferPDLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, nil
 			})
 		}
@@ -168,36 +168,6 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: "force upgrade",
-			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.Synced = false
-			},
-			changePods: func(pods []*corev1.Pod) {
-				pods[1].Status = corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{
-					{
-						State: corev1.ContainerState{
-							Waiting: &corev1.ContainerStateWaiting{Reason: ErrImagePull},
-						},
-					},
-				}}
-				pods[0].Status = corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{
-					{
-						State: corev1.ContainerState{
-							Waiting: &corev1.ContainerStateWaiting{Reason: ErrImagePull},
-						},
-					},
-				}}
-			},
-			transferLeaderErr: false,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-			},
-			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
-				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(func() *int32 { i := int32(0); return &i }()))
-			},
-		},
-		{
 			name: "error when transfer leader",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Synced = true
@@ -221,10 +191,10 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 
 }
 
-func newPDUpgrader() (Upgrader, *controller.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
+func newPDUpgrader() (Upgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
 	kubeCli := kubefake.NewSimpleClientset()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	pdControl := controller.NewFakePDControl()
+	pdControl := pdapi.NewFakePDControl()
 	podControl := controller.NewFakePodControl(podInformer)
 	return &pdUpgrader{
 			pdControl:  pdControl,

@@ -18,8 +18,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/httputil"
 	"github.com/pingcap/tidb/config"
 )
 
@@ -27,6 +29,7 @@ const (
 	// https://github.com/pingcap/tidb/blob/master/owner/manager.go#L183
 	// NotDDLOwnerError is the error message which was returned when the tidb node is not a ddl owner
 	NotDDLOwnerError = "This node is not a ddl owner, can't be resigned."
+	timeout          = 5 * time.Second
 )
 
 type dbInfo struct {
@@ -88,11 +91,11 @@ func (tdc *defaultTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal 
 	if err != nil {
 		return false, err
 	}
-	defer DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 	if res.StatusCode == http.StatusOK {
 		return false, nil
 	}
-	err2 := readErrorBody(res.Body)
+	err2 := httputil.ReadErrorBody(res.Body)
 	if err2.Error() == NotDDLOwnerError {
 		return true, nil
 	}
@@ -113,9 +116,9 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 	if err != nil {
 		return nil, err
 	}
-	defer DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 	if res.StatusCode != http.StatusOK {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v", res.StatusCode))
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL: %s", res.StatusCode, url))
 		return nil, errMsg
 	}
 	body, err := ioutil.ReadAll(res.Body)
@@ -144,9 +147,9 @@ func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int
 	if err != nil {
 		return nil, err
 	}
-	defer DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 	if res.StatusCode != http.StatusOK {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v", res.StatusCode))
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL: %s", res.StatusCode, url))
 		return nil, errMsg
 	}
 	body, err := ioutil.ReadAll(res.Body)
@@ -167,11 +170,11 @@ func (tdc *defaultTiDBControl) getBodyOK(apiURL string) ([]byte, error) {
 		return nil, err
 	}
 	if res.StatusCode >= 400 {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v", res.StatusCode))
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL %s", res.StatusCode, apiURL))
 		return nil, errMsg
 	}
 
-	defer DeferClose(res.Body, &err)
+	defer httputil.DeferClose(res.Body)
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err

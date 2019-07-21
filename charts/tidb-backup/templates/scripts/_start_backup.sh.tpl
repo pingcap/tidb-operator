@@ -1,25 +1,44 @@
 set -euo pipefail
 
-host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]' | tr '-' '_'`
+host=$(getent hosts {{ .Values.clusterName }}-tidb | head | awk '{print $1}')
 
 dirname=/data/${BACKUP_NAME}
+echo "making dir ${dirname}"
 mkdir -p ${dirname}
-cp /savepoint-dir/savepoint ${dirname}/
 
-# the content of savepoint file is:
-# commitTS = 408824443621605409
-savepoint=`cat ${dirname}/savepoint | cut -d "=" -f2 | sed 's/ *//g'`
+password_str=""
+if [ -n "${TIDB_PASSWORD}" ];
+then
+    password_str="-p${TIDB_PASSWORD}"
+fi
 
-cat ${dirname}/savepoint
+gc_life_time=`/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "select variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"`
+echo "Old TiKV GC life time is ${gc_life_time}"
+
+echo "Increase TiKV GC life time to 3h"
+/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "update mysql.tidb set variable_value='3h' where variable_name='tikv_gc_life_time';"
+/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "select variable_name,variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"
+
+if [ -n "{{ .Values.initialCommitTs }}" ];
+then
+    snapshot_args="--tidb-snapshot={{ .Values.initialCommitTs }}"
+    echo "commitTS = {{ .Values.initialCommitTs }}" > ${dirname}/savepoint
+    cat ${dirname}/savepoint
+fi
 
 /mydumper \
   --outputdir=${dirname} \
-  --host=`eval echo '${'$host'}'` \
+  --host=${host} \
   --port=4000 \
   --user=${TIDB_USER} \
   --password=${TIDB_PASSWORD} \
-  --tidb-snapshot=${savepoint} \
-  {{ .Values.backupOptions }}
+  --long-query-guard=3600 \
+  --tidb-force-priority=LOW_PRIORITY \
+  {{ .Values.backupOptions }} ${snapshot_args:-}
+
+echo "Reset TiKV GC life time to ${gc_life_time}"
+/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "update mysql.tidb set variable_value='${gc_life_time}' where variable_name='tikv_gc_life_time';"
+/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "select variable_name,variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"
 
 {{- if .Values.gcp }}
 uploader \
@@ -33,5 +52,13 @@ uploader \
   --cloud=ceph \
   --bucket={{ .Values.ceph.bucket }} \
   --endpoint={{ .Values.ceph.endpoint }} \
+  --backup-dir=${dirname}
+{{- end }}
+
+{{- if .Values.s3 }}
+uploader \
+  --cloud=aws \
+  --region={{ .Values.s3.region }} \
+  --bucket={{ .Values.s3.bucket }} \
   --backup-dir=${dirname}
 {{- end }}

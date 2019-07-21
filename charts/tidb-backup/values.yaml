@@ -5,14 +5,17 @@
 # clusterName is the TiDB cluster name that should backup from or restore to.
 clusterName: demo
 
-mode: backup # backup | restore
+mode: backup # backup | restore | scheduled-restore
 # name is the backup name
 name: fullbackup-{{ date "200601021504" .Release.Time }}
 image:
   pullPolicy: IfNotPresent
-  binlog: pingcap/tidb-binlog:v3.0.0-rc.1
-  # https://github.com/tennix/tidb-cloud-backup
-  backup: pingcap/tidb-cloud-backup:latest
+  # https://github.com/pingcap/tidb-cloud-backup
+  backup: pingcap/tidb-cloud-backup:20190610
+
+# Add additional labels for backup/restore job's pod
+# ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+extraLabels: {}
 
 # secretName is the name of the secret which stores user and password used for backup/restore
 # Note: you must give the user enough privilege to do the backup and restore
@@ -26,11 +29,22 @@ storage:
 
 # backupOptions is the options of mydumper https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
 backupOptions: "--verbose=3"
+# Set the tidb_snapshot to be used for the backup
+# Use `show master status` to get the ts:
+#   MySQL [(none)]> show master status;
+#   +-------------+--------------------+--------------+------------------+-------------------+
+#   | File        | Position           | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |
+#   +-------------+--------------------+--------------+------------------+-------------------+
+#   | tidb-binlog | 409076965619269635 |              |                  |                   |
+#   +-------------+--------------------+--------------+------------------+-------------------+
+#   1 row in set (0.01 sec)
+# For this example, "409076965619269635" is the initialCommitTs
+initialCommitTs: ""
 # restoreOptions is the options of loader https://www.pingcap.com/docs-cn/tools/loader/
 restoreOptions: "-t 16"
 
 # By default, the backup/restore uses PV to store/load backup data
-# You can choose to store/load backup data to/from gcp or ceph bucket by enabling the following corresponding section:
+# You can choose to store/load backup data to/from gcp, ceph or s3 bucket by enabling the following corresponding section:
 
 # backup to or restore from gcp bucket, the backup path is in the form of <clusterName>-<name>
 gcp: {}
@@ -43,7 +57,7 @@ gcp: {}
   # kubectl create secret generic gcp-backup-secret --namespace=<namespace> --from-file=./credentials.json
   # secretName: gcp-backup-secret
 
-# backup to or restore from ceph bucket,  the backup path is in the form of <clusterName>-<name>
+# backup to or restore from ceph bucket, the backup path is in the form of <clusterName>-<name>
 ceph: {}
   # endpoint: ""
   # bucket: ""
@@ -51,3 +65,12 @@ ceph: {}
   # You can create the secret by:
   # kubectl create secret generic ceph-backup-secret --namespace=<namespace> --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
   # secretName: ceph-backup-secret
+
+# backup to or restore from s3 bucket, the backup path is in the form of <clusterName>-<name>
+s3: {}
+  # region: ""
+  # bucket: ""
+  # secretName is the name of the secret which stores s3 object store access key and secret key
+  # You can create the secret by:
+  # kubectl create secret generic s3-backup-secret --namespace=<namespace> --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
+  # secretName: s3-backup-secret

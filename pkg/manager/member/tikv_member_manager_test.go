@@ -21,11 +21,14 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
+	"github.com/pingcap/pd/pkg/typeutil"
+	"github.com/pingcap/pd/server"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -48,8 +51,8 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 		err                          bool
 		tikvPeerSvcCreated           bool
 		setCreated                   bool
-		pdStores                     *controller.StoresInfo
-		tombstoneStores              *controller.StoresInfo
+		pdStores                     *pdapi.StoresInfo
+		tombstoneStores              *pdapi.StoresInfo
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -71,19 +74,25 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 		}
 
 		tkmm, fakeSetControl, fakeSvcControl, pdClient, _, _ := newFakeTiKVMemberManager(tc)
-
+		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
+			return &server.Config{
+				Replication: server.ReplicationConfig{
+					LocationLabels: typeutil.StringSlice{"region", "zone", "rack", "host"},
+				},
+			}, nil
+		})
 		if test.errWhenGetStores {
-			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("failed to get stores from tikv cluster")
 			})
 		} else {
-			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
 				return test.pdStores, nil
 			})
-			pdClient.AddReaction(controller.GetTombStoneStoresActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.GetTombStoneStoresActionType, func(action *pdapi.Action) (interface{}, error) {
 				return test.tombstoneStores, nil
 			})
-			pdClient.AddReaction(controller.SetStoreLabelsActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.SetStoreLabelsActionType, func(action *pdapi.Action) (interface{}, error) {
 				return true, nil
 			})
 		}
@@ -130,8 +139,8 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			err:                          false,
 			tikvPeerSvcCreated:           true,
 			setCreated:                   true,
-			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
-			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
+			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
 		},
 		{
 			name: "pd is not available",
@@ -143,8 +152,8 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			err:                          true,
 			tikvPeerSvcCreated:           false,
 			setCreated:                   false,
-			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
-			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
+			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
 		},
 		{
 			name: "tidbcluster's storage format is wrong",
@@ -156,8 +165,8 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			err:                          true,
 			tikvPeerSvcCreated:           true,
 			setCreated:                   false,
-			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
-			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
+			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
 		},
 		{
 			name:                         "error when create statefulset",
@@ -167,8 +176,8 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			err:                          true,
 			tikvPeerSvcCreated:           true,
 			setCreated:                   false,
-			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
-			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
+			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
 		},
 		{
 			name:                         "error when create tikv peer service",
@@ -178,8 +187,8 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			err:                          true,
 			tikvPeerSvcCreated:           false,
 			setCreated:                   false,
-			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
-			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
+			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
 		},
 	}
 
@@ -193,8 +202,8 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 	type testcase struct {
 		name                         string
 		modify                       func(cluster *v1alpha1.TidbCluster)
-		pdStores                     *controller.StoresInfo
-		tombstoneStores              *controller.StoresInfo
+		pdStores                     *pdapi.StoresInfo
+		tombstoneStores              *pdapi.StoresInfo
 		errWhenUpdateStatefulSet     bool
 		errWhenUpdateTiKVPeerService bool
 		errWhenGetStores             bool
@@ -220,18 +229,25 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		tcName := tc.Name
 
 		tkmm, fakeSetControl, fakeSvcControl, pdClient, _, _ := newFakeTiKVMemberManager(tc)
+		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
+			return &server.Config{
+				Replication: server.ReplicationConfig{
+					LocationLabels: typeutil.StringSlice{"region", "zone", "rack", "host"},
+				},
+			}, nil
+		})
 		if test.errWhenGetStores {
-			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("failed to get stores from pd cluster")
 			})
 		} else {
-			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
 				return test.pdStores, nil
 			})
-			pdClient.AddReaction(controller.GetTombStoneStoresActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.GetTombStoneStoresActionType, func(action *pdapi.Action) (interface{}, error) {
 				return test.tombstoneStores, nil
 			})
-			pdClient.AddReaction(controller.SetStoreLabelsActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.SetStoreLabelsActionType, func(action *pdapi.Action) (interface{}, error) {
 				return true, nil
 			})
 		}
@@ -297,8 +313,8 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 			},
 			// TODO add unit test for status sync
-			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
-			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
+			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
 			errWhenUpdateStatefulSet:     false,
 			errWhenUpdateTiKVPeerService: false,
 			errWhenGetStores:             false,
@@ -320,8 +336,8 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 				tc.Spec.TiKV.Requests.Storage = "100xxxxi"
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 			},
-			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
-			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
+			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
 			errWhenUpdateStatefulSet:     false,
 			errWhenUpdateTiKVPeerService: false,
 			err:                          true,
@@ -334,8 +350,8 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 				tc.Spec.TiKV.Replicas = 5
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 			},
-			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
-			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
+			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
 			errWhenUpdateStatefulSet:     true,
 			errWhenUpdateTiKVPeerService: false,
 			err:                          true,
@@ -350,8 +366,8 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 				tc.Spec.TiKV.Replicas = 5
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 			},
-			pdStores:                     &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
-			tombstoneStores:              &controller.StoresInfo{Count: 0, Stores: []*controller.StoreInfo{}},
+			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
 			errWhenUpdateStatefulSet:     false,
 			errWhenUpdateTiKVPeerService: false,
 			errWhenGetStores:             true,
@@ -377,18 +393,16 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name             string
-		setUpdate        func(*apps.StatefulSet)
-		hasPod           bool
-		updatePod        func(*corev1.Pod)
-		errWhenGetLeader bool
-		hasLeader        bool
-		errExpectFn      func(*GomegaWithT, error)
-		expectUpgrading  bool
+		name            string
+		setUpdate       func(*apps.StatefulSet)
+		hasPod          bool
+		updatePod       func(*corev1.Pod)
+		errExpectFn     func(*GomegaWithT, error)
+		expectUpgrading bool
 	}
 	testFn := func(test *testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
-		pmm, _, _, pdClient, podIndexer, _ := newFakeTiKVMemberManager(tc)
+		pmm, _, _, _, podIndexer, _ := newFakeTiKVMemberManager(tc)
 		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{
 			UpdateRevision: "v3",
 		}
@@ -417,19 +431,6 @@ func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 			}
 			podIndexer.Add(pod)
 		}
-		if test.errWhenGetLeader {
-			pdClient.AddReaction(controller.GetEvictLeaderSchedulersActionType, func(action *controller.Action) (interface{}, error) {
-				return []string{}, fmt.Errorf("failed to get leader")
-			})
-		} else if test.hasLeader {
-			pdClient.AddReaction(controller.GetEvictLeaderSchedulersActionType, func(action *controller.Action) (interface{}, error) {
-				return []string{"leader"}, nil
-			})
-		} else {
-			pdClient.AddReaction(controller.GetEvictLeaderSchedulersActionType, func(action *controller.Action) (interface{}, error) {
-				return []string{}, nil
-			})
-		}
 		b, err := pmm.tikvStatefulSetIsUpgradingFn(pmm.podLister, pmm.pdControl, set, tc)
 		if test.errExpectFn != nil {
 			test.errExpectFn(g, err)
@@ -448,22 +449,18 @@ func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 				set.Status.UpdateRevision = "v2"
 				set.Status.ObservedGeneration = func() *int64 { var i int64; i = 1000; return &i }()
 			},
-			hasPod:           false,
-			updatePod:        nil,
-			errWhenGetLeader: false,
-			hasLeader:        false,
-			errExpectFn:      errExpectNil,
-			expectUpgrading:  true,
+			hasPod:          false,
+			updatePod:       nil,
+			errExpectFn:     errExpectNil,
+			expectUpgrading: true,
 		},
 		{
-			name:             "pod don't have revision hash",
-			setUpdate:        nil,
-			hasPod:           true,
-			updatePod:        nil,
-			errWhenGetLeader: false,
-			hasLeader:        false,
-			errExpectFn:      errExpectNil,
-			expectUpgrading:  false,
+			name:            "pod don't have revision hash",
+			setUpdate:       nil,
+			hasPod:          true,
+			updatePod:       nil,
+			errExpectFn:     errExpectNil,
+			expectUpgrading: false,
 		},
 		{
 			name:      "pod have revision hash, not equal statefulset's",
@@ -472,10 +469,8 @@ func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 			updatePod: func(pod *corev1.Pod) {
 				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v2"
 			},
-			errWhenGetLeader: false,
-			hasLeader:        false,
-			errExpectFn:      errExpectNil,
-			expectUpgrading:  true,
+			errExpectFn:     errExpectNil,
+			expectUpgrading: true,
 		},
 		{
 			name:      "pod have revision hash, equal statefulset's",
@@ -484,49 +479,8 @@ func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 			updatePod: func(pod *corev1.Pod) {
 				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v3"
 			},
-			errWhenGetLeader: false,
-			hasLeader:        false,
-			errExpectFn:      errExpectNil,
-			expectUpgrading:  false,
-		},
-		{
-			name:      "error when get leader schedulers",
-			setUpdate: nil,
-			hasPod:    true,
-			updatePod: func(pod *corev1.Pod) {
-				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v3"
-			},
-			errWhenGetLeader: true,
-			hasLeader:        false,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "failed to get leader")).To(Equal(true))
-			},
+			errExpectFn:     errExpectNil,
 			expectUpgrading: false,
-		},
-		{
-			name:      "has no leader",
-			setUpdate: nil,
-			hasPod:    true,
-			updatePod: func(pod *corev1.Pod) {
-				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v3"
-			},
-			errWhenGetLeader: false,
-			hasLeader:        false,
-			errExpectFn:      errExpectNil,
-			expectUpgrading:  false,
-		},
-		{
-			name:      "has leader",
-			setUpdate: nil,
-			hasPod:    true,
-			updatePod: func(pod *corev1.Pod) {
-				pod.Labels[apps.ControllerRevisionHashLabelKey] = "v3"
-			},
-			errWhenGetLeader: false,
-			hasLeader:        true,
-			errExpectFn:      errExpectNil,
-			expectUpgrading:  true,
 		},
 	}
 
@@ -543,7 +497,7 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		errWhenGetStores bool
 		hasNode          bool
 		hasPod           bool
-		storeInfo        *controller.StoresInfo
+		storeInfo        *pdapi.StoresInfo
 		errExpectFn      func(*GomegaWithT, error)
 		setCount         int
 		labelSetFailed   bool
@@ -551,14 +505,20 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
 		pmm, _, _, pdClient, podIndexer, nodeIndexer := newFakeTiKVMemberManager(tc)
-
+		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
+			return &server.Config{
+				Replication: server.ReplicationConfig{
+					LocationLabels: typeutil.StringSlice{"region", "zone", "rack", "host"},
+				},
+			}, nil
+		})
 		if test.errWhenGetStores {
-			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("failed to get stores")
 			})
 		}
 		if test.storeInfo != nil {
-			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
 				return test.storeInfo, nil
 			})
 		}
@@ -589,11 +549,11 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 			podIndexer.Add(pod)
 		}
 		if test.labelSetFailed {
-			pdClient.AddReaction(controller.SetStoreLabelsActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.SetStoreLabelsActionType, func(action *pdapi.Action) (interface{}, error) {
 				return false, fmt.Errorf("label set failed")
 			})
 		} else {
-			pdClient.AddReaction(controller.SetStoreLabelsActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.SetStoreLabelsActionType, func(action *pdapi.Action) (interface{}, error) {
 				return true, nil
 			})
 		}
@@ -621,8 +581,8 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		{
 			name:             "stores is empty",
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{},
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{},
 			},
 			hasNode: true,
 			hasPod:  true,
@@ -635,8 +595,8 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		{
 			name:             "status is nil",
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
 						Status: nil,
 					},
@@ -653,8 +613,8 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		{
 			name:             "store is nil",
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
 						Store: nil,
 					},
@@ -671,17 +631,17 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		{
 			name:             "don't have pod",
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
-						Store: &controller.MetaStore{
+						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
 								Address: "pod-1.ns-1",
 							},
 							StateName: "Up",
 						},
-						Status: &controller.StoreStatus{
+						Status: &pdapi.StoreStatus{
 							LeaderCount:     1,
 							LastHeartbeatTS: time.Now(),
 						},
@@ -700,17 +660,17 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		{
 			name:             "don't have node",
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
-						Store: &controller.MetaStore{
+						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
 								Address: "pod-1.ns-1",
 							},
 							StateName: "Up",
 						},
-						Status: &controller.StoreStatus{
+						Status: &pdapi.StoreStatus{
 							LeaderCount:     1,
 							LastHeartbeatTS: time.Now(),
 						},
@@ -728,10 +688,10 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		{
 			name:             "already has labels",
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
-						Store: &controller.MetaStore{
+						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
 								Address: "pod-1.ns-1",
@@ -756,7 +716,7 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 							},
 							StateName: "Up",
 						},
-						Status: &controller.StoreStatus{
+						Status: &pdapi.StoreStatus{
 							LeaderCount:     1,
 							LastHeartbeatTS: time.Now(),
 						},
@@ -774,10 +734,10 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		{
 			name:             "labels not equal, but set failed",
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
-						Store: &controller.MetaStore{
+						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
 								Address: "pod-1.ns-1",
@@ -790,7 +750,7 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 							},
 							StateName: "Up",
 						},
-						Status: &controller.StoreStatus{
+						Status: &pdapi.StoreStatus{
 							LeaderCount:     1,
 							LastHeartbeatTS: time.Now(),
 						},
@@ -808,10 +768,10 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		{
 			name:             "labels not equal, set success",
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
-						Store: &controller.MetaStore{
+						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
 								Address: "pod-1.ns-1",
@@ -824,7 +784,7 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 							},
 							StateName: "Up",
 						},
-						Status: &controller.StoreStatus{
+						Status: &pdapi.StoreStatus{
 							LeaderCount:     1,
 							LastHeartbeatTS: time.Now(),
 						},
@@ -852,11 +812,11 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	type testcase struct {
 		name                      string
 		updateTC                  func(*v1alpha1.TidbCluster)
-		upgradingFn               func(corelisters.PodLister, controller.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
+		upgradingFn               func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 		errWhenGetStores          bool
-		storeInfo                 *controller.StoresInfo
+		storeInfo                 *pdapi.StoresInfo
 		errWhenGetTombstoneStores bool
-		tombstoneStoreInfo        *controller.StoresInfo
+		tombstoneStoreInfo        *pdapi.StoresInfo
 		errExpectFn               func(*GomegaWithT, error)
 		tcExpectFn                func(*GomegaWithT, *v1alpha1.TidbCluster)
 	}
@@ -879,20 +839,20 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			pmm.tikvStatefulSetIsUpgradingFn = test.upgradingFn
 		}
 		if test.errWhenGetStores {
-			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("failed to get stores")
 			})
 		} else if test.storeInfo != nil {
-			pdClient.AddReaction(controller.GetStoresActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
 				return test.storeInfo, nil
 			})
 		}
 		if test.errWhenGetTombstoneStores {
-			pdClient.AddReaction(controller.GetTombStoneStoresActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.GetTombStoneStoresActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("failed to get tombstone stores")
 			})
 		} else if test.tombstoneStoreInfo != nil {
-			pdClient.AddReaction(controller.GetTombStoneStoresActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.GetTombStoneStoresActionType, func(action *pdapi.Action) (interface{}, error) {
 				return test.tombstoneStoreInfo, nil
 			})
 		}
@@ -909,7 +869,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		{
 			name:     "whether statefulset is upgrading returns failed",
 			updateTC: nil,
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, fmt.Errorf("whether upgrading failed")
 			},
 			errWhenGetStores:          false,
@@ -927,7 +887,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		{
 			name:     "statefulset is upgrading",
 			updateTC: nil,
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return true, nil
 			},
 			errWhenGetStores:          false,
@@ -945,7 +905,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			updateTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.UpgradePhase
 			},
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return true, nil
 			},
 			errWhenGetStores:          false,
@@ -961,7 +921,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		{
 			name:     "statefulset is not upgrading",
 			updateTC: nil,
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			errWhenGetStores:          false,
@@ -977,7 +937,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		{
 			name:     "get stores failed",
 			updateTC: nil,
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			errWhenGetStores:          true,
@@ -996,16 +956,16 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		{
 			name:     "stores is empty",
 			updateTC: nil,
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{},
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{},
+			tombstoneStoreInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{},
 			},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
@@ -1017,20 +977,20 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		{
 			name:     "store is nil",
 			updateTC: nil,
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
 						Store: nil,
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{},
+			tombstoneStoreInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{},
 			},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
@@ -1042,20 +1002,20 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		{
 			name:     "status is nil",
 			updateTC: nil,
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
 						Status: nil,
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{},
+			tombstoneStoreInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{},
 			},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
@@ -1072,28 +1032,28 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 					LastHeartbeatTime: now,
 				}
 			},
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
-						Store: &controller.MetaStore{
+						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
 								Address: "pod-1.ns-1",
 							},
 						},
-						Status: &controller.StoreStatus{
+						Status: &pdapi.StoreStatus{
 							LastHeartbeatTS: time.Time{},
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{},
+			tombstoneStoreInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{},
 			},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
@@ -1112,28 +1072,28 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 					LastHeartbeatTime: metav1.Time{Time: time.Time{}},
 				}
 			},
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
-						Store: &controller.MetaStore{
+						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
 								Address: "pod-1.ns-1",
 							},
 						},
-						Status: &controller.StoreStatus{
+						Status: &pdapi.StoreStatus{
 							LastHeartbeatTS: time.Time{},
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{},
+			tombstoneStoreInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{},
 			},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
@@ -1152,28 +1112,28 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 					LastHeartbeatTime: metav1.Time{Time: time.Time{}},
 				}
 			},
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
-						Store: &controller.MetaStore{
+						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
 								Address: "pod-1.ns-1",
 							},
 						},
-						Status: &controller.StoreStatus{
+						Status: &pdapi.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{},
+			tombstoneStoreInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{},
 			},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
@@ -1190,28 +1150,28 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
 				// tc.Status.TiKV.Stores["333"] = v1alpha1.TiKVStore{}
 			},
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
-						Store: &controller.MetaStore{
+						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
 								Address: "pod-1.ns-1",
 							},
 						},
-						Status: &controller.StoreStatus{
+						Status: &pdapi.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{},
+			tombstoneStoreInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{},
 			},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
@@ -1230,29 +1190,29 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 					State:              v1alpha1.TiKVStateUp,
 				}
 			},
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
-						Store: &controller.MetaStore{
+						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
 								Address: "pod-1.ns-1",
 							},
 							StateName: "Up",
 						},
-						Status: &controller.StoreStatus{
+						Status: &pdapi.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{},
+			tombstoneStoreInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{},
 			},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
@@ -1271,29 +1231,29 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 					State:              v1alpha1.TiKVStateUp,
 				}
 			},
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
-						Store: &controller.MetaStore{
+						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
 								Address: "pod-1.ns-1",
 							},
 							StateName: "Down",
 						},
-						Status: &controller.StoreStatus{
+						Status: &pdapi.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{},
+			tombstoneStoreInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{},
 			},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
@@ -1312,29 +1272,29 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 					State:              v1alpha1.TiKVStateUp,
 				}
 			},
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
-						Store: &controller.MetaStore{
+						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
 								Address: "pod-1.ns-1",
 							},
 							StateName: "Up",
 						},
-						Status: &controller.StoreStatus{
+						Status: &pdapi.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: true,
-			tombstoneStoreInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{},
+			tombstoneStoreInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{},
 			},
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).To(HaveOccurred())
@@ -1349,38 +1309,38 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		{
 			name:     "all works",
 			updateTC: nil,
-			upgradingFn: func(lister corelisters.PodLister, controlInterface controller.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			storeInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
-						Store: &controller.MetaStore{
+						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
 								Address: "pod-1.ns-1",
 							},
 							StateName: "Up",
 						},
-						Status: &controller.StoreStatus{
+						Status: &pdapi.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &controller.StoresInfo{
-				Stores: []*controller.StoreInfo{
+			tombstoneStoreInfo: &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
 					{
-						Store: &controller.MetaStore{
+						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
 								Address: "pod-1.ns-1",
 							},
 							StateName: "Tombstone",
 						},
-						Status: &controller.StoreStatus{
+						Status: &pdapi.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
@@ -1403,12 +1363,11 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 
 func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	*tikvMemberManager, *controller.FakeStatefulSetControl,
-	*controller.FakeServiceControl, *controller.FakePDClient, cache.Indexer, cache.Indexer) {
+	*controller.FakeServiceControl, *pdapi.FakePDClient, cache.Indexer, cache.Indexer) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
-	pdControl := controller.NewFakePDControl()
-	pdClient := controller.NewFakePDClient()
-	pdControl.SetPDClient(tc, pdClient)
+	pdControl := pdapi.NewFakePDControl()
+	pdClient := controller.NewFakePDClient(pdControl, tc)
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()

@@ -21,6 +21,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -34,13 +35,13 @@ const (
 )
 
 type tikvUpgrader struct {
-	pdControl  controller.PDControlInterface
+	pdControl  pdapi.PDControlInterface
 	podControl controller.PodControlInterface
 	podLister  corelisters.PodLister
 }
 
 // NewTiKVUpgrader returns a tikv Upgrader
-func NewTiKVUpgrader(pdControl controller.PDControlInterface,
+func NewTiKVUpgrader(pdControl pdapi.PDControlInterface,
 	podControl controller.PodControlInterface,
 	podLister corelisters.PodLister) Upgrader {
 	return &tikvUpgrader{
@@ -95,10 +96,7 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 			if store.State != v1alpha1.TiKVStateUp {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
 			}
-			err := tku.endEvictLeader(tc, i)
-			if err != nil {
-				return err
-			}
+
 			continue
 		}
 
@@ -124,15 +122,20 @@ func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32,
 				return err
 			}
 			_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
+			if !evicting {
+				glog.Infof("start to evict leader:index:%d,upgradePodName:%s,storeID:%d", ordinal, upgradePodName, storeID)
+				return tku.beginEvictLeader(tc, storeID, upgradePod)
+			}
 
 			if tku.readyToUpgrade(upgradePod, store) {
+				err := tku.endEvictLeader(tc, ordinal)
+				if err != nil {
+					return err
+				}
 				setUpgradePartition(newSet, ordinal)
 				return nil
 			}
 
-			if !evicting {
-				return tku.beginEvictLeader(tc, storeID, upgradePod)
-			}
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] is evicting leader", ns, tcName, upgradePodName)
 		}
 	}
@@ -158,7 +161,7 @@ func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.T
 }
 
 func (tku *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
-	err := tku.pdControl.GetPDClient(tc).BeginEvictLeader(storeID)
+	err := controller.GetPDClient(tku.pdControl, tc).BeginEvictLeader(storeID)
 	if err != nil {
 		return err
 	}
@@ -171,28 +174,23 @@ func (tku *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint
 }
 
 func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32) error {
+	// wait 5 second before delete evict scheduler，it is for auto test can catch these info
+	if controller.TestMode {
+		time.Sleep(5 * time.Second)
+	}
 	store := tku.getStoreByOrdinal(tc, ordinal)
 	storeID, err := strconv.ParseUint(store.ID, 10, 64)
 	if err != nil {
 		return err
 	}
-	upgradedPodName := tikvPodName(tc.GetName(), ordinal)
-	upgradedPod, err := tku.podLister.Pods(tc.GetNamespace()).Get(upgradedPodName)
+
+	err = tku.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName()).EndEvictLeader(storeID)
 	if err != nil {
 		return err
 	}
-	_, evicting := upgradedPod.Annotations[EvictLeaderBeginTime]
-	if evicting {
-		delete(upgradedPod.Annotations, EvictLeaderBeginTime)
-		_, err = tku.podControl.UpdatePod(tc, upgradedPod)
-		if err != nil {
-			return err
-		}
-	}
-	err = tku.pdControl.GetPDClient(tc).EndEvictLeader(storeID)
-	if err != nil {
-		return err
-	}
+
+	glog.Infof("successed to remove evict leader,ordinal:%d,storeID:%d", ordinal, storeID)
+
 	return nil
 }
 

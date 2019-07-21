@@ -30,7 +30,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:${operator_version}
+  image: ${tidb_operator_registry}/tidb-operator:${operator_version}
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -48,7 +48,7 @@ pd:
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
   # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
-  storageClassName: local-storage
+  storageClassName: pd-ssd
 
   # Image pull policy.
   imagePullPolicy: IfNotPresent
@@ -359,7 +359,7 @@ scheduledBackup:
   binlogImage: "pingcap/tidb-binlog:${cluster_version}"
   binlogImagePullPolicy: IfNotPresent
   # https://github.com/tennix/tidb-cloud-backup
-  mydumperImage: pingcap/tidb-cloud-backup:latest
+  mydumperImage: pingcap/tidb-cloud-backup:20190610
   mydumperImagePullPolicy: IfNotPresent
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -401,6 +401,15 @@ scheduledBackup:
   # You can create the secret by:
   # kubectl create secret generic ceph-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
   # secretName: ceph-backup-secret
+
+  # backup to s3
+  s3: {}
+  # region: ""
+  # bucket: ""
+  # secretName is the name of the secret which stores s3 object store access key and secret key
+  # You can create the secret by:
+  # kubectl create secret generic s3-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
+  # secretName: s3-backup-secret
 
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"

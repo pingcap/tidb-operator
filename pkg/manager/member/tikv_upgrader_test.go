@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -67,23 +68,22 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 		}
 		newSet := newStatefulSetForTiKVUpgrader()
 
-		pdClient := controller.NewFakePDClient()
-		pdControl.SetPDClient(tc, pdClient)
+		pdClient := controller.NewFakePDClient(pdControl, tc)
 		if test.beginEvictLeaderErr {
-			pdClient.AddReaction(controller.BeginEvictLeaderActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.BeginEvictLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("failed to begin evict leader")
 			})
 		} else {
-			pdClient.AddReaction(controller.BeginEvictLeaderActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.BeginEvictLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, nil
 			})
 		}
 		if test.endEvictLeaderErr {
-			pdClient.AddReaction(controller.EndEvictLeaderActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.EndEvictLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("failed to end evict leader")
 			})
 		} else {
-			pdClient.AddReaction(controller.EndEvictLeaderActionType, func(action *controller.Action) (interface{}, error) {
+			pdClient.AddReaction(pdapi.EndEvictLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, nil
 			})
 		}
@@ -128,7 +128,13 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				SetLastAppliedConfigAnnotation(oldSet)
 			},
-			changePods:          nil,
+			changePods: func(pods []*corev1.Pod) {
+				for _, pod := range pods {
+					if pod.GetName() == tikvPodName(upgradeTcName, 2) {
+						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Add(-1 * time.Minute).Format(time.RFC3339)}
+					}
+				}
+			},
 			beginEvictLeaderErr: false,
 			endEvictLeaderErr:   false,
 			updatePodErr:        false,
@@ -138,10 +144,6 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.UpgradePhase))
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
-				if pods[tikvPodName(upgradeTcName, 2)].Annotations != nil {
-					_, exist := pods[tikvPodName(upgradeTcName, 2)].Annotations[EvictLeaderBeginTime]
-					g.Expect(exist).To(BeFalse())
-				}
 			},
 		},
 		{
@@ -163,7 +165,13 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				oldSet.Status.UpdatedReplicas = 1
 				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = func() *int32 { i := int32(2); return &i }()
 			},
-			changePods:          nil,
+			changePods: func(pods []*corev1.Pod) {
+				for _, pod := range pods {
+					if pod.GetName() == tikvPodName(upgradeTcName, 1) {
+						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Add(-1 * time.Minute).Format(time.RFC3339)}
+					}
+				}
+			},
 			beginEvictLeaderErr: false,
 			endEvictLeaderErr:   false,
 			updatePodErr:        false,
@@ -172,10 +180,6 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(1)))
-				if pods[tikvPodName(upgradeTcName, 1)].Annotations != nil {
-					_, exist := pods[tikvPodName(upgradeTcName, 1)].Annotations[EvictLeaderBeginTime]
-					g.Expect(exist).To(BeFalse())
-				}
 			},
 		},
 		{
@@ -384,7 +388,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
-					if pod.GetName() == tikvPodName(upgradeTcName, 2) {
+					if pod.GetName() == tikvPodName(upgradeTcName, 1) {
 						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
@@ -407,9 +411,6 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
-				// set leader to 0
-				store := tc.Status.TiKV.Stores["2"]
-				tc.Status.TiKV.Stores["2"] = store
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				SetLastAppliedConfigAnnotation(oldSet)
@@ -467,11 +468,11 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 	}
 }
 
-func newTiKVUpgrader() (Upgrader, *controller.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
+func newTiKVUpgrader() (Upgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
 	kubeCli := kubefake.NewSimpleClientset()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	podControl := controller.NewFakePodControl(podInformer)
-	pdControl := controller.NewFakePDControl()
+	pdControl := pdapi.NewFakePDControl()
 	return &tikvUpgrader{
 		pdControl:  pdControl,
 		podControl: podControl,

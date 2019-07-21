@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -40,7 +41,7 @@ import (
 type tikvMemberManager struct {
 	setControl                   controller.StatefulSetControlInterface
 	svcControl                   controller.ServiceControlInterface
-	pdControl                    controller.PDControlInterface
+	pdControl                    pdapi.PDControlInterface
 	setLister                    v1beta1.StatefulSetLister
 	svcLister                    corelisters.ServiceLister
 	podLister                    corelisters.PodLister
@@ -49,11 +50,11 @@ type tikvMemberManager struct {
 	tikvFailover                 Failover
 	tikvScaler                   Scaler
 	tikvUpgrader                 Upgrader
-	tikvStatefulSetIsUpgradingFn func(corelisters.PodLister, controller.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
+	tikvStatefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiKVMemberManager returns a *tikvMemberManager
-func NewTiKVMemberManager(pdControl controller.PDControlInterface,
+func NewTiKVMemberManager(pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	setLister v1beta1.StatefulSetLister,
@@ -443,7 +444,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	stores := map[string]v1alpha1.TiKVStore{}
 	tombstoneStores := map[string]v1alpha1.TiKVStore{}
 
-	pdCli := tkmm.pdControl.GetPDClient(tc)
+	pdCli := controller.GetPDClient(tkmm.pdControl, tc)
 	// This only returns Up/Down/Offline stores
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
@@ -465,11 +466,10 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		}
 
 		oldStore, exist := previousStores[status.ID]
-		if exist {
+
+		status.LastTransitionTime = metav1.Now()
+		if exist && status.State == oldStore.State {
 			status.LastTransitionTime = oldStore.LastTransitionTime
-		}
-		if !exist || status.State != oldStore.State {
-			status.LastTransitionTime = metav1.Now()
 		}
 
 		stores[status.ID] = *status
@@ -495,7 +495,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	return nil
 }
 
-func (tkmm *tikvMemberManager) getTiKVStore(store *controller.StoreInfo) *v1alpha1.TiKVStore {
+func (tkmm *tikvMemberManager) getTiKVStore(store *pdapi.StoreInfo) *v1alpha1.TiKVStore {
 	if store.Store == nil || store.Status == nil {
 		return nil
 	}
@@ -518,10 +518,20 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 	// for unit test
 	setCount := 0
 
-	pdCli := tkmm.pdControl.GetPDClient(tc)
+	pdCli := controller.GetPDClient(tkmm.pdControl, tc)
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
 		return setCount, err
+	}
+
+	config, err := pdCli.GetConfig()
+	if err != nil {
+		return setCount, err
+	}
+
+	locationLabels := []string(config.Replication.LocationLabels)
+	if locationLabels == nil {
+		return setCount, nil
 	}
 
 	for _, store := range storesInfo.Stores {
@@ -537,8 +547,8 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 		}
 
 		nodeName := pod.Spec.NodeName
-		ls, err := tkmm.getNodeLabels(nodeName)
-		if err != nil {
+		ls, err := tkmm.getNodeLabels(nodeName, locationLabels)
+		if err != nil || len(ls) == 0 {
 			glog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
 			continue
 		}
@@ -559,28 +569,28 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 	return setCount, nil
 }
 
-func (tkmm *tikvMemberManager) getNodeLabels(nodeName string) (map[string]string, error) {
+func (tkmm *tikvMemberManager) getNodeLabels(nodeName string, storeLabels []string) (map[string]string, error) {
 	node, err := tkmm.nodeLister.Get(nodeName)
 	if err != nil {
 		return nil, err
 	}
-	if ls := node.GetLabels(); ls != nil {
-		labels := map[string]string{}
-		if region, found := ls["region"]; found {
-			labels["region"] = region
+	labels := map[string]string{}
+	ls := node.GetLabels()
+	for _, storeLabel := range storeLabels {
+		if value, found := ls[storeLabel]; found {
+			labels[storeLabel] = value
+			continue
 		}
-		if zone, found := ls["zone"]; found {
-			labels["zone"] = zone
+
+		// TODO after pd supports storeLabel containing slash character, these codes should be deleted
+		if storeLabel == "host" {
+			if host, found := ls[apis.LabelHostname]; found {
+				labels[storeLabel] = host
+			}
 		}
-		if rack, found := ls["rack"]; found {
-			labels["rack"] = rack
-		}
-		if host, found := ls[apis.LabelHostname]; found {
-			labels["host"] = host
-		}
-		return labels, nil
+
 	}
-	return nil, fmt.Errorf("labels not found")
+	return labels, nil
 }
 
 // storeLabelsEqualNodeLabels compares store labels with node labels
@@ -597,7 +607,7 @@ func (tkmm *tikvMemberManager) storeLabelsEqualNodeLabels(storeLabels []*metapb.
 	return reflect.DeepEqual(ls, nodeLabels)
 }
 
-func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl controller.PDControlInterface, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
+func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi.PDControlInterface, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
 	if statefulSetIsUpgrading(set) {
 		return true, nil
 	}
@@ -620,12 +630,7 @@ func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl contr
 		}
 	}
 
-	evictLeaderSchedulers, err := pdControl.GetPDClient(tc).GetEvictLeaderSchedulers()
-	if err != nil {
-		return false, err
-	}
-
-	return evictLeaderSchedulers != nil && len(evictLeaderSchedulers) > 0, nil
+	return false, nil
 }
 
 type FakeTiKVMemberManager struct {

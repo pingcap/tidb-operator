@@ -86,15 +86,6 @@ func (oa *operatorActions) LabelNodesOrDie() {
 }
 
 func (oa *operatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) error {
-	nodeMap := map[string]corev1.Node{}
-	nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-	for _, node := range nodes.Items {
-		nodeMap[node.Name] = node
-	}
-
 	pds, err := oa.kubeCli.CoreV1().Pods(cluster.Namespace).List(
 		metav1.ListOptions{LabelSelector: labels.SelectorFromSet(
 			label.New().Instance(cluster.ClusterName).PD().Labels(),
@@ -102,7 +93,7 @@ func (oa *operatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) er
 	if err != nil {
 		return err
 	}
-	err = oa.checkPodsDisasterTolerance(pds.Items, nodeMap)
+	err = oa.checkPodsDisasterTolerance(pds.Items)
 	if err != nil {
 		return err
 	}
@@ -114,7 +105,7 @@ func (oa *operatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) er
 	if err != nil {
 		return err
 	}
-	err = oa.checkPodsDisasterTolerance(tikvs.Items, nodeMap)
+	err = oa.checkPodsDisasterTolerance(tikvs.Items)
 	if err != nil {
 		return err
 	}
@@ -126,37 +117,24 @@ func (oa *operatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) er
 	if err != nil {
 		return err
 	}
-	return oa.checkPodsDisasterTolerance(tidbs.Items, nodeMap)
+	return oa.checkPodsDisasterTolerance(tidbs.Items)
 }
 
-func (oa *operatorActions) checkPodsDisasterTolerance(allPods []corev1.Pod, nodeMap map[string]corev1.Node) error {
-	rackPods := map[string][]corev1.Pod{}
+func (oa *operatorActions) checkPodsDisasterTolerance(allPods []corev1.Pod) error {
 	for _, pod := range allPods {
-		if node, exist := nodeMap[pod.Spec.NodeName]; exist {
-			pods, exist := rackPods[node.Labels[RackLabel]]
-			if !exist {
-				pods = []corev1.Pod{}
+		if pod.Spec.Affinity == nil {
+			return fmt.Errorf("the pod:[%s/%s] has not Affinity", pod.Namespace, pod.Name)
+		}
+		if pod.Spec.Affinity.PodAntiAffinity == nil {
+			return fmt.Errorf("the pod:[%s/%s] has not Affinity.PodAntiAffinity", pod.Namespace, pod.Name)
+		}
+		if len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) == 0 {
+			return fmt.Errorf("the pod:[%s/%s] has not PreferredDuringSchedulingIgnoredDuringExecution", pod.Namespace, pod.Name)
+		}
+		for _, prefer := range pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
+			if prefer.PodAffinityTerm.TopologyKey != RackLabel {
+				return fmt.Errorf("the pod:[%s/%s] topology key is not %s", pod.Namespace, pod.Name, RackLabel)
 			}
-			pods = append(pods, pod)
-			rackPods[node.Labels[RackLabel]] = pods
-		}
-	}
-
-	podNum := len(allPods)
-	minPodsOneRack := podNum / RackNum
-	maxPodsOneRack := minPodsOneRack
-	mod := podNum % RackNum
-	if mod > 0 {
-		maxPodsOneRack = maxPodsOneRack + 1
-	}
-
-	for rack, pods := range rackPods {
-		podNumOnRack := len(pods)
-		if podNumOnRack > maxPodsOneRack {
-			return fmt.Errorf("the rack:[%s] have pods more than %d", rack, maxPodsOneRack)
-		}
-		if podNumOnRack < minPodsOneRack {
-			return fmt.Errorf("the rack:[%s] have pods less than %d", rack, mod)
 		}
 	}
 	return nil
@@ -203,6 +181,10 @@ func (oa *operatorActions) CheckDataRegionDisasterTolerance(cluster *TidbCluster
 		// regionRacks is map of rackName and the peerID
 		regionRacks := map[string]uint64{}
 		for _, peer := range region.Peers {
+			if len(region.Peers) != 3 {
+				glog.Infof("cluster[%s] region[%d]'s peers not equal 3,[%v]. May be the failover happened", cluster.ClusterName, region.ID, region.Peers)
+				continue
+			}
 			storeID := strconv.FormatUint(peer.StoreId, 10)
 			nodeName, err := oa.getNodeByStoreId(storeID, cluster)
 			if err != nil {
@@ -211,7 +193,7 @@ func (oa *operatorActions) CheckDataRegionDisasterTolerance(cluster *TidbCluster
 			rackName := rackNodeMap[nodeName]
 			// if the rack have more than one peer of the region, return error
 			if otherID, exist := regionRacks[rackName]; exist {
-				return fmt.Errorf("region[%d]'s peer: [%d]and[%d] are in same rack:[%s]", region.ID, otherID, peer.Id, rackName)
+				return fmt.Errorf("cluster[%s] region[%d]'s peer: [%d]and[%d] are in same rack:[%s]", cluster.ClusterName, region.ID, otherID, peer.Id, rackName)
 			}
 			// add a new pair of rack and peer
 			regionRacks[rackName] = peer.Id

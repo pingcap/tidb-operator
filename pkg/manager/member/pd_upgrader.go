@@ -18,19 +18,19 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 type pdUpgrader struct {
-	pdControl  controller.PDControlInterface
+	pdControl  pdapi.PDControlInterface
 	podControl controller.PodControlInterface
 	podLister  corelisters.PodLister
 }
 
 // NewPDUpgrader returns a pdUpgrader
-func NewPDUpgrader(pdControl controller.PDControlInterface,
+func NewPDUpgrader(pdControl pdapi.PDControlInterface,
 	podControl controller.PodControlInterface,
 	podLister corelisters.PodLister) Upgrader {
 	return &pdUpgrader{
@@ -41,14 +41,6 @@ func NewPDUpgrader(pdControl controller.PDControlInterface,
 }
 
 func (pu *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	force, err := pu.needForceUpgrade(tc)
-	if err != nil {
-		return err
-	}
-	if force {
-		return pu.forceUpgrade(tc, oldSet, newSet)
-	}
-
 	return pu.gracefulUpgrade(tc, oldSet, newSet)
 }
 
@@ -96,35 +88,6 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 	return nil
 }
 
-func (pu *pdUpgrader) needForceUpgrade(tc *v1alpha1.TidbCluster) (bool, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
-	selector, err := label.New().Instance(instanceName).PD().Selector()
-	if err != nil {
-		return false, err
-	}
-	pdPods, err := pu.podLister.Pods(ns).List(selector)
-	if err != nil {
-		return false, err
-	}
-
-	imagePullFailedCount := 0
-	for _, pod := range pdPods {
-		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
-		if !exist {
-			return false, fmt.Errorf("tidbcluster: [%s/%s]'s pod:[%s] doesn't have label: %s", ns, tcName, pod.GetName(), apps.ControllerRevisionHashLabelKey)
-		}
-		if revisionHash == tc.Status.PD.StatefulSet.CurrentRevision {
-			if imagePullFailed(pod) {
-				imagePullFailedCount++
-			}
-		}
-	}
-
-	return imagePullFailedCount >= int(tc.Status.PD.StatefulSet.Replicas)/2+1, nil
-}
-
 func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
@@ -149,7 +112,7 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 }
 
 func (pu *pdUpgrader) transferPDLeaderTo(tc *v1alpha1.TidbCluster, targetName string) error {
-	return pu.pdControl.GetPDClient(tc).TransferPDLeader(targetName)
+	return controller.GetPDClient(pu.pdControl, tc).TransferPDLeader(targetName)
 }
 
 type fakePDUpgrader struct{}
@@ -160,6 +123,9 @@ func NewFakePDUpgrader() Upgrader {
 }
 
 func (fpu *fakePDUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
+	if !tc.Status.PD.Synced {
+		return fmt.Errorf("tidbcluster: pd status sync failed,can not to be upgraded")
+	}
 	tc.Status.PD.Phase = v1alpha1.UpgradePhase
 	return nil
 }

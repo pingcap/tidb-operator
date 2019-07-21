@@ -16,15 +16,17 @@ package tests
 import (
 	"bytes"
 	"fmt"
-	"html/template"
 	"math/rand"
+	"text/template"
 	"time"
 
 	"github.com/pingcap/tidb-operator/tests/slack"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -51,24 +53,28 @@ func SelectNode(nodes []Nodes) string {
 	return vmNodes[index2]
 }
 
-func GetApiserverPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
-	return GetKubeComponent(kubeCli, node, "kube-apiserver")
+func GetKubeApiserverPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
+	return GetPodsByLabels(kubeCli, node, map[string]string{"component": "kube-apiserver"})
 }
 
-func GetSchedulerPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
-	return GetKubeComponent(kubeCli, node, "kube-scheduler")
+func GetKubeSchedulerPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
+	return GetPodsByLabels(kubeCli, node, map[string]string{"component": "kube-scheduler"})
 }
 
-func GetDNSPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
-	return GetKubeComponent(kubeCli, node, "kube-dns")
+func GetKubeControllerManagerPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
+	return GetPodsByLabels(kubeCli, node, map[string]string{"component": "kube-controller-manager"})
 }
 
-func GetControllerManagerPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
-	return GetKubeComponent(kubeCli, node, "kube-controller-manager")
+func GetKubeDNSPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
+	return GetPodsByLabels(kubeCli, node, map[string]string{"k8s-app": "kube-dns"})
 }
 
-func GetKubeComponent(kubeCli kubernetes.Interface, node string, componentName string) (*corev1.Pod, error) {
-	selector := labels.Set(map[string]string{"component": componentName}).AsSelector()
+func GetKubeProxyPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {
+	return GetPodsByLabels(kubeCli, node, map[string]string{"k8s-app": "kube-proxy"})
+}
+
+func GetPodsByLabels(kubeCli kubernetes.Interface, node string, lables map[string]string) (*corev1.Pod, error) {
+	selector := labels.Set(lables).AsSelector()
 	options := metav1.ListOptions{LabelSelector: selector.String()}
 	componentPods, err := kubeCli.CoreV1().Pods("kube-system").List(options)
 	if err != nil {
@@ -83,6 +89,9 @@ func GetKubeComponent(kubeCli kubernetes.Interface, node string, componentName s
 }
 
 var affinityTemp string = `{{.Kind}}:
+  config: |
+{{range .Config}}    {{.}}
+{{end}}
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
@@ -92,7 +101,7 @@ var affinityTemp string = `{{.Kind}}:
             matchLabels:
               app.kubernetes.io/instance: {{.ClusterName}}
               app.kubernetes.io/component: {{.Kind}}
-          topologyKey: "rack"
+          topologyKey: {{.TopologyKey}}
           namespaces:
           - {{.Namespace}}
 `
@@ -102,28 +111,67 @@ type AffinityInfo struct {
 	Kind        string
 	Weight      int
 	Namespace   string
+	TopologyKey string
+	Config      []string
 }
 
-func GetAffinityConfigOrDie(clusterName, namespace string) string {
+func GetSubValuesOrDie(clusterName, namespace, topologyKey string, pdConfig []string, tikvConfig []string, tidbConfig []string) string {
 	temp, err := template.New("dt-affinity").Parse(affinityTemp)
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 
 	pdbuff := new(bytes.Buffer)
-	err = temp.Execute(pdbuff, &AffinityInfo{ClusterName: clusterName, Kind: "pd", Weight: 50, Namespace: namespace})
+	err = temp.Execute(pdbuff, &AffinityInfo{ClusterName: clusterName, Kind: "pd", Weight: 50, Namespace: namespace, TopologyKey: topologyKey, Config: pdConfig})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 	tikvbuff := new(bytes.Buffer)
-	err = temp.Execute(tikvbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tikv", Weight: 50, Namespace: namespace})
+	err = temp.Execute(tikvbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tikv", Weight: 50, Namespace: namespace, TopologyKey: topologyKey, Config: tikvConfig})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 	tidbbuff := new(bytes.Buffer)
-	err = temp.Execute(tidbbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tidb", Weight: 50, Namespace: namespace})
+	err = temp.Execute(tidbbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tidb", Weight: 50, Namespace: namespace, TopologyKey: topologyKey, Config: tidbConfig})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 	return fmt.Sprintf("%s%s%s", pdbuff.String(), tikvbuff.String(), tidbbuff.String())
+}
+
+const (
+	PodPollInterval = 2 * time.Second
+	// PodTimeout is how long to wait for the pod to be started or
+	// terminated.
+	PodTimeout = 5 * time.Minute
+)
+
+func waitForPodNotFoundInNamespace(c kubernetes.Interface, podName, ns string, timeout time.Duration) error {
+	return wait.PollImmediate(PodPollInterval, timeout, func() (bool, error) {
+		_, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			return true, nil // done
+		}
+		if err != nil {
+			return true, err // stop wait with error
+		}
+		return false, nil
+	})
+}
+
+func waitForComponentStatus(c kubernetes.Interface, component string, statusType corev1.ComponentConditionType, status corev1.ConditionStatus) error {
+	return wait.PollImmediate(time.Second, 5*time.Minute, func() (bool, error) {
+		componentStatus, err := c.CoreV1().ComponentStatuses().Get(component, metav1.GetOptions{})
+		if err != nil {
+			return true, err // stop wait with error
+		}
+		found := false
+		for _, condition := range componentStatus.Conditions {
+			if condition.Type == statusType && condition.Status == status {
+				found = true
+				break
+			}
+		}
+		return found, nil
+	})
 }

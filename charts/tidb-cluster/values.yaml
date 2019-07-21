@@ -30,7 +30,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.0.0-beta.3
+  image: pingcap/tidb-operator:v1.0.0-rc.1
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -48,9 +48,20 @@ discovery:
 enableConfigMapRollout: false
 
 pd:
+  # Please refer to https://github.com/pingcap/pd/blob/master/conf/config.toml for the default
+  # pd configurations (change to the tags of your pd version), 
+  # just follow the format in the file and configure in the 'config' section
+  # as below if you want to customize any configuration.
+  # Please refer to https://pingcap.com/docs-cn/v3.0/reference/configuration/pd-server/configuration-file/
+  # (choose the version matching your pd) for detailed explanation of each parameter.
+  config: |
+    [log]
+    level = "info"
+    [replication]
+    location-labels = ["region", "zone", "rack", "host"]
+  
   replicas: 3
-  image: pingcap/pd:v3.0.0-rc.1
-  logLevel: info
+  image: pingcap/pd:v3.0.1
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -60,11 +71,6 @@ pd:
   # Image pull policy.
   imagePullPolicy: IfNotPresent
 
-  # maxStoreDownTime is how long a store will be considered `down` when disconnected
-  # if a store is considered `down`, the regions will be migrated to other stores
-  maxStoreDownTime: 30m
-  # maxReplicas is the number of replicas for each region
-  maxReplicas: 3
   resources:
     limits: {}
     #   cpu: 8000m
@@ -147,9 +153,57 @@ pd:
   annotations: {}
 
 tikv:
+  # Please refer to https://github.com/tikv/tikv/blob/master/etc/config-template.toml for the default
+  # tikv configurations (change to the tags of your tikv version),
+  # just follow the format in the file and configure in the 'config' section
+  # as below if you want to customize any configuration.
+  # Please refer to https://pingcap.com/docs-cn/v3.0/reference/configuration/tikv-server/configuration-file/
+  # (choose the version matching your tikv) for detailed explanation of each parameter.
+  config: |
+    log-level = "info"
+  
+  # Here are some parameters you may want to customize (Please configure in the above 'config' section):
+  # [readpool.storage]
+  # ## Size of the thread pool for high-priority operations.
+  # # high-concurrency = 4
+  # ## Size of the thread pool for normal-priority operations.
+  # # normal-concurrency = 4
+  # ## Size of the thread pool for low-priority operations.
+  # # low-concurrency = 4
+  # [readpool.coprocessor]
+  # ## Most read requests from TiDB are sent to the coprocessor of TiKV. high/normal/low-concurrency is
+  # ## used to set the number of threads of the coprocessor.
+  # ## If there are many read requests, you can increase these config values (but keep it within the
+  # ## number of system CPU cores). For example, for a 32-core machine deployed with TiKV, you can even
+  # ## set these config to 30 in heavy read scenarios.
+  # ## If CPU_NUM > 8, the default thread pool size for coprocessors is set to CPU_NUM * 0.8.
+  # # high-concurrency = 8
+  # # normal-concurrency = 8
+  # # low-concurrency = 8
+  # [server]
+  # ## Size of the thread pool for the gRPC server.
+  # # grpc-concurrency = 4
+  # [storage]
+  # ## Scheduler's worker pool size, i.e. the number of write threads.
+  # ## It should be less than total CPU cores. When there are frequent write operations, set it to a
+  # ## higher value. More specifically, you can run `top -H -p tikv-pid` to check whether the threads
+  # ## named `sched-worker-pool` are busy.
+  # # scheduler-worker-pool-size = 4
+  #### Below parameters available in TiKV 2.x only
+  # [rocksdb.defaultcf]
+  # ## block-cache used to cache uncompressed blocks, big block-cache can speed up read.
+  # ## in normal cases should tune to 30%-50% tikv.resources.limits.memory
+  # # block-cache-size = "1GB"
+  # [rocksdb.writecf]
+  # ## in normal cases should tune to 10%-30% tikv.resources.limits.memory
+  # # block-cache-size = "256MB"
+  #### Below parameters available in TiKV 3.x and above only
+  # [storage.block-cache]
+  # ## Size of the shared block cache. Normally it should be tuned to 30%-50% of container's total memory.
+  # # capacity = "1GB"
+
   replicas: 3
-  image: pingcap/tikv:v3.0.0-rc.1
-  logLevel: info
+  image: pingcap/tikv:v3.0.1
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -159,11 +213,6 @@ tikv:
   # Image pull policy.
   imagePullPolicy: IfNotPresent
 
-  # syncLog is a bool value to enable or disable syc-log for raftstore, default is true
-  # enable this can prevent data loss when power failure
-  syncLog: true
-  # size of thread pool for grpc server.
-  # grpcConcurrency: 4
   resources:
     limits: {}
     #   cpu: 16000m
@@ -192,25 +241,17 @@ tikv:
   #   effect: "NoSchedule"
   annotations: {}
 
-  # block-cache used to cache uncompressed blocks, big block-cache can speed up read.
-  # in normal cases should tune to 30%-50% tikv.resources.limits.memory
-  # defaultcfBlockCacheSize: "1GB"
-
-  # in normal cases should tune to 10%-30% tikv.resources.limits.memory
-  # writecfBlockCacheSize: "256MB"
-
-  # size of thread pool for high-priority/normal-priority/low-priority operations
-  # readpoolStorageConcurrency: 4
-
-  # Notice: if tikv.resources.limits.cpu > 8, default thread pool size for coprocessors
-  # will be set to tikv.resources.limits.cpu * 0.8.
-  # readpoolCoprocessorConcurrency: 8
-
-  # scheduler's worker pool size, should increase it in heavy write cases,
-  # also should less than total cpu cores.
-  # storageSchedulerWorkerPoolSize: 4
-
 tidb:
+  # Please refer to https://github.com/pingcap/tidb/blob/master/config/config.toml.example for the default
+  # tidb configurations(change to the tags of your tidb version),
+  # just follow the format in the file and configure in the 'config' section
+  # as below if you want to customize any configuration.
+  # Please refer to https://pingcap.com/docs-cn/v3.0/reference/configuration/tidb-server/configuration-file/
+  # (choose the version matching your tidb) for detailed explanation of each parameter.
+  config: |
+    [log]
+    level = "info"
+  
   replicas: 2
   # The secret name of root password, you can create secret with following command:
   # kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
@@ -219,40 +260,10 @@ tidb:
   # initSql is the SQL statements executed after the TiDB cluster is bootstrapped.
   # initSql: |-
   #   create database app;
-  image: pingcap/tidb:v3.0.0-rc.1
+  image: pingcap/tidb:v3.0.1
   # Image pull policy.
   imagePullPolicy: IfNotPresent
-  logLevel: info
-  preparedPlanCacheEnabled: false
-  preparedPlanCacheCapacity: 100
-  # Enable local latches for transactions. Enable it when
-  # there are lots of conflicts between transactions.
-  txnLocalLatchesEnabled: false
-  txnLocalLatchesCapacity: "10240000"
-  # The limit of concurrent executed sessions.
-  tokenLimit: "1000"
-  # Set the memory quota for a query in bytes. Default: 32GB
-  memQuotaQuery: "34359738368"
-  # The limitation of the number for the entries in one transaction.
-  # If using TiKV as the storage, the entry represents a key/value pair.
-  # WARNING: Do not set the value too large, otherwise it will make a very large impact on the TiKV cluster.
-  # Please adjust this configuration carefully.
-  txnEntryCountLimit: "300000"
-  # The limitation of the size in byte for the entries in one transaction.
-  # If using TiKV as the storage, the entry represents a key/value pair.
-  # WARNING: Do not set the value too large, otherwise it will make a very large impact on the TiKV cluster.
-  # Please adjust this configuration carefully.
-  txnTotalSizeLimit: "104857600"
-  # enableBatchDml enables batch commit for the DMLs
-  enableBatchDml: false
-  # check mb4 value in utf8 is used to control whether to check the mb4 characters when the charset is utf8.
-  checkMb4ValueInUtf8: true
-  # treat-old-version-utf8-as-utf8mb4 use for upgrade compatibility. Set to true will treat old version table/column UTF8 charset as UTF8MB4.
-  treatOldVersionUtf8AsUtf8mb4: true
-  # lease is schema lease duration, very dangerous to change only if you know what you do.
-  lease: 45s
-  # Max CPUs to use, 0 use number of CPUs in the machine.
-  maxProcs: 0
+
   resources:
     limits: {}
     #   cpu: 16000m
@@ -285,7 +296,7 @@ tidb:
     exposeStatus: true
     # annotations:
       # cloud.google.com/load-balancer-type: Internal
-  # separateSlowLog: true
+  separateSlowLog: true
   slowLogTailer:
     image: busybox:1.26.2
     resources:
@@ -374,7 +385,7 @@ binlog:
   pump:
     create: false
     replicas: 1
-    image: pingcap/tidb-binlog:v3.0.0-rc.1
+    image: pingcap/tidb-binlog:v3.0.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -382,7 +393,7 @@ binlog:
     # or to arbitrary policies determined by the cluster administrators.
     # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
     storageClassName: local-storage
-    storage: 10Gi
+    storage: 20Gi
     syncLog: true
     # a integer value to control expiry date of the binlog data, indicates for how long (in days) the binlog data would be stored.
     # must bigger than 0
@@ -392,7 +403,7 @@ binlog:
 
   drainer:
     create: false
-    image: pingcap/tidb-binlog:v3.0.0-rc.1
+    image: pingcap/tidb-binlog:v3.0.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -437,10 +448,8 @@ binlog:
 
 scheduledBackup:
   create: false
-  binlogImage: pingcap/tidb-binlog:v3.0.0-rc.1
-  binlogImagePullPolicy: IfNotPresent
-  # https://github.com/tennix/tidb-cloud-backup
-  mydumperImage: pingcap/tidb-cloud-backup:latest
+  # https://github.com/pingcap/tidb-cloud-backup
+  mydumperImage: pingcap/tidb-cloud-backup:20190610
   mydumperImagePullPolicy: IfNotPresent
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -482,6 +491,15 @@ scheduledBackup:
   # You can create the secret by:
   # kubectl create secret generic ceph-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
   # secretName: ceph-backup-secret
+
+  # backup to s3
+  s3: {}
+  # region: ""
+  # bucket: ""
+  # secretName is the name of the secret which stores s3 object store access key and secret key
+  # You can create the secret by:
+  # kubectl create secret generic s3-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
+  # secretName: s3-backup-secret
 
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"

@@ -13,6 +13,7 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/ops"
 	"github.com/pingcap/tidb-operator/tests/slack"
@@ -37,7 +38,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	}
 
 	// checkout pd config
-	pdCfg, err := oa.pdControl.GetPDClient(tc).GetConfig()
+	pdCfg, err := oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName()).GetConfig()
 	if err != nil {
 		glog.Errorf("failed to get the pd config: tc=%s err=%s", info.ClusterName, err.Error())
 		return err
@@ -47,11 +48,13 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 
 	// find an up store
 	var store v1alpha1.TiKVStore
+	var podName string
 	for _, v := range tc.Status.TiKV.Stores {
 		if v.State != v1alpha1.TiKVStateUp {
 			continue
 		}
 		store = v
+		podName = v.PodName
 		break
 	}
 	if len(store.ID) == 0 {
@@ -96,7 +99,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 
 	tikvOps.SetPoll(DefaultPollInterval, maxStoreDownTime+tikvFailoverPeriod+failoverTimeout)
 
-	return tikvOps.PollTiDBCluster(info.Namespace, info.ClusterName,
+	err = tikvOps.PollTiDBCluster(info.Namespace, info.ClusterName,
 		func(tc *v1alpha1.TidbCluster, err error) (bool, error) {
 			_, ok := tc.Status.TiKV.FailureStores[store.ID]
 			glog.Infof("cluster: [%s/%s] check if target store failed: %t",
@@ -106,6 +109,30 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 			}
 			return true, nil
 		})
+	if err != nil {
+		glog.Errorf("failed to check truncate sst file: %v", err)
+		return err
+	}
+
+	if err := wait.Poll(1*time.Minute, 30*time.Minute, func() (bool, error) {
+		if err := tikvOps.RecoverSSTFile(info.Namespace, podName); err != nil {
+			glog.Errorf("failed to recovery sst file %s/%s, %v", info.Namespace, podName, err)
+			return false, nil
+		}
+
+		return true, nil
+	}); err != nil {
+		return err
+	}
+
+	glog.Infof("deleting pod: [%s/%s] again", info.Namespace, store.PodName)
+	return wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
+		err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(store.PodName, &metav1.DeleteOptions{})
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
 }
 
 func (oa *operatorActions) TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) {
@@ -285,6 +312,16 @@ func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 		return false, nil
 	}
 
+	// recover tikv manually
+	if tc.Status.TiKV.FailureStores != nil {
+		tc.Status.TiKV.FailureStores = nil
+		tc, err = oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Update(tc)
+		if err != nil {
+			glog.Errorf("failed to set status.tikv.failureStore to nil, %v", err)
+			return false, nil
+		}
+	}
+
 	return true, nil
 }
 
@@ -360,7 +397,7 @@ func (oa *operatorActions) tikvFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluste
 			healthCount++
 		}
 	}
-	if tc.Status.TiKV.Synced && healthCount == int(tc.Spec.TiKV.Replicas) {
+	if tc.Status.TiKV.Synced && healthCount >= int(tc.Spec.TiKV.Replicas) {
 		return true
 	}
 
@@ -452,7 +489,83 @@ func (oa *operatorActions) CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig,
 		if err != nil {
 			return err
 		}
-		glog.V(4).Infof("all clusters is available")
+		glog.V(4).Infof("all clusters are available")
+		return nil
+	})
+}
+
+func (oa *operatorActions) CheckKubeProxyDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
+	glog.Infof("checking k8s/tidbCluster status when kube-proxy down")
+
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckK8sAvailable(nil, nil)
+		if err != nil {
+			return err
+
+		}
+		glog.V(4).Infof("k8s cluster is available.")
+
+		err = oa.CheckOperatorAvailable(operatorConfig)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("tidb operator is available.")
+
+		err = oa.CheckTidbClustersAvailable(clusters)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("all clusters are available.")
+		return nil
+	})
+}
+
+func (oa *operatorActions) CheckKubeSchedulerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
+	glog.Infof("verify kube-scheduler is not avaiavble")
+
+	if err := waitForComponentStatus(oa.kubeCli, "scheduler", corev1.ComponentHealthy, corev1.ConditionFalse); err != nil {
+		slack.NotifyAndPanic(fmt.Errorf("failed to stop kube-scheduler: %v", err))
+	}
+
+	glog.Infof("checking operator/tidbCluster status when kube-scheduler is not available")
+
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckOperatorAvailable(operatorConfig)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("tidb operator is available.")
+
+		err = oa.CheckTidbClustersAvailable(clusters)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("all clusters are available.")
+		return nil
+	})
+}
+
+func (oa *operatorActions) CheckKubeControllerManagerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
+	glog.Infof("verify kube-controller-manager is not avaiavble")
+
+	if err := waitForComponentStatus(oa.kubeCli, "controller-manager", corev1.ComponentHealthy, corev1.ConditionFalse); err != nil {
+		slack.NotifyAndPanic(fmt.Errorf("failed to stop kube-controller-manager: %v", err))
+	}
+
+	glog.Infof("checking operator/tidbCluster status when kube-controller-manager is not available")
+
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckOperatorAvailable(operatorConfig)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("tidb operator is available.")
+
+		err = oa.CheckTidbClustersAvailable(clusters)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("all clusters are available.")
 		return nil
 	})
 }
@@ -460,33 +573,44 @@ func (oa *operatorActions) CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig,
 func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
 	glog.Infof("check k8s/operator/tidbCluster status when one apiserver down")
 	affectedPods := map[string]*corev1.Pod{}
-	apiserverPod, err := GetApiserverPod(oa.kubeCli, faultNode)
+	apiserverPod, err := GetKubeApiserverPod(oa.kubeCli, faultNode)
 	if err != nil {
-		slack.NotifyAndPanic(fmt.Errorf("can't find apiserver in node:%s", faultNode))
+		slack.NotifyAndPanic(fmt.Errorf("can't find apiserver in k8s cluster"))
 	}
 	if apiserverPod != nil {
 		affectedPods[apiserverPod.GetName()] = apiserverPod
 	}
-	controllerPod, err := GetControllerManagerPod(oa.kubeCli, faultNode)
+
+	controllerPod, err := GetKubeControllerManagerPod(oa.kubeCli, faultNode)
 	if err != nil {
-		glog.Infof("can't find controllerManager in node:%s", faultNode)
+		slack.NotifyAndPanic(fmt.Errorf("can't find kube-controller-manager in k8s cluster"))
 	}
 	if controllerPod != nil {
 		affectedPods[controllerPod.GetName()] = controllerPod
 	}
-	schedulerPod, err := GetSchedulerPod(oa.kubeCli, faultNode)
+
+	schedulerPod, err := GetKubeSchedulerPod(oa.kubeCli, faultNode)
 	if err != nil {
-		glog.Infof("can't find scheduler in node:%s", faultNode)
+		slack.NotifyAndPanic(fmt.Errorf("can't find kube-scheduler in k8s cluster"))
 	}
 	if schedulerPod != nil {
 		affectedPods[schedulerPod.GetName()] = schedulerPod
 	}
-	dnsPod, err := GetDNSPod(oa.kubeCli, faultNode)
+
+	dnsPod, err := GetKubeDNSPod(oa.kubeCli, faultNode)
 	if err != nil {
-		slack.NotifyAndPanic(fmt.Errorf("can't find controller-manager in node:%s", faultNode))
+		slack.NotifyAndPanic(fmt.Errorf("can't find kube-dns in k8s cluster"))
 	}
 	if dnsPod != nil {
 		affectedPods[dnsPod.GetName()] = dnsPod
+	}
+
+	proxyPod, err := GetKubeProxyPod(oa.kubeCli, faultNode)
+	if err != nil {
+		slack.NotifyAndPanic(fmt.Errorf("can't find kube-proxy in k8s cluster"))
+	}
+	if proxyPod != nil {
+		affectedPods[dnsPod.GetName()] = proxyPod
 	}
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(map[string]string{faultNode: faultNode}, affectedPods)
@@ -555,7 +679,7 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, exc
 			}
 			podState := GetPodStatus(&pod)
 			if podState != string(corev1.PodRunning) {
-				return false, fmt.Errorf("pod:[%s/%s] is unavailable,state is %s", pod.GetName(), pod.GetNamespace(), podState)
+				return false, fmt.Errorf("pod:[%s/%s] is unavailable,state is %s", pod.GetNamespace(), pod.GetName(), podState)
 			}
 		}
 		return true, nil

@@ -56,6 +56,7 @@ func main() {
 		WebhookSecretName:  "webhook-secret",
 		WebhookConfigName:  "webhook-config",
 		ImagePullPolicy:    v1.PullIfNotPresent,
+		TestMode:           true,
 	}
 
 	ns := os.Getenv("NAMESPACE")
@@ -73,6 +74,8 @@ func main() {
 	name1 := "e2e-cluster1"
 	name2 := "e2e-cluster2"
 	name3 := "e2e-pd-replicas-1"
+	topologyKey := "rack"
+
 	clusterInfos := []*tests.TidbClusterConfig{
 		{
 			Namespace:        name1,
@@ -82,7 +85,7 @@ func main() {
 			TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", initTidbVersion),
 			TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", initTidbVersion),
 			StorageClassName: "local-storage",
-			Password:         "admin",
+			Password:         "",
 			UserName:         "root",
 			InitSecretName:   fmt.Sprintf("%s-set-secret", name1),
 			BackupSecretName: fmt.Sprintf("%s-backup-secret", name1),
@@ -110,12 +113,8 @@ func main() {
 				BatchSize:   1,
 				RawSize:     1,
 			},
-			SubValues:              tests.GetAffinityConfigOrDie(name1, name1),
+			TopologyKey:            topologyKey,
 			EnableConfigMapRollout: true,
-			PDMaxReplicas:          3,
-			TiKVGrpcConcurrency:    4,
-			TiDBTokenLimit:         1000,
-			PDLogLevel:             "info",
 		},
 		{
 			Namespace:        name2,
@@ -153,12 +152,8 @@ func main() {
 				BatchSize:   1,
 				RawSize:     1,
 			},
-			SubValues:              tests.GetAffinityConfigOrDie(name2, name2),
+			TopologyKey:            topologyKey,
 			EnableConfigMapRollout: false,
-			PDMaxReplicas:          3,
-			TiKVGrpcConcurrency:    4,
-			TiDBTokenLimit:         1000,
-			PDLogLevel:             "info",
 		},
 		{
 			Namespace:        name2,
@@ -176,7 +171,8 @@ func main() {
 				"pd.replicas":     "1",
 				"discovery.image": conf.OperatorImage,
 			},
-			SubValues: tests.GetAffinityConfigOrDie(name3, name2),
+
+			TopologyKey: topologyKey,
 		},
 	}
 
@@ -335,7 +331,6 @@ func main() {
 	restoreClusterInfo.ClusterName = restoreClusterInfo.ClusterName + "-other"
 	restoreClusterInfo.InitSecretName = fmt.Sprintf("%s-set-secret", restoreClusterInfo.ClusterName)
 	restoreClusterInfo.BackupSecretName = fmt.Sprintf("%s-backup-secret", restoreClusterInfo.ClusterName)
-	restoreClusterInfo.SubValues = tests.GetAffinityConfigOrDie(restoreClusterInfo.ClusterName, restoreClusterInfo.Namespace)
 
 	if err = oa.CleanTidbCluster(restoreClusterInfo); err != nil {
 		glog.Fatal(err)

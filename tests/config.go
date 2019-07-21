@@ -26,16 +26,18 @@ const (
 type Config struct {
 	configFile string
 
-	TidbVersions     string  `yaml:"tidb_versions" json:"tidb_versions"`
-	OperatorTag      string  `yaml:"operator_tag" json:"operator_tag"`
-	OperatorImage    string  `yaml:"operator_image" json:"operator_image"`
-	LogDir           string  `yaml:"log_dir" json:"log_dir"`
-	FaultTriggerPort int     `yaml:"fault_trigger_port" json:"fault_trigger_port"`
-	Nodes            []Nodes `yaml:"nodes" json:"nodes"`
-	ETCDs            []Nodes `yaml:"etcds" json:"etcds"`
-	APIServers       []Nodes `yaml:"apiservers" json:"apiservers"`
-	CertFile         string
-	KeyFile          string
+	TidbVersions         string  `yaml:"tidb_versions" json:"tidb_versions"`
+	OperatorTag          string  `yaml:"operator_tag" json:"operator_tag"`
+	OperatorImage        string  `yaml:"operator_image" json:"operator_image"`
+	UpgradeOperatorTag   string  `yaml:"upgrade_operator_tag" json:"upgrade_operator_tag"`
+	UpgradeOperatorImage string  `yaml:"upgrade_operator_image" json:"upgrade_operator_image"`
+	LogDir               string  `yaml:"log_dir" json:"log_dir"`
+	FaultTriggerPort     int     `yaml:"fault_trigger_port" json:"fault_trigger_port"`
+	Nodes                []Nodes `yaml:"nodes" json:"nodes"`
+	ETCDs                []Nodes `yaml:"etcds" json:"etcds"`
+	APIServers           []Nodes `yaml:"apiservers" json:"apiservers"`
+	CertFile             string
+	KeyFile              string
 
 	PDMaxReplicas       int `yaml:"pd_max_replicas" json:"pd_max_replicas"`
 	TiKVGrpcConcurrency int `yaml:"tikv_grpc_concurrency" json:"tikv_grpc_concurrency"`
@@ -62,8 +64,6 @@ type Nodes struct {
 // NewConfig creates a new config.
 func NewConfig() (*Config, error) {
 	cfg := &Config{
-		OperatorRepoUrl: "https://github.com/pingcap/tidb-operator.git",
-
 		PDMaxReplicas:       5,
 		TiDBTokenLimit:      1024,
 		TiKVGrpcConcurrency: 8,
@@ -78,10 +78,13 @@ func NewConfig() (*Config, error) {
 	flag.StringVar(&cfg.configFile, "config", "", "Config file")
 	flag.StringVar(&cfg.LogDir, "log-dir", "/logDir", "log directory")
 	flag.IntVar(&cfg.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
-	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v3.0.0-beta.1,v3.0.0-rc.1", "tidb versions")
+	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v3.0.0-rc.1,v3.0.0-rc.2,v3.0.1", "tidb versions")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
+	flag.StringVar(&cfg.UpgradeOperatorTag, "upgrade-operator-tag", "", "upgrade operator tag used to choose charts")
+	flag.StringVar(&cfg.UpgradeOperatorImage, "upgrade-operator-image", "", "upgrade operator image")
 	flag.StringVar(&cfg.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
+	flag.StringVar(&cfg.OperatorRepoUrl, "operator-repo-url", "https://github.com/pingcap/tidb-operator.git", "tidb-operator repo url used")
 	flag.StringVar(&cfg.ChartDir, "chart-dir", "", "chart dir")
 	flag.StringVar(&slack.WebhookURL, "slack-webhook-url", "", "slack webhook url")
 	flag.Parse()

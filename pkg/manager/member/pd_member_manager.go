@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -34,7 +35,7 @@ import (
 )
 
 type pdMemberManager struct {
-	pdControl    controller.PDControlInterface
+	pdControl    pdapi.PDControlInterface
 	setControl   controller.StatefulSetControlInterface
 	svcControl   controller.ServiceControlInterface
 	setLister    v1beta1.StatefulSetLister
@@ -50,7 +51,7 @@ type pdMemberManager struct {
 }
 
 // NewPDMemberManager returns a *pdMemberManager
-func NewPDMemberManager(pdControl controller.PDControlInterface,
+func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	setLister v1beta1.StatefulSetLister,
@@ -199,6 +200,16 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
 	}
 
+	if !tc.Status.PD.Synced {
+		force := needForceUpgrade(tc)
+		if force {
+			tc.Status.PD.Phase = v1alpha1.UpgradePhase
+			setUpgradePartition(newPDSet, 0)
+			errSTS := pmm.updateStatefulSet(tc, newPDSet, oldPDSet)
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
+		}
+	}
+
 	if !templateEqual(newPDSet.Spec.Template, oldPDSet.Spec.Template) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
 		if err := pmm.pdUpgrader.Upgrade(tc, oldPDSet, newPDSet); err != nil {
 			return err
@@ -226,7 +237,9 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		}
 	}
 
-	// TODO FIXME equal is false every time
+	return pmm.updateStatefulSet(tc, newPDSet, oldPDSet)
+}
+func (pmm *pdMemberManager) updateStatefulSet(tc *v1alpha1.TidbCluster, newPDSet, oldPDSet *apps.StatefulSet) error {
 	if !statefulSetEqual(*newPDSet, *oldPDSet) {
 		set := *oldPDSet
 		set.Spec.Template = newPDSet.Spec.Template
@@ -259,7 +272,7 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 	}
 
-	pdClient := pmm.pdControl.GetPDClient(tc)
+	pdClient := controller.GetPDClient(pmm.pdControl, tc)
 
 	healthInfo, err := pdClient.GetHealth()
 	if err != nil {
@@ -310,11 +323,10 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		}
 
 		oldPDMember, exist := tc.Status.PD.Members[name]
-		if exist {
+
+		status.LastTransitionTime = metav1.Now()
+		if exist && status.Health == oldPDMember.Health {
 			status.LastTransitionTime = oldPDMember.LastTransitionTime
-		}
-		if !exist || status.Health != oldPDMember.Health {
-			status.LastTransitionTime = metav1.Now()
 		}
 
 		pdStatus[name] = status

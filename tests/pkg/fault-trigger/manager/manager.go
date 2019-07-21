@@ -21,15 +21,13 @@ import (
 // Manager to manager fault trigger
 type Manager struct {
 	sync.RWMutex
-	vmCache         map[string]string
-	kubeProxyImages string
+	vmCache map[string]string
 }
 
 // NewManager returns a manager instance
-func NewManager(kubeProxyImage string) *Manager {
+func NewManager() *Manager {
 	return &Manager{
-		kubeProxyImages: kubeProxyImage,
-		vmCache:         make(map[string]string),
+		vmCache: make(map[string]string),
 	}
 }
 

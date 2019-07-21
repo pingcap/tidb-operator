@@ -66,6 +66,26 @@ TiDB Operator uses `values.yaml` as TiDB cluster configuration file. It provides
 
 For other settings, the variables in `values.yaml` are self-explanatory with comments. You can modify them according to your need before installing the charts.
 
+
+## GKE
+
+On GKE, local SSD volumes by default are limited to 375 GiB size and can perform sub-optimally.
+
+For proper performance, you must:
+
+* make sure SSD is mounted with the `nobarrier` option (it is not on COS)
+
+We have a [daemonset](../manifests/gke/local-ssd-provision.yaml) that
+* fixes any performance issues
+* remounts local SSD disks with a UUID for safety and ensures that the nobarrier option is set
+* combines all local SSD disks into one large disk with lvm tools.
+* Run the local-volume-provisioner
+
+The terraform deployment will automatically install that.
+
+> **Note**: On Ubuntu this setup that combines local SSD assumes you are running only one process that needs local SSD per VM.
+
+
 ## Deploy TiDB cluster
 
 After TiDB Operator and Helm are deployed correctly and configuration completed, TiDB cluster can be deployed using following command:

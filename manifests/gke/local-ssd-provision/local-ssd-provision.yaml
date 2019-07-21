@@ -1,0 +1,243 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: "local-storage"
+provisioner: "kubernetes.io/no-provisioner"
+volumeBindingMode: "WaitForFirstConsumer"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-provisioner-config
+  namespace: kube-system
+data:
+  storageClassMap: |
+    local-storage:
+      hostDir: /mnt/disks
+      mountDir: /mnt/disks
+
+---
+# Local SSD provisioner
+# Remount disks with a UUID. Ensure the nobarrier options is set.
+# This will combine all disks with LVM.
+# If you don't want to combine disks, you can set NO_COMBINE_LOCAL_SSD=1
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: local-volume-provisioner
+  namespace: kube-system
+  labels:
+    app: local-volume-provisioner
+spec:
+  selector:
+    matchLabels:
+      app: local-volume-provisioner
+  template:
+    metadata:
+      labels:
+        app: local-volume-provisioner
+    spec:
+      hostPID: true
+      nodeSelector:
+        cloud.google.com/gke-local-ssd: "true"
+      serviceAccountName: local-storage-admin
+      initContainers:
+        - name: local-ssd-startup
+          image: alpine
+          command: ['/bin/sh', '-c', 'nsenter -t 1 -m -u -i -n -p -- bash -c "${STARTUP_SCRIPT}"']
+          securityContext:
+            privileged: true
+          volumeMounts:
+          - mountPath: /mnt/disks
+            name: local-disks
+            mountPropagation: Bidirectional
+          env:
+          - name: STARTUP_SCRIPT
+            value: |
+                #!/usr/bin/env bash
+                set -euo pipefail
+                set -x
+
+                # use /var because it is writeable on COS
+                if ! findmnt -n -a -l | grep /mnt/disks/ssd ; then
+                  if test -f /var/ssd_mounts ; then
+                    ssd_mounts=$(cat /var/ssd_mounts)
+                  else
+                    echo "no ssds mounted yet"
+                    exit 1
+                  fi
+                else
+                  ssd_mounts=$(findmnt -n -a -l --nofsroot | grep /mnt/disks/ssd)
+                  echo "$ssd_mounts" > /var/ssd_mounts
+                fi
+
+                # Re-mount all disks as a single logical volume with a UUID
+                if old_mounts=$(findmnt -n -a -l --nofsroot | grep /mnt/disks/ssd) ; then
+                  echo "$old_mounts" | awk '{print $1}' | while read -r ssd ; do
+                    umount "$ssd"
+                    new_fstab=$(grep -v "$ssd" /etc/fstab) || echo "fstab is now empty"
+                    echo "$new_fstab" > /etc/fstab
+                  done
+                fi
+                echo "$ssd_mounts" | awk '{print $1}' | while read -r ssd ; do
+                  if test -d "$ssd"; then
+                    rm -r "$ssd"
+                  fi
+                done
+
+                if ! /sbin/pvs | grep volume_all_ssds ; then
+                  # Don't combine with lvm if there is 1 disk or the environment variable is set.
+                  # lvm does have overhead, so if there is just 1 disk do not use lvm.
+                  # remount with uuid, set mount options (nobarrier), and exit
+                  NO_COMBINE_LOCAL_SSD="${NO_COMBINE_LOCAL_SSD:-""}"
+                  if ! test -z "$NO_COMBINE_LOCAL_SSD" || [ "$(echo "$ssd_mounts" | wc -l)" -eq 1 ] ; then
+                    devs=$(echo "$ssd_mounts" | awk '{print $2}')
+                    echo "$devs" | while read -r dev ; do
+                      if ! $(findmnt -n -a -l --nofsroot | grep "$dev") ; then
+                        dev_basename=$(basename "$dev")
+                        mkdir -p /var/dev_wiped/
+                        if ! test -f /var/dev_wiped/$dev_basename ; then
+                          /sbin/wipefs --all "$dev"
+                          touch /var/dev_wiped/$dev_basename
+                        fi
+                        if ! uuid=$(blkid -s UUID -o value "$dev") ; then
+                          mkfs.ext4 "$dev"
+                          uuid=$(blkid -s UUID -o value "$dev")
+                        fi
+                        mnt_dir="/mnt/disks/$uuid"
+                        mkdir -p "$mnt_dir"
+                        if ! grep "$uuid" /etc/fstab ; then
+                          echo "UUID=$uuid $mnt_dir ext4 rw,relatime,discard,nobarrier,data=ordered" >> /etc/fstab
+                        fi
+                        mount -U "$uuid" -t ext4 --target "$mnt_dir" --options 'rw,relatime,discard,nobarrier,data=ordered'
+                      fi
+                    done
+
+                    exit 0
+                  fi
+
+                  for dev in $(echo "$ssd_mounts" | awk '{print $2}') ; do
+                    if $(findmnt -n -a -l --nofsroot | grep "$dev") ; then
+                      echo "$dev" already individually mounted
+                      exit 1
+                    fi
+                    /sbin/wipefs --all "$dev"
+                  done
+                  echo "$ssd_mounts" | awk '{print $2}' | xargs /sbin/pvcreate
+                fi
+
+                /sbin/pvdisplay
+                if ! /sbin/vgs | grep volume_all_ssds ; then
+                  echo "$ssd_mounts" | awk '{print $2}' | xargs /sbin/vgcreate volume_all_ssds
+                fi
+                /sbin/vgdisplay
+                if ! /sbin/lvs | grep logical_all_ssds ; then
+                  /sbin/lvcreate -l 100%FREE -n logical_all_ssds volume_all_ssds
+                fi
+                /sbin/lvdisplay
+
+                if ! uuid=$(blkid -s UUID -o value /dev/volume_all_ssds/logical_all_ssds) ; then
+                  mkfs.ext4 /dev/volume_all_ssds/logical_all_ssds
+                  uuid=$(blkid -s UUID -o value /dev/volume_all_ssds/logical_all_ssds)
+                fi
+
+                mnt_dir="/mnt/disks/$uuid"
+                mkdir -p "$mnt_dir"
+
+                if ! grep "$uuid" /etc/fstab ; then
+                  echo "UUID=$uuid $mnt_dir ext4 rw,relatime,discard,nobarrier,data=ordered" >> /etc/fstab
+                  mount -U "$uuid" -t ext4 --target "$mnt_dir" --options 'rw,relatime,discard,nobarrier,data=ordered'
+                fi
+      containers:
+        - image: "quay.io/external_storage/local-volume-provisioner:v2.2.0"
+          name: provisioner
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
+          env:
+          - name: MY_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: MY_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: JOB_CONTAINER_IMAGE
+            value: "quay.io/external_storage/local-volume-provisioner:v2.2.0"
+          volumeMounts:
+            - mountPath: /etc/provisioner/config
+              name: provisioner-config
+              readOnly: true
+            # mounting /dev in DinD environment would fail
+            # - mountPath: /dev
+            #   name: provisioner-dev
+            - mountPath: /mnt/disks
+              name: local-disks
+              mountPropagation: "HostToContainer"
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      volumes:
+        - name: provisioner-config
+          configMap:
+            name: local-provisioner-config
+        # - name: provisioner-dev
+        #   hostPath:
+        #     path: /dev
+        - name: local-disks
+          hostPath:
+            path: /mnt/disks
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: local-storage-admin
+  namespace: kube-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: local-storage-provisioner-pv-binding
+  namespace: kube-system
+subjects:
+- kind: ServiceAccount
+  name: local-storage-admin
+  namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: system:persistent-volume-provisioner
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: local-storage-provisioner-node-clusterrole
+  namespace: kube-system
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: local-storage-provisioner-node-binding
+  namespace: kube-system
+subjects:
+- kind: ServiceAccount
+  name: local-storage-admin
+  namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: local-storage-provisioner-node-clusterrole
+  apiGroup: rbac.authorization.k8s.io

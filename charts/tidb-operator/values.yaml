@@ -9,7 +9,7 @@ rbac:
   create: true
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.0.0-beta.3
+operatorImage: pingcap/tidb-operator:v1.0.0-rc.1
 imagePullPolicy: IfNotPresent
 
 defaultStorageClassName: local-storage
@@ -54,6 +54,6 @@ scheduler:
     requests:
       cpu: 80m
       memory: 50Mi
-  kubeSchedulerImageName: gcr.io/google-containers/hyperkube
+  kubeSchedulerImageName: k8s.gcr.io/kube-scheduler
   # This will default to matching your kubernetes version
   # kubeSchedulerImageTag:
