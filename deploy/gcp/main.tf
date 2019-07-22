@@ -100,7 +100,8 @@ resource "google_container_cluster" "cluster" {
   }
 
   remove_default_node_pool = true
-  initial_node_count       = 1
+  // see https://github.com/terraform-providers/terraform-provider-google/issues/3385 for why initial_node_count is sum of node counts
+  initial_node_count       = var.pd_count + var.tikv_count + var.tidb_count + var.monitor_count
 
   min_master_version = "latest"
 
@@ -126,7 +127,7 @@ resource "google_container_node_pool" "pd_pool" {
   initial_node_count = var.pd_count
 
   management {
-    auto_repair = false
+    auto_repair  = false
     auto_upgrade = false
   }
 
@@ -158,13 +159,13 @@ resource "google_container_node_pool" "tikv_pool" {
   initial_node_count = var.tikv_count
 
   management {
-    auto_repair = false
+    auto_repair  = false
     auto_upgrade = false
   }
 
   node_config {
-    machine_type    = var.tikv_instance_type
-    image_type      = "UBUNTU"
+    machine_type = var.tikv_instance_type
+    image_type   = "UBUNTU"
     // This value cannot be changed (instead a new node pool is needed)
     // 1 SSD is 375 GiB
     local_ssd_count = 1
@@ -195,7 +196,7 @@ resource "google_container_node_pool" "tidb_pool" {
   initial_node_count = var.tidb_count
 
   management {
-    auto_repair = false
+    auto_repair  = false
     auto_upgrade = false
   }
 
@@ -228,7 +229,7 @@ resource "google_container_node_pool" "monitor_pool" {
   initial_node_count = var.monitor_count
 
   management {
-    auto_repair = false
+    auto_repair  = false
     auto_upgrade = false
   }
 
@@ -389,7 +390,7 @@ resource "null_resource" "deploy-tidb-cluster" {
 
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
-command = <<EOS
+command         = <<EOS
 set -euo pipefail
 
 helm upgrade --install tidb-cluster ${path.module}/charts/tidb-cluster --namespace=tidb -f ${local.tidb_cluster_values_path}
