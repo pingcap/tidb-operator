@@ -4,9 +4,9 @@ metadata:
   name: {{ template "cluster.name" . }}
 {{- if .Values.enableConfigMapRollout }}
   annotations:
-    pingcap.com/pd.{{ template "cluster.name" . }}-pd.sha: {{ template "pd-configmap.data-digest" . }}
-    pingcap.com/tikv.{{ template "cluster.name" . }}-tikv.sha: {{ template "tikv-configmap.data-digest" . }}
-    pingcap.com/tidb.{{ template "cluster.name" . }}-tidb.sha: {{ template "tidb-configmap.data-digest" . }}
+    pingcap.com/pd.{{ template "cluster.name" . }}-pd.sha: {{ include "pd-configmap.data-digest" . | quote }}
+    pingcap.com/tikv.{{ template "cluster.name" . }}-tikv.sha: {{ include "tikv-configmap.data-digest" . | quote }}
+    pingcap.com/tidb.{{ template "cluster.name" . }}-tidb.sha: {{ include "tidb-configmap.data-digest" . | quote }}
 {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
