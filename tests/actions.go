@@ -298,7 +298,6 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 		"tikv.storageClassName":   tc.StorageClassName,
 		"tidb.storageClassName":   tc.StorageClassName,
 		"tidb.password":           tc.Password,
-		"pd.maxStoreDownTime":     "5m",
 		"pd.image":                tc.PDImage,
 		"tikv.image":              tc.TiKVImage,
 		"tidb.image":              tc.TiDBImage,

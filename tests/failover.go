@@ -276,7 +276,7 @@ func (oa *operatorActions) getPodsByNode(info *TidbClusterConfig, node string) (
 }
 
 func (oa *operatorActions) CheckFailoverOrDie(clusters []*TidbClusterConfig, faultNode string) {
-	if err := wait.Poll(1*time.Minute, 30*time.Minute, func() (bool, error) {
+	if err := wait.Poll(1*time.Minute, 60*time.Minute, func() (bool, error) {
 		var passes []bool
 		for i := range clusters {
 			pass, err := oa.CheckFailover(clusters[i], faultNode)
@@ -409,7 +409,7 @@ func (oa *operatorActions) tidbFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluste
 	failure := false
 	for _, failureMember := range tc.Status.TiDB.FailureMembers {
 		if failureMember.PodName == pod.GetName() {
-			glog.Infof("tidbCluster:[%s/%s]'s store pod:[%s] have not become failuremember", tc.Namespace, tc.Name, pod.Name)
+			glog.Infof("tidbCluster:[%s/%s]'s store pod:[%s] have become failuremember", tc.Namespace, tc.Name, pod.Name)
 			failure = true
 			break
 		}
