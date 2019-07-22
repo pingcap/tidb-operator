@@ -29,7 +29,7 @@ controllerManager:
       cpu: 80m
       memory: 50Mi
   # autoFailover is whether tidb-operator should auto failover when failure occurs
-  autoFailover: false
+  autoFailover: true
   # pd failover period default(5m)
   pdFailoverPeriod: 5m
   # tidb failover period default(5m)
