@@ -41,7 +41,7 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
 		if exist && tidbMember.Health {
 			delete(tc.Status.TiDB.FailureMembers, tidbMember.Name)
-			glog.Errorf("tidb failover: delete %s from tidb failoverMembers", tidbMember.Name)
+			glog.Infof("tidb failover: delete %s from tidb failoverMembers", tidbMember.Name)
 		}
 	}
 
