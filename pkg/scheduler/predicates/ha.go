@@ -135,7 +135,8 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 
 		podsCount := len(podNames)
 		if podsCount+1 >= int(replicas+1)/2 {
-			glog.Infof("node %s podsCount is %d, skipping", nodeName, podsCount)
+			glog.Infof("node %s podsCount+1 is %d, int(replicas+1)/2 is %d, skipping",
+				nodeName, podsCount+1, int(replicas+1)/2)
 			continue
 		}
 		if min == -1 {
