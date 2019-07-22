@@ -24,6 +24,12 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// Backups returns a BackupInformer.
+	Backups() BackupInformer
+	// BackupSchedules returns a BackupScheduleInformer.
+	BackupSchedules() BackupScheduleInformer
+	// Restores returns a RestoreInformer.
+	Restores() RestoreInformer
 	// TidbClusters returns a TidbClusterInformer.
 	TidbClusters() TidbClusterInformer
 }
@@ -37,6 +43,21 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// Backups returns a BackupInformer.
+func (v *version) Backups() BackupInformer {
+	return &backupInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// BackupSchedules returns a BackupScheduleInformer.
+func (v *version) BackupSchedules() BackupScheduleInformer {
+	return &backupScheduleInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// Restores returns a RestoreInformer.
+func (v *version) Restores() RestoreInformer {
+	return &restoreInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // TidbClusters returns a TidbClusterInformer.

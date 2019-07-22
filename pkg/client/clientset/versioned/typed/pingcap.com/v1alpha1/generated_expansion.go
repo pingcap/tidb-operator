@@ -18,4 +18,10 @@ limitations under the License.
 
 package v1alpha1
 
+type BackupExpansion interface{}
+
+type BackupScheduleExpansion interface{}
+
+type RestoreExpansion interface{}
+
 type TidbClusterExpansion interface{}
