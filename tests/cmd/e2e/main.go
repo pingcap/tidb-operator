@@ -21,7 +21,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/golang/glog"
 	"github.com/jinzhu/copier"
@@ -49,7 +49,7 @@ func main() {
 		SchedulerImage: "mirantis/hypokube",
 		SchedulerTag:   "final",
 		SchedulerFeatures: []string{
-			"StableScheduling",
+			"StableScheduling=true",
 		},
 		LogLevel:           "2",
 		WebhookServiceName: "webhook-service",

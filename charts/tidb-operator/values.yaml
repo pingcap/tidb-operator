@@ -46,7 +46,7 @@ scheduler:
   replicas: 1
   schedulerName: tidb-scheduler
   # features:
-  # - StableScheduling
+  # - StableScheduling=true
   resources:
     limits:
       cpu: 250m
