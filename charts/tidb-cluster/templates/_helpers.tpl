@@ -36,8 +36,6 @@ startup-script: |-
 config-file: |-
     {{- if .Values.pd.config }}
 {{ .Values.pd.config | indent 2 }}
-    {{- else }}
-{{ tuple "config/_pd-config.tpl" . | include "helm-toolkit.utils.template" | indent 2 }}
     {{- end -}}
 {{- end -}}
 
@@ -54,8 +52,6 @@ startup-script: |-
 config-file: |-
     {{- if .Values.tikv.config }}
 {{ .Values.tikv.config | indent 2 }}
-    {{- else }}
-{{ tuple "config/_tikv-config.tpl" . | include "helm-toolkit.utils.template" | indent 2 }}
     {{- end -}}
 {{- end -}}
 
@@ -76,8 +72,6 @@ init-sql: |-
 config-file: |-
     {{- if .Values.tidb.config }}
 {{ .Values.tidb.config | indent 2 }}
-    {{- else }}
-{{ tuple "config/_tidb-config.tpl" . | include "helm-toolkit.utils.template" | indent 2 }}
     {{- end -}}
 {{- end -}}
 

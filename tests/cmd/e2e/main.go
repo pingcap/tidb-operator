@@ -75,6 +75,7 @@ func main() {
 	name2 := "e2e-cluster2"
 	name3 := "e2e-pd-replicas-1"
 	topologyKey := "rack"
+
 	clusterInfos := []*tests.TidbClusterConfig{
 		{
 			Namespace:        name1,
@@ -113,12 +114,7 @@ func main() {
 				RawSize:     1,
 			},
 			TopologyKey:            topologyKey,
-			SubValues:              fmt.Sprintf("%s", tests.GetAffinityConfigOrDie(name1, name1, topologyKey, []string{topologyKey})),
 			EnableConfigMapRollout: true,
-			PDMaxReplicas:          3,
-			TiKVGrpcConcurrency:    4,
-			TiDBTokenLimit:         1000,
-			PDLogLevel:             "info",
 		},
 		{
 			Namespace:        name2,
@@ -157,12 +153,7 @@ func main() {
 				RawSize:     1,
 			},
 			TopologyKey:            topologyKey,
-			SubValues:              fmt.Sprintf("%s", tests.GetAffinityConfigOrDie(name2, name2, topologyKey, []string{topologyKey})),
 			EnableConfigMapRollout: false,
-			PDMaxReplicas:          3,
-			TiKVGrpcConcurrency:    4,
-			TiDBTokenLimit:         1000,
-			PDLogLevel:             "info",
 		},
 		{
 			Namespace:        name2,
@@ -182,7 +173,6 @@ func main() {
 			},
 
 			TopologyKey: topologyKey,
-			SubValues:   fmt.Sprintf("%s", tests.GetAffinityConfigOrDie(name3, name2, topologyKey, []string{topologyKey})),
 		},
 	}
 
@@ -341,7 +331,6 @@ func main() {
 	restoreClusterInfo.ClusterName = restoreClusterInfo.ClusterName + "-other"
 	restoreClusterInfo.InitSecretName = fmt.Sprintf("%s-set-secret", restoreClusterInfo.ClusterName)
 	restoreClusterInfo.BackupSecretName = fmt.Sprintf("%s-backup-secret", restoreClusterInfo.ClusterName)
-	restoreClusterInfo.SubValues = fmt.Sprintf("%s", tests.GetAffinityConfigOrDie(restoreClusterInfo.ClusterName, restoreClusterInfo.Namespace, topologyKey, []string{topologyKey}))
 
 	if err = oa.CleanTidbCluster(restoreClusterInfo); err != nil {
 		glog.Fatal(err)
