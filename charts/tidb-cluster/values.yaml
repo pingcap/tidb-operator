@@ -45,7 +45,7 @@ discovery:
 # This feature is only available in tidb-operator v1.0 or higher.
 # Note: Switch this variable against an existing cluster will cause an rolling-update of each component even
 # if the ConfigMap was not changed.
-enableConfigMapRollout: false
+enableConfigMapRollout: true
 
 pd:
   # Please refer to https://github.com/pingcap/pd/blob/master/conf/config.toml for the default
@@ -61,7 +61,7 @@ pd:
     location-labels = ["region", "zone", "rack", "host"]
   
   replicas: 3
-  image: pingcap/pd:v3.0.0-rc.1
+  image: pingcap/pd:v3.0.1
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -203,7 +203,7 @@ tikv:
   # # capacity = "1GB"
 
   replicas: 3
-  image: pingcap/tikv:v3.0.0-rc.1
+  image: pingcap/tikv:v3.0.1
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -241,17 +241,6 @@ tikv:
   #   effect: "NoSchedule"
   annotations: {}
 
-  ## storeLabels is used to define store label keys
-  ## The label keys specified the location of a store.
-  ## In order to use the location awareness feature of TiKV, users have to label their k8s nodes with the same labels.
-  ## Note: current can not support these labels contains "/"
-  ## The placement priorities is implied by the order of label keys.
-  ## For example, ["zone", "rack"] means that we should place replicas to
-  ## different zones first, then to different racks if we don't have enough zones.
-  ## default value is ["region", "zone", "rack", "host"]
-  ## If you change the default value below, please do sync the change to pd.config.[replication].location-labels
-  ## storeLabels: ["region", "zone", "rack", "host"]
-
 tidb:
   # Please refer to https://github.com/pingcap/tidb/blob/master/config/config.toml.example for the default
   # tidb configurations(change to the tags of your tidb version),
@@ -271,7 +260,7 @@ tidb:
   # initSql is the SQL statements executed after the TiDB cluster is bootstrapped.
   # initSql: |-
   #   create database app;
-  image: pingcap/tidb:v3.0.0-rc.1
+  image: pingcap/tidb:v3.0.1
   # Image pull policy.
   imagePullPolicy: IfNotPresent
 
@@ -396,7 +385,7 @@ binlog:
   pump:
     create: false
     replicas: 1
-    image: pingcap/tidb-binlog:v3.0.0-rc.1
+    image: pingcap/tidb-binlog:v3.0.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -414,7 +403,7 @@ binlog:
 
   drainer:
     create: false
-    image: pingcap/tidb-binlog:v3.0.0-rc.1
+    image: pingcap/tidb-binlog:v3.0.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.

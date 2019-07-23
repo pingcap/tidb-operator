@@ -14,6 +14,7 @@
 package member
 
 import (
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -90,8 +91,10 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 
 		err = opc.podControl.DeletePod(tc, pod)
 		if err != nil {
+			glog.Errorf("orphan pods cleaner: failed to clean orphan pod: %s/%s, %v", ns, podName, err)
 			return skipReason, err
 		}
+		glog.Infof("orphan pods cleaner: clean orphan pod: %s/%s successfully", ns, podName)
 	}
 
 	return skipReason, nil
