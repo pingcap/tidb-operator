@@ -16,6 +16,7 @@ package member
 import (
 	"fmt"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -42,12 +43,6 @@ func NewPDUpgrader(pdControl pdapi.PDControlInterface,
 
 func (pu *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	return pu.gracefulUpgrade(tc, oldSet, newSet)
-}
-
-func (pu *pdUpgrader) forceUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	tc.Status.PD.Phase = v1alpha1.UpgradePhase
-	setUpgradePartition(newSet, 0)
-	return nil
 }
 
 func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
@@ -102,8 +97,10 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 		}
 		err := pu.transferPDLeaderTo(tc, targetName)
 		if err != nil {
+			glog.Errorf("pd upgrader: failed to transfer pd leader to: %s, %v", targetName, err)
 			return err
 		}
+		glog.Infof("pd upgrader: transfer pd leader to: %s successfully", targetName)
 		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is transferring leader to pd member: [%s]", ns, tcName, upgradePodName, targetName)
 	}
 

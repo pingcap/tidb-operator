@@ -16,6 +16,7 @@ package member
 import (
 	"fmt"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -70,7 +71,14 @@ func (gs *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,
 		return skipReason, nil
 	}
 
-	return skipReason, gs.pvcControl.DeletePVC(tc, pvc)
+	err = gs.pvcControl.DeletePVC(tc, pvc)
+	if err != nil {
+		glog.Errorf("scale out: failed to delete pvc %s/%s, %v", ns, pvcName, err)
+		return skipReason, err
+	}
+	glog.Infof("scale out: delete pvc %s/%s successfully", ns, pvcName)
+
+	return skipReason, nil
 }
 
 func resetReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
@@ -78,9 +86,13 @@ func resetReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
 }
 func increaseReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
 	*newSet.Spec.Replicas = *oldSet.Spec.Replicas + 1
+	glog.Infof("pd scale out: increase pd statefulset: %s/%s replicas to %d",
+		newSet.GetNamespace(), newSet.GetName(), newSet.Spec.Replicas)
 }
 func decreaseReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
 	*newSet.Spec.Replicas = *oldSet.Spec.Replicas - 1
+	glog.Infof("pd scale in: decrease pd statefulset: %s/%s replicas to %d",
+		newSet.GetNamespace(), newSet.GetName(), newSet.Spec.Replicas)
 }
 
 func ordinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int32) string {
