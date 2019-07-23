@@ -23,6 +23,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/glog"
+
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/pd/pkg/typeutil"
@@ -472,8 +474,14 @@ func (pc *pdClient) EndEvictLeader(storeID uint64) error {
 		return err
 	}
 	defer httputil.DeferClose(res.Body)
-	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
+	if res.StatusCode == http.StatusNotFound {
 		return nil
+	}
+	if res.StatusCode == http.StatusOK {
+		glog.Infof("call DELETE method: %s success", apiURL)
+	} else {
+		err2 := httputil.ReadErrorBody(res.Body)
+		glog.Errorf("call DELETE method: %s failed,statusCode: %v,error: %v", apiURL, res.StatusCode, err2)
 	}
 
 	// pd will return an error with the body contains "scheduler not found" if the scheduler is not found
@@ -483,14 +491,13 @@ func (pc *pdClient) EndEvictLeader(storeID uint64) error {
 	//   - return nil if the scheduler is not found
 	//
 	// when PD returns standard json response, we should get rid of this verbose code.
-	err2 := httputil.ReadErrorBody(res.Body)
 	evictLeaderSchedulers, err := pc.GetEvictLeaderSchedulers()
 	if err != nil {
 		return err
 	}
 	for _, s := range evictLeaderSchedulers {
 		if s == sName {
-			return fmt.Errorf("failed %v to end leader evict scheduler of store [%d], error: %v", res.StatusCode, storeID, err2)
+			return fmt.Errorf("end leader evict scheduler failed,the store:[%d]'s leader evict scheduler is still exist", storeID)
 		}
 	}
 
