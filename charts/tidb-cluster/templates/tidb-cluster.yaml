@@ -4,9 +4,9 @@ metadata:
   name: {{ template "cluster.name" . }}
 {{- if .Values.enableConfigMapRollout }}
   annotations:
-    pingcap.com/pd.{{ template "cluster.name" . }}-pd.sha: {{ template "pd-configmap.data-digest" . }}
-    pingcap.com/tikv.{{ template "cluster.name" . }}-tikv.sha: {{ template "tikv-configmap.data-digest" . }}
-    pingcap.com/tidb.{{ template "cluster.name" . }}-tidb.sha: {{ template "tidb-configmap.data-digest" . }}
+    pingcap.com/pd.{{ template "cluster.name" . }}-pd.sha: {{ include "pd-configmap.data-digest" . | quote }}
+    pingcap.com/tikv.{{ template "cluster.name" . }}-tikv.sha: {{ include "tikv-configmap.data-digest" . | quote }}
+    pingcap.com/tidb.{{ template "cluster.name" . }}-tidb.sha: {{ include "tidb-configmap.data-digest" . | quote }}
 {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
@@ -66,16 +66,6 @@ spec:
   {{- if .Values.tikv.annotations }}
     annotations:
 {{ toYaml .Values.tikv.annotations | indent 6 }}
-  {{- end }}
-  {{- if .Values.tikv.storeLabels }}
-    storeLabels:
-{{ toYaml .Values.tikv.storeLabels | indent 4 }}
-  {{- else }}
-    storeLabels:
-      - region
-      - zone
-      - rack
-      - host
   {{- end }}
   tidb:
     replicas: {{ .Values.tidb.replicas }}
