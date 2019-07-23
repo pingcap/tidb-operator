@@ -242,9 +242,11 @@ func TestPDFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(1))
-				g.Expect(tc.Status.PD.FailureMembers).To(Equal(map[string]v1alpha1.PDFailureMember{
-					"test-pd-1": {PodName: "test-pd-1", MemberID: "12891273174085095651", PVCUID: "pvc-1-uid", MemberDeleted: false},
-				}))
+				failureMembers := tc.Status.PD.FailureMembers["test-pd-1"]
+				g.Expect(failureMembers.PodName).To(Equal("test-pd-1"))
+				g.Expect(failureMembers.MemberID).To(Equal("12891273174085095651"))
+				g.Expect(string(failureMembers.PVCUID)).To(Equal("pvc-1-uid"))
+				g.Expect(failureMembers.MemberDeleted).To(BeFalse())
 			},
 		},
 		{
