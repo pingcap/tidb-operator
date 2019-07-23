@@ -182,6 +182,7 @@ func serviceEqual(new, old *corev1.Service) (bool, error) {
 // setUpgradePartition set statefulSet's rolling update partition
 func setUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
 	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &upgradeOrdinal}
+	glog.Infof("set %s/%s partition to %d", set.GetNamespace(), set.GetName(), upgradeOrdinal)
 }
 
 func imagePullFailed(pod *corev1.Pod) bool {

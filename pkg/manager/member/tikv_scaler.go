@@ -88,9 +88,11 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			}
 			if state != v1alpha1.TiKVStateOffline {
 				if err := controller.GetPDClient(tsd.pdControl, tc).DeleteStore(id); err != nil {
+					glog.Errorf("tikv scale in: failed to delete store %d, %v", id, err)
 					resetReplicas(newSet, oldSet)
 					return err
 				}
+				glog.Infof("tikv scale in: delete store %d successfully", id)
 			}
 			resetReplicas(newSet, oldSet)
 			return controller.RequeueErrorf("TiKV %s/%s store %d  still in cluster, state: %s", ns, podName, id, state)
@@ -116,12 +118,17 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			if pvc.Annotations == nil {
 				pvc.Annotations = map[string]string{}
 			}
-			pvc.Annotations[label.AnnPVCDeferDeleting] = time.Now().Format(time.RFC3339)
+			now := time.Now().Format(time.RFC3339)
+			pvc.Annotations[label.AnnPVCDeferDeleting] = now
 			_, err = tsd.pvcControl.UpdatePVC(tc, pvc)
 			if err != nil {
+				glog.Errorf("tikv scale in: failed to set pvc %s/%s annotation: %s to %s",
+					ns, pvcName, label.AnnPVCDeferDeleting, now)
 				resetReplicas(newSet, oldSet)
 				return err
 			}
+			glog.Infof("tikv scale in: set pvc %s/%s annotation: %s to %s",
+				ns, pvcName, label.AnnPVCDeferDeleting, now)
 
 			decreaseReplicas(newSet, oldSet)
 			return nil

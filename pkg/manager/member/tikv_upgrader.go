@@ -123,7 +123,6 @@ func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32,
 			}
 			_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
 			if !evicting {
-				glog.Infof("start to evict leader:index:%d,upgradePodName:%s,storeID:%d", ordinal, upgradePodName, storeID)
 				return tku.beginEvictLeader(tc, storeID, upgradePod)
 			}
 
@@ -161,16 +160,29 @@ func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.T
 }
 
 func (tku *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
+	ns := tc.GetNamespace()
+	podName := pod.GetName()
 	err := controller.GetPDClient(tku.pdControl, tc).BeginEvictLeader(storeID)
 	if err != nil {
+		glog.Errorf("tikv upgrader: failed to begin evict leader: %d, %s/%s, %v",
+			storeID, ns, podName, err)
 		return err
 	}
+	glog.Infof("tikv upgrader: begin evict leader: %d, %s/%s successfully", storeID, ns, podName)
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
-	pod.Annotations[EvictLeaderBeginTime] = time.Now().Format(time.RFC3339)
+	now := time.Now().Format(time.RFC3339)
+	pod.Annotations[EvictLeaderBeginTime] = now
 	_, err = tku.podControl.UpdatePod(tc, pod)
-	return err
+	if err != nil {
+		glog.Errorf("tikv upgrader: failed to set pod %s/%s annotation %s to %s, %v",
+			ns, podName, EvictLeaderBeginTime, now, err)
+		return err
+	}
+	glog.Infof("tikv upgrader: set pod %s/%s annotation %s to %s successfully",
+		ns, podName, EvictLeaderBeginTime, now)
+	return nil
 }
 
 func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32) error {
@@ -186,11 +198,10 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 
 	err = tku.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName()).EndEvictLeader(storeID)
 	if err != nil {
+		glog.Errorf("tikv upgrader: failed to end evict leader storeID: %d ordinal: %d, %v", storeID, ordinal, err)
 		return err
 	}
-
-	glog.Infof("successed to remove evict leader,ordinal:%d,storeID:%d", ordinal, storeID)
-
+	glog.Infof("tikv upgrader: end evict leader storeID: %d ordinal: %d successfully", storeID, ordinal)
 	return nil
 }
 

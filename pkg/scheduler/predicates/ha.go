@@ -106,6 +106,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		return nil, err
 	}
 	replicas := getReplicasFrom(tc, component)
+	glog.Infof("ha: tidbcluster %s/%s component %s replicas %d", ns, tcName, component, replicas)
 
 	nodeMap := make(map[string][]string)
 	for _, node := range nodes {
@@ -128,11 +129,14 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		// replicas less than 3 cannot achieve high availability
 		if replicas < 3 {
 			minNodeNames = append(minNodeNames, nodeName)
+			glog.Infof("replicas is %d, add node %s to minNodeNames", replicas, nodeName)
 			continue
 		}
 
 		podsCount := len(podNames)
 		if podsCount+1 >= int(replicas+1)/2 {
+			glog.Infof("node %s podsCount+1 is %d, int(replicas+1)/2 is %d, skipping",
+				nodeName, podsCount+1, int(replicas+1)/2)
 			continue
 		}
 		if min == -1 {
@@ -140,6 +144,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		}
 
 		if podsCount > min {
+			glog.Infof("node %s podsCount %d > min %d, skipping", nodeName, podsCount, min)
 			continue
 		}
 		if podsCount < min {
@@ -151,6 +156,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 
 	if len(minNodeNames) == 0 {
 		msg := fmt.Sprintf("can't schedule to nodes: %v, because these pods had been scheduled to nodes: %v", GetNodeNames(nodes), nodeMap)
+		glog.Info(msg)
 		h.recorder.Event(pod, apiv1.EventTypeWarning, "FailedScheduling", msg)
 		return nil, errors.New(msg)
 	}
@@ -209,8 +215,12 @@ func (h *ha) realAcquireLock(pod *apiv1.Pod) (*apiv1.PersistentVolumeClaim, *api
 	delete(schedulingPVC.Annotations, label.AnnPVCPodScheduling)
 	err = h.updatePVCFn(schedulingPVC)
 	if err != nil {
+		glog.Errorf("ha: failed to delete pvc %s/%s annotation %s, %v",
+			ns, schedulingPVC.GetName(), label.AnnPVCPodScheduling, err)
 		return schedulingPVC, currentPVC, err
 	}
+	glog.Infof("ha: delete pvc %s/%s annotation %s successfully",
+		ns, schedulingPVC.GetName(), label.AnnPVCPodScheduling)
 	return schedulingPVC, currentPVC, h.setCurrentPodScheduling(currentPVC)
 }
 
@@ -246,11 +256,22 @@ func (h *ha) realTCGetFn(ns, tcName string) (*v1alpha1.TidbCluster, error) {
 }
 
 func (h *ha) setCurrentPodScheduling(pvc *apiv1.PersistentVolumeClaim) error {
+	ns := pvc.GetNamespace()
+	pvcName := pvc.GetName()
 	if pvc.Annotations == nil {
 		pvc.Annotations = map[string]string{}
 	}
-	pvc.Annotations[label.AnnPVCPodScheduling] = time.Now().Format(time.RFC3339)
-	return h.updatePVCFn(pvc)
+	now := time.Now().Format(time.RFC3339)
+	pvc.Annotations[label.AnnPVCPodScheduling] = now
+	err := h.updatePVCFn(pvc)
+	if err != nil {
+		glog.Errorf("ha: failed to set pvc %s/%s annotation %s to %s, %v",
+			ns, pvcName, label.AnnPVCPodScheduling, now, err)
+		return err
+	}
+	glog.Infof("ha: set pvc %s/%s annotation %s to %s successfully",
+		ns, pvcName, label.AnnPVCPodScheduling, now)
+	return nil
 }
 
 func getTCNameFromPod(pod *apiv1.Pod, component string) string {
