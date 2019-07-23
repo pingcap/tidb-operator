@@ -23,7 +23,10 @@ import (
 )
 
 var (
-	allFeatures = sets.NewString(StableScheduling)
+	allFeatures     = sets.NewString(StableScheduling)
+	defaultFeatures = map[string]bool{
+		StableScheduling: true,
+	}
 	// DefaultFeatureGate is a shared global FeatureGate.
 	DefaultFeatureGate FeatureGate = NewFeatureGate()
 )
@@ -41,21 +44,26 @@ type FeatureGate interface {
 }
 
 type featureGate struct {
-	defaultFeatures sets.String
-	enabledFeatures sets.String
+	enabledFeatures map[string]bool
 }
 
 func (f *featureGate) AddFlag(flagset *flag.FlagSet) {
-	flag.Var(utilflags.NewStringSetValue(f.defaultFeatures, &f.enabledFeatures), "features", fmt.Sprintf("features to enable, comma-separated list of string, available: %s", strings.Join(allFeatures.List(), ",")))
+	flag.Var(utilflags.NewMapStringBool(&f.enabledFeatures), "features", fmt.Sprintf("A set of key={true,false} pairs to enable/disable features, available features: %s", strings.Join(allFeatures.List(), ",")))
 }
 
 func (f *featureGate) Enabled(key string) bool {
-	return f.enabledFeatures.Has(key)
+	if b, ok := f.enabledFeatures[key]; ok {
+		return b
+	}
+	return false
 }
 
 func NewFeatureGate() FeatureGate {
-	return &featureGate{
-		defaultFeatures: sets.NewString(),
-		enabledFeatures: sets.NewString(),
+	f := &featureGate{
+		enabledFeatures: make(map[string]bool),
 	}
+	for k, v := range defaultFeatures {
+		f.enabledFeatures[k] = v
+	}
+	return f
 }
