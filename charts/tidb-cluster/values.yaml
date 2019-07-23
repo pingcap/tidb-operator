@@ -331,8 +331,14 @@ monitor:
   storageClassName: local-storage
   storage: 10Gi
   initializer:
-    image: pingcap/tidb-monitor-initializer:v3.0.0-rc.1
+    image: pingcap/tidb-monitor-initializer:v3.0.0
     imagePullPolicy: IfNotPresent
+  reloader:
+    create: true
+    image: pingcap/tidb-monitor-reloader:v1.0.0
+    imagePullPolicy: IfNotPresent
+    service:
+      type: NodePort
   grafana:
     create: true
     image: grafana/grafana:6.0.1
@@ -359,7 +365,7 @@ monitor:
     service:
       type: NodePort
   prometheus:
-    image: prom/prometheus:v2.2.1
+    image: prom/prometheus:v2.11.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     resources:

@@ -91,6 +91,7 @@ spec:
         command:
         - /bin/prometheus
         - --web.enable-admin-api
+        - --web.enable-lifecycle
         - --log.level={{ .Values.monitor.prometheus.logLevel }}
         - --config.file=/etc/prometheus/prometheus.yml
         - --storage.tsdb.path=/data/prometheus
@@ -112,6 +113,23 @@ spec:
           - name: prometheus-rules
             mountPath: /prometheus-rules
             readOnly: false
+      {{- if .Values.monitor.grafana.create }}
+      - name: reloader
+        image: {{ .Values.monitor.reloader.image }}
+        imagePullPolicy: {{ .Values.monitor.reloader.imagePullPolicy | default "IfNotPresent" }}
+        command:
+        - /bin/reload
+        - --watch-path=/prometheus-rules/rules
+        - --prometheus-url=http://127.0.0.1:9090
+        ports:
+        - name: reloader
+          containerPort: 9089
+          protocol: TCP
+        volumeMounts:
+          - name: prometheus-rules
+            mountPath: /prometheus-rules
+            readOnly: false
+      {{- end }}
       {{- if .Values.monitor.grafana.create }}
       - name: grafana
         image: {{ .Values.monitor.grafana.image }}
