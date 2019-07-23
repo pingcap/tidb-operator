@@ -173,6 +173,7 @@ func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node st
 				if _, exist := affectedPods[failureStore.PodName]; exist {
 					err := fmt.Errorf("cluster: [%s] the tikv store[%s] should be mark failure after %s", info.FullName(), failureStore.PodName, deadline.Format(time.RFC3339))
 					glog.Errorf(err.Error())
+					// There may have been a failover before
 					return false, nil
 				}
 			}
