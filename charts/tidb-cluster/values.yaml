@@ -201,6 +201,11 @@ tikv:
   # [storage.block-cache]
   # ## Size of the shared block cache. Normally it should be tuned to 30%-50% of container's total memory.
   # # capacity = "1GB"
+  # [raftstore]
+  # ## true (default value) for high reliability, this can prevent data loss when power failure.
+  # # sync-log = true
+  # # apply-pool-size = 2
+  # # store-pool-size = 2
 
   replicas: 3
   image: pingcap/tikv:v3.0.1
