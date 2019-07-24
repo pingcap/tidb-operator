@@ -38,8 +38,10 @@ type dbInfo struct {
 
 // TiDBControlInterface is the interface that knows how to manage tidb peers
 type TiDBControlInterface interface {
-	// GetHealth returns tidb's health info
-	GetHealth(tc *v1alpha1.TidbCluster) map[string]bool
+	// GetHealth returns true if tidb is healthy
+	GetHealth(tc *v1alpha1.TidbCluster, hostName HostName) (bool, error)
+	// HostNames returns the hostnames of the statefulset
+	HostNames(tc *v1alpha1.TidbCluster) []HostName
 	// ResignDDLOwner resigns the ddl owner of tidb, if the tidb node is not a ddl owner returns (true,nil),else returns (false,err)
 	ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error)
 	// Get TIDB info return tidb's dbInfo
@@ -59,30 +61,36 @@ func NewDefaultTiDBControl() TiDBControlInterface {
 	return &defaultTiDBControl{httpClient: httpClient}
 }
 
-func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster) map[string]bool {
+// HostName is the unique ordinal based host name used by the StatefulSet
+type HostName string
+
+func (tdc *defaultTiDBControl) hostName(tc *v1alpha1.TidbCluster, ordinal int32) HostName {
+	tcName := tc.GetName()
+	return HostName(fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal))
+}
+
+func (tdc *defaultTiDBControl) HostNames(tc *v1alpha1.TidbCluster) []HostName {
+	count := int(tc.TiDBRealReplicas())
+	hostNames := make([]HostName, count)
+	for i := 0; i < count; i++ {
+		hostNames[i] = tdc.hostName(tc, int32(i))
+	}
+	return hostNames
+}
+
+func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster, hostName HostName) (bool, error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
-
-	result := map[string]bool{}
-	for i := 0; i < int(tc.TiDBRealReplicas()); i++ {
-		hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), i)
-		url := fmt.Sprintf("http://%s.%s.%s:10080/status", hostName, TiDBPeerMemberName(tcName), ns)
-		_, err := tdc.getBodyOK(url)
-		if err != nil {
-			result[hostName] = false
-		} else {
-			result[hostName] = true
-		}
-	}
-	return result
+	url := fmt.Sprintf("http://%s.%s.%s:10080/status", string(hostName), TiDBPeerMemberName(tcName), ns)
+	return tdc.getOK(url)
 }
 
 func (tdc *defaultTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 
-	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
-	url := fmt.Sprintf("http://%s.%s.%s:10080/ddl/owner/resign", hostName, TiDBPeerMemberName(tcName), ns)
+	hostName := tdc.hostName(tc, ordinal)
+	url := fmt.Sprintf("http://%s.%s.%s:10080/ddl/owner/resign", string(hostName), TiDBPeerMemberName(tcName), ns)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return false, err
@@ -106,8 +114,8 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 
-	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
-	url := fmt.Sprintf("http://%s.%s.%s:10080/info", hostName, TiDBPeerMemberName(tcName), ns)
+	hostName := tdc.hostName(tc, ordinal)
+	url := fmt.Sprintf("http://%s.%s.%s:10080/info", string(hostName), TiDBPeerMemberName(tcName), ns)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return nil, err
@@ -137,8 +145,8 @@ func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 
-	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
-	url := fmt.Sprintf("http://%s.%s.%s:10080/settings", hostName, TiDBPeerMemberName(tcName), ns)
+	hostName := tdc.hostName(tc, ordinal)
+	url := fmt.Sprintf("http://%s.%s.%s:10080/settings", string(hostName), TiDBPeerMemberName(tcName), ns)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -164,22 +172,12 @@ func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int
 	return &info, nil
 }
 
-func (tdc *defaultTiDBControl) getBodyOK(apiURL string) ([]byte, error) {
+func (tdc *defaultTiDBControl) getOK(apiURL string) (bool, error) {
 	res, err := tdc.httpClient.Get(apiURL)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
-	if res.StatusCode >= 400 {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL %s", res.StatusCode, apiURL))
-		return nil, errMsg
-	}
-
-	defer httputil.DeferClose(res.Body)
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-	return body, err
+	return res.StatusCode < 400, nil
 }
 
 // FakeTiDBControl is a fake implementation of TiDBControlInterface.
@@ -212,8 +210,16 @@ func (ftd *FakeTiDBControl) SetResignDDLOwnerError(err error) {
 	ftd.resignDDLOwnerError = err
 }
 
-func (ftd *FakeTiDBControl) GetHealth(_ *v1alpha1.TidbCluster) map[string]bool {
-	return ftd.healthInfo
+func (ftd *FakeTiDBControl) GetHealth(_ *v1alpha1.TidbCluster, hostName HostName) (bool, error) {
+	return ftd.healthInfo[string(hostName)], nil
+}
+
+func (ftd *FakeTiDBControl) HostNames(_ *v1alpha1.TidbCluster) []HostName {
+	hostNames := make([]HostName, 0, len(ftd.healthInfo))
+	for name, _ := range ftd.healthInfo {
+		hostNames = append(hostNames, HostName(name))
+	}
+	return hostNames
 }
 
 func (ftd *FakeTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {

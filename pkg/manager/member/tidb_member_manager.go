@@ -380,30 +380,37 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 	}
 
 	tidbStatus := map[string]v1alpha1.TiDBMember{}
-	tidbHealth := tmm.tidbControl.GetHealth(tc)
-	for name, health := range tidbHealth {
-		newTidbMember := v1alpha1.TiDBMember{
-			Name:   name,
-			Health: health,
+	for _, hostName := range tmm.tidbControl.HostNames(tc) {
+		var nodeName string
+		health, err := tmm.tidbControl.GetHealth(tc, hostName)
+		if err != nil {
+			return err
 		}
-		oldTidbMember, exist := tc.Status.TiDB.Members[name]
 
-		newTidbMember.LastTransitionTime = metav1.Now()
+		oldTidbMember, exist := tc.Status.TiDB.Members[string(hostName)]
+		lastTransitionTime := metav1.Now()
 		if exist {
-			newTidbMember.NodeName = oldTidbMember.NodeName
-			if oldTidbMember.Health == newTidbMember.Health {
-				newTidbMember.LastTransitionTime = oldTidbMember.LastTransitionTime
+			nodeName = oldTidbMember.NodeName
+			if oldTidbMember.Health == health {
+				lastTransitionTime = oldTidbMember.LastTransitionTime
 			}
 		}
-		pod, err := tmm.podLister.Pods(tc.GetNamespace()).Get(name)
+		pod, err := tmm.podLister.Pods(tc.GetNamespace()).Get(string(hostName))
 		if err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
 		if pod != nil && pod.Spec.NodeName != "" {
 			// Update assiged node if pod exists and is scheduled
-			newTidbMember.NodeName = pod.Spec.NodeName
+			nodeName = pod.Spec.NodeName
 		}
-		tidbStatus[name] = newTidbMember
+
+		tidbStatus[string(hostName)] = v1alpha1.TiDBMember{
+			Name:               string(hostName),
+			Health:             health,
+			NodeName:           nodeName,
+			LastTransitionTime: lastTransitionTime,
+		}
+
 	}
 	tc.Status.TiDB.Members = tidbStatus
 
