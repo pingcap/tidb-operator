@@ -128,9 +128,9 @@ CreationTimestamp:  2019-04-17 17:33:41 +0800 CST
 Overview:
          Phase    Ready  Desired  CPU    Memory  Storage  Version
          -----    -----  -------  ---    ------  -------  -------
-  PD:    Normal   3      3        200m   1Gi     1Gi      pingcap/pd:v3.0.0-rc.1
-  TiKV:  Normal   3      3        1000m  2Gi     10Gi     pingcap/tikv:v3.0.0-rc.1
-  TiDB   Upgrade  1      2        500m   1Gi              pingcap/tidb:v3.0.0-rc.1
+  PD:    Normal   3      3        200m   1Gi     1Gi      pingcap/pd:v3.0.1
+  TiKV:  Normal   3      3        1000m  2Gi     10Gi     pingcap/tikv:v3.0.1
+  TiDB   Upgrade  1      2        500m   1Gi              pingcap/tidb:v3.0.1
 Endpoints(NodePort):
   - 172.16.4.158:31441
   - 172.16.4.155:31441

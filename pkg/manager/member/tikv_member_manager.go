@@ -524,6 +524,16 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 		return setCount, err
 	}
 
+	config, err := pdCli.GetConfig()
+	if err != nil {
+		return setCount, err
+	}
+
+	locationLabels := []string(config.Replication.LocationLabels)
+	if locationLabels == nil {
+		return setCount, nil
+	}
+
 	for _, store := range storesInfo.Stores {
 		status := tkmm.getTiKVStore(store)
 		if status == nil {
@@ -537,7 +547,7 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 		}
 
 		nodeName := pod.Spec.NodeName
-		ls, err := tkmm.getNodeLabels(nodeName, tc.Spec.TiKV.StoreLabels)
+		ls, err := tkmm.getNodeLabels(nodeName, locationLabels)
 		if err != nil || len(ls) == 0 {
 			glog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
 			continue

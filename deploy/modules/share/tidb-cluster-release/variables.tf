@@ -15,7 +15,7 @@ variable "cluster_name" {
 
 variable "cluster_version" {
   type    = string
-  default = "v3.0.0"
+  default = "v3.0.1"
 }
 
 variable "pd_count" {
@@ -41,6 +41,11 @@ variable "base_values" {
 variable "override_values" {
   type    = string
   default = ""
+}
+
+variable "service_ingress_key" {
+  type    = string
+  default = "hostname"
 }
 
 variable "local_exec_interpreter" {

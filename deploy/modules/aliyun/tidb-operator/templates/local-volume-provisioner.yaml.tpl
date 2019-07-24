@@ -44,13 +44,10 @@ spec:
     spec:
       tolerations:
         - key: dedicated
-          operator: Equal
-          value: pd
+          operator: Exists
           effect: "NoSchedule"
-        - key: dedicated
-          operator: Equal
-          value: tikv
-          effect: "NoSchedule"
+      nodeSelector:
+        pingcap.com/aliyun-local-ssd: "true"
       hostPID: true
       hostNetwork: true
       serviceAccountName: admin

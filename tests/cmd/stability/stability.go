@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/tests"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 func newOperatorConfig() *tests.OperatorConfig {
@@ -15,7 +15,7 @@ func newOperatorConfig() *tests.OperatorConfig {
 		Tag:            cfg.OperatorTag,
 		SchedulerImage: "gcr.io/google-containers/hyperkube",
 		SchedulerFeatures: []string{
-			"StableScheduling",
+			"StableScheduling=true",
 		},
 		LogLevel:           "2",
 		WebhookServiceName: tests.WebhookServiceName,

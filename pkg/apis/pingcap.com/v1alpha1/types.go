@@ -144,7 +144,6 @@ type TiKVSpec struct {
 	StorageClassName string              `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
 	Annotations      map[string]string   `json:"annotations,omitempty"`
-	StoreLabels      []string            `json:"storeLabels,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
@@ -200,10 +199,11 @@ type PDMember struct {
 
 // PDFailureMember is the pd failure member information
 type PDFailureMember struct {
-	PodName       string    `json:"podName,omitempty"`
-	MemberID      string    `json:"memberID,omitempty"`
-	PVCUID        types.UID `json:"pvcUID,omitempty"`
-	MemberDeleted bool      `json:"memberDeleted,omitempty"`
+	PodName       string      `json:"podName,omitempty"`
+	MemberID      string      `json:"memberID,omitempty"`
+	PVCUID        types.UID   `json:"pvcUID,omitempty"`
+	MemberDeleted bool        `json:"memberDeleted,omitempty"`
+	CreatedAt     metav1.Time `json:"createdAt,omitempty"`
 }
 
 // TiDBStatus is TiDB status
@@ -227,7 +227,8 @@ type TiDBMember struct {
 
 // TiDBFailureMember is the tidb failure member information
 type TiDBFailureMember struct {
-	PodName string `json:"podName,omitempty"`
+	PodName   string      `json:"podName,omitempty"`
+	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
 // TiKVStatus is TiKV status
@@ -255,8 +256,9 @@ type TiKVStore struct {
 
 // TiKVFailureStore is the tikv failure store information
 type TiKVFailureStore struct {
-	PodName string `json:"podName,omitempty"`
-	StoreID string `json:"storeID,omitempty"`
+	PodName   string      `json:"podName,omitempty"`
+	StoreID   string      `json:"storeID,omitempty"`
+	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
 // +genclient

@@ -148,7 +148,7 @@ Before you commit, make sure that all the checks and unit tests are passed:
 
 ```sh
 $ make check
-$ meke test
+$ make test
 ```
 
 Then commit your changes.
