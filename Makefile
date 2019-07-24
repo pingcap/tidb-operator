@@ -21,6 +21,7 @@ PACKAGE_LIST := go list ./... | grep -vE "pkg/client" | grep -vE "zz_generated"
 PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
 FILES := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go")
 FAIL_ON_STDOUT := awk '{ print } END { if (NR > 0) { exit 1 } }'
+TEST_COVER_PACKAGES:=go list ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/tkctl" | grep -vE "pkg/apis" | sed 's|github.com/pingcap/tidb-operator/|./|' | tr '\n' ','
 
 default: build
 
@@ -79,7 +80,7 @@ fault-trigger:
 
 test:
 	@echo "Run unit tests"
-	@$(GOTEST) ./pkg/... -coverprofile=coverage.txt -covermode=atomic && echo "\nUnit tests run successfully!"
+	@$(GOTEST) ./pkg/... -coverpkg=$$($(TEST_COVER_PACKAGES)) -coverprofile=coverage.txt -covermode=atomic && echo "\nUnit tests run successfully!"
 
 check-all: lint check-static check-shadow check-gosec staticcheck errcheck
 
