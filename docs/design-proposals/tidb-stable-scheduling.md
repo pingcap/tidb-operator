@@ -111,7 +111,7 @@ Add a new flag in tidb-scheduler which accepts a comma-separated list of
 string.
 
 ```
-tidb-scheduler --features StableScheduling
+tidb-scheduler --features StableScheduling=true
 ```
 
 tidb-scheduler will enable this functionality only when `StableScheduling`

@@ -18,6 +18,30 @@ limitations under the License.
 
 package v1alpha1
 
+// BackupListerExpansion allows custom methods to be added to
+// BackupLister.
+type BackupListerExpansion interface{}
+
+// BackupNamespaceListerExpansion allows custom methods to be added to
+// BackupNamespaceLister.
+type BackupNamespaceListerExpansion interface{}
+
+// BackupScheduleListerExpansion allows custom methods to be added to
+// BackupScheduleLister.
+type BackupScheduleListerExpansion interface{}
+
+// BackupScheduleNamespaceListerExpansion allows custom methods to be added to
+// BackupScheduleNamespaceLister.
+type BackupScheduleNamespaceListerExpansion interface{}
+
+// RestoreListerExpansion allows custom methods to be added to
+// RestoreLister.
+type RestoreListerExpansion interface{}
+
+// RestoreNamespaceListerExpansion allows custom methods to be added to
+// RestoreNamespaceLister.
+type RestoreNamespaceListerExpansion interface{}
+
 // TidbClusterListerExpansion allows custom methods to be added to
 // TidbClusterLister.
 type TidbClusterListerExpansion interface{}

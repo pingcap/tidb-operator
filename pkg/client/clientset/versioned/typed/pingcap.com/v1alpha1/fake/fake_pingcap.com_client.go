@@ -28,6 +28,18 @@ type FakePingcapV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakePingcapV1alpha1) Backups(namespace string) v1alpha1.BackupInterface {
+	return &FakeBackups{c, namespace}
+}
+
+func (c *FakePingcapV1alpha1) BackupSchedules(namespace string) v1alpha1.BackupScheduleInterface {
+	return &FakeBackupSchedules{c, namespace}
+}
+
+func (c *FakePingcapV1alpha1) Restores(namespace string) v1alpha1.RestoreInterface {
+	return &FakeRestores{c, namespace}
+}
+
 func (c *FakePingcapV1alpha1) TidbClusters(namespace string) v1alpha1.TidbClusterInterface {
 	return &FakeTidbClusters{c, namespace}
 }

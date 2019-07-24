@@ -25,6 +25,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/controller/backup"
+	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
+	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
 	"github.com/pingcap/tidb-operator/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,7 +61,7 @@ func init() {
 	flag.IntVar(&workers, "workers", 5, "The number of workers that are allowed to sync concurrently. Larger number = more responsive management, but more CPU (and network) load")
 	flag.BoolVar(&controller.ClusterScoped, "cluster-scoped", true, "Whether tidb-operator should manage kubernetes cluster wide TiDB Clusters")
 	flag.StringVar(&controller.DefaultStorageClassName, "default-storage-class-name", "standard", "Default storage class name")
-	flag.BoolVar(&autoFailover, "auto-failover", false, "Auto failover")
+	flag.BoolVar(&autoFailover, "auto-failover", true, "Auto failover")
 	flag.DurationVar(&pdFailoverPeriod, "pd-failover-period", time.Duration(5*time.Minute), "PD failover period default(5m)")
 	flag.DurationVar(&tikvFailoverPeriod, "tikv-failover-period", time.Duration(5*time.Minute), "TiKV failover period default(5m)")
 	flag.DurationVar(&tidbFailoverPeriod, "tidb-failover-period", time.Duration(5*time.Minute), "TiDB failover period")
@@ -131,13 +134,19 @@ func main() {
 	}
 
 	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
+	backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+	restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+	bsController := backupschedule.NewController(kubeCli, cli, informerFactory)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go informerFactory.Start(controllerCtx.Done())
 	go kubeInformerFactory.Start(controllerCtx.Done())
 
 	onStarted := func(ctx context.Context) {
-		tcController.Run(workers, ctx.Done())
+		go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
+		go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
+		go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
+		wait.Forever(func() { tcController.Run(workers, ctx.Done()) }, waitDuration)
 	}
 	onStopped := func() {
 		glog.Fatalf("leader election lost")
