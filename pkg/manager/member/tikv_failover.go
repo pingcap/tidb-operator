@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type tikvFailover struct {
@@ -47,8 +48,9 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
 			}
 			tc.Status.TiKV.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
-				PodName: podName,
-				StoreID: store.ID,
+				PodName:   podName,
+				StoreID:   store.ID,
+				CreatedAt: metav1.Now(),
 			}
 		}
 	}

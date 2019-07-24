@@ -18,12 +18,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
@@ -99,6 +101,7 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 
 func (pf *pdFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.PD.FailureMembers = nil
+	glog.Infof("pd failover: clearing pd failoverMembers, %s/%s", tc.GetNamespace(), tc.GetName())
 }
 
 func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
@@ -134,6 +137,7 @@ func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 			MemberID:      pdMember.ID,
 			PVCUID:        pvc.UID,
 			MemberDeleted: false,
+			CreatedAt:     metav1.Now(),
 		}
 		return controller.RequeueErrorf("marking Pod: %s/%s pd member: %s as failure", ns, podName, pdMember.Name)
 	}
@@ -165,8 +169,10 @@ func (pf *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error 
 	// invoke deleteMember api to delete a member from the pd cluster
 	err = controller.GetPDClient(pf.pdControl, tc).DeleteMemberByID(memberID)
 	if err != nil {
+		glog.Errorf("pd failover: failed to delete member: %d, %v", memberID, err)
 		return err
 	}
+	glog.Infof("pd failover: delete member: %d successfully", memberID)
 
 	// The order of old PVC deleting and the new Pod creating is not guaranteed by Kubernetes.
 	// If new Pod is created before old PVC deleted, new Pod will reuse old PVC.
@@ -196,8 +202,10 @@ func (pf *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error 
 	if pvc != nil && pvc.DeletionTimestamp == nil && pvc.GetUID() == failureMember.PVCUID {
 		err = pf.pvcControl.DeletePVC(tc, pvc)
 		if err != nil {
+			glog.Errorf("pd failover: failed to delete pvc: %s/%s, %v", ns, pvcName, err)
 			return err
 		}
+		glog.Infof("pd failover: pvc: %s/%s successfully", ns, pvcName)
 	}
 
 	setMemberDeleted(tc, failurePodName)
@@ -208,6 +216,7 @@ func setMemberDeleted(tc *v1alpha1.TidbCluster, podName string) {
 	failureMember := tc.Status.PD.FailureMembers[podName]
 	failureMember.MemberDeleted = true
 	tc.Status.PD.FailureMembers[podName] = failureMember
+	glog.Infof("pd failover: set pd member: %s/%s deleted", tc.GetName(), podName)
 }
 
 type fakePDFailover struct{}
