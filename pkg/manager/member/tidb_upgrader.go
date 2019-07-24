@@ -14,6 +14,7 @@
 package member
 
 import (
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1beta1"
@@ -86,9 +87,11 @@ func (tdu *tidbUpgrader) upgradeTiDBPod(tc *v1alpha1.TidbCluster, ordinal int32,
 		if member, exist := tc.Status.TiDB.Members[tidbPodName(tcName, ordinal)]; exist && member.Health {
 			hasResign, err := tdu.tidbControl.ResignDDLOwner(tc, ordinal)
 			if (!hasResign || err != nil) && tc.Status.TiDB.ResignDDLOwnerRetryCount < MaxResignDDLOwnerCount {
+				glog.Errorf("tidb upgrader: failed to resign ddl owner to %s, %v", member.Name, err)
 				tc.Status.TiDB.ResignDDLOwnerRetryCount++
 				return err
 			}
+			glog.Infof("tidb upgrader: resign ddl owner to %s successfully", member.Name)
 		}
 	}
 

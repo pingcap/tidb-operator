@@ -45,7 +45,7 @@ discovery:
 # This feature is only available in tidb-operator v1.0 or higher.
 # Note: Switch this variable against an existing cluster will cause an rolling-update of each component even
 # if the ConfigMap was not changed.
-enableConfigMapRollout: false
+enableConfigMapRollout: true
 
 pd:
   # Please refer to https://github.com/pingcap/pd/blob/master/conf/config.toml for the default
