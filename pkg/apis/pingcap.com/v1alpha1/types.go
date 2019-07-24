@@ -347,10 +347,10 @@ const (
 
 // BackupCondition describes the observed state of a Backup at a certain point.
 type BackupCondition struct {
-	Type    BackupConditionType
-	Status  corev1.ConditionStatus
-	Reason  string
-	Message string
+	Type    BackupConditionType    `json:"type"`
+	Status  corev1.ConditionStatus `json:"status"`
+	Reason  string                 `json:"reason"`
+	Message string                 `json:"message"`
 }
 
 // BackupStatus represents the current status of a backup.
@@ -364,7 +364,7 @@ type BackupStatus struct {
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize"`
 	// CommitTs is the snapshot time point of tidb cluster.
-	CommitTs   string            `json:"backupSize"`
+	CommitTs   string            `json:"commitTs"`
 	Conditions []BackupCondition `json:"conditions"`
 }
 
@@ -445,10 +445,10 @@ const (
 
 // RestoreCondition describes the observed state of a Restore at a certain point.
 type RestoreCondition struct {
-	Type    RestoreConditionType
-	Status  corev1.ConditionStatus
-	Reason  string
-	Message string
+	Type    RestoreConditionType   `json:"type"`
+	Status  corev1.ConditionStatus `json:"status"`
+	Reason  string                 `json:"reason"`
+	Message string                 `json:"message"`
 }
 
 // RestoreSpec contains the specification for a restore of a tidb cluster backup.
