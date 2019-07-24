@@ -275,8 +275,8 @@ type Backup struct {
 
 // BackupList contains a list of Backup.
 type BackupList struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata"`
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
 
 	Items []Backup `json:"items"`
 }
@@ -384,8 +384,8 @@ type BackupSchedule struct {
 
 // BackupScheduleList contains a list of BackupSchedule.
 type BackupScheduleList struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata"`
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
 
 	Items []BackupSchedule `json:"items"`
 }
@@ -424,8 +424,8 @@ type Restore struct {
 
 // RestoreList contains a list of Restore.
 type RestoreList struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata"`
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
 
 	Items []Restore `json:"items"`
 }

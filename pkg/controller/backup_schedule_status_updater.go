@@ -77,7 +77,7 @@ func (bss *realBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(
 			bs = updated.DeepCopy()
 			bs.Status = *newStatus
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated backupSchedule %s/%s from lister: %v", ns, bs, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated backupSchedule %s/%s from lister: %v", ns, bsName, err))
 		}
 
 		return updateErr
