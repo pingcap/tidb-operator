@@ -50,20 +50,6 @@ spec:
             {{- end }}
     {{- end }}
       initContainers:
-      - name: init-data
-        image: {{ .Values.monitor.prometheus.image }}
-        imagePullPolicy: {{ .Values.monitor.prometheus.imagePullPolicy | default "IfNotPresent" }}
-        command:
-        - /bin/sh
-        - -c
-        - |
-          mkdir -p /data/prometheus {{- if .Values.monitor.grafana.create }} /data/grafana {{- end }}
-          chmod 777 /data/prometheus {{- if .Values.monitor.grafana.create }} /data/grafana {{- end }}
-        securityContext:
-          runAsUser: 0
-        volumeMounts:
-        - name: monitor-data
-          mountPath: /data
       - name: monitor-initializer
         image: {{ .Values.monitor.initializer.image }}
         imagePullPolicy: {{ .Values.monitor.initializer.imagePullPolicy | default "IfNotPresent" }}
@@ -76,6 +62,15 @@ spec:
           value: {{ .Values.binlog.pump.create | default false | quote }}
         - name:  PROM_CONFIG_PATH
           value: /prometheus-rules
+        command:
+        - /bin/sh
+        - -c
+        - |
+          mkdir -p /data/prometheus {{- if .Values.monitor.grafana.create }} /data/grafana {{- end }}
+          chmod 777 /data/prometheus {{- if .Values.monitor.grafana.create }} /data/grafana {{- end }}
+          /usr/bin/init.sh
+        securityContext:
+          runAsUser: 0
         volumeMounts:
         - mountPath: /grafana-dashboard-definitions/tidb
           name: grafana-dashboard
@@ -83,6 +78,8 @@ spec:
         - name: prometheus-rules
           mountPath: /prometheus-rules
           readOnly: false
+        - name: monitor-data
+          mountPath: /data
       containers:
       - name: prometheus
         image: {{ .Values.monitor.prometheus.image }}
