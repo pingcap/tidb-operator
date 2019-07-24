@@ -90,8 +90,8 @@ type PDClient interface {
 	GetConfig() (*server.Config, error)
 	// GetCluster returns used when syncing pod labels.
 	GetCluster() (*metapb.Cluster, error)
-	// GetClusterStatus is used to determine if the cluster is initialized
-	GetClusterStatus() (*ClusterStatus, error)
+	// GetClusterInitialized is used to determine if the cluster is initialized
+	GetClusterInitialized() (*bool, error)
 	// GetMembers returns all PD members from cluster
 	GetMembers() (*MembersInfo, error)
 	// GetStores lists all TiKV stores from cluster
@@ -250,7 +250,7 @@ func (pc *pdClient) GetConfig() (*server.Config, error) {
 	return config, nil
 }
 
-func (pc *pdClient) GetClusterStatus() (*ClusterStatus, error) {
+func (pc *pdClient) getClusterStatus() (*ClusterStatus, error) {
 	apiURL := fmt.Sprintf("%s/%s", pc.url, clusterStatusPrefix)
 	body, err := httputil.GetBodyOK(pc.httpClient, apiURL)
 	if err != nil {
@@ -262,6 +262,15 @@ func (pc *pdClient) GetClusterStatus() (*ClusterStatus, error) {
 		return nil, err
 	}
 	return clusterStatus, nil
+}
+
+func (pc *pdClient) GetClusterInitialized() (*bool, error) {
+	status, err := pc.getClusterStatus()
+	if err != nil {
+		f := false
+		return &f, err
+	}
+	return status.IsInitialized, nil
 }
 
 func (pc *pdClient) GetCluster() (*metapb.Cluster, error) {
@@ -630,7 +639,7 @@ const (
 	GetHealthActionType                ActionType = "GetHealth"
 	GetConfigActionType                ActionType = "GetConfig"
 	GetClusterActionType               ActionType = "GetCluster"
-	GetClusterStatusActionType         ActionType = "GetClusterStatus"
+	GetClusterInitializedActionType    ActionType = "GetClusterInitialized"
 	GetMembersActionType               ActionType = "GetMembers"
 	GetStoresActionType                ActionType = "GetStores"
 	GetTombStoneStoresActionType       ActionType = "GetTombStoneStores"
@@ -713,13 +722,13 @@ func (pc *FakePDClient) GetCluster() (*metapb.Cluster, error) {
 	return result.(*metapb.Cluster), nil
 }
 
-func (pc *FakePDClient) GetClusterStatus() (*ClusterStatus, error) {
+func (pc *FakePDClient) GetClusterInitialized() (*bool, error) {
 	action := &Action{}
-	result, err := pc.fakeAPI(GetClusterStatusActionType, action)
+	result, err := pc.fakeAPI(GetClusterInitializedActionType, action)
 	if err != nil {
 		return nil, err
 	}
-	return result.(*ClusterStatus), nil
+	return result.(*bool), nil
 }
 
 func (pc *FakePDClient) GetMembers() (*MembersInfo, error) {

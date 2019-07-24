@@ -148,6 +148,7 @@ func NewController(
 				setControl,
 				svcControl,
 				tidbControl,
+				pdControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),

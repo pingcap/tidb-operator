@@ -51,15 +51,6 @@ func pdHasLeader(pdClient pdapi.PDClient) (bool, error) {
 	return memberInfo != nil, nil
 }
 
-func pdIsInitialized(pdClient pdapi.PDClient) (*bool, error) {
-	status, err := pdClient.GetClusterStatus()
-	if err != nil {
-		f := false
-		return &f, err
-	}
-	return status.IsInitialized, nil
-}
-
 // On older versions this will return the empty semver version 0.0.0
 // Most tidb-operator users will be using version 3.0+ which has the version field.
 func pdVersion(pdClient pdapi.PDClient) (string, error) {
@@ -113,7 +104,7 @@ func main() {
 	}
 
 	waitForInitializationFunc := func() bool {
-		isInit, err := pdIsInitialized(pdClient)
+		isInit, err := pdClient.GetClusterInitialized()
 		if err != nil {
 			glog.Infof("Error using pdClient to get cluster status %v", err)
 		} else if isInit == nil {

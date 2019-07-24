@@ -25,6 +25,7 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -62,7 +63,7 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			test.prepare(tc)
 		}
 
-		tmm, fakeSetControl, _, _ := newFakeTiDBMemberManager()
+		tmm, fakeSetControl, _, _, _ := newFakeTiDBMemberManager()
 
 		if test.errWhenCreateStatefulSet {
 			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
@@ -140,7 +141,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
 
-		tmm, fakeSetControl, _, _ := newFakeTiDBMemberManager()
+		tmm, fakeSetControl, _, _, fakePDControl := newFakeTiDBMemberManager()
 
 		if test.statusChange == nil {
 			fakeSetControl.SetStatusChange(func(set *apps.StatefulSet) {
@@ -167,6 +168,11 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		if test.errWhenUpdateStatefulSet {
 			fakeSetControl.SetUpdateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
+
+		pdClient := controller.NewFakePDClient(fakePDControl, tc)
+		pdClient.AddReaction(pdapi.GetClusterInitializedActionType, func(action *pdapi.Action) (interface{}, error) {
+			return func() *bool { return nil }(), nil
+		})
 
 		err = tmm.Sync(tc1)
 		if test.err {
@@ -239,7 +245,7 @@ func TestTiDBMemberManagerTiDBStatefulSetIsUpgrading(t *testing.T) {
 		expectUpgrading bool
 	}
 	testFn := func(test *testcase, t *testing.T) {
-		pmm, _, podIndexer, _ := newFakeTiDBMemberManager()
+		pmm, _, podIndexer, _, _ := newFakeTiDBMemberManager()
 		tc := newTidbClusterForTiDB()
 		tc.Status.TiDB.StatefulSet = &apps.StatefulSetStatus{
 			UpdateRevision: "v3",
@@ -352,7 +358,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		if test.updateTC != nil {
 			test.updateTC(tc)
 		}
-		pmm, _, _, tidbControl := newFakeTiDBMemberManager()
+		pmm, _, _, tidbControl, _ := newFakeTiDBMemberManager()
 
 		if test.upgradingFn != nil {
 			pmm.tidbStatefulSetIsUpgradingFn = test.upgradingFn
@@ -521,7 +527,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 }
 
-func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSetControl, cache.Indexer, *controller.FakeTiDBControl) {
+func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSetControl, cache.Indexer, *controller.FakeTiDBControl, *pdapi.FakePDControl) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
@@ -534,12 +540,14 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	tidbUpgrader := NewFakeTiDBUpgrader()
 	tidbFailover := NewFakeTiDBFailover()
 	tidbControl := controller.NewFakeTiDBControl()
+	pdControl := pdapi.NewFakePDControl()
 	operatorImage := "pingcap/tidb-operator:latest"
 
 	tmm := &tidbMemberManager{
 		setControl,
 		svcControl,
 		tidbControl,
+		pdControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
 		podInformer.Lister(),
@@ -549,7 +557,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		tidbFailover,
 		tidbStatefulSetIsUpgrading,
 	}
-	return tmm, setControl, podInformer.Informer().GetIndexer(), tidbControl
+	return tmm, setControl, podInformer.Informer().GetIndexer(), tidbControl, pdControl
 }
 
 func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
