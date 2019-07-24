@@ -199,10 +199,11 @@ type PDMember struct {
 
 // PDFailureMember is the pd failure member information
 type PDFailureMember struct {
-	PodName       string    `json:"podName,omitempty"`
-	MemberID      string    `json:"memberID,omitempty"`
-	PVCUID        types.UID `json:"pvcUID,omitempty"`
-	MemberDeleted bool      `json:"memberDeleted,omitempty"`
+	PodName       string      `json:"podName,omitempty"`
+	MemberID      string      `json:"memberID,omitempty"`
+	PVCUID        types.UID   `json:"pvcUID,omitempty"`
+	MemberDeleted bool        `json:"memberDeleted,omitempty"`
+	CreatedAt     metav1.Time `json:"createdAt,omitempty"`
 }
 
 // TiDBStatus is TiDB status
@@ -226,7 +227,8 @@ type TiDBMember struct {
 
 // TiDBFailureMember is the tidb failure member information
 type TiDBFailureMember struct {
-	PodName string `json:"podName,omitempty"`
+	PodName   string      `json:"podName,omitempty"`
+	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
 // TiKVStatus is TiKV status
@@ -254,6 +256,219 @@ type TiKVStore struct {
 
 // TiKVFailureStore is the tikv failure store information
 type TiKVFailureStore struct {
-	PodName string `json:"podName,omitempty"`
-	StoreID string `json:"storeID,omitempty"`
+	PodName   string      `json:"podName,omitempty"`
+	StoreID   string      `json:"storeID,omitempty"`
+	CreatedAt metav1.Time `json:"createdAt,omitempty"`
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Backup is a backup of tidb cluster.
+type Backup struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+
+	Spec   BackupSpec   `json:"spec"`
+	Status BackupStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// BackupList contains a list of Backup.
+type BackupList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []Backup `json:"items"`
+}
+
+// BackupStorageType respresents the backend storage type of backup.
+type BackupStorageType string
+
+const (
+	// BackupStorageTypeCeph respresents the backend storage type is ceph.
+	BackupStorageTypeCeph BackupStorageType = "ceph"
+)
+
+// StorageProvider defines the configuration for storing a backup in backend storage.
+type StorageProvider struct {
+	Ceph *CephStorageProvider `json:"ceph"`
+}
+
+// cephStorageProvider represents an ceph compatible bucket for storing backups.
+type CephStorageProvider struct {
+	// Region in which the ceph bucket is located.
+	Region string `json:"region"`
+	// Bucket in which to store the Backup.
+	Bucket string `json:"bucket"`
+	// Endpoint is the access address of the ceph object storage.
+	Endpoint string `json:"endpoint"`
+	// SecretName is the name of secret which stores
+	// ceph object store access key and secret key.
+	SecretName string `json:"secretName"`
+}
+
+// BackupType respresents the backup type.
+type BackupType string
+
+const (
+	// BackupTypeFull respresents the full backup of tidb cluster.
+	BackupTypeFull BackupType = "full"
+	// BackupTypeInc respresents the incremental backup of tidb cluster.
+	BackupTypeInc BackupType = "incremental"
+)
+
+// BackupSpec contains the backup specification for a tidb cluster.
+type BackupSpec struct {
+	// StorageType is the backup storage type.
+	StorageType BackupStorageType `json:"storageType"`
+	// StorageProvider configures where and how backups should be stored.
+	StorageProvider `json:",inline"`
+	// Type is the backup type for tidb cluster.
+	Type BackupType `json:"backupType"`
+	// Cluster is the Cluster to backup.
+	Cluster string `json:"cluster"`
+	// SecretName is the name of secret which stores
+	// tidb cluster's username and password.
+	SecretName string `json:"secretName"`
+}
+
+// BackupConditionType represents a valid condition of a Backup.
+type BackupConditionType string
+
+const (
+	// BackupRunning means the Backup is currently being executed.
+	BackupRunning BackupConditionType = "Running"
+	// BackupComplete means the Backup has successfully executed and the
+	// resulting artifact has been stored in backend storage.
+	BackupComplete BackupConditionType = "Complete"
+	// BackupFailed means the Backup has failed.
+	BackupFailed BackupConditionType = "Failed"
+)
+
+// BackupCondition describes the observed state of a Backup at a certain point.
+type BackupCondition struct {
+	Type    BackupConditionType    `json:"type"`
+	Status  corev1.ConditionStatus `json:"status"`
+	Reason  string                 `json:"reason"`
+	Message string                 `json:"message"`
+}
+
+// BackupStatus represents the current status of a backup.
+type BackupStatus struct {
+	// BackupPath is the location of the backup.
+	BackupPath string `json:"backupPath"`
+	// TimeStarted is the time at which the backup was started.
+	TimeStarted metav1.Time `json:"timeStarted"`
+	// TimeCompleted is the time at which the backup completed.
+	TimeCompleted metav1.Time `json:"timeCompleted"`
+	// BackupSize is the data size of the backup.
+	BackupSize int64 `json:"backupSize"`
+	// CommitTs is the snapshot time point of tidb cluster.
+	CommitTs   string            `json:"commitTs"`
+	Conditions []BackupCondition `json:"conditions"`
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// BackupSchedule is a backup schedule of tidb cluster.
+type BackupSchedule struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+
+	Spec   BackupScheduleSpec   `json:"spec"`
+	Status BackupScheduleStatus `json:"status,omitempty"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// BackupScheduleList contains a list of BackupSchedule.
+type BackupScheduleList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []BackupSchedule `json:"items"`
+}
+
+// BackupScheduleSpec contains the backup schedule specification for a tidb cluster.
+type BackupScheduleSpec struct {
+	// Schedule specifies the cron string used for backup scheduling.
+	Schedule string `json:"schedule"`
+	// MaxBackups is to specify how many backups we want to keep.
+	MaxBackups int `json:"maxBackups"`
+	// BackupTemplate is the specification of the backup structure to get scheduled.
+	BackupTemplate BackupSpec `json:"backupTemplate"`
+}
+
+// BackupScheduleStatus represents the current state of a BackupSchedule.
+type BackupScheduleStatus struct {
+	// LastBackup represents the last backup.
+	LastBackup string `json:"lastBackup"`
+	// LastBackupTime represents the last time the backup was successfully created.
+	LastBackupTime metav1.Time `json:"lastBackupTime"`
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Restore represents the restoration of backup of a tidb cluster.
+type Restore struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+
+	Spec   RestoreSpec   `json:"spec"`
+	Status RestoreStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// RestoreList contains a list of Restore.
+type RestoreList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []Restore `json:"items"`
+}
+
+// RestoreConditionType represents a valid condition of a Restore.
+type RestoreConditionType string
+
+const (
+	// RestoreRunning means the Restore is currently being executed.
+	RestoreRunning RestoreConditionType = "Running"
+	// RestoreComplete means the Restore has successfully executed and the
+	// backup data has been loaded into tidb cluster.
+	RestoreComplete RestoreConditionType = "Complete"
+	// RestoreFailed means the Restore has failed.
+	RestoreFailed RestoreConditionType = "Failed"
+)
+
+// RestoreCondition describes the observed state of a Restore at a certain point.
+type RestoreCondition struct {
+	Type    RestoreConditionType   `json:"type"`
+	Status  corev1.ConditionStatus `json:"status"`
+	Reason  string                 `json:"reason"`
+	Message string                 `json:"message"`
+}
+
+// RestoreSpec contains the specification for a restore of a tidb cluster backup.
+type RestoreSpec struct {
+	// Cluster represents the tidb cluster to be restored.
+	Cluster string `json:"cluster"`
+	// Backup represents the backup object to be restored.
+	Backup string `json:"backup"`
+	// SecretName is the name of the secret which stores
+	// tidb cluster's username and password.
+	SecretName string `json:"secretName"`
+}
+
+// RestoreStatus represents the current status of a tidb cluster restore.
+type RestoreStatus struct {
+	// TimeStarted is the time at which the restore was started.
+	TimeStarted metav1.Time `json:"timeStarted"`
+	// TimeCompleted is the time at which the restore completed.
+	TimeCompleted metav1.Time        `json:"timeCompleted"`
+	Conditions    []RestoreCondition `json:"conditions"`
 }

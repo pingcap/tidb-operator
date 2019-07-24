@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -102,9 +103,11 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 
 	err := controller.GetPDClient(psd.pdControl, tc).DeleteMember(memberName)
 	if err != nil {
+		glog.Errorf("pd scale in: failed to delete member %s, %v", memberName, err)
 		resetReplicas(newSet, oldSet)
 		return err
 	}
+	glog.Infof("pd scale in: delete member %s successfully", memberName)
 
 	pvcName := ordinalPVCName(v1alpha1.PDMemberType, setName, ordinal)
 	pvc, err := psd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
@@ -116,13 +119,18 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	if pvc.Annotations == nil {
 		pvc.Annotations = map[string]string{}
 	}
-	pvc.Annotations[label.AnnPVCDeferDeleting] = time.Now().Format(time.RFC3339)
+	now := time.Now().Format(time.RFC3339)
+	pvc.Annotations[label.AnnPVCDeferDeleting] = now
 
 	_, err = psd.pvcControl.UpdatePVC(tc, pvc)
 	if err != nil {
+		glog.Errorf("pd scale in: failed to set pvc %s/%s annotation: %s to %s",
+			ns, pvcName, label.AnnPVCDeferDeleting, now)
 		resetReplicas(newSet, oldSet)
 		return err
 	}
+	glog.Infof("pd scale in: set pvc %s/%s annotation: %s to %s",
+		ns, pvcName, label.AnnPVCDeferDeleting, now)
 
 	decreaseReplicas(newSet, oldSet)
 	return nil
