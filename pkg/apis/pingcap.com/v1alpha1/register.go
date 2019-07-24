@@ -52,6 +52,12 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&TidbCluster{},
 		&TidbClusterList{},
+		&Backup{},
+		&BackupList{},
+		&BackupSchedule{},
+		&BackupScheduleList{},
+		&Restore{},
+		&RestoreList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
