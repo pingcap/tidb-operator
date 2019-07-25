@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -159,7 +160,8 @@ type OperatorActions interface {
 	CheckTidbClustersAvailable(infos []*TidbClusterConfig) error
 	CheckOperatorDownOrDie(infos []*TidbClusterConfig)
 	CheckTidbClustersAvailableOrDie(infos []*TidbClusterConfig)
-	CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
+	CheckEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
+	CheckKubeletDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckKubeProxyDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
 	CheckKubeSchedulerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
@@ -296,7 +298,6 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 		"tikv.storageClassName":   tc.StorageClassName,
 		"tidb.storageClassName":   tc.StorageClassName,
 		"tidb.password":           tc.Password,
-		"pd.maxStoreDownTime":     "5m",
 		"pd.image":                tc.PDImage,
 		"tikv.image":              tc.TiKVImage,
 		"tidb.image":              tc.TiDBImage,
@@ -523,6 +524,43 @@ func (oa *operatorActions) DeployTidbClusterOrDie(info *TidbClusterConfig) {
 func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	glog.Infof("cleaning tidbcluster %s/%s", info.Namespace, info.ClusterName)
 	oa.EmitEvent(info, "CleanTidbCluster")
+	ns := info.Namespace
+	tcName := info.ClusterName
+
+	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			label.InstanceLabelKey: tcName,
+		},
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			{
+				Key:      label.ComponentLabelKey,
+				Operator: metav1.LabelSelectorOpIn,
+				Values:   []string{label.PDLabelVal, label.TiKVLabelVal},
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	pvcList, err := oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return err
+	}
+	var beforePVCNames []string
+	for _, pvc := range pvcList.Items {
+		beforePVCNames = append(beforePVCNames, pvc.GetName())
+	}
+	glog.V(4).Info(beforePVCNames)
+
+	pvList, err := oa.kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return err
+	}
+	var beforePVNames []string
+	for _, pv := range pvList.Items {
+		beforePVNames = append(beforePVNames, pv.GetName())
+	}
+	glog.V(4).Info(beforePVNames)
 
 	charts := []string{
 		info.ClusterName,
@@ -538,7 +576,38 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		}
 	}
 
-	err := oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(getBackupDirPodName, &metav1.DeleteOptions{})
+	time.Sleep(time.Minute)
+
+	pvcList, err = oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return err
+	}
+	var afterPVCNames []string
+	for _, pvc := range pvcList.Items {
+		afterPVCNames = append(afterPVCNames, pvc.GetName())
+	}
+	glog.V(4).Info(afterPVCNames)
+
+	pvList, err = oa.kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return err
+	}
+	var afterPVNames []string
+	for _, pv := range pvList.Items {
+		afterPVNames = append(afterPVNames, pv.GetName())
+	}
+	glog.V(4).Info(afterPVNames)
+
+	if !reflect.DeepEqual(beforePVCNames, afterPVCNames) {
+		return fmt.Errorf("pvc changed when we delete cluster: %s/%s, before: %v, after: %v",
+			ns, tcName, beforePVCNames, afterPVCNames)
+	}
+	if !reflect.DeepEqual(beforePVNames, afterPVNames) {
+		return fmt.Errorf("pv changed when we delete cluster: %s/%s, before: %v, after: %v",
+			ns, tcName, beforePVNames, afterPVNames)
+	}
+
+	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(getBackupDirPodName, &metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete dir pod %v", err)
 	}
@@ -934,7 +1003,8 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 				}
 				glog.V(4).Infof("index:%d,schedulers:%v,error:%v", i, schedulers, err)
 				if len(schedulers) > 1 {
-					return true, fmt.Errorf("there are too many evict leader schedulers: %v", schedulers)
+					glog.Errorf("there are too many evict leader schedulers: %v", schedulers)
+					return false, nil
 				}
 				if len(schedulers) == 0 {
 					return false, nil
@@ -1098,7 +1168,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	}
 	if len(tc.Status.TiKV.Stores) != int(replicas) {
 		glog.Infof("tidbcluster: %s/%s .status.TiKV.Stores.count(%d) != %d",
-			ns, tcName, len(tc.Status.TiKV.Stores), tc.Spec.TiKV.Replicas)
+			ns, tcName, len(tc.Status.TiKV.Stores), replicas)
 		return false, nil
 	}
 	if tikvSet.Status.ReadyReplicas != tikvSet.Status.Replicas {
