@@ -408,7 +408,7 @@ binlog:
       heartbeat-interval = 2
       [storage]
       sync-log = true
-      stop-write-at-available-space = "100 gib"
+      stop-write-at-available-space = "10 gib"
 
   drainer:
     create: false
