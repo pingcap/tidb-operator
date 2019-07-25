@@ -10,6 +10,5 @@ metadata:
     app.kubernetes.io/component: pump
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 data:
-  pump-config: |-
-{{ tuple "config/_pump-config.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-{{- end -}}
+{{ include "pump-configmap.data" . | indent 2 }}
+{{ end }}

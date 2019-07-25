@@ -50,9 +50,13 @@ spec:
       volumes:
       - name: config
         configMap:
+        {{- if .Values.enableConfigMapRollout }}
+          name: {{ template "cluster.name" . }}-pump-{{ template "pump-configmap.data-digest" . }}
+        {{- else }}
           name: {{ template "cluster.name" . }}-pump
+        {{- end }}
           items:
-          - key: pump-config
+          - key: config-file
             path: pump.toml
   volumeClaimTemplates:
   - metadata:

@@ -398,13 +398,17 @@ binlog:
     # or to arbitrary policies determined by the cluster administrators.
     # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
     storageClassName: local-storage
-    storage: 20Gi
-    syncLog: true
-    # a integer value to control expiry date of the binlog data, indicates for how long (in days) the binlog data would be stored.
-    # must bigger than 0
-    gc: 7
-    # number of seconds between heartbeat ticks (in 2 seconds)
-    heartbeatInterval: 2
+    storage: 100Gi
+    # Please refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/pump/pump.toml for the default
+    # pump configurations (change to the tags of your pump version),
+    # just follow the format in the file and configure in the 'config' section
+    # as below if you want to customize any configuration.
+    config: |
+      gc = 7
+      heartbeat-interval = 2
+      [storage]
+      sync-log = true
+      stop-write-at-available-space = "100 gib"
 
   drainer:
     create: false
@@ -417,39 +421,27 @@ binlog:
     # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
     storageClassName: local-storage
     storage: 10Gi
-    # the number of the concurrency of the downstream for synchronization. The bigger the value,
-    # the better throughput performance of the concurrency (16 by default)
-    workerCount: 16
-    # the interval time (in seconds) of detect pumps' status (default 10)
-    detectInterval: 10
     # disbale detect causality
     disableDetect: false
-    # disable dispatching sqls that in one same binlog; if set true, work-count and txn-batch would be useless
-    disableDispatch: false
-    # # disable sync these schema
-    ignoreSchemas: "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql,test"
     # if drainer donesn't have checkpoint, use initial commitTS to initial checkpoint
     initialCommitTs: 0
-    # enable safe mode to make syncer reentrant
-    safeMode: false
-    # the number of SQL statements of a transaction that are output to the downstream database (20 by default)
-    txnBatch: 20
-    # downstream storage, equal to --dest-db-type
-    # valid values are "mysql", "pb", "kafka"
-    destDBType: pb
-    mysql: {}
-      # host: "127.0.0.1"
-      # user: "root"
-      # password: ""
-      # port: 3306
-      # # Time and size limits for flash batch write
-      # timeLimit: "30s"
-      # sizeLimit: "100000"
-    kafka: {}
-      # only need config one of zookeeper-addrs and kafka-addrs, will get kafka address if zookeeper-addrs is configed.
-      # zookeeperAddrs: "127.0.0.1:2181"
-      # kafkaAddrs: "127.0.0.1:9092"
-      # kafkaVersion: "0.8.2.0"
+    # Please refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml for the default
+    # drainer configurations (change to the tags of your drainer version),
+    # just follow the format in the file and configure in the 'config' section
+    # as below if you want to customize any configuration.
+    config: |
+      worker-count = 16
+      detect-interval = 10
+      disable-dispatch = false
+      ignore-schemas = "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql"
+      safe-mode = false
+      txn-batch = 20
+      db-type = "mysql"
+      [syncer.to]
+      # host = "127.0.0.1"
+      # user = "root"
+      # password = ""
+      # port = 3306
 
 scheduledBackup:
   create: false

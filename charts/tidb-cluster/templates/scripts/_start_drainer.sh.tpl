@@ -26,6 +26,7 @@ done
 
 /drainer \
 -L={{ .Values.binlog.drainer.logLevel | default "info" }} \
+-pd-urls={{ template "cluster.name" . }}-pd:2379 \
 -addr=`echo ${HOSTNAME}`.{{ template "cluster.name" . }}-drainer:8249 \
 -config=/etc/drainer/drainer.toml \
 -disable-detect={{ .Values.binlog.drainer.disableDetect | default false }} \
