@@ -283,11 +283,11 @@ type BackupList struct {
 	Items []Backup `json:"items"`
 }
 
-// BackupStorageType respresents the backend storage type of backup.
+// BackupStorageType represents the backend storage type of backup.
 type BackupStorageType string
 
 const (
-	// BackupStorageTypeCeph respresents the backend storage type is ceph.
+	// BackupStorageTypeCeph represents the backend storage type is ceph.
 	BackupStorageTypeCeph BackupStorageType = "ceph"
 )
 
@@ -309,13 +309,13 @@ type CephStorageProvider struct {
 	SecretName string `json:"secretName"`
 }
 
-// BackupType respresents the backup type.
+// BackupType represents the backup type.
 type BackupType string
 
 const (
-	// BackupTypeFull respresents the full backup of tidb cluster.
+	// BackupTypeFull represents the full backup of tidb cluster.
 	BackupTypeFull BackupType = "full"
-	// BackupTypeInc respresents the incremental backup of tidb cluster.
+	// BackupTypeInc represents the incremental backup of tidb cluster.
 	BackupTypeInc BackupType = "incremental"
 )
 
@@ -338,6 +338,8 @@ type BackupSpec struct {
 type BackupConditionType string
 
 const (
+	// BackupScheduled means the backup job has been created to do tidb cluster backup
+	BackupScheduled BackupConditionType = "Scheduled"
 	// BackupRunning means the Backup is currently being executed.
 	BackupRunning BackupConditionType = "Running"
 	// BackupComplete means the Backup has successfully executed and the
@@ -349,10 +351,11 @@ const (
 
 // BackupCondition describes the observed state of a Backup at a certain point.
 type BackupCondition struct {
-	Type    BackupConditionType    `json:"type"`
-	Status  corev1.ConditionStatus `json:"status"`
-	Reason  string                 `json:"reason"`
-	Message string                 `json:"message"`
+	Type               BackupConditionType    `json:"type"`
+	Status             corev1.ConditionStatus `json:"status"`
+	LastTransitionTime metav1.Time            `json:"lastTransitionTime"`
+	Reason             string                 `json:"reason"`
+	Message            string                 `json:"message"`
 }
 
 // BackupStatus represents the current status of a backup.
@@ -436,6 +439,8 @@ type RestoreList struct {
 type RestoreConditionType string
 
 const (
+	// RestoreScheduled means the restore job has been created to do tidb cluster restore
+	RestoreScheduled RestoreConditionType = "Scheduled"
 	// RestoreRunning means the Restore is currently being executed.
 	RestoreRunning RestoreConditionType = "Running"
 	// RestoreComplete means the Restore has successfully executed and the
@@ -447,10 +452,11 @@ const (
 
 // RestoreCondition describes the observed state of a Restore at a certain point.
 type RestoreCondition struct {
-	Type    RestoreConditionType   `json:"type"`
-	Status  corev1.ConditionStatus `json:"status"`
-	Reason  string                 `json:"reason"`
-	Message string                 `json:"message"`
+	Type               RestoreConditionType   `json:"type"`
+	Status             corev1.ConditionStatus `json:"status"`
+	LastTransitionTime metav1.Time            `json:"lastTransitionTime"`
+	Reason             string                 `json:"reason"`
+	Message            string                 `json:"message"`
 }
 
 // RestoreSpec contains the specification for a restore of a tidb cluster backup.
