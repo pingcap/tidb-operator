@@ -388,12 +388,8 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 
 		health, err := tmm.tidbControl.GetHealth(tc, hostName)
 		if err != nil {
-			glog.Errorf("Could not get health of %s: %v", string(hostName), err)
-			if oldExists {
-				health = oldTidbMember.Health
-			} else {
-				health = false
-			}
+			glog.Infof("Could not get health of %s: %v", string(hostName), err)
+			health = false
 		}
 
 		lastTransitionTime := metav1.Now()
