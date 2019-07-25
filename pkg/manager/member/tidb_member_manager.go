@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -382,19 +383,27 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 	tidbStatus := map[string]v1alpha1.TiDBMember{}
 	for _, hostName := range tmm.tidbControl.HostNames(tc) {
 		var nodeName string
+
+		oldTidbMember, oldExists := tc.Status.TiDB.Members[string(hostName)]
+
 		health, err := tmm.tidbControl.GetHealth(tc, hostName)
 		if err != nil {
-			return err
+			glog.Errorf("Could not get health of %s: %v", string(hostName), err)
+			if oldExists {
+				health = oldTidbMember.Health
+			} else {
+				health = false
+			}
 		}
 
-		oldTidbMember, exist := tc.Status.TiDB.Members[string(hostName)]
 		lastTransitionTime := metav1.Now()
-		if exist {
+		if oldExists {
 			nodeName = oldTidbMember.NodeName
 			if oldTidbMember.Health == health {
 				lastTransitionTime = oldTidbMember.LastTransitionTime
 			}
 		}
+
 		pod, err := tmm.podLister.Pods(tc.GetNamespace()).Get(string(hostName))
 		if err != nil && !apierrors.IsNotFound(err) {
 			return err
