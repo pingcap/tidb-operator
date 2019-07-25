@@ -113,7 +113,7 @@ func (tc *TidbClusterConfig) BuildSubValues(path string) (string, error) {
 		"[log]",
 		`level = "info"`,
 	}
-	subValues := GetSubValuesOrDie(tc.ClusterName, tc.Namespace, tc.TopologyKey, pdConfig, tikvConfig, tidbConfig)
+	subValues := GetSubValuesOrDie(tc.ClusterName, tc.Namespace, tc.TopologyKey, pdConfig, tikvConfig, tidbConfig, tc.pumpConfig, tc.drainerConfig)
 	subVaulesPath := fmt.Sprintf("%s/%s.yaml", path, tc.ClusterName)
 	_, err := os.Stat(subVaulesPath)
 	if err != nil {

@@ -106,6 +106,15 @@ var affinityTemp string = `{{.Kind}}:
           - {{.Namespace}}
 `
 
+var binlogTemp string = `binlog:
+{{if .PumpConfig}}  pump:
+  	config: |
+{{range .PumpConfig}}      {{.}}{{end}}{{end}}
+{{if .DrainerConfig}}  drainer:
+    config: |
+{{range .DrainerConfig}}      {{.}}{{end}}{{end}}
+`
+
 type AffinityInfo struct {
 	ClusterName string
 	Kind        string
@@ -115,7 +124,12 @@ type AffinityInfo struct {
 	Config      []string
 }
 
-func GetSubValuesOrDie(clusterName, namespace, topologyKey string, pdConfig []string, tikvConfig []string, tidbConfig []string) string {
+type BinLogInfo struct {
+	PumpConfig    []string
+	DrainerConfig []string
+}
+
+func GetSubValuesOrDie(clusterName, namespace, topologyKey string, pdConfig []string, tikvConfig []string, tidbConfig []string, pumpConfig []string, drainerConfig []string) string {
 	temp, err := template.New("dt-affinity").Parse(affinityTemp)
 	if err != nil {
 		slack.NotifyAndPanic(err)
@@ -136,7 +150,23 @@ func GetSubValuesOrDie(clusterName, namespace, topologyKey string, pdConfig []st
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
-	return fmt.Sprintf("%s%s%s", pdbuff.String(), tikvbuff.String(), tidbbuff.String())
+	subValues := fmt.Sprintf("%s%s%s", pdbuff.String(), tikvbuff.String(), tidbbuff.String())
+
+	if pumpConfig == nil && drainerConfig == nil {
+		return subValues
+	}
+
+	btemp, err := template.New("binlog").Parse(binlogTemp)
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+	binlogbuff := new(bytes.Buffer)
+	err = btemp.Execute(binlogbuff, &BinLogInfo{PumpConfig: pumpConfig, DrainerConfig: drainerConfig})
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+	subValues = fmt.Sprintf("%s%s", subValues, binlogbuff.String())
+	return subValues
 }
 
 const (

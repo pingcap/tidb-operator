@@ -261,6 +261,9 @@ type TidbClusterConfig struct {
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
 	TopologyKey      string
+
+	pumpConfig    []string
+	drainerConfig []string
 }
 
 func (tc *TidbClusterConfig) String() string {
@@ -2219,19 +2222,28 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	glog.Infof("begin to deploy incremental backup cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
 
 	sets := map[string]string{
-		"binlog.pump.create":            "true",
-		"binlog.drainer.destDBType":     "mysql",
-		"binlog.drainer.mysql.host":     fmt.Sprintf("%s-tidb.%s", to.ClusterName, to.Namespace),
-		"binlog.drainer.mysql.user":     "root",
-		"binlog.drainer.mysql.password": to.Password,
-		"binlog.drainer.mysql.port":     "4000",
-		"binlog.drainer.ignoreSchemas":  "",
+		"binlog.pump.create": "true",
 	}
 	if withDrainer {
 		sets["binlog.drainer.create"] = "true"
 	}
 	if ts != "" {
 		sets["binlog.drainer.initialCommitTs"] = ts
+	}
+
+	from.drainerConfig = []string{
+		"  worker-count = 16",
+		"  detect-interval = 10",
+		"  disable-dispatch = false",
+		`  ignore-schemas = ""`,
+		`  safe-mode = false`,
+		`  txn-batch = 20`,
+		`  db-type = "mysql"`,
+		`[syncer.to]`,
+		fmt.Sprintf(`  host = "%s-tidb.%s"`, to.ClusterName, to.Namespace),
+		fmt.Sprintf(`  user = "%s"`, "root"),
+		fmt.Sprintf(`  password = "%s"`, to.Password),
+		fmt.Sprintf(`  port = %d`, 4000),
 	}
 
 	cmd, err := oa.getHelmUpgradeClusterCmd(from, sets)
