@@ -45,6 +45,10 @@ const (
 	StoreIDLabelKey string = "tidb.pingcap.com/store-id"
 	// MemberIDLabelKey is member id label key
 	MemberIDLabelKey string = "tidb.pingcap.com/member-id"
+
+	// BackupScheduleLabelKey is backup schedule key
+	BackupScheduleLabelKey string = "tidb.pingcap.com/backup-schedule"
+
 	// AnnPodNameKey is pod name annotation key used in PV/PVC for synchronizing tidb cluster meta info
 	AnnPodNameKey string = "tidb.pingcap.com/pod-name"
 	// AnnPVCDeferDeleting is pvc defer deletion annotation key used in PVC for defer deleting PVC

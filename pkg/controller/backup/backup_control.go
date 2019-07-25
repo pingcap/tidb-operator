@@ -33,7 +33,7 @@ type ControlInterface interface {
 // NewDefaultBackupControl returns a new instance of the default implementation BackupControlInterface that
 // implements the documented semantics for Backup.
 func NewDefaultBackupControl(
-	statusUpdater controller.BackupStatusUpdaterInterface,
+	statusUpdater controller.BackupConditionUpdaterInterface,
 	backupManager backup.BackupManager,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultBackupControl{
@@ -44,7 +44,7 @@ func NewDefaultBackupControl(
 }
 
 type defaultBackupControl struct {
-	statusUpdater controller.BackupStatusUpdaterInterface
+	statusUpdater controller.BackupConditionUpdaterInterface
 	backupManager backup.BackupManager
 	recorder      record.EventRecorder
 }
