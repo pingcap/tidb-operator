@@ -14,32 +14,139 @@
 package backup
 
 import (
+	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
-
+	"github.com/golang/glog"
 	"github.com/mholt/archiver"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 )
 
+// BackupOpts contains the input arguments to the backup command
+type BackupOpts struct {
+	Namespace   string
+	TcName      string
+	TidbSvc     string
+	Password    string
+	User        string
+	StorageType string
+	BackupName  string
+}
+
+func (bo *BackupOpts) String() string {
+	return fmt.Sprintf("%s/%s", bo.Namespace, bo.TcName)
+}
+
+func (bo *BackupOpts) getBackupFullPath() string {
+	return filepath.Join(constants.BackupRootPath, bo.getBackupRelativePath())
+}
+
+func (bo *BackupOpts) getBackupRelativePath() string {
+	BackupName := fmt.Sprintf("backup-%s", time.Now().UTC().Format(time.RFC3339))
+	return fmt.Sprintf("%s_%s/%s", bo.Namespace, bo.TcName, BackupName)
+}
+
+func (bo *BackupOpts) getDestBucket() string {
+	return fmt.Sprint("%s:%s", bo.StorageType, bo.getBackupRelativePath())
+}
+
+func (bo *BackupOpts) getTikvGCLifeTime(db *sql.DB) (string, error) {
+	var tikvGCTime string
+	row := db.QueryRow("select variable_value from ? where variable_name= ?", constants.TidbMetaTable, constants.TikvGCVariable)
+	err := row.Scan(&tikvGCTime)
+	if err != nil {
+		return tikvGCTime, fmt.Errorf("query cluster %s %s failed, err: %v", bo, constants.TikvGCVariable, err)
+	}
+	return tikvGCTime, nil
+}
+
+func (bo *BackupOpts) setTikvGClifeTime(db *sql.DB, gcTime string) error {
+	_, err := db.Exec("update ? set variable_value = ? where variable_name = ?", constants.TidbMetaTable, gcTime, constants.TikvGCVariable)
+	if err != nil {
+		return fmt.Errorf("set cluster %s %s failed, err: %v", bo, constants.TikvGCVariable, err)
+	}
+	return nil
+}
+
+func (bo *BackupOpts) dumpTidbClusterData() (string, error) {
+	bfPath := bo.getBackupFullPath()
+	err := util.EnsureDirectoryExist(bfPath)
+	if err != nil {
+		return "", err
+	}
+	args := []string{
+		fmt.Sprintf("--outputdir=%s", bfPath),
+		fmt.Sprintf("--host=%s", bo.TidbSvc),
+		"--port=4000",
+		fmt.Sprintf("--User=%s", bo.User),
+		fmt.Sprintf("--Password=%s", bo.Password),
+		"--long-query-guard=3600",
+		"--tidb-force-priority=LOW_PRIORITY",
+		"--verbose=3",
+	}
+
+	dumper := exec.Command("/mydumper", args...)
+	if err := dumper.Start(); err != nil {
+		return bfPath, fmt.Errorf("cluster %s, start mydumper command %v falied, err: %v", bo, args, err)
+	}
+	if err := dumper.Wait(); err != nil {
+		return bfPath, fmt.Errorf("cluster %s, execute mydumper command %v failed, err: %v", bo, args, err)
+	}
+	return bfPath, nil
+}
+
+func (bo *BackupOpts) backupDataToRemote() error {
+	destBucket := bo.getDestBucket()
+	tmpDestBucket := fmt.Sprintf("%s.tmp", destBucket)
+	// TODO: We may need to use exec.CommandContext to control timeouts.
+	rcCopy := exec.Command("rclone", constants.RcloneConfigArg, "copyto", tmpDestBucket)
+	if err := rcCopy.Start(); err != nil {
+		return fmt.Errorf("cluster %s, start rclone copyto command falied, err: %v", bo, err)
+	}
+	if err := rcCopy.Wait(); err != nil {
+		return fmt.Errorf("cluster %s, execute rclone copyto command failed, err: %v", bo, err)
+	}
+
+	glog.Info("backup was upload successfully, now move it to permanent URL")
+
+	// the backup was a success
+	// remove .tmp extension
+	rcMove := exec.Command("rclone", constants.RcloneConfigArg, "moveto", tmpDestBucket, destBucket)
+
+	if err := rcMove.Start(); err != nil {
+		return fmt.Errorf("cluster %s, start rclone moveto command falied, err: %v", bo, err)
+	}
+
+	if err := rcMove.Wait(); err != nil {
+		return fmt.Errorf("cluster %s, start rclone moveto command falied, err: %v", bo, err)
+	}
+	return nil
+}
+
+func (bo *BackupOpts) getDSN(db string) string {
+	return fmt.Sprintf("%s:%s@(%s:4000)/%s?/charset=utf8", bo.User, bo.Password, bo.TidbSvc, db)
+}
+
 /*
-	GetCommitTsFromMetadata get commitTs from mydumper's metadata file
+	getCommitTsFromMetadata get commitTs from mydumper's metadata file
 
 	metadata file format is as follows:
 
 		Started dump at: 2019-06-13 10:00:04
 		SHOW MASTER STATUS:
-		Log: tidb-binlog
-		Pos: 409054741514944513
-		GTID:
+			Log: tidb-binlog
+			Pos: 409054741514944513
+			GTID:
 
 		Finished dump at: 2019-06-13 10:00:04
 */
-func GetCommitTsFromMetadata(backupPath string) (string, error) {
+func getCommitTsFromMetadata(backupPath string) (string, error) {
 	var commitTs string
 
 	metaFile := filepath.Join(backupPath, constants.MetaDataFile)
@@ -65,8 +172,8 @@ func GetCommitTsFromMetadata(backupPath string) (string, error) {
 	return commitTs, nil
 }
 
-// GetBackupSize get the backup data size
-func GetBackupSize(backupPath string) (string, error) {
+// getBackupSize get the backup data size
+func getBackupSize(backupPath string) (string, error) {
 	var size string
 	if exist := util.IsFileExist(backupPath); !exist {
 		return size, fmt.Errorf("file %s does not exist or is not regular file", backupPath)
@@ -81,8 +188,8 @@ func GetBackupSize(backupPath string) (string, error) {
 	return size, nil
 }
 
-// ArchiveBackupData archive backup data by destFile's extension name
-func ArchiveBackupData(backupDir, destFile string) error {
+// archiveBackupData archive backup data by destFile's extension name
+func archiveBackupData(backupDir, destFile string) error {
 	if exist := util.IsDirExist(backupDir); !exist {
 		return fmt.Errorf("dir %s does not exist or is not a dir", backupDir)
 	}

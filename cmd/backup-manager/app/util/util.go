@@ -17,7 +17,30 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
+
+var (
+	cmdHelpMsg string
+	handleFlag = validCmdFlagFunc
+)
+
+func validCmdFlagFunc(flag *pflag.Flag) {
+	if flag.Name == "help" || flag.Name == "kubeconfig" || len(flag.Value.String()) > 0 {
+		return
+	}
+
+	cmdutil.CheckErr(fmt.Errorf(cmdHelpMsg, flag.Name))
+}
+
+// ValidCmdFlags verify that all flags are set
+func ValidCmdFlags(cmd *cobra.Command) {
+	cmdHelpMsg = "error: some flags [--%s] are missing.\nSee '" + cmd.CommandPath() + " -h for' help."
+	cmd.Flags().VisitAll(handleFlag)
+}
 
 // EnsureDirectoryExist create directory if does not exist
 func EnsureDirectoryExist(dirName string) error {

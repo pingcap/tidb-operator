@@ -11,17 +11,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package restore
+package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 )
 
 // GetRestoreCondition get the specify type's RestoreCondition from the given RestoreStatus
-func GetRestoreCondition(status *v1alpha1.RestoreStatus, conditionType v1alpha1.RestoreConditionType) (int, *v1alpha1.RestoreCondition) {
+func GetRestoreCondition(status *RestoreStatus, conditionType RestoreConditionType) (int, *RestoreCondition) {
 	if status == nil {
 		return -1, nil
 	}
@@ -36,7 +34,7 @@ func GetRestoreCondition(status *v1alpha1.RestoreStatus, conditionType v1alpha1.
 // UpdateRestoreCondition updates existing Restore condition or creates a new
 // one. Sets LastTransitionTime to now if the status has changed.
 // Returns true if Restore condition has changed or has been added.
-func UpdateRestoreCondition(status *v1alpha1.RestoreStatus, condition *v1alpha1.RestoreCondition) bool {
+func UpdateRestoreCondition(status *RestoreStatus, condition *RestoreCondition) bool {
 	condition.LastTransitionTime = metav1.Now()
 	// Try to find this Restore condition.
 	conditionIndex, oldCondition := GetRestoreCondition(status, condition.Type)
@@ -62,7 +60,7 @@ func UpdateRestoreCondition(status *v1alpha1.RestoreStatus, condition *v1alpha1.
 }
 
 // IsRestoreComplete returns true if a Restore has successfully completed
-func IsRestoreComplete(backup *v1alpha1.Restore) bool {
-	_, condition := GetRestoreCondition(&backup.Status, v1alpha1.RestoreComplete)
+func IsRestoreComplete(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreComplete)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }

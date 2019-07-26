@@ -11,17 +11,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backup
+package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 )
 
 // GetBackupCondition get the specify type's BackupCondition from the given BackupStatus
-func GetBackupCondition(status *v1alpha1.BackupStatus, conditionType v1alpha1.BackupConditionType) (int, *v1alpha1.BackupCondition) {
+func GetBackupCondition(status *BackupStatus, conditionType BackupConditionType) (int, *BackupCondition) {
 	if status == nil {
 		return -1, nil
 	}
@@ -36,7 +34,7 @@ func GetBackupCondition(status *v1alpha1.BackupStatus, conditionType v1alpha1.Ba
 // UpdateBackupCondition updates existing Backup condition or creates a new
 // one. Sets LastTransitionTime to now if the status has changed.
 // Returns true if Backup condition has changed or has been added.
-func UpdateBackupCondition(status *v1alpha1.BackupStatus, condition *v1alpha1.BackupCondition) bool {
+func UpdateBackupCondition(status *BackupStatus, condition *BackupCondition) bool {
 	condition.LastTransitionTime = metav1.Now()
 	// Try to find this Backup condition.
 	conditionIndex, oldCondition := GetBackupCondition(status, condition.Type)
@@ -62,7 +60,7 @@ func UpdateBackupCondition(status *v1alpha1.BackupStatus, condition *v1alpha1.Ba
 }
 
 // IsBackupComplete returns true if a Backup has successfully completed
-func IsBackupComplete(backup *v1alpha1.Backup) bool {
-	_, condition := GetBackupCondition(&backup.Status, v1alpha1.BackupComplete)
+func IsBackupComplete(backup *Backup) bool {
+	_, condition := GetBackupCondition(&backup.Status, BackupComplete)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }

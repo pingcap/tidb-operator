@@ -20,7 +20,6 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	restoreutil "github.com/pingcap/tidb-operator/pkg/backup/restore"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
@@ -59,7 +58,7 @@ func (rcu *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condit
 	restoreName := restore.GetName()
 	var isUpdate bool
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		isUpdate = restoreutil.UpdateRestoreCondition(&restore.Status, condition)
+		isUpdate = v1alpha1.UpdateRestoreCondition(&restore.Status, condition)
 		if isUpdate {
 			_, updateErr := rcu.cli.PingcapV1alpha1().Restores(ns).Update(restore)
 			if updateErr == nil {

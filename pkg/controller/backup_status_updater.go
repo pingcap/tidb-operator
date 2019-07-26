@@ -20,7 +20,6 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	backuputil "github.com/pingcap/tidb-operator/pkg/backup/backup"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
@@ -59,7 +58,7 @@ func (bcu *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition
 	backupName := backup.GetName()
 	var isUpdate bool
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		isUpdate = backuputil.UpdateBackupCondition(&backup.Status, condition)
+		isUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, condition)
 		if isUpdate {
 			_, updateErr := bcu.cli.PingcapV1alpha1().Backups(ns).Update(backup)
 			if updateErr == nil {
