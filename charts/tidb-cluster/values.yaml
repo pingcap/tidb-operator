@@ -161,6 +161,8 @@ tikv:
   # (choose the version matching your tikv) for detailed explanation of each parameter.
   config: |
     log-level = "info"
+    [server]
+    status-addr = "0.0.0.0:20180"
   
   # Here are some parameters you may want to customize (Please configure in the above 'config' section):
   # [readpool.storage]
