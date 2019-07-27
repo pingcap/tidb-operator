@@ -16,6 +16,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -32,7 +33,6 @@ import (
 	"k8s.io/apiserver/pkg/util/logs"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
@@ -45,6 +45,8 @@ var (
 	pdFailoverPeriod   time.Duration
 	tikvFailoverPeriod time.Duration
 	tidbFailoverPeriod time.Duration
+	kubeConfig         string
+	masterURL          string
 	leaseDuration      = 15 * time.Second
 	renewDuration      = 5 * time.Second
 	retryPeriod        = 3 * time.Second
@@ -63,7 +65,9 @@ func init() {
 	flag.DurationVar(&tikvFailoverPeriod, "tikv-failover-period", time.Duration(5*time.Minute), "TiKV failover period default(5m)")
 	flag.DurationVar(&tidbFailoverPeriod, "tidb-failover-period", time.Duration(5*time.Minute), "TiDB failover period")
 	flag.BoolVar(&controller.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
-
+	flag.StringVar(&kubeConfig, "kubeconfig", "", "The path of kubeconfig file, only required if out-of-cluster.")
+	flag.StringVar(&masterURL, "master", "", `The url of the Kubernetes API server,will overrides 
+		any value in kubeconfig, only required if out-of-cluster.`)
 	flag.Parse()
 }
 
@@ -87,11 +91,7 @@ func main() {
 		glog.Fatal("NAMESPACE environment variable not set")
 	}
 
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		glog.Fatalf("failed to get config: %v", err)
-	}
-
+	cfg := util.NewClusterConfig(masterURL, kubeConfig)
 	cli, err := versioned.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("failed to create Clientset: %v", err)

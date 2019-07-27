@@ -15,6 +15,7 @@ package main
 
 import (
 	"flag"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"os"
 	"os/signal"
 	"syscall"
@@ -25,13 +26,14 @@ import (
 	"github.com/pingcap/tidb-operator/version"
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 var (
 	printVersion bool
 	certFile     string
 	keyFile      string
+	kubeConfig   string
+	masterURL    string
 )
 
 func init() {
@@ -39,6 +41,9 @@ func init() {
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.StringVar(&certFile, "tlsCertFile", "/etc/webhook/certs/cert.pem", "File containing the x509 Certificate for HTTPS.")
 	flag.StringVar(&keyFile, "tlsKeyFile", "/etc/webhook/certs/key.pem", "File containing the x509 private key to --tlsCertFile.")
+	flag.StringVar(&kubeConfig, "kubeconfig", "", "The path of kubeconfig file, only required if out-of-cluster.")
+	flag.StringVar(&masterURL, "master", "", `The url of the Kubernetes API server,will overrides 
+		any value in kubeconfig, only required if out-of-cluster.`)
 	flag.Parse()
 }
 
@@ -53,11 +58,7 @@ func main() {
 	}
 	version.LogVersionInfo()
 
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		glog.Fatalf("failed to get config: %v", err)
-	}
-
+	cfg := util.NewClusterConfig(masterURL, kubeConfig)
 	cli, err := versioned.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("failed to create Clientset: %v", err)

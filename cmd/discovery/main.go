@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -13,18 +14,22 @@ import (
 	"github.com/pingcap/tidb-operator/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
-	"k8s.io/client-go/rest"
 )
 
 var (
 	printVersion bool
 	port         int
+	kubeConfig   string
+	masterURL    string
 )
 
 func init() {
 	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.IntVar(&port, "port", 10261, "The port that the tidb discovery's http service runs on (default 10261)")
+	flag.StringVar(&kubeConfig, "kubeconfig", "", "The path of kubeconfig file, only required if out-of-cluster.")
+	flag.StringVar(&masterURL, "master", "", `The url of the Kubernetes API server,will overrides 
+		any value in kubeconfig, only required if out-of-cluster.`)
 	flag.Parse()
 }
 
@@ -38,10 +43,7 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		glog.Fatalf("failed to get config: %v", err)
-	}
+	cfg := util.NewClusterConfig(masterURL, kubeConfig)
 	cli, err := versioned.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("failed to create Clientset: %v", err)
