@@ -337,7 +337,7 @@ monitor:
   storageClassName: local-storage
   storage: 10Gi
   initializer:
-    image: pingcap/tidb-monitor-initializer:v3.0.0
+    image: pingcap/tidb-monitor-initializer:v3.0.1
     imagePullPolicy: IfNotPresent
   reloader:
     create: true
