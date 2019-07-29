@@ -25,9 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/controller/backup"
-	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
-	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
 	"github.com/pingcap/tidb-operator/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -134,19 +131,21 @@ func main() {
 	}
 
 	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
-	backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-	restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-	bsController := backupschedule.NewController(kubeCli, cli, informerFactory)
+	//backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+	//restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+	//bsController := backupschedule.NewController(kubeCli, cli, informerFactory)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go informerFactory.Start(controllerCtx.Done())
 	go kubeInformerFactory.Start(controllerCtx.Done())
 
 	onStarted := func(ctx context.Context) {
-		go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
-		go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
-		go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
-		wait.Forever(func() { tcController.Run(workers, ctx.Done()) }, waitDuration)
+		// TODO: Comment out the controller entry of the backup related function, uncomment it after the function is completed
+		//go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
+		//go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
+		//go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
+		//wait.Forever(func() { tcController.Run(workers, ctx.Done()) }, waitDuration)
+		tcController.Run(workers, ctx.Done())
 	}
 	onStopped := func() {
 		glog.Fatalf("leader election lost")

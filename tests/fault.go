@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/pingcap/tidb-operator/tests/slack"
@@ -37,8 +38,10 @@ type FaultTriggerActions interface {
 	StopETCDOrDie(nodes ...string)
 	StartETCD(nodes ...string) error
 	StartETCDOrDie(nodes ...string)
-	StopKubelet(node string) error
-	StartKubelet(node string) error
+	StopKubelet(nodes ...string) error
+	StopKubeletOrDie(nodes ...string)
+	StartKubelet(nodes ...string) error
+	StartKubeletOrDie(nodes ...string)
 	StopKubeAPIServer(node string) error
 	StopKubeAPIServerOrDie(node string)
 	StartKubeAPIServer(node string) error
@@ -333,7 +336,55 @@ func (fa *faultTriggerActions) StopETCD(nodes ...string) error {
 }
 
 func (fa *faultTriggerActions) StopETCDOrDie(nodes ...string) {
+	glog.Infof("stopping %v etcds", nodes)
 	if err := fa.StopETCD(nodes...); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+// StopKubelet stops the kubelet service.
+func (fa *faultTriggerActions) StopKubelet(nodes ...string) error {
+	if len(nodes) == 0 {
+		for _, ns := range fa.cfg.Nodes {
+			nodes = append(nodes, ns.Nodes...)
+		}
+	}
+
+	for _, node := range nodes {
+		if err := fa.serviceAction(node, manager.KubeletService, stopAction); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (fa *faultTriggerActions) StopKubeletOrDie(nodes ...string) {
+	glog.Infof("stopping %v kubelets", nodes)
+	if err := fa.StopKubelet(nodes...); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+// StartKubelet starts the kubelet service.
+func (fa *faultTriggerActions) StartKubelet(nodes ...string) error {
+	if len(nodes) == 0 {
+		for _, ns := range fa.cfg.Nodes {
+			nodes = append(nodes, ns.Nodes...)
+		}
+	}
+
+	for _, node := range nodes {
+		if err := fa.serviceAction(node, manager.KubeletService, startAction); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (fa *faultTriggerActions) StartKubeletOrDie(nodes ...string) {
+	if err := fa.StartKubelet(nodes...); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
@@ -347,11 +398,17 @@ func (fa *faultTriggerActions) StartETCD(nodes ...string) error {
 		}
 	}
 
+	var wg sync.WaitGroup
 	for _, node := range nodes {
-		if err := fa.serviceAction(node, manager.ETCDService, startAction); err != nil {
-			return err
-		}
+		wg.Add(1)
+		go func(n string) {
+			defer wg.Done()
+			if err := fa.serviceAction(n, manager.ETCDService, startAction); err != nil {
+				slack.NotifyAndPanic(fmt.Errorf("failed to start %s etcd, %v", n, err))
+			}
+		}(node)
 	}
+	wg.Wait()
 
 	return nil
 }
@@ -360,16 +417,6 @@ func (fa *faultTriggerActions) StartETCDOrDie(nodes ...string) {
 	if err := fa.StartETCD(nodes...); err != nil {
 		slack.NotifyAndPanic(err)
 	}
-}
-
-// StopKubelet stops the kubelet service.
-func (fa *faultTriggerActions) StopKubelet(node string) error {
-	return fa.serviceAction(node, manager.KubeletService, stopAction)
-}
-
-// StartKubelet starts the kubelet service.
-func (fa *faultTriggerActions) StartKubelet(node string) error {
-	return fa.serviceAction(node, manager.KubeletService, startAction)
 }
 
 // StopKubeScheduler stops the kube-scheduler service.

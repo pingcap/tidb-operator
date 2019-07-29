@@ -231,13 +231,25 @@ func run() {
 		// truncate tikv sst file
 		oa.TruncateSSTFileThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
 
-		// stop etcd
+		// stop one etcd
 		faultEtcd := tests.SelectNode(cfg.ETCDs)
 		fta.StopETCDOrDie(faultEtcd)
 		defer fta.StartETCDOrDie(faultEtcd)
 		time.Sleep(3 * time.Minute)
-		oa.CheckOneEtcdDownOrDie(ocfg, deployedClusters, faultEtcd)
+		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, faultEtcd)
 		fta.StartETCDOrDie(faultEtcd)
+
+		// stop all etcds
+		fta.StopETCDOrDie()
+		time.Sleep(10 * time.Minute)
+		fta.StartETCDOrDie()
+		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, "")
+
+		// stop all kubelets
+		fta.StopKubeletOrDie()
+		time.Sleep(10 * time.Minute)
+		fta.StartKubeletOrDie()
+		oa.CheckKubeletDownOrDie(ocfg, deployedClusters, "")
 
 		// stop all kube-proxy and k8s/operator/tidbcluster is available
 		fta.StopKubeProxyOrDie()
