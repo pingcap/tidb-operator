@@ -143,6 +143,7 @@ Please check [cluster configuration](https://pingcap.com/docs/v3.0/tidb-in-kuber
 - Modularization for AWS terraform scripts
 - turn on automatic failover feature by default
 - Configmap rollout is now enabled by default
+- Stable scheduling is now enabled by default
 - Support multiple tidb clusters management in Alibaba Cloud
 - Enable AWS NLB cross zone load balancing by default
 
