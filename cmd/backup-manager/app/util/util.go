@@ -17,6 +17,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -90,4 +91,9 @@ func IsDirExist(path string) bool {
 		return false
 	}
 	return true
+}
+
+// NormalizeBucketURI normal bucket URL for rclone, e.g. s3://bucket -> s3:bucket
+func NormalizeBucketURI(bucket string) string {
+	return strings.Replace(bucket, "://", ":", 1)
 }

@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -53,7 +54,7 @@ func (bo *BackupOpts) getBackupRelativePath() string {
 }
 
 func (bo *BackupOpts) getDestBucket() string {
-	return fmt.Sprint("%s:%s", bo.StorageType, bo.getBackupRelativePath())
+	return fmt.Sprint("%s://%s", bo.StorageType, bo.getBackupRelativePath())
 }
 
 func (bo *BackupOpts) getTikvGCLifeTime(db *sql.DB) (string, error) {
@@ -101,8 +102,8 @@ func (bo *BackupOpts) dumpTidbClusterData() (string, error) {
 	return bfPath, nil
 }
 
-func (bo *BackupOpts) backupDataToRemote() error {
-	destBucket := bo.getDestBucket()
+func (bo *BackupOpts) backupDataToRemote(bucket string) error {
+	destBucket := util.NormalizeBucketURI(bucket)
 	tmpDestBucket := fmt.Sprintf("%s.tmp", destBucket)
 	// TODO: We may need to use exec.CommandContext to control timeouts.
 	rcCopy := exec.Command("rclone", constants.RcloneConfigArg, "copyto", tmpDestBucket)
@@ -126,6 +127,20 @@ func (bo *BackupOpts) backupDataToRemote() error {
 	if err := rcMove.Wait(); err != nil {
 		return fmt.Errorf("cluster %s, start rclone moveto command falied, err: %v", bo, err)
 	}
+	return nil
+}
+
+func (bo *BackupOpts) cleanRemoteBackupData(bucket string) error {
+	destBucket := util.NormalizeBucketURI(bucket)
+	rcDelete := exec.Command("rclone", constants.RcloneConfigArg, "deletefile", destBucket)
+	if err := rcDelete.Start(); err != nil {
+		return fmt.Errorf("cluster %s, start rclone deletefile command falied, err: %v", bo, err)
+	}
+	if err := rcDelete.Wait(); err != nil {
+		return fmt.Errorf("cluster %s, execute rclone deletefile command failed, err: %v", bo, err)
+	}
+
+	glog.Info("cluster %s backup %s was deleted successfully", bo, bucket)
 	return nil
 }
 
@@ -173,8 +188,8 @@ func getCommitTsFromMetadata(backupPath string) (string, error) {
 }
 
 // getBackupSize get the backup data size
-func getBackupSize(backupPath string) (string, error) {
-	var size string
+func getBackupSize(backupPath string) (int64, error) {
+	var size int64
 	if exist := util.IsFileExist(backupPath); !exist {
 		return size, fmt.Errorf("file %s does not exist or is not regular file", backupPath)
 	}
@@ -184,7 +199,11 @@ func getBackupSize(backupPath string) (string, error) {
 	if err != nil {
 		return size, fmt.Errorf("failed to get backup %s size, err: %v", backupPath, err)
 	}
-	size = strings.Fields(string(out))[0]
+	sizeStr := strings.Fields(string(out))[0]
+	size, err = strconv.ParseInt(sizeStr, 10, 64)
+	if err != nil {
+		return size, fmt.Errorf("failed to parse size string %s, err: %v", sizeStr, err)
+	}
 	return size, nil
 }
 

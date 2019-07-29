@@ -59,5 +59,5 @@ func runClean(backupOpts backup.BackupOpts, kubecfg string) error {
 	statusUpdater := controller.NewRealBackupConditionUpdater(cli, backupInformer.Lister(), recorder)
 
 	bm := backup.NewBackupManager(cli, statusUpdater, backupOpts)
-	return bm.CleanBackup()
+	return bm.ProcessCleanBackup()
 }
