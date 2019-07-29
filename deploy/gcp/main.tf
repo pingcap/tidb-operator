@@ -21,21 +21,24 @@ provider "google-beta" {
 }
 
 locals {
-  credential_path          = "${path.module}/credentials"
+  credential_path          = "${path.cwd}/credentials"
   kubeconfig               = "${local.credential_path}/kubeconfig_${var.cluster_name}"
   tidb_cluster_values_path = "${path.module}/rendered/tidb-cluster-values.yaml"
 }
 
-resource "null_resource" "prepare-dir" {
-  provisioner "local-exec" {
-    command = "mkdir -p ${local.credential_path}"
-  }
+module "project-credentials" {
+  source = "../modules/gcp/project-credentials"
+
+  path = local.credential_path
+  gcloud_project = var.GCP_PROJECT
 }
 
-resource "null_resource" "set-gcloud-project" {
-  provisioner "local-exec" {
-    command = "gcloud config set project ${var.GCP_PROJECT}"
-  }
+module "vpc" {
+  source = "../modules/gcp/vpc"
+  create_vpc = var.create_vpc
+  gcp_project = var.GCP_PROJECT
+  gcp_region = var.GCP_REGION
+  vpc_name = var.gke_name
 }
 
 resource "google_compute_network" "vpc_network" {

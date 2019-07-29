@@ -18,6 +18,15 @@ variable "tidb_operator_registry" {
   default     = "pingcap"
 }
 
+variable "create_vpc" {
+  default = true
+}
+
+variable "gke_name" {
+  description = "Name of the GKE cluster. Also used as a prefix in names of related resources."
+  default = "tidb-cluster"
+}
+
 variable "pd_replica_count" {
   default = 3
 }
