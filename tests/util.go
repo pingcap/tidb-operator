@@ -109,10 +109,12 @@ var affinityTemp string = `{{.Kind}}:
 var binlogTemp string = `binlog:
 {{if .PumpConfig}}  pump:
   	config: |
-{{range .PumpConfig}}      {{.}}{{end}}{{end}}
+{{range .PumpConfig}}      {{.}}
+{{end}}{{end}}
 {{if .DrainerConfig}}  drainer:
     config: |
-{{range .DrainerConfig}}      {{.}}{{end}}{{end}}
+{{range .DrainerConfig}}      {{.}}
+{{end}}{{end}}
 `
 
 type AffinityInfo struct {
