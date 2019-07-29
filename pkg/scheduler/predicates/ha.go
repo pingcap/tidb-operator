@@ -16,6 +16,7 @@ package predicates
 import (
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"sync"
@@ -28,6 +29,7 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 )
@@ -67,8 +69,14 @@ func (h *ha) Name() string {
 	return "HighAvailability"
 }
 
-// 1. return the node to kube-scheduler if there is only one node and the pod's pvc is bound
-// 2. return these nodes that have least pods and its pods count is less than (replicas+1)/2 to kube-scheduler
+// 1. return the node to kube-scheduler if there is only one feasible node and the pod's pvc is bound
+// 2. if there are more than two feasible nodes, we are trying to distribute TiKV/PD pods across the nodes for the best HA
+//  a) for PD (one raft group, copies of data equals to replicas), no more than majority of replicas pods on one node, otherwise majority of replicas may lose when a node is lost.
+//     e.g. when replicas is 3, we requires no more than 1 pods per node.
+//  b) for TiKV (multiple raft groups, in each raft group, copies of data is hard-coded to 3)
+//     when replicas is less than 3, no HA is forced because HA is impossible
+//     when replicas is equal or greater than 3, we require TiKV pods are running on more than 3 nodes and no more than ceil(replicas / 3) per node
+//  for PD/TiKV, we both try to balance the number of pods acorss the nodes
 // 3. let kube-scheduler to make the final decision
 func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]apiv1.Node, error) {
 	h.lock.Lock()
@@ -78,6 +86,11 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	podName := pod.GetName()
 	component := pod.Labels[label.ComponentLabelKey]
 	tcName := getTCNameFromPod(pod, component)
+
+	if component != label.PDLabelVal && component != label.TiKVLabelVal {
+		glog.V(4).Infof("component %s is ignored in HA predicate", component)
+		return nodes, nil
+	}
 
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("kube nodes is empty")
@@ -108,6 +121,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	replicas := getReplicasFrom(tc, component)
 	glog.Infof("ha: tidbcluster %s/%s component %s replicas %d", ns, tcName, component, replicas)
 
+	allNodes := make(sets.String)
 	nodeMap := make(map[string][]string)
 	for _, node := range nodes {
 		nodeMap[node.GetName()] = make([]string, 0)
@@ -115,6 +129,9 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	for _, pod := range podList.Items {
 		pName := pod.GetName()
 		nodeName := pod.Spec.NodeName
+		if nodeName != "" {
+			allNodes.Insert(nodeName)
+		}
 		if nodeName == "" || nodeMap[nodeName] == nil {
 			continue
 		}
@@ -126,23 +143,65 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	min := -1
 	minNodeNames := make([]string, 0)
 	for nodeName, podNames := range nodeMap {
-		// replicas less than 3 cannot achieve high availability
-		if replicas < 3 {
-			minNodeNames = append(minNodeNames, nodeName)
-			glog.Infof("replicas is %d, add node %s to minNodeNames", replicas, nodeName)
+		podsCount := len(podNames)
+		maxPodsPerNode := 0
+
+		if component == label.PDLabelVal {
+			/**
+			 * replicas     maxPodsPerNode
+			 * ---------------------------
+			 * 1            1
+			 * 2            1
+			 * 3            1
+			 * 4            1
+			 * 5            2
+			 * ...
+			 */
+			maxPodsPerNode = int((replicas+1)/2) - 1
+			if maxPodsPerNode <= 0 {
+				maxPodsPerNode = 1
+			}
+		} else {
+			// replicas less than 3 cannot achieve high availability
+			if replicas < 3 {
+				minNodeNames = append(minNodeNames, nodeName)
+				glog.Infof("replicas is %d, add node %s to minNodeNames", replicas, nodeName)
+				continue
+			}
+
+			// 1. TiKV instances must run on at least 3 nodes, otherwise HA is not possible
+			if allNodes.Len() < 3 {
+				maxPodsPerNode = 1
+			} else {
+				/**
+				 * 2. we requires TiKV instances to run on at least 3 nodes, so max
+				 * allowed pods on each node is ceil(replicas / 3)
+				 *
+				 * replicas     maxPodsPerNode   best HA on three nodes
+				 * ---------------------------------------------------
+				 * 3            1                1, 1, 1
+				 * 4            2                1, 1, 2
+				 * 5            2                1, 2, 2
+				 * 6            2                2, 2, 2
+				 * 7            3                2, 2, 3
+				 * 8            3                2, 3, 3
+				 * ...
+				 */
+				maxPodsPerNode = int(math.Ceil(float64(replicas) / 3))
+			}
+		}
+
+		if podsCount+1 > maxPodsPerNode {
+			// pods on this node exceeds the limit, skip
+			glog.Infof("node %s has %d instances of component %s, max allowed is %d, skipping",
+				nodeName, podsCount, component, maxPodsPerNode)
 			continue
 		}
 
-		podsCount := len(podNames)
-		if podsCount+1 >= int(replicas+1)/2 {
-			glog.Infof("node %s podsCount+1 is %d, int(replicas+1)/2 is %d, skipping",
-				nodeName, podsCount+1, int(replicas+1)/2)
-			continue
-		}
+		// Choose nodes which has minimum count of the component
 		if min == -1 {
 			min = podsCount
 		}
-
 		if podsCount > min {
 			glog.Infof("node %s podsCount %d > min %d, skipping", nodeName, podsCount, min)
 			continue
