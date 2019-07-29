@@ -338,14 +338,16 @@ type BackupSpec struct {
 type BackupConditionType string
 
 const (
-	// BackupScheduled means the backup job has been created to do tidb cluster backup
+	// BackupScheduled means the backup related job has been created
 	BackupScheduled BackupConditionType = "Scheduled"
-	// BackupRunning means the Backup is currently being executed.
+	// BackupRunning means the backup is currently being executed.
 	BackupRunning BackupConditionType = "Running"
-	// BackupComplete means the Backup has successfully executed and the
+	// BackupComplete means the backup has successfully executed and the
 	// resulting artifact has been stored in backend storage.
 	BackupComplete BackupConditionType = "Complete"
-	// BackupFailed means the Backup has failed.
+	// BackupClean means the clean job has been created to clean backup data
+	BackupClean BackupConditionType = "Clean"
+	// BackupFailed means the backup has failed.
 	BackupFailed BackupConditionType = "Failed"
 )
 
