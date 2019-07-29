@@ -49,6 +49,9 @@ const (
 	// BackupScheduleLabelKey is backup schedule key
 	BackupScheduleLabelKey string = "tidb.pingcap.com/backup-schedule"
 
+	// BackupProtectionFinalizer is the name of finalizer on backups
+	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
+
 	// AnnPodNameKey is pod name annotation key used in PV/PVC for synchronizing tidb cluster meta info
 	AnnPodNameKey string = "tidb.pingcap.com/pod-name"
 	// AnnPVCDeferDeleting is pvc defer deletion annotation key used in PVC for defer deleting PVC
