@@ -47,6 +47,8 @@ tikv:
 tikv:
   config: |
     log-level = "info"
+    [server]
+    status-addr = "0.0.0.0:20180"
     [raftstore]
     sync-log = true
     [readpool.storage]
@@ -118,9 +120,9 @@ monitor:
 monitor:
   create: true
    initializer:
-     image: pingcap/tidb-monitor-initializer:v3.0.0
+     image: pingcap/tidb-monitor-initializer:v3.0.1
      imagePullPolicy: IfNotPresent
-     reloader:
+   reloader:
      create: true
      image: pingcap/tidb-monitor-reloader:v1.0.0
      imagePullPolicy: IfNotPresent
@@ -142,7 +144,7 @@ Please check [cluster configuration](https://pingcap.com/docs/v3.0/tidb-in-kuber
 - turn on automatic failover feature by default
 - Configmap rollout is now enabled by default
 - Support multiple tidb clusters management in Alibaba Cloud
-- Enable AWS NLB  cross zone load balancing by default
+- Enable AWS NLB cross zone load balancing by default
 
 ### Bug fixes
 
@@ -154,7 +156,7 @@ Please check [cluster configuration](https://pingcap.com/docs/v3.0/tidb-in-kuber
 - Support-Multi-version-TiDB-monitor ([#666](https://github.com/pingcap/tidb-operator/pull/666))
 - Specify tikv status address to fix monitoring ([#695](https://github.com/pingcap/tidb-operator/pull/695))
 - AWS deployment: fix sysbench installation on bastion machine and… ([#688](https://github.com/pingcap/tidb-operator/pull/688))
-- git remote add upstream useing https ([#690](https://github.com/pingcap/tidb-operator/pull/690))
+- git remote add upstream using https ([#690](https://github.com/pingcap/tidb-operator/pull/690))
 - Stability cases: stop kubelet and etcd ([#665](https://github.com/pingcap/tidb-operator/pull/665))
 - limit test cover packages ([#687](https://github.com/pingcap/tidb-operator/pull/687))
 - Enable nlb cross zone load balancing by default ([#686](https://github.com/pingcap/tidb-operator/pull/686))
