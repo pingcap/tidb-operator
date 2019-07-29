@@ -1,0 +1,3 @@
+enableConfigMapRollout: true
+tidb:
+  separateSlowLog: true

@@ -27,12 +27,27 @@ import (
 
 type PingcapV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	BackupsGetter
+	BackupSchedulesGetter
+	RestoresGetter
 	TidbClustersGetter
 }
 
 // PingcapV1alpha1Client is used to interact with features provided by the pingcap.com group.
 type PingcapV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *PingcapV1alpha1Client) Backups(namespace string) BackupInterface {
+	return newBackups(c, namespace)
+}
+
+func (c *PingcapV1alpha1Client) BackupSchedules(namespace string) BackupScheduleInterface {
+	return newBackupSchedules(c, namespace)
+}
+
+func (c *PingcapV1alpha1Client) Restores(namespace string) RestoreInterface {
+	return newRestores(c, namespace)
 }
 
 func (c *PingcapV1alpha1Client) TidbClusters(namespace string) TidbClusterInterface {

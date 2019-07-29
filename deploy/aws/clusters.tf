@@ -57,3 +57,4 @@ module "default-cluster" {
   monitor_instance_type = var.default_cluster_monitor_instance_type
   override_values       = file("default-cluster.yaml")
 }
+
