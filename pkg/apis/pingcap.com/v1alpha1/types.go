@@ -467,6 +467,8 @@ type RestoreSpec struct {
 	Cluster string `json:"cluster"`
 	// Backup represents the backup object to be restored.
 	Backup string `json:"backup"`
+	// BackupPath is the location of the backup.
+	BackupPath string `json:"backupPath"`
 	// SecretName is the name of the secret which stores
 	// tidb cluster's username and password.
 	SecretName string `json:"secretName"`
