@@ -1,14 +1,14 @@
 # TiDB Operator v1.0.0 Release Notes
 
-## v1.0.0 What’s New
+## v1.0.0 What's New
 
 ### Action Required
 
-- ACTION REQUIRED: `tikv.storeLabels` was remove from `values.yaml`. Instead, you can set it with `location-labels` in `pd.config` directly
-- ACTION REQUIRED: tidb-scheduler --features flag has been updated to use `key={true,false}` format, please append `=true` to enable the feature.
-- ACTION REQUIRED: Users should migrate the configs in `values.yaml` of previous chart releases to the new `values.yaml` of the new chart, otherwise, the configurations will be ignored when upgrading TiDB cluster with the new chart.
+- ACTION REQUIRED: `tikv.storeLabels` was removed from `values.yaml`. You can directly set it with `location-labels` in `pd.config`.
+- ACTION REQUIRED: the `--features` flag of tidb-scheduler has been updated to the `key={true,false}` format. You can enable the feature by appending `=true`.
+- ACTION REQUIRED: you need to change the configurations in `values.yaml` of previous chart releases to the new `values.yaml` of the new chart. Otherwise, the configurations will be ignored when upgrading the TiDB cluster with the new chart.
 
-`pd` section in old `values.yaml`:
+The `pd` section in old `values.yaml`:
 
 ```
 pd:
@@ -17,7 +17,7 @@ pd:
   maxReplicas: 3
 ```
 
-`pd` section in new `values.yaml`:
+The `pd` section in new `values.yaml`:
 
 ```
 pd:
@@ -30,7 +30,7 @@ pd:
     max-replicas = 3
 ```
 
-`tikv` section in old `values.yaml`:
+The `tikv` section in old `values.yaml`:
 
 ```
 tikv:
@@ -41,7 +41,7 @@ tikv:
   storageSchedulerWorkerPoolSize: 4
 ```
 
-`tikv` section in new `values.yaml`:
+The `tikv` section in new `values.yaml`:
 
 ```
 tikv:
@@ -63,7 +63,7 @@ tikv:
     scheduler-worker-pool-size = 4
 ```
 
-`tidb` section in old `values.yaml`:
+The `tidb` section in old `values.yaml`:
 
 ```
 tidb:
@@ -82,7 +82,7 @@ tidb:
   maxProcs: 0
 ```
 
-`tidb` section in new `values.yaml`:
+The `tidb` section in new `values.yaml`:
 
 ```
 tidb:
@@ -106,7 +106,7 @@ tidb:
     max-procs = 0
 ```
 
-`monitor` section in old `values.yaml`:
+The `monitor` section in old `values.yaml`:
 
 ```
 monitor:
@@ -114,7 +114,7 @@ monitor:
   ...
 ```
 
-`monitor` section in new `values.yaml`:
+The `monitor` section in new `values.yaml`:
 
 ```
 monitor:
@@ -133,18 +133,18 @@ monitor:
 
 Please check [cluster configuration](https://pingcap.com/docs/v3.0/tidb-in-kubernetes/reference/configuration/tidb-cluster/) for detailed configuration.
 
-### Stability tests cases added
+### Stability test cases added
 
-- stop all etcds and kubelets
+- Stop all etcds and kubelets
 
-### A lot of improvements
+### Improvements
 
 - Simplify GKE SSD setup
-- Modularization for AWS terraform scripts
-- turn on automatic failover feature by default
-- Configmap rollout is now enabled by default
-- Stable scheduling is now enabled by default
-- Support multiple tidb clusters management in Alibaba Cloud
+- Modularization for AWS Terraform scripts
+- Turn on the automatic failover feature by default
+- Enable configmap rollout by default
+- Enable stable scheduling by default
+- Support multiple TiDB clusters management in Alibaba Cloud
 - Enable AWS NLB cross zone load balancing by default
 
 ### Bug fixes
@@ -152,30 +152,30 @@ Please check [cluster configuration](https://pingcap.com/docs/v3.0/tidb-in-kuber
 - Fix sysbench installation on bastion machine of AWS deployment
 - Fix TiKV metrics monitoring in default setup
 
-## Detailed Bug Fixes And Changes
+## Detailed Bug Fixes and Changes
 
-- Support-Multi-version-TiDB-monitor ([#666](https://github.com/pingcap/tidb-operator/pull/666))
-- Specify tikv status address to fix monitoring ([#695](https://github.com/pingcap/tidb-operator/pull/695))
-- AWS deployment: fix sysbench installation on bastion machine and… ([#688](https://github.com/pingcap/tidb-operator/pull/688))
-- git remote add upstream using https ([#690](https://github.com/pingcap/tidb-operator/pull/690))
+- Support multi-version TiDB monitor ([#666](https://github.com/pingcap/tidb-operator/pull/666))
+- Specify the TiKV status address to fix monitoring ([#695](https://github.com/pingcap/tidb-operator/pull/695))
+- Fix sysbench installation on bastion machine for AWS deployment ([#688](https://github.com/pingcap/tidb-operator/pull/688))
+- Update the add upstream command to use https ([#690](https://github.com/pingcap/tidb-operator/pull/690))
 - Stability cases: stop kubelet and etcd ([#665](https://github.com/pingcap/tidb-operator/pull/665))
-- limit test cover packages ([#687](https://github.com/pingcap/tidb-operator/pull/687))
+- Limit test cover packages ([#687](https://github.com/pingcap/tidb-operator/pull/687))
 - Enable nlb cross zone load balancing by default ([#686](https://github.com/pingcap/tidb-operator/pull/686))
-- Add tikv raftstore parameters ([#681](https://github.com/pingcap/tidb-operator/pull/681))
-- Alibaba Cloud multiple tidb clusters management support ([#658](https://github.com/pingcap/tidb-operator/pull/658))
-- adjust end evict scheduler func ([#680](https://github.com/pingcap/tidb-operator/pull/680))
-- add more logs ([#676](https://github.com/pingcap/tidb-operator/pull/676))
-- Update feature gates to support key={true,false} syntax ([#677](https://github.com/pingcap/tidb-operator/pull/677))
-- meke -> make ([#679](https://github.com/pingcap/tidb-operator/pull/679))
-- Enable configmap rollout by default and quote configmap digest suffix  ([#678](https://github.com/pingcap/tidb-operator/pull/678))
-- turn automitic failover on ([#667](https://github.com/pingcap/tidb-operator/pull/667))
-- Sets node count for default pool equal to total desired node count ([#673](https://github.com/pingcap/tidb-operator/pull/673)))
+- Add TiKV raftstore parameters ([#681](https://github.com/pingcap/tidb-operator/pull/681))
+- Support multiple TiDB clusters management for Alibaba Cloud ([#658](https://github.com/pingcap/tidb-operator/pull/658))
+- Adjust the `EndEvictLeader` function ([#680](https://github.com/pingcap/tidb-operator/pull/680))
+- Add more logs ([#676](https://github.com/pingcap/tidb-operator/pull/676))
+- Update feature gates to support `key={true,false}` syntax ([#677](https://github.com/pingcap/tidb-operator/pull/677))
+- Fix the typo meke to make ([#679](https://github.com/pingcap/tidb-operator/pull/679))
+- Enable configmap rollout by default and quote configmap digest suffix ([#678](https://github.com/pingcap/tidb-operator/pull/678))
+- Turn automatic failover on ([#667](https://github.com/pingcap/tidb-operator/pull/667))
+- Sets node count for default pool equal to total desired node count ([#673](https://github.com/pingcap/tidb-operator/pull/673))
 - Upgrade default TiDB version to v3.0.1 ([#671](https://github.com/pingcap/tidb-operator/pull/671))
 - Remove storeLabels ([#663](https://github.com/pingcap/tidb-operator/pull/663))
-- change the way to config tidb/tikv/pd in charts ([#638](https://github.com/pingcap/tidb-operator/pull/638))
-- Modularization for AWS terraform scripts ([#650](https://github.com/pingcap/tidb-operator/pull/650))
-- change Deferclose func ([#653](https://github.com/pingcap/tidb-operator/pull/653))
-- Increase the default storage size for pump from 10Gi to 20Gi in response to stop-write-at-available-space ([#657](https://github.com/pingcap/tidb-operator/pull/657))
+- Change the way to configure TiDB/TiKV/PD in charts ([#638](https://github.com/pingcap/tidb-operator/pull/638))
+- Modularize for AWS terraform scripts ([#650](https://github.com/pingcap/tidb-operator/pull/650))
+- Change the `DeferClose` function ([#653](https://github.com/pingcap/tidb-operator/pull/653))
+- Increase the default storage size for Pump from 10Gi to 20Gi in response to `stop-write-at-available-space` ([#657](https://github.com/pingcap/tidb-operator/pull/657))
 - Simplify local SDD setup ([#644](https://github.com/pingcap/tidb-operator/pull/644))
 
 # TiDB Operator v1.0.0-rc.1 Release Notes
@@ -187,7 +187,7 @@ Please check [cluster configuration](https://pingcap.com/docs/v3.0/tidb-in-kuber
 - stop kube-proxy
 - upgrade tidb-operator
 
-### A lot of improvements
+### Improvements
 
 - get the TS first and increase the TiKV GC life time to 3 hours before the full backup
 - Add endpoints list and watch permission for controller-manager
@@ -276,7 +276,7 @@ Please check [cluster configuration](https://pingcap.com/docs/v3.0/tidb-in-kuber
 - Refine user guides
 - Improve GKE, AWS, Aliyun guide
 
-### Pass Queeny's test
+### Pass User Acceptance Tests
 
 ### Other improvements
 - Upgrade default TiDB version to v3.0.0-rc.1
