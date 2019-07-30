@@ -56,6 +56,7 @@ func NewRealRestoreConditionUpdater(
 func (rcu *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition) error {
 	ns := restore.GetNamespace()
 	restoreName := restore.GetName()
+	oldStatus := restore.Status.DeepCopy()
 	var isUpdate bool
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		isUpdate = v1alpha1.UpdateRestoreCondition(&restore.Status, condition)
@@ -68,6 +69,7 @@ func (rcu *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condit
 			if updated, err := rcu.restoreLister.Restores(ns).Get(restoreName); err == nil {
 				// make a copy so we don't mutate the shared cache
 				restore = updated.DeepCopy()
+				restore.Status = *oldStatus
 			} else {
 				utilruntime.HandleError(fmt.Errorf("error getting updated restore %s/%s from lister: %v", ns, restoreName, err))
 			}
