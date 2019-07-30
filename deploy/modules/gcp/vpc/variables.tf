@@ -8,13 +8,7 @@ variable "create_vpc" {
 
 variable "private_subnet_primary_cidr_range" {
   description = "Primary CIDR range for the private subnetwork"
-  default = "127.31.252.0/22"
-}
-
-variable "private_secondary_ip_ranges_map" {
-  description = "Secondary subnets CIDR ranges and names"
-  type = map(string)
-  default = {"pods"="172.30.0.0/16", "services" = "171.31.224.0/20"}
+  default = "172.31.252.0/22"
 }
 
 variable "private_subnet_name" {

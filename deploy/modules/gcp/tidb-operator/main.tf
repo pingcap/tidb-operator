@@ -25,9 +25,9 @@ resource "google_container_cluster" "cluster" {
     use_ip_aliases = true
   }
 
-  // see https://github.com/terraform-providers/terraform-provider-google/issues/3385 for why initial_node_count is sum of node counts
+  // See https://kubernetes.io/docs/setup/best-practices/cluster-large/#size-of-master-and-master-components for why initial_node_count is 5. The master node should accommodate up to 100 nodes like this
   remove_default_node_pool = true
-  initial_node_count       = var.pd_count + var.tikv_count + var.tidb_count + var.monitor_count
+  initial_node_count       = 5
 
   min_master_version = var.gke_version
 
@@ -50,7 +50,7 @@ resource "google_container_node_pool" "pd_pool" {
   cluster            = google_container_cluster.cluster.name
   location           = google_container_cluster.cluster.location
   name               = "pd-pool"
-  initial_node_count = var.pd_count
+  node_count = var.pd_count
 
   management {
     auto_repair  = false
@@ -82,7 +82,7 @@ resource "google_container_node_pool" "tikv_pool" {
   cluster            = google_container_cluster.cluster.name
   location           = google_container_cluster.cluster.location
   name               = "tikv-pool"
-  initial_node_count = var.tikv_count
+  node_count = var.tikv_count
 
   management {
     auto_repair  = false
@@ -119,7 +119,7 @@ resource "google_container_node_pool" "tidb_pool" {
   cluster            = google_container_cluster.cluster.name
   location           = google_container_cluster.cluster.location
   name               = "tidb-pool"
-  initial_node_count = var.tidb_count
+  node_count = var.tidb_count
 
   management {
     auto_repair  = false
@@ -152,7 +152,7 @@ resource "google_container_node_pool" "monitor_pool" {
   cluster            = google_container_cluster.cluster.name
   location           = google_container_cluster.cluster.location
   name               = "monitor-pool"
-  initial_node_count = var.monitor_count
+  node_count = var.monitor_count
 
   management {
     auto_repair  = false
@@ -206,10 +206,11 @@ resource "null_resource" "setup-env" {
     null_resource.get-credentials,
     var.tidb_operator_registry,
     var.tidb_operator_version,
+    google_container_node_pool.monitor_pool
   ]
 
   provisioner "local-exec" {
-    working_dir = path.module
+    working_dir = path.cwd
     interpreter = ["bash", "-c"]
 
     command = <<EOS
@@ -233,7 +234,7 @@ until helm ls; do
   echo "Wait until tiller is ready"
   sleep 5
 done
-helm upgrade --install tidb-operator --namespace tidb-admin ${path.module}/charts/tidb-operator --set operatorImage=${var.tidb_operator_registry}/tidb-operator:${var.tidb_operator_version}
+helm upgrade --install tidb-operator --namespace tidb-admin ${path.cwd}/charts/tidb-operator --set operatorImage=${var.tidb_operator_registry}/tidb-operator:${var.tidb_operator_version}
 EOS
 
 
@@ -252,7 +253,10 @@ data "helm_repository" "pingcap" {
 
 resource "helm_release" "tidb-operator" {
   provider = "helm.initial"
-  depends_on = [null_resource.setup-env, null_resource.get-credentials]
+  depends_on = [
+    null_resource.setup-env,
+    null_resource.get-credentials,
+  ]
 
   repository = data.helm_repository.pingcap.name
   chart = "tidb-operator"

@@ -6,25 +6,30 @@ resource "google_compute_network" "vpc_network" {
 }
 
 resource "google_compute_subnetwork" "private_subnet" {
+  depends_on = [google_compute_network.vpc_network]
   name = var.private_subnet_name
   ip_cidr_range = var.private_subnet_primary_cidr_range
   network = var.vpc_name
   project = var.gcp_project
 
-  dynamic "secondary_ip_range" {
-    for_each = var.private_secondary_ip_ranges_map
-    iterator = sir
-    content {
-      range_name = "${sir.key}-${var.gcp_region}"
-      ip_cidr_range = sir.value
-    }
+  secondary_ip_range {
+    ip_cidr_range = "172.30.0.0/16"
+    range_name    = "pods-${var.gcp_region}"
   }
+
+  secondary_ip_range {
+    ip_cidr_range = "172.31.224.0/20"
+    range_name    = "services-${var.gcp_region}"
+  }
+
+
   lifecycle {
     ignore_changes = [secondary_ip_range]
   }
 }
 
 resource "google_compute_subnetwork" "public_subnet" {
+  depends_on = [google_compute_network.vpc_network]
   ip_cidr_range = var.public_subnet_primary_cidr_range
   name = var.public_subnet_name
   network = var.vpc_name

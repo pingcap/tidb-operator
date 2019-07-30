@@ -5,7 +5,7 @@ variable "tidb_version" {
 
 variable "tidb_operator_version" {
   description = "TiDB operator version"
-  default     = "v1.0.0-rc.1"
+  default     = "v1.0.0-beta.3"
 }
 
 variable "tidb_operator_registry" {
@@ -25,6 +25,11 @@ variable "gke_name" {
 variable "private_subnet_name" {
   description = "Name for the private subnet"
   default = "private-subnet"
+}
+
+variable "public_subnet_name" {
+  description = "Name for the public subnet"
+  default = "public-subnet"
 }
 
 variable "pd_replica_count" {
