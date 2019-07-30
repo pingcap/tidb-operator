@@ -99,7 +99,7 @@ resource "google_container_cluster" "cluster" {
     use_ip_aliases = true
   }
 
-  // see https://github.com/terraform-providers/terraform-provider-google/issues/3385 for why initial_node_count is sum of node counts
+  // See https://kubernetes.io/docs/setup/best-practices/cluster-large/#size-of-master-and-master-components for why initial_node_count is 5. The master node should accommodate up to 100 nodes like this
   remove_default_node_pool = true
   initial_node_count       = 5
 
@@ -118,12 +118,12 @@ resource "google_container_cluster" "cluster" {
 
 resource "google_container_node_pool" "pd_pool" {
   // The monitor pool is where tiller must first be deployed to.
-  depends_on         = [google_container_node_pool.monitor_pool]
-  provider           = google-beta
-  project            = var.GCP_PROJECT
-  cluster            = google_container_cluster.cluster.name
-  location           = google_container_cluster.cluster.location
-  name               = "pd-pool"
+  depends_on = [google_container_node_pool.monitor_pool]
+  provider   = google-beta
+  project    = var.GCP_PROJECT
+  cluster    = google_container_cluster.cluster.name
+  location   = google_container_cluster.cluster.location
+  name       = "pd-pool"
   node_count = var.pd_count
 
   management {
@@ -151,11 +151,11 @@ resource "google_container_node_pool" "pd_pool" {
 }
 
 resource "google_container_node_pool" "tikv_pool" {
-  provider           = google-beta
-  project            = var.GCP_PROJECT
-  cluster            = google_container_cluster.cluster.name
-  location           = google_container_cluster.cluster.location
-  name               = "tikv-pool"
+  provider   = google-beta
+  project    = var.GCP_PROJECT
+  cluster    = google_container_cluster.cluster.name
+  location   = google_container_cluster.cluster.location
+  name       = "tikv-pool"
   node_count = var.tikv_count
 
   management {
@@ -187,12 +187,12 @@ resource "google_container_node_pool" "tikv_pool" {
 
 resource "google_container_node_pool" "tidb_pool" {
   // The pool order is tikv -> monitor -> pd -> tidb
-  depends_on         = [google_container_node_pool.pd_pool]
-  provider           = google-beta
-  project            = var.GCP_PROJECT
-  cluster            = google_container_cluster.cluster.name
-  location           = google_container_cluster.cluster.location
-  name               = "tidb-pool"
+  depends_on = [google_container_node_pool.pd_pool]
+  provider   = google-beta
+  project    = var.GCP_PROJECT
+  cluster    = google_container_cluster.cluster.name
+  location   = google_container_cluster.cluster.location
+  name       = "tidb-pool"
   node_count = var.tidb_count
 
   management {
@@ -221,11 +221,11 @@ resource "google_container_node_pool" "tidb_pool" {
 resource "google_container_node_pool" "monitor_pool" {
   // Setup local SSD on TiKV nodes first (this can take some time)
   // Create the monitor pool next because that is where tiller will be deployed to
-  depends_on         = [google_container_node_pool.tikv_pool]
-  project            = var.GCP_PROJECT
-  cluster            = google_container_cluster.cluster.name
-  location           = google_container_cluster.cluster.location
-  name               = "monitor-pool"
+  depends_on = [google_container_node_pool.tikv_pool]
+  project    = var.GCP_PROJECT
+  cluster    = google_container_cluster.cluster.name
+  location   = google_container_cluster.cluster.location
+  name       = "monitor-pool"
   node_count = var.monitor_count
 
   management {
