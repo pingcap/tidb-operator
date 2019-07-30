@@ -384,7 +384,8 @@ resource "null_resource" "deploy-tidb-cluster" {
     local_file.tidb-cluster-values,
     google_container_node_pool.pd_pool,
     google_container_node_pool.tikv_pool,
-    google_container_node_pool.tidb_pool
+    google_container_node_pool.tidb_pool,
+    google_container_node_pool.monitor_pool
   ]
 
   triggers = {
