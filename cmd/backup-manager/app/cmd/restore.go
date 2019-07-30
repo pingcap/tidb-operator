@@ -15,6 +15,7 @@ package cmd
 
 import (
 	"context"
+
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/restore"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -34,6 +35,7 @@ func NewRestoreCommand(kubecfg string) *cobra.Command {
 		Use:   "restore",
 		Short: "Restore specific tidb cluster.",
 		Run: func(cmd *cobra.Command, args []string) {
+			util.SkipValidFlags = []string{"backupPath", "backupName"}
 			util.ValidCmdFlags(cmd)
 			cmdutil.CheckErr(runRestore(ro, kubecfg))
 		},
@@ -42,9 +44,11 @@ func NewRestoreCommand(kubecfg string) *cobra.Command {
 	cmd.Flags().StringVarP(&ro.Namespace, "namespace", "n", "", "Tidb cluster's namespace")
 	cmd.Flags().StringVarP(&ro.TcName, "tidbcluster", "t", "", "Tidb cluster name")
 	cmd.Flags().StringVarP(&ro.Password, "password", "p", "", "Password to use when connecting to tidb cluster")
+	cmd.Flags().StringVarP(&ro.TidbSvc, "tidbservice", "s", "", "Tidb cluster access service address")
 	cmd.Flags().StringVarP(&ro.User, "user", "u", "", "User for login tidb cluster")
 	cmd.Flags().StringVarP(&ro.RestoreName, "restoreName", "r", "", "Restore CRD object name")
 	cmd.Flags().StringVarP(&ro.BackupName, "backupName", "b", "", "Backup CRD object name")
+	cmd.Flags().StringVarP(&ro.BackupPath, "backupPath", "P", "", "The location of the backup")
 	return cmd
 }
 
