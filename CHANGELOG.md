@@ -154,10 +154,10 @@ Please check [cluster configuration](https://pingcap.com/docs/v3.0/tidb-in-kuber
 
 ## Detailed Bug Fixes and Changes
 
-- Support multi-version TiDB monitor ([#666](https://github.com/pingcap/tidb-operator/pull/666))
+- Allow upgrading TiDB monitor along with TiDB version ([#666](https://github.com/pingcap/tidb-operator/pull/666))
 - Specify the TiKV status address to fix monitoring ([#695](https://github.com/pingcap/tidb-operator/pull/695))
 - Fix sysbench installation on bastion machine for AWS deployment ([#688](https://github.com/pingcap/tidb-operator/pull/688))
-- Update the add upstream command to use https ([#690](https://github.com/pingcap/tidb-operator/pull/690))
+- Update the `git add upstream` command to use `https` in contributing document ([#690](https://github.com/pingcap/tidb-operator/pull/690))
 - Stability cases: stop kubelet and etcd ([#665](https://github.com/pingcap/tidb-operator/pull/665))
 - Limit test cover packages ([#687](https://github.com/pingcap/tidb-operator/pull/687))
 - Enable nlb cross zone load balancing by default ([#686](https://github.com/pingcap/tidb-operator/pull/686))
