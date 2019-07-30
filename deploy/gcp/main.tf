@@ -99,9 +99,9 @@ resource "google_container_cluster" "cluster" {
     use_ip_aliases = true
   }
 
-  remove_default_node_pool = true
   // see https://github.com/terraform-providers/terraform-provider-google/issues/3385 for why initial_node_count is sum of node counts
-  initial_node_count       = var.pd_count + var.tikv_count + var.tidb_count + var.monitor_count
+  remove_default_node_pool = true
+  initial_node_count       = 5
 
   min_master_version = "latest"
 
@@ -340,6 +340,7 @@ resource "null_resource" "setup-env" {
     null_resource.get-credentials,
     var.tidb_operator_registry,
     var.tidb_operator_version,
+    google_container_node_pool.monitor_pool
   ]
 
   provisioner "local-exec" {
@@ -382,6 +383,8 @@ resource "null_resource" "deploy-tidb-cluster" {
     null_resource.setup-env,
     local_file.tidb-cluster-values,
     google_container_node_pool.pd_pool,
+    google_container_node_pool.tikv_pool,
+    google_container_node_pool.tidb_pool
   ]
 
   triggers = {
