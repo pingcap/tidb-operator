@@ -53,8 +53,8 @@ func (bo *BackupOpts) getBackupRelativePath() string {
 	return fmt.Sprintf("%s_%s/%s", bo.Namespace, bo.TcName, BackupName)
 }
 
-func (bo *BackupOpts) getDestBucket() string {
-	return fmt.Sprint("%s://%s", bo.StorageType, bo.getBackupRelativePath())
+func (bo *BackupOpts) getDestBucketURI() string {
+	return fmt.Sprint("%s://%s%s", bo.StorageType, bo.getBackupRelativePath(), constants.DefaultArchiveExtention)
 }
 
 func (bo *BackupOpts) getTikvGCLifeTime(db *sql.DB) (string, error) {
@@ -102,19 +102,19 @@ func (bo *BackupOpts) dumpTidbClusterData() (string, error) {
 	return bfPath, nil
 }
 
-func (bo *BackupOpts) backupDataToRemote(bucket string) error {
-	destBucket := util.NormalizeBucketURI(bucket)
+func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
+	destBucket := util.NormalizeBucketURI(bucketURI)
 	tmpDestBucket := fmt.Sprintf("%s.tmp", destBucket)
 	// TODO: We may need to use exec.CommandContext to control timeouts.
-	rcCopy := exec.Command("rclone", constants.RcloneConfigArg, "copyto", tmpDestBucket)
+	rcCopy := exec.Command("rclone", constants.RcloneConfigArg, "copyto", source, tmpDestBucket)
 	if err := rcCopy.Start(); err != nil {
-		return fmt.Errorf("cluster %s, start rclone copyto command falied, err: %v", bo, err)
+		return fmt.Errorf("cluster %s, start rclone copyto command for upload backup data %s falied, err: %v", bo, bucketURI, err)
 	}
 	if err := rcCopy.Wait(); err != nil {
-		return fmt.Errorf("cluster %s, execute rclone copyto command failed, err: %v", bo, err)
+		return fmt.Errorf("cluster %s, execute rclone copyto command for upload backup data %s failed, err: %v", bo, bucketURI, err)
 	}
 
-	glog.Info("backup was upload successfully, now move it to permanent URL")
+	glog.Info("upload cluster %s backup data %s successfully, now move it to permanent URL", bo, bucketURI)
 
 	// the backup was a success
 	// remove .tmp extension
@@ -218,7 +218,7 @@ func archiveBackupData(backupDir, destFile string) error {
 	}
 	err := archiver.Archive([]string{backupDir}, destFile)
 	if err != nil {
-		return fmt.Errorf("archive backup data %s failed, err: %s", backupDir, destFile)
+		return fmt.Errorf("archive backup data %s to %s failed, err: %v", backupDir, destFile, err)
 	}
 	return nil
 }

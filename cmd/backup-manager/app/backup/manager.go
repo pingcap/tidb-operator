@@ -49,12 +49,6 @@ func NewBackupManager(
 
 // ProcessBackup used to process the backup logic
 func (bm *BackupManager) ProcessBackup() error {
-	db, err := util.OpenDB(bm.getDSN(constants.TidbMetaDB))
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
 	backup, err := bm.Cli.PingcapV1alpha1().Backups(bm.Namespace).Get(bm.BackupName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.BackupName, err)
@@ -67,6 +61,12 @@ func (bm *BackupManager) ProcessBackup() error {
 	if err != nil {
 		return err
 	}
+
+	db, err := util.OpenDB(bm.getDSN(constants.TidbMetaDB))
+	if err != nil {
+		return err
+	}
+	defer db.Close()
 	return bm.performBackup(backup, db)
 }
 
@@ -166,8 +166,8 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 	glog.Infof("get cluster %s commitTs %s success", bm, commitTs)
 
-	bucket := bm.getDestBucket()
-	err = bm.backupDataToRemote(bucket)
+	bucketURI := bm.getDestBucketURI()
+	err = bm.backupDataToRemote(archiveBackupPath, bucketURI)
 	if err != nil {
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
@@ -181,7 +181,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 
 	finish := time.Now()
 
-	backup.Status.BackupPath = bucket
+	backup.Status.BackupPath = bucketURI
 	backup.Status.TimeStarted = metav1.Time{Time: started}
 	backup.Status.TimeCompleted = metav1.Time{Time: finish}
 	backup.Status.BackupSize = size
