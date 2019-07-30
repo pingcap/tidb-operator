@@ -25,13 +25,18 @@ import (
 )
 
 var (
-	cmdHelpMsg string
-	handleFlag = validCmdFlagFunc
+	SkipValidFlags []string
+	cmdHelpMsg     string
 )
 
 func validCmdFlagFunc(flag *pflag.Flag) {
 	if flag.Name == "help" || flag.Name == "kubeconfig" || len(flag.Value.String()) > 0 {
 		return
+	}
+	for _, skip := range SkipValidFlags {
+		if flag.Name == skip {
+			return
+		}
 	}
 
 	cmdutil.CheckErr(fmt.Errorf(cmdHelpMsg, flag.Name))
@@ -40,7 +45,7 @@ func validCmdFlagFunc(flag *pflag.Flag) {
 // ValidCmdFlags verify that all flags are set
 func ValidCmdFlags(cmd *cobra.Command) {
 	cmdHelpMsg = "error: some flags [--%s] are missing.\nSee '" + cmd.CommandPath() + " -h for' help."
-	cmd.Flags().VisitAll(handleFlag)
+	cmd.Flags().VisitAll(validCmdFlagFunc)
 }
 
 // EnsureDirectoryExist create directory if does not exist

@@ -34,6 +34,8 @@ func NewCleanCommand(kubecfg string) *cobra.Command {
 		Use:   "clean",
 		Short: "Clean specific tidb cluster backup.",
 		Run: func(cmd *cobra.Command, args []string) {
+			util.SkipValidFlags = []string{"tidbservice", "password", "user", "storageType"}
+			util.ValidCmdFlags(cmd)
 			cmdutil.CheckErr(runClean(bo, kubecfg))
 		},
 	}
