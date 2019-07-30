@@ -1,8 +1,3 @@
-variable "cluster_name" {
-  description = "TiDB clustername"
-  default     = "tidb"
-}
-
 variable "tidb_version" {
   description = "TiDB version"
   default     = "v3.0.1"

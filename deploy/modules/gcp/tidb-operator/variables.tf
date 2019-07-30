@@ -25,11 +25,17 @@ variable "gke_version" {
   default = "latest"
 }
 
-variable "operator_version" {
+variable "tidb_operator_version" {
   description = "TiDB Operator version"
   type        = string
   default     = "v1.0.0-rc.1"
 }
+
+variable "tidb_operator_registry" {
+  description = "TiDB operator registry"
+  default     = "pingcap"
+}
+
 
 variable "operator_helm_values" {
   description = "Operator helm values"
@@ -37,8 +43,36 @@ variable "operator_helm_values" {
   default     = ""
 }
 
-variable "config_output_path" {
-  description = "Where to save the Kubectl config file (if `write_kubeconfig = true`). Should end in a forward slash `/` ."
-  type        = string
-  default     = "./"
+variable "kubeconfig_path" {
+  description = "kubeconfig path"
+}
+
+variable "pd_count" {
+  description = "Number of PD nodes per availability zone"
+  default     = 1
+}
+
+variable "tikv_count" {
+  description = "Number of TiKV nodes per availability zone"
+  default     = 1
+}
+
+variable "tidb_count" {
+  description = "Number of TiDB nodes per availability zone"
+  default     = 1
+}
+
+variable "monitor_count" {
+  description = "Number of monitor nodes per availability zone"
+  default     = 1
+}
+
+variable "pd_instance_type" {}
+
+variable "tikv_instance_type" {}
+
+variable "tidb_instance_type" {}
+
+variable "monitor_instance_type" {
+  default = "n1-standard-2"
 }
