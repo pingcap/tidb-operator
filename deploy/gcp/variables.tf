@@ -27,6 +27,11 @@ variable "gke_name" {
   default = "tidb-cluster"
 }
 
+variable "private_subnet_name" {
+  description = "Name for the private subnet"
+  default = "private-subnet"
+}
+
 variable "pd_replica_count" {
   default = 3
 }

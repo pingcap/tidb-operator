@@ -41,44 +41,11 @@ module "vpc" {
   vpc_name = var.gke_name
 }
 
-resource "google_compute_network" "vpc_network" {
-  name                    = "vpc-network"
-  auto_create_subnetworks = false
-  project                 = var.GCP_PROJECT
-}
-
-resource "google_compute_subnetwork" "private_subnet" {
-  ip_cidr_range = "172.31.252.0/22"
-  name          = "private-subnet"
-  network       = google_compute_network.vpc_network.name
-  project       = var.GCP_PROJECT
-
-  secondary_ip_range {
-    ip_cidr_range = "172.30.0.0/16"
-    range_name    = "pods-${var.GCP_REGION}"
-  }
-
-  secondary_ip_range {
-    ip_cidr_range = "172.31.224.0/20"
-    range_name    = "services-${var.GCP_REGION}"
-  }
-
-  lifecycle {
-    ignore_changes = [secondary_ip_range]
-  }
-}
-
-resource "google_compute_subnetwork" "public_subnet" {
-  ip_cidr_range = "172.29.252.0/22"
-  name          = "public-subnet"
-  network       = google_compute_network.vpc_network.name
-  project       = var.GCP_PROJECT
-}
 
 resource "google_container_cluster" "cluster" {
   name       = var.cluster_name
-  network    = google_compute_network.vpc_network.name
-  subnetwork = google_compute_subnetwork.private_subnet.name
+  network    = var.gke_name
+  subnetwork = var.private_subnet_name
   location   = var.GCP_REGION
   project    = var.GCP_PROJECT
 
