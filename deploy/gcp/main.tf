@@ -39,14 +39,14 @@ resource "null_resource" "set-gcloud-project" {
 }
 
 resource "google_compute_network" "vpc_network" {
-  name                    = "vpc-network"
+  name                    = "${var.cluster_name}-vpc-network"
   auto_create_subnetworks = false
   project                 = var.GCP_PROJECT
 }
 
 resource "google_compute_subnetwork" "private_subnet" {
   ip_cidr_range = "172.31.252.0/22"
-  name          = "private-subnet"
+  name          = "${var.cluster_name}-private-subnet"
   network       = google_compute_network.vpc_network.name
   project       = var.GCP_PROJECT
 
@@ -67,7 +67,7 @@ resource "google_compute_subnetwork" "private_subnet" {
 
 resource "google_compute_subnetwork" "public_subnet" {
   ip_cidr_range = "172.29.252.0/22"
-  name          = "public-subnet"
+  name          = "${var.cluster_name}-public-subnet"
   network       = google_compute_network.vpc_network.name
   project       = var.GCP_PROJECT
 }
@@ -124,7 +124,7 @@ resource "google_container_node_pool" "pd_pool" {
   cluster            = google_container_cluster.cluster.name
   location           = google_container_cluster.cluster.location
   name               = "pd-pool"
-  initial_node_count = var.pd_count
+  node_count = var.pd_count
 
   management {
     auto_repair  = false
@@ -156,7 +156,7 @@ resource "google_container_node_pool" "tikv_pool" {
   cluster            = google_container_cluster.cluster.name
   location           = google_container_cluster.cluster.location
   name               = "tikv-pool"
-  initial_node_count = var.tikv_count
+  node_count = var.tikv_count
 
   management {
     auto_repair  = false
@@ -193,7 +193,7 @@ resource "google_container_node_pool" "tidb_pool" {
   cluster            = google_container_cluster.cluster.name
   location           = google_container_cluster.cluster.location
   name               = "tidb-pool"
-  initial_node_count = var.tidb_count
+  node_count = var.tidb_count
 
   management {
     auto_repair  = false
@@ -226,7 +226,7 @@ resource "google_container_node_pool" "monitor_pool" {
   cluster            = google_container_cluster.cluster.name
   location           = google_container_cluster.cluster.location
   name               = "monitor-pool"
-  initial_node_count = var.monitor_count
+  node_count = var.monitor_count
 
   management {
     auto_repair  = false
