@@ -752,16 +752,33 @@ func TestHAFilter(t *testing.T) {
 			},
 		},
 		{
-			name:          "three nodes, three pods scheduled on these three nodes, replicas is 4, can't scheduled",
-			podFn:         newHAPDPod,
+			name:          "three nodes, three pods scheduled on these three nodes, replicas is 4, return all the three nodes",
+			podFn:         newHATiKVPod,
 			nodesFn:       fakeThreeNodes,
 			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {2}}),
 			acquireLockFn: acquireSuccess,
 			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
 				tc, _ := tcGetFn(ns, tcName)
-				tc.Spec.PD.Replicas = 4
+				tc.Spec.TiKV.Replicas = 4
 				return tc, nil
 			},
+			expectFn: func(nodes []apiv1.Node, err error, recorder record.FakeRecorder) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(3))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
+			},
+		},
+		{
+			name:      "two nodes, 2,2 pods scheduled on these two nodes, replicas is 5, can't schedule",
+			podFn:     newHATiKVPod,
+			nodesFn:   fakeTwoNodes,
+			podListFn: podListFn(map[string][]int32{"kube-node-1": {2}, "kube-node-2": {2}}),
+			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+				tc, _ := tcGetFn(ns, tcName)
+				tc.Spec.TiKV.Replicas = 5
+				return tc, nil
+			},
+			acquireLockFn: acquireSuccess,
 			expectFn: func(nodes []apiv1.Node, err error, recorder record.FakeRecorder) {
 				g.Expect(err).To(HaveOccurred())
 				events := collectEvents(recorder.Events)
@@ -908,6 +925,16 @@ func newHAPDPod(instanceName, clusterName string, ordinal int32) *apiv1.Pod {
 	}
 }
 
+func newHATiKVPod(instanceName, clusterName string, ordinal int32) *apiv1.Pod {
+	return &apiv1.Pod{
+		TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%d", controller.TiKVMemberName(clusterName), ordinal),
+			Namespace: corev1.NamespaceDefault,
+			Labels:    label.New().Instance(instanceName).TiKV().Labels(),
+		},
+	}
+}
 func podListFn(nodePodMap map[string][]int32) func(string, string, string) (*apiv1.PodList, error) {
 	return func(ns, clusterName, component string) (*apiv1.PodList, error) {
 		podList := &apiv1.PodList{
