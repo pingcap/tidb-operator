@@ -576,7 +576,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		}
 	}
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(time.Minute)
 
 	pvcList, err = oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {

@@ -18,9 +18,7 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
-	"strconv"
 	"sync"
-	"time"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests"
@@ -93,19 +91,20 @@ func main() {
 
 		// configuration change
 		cluster1.EnableConfigMapRollout = true
+		// moved to stability test because these two cases need too many times
 		// bad conf
-		cluster1.TiDBPreStartScript = strconv.Quote("exit 1")
-		cluster1.TiKVPreStartScript = strconv.Quote("exit 1")
-		cluster1.PDPreStartScript = strconv.Quote("exit 1")
-		oa.UpgradeTidbClusterOrDie(cluster1)
-		time.Sleep(30 * time.Second)
-		oa.CheckTidbClustersAvailableOrDie([]*tests.TidbClusterConfig{cluster1})
+		//cluster1.TiDBPreStartScript = strconv.Quote("exit 1")
+		//cluster1.TiKVPreStartScript = strconv.Quote("exit 1")
+		//cluster1.PDPreStartScript = strconv.Quote("exit 1")
+		//oa.UpgradeTidbClusterOrDie(cluster1)
+		//time.Sleep(30 * time.Second)
+		//oa.CheckTidbClustersAvailableOrDie([]*tests.TidbClusterConfig{cluster1})
 		// rollback conf
-		cluster1.PDPreStartScript = strconv.Quote("")
-		cluster1.TiKVPreStartScript = strconv.Quote("")
-		cluster1.TiDBPreStartScript = strconv.Quote("")
-		oa.UpgradeTidbClusterOrDie(cluster1)
-		oa.CheckTidbClusterStatusOrDie(cluster1)
+		//cluster1.PDPreStartScript = strconv.Quote("")
+		//cluster1.TiKVPreStartScript = strconv.Quote("")
+		//cluster1.TiDBPreStartScript = strconv.Quote("")
+		//oa.UpgradeTidbClusterOrDie(cluster1)
+		//oa.CheckTidbClusterStatusOrDie(cluster1)
 		// correct conf
 		cluster1.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
 			UpdateTiKVGrpcConcurrency(cfg.TiKVGrpcConcurrency).
@@ -141,6 +140,7 @@ func main() {
 		oa.CleanWebHookAndServiceOrDie(ocfg)
 	}
 	fn3 := func(wg *sync.WaitGroup) {
+		defer wg.Done()
 		oa.CleanTidbClusterOrDie(cluster3)
 		oa.CleanTidbClusterOrDie(cluster4)
 		oa.DeployTidbClusterOrDie(cluster3)
