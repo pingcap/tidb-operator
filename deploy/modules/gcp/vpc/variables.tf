@@ -11,6 +11,11 @@ variable "private_subnet_primary_cidr_range" {
   default = "172.31.252.0/22"
 }
 
+variable "private_subnet_secondary_cidr_ranges" {
+  description = "Secondary ranges for private subnet"
+  default = ["172.30.0.0/16", "172.31.224.0/20"]
+}
+
 variable "private_subnet_name" {
   description = "Name for the private subnet"
   default = "private-subnet"
@@ -33,3 +38,4 @@ variable "gcp_region" {
 variable "gcp_project" {
   description = "The GCP project name"
 }
+

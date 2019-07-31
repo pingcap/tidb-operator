@@ -22,6 +22,11 @@ variable "gke_name" {
   default = "tidb-cluster"
 }
 
+variable "vpc_name" {
+  description = "The name of the VPC network"
+  default = "tidb-cluster"
+}
+
 variable "private_subnet_name" {
   description = "Name for the private subnet"
   default = "private-subnet"

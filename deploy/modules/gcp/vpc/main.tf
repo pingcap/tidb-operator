@@ -13,12 +13,12 @@ resource "google_compute_subnetwork" "private_subnet" {
   project = var.gcp_project
 
   secondary_ip_range {
-    ip_cidr_range = "172.30.0.0/16"
+    ip_cidr_range = var.private_subnet_secondary_cidr_ranges[0]
     range_name    = "pods-${var.gcp_region}"
   }
 
   secondary_ip_range {
-    ip_cidr_range = "172.31.224.0/20"
+    ip_cidr_range = var.private_subnet_secondary_cidr_ranges[1]
     range_name    = "services-${var.gcp_region}"
   }
 
