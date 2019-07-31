@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 echo "Create rclone.conf file."
@@ -44,7 +44,7 @@ else
     touch /tmp/google-credentials.json
 fi
 
-BACKUP_BIN=backup-manager
+BACKUP_BIN=/backup-manager
 
 # exec command
 case "$1" in
