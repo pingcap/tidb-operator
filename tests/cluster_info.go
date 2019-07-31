@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/golang/glog"
 )
 
 func (tc *TidbClusterConfig) set(name string, value string) (string, bool) {
@@ -134,5 +136,6 @@ func (tc *TidbClusterConfig) BuildSubValues(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	glog.Info("subValues:\n %s", subValues)
 	return subVaulesPath, nil
 }

@@ -2323,7 +2323,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	glog.Infof(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to launch scheduler backup job: %v, %s", err, string(res))
+		return fmt.Errorf("failed to launch incremental backup job: %v, %s", err, string(res))
 	}
 	return nil
 }
@@ -2398,7 +2398,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 
 	err := wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
 	if err != nil {
-		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
+		return fmt.Errorf("failed to check incremental backup job: %v", err)
 	}
 	return nil
 
