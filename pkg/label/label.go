@@ -65,6 +65,9 @@ const (
 	TiDBLabelVal string = "tidb"
 	// TiKVLabelVal is TiKV label value
 	TiKVLabelVal string = "tikv"
+	// FailTiDBSchedulerLabelKey is for injecting a failure into the TiDB custom scheduler
+	// A pod with this label will produce an error when scheduled.
+	FailTiDBSchedulerLabelKey string = "tidb.pingcap.com/fail-scheduler"
 )
 
 // Label is the label field in metadata
