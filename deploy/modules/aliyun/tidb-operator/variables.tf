@@ -22,7 +22,7 @@ variable "cluster_network_type" {
 
 variable "operator_version" {
   type = string
-  default = "v1.0.0-beta.3"
+  default = "v1.0.0"
 }
 
 variable "operator_helm_values" {

@@ -51,4 +51,4 @@ scrape_configs:
       action: replace
       target_label: cluster
 rule_files:
-  - 'alert.rules'
+  - '/prometheus-rules/rules/*.rules.yml'
