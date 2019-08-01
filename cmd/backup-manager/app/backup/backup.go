@@ -125,7 +125,7 @@ func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
 	}
 
 	if err := rcMove.Wait(); err != nil {
-		return fmt.Errorf("cluster %s, start rclone moveto command falied, err: %v", bo, err)
+		return fmt.Errorf("cluster %s, execute rclone moveto command falied, err: %v", bo, err)
 	}
 	return nil
 }
