@@ -54,8 +54,6 @@ resource "google_compute_instance" "bastion" {
 
   network_interface {
     subnetwork = var.public_subnet_name
-    access_config {
-    }
   }
 
   tags = ["bastion"]

@@ -5,5 +5,5 @@ variable "path" {
 
 variable "gcloud_project" {
   description = "The name of the GCP project"
-  default = ""
+  default     = ""
 }

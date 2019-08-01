@@ -18,7 +18,7 @@ EOS
 data "helm_repository" "pingcap" {
   depends_on = [null_resource.wait-tiller-ready]
   name = "pingcap"
-  url = "http://charts.pingcap.org/"
+  url = "https://charts.pingcap.org/"
 }
 
 resource "helm_release" "tidb-cluster" {

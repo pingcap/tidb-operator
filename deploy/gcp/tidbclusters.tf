@@ -17,7 +17,7 @@ module "default-tidb-cluster" {
   cluster_name = var.default_tidb_cluster_name
   cluster_version = var.tidb_version
   kubeconfig_path = module.tidb-operator.kubeconfig_path
-  tidb_cluster_chart_version = var.tidb_operator_version
+  tidb_cluster_chart_version = module.tidb-operator.tidb_operator_version
   pd_replica_count = var.pd_replica_count
   tikv_replica_count = var.tikv_replica_count
   tidb_replica_count = var.tidb_replica_count

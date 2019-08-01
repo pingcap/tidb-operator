@@ -1,9 +1,9 @@
 resource "google_container_cluster" "cluster" {
-  name = var.gke_name
-  network = var.vpc_name
+  name       = var.gke_name
+  network    = var.vpc_name
   subnetwork = var.subnetwork_name
-  location = var.gcp_region
-  project = var.gcp_project
+  location   = var.gcp_region
+  project    = var.gcp_project
 
   master_auth {
     username = ""
@@ -67,7 +67,7 @@ EOS
 }
 
 provider "helm" {
-  alias    = "initial"
+  alias = "initial"
   insecure = true
   # service_account = "tiller"
   install_tiller = false # currently this doesn't work, so we install tiller in the local-exec provisioner. See https://github.com/terraform-providers/terraform-provider-helm/issues/148
@@ -119,10 +119,10 @@ EOS
 }
 
 data "helm_repository" "pingcap" {
-  provider = "helm.initial"
-  depends_on = ["null_resource.setup-env"]
-  name = "pingcap"
-  url = "http://charts.pingcap.org/"
+  provider   = "helm.initial"
+  depends_on = [null_resource.setup-env]
+  name       = "pingcap"
+  url        = "https://charts.pingcap.org/"
 }
 
 resource "helm_release" "tidb-operator" {
@@ -133,11 +133,11 @@ resource "helm_release" "tidb-operator" {
   ]
 
   repository = data.helm_repository.pingcap.name
-  chart = "tidb-operator"
-  version = var.tidb_operator_version
-  namespace = "tidb-admin"
-  name = "tidb-operator"
-  values = [var.operator_helm_values]
+  chart      = "tidb-operator"
+  version    = var.tidb_operator_version
+  namespace  = "tidb-admin"
+  name       = "tidb-operator"
+  values     = [var.operator_helm_values]
 }
 
 

@@ -1,11 +1,11 @@
 resource "google_container_node_pool" "pd_pool" {
   // The monitor pool is where tiller must first be deployed to.
-  depends_on         = [google_container_node_pool.monitor_pool]
-  provider           = google-beta
-  project            = var.gcp_project
-  cluster            = var.gke_cluster_name
-  location           = var.gke_cluster_location
-  name               = "${var.cluster_name}-pd-pool"
+  depends_on = [google_container_node_pool.monitor_pool]
+  provider   = google-beta
+  project    = var.gcp_project
+  cluster    = var.gke_cluster_name
+  location   = var.gke_cluster_location
+  name       = "${var.cluster_name}-pd-pool"
   node_count = var.pd_node_count
 
   management {
@@ -33,11 +33,11 @@ resource "google_container_node_pool" "pd_pool" {
 }
 
 resource "google_container_node_pool" "tikv_pool" {
-  provider           = google-beta
-  project            = var.gcp_project
-  cluster            = var.gke_cluster_name
-  location           = var.gke_cluster_location
-  name               = "${var.cluster_name}-tikv-pool"
+  provider   = google-beta
+  project    = var.gcp_project
+  cluster    = var.gke_cluster_name
+  location   = var.gke_cluster_location
+  name       = "${var.cluster_name}-tikv-pool"
   node_count = var.tikv_node_count
 
   management {
@@ -69,12 +69,12 @@ resource "google_container_node_pool" "tikv_pool" {
 
 resource "google_container_node_pool" "tidb_pool" {
   // The pool order is tikv -> monitor -> pd -> tidb
-  depends_on         = [google_container_node_pool.pd_pool]
-  provider           = google-beta
-  project            = var.gcp_project
-  cluster            = var.gke_cluster_name
-  location           = var.gke_cluster_location
-  name               = "${var.cluster_name}-tidb-pool"
+  depends_on = [google_container_node_pool.pd_pool]
+  provider   = google-beta
+  project    = var.gcp_project
+  cluster    = var.gke_cluster_name
+  location   = var.gke_cluster_location
+  name       = "${var.cluster_name}-tidb-pool"
   node_count = var.tidb_node_count
 
   management {
@@ -103,11 +103,11 @@ resource "google_container_node_pool" "tidb_pool" {
 resource "google_container_node_pool" "monitor_pool" {
   // Setup local SSD on TiKV nodes first (this can take some time)
   // Create the monitor pool next because that is where tiller will be deployed to
-  depends_on         = [google_container_node_pool.tikv_pool]
-  project            = var.gcp_project
-  cluster            = var.gke_cluster_name
-  location           = var.gke_cluster_location
-  name               = "${var.cluster_name}-monitor-pool"
+  depends_on = [google_container_node_pool.tikv_pool]
+  project    = var.gcp_project
+  cluster    = var.gke_cluster_name
+  location   = var.gke_cluster_location
+  name       = "${var.cluster_name}-monitor-pool"
   node_count = var.monitor_node_count
 
   management {
@@ -123,15 +123,15 @@ resource "google_container_node_pool" "monitor_pool" {
 }
 
 module "tidb-cluster" {
-  source = "../../share/tidb-cluster-release"
-  cluster_name = var.cluster_name
-  pd_count = var.pd_replica_count
-  tikv_count = var.tikv_replica_count
-  tidb_count = var.tidb_replica_count
+  source                     = "../../share/tidb-cluster-release"
+  cluster_name               = var.cluster_name
+  pd_count                   = var.pd_replica_count
+  tikv_count                 = var.tikv_replica_count
+  tidb_count                 = var.tidb_replica_count
   tidb_cluster_chart_version = var.tidb_cluster_chart_version
-  override_values = var.override_values
-  kubeconfig_filename = var.kubeconfig_path
-  base_values = file("${path.module}/values/default.yaml")
+  override_values            = var.override_values
+  kubeconfig_filename        = var.kubeconfig_path
+  base_values                = file("${path.module}/values/default.yaml")
 }
 
 resource "null_resource" "wait-lb-ip" {
@@ -141,7 +141,7 @@ resource "null_resource" "wait-lb-ip" {
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
     working_dir = path.cwd
-    command         = <<EOS
+    command     = <<EOS
 set -euo pipefail
 
 until kubectl get svc -n ${var.cluster_name} tidb-cluster-tidb -o json | jq '.status.loadBalancer.ingress[0]' | grep ip; do

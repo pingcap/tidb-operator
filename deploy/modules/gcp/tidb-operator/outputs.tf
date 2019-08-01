@@ -17,3 +17,7 @@ output "gke_cluster_location" {
 output "kubeconfig_path" {
   value = var.kubeconfig_path
 }
+
+output "tidb_operator_version" {
+  value = helm_release.tidb-operator.version
+}

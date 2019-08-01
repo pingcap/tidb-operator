@@ -1,6 +1,6 @@
 variable "gke_name" {
   description = "Name of the GKE cluster. Also used as a prefix in names of related resources."
-  type = string
+  type        = string
 }
 
 variable "vpc_name" {
@@ -21,8 +21,8 @@ variable "gcp_project" {
 
 variable "gke_version" {
   description = "Kubernetes version to use for the EKS cluster"
-  type = string
-  default = "latest"
+  type        = string
+  default     = "latest"
 }
 
 variable "tidb_operator_version" {
