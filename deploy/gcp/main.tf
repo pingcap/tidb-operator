@@ -50,14 +50,8 @@ module "tidb-operator" {
   subnetwork_name = module.vpc.private_subnetwork_name
   gcp_project = var.GCP_PROJECT
   gcp_region = var.GCP_REGION
-  pd_count = var.pd_count
-  tikv_count = var.tikv_count
-  tidb_count = var.tidb_count
-  monitor_count = var.monitor_count
   kubeconfig_path = local.kubeconfig
-  pd_instance_type = var.pd_instance_type
-  tikv_instance_type = var.tikv_instance_type
-  tidb_instance_type = var.tidb_instance_type
+  tidb_operator_version = var.tidb_operator_version
 }
 
 module "bastion" {

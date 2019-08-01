@@ -42,130 +42,6 @@ resource "google_container_cluster" "cluster" {
   }
 }
 
-resource "google_container_node_pool" "pd_pool" {
-  // The monitor pool is where tiller must first be deployed to.
-  depends_on         = [google_container_node_pool.monitor_pool]
-  provider           = google-beta
-  project            = var.gcp_project
-  cluster            = google_container_cluster.cluster.name
-  location           = google_container_cluster.cluster.location
-  name               = "pd-pool"
-  node_count = var.pd_count
-
-  management {
-    auto_repair  = false
-    auto_upgrade = false
-  }
-
-  node_config {
-    machine_type    = var.pd_instance_type
-    local_ssd_count = 0
-
-    taint {
-      effect = "NO_SCHEDULE"
-      key    = "dedicated"
-      value  = "pd"
-    }
-
-    labels = {
-      dedicated = "pd"
-    }
-
-    tags         = ["pd"]
-    oauth_scopes = ["storage-ro", "logging-write", "monitoring"]
-  }
-}
-
-resource "google_container_node_pool" "tikv_pool" {
-  provider           = google-beta
-  project            = var.gcp_project
-  cluster            = google_container_cluster.cluster.name
-  location           = google_container_cluster.cluster.location
-  name               = "tikv-pool"
-  node_count = var.tikv_count
-
-  management {
-    auto_repair  = false
-    auto_upgrade = false
-  }
-
-  node_config {
-    machine_type = var.tikv_instance_type
-    image_type   = "UBUNTU"
-    // This value cannot be changed (instead a new node pool is needed)
-    // 1 SSD is 375 GiB
-    local_ssd_count = 1
-
-    taint {
-      effect = "NO_SCHEDULE"
-      key    = "dedicated"
-      value  = "tikv"
-    }
-
-    labels = {
-      dedicated = "tikv"
-    }
-
-    tags         = ["tikv"]
-    oauth_scopes = ["storage-ro", "logging-write", "monitoring"]
-  }
-}
-
-resource "google_container_node_pool" "tidb_pool" {
-  // The pool order is tikv -> monitor -> pd -> tidb
-  depends_on         = [google_container_node_pool.pd_pool]
-  provider           = google-beta
-  project            = var.gcp_project
-  cluster            = google_container_cluster.cluster.name
-  location           = google_container_cluster.cluster.location
-  name               = "tidb-pool"
-  node_count = var.tidb_count
-
-  management {
-    auto_repair  = false
-    auto_upgrade = false
-  }
-
-  node_config {
-    machine_type = var.tidb_instance_type
-
-    taint {
-      effect = "NO_SCHEDULE"
-      key    = "dedicated"
-      value  = "tidb"
-    }
-
-    labels = {
-      dedicated = "tidb"
-    }
-
-    tags         = ["tidb"]
-    oauth_scopes = ["storage-ro", "logging-write", "monitoring"]
-  }
-}
-
-resource "google_container_node_pool" "monitor_pool" {
-  // Setup local SSD on TiKV nodes first (this can take some time)
-  // Create the monitor pool next because that is where tiller will be deployed to
-  depends_on         = [google_container_node_pool.tikv_pool]
-  project            = var.gcp_project
-  cluster            = google_container_cluster.cluster.name
-  location           = google_container_cluster.cluster.location
-  name               = "monitor-pool"
-  node_count = var.monitor_count
-
-  management {
-    auto_repair  = false
-    auto_upgrade = false
-  }
-
-  node_config {
-    machine_type = var.monitor_instance_type
-    tags         = ["monitor"]
-    oauth_scopes = ["storage-ro", "logging-write", "monitoring"]
-  }
-}
-
 resource "null_resource" "get-credentials" {
   depends_on = [google_container_cluster.cluster]
   provisioner "local-exec" {
@@ -206,7 +82,6 @@ resource "null_resource" "setup-env" {
     null_resource.get-credentials,
     var.tidb_operator_registry,
     var.tidb_operator_version,
-    google_container_node_pool.monitor_pool
   ]
 
   provisioner "local-exec" {
@@ -234,7 +109,6 @@ until helm ls; do
   echo "Wait until tiller is ready"
   sleep 5
 done
-helm upgrade --install tidb-operator --namespace tidb-admin ${path.cwd}/charts/tidb-operator --set operatorImage=${var.tidb_operator_registry}/tidb-operator:${var.tidb_operator_version}
 EOS
 
 

@@ -22,6 +22,11 @@ variable "gke_name" {
   default = "tidb-cluster"
 }
 
+variable "default_tidb_cluster_name" {
+  description = "The name that will be given to the default tidb cluster created."
+  default = "tidb-cluster"
+}
+
 variable "vpc_name" {
   description = "The name of the VPC network"
   default = "tidb-cluster"
