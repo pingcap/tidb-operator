@@ -2302,18 +2302,18 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	}
 
 	from.drainerConfig = []string{
-		"  worker-count = 16",
-		"  detect-interval = 10",
-		"  disable-dispatch = false",
-		`  ignore-schemas = ""`,
-		`  safe-mode = false`,
-		`  txn-batch = 20`,
-		`  db-type = "mysql"`,
+		"worker-count = 16",
+		"detect-interval = 10",
+		"disable-dispatch = false",
+		`ignore-schemas = ""`,
+		`safe-mode = false`,
+		`txn-batch = 20`,
+		`db-type = "mysql"`,
 		`[syncer.to]`,
-		fmt.Sprintf(`  host = "%s-tidb.%s"`, to.ClusterName, to.Namespace),
-		fmt.Sprintf(`  user = "%s"`, "root"),
-		fmt.Sprintf(`  password = "%s"`, to.Password),
-		fmt.Sprintf(`  port = %d`, 4000),
+		fmt.Sprintf(`host = "%s-tidb.%s"`, to.ClusterName, to.Namespace),
+		fmt.Sprintf(`user = "%s"`, "root"),
+		fmt.Sprintf(`password = "%s"`, to.Password),
+		fmt.Sprintf(`port = %d`, 4000),
 	}
 
 	cmd, err := oa.getHelmUpgradeClusterCmd(from, sets)
