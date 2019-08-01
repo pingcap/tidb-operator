@@ -325,6 +325,8 @@ type BackupSpec struct {
 	StorageType BackupStorageType `json:"storageType"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
+	// StorageClassName is the storage class for backup job's PV.
+	StorageClassName string `json:"storageClassName"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType"`
 	// Cluster is the Cluster to backup.
@@ -366,7 +368,7 @@ type BackupStatus struct {
 	BackupPath string `json:"backupPath"`
 	// TimeStarted is the time at which the backup was started.
 	TimeStarted metav1.Time `json:"timeStarted"`
-	// TimeCompleted is the time at which the backup completed.
+	// TimeCompleted is the time at which the backup was completed.
 	TimeCompleted metav1.Time `json:"timeCompleted"`
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize"`
@@ -405,6 +407,8 @@ type BackupScheduleSpec struct {
 	MaxBackups int `json:"maxBackups"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
+	// StorageClassName is the storage class for backup job's PV.
+	StorageClassName string `json:"storageClassName"`
 }
 
 // BackupScheduleStatus represents the current state of a BackupSchedule.
@@ -472,13 +476,15 @@ type RestoreSpec struct {
 	// SecretName is the name of the secret which stores
 	// tidb cluster's username and password.
 	SecretName string `json:"secretName"`
+	// StorageClassName is the storage class for restore job's PV.
+	StorageClassName string `json:"storageClassName"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.
 type RestoreStatus struct {
 	// TimeStarted is the time at which the restore was started.
 	TimeStarted metav1.Time `json:"timeStarted"`
-	// TimeCompleted is the time at which the restore completed.
+	// TimeCompleted is the time at which the restore was completed.
 	TimeCompleted metav1.Time        `json:"timeCompleted"`
 	Conditions    []RestoreCondition `json:"conditions"`
 }
