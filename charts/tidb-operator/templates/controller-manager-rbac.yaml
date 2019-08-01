@@ -24,8 +24,8 @@ rules:
 {{- if .Values.clusterScoped }}
 - apiGroups: [""]
   resources:
-    - services
-    - events
+  - services
+  - events
   verbs: ["*"]
 - apiGroups: [""]
   resources: ["endpoints"]
@@ -40,7 +40,15 @@ rules:
   resources: ["statefulsets"]
   verbs: ["*"]
 - apiGroups: ["pingcap.com"]
-  resources: ["tidbclusters", "tidbclusters/finalizers"]
+  resources:
+  - tidbclusters
+  - tidbclusters/finalizers
+  - backups
+  - backups/finalizers
+  - backupschedules
+  - backupschedules/finalizers
+  - restores
+  - restores/finalizers
   verbs: ["*"]
 {{- end }}
 - apiGroups: [""]
