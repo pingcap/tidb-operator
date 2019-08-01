@@ -49,7 +49,7 @@ func (bo *BackupOpts) getBackupFullPath() string {
 }
 
 func (bo *BackupOpts) getBackupRelativePath() string {
-	BackupName := fmt.Sprintf("backup-%s", time.Now().UTC().Format(time.RFC3339))
+	backupName := fmt.Sprintf("backup-%s", time.Now().UTC().Format(time.RFC3339))
 	return fmt.Sprintf("%s_%s/%s", bo.Namespace, bo.TcName, BackupName)
 }
 
