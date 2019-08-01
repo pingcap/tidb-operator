@@ -21,6 +21,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/controller/backup"
+	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
+	"github.com/pingcap/tidb-operator/pkg/controller/restore"
+
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -45,6 +49,7 @@ var (
 	pdFailoverPeriod   time.Duration
 	tikvFailoverPeriod time.Duration
 	tidbFailoverPeriod time.Duration
+	backupImage        string
 	leaseDuration      = 15 * time.Second
 	renewDuration      = 5 * time.Second
 	retryPeriod        = 3 * time.Second
@@ -58,11 +63,13 @@ func init() {
 	flag.IntVar(&workers, "workers", 5, "The number of workers that are allowed to sync concurrently. Larger number = more responsive management, but more CPU (and network) load")
 	flag.BoolVar(&controller.ClusterScoped, "cluster-scoped", true, "Whether tidb-operator should manage kubernetes cluster wide TiDB Clusters")
 	flag.StringVar(&controller.DefaultStorageClassName, "default-storage-class-name", "standard", "Default storage class name")
+	flag.StringVar(&controller.DefaultBackupStorageClassName, "default-backup-storage-class-name", "standard", "Default storage class name for backup and restore")
 	flag.BoolVar(&autoFailover, "auto-failover", true, "Auto failover")
 	flag.DurationVar(&pdFailoverPeriod, "pd-failover-period", time.Duration(5*time.Minute), "PD failover period default(5m)")
 	flag.DurationVar(&tikvFailoverPeriod, "tikv-failover-period", time.Duration(5*time.Minute), "TiKV failover period default(5m)")
 	flag.DurationVar(&tidbFailoverPeriod, "tidb-failover-period", time.Duration(5*time.Minute), "TiDB failover period")
 	flag.BoolVar(&controller.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
+	flag.StringVar(&controller.BackupManagerImage, "backup-manager-image", "pingcap/backup-manager:latest", "The image of backup manager tool")
 
 	flag.Parse()
 }
@@ -131,9 +138,9 @@ func main() {
 	}
 
 	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
-	//backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-	//restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-	//bsController := backupschedule.NewController(kubeCli, cli, informerFactory)
+	backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+	restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+	bsController := backupschedule.NewController(kubeCli, cli, informerFactory)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go informerFactory.Start(controllerCtx.Done())
@@ -141,11 +148,10 @@ func main() {
 
 	onStarted := func(ctx context.Context) {
 		// TODO: Comment out the controller entry of the backup related function, uncomment it after the function is completed
-		//go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
-		//go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
-		//go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
-		//wait.Forever(func() { tcController.Run(workers, ctx.Done()) }, waitDuration)
-		tcController.Run(workers, ctx.Done())
+		go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
+		go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
+		go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
+		wait.Forever(func() { tcController.Run(workers, ctx.Done()) }, waitDuration)
 	}
 	onStopped := func() {
 		glog.Fatalf("leader election lost")

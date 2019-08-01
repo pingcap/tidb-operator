@@ -29,6 +29,10 @@ var (
 	controllerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbCluster")
 	// DefaultStorageClassName is the default storageClassName
 	DefaultStorageClassName string
+	// DefaultBackupStorageClassName is the default storageClassName for backup and restore job
+	DefaultBackupStorageClassName string
+	// BackupManagerImage is the image of backup manager tool
+	BackupManagerImage string
 	// ClusterScoped controls whether operator should manage kubernetes cluster wide TiDB clusters
 	ClusterScoped bool
 	// TestMode defines whether tidb operator run in test mode, test mode is only open when test
