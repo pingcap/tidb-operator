@@ -49,7 +49,6 @@ var (
 	pdFailoverPeriod   time.Duration
 	tikvFailoverPeriod time.Duration
 	tidbFailoverPeriod time.Duration
-	backupImage        string
 	leaseDuration      = 15 * time.Second
 	renewDuration      = 5 * time.Second
 	retryPeriod        = 3 * time.Second
