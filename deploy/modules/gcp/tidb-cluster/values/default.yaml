@@ -1,0 +1,22 @@
+# Basic customization for tidb-cluster chart that is suitable for a GKE cluster
+timezone: UTC
+
+pd:
+  storageClassName: pd-ssd
+tikv:
+  storageClassName: local-storage
+tidb:
+  service:
+    type: LoadBalancer
+    annotations:
+      cloud.google.com/load-balancer-type: "Internal"
+  separateSlowLog: true
+monitor:
+  storage: 100Gi
+  storageClassName: pd-ssd
+  persistent: true
+  grafana:
+    config:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    service:
+      type: LoadBalancer

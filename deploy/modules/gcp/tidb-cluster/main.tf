@@ -131,6 +131,7 @@ module "tidb-cluster" {
   tidb_cluster_chart_version = var.tidb_cluster_chart_version
   override_values = var.override_values
   kubeconfig_filename = var.kubeconfig_path
+  base_values = file("${path.module}/values/default.yaml")
 }
 
 resource "null_resource" "wait-lb-ip" {
