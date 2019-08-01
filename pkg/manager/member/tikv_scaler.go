@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 type tikvScaler struct {
@@ -78,6 +79,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		resetReplicas(newSet, oldSet)
 		return err
 	}
+
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
 			state := store.State
@@ -135,9 +137,48 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		}
 	}
 
-	// store not found in TidbCluster status,
-	// this can happen when TiKV joins cluster but we haven't synced its status
-	// so return error to wait another round for safety
+	// When store not found in TidbCluster status, there are two situations as follows:
+	// 1. This can happen when TiKV joins cluster but we haven't synced its status.
+	//    In this situation return error to wait another round for safety.
+	//
+	// 2. This can happen when TiKV pod has not been successfully registered in the cluster, such as always pending.
+	//    In this situation we should delete this TiKV pod immediately to avoid blocking the subsequent operations.
+	if !podutil.IsPodReady(pod) {
+		pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
+		pvc, err := tsd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
+		if err != nil {
+			resetReplicas(newSet, oldSet)
+			return err
+		}
+		safeTimeDeadline := pod.CreationTimestamp.Add(5 * controller.ResyncDuration)
+		if time.Now().Before(safeTimeDeadline) {
+			// Wait for 5 resync periods to ensure that the following situation does not occur:
+			//
+			// The tikv pod starts for a while, but has not synced its status, and then the pod becomes not ready.
+			// Here we wait for 5 resync periods to ensure that the status of this tikv pod has been synced.
+			// After this period of time, if there is still no information about this tikv in TidbCluster status,
+			// then we can be sure that this tikv has never been added to the tidb cluster.
+			// So we can scale in this tikv pod safely.
+			resetReplicas(newSet, oldSet)
+			return fmt.Errorf("TiKV %s/%s is not ready, wait for some resync periods to synced its status", ns, podName)
+		}
+		if pvc.Annotations == nil {
+			pvc.Annotations = map[string]string{}
+		}
+		now := time.Now().Format(time.RFC3339)
+		pvc.Annotations[label.AnnPVCDeferDeleting] = now
+		_, err = tsd.pvcControl.UpdatePVC(tc, pvc)
+		if err != nil {
+			glog.Errorf("pod %s not ready, tikv scale in: failed to set pvc %s/%s annotation: %s to %s",
+				podName, ns, pvcName, label.AnnPVCDeferDeleting, now)
+			resetReplicas(newSet, oldSet)
+			return err
+		}
+		glog.Infof("pod %s not ready, tikv scale in: set pvc %s/%s annotation: %s to %s",
+			podName, ns, pvcName, label.AnnPVCDeferDeleting, now)
+		decreaseReplicas(newSet, oldSet)
+		return nil
+	}
 	resetReplicas(newSet, oldSet)
 	return fmt.Errorf("TiKV %s/%s not found in cluster", ns, podName)
 }
