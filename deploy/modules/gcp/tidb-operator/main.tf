@@ -45,7 +45,7 @@ resource "google_container_cluster" "cluster" {
 resource "null_resource" "get-credentials" {
   depends_on = [google_container_cluster.cluster]
   provisioner "local-exec" {
-    command = "gcloud container clusters get-credentials ${google_container_cluster.cluster.name} --region ${var.gcp_region}"
+    command = "gcloud --project ${var.gcp_project} container clusters get-credentials ${google_container_cluster.cluster.name} --region ${var.gcp_region}"
 
     environment = {
       KUBECONFIG = var.kubeconfig_path
@@ -91,7 +91,6 @@ resource "null_resource" "setup-env" {
   depends_on = [
     google_container_cluster.cluster,
     null_resource.get-credentials,
-    var.tidb_operator_registry,
     var.tidb_operator_version,
   ]
 
@@ -151,6 +150,3 @@ resource "helm_release" "tidb-operator" {
   name       = "tidb-operator"
   values     = [var.operator_helm_values]
 }
-
-
-

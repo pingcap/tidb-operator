@@ -1,3 +1,3 @@
 output "how_to_ssh_to_bastion" {
-  value = "gcloud compute ssh bastion --zone ${google_compute_instance.bastion.zone}"
+  value = "gcloud --project ${var.gcp_project} compute ssh ${var.bastion_name} --zone ${google_compute_instance.bastion.zone}"
 }

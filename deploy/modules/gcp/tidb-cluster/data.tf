@@ -3,7 +3,7 @@ data "external" "tidb_ilb_ip" {
   program    = ["bash", "-c", "kubectl --kubeconfig ${var.kubeconfig_path} get svc -n ${var.cluster_name} ${var.cluster_name}-tidb -o json | jq '.status.loadBalancer.ingress[0]'"]
 }
 
-data "external" "monitor_ilb_ip" {
+data "external" "monitor_lb_ip" {
   depends_on = [null_resource.wait-lb-ip]
   program    = ["bash", "-c", "kubectl --kubeconfig ${var.kubeconfig_path} get svc -n ${var.cluster_name} ${var.cluster_name}-grafana -o json | jq '.status.loadBalancer.ingress[0]'"]
 }
@@ -18,3 +18,4 @@ data "external" "monitor_port" {
   program    = ["bash", "-c", "kubectl --kubeconfig ${var.kubeconfig_path} get svc -n ${var.cluster_name} ${var.cluster_name}-grafana -o json | jq '.spec.ports | .[] | select( .name == \"grafana\") | {port: .port|tostring}'"]
 }
 
+data "google_compute_zones" "available" {}

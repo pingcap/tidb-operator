@@ -1,11 +1,11 @@
 data "local_file" "kubeconfig" {
-  depends_on        = [module.tidb-operator.cluster_id]
-  filename = module.tidb-operator.kubeconfig_path
+  depends_on = [module.tidb-operator.cluster_id]
+  filename   = module.tidb-operator.kubeconfig_path
 }
 resource "local_file" "kubeconfig" {
-  depends_on        = [module.tidb-operator.cluster_id]
-  content           = data.local_file.kubeconfig.content
-  filename          = module.tidb-operator.kubeconfig_path
+  depends_on = [module.tidb-operator.cluster_id]
+  content    = data.local_file.kubeconfig.content
+  filename   = module.tidb-operator.kubeconfig_path
 }
 
 provider "helm" {
@@ -28,9 +28,6 @@ module "default-tidb-cluster" {
   cluster_version            = var.tidb_version
   kubeconfig_path            = module.tidb-operator.kubeconfig_path
   tidb_cluster_chart_version = var.tidb_operator_version
-  pd_replica_count           = var.pd_replica_count
-  tikv_replica_count         = var.tikv_replica_count
-  tidb_replica_count         = var.tidb_replica_count
   pd_instance_type           = var.pd_instance_type
   tikv_instance_type         = var.tikv_instance_type
   tidb_instance_type         = var.tidb_instance_type

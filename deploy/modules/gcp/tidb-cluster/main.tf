@@ -9,7 +9,7 @@ resource "google_container_node_pool" "pd_pool" {
   node_count = var.pd_node_count
 
   management {
-    auto_repair  = false
+    auto_repair  = true
     auto_upgrade = false
   }
 
@@ -47,7 +47,6 @@ resource "google_container_node_pool" "tikv_pool" {
 
   node_config {
     machine_type = var.tikv_instance_type
-    image_type   = "UBUNTU"
     // This value cannot be changed (instead a new node pool is needed)
     // 1 SSD is 375 GiB
     local_ssd_count = 1
@@ -78,7 +77,7 @@ resource "google_container_node_pool" "tidb_pool" {
   node_count = var.tidb_node_count
 
   management {
-    auto_repair  = false
+    auto_repair  = true
     auto_upgrade = false
   }
 
@@ -111,7 +110,7 @@ resource "google_container_node_pool" "monitor_pool" {
   node_count = var.monitor_node_count
 
   management {
-    auto_repair  = false
+    auto_repair  = true
     auto_upgrade = false
   }
 
@@ -122,23 +121,26 @@ resource "google_container_node_pool" "monitor_pool" {
   }
 }
 
+locals {
+  num_availability_zones = length(data.google_compute_zones.available)
+}
+
 module "tidb-cluster" {
   source                     = "../../share/tidb-cluster-release"
   cluster_name               = var.cluster_name
-  pd_count                   = var.pd_replica_count
-  tikv_count                 = var.tikv_replica_count
-  tidb_count                 = var.tidb_replica_count
+  pd_count                   = var.pd_node_count * local.num_availability_zones
+  tikv_count                 = var.tikv_node_count * local.num_availability_zones
+  tidb_count                 = var.tidb_node_count * local.num_availability_zones
   tidb_cluster_chart_version = var.tidb_cluster_chart_version
   override_values            = var.override_values
   kubeconfig_filename        = var.kubeconfig_path
   base_values                = file("${path.module}/values/default.yaml")
-  wait_on_resource           = google_container_node_pool.tidb_pool
+  wait_on_resource           = [google_container_node_pool.tidb_pool]
 }
 
 resource "null_resource" "wait-lb-ip" {
   depends_on = [
     google_container_node_pool.tidb_pool,
-    module.tidb-cluster.tidb_hostname
   ]
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]

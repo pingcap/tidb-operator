@@ -20,7 +20,7 @@ variable "gcp_project" {
 }
 
 variable "gke_version" {
-  description = "Kubernetes version to use for the EKS cluster"
+  description = "Kubernetes version to use for the GKE cluster"
   type        = string
   default     = "latest"
 }
@@ -28,14 +28,8 @@ variable "gke_version" {
 variable "tidb_operator_version" {
   description = "TiDB Operator version"
   type        = string
-  default     = "v1.0.0-rc.1"
+  default     = "v1.0.0"
 }
-
-variable "tidb_operator_registry" {
-  description = "TiDB operator registry"
-  default     = "pingcap"
-}
-
 
 variable "operator_helm_values" {
   description = "Operator helm values"
@@ -46,4 +40,3 @@ variable "operator_helm_values" {
 variable "kubeconfig_path" {
   description = "kubeconfig path"
 }
-

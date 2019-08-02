@@ -38,4 +38,3 @@ variable "gcp_region" {
 variable "gcp_project" {
   description = "The GCP project name"
 }
-

@@ -1,3 +1,15 @@
+variable "GCP_CREDENTIALS_PATH" {
+  description = "A path to to a service account key. See the docs for how to create one with the correct permissions"
+}
+
+variable "GCP_REGION" {
+  description = "The GCP region in which to create the GKE cluster and associated resources"
+}
+
+variable "GCP_PROJECT" {
+  description = "The GCP project in which to create the necessary resources"
+}
+
 variable "tidb_version" {
   description = "TiDB version"
   default     = "v3.0.1"
@@ -6,11 +18,6 @@ variable "tidb_version" {
 variable "tidb_operator_version" {
   description = "TiDB operator version"
   default     = "v1.0.0"
-}
-
-variable "tidb_operator_registry" {
-  description = "TiDB operator registry"
-  default     = "pingcap"
 }
 
 variable "create_vpc" {
@@ -77,3 +84,7 @@ variable "bastion_instance_type" {
   default = "f1-micro"
 }
 
+variable "maintenance_window_start_time" {
+  description = "The time in HH:MM GMT format to define the start of the daily maintenance window"
+  default = "01:00"
+}

@@ -1,11 +1,9 @@
 variable "cluster_name" {}
 variable "cluster_version" {}
-variable "pd_replica_count" {}
-variable "tikv_replica_count" {}
-variable "tidb_replica_count" {}
 variable "tidb_cluster_chart_version" {}
 variable "override_values" {
-  default = ""
+  description = "YAML formatted values that will be passed in to the tidb-cluster helm release"
+  default     = ""
 }
 variable "kubeconfig_path" {}
 variable "gcp_project" {}
@@ -40,4 +38,3 @@ variable "tidb_instance_type" {}
 variable "monitor_instance_type" {
   default = "n1-standard-2"
 }
-

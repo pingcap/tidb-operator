@@ -44,7 +44,7 @@ resource "google_compute_instance" "bastion" {
   project      = var.gcp_project
   zone         = data.google_compute_zones.available.names[0]
   machine_type = var.bastion_instance_type
-  name         = "bastion"
+  name         = var.bastion_name
 
   boot_disk {
     initialize_params {
@@ -60,4 +60,3 @@ resource "google_compute_instance" "bastion" {
 
   metadata_startup_script = "sudo apt-get install -y mysql-client && curl -s https://packagecloud.io/install/repositories/akopytov/sysbench/script.deb.sh | bash && sudo apt-get -y install sysbench"
 }
-

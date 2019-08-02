@@ -10,8 +10,8 @@ output "tidb_port" {
   value = data.external.tidb_port.result["port"]
 }
 
-output "monitor_ilb_ip" {
-  value = data.external.monitor_ilb_ip.result["ip"]
+output "monitor_lb_ip" {
+  value = data.external.monitor_lb_ip.result["ip"]
 }
 
 output "monitor_port" {

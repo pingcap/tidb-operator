@@ -9,3 +9,5 @@ variable "bastion_instance_type" {
 }
 
 variable "public_subnet_name" {}
+
+variable "bastion_name" {}

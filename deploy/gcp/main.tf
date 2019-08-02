@@ -1,12 +1,3 @@
-variable "GCP_CREDENTIALS_PATH" {
-}
-
-variable "GCP_REGION" {
-}
-
-variable "GCP_PROJECT" {
-}
-
 provider "google" {
   credentials = file(var.GCP_CREDENTIALS_PATH)
   region      = var.GCP_REGION
@@ -21,22 +12,21 @@ provider "google-beta" {
 }
 
 locals {
-  credential_path          = "${path.cwd}/credentials"
-  kubeconfig               = "${local.credential_path}/kubeconfig_${var.gke_name}"
+  credential_path = "${path.cwd}/credentials"
+  kubeconfig      = "${local.credential_path}/kubeconfig_${var.gke_name}"
 }
 
 
 module "project-credentials" {
   source = "../modules/gcp/project-credentials"
 
-  path           = local.credential_path
-  gcloud_project = var.GCP_PROJECT
+  path = local.credential_path
 }
 
 module "vpc" {
   source              = "../modules/gcp/vpc"
   create_vpc          = var.create_vpc
-  gcp_project         = module.project-credentials.gcp_project
+  gcp_project         = var.GCP_PROJECT
   gcp_region          = var.GCP_REGION
   vpc_name            = var.vpc_name
   private_subnet_name = "${var.gke_name}-private-subnet"
@@ -59,6 +49,5 @@ module "bastion" {
   vpc_name           = module.vpc.vpc_name
   public_subnet_name = module.vpc.public_subnetwork_name
   gcp_project        = var.GCP_PROJECT
+  bastion_name       = "${var.gke_name}-tidb-bastion"
 }
-    
-    
