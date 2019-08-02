@@ -462,7 +462,7 @@ func tombstoneStoreFun(tc *v1alpha1.TidbCluster) {
 
 func readyPodFunc(pod *corev1.Pod) {
 	pod.Status.Conditions = []corev1.PodCondition{
-		corev1.PodCondition{
+		{
 			Type:   corev1.PodReady,
 			Status: corev1.ConditionTrue,
 		},
@@ -471,7 +471,7 @@ func readyPodFunc(pod *corev1.Pod) {
 
 func notReadyPodFunc(pod *corev1.Pod) {
 	pod.Status.Conditions = []corev1.PodCondition{
-		corev1.PodCondition{
+		{
 			Type:   corev1.PodReady,
 			Status: corev1.ConditionFalse,
 		},
