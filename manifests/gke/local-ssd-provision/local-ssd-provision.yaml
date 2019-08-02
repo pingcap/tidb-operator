@@ -150,7 +150,7 @@ spec:
                   mount -U "$uuid" -t ext4 --target "$mnt_dir" --options 'rw,relatime,discard,nobarrier,data=ordered'
                 fi
       containers:
-        - image: "quay.io/external_storage/local-volume-provisioner:v2.2.0"
+        - image: "quay.io/external_storage/local-volume-provisioner:v2.3.2"
           name: provisioner
           securityContext:
             privileged: true
@@ -171,7 +171,7 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: JOB_CONTAINER_IMAGE
-            value: "quay.io/external_storage/local-volume-provisioner:v2.2.0"
+            value: "quay.io/external_storage/local-volume-provisioner:v2.3.2"
           volumeMounts:
             - mountPath: /etc/provisioner/config
               name: provisioner-config
