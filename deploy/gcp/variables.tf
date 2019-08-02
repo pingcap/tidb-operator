@@ -5,7 +5,7 @@ variable "tidb_version" {
 
 variable "tidb_operator_version" {
   description = "TiDB operator version"
-  default     = "v1.0.0-beta.3"
+  default     = "v1.0.0"
 }
 
 variable "tidb_operator_registry" {
@@ -19,27 +19,17 @@ variable "create_vpc" {
 
 variable "gke_name" {
   description = "Name of the GKE cluster. Also used as a prefix in names of related resources."
-  default = "tidb-cluster"
+  default     = "tidb-cluster"
 }
 
 variable "default_tidb_cluster_name" {
   description = "The name that will be given to the default tidb cluster created."
-  default = "tidb-cluster"
+  default     = "tidb-cluster"
 }
 
 variable "vpc_name" {
   description = "The name of the VPC network"
-  default = "tidb-cluster"
-}
-
-variable "private_subnet_name" {
-  description = "Name for the private subnet"
-  default = "private-subnet"
-}
-
-variable "public_subnet_name" {
-  description = "Name for the public subnet"
-  default = "public-subnet"
+  default     = "tidb-cluster"
 }
 
 variable "pd_replica_count" {

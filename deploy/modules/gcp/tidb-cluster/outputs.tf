@@ -22,3 +22,7 @@ output "monitor_port" {
 output "how_to_connect_to_mysql_from_bastion" {
   value = "mysql -h ${data.external.tidb_ilb_ip.result["ip"]} -P ${data.external.tidb_port.result["port"]} -u root"
 }
+
+output "tidb_pool" {
+  value = google_container_node_pool.tidb_pool
+}

@@ -40,3 +40,4 @@ variable "tidb_instance_type" {}
 variable "monitor_instance_type" {
   default = "n1-standard-2"
 }
+

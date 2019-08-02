@@ -132,11 +132,13 @@ module "tidb-cluster" {
   override_values            = var.override_values
   kubeconfig_filename        = var.kubeconfig_path
   base_values                = file("${path.module}/values/default.yaml")
+  wait_on_resource           = google_container_node_pool.tidb_pool
 }
 
 resource "null_resource" "wait-lb-ip" {
   depends_on = [
-    google_container_node_pool.tidb_pool
+    google_container_node_pool.tidb_pool,
+    module.tidb-cluster.tidb_hostname
   ]
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
@@ -144,7 +146,7 @@ resource "null_resource" "wait-lb-ip" {
     command     = <<EOS
 set -euo pipefail
 
-until kubectl get svc -n ${var.cluster_name} tidb-cluster-tidb -o json | jq '.status.loadBalancer.ingress[0]' | grep ip; do
+until kubectl get svc -n ${var.cluster_name} ${var.cluster_name}-tidb -o json | jq '.status.loadBalancer.ingress[0]' | grep ip; do
   echo "Wait for TiDB internal loadbalancer IP"
   sleep 5
 done

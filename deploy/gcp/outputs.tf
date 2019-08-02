@@ -22,7 +22,7 @@ output "how_to_ssh_to_bastion" {
   value = module.bastion.how_to_ssh_to_bastion
 }
 
-output "how_to_connect_to_mysql_from_bastion" {
+output "how_to_connect_to_default_cluster_tidb_from_bastion" {
   value = module.default-tidb-cluster.how_to_connect_to_mysql_from_bastion
 }
 

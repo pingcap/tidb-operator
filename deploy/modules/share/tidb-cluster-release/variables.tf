@@ -53,3 +53,8 @@ variable "local_exec_interpreter" {
   type        = list(string)
   default     = ["/bin/sh", "-c"]
 }
+
+variable "wait_on_resource" {
+  description = "An optional resource to pass in to wait on before running"
+  default = ""
+}
