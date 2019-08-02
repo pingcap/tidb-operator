@@ -125,7 +125,7 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 	}, nil
 }
 
-// FailureError is returne when the FailTiDBSchedulerLabelKey is seen
+// FailureError is returned when the FailTiDBSchedulerLabelKey is seen
 type FailureError struct {
 	PodName string
 }
