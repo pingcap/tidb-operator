@@ -23,7 +23,6 @@ provider "google-beta" {
 locals {
   credential_path          = "${path.cwd}/credentials"
   kubeconfig               = "${local.credential_path}/kubeconfig_${var.gke_name}"
-  tidb_cluster_values_path = "${path.module}/rendered/tidb-cluster-values.yaml"
 }
 
 module "project-credentials" {
