@@ -30,7 +30,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.0.0-rc.1
+  image: pingcap/tidb-operator:v1.0.0
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -163,7 +163,7 @@ tikv:
     log-level = "info"
     [server]
     status-addr = "0.0.0.0:20180"
-  
+
   # Here are some parameters you may want to customize (Please configure in the above 'config' section):
   # [readpool.storage]
   # ## Size of the thread pool for high-priority operations.

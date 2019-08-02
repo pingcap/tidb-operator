@@ -25,6 +25,7 @@ locals {
   kubeconfig               = "${local.credential_path}/kubeconfig_${var.gke_name}"
 }
 
+
 module "project-credentials" {
   source = "../modules/gcp/project-credentials"
 
@@ -59,5 +60,5 @@ module "bastion" {
   public_subnet_name = module.vpc.public_subnetwork_name
   gcp_project        = var.GCP_PROJECT
 }
-
-
+    
+    

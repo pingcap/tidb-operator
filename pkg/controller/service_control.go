@@ -83,10 +83,10 @@ func (sc *realServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev
 		}
 
 		if updated, err := sc.svcLister.Services(tc.Namespace).Get(svcName); err != nil {
+			utilruntime.HandleError(fmt.Errorf("error getting updated Service %s/%s from lister: %v", ns, svcName, err))
+		} else {
 			svc = updated.DeepCopy()
 			svc.Spec = *svcSpec
-		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated Service %s/%s from lister: %v", ns, svcName, err))
 		}
 
 		return updateErr
