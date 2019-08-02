@@ -80,8 +80,10 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 	podName := pod.GetName()
 	kubeNodes := args.Nodes.Items
 
-	if _, ok := pod.Labels[label.FailTiDBSchedulerLabelKey]; ok {
-		return nil, FailureError{PodName: pod.Name}
+	if pod.Annotations != nil {
+		if _, ok := pod.Annotations[label.AnnFailTiDBScheduler]; ok {
+			return nil, FailureError{PodName: pod.Name}
+		}
 	}
 
 	var instanceName string
