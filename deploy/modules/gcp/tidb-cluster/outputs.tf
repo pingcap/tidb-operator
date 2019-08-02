@@ -19,7 +19,7 @@ output "monitor_port" {
 }
 
 
-output "how_to_connect_to_mysql_from_bastion" {
+output "how_to_connect_to_tidb_from_bastion" {
   value = "mysql -h ${data.external.tidb_ilb_ip.result["ip"]} -P ${data.external.tidb_port.result["port"]} -u root"
 }
 

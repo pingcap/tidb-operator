@@ -86,5 +86,5 @@ variable "bastion_instance_type" {
 
 variable "maintenance_window_start_time" {
   description = "The time in HH:MM GMT format to define the start of the daily maintenance window"
-  default = "01:00"
+  default     = "01:00"
 }
