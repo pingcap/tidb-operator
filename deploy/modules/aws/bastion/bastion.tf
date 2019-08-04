@@ -32,7 +32,7 @@ module "ec2" {
   version                     = "2.3.0"
   name                        = var.bastion_name
   instance_count              = 1
-  ami                         = data.aws_ami.amazon-linux-2.id
+  ami                         = data.aws_ami.centos.id
   instance_type               = var.bastion_instance_type
   key_name                    = var.key_name
   associate_public_ip_address = true

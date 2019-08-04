@@ -12,6 +12,8 @@
 
 TiDB Operator manages [TiDB](https://github.com/pingcap/tidb) clusters on [Kubernetes](https://kubernetes.io) and automates tasks related to operating a TiDB cluster. It makes TiDB a truly cloud-native database.
 
+![TiDB Operator Architecture](/static/tidb-operator-overview.png)
+
 ## Features
 
 - __Safely scaling the TiDB cluster__
@@ -44,23 +46,13 @@ Read the [Roadmap](./ROADMAP.md).
 
 ## Quick start
 
-Choose one of the following tutorials:
+Read the [Quick Start Guide](https://pingcap.com/docs/v3.0/tidb-in-kubernetes/tidb-operator-overview/), which includes all the guides for managing TiDB clusters in Kubernetes.
 
-* [Deploy TiDB using Kubernetes on Your Laptop for deployment and testing](./docs/local-dind-tutorial.md)
 
-* [Deploy TiDB by launching a Google Kubernetes Engine](./docs/google-kubernetes-tutorial.md):
+## Documentation
 
-  [![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.png)](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/pingcap/tidb-operator&tutorial=docs/google-kubernetes-tutorial.md)
-
-* [Deploy TiDB by launching an AWS EKS cluster](./docs/aws-eks-tutorial.md)
-
-* [Deploy TiDB Operator and TiDB Cluster on Alibaba Cloud Kubernetes](/deploy/aliyun/README.md)
-
-* [Deploy TiDB in the minikube cluster](./docs/minikube-tutorial.md)
-
-## User guide
-
-Read the [user guide](./docs/user-guide.md).
+- [English](https://pingcap.com/docs/v3.0/tidb-in-kubernetes/tidb-operator-overview/)
+- [简体中文](https://pingcap.com/docs-cn/v3.0/reference/tidb-operator-overview/)
 
 ## Contributing
 
