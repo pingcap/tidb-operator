@@ -229,6 +229,12 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tidb"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
+	if tc.Spec.EnableTLSServer {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-tls", ReadOnly: true, MountPath: "/var/lib/tidb-tls",
+		})
+	}
+
 	vols := []corev1.Volume{
 		annVolume,
 		{Name: "config", VolumeSource: corev1.VolumeSource{
@@ -247,6 +253,15 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tidb_start_script.sh"}},
 			}},
 		},
+	}
+	if tc.Spec.EnableTLSServer {
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: fmt.Sprintf("%s-tidb", tc.ClusterName),
+				},
+			},
+		})
 	}
 
 	var containers []corev1.Container

@@ -37,6 +37,12 @@ config-file: |-
     {{- if .Values.pd.config }}
 {{ .Values.pd.config | indent 2 }}
     {{- end -}}
+    {{- if .Values.enableTLSServer }}
+    [security]
+    cacert-path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    cert-path = "/var/lib/pd-tls/pd.crt"
+    key-path = "/var/lib/pd-tls/pd.key"
+    {{- end -}}
 {{- end -}}
 
 {{- define "pd-configmap.data-digest" -}}
@@ -52,6 +58,12 @@ startup-script: |-
 config-file: |-
     {{- if .Values.tikv.config }}
 {{ .Values.tikv.config | indent 2 }}
+    {{- end -}}
+    {{- if .Values.enableTLSServer }}
+    [security]
+    ca-path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    cert-path = "/var/lib/tikv-tls/tikv.crt"
+    key-path = "/var/lib/tikv-tls/tikv.key"
     {{- end -}}
 {{- end -}}
 
@@ -72,6 +84,18 @@ init-sql: |-
 config-file: |-
     {{- if .Values.tidb.config }}
 {{ .Values.tidb.config | indent 2 }}
+    {{- end -}}
+    {{- if or .Values.enableTLSServer .Values.enableTLSClient }}
+    [security]
+    {{- end -}}
+    {{- if .Values.enableTLSServer }}
+    cacert-path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    cert-path = "/var/lib/pd-tls/pd.crt"
+    key-path = "/var/lib/pd-tls/pd.key"
+    {{- end -}}
+    {{- if .Values.enableTLSClient }}
+    ssl-cert = "/var/lib/tidb-tls/tidb.crt"
+    ssl-key = "/var/lib/tidb-tls/tidb.key"
     {{- end -}}
 {{- end -}}
 

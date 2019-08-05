@@ -56,12 +56,19 @@ while true; do
     fi
 done
 
+if [[ {{ .Values.enableTLSServer }} == "true" ]]
+then
+    SCHEMA="https"
+else
+    SCHEMA="http"
+fi
+
 ARGS="--data-dir=/var/lib/pd \
 --name=${HOSTNAME} \
---peer-urls=http://0.0.0.0:2380 \
---advertise-peer-urls=http://${domain}:2380 \
---client-urls=http://0.0.0.0:2379 \
---advertise-client-urls=http://${domain}:2379 \
+--peer-urls=$SCHEMA://0.0.0.0:2380 \
+--advertise-peer-urls=$SCHEMA://${domain}:2380 \
+--client-urls=$SCHEMA://0.0.0.0:2379 \
+--advertise-client-urls=$SCHEMA://${domain}:2379 \
 --config=/etc/pd/pd.toml \
 "
 
