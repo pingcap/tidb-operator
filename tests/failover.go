@@ -746,7 +746,7 @@ func (oa *operatorActions) CheckOperatorAvailable(operatorConfig *OperatorConfig
 }
 
 func (oa *operatorActions) CheckTidbClustersAvailable(infos []*TidbClusterConfig) error {
-	return wait.Poll(3*time.Second, 30*time.Second, func() (bool, error) {
+	return wait.Poll(3*time.Second, DefaultPollTimeout, func() (bool, error) {
 		for _, info := range infos {
 			succ, err := oa.addDataToCluster(info)
 			if err != nil {
