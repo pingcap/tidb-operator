@@ -93,6 +93,10 @@ type TidbClusterSpec struct {
 	Services        []Service                            `json:"services,omitempty"`
 	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 	Timezone        string                               `json:"timezone,omitempty"`
+	// Enable TLS connection between TiDB server compoments
+	EnableTLSServer bool `json:"enableTLSServer,omitempty"`
+	// Accept TLS connection from client
+	EnableTLSClient bool `json:"enableTLSClient,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.

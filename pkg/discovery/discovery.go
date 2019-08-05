@@ -92,9 +92,14 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	currentCluster = td.clusters[keyName]
 	currentCluster.peers[podName] = struct{}{}
 
+	schema := "http"
+	if tc.Spec.EnableTLSServer {
+		schema = "https"
+	}
+
 	if len(currentCluster.peers) == int(replicas) {
 		delete(currentCluster.peers, podName)
-		return fmt.Sprintf("--initial-cluster=%s=http://%s", podName, advertisePeerUrl), nil
+		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, schema, advertisePeerUrl), nil
 	}
 
 	pdClient := td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())

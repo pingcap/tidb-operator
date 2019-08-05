@@ -47,9 +47,20 @@ discovery:
 # if the ConfigMap was not changed.
 enableConfigMapRollout: true
 
+# Whether enable TLS connections between server nodes.
+# When enabled, PD/TiDB/TiKV will use TLS encrypted connections to transfer data between each node,
+# certificates will be generated automatically (if not already present).
+enableTLSServer: false
+
+# Whether enable TLS connection between TiDB server and MySQL client.
+# When enabled, TiDB will accept TLS encrypted connections from MySQL client, certificates will be generated
+# automatically.
+# Note: TLS connection is not forced on the server side, plain connections are also accepted after enableing.
+enableTLSClient: false
+
 pd:
   # Please refer to https://github.com/pingcap/pd/blob/master/conf/config.toml for the default
-  # pd configurations (change to the tags of your pd version), 
+  # pd configurations (change to the tags of your pd version),
   # just follow the format in the file and configure in the 'config' section
   # as below if you want to customize any configuration.
   # Please refer to https://pingcap.com/docs-cn/v3.0/reference/configuration/pd-server/configuration-file/
@@ -59,7 +70,7 @@ pd:
     level = "info"
     [replication]
     location-labels = ["region", "zone", "rack", "host"]
-  
+
   replicas: 3
   image: pingcap/pd:v3.0.1
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -258,7 +269,7 @@ tidb:
   config: |
     [log]
     level = "info"
-  
+
   replicas: 2
   # The secret name of root password, you can create secret with following command:
   # kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
