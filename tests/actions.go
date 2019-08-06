@@ -619,18 +619,18 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 
 	setStr := label.New().Instance(info.ClusterName).String()
 
+	// delete all jobs
+	allJobsSet := label.Label{}.Instance(info.ClusterName).String()
+	if res, err := exec.Command("kubectl", "delete", "jobs", "-n", info.Namespace, "-l", allJobsSet).CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to delete jobs: %v, %s", err, string(res))
+	}
+
 	resources := []string{"pvc"}
 	for _, resource := range resources {
 		if res, err := exec.Command("kubectl", "delete", resource, "-n", info.Namespace, "-l",
 			setStr).CombinedOutput(); err != nil {
 			return fmt.Errorf("failed to delete %s: %v, %s", resource, err, string(res))
 		}
-	}
-
-	// delete all jobs
-	allJobsSet := label.Label{}.Instance(info.ClusterName).String()
-	if res, err := exec.Command("kubectl", "delete", "jobs", "-n", info.Namespace, "-l", allJobsSet).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to delete jobs: %v, %s", err, string(res))
 	}
 
 	// delete all configmaps
