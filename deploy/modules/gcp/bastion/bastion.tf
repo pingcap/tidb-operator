@@ -54,6 +54,7 @@ resource "google_compute_instance" "bastion" {
 
   network_interface {
     subnetwork = var.public_subnet_name
+    // the empty access_config block will automatically generate an external IP for the instance
     access_config {}
   }
 
