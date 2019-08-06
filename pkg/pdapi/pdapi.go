@@ -15,6 +15,8 @@ package pdapi
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -33,7 +35,10 @@ import (
 )
 
 const (
-	timeout = 5 * time.Second
+	timeout   = 5 * time.Second
+	k8sCAFile = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	pdCert    = "/var/lib/pd-tls/pd.crt"
+	pdKey     = "/var/lib/pd-tls/pd.key"
 )
 
 // Namespace is a newtype of a string
@@ -42,7 +47,7 @@ type Namespace string
 // PDControlInterface is an interface that knows how to manage and get tidb cluster's PD client
 type PDControlInterface interface {
 	// GetPDClient provides PDClient of the tidb cluster.
-	GetPDClient(Namespace, string) PDClient
+	GetPDClient(Namespace, string, string) PDClient
 }
 
 // defaultPDControl is the default implementation of PDControlInterface.
@@ -57,12 +62,12 @@ func NewDefaultPDControl() PDControlInterface {
 }
 
 // GetPDClient provides a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
-func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string) PDClient {
+func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, schema string) PDClient {
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
 	key := pdClientKey(namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
-		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName), timeout)
+		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, schema), timeout)
 	}
 	return pdc.pdClients[key]
 }
@@ -73,8 +78,8 @@ func pdClientKey(namespace Namespace, clusterName string) string {
 }
 
 // pdClientUrl builds the url of pd client
-func PdClientURL(namespace Namespace, clusterName string) string {
-	return fmt.Sprintf("http://%s-pd.%s:2379", clusterName, string(namespace))
+func PdClientURL(namespace Namespace, clusterName string, schema string) string {
+	return fmt.Sprintf("%s://%s-pd.%s:2379", schema, clusterName, string(namespace))
 }
 
 // PDClient provides pd server's api
@@ -135,9 +140,39 @@ type pdClient struct {
 
 // NewPDClient returns a new PDClient
 func NewPDClient(url string, timeout time.Duration) PDClient {
+	// load CA certs
+	rootCAs, _ := x509.SystemCertPool()
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+
+	caCert, err := ioutil.ReadFile(k8sCAFile)
+	if err != nil {
+		glog.Errorf("fail to read CA file %s, error: %v", k8sCAFile, err)
+		return nil
+	}
+	if ok := rootCAs.AppendCertsFromPEM(caCert); !ok {
+		glog.Warningf("fail to append cert to pool, using system certs only")
+	}
+
+	// load client cert
+	cert, err := tls.LoadX509KeyPair(pdCert, pdKey)
+	if err != nil {
+		glog.Errorf("fail to load client cert")
+		return nil
+	}
+
+	config := &tls.Config{
+		RootCAs:      rootCAs,
+		Certificates: []tls.Certificate{cert},
+	}
+
 	return &pdClient{
-		url:        url,
-		httpClient: &http.Client{Timeout: timeout},
+		url: url,
+		httpClient: &http.Client{
+			Timeout:   timeout,
+			Transport: &http.Transport{TLSClientConfig: config},
+		},
 	}
 }
 

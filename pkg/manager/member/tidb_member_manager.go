@@ -258,7 +258,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: fmt.Sprintf("%s-tidb", tc.ClusterName),
+					SecretName: fmt.Sprintf("%s-tidb", tcName),
 				},
 			},
 		})

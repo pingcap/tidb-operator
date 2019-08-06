@@ -20,7 +20,11 @@ import (
 
 // GetPDClient gets the pd client from the TidbCluster
 func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
-	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
+	schema := "http"
+	if tc.Spec.EnableTLSServer {
+		schema = "https"
+	}
+	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), schema)
 }
 
 // NewFakePDClient creates a fake pdclient that is set as the pd client

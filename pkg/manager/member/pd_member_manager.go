@@ -470,7 +470,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 		vols = append(vols, corev1.Volume{
 			Name: "pd-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: fmt.Sprintf("%s-pd", tc.ClusterName),
+					SecretName: fmt.Sprintf("%s-pd", tcName),
 				},
 			},
 		})

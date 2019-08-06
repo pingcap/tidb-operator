@@ -196,7 +196,11 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 		return err
 	}
 
-	err = tku.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName()).EndEvictLeader(storeID)
+	schema := "http"
+	if tc.Spec.EnableTLSServer {
+		schema = "https"
+	}
+	err = tku.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), schema).EndEvictLeader(storeID)
 	if err != nil {
 		glog.Errorf("tikv upgrader: failed to end evict leader storeID: %d ordinal: %d, %v", storeID, ordinal, err)
 		return err

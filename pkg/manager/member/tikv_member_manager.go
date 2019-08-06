@@ -308,7 +308,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 		vols = append(vols, corev1.Volume{
 			Name: "tikv-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: fmt.Sprintf("%s-tikv", tc.ClusterName),
+					SecretName: fmt.Sprintf("%s-tikv", tcName),
 				},
 			},
 		})
