@@ -48,15 +48,16 @@ resource "google_compute_instance" "bastion" {
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-1804-lts"
+      image = data.google_compute_image.bastion_image.self_link
     }
   }
 
   network_interface {
     subnetwork = var.public_subnet_name
+    access_config {}
   }
 
   tags = ["bastion"]
 
-  metadata_startup_script = "sudo apt-get install -y mysql-client && curl -s https://packagecloud.io/install/repositories/akopytov/sysbench/script.deb.sh | bash && sudo apt-get -y install sysbench"
+  metadata_startup_script = "sudo yum install -y mysql && curl -s https://packagecloud.io/install/repositories/akopytov/sysbench/script.rpm.sh | sudo bash && sudo yum -y install sysbench"
 }
