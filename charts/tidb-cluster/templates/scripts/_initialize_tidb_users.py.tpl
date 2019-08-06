@@ -1,5 +1,10 @@
 import os, MySQLdb
 host = '{{ template "cluster.name" . }}-tidb'
+{{- if .Values.tidb.permitHost }}
+permit_host = '{{ .Values.tidb.permitHost }}'
+{{- else }}
+permit_host = '%%'
+{{- end }}
 port = 4000
 password_dir = '/etc/tidb/password'
 conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5)
@@ -10,9 +15,9 @@ for file in os.listdir(password_dir):
     with open(os.path.join(password_dir, file), 'r') as f:
         password = f.read()
     if user == 'root':
-        conn.cursor().execute("set password for 'root'@'%%' = %s;", (password,))
+        conn.cursor().execute("set password for 'root'@%s = %s;", (permit_host, password,))
     else:
-        conn.cursor().execute("create user %s@'%%' identified by %s;", (user, password,))
+        conn.cursor().execute("create user %s@%s identified by %s;", (user, permit_host, password,))
 conn.cursor().execute("flush privileges;")
 conn.commit()
 {{- if .Values.tidb.initSql }}
