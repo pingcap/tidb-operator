@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/wait"
+
 	"github.com/golang/glog"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -69,11 +71,14 @@ func (oa *operatorActions) LabelNodes() error {
 	for i, node := range nodes.Items {
 		index := i % RackNum
 		node.Labels[RackLabel] = fmt.Sprintf("rack%d", index)
-		_, err = oa.kubeCli.CoreV1().Nodes().Update(&node)
-		if err != nil {
-			glog.Errorf("label node:[%s] failed!", node.Name)
-			return err
-		}
+		wait.Poll(3*time.Second, time.Minute, func() (bool, error) {
+			_, err = oa.kubeCli.CoreV1().Nodes().Update(&node)
+			if err != nil {
+				glog.Errorf("label node:[%s] failed! error: %v", node.Name, err)
+				return false, nil
+			}
+			return true, nil
+		})
 	}
 	return nil
 }
