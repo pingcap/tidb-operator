@@ -112,12 +112,7 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 	memberID := labels[label.MemberIDLabelKey]
 	storeID := labels[label.StoreIDLabelKey]
 
-	schema := "http"
-	if tc.Spec.EnableTLSServer {
-		schema = "https"
-	}
-
-	pdClient := rpc.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tcName, schema)
+	pdClient := rpc.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tcName, tc.Spec.EnableTLSServer)
 	if labels[label.ClusterIDLabelKey] == "" {
 		cluster, err := pdClient.GetCluster()
 		if err != nil {

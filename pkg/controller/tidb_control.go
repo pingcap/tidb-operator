@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -63,10 +64,20 @@ func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster) map[string]bo
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 
+	schema := "http"
+	if tc.Spec.EnableTLSServer {
+		schema = "https"
+		rootCAs, _ := httputil.ReadCACerts()
+		config := &tls.Config{
+			RootCAs: rootCAs,
+		}
+		tdc.httpClient.Transport = &http.Transport{TLSClientConfig: config}
+	}
+
 	result := map[string]bool{}
 	for i := 0; i < int(tc.TiDBRealReplicas()); i++ {
 		hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), i)
-		url := fmt.Sprintf("http://%s.%s.%s:10080/status", hostName, TiDBPeerMemberName(tcName), ns)
+		url := fmt.Sprintf("%s://%s.%s.%s:10080/status", schema, hostName, TiDBPeerMemberName(tcName), ns)
 		_, err := tdc.getBodyOK(url)
 		if err != nil {
 			result[hostName] = false
@@ -81,8 +92,18 @@ func (tdc *defaultTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal 
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 
+	schema := "http"
+	if tc.Spec.EnableTLSServer {
+		schema = "https"
+		rootCAs, _ := httputil.ReadCACerts()
+		config := &tls.Config{
+			RootCAs: rootCAs,
+		}
+		tdc.httpClient.Transport = &http.Transport{TLSClientConfig: config}
+	}
+
 	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
-	url := fmt.Sprintf("http://%s.%s.%s:10080/ddl/owner/resign", hostName, TiDBPeerMemberName(tcName), ns)
+	url := fmt.Sprintf("%s://%s.%s.%s:10080/ddl/owner/resign", schema, hostName, TiDBPeerMemberName(tcName), ns)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return false, err
@@ -106,8 +127,18 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 
+	schema := "http"
+	if tc.Spec.EnableTLSServer {
+		schema = "https"
+		rootCAs, _ := httputil.ReadCACerts()
+		config := &tls.Config{
+			RootCAs: rootCAs,
+		}
+		tdc.httpClient.Transport = &http.Transport{TLSClientConfig: config}
+	}
+
 	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
-	url := fmt.Sprintf("http://%s.%s.%s:10080/info", hostName, TiDBPeerMemberName(tcName), ns)
+	url := fmt.Sprintf("%s://%s.%s.%s:10080/info", schema, hostName, TiDBPeerMemberName(tcName), ns)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return nil, err
@@ -137,8 +168,18 @@ func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 
+	schema := "http"
+	if tc.Spec.EnableTLSServer {
+		schema = "https"
+		rootCAs, _ := httputil.ReadCACerts()
+		config := &tls.Config{
+			RootCAs: rootCAs,
+		}
+		tdc.httpClient.Transport = &http.Transport{TLSClientConfig: config}
+	}
+
 	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
-	url := fmt.Sprintf("http://%s.%s.%s:10080/settings", hostName, TiDBPeerMemberName(tcName), ns)
+	url := fmt.Sprintf("%s://%s.%s.%s:10080/settings", schema, hostName, TiDBPeerMemberName(tcName), ns)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err

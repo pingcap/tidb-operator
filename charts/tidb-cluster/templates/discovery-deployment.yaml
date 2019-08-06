@@ -47,12 +47,12 @@ spec:
                 fieldPath: metadata.namespace
 {{- if .Values.enableTLSServer }}
         volumeMounts:
-        - mountPath: /var/lib/pd-tls
-          name: pd-tls
+        - mountPath: /var/lib/tls
+          name: tls
           readOnly: true
       volumes:
-      - name: pd-tls
+      - name: tls
         secret:
           defaultMode: 420
-          secretName: {{ .Release.Name }}-pd
+          secretName: client-tls
 {{- end -}}

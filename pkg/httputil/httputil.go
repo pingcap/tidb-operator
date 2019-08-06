@@ -1,12 +1,20 @@
 package httputil
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/golang/glog"
+)
+
+const (
+	k8sCAFile  = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	clientCert = "/var/lib/tls/client.crt"
+	clientKey  = "/var/lib/tls/client.key"
 )
 
 // DeferClose captures and prints the error from closing (if an error occurs).
@@ -43,4 +51,30 @@ func GetBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 		return nil, err
 	}
 	return body, err
+}
+
+func ReadCACerts() (*x509.CertPool, error) {
+	// load CA certs
+	rootCAs, _ := x509.SystemCertPool()
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+
+	caCert, err := ioutil.ReadFile(k8sCAFile)
+	if err != nil {
+		glog.Errorf("fail to read CA file %s, error: %v", k8sCAFile, err)
+		return nil, err
+	}
+	if ok := rootCAs.AppendCertsFromPEM(caCert); !ok {
+		glog.Warningf("fail to append cert to pool, using system certs only")
+	}
+	return rootCAs, err
+}
+
+func ReadCerts() (*x509.CertPool, tls.Certificate, error) {
+	rootCAs, err := ReadCACerts()
+
+	// load client cert
+	cert, err := tls.LoadX509KeyPair(clientCert, clientKey)
+	return rootCAs, cert, err
 }
