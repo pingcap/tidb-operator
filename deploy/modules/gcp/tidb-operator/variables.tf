@@ -40,3 +40,8 @@ variable "operator_helm_values" {
 variable "kubeconfig_path" {
   description = "kubeconfig path"
 }
+
+variable "maintenance_window_start_time" {
+  description = "The time in HH:MM GMT format to define the start of the daily maintenance window"
+  default     = "01:00"
+}

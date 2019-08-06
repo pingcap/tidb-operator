@@ -34,14 +34,15 @@ module "vpc" {
 }
 
 module "tidb-operator" {
-  source                = "../modules/gcp/tidb-operator"
-  gke_name              = var.gke_name
-  vpc_name              = var.vpc_name
-  subnetwork_name       = module.vpc.private_subnetwork_name
-  gcp_project           = var.GCP_PROJECT
-  gcp_region            = var.GCP_REGION
-  kubeconfig_path       = local.kubeconfig
-  tidb_operator_version = var.tidb_operator_version
+  source                        = "../modules/gcp/tidb-operator"
+  gke_name                      = var.gke_name
+  vpc_name                      = var.vpc_name
+  subnetwork_name               = module.vpc.private_subnetwork_name
+  gcp_project                   = var.GCP_PROJECT
+  gcp_region                    = var.GCP_REGION
+  kubeconfig_path               = local.kubeconfig
+  tidb_operator_version         = var.tidb_operator_version
+  maintenance_window_start_time = var.maintenance_window_start_time
 }
 
 module "bastion" {
