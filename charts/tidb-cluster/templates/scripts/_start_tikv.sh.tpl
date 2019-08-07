@@ -28,7 +28,14 @@ then
 	tail -f /dev/null
 fi
 
-ARGS="--pd=${CLUSTER_NAME}-pd:2379 \
+if [[ {{ .Values.enableTLSServer }} == "true" ]]
+then
+    SCHEMA="https"
+else
+    SCHEMA="http"
+fi
+
+ARGS="--pd=$SCHEMA://${CLUSTER_NAME}-pd:2379 \
 --advertise-addr=${HOSTNAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
 --addr=0.0.0.0:20160 \
 --data-dir=/var/lib/tikv \
