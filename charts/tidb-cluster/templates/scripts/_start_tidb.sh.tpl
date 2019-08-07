@@ -26,16 +26,9 @@ then
     tail -f /dev/null
 fi
 
-if [[ {{ .Values.enableTLSServer }} == "true" ]]
-then
-    SCHEMA="https"
-else
-    SCHEMA="http"
-fi
-
 ARGS="--store=tikv \
 --host=0.0.0.0 \
---path=$SCHEMA://${CLUSTER_NAME}-pd:2379 \
+--path=${CLUSTER_NAME}-pd:2379 \
 --config=/etc/tidb/tidb.toml
 "
 

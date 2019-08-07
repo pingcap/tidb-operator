@@ -43,6 +43,7 @@ config-file: |-
   cert-path = "/var/lib/pd-tls/pd.crt"
   key-path = "/var/lib/pd-tls/pd.key"
     {{- end -}}
+
 {{- end -}}
 
 {{- define "pd-configmap.data-digest" -}}
@@ -65,6 +66,7 @@ config-file: |-
   cert-path = "/var/lib/tikv-tls/tikv.crt"
   key-path = "/var/lib/tikv-tls/tikv.key"
     {{- end -}}
+
 {{- end -}}
 
 {{- define "tikv-configmap.data-digest" -}}
@@ -89,14 +91,16 @@ config-file: |-
   [security]
     {{- end -}}
     {{- if .Values.enableTLSServer }}
-  cacert-path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  cert-path = "/var/lib/pd-tls/pd.crt"
-  key-path = "/var/lib/pd-tls/pd.key"
+  cluster-ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  cluster-ssl-cert = "/var/lib/tidb-tls/tidb.crt"
+  cluster-ssl-key = "/var/lib/tidb-tls/tidb.key"
     {{- end -}}
     {{- if .Values.enableTLSClient }}
+  ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
   ssl-cert = "/var/lib/tidb-tls/tidb.crt"
   ssl-key = "/var/lib/tidb-tls/tidb.key"
     {{- end -}}
+
 {{- end -}}
 
 {{- define "tidb-configmap.data-digest" -}}
