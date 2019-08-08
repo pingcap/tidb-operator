@@ -19,5 +19,5 @@ import (
 )
 
 func (bs *BackupSchedule) GetBackupCRDName(timestamp time.Time) string {
-	return fmt.Sprintf("%s-%s", bs.GetName(), timestamp.Format("20060102150405"))
+	return fmt.Sprintf("%s-%s", bs.GetName(), timestamp.UTC().Format(time.RFC3339))
 }
