@@ -40,6 +40,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 		pdUpgrading      bool
 		hasPVC           bool
 		hasDeferAnn      bool
+		annoIsNil        bool
 		pvcDeleteErr     bool
 		statusSyncFailed bool
 		err              bool
@@ -61,19 +62,18 @@ func TestPDScalerScaleOut(t *testing.T) {
 
 		scaler, _, pvcIndexer, pvcControl := newFakePDScaler()
 
-		pvc1 := newPVCForStatefulSet(oldSet, v1alpha1.PDMemberType)
-		pvc2 := pvc1.DeepCopy()
-		pvc1.Name = ordinalPVCName(v1alpha1.PDMemberType, oldSet.GetName(), *oldSet.Spec.Replicas)
-		pvc2.Name = ordinalPVCName(v1alpha1.PDMemberType, oldSet.GetName(), *oldSet.Spec.Replicas+1)
+		pvc := newPVCForStatefulSet(oldSet, v1alpha1.PDMemberType)
+		pvc.Name = ordinalPVCName(v1alpha1.PDMemberType, oldSet.GetName(), *oldSet.Spec.Replicas)
+		if !test.annoIsNil {
+			pvc.Annotations = map[string]string{}
+		}
+
 		if test.hasDeferAnn {
-			pvc1.Annotations = map[string]string{}
-			pvc1.Annotations[label.AnnPVCDeferDeleting] = time.Now().Format(time.RFC3339)
-			pvc2.Annotations = map[string]string{}
-			pvc2.Annotations[label.AnnPVCDeferDeleting] = time.Now().Format(time.RFC3339)
+			pvc.Annotations = map[string]string{}
+			pvc.Annotations[label.AnnPVCDeferDeleting] = time.Now().Format(time.RFC3339)
 		}
 		if test.hasPVC {
-			pvcIndexer.Add(pvc1)
-			pvcIndexer.Add(pvc2)
+			pvcIndexer.Add(pvc)
 		}
 
 		if test.pvcDeleteErr {
@@ -102,6 +102,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 			pdUpgrading:      false,
 			hasPVC:           true,
 			hasDeferAnn:      false,
+			annoIsNil:        true,
 			pvcDeleteErr:     false,
 			statusSyncFailed: false,
 			err:              false,
@@ -113,6 +114,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 			pdUpgrading:      true,
 			hasPVC:           true,
 			hasDeferAnn:      false,
+			annoIsNil:        true,
 			pvcDeleteErr:     false,
 			statusSyncFailed: false,
 			err:              false,
@@ -124,6 +126,19 @@ func TestPDScalerScaleOut(t *testing.T) {
 			pdUpgrading:      false,
 			hasPVC:           false,
 			hasDeferAnn:      false,
+			annoIsNil:        true,
+			pvcDeleteErr:     false,
+			statusSyncFailed: false,
+			err:              false,
+			changed:          true,
+		},
+		{
+			name:             "pvc annotation is not nil but doesn't contain defer deletion annotation",
+			update:           normalPDMember,
+			pdUpgrading:      false,
+			hasPVC:           false,
+			hasDeferAnn:      false,
+			annoIsNil:        false,
 			pvcDeleteErr:     false,
 			statusSyncFailed: false,
 			err:              false,
@@ -135,6 +150,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 			pdUpgrading:      false,
 			hasPVC:           true,
 			hasDeferAnn:      true,
+			annoIsNil:        false,
 			pvcDeleteErr:     true,
 			statusSyncFailed: false,
 			err:              true,
@@ -155,6 +171,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 			pdUpgrading:      false,
 			hasPVC:           true,
 			hasDeferAnn:      true,
+			annoIsNil:        false,
 			pvcDeleteErr:     false,
 			statusSyncFailed: false,
 			err:              false,
@@ -168,6 +185,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 			pdUpgrading:      false,
 			hasPVC:           true,
 			hasDeferAnn:      true,
+			annoIsNil:        false,
 			pvcDeleteErr:     false,
 			statusSyncFailed: false,
 			err:              true,
@@ -186,6 +204,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 			pdUpgrading:      false,
 			hasPVC:           true,
 			hasDeferAnn:      false,
+			annoIsNil:        true,
 			pvcDeleteErr:     false,
 			statusSyncFailed: false,
 			err:              true,
@@ -197,6 +216,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 			pdUpgrading:      false,
 			hasPVC:           true,
 			hasDeferAnn:      false,
+			annoIsNil:        true,
 			pvcDeleteErr:     false,
 			statusSyncFailed: true,
 			err:              true,
