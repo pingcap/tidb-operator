@@ -111,18 +111,18 @@ binlog:
         preferredDuringSchedulingIgnoredDuringExecution:
         - weight: 50
           podAffinityTerm:
-            topologyKey: rack
+            topologyKey: {{.TopologyKey}}
             namespaces:
-            - e2e
+            - {{.Namespace}}
   drainer:
     affinity:
       podAntiAffinity:
         preferredDuringSchedulingIgnoredDuringExecution:
         - weight: 50
           podAffinityTerm:
-            topologyKey: rack
+            topologyKey: {{.TopologyKey}}
             namespaces:
-            - e2e
+            - {{.Namespace}}
 `
 
 type AffinityInfo struct {
