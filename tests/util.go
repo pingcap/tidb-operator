@@ -104,6 +104,25 @@ var affinityTemp string = `{{.Kind}}:
           topologyKey: {{.TopologyKey}}
           namespaces:
           - {{.Namespace}}
+binlog:
+  pump:
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 50
+          podAffinityTerm:
+            topologyKey: rack
+            namespaces:
+            - e2e
+  drainer:
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 50
+          podAffinityTerm:
+            topologyKey: rack
+            namespaces:
+            - e2e
 `
 
 type AffinityInfo struct {
