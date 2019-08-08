@@ -2356,6 +2356,9 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 			if len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
 				return true, fmt.Errorf("pump pod %s/%s should have affinity set", pod.Namespace, pod.Name)
 			}
+			if len(pod.Spec.Tolerations) != 1 {
+				return true, fmt.Errorf("pump pod %s/%s should have tolerations set", pod.Namespace, pod.Name)
+			}
 		}
 
 		if !withDrainer {
@@ -2395,6 +2398,9 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 			glog.V(4).Info(pod.Spec.Affinity)
 			if len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
 				return true, fmt.Errorf("drainer pod %s/%s should have spec.affinity set", pod.Namespace, pod.Name)
+			}
+			if len(pod.Spec.Tolerations) != 1 {
+				return true, fmt.Errorf("drainer pod %s/%s should have tolerations set", pod.Namespace, pod.Name)
 			}
 		}
 

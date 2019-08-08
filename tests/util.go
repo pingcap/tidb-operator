@@ -106,6 +106,11 @@ var affinityTemp string = `{{.Kind}}:
           - {{.Namespace}}
 binlog:
   pump:
+    tolerations:
+    - key: node-role
+      operator: Equal
+      value: tidb
+      effect: "NoSchedule"
     affinity:
       podAntiAffinity:
         preferredDuringSchedulingIgnoredDuringExecution:
@@ -115,6 +120,11 @@ binlog:
             namespaces:
             - {{.Namespace}}
   drainer:
+    tolerations:
+    - key: node-role
+      operator: Equal
+      value: tidb
+      effect: "NoSchedule"
     affinity:
       podAntiAffinity:
         preferredDuringSchedulingIgnoredDuringExecution:

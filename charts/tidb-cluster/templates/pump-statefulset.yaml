@@ -34,6 +34,10 @@ spec:
       affinity:
 {{ toYaml .Values.binlog.pump.affinity | indent 8 }}
     {{- end }}
+    {{- if .Values.binlog.pump.tolerations }}
+      tolerations:
+    {{ toYaml .Values.binlog.pump.tolerations | indent 8 }}
+    {{- end }}
       containers:
       - name: pump
         image: {{ .Values.binlog.pump.image }}
