@@ -61,24 +61,25 @@ func NewDefaultPDControl() PDControlInterface {
 func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tlsEnabled bool) PDClient {
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
-	key := pdClientKey(namespace, tcName)
+
+	scheme := "http"
+	if tlsEnabled {
+		scheme = "https"
+	}
+	key := pdClientKey(scheme, namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
-		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, tlsEnabled), timeout, tlsEnabled)
+		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), timeout, tlsEnabled)
 	}
 	return pdc.pdClients[key]
 }
 
 // pdClientKey returns the pd client key
-func pdClientKey(namespace Namespace, clusterName string) string {
-	return fmt.Sprintf("%s.%s", clusterName, string(namespace))
+func pdClientKey(scheme string, namespace Namespace, clusterName string) string {
+	return fmt.Sprintf("%s.%s.%s", scheme, clusterName, string(namespace))
 }
 
 // pdClientUrl builds the url of pd client
-func PdClientURL(namespace Namespace, clusterName string, tlsEnabled bool) string {
-	scheme := "http"
-	if tlsEnabled {
-		scheme = "https"
-	}
+func PdClientURL(namespace Namespace, clusterName string, scheme string) string {
 	return fmt.Sprintf("%s://%s-pd.%s:2379", scheme, clusterName, string(namespace))
 }
 
@@ -613,7 +614,7 @@ func NewFakePDControl() *FakePDControl {
 }
 
 func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclient PDClient) {
-	fpc.defaultPDControl.pdClients[pdClientKey(namespace, tcName)] = pdclient
+	fpc.defaultPDControl.pdClients[pdClientKey("http", namespace, tcName)] = pdclient
 }
 
 type ActionType string
