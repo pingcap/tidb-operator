@@ -16,8 +16,12 @@ variable "tidb_version" {
 }
 
 variable "tidb_operator_version" {
-  description = "TiDB operator version"
-  default     = "v1.0.0"
+  default = "v1.0.0"
+}
+
+variable "tidb_operator_chart_version" {
+  description = "TiDB operator chart version, defaults to tidb_operator_version"
+  default     = ""
 }
 
 variable "create_vpc" {

@@ -27,7 +27,7 @@ module "default-tidb-cluster" {
   cluster_name               = var.default_tidb_cluster_name
   cluster_version            = var.tidb_version
   kubeconfig_path            = module.tidb-operator.kubeconfig_path
-  tidb_cluster_chart_version = var.tidb_operator_version
+  tidb_cluster_chart_version = coalesce(var.tidb_operator_chart_version, var.tidb_operator_version)
   pd_instance_type           = var.pd_instance_type
   tikv_instance_type         = var.tikv_instance_type
   tidb_instance_type         = var.tidb_instance_type
