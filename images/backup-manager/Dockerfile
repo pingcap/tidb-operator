@@ -5,8 +5,8 @@ RUN apk update && apk add ca-certificates
 
 RUN wget -nv https://github.com/ncw/rclone/releases/download/${VERSION}/rclone-${VERSION}-linux-amd64.zip \
 	&& unzip rclone-${VERSION}-linux-amd64.zip \
-	&& mv rclone-${VERSION}-linux-amd64/rclone /rclone \
-	&& chmod 755 /rclone \
+	&& mv rclone-${VERSION}-linux-amd64/rclone /usr/local/bin \
+	&& chmod 755 /usr/local/bin/rclone \
 	&& rm -rf rclone-${VERSION}-linux-amd64.zip
 
 COPY bin/backup-manager /backup-manager
