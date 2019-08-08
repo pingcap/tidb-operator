@@ -33,7 +33,7 @@ type ControlInterface interface {
 // NewDefaultRestoreControl returns a new instance of the default implementation RestoreControlInterface that
 // implements the documented semantics for Restore.
 func NewDefaultRestoreControl(
-	statusUpdater controller.RestoreStatusUpdaterInterface,
+	statusUpdater controller.RestoreConditionUpdaterInterface,
 	restoreManager backup.RestoreManager,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultRestoreControl{
@@ -44,7 +44,7 @@ func NewDefaultRestoreControl(
 }
 
 type defaultRestoreControl struct {
-	statusUpdater  controller.RestoreStatusUpdaterInterface
+	statusUpdater  controller.RestoreConditionUpdaterInterface
 	restoreManager backup.RestoreManager
 	recorder       record.EventRecorder
 }
@@ -59,9 +59,6 @@ func (rc *defaultRestoreControl) UpdateRestore(restore *v1alpha1.Restore) error 
 	}
 	if apiequality.Semantic.DeepEqual(&restore.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
-	}
-	if err := rc.statusUpdater.UpdateRestoreStatus(restore.DeepCopy(), &restore.Status, oldStatus); err != nil {
-		errs = append(errs, err)
 	}
 
 	return errorutils.NewAggregate(errs)

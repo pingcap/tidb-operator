@@ -24,97 +24,92 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 )
 
-// BackupStatusUpdaterInterface is an interface used to update the BackupStatus associated with a Backup.
-// For any use other than testing, clients should create an instance using NewRealBackupStatusUpdater.
-type BackupStatusUpdaterInterface interface {
-	// UpdateBackupStatus sets the backup's Status to status. Implementations are required to retry on conflicts,
-	// but fail on other errors. If the returned error is nil backup's Status has been successfully set to status.
-	UpdateBackupStatus(*v1alpha1.Backup, *v1alpha1.BackupStatus, *v1alpha1.BackupStatus) error
+// BackupConditionUpdaterInterface enables updating Backup conditions.
+type BackupConditionUpdaterInterface interface {
+	Update(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error
 }
 
-// returns a BackupStatusUpdaterInterface that updates the Status of a Backup,
-// using the supplied client and backupLister.
-func NewRealBackupStatusUpdater(
+type realBackupConditionUpdater struct {
+	cli          versioned.Interface
+	backupLister listers.BackupLister
+	recorder     record.EventRecorder
+}
+
+// returns a BackupConditionUpdaterInterface that updates the Status of a Backup,
+func NewRealBackupConditionUpdater(
 	cli versioned.Interface,
 	backupLister listers.BackupLister,
-	recorder record.EventRecorder) BackupStatusUpdaterInterface {
-	return &realBackupStatusUpdater{
+	recorder record.EventRecorder) BackupConditionUpdaterInterface {
+	return &realBackupConditionUpdater{
 		cli,
 		backupLister,
 		recorder,
 	}
 }
 
-type realBackupStatusUpdater struct {
-	cli          versioned.Interface
-	backupLister listers.BackupLister
-	recorder     record.EventRecorder
-}
-
-func (bsu *realBackupStatusUpdater) UpdateBackupStatus(
-	backup *v1alpha1.Backup,
-	newStatus *v1alpha1.BackupStatus,
-	oldStatus *v1alpha1.BackupStatus) error {
-
+func (bcu *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error {
 	ns := backup.GetNamespace()
 	backupName := backup.GetName()
-	// don't wait due to limited number of clients, but backoff after the default number of steps
+	oldStatus := backup.Status.DeepCopy()
+	var isUpdate bool
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		_, updateErr := bsu.cli.PingcapV1alpha1().Backups(ns).Update(backup)
-		if updateErr == nil {
-			glog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
-			return nil
+		isUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, condition)
+		if isUpdate {
+			_, updateErr := bcu.cli.PingcapV1alpha1().Backups(ns).Update(backup)
+			if updateErr == nil {
+				glog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
+				return nil
+			}
+			if updated, err := bcu.backupLister.Backups(ns).Get(backupName); err == nil {
+				// make a copy so we don't mutate the shared cache
+				backup = updated.DeepCopy()
+				backup.Status = *oldStatus
+			} else {
+				utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
+			}
+			return updateErr
 		}
-		if updated, err := bsu.backupLister.Backups(ns).Get(backupName); err == nil {
-			// make a copy so we don't mutate the shared cache
-			backup = updated.DeepCopy()
-			backup.Status = *newStatus
-		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
-		}
-
-		return updateErr
+		return nil
 	})
-	if !apiequality.Semantic.DeepEqual(newStatus, oldStatus) {
-		bsu.recordBackupEvent("update", backup, err)
+	if isUpdate {
+		bcu.recordBackupEvent("update", backup, err)
 	}
 	return err
 }
 
-func (bsu *realBackupStatusUpdater) recordBackupEvent(verb string, backup *v1alpha1.Backup, err error) {
+func (bcu *realBackupConditionUpdater) recordBackupEvent(verb string, backup *v1alpha1.Backup, err error) {
 	backupName := backup.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s Backup %s successful",
 			strings.ToLower(verb), backupName)
-		bsu.recorder.Event(backup, corev1.EventTypeNormal, reason, msg)
+		bcu.recorder.Event(backup, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s Backup %s failed error: %s",
 			strings.ToLower(verb), backupName, err)
-		bsu.recorder.Event(backup, corev1.EventTypeWarning, reason, msg)
+		bcu.recorder.Event(backup, corev1.EventTypeWarning, reason, msg)
 	}
 }
 
-var _ BackupStatusUpdaterInterface = &realBackupStatusUpdater{}
+var _ BackupConditionUpdaterInterface = &realBackupConditionUpdater{}
 
-// FakeBackupStatusUpdater is a fake BackupStatusUpdaterInterface
-type FakeBackupStatusUpdater struct {
+// FakeBackupConditionUpdater is a fake BackupConditionUpdaterInterface
+type FakeBackupConditionUpdater struct {
 	BackupLister        listers.BackupLister
 	BackupIndexer       cache.Indexer
 	updateBackupTracker requestTracker
 }
 
-// NewFakeBackupStatusUpdater returns a FakeBackupStatusUpdater
-func NewFakeBackupStatusUpdater(backupInformer informers.BackupInformer) *FakeBackupStatusUpdater {
-	return &FakeBackupStatusUpdater{
+// NewFakeBackupConditionUpdater returns a FakeBackupConditionUpdater
+func NewFakeBackupConditionUpdater(backupInformer informers.BackupInformer) *FakeBackupConditionUpdater {
+	return &FakeBackupConditionUpdater{
 		backupInformer.Lister(),
 		backupInformer.Informer().GetIndexer(),
 		requestTracker{0, nil, 0},
@@ -122,20 +117,20 @@ func NewFakeBackupStatusUpdater(backupInformer informers.BackupInformer) *FakeBa
 }
 
 // SetUpdateBackupError sets the error attributes of updateBackupTracker
-func (fbs *FakeBackupStatusUpdater) SetUpdateBackupError(err error, after int) {
-	fbs.updateBackupTracker.err = err
-	fbs.updateBackupTracker.after = after
+func (fbc *FakeBackupConditionUpdater) SetUpdateBackupError(err error, after int) {
+	fbc.updateBackupTracker.err = err
+	fbc.updateBackupTracker.after = after
 }
 
 // UpdateBackup updates the Backup
-func (fbs *FakeBackupStatusUpdater) UpdateBackupStatus(backup *v1alpha1.Backup, _ *v1alpha1.BackupStatus, _ *v1alpha1.BackupStatus) error {
-	defer fbs.updateBackupTracker.inc()
-	if fbs.updateBackupTracker.errorReady() {
-		defer fbs.updateBackupTracker.reset()
-		return fbs.updateBackupTracker.err
+func (fbc *FakeBackupConditionUpdater) Update(backup *v1alpha1.Backup, _ *v1alpha1.BackupCondition) error {
+	defer fbc.updateBackupTracker.inc()
+	if fbc.updateBackupTracker.errorReady() {
+		defer fbc.updateBackupTracker.reset()
+		return fbc.updateBackupTracker.err
 	}
 
-	return fbs.BackupIndexer.Update(backup)
+	return fbc.BackupIndexer.Update(backup)
 }
 
-var _ BackupStatusUpdaterInterface = &FakeBackupStatusUpdater{}
+var _ BackupConditionUpdaterInterface = &FakeBackupConditionUpdater{}

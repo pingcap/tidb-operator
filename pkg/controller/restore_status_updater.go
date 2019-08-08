@@ -24,97 +24,92 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 )
 
-// RestoreStatusUpdaterInterface is an interface used to update the RestoreStatus associated with a Restore.
-// For any use other than testing, clients should create an instance using NewRealRestoreStatusUpdater.
-type RestoreStatusUpdaterInterface interface {
-	// UpdateRestoreStatus sets the restore's Status to status. Implementations are required to retry on conflicts,
-	// but fail on other errors. If the returned error is nil restore's Status has been successfully set to status.
-	UpdateRestoreStatus(*v1alpha1.Restore, *v1alpha1.RestoreStatus, *v1alpha1.RestoreStatus) error
+// RestoreConditionUpdaterInterface enables updating Restore conditions.
+type RestoreConditionUpdaterInterface interface {
+	Update(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition) error
 }
 
-// returns a RestoreStatusUpdaterInterface that updates the Status of a Restore,
-// using the supplied client and restoreLister.
-func NewRealRestoreStatusUpdater(
+type realRestoreConditionUpdater struct {
+	cli           versioned.Interface
+	restoreLister listers.RestoreLister
+	recorder      record.EventRecorder
+}
+
+// returns a RestoreConditionUpdaterInterface that updates the Status of a Restore,
+func NewRealRestoreConditionUpdater(
 	cli versioned.Interface,
 	restoreLister listers.RestoreLister,
-	recorder record.EventRecorder) RestoreStatusUpdaterInterface {
-	return &realRestoreStatusUpdater{
+	recorder record.EventRecorder) RestoreConditionUpdaterInterface {
+	return &realRestoreConditionUpdater{
 		cli,
 		restoreLister,
 		recorder,
 	}
 }
 
-type realRestoreStatusUpdater struct {
-	cli           versioned.Interface
-	restoreLister listers.RestoreLister
-	recorder      record.EventRecorder
-}
-
-func (bsu *realRestoreStatusUpdater) UpdateRestoreStatus(
-	restore *v1alpha1.Restore,
-	newStatus *v1alpha1.RestoreStatus,
-	oldStatus *v1alpha1.RestoreStatus) error {
-
+func (rcu *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition) error {
 	ns := restore.GetNamespace()
 	restoreName := restore.GetName()
-	// don't wait due to limited number of clients, but backoff after the default number of steps
+	oldStatus := restore.Status.DeepCopy()
+	var isUpdate bool
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		_, updateErr := bsu.cli.PingcapV1alpha1().Restores(ns).Update(restore)
-		if updateErr == nil {
-			glog.Infof("Restore: [%s/%s] updated successfully", ns, restoreName)
-			return nil
+		isUpdate = v1alpha1.UpdateRestoreCondition(&restore.Status, condition)
+		if isUpdate {
+			_, updateErr := rcu.cli.PingcapV1alpha1().Restores(ns).Update(restore)
+			if updateErr == nil {
+				glog.Infof("Restore: [%s/%s] updated successfully", ns, restoreName)
+				return nil
+			}
+			if updated, err := rcu.restoreLister.Restores(ns).Get(restoreName); err == nil {
+				// make a copy so we don't mutate the shared cache
+				restore = updated.DeepCopy()
+				restore.Status = *oldStatus
+			} else {
+				utilruntime.HandleError(fmt.Errorf("error getting updated restore %s/%s from lister: %v", ns, restoreName, err))
+			}
+			return updateErr
 		}
-		if updated, err := bsu.restoreLister.Restores(ns).Get(restoreName); err == nil {
-			// make a copy so we don't mutate the shared cache
-			restore = updated.DeepCopy()
-			restore.Status = *newStatus
-		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated restore %s/%s from lister: %v", ns, restoreName, err))
-		}
-
-		return updateErr
+		return nil
 	})
-	if !apiequality.Semantic.DeepEqual(newStatus, oldStatus) {
-		bsu.recordRestoreEvent("update", restore, err)
+	if isUpdate {
+		rcu.recordRestoreEvent("update", restore, err)
 	}
 	return err
 }
 
-func (bsu *realRestoreStatusUpdater) recordRestoreEvent(verb string, restore *v1alpha1.Restore, err error) {
+func (rcu *realRestoreConditionUpdater) recordRestoreEvent(verb string, restore *v1alpha1.Restore, err error) {
 	restoreName := restore.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s Restore %s successful",
 			strings.ToLower(verb), restoreName)
-		bsu.recorder.Event(restore, corev1.EventTypeNormal, reason, msg)
+		rcu.recorder.Event(restore, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s Restore %s failed error: %s",
 			strings.ToLower(verb), restoreName, err)
-		bsu.recorder.Event(restore, corev1.EventTypeWarning, reason, msg)
+		rcu.recorder.Event(restore, corev1.EventTypeWarning, reason, msg)
 	}
 }
 
-var _ RestoreStatusUpdaterInterface = &realRestoreStatusUpdater{}
+var _ RestoreConditionUpdaterInterface = &realRestoreConditionUpdater{}
 
-// FakeRestoreStatusUpdater is a fake RestoreStatusUpdaterInterface
-type FakeRestoreStatusUpdater struct {
+// FakeRestoreConditionUpdater is a fake RestoreConditionUpdaterInterface
+type FakeRestoreConditionUpdater struct {
 	RestoreLister        listers.RestoreLister
 	RestoreIndexer       cache.Indexer
 	updateRestoreTracker requestTracker
 }
 
-// NewFakeRestoreStatusUpdater returns a FakeRestoreStatusUpdater
-func NewFakeRestoreStatusUpdater(restoreInformer informers.RestoreInformer) *FakeRestoreStatusUpdater {
-	return &FakeRestoreStatusUpdater{
+// NewFakeRestoreConditionUpdater returns a FakeRestoreConditionUpdater
+func NewFakeRestoreConditionUpdater(restoreInformer informers.RestoreInformer) *FakeRestoreConditionUpdater {
+	return &FakeRestoreConditionUpdater{
 		restoreInformer.Lister(),
 		restoreInformer.Informer().GetIndexer(),
 		requestTracker{0, nil, 0},
@@ -122,20 +117,20 @@ func NewFakeRestoreStatusUpdater(restoreInformer informers.RestoreInformer) *Fak
 }
 
 // SetUpdateRestoreError sets the error attributes of updateRestoreTracker
-func (frs *FakeRestoreStatusUpdater) SetUpdateRestoreError(err error, after int) {
-	frs.updateRestoreTracker.err = err
-	frs.updateRestoreTracker.after = after
+func (frc *FakeRestoreConditionUpdater) SetUpdateRestoreError(err error, after int) {
+	frc.updateRestoreTracker.err = err
+	frc.updateRestoreTracker.after = after
 }
 
 // UpdateRestore updates the Restore
-func (frs *FakeRestoreStatusUpdater) UpdateRestoreStatus(restore *v1alpha1.Restore, _ *v1alpha1.RestoreStatus, _ *v1alpha1.RestoreStatus) error {
-	defer frs.updateRestoreTracker.inc()
-	if frs.updateRestoreTracker.errorReady() {
-		defer frs.updateRestoreTracker.reset()
-		return frs.updateRestoreTracker.err
+func (frc *FakeRestoreConditionUpdater) Update(restore *v1alpha1.Restore, _ *v1alpha1.RestoreCondition) error {
+	defer frc.updateRestoreTracker.inc()
+	if frc.updateRestoreTracker.errorReady() {
+		defer frc.updateRestoreTracker.reset()
+		return frc.updateRestoreTracker.err
 	}
 
-	return frs.RestoreIndexer.Update(restore)
+	return frc.RestoreIndexer.Update(restore)
 }
 
-var _ RestoreStatusUpdaterInterface = &FakeRestoreStatusUpdater{}
+var _ RestoreConditionUpdaterInterface = &FakeRestoreConditionUpdater{}
