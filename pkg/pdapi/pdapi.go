@@ -75,11 +75,11 @@ func pdClientKey(namespace Namespace, clusterName string) string {
 
 // pdClientUrl builds the url of pd client
 func PdClientURL(namespace Namespace, clusterName string, tlsEnabled bool) string {
-	schema := "http"
+	scheme := "http"
 	if tlsEnabled {
-		schema = "https"
+		scheme = "https"
 	}
-	return fmt.Sprintf("%s://%s-pd.%s:2379", schema, clusterName, string(namespace))
+	return fmt.Sprintf("%s://%s-pd.%s:2379", scheme, clusterName, string(namespace))
 }
 
 // PDClient provides pd server's api

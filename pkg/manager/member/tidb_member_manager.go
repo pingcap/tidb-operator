@@ -313,6 +313,10 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		},
 	}
 
+	scheme := corev1.URISchemeHTTP
+	if tc.Spec.EnableTLSServer {
+		scheme = corev1.URISchemeHTTPS
+	}
 	containers = append(containers, corev1.Container{
 		Name:            v1alpha1.TiDBMemberType.String(),
 		Image:           tc.Spec.TiDB.Image,
@@ -336,8 +340,9 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
 				HTTPGet: &corev1.HTTPGetAction{
-					Path: "/status",
-					Port: intstr.FromInt(10080),
+					Path:   "/status",
+					Port:   intstr.FromInt(10080),
+					Scheme: scheme,
 				},
 			},
 			InitialDelaySeconds: int32(10),
