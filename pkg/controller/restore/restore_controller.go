@@ -37,9 +37,6 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-// controllerKind contains the schema.GroupVersionKind for this controller type.
-var controllerKind = v1alpha1.SchemeGroupVersion.WithKind("Restore")
-
 // Controller controls restore.
 type Controller struct {
 	// kubernetes client interface
@@ -71,20 +68,27 @@ func NewController(
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "restore"})
 
 	restoreInformer := informerFactory.Pingcap().V1alpha1().Restores()
+	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
 	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
+	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
+	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 	statusUpdater := controller.NewRealRestoreConditionUpdater(cli, restoreInformer.Lister(), recorder)
-	jobControl := controller.NewRealJobControl(kubeCli, jobInformer.Lister(), recorder)
+	jobControl := controller.NewRealJobControl(kubeCli, recorder)
+	pvcControl := controller.NewRealGeneralPVCControl(kubeCli, recorder)
 
 	rsc := &Controller{
 		kubeClient: kubeCli,
 		cli:        cli,
 		control: NewDefaultRestoreControl(
-			statusUpdater,
 			restore.NewRestoreManager(
-				restoreInformer.Lister(),
+				backupInformer.Lister(),
+				statusUpdater,
+				secretInformer.Lister(),
+				jobInformer.Lister(),
 				jobControl,
+				pvcInformer.Lister(),
+				pvcControl,
 			),
-			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
@@ -93,9 +97,9 @@ func NewController(
 	}
 
 	restoreInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: rsc.enqueueRestore,
+		AddFunc: rsc.addRestore,
 		UpdateFunc: func(old, cur interface{}) {
-			rsc.enqueueRestore(cur)
+			rsc.updateRestore(cur)
 		},
 		DeleteFunc: rsc.enqueueRestore,
 	})
@@ -177,6 +181,36 @@ func (rsc *Controller) sync(key string) error {
 
 func (rsc *Controller) syncRestore(tc *v1alpha1.Restore) error {
 	return rsc.control.UpdateRestore(tc)
+}
+
+func (rsc *Controller) addRestore(obj interface{}) {
+	restore := obj.(*v1alpha1.Restore)
+	ns := restore.GetNamespace()
+	name := restore.GetName()
+
+	if v1alpha1.IsRestoreScheduled(restore) {
+		glog.Infof("Restore %s/%s is already scheduled, skipping", ns, name)
+		return
+	}
+
+	glog.V(4).Infof("new restore object %s/%s enqueue", ns, name)
+	rsc.enqueueRestore(restore)
+}
+
+func (rsc *Controller) updateRestore(cur interface{}) {
+	newRestore := cur.(*v1alpha1.Restore)
+	ns := newRestore.GetNamespace()
+	name := newRestore.GetName()
+
+	if v1alpha1.IsRestoreComplete(newRestore) {
+		glog.V(4).Infof("Restore %/% is Complete, skipping.", ns, name)
+		return
+	}
+
+	if v1alpha1.IsRestoreScheduled(newRestore) {
+		glog.V(4).Infof("Restore %s/%s is already scheduled, skipping", ns, name)
+		return
+	}
 }
 
 // enqueueRestore enqueues the given restore in the work queue.
