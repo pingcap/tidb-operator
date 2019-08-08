@@ -44,7 +44,7 @@ else
     touch /tmp/google-credentials.json
 fi
 
-BACKUP_BIN=/backup-manager
+BACKUP_BIN=/tidb-backup-manager
 
 # exec command
 case "$1" in
