@@ -72,7 +72,7 @@ func NewController(
 
 	restoreInformer := informerFactory.Pingcap().V1alpha1().Restores()
 	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
-	statusUpdater := controller.NewRealRestoreStatusUpdater(cli, restoreInformer.Lister(), recorder)
+	statusUpdater := controller.NewRealRestoreConditionUpdater(cli, restoreInformer.Lister(), recorder)
 	jobControl := controller.NewRealJobControl(kubeCli, jobInformer.Lister(), recorder)
 
 	rsc := &Controller{
