@@ -16,6 +16,7 @@ package controller
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
@@ -33,6 +34,8 @@ var (
 	ClusterScoped bool
 	// TestMode defines whether tidb operator run in test mode, test mode is only open when test
 	TestMode bool
+	// ResyncDuration is the resync time of informer
+	ResyncDuration time.Duration
 )
 
 const (
