@@ -149,4 +149,5 @@ resource "helm_release" "tidb-operator" {
   namespace  = "tidb-admin"
   name       = "tidb-operator"
   values     = [var.operator_helm_values]
+  wait       = false
 }
