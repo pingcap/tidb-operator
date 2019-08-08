@@ -216,7 +216,7 @@ func (fpc *FakePVCControl) DeletePVC(_ *v1alpha1.TidbCluster, pvc *corev1.Persis
 	return fpc.PVCIndexer.Delete(pvc)
 }
 
-// Update updates the annotation, labels and spec of pvc
+// UpdatePVC updates the annotation, labels and spec of pvc
 func (fpc *FakePVCControl) UpdatePVC(_ *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolumeClaim, error) {
 	defer fpc.updatePVCTracker.inc()
 	if fpc.updatePVCTracker.errorReady() {
