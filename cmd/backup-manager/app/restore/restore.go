@@ -63,7 +63,7 @@ func (ro *RestoreOpts) downloadBackupData(localPath string) error {
 		return fmt.Errorf("cluster %s, execute rclone copyto command for download backup data %s failed, err: %v", ro, ro.BackupPath, err)
 	}
 
-	glog.Info("download cluster %s backup data %s successfully", ro, ro.BackupPath)
+	glog.Infof("download cluster %s backup data %s successfully", ro, ro.BackupPath)
 
 	return nil
 }

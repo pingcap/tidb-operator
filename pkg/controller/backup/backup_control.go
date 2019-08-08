@@ -60,9 +60,6 @@ func (bc *defaultBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
 	if apiequality.Semantic.DeepEqual(&backup.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
-	if err := bc.statusUpdater.UpdateBackupStatus(backup.DeepCopy(), &backup.Status, oldStatus); err != nil {
-		errs = append(errs, err)
-	}
 
 	return errorutils.NewAggregate(errs)
 }

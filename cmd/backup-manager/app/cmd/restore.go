@@ -16,10 +16,10 @@ package cmd
 import (
 	"context"
 
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/restore"
-
+	// registry mysql drive
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/restore"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"

@@ -60,9 +60,6 @@ func (rc *defaultRestoreControl) UpdateRestore(restore *v1alpha1.Restore) error 
 	if apiequality.Semantic.DeepEqual(&restore.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
-	if err := rc.statusUpdater.UpdateRestoreStatus(restore.DeepCopy(), &restore.Status, oldStatus); err != nil {
-		errs = append(errs, err)
-	}
 
 	return errorutils.NewAggregate(errs)
 }

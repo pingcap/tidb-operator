@@ -111,7 +111,6 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Reason:  "DumpTidbClusterFailed",
 			Message: err.Error(),
 		})
-		return err
 	}
 	glog.Infof("dump cluster %s data success", bm)
 
@@ -123,7 +122,6 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Reason:  "RestTikvGCLifeTimeFailed",
 			Message: err.Error(),
 		})
-		return err
 	}
 	glog.Infof("reset cluster %s %s to %s success", bm, constants.TikvGCVariable, oldTikvGCTime)
 
@@ -137,7 +135,6 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Reason:  "ArchiveBackupDataFailed",
 			Message: err.Error(),
 		})
-		return err
 	}
 	glog.Infof("archive cluster %s backup data %s success", bm, archiveBackupPath)
 
@@ -150,7 +147,6 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Reason:  "GetBackupSizeFailed",
 			Message: err.Error(),
 		})
-		return err
 	}
 	glog.Infof("get cluster %s archived backup file %s failed, err: %v", bm, archiveBackupPath, err)
 
@@ -162,7 +158,6 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Reason:  "GetCommitTsFailed",
 			Message: err.Error(),
 		})
-		return err
 	}
 	glog.Infof("get cluster %s commitTs %s success", bm, commitTs)
 
@@ -175,7 +170,6 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Reason:  "BackupDataToRemoteFailed",
 			Message: err.Error(),
 		})
-		return err
 	}
 	glog.Infof("backup cluster %s data to %s success", bm, bm.StorageType)
 
@@ -234,6 +228,6 @@ func (bm *BackupManager) performCleanBackup(backup *v1alpha1.Backup) error {
 	if err != nil {
 		return err
 	}
-	glog.Info("clean cluster %s backup %s success", bm, backup.Status.BackupPath)
+	glog.Infof("clean cluster %s backup %s success", bm, backup.Status.BackupPath)
 	return nil
 }
