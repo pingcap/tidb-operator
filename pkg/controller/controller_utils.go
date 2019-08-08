@@ -25,16 +25,30 @@ import (
 )
 
 var (
-	// controllerKind contains the schema.GroupVersionKind for this controller type.
+	// controllerKind contains the schema.GroupVersionKind for tidbcluster controller type.
 	controllerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbCluster")
+
+	// backupControllerKind contains the schema.GroupVersionKind for backup controller type.
+	backupControllerKind = v1alpha1.SchemeGroupVersion.WithKind("Backup")
+
+	// restoreControllerKind contains the schema.GroupVersionKind for restore controller type.
+	restoreControllerKind = v1alpha1.SchemeGroupVersion.WithKind("Restore")
+
+	// backupScheduleControllerKind contains the schema.GroupVersionKind for backupschedule controller type.
+	backupScheduleControllerKind = v1alpha1.SchemeGroupVersion.WithKind("BackupSchedule")
+
 	// DefaultStorageClassName is the default storageClassName
 	DefaultStorageClassName string
+
 	// DefaultBackupStorageClassName is the default storageClassName for backup and restore job
 	DefaultBackupStorageClassName string
+
 	// BackupManagerImage is the image of backup manager tool
 	BackupManagerImage string
+
 	// ClusterScoped controls whether operator should manage kubernetes cluster wide TiDB clusters
 	ClusterScoped bool
+
 	// TestMode defines whether tidb operator run in test mode, test mode is only open when test
 	TestMode bool
 )
@@ -73,6 +87,48 @@ func GetOwnerRef(tc *v1alpha1.TidbCluster) metav1.OwnerReference {
 		Kind:               controllerKind.Kind,
 		Name:               tc.GetName(),
 		UID:                tc.GetUID(),
+		Controller:         &controller,
+		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
+}
+
+// GetBackupOwnerRef returns Backup's OwnerReference
+func GetBackupOwnerRef(backup *v1alpha1.Backup) metav1.OwnerReference {
+	controller := true
+	blockOwnerDeletion := true
+	return metav1.OwnerReference{
+		APIVersion:         backupControllerKind.GroupVersion().String(),
+		Kind:               backupControllerKind.Kind,
+		Name:               backup.GetName(),
+		UID:                backup.GetUID(),
+		Controller:         &controller,
+		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
+}
+
+// GetRestoreOwnerRef returns Restore's OwnerReference
+func GetRestoreOwnerRef(restore *v1alpha1.Restore) metav1.OwnerReference {
+	controller := true
+	blockOwnerDeletion := true
+	return metav1.OwnerReference{
+		APIVersion:         restoreControllerKind.GroupVersion().String(),
+		Kind:               restoreControllerKind.Kind,
+		Name:               restore.GetName(),
+		UID:                restore.GetUID(),
+		Controller:         &controller,
+		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
+}
+
+// GetBackupScheduleOwnerRef returns BackupSchedule's OwnerReference
+func GetBackupScheduleOwnerRef(bs *v1alpha1.BackupSchedule) metav1.OwnerReference {
+	controller := true
+	blockOwnerDeletion := true
+	return metav1.OwnerReference{
+		APIVersion:         backupScheduleControllerKind.GroupVersion().String(),
+		Kind:               backupScheduleControllerKind.Kind,
+		Name:               bs.GetName(),
+		UID:                bs.GetUID(),
 		Controller:         &controller,
 		BlockOwnerDeletion: &blockOwnerDeletion,
 	}
@@ -184,6 +240,11 @@ func setIfNotEmpty(container map[string]string, key, value string) {
 	if value != "" {
 		container[key] = value
 	}
+}
+
+// Int32Ptr returns a pointer to an int32
+func Int32Ptr(i int32) *int32 {
+	return &i
 }
 
 // requestTracker is used by unit test for mocking request error
