@@ -36,9 +36,6 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-// controllerKind contains the schema.GroupVersionKind for this controller type.
-var controllerKind = v1alpha1.SchemeGroupVersion.WithKind("BackupSchedule")
-
 // Controller controls restore.
 type Controller struct {
 	// kubernetes client interface
@@ -69,6 +66,8 @@ func NewController(
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "backupSchedule"})
 
 	bsInformer := informerFactory.Pingcap().V1alpha1().BackupSchedules()
+	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
+	backupControl := controller.NewRealBackupControl(cli, recorder)
 	statusUpdater := controller.NewRealBackupScheduleStatusUpdater(cli, bsInformer.Lister(), recorder)
 
 	bsc := &Controller{
@@ -77,7 +76,8 @@ func NewController(
 		control: NewDefaultBackupScheduleControl(
 			statusUpdater,
 			backupschedule.NewBackupScheduleManager(
-				bsInformer.Lister(),
+				backupControl,
+				backupInformer.Lister(),
 			),
 			recorder,
 		),
