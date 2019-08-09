@@ -54,21 +54,22 @@ func GetBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 }
 
 func ReadCACerts() (*x509.CertPool, error) {
-	// load CA certs
+	// try to load system CA certs
 	rootCAs, _ := x509.SystemCertPool()
 	if rootCAs == nil {
 		rootCAs = x509.NewCertPool()
 	}
 
+	// load k8s CA cert
 	caCert, err := ioutil.ReadFile(k8sCAFile)
 	if err != nil {
 		glog.Errorf("fail to read CA file %s, error: %v", k8sCAFile, err)
 		return nil, err
 	}
 	if ok := rootCAs.AppendCertsFromPEM(caCert); !ok {
-		glog.Warningf("fail to append cert to pool, using system certs only")
+		glog.Warningf("fail to append CA file to pool, using system CAs only")
 	}
-	return rootCAs, err
+	return rootCAs, nil
 }
 
 func ReadCerts() (*x509.CertPool, tls.Certificate, error) {
