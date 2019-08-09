@@ -17,11 +17,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/backup/backup"
-
 	"github.com/golang/glog"
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/backup"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
@@ -73,7 +72,7 @@ func NewController(
 
 	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
 	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
-	statusUpdater := controller.NewRealBackupStatusUpdater(cli, backupInformer.Lister(), recorder)
+	statusUpdater := controller.NewRealBackupConditionUpdater(cli, backupInformer.Lister(), recorder)
 	jobControl := controller.NewRealJobControl(kubeCli, jobInformer.Lister(), recorder)
 
 	bkc := &Controller{
