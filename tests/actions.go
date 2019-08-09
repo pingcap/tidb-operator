@@ -2333,7 +2333,11 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 
 		listOps := metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(
-				pumpStatefulSet.Labels,
+				map[string]string{
+					label.ComponentLabelKey: "pump",
+					label.InstanceLabelKey:  pumpStatefulSet.Labels[label.InstanceLabelKey],
+					label.NameLabelKey:      "tidb-cluster",
+				},
 			).String(),
 		}
 
@@ -2345,8 +2349,23 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 
 		for _, pod := range pods.Items {
 			if !oa.pumpHealth(info, pod.Spec.Hostname) {
-				glog.Errorf("some pods is not health %s ,%v", pumpStatefulSetName, err)
-				return false, nil
+				glog.Errorf("some pods is not health %s", pumpStatefulSetName)
+				// return false, nil
+			}
+			glog.Info(pod.Spec.Affinity)
+			if len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
+				return true, fmt.Errorf("pump pod %s/%s should have affinity set", pod.Namespace, pod.Name)
+			}
+			glog.Info(pod.Spec.Tolerations)
+			foundKey := false
+			for _, tor := range pod.Spec.Tolerations {
+				if tor.Key == "node-role" {
+					foundKey = true
+					break
+				}
+			}
+			if !foundKey {
+				return true, fmt.Errorf("pump pod %s/%s should have tolerations set", pod.Namespace, pod.Name)
 			}
 		}
 
@@ -2367,7 +2386,11 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 
 		listOps = metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(
-				drainerStatefulSet.Labels,
+				map[string]string{
+					label.ComponentLabelKey: "pump",
+					label.InstanceLabelKey:  drainerStatefulSet.Labels[label.InstanceLabelKey],
+					label.NameLabelKey:      "tidb-cluster",
+				},
 			).String(),
 		}
 
@@ -2377,7 +2400,23 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		}
 		for _, pod := range pods.Items {
 			if !oa.drainerHealth(info, pod.Spec.Hostname) {
-				return false, nil
+				glog.Errorf("some pods is not health %s", drainerStatefulSetName)
+				// return false, nil
+			}
+			glog.Info(pod.Spec.Affinity)
+			if len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
+				return true, fmt.Errorf("drainer pod %s/%s should have spec.affinity set", pod.Namespace, pod.Name)
+			}
+			glog.Info(pod.Spec.Tolerations)
+			foundKey := false
+			for _, tor := range pod.Spec.Tolerations {
+				if tor.Key == "node-role" {
+					foundKey = true
+					break
+				}
+			}
+			if !foundKey {
+				return true, fmt.Errorf("drainer pod %s/%s should have tolerations set", pod.Namespace, pod.Name)
 			}
 		}
 

@@ -33,7 +33,7 @@ type ControlInterface interface {
 // NewDefaultBackupControl returns a new instance of the default implementation BackupControlInterface that
 // implements the documented semantics for Backup.
 func NewDefaultBackupControl(
-	statusUpdater controller.BackupStatusUpdaterInterface,
+	statusUpdater controller.BackupConditionUpdaterInterface,
 	backupManager backup.BackupManager,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultBackupControl{
@@ -44,7 +44,7 @@ func NewDefaultBackupControl(
 }
 
 type defaultBackupControl struct {
-	statusUpdater controller.BackupStatusUpdaterInterface
+	statusUpdater controller.BackupConditionUpdaterInterface
 	backupManager backup.BackupManager
 	recorder      record.EventRecorder
 }
@@ -59,9 +59,6 @@ func (bc *defaultBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
 	}
 	if apiequality.Semantic.DeepEqual(&backup.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
-	}
-	if err := bc.statusUpdater.UpdateBackupStatus(backup.DeepCopy(), &backup.Status, oldStatus); err != nil {
-		errs = append(errs, err)
 	}
 
 	return errorutils.NewAggregate(errs)
