@@ -204,7 +204,7 @@ func (bkc *Controller) updateBackup(cur interface{}) {
 	name := newBackup.GetName()
 
 	if v1alpha1.IsBackupComplete(newBackup) {
-		glog.V(4).Infof("Backup %/% is Complete, skipping.", ns, name)
+		glog.V(4).Infof("Backup %s/%s is Complete, skipping.", ns, name)
 		return
 	}
 

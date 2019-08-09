@@ -21,7 +21,7 @@ var kubecfg string
 
 func NewBackupMgrCommand() *cobra.Command {
 	cmds := &cobra.Command{
-		Use:   "backup-manager",
+		Use:   "tidb-backup-manager",
 		Short: "Helper for backup manage",
 		Long:  "Dump tidb cluster data, as well as backup and restore tidb cluster data",
 		Run:   runHelp,

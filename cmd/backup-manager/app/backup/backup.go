@@ -54,7 +54,7 @@ func (bo *BackupOpts) getBackupRelativePath() string {
 }
 
 func (bo *BackupOpts) getDestBucketURI() string {
-	return fmt.Sprint("%s://%s%s", bo.StorageType, bo.getBackupRelativePath(), constants.DefaultArchiveExtention)
+	return fmt.Sprintf("%s://%s%s", bo.StorageType, bo.getBackupRelativePath(), constants.DefaultArchiveExtention)
 }
 
 func (bo *BackupOpts) getTikvGCLifeTime(db *sql.DB) (string, error) {
@@ -114,7 +114,7 @@ func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
 		return fmt.Errorf("cluster %s, execute rclone copyto command for upload backup data %s failed, err: %v", bo, bucketURI, err)
 	}
 
-	glog.Info("upload cluster %s backup data %s successfully, now move it to permanent URL", bo, bucketURI)
+	glog.Infof("upload cluster %s backup data %s successfully, now move it to permanent URL", bo, bucketURI)
 
 	// the backup was a success
 	// remove .tmp extension
@@ -140,7 +140,7 @@ func (bo *BackupOpts) cleanRemoteBackupData(bucket string) error {
 		return fmt.Errorf("cluster %s, execute rclone deletefile command failed, err: %v", bo, err)
 	}
 
-	glog.Info("cluster %s backup %s was deleted successfully", bo, bucket)
+	glog.Infof("cluster %s backup %s was deleted successfully", bo, bucket)
 	return nil
 }
 
@@ -170,7 +170,7 @@ func getCommitTsFromMetadata(backupPath string) (string, error) {
 	}
 	contents, err := ioutil.ReadFile(metaFile)
 	if err != nil {
-		return commitTs, fmt.Errorf("read metadata file %s failed, err: %v", err)
+		return commitTs, fmt.Errorf("read metadata file %s failed, err: %v", metaFile, err)
 	}
 
 	for _, lineStr := range strings.Split(string(contents), "\n") {

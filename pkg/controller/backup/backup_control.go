@@ -59,10 +59,7 @@ func (bc *defaultBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
 		return err
 	}
 
-	if err := bc.updateBackup(backup); err != nil {
-		return err
-	}
-	return nil
+	return bc.updateBackup(backup)
 }
 
 func (bc *defaultBackupControl) updateBackup(backup *v1alpha1.Backup) error {
@@ -93,7 +90,7 @@ func (bc *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backu
 		if err != nil {
 			return fmt.Errorf("remove backup %s/%s protection finalizers failed, err: %v", ns, name, err)
 		}
-		return controller.RequeueErrorf(fmt.Sprintf("backup %s/%s has been cleaned up"))
+		return controller.RequeueErrorf(fmt.Sprintf("backup %s/%s has been cleaned up", ns, name))
 	}
 	return nil
 }

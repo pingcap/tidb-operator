@@ -16,6 +16,7 @@ package cmd
 import (
 	"context"
 
+	// registry mysql drive
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"

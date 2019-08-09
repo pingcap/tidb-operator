@@ -203,7 +203,7 @@ func (rsc *Controller) updateRestore(cur interface{}) {
 	name := newRestore.GetName()
 
 	if v1alpha1.IsRestoreComplete(newRestore) {
-		glog.V(4).Infof("Restore %/% is Complete, skipping.", ns, name)
+		glog.V(4).Infof("Restore %s/%s is Complete, skipping.", ns, name)
 		return
 	}
 

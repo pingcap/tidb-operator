@@ -46,10 +46,10 @@ admission-controller:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-controller cmd/admission-controller/main.go
 
 backup-manager:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/backup-manager/bin/backup-manager cmd/backup-manager/main.go
+	$(GO) -ldflags '$(LDFLAGS)' -o images/backup-manager/bin/tidb-backup-manager cmd/backup-manager/main.go
 
 backup-docker: backup-manager
-	docker build --tag "${DOCKER_REGISTRY}/pingcap/backup-manager:latest" images/backup-manager
+	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:latest" images/backup-manager
 
 e2e-setup:
 	# ginkgo doesn't work with retool for Go 1.11

@@ -52,7 +52,6 @@ var (
 	leaseDuration      = 15 * time.Second
 	renewDuration      = 5 * time.Second
 	retryPeriod        = 3 * time.Second
-	resyncDuration     = 30 * time.Second
 	waitDuration       = 5 * time.Second
 )
 
@@ -67,6 +66,7 @@ func init() {
 	flag.DurationVar(&pdFailoverPeriod, "pd-failover-period", time.Duration(5*time.Minute), "PD failover period default(5m)")
 	flag.DurationVar(&tikvFailoverPeriod, "tikv-failover-period", time.Duration(5*time.Minute), "TiKV failover period default(5m)")
 	flag.DurationVar(&tidbFailoverPeriod, "tidb-failover-period", time.Duration(5*time.Minute), "TiDB failover period")
+	flag.DurationVar(&controller.ResyncDuration, "resync-duration", time.Duration(30*time.Second), "Resync time of informer")
 	flag.BoolVar(&controller.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
 	flag.StringVar(&controller.BackupManagerImage, "backup-manager-image", "pingcap/backup-manager:latest", "The image of backup manager tool")
 
@@ -110,18 +110,18 @@ func main() {
 	var informerFactory informers.SharedInformerFactory
 	var kubeInformerFactory kubeinformers.SharedInformerFactory
 	if controller.ClusterScoped {
-		informerFactory = informers.NewSharedInformerFactory(cli, resyncDuration)
-		kubeInformerFactory = kubeinformers.NewSharedInformerFactory(kubeCli, resyncDuration)
+		informerFactory = informers.NewSharedInformerFactory(cli, controller.ResyncDuration)
+		kubeInformerFactory = kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
 	} else {
 		options := []informers.SharedInformerOption{
 			informers.WithNamespace(ns),
 		}
-		informerFactory = informers.NewSharedInformerFactoryWithOptions(cli, resyncDuration, options...)
+		informerFactory = informers.NewSharedInformerFactoryWithOptions(cli, controller.ResyncDuration, options...)
 
 		kubeoptions := []kubeinformers.SharedInformerOption{
 			kubeinformers.WithNamespace(ns),
 		}
-		kubeInformerFactory = kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, resyncDuration, kubeoptions...)
+		kubeInformerFactory = kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, controller.ResyncDuration, kubeoptions...)
 	}
 
 	rl := resourcelock.EndpointsLock{
