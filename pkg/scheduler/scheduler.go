@@ -14,6 +14,7 @@
 package scheduler
 
 import (
+	"fmt"
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/features"
@@ -79,6 +80,12 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 	podName := pod.GetName()
 	kubeNodes := args.Nodes.Items
 
+	if pod.Annotations != nil {
+		if _, ok := pod.Annotations[label.AnnFailTiDBScheduler]; ok {
+			return nil, FailureError{PodName: pod.Name}
+		}
+	}
+
 	var instanceName string
 	var exist bool
 	if instanceName, exist = pod.Labels[label.InstanceLabelKey]; !exist {
@@ -116,6 +123,15 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 	return &schedulerapiv1.ExtenderFilterResult{
 		Nodes: &apiv1.NodeList{Items: kubeNodes},
 	}, nil
+}
+
+// FailureError is returned when the FailTiDBSchedulerLabelKey is seen
+type FailureError struct {
+	PodName string
+}
+
+func (ferr FailureError) Error() string {
+	return fmt.Sprintf("pod %s had an intentional failure injected", ferr.PodName)
 }
 
 // We don't pass `prioritizeVerb` to kubernetes scheduler extender's config file, this method will not be called.
