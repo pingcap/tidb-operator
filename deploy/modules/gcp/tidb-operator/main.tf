@@ -51,34 +51,21 @@ resource "null_resource" "get-credentials" {
       KUBECONFIG = var.kubeconfig_path
     }
   }
-
-  provisioner "local-exec" {
-    when = destroy
-
-    command = <<EOS
-kubectl get pvc -n tidb -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl patch pv {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
-EOS
-
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
 }
 
 data "local_file" "kubeconfig" {
   depends_on = [google_container_cluster.cluster, null_resource.get-credentials]
-  filename = var.kubeconfig_path
+  filename   = var.kubeconfig_path
 }
 
 resource "local_file" "kubeconfig" {
   depends_on = [google_container_cluster.cluster, null_resource.get-credentials]
-  content = data.local_file.kubeconfig.content
-  filename = var.kubeconfig_path
+  content    = data.local_file.kubeconfig.content
+  filename   = var.kubeconfig_path
 }
 
 provider "helm" {
-  alias = "initial"
+  alias    = "initial"
   insecure = true
   # service_account = "tiller"
   install_tiller = false # currently this doesn't work, so we install tiller in the local-exec provisioner. See https://github.com/terraform-providers/terraform-provider-helm/issues/148
@@ -129,10 +116,10 @@ EOS
 }
 
 data "helm_repository" "pingcap" {
-  provider   = "helm.initial"
+  provider = "helm.initial"
   depends_on = [null_resource.setup-env]
-  name       = "pingcap"
-  url        = "https://charts.pingcap.org/"
+  name = "pingcap"
+  url = "https://charts.pingcap.org/"
 }
 
 resource "helm_release" "tidb-operator" {
@@ -144,10 +131,10 @@ resource "helm_release" "tidb-operator" {
   ]
 
   repository = data.helm_repository.pingcap.name
-  chart      = "tidb-operator"
-  version    = var.tidb_operator_version
-  namespace  = "tidb-admin"
-  name       = "tidb-operator"
-  values     = [var.operator_helm_values]
-  wait       = false
+  chart = "tidb-operator"
+  version = var.tidb_operator_version
+  namespace = "tidb-admin"
+  name = "tidb-operator"
+  values = [var.operator_helm_values]
+  wait = false
 }
