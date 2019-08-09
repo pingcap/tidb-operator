@@ -13,7 +13,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: {{ include "drainer.name" . }}
       app.kubernetes.io/instance: {{ .Release.Name }}
-      app.kubernetes.io/managed-by: tidb-operator
+      app.kubernetes.io/managed-by: {{ .Release.Service }}
       app.kubernetes.io/component: drainer
   serviceName: {{ include "drainer.name" . }}
   replicas: 1
@@ -26,7 +26,7 @@ spec:
       labels:
         app.kubernetes.io/name: {{ include "drainer.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
-        app.kubernetes.io/managed-by: tidb-operator
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
         app.kubernetes.io/component: drainer
     spec:
       containers:
@@ -46,6 +46,8 @@ spec:
           mountPath: /data
         - name: config
           mountPath: /etc/drainer
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
       volumes:
       - name: config
         configMap:
@@ -53,6 +55,18 @@ spec:
           items:
           - key: config-file
             path: drainer.toml
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}
   volumeClaimTemplates:
   - metadata:
       name: data
