@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
@@ -63,7 +64,7 @@ func NewBackupManager(
 
 func (bm *backupManager) Sync(backup *v1alpha1.Backup) error {
 	if err := bm.backupCleaner.Clean(backup); err != nil {
-		return nil
+		return err
 	}
 
 	return bm.syncBackupJob(backup)
@@ -78,6 +79,10 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	if err == nil {
 		// already have a backup job running，return directly
 		return nil
+	}
+
+	if !errors.IsNotFound(err) {
+		return fmt.Errorf("backup %s/%s get job %s failed, err: %v", ns, name, backupJobName, err)
 	}
 
 	// not found backup job, need to create it
@@ -103,14 +108,6 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return err
 	}
 
-	err = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupScheduled,
-		Status: corev1.ConditionFalse,
-	})
-	if err != nil {
-		return err
-	}
-
 	if err := bm.jobControl.CreateJob(backup, job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -122,7 +119,10 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return errMsg
 	}
 
-	return nil
+	return bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupScheduled,
+		Status: corev1.ConditionTrue,
+	})
 }
 
 func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
@@ -164,10 +164,11 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			Labels: backupLabel.Labels(),
 		},
 		Spec: corev1.PodSpec{
+			ServiceAccountName: constants.DefaultServiceAccountName,
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
-					Image:           controller.BackupManagerImage,
+					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullAlways,
 					VolumeMounts: []corev1.VolumeMount{
@@ -200,7 +201,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: controller.Int32Ptr(1),
+			BackoffLimit: controller.Int32Ptr(0),
 			Template:     *podSpec,
 		},
 	}
@@ -212,8 +213,11 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	// TODO: make pvc request storage size configurable
-	rs, err := resource.ParseQuantity(constants.DefaultStorageSize)
+	storageSize := constants.DefaultStorageSize
+	if backup.Spec.StorageSize != "" {
+		storageSize = backup.Spec.StorageSize
+	}
+	rs, err := resource.ParseQuantity(storageSize)
 	if err != nil {
 		errMsg := fmt.Errorf("backup %s/%s parse storage size %s failed, err: %v", ns, name, constants.DefaultStorageSize, err)
 		return "ParseStorageSizeFailed", errMsg

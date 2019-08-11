@@ -16,6 +16,7 @@ package backup
 import (
 	"fmt"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
@@ -62,6 +63,8 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
+	glog.Infof("start to clean backup %s/%s", ns, name)
+
 	cleanJobName := backup.GetCleanJobName()
 	_, err := bc.jobLister.Jobs(ns).Get(cleanJobName)
 	if err == nil {
@@ -69,6 +72,13 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 		return nil
 	}
 
+	if backup.Status.BackupPath == "" {
+		// the backup path is empty, so there is no need to clean up backup data
+		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:   v1alpha1.BackupClean,
+			Status: corev1.ConditionTrue,
+		})
+	}
 	// not found clean job, create it
 	job, reason, err := bc.makeCleanJob(backup)
 	if err != nil {
@@ -78,14 +88,6 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 			Reason:  reason,
 			Message: err.Error(),
 		})
-		return err
-	}
-
-	err = bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupClean,
-		Status: corev1.ConditionFalse,
-	})
-	if err != nil {
 		return err
 	}
 
@@ -100,7 +102,10 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 		return errMsg
 	}
 
-	return nil
+	return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupClean,
+		Status: corev1.ConditionFalse,
+	})
 }
 
 func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
@@ -129,7 +134,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
-					Image:           controller.BackupManagerImage,
+					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullAlways,
 					Env:             storageEnv,
