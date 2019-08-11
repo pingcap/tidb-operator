@@ -68,7 +68,7 @@ func init() {
 	flag.DurationVar(&tidbFailoverPeriod, "tidb-failover-period", time.Duration(5*time.Minute), "TiDB failover period")
 	flag.DurationVar(&controller.ResyncDuration, "resync-duration", time.Duration(30*time.Second), "Resync time of informer")
 	flag.BoolVar(&controller.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
-	flag.StringVar(&controller.BackupManagerImage, "backup-manager-image", "pingcap/backup-manager:latest", "The image of backup manager tool")
+	flag.StringVar(&controller.TidbBackupManagerImage, "tidb-backup-manager-image", "pingcap/tidb-backup-manager:latest", "The image of backup manager tool")
 
 	flag.Parse()
 }
@@ -139,14 +139,13 @@ func main() {
 	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
 	backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-	bsController := backupschedule.NewController(kubeCli, cli, informerFactory)
+	bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go informerFactory.Start(controllerCtx.Done())
 	go kubeInformerFactory.Start(controllerCtx.Done())
 
 	onStarted := func(ctx context.Context) {
-		// TODO: Comment out the controller entry of the backup related function, uncomment it after the function is completed
 		go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
