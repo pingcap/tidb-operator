@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
@@ -76,6 +77,11 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		// already have a backup job running，return directly
 		return nil
 	}
+
+	if !errors.IsNotFound(err) {
+		return fmt.Errorf("restore %s/%s get job %s failed, err: %v", ns, name, restoreJobName, err)
+	}
+
 	// not found restore job, need to create it
 	backup, reason, err := rm.getBackupFromRestore(restore)
 	if err != nil {
@@ -110,14 +116,6 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return err
 	}
 
-	err = rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-		Type:   v1alpha1.RestoreScheduled,
-		Status: corev1.ConditionFalse,
-	})
-	if err != nil {
-		return err
-	}
-
 	if err := rm.jobControl.CreateJob(restore, job); err != nil {
 		errMsg := fmt.Errorf("create restore %s/%s job %s failed, err: %v", ns, name, restoreJobName, err)
 		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
@@ -128,20 +126,25 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		})
 		return errMsg
 	}
-	return nil
+
+	return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		Type:   v1alpha1.RestoreScheduled,
+		Status: corev1.ConditionFalse,
+	})
 }
 
 func (rm *restoreManager) getBackupFromRestore(restore *v1alpha1.Restore) (*v1alpha1.Backup, string, error) {
+	backupNs := restore.Spec.BackupNamespace
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
-	backup, err := rm.backupLister.Backups(ns).Get(restore.Spec.Backup)
+	backup, err := rm.backupLister.Backups(backupNs).Get(restore.Spec.Backup)
 	if err != nil {
-		errMsg := fmt.Errorf("restore %s/%s get backup %s failed, err: %v", ns, name, restore.Spec.Backup, err)
+		errMsg := fmt.Errorf("restore %s/%s get backup %s/%s failed, err: %v", ns, name, backupNs, restore.Spec.Backup, err)
 		return nil, "BackupNotFound", errMsg
 	}
 	if backup.Status.BackupPath == "" {
-		errMsg := fmt.Errorf("restore %s/%s backup %s backupPath is empty", ns, name, restore.Spec.Backup)
+		errMsg := fmt.Errorf("restore %s/%s backup %s/%s backupPath is empty", ns, name, backupNs, restore.Spec.Backup)
 		return nil, "BackupPathIsEmpty", errMsg
 	}
 
@@ -168,6 +171,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore, backup *v1al
 		fmt.Sprintf("--restoreName=%s", name),
 		fmt.Sprintf("--tidbcluster=%s", restore.Spec.Cluster),
 		fmt.Sprintf("--backupPath=%s", backup.Status.BackupPath),
+		fmt.Sprintf("--backupName=%s", backup.GetName()),
 		fmt.Sprintf("--tidbservice=%s", controller.TiDBMemberName(restore.Spec.Cluster)),
 		fmt.Sprintf("--password=%s", password),
 		fmt.Sprintf("--user=%s", user),
@@ -181,10 +185,11 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore, backup *v1al
 			Labels: restoreLabel.Labels(),
 		},
 		Spec: corev1.PodSpec{
+			ServiceAccountName: constants.DefaultServiceAccountName,
 			Containers: []corev1.Container{
 				{
 					Name:            label.RestoreJobLabelVal,
-					Image:           controller.BackupManagerImage,
+					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullAlways,
 					VolumeMounts: []corev1.VolumeMount{
@@ -217,7 +222,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore, backup *v1al
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: controller.Int32Ptr(1),
+			BackoffLimit: controller.Int32Ptr(0),
 			Template:     *podSpec,
 		},
 	}
@@ -228,8 +233,11 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
-	// TODO: make pvc request storage size configurable
-	rs, err := resource.ParseQuantity(constants.DefaultStorageSize)
+	storageSize := constants.DefaultStorageSize
+	if restore.Spec.StorageSize != "" {
+		storageSize = restore.Spec.StorageSize
+	}
+	rs, err := resource.ParseQuantity(storageSize)
 	if err != nil {
 		errMsg := fmt.Errorf("backup %s/%s parse storage size %s failed, err: %v", ns, name, constants.DefaultStorageSize, err)
 		return "ParseStorageSizeFailed", errMsg

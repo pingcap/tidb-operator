@@ -147,7 +147,7 @@ func (rsc *Controller) processNextWorkItem() bool {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			glog.Infof("Restore: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("restore: %v, sync failed %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("Restore: %v, sync failed, err: %v, requeuing", key.(string), err))
 		}
 		rsc.queue.AddRateLimited(key)
 	} else {
