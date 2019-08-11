@@ -321,19 +321,21 @@ const (
 
 // BackupSpec contains the backup specification for a tidb cluster.
 type BackupSpec struct {
+	// Cluster is the Cluster to backup.
+	Cluster string `json:"cluster"`
+	// TidbSecretName is the name of secret which stores
+	// tidb cluster's username and password.
+	TidbSecretName string `json:"tidbSecretName"`
+	// Type is the backup type for tidb cluster.
+	Type BackupType `json:"backupType"`
 	// StorageType is the backup storage type.
 	StorageType BackupStorageType `json:"storageType"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
 	// StorageClassName is the storage class for backup job's PV.
 	StorageClassName string `json:"storageClassName"`
-	// Type is the backup type for tidb cluster.
-	Type BackupType `json:"backupType"`
-	// Cluster is the Cluster to backup.
-	Cluster string `json:"cluster"`
-	// SecretName is the name of secret which stores
-	// tidb cluster's username and password.
-	SecretName string `json:"secretName"`
+	// StorageSize is the request storage size for backup job
+	StorageSize string `json:"storageSize"`
 }
 
 // BackupConditionType represents a valid condition of a Backup.
@@ -409,6 +411,8 @@ type BackupScheduleSpec struct {
 	BackupTemplate BackupSpec `json:"backupTemplate"`
 	// StorageClassName is the storage class for backup job's PV.
 	StorageClassName string `json:"storageClassName"`
+	// StorageSize is the request storage size for backup job
+	StorageSize string `json:"storageSize"`
 }
 
 // BackupScheduleStatus represents the current state of a BackupSchedule.
@@ -471,13 +475,15 @@ type RestoreSpec struct {
 	Cluster string `json:"cluster"`
 	// Backup represents the backup object to be restored.
 	Backup string `json:"backup"`
-	// BackupPath is the location of the backup.
-	BackupPath string `json:"backupPath"`
+	// Namespace is the namespace of the backup.
+	BackupNamespace string `json:"backupNamespace"`
 	// SecretName is the name of the secret which stores
 	// tidb cluster's username and password.
 	SecretName string `json:"secretName"`
 	// StorageClassName is the storage class for restore job's PV.
 	StorageClassName string `json:"storageClassName"`
+	// StorageSize is the request storage size for restore job
+	StorageSize string `json:"storageSize"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.
