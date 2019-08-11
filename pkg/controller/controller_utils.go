@@ -44,8 +44,8 @@ var (
 	// DefaultBackupStorageClassName is the default storageClassName for backup and restore job
 	DefaultBackupStorageClassName string
 
-	// BackupManagerImage is the image of backup manager tool
-	BackupManagerImage string
+	// TidbBackupManagerImage is the image of tidb backup manager tool
+	TidbBackupManagerImage string
 
 	// ClusterScoped controls whether operator should manage kubernetes cluster wide TiDB clusters
 	ClusterScoped bool
