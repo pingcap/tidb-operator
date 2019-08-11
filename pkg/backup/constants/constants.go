@@ -14,6 +14,12 @@
 package constants
 
 const (
+	// TimeFormat is the time format for generate backup CR name
+	TimeFormat = "2006-01-02t15-04-05"
+
+	// DefaultServiceAccountName is the default name of the ServiceAccount to use to run backup and restore's job pod.
+	DefaultServiceAccountName = "tidb-backup-manager"
+
 	// BackupRootPath is the root path to backup data
 	BackupRootPath = "/backup"
 
