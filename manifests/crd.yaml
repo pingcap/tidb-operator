@@ -126,28 +126,24 @@ spec:
     shortNames:
     - bk
   additionalPrinterColumns:
-  - name: BackupType
-    type: string
-    description: The backup type for tidb cluster
-    JSONPath: .spec.Type
   - name: StorageType
     type: string
     description: The storage type of backup data
-    JSONPath: .spec.StorageType
+    JSONPath: .spec.storageType
   - name: BackupSize
     type: integer
     description: The data size of the backup
-    JSONPath: .status.BackupSize
+    JSONPath: .status.backupSize
   - name: Started
     type: date
     description: The time at which the backup was started
     priority: 1
-    JSONPath: .status.TimeStarted
+    JSONPath: .status.timeStarted
   - name: Completed
     type: date
     description: The time at which the backup was completed
     priority: 1
-    JSONPath: .status.TimeCompleted
+    JSONPath: .status.timeCompleted
 
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -176,17 +172,17 @@ spec:
   - name: Backup
     type: string
     description: The backup that used to restore
-    JSONPath: .spec.Backup
+    JSONPath: .spec.backup
   - name: Started
     type: date
     description: The time at which the backup was started
     priority: 1
-    JSONPath: .status.TimeStarted
+    JSONPath: .status.timeStarted
   - name: Completed
     type: date
     description: The time at which the restore was completed
     priority: 1
-    JSONPath: .status.TimeCompleted
+    JSONPath: .status.timeCompleted
 
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -215,18 +211,18 @@ spec:
   - name: Schedule
     type: string
     description: The cron format string used for backup scheduling.
-    JSONPath: .spec.Schedule
+    JSONPath: .spec.schedule
   - name: MaxBackups
     type: integer
     description: The max number of backups we want to keep.
-    JSONPath: .spec.MaxBackups
+    JSONPath: .spec.maxBackups
   - name: LastBackup
     type: string
     description: The last backup CR name
     priority: 1
-    JSONPath: .status.LastBackup
+    JSONPath: .status.lastBackup
   - name: LastBackupTime
     type: date
     description: The last time the backup was successfully created
     priority: 1
-    JSONPath: .status.LastBackupTime
+    JSONPath: .status.lastBackupTime
