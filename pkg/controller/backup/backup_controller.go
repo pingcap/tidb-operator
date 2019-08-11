@@ -98,7 +98,7 @@ func NewController(
 	}
 
 	backupInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: bkc.addBackup,
+		AddFunc: bkc.enqueueBackup,
 		UpdateFunc: func(old, cur interface{}) {
 			bkc.updateBackup(cur)
 		},
@@ -146,9 +146,9 @@ func (bkc *Controller) processNextWorkItem() bool {
 	defer bkc.queue.Done(key)
 	if err := bkc.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
-			glog.Infof("backup: %v, still need sync: %v, requeuing", key.(string), err)
+			glog.Infof("Backup: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("backup: %v, sync failed %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("Backup: %v, sync failed, err: %v, requeuing", key.(string), err))
 		}
 		bkc.queue.AddRateLimited(key)
 	} else {
@@ -184,27 +184,25 @@ func (bkc *Controller) syncBackup(backup *v1alpha1.Backup) error {
 	return bkc.control.UpdateBackup(backup)
 }
 
-func (bkc *Controller) addBackup(obj interface{}) {
-	backup := obj.(*v1alpha1.Backup)
-	ns := backup.GetNamespace()
-	name := backup.GetName()
-
-	if v1alpha1.IsBackupScheduled(backup) {
-		glog.Infof("Backup %s/%s is already scheduled, skipping", ns, name)
-		return
-	}
-
-	glog.V(4).Infof("new backup object %s/%s enqueue", ns, name)
-	bkc.enqueueBackup(backup)
-}
-
 func (bkc *Controller) updateBackup(cur interface{}) {
 	newBackup := cur.(*v1alpha1.Backup)
 	ns := newBackup.GetNamespace()
 	name := newBackup.GetName()
 
+	if newBackup.DeletionTimestamp != nil {
+		// the backup is being deleted, we need to do some cleanup work, enqueue backup.
+		glog.Infof("Backup %s/%s is being deleted", ns, name)
+		bkc.enqueueBackup(newBackup)
+		return
+	}
+
 	if v1alpha1.IsBackupComplete(newBackup) {
 		glog.V(4).Infof("Backup %s/%s is Complete, skipping.", ns, name)
+		return
+	}
+
+	if v1alpha1.IsBackupFailed(newBackup) {
+		glog.Warningf("Backup %s/%s is already failed, current policy does not retry, waiting for the next backup, skipping", ns, name)
 		return
 	}
 
