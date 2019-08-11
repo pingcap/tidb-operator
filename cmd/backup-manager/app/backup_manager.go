@@ -14,6 +14,8 @@
 package app
 
 import (
+	"flag"
+
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/cmd"
 	"k8s.io/apiserver/pkg/util/logs"
 )
@@ -21,6 +23,7 @@ import (
 func Run() error {
 	logs.InitLogs()
 	defer logs.FlushLogs()
+	flag.CommandLine.Parse([]string{})
 
 	command := cmd.NewBackupMgrCommand()
 	return command.Execute()
