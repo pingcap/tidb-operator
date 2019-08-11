@@ -37,8 +37,19 @@ func CheckAllKeysExistInSecret(secret *corev1.Secret, keys ...string) (string, b
 }
 
 // GenerateCephCertEnvVar generate the env info in order to access ceph
-func GenerateCephCertEnvVar(secret *corev1.Secret, endpoint string) []corev1.EnvVar {
-	return []corev1.EnvVar{
+func GenerateCephCertEnvVar(secret *corev1.Secret, endpoint string) ([]corev1.EnvVar, error) {
+	var envVars []corev1.EnvVar
+
+	if !strings.Contains(endpoint, "://") {
+		// convert xxx.xxx.xxx.xxx:port to http://xxx.xxx.xxx.xxx:port
+		// the endpoint must start with http://
+		endpoint = fmt.Sprintf("http://%s", endpoint)
+	}
+
+	if !strings.HasPrefix(endpoint, "http://") {
+		return envVars, fmt.Errorf("cenph endpoint URI %s must start with http:// scheme", endpoint)
+	}
+	envVars = []corev1.EnvVar{
 		{
 			Name:  "S3_ENDPOINT",
 			Value: endpoint,
@@ -52,6 +63,7 @@ func GenerateCephCertEnvVar(secret *corev1.Secret, endpoint string) []corev1.Env
 			Value: string(secret.Data[constants.S3SecretKey]),
 		},
 	}
+	return envVars, nil
 }
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
@@ -76,7 +88,10 @@ func GenerateStorageCertEnv(backup *v1alpha1.Backup, secretLister corelisters.Se
 			return certEnv, "KeyNotExist", err
 		}
 
-		certEnv = GenerateCephCertEnvVar(secret, backup.Spec.Ceph.Endpoint)
+		certEnv, err = GenerateCephCertEnvVar(secret, backup.Spec.Ceph.Endpoint)
+		if err != nil {
+			return certEnv, "InvalidCephEndpoint", err
+		}
 	default:
 		err := fmt.Errorf("backup %s/%s don't support storage type %s", ns, name, backup.Spec.StorageType)
 		return certEnv, "NotSupportStorageType", err
@@ -88,17 +103,18 @@ func GenerateStorageCertEnv(backup *v1alpha1.Backup, secretLister corelisters.Se
 func GetTidbUserAndPassword(backup *v1alpha1.Backup, secretLister corelisters.SecretLister) (user, password, reason string, err error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
+	tidbSecretName := backup.Spec.TidbSecretName
 
-	secret, err := secretLister.Secrets(ns).Get(backup.Spec.SecretName)
+	secret, err := secretLister.Secrets(ns).Get(tidbSecretName)
 	if err != nil {
-		err = fmt.Errorf("backup %s/%s get tidb secret %s failed, err: %v", ns, name, backup.Spec.SecretName, err)
+		err = fmt.Errorf("backup %s/%s get tidb secret %s failed, err: %v", ns, name, tidbSecretName, err)
 		reason = "GetTidbSecretFailed"
 		return
 	}
 
 	keyStr, exist := CheckAllKeysExistInSecret(secret, constants.TidbUserKey, constants.TidbPasswordKey)
 	if !exist {
-		err = fmt.Errorf("backup %s/%s, tidb secret %s missing some keys %s", ns, name, backup.Spec.SecretName, keyStr)
+		err = fmt.Errorf("backup %s/%s, tidb secret %s missing some keys %s", ns, name, tidbSecretName, keyStr)
 		reason = "KeyNotExist"
 		return
 	}
