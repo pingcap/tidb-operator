@@ -21,26 +21,35 @@ import (
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/robfig/cron"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	batchlisters "k8s.io/client-go/listers/batch/v1"
 )
 
 type backupScheduleManager struct {
-	backupControl controller.BackupControlInterface
 	backupLister  listers.BackupLister
+	backupControl controller.BackupControlInterface
+	jobLister     batchlisters.JobLister
+	jobControl    controller.JobControlInterface
 }
 
 // NewBackupScheduleManager return a *backupScheduleManager
 func NewBackupScheduleManager(
-	backupControl controller.BackupControlInterface,
 	backupLister listers.BackupLister,
+	backupControl controller.BackupControlInterface,
+	jobLister batchlisters.JobLister,
+	jobControl controller.JobControlInterface,
 ) backup.BackupScheduleManager {
 	return &backupScheduleManager{
-		backupControl,
 		backupLister,
+		backupControl,
+		jobLister,
+		jobControl,
 	}
 }
 
@@ -54,8 +63,13 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 	}
 
 	scheduledTime, err := getLastScheduledTime(bs)
-	if scheduledTime != nil {
+	if scheduledTime == nil {
 		return err
+	}
+
+	// delete the last backup job for release the backup PVC
+	if err := bm.deleteLastBackupJob(bs); err != nil {
+		return nil
 	}
 
 	backup, err := bm.createBackup(bs, *scheduledTime)
@@ -68,12 +82,39 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 	return nil
 }
 
+func (bm *backupScheduleManager) deleteLastBackupJob(bs *v1alpha1.BackupSchedule) error {
+	ns := bs.GetNamespace()
+	bsName := bs.GetName()
+
+	backup, err := bm.backupLister.Backups(ns).Get(bs.Status.LastBackup)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, bs.Status.LastBackup, err)
+	}
+
+	jobName := backup.GetBackupJobName()
+	job, err := bm.jobLister.Jobs(ns).Get(jobName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("backup schedule %s/%s, get backup %s job %s failed, err: %v", ns, bsName, backup.GetName(), jobName, err)
+	}
+
+	return bm.jobControl.DeleteJob(backup, job)
+}
+
 func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedule) error {
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
 	backup, err := bm.backupLister.Backups(ns).Get(bs.Status.LastBackup)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
 		return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, bs.Status.LastBackup, err)
 	}
 
@@ -112,7 +153,7 @@ func getLastScheduledTime(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
 		return nil, nil
 	}
 
-	scheduledTimes := []time.Time{}
+	var scheduledTimes []time.Time
 	for t := sched.Next(earliestTime); !t.After(now); t = sched.Next(t) {
 		scheduledTimes = append(scheduledTimes, t)
 		// If there is a bug somewhere, or incorrect clock
@@ -151,6 +192,14 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 		}
 	}
 
+	if backupSpec.StorageSize == "" {
+		if bs.Spec.StorageSize != "" {
+			backupSpec.StorageSize = bs.Spec.StorageSize
+		} else {
+			backupSpec.StorageSize = constants.DefaultStorageSize
+		}
+	}
+
 	bsLabel := label.NewBackupSchedule().Instance(bs.Spec.BackupTemplate.Cluster).BackupSchedule(bsName)
 
 	backup := &v1alpha1.Backup{
@@ -159,6 +208,9 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 			Namespace: ns,
 			Name:      bs.GetBackupCRDName(timestamp),
 			Labels:    bsLabel.Labels(),
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetBackupScheduleOwnerRef(bs),
+			},
 		},
 	}
 

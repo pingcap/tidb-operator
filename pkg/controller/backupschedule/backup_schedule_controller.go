@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -58,6 +59,7 @@ func NewController(
 	kubeCli kubernetes.Interface,
 	cli versioned.Interface,
 	informerFactory informers.SharedInformerFactory,
+	kubeInformerFactory kubeinformers.SharedInformerFactory,
 ) *Controller {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
@@ -67,8 +69,10 @@ func NewController(
 
 	bsInformer := informerFactory.Pingcap().V1alpha1().BackupSchedules()
 	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
+	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
 	backupControl := controller.NewRealBackupControl(cli, recorder)
 	statusUpdater := controller.NewRealBackupScheduleStatusUpdater(cli, bsInformer.Lister(), recorder)
+	jobControl := controller.NewRealJobControl(kubeCli, recorder)
 
 	bsc := &Controller{
 		kubeClient: kubeCli,
@@ -76,8 +80,10 @@ func NewController(
 		control: NewDefaultBackupScheduleControl(
 			statusUpdater,
 			backupschedule.NewBackupScheduleManager(
-				backupControl,
 				backupInformer.Lister(),
+				backupControl,
+				jobInformer.Lister(),
+				jobControl,
 			),
 			recorder,
 		),
@@ -138,7 +144,7 @@ func (bsc *Controller) processNextWorkItem() bool {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			glog.Infof("BackupSchedule: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("BackupSchedule: %v, sync failed %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("BackupSchedule: %v, sync failed, err: %v, requeuing", key.(string), err))
 		}
 		bsc.queue.AddRateLimited(key)
 	} else {
