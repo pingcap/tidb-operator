@@ -134,6 +134,10 @@ spec:
     type: integer
     description: The data size of the backup
     JSONPath: .status.backupSize
+  - name: CommitTS
+    type: string
+    description: The commit ts of tidb cluster dump
+    JSONPath: .status.commitTs
   - name: Started
     type: date
     description: The time at which the backup was started
