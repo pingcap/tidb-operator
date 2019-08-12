@@ -104,43 +104,40 @@ var affinityTemp string = `{{.Kind}}:
           topologyKey: {{.TopologyKey}}
           namespaces:
           - {{.Namespace}}
-binlog:
-  pump:
-    tolerations:
-    - key: node-role
-      operator: Equal
-      value: tidb
-      effect: "NoSchedule"
-    affinity:
-      podAntiAffinity:
-        preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 50
-          podAffinityTerm:
-            topologyKey: {{.TopologyKey}}
-            namespaces:
-            - {{.Namespace}}
-  drainer:
-    tolerations:
-    - key: node-role
-      operator: Equal
-      value: tidb
-      effect: "NoSchedule"
-    affinity:
-      podAntiAffinity:
-        preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 50
-          podAffinityTerm:
-            topologyKey: {{.TopologyKey}}
-            namespaces:
-            - {{.Namespace}}
 `
 
 var binlogTemp string = `binlog:
 {{if .PumpConfig}}  pump:
+    tolerations:
+    - key: node-role
+      operator: Equal
+      value: tidb
+      effect: "NoSchedule"
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 50
+          podAffinityTerm:
+            topologyKey: {{.TopologyKey}}
+            namespaces:
+            - {{.Namespace}}
   	config: |
 {{range .PumpConfig}}      {{.}}
 {{end}}{{end}}
 {{if .DrainerConfig}}  drainer:
+    tolerations:
+    - key: node-role
+      operator: Equal
+      value: tidb
+      effect: "NoSchedule"
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 50
+          podAffinityTerm:
+            topologyKey: {{.TopologyKey}}
+            namespaces:
+            - {{.Namespace}}
     config: |
 {{range .DrainerConfig}}      {{.}}
 {{end}}{{end}}
