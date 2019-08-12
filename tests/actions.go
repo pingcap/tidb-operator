@@ -2693,7 +2693,7 @@ func (oa *operatorActions) CheckManualPauseTiDB(info *TidbClusterConfig) error {
 	}
 
 	// wait for the tidb statefulset is upgrade to the protect one
-	if err = wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn); err != nil {
+	if err = wait.Poll(DefaultPollInterval, 30*time.Minute, fn); err != nil {
 		return fmt.Errorf("fail to upgrade to annotation TiDB pod : %v", err)
 	}
 
