@@ -92,7 +92,6 @@ func initErrorMetric() prometheus.Counter {
 	})
 }
 
-
 //AddAnnotation adds an annotation to grafana.
 func (cli *Client) AddAnnotation(annotation Annotation) error {
 	body, err := annotation.getBody()
