@@ -173,7 +173,8 @@ func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node st
 				if _, exist := affectedPods[failureStore.PodName]; exist {
 					err := fmt.Errorf("cluster: [%s] the tikv store[%s] should be mark failure after %s", info.FullName(), failureStore.PodName, deadline.Format(time.RFC3339))
 					glog.Errorf(err.Error())
-					return false, err
+					// There may have been a failover before
+					return false, nil
 				}
 			}
 
@@ -276,7 +277,7 @@ func (oa *operatorActions) getPodsByNode(info *TidbClusterConfig, node string) (
 }
 
 func (oa *operatorActions) CheckFailoverOrDie(clusters []*TidbClusterConfig, faultNode string) {
-	if err := wait.Poll(1*time.Minute, 30*time.Minute, func() (bool, error) {
+	if err := wait.Poll(1*time.Minute, 60*time.Minute, func() (bool, error) {
 		var passes []bool
 		for i := range clusters {
 			pass, err := oa.CheckFailover(clusters[i], faultNode)
@@ -409,7 +410,7 @@ func (oa *operatorActions) tidbFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluste
 	failure := false
 	for _, failureMember := range tc.Status.TiDB.FailureMembers {
 		if failureMember.PodName == pod.GetName() {
-			glog.Infof("tidbCluster:[%s/%s]'s store pod:[%s] have not become failuremember", tc.Namespace, tc.Name, pod.Name)
+			glog.Infof("tidbCluster:[%s/%s]'s store pod:[%s] have become failuremember", tc.Namespace, tc.Name, pod.Name)
 			failure = true
 			break
 		}
@@ -472,8 +473,33 @@ func (oa *operatorActions) GetNodeMap(info *TidbClusterConfig, component string)
 	return nodeMap, nil
 }
 
-func (oa *operatorActions) CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
-	glog.Infof("check k8s/operator/tidbCluster status when one etcd down")
+func (oa *operatorActions) CheckKubeletDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
+	glog.Infof("check k8s/operator/tidbCluster status when kubelet down")
+	time.Sleep(10 * time.Minute)
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckK8sAvailable(nil, nil)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("k8s cluster is available.")
+		err = oa.CheckOperatorAvailable(operatorConfig)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("tidb operator is available.")
+		err = oa.CheckTidbClustersAvailable(clusters)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("all clusters are available")
+		return nil
+	})
+}
+
+func (oa *operatorActions) CheckEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
+	glog.Infof("check k8s/operator/tidbCluster status when etcd down")
+	// kube-apiserver may block 15 min
+	time.Sleep(20 * time.Minute)
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(nil, nil)
 		if err != nil {
@@ -687,14 +713,22 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, exc
 }
 
 func (oa *operatorActions) CheckOperatorAvailable(operatorConfig *OperatorConfig) error {
-	return wait.Poll(3*time.Second, 3*time.Minute, func() (bool, error) {
+	var errCount int
+	var e error
+	return wait.Poll(10*time.Second, 3*time.Minute, func() (bool, error) {
+		if errCount >= 10 {
+			return true, e
+		}
 		controllerDeployment, err := oa.kubeCli.AppsV1().Deployments(operatorConfig.Namespace).Get(tidbControllerName, metav1.GetOptions{})
 		if err != nil {
 			glog.Errorf("failed to get deployment：%s failed,error:%v", tidbControllerName, err)
 			return false, nil
 		}
 		if controllerDeployment.Status.AvailableReplicas != *controllerDeployment.Spec.Replicas {
-			return false, fmt.Errorf("the %s is not available", tidbControllerName)
+			e = fmt.Errorf("the %s is not available", tidbControllerName)
+			glog.Error(e)
+			errCount++
+			return false, nil
 		}
 		schedulerDeployment, err := oa.kubeCli.AppsV1().Deployments(operatorConfig.Namespace).Get(tidbSchedulerName, metav1.GetOptions{})
 		if err != nil {
@@ -702,14 +736,17 @@ func (oa *operatorActions) CheckOperatorAvailable(operatorConfig *OperatorConfig
 			return false, nil
 		}
 		if schedulerDeployment.Status.AvailableReplicas != *schedulerDeployment.Spec.Replicas {
-			return false, fmt.Errorf("the %s is not available", tidbSchedulerName)
+			e = fmt.Errorf("the %s is not available", tidbSchedulerName)
+			glog.Error(e)
+			errCount++
+			return false, nil
 		}
 		return true, nil
 	})
 }
 
 func (oa *operatorActions) CheckTidbClustersAvailable(infos []*TidbClusterConfig) error {
-	return wait.Poll(3*time.Second, 30*time.Second, func() (bool, error) {
+	return wait.Poll(3*time.Second, DefaultPollTimeout, func() (bool, error) {
 		for _, info := range infos {
 			succ, err := oa.addDataToCluster(info)
 			if err != nil {

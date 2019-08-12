@@ -58,6 +58,11 @@ This document defines the roadmap for TiDB Operator development.
 - [x] Automate Chaos tests
 - [x] Bugfix
 
-## v1.0.0-ga: (2019-07-26)
-- [ ] Stable for production deployment
-- [ ] Architecture & design document
+## v1.0.0: (2019-07-30)
+- [x] Stable for production deployment
+- [x] Architecture & design document
+
+## v1.1
+- [ ] Support multiple drainers
+- [ ] Create all statefulsets immediately
+- [ ] Easy-to-use backup feature: support backup and restore with CRD

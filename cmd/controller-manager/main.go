@@ -25,9 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/controller/backup"
-	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
-	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
 	"github.com/pingcap/tidb-operator/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,7 +48,6 @@ var (
 	leaseDuration      = 15 * time.Second
 	renewDuration      = 5 * time.Second
 	retryPeriod        = 3 * time.Second
-	resyncDuration     = 30 * time.Second
 	waitDuration       = 5 * time.Second
 )
 
@@ -65,6 +61,7 @@ func init() {
 	flag.DurationVar(&pdFailoverPeriod, "pd-failover-period", time.Duration(5*time.Minute), "PD failover period default(5m)")
 	flag.DurationVar(&tikvFailoverPeriod, "tikv-failover-period", time.Duration(5*time.Minute), "TiKV failover period default(5m)")
 	flag.DurationVar(&tidbFailoverPeriod, "tidb-failover-period", time.Duration(5*time.Minute), "TiDB failover period")
+	flag.DurationVar(&controller.ResyncDuration, "resync-duration", time.Duration(30*time.Second), "Resync time of informer")
 	flag.BoolVar(&controller.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
 
 	flag.Parse()
@@ -107,18 +104,18 @@ func main() {
 	var informerFactory informers.SharedInformerFactory
 	var kubeInformerFactory kubeinformers.SharedInformerFactory
 	if controller.ClusterScoped {
-		informerFactory = informers.NewSharedInformerFactory(cli, resyncDuration)
-		kubeInformerFactory = kubeinformers.NewSharedInformerFactory(kubeCli, resyncDuration)
+		informerFactory = informers.NewSharedInformerFactory(cli, controller.ResyncDuration)
+		kubeInformerFactory = kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
 	} else {
 		options := []informers.SharedInformerOption{
 			informers.WithNamespace(ns),
 		}
-		informerFactory = informers.NewSharedInformerFactoryWithOptions(cli, resyncDuration, options...)
+		informerFactory = informers.NewSharedInformerFactoryWithOptions(cli, controller.ResyncDuration, options...)
 
 		kubeoptions := []kubeinformers.SharedInformerOption{
 			kubeinformers.WithNamespace(ns),
 		}
-		kubeInformerFactory = kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, resyncDuration, kubeoptions...)
+		kubeInformerFactory = kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, controller.ResyncDuration, kubeoptions...)
 	}
 
 	rl := resourcelock.EndpointsLock{
@@ -134,19 +131,21 @@ func main() {
 	}
 
 	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
-	backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-	restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-	bsController := backupschedule.NewController(kubeCli, cli, informerFactory)
+	//backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+	//restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+	//bsController := backupschedule.NewController(kubeCli, cli, informerFactory)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go informerFactory.Start(controllerCtx.Done())
 	go kubeInformerFactory.Start(controllerCtx.Done())
 
 	onStarted := func(ctx context.Context) {
-		go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
-		go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
-		go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
-		wait.Forever(func() { tcController.Run(workers, ctx.Done()) }, waitDuration)
+		// TODO: Comment out the controller entry of the backup related function, uncomment it after the function is completed
+		//go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
+		//go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
+		//go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
+		//wait.Forever(func() { tcController.Run(workers, ctx.Done()) }, waitDuration)
+		tcController.Run(workers, ctx.Done())
 	}
 	onStopped := func() {
 		glog.Fatalf("leader election lost")

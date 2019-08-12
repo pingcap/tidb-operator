@@ -1,3 +1,3 @@
 # Deploy on Aliyun (Alibaba Cloud)
 
-Please see full documentation [here](../deploy/aliyun/README.md).
+This document has been moved to [https://pingcap.com/docs/v3.0/tidb-in-kubernetes/deploy/alibaba-cloud/](https://pingcap.com/docs/v3.0/tidb-in-kubernetes/deploy/alibaba-cloud/).

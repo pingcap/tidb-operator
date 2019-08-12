@@ -30,6 +30,14 @@ spec:
         app.kubernetes.io/managed-by: tidb-operator
         app.kubernetes.io/component: drainer
     spec:
+    {{- if .Values.binlog.drainer.affinity }}
+      affinity:
+{{ toYaml .Values.binlog.drainer.affinity | indent 8 }}
+    {{- end }}
+    {{- if .Values.binlog.drainer.tolerations }}
+      tolerations:
+{{ toYaml .Values.binlog.drainer.tolerations | indent 8 }}
+    {{- end }}
       containers:
       - name: drainer
         image: {{ .Values.binlog.drainer.image }}
