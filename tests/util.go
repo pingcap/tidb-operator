@@ -107,7 +107,7 @@ var affinityTemp string = `{{.Kind}}:
 `
 
 var binlogTemp string = `binlog:
-{{if .PumpConfig}}  pump:
+  pump:
     tolerations:
     - key: node-role
       operator: Equal
@@ -121,10 +121,11 @@ var binlogTemp string = `binlog:
             topologyKey: {{.TopologyKey}}
             namespaces:
             - {{.Namespace}}
+{{if .PumpConfig}}
   	config: |
 {{range .PumpConfig}}      {{.}}
 {{end}}{{end}}
-{{if .DrainerConfig}}  drainer:
+  drainer:
     tolerations:
     - key: node-role
       operator: Equal
@@ -138,6 +139,7 @@ var binlogTemp string = `binlog:
             topologyKey: {{.TopologyKey}}
             namespaces:
             - {{.Namespace}}
+{{if .DrainerConfig}}
     config: |
 {{range .DrainerConfig}}      {{.}}
 {{end}}{{end}}
@@ -155,6 +157,8 @@ type AffinityInfo struct {
 type BinLogInfo struct {
 	PumpConfig    []string
 	DrainerConfig []string
+	Namespace     string
+	TopologyKey   string
 }
 
 func GetSubValuesOrDie(clusterName, namespace, topologyKey string, pdConfig []string, tikvConfig []string, tidbConfig []string, pumpConfig []string, drainerConfig []string) string {
@@ -189,7 +193,7 @@ func GetSubValuesOrDie(clusterName, namespace, topologyKey string, pdConfig []st
 		slack.NotifyAndPanic(err)
 	}
 	binlogbuff := new(bytes.Buffer)
-	err = btemp.Execute(binlogbuff, &BinLogInfo{PumpConfig: pumpConfig, DrainerConfig: drainerConfig})
+	err = btemp.Execute(binlogbuff, &BinLogInfo{PumpConfig: pumpConfig, DrainerConfig: drainerConfig, Namespace: namespace, TopologyKey: topologyKey})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
