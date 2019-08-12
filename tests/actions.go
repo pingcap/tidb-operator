@@ -2350,7 +2350,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		for _, pod := range pods.Items {
 			if !oa.pumpHealth(info, pod.Spec.Hostname) {
 				glog.Errorf("some pods is not health %s", pumpStatefulSetName)
-				// return false, nil
+				return false, nil
 			}
 			glog.Info(pod.Spec.Affinity)
 			if len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
@@ -2401,7 +2401,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		for _, pod := range pods.Items {
 			if !oa.drainerHealth(info, pod.Spec.Hostname) {
 				glog.Errorf("some pods is not health %s", drainerStatefulSetName)
-				// return false, nil
+				return false, nil
 			}
 			glog.Info(pod.Spec.Affinity)
 			if len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
@@ -2501,7 +2501,7 @@ func (oa *operatorActions) CleanWebHookAndServiceOrDie(info *OperatorConfig) {
 }
 
 type pumpStatus struct {
-	StatusMap map[string]*nodeStatus
+	StatusMap map[string]*nodeStatus `json:"statusMap"`
 }
 
 type nodeStatus struct {
