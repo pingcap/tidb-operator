@@ -53,24 +53,26 @@ func (bo *BackupOpts) getBackupRelativePath() string {
 	return fmt.Sprintf("%s_%s/%s", bo.Namespace, bo.TcName, backupName)
 }
 
-func (bo *BackupOpts) getDestBucketURI() string {
-	return fmt.Sprintf("%s://%s%s", bo.StorageType, bo.getBackupRelativePath(), constants.DefaultArchiveExtention)
+func (bo *BackupOpts) getDestBucketURI(remotePath string) string {
+	return fmt.Sprintf("%s://%s", bo.StorageType, remotePath)
 }
 
 func (bo *BackupOpts) getTikvGCLifeTime(db *sql.DB) (string, error) {
 	var tikvGCTime string
-	row := db.QueryRow("select variable_value from ? where variable_name= ?", constants.TidbMetaTable, constants.TikvGCVariable)
+	sql := fmt.Sprintf("select variable_value from %s where variable_name= ?", constants.TidbMetaTable)
+	row := db.QueryRow(sql, constants.TikvGCVariable)
 	err := row.Scan(&tikvGCTime)
 	if err != nil {
-		return tikvGCTime, fmt.Errorf("query cluster %s %s failed, err: %v", bo, constants.TikvGCVariable, err)
+		return tikvGCTime, fmt.Errorf("query cluster %s %s failed, sql: %s, err: %v", bo, constants.TikvGCVariable, sql, err)
 	}
 	return tikvGCTime, nil
 }
 
 func (bo *BackupOpts) setTikvGClifeTime(db *sql.DB, gcTime string) error {
-	_, err := db.Exec("update ? set variable_value = ? where variable_name = ?", constants.TidbMetaTable, gcTime, constants.TikvGCVariable)
+	sql := fmt.Sprintf("update %s set variable_value = ? where variable_name = ?", constants.TidbMetaTable)
+	_, err := db.Exec(sql, gcTime, constants.TikvGCVariable)
 	if err != nil {
-		return fmt.Errorf("set cluster %s %s failed, err: %v", bo, constants.TikvGCVariable, err)
+		return fmt.Errorf("set cluster %s %s failed, sql: %s, err: %v", bo, constants.TikvGCVariable, sql, err)
 	}
 	return nil
 }
@@ -85,8 +87,8 @@ func (bo *BackupOpts) dumpTidbClusterData() (string, error) {
 		fmt.Sprintf("--outputdir=%s", bfPath),
 		fmt.Sprintf("--host=%s", bo.TidbSvc),
 		"--port=4000",
-		fmt.Sprintf("--User=%s", bo.User),
-		fmt.Sprintf("--Password=%s", bo.Password),
+		fmt.Sprintf("--user=%s", bo.User),
+		fmt.Sprintf("--password=%s", bo.Password),
 		"--long-query-guard=3600",
 		"--tidb-force-priority=LOW_PRIORITY",
 		"--verbose=3",
@@ -118,14 +120,9 @@ func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
 
 	// the backup was a success
 	// remove .tmp extension
-	rcMove := exec.Command("rclone", constants.RcloneConfigArg, "moveto", tmpDestBucket, destBucket)
-
-	if err := rcMove.Start(); err != nil {
-		return fmt.Errorf("cluster %s, start rclone moveto command falied, err: %v", bo, err)
-	}
-
-	if err := rcMove.Wait(); err != nil {
-		return fmt.Errorf("cluster %s, execute rclone moveto command falied, err: %v", bo, err)
+	output, err := exec.Command("rclone", constants.RcloneConfigArg, "moveto", tmpDestBucket, destBucket).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("cluster %s, execute rclone moveto command falied, output: %s, err: %v", bo, string(output), err)
 	}
 	return nil
 }
@@ -145,7 +142,7 @@ func (bo *BackupOpts) cleanRemoteBackupData(bucket string) error {
 }
 
 func (bo *BackupOpts) getDSN(db string) string {
-	return fmt.Sprintf("%s:%s@(%s:4000)/%s?/charset=utf8", bo.User, bo.Password, bo.TidbSvc, db)
+	return fmt.Sprintf("%s:%s@(%s:4000)/%s?charset=utf8", bo.User, bo.Password, bo.TidbSvc, db)
 }
 
 /*
@@ -193,9 +190,7 @@ func getBackupSize(backupPath string) (int64, error) {
 	if exist := util.IsFileExist(backupPath); !exist {
 		return size, fmt.Errorf("file %s does not exist or is not regular file", backupPath)
 	}
-	// Uses the same niceness level as cadvisor.fs does when running du
-	// Uses -B 1 to always scale to a blocksize of 1 byte
-	out, err := exec.Command("nice", "-n", "19", "du", "-s", "-B", "1", backupPath).CombinedOutput()
+	out, err := exec.Command("rclone", constants.RcloneConfigArg, "ls", backupPath).CombinedOutput()
 	if err != nil {
 		return size, fmt.Errorf("failed to get backup %s size, err: %v", backupPath, err)
 	}

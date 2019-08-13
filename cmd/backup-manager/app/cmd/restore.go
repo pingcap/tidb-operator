@@ -18,12 +18,14 @@ import (
 
 	// registry mysql drive
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/restore"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/tools/cache"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
@@ -66,6 +68,10 @@ func runRestore(restoreOpts restore.RestoreOpts, kubecfg string) error {
 	restoreInformer := informerFactory.Pingcap().V1alpha1().Restores()
 	statusUpdater := controller.NewRealRestoreConditionUpdater(cli, restoreInformer.Lister(), recorder)
 
-	rm := restore.NewRestoreManager(cli, statusUpdater, restoreOpts)
+	// waiting for the shared informer's store has synced.
+	cache.WaitForCacheSync(ctx.Done(), restoreInformer.Informer().HasSynced)
+
+	glog.Info("start to process restore")
+	rm := restore.NewRestoreManager(restoreInformer.Lister(), statusUpdater, restoreOpts)
 	return rm.ProcessRestore()
 }

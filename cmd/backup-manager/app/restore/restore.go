@@ -21,7 +21,6 @@ import (
 
 	"github.com/mholt/archiver"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
@@ -62,8 +61,6 @@ func (ro *RestoreOpts) downloadBackupData(localPath string) error {
 	if err := rcCopy.Wait(); err != nil {
 		return fmt.Errorf("cluster %s, execute rclone copyto command for download backup data %s failed, err: %v", ro, ro.BackupPath, err)
 	}
-
-	glog.Infof("download cluster %s backup data %s successfully", ro, ro.BackupPath)
 
 	return nil
 }

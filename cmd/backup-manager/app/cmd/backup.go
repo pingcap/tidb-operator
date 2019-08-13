@@ -18,12 +18,14 @@ import (
 
 	// registry mysql drive
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/tools/cache"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
@@ -64,6 +66,10 @@ func runBackup(backupOpts backup.BackupOpts, kubecfg string) error {
 	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
 	statusUpdater := controller.NewRealBackupConditionUpdater(cli, backupInformer.Lister(), recorder)
 
-	bm := backup.NewBackupManager(cli, statusUpdater, backupOpts)
+	// waiting for the shared informer's store has synced.
+	cache.WaitForCacheSync(ctx.Done(), backupInformer.Informer().HasSynced)
+
+	glog.Info("start to process backup")
+	bm := backup.NewBackupManager(backupInformer.Lister(), statusUpdater, backupOpts)
 	return bm.ProcessBackup()
 }
