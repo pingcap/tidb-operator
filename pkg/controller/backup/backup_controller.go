@@ -201,11 +201,6 @@ func (bkc *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	if v1alpha1.IsBackupFailed(newBackup) {
-		glog.Warningf("Backup %s/%s is already failed, current policy does not retry, waiting for the next backup, skipping", ns, name)
-		return
-	}
-
 	if v1alpha1.IsBackupScheduled(newBackup) {
 		glog.V(4).Infof("Backup %s/%s is already scheduled, skipping", ns, name)
 		return
