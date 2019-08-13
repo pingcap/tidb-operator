@@ -57,9 +57,9 @@ func (rjc *realJobControl) CreateJob(object runtime.Object, job *batchv1.Job) er
 
 	_, err := rjc.kubeCli.BatchV1().Jobs(ns).Create(job)
 	if err != nil {
-		glog.Errorf("failed to create Job: [%s/%s], %s: %s, %v", ns, jobName, kind, instanceName, err)
+		glog.Errorf("failed to create %s job: [%s/%s], cluster: %s, err: %v", strings.ToLower(kind), ns, jobName, instanceName, err)
 	} else {
-		glog.V(4).Infof("create Job: [%s/%s] successfully, %s: %s", ns, jobName, kind, instanceName)
+		glog.V(4).Infof("create %s job: [%s/%s] successfully, cluster: %s", strings.ToLower(kind), ns, jobName, instanceName)
 	}
 	rjc.recordJobEvent("create", object, job, err)
 	return err
@@ -77,9 +77,9 @@ func (rjc *realJobControl) DeleteJob(object runtime.Object, job *batchv1.Job) er
 	}
 	err := rjc.kubeCli.BatchV1().Jobs(ns).Delete(jobName, opts)
 	if err != nil {
-		glog.Errorf("failed to delete Job: [%s/%s], %s/%s, err: %v", ns, jobName, kind, instanceName, err)
+		glog.Errorf("failed to delete %s job: [%s/%s], cluster: %s, err: %v", strings.ToLower(kind), ns, jobName, instanceName, err)
 	} else {
-		glog.V(4).Infof("delete job: [%s/%s] successfully, %s/%s", ns, jobName, kind, instanceName)
+		glog.V(4).Infof("delete %s job: [%s/%s] successfully, cluster: %s", strings.ToLower(kind), ns, jobName, instanceName)
 	}
 	rjc.recordJobEvent("delete", object, job, err)
 	return err
@@ -92,13 +92,13 @@ func (rjc *realJobControl) recordJobEvent(verb string, obj runtime.Object, job *
 	kind := obj.GetObjectKind().GroupVersionKind().Kind
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s Job %s/%s for %s/%s successful",
-			strings.ToLower(verb), ns, jobName, kind, instanceName)
+		msg := fmt.Sprintf("%s job %s/%s for cluster %s %s successful",
+			strings.ToLower(verb), ns, jobName, instanceName, strings.ToLower(kind))
 		rjc.recorder.Event(obj, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s Job %s/%s for %s/%s failed error: %s",
-			strings.ToLower(verb), ns, jobName, kind, instanceName, err)
+		msg := fmt.Sprintf("%s job %s/%s for cluster %s %s failed error: %s",
+			strings.ToLower(verb), ns, jobName, instanceName, strings.ToLower(kind), err)
 		rjc.recorder.Event(obj, corev1.EventTypeWarning, reason, msg)
 	}
 }
