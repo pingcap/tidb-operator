@@ -2501,7 +2501,7 @@ func (oa *operatorActions) CleanWebHookAndServiceOrDie(info *OperatorConfig) {
 }
 
 type pumpStatus struct {
-	StatusMap map[string]*nodeStatus `json:"statusMap"`
+	StatusMap map[string]*nodeStatus `json:"StatusMap"`
 }
 
 type nodeStatus struct {
@@ -2509,7 +2509,7 @@ type nodeStatus struct {
 }
 
 func (oa *operatorActions) pumpHealth(info *TidbClusterConfig, hostName string) bool {
-	pumpHealthURL := fmt.Sprintf("%s.%s-pump.%s:8250/status", hostName, info.ClusterName, info.Namespace)
+	pumpHealthURL := fmt.Sprintf("http://%s.%s-pump.%s:8250/status", hostName, info.ClusterName, info.Namespace)
 	res, err := http.Get(pumpHealthURL)
 	if err != nil {
 		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, pumpHealthURL, err)
@@ -2547,7 +2547,7 @@ type drainerStatus struct {
 }
 
 func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName string) bool {
-	drainerHealthURL := fmt.Sprintf("%s.%s-drainer.%s:8249/status", hostName, info.ClusterName, info.Namespace)
+	drainerHealthURL := fmt.Sprintf("http://%s.%s-drainer.%s:8249/status", hostName, info.ClusterName, info.Namespace)
 	res, err := http.Get(drainerHealthURL)
 	if err != nil {
 		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthURL, err)
