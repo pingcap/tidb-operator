@@ -29,11 +29,11 @@ var (
 	// controllerKind contains the schema.GroupVersionKind for tidbcluster controller type.
 	controllerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbCluster")
 
-	// backupControllerKind contains the schema.GroupVersionKind for backup controller type.
-	backupControllerKind = v1alpha1.SchemeGroupVersion.WithKind("Backup")
+	// BackupControllerKind contains the schema.GroupVersionKind for backup controller type.
+	BackupControllerKind = v1alpha1.SchemeGroupVersion.WithKind("Backup")
 
-	// restoreControllerKind contains the schema.GroupVersionKind for restore controller type.
-	restoreControllerKind = v1alpha1.SchemeGroupVersion.WithKind("Restore")
+	// RestoreControllerKind contains the schema.GroupVersionKind for restore controller type.
+	RestoreControllerKind = v1alpha1.SchemeGroupVersion.WithKind("Restore")
 
 	// backupScheduleControllerKind contains the schema.GroupVersionKind for backupschedule controller type.
 	backupScheduleControllerKind = v1alpha1.SchemeGroupVersion.WithKind("BackupSchedule")
@@ -100,8 +100,8 @@ func GetBackupOwnerRef(backup *v1alpha1.Backup) metav1.OwnerReference {
 	controller := true
 	blockOwnerDeletion := true
 	return metav1.OwnerReference{
-		APIVersion:         backupControllerKind.GroupVersion().String(),
-		Kind:               backupControllerKind.Kind,
+		APIVersion:         BackupControllerKind.GroupVersion().String(),
+		Kind:               BackupControllerKind.Kind,
 		Name:               backup.GetName(),
 		UID:                backup.GetUID(),
 		Controller:         &controller,
@@ -114,8 +114,8 @@ func GetRestoreOwnerRef(restore *v1alpha1.Restore) metav1.OwnerReference {
 	controller := true
 	blockOwnerDeletion := true
 	return metav1.OwnerReference{
-		APIVersion:         restoreControllerKind.GroupVersion().String(),
-		Kind:               restoreControllerKind.Kind,
+		APIVersion:         RestoreControllerKind.GroupVersion().String(),
+		Kind:               RestoreControllerKind.Kind,
 		Name:               restore.GetName(),
 		UID:                restore.GetUID(),
 		Controller:         &controller,
