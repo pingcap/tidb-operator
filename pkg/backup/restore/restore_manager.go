@@ -129,7 +129,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 
 	return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 		Type:   v1alpha1.RestoreScheduled,
-		Status: corev1.ConditionFalse,
+		Status: corev1.ConditionTrue,
 	})
 }
 

@@ -103,6 +103,7 @@ func (bm *backupScheduleManager) deleteLastBackupJob(bs *v1alpha1.BackupSchedule
 		return fmt.Errorf("backup schedule %s/%s, get backup %s job %s failed, err: %v", ns, bsName, backup.GetName(), jobName, err)
 	}
 
+	backup.SetGroupVersionKind(controller.BackupControllerKind)
 	return bm.jobControl.DeleteJob(backup, job)
 }
 
@@ -118,11 +119,12 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 		return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, bs.Status.LastBackup, err)
 	}
 
-	if v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupFailed(backup) {
+	if v1alpha1.IsBackupComplete(backup) || (v1alpha1.IsBackupScheduled(backup) && v1alpha1.IsBackupFailed(backup)) {
 		return nil
 	}
-
-	return fmt.Errorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, bs.Status.LastBackup)
+	// If the last backup is in a failed state, but it is not scheduled yet,
+	// skip this sync round of the backup schedule and waiting the last backup.
+	return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, bs.Status.LastBackup)
 }
 
 func getLastScheduledTime(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
@@ -238,6 +240,7 @@ func (bm *backupScheduleManager) backupGC(bs *v1alpha1.BackupSchedule) {
 	for i, backup := range backupsList {
 		if i >= bs.Spec.MaxBackups {
 			// delete the backup
+			glog.Infof("backup schedule %s/%s gc backup %s", ns, bsName, backup.GetName())
 			if err := bm.backupControl.DeleteBackup(backup); err != nil {
 				return
 			}

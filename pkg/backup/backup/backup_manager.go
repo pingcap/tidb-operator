@@ -67,6 +67,11 @@ func (bm *backupManager) Sync(backup *v1alpha1.Backup) error {
 		return err
 	}
 
+	if backup.DeletionTimestamp != nil {
+		// backup is being deleted, don't do anything, return directly.
+		return nil
+	}
+
 	return bm.syncBackupJob(backup)
 }
 
