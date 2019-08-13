@@ -97,7 +97,7 @@ func NewController(
 	}
 
 	restoreInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: rsc.addRestore,
+		AddFunc: rsc.enqueueRestore,
 		UpdateFunc: func(old, cur interface{}) {
 			rsc.updateRestore(cur)
 		},
@@ -183,20 +183,6 @@ func (rsc *Controller) syncRestore(tc *v1alpha1.Restore) error {
 	return rsc.control.UpdateRestore(tc)
 }
 
-func (rsc *Controller) addRestore(obj interface{}) {
-	restore := obj.(*v1alpha1.Restore)
-	ns := restore.GetNamespace()
-	name := restore.GetName()
-
-	if v1alpha1.IsRestoreScheduled(restore) {
-		glog.Infof("Restore %s/%s is already scheduled, skipping", ns, name)
-		return
-	}
-
-	glog.V(4).Infof("new restore object %s/%s enqueue", ns, name)
-	rsc.enqueueRestore(restore)
-}
-
 func (rsc *Controller) updateRestore(cur interface{}) {
 	newRestore := cur.(*v1alpha1.Restore)
 	ns := newRestore.GetNamespace()
@@ -211,6 +197,8 @@ func (rsc *Controller) updateRestore(cur interface{}) {
 		glog.V(4).Infof("Restore %s/%s is already scheduled, skipping", ns, name)
 		return
 	}
+
+	rsc.enqueueRestore(newRestore)
 }
 
 // enqueueRestore enqueues the given restore in the work queue.

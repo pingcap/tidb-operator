@@ -16,6 +16,7 @@ package restore
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 )
 
 // ControlInterface implements the control logic for updating Restore
@@ -40,5 +41,6 @@ type defaultRestoreControl struct {
 
 // UpdateRestore executes the core logic loop for a Restore.
 func (rc *defaultRestoreControl) UpdateRestore(restore *v1alpha1.Restore) error {
+	restore.SetGroupVersionKind(controller.RestoreControllerKind)
 	return rc.restoreManager.Sync(restore)
 }
