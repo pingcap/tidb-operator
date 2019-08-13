@@ -2577,14 +2577,12 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 		return false
 	}
 	healths := drainerStatus{}
-	glog.Infof("drainer body is [%s]", body)
 	err = json.Unmarshal(body, &healths)
 	if err != nil {
 		glog.Errorf("cluster:[%s] unmarshal failed,error:%v", info.ClusterName, err)
 		return false
 	}
-	glog.Infof("drainer unmarshal body is [%v]", healths)
-	return len(healths.PumpPos) > 0 && healths.Synced
+	return len(healths.PumpPos) > 0
 }
 
 func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
