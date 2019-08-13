@@ -2350,7 +2350,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		for _, pod := range pods.Items {
 			if !oa.pumpHealth(info, pod.Spec.Hostname) {
 				glog.Errorf("some pods is not health %s", pumpStatefulSetName)
-				// return false, nil
+				return false, nil
 			}
 			glog.Info(pod.Spec.Affinity)
 			if len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
@@ -2387,7 +2387,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		listOps = metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(
 				map[string]string{
-					label.ComponentLabelKey: "pump",
+					label.ComponentLabelKey: "drainer",
 					label.InstanceLabelKey:  drainerStatefulSet.Labels[label.InstanceLabelKey],
 					label.NameLabelKey:      "tidb-cluster",
 				},
@@ -2401,7 +2401,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		for _, pod := range pods.Items {
 			if !oa.drainerHealth(info, pod.Spec.Hostname) {
 				glog.Errorf("some pods is not health %s", drainerStatefulSetName)
-				// return false, nil
+				return false, nil
 			}
 			glog.Info(pod.Spec.Affinity)
 			if len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
@@ -2501,7 +2501,7 @@ func (oa *operatorActions) CleanWebHookAndServiceOrDie(info *OperatorConfig) {
 }
 
 type pumpStatus struct {
-	StatusMap map[string]*nodeStatus
+	StatusMap map[string]*nodeStatus `json:"StatusMap"`
 }
 
 type nodeStatus struct {
@@ -2509,7 +2509,7 @@ type nodeStatus struct {
 }
 
 func (oa *operatorActions) pumpHealth(info *TidbClusterConfig, hostName string) bool {
-	pumpHealthURL := fmt.Sprintf("%s.%s-pump.%s:8250/status", hostName, info.ClusterName, info.Namespace)
+	pumpHealthURL := fmt.Sprintf("http://%s.%s-pump.%s:8250/status", hostName, info.ClusterName, info.Namespace)
 	res, err := http.Get(pumpHealthURL)
 	if err != nil {
 		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, pumpHealthURL, err)
@@ -2547,7 +2547,7 @@ type drainerStatus struct {
 }
 
 func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName string) bool {
-	drainerHealthURL := fmt.Sprintf("%s.%s-drainer.%s:8249/status", hostName, info.ClusterName, info.Namespace)
+	drainerHealthURL := fmt.Sprintf("http://%s.%s-drainer.%s:8249/status", hostName, info.ClusterName, info.Namespace)
 	res, err := http.Get(drainerHealthURL)
 	if err != nil {
 		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthURL, err)
@@ -2568,7 +2568,7 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 		glog.Errorf("cluster:[%s] unmarshal failed,error:%v", info.ClusterName, err)
 		return false
 	}
-	return len(healths.PumpPos) > 0 && healths.Synced
+	return len(healths.PumpPos) > 0
 }
 
 func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
