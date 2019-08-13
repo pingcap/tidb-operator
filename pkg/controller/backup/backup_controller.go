@@ -98,7 +98,7 @@ func NewController(
 	}
 
 	backupInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: bkc.enqueueBackup,
+		AddFunc: bkc.updateBackup,
 		UpdateFunc: func(old, cur interface{}) {
 			bkc.updateBackup(cur)
 		},
@@ -191,22 +191,22 @@ func (bkc *Controller) updateBackup(cur interface{}) {
 
 	if newBackup.DeletionTimestamp != nil {
 		// the backup is being deleted, we need to do some cleanup work, enqueue backup.
-		glog.Infof("Backup %s/%s is being deleted", ns, name)
+		glog.Infof("backup %s/%s is being deleted", ns, name)
 		bkc.enqueueBackup(newBackup)
 		return
 	}
 
 	if v1alpha1.IsBackupComplete(newBackup) {
-		glog.V(4).Infof("Backup %s/%s is Complete, skipping.", ns, name)
+		glog.V(4).Infof("backup %s/%s is Complete, skipping.", ns, name)
 		return
 	}
 
 	if v1alpha1.IsBackupScheduled(newBackup) {
-		glog.V(4).Infof("Backup %s/%s is already scheduled, skipping", ns, name)
+		glog.V(4).Infof("backup %s/%s is already scheduled, skipping", ns, name)
 		return
 	}
 
-	glog.V(4).Infof("update backup object %s/%s enqueue", ns, name)
+	glog.V(4).Infof("backup object %s/%s enqueue", ns, name)
 	bkc.enqueueBackup(newBackup)
 }
 

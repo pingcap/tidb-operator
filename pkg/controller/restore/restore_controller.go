@@ -97,7 +97,7 @@ func NewController(
 	}
 
 	restoreInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: rsc.enqueueRestore,
+		AddFunc: rsc.updateRestore,
 		UpdateFunc: func(old, cur interface{}) {
 			rsc.updateRestore(cur)
 		},
@@ -189,15 +189,16 @@ func (rsc *Controller) updateRestore(cur interface{}) {
 	name := newRestore.GetName()
 
 	if v1alpha1.IsRestoreComplete(newRestore) {
-		glog.V(4).Infof("Restore %s/%s is Complete, skipping.", ns, name)
+		glog.V(4).Infof("restore %s/%s is Complete, skipping.", ns, name)
 		return
 	}
 
 	if v1alpha1.IsRestoreScheduled(newRestore) {
-		glog.V(4).Infof("Restore %s/%s is already scheduled, skipping", ns, name)
+		glog.V(4).Infof("restore %s/%s is already scheduled, skipping", ns, name)
 		return
 	}
 
+	glog.V(4).Infof("restore object %s/%s enqueue", ns, name)
 	rsc.enqueueRestore(newRestore)
 }
 
