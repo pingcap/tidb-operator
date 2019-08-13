@@ -2387,7 +2387,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		listOps = metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(
 				map[string]string{
-					label.ComponentLabelKey: "pump",
+					label.ComponentLabelKey: "drainer",
 					label.InstanceLabelKey:  drainerStatefulSet.Labels[label.InstanceLabelKey],
 					label.NameLabelKey:      "tidb-cluster",
 				},
