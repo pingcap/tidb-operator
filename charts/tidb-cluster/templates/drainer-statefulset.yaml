@@ -64,7 +64,7 @@ spec:
           name: {{ template "cluster.name" . }}-drainer
         {{- end }}
           items:
-          - key: config-file
+          - key: drainer-config
             path: drainer.toml
   volumeClaimTemplates:
   - metadata:

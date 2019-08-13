@@ -83,9 +83,11 @@ config-file: |-
 Encapsulate pump configmap data for consistent digest calculation
 */}}
 {{- define "pump-configmap.data" -}}
-config-file: |-
+pump-config: |-
     {{- if .Values.binlog.pump.config }}
 {{ .Values.binlog.pump.config | indent 2 }}
+    {{- else -}}
+{{ tuple "config/_pump-config.tpl" . | include "helm-toolkit.utils.template" | indent 2 }}
     {{- end -}}
 {{- end -}}
 
@@ -97,9 +99,11 @@ config-file: |-
 Encapsulate drainer configmap data for consistent digest calculation
 */}}
 {{- define "drainer-configmap.data" -}}
-config-file: |-
+drainer-config: |-
     {{- if .Values.binlog.drainer.config }}
 {{ .Values.binlog.drainer.config | indent 2 }}
+    {{- else -}}
+{{ tuple "config/_drainer-config.tpl" . | include "helm-toolkit.utils.template" | indent 2 }}
     {{- end -}}
 {{- end -}}
 
