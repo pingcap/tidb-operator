@@ -477,8 +477,8 @@ binlog:
       # password: ""
       # port: 3306
       # # Time and size limits for flash batch write
-    # timeLimit: "30s"
-    # sizeLimit: "100000"
+      # timeLimit: "30s"
+      # sizeLimit: "100000"
     kafka: {}
       # only need config one of zookeeper-addrs and kafka-addrs, will get kafka address if zookeeper-addrs is configed.
       # zookeeperAddrs: "127.0.0.1:2181"
