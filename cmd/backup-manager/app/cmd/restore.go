@@ -61,17 +61,18 @@ func runRestore(restoreOpts restore.RestoreOpts, kubecfg string) error {
 		informers.WithNamespace(restoreOpts.Namespace),
 	}
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, constants.ResyncDuration, options...)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go informerFactory.Start(ctx.Done())
 	recorder := util.NewEventRecorder(kubeCli, "restore")
 	restoreInformer := informerFactory.Pingcap().V1alpha1().Restores()
 	statusUpdater := controller.NewRealRestoreConditionUpdater(cli, restoreInformer.Lister(), recorder)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go informerFactory.Start(ctx.Done())
+
 	// waiting for the shared informer's store has synced.
 	cache.WaitForCacheSync(ctx.Done(), restoreInformer.Informer().HasSynced)
 
-	glog.Info("start to process restore")
+	glog.Infof("start to process restore %s", restoreOpts)
 	rm := restore.NewRestoreManager(restoreInformer.Lister(), statusUpdater, restoreOpts)
 	return rm.ProcessRestore()
 }

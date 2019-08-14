@@ -59,17 +59,18 @@ func runBackup(backupOpts backup.BackupOpts, kubecfg string) error {
 		informers.WithNamespace(backupOpts.Namespace),
 	}
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, constants.ResyncDuration, options...)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go informerFactory.Start(ctx.Done())
 	recorder := util.NewEventRecorder(kubeCli, "backup")
 	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
 	statusUpdater := controller.NewRealBackupConditionUpdater(cli, backupInformer.Lister(), recorder)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go informerFactory.Start(ctx.Done())
+
 	// waiting for the shared informer's store has synced.
 	cache.WaitForCacheSync(ctx.Done(), backupInformer.Informer().HasSynced)
 
-	glog.Info("start to process backup")
+	glog.Infof("start to process backup %s", backupOpts)
 	bm := backup.NewBackupManager(backupInformer.Lister(), statusUpdater, backupOpts)
 	return bm.ProcessBackup()
 }
