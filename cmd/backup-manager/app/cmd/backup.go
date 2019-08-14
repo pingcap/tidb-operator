@@ -30,14 +30,14 @@ import (
 )
 
 // NewBackupCommand implements the backup command
-func NewBackupCommand(kubecfg string) *cobra.Command {
+func NewBackupCommand() *cobra.Command {
 	bo := backup.BackupOpts{}
 
 	cmd := &cobra.Command{
 		Use:   "backup",
 		Short: "Backup specific tidb cluster.",
 		Run: func(cmd *cobra.Command, args []string) {
-			util.ValidCmdFlags(cmd)
+			util.ValidCmdFlags(cmd.CommandPath(), cmd.LocalFlags())
 			cmdutil.CheckErr(runBackup(bo, kubecfg))
 		},
 	}

@@ -30,15 +30,14 @@ import (
 )
 
 // NewCleanCommand implements the clean command
-func NewCleanCommand(kubecfg string) *cobra.Command {
+func NewCleanCommand() *cobra.Command {
 	bo := backup.BackupOpts{}
 
 	cmd := &cobra.Command{
 		Use:   "clean",
 		Short: "Clean specific tidb cluster backup.",
 		Run: func(cmd *cobra.Command, args []string) {
-			util.SkipValidFlags = []string{"tidbservice", "password", "user", "storageType"}
-			util.ValidCmdFlags(cmd)
+			util.ValidCmdFlags(cmd.CommandPath(), cmd.LocalFlags())
 			cmdutil.CheckErr(runClean(bo, kubecfg))
 		},
 	}

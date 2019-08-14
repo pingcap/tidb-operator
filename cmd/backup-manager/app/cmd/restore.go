@@ -30,15 +30,14 @@ import (
 )
 
 // NewRestoreCommand implements the restore command
-func NewRestoreCommand(kubecfg string) *cobra.Command {
+func NewRestoreCommand() *cobra.Command {
 	ro := restore.RestoreOpts{}
 
 	cmd := &cobra.Command{
 		Use:   "restore",
 		Short: "Restore specific tidb cluster.",
 		Run: func(cmd *cobra.Command, args []string) {
-			util.SkipValidFlags = []string{"backupPath", "backupName"}
-			util.ValidCmdFlags(cmd)
+			util.ValidCmdFlags(cmd.CommandPath(), cmd.LocalFlags())
 			cmdutil.CheckErr(runRestore(ro, kubecfg))
 		},
 	}
