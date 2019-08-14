@@ -2347,13 +2347,22 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 			return false, nil
 		}
 
+		// v1.0.0 don't have affinity test case
+		// https://github.com/pingcap/tidb-operator/pull/746
+		isv1 := info.OperatorTag == "v1.0.0"
+
 		for _, pod := range pods.Items {
 			if !oa.pumpHealth(info, pod.Spec.Hostname) {
 				glog.Errorf("some pods is not health %s", pumpStatefulSetName)
-				// return false, nil
+				return false, nil
 			}
+
+			if isv1 {
+				continue
+			}
+
 			glog.Info(pod.Spec.Affinity)
-			if len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
+			if pod.Spec.Affinity == nil || pod.Spec.Affinity.PodAntiAffinity == nil || len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
 				return true, fmt.Errorf("pump pod %s/%s should have affinity set", pod.Namespace, pod.Name)
 			}
 			glog.Info(pod.Spec.Tolerations)
@@ -2387,7 +2396,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		listOps = metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(
 				map[string]string{
-					label.ComponentLabelKey: "pump",
+					label.ComponentLabelKey: "drainer",
 					label.InstanceLabelKey:  drainerStatefulSet.Labels[label.InstanceLabelKey],
 					label.NameLabelKey:      "tidb-cluster",
 				},
@@ -2401,10 +2410,15 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		for _, pod := range pods.Items {
 			if !oa.drainerHealth(info, pod.Spec.Hostname) {
 				glog.Errorf("some pods is not health %s", drainerStatefulSetName)
-				// return false, nil
+				return false, nil
 			}
+
+			if isv1 {
+				continue
+			}
+
 			glog.Info(pod.Spec.Affinity)
-			if len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
+			if pod.Spec.Affinity == nil || pod.Spec.Affinity.PodAntiAffinity == nil || len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
 				return true, fmt.Errorf("drainer pod %s/%s should have spec.affinity set", pod.Namespace, pod.Name)
 			}
 			glog.Info(pod.Spec.Tolerations)
@@ -2501,7 +2515,7 @@ func (oa *operatorActions) CleanWebHookAndServiceOrDie(info *OperatorConfig) {
 }
 
 type pumpStatus struct {
-	StatusMap map[string]*nodeStatus
+	StatusMap map[string]*nodeStatus `json:"StatusMap"`
 }
 
 type nodeStatus struct {
@@ -2509,7 +2523,7 @@ type nodeStatus struct {
 }
 
 func (oa *operatorActions) pumpHealth(info *TidbClusterConfig, hostName string) bool {
-	pumpHealthURL := fmt.Sprintf("%s.%s-pump.%s:8250/status", hostName, info.ClusterName, info.Namespace)
+	pumpHealthURL := fmt.Sprintf("http://%s.%s-pump.%s:8250/status", hostName, info.ClusterName, info.Namespace)
 	res, err := http.Get(pumpHealthURL)
 	if err != nil {
 		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, pumpHealthURL, err)
@@ -2547,7 +2561,7 @@ type drainerStatus struct {
 }
 
 func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName string) bool {
-	drainerHealthURL := fmt.Sprintf("%s.%s-drainer.%s:8249/status", hostName, info.ClusterName, info.Namespace)
+	drainerHealthURL := fmt.Sprintf("http://%s.%s-drainer.%s:8249/status", hostName, info.ClusterName, info.Namespace)
 	res, err := http.Get(drainerHealthURL)
 	if err != nil {
 		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthURL, err)
@@ -2568,7 +2582,7 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 		glog.Errorf("cluster:[%s] unmarshal failed,error:%v", info.ClusterName, err)
 		return false
 	}
-	return len(healths.PumpPos) > 0 && healths.Synced
+	return len(healths.PumpPos) > 0
 }
 
 func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
@@ -2693,7 +2707,7 @@ func (oa *operatorActions) CheckManualPauseTiDB(info *TidbClusterConfig) error {
 	}
 
 	// wait for the tidb statefulset is upgrade to the protect one
-	if err = wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn); err != nil {
+	if err = wait.Poll(DefaultPollInterval, 30*time.Minute, fn); err != nil {
 		return fmt.Errorf("fail to upgrade to annotation TiDB pod : %v", err)
 	}
 
