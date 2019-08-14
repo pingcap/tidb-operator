@@ -24,11 +24,6 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	capi "k8s.io/api/certificates/v1beta1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	types "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -79,57 +74,4 @@ func NewCSR(commonName string, hostList []string, IPList []string) ([]byte, erro
 		return nil, err
 	}
 	return csr, nil
-}
-
-func sendCSR(kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster, csr []byte, suffix string) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	req := &capi.CertificateSigningRequest{
-		TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"},
-		ObjectMeta: types.ObjectMeta{
-			Name: fmt.Sprintf("%s-%s", tcName, suffix),
-		},
-		Spec: capi.CertificateSigningRequestSpec{
-			Request: csr,
-			Usages: []capi.KeyUsage{
-				capi.UsageClientAuth,
-				capi.UsageServerAuth,
-			},
-		},
-	}
-
-	resp, err := kubeCli.CertificatesV1beta1().CertificateSigningRequests().Create(req)
-	if err != nil && apierrors.IsAlreadyExists(err) {
-		glog.Infof("CSR already exist for [%s/%s]: %s-%s, reusing it", ns, tcName, tcName, suffix)
-		getOpts := types.GetOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
-		resp, err = kubeCli.CertificatesV1beta1().CertificateSigningRequests().Get(req.Name, getOpts)
-	}
-	if err != nil {
-		glog.Errorf("failed to create CSR for [%s/%s]: %s-%s", ns, tcName, tcName, suffix)
-		return
-	}
-
-	glog.Infof("CSR created for [%s/%s]: %s-%s", ns, tcName, tcName, suffix)
-}
-
-func approveCSR() {
-	return
-}
-
-func GetSignedCert(kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster, csr []byte, suffix string) {
-	sendCSR(kubeCli, tc, csr, suffix)
-
-	return
-}
-
-//func RevokeCert() {}
-//func RenewCert() {}
-
-func LoadKeyPairFromSecret() {
-	return
-}
-
-func SaveKeyPairToSecret() {
-	return
 }
