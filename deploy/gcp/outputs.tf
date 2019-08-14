@@ -28,5 +28,5 @@ output "how_to_connect_to_default_cluster_tidb_from_bastion" {
 
 output "how_to_set_reclaim_policy_of_pv_for_default_tidb_cluster_to_delete" {
   description = "The kubectl command for changing the ReclaimPolicy for persistent volumes claimed by the default TiDB cluster to Delete to avoid orphaned disks. Run this command before terraform destroy."
-  value = module.default-tidb-cluster.how_to_set_reclaim_policy_to_delete
+  value       = module.default-tidb-cluster.how_to_set_reclaim_policy_to_delete
 }
