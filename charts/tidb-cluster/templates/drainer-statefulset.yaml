@@ -58,7 +58,11 @@ spec:
       volumes:
       - name: config
         configMap:
+        {{- if .Values.enableConfigMapRollout }}
+          name: {{ template "cluster.name" . }}-drainer-{{ template "drainer-configmap.data-digest" . }}
+        {{- else }}
           name: {{ template "cluster.name" . }}-drainer
+        {{- end }}
           items:
           - key: drainer-config
             path: drainer.toml
