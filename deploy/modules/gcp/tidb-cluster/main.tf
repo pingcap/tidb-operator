@@ -158,11 +158,4 @@ EOS
       KUBECONFIG = var.kubeconfig_path
     }
   }
-  provisioner "local-exec" {
-    when = destroy
-    working_dir = path.cwd
-    command = <<EOF
-kubectl --kubeconfig ${var.kubeconfig_path} get pvc -n ${var.cluster_name} -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl --kubeconfig ${var.kubeconfig_path} patch pv {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
-EOF
-  }
 }
