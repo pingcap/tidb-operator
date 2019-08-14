@@ -17,14 +17,18 @@ import (
 	"flag"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/cmd"
+	"github.com/spf13/pflag"
 	"k8s.io/apiserver/pkg/util/logs"
 )
 
 func Run() error {
 	logs.InitLogs()
 	defer logs.FlushLogs()
+
+	// fix glog parse error
 	flag.CommandLine.Parse([]string{})
 
+	pflag.CommandLine.MarkHidden("log-flush-frequency")
 	command := cmd.NewBackupMgrCommand()
 	return command.Execute()
 }
