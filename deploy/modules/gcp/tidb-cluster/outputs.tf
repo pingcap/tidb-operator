@@ -29,5 +29,5 @@ output "tidb_pool" {
 
 output "how_to_set_reclaim_policy_to_delete" {
   description = "The kubectl command for changing the ReclaimPolicy for persistent volumes claimed by a TiDB cluster to Delete to avoid orphaned disks. Run this command before terraform destroy."
-  value = "kubectl --kubeconfig ${var.kubeconfig_path} get pvc -n ${var.cluster_name} -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl --kubeconfig ${var.kubeconfig_path} patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'"
+  value       = "kubectl --kubeconfig ${var.kubeconfig_path} get pvc -n ${var.cluster_name} -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl --kubeconfig ${var.kubeconfig_path} patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'"
 }
