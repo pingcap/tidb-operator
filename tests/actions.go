@@ -2347,13 +2347,22 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 			return false, nil
 		}
 
+		// v1.0.0 don't have affinity test case
+		// https://github.com/pingcap/tidb-operator/pull/746
+		isv1 := info.OperatorTag == "v1.0.0"
+
 		for _, pod := range pods.Items {
 			if !oa.pumpHealth(info, pod.Spec.Hostname) {
 				glog.Errorf("some pods is not health %s", pumpStatefulSetName)
 				return false, nil
 			}
+
+			if isv1 {
+				continue
+			}
+
 			glog.Info(pod.Spec.Affinity)
-			if len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
+			if pod.Spec.Affinity == nil || pod.Spec.Affinity.PodAntiAffinity == nil || len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
 				return true, fmt.Errorf("pump pod %s/%s should have affinity set", pod.Namespace, pod.Name)
 			}
 			glog.Info(pod.Spec.Tolerations)
@@ -2403,8 +2412,13 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 				glog.Errorf("some pods is not health %s", drainerStatefulSetName)
 				return false, nil
 			}
+
+			if isv1 {
+				continue
+			}
+
 			glog.Info(pod.Spec.Affinity)
-			if len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
+			if pod.Spec.Affinity == nil || pod.Spec.Affinity.PodAntiAffinity == nil || len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
 				return true, fmt.Errorf("drainer pod %s/%s should have spec.affinity set", pod.Namespace, pod.Name)
 			}
 			glog.Info(pod.Spec.Tolerations)
