@@ -90,7 +90,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return fmt.Errorf("backup %s/%s get job %s failed, err: %v", ns, name, backupJobName, err)
 	}
 
-	// not found backup job, need to create it
+	// not found backup job, so we need to create it
 	job, reason, err := bm.makeBackupJob(backup)
 	if err != nil {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -229,35 +229,42 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 	}
 	backupPVCName := backup.GetBackupPVCName()
 	_, err = bm.pvcLister.PersistentVolumeClaims(ns).Get(backupPVCName)
-	if err != nil {
-		// get the object from the local cache, the error can only be IsNotFound,
-		// so we need to create PVC for backup job
-		storageClassName := controller.DefaultBackupStorageClassName
-		if backup.Spec.StorageClassName != "" {
-			storageClassName = backup.Spec.StorageClassName
-		}
-		pvc := &corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      backupPVCName,
-				Namespace: ns,
-				Labels:    label.NewBackup().Instance(backup.Spec.Cluster),
+
+	if err == nil {
+		return "", nil
+	}
+
+	if !errors.IsNotFound(err) {
+		return "GetPVCFailed", fmt.Errorf("backup %s/%s get pvc %s failed, err: %v", ns, name, backupPVCName, err)
+	}
+
+	// not found PVC, so we need to create PVC for backup job
+	storageClassName := controller.DefaultBackupStorageClassName
+	if backup.Spec.StorageClassName != "" {
+		storageClassName = backup.Spec.StorageClassName
+	}
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      backupPVCName,
+			Namespace: ns,
+			Labels:    label.NewBackup().Instance(backup.Spec.Cluster),
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			StorageClassName: &storageClassName,
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				corev1.ReadWriteOnce,
 			},
-			Spec: corev1.PersistentVolumeClaimSpec{
-				StorageClassName: &storageClassName,
-				AccessModes: []corev1.PersistentVolumeAccessMode{
-					corev1.ReadWriteOnce,
-				},
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceStorage: rs,
-					},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: rs,
 				},
 			},
-		}
-		if err := bm.pvcControl.CreatePVC(backup, pvc); err != nil {
-			errMsg := fmt.Errorf("backup %s/%s create backup pvc %s failed, err: %v", ns, name, pvc.GetName(), err)
-			return "CreatePVCFailed", errMsg
-		}
+		},
+	}
+
+	if err := bm.pvcControl.CreatePVC(backup, pvc); err != nil {
+		errMsg := fmt.Errorf("backup %s/%s create backup pvc %s failed, err: %v", ns, name, pvc.GetName(), err)
+		return "CreatePVCFailed", errMsg
 	}
 	return "", nil
 }

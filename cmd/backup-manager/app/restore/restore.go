@@ -20,10 +20,8 @@ import (
 	"strings"
 
 	"github.com/mholt/archiver"
-
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 )
 
 // RestoreOpts contains the input arguments to the restore command
