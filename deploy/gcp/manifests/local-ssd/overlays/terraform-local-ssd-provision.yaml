@@ -8,5 +8,3 @@ spec:
       tolerations:
         - operator: Exists
           effect: "NoSchedule"
-        - operator: Exists
-          effect: "NoSchedule"

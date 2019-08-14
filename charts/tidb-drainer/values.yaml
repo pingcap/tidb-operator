@@ -1,0 +1,52 @@
+# Default values for tidb-drainer.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates
+
+# clusterName is the TiDB cluster name that should backup from or restore to.
+clusterName: demo
+clusterVersion: v3.0.1
+
+baseImage: pingcap/tidb-binlog
+imagePullPolicy: IfNotPresent
+
+logLevel: info
+# storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+# different classes might map to quality-of-service levels, or to backup policies,
+# or to arbitrary policies determined by the cluster administrators.
+# refer to https://kubernetes.io/docs/concepts/storage/storage-classes
+storageClassName: local-storage
+storage: 10Gi
+# disbale detect causality
+disableDetect: false
+# if drainer donesn't have checkpoint, use initial commitTS to initial checkpoint
+initialCommitTs: 0
+
+# Refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml
+config: |
+  [syncer]
+  worker-count = 16
+  detect-interval = 10
+  disable-dispatch = false
+  ignore-schemas = "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql"
+  safe-mode = false
+  txn-batch = 20
+  db-type = "pb"
+  [syncer.to]
+  dir = "/data/pb"
+  compression = "gzip"
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+  # requests:
+  #  cpu: 100m
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
