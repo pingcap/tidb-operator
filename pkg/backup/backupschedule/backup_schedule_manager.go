@@ -135,6 +135,7 @@ func getLastScheduledTime(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse backup schedule %s/%s cron format %s failed, err: %v", ns, bsName, bs.Spec.Schedule, err)
 	}
+
 	var earliestTime time.Time
 	if bs.Status.LastBackupTime != nil {
 		earliestTime = bs.Status.LastBackupTime.Time
@@ -173,6 +174,7 @@ func getLastScheduledTime(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
 			return nil, nil
 		}
 	}
+
 	if len(scheduledTimes) == 0 {
 		glog.V(4).Infof("unmet backup schedule %s/%s start time, waiting for the next backup schedule period", ns, bsName)
 		return nil, nil
