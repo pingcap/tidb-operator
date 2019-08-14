@@ -104,7 +104,9 @@ var affinityTemp string = `{{.Kind}}:
           topologyKey: {{.TopologyKey}}
           namespaces:
           - {{.Namespace}}
-binlog:
+`
+
+var binlogTemp string = `binlog:
   pump:
     tolerations:
     - key: node-role
@@ -119,6 +121,10 @@ binlog:
             topologyKey: {{.TopologyKey}}
             namespaces:
             - {{.Namespace}}
+{{if .PumpConfig}}
+  	config: |
+{{range .PumpConfig}}      {{.}}
+{{end}}{{end}}
   drainer:
     tolerations:
     - key: node-role
@@ -133,6 +139,10 @@ binlog:
             topologyKey: {{.TopologyKey}}
             namespaces:
             - {{.Namespace}}
+{{if .DrainerConfig}}
+    config: |
+{{range .DrainerConfig}}      {{.}}
+{{end}}{{end}}
 `
 
 type AffinityInfo struct {
@@ -144,7 +154,14 @@ type AffinityInfo struct {
 	Config      []string
 }
 
-func GetSubValuesOrDie(clusterName, namespace, topologyKey string, pdConfig []string, tikvConfig []string, tidbConfig []string) string {
+type BinLogInfo struct {
+	PumpConfig    []string
+	DrainerConfig []string
+	Namespace     string
+	TopologyKey   string
+}
+
+func GetSubValuesOrDie(clusterName, namespace, topologyKey string, pdConfig []string, tikvConfig []string, tidbConfig []string, pumpConfig []string, drainerConfig []string) string {
 	temp, err := template.New("dt-affinity").Parse(affinityTemp)
 	if err != nil {
 		slack.NotifyAndPanic(err)
@@ -165,7 +182,23 @@ func GetSubValuesOrDie(clusterName, namespace, topologyKey string, pdConfig []st
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
-	return fmt.Sprintf("%s%s%s", pdbuff.String(), tikvbuff.String(), tidbbuff.String())
+	subValues := fmt.Sprintf("%s%s%s", pdbuff.String(), tikvbuff.String(), tidbbuff.String())
+
+	if pumpConfig == nil && drainerConfig == nil {
+		return subValues
+	}
+
+	btemp, err := template.New("binlog").Parse(binlogTemp)
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+	binlogbuff := new(bytes.Buffer)
+	err = btemp.Execute(binlogbuff, &BinLogInfo{PumpConfig: pumpConfig, DrainerConfig: drainerConfig, Namespace: namespace, TopologyKey: topologyKey})
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+	subValues = fmt.Sprintf("%s%s", subValues, binlogbuff.String())
+	return subValues
 }
 
 const (
