@@ -1,10 +1,9 @@
-{{- if .Values.binlog.drainer.create }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ template "cluster.name" . }}-drainer
+  name: {{ include "drainer.name" . }}
   labels:
-    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/name: {{ include "drainer.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: drainer
@@ -12,11 +11,11 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ template "chart.name" . }}
+      app.kubernetes.io/name: {{ include "drainer.name" . }}
       app.kubernetes.io/instance: {{ .Release.Name }}
-      app.kubernetes.io/managed-by: tidb-operator
+      app.kubernetes.io/managed-by: {{ .Release.Service }}
       app.kubernetes.io/component: drainer
-  serviceName: {{ template "cluster.name" . }}-drainer
+  serviceName: {{ include "drainer.name" . }}
   replicas: 1
   template:
     metadata:
@@ -25,23 +24,15 @@ spec:
         prometheus.io/path: "/metrics"
         prometheus.io/port: "8249"
       labels:
-        app.kubernetes.io/name: {{ template "chart.name" . }}
+        app.kubernetes.io/name: {{ include "drainer.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
-        app.kubernetes.io/managed-by: tidb-operator
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
         app.kubernetes.io/component: drainer
     spec:
-    {{- if .Values.binlog.drainer.affinity }}
-      affinity:
-{{ toYaml .Values.binlog.drainer.affinity | indent 8 }}
-    {{- end }}
-    {{- if .Values.binlog.drainer.tolerations }}
-      tolerations:
-{{ toYaml .Values.binlog.drainer.tolerations | indent 8 }}
-    {{- end }}
       containers:
       - name: drainer
-        image: {{ .Values.binlog.drainer.image }}
-        imagePullPolicy: {{ .Values.binlog.drainer.imagePullPolicy | default "IfNotPresent" }}
+        image: {{ .Values.baseImage }}:{{ .Values.clusterVersion }}
+        imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
         command:
         - /bin/sh
         - -c
@@ -55,24 +46,33 @@ spec:
           mountPath: /data
         - name: config
           mountPath: /etc/drainer
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
       volumes:
       - name: config
         configMap:
-        {{- if .Values.enableConfigMapRollout }}
-          name: {{ template "cluster.name" . }}-drainer-{{ template "drainer-configmap.data-digest" . }}
-        {{- else }}
-          name: {{ template "cluster.name" . }}-drainer
-        {{- end }}
+          name: {{ include "drainer-configmap.name" . }}
           items:
-          - key: drainer-config
+          - key: config-file
             path: drainer.toml
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}
   volumeClaimTemplates:
   - metadata:
       name: data
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: {{ .Values.binlog.drainer.storageClassName }}
+      storageClassName: {{ .Values.storageClassName }}
       resources:
         requests:
-          storage: {{ .Values.binlog.drainer.storage }}
-{{- end }}
+          storage: {{ .Values.storage }}

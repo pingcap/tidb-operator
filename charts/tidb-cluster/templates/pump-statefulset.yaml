@@ -30,6 +30,14 @@ spec:
         app.kubernetes.io/managed-by: tidb-operator
         app.kubernetes.io/component: pump
     spec:
+    {{- if .Values.binlog.pump.affinity }}
+      affinity:
+{{ toYaml .Values.binlog.pump.affinity | indent 8 }}
+    {{- end }}
+    {{- if .Values.binlog.pump.tolerations }}
+      tolerations:
+{{ toYaml .Values.binlog.pump.tolerations | indent 8 }}
+    {{- end }}
       containers:
       - name: pump
         image: {{ .Values.binlog.pump.image }}
@@ -50,7 +58,11 @@ spec:
       volumes:
       - name: config
         configMap:
+        {{- if .Values.enableConfigMapRollout }}
+          name: {{ template "cluster.name" . }}-pump-{{ template "pump-configmap.data-digest" . }}
+        {{- else }}
           name: {{ template "cluster.name" . }}-pump
+        {{- end }}
           items:
           - key: pump-config
             path: pump.toml
