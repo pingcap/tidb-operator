@@ -103,26 +103,28 @@ type TidbClusterStatus struct {
 	TiDB      TiDBStatus `json:"tidb,omitempty"`
 }
 
+// PodSpec repreresents shared pod fields between PD/TiDB/TiKV
+type PodSpec struct {
+	Replicas     int32               `json:"replicas"`
+	Affinity     *corev1.Affinity    `json:"affinity,omitempty"`
+	NodeSelector map[string]string   `json:"nodeSelector,omitempty"`
+	Tolerations  []corev1.Toleration `json:"tolerations,omitempty"`
+	Annotations  map[string]string   `json:"annotations,omitempty"`
+	HostNetwork  bool                `json:"hostNetwork,omitempty"`
+}
+
 // PDSpec contains details of PD member
 type PDSpec struct {
 	ContainerSpec
-	Replicas         int32               `json:"replicas"`
-	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
-	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
-	StorageClassName string              `json:"storageClassName,omitempty"`
-	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
-	Annotations      map[string]string   `json:"annotations,omitempty"`
+	PodSpec
+	StorageClassName string `json:"storageClassName,omitempty"`
 }
 
 // TiDBSpec contains details of PD member
 type TiDBSpec struct {
 	ContainerSpec
-	Replicas         int32                 `json:"replicas"`
-	Affinity         *corev1.Affinity      `json:"affinity,omitempty"`
-	NodeSelector     map[string]string     `json:"nodeSelector,omitempty"`
+	PodSpec
 	StorageClassName string                `json:"storageClassName,omitempty"`
-	Tolerations      []corev1.Toleration   `json:"tolerations,omitempty"`
-	Annotations      map[string]string     `json:"annotations,omitempty"`
 	BinlogEnabled    bool                  `json:"binlogEnabled,omitempty"`
 	MaxFailoverCount int32                 `json:"maxFailoverCount,omitempty"`
 	SeparateSlowLog  bool                  `json:"separateSlowLog,omitempty"`
@@ -137,13 +139,9 @@ type TiDBSlowLogTailerSpec struct {
 // TiKVSpec contains details of PD member
 type TiKVSpec struct {
 	ContainerSpec
-	Privileged       bool                `json:"privileged,omitempty"`
-	Replicas         int32               `json:"replicas"`
-	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
-	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
-	StorageClassName string              `json:"storageClassName,omitempty"`
-	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
-	Annotations      map[string]string   `json:"annotations,omitempty"`
+	PodSpec
+	Privileged       bool   `json:"privileged,omitempty"`
+	StorageClassName string `json:"storageClassName,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
