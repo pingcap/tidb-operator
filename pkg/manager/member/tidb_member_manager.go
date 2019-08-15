@@ -142,6 +142,12 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 			return err
 		}
 	}
+	if tc.Spec.EnableTLSClient {
+		err := tmm.syncTiDBClientCerts(tc)
+		if err != nil {
+			return err
+		}
+	}
 
 	newTiDBSet := tmm.getNewTiDBSetForTidbCluster(tc)
 	oldTiDBSetTemp, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
@@ -220,6 +226,23 @@ func (tmm *tidbMemberManager) syncTiDBServerCerts(tc *v1alpha1.TidbCluster) erro
 	return tmm.certControl.Create(tc, svcName, hostList, ipList, "tidb")
 }
 
+func (tmm *tidbMemberManager) syncTiDBClientCerts(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	commonName := fmt.Sprintf("%s-tidb-client", tcName)
+
+	if tmm.certControl.CheckSecret(ns, commonName) {
+		return nil
+	}
+
+	var ipList []string // empty
+	hostList := []string{
+		commonName,
+	}
+
+	return tmm.certControl.Create(tc, commonName, hostList, ipList, "tidb-client")
+}
+
 func (tmm *tidbMemberManager) getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
@@ -266,6 +289,11 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			Name: "tidb-tls", ReadOnly: true, MountPath: "/var/lib/tidb-tls",
 		})
 	}
+	if tc.Spec.EnableTLSClient {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-tls-client", ReadOnly: true, MountPath: "/var/lib/tidb-tls-client",
+		})
+	}
 
 	vols := []corev1.Volume{
 		annVolume,
@@ -291,6 +319,15 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			Name: "tidb-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: controller.TiDBMemberName(tcName),
+				},
+			},
+		})
+	}
+	if tc.Spec.EnableTLSClient {
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-tls-client", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: fmt.Sprintf("%s-tidb-client", tcName),
 				},
 			},
 		})
