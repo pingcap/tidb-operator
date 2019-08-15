@@ -16,6 +16,7 @@ package controller
 import (
 	//"crypto/x509"
 	"fmt"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
@@ -27,7 +28,7 @@ import (
 
 // CertControlInterface manages certificates used by TiDB clusters
 type CertControlInterface interface {
-	Sign() error
+	Sign(suffix string) ([]byte, error)
 	LoadFromSecret() error
 	SaveToSecret() error
 	//RevokeCert() error
@@ -36,28 +37,57 @@ type CertControlInterface interface {
 
 type realCertControl struct {
 	kubeCli kubernetes.Interface
-	csr     []byte
+	tc      *v1alpha1.TidbCluster
+	rawCSR  []byte
 }
 
 // NewRealCertControl creates a new CertControlInterface
 func NewRealCertControl(
 	kubeCli kubernetes.Interface,
-	csr []byte,
+	tc *v1alpha1.TidbCluster,
+	rawCSR []byte,
 ) CertControlInterface {
 	return &realCertControl{
 		kubeCli: kubeCli,
-		csr:     csr,
+		tc:      tc,
+		rawCSR:  rawCSR,
 	}
 }
 
-func (rcc *realCertControl) Sign() error {
-	// TODO: Implement this method
-	return nil
+func (rcc *realCertControl) Sign(suffix string) ([]byte, error) {
+	//ns := rcc.tc.GetNamespace()
+	tcName := rcc.tc.GetName()
+	csrName := fmt.Sprintf("%s-%s", tcName, suffix)
+
+	csr, err := rcc.sendCSR(suffix)
+	if err != nil {
+		return nil, err
+	}
+	err = rcc.approveCSR(csr)
+	if err != nil {
+		return nil, err
+	}
+
+	// wait at most 10min for the cert to be signed
+	timeout := time.After(time.Minute * 10)
+	tick := time.Tick(time.Millisecond * 500)
+	for {
+		select {
+		case <-timeout:
+			return nil, fmt.Errorf("fail to get signed certificate for %s after 10min", csrName)
+		case <-tick:
+			approveCond := csr.Status.Conditions[len(csr.Status.Conditions)-1].Type
+			if approveCond == capi.CertificateApproved &&
+				csr.Status.Certificate != nil {
+				return csr.Status.Certificate, nil
+			}
+		}
+	}
 }
 
-func (rcc *realCertControl) sendCSR(tc *v1alpha1.TidbCluster, suffix string) (*capi.CertificateSigningRequest, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
+func (rcc *realCertControl) sendCSR(suffix string) (*capi.CertificateSigningRequest, error) {
+	ns := rcc.tc.GetNamespace()
+	tcName := rcc.tc.GetName()
 
 	req := &capi.CertificateSigningRequest{
 		TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"},
@@ -65,7 +95,7 @@ func (rcc *realCertControl) sendCSR(tc *v1alpha1.TidbCluster, suffix string) (*c
 			Name: fmt.Sprintf("%s-%s", tcName, suffix),
 		},
 		Spec: capi.CertificateSigningRequestSpec{
-			Request: rcc.csr,
+			Request: rcc.rawCSR,
 			Usages: []capi.KeyUsage{
 				capi.UsageClientAuth,
 				capi.UsageServerAuth,
@@ -80,16 +110,24 @@ func (rcc *realCertControl) sendCSR(tc *v1alpha1.TidbCluster, suffix string) (*c
 		resp, err = rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Get(req.Name, getOpts)
 	}
 	if err != nil {
-		glog.Errorf("failed to create CSR for [%s/%s]: %s-%s", ns, tcName, tcName, suffix)
-		return resp, err
+		return resp, fmt.Errorf("failed to create CSR for [%s/%s]: %s-%s, error: %v", ns, tcName, tcName, suffix, err)
 	}
 
 	glog.Infof("CSR created for [%s/%s]: %s-%s", ns, tcName, tcName, suffix)
 	return resp, nil
 }
 
-func (rcc *realCertControl) approveCSR() {
-	return
+func (rcc *realCertControl) approveCSR(csr *capi.CertificateSigningRequest) error {
+	csr.Status.Conditions = append(csr.Status.Conditions, capi.CertificateSigningRequestCondition{
+		Type:    capi.CertificateApproved,
+		Reason:  "AutoApproved",
+		Message: "Auto approved by TiDB Operator",
+	})
+	_, err := rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().UpdateApproval(csr)
+	if err != nil {
+		return fmt.Errorf("error updateing approval for csr: %v", err)
+	}
+	return nil
 }
 
 /*
