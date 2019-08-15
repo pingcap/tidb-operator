@@ -19,11 +19,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"fmt"
-	"io/ioutil"
-	"strings"
-
-	"github.com/golang/glog"
+	"net"
 )
 
 const (
@@ -33,7 +29,7 @@ const (
 // generate a new private key
 func newPrivateKey(size int) (*rsa.PrivateKey, error) {
 	// TODO: support more key types
-	privateKey, err := rsa.GenerateKey(rand.Reader, *keySize)
+	privateKey, err := rsa.GenerateKey(rand.Reader, size)
 	if err != nil {
 		return nil, err
 	}
@@ -41,23 +37,29 @@ func newPrivateKey(size int) (*rsa.PrivateKey, error) {
 }
 
 // convert private key to PEM format
-func convertToPEM(blockType string, dataBytes *rsa.PrivateKey) []byte {
-	return pem.EncodeToMemory{
+func convertKeyToPEM(blockType string, dataBytes *rsa.PrivateKey) []byte {
+	return pem.EncodeToMemory(
 		&pem.Block{
 			Type:    blockType,
 			Headers: nil,
 			Bytes:   x509.MarshalPKCS1PrivateKey(dataBytes),
 		},
-	}
+	)
 }
 
-func NewCSR(commonName string, hostList []string, IPList []string) ([]byte, error) {
+func NewCSR(commonName string, hostList []string, IPList []string) ([]byte, []byte, error) {
 	// TODO: option to use an exist private key
 	privKey, err := newPrivateKey(rsaKeySize)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	pemKey := convertToPEM("RSA PRIVATE KEY", privKey)
+	pemKey := convertKeyToPEM("RSA PRIVATE KEY", privKey)
+
+	var ipAddrList []net.IP
+	for _, ip := range IPList {
+		ipAddr := net.ParseIP(ip)
+		ipAddrList = append(ipAddrList, ipAddr)
+	}
 
 	// set CSR attributes
 	csrTemplate := &x509.CertificateRequest{
@@ -67,11 +69,11 @@ func NewCSR(commonName string, hostList []string, IPList []string) ([]byte, erro
 			CommonName:         commonName,
 		},
 		DNSNames:    hostList,
-		IPAddresses: IPList,
+		IPAddresses: ipAddrList,
 	}
 	csr, err := x509.CreateCertificateRequest(rand.Reader, csrTemplate, pemKey)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return csr, nil
+	return csr, pemKey, nil
 }

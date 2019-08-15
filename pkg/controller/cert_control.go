@@ -20,7 +20,9 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	capi "k8s.io/api/certificates/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -28,9 +30,9 @@ import (
 
 // CertControlInterface manages certificates used by TiDB clusters
 type CertControlInterface interface {
-	Sign(suffix string) ([]byte, error)
-	LoadFromSecret() error
-	SaveToSecret() error
+	Sign(commonName string, hostList []string, IPList []string, suffix string) ([]byte, []byte, error)
+	LoadFromSecret(secretName string) ([]byte, []byte, error)
+	SaveToSecret(secretName string, cert []byte, key []byte) error
 	//RevokeCert() error
 	//RenewCert() error
 }
@@ -54,18 +56,35 @@ func NewRealCertControl(
 	}
 }
 
-func (rcc *realCertControl) Sign(suffix string) ([]byte, error) {
-	//ns := rcc.tc.GetNamespace()
+func (rcc *realCertControl) Sign(commonName string, hostList []string, IPList []string, suffix string) ([]byte, []byte, error) {
+	ns := rcc.tc.GetNamespace()
 	tcName := rcc.tc.GetName()
 	csrName := fmt.Sprintf("%s-%s", tcName, suffix)
 
+	// generate certificate if not exist
+	cert, key, err := rcc.LoadFromSecret(csrName)
+	if !apierrors.IsNotFound(err) {
+		return nil, nil, err
+	}
+	if err == nil {
+		glog.Infof("Secret %s/%s already exist, reusing the key", ns, csrName)
+		// TODO: validate the cert
+		return cert, key, nil
+	}
+
+	cert, key, err = certutil.NewCSR(commonName, hostList, IPList)
+	if err != nil {
+		return nil, nil, fmt.Errorf("fail to generate new key and certificate for %s/%s", ns, csrName)
+	}
+
+	// sign certificate
 	csr, err := rcc.sendCSR(suffix)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	err = rcc.approveCSR(csr)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// wait at most 10min for the cert to be signed
@@ -74,12 +93,12 @@ func (rcc *realCertControl) Sign(suffix string) ([]byte, error) {
 	for {
 		select {
 		case <-timeout:
-			return nil, fmt.Errorf("fail to get signed certificate for %s after 10min", csrName)
+			return nil, nil, fmt.Errorf("fail to get signed certificate for %s after 10min", csrName)
 		case <-tick:
 			approveCond := csr.Status.Conditions[len(csr.Status.Conditions)-1].Type
 			if approveCond == capi.CertificateApproved &&
 				csr.Status.Certificate != nil {
-				return csr.Status.Certificate, nil
+				return csr.Status.Certificate, key, nil
 			}
 		}
 	}
@@ -140,12 +159,29 @@ func (rcc *realCertControl) RenewCert() error {
 	return nil
 }
 */
-func (rcc *realCertControl) LoadFromSecret() error {
-	return nil
+func (rcc *realCertControl) LoadFromSecret(secretName string) ([]byte, []byte, error) {
+	ns := rcc.tc.GetNamespace()
+
+	secret, err := rcc.kubeCli.CoreV1().Secrets(ns).Get(secretName, types.GetOptions{})
+
+	return secret.Data["cert"], secret.Data["key"], err
 }
 
-func (rcc *realCertControl) SaveToSecret() error {
-	return nil
+func (rcc *realCertControl) SaveToSecret(secretName string, cert []byte, key []byte) error {
+	ns := rcc.tc.GetNamespace()
+
+	secret := &corev1.Secret{
+		ObjectMeta: types.ObjectMeta{
+			Name: secretName,
+		},
+		Data: map[string][]byte{
+			"cert": cert,
+			"key":  key,
+		},
+	}
+
+	_, err := rcc.kubeCli.CoreV1().Secrets(ns).Create(secret)
+	return err
 }
 
 var _ CertControlInterface = &realCertControl{}
