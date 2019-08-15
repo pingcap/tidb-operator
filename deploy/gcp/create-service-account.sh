@@ -7,45 +7,54 @@
 # so it cannot just be added to the existing terraform.
 
 set -euo pipefail
-cd "$(dirname "$0")"
-PROJECT="${TF_VAR_GCP_PROJECT:-$(cat terraform.tfvars | awk -F '=' '/GCP_PROJECT/ {print $2}' | cut -d '"' -f 2)}"
-echo "using project: $PROJECT"
-
-cred_file=credentials.auto.tfvars
-if test -f "$cred_file" ; then
-  if cat "$cred_file" | awk -F'=' '/GCP_CREDENTIALS/ {print $2}' >/dev/null ; then
-    echo "GCP_CREDENTAILS_PATH already set in $cred_file"
+set -x
+if ! cd "$(dirname "$0")"; then
+    printf "Could not change to base directory of script." >&2
     exit 1
-  fi
 fi
 
-GCLOUD="gcloud --project $PROJECT"
+project=${TF_VAR_GCP_PROJECT:-$( echo var.GCP_PROJECT | terraform console )}
+echo "using project: $project"
+
+cred_file=credentials.auto.tfvars
+
+#cred_path=$( terraform console <<<var.GCP_CREDENTIALS_PATH 2>/dev/null )
+if cred_path=$( echo var.GCP_CREDENTIALS_PATH | terraform console 2>/dev/null ) && [[ $cred_path ]]; then
+    echo "GCP_CREDENTAILS_PATH already set to $cred_path"
+    exit 1
+fi
+
+gcloud=( gcloud --project "$project" )
 
 mkdir -p credentials
 key_file=credentials/terraform-key.json
-email="terraform@${PROJECT}.iam.gserviceaccount.com"
+email="terraform@${project}.iam.gserviceaccount.com"
 
-sas=$($GCLOUD iam service-accounts list)
-if echo "$sas" | grep terraform >/dev/null ; then
-  if test -f $key_file && grep "$PROJECT" $key_file >/dev/null ; then
-    echo "service account terraform already exists along with the key file. Will set terraform variables"
+if [[ $("${gcloud[@]}" --format='value(name)' iam service-accounts list --filter=displayName:terraform) ]]; then
+  if grep -sq "$project" "$key_file"; then
+    echo "service account terraform already exists along with the key file, will set terraform variables"
   else
     echo "service account terraform already exists, will get a key for it"
-    $GCLOUD iam service-accounts keys create $key_file --iam-account "$email"
+    "${gcloud[@]}" iam service-accounts keys create "$key_file" --iam-account "$email"
   fi
 else
   echo "creating a new service account terraform"
-  $GCLOUD iam service-accounts create --display-name terraform terraform
-  $GCLOUD iam service-accounts keys create $key_file --iam-account "$email"
+  "${gcloud[@]}" iam service-accounts create --display-name terraform terraform
+  "${gcloud[@]}" iam service-accounts keys create "$key_file" --iam-account "$email"
 fi
 
-chmod 0600 $key_file
+chmod 0600 "$key_file"
 
-$GCLOUD projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$email" --role roles/container.clusterAdmin
-$GCLOUD projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$email" --role roles/compute.networkAdmin
-$GCLOUD projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$email" --role roles/compute.viewer
-$GCLOUD projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$email" --role roles/compute.securityAdmin
-$GCLOUD projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$email" --role roles/iam.serviceAccountUser
-$GCLOUD projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$email" --role roles/compute.instanceAdmin.v1
+roles=(
+  roles/container.clusterAdmin
+  roles/compute.networkAdmin
+  roles/compute.viewer
+  roles/compute.securityAdmin
+  roles/iam.serviceAccountUser
+  roles/compute.instanceAdmin.v1
+)
+for role in "${roles[@]}"; do 
+    "${gcloud[@]}" projects add-iam-policy-binding "$project" --member "serviceAccount:$email" --role "$role"
+done
 
-echo GCP_CREDENTIALS_PATH="\"$(pwd)/$key_file\"" > "$cred_file"
+printf 'GCP_CREDENTIALS_PATH = "%s/%s"\n' "$PWD" "$key_file" > "$cred_file"
