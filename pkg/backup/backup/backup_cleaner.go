@@ -131,6 +131,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 			Labels: backupLabel.Labels(),
 		},
 		Spec: corev1.PodSpec{
+			ServiceAccountName: constants.DefaultServiceAccountName,
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
