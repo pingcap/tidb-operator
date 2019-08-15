@@ -3,6 +3,8 @@ kind: StorageClass
 metadata:
   name: "pd-ssd"
 provisioner: kubernetes.io/gce-pd
+reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
 parameters:
   type: pd-ssd
