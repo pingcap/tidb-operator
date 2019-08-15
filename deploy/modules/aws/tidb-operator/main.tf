@@ -53,6 +53,16 @@ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.o
 kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.operator_version}/manifests/tiller-rbac.yaml
 kubectl apply -f ${path.module}/manifests/local-volume-provisioner.yaml
 kubectl apply -f ${path.module}/manifests/gp2-storageclass.yaml
+
+# Kubernetes cluster monitor
+wget https://raw.githubusercontent.com/pingcap/monitoring/master/k8s-cluster-monitor/manifests/archive/prometheus-operator.tar.gz
+wget https://raw.githubusercontent.com/pingcap/monitoring/master/k8s-cluster-monitor/manifests/archive/prometheus.tar.gz
+mkdir monitor
+tar -zxvf prometheus-operator.tar.gz -C monitor/
+tar -zxvf prometheus.tar.gz -C monitor/
+kubectl apply -f monitor/manifests/prometheus-operator
+kubectl apply -f monitor/manifests/prometheus
+
 helm init --service-account tiller --upgrade --wait
 until helm ls; do
   echo "Wait tiller ready"

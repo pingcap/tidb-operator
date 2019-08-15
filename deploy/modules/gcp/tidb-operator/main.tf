@@ -101,6 +101,15 @@ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.t
 kubectl apply -k manifests/local-ssd
 kubectl apply -f manifests/gke/persistent-disk.yaml
 
+# Kubernetes cluster monitor
+wget https://raw.githubusercontent.com/pingcap/monitoring/master/k8s-cluster-monitor/manifests/archive/prometheus-operator.tar.gz
+wget https://raw.githubusercontent.com/pingcap/monitoring/master/k8s-cluster-monitor/manifests/archive/prometheus.tar.gz
+mkdir monitor
+tar -zxvf prometheus-operator.tar.gz -C monitor/
+tar -zxvf prometheus.tar.gz -C monitor/
+kubectl apply -f monitor/manifests/prometheus-operator
+kubectl apply -f monitor/manifests/prometheus
+
 helm init --service-account tiller --upgrade --wait
 until helm ls; do
   echo "Wait until tiller is ready"
