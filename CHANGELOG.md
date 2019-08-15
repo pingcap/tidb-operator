@@ -1,3 +1,46 @@
+# TiDB Operator v1.0.1 Release Notes
+
+## v1.0.1 What's New
+
+### Improvements
+
+- Modularize gcp terraform
+- Add a script to remove orphaned k8s disks
+- Support `binlog.pump.config`, `binlog.drainer.config` configurations for pump and drainer
+- Add `tidb-backup` job reources limits
+- Add `affinity` to pump/drainer configration
+- Upgrade local-volume-provisioner to `v2.3.2`
+- Reduce e2e run time from `60m` to `20m`
+
+### Bug fixes
+
+- Fix tikv scale in failure in some cases after tikv failover
+- Fix error handling for UpdateService
+
+## Detailed Bug Fixes and Changes
+
+- deploy: Modularize gcp terraform ([#717](https://github.com/pingcap/tidb-operator/pull/717))
+- add a script to remove orphaned K8s disks ([#745](https://github.com/pingcap/tidb-operator/pull/745))
+- binlog: support `binlog.pump.config` configurations for pump and drainer ([#693](https://github.com/pingcap/tidb-operator/pull/693))
+- Remove duplicate key values ([#758](https://github.com/pingcap/tidb-operator/pull/758))
+- e2e: Make incremental backup test work ([#764](https://github.com/pingcap/tidb-operator/pull/764))
+- fix e2e test compatible with v1.0.0 ([#757](https://github.com/pingcap/tidb-operator/pull/757))
+- Add tidb-backup job reources limits ([#729](https://github.com/pingcap/tidb-operator/pull/729))
+- e2e: extend the wating time of CheckManualPauseTiDB process ([#752](https://github.com/pingcap/tidb-operator/pull/752))
+- e2e: add retry logic for LabelNodes function ([#735](https://github.com/pingcap/tidb-operator/pull/735))
+- some typo fix ([#738](https://github.com/pingcap/tidb-operator/pull/738))
+- add affinity to pump/drainer ([#741](https://github.com/pingcap/tidb-operator/pull/741))
+- Fix tikv scale in failure in some cases ([#726](https://github.com/pingcap/tidb-operator/pull/726))
+- scheduler: inject a failure by pod annotation ([#716](https://github.com/pingcap/tidb-operator/pull/716))
+- Updated readme links to point to correct pingcap.com/docs URLs for English and Chinese ([#732](https://github.com/pingcap/tidb-operator/pull/732))
+- refine clean logic ([#719](https://github.com/pingcap/tidb-operator/pull/719))
+- pkg/controller: fix an incorrect condition judgment ([#718](https://github.com/pingcap/tidb-operator/pull/718))
+- upgrade local-volume-provisioner to v2.3.2 ([#696](https://github.com/pingcap/tidb-operator/pull/696))
+- tests: reduce e2e test run time ([#713](https://github.com/pingcap/tidb-operator/pull/713))
+- Terraform gke scale out fix ([#711](https://github.com/pingcap/tidb-operator/pull/711))
+- changelog: update wording and fix format for v1.0.0 ([#709](https://github.com/pingcap/tidb-operator/pull/709))
+- update documents ([#705](https://github.com/pingcap/tidb-operator/pull/705))
+
 # TiDB Operator v1.0.0 Release Notes
 
 ## v1.0.0 What's New
