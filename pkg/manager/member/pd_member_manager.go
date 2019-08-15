@@ -44,6 +44,7 @@ type pdMemberManager struct {
 	epsLister    corelisters.EndpointsLister
 	podControl   controller.PodControlInterface
 	pvcLister    corelisters.PersistentVolumeClaimLister
+	certControl  controller.CertControlInterface
 	pdScaler     Scaler
 	pdUpgrader   Upgrader
 	autoFailover bool
@@ -60,6 +61,7 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	epsLister corelisters.EndpointsLister,
 	podControl controller.PodControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
+	certControl controller.CertControlInterface,
 	pdScaler Scaler,
 	pdUpgrader Upgrader,
 	autoFailover bool,
@@ -74,6 +76,7 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 		epsLister,
 		podControl,
 		pvcLister,
+		certControl,
 		pdScaler,
 		pdUpgrader,
 		autoFailover,
@@ -173,6 +176,13 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
+	if tc.Spec.EnableTLSServer {
+		err := pmm.syncPDServerCerts(tc)
+		if err != nil {
+			return err
+		}
+	}
+
 	newPDSet, err := pmm.getNewPDSetForTidbCluster(tc)
 	if err != nil {
 		return err
@@ -239,6 +249,29 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 
 	return pmm.updateStatefulSet(tc, newPDSet, oldPDSet)
 }
+
+func (pmm *pdMemberManager) syncPDServerCerts(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	svcName := fmt.Sprintf("%s-pd", tcName)
+	peerName := fmt.Sprintf("%s-pd-peer", tcName)
+
+	if pmm.certControl.CheckSecret(ns, svcName) {
+		return nil
+	}
+
+	var ipList []string // empty
+	hostList := []string{
+		svcName,
+		peerName,
+		fmt.Sprintf("%s.%s", svcName, ns),
+		fmt.Sprintf("%s.%s", peerName, ns),
+		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
+	}
+
+	return pmm.certControl.Create(tc, svcName, hostList, ipList, "pd")
+}
+
 func (pmm *pdMemberManager) updateStatefulSet(tc *v1alpha1.TidbCluster, newPDSet, oldPDSet *apps.StatefulSet) error {
 	if !statefulSetEqual(*newPDSet, *oldPDSet) {
 		set := *oldPDSet
