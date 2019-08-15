@@ -7,21 +7,31 @@
 # so it cannot just be added to the existing terraform.
 
 set -euo pipefail
-set -x
+
 if ! cd "$(dirname "$0")"; then
     printf "Could not change to base directory of script." >&2
     exit 1
 fi
 
-project=${TF_VAR_GCP_PROJECT:-$( echo var.GCP_PROJECT | terraform console )}
+if ! project=${TF_VAR_GCP_PROJECT:-$( echo var.GCP_PROJECT | terraform console 2>/dev/null )} || [[ -z $project ]]; then
+    echo "could not identify current project; set GCP_PROJECT in a .tfvars file or set the TF_VAR_GCP_PROJECT environment variable" >&2
+    exit 1
+fi
 echo "using project: $project"
 
 cred_file=credentials.auto.tfvars
 
-#cred_path=$( terraform console <<<var.GCP_CREDENTIALS_PATH 2>/dev/null )
 if cred_path=$( echo var.GCP_CREDENTIALS_PATH | terraform console 2>/dev/null ) && [[ $cred_path ]]; then
-    echo "GCP_CREDENTAILS_PATH already set to $cred_path"
-    exit 1
+    if ! command -v jq >/dev/null; then
+        echo "GCP_CREDENTAILS_PATH already set to $cred_path and jq(1) is not installed to ensure it is for project $project" >&2
+        exit 1
+    elif cred_project=$(jq -r .project_id "$cred_path") && [[ $cred_project != $project ]]; then
+        echo "GCP_CREDENTAILS_PATH already set to $cred_path but credentials project $cred_project does not match current project $project" >&2
+        exit 1
+    else
+        echo "GCP_CREDENTAILS_PATH already set to $cred_path for project $project" >&2
+        exit
+    fi
 fi
 
 gcloud=( gcloud --project "$project" )
@@ -58,3 +68,4 @@ for role in "${roles[@]}"; do
 done
 
 printf 'GCP_CREDENTIALS_PATH = "%s/%s"\n' "$PWD" "$key_file" > "$cred_file"
+echo "Successfully wrote credentials to $key_file and configuration to $cred_file"
