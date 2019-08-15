@@ -38,13 +38,13 @@ type pdMemberManager struct {
 	pdControl    pdapi.PDControlInterface
 	setControl   controller.StatefulSetControlInterface
 	svcControl   controller.ServiceControlInterface
+	podControl   controller.PodControlInterface
+	certControl  controller.CertControlInterface
 	setLister    v1beta1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
 	podLister    corelisters.PodLister
 	epsLister    corelisters.EndpointsLister
-	podControl   controller.PodControlInterface
 	pvcLister    corelisters.PersistentVolumeClaimLister
-	certControl  controller.CertControlInterface
 	pdScaler     Scaler
 	pdUpgrader   Upgrader
 	autoFailover bool
@@ -55,13 +55,13 @@ type pdMemberManager struct {
 func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
+	podControl controller.PodControlInterface,
+	certControl controller.CertControlInterface,
 	setLister v1beta1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	epsLister corelisters.EndpointsLister,
-	podControl controller.PodControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
-	certControl controller.CertControlInterface,
 	pdScaler Scaler,
 	pdUpgrader Upgrader,
 	autoFailover bool,
@@ -70,13 +70,13 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 		pdControl,
 		setControl,
 		svcControl,
+		podControl,
+		certControl,
 		setLister,
 		svcLister,
 		podLister,
 		epsLister,
-		podControl,
 		pvcLister,
-		certControl,
 		pdScaler,
 		pdUpgrader,
 		autoFailover,

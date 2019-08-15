@@ -42,6 +42,7 @@ type tikvMemberManager struct {
 	setControl                   controller.StatefulSetControlInterface
 	svcControl                   controller.ServiceControlInterface
 	pdControl                    pdapi.PDControlInterface
+	certControl                  controller.CertControlInterface
 	setLister                    v1beta1.StatefulSetLister
 	svcLister                    corelisters.ServiceLister
 	podLister                    corelisters.PodLister
@@ -57,6 +58,7 @@ type tikvMemberManager struct {
 func NewTiKVMemberManager(pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
+	certControl controller.CertControlInterface,
 	setLister v1beta1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
@@ -71,6 +73,7 @@ func NewTiKVMemberManager(pdControl pdapi.PDControlInterface,
 		nodeLister:   nodeLister,
 		setControl:   setControl,
 		svcControl:   svcControl,
+		certControl:  certControl,
 		setLister:    setLister,
 		svcLister:    svcLister,
 		autoFailover: autoFailover,
@@ -160,6 +163,13 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
+	if tc.Spec.EnableTLSServer {
+		err := tkmm.syncTiKVServerCerts(tc)
+		if err != nil {
+			return err
+		}
+	}
+
 	newSet, err := tkmm.getNewSetForTidbCluster(tc)
 	if err != nil {
 		return err
@@ -232,6 +242,26 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	}
 
 	return nil
+}
+
+func (tkmm *tikvMemberManager) syncTiKVServerCerts(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	svcName := fmt.Sprintf("%s-tikv", tcName)
+	peerName := fmt.Sprintf("%s-tikv-peer", tcName)
+
+	if tkmm.certControl.CheckSecret(ns, svcName) {
+		return nil
+	}
+
+	var ipList []string // empty
+	hostList := []string{
+		peerName,
+		fmt.Sprintf("%s.%s", peerName, ns),
+		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
+	}
+
+	return tkmm.certControl.Create(tc, svcName, hostList, ipList, "tikv")
 }
 
 func (tkmm *tikvMemberManager) getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
