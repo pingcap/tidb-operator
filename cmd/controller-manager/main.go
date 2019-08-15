@@ -21,14 +21,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/controller/backup"
-	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
-	"github.com/pingcap/tidb-operator/pkg/controller/restore"
-
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/controller/backup"
+	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
+	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
 	"github.com/pingcap/tidb-operator/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
