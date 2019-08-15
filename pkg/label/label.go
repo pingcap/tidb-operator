@@ -45,6 +45,16 @@ const (
 	StoreIDLabelKey string = "tidb.pingcap.com/store-id"
 	// MemberIDLabelKey is member id label key
 	MemberIDLabelKey string = "tidb.pingcap.com/member-id"
+
+	// BackupScheduleLabelKey is backup schedule key
+	BackupScheduleLabelKey string = "tidb.pingcap.com/backup-schedule"
+
+	// BackupProtectionFinalizer is the name of finalizer on backups
+	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
+
+	// AnnFailTiDBScheduler is for injecting a failure into the TiDB custom scheduler
+	// A pod with this annotation will produce an error when scheduled.
+	AnnFailTiDBScheduler string = "tidb.pingcap.com/fail-scheduler"
 	// AnnPodNameKey is pod name annotation key used in PV/PVC for synchronizing tidb cluster meta info
 	AnnPodNameKey string = "tidb.pingcap.com/pod-name"
 	// AnnPVCDeferDeleting is pvc defer deletion annotation key used in PVC for defer deleting PVC

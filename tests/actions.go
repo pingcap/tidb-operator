@@ -263,6 +263,9 @@ type TidbClusterConfig struct {
 	BlockWriteConfig blockwriter.Config
 	GrafanaClient    *metrics.Client
 	TopologyKey      string
+
+	pumpConfig    []string
+	drainerConfig []string
 }
 
 func (tc *TidbClusterConfig) String() string {
@@ -2289,19 +2292,28 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	glog.Infof("begin to deploy incremental backup cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
 
 	sets := map[string]string{
-		"binlog.pump.create":            "true",
-		"binlog.drainer.destDBType":     "mysql",
-		"binlog.drainer.mysql.host":     fmt.Sprintf("%s-tidb.%s", to.ClusterName, to.Namespace),
-		"binlog.drainer.mysql.user":     "root",
-		"binlog.drainer.mysql.password": to.Password,
-		"binlog.drainer.mysql.port":     "4000",
-		"binlog.drainer.ignoreSchemas":  "",
+		"binlog.pump.create": "true",
 	}
 	if withDrainer {
 		sets["binlog.drainer.create"] = "true"
 	}
 	if ts != "" {
 		sets["binlog.drainer.initialCommitTs"] = ts
+	}
+
+	from.drainerConfig = []string{
+		"worker-count = 16",
+		"detect-interval = 10",
+		"disable-dispatch = false",
+		`ignore-schemas = ""`,
+		`safe-mode = false`,
+		`txn-batch = 20`,
+		`db-type = "mysql"`,
+		`[syncer.to]`,
+		fmt.Sprintf(`host = "%s-tidb.%s"`, to.ClusterName, to.Namespace),
+		fmt.Sprintf(`user = "%s"`, "root"),
+		fmt.Sprintf(`password = "%s"`, to.Password),
+		fmt.Sprintf(`port = %d`, 4000),
 	}
 
 	cmd, err := oa.getHelmUpgradeClusterCmd(from, sets)
@@ -2311,7 +2323,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	glog.Infof(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to launch scheduler backup job: %v, %s", err, string(res))
+		return fmt.Errorf("failed to launch incremental backup job: %v, %s", err, string(res))
 	}
 	return nil
 }
@@ -2333,7 +2345,11 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 
 		listOps := metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(
-				pumpStatefulSet.Labels,
+				map[string]string{
+					label.ComponentLabelKey: "pump",
+					label.InstanceLabelKey:  pumpStatefulSet.Labels[label.InstanceLabelKey],
+					label.NameLabelKey:      "tidb-cluster",
+				},
 			).String(),
 		}
 
@@ -2343,10 +2359,34 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 			return false, nil
 		}
 
+		// v1.0.0 don't have affinity test case
+		// https://github.com/pingcap/tidb-operator/pull/746
+		isv1 := info.OperatorTag == "v1.0.0"
+
 		for _, pod := range pods.Items {
 			if !oa.pumpHealth(info, pod.Spec.Hostname) {
-				glog.Errorf("some pods is not health %s ,%v", pumpStatefulSetName, err)
+				glog.Errorf("some pods is not health %s", pumpStatefulSetName)
 				return false, nil
+			}
+
+			if isv1 {
+				continue
+			}
+
+			glog.Info(pod.Spec.Affinity)
+			if pod.Spec.Affinity == nil || pod.Spec.Affinity.PodAntiAffinity == nil || len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
+				return true, fmt.Errorf("pump pod %s/%s should have affinity set", pod.Namespace, pod.Name)
+			}
+			glog.Info(pod.Spec.Tolerations)
+			foundKey := false
+			for _, tor := range pod.Spec.Tolerations {
+				if tor.Key == "node-role" {
+					foundKey = true
+					break
+				}
+			}
+			if !foundKey {
+				return true, fmt.Errorf("pump pod %s/%s should have tolerations set", pod.Namespace, pod.Name)
 			}
 		}
 
@@ -2367,7 +2407,11 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 
 		listOps = metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(
-				drainerStatefulSet.Labels,
+				map[string]string{
+					label.ComponentLabelKey: "drainer",
+					label.InstanceLabelKey:  drainerStatefulSet.Labels[label.InstanceLabelKey],
+					label.NameLabelKey:      "tidb-cluster",
+				},
 			).String(),
 		}
 
@@ -2377,7 +2421,28 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		}
 		for _, pod := range pods.Items {
 			if !oa.drainerHealth(info, pod.Spec.Hostname) {
+				glog.Errorf("some pods is not health %s", drainerStatefulSetName)
 				return false, nil
+			}
+
+			if isv1 {
+				continue
+			}
+
+			glog.Info(pod.Spec.Affinity)
+			if pod.Spec.Affinity == nil || pod.Spec.Affinity.PodAntiAffinity == nil || len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
+				return true, fmt.Errorf("drainer pod %s/%s should have spec.affinity set", pod.Namespace, pod.Name)
+			}
+			glog.Info(pod.Spec.Tolerations)
+			foundKey := false
+			for _, tor := range pod.Spec.Tolerations {
+				if tor.Key == "node-role" {
+					foundKey = true
+					break
+				}
+			}
+			if !foundKey {
+				return true, fmt.Errorf("drainer pod %s/%s should have tolerations set", pod.Namespace, pod.Name)
 			}
 		}
 
@@ -2386,7 +2451,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 
 	err := wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
 	if err != nil {
-		return fmt.Errorf("failed to launch scheduler backup job: %v", err)
+		return fmt.Errorf("failed to check incremental backup job: %v", err)
 	}
 	return nil
 
@@ -2462,7 +2527,7 @@ func (oa *operatorActions) CleanWebHookAndServiceOrDie(info *OperatorConfig) {
 }
 
 type pumpStatus struct {
-	StatusMap map[string]*nodeStatus
+	StatusMap map[string]*nodeStatus `json:"StatusMap"`
 }
 
 type nodeStatus struct {
@@ -2470,7 +2535,7 @@ type nodeStatus struct {
 }
 
 func (oa *operatorActions) pumpHealth(info *TidbClusterConfig, hostName string) bool {
-	pumpHealthURL := fmt.Sprintf("%s.%s-pump.%s:8250/status", hostName, info.ClusterName, info.Namespace)
+	pumpHealthURL := fmt.Sprintf("http://%s.%s-pump.%s:8250/status", hostName, info.ClusterName, info.Namespace)
 	res, err := http.Get(pumpHealthURL)
 	if err != nil {
 		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, pumpHealthURL, err)
@@ -2508,7 +2573,7 @@ type drainerStatus struct {
 }
 
 func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName string) bool {
-	drainerHealthURL := fmt.Sprintf("%s.%s-drainer.%s:8249/status", hostName, info.ClusterName, info.Namespace)
+	drainerHealthURL := fmt.Sprintf("http://%s.%s-drainer.%s:8249/status", hostName, info.ClusterName, info.Namespace)
 	res, err := http.Get(drainerHealthURL)
 	if err != nil {
 		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthURL, err)
@@ -2529,7 +2594,7 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 		glog.Errorf("cluster:[%s] unmarshal failed,error:%v", info.ClusterName, err)
 		return false
 	}
-	return len(healths.PumpPos) > 0 && healths.Synced
+	return len(healths.PumpPos) > 0
 }
 
 func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
@@ -2654,7 +2719,7 @@ func (oa *operatorActions) CheckManualPauseTiDB(info *TidbClusterConfig) error {
 	}
 
 	// wait for the tidb statefulset is upgrade to the protect one
-	if err = wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn); err != nil {
+	if err = wait.Poll(DefaultPollInterval, 30*time.Minute, fn); err != nil {
 		return fmt.Errorf("fail to upgrade to annotation TiDB pod : %v", err)
 	}
 
