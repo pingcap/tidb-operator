@@ -9,12 +9,14 @@
 
 # Warning:
 # * If this script does not work correctly, you will suffer data loss.
-# * Only use this in a non-production environment.
+# * In a production environment set DRY_RUN=true and inspect disks before deleting them
 #
 # Extra Safety:
 # * If a disk is mounted in an instance, gcloud refuses to delete it.
 
 set -euo pipefail
+
+DRY_RUN="${DRY_RUN:-}"
 
 REGIONS=$(gcloud compute disks list | awk '{print $2}' | grep -v LOCATION | sort | uniq | cut -d "-" -f 1-2 | uniq)
 disk_zones=$(gcloud compute disks list | awk '{print $2}' | grep -v LOCATION | sort | uniq | xargs echo -n)
@@ -47,22 +49,25 @@ echo "$REGIONS" | while read -r region ; do
   done
 
   rm -f $pv_file $node_file
-  clusters=$(gcloud container clusters list --filter="location:($region)" --format json | jq -r -c '.[] | .name + " " + .location')
-  echo "$clusters"
-  echo "$clusters" | while read -r name location ; do
-    location_type="--zone"
-    if [[ -z "$(echo "$location" | cut -d '-' -f 3)" ]] ; then
-      location_type="--region"
-    fi
-    gcloud container clusters get-credentials "$name" "$location_type" $location
-    kubectl describe pv | awk '/PDName:/ {print $2}' | sort >> $pv_file
-    kubectl get node --no-headers | awk '{print $1}' | sort >> $node_file
-  done
+  clusters=$(gcloud container clusters list --filter="location:($region)" --format json | jq -r -c '.[] | (.name + " " + .location)')
+  if [[ -z "$clusters" ]] ; then
+    touch $pv_file $node_file
+  else
+    echo "$clusters" | while read -r name location ; do
+      location_type="--zone"
+      if [[ -z "$(echo "$location" | cut -d '-' -f 3)" ]] ; then
+        location_type="--region"
+      fi
+      gcloud container clusters get-credentials "$name" "$location_type" $location
+      kubectl describe pv | awk '/PDName:/ {print $2}' | sort >> $pv_file
+      kubectl get node --no-headers | awk '{print $1}' | sort >> $node_file
+    done
+  fi
   rm -f "$KUBECONFIG"
 
   echo "$zones" | while read -r zone ; do
     if disks=$(cat "$zone-disks" | grep gke | awk '{print $1}') ; then
-      echo "ZONE: $zone"
+      echo "  ZONE $zone"
       echo "$disks" | while read -r disk ; do
 	  if grep "$disk" $pv_file > /dev/null ; then
 	    echo "KEEP disk $disk used by pv"
@@ -75,8 +80,12 @@ echo "$REGIONS" | while read -r region ; do
 	      disk_gb="$(echo "$disk_json" | jq -r '.sizeGb')"
 	      users_null="$(echo "$disk_json" | jq -r '.users')"
 	      if [[ "$users_null" == null ]] ; then
-	        echo "Deleting disk $disk $zone ${disk_gb}GB"
-	        echo "Y" | gcloud compute disks delete "$disk" --zone "$zone"
+	        if [[ -z $DRY_RUN ]] ; then
+	          echo "DELETE disk $disk $zone ${disk_gb}GB"
+	          echo "Y" | gcloud compute disks delete "$disk" --zone "$zone"
+	        else
+	          echo "DRY RUN: would delete disk $disk $zone ${disk_gb}GB"
+		fi
 	      else
 	        users="$(echo "$disk_json" | jq -r '.users[]')"
 	        if [[ "$(echo "$users" | wc -l)" -eq 0 ]] ; then
@@ -102,8 +111,12 @@ echo "$REGIONS" | while read -r region ; do
 		    if instance=$(grep "$node" $zone-$instance_file) >/dev/null ; then
 		      echo "KEEP disk $disk $zone used by instance $instance"
 		    else
-	              echo "Deleting disk $disk $zone ${disk_gb}GB"
-		      echo "Y" | gcloud compute disks delete "$disk" --zone "$zone"
+	              if [[ -z $DRY_RUN ]] ; then
+		        echo "DELETE disk $disk $zone ${disk_gb}GB"
+		        echo "Y" | gcloud compute disks delete "$disk" --zone "$zone"
+		      else
+		        echo "DRY RUN: would delete disk $disk $zone ${disk_gb}GB"
+		      fi
 		    fi
 		  fi
 		fi
