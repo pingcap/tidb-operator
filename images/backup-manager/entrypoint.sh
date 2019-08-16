@@ -63,10 +63,6 @@ case "$1" in
         echo "$BACKUP_BIN clean $@"
         exec $BACKUP_BIN clean "$@"
         ;;
-    schedule-backup)
-        shift 1
-        exec $BACKUP_BIN $VERBOSE schedule-backup "$@"
-        ;;
     *)
         echo "Usage: $0 {backup|restore|clean}"
         echo "Now runs your command."
