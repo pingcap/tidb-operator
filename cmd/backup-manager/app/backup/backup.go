@@ -68,7 +68,7 @@ func (bo *BackupOpts) getTikvGCLifeTime(db *sql.DB) (string, error) {
 	return tikvGCTime, nil
 }
 
-func (bo *BackupOpts) setTikvGClifeTime(db *sql.DB, gcTime string) error {
+func (bo *BackupOpts) setTikvGCLifeTime(db *sql.DB, gcTime string) error {
 	sql := fmt.Sprintf("update %s set variable_value = ? where variable_name = ?", constants.TidbMetaTable)
 	_, err := db.Exec(sql, gcTime, constants.TikvGCVariable)
 	if err != nil {
@@ -92,11 +92,12 @@ func (bo *BackupOpts) dumpTidbClusterData() (string, error) {
 		"--long-query-guard=3600",
 		"--tidb-force-priority=LOW_PRIORITY",
 		"--verbose=3",
+		fmt.Sprintf("--regex '^(?!(mysql%s.))'", "\\"),
 	}
 
 	dumper := exec.Command("/mydumper", args...)
 	if err := dumper.Start(); err != nil {
-		return bfPath, fmt.Errorf("cluster %s, start mydumper command %v falied, err: %v", bo, args, err)
+		return bfPath, fmt.Errorf("cluster %s, start mydumper command %v failed, err: %v", bo, args, err)
 	}
 	if err := dumper.Wait(); err != nil {
 		return bfPath, fmt.Errorf("cluster %s, execute mydumper command %v failed, err: %v", bo, args, err)
@@ -110,7 +111,7 @@ func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
 	// TODO: We may need to use exec.CommandContext to control timeouts.
 	rcCopy := exec.Command("rclone", constants.RcloneConfigArg, "copyto", source, tmpDestBucket)
 	if err := rcCopy.Start(); err != nil {
-		return fmt.Errorf("cluster %s, start rclone copyto command for upload backup data %s falied, err: %v", bo, bucketURI, err)
+		return fmt.Errorf("cluster %s, start rclone copyto command for upload backup data %s failed, err: %v", bo, bucketURI, err)
 	}
 	if err := rcCopy.Wait(); err != nil {
 		return fmt.Errorf("cluster %s, execute rclone copyto command for upload backup data %s failed, err: %v", bo, bucketURI, err)
@@ -122,7 +123,7 @@ func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
 	// remove .tmp extension
 	output, err := exec.Command("rclone", constants.RcloneConfigArg, "moveto", tmpDestBucket, destBucket).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute rclone moveto command falied, output: %s, err: %v", bo, string(output), err)
+		return fmt.Errorf("cluster %s, execute rclone moveto command failed, output: %s, err: %v", bo, string(output), err)
 	}
 	return nil
 }
@@ -131,7 +132,7 @@ func (bo *BackupOpts) cleanRemoteBackupData(bucket string) error {
 	destBucket := util.NormalizeBucketURI(bucket)
 	rcDelete := exec.Command("rclone", constants.RcloneConfigArg, "deletefile", destBucket)
 	if err := rcDelete.Start(); err != nil {
-		return fmt.Errorf("cluster %s, start rclone deletefile command falied, err: %v", bo, err)
+		return fmt.Errorf("cluster %s, start rclone deletefile command failed, err: %v", bo, err)
 	}
 	if err := rcDelete.Wait(); err != nil {
 		return fmt.Errorf("cluster %s, execute rclone deletefile command failed, err: %v", bo, err)

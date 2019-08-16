@@ -85,7 +85,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 	glog.Infof("cluster %s %s is %s", bm, constants.TikvGCVariable, oldTikvGCTime)
 
-	err = bm.setTikvGClifeTime(db, constants.TikvGCLifeTime)
+	err = bm.setTikvGCLifeTime(db, constants.TikvGCLifeTime)
 	if err != nil {
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
@@ -107,7 +107,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 	glog.Infof("dump cluster %s data success", bm)
 
-	err = bm.setTikvGClifeTime(db, oldTikvGCTime)
+	err = bm.setTikvGCLifeTime(db, oldTikvGCTime)
 	if err != nil {
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
