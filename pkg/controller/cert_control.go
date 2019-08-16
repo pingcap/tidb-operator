@@ -64,7 +64,7 @@ func (rcc *realCertControl) Create(tc *v1alpha1.TidbCluster, commonName string,
 		return err
 	}
 	if err == nil {
-		glog.Infof("Secret %s/%s already exist, reusing the key", ns, csrName)
+		glog.Infof("Secret %s/%s already exist, reusing the key pair", ns, csrName)
 		// TODO: validate the cert
 		return nil
 	}
@@ -121,13 +121,19 @@ func (rcc *realCertControl) Create(tc *v1alpha1.TidbCluster, commonName string,
 				approveCond == capi.CertificateApproved &&
 				updatedCSR.Status.Certificate != nil {
 				glog.Infof("signed certificate for [%s/%s]: %s-%s", ns, tcName, tcName, suffix)
-				return rcc.SaveToSecret(ns, csrName, updatedCSR.Status.Certificate, key)
+
+				// save signed certificate and key to secret
+				err = rcc.SaveToSecret(ns, csrName, updatedCSR.Status.Certificate, key)
+				if err == nil {
+					// cleanup the approved csr
+					delOpts := types.DeleteOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
+					return rcc.kubeCli.Certificates().CertificateSigningRequests().Delete(csrName, &delOpts)
+				}
+				return err
 			}
 			continue
 		}
 	}
-
-	// TODO: cleanup csr object
 }
 
 func (rcc *realCertControl) sendCSR(tc *v1alpha1.TidbCluster, rawCSR []byte, suffix string) (*capi.CertificateSigningRequest, error) {
@@ -157,6 +163,7 @@ func (rcc *realCertControl) sendCSR(tc *v1alpha1.TidbCluster, rawCSR []byte, suf
 		glog.Infof("CSR already exist for [%s/%s]: %s-%s, reusing it", ns, tcName, tcName, suffix)
 		getOpts := types.GetOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
 		resp, err = rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Get(req.Name, getOpts)
+		// TODO: check if CSR and key matches
 	}
 	if err != nil {
 		return resp, fmt.Errorf("failed to create CSR for [%s/%s]: %s-%s, error: %v", ns, tcName, tcName, suffix, err)

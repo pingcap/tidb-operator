@@ -68,7 +68,7 @@ rules:
   verbs: ["create", "get", "watch", "list"]
 - apiGroups: ["certificates.k8s.io"]
   resources: ["certificatesigningrequests"]
-  verbs: ["create", "get", "list", "watch"]
+  verbs: ["create", "get", "list", "watch", "delete"]
 - apiGroups: ["certificates.k8s.io"]
   resources: ["certificatesigningrequests/approval", "certificatesigningrequests/status"]
   verbs: ["update"]
