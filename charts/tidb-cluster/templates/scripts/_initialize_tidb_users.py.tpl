@@ -1,7 +1,7 @@
 import os, MySQLdb
 host = '{{ template "cluster.name" . }}-tidb'
 {{- if .Values.tidb.permitHost }}
-permit_host = '{{ .Values.tidb.permitHost }}'
+permit_host = {{ .Values.tidb.permitHost | default %% | quote }}
 {{- else }}
 permit_host = '%%'
 {{- end }}
