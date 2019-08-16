@@ -14,7 +14,7 @@
 package controller
 
 import (
-	//"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"time"
 
@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	types "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -70,7 +71,7 @@ func (rcc *realCertControl) Create(tc *v1alpha1.TidbCluster, commonName string,
 
 	rawCSR, key, err := certutil.NewCSR(commonName, hostList, IPList)
 	if err != nil {
-		return fmt.Errorf("fail to generate new key and certificate for %s/%s", ns, csrName)
+		return fmt.Errorf("fail to generate new key and certificate for %s/%s, %v", ns, csrName, err)
 	}
 
 	// sign certificate
@@ -83,21 +84,50 @@ func (rcc *realCertControl) Create(tc *v1alpha1.TidbCluster, commonName string,
 		return err
 	}
 
-	// wait at most 10min for the cert to be signed
-	timeout := time.After(time.Minute * 10)
-	tick := time.Tick(time.Millisecond * 500)
+	// wait at most 5min for the cert to be signed
+	timeout := int64(time.Minute.Seconds() * 5)
+	tick := time.After(time.Second * 10)
+	watchReq := types.ListOptions{
+		Watch:          true,
+		TimeoutSeconds: &timeout,
+		FieldSelector:  fields.OneTermEqualSelector("metadata.name", csrName).String(),
+	}
+
+	csrCh, err := rcc.kubeCli.Certificates().CertificateSigningRequests().Watch(watchReq)
+	if err != nil {
+		glog.Errorf("error watch CSR for [%s/%s]: %s-%s", ns, tcName, tcName, suffix)
+		return err
+	}
+
+	watchCh := csrCh.ResultChan()
 	for {
 		select {
-		case <-timeout:
-			return fmt.Errorf("fail to get signed certificate for %s after 10min", csrName)
 		case <-tick:
-			approveCond := csr.Status.Conditions[len(csr.Status.Conditions)-1].Type
-			if approveCond == capi.CertificateApproved &&
-				csr.Status.Certificate != nil {
-				return rcc.SaveToSecret(ns, csrName, csr.Status.Certificate, key)
+			glog.Infof("CSR still not approved for [%s/%s]: %s-%s, retry later", ns, tcName, tcName, suffix)
+			continue
+		case event, ok := <-watchCh:
+			if !ok {
+				return fmt.Errorf("fail to get signed certificate for %s", csrName)
 			}
+
+			if len(event.Object.(*capi.CertificateSigningRequest).Status.Conditions) == 0 {
+				continue
+			}
+
+			updatedCSR := event.Object.(*capi.CertificateSigningRequest)
+			approveCond := updatedCSR.Status.Conditions[len(csr.Status.Conditions)-1].Type
+
+			if updatedCSR.UID == csr.UID &&
+				approveCond == capi.CertificateApproved &&
+				updatedCSR.Status.Certificate != nil {
+				glog.Infof("signed certificate for [%s/%s]: %s-%s", ns, tcName, tcName, suffix)
+				return rcc.SaveToSecret(ns, csrName, updatedCSR.Status.Certificate, key)
+			}
+			continue
 		}
 	}
+
+	// TODO: cleanup csr object
 }
 
 func (rcc *realCertControl) sendCSR(tc *v1alpha1.TidbCluster, rawCSR []byte, suffix string) (*capi.CertificateSigningRequest, error) {
@@ -110,7 +140,11 @@ func (rcc *realCertControl) sendCSR(tc *v1alpha1.TidbCluster, rawCSR []byte, suf
 			Name: fmt.Sprintf("%s-%s", tcName, suffix),
 		},
 		Spec: capi.CertificateSigningRequestSpec{
-			Request: rawCSR,
+			Request: pem.EncodeToMemory(&pem.Block{
+				Type:    "CERTIFICATE REQUEST",
+				Headers: nil,
+				Bytes:   rawCSR,
+			}),
 			Usages: []capi.KeyUsage{
 				capi.UsageClientAuth,
 				capi.UsageServerAuth,
@@ -140,7 +174,7 @@ func (rcc *realCertControl) approveCSR(csr *capi.CertificateSigningRequest) erro
 	})
 	_, err := rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().UpdateApproval(csr)
 	if err != nil {
-		return fmt.Errorf("error updateing approval for csr: %v", err)
+		return fmt.Errorf("error updating approval for csr: %v", err)
 	}
 	return nil
 }
@@ -173,6 +207,7 @@ func (rcc *realCertControl) SaveToSecret(ns string, secretName string, cert []by
 	}
 
 	_, err := rcc.kubeCli.CoreV1().Secrets(ns).Create(secret)
+	glog.Infof("save cert to secret %s/%s, error: %v", ns, secretName, err)
 	return err
 }
 

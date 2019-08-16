@@ -53,7 +53,6 @@ func NewCSR(commonName string, hostList []string, IPList []string) ([]byte, []by
 	if err != nil {
 		return nil, nil, err
 	}
-	pemKey := convertKeyToPEM("RSA PRIVATE KEY", privKey)
 
 	var ipAddrList []net.IP
 	for _, ip := range IPList {
@@ -71,9 +70,10 @@ func NewCSR(commonName string, hostList []string, IPList []string) ([]byte, []by
 		DNSNames:    hostList,
 		IPAddresses: ipAddrList,
 	}
-	csr, err := x509.CreateCertificateRequest(rand.Reader, csrTemplate, pemKey)
+	csr, err := x509.CreateCertificateRequest(rand.Reader, csrTemplate, privKey)
 	if err != nil {
 		return nil, nil, err
 	}
-	return csr, pemKey, nil
+
+	return csr, convertKeyToPEM("RSA PRIVATE KEY", privKey), nil
 }
