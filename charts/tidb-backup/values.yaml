@@ -23,6 +23,14 @@ extraLabels: {}
 # kubectl create secret generic backup-secret --namespace=<namespace> --from-literal=user=root --from-literal=password=<password>
 secretName: backup-secret
 
+resources:
+  limits:
+    cpu: 4000m
+    memory: 8Gi
+  requests:
+    cpu: 2000m
+    memory: 4Gi
+
 storage:
   className: local-storage
   size: 100Gi

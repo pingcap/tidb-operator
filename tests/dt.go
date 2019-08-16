@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -30,6 +29,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 const (
@@ -67,12 +67,24 @@ func (oa *operatorActions) LabelNodes() error {
 	}
 
 	for i, node := range nodes.Items {
-		index := i % RackNum
-		node.Labels[RackLabel] = fmt.Sprintf("rack%d", index)
-		_, err = oa.kubeCli.CoreV1().Nodes().Update(&node)
+		err := wait.Poll(3*time.Second, time.Minute, func() (bool, error) {
+			n, err := oa.kubeCli.CoreV1().Nodes().Get(node.Name, metav1.GetOptions{})
+			if err != nil {
+				glog.Errorf("get node:[%s] failed! error: %v", node.Name, err)
+				return false, nil
+			}
+			index := i % RackNum
+			n.Labels[RackLabel] = fmt.Sprintf("rack%d", index)
+			_, err = oa.kubeCli.CoreV1().Nodes().Update(n)
+			if err != nil {
+				glog.Errorf("label node:[%s] failed! error: %v", node.Name, err)
+				return false, nil
+			}
+			return true, nil
+		})
+
 		if err != nil {
-			glog.Errorf("label node:[%s] failed!", node.Name)
-			return err
+			return fmt.Errorf("label nodes failed, error: %v", err)
 		}
 	}
 	return nil

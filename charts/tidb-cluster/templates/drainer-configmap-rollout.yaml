@@ -1,0 +1,16 @@
+{{- if .Values.enableConfigMapRollout }}
+{{- if .Values.binlog.drainer.create }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "cluster.name" . }}-drainer-{{ template "drainer-configmap.data-digest" . }}
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: drainer
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+data:
+{{ include "drainer-configmap.data" . | indent 2 }}
+{{- end -}}
+{{- end -}}
