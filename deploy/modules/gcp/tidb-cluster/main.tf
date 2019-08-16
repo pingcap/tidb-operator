@@ -15,6 +15,7 @@ resource "google_container_node_pool" "pd_pool" {
 
   node_config {
     machine_type    = var.pd_instance_type
+    image_type      = var.pd_image_type
     local_ssd_count = 0
 
     taint {
@@ -47,6 +48,7 @@ resource "google_container_node_pool" "tikv_pool" {
 
   node_config {
     machine_type = var.tikv_instance_type
+    image_type   = var.tikv_image_type
     // This value cannot be changed (instead a new node pool is needed)
     // 1 SSD is 375 GiB
     local_ssd_count = 1
@@ -83,6 +85,7 @@ resource "google_container_node_pool" "tidb_pool" {
 
   node_config {
     machine_type = var.tidb_instance_type
+    image_type   = var.tidb_image_type
 
     taint {
       effect = "NO_SCHEDULE"
