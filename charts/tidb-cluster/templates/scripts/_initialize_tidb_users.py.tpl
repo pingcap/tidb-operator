@@ -1,6 +1,6 @@
 import os, MySQLdb
 host = '{{ template "cluster.name" . }}-tidb'
-permit_host = {{ .Values.tidb.permitHost | default %% | quote }}
+permit_host = {{ .Values.tidb.permitHost | default "%%" | quote }}
 port = 4000
 password_dir = '/etc/tidb/password'
 conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5)
