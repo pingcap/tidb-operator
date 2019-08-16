@@ -44,3 +44,18 @@ variable "tidb_instance_type" {}
 variable "monitor_instance_type" {
   default = "n1-standard-2"
 }
+
+variable "pd_image_type" {
+  description = "PD image type, avaiable: UBUNTU/COS"
+  default = "COS"
+}
+
+variable "tidb_image_type" {
+  description = "TiDB image type, avaiable: UBUNTU/COS"
+  default = "COS"
+}
+
+variable "tikv_image_type" {
+  description = "TiKV image type, avaiable: UBUNTU/COS"
+  default = "COS"
+}
