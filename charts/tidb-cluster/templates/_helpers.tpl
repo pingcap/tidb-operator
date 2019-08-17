@@ -107,3 +107,34 @@ config-file: |-
 {{ include "tidb-configmap.data" . | sha256sum | trunc 8 }}
 {{- end -}}
 
+{{/*
+Encapsulate pump configmap data for consistent digest calculation
+*/}}
+{{- define "pump-configmap.data" -}}
+pump-config: |-
+    {{- if .Values.binlog.pump.config }}
+{{ .Values.binlog.pump.config | indent 2 }}
+    {{- else -}}
+{{ tuple "config/_pump-config.tpl" . | include "helm-toolkit.utils.template" | indent 2 }}
+    {{- end -}}
+{{- end -}}
+
+{{- define "pump-configmap.data-digest" -}}
+{{ include "pump-configmap.data" . | sha256sum | trunc 8 }}
+{{- end -}}
+
+{{/*
+Encapsulate drainer configmap data for consistent digest calculation
+*/}}
+{{- define "drainer-configmap.data" -}}
+drainer-config: |-
+    {{- if .Values.binlog.drainer.config }}
+{{ .Values.binlog.drainer.config | indent 2 }}
+    {{- else -}}
+{{ tuple "config/_drainer-config.tpl" . | include "helm-toolkit.utils.template" | indent 2 }}
+    {{- end -}}
+{{- end -}}
+
+{{- define "drainer-configmap.data-digest" -}}
+{{ include "drainer-configmap.data" . | sha256sum | trunc 8 }}
+{{- end -}}
