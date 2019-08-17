@@ -38,7 +38,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	}
 
 	// checkout pd config
-	pdCfg, err := oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName()).GetConfig()
+	pdCfg, err := oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), false).GetConfig()
 	if err != nil {
 		glog.Errorf("failed to get the pd config: tc=%s err=%s", info.ClusterName, err.Error())
 		return err
