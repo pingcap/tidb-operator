@@ -21,7 +21,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
+	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -58,11 +61,11 @@ func (gpc *realGeneralPVCControl) CreatePVC(object runtime.Object, pvc *corev1.P
 	} else {
 		glog.V(4).Infof("create pvc: [%s/%s] successfully, %s: %s", ns, pvcName, kind, instanceName)
 	}
-	gpc.recordJobEvent("create", object, pvc, err)
+	gpc.recordPVCEvent("create", object, pvc, err)
 	return err
 }
 
-func (gpc *realGeneralPVCControl) recordJobEvent(verb string, obj runtime.Object, pvc *corev1.PersistentVolumeClaim, err error) {
+func (gpc *realGeneralPVCControl) recordPVCEvent(verb string, obj runtime.Object, pvc *corev1.PersistentVolumeClaim, err error) {
 	pvcName := pvc.GetName()
 	ns := pvc.GetNamespace()
 	instanceName := pvc.GetLabels()[label.InstanceLabelKey]
@@ -81,3 +84,38 @@ func (gpc *realGeneralPVCControl) recordJobEvent(verb string, obj runtime.Object
 }
 
 var _ GeneralPVCControlInterface = &realGeneralPVCControl{}
+
+// FakeGeneralPVCControl is a fake GeneralPVCControlInterface
+type FakeGeneralPVCControl struct {
+	PVCLister        corelisters.PersistentVolumeClaimLister
+	PVCIndexer       cache.Indexer
+	createPVCTracker requestTracker
+}
+
+// NewFakeGeneralPVCControl returns a FakeGeneralPVCControl
+func NewFakeGeneralGeneralPVCControl(pvcInformer coreinformers.PersistentVolumeClaimInformer) *FakeGeneralPVCControl {
+	return &FakeGeneralPVCControl{
+		pvcInformer.Lister(),
+		pvcInformer.Informer().GetIndexer(),
+		requestTracker{0, nil, 0},
+	}
+}
+
+// SetCreatePVCError sets the error attributes of createPVCTracker
+func (fjc *FakeGeneralPVCControl) SetCreatePVCError(err error, after int) {
+	fjc.createPVCTracker.err = err
+	fjc.createPVCTracker.after = after
+}
+
+// CreatePVC adds the service to PVCIndexer
+func (fjc *FakeGeneralPVCControl) CreatePVC(_ runtime.Object, pvc *corev1.PersistentVolumeClaim) error {
+	defer fjc.createPVCTracker.inc()
+	if fjc.createPVCTracker.errorReady() {
+		defer fjc.createPVCTracker.reset()
+		return fjc.createPVCTracker.err
+	}
+
+	return fjc.PVCIndexer.Add(pvc)
+}
+
+var _ GeneralPVCControlInterface = &FakeGeneralPVCControl{}

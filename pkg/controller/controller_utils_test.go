@@ -352,6 +352,33 @@ func newService(tc *v1alpha1.TidbCluster, _ string) *corev1.Service {
 	return svc
 }
 
+func newBackup() *v1alpha1.Backup {
+	backup := &v1alpha1.Backup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-backup",
+			Namespace: metav1.NamespaceDefault,
+		},
+	}
+	return backup
+}
+
+func newPVCFromBackup(backup *v1alpha1.Backup) *corev1.PersistentVolumeClaim {
+	return &corev1.PersistentVolumeClaim{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "PersistentVolumeClaim",
+			APIVersion: "v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      backup.GetBackupPVCName(),
+			Namespace: corev1.NamespaceDefault,
+			UID:       types.UID("test"),
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			VolumeName: "backup-pv-1",
+		},
+	}
+}
+
 func newStatefulSet(tc *v1alpha1.TidbCluster, _ string) *apps.StatefulSet {
 	set := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
