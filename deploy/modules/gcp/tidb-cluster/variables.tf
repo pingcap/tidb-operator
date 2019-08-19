@@ -5,7 +5,7 @@ variable "cluster_version" {
 }
 variable "tidb_cluster_chart_version" {
   description = "The TiDB cluster chart version"
-  default     = "v1.0.0"
+  default     = "v1.0.1"
 }
 variable "override_values" {
   description = "YAML formatted values that will be passed in to the tidb-cluster helm release"
