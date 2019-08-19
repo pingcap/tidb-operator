@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	apps "k8s.io/api/apps/v1beta1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -350,6 +351,26 @@ func newService(tc *v1alpha1.TidbCluster, _ string) *corev1.Service {
 		},
 	}
 	return svc
+}
+
+func newBackup() *v1alpha1.Backup {
+	backup := &v1alpha1.Backup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-backup",
+			Namespace: metav1.NamespaceDefault,
+		},
+	}
+	return backup
+}
+
+func newJobFromBackup(backup *v1alpha1.Backup) *batchv1.Job {
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      backup.GetBackupJobName(),
+			Namespace: metav1.NamespaceDefault,
+		},
+	}
+	return job
 }
 
 func newStatefulSet(tc *v1alpha1.TidbCluster, _ string) *apps.StatefulSet {
