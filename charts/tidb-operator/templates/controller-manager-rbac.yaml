@@ -24,15 +24,21 @@ rules:
 {{- if .Values.clusterScoped }}
 - apiGroups: [""]
   resources:
-    - services
-    - events
+  - services
+  - events
   verbs: ["*"]
 - apiGroups: [""]
   resources: ["endpoints"]
   verbs: ["create", "get", "list", "watch", "update"]
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["get", "list", "watch", "create", "update", "delete"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch"]
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
-  verbs: ["get", "list", "watch", "update", "delete"]
+  verbs: ["get", "list", "watch", "create", "update", "delete"]
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get", "list", "watch","update", "delete"]
@@ -40,7 +46,15 @@ rules:
   resources: ["statefulsets"]
   verbs: ["*"]
 - apiGroups: ["pingcap.com"]
-  resources: ["tidbclusters", "tidbclusters/finalizers"]
+  resources:
+  - tidbclusters
+  - tidbclusters/finalizers
+  - backups
+  - backups/finalizers
+  - backupschedules
+  - backupschedules/finalizers
+  - restores
+  - restores/finalizers
   verbs: ["*"]
 {{- end }}
 - apiGroups: [""]
@@ -89,9 +103,15 @@ rules:
 - apiGroups: [""]
   resources: ["endpoints"]
   verbs: ["create", "get", "list", "watch", "update"]
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["get", "list", "watch", "create", "update", "delete"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch"]
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
-  verbs: ["get", "list", "watch", "update", "delete"]
+  verbs: ["get", "list", "watch", "create", "update", "delete"]
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get", "list", "watch","update", "delete"]
@@ -99,7 +119,15 @@ rules:
   resources: ["statefulsets"]
   verbs: ["*"]
 - apiGroups: ["pingcap.com"]
-  resources: ["tidbclusters", "tidbclusters/finalizers"]
+  resources:
+  - tidbclusters
+  - tidbclusters/finalizers
+  - backups
+  - backups/finalizers
+  - backupschedules
+  - backupschedules/finalizers
+  - restores
+  - restores/finalizers
   verbs: ["*"]
 ---
 kind: RoleBinding
