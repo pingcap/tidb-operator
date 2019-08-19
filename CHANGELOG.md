@@ -11,6 +11,8 @@
 - Add `affinity` to pump/drainer configration
 - Upgrade local-volume-provisioner to `v2.3.2`
 - Reduce e2e run time from `60m` to `20m`
+- Prevent pump progress from an exit with 0 if the pump become `offline`
+- Users can now expand cloud storage PV dynamically by increasing PVC storage size
 
 ### Bug fixes
 
@@ -19,6 +21,9 @@
 
 ## Detailed Bug Fixes and Changes
 
+- add a script to remove orphaned K8s disks ([#770](https://github.com/pingcap/tidb-operator/pull/770))
+- enable cloud storage volume expansion & label local volume ([#781](https://github.com/pingcap/tidb-operator/pull/781))
+- fix pump offline: pump progress will exit with 0 if offline ([#778](https://github.com/pingcap/tidb-operator/pull/778))
 - deploy: Modularize gcp terraform ([#717](https://github.com/pingcap/tidb-operator/pull/717))
 - add a script to remove orphaned K8s disks ([#745](https://github.com/pingcap/tidb-operator/pull/745))
 - binlog: support `binlog.pump.config` configurations for pump and drainer ([#693](https://github.com/pingcap/tidb-operator/pull/693))
