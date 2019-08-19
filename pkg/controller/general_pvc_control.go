@@ -93,7 +93,7 @@ type FakeGeneralPVCControl struct {
 }
 
 // NewFakeGeneralPVCControl returns a FakeGeneralPVCControl
-func NewFakeGeneralGeneralPVCControl(pvcInformer coreinformers.PersistentVolumeClaimInformer) *FakeGeneralPVCControl {
+func NewFakeGeneralPVCControl(pvcInformer coreinformers.PersistentVolumeClaimInformer) *FakeGeneralPVCControl {
 	return &FakeGeneralPVCControl{
 		pvcInformer.Lister(),
 		pvcInformer.Informer().GetIndexer(),
@@ -107,7 +107,7 @@ func (fjc *FakeGeneralPVCControl) SetCreatePVCError(err error, after int) {
 	fjc.createPVCTracker.after = after
 }
 
-// CreatePVC adds the service to PVCIndexer
+// CreatePVC adds the pvc to PVCIndexer
 func (fjc *FakeGeneralPVCControl) CreatePVC(_ runtime.Object, pvc *corev1.PersistentVolumeClaim) error {
 	defer fjc.createPVCTracker.inc()
 	if fjc.createPVCTracker.errorReady() {
