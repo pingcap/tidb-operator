@@ -138,7 +138,7 @@ func (fjc *FakeJobControl) SetDeleteJobError(err error, after int) {
 	fjc.deleteJobTracker.after = after
 }
 
-// CreateJob adds the service to JobIndexer
+// CreateJob adds the job to JobIndexer
 func (fjc *FakeJobControl) CreateJob(_ runtime.Object, job *batchv1.Job) error {
 	defer fjc.createJobTracker.inc()
 	if fjc.createJobTracker.errorReady() {
@@ -149,7 +149,7 @@ func (fjc *FakeJobControl) CreateJob(_ runtime.Object, job *batchv1.Job) error {
 	return fjc.JobIndexer.Add(job)
 }
 
-// DeleteJob deletes the service of JobIndexer
+// DeleteJob deletes the job
 func (fjc *FakeJobControl) DeleteJob(_ runtime.Object, _ *batchv1.Job) error {
 	defer fjc.deleteJobTracker.inc()
 	if fjc.deleteJobTracker.errorReady() {
