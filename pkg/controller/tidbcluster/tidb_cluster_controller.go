@@ -171,6 +171,11 @@ func NewController(
 				podControl,
 				pvcInformer.Lister(),
 			),
+			mm.NewRealPVCCleaner(
+				podInformer.Lister(),
+				pvcControl,
+				pvcInformer.Lister(),
+			),
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
