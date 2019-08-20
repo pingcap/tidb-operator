@@ -16,10 +16,12 @@ package controller
 import (
 	"encoding/pem"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	capi "k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -33,7 +35,7 @@ import (
 type CertControlInterface interface {
 	Create(tc *v1alpha1.TidbCluster, commonName string, hostList []string, IPList []string, suffix string) error
 	LoadFromSecret(ns string, secretName string) ([]byte, []byte, error)
-	SaveToSecret(ns string, secretName string, cert []byte, key []byte) error
+	SaveToSecret(ns string, instance string, component string, cert []byte, key []byte) error
 	CheckSecret(ns string, secretName string) bool
 	//RevokeCert() error
 	//RenewCert() error
@@ -59,13 +61,13 @@ func (rcc *realCertControl) Create(tc *v1alpha1.TidbCluster, commonName string,
 	csrName := fmt.Sprintf("%s-%s", tcName, suffix)
 
 	// generate certificate if not exist
-	_, key, err := rcc.LoadFromSecret(ns, csrName)
+	_, _, err := rcc.LoadFromSecret(ns, csrName)
 	if !apierrors.IsNotFound(err) {
 		return err
 	}
 	if err == nil {
-		glog.Infof("Secret %s/%s already exist, reusing the key pair", ns, csrName)
-		// TODO: validate the cert
+		// TODO: validate the cert and key
+		glog.Infof("Secret %s already exist, reusing the key pair. TidbCluster: %s/%s", csrName, ns, csrName)
 		return nil
 	}
 
@@ -123,7 +125,7 @@ func (rcc *realCertControl) Create(tc *v1alpha1.TidbCluster, commonName string,
 				glog.Infof("signed certificate for [%s/%s]: %s-%s", ns, tcName, tcName, suffix)
 
 				// save signed certificate and key to secret
-				err = rcc.SaveToSecret(ns, csrName, updatedCSR.Status.Certificate, key)
+				err = rcc.SaveToSecret(ns, tcName, suffix, updatedCSR.Status.Certificate, key)
 				if err == nil {
 					// cleanup the approved csr
 					delOpts := types.DeleteOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
@@ -196,22 +198,35 @@ func (rcc *realCertControl) RenewCert() error {
 	return nil
 }
 */
+
+// LoadFromSecret loads cert and key from Secret matching the name
 func (rcc *realCertControl) LoadFromSecret(ns string, secretName string) ([]byte, []byte, error) {
 	secret, err := rcc.kubeCli.CoreV1().Secrets(ns).Get(secretName, types.GetOptions{})
 
 	return secret.Data["cert"], secret.Data["key"], err
 }
 
-func (rcc *realCertControl) SaveToSecret(ns string, secretName string, cert []byte, key []byte) error {
+func (rcc *realCertControl) SaveToSecret(ns string, instance string, component string, cert []byte, key []byte) error {
+	secretName := fmt.Sprintf("%s-%s", instance, component)
+	// the client cert is part of tidb component
+	componentName := strings.TrimSuffix(component, "-client")
+
 	secret := &corev1.Secret{
 		ObjectMeta: types.ObjectMeta{
-			Name: secretName,
+			Name:   secretName,
+			Labels: make(map[string]string),
 		},
 		Data: map[string][]byte{
 			"cert": cert,
 			"key":  key,
 		},
 	}
+
+	labelTemp := label.New()
+	secret.Labels[label.NamespaceLabelKey] = ns
+	secret.Labels[label.ManagedByLabelKey] = labelTemp[label.ManagedByLabelKey]
+	secret.Labels[label.InstanceLabelKey] = instance
+	secret.Labels[label.ComponentLabelKey] = componentName
 
 	_, err := rcc.kubeCli.CoreV1().Secrets(ns).Create(secret)
 	glog.Infof("save cert to secret %s/%s, error: %v", ns, secretName, err)
@@ -222,7 +237,7 @@ func (rcc *realCertControl) SaveToSecret(ns string, secretName string, cert []by
 func (rcc *realCertControl) CheckSecret(ns string, secretName string) bool {
 	_, _, err := rcc.LoadFromSecret(ns, secretName)
 	if err == nil {
-		// TODO: validate the cert
+		// TODO: validate the cert and key
 		return true
 	}
 	return false
