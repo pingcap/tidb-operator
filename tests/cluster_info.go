@@ -36,7 +36,7 @@ func (tc *TidbClusterConfig) ScaleTiDB(replicas uint) *TidbClusterConfig {
 func (tc *TidbClusterConfig) RunInHost(flag bool) *TidbClusterConfig {
 	val := "false"
 	if flag {
-		val := "true"
+		val = "true"
 	}
 	tc.set("pd.hostNetwork", val)
 	tc.set("tikv.hostNetwork", val)
