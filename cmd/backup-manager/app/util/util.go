@@ -19,33 +19,26 @@ import (
 	"os"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 var (
-	SkipValidFlags []string
-	cmdHelpMsg     string
+	cmdHelpMsg string
 )
 
 func validCmdFlagFunc(flag *pflag.Flag) {
-	if flag.Name == "help" || flag.Name == "kubeconfig" || len(flag.Value.String()) > 0 {
+	if len(flag.Value.String()) > 0 {
 		return
-	}
-	for _, skip := range SkipValidFlags {
-		if flag.Name == skip {
-			return
-		}
 	}
 
 	cmdutil.CheckErr(fmt.Errorf(cmdHelpMsg, flag.Name))
 }
 
 // ValidCmdFlags verify that all flags are set
-func ValidCmdFlags(cmd *cobra.Command) {
-	cmdHelpMsg = "error: some flags [--%s] are missing.\nSee '" + cmd.CommandPath() + " -h for' help."
-	cmd.Flags().VisitAll(validCmdFlagFunc)
+func ValidCmdFlags(cmdPath string, flagSet *pflag.FlagSet) {
+	cmdHelpMsg = "error: some flags [--%s] are missing.\nSee '" + cmdPath + " -h for' help."
+	flagSet.VisitAll(validCmdFlagFunc)
 }
 
 // EnsureDirectoryExist create directory if does not exist
