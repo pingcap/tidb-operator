@@ -125,7 +125,7 @@ resource "google_container_node_pool" "monitor_pool" {
 }
 
 locals {
-  num_availability_zones = length(data.google_compute_zones.available)
+  num_availability_zones = length(data.google_compute_zones.available.names)
 }
 
 module "tidb-cluster" {
