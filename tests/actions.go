@@ -770,6 +770,11 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 			return false, nil
 		}
 
+		glog.V(4).Infof("check all pd and tikv instances have not pod scheduling annotation")
+		if b, err := oa.podsScheduleAnnHaveDeleted(tc); !b && err == nil {
+			return false, nil
+		}
+
 		glog.V(4).Infof("check store labels")
 		if b, err := oa.storeLabelsIsSet(tc, info.TopologyKey); !b && err == nil {
 			return false, nil
@@ -1508,6 +1513,37 @@ func (oa *operatorActions) schedulerHAFn(tc *v1alpha1.TidbCluster) (bool, error)
 		if b, err := fn(com); err != nil {
 			return false, err
 		} else if !b && err == nil {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+func (oa *operatorActions) podsScheduleAnnHaveDeleted(tc *v1alpha1.TidbCluster) (bool, error) {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(
+			label.New().Instance(tcName).Labels()).String(),
+	}
+
+	pvcList, err := oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(listOptions)
+	if err != nil {
+		glog.Errorf("failed to list pvcs for tidb cluster %s/%s, err: %v", ns, tcName, err)
+		return false, nil
+	}
+
+	for _, pvc := range pvcList.Items {
+		pvcName := pvc.GetName()
+		l := label.Label(pvc.Labels)
+		if !(l.IsPD() || l.IsTiKV()) {
+			continue
+		}
+
+		if _, exist := pvc.Annotations[label.AnnPVCPodScheduling]; exist {
+			glog.Errorf("tidb cluster %s/%s pvc %s has pod scheduling annotation", ns, tcName, pvcName)
 			return false, nil
 		}
 	}
