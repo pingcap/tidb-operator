@@ -128,8 +128,8 @@ func (rcc *realCertControl) Create(tc *v1alpha1.TidbCluster, commonName string,
 				err = rcc.SaveToSecret(ns, tcName, suffix, updatedCSR.Status.Certificate, key)
 				if err == nil {
 					// cleanup the approved csr
-					delOpts := types.DeleteOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
-					return rcc.kubeCli.Certificates().CertificateSigningRequests().Delete(csrName, &delOpts)
+					delOpts := &types.DeleteOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
+					return rcc.kubeCli.Certificates().CertificateSigningRequests().Delete(csrName, delOpts)
 				}
 				return err
 			}
@@ -138,14 +138,59 @@ func (rcc *realCertControl) Create(tc *v1alpha1.TidbCluster, commonName string,
 	}
 }
 
-func (rcc *realCertControl) sendCSR(tc *v1alpha1.TidbCluster, rawCSR []byte, suffix string) (*capi.CertificateSigningRequest, error) {
+func (rcc *realCertControl) getCSR(tc *v1alpha1.TidbCluster, csrName string) (*capi.CertificateSigningRequest, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	req := &capi.CertificateSigningRequest{
+	getOpts := types.GetOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
+	csr, err := rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Get(csrName, getOpts)
+	if err != nil && apierrors.IsNotFound(err) {
+		// it's supposed to be not found
+		return nil, nil
+	}
+	if err != nil {
+		// something else went wrong
+		return nil, err
+	}
+
+	// check for exist CSR, overwirte if it was created by operator, otherwise block the process
+	labelTemp := label.New()
+	if csr.Labels[label.NamespaceLabelKey] == ns &&
+		csr.Labels[label.ManagedByLabelKey] == labelTemp[label.ManagedByLabelKey] &&
+		csr.Labels[label.InstanceLabelKey] == tcName {
+		glog.Infof("found exist CSR %s/%s created by tidb-operator, overwriting", ns, csrName)
+		return csr, nil
+	}
+	return nil, fmt.Errorf("CSR %s/%s already exist, but not created by tidb-operator, skip it", ns, csrName)
+}
+
+func (rcc *realCertControl) sendCSR(tc *v1alpha1.TidbCluster, rawCSR []byte, suffix string) (*capi.CertificateSigningRequest, error) {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	csrName := fmt.Sprintf("%s-%s", tcName, suffix)
+
+	var csr *capi.CertificateSigningRequest
+
+	csr, err := rcc.getCSR(tc, csrName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create CSR for [%s/%s]: %s-%s, error: %v", ns, tcName, tcName, suffix, err)
+	}
+
+	if csr != nil {
+		delOpts := &types.DeleteOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
+		err := rcc.kubeCli.Certificates().CertificateSigningRequests().Delete(csrName, delOpts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete exist old CSR for [%s/%s]: %s-%s, error: %v", ns, tcName, tcName, suffix, err)
+		}
+		glog.Infof("exist old CSR deleted for [%s/%s]: %s-%s", ns, tcName, tcName, suffix)
+		return rcc.sendCSR(tc, rawCSR, suffix)
+	}
+
+	csr = &capi.CertificateSigningRequest{
 		TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"},
 		ObjectMeta: types.ObjectMeta{
-			Name: fmt.Sprintf("%s-%s", tcName, suffix),
+			Name:   csrName,
+			Labels: make(map[string]string),
 		},
 		Spec: capi.CertificateSigningRequestSpec{
 			Request: pem.EncodeToMemory(&pem.Block{
@@ -160,17 +205,15 @@ func (rcc *realCertControl) sendCSR(tc *v1alpha1.TidbCluster, rawCSR []byte, suf
 		},
 	}
 
-	resp, err := rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Create(req)
-	if err != nil && apierrors.IsAlreadyExists(err) {
-		glog.Infof("CSR already exist for [%s/%s]: %s-%s, reusing it", ns, tcName, tcName, suffix)
-		getOpts := types.GetOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
-		resp, err = rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Get(req.Name, getOpts)
-		// TODO: check if CSR and key matches
-	}
+	labelTemp := label.New()
+	csr.Labels[label.NamespaceLabelKey] = ns
+	csr.Labels[label.ManagedByLabelKey] = labelTemp[label.ManagedByLabelKey]
+	csr.Labels[label.InstanceLabelKey] = tcName
+
+	resp, err := rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Create(csr)
 	if err != nil {
 		return resp, fmt.Errorf("failed to create CSR for [%s/%s]: %s-%s, error: %v", ns, tcName, tcName, suffix, err)
 	}
-
 	glog.Infof("CSR created for [%s/%s]: %s-%s", ns, tcName, tcName, suffix)
 	return resp, nil
 }
