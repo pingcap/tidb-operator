@@ -23,17 +23,17 @@ initialCommitTs: 0
 
 # Refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml
 config: |
+  detect-interval = 10
+  compressor = "gzip"
   [syncer]
   worker-count = 16
-  detect-interval = 10
   disable-dispatch = false
   ignore-schemas = "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql"
   safe-mode = false
   txn-batch = 20
-  db-type = "pb"
+  db-type = "file"
   [syncer.to]
   dir = "/data/pb"
-  compression = "gzip"
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
