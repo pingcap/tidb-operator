@@ -108,7 +108,12 @@ mkdir monitor
 tar -zxvf prometheus-operator.tar.gz -C monitor/
 tar -zxvf prometheus.tar.gz -C monitor/
 kubectl apply -f monitor/manifests/prometheus-operator
+sed -i'.bak' 's/local-storage/pd-ssd/g' monitor/manifests/prometheus/grafana-pvc.yaml
+sed -i'.bak' 's/local-storage/pd-ssd/g' monitor/manifests/prometheus/prometheus-prometheus.yaml
+rm -rf monitor/manifests/prometheus/*.bak
 kubectl apply -f monitor/manifests/prometheus
+rm -rf prometheus*.tar.gz
+rm -rf monitor/
 
 helm init --service-account tiller --upgrade --wait
 until helm ls; do
