@@ -1,5 +1,5 @@
 resource "null_resource" "wait-tiller-ready" {
-  depends_on = [var.kubeconfig_filename]
+  depends_on = [var.kubeconfig_filename, var.wait_on_resource]
 
   provisioner "local-exec" {
     working_dir = path.cwd
@@ -18,7 +18,7 @@ EOS
 data "helm_repository" "pingcap" {
   depends_on = [null_resource.wait-tiller-ready]
   name = "pingcap"
-  url = "http://charts.pingcap.org/"
+  url = "https://charts.pingcap.org/"
 }
 
 resource "helm_release" "tidb-cluster" {

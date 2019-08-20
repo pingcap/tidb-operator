@@ -324,17 +324,21 @@ const (
 
 // BackupSpec contains the backup specification for a tidb cluster.
 type BackupSpec struct {
+	// Cluster is the Cluster to backup.
+	Cluster string `json:"cluster"`
+	// TidbSecretName is the name of secret which stores
+	// tidb cluster's username and password.
+	TidbSecretName string `json:"tidbSecretName"`
+	// Type is the backup type for tidb cluster.
+	Type BackupType `json:"backupType"`
 	// StorageType is the backup storage type.
 	StorageType BackupStorageType `json:"storageType"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
-	// Type is the backup type for tidb cluster.
-	Type BackupType `json:"backupType"`
-	// Cluster is the Cluster to backup.
-	Cluster string `json:"cluster"`
-	// SecretName is the name of secret which stores
-	// tidb cluster's username and password.
-	SecretName string `json:"secretName"`
+	// StorageClassName is the storage class for backup job's PV.
+	StorageClassName string `json:"storageClassName"`
+	// StorageSize is the request storage size for backup job
+	StorageSize string `json:"storageSize"`
 }
 
 // BackupConditionType represents a valid condition of a Backup.
@@ -369,7 +373,7 @@ type BackupStatus struct {
 	BackupPath string `json:"backupPath"`
 	// TimeStarted is the time at which the backup was started.
 	TimeStarted metav1.Time `json:"timeStarted"`
-	// TimeCompleted is the time at which the backup completed.
+	// TimeCompleted is the time at which the backup was completed.
 	TimeCompleted metav1.Time `json:"timeCompleted"`
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize"`
@@ -408,6 +412,10 @@ type BackupScheduleSpec struct {
 	MaxBackups int `json:"maxBackups"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
+	// StorageClassName is the storage class for backup job's PV.
+	StorageClassName string `json:"storageClassName"`
+	// StorageSize is the request storage size for backup job
+	StorageSize string `json:"storageSize"`
 }
 
 // BackupScheduleStatus represents the current state of a BackupSchedule.
@@ -415,7 +423,7 @@ type BackupScheduleStatus struct {
 	// LastBackup represents the last backup.
 	LastBackup string `json:"lastBackup"`
 	// LastBackupTime represents the last time the backup was successfully created.
-	LastBackupTime metav1.Time `json:"lastBackupTime"`
+	LastBackupTime *metav1.Time `json:"lastBackupTime"`
 }
 
 // +genclient
@@ -470,18 +478,22 @@ type RestoreSpec struct {
 	Cluster string `json:"cluster"`
 	// Backup represents the backup object to be restored.
 	Backup string `json:"backup"`
-	// BackupPath is the location of the backup.
-	BackupPath string `json:"backupPath"`
+	// Namespace is the namespace of the backup.
+	BackupNamespace string `json:"backupNamespace"`
 	// SecretName is the name of the secret which stores
 	// tidb cluster's username and password.
 	SecretName string `json:"secretName"`
+	// StorageClassName is the storage class for restore job's PV.
+	StorageClassName string `json:"storageClassName"`
+	// StorageSize is the request storage size for restore job
+	StorageSize string `json:"storageSize"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.
 type RestoreStatus struct {
 	// TimeStarted is the time at which the restore was started.
 	TimeStarted metav1.Time `json:"timeStarted"`
-	// TimeCompleted is the time at which the restore completed.
+	// TimeCompleted is the time at which the restore was completed.
 	TimeCompleted metav1.Time        `json:"timeCompleted"`
 	Conditions    []RestoreCondition `json:"conditions"`
 }

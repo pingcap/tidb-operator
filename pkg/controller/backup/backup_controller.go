@@ -37,9 +37,6 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-// controllerKind contains the schema.GroupVersionKind for this controller type.
-var controllerKind = v1alpha1.SchemeGroupVersion.WithKind("Backup")
-
 // Controller controls backup.
 type Controller struct {
 	// kubernetes client interface
@@ -72,19 +69,27 @@ func NewController(
 
 	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
 	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
+	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
+	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 	statusUpdater := controller.NewRealBackupConditionUpdater(cli, backupInformer.Lister(), recorder)
-	jobControl := controller.NewRealJobControl(kubeCli, jobInformer.Lister(), recorder)
+	jobControl := controller.NewRealJobControl(kubeCli, recorder)
+	pvcControl := controller.NewRealGeneralPVCControl(kubeCli, recorder)
+	backupCleaner := backup.NewBackupCleaner(statusUpdater, secretInformer.Lister(), jobInformer.Lister(), jobControl)
 
 	bkc := &Controller{
 		kubeClient: kubeCli,
 		cli:        cli,
 		control: NewDefaultBackupControl(
-			statusUpdater,
+			cli,
 			backup.NewBackupManager(
-				backupInformer.Lister(),
+				backupCleaner,
+				statusUpdater,
+				secretInformer.Lister(),
+				jobInformer.Lister(),
 				jobControl,
+				pvcInformer.Lister(),
+				pvcControl,
 			),
-			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
@@ -93,9 +98,9 @@ func NewController(
 	}
 
 	backupInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: bkc.enqueueBackup,
+		AddFunc: bkc.updateBackup,
 		UpdateFunc: func(old, cur interface{}) {
-			bkc.enqueueBackup(cur)
+			bkc.updateBackup(cur)
 		},
 		DeleteFunc: bkc.enqueueBackup,
 	})
@@ -141,9 +146,9 @@ func (bkc *Controller) processNextWorkItem() bool {
 	defer bkc.queue.Done(key)
 	if err := bkc.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
-			glog.Infof("backup: %v, still need sync: %v, requeuing", key.(string), err)
+			glog.Infof("Backup: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("backup: %v, sync failed %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("Backup: %v, sync failed, err: %v, requeuing", key.(string), err))
 		}
 		bkc.queue.AddRateLimited(key)
 	} else {
@@ -175,8 +180,34 @@ func (bkc *Controller) sync(key string) error {
 	return bkc.syncBackup(backup.DeepCopy())
 }
 
-func (bkc *Controller) syncBackup(tc *v1alpha1.Backup) error {
-	return bkc.control.UpdateBackup(tc)
+func (bkc *Controller) syncBackup(backup *v1alpha1.Backup) error {
+	return bkc.control.UpdateBackup(backup)
+}
+
+func (bkc *Controller) updateBackup(cur interface{}) {
+	newBackup := cur.(*v1alpha1.Backup)
+	ns := newBackup.GetNamespace()
+	name := newBackup.GetName()
+
+	if newBackup.DeletionTimestamp != nil {
+		// the backup is being deleted, we need to do some cleanup work, enqueue backup.
+		glog.Infof("backup %s/%s is being deleted", ns, name)
+		bkc.enqueueBackup(newBackup)
+		return
+	}
+
+	if v1alpha1.IsBackupComplete(newBackup) {
+		glog.V(4).Infof("backup %s/%s is Complete, skipping.", ns, name)
+		return
+	}
+
+	if v1alpha1.IsBackupScheduled(newBackup) {
+		glog.V(4).Infof("backup %s/%s is already scheduled, skipping", ns, name)
+		return
+	}
+
+	glog.V(4).Infof("backup object %s/%s enqueue", ns, name)
+	bkc.enqueueBackup(newBackup)
 }
 
 // enqueueBackup enqueues the given backup in the work queue.

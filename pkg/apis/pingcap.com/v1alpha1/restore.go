@@ -14,9 +14,21 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// GetRestoreJobName return the backup job name
+func (rs *Restore) GetRestoreJobName() string {
+	return fmt.Sprintf("restore-%s", rs.GetName())
+}
+
+// GetRestorePVCName return the backup pvc name
+func (rs *Restore) GetRestorePVCName() string {
+	return fmt.Sprintf("%s-restore-pvc", rs.Spec.Cluster)
+}
 
 // GetRestoreCondition get the specify type's RestoreCondition from the given RestoreStatus
 func GetRestoreCondition(status *RestoreStatus, conditionType RestoreConditionType) (int, *RestoreCondition) {
@@ -62,5 +74,11 @@ func UpdateRestoreCondition(status *RestoreStatus, condition *RestoreCondition) 
 // IsRestoreComplete returns true if a Restore has successfully completed
 func IsRestoreComplete(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestoreScheduled returns true if a Restore has successfully scheduled
+func IsRestoreScheduled(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreScheduled)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }

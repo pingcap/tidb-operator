@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/golang/glog"
 )
 
 func (tc *TidbClusterConfig) set(name string, value string) (string, bool) {
@@ -124,7 +126,7 @@ func (tc *TidbClusterConfig) BuildSubValues(path string) (string, error) {
 		"[log]",
 		`level = "info"`,
 	}
-	subValues := GetSubValuesOrDie(tc.ClusterName, tc.Namespace, tc.TopologyKey, pdConfig, tikvConfig, tidbConfig)
+	subValues := GetSubValuesOrDie(tc.ClusterName, tc.Namespace, tc.TopologyKey, pdConfig, tikvConfig, tidbConfig, tc.pumpConfig, tc.drainerConfig)
 	subVaulesPath := fmt.Sprintf("%s/%s.yaml", path, tc.ClusterName)
 	_, err := os.Stat(subVaulesPath)
 	if err != nil {
@@ -145,5 +147,6 @@ func (tc *TidbClusterConfig) BuildSubValues(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	glog.Infof("subValues:\n %s", subValues)
 	return subVaulesPath, nil
 }

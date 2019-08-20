@@ -16,8 +16,10 @@ package v1alpha1
 import (
 	"fmt"
 	"time"
+
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 )
 
 func (bs *BackupSchedule) GetBackupCRDName(timestamp time.Time) string {
-	return fmt.Sprintf("%s-%s", bs.GetName(), timestamp.Format("20060102150405"))
+	return fmt.Sprintf("%s-%s", bs.GetName(), timestamp.UTC().Format(constants.TimeFormat))
 }
