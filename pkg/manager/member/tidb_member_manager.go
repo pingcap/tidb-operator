@@ -223,7 +223,7 @@ func (tmm *tidbMemberManager) syncTiDBServerCerts(tc *v1alpha1.TidbCluster) erro
 		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
 	}
 
-	return tmm.certControl.Create(tc, svcName, hostList, ipList, "tidb")
+	return tmm.certControl.Create(ns, tcName, svcName, hostList, ipList, "tidb")
 }
 
 func (tmm *tidbMemberManager) syncTiDBClientCerts(tc *v1alpha1.TidbCluster) error {
@@ -240,7 +240,7 @@ func (tmm *tidbMemberManager) syncTiDBClientCerts(tc *v1alpha1.TidbCluster) erro
 		commonName,
 	}
 
-	return tmm.certControl.Create(tc, commonName, hostList, ipList, "tidb-client")
+	return tmm.certControl.Create(ns, tcName, commonName, hostList, ipList, "tidb-client")
 }
 
 func (tmm *tidbMemberManager) getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {

@@ -136,7 +136,7 @@ func (td *tidbDiscovery) syncDiscoveryClientCerts(tc *v1alpha1.TidbCluster) erro
 		commonName,
 	}
 
-	return td.certControl.Create(tc, commonName, hostList, ipList, "discovery")
+	return td.certControl.Create(ns, tcName, commonName, hostList, ipList, "discovery")
 }
 
 func (td *tidbDiscovery) realTCGetFn(ns, tcName string) (*v1alpha1.TidbCluster, error) {

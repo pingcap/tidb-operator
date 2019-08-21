@@ -269,7 +269,7 @@ func (pmm *pdMemberManager) syncPDServerCerts(tc *v1alpha1.TidbCluster) error {
 		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
 	}
 
-	return pmm.certControl.Create(tc, svcName, hostList, ipList, "pd")
+	return pmm.certControl.Create(ns, tcName, svcName, hostList, ipList, "pd")
 }
 
 func (pmm *pdMemberManager) updateStatefulSet(tc *v1alpha1.TidbCluster, newPDSet, oldPDSet *apps.StatefulSet) error {

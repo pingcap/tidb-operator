@@ -136,6 +136,7 @@ func main() {
 	}
 
 	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
+	certController := controller.NewRealCertControl(kubeCli)
 	backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
@@ -145,6 +146,9 @@ func main() {
 	go kubeInformerFactory.Start(controllerCtx.Done())
 
 	onStarted := func(ctx context.Context) {
+		if err := generateClientCert(ns, "tidb-operator", certController); err != nil {
+			return
+		}
 		go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
@@ -169,4 +173,17 @@ func main() {
 	}, waitDuration)
 
 	glog.Fatal(http.ListenAndServe(":6060", nil))
+}
+
+func generateClientCert(ns string, commonName string, certController controller.CertControlInterface) error {
+	if certController.CheckSecret(ns, commonName) {
+		return nil
+	}
+
+	var ipList []string // empty
+	hostList := []string{
+		commonName,
+	}
+
+	return certController.Create(ns, commonName, commonName, hostList, ipList, "controller-manager")
 }

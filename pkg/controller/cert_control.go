@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	capi "k8s.io/api/certificates/v1beta1"
@@ -33,7 +32,7 @@ import (
 
 // CertControlInterface manages certificates used by TiDB clusters
 type CertControlInterface interface {
-	Create(tc *v1alpha1.TidbCluster, commonName string, hostList []string, IPList []string, suffix string) error
+	Create(ns string, instance string, commonName string, hostList []string, IPList []string, suffix string) error
 	LoadFromSecret(ns string, secretName string) ([]byte, []byte, error)
 	SaveToSecret(ns string, instance string, component string, cert []byte, key []byte) error
 	CheckSecret(ns string, secretName string) bool
@@ -54,11 +53,9 @@ func NewRealCertControl(
 	}
 }
 
-func (rcc *realCertControl) Create(tc *v1alpha1.TidbCluster, commonName string,
+func (rcc *realCertControl) Create(ns string, instance string, commonName string,
 	hostList []string, IPList []string, suffix string) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	csrName := fmt.Sprintf("%s-%s", tcName, suffix)
+	csrName := fmt.Sprintf("%s-%s", instance, suffix)
 
 	// generate certificate if not exist
 	_, _, err := rcc.LoadFromSecret(ns, csrName)
@@ -77,7 +74,7 @@ func (rcc *realCertControl) Create(tc *v1alpha1.TidbCluster, commonName string,
 	}
 
 	// sign certificate
-	csr, err := rcc.sendCSR(tc, rawCSR, suffix)
+	csr, err := rcc.sendCSR(ns, instance, rawCSR, suffix)
 	if err != nil {
 		return err
 	}
@@ -97,7 +94,7 @@ func (rcc *realCertControl) Create(tc *v1alpha1.TidbCluster, commonName string,
 
 	csrCh, err := rcc.kubeCli.Certificates().CertificateSigningRequests().Watch(watchReq)
 	if err != nil {
-		glog.Errorf("error watch CSR for [%s/%s]: %s-%s", ns, tcName, tcName, suffix)
+		glog.Errorf("error watch CSR for [%s/%s]: %s", ns, instance, csrName, suffix)
 		return err
 	}
 
@@ -105,7 +102,7 @@ func (rcc *realCertControl) Create(tc *v1alpha1.TidbCluster, commonName string,
 	for {
 		select {
 		case <-tick:
-			glog.Infof("CSR still not approved for [%s/%s]: %s-%s, retry later", ns, tcName, tcName, suffix)
+			glog.Infof("CSR still not approved for [%s/%s]: %s, retry later", ns, instance, csrName, suffix)
 			continue
 		case event, ok := <-watchCh:
 			if !ok {
@@ -122,10 +119,10 @@ func (rcc *realCertControl) Create(tc *v1alpha1.TidbCluster, commonName string,
 			if updatedCSR.UID == csr.UID &&
 				approveCond == capi.CertificateApproved &&
 				updatedCSR.Status.Certificate != nil {
-				glog.Infof("signed certificate for [%s/%s]: %s-%s", ns, tcName, tcName, suffix)
+				glog.Infof("signed certificate for [%s/%s]: %s", ns, instance, csrName, suffix)
 
 				// save signed certificate and key to secret
-				err = rcc.SaveToSecret(ns, tcName, suffix, updatedCSR.Status.Certificate, key)
+				err = rcc.SaveToSecret(ns, instance, suffix, updatedCSR.Status.Certificate, key)
 				if err == nil {
 					// cleanup the approved csr
 					delOpts := &types.DeleteOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
@@ -138,10 +135,7 @@ func (rcc *realCertControl) Create(tc *v1alpha1.TidbCluster, commonName string,
 	}
 }
 
-func (rcc *realCertControl) getCSR(tc *v1alpha1.TidbCluster, csrName string) (*capi.CertificateSigningRequest, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
+func (rcc *realCertControl) getCSR(ns string, instance string, csrName string) (*capi.CertificateSigningRequest, error) {
 	getOpts := types.GetOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
 	csr, err := rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Get(csrName, getOpts)
 	if err != nil && apierrors.IsNotFound(err) {
@@ -157,33 +151,31 @@ func (rcc *realCertControl) getCSR(tc *v1alpha1.TidbCluster, csrName string) (*c
 	labelTemp := label.New()
 	if csr.Labels[label.NamespaceLabelKey] == ns &&
 		csr.Labels[label.ManagedByLabelKey] == labelTemp[label.ManagedByLabelKey] &&
-		csr.Labels[label.InstanceLabelKey] == tcName {
+		csr.Labels[label.InstanceLabelKey] == instance {
 		glog.Infof("found exist CSR %s/%s created by tidb-operator, overwriting", ns, csrName)
 		return csr, nil
 	}
 	return nil, fmt.Errorf("CSR %s/%s already exist, but not created by tidb-operator, skip it", ns, csrName)
 }
 
-func (rcc *realCertControl) sendCSR(tc *v1alpha1.TidbCluster, rawCSR []byte, suffix string) (*capi.CertificateSigningRequest, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	csrName := fmt.Sprintf("%s-%s", tcName, suffix)
+func (rcc *realCertControl) sendCSR(ns string, instance string, rawCSR []byte, suffix string) (*capi.CertificateSigningRequest, error) {
+	csrName := fmt.Sprintf("%s-%s", instance, suffix)
 
 	var csr *capi.CertificateSigningRequest
 
-	csr, err := rcc.getCSR(tc, csrName)
+	csr, err := rcc.getCSR(ns, instance, csrName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create CSR for [%s/%s]: %s-%s, error: %v", ns, tcName, tcName, suffix, err)
+		return nil, fmt.Errorf("failed to create CSR for [%s/%s]: %s, error: %v", ns, instance, csrName, err)
 	}
 
 	if csr != nil {
 		delOpts := &types.DeleteOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
 		err := rcc.kubeCli.Certificates().CertificateSigningRequests().Delete(csrName, delOpts)
 		if err != nil {
-			return nil, fmt.Errorf("failed to delete exist old CSR for [%s/%s]: %s-%s, error: %v", ns, tcName, tcName, suffix, err)
+			return nil, fmt.Errorf("failed to delete exist old CSR for [%s/%s]: %s, error: %v", ns, instance, csrName, err)
 		}
-		glog.Infof("exist old CSR deleted for [%s/%s]: %s-%s", ns, tcName, tcName, suffix)
-		return rcc.sendCSR(tc, rawCSR, suffix)
+		glog.Infof("exist old CSR deleted for [%s/%s]: %s", ns, instance, csrName)
+		return rcc.sendCSR(ns, instance, rawCSR, suffix)
 	}
 
 	csr = &capi.CertificateSigningRequest{
@@ -208,13 +200,13 @@ func (rcc *realCertControl) sendCSR(tc *v1alpha1.TidbCluster, rawCSR []byte, suf
 	labelTemp := label.New()
 	csr.Labels[label.NamespaceLabelKey] = ns
 	csr.Labels[label.ManagedByLabelKey] = labelTemp[label.ManagedByLabelKey]
-	csr.Labels[label.InstanceLabelKey] = tcName
+	csr.Labels[label.InstanceLabelKey] = instance
 
 	resp, err := rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Create(csr)
 	if err != nil {
-		return resp, fmt.Errorf("failed to create CSR for [%s/%s]: %s-%s, error: %v", ns, tcName, tcName, suffix, err)
+		return resp, fmt.Errorf("failed to create CSR for [%s/%s]: %s, error: %v", ns, instance, csrName, err)
 	}
-	glog.Infof("CSR created for [%s/%s]: %s-%s", ns, tcName, tcName, suffix)
+	glog.Infof("CSR created for [%s/%s]: %s", ns, instance, csrName)
 	return resp, nil
 }
 

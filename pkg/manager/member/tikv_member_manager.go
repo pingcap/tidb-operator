@@ -261,7 +261,7 @@ func (tkmm *tikvMemberManager) syncTiKVServerCerts(tc *v1alpha1.TidbCluster) err
 		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
 	}
 
-	return tkmm.certControl.Create(tc, svcName, hostList, ipList, "tikv")
+	return tkmm.certControl.Create(ns, tcName, svcName, hostList, ipList, "tikv")
 }
 
 func (tkmm *tikvMemberManager) getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
