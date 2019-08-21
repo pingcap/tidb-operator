@@ -13,6 +13,11 @@ if ! cd "$(dirname "$0")"; then
     exit 1
 fi
 
+if ! [[ -d .terraform ]]; then
+    echo "no .terraform directory, perhaps you need to run ''terraform init''?" >&2
+    exit 1
+fi
+
 if ! project=${TF_VAR_GCP_PROJECT:-$( echo var.GCP_PROJECT | terraform console 2>/dev/null )} || [[ -z $project ]]; then
     echo "could not identify current project; set GCP_PROJECT in a .tfvars file or set the TF_VAR_GCP_PROJECT environment variable" >&2
     exit 1
@@ -25,9 +30,11 @@ if cred_path=$( echo var.GCP_CREDENTIALS_PATH | terraform console 2>/dev/null ) 
     if ! command -v jq >/dev/null; then
         echo "GCP_CREDENTAILS_PATH already set to $cred_path and jq(1) is not installed to ensure it is for project $project" >&2
         exit 1
-    elif cred_project=$(jq -r .project_id "$cred_path") && [[ $cred_project != $project ]]; then
+    elif cred_project=$(jq -r .project_id "$cred_path" 2>/dev/null) && [[ $cred_project != "$project" ]]; then
         echo "GCP_CREDENTAILS_PATH already set to $cred_path but credentials project $cred_project does not match current project $project" >&2
         exit 1
+    elif ! [[ -f $cred_path ]]; then
+        echo "GCP_CREDENTAILS_PATH already set, but $cred_path doesn't exist" >&2
     else
         echo "GCP_CREDENTAILS_PATH already set to $cred_path for project $project" >&2
         exit
@@ -40,7 +47,7 @@ mkdir -p credentials
 key_file=credentials/terraform-key.json
 email="terraform@${project}.iam.gserviceaccount.com"
 
-if [[ $("${gcloud[@]}" --format='value(name)' iam service-accounts list --filter=displayName:terraform) ]]; then
+if [[ $("${gcloud[@]}" --format='value(name)' iam service-accounts list --filter='displayName~^terraform$') ]]; then
   if grep -sq "$project" "$key_file"; then
     echo "service account terraform already exists along with the key file, will set terraform variables"
   else
