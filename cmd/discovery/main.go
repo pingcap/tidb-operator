@@ -13,6 +13,7 @@ import (
 	"github.com/pingcap/tidb-operator/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
 
@@ -46,9 +47,13 @@ func main() {
 	if err != nil {
 		glog.Fatalf("failed to create Clientset: %v", err)
 	}
+	kubeCli, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
+	}
 
 	go wait.Forever(func() {
-		server.StartServer(cli, port)
+		server.StartServer(cli, kubeCli, port)
 	}, 5*time.Second)
 	glog.Fatal(http.ListenAndServe(":6060", nil))
 }

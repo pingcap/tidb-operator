@@ -54,5 +54,5 @@ spec:
       - name: tls
         secret:
           defaultMode: 420
-          secretName: client-tls
+          secretName: {{ .Release.Name }}-discovery
 {{- end -}}

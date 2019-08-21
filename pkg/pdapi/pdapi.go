@@ -66,6 +66,7 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 	if tlsEnabled {
 		scheme = "https"
 	}
+
 	key := pdClientKey(scheme, namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
 		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), timeout, tlsEnabled)
