@@ -14,6 +14,12 @@ rules:
   resources: ["tidbclusters"]
   resourceNames: [{{ template "cluster.name" . }}]
   verbs: ["get"]
+- apiGroups: ["certificates.k8s.io"]
+  resources: ["certificatesigningrequests"]
+  verbs: ["create", "get", "list", "watch", "delete"]
+- apiGroups: ["certificates.k8s.io"]
+  resources: ["certificatesigningrequests/approval", "certificatesigningrequests/status"]
+  verbs: ["update"]
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1

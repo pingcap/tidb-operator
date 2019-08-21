@@ -47,7 +47,7 @@ spec:
                 fieldPath: metadata.namespace
 {{- if .Values.enableTLSCluster }}
         volumeMounts:
-        - mountPath: /var/lib/tls
+        - mountPath: /var/lib/client-tls
           name: tls
           readOnly: true
       volumes:

@@ -13,8 +13,8 @@ import (
 
 const (
 	k8sCAFile  = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-	clientCert = "/var/lib/tls/client.crt"
-	clientKey  = "/var/lib/tls/client.key"
+	clientCert = "/var/lib/client-tls/cert"
+	clientKey  = "/var/lib/client-tls/key"
 )
 
 // DeferClose captures and prints the error from closing (if an error occurs).
