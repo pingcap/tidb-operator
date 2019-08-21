@@ -229,7 +229,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tidb"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
-	if tc.Spec.EnableTLSServer {
+	if tc.Spec.EnableTLSCluster {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-tls", ReadOnly: true, MountPath: "/var/lib/tidb-tls",
 		})
@@ -254,7 +254,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			}},
 		},
 	}
-	if tc.Spec.EnableTLSServer {
+	if tc.Spec.EnableTLSCluster {
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -314,7 +314,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 	}
 
 	scheme := corev1.URISchemeHTTP
-	if tc.Spec.EnableTLSServer {
+	if tc.Spec.EnableTLSCluster {
 		scheme = corev1.URISchemeHTTPS
 	}
 	containers = append(containers, corev1.Container{

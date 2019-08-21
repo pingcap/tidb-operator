@@ -90,12 +90,12 @@ config-file: |-
     {{- if or .Values.enableTLSServer .Values.enableTLSClient }}
   [security]
     {{- end -}}
-    {{- if .Values.enableTLSServer }}
+    {{- if .Values.enableTLSCluster }}
   cluster-ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
   cluster-ssl-cert = "/var/lib/tidb-tls/tidb.crt"
   cluster-ssl-key = "/var/lib/tidb-tls/tidb.key"
     {{- end -}}
-    {{- if .Values.enableTLSClient }}
+    {{- if .Values.tidb.enableTLSClient }}
   ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
   ssl-cert = "/var/lib/tidb-tls/tidb.crt"
   ssl-key = "/var/lib/tidb-tls/tidb.key"

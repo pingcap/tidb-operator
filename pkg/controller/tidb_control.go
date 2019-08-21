@@ -65,7 +65,7 @@ func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster) map[string]bo
 	ns := tc.GetNamespace()
 
 	scheme := "http"
-	if tc.Spec.EnableTLSServer {
+	if tc.Spec.EnableTLSCluster {
 		scheme = "https"
 		rootCAs, _ := httputil.ReadCACerts()
 		config := &tls.Config{
@@ -93,7 +93,7 @@ func (tdc *defaultTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal 
 	ns := tc.GetNamespace()
 
 	scheme := "http"
-	if tc.Spec.EnableTLSServer {
+	if tc.Spec.EnableTLSCluster {
 		scheme = "https"
 		rootCAs, _ := httputil.ReadCACerts()
 		config := &tls.Config{
@@ -128,7 +128,7 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 	ns := tc.GetNamespace()
 
 	scheme := "http"
-	if tc.Spec.EnableTLSServer {
+	if tc.Spec.EnableTLSCluster {
 		scheme = "https"
 		rootCAs, _ := httputil.ReadCACerts()
 		config := &tls.Config{
@@ -169,7 +169,7 @@ func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int
 	ns := tc.GetNamespace()
 
 	scheme := "http"
-	if tc.Spec.EnableTLSServer {
+	if tc.Spec.EnableTLSCluster {
 		scheme = "https"
 		rootCAs, _ := httputil.ReadCACerts()
 		config := &tls.Config{

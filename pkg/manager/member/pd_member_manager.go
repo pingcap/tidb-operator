@@ -437,7 +437,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 		{Name: v1alpha1.PDMemberType.String(), MountPath: "/var/lib/pd"},
 	}
-	if tc.Spec.EnableTLSServer {
+	if tc.Spec.EnableTLSCluster {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "pd-tls", ReadOnly: true, MountPath: "/var/lib/pd-tls",
 		})
@@ -466,7 +466,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 			},
 		},
 	}
-	if tc.Spec.EnableTLSServer {
+	if tc.Spec.EnableTLSCluster {
 		vols = append(vols, corev1.Volume{
 			Name: "pd-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{

@@ -50,13 +50,7 @@ enableConfigMapRollout: true
 # Whether enable TLS connections between server nodes.
 # When enabled, PD/TiDB/TiKV will use TLS encrypted connections to transfer data between each node,
 # certificates will be generated automatically (if not already present).
-enableTLSServer: false
-
-# Whether enable TLS connection between TiDB server and MySQL client.
-# When enabled, TiDB will accept TLS encrypted connections from MySQL client, certificates will be generated
-# automatically.
-# Note: TLS connection is not forced on the server side, plain connections are also accepted after enableing.
-enableTLSClient: false
+enableTLSCluster: false
 
 pd:
   # Please refer to https://github.com/pingcap/pd/blob/master/conf/config.toml for the default
@@ -333,6 +327,12 @@ tidb:
     directory: /plugins
     # the start argument to specify the plugin id (name "-" version) that needs to be loaded, e.g. 'conn_limit-1'.
     list: ["whitelist-1"]
+
+  # Whether enable TLS connection between TiDB server and MySQL client.
+  # When enabled, TiDB will accept TLS encrypted connections from MySQL client, certificates will be generated
+  # automatically.
+  # Note: TLS connection is not forced on the server side, plain connections are also accepted after enableing.
+  enableTLSClient: false
 
 # mysqlClient is used to set password for TiDB
 # it must has Python MySQL client installed

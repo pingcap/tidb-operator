@@ -93,7 +93,7 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	currentCluster.peers[podName] = struct{}{}
 
 	scheme := "http"
-	if tc.Spec.EnableTLSServer {
+	if tc.Spec.EnableTLSCluster {
 		scheme = "https"
 	}
 
@@ -102,7 +102,7 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, scheme, advertisePeerUrl), nil
 	}
 
-	pdClient := td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSServer)
+	pdClient := td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSCluster)
 	membersInfo, err := pdClient.GetMembers()
 	if err != nil {
 		return "", err
