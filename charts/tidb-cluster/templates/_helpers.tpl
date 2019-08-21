@@ -37,7 +37,7 @@ config-file: |-
     {{- if .Values.pd.config }}
 {{ .Values.pd.config | indent 2 }}
     {{- end -}}
-    {{- if .Values.enableTLSServer }}
+    {{- if .Values.enableTLSCluster }}
   [security]
   cacert-path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
   cert-path = "/var/lib/pd-tls/pd.crt"
@@ -60,7 +60,7 @@ config-file: |-
     {{- if .Values.tikv.config }}
 {{ .Values.tikv.config | indent 2 }}
     {{- end -}}
-    {{- if .Values.enableTLSServer }}
+    {{- if .Values.enableTLSCluster }}
   [security]
   ca-path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
   cert-path = "/var/lib/tikv-tls/tikv.crt"
@@ -87,7 +87,7 @@ config-file: |-
     {{- if .Values.tidb.config }}
 {{ .Values.tidb.config | indent 2 }}
     {{- end -}}
-    {{- if or .Values.enableTLSServer .Values.enableTLSClient }}
+    {{- if or .Values.enableTLSCluster .Values.enableTLSClient }}
   [security]
     {{- end -}}
     {{- if .Values.enableTLSCluster }}
