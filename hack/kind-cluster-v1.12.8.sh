@@ -4,13 +4,12 @@ k8s_version=v1.12.8
 clusterName=${1:-kind}
 
 echo "############ install kind ##############"
-command -v kind
-if [ $? -ne 0 ];then
+if hash kind 2>/dev/null;then
+    echo "kind have installed"
+else
     echo "start install kind"
     GO111MODULE="on" go get sigs.k8s.io/kind@v0.4.0
     echo PATH=\$PATH:$(go env GOPATH)/bin >> /etc/profile && source /etc/profile
-else
-    echo "kind have installed"
 fi
 
 echo "############# start create cluster:[${clusterName}] #############"
@@ -24,8 +23,6 @@ fi
 
 echo "init the mount dirs for kind cluster"
 mkdir -p ${data_dir}/worker{,1,2,3,4,5}/vol{1..9}
-
-cd ${env_dir}
 
 cat <<EOF > kind-config.yaml
 kind: Cluster
