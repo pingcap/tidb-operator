@@ -152,6 +152,10 @@ pd:
   #   effect: "NoSchedule"
   annotations: {}
 
+  # Use the host's network namespace if enabled.
+  # Default to false.
+  hostNetwork: false
+
 tikv:
   # Please refer to https://github.com/tikv/tikv/blob/master/etc/config-template.toml for the default
   # tikv configurations (change to the tags of your tikv version),
@@ -248,6 +252,10 @@ tikv:
   #   effect: "NoSchedule"
   annotations: {}
 
+  # Use the host's network namespace if enabled.
+  # Default to false.
+  hostNetwork: false
+
 tidb:
   # Please refer to https://github.com/pingcap/tidb/blob/master/config/config.toml.example for the default
   # tidb configurations(change to the tags of your tidb version),
@@ -297,6 +305,11 @@ tidb:
   #   value: tidb
   #   effect: "NoSchedule"
   annotations: {}
+
+  # Use the host's network namespace if enabled.
+  # Default to false.
+  hostNetwork: false
+
   maxFailoverCount: 3
   service:
     type: NodePort
