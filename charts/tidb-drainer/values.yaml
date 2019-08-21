@@ -24,7 +24,7 @@ initialCommitTs: 0
 # Refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml
 config: |
   detect-interval = 10
-  compressor = "gzip"
+  compressor = ""
   [syncer]
   worker-count = 16
   disable-dispatch = false
