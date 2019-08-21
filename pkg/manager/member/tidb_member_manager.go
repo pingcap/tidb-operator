@@ -329,6 +329,11 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		},
 	})
 
+	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
+	if tc.Spec.PD.HostNetwork {
+		dnsPolicy = corev1.DNSClusterFirstWithHostNet
+	}
+
 	tidbLabel := label.New().Instance(instanceName).TiDB()
 	podAnnotations := CombineAnnotations(controller.AnnProm(10080), tc.Spec.TiDB.Annotations)
 	tidbSet := &apps.StatefulSet{
@@ -355,6 +360,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 					Tolerations:     tc.Spec.TiDB.Tolerations,
 					Volumes:         vols,
 					SecurityContext: tc.Spec.TiDB.PodSecurityContext,
+					HostNetwork:   tc.Spec.PD.HostNetwork,
 				},
 			},
 			ServiceName:         controller.TiDBPeerMemberName(tcName),

@@ -33,6 +33,17 @@ func (tc *TidbClusterConfig) ScaleTiDB(replicas uint) *TidbClusterConfig {
 	return tc
 }
 
+func (tc *TidbClusterConfig) RunInHost(flag bool) *TidbClusterConfig {
+	val := "false"
+	if flag {
+		val = "true"
+	}
+	tc.set("pd.hostNetwork", val)
+	tc.set("tikv.hostNetwork", val)
+	tc.set("tidb.hostNetwork", val)
+	return tc
+}
+
 func (tc *TidbClusterConfig) UpgradePD(image string) *TidbClusterConfig {
 	tc.PDImage = image
 	return tc

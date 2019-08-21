@@ -49,6 +49,7 @@ spec:
     podSecurityContext:
 {{ toYaml .Values.pd.podSecurityContext | indent 6}}
   {{- end }}
+    hostNetwork: {{ .Values.pd.hostNetwork }}
   tikv:
     replicas: {{ .Values.tikv.replicas }}
     image: {{ .Values.tikv.image }}
@@ -76,6 +77,7 @@ spec:
 {{ toYaml .Values.tikv.podSecurityContext | indent 6}}
   {{- end }}
     maxFailoverCount: {{ .Values.tikv.maxFailoverCount | default 3 }}
+    hostNetwork: {{ .Values.tikv.hostNetwork }}
   tidb:
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}
@@ -99,6 +101,7 @@ spec:
     podSecurityContext:
 {{ toYaml .Values.tidb.podSecurityContext | indent 6}}
   {{- end }}
+    hostNetwork: {{ .Values.tidb.hostNetwork }}
     binlogEnabled: {{ .Values.binlog.pump.create | default false }}
     maxFailoverCount: {{ .Values.tidb.maxFailoverCount | default 3 }}
     separateSlowLog: {{ .Values.tidb.separateSlowLog | default false }}
