@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 k8s_version=v1.12.8
-clusterName=$1
+clusterName=${1:-kind}
 
 echo "############ install kind ##############"
 command -v kind
