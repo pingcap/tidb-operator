@@ -55,7 +55,10 @@ func GetBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 
 func ReadCACerts() (*x509.CertPool, error) {
 	// try to load system CA certs
-	rootCAs, _ := x509.SystemCertPool()
+	rootCAs, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, err
+	}
 	if rootCAs == nil {
 		rootCAs = x509.NewCertPool()
 	}

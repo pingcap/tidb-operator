@@ -15,12 +15,14 @@ package controller
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/httputil"
 	"github.com/pingcap/tidb/config"
@@ -52,27 +54,35 @@ type TiDBControlInterface interface {
 // defaultTiDBControl is default implementation of TiDBControlInterface.
 type defaultTiDBControl struct {
 	httpClient *http.Client
+	rootCAs    *x509.CertPool
 }
 
 // NewDefaultTiDBControl returns a defaultTiDBControl instance
 func NewDefaultTiDBControl() TiDBControlInterface {
 	httpClient := &http.Client{Timeout: timeout}
-	return &defaultTiDBControl{httpClient: httpClient}
+
+	rootCAs, err := httputil.ReadCACerts()
+	if err != nil {
+		glog.Errorf("fail to load CA certs, use plain connections only, TLS enabled clusters may not work")
+	}
+
+	return &defaultTiDBControl{httpClient: httpClient, rootCAs: rootCAs}
+}
+
+func (tdc *defaultTiDBControl) useTLSHTTPClient(enableTLS bool) {
+	if enableTLS {
+		config := &tls.Config{
+			RootCAs: tdc.rootCAs,
+		}
+		tdc.httpClient.Transport = &http.Transport{TLSClientConfig: config}
+	}
 }
 
 func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster) map[string]bool {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
-
-	scheme := "http"
-	if tc.Spec.EnableTLSCluster {
-		scheme = "https"
-		rootCAs, _ := httputil.ReadCACerts()
-		config := &tls.Config{
-			RootCAs: rootCAs,
-		}
-		tdc.httpClient.Transport = &http.Transport{TLSClientConfig: config}
-	}
+	scheme := tc.Scheme()
+	tdc.useTLSHTTPClient(tc.Spec.EnableTLSCluster)
 
 	result := map[string]bool{}
 	for i := 0; i < int(tc.TiDBRealReplicas()); i++ {
@@ -91,16 +101,8 @@ func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster) map[string]bo
 func (tdc *defaultTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
-
-	scheme := "http"
-	if tc.Spec.EnableTLSCluster {
-		scheme = "https"
-		rootCAs, _ := httputil.ReadCACerts()
-		config := &tls.Config{
-			RootCAs: rootCAs,
-		}
-		tdc.httpClient.Transport = &http.Transport{TLSClientConfig: config}
-	}
+	scheme := tc.Scheme()
+	tdc.useTLSHTTPClient(tc.Spec.EnableTLSCluster)
 
 	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
 	url := fmt.Sprintf("%s://%s.%s.%s:10080/ddl/owner/resign", scheme, hostName, TiDBPeerMemberName(tcName), ns)
@@ -126,16 +128,8 @@ func (tdc *defaultTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal 
 func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*dbInfo, error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
-
-	scheme := "http"
-	if tc.Spec.EnableTLSCluster {
-		scheme = "https"
-		rootCAs, _ := httputil.ReadCACerts()
-		config := &tls.Config{
-			RootCAs: rootCAs,
-		}
-		tdc.httpClient.Transport = &http.Transport{TLSClientConfig: config}
-	}
+	scheme := tc.Scheme()
+	tdc.useTLSHTTPClient(tc.Spec.EnableTLSCluster)
 
 	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
 	url := fmt.Sprintf("%s://%s.%s.%s:10080/info", scheme, hostName, TiDBPeerMemberName(tcName), ns)
@@ -167,16 +161,8 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
-
-	scheme := "http"
-	if tc.Spec.EnableTLSCluster {
-		scheme = "https"
-		rootCAs, _ := httputil.ReadCACerts()
-		config := &tls.Config{
-			RootCAs: rootCAs,
-		}
-		tdc.httpClient.Transport = &http.Transport{TLSClientConfig: config}
-	}
+	scheme := tc.Scheme()
+	tdc.useTLSHTTPClient(tc.Spec.EnableTLSCluster)
 
 	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
 	url := fmt.Sprintf("%s://%s.%s.%s:10080/settings", scheme, hostName, TiDBPeerMemberName(tcName), ns)

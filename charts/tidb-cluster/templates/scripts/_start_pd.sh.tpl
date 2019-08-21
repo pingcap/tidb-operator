@@ -56,12 +56,7 @@ while true; do
     fi
 done
 
-if [[ {{ .Values.enableTLSServer }} == "true" ]]
-then
-    SCHEME="https"
-else
-    SCHEME="http"
-fi
+SCHEME={{ if .Values.enableTLSCluster }}"https"{{ else }}"http"{{ end }}
 
 ARGS="--data-dir=/var/lib/pd \
 --name=${HOSTNAME} \

@@ -28,12 +28,7 @@ then
 	tail -f /dev/null
 fi
 
-if [[ {{ .Values.enableTLSServer }} == "true" ]]
-then
-    SCHEME="https"
-else
-    SCHEME="http"
-fi
+SCHEME={{ if .Values.enableTLSCluster }}"https"{{ else }}"http"{{ end }}
 
 ARGS="--pd=$SCHEME://${CLUSTER_NAME}-pd:2379 \
 --advertise-addr=${HOSTNAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
