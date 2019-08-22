@@ -320,6 +320,11 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 		storageClassName = controller.DefaultStorageClassName
 	}
 
+	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
+	if tc.Spec.PD.HostNetwork {
+		dnsPolicy = corev1.DNSClusterFirstWithHostNet
+	}
+
 	tikvset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
@@ -339,6 +344,8 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 					SchedulerName: tc.Spec.SchedulerName,
 					Affinity:      tc.Spec.TiKV.Affinity,
 					NodeSelector:  tc.Spec.TiKV.NodeSelector,
+					HostNetwork:   tc.Spec.PD.HostNetwork,
+					DNSPolicy:     dnsPolicy,
 					Containers: []corev1.Container{
 						{
 							Name:            v1alpha1.TiKVMemberType.String(),
@@ -363,6 +370,14 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{
 											FieldPath: "metadata.namespace",
+										},
+									},
+								},
+								{
+									Name: "POD_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
 										},
 									},
 								},
