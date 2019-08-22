@@ -115,3 +115,13 @@ variable "default_cluster_name" {
   default = "my-cluster"
 }
 
+variable "install_prometheus_operator" {
+   description = "Whether installing promethes operator. If true, the prometheus operator will installed in kubernetes cluster"
+   default     = true
+}
+
+variable "install_kubernetes_monitor" {
+   description = "Whether installing kubernetes cluster monitoring, it depends on prometheus operator"
+   default     = true
+}
+

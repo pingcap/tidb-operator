@@ -28,21 +28,6 @@ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.o
 kubectl apply -f ${path.module}/manifest/alicloud-disk-storageclass.yaml
 echo '${data.template_file.local-volume-provisioner.rendered}' | kubectl apply -f -
 kubectl patch -n kube-system daemonset flexvolume --type='json' -p='[{"op":"replace", "path": "/spec/template/spec/tolerations", "value":[{"operator": "Exists"}]}]'
-
-# Kubernetes cluster monitor
-wget https://raw.githubusercontent.com/pingcap/monitoring/master/k8s-cluster-monitor/manifests/archive/prometheus-operator.tar.gz
-wget https://raw.githubusercontent.com/pingcap/monitoring/master/k8s-cluster-monitor/manifests/archive/prometheus.tar.gz
-mkdir monitor
-tar -zxvf prometheus-operator.tar.gz -C monitor/
-tar -zxvf prometheus.tar.gz -C monitor/
-kubectl apply -f monitor/manifests/prometheus-operator
-sed -i'.bak' 's/local-storage/alicloud-disk-available/g' monitor/manifests/prometheus/grafana-pvc.yaml
-sed -i'.bak' 's/local-storage/alicloud-disk-available/g' monitor/manifests/prometheus/prometheus-prometheus.yaml
-rm -rf monitor/manifests/prometheus/*.bak
-kubectl apply -f monitor/manifests/prometheus
-rm -rf prometheus*.tar.gz
-rm -rf monitor/
-
 helm init
 until helm ls; do
   echo "Wait tiller ready"

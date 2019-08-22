@@ -46,3 +46,12 @@ module "bastion" {
   worker_security_group_id = local.eks.worker_security_group_id
   enable_ssh_to_workers    = true
 }
+
+module "kubernetes-monitor" {
+  source = "../modules/aws/kubernetes-monitor"
+  kubeconfig                  = module.tidb-operator.eks.kubeconfig
+  filename                    = module.tidb-operator.eks.kubeconfig_filename
+  install_kubernetes_monitor  = var.install_kubernetes_monitor
+  install_prometheus_operator = var.install_prometheus_operator
+}
+

@@ -52,3 +52,10 @@ module "bastion" {
   gcp_project        = var.GCP_PROJECT
   bastion_name       = "${var.gke_name}-tidb-bastion"
 }
+
+module "kubernetes-monitor" {
+  source                      = "../modules/gcp/kubernetes-monitor"
+  kubeconfig_path             = local.kubeconfig
+  install_kubernetes_monitor  = var.install_kubernetes_monitor
+  install_prometheus_operator = var.install_prometheus_operator
+}

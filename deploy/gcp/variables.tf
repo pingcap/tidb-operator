@@ -92,3 +92,13 @@ variable "maintenance_window_start_time" {
   description = "The time in HH:MM GMT format to define the start of the daily maintenance window"
   default     = "01:00"
 }
+
+variable "install_prometheus_operator" {
+   description = "Whether installing promethes operator. If true, the prometheus operator will installed in kubernetes cluster"
+   default     = true
+}
+
+variable "install_kubernetes_monitor" {
+   description = "Whether installing kubernetes cluster monitoring, it depends on prometheus operator"
+   default     = false
+}

@@ -85,3 +85,10 @@ module "tidb-cluster" {
   monitor_instance_type      = var.monitor_instance_type
   override_values            = file("my-cluster.yaml")
 }
+
+module "kubernetes-monitor" {
+  source                      = "../modules/aliyun/kubernetes-monitor"
+  kubeconfig_file             = local.kubeconfig
+  install_kubernetes_monitor  = var.install_kubernetes_monitor
+  install_prometheus_operator = var.install_prometheus_operator
+}

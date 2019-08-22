@@ -106,3 +106,14 @@ variable "vpc_cidr" {
   description = "VPC cidr_block, options: [192.168.0.0.0/16, 172.16.0.0/16, 10.0.0.0/8], cannot collidate with kubernetes service cidr and pod cidr. Cannot change once the vpc created."
   default     = "192.168.0.0/16"
 }
+
+variable "install_prometheus_operator" {
+   description = "Whether installing promethes operator. If true, the prometheus operator will installed in kubernetes cluster"
+   default     = true
+}
+
+variable "install_kubernetes_monitor" {
+   description = "Whether installing kubernetes cluster monitoring, it depends on prometheus operator"
+   default     = true
+}
+
