@@ -14,7 +14,7 @@ fi
 
 echo "############# start create cluster:[${clusterName}] #############"
 
-data_dir=/var/kind/${clusterName}/data
+data_dir=${HOME}/kind/${clusterName}/data
 
 echo "clean data dir: ${data_dir}"
 if [ -d ${data_dir} ]; then

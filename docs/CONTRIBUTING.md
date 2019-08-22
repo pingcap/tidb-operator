@@ -110,7 +110,9 @@ $ make test
 
 #### Run e2e tests
 
-For e2e tests, we recommend DinD Kubernetes environment. Follow [this guide](./local-dind-tutorial.md) to spin up a local DinD Kubernetes cluster.
+##### Run e2e tests in dind
+
+First we should build a DinD Kubernetes environment. Follow [this guide](./local-dind-tutorial.md) to spin up a local DinD Kubernetes cluster.
 
 Then you can build and push Docker images to the DinD Docker registry. The DinD Docker registry is available as `localhost:5000` both on the host machine and inside the DinD.
 
@@ -132,6 +134,36 @@ $ kubectl -n=tidb-operator-e2e logs -f tidb-operator-e2e
 ```
 
 To re-run e2e tests, delete the testing pod and apply it again.
+
+##### Run e2e tests in kind 
+
+Execute the follow command to create a [kind](https://kind.sigs.k8s.io/) Kubernetes environment.  
+
+```sh
+$ ./hack/kind-cluster-v1.12.8.sh
+```
+
+Then you can build and push Docker images to the public Docker registry (There have not docker registry in Kind Kubernetes environment currently)
+
+```sh
+$ export DOCKER_REGISTRY=<pulic-docker-registry>
+$ make docker-push
+$ make e2e-docker-push
+```
+
+After Docker images are pushed to the public Docker registry, run e2e tests:
+
+```sh
+$ sed -i "s#127.0.0.1:5000/pingcap/tidb-operator-e2e:latest#${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest#" tests/manifests/e2e/e2e.yaml
+$ sed -i "s#pingcap/tidb-operator:latest#${DOCKER_REGISTRY}/pingcap/tidb-operator:latest#" tests/manifests/e2e/e2e.yaml
+$ kubectl apply -f tests/manifests/e2e/e2e.yaml
+```
+
+You can get the e2e test report from the log of testing pod: 
+
+```sh
+$ kubectl -n=tidb-operator-e2e logs -f tidb-operator-e2e
+```
 
 ### Step 5: Keep your branch in sync
 
