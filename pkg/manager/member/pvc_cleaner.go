@@ -83,7 +83,7 @@ func (rpc *realPVCCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string, e
 
 		if pvc.Annotations[label.AnnPVCDeferDeleting] != "" {
 			if _, exist := pvc.Annotations[label.AnnPVCPodScheduling]; !exist {
-				// The defer deleting PVC has not pod scheduling annotation, do nothing
+				// The defer deleting PVC without pod scheduling annotation, do nothing
 				glog.V(4).Infof("cluster %s/%s defer delete pvc %s has not pod scheduling annotation, skip clean", ns, tcName, pvcName)
 				skipReason[pvcName] = skipReasonPVCCleanerDeferDeletePVCNotHasLock
 				continue
@@ -113,7 +113,7 @@ func (rpc *realPVCCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string, e
 		}
 
 		if _, exist := pvc.Annotations[label.AnnPVCPodScheduling]; !exist {
-			// The PVC has not pod scheduling annotation, do nothing
+			// The PVC without pod scheduling annotation, do nothing
 			glog.V(4).Infof("cluster %s/%s pvc %s has not pod scheduling annotation, skip clean", ns, tcName, pvcName)
 			skipReason[pvcName] = skipReasonPVCCleanerPVCNotHasLock
 			continue
