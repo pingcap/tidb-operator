@@ -59,3 +59,8 @@ variable "tikv_image_type" {
   description = "TiKV image type, avaiable: UBUNTU/COS"
   default = "COS"
 }
+
+variable "tikv_local_ssd_count" {
+  description = "TiKV node pool local ssd count (cannot be changed after the node pool is created)"
+  default = 1
+}

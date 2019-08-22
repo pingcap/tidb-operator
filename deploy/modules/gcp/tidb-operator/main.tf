@@ -2,7 +2,8 @@ resource "google_container_cluster" "cluster" {
   name       = var.gke_name
   network    = var.vpc_name
   subnetwork = var.subnetwork_name
-  location   = var.gcp_region
+  location   = var.location
+  node_locations = var.node_locations
   project    = var.gcp_project
 
   master_auth {
@@ -42,11 +43,18 @@ resource "google_container_cluster" "cluster" {
   }
 }
 
+locals {
+   # TODO better way to detect whether the cluster is zonal or regional
+   cmd_get_cluster_credentials = length(split("-", var.location)) == 3 ?  "gcloud --project ${var.gcp_project} container clusters get-credentials ${google_container_cluster.cluster.name} --zone ${var.location}" : "gcloud --project ${var.gcp_project} container clusters get-credentials ${google_container_cluster.cluster.name} --region ${var.location}"
+}
+
 resource "null_resource" "get-credentials" {
   depends_on = [google_container_cluster.cluster]
+  triggers = {
+    command = local.cmd_get_cluster_credentials
+  }
   provisioner "local-exec" {
-    command = "gcloud --project ${var.gcp_project} container clusters get-credentials ${google_container_cluster.cluster.name} --region ${var.gcp_region}"
-
+    command = local.cmd_get_cluster_credentials
     environment = {
       KUBECONFIG = var.kubeconfig_path
     }
@@ -70,7 +78,7 @@ provider "helm" {
   # service_account = "tiller"
   install_tiller = false # currently this doesn't work, so we install tiller in the local-exec provisioner. See https://github.com/terraform-providers/terraform-provider-helm/issues/148
   kubernetes {
-    config_path = local_file.kubeconfig.filename
+    config_path = var.kubeconfig_path
   }
 }
 

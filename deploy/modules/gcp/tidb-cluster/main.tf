@@ -51,7 +51,7 @@ resource "google_container_node_pool" "tikv_pool" {
     image_type   = var.tikv_image_type
     // This value cannot be changed (instead a new node pool is needed)
     // 1 SSD is 375 GiB
-    local_ssd_count = 1
+    local_ssd_count = var.tikv_local_ssd_count
 
     taint {
       effect = "NO_SCHEDULE"
