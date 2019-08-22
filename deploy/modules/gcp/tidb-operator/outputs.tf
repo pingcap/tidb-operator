@@ -15,5 +15,5 @@ output "gke_cluster_location" {
 }
 
 output "kubeconfig_path" {
-  value = data.local_file.kubeconfig.filename
+  value = local_file.kubeconfig.filename
 }

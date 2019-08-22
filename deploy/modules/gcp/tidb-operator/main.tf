@@ -44,7 +44,11 @@ resource "google_container_cluster" "cluster" {
 }
 
 locals {
-  # TODO better way to detect whether the cluster is zonal or regional
+  # Because `gcloud containers clusters get-credentials` cannot accept location
+  # argument, we must use --zone or --region flag according to location's
+  # value.
+  # This is same as in google terraform provider, see
+  # https://github.com/terraform-providers/terraform-provider-google/blob/24c36107e03cbaeb38ae1ebb24de7aa51a0343df/google/resource_container_cluster.go#L956-L960.
   cmd_get_cluster_credentials = length(split("-", var.location)) == 3 ? "gcloud --project ${var.gcp_project} container clusters get-credentials ${google_container_cluster.cluster.name} --zone ${var.location}" : "gcloud --project ${var.gcp_project} container clusters get-credentials ${google_container_cluster.cluster.name} --region ${var.location}"
 }
 
@@ -78,7 +82,7 @@ provider "helm" {
   # service_account = "tiller"
   install_tiller = false # currently this doesn't work, so we install tiller in the local-exec provisioner. See https://github.com/terraform-providers/terraform-provider-helm/issues/148
   kubernetes {
-    config_path = var.kubeconfig_path
+    config_path = local_file.kubeconfig.filename
   }
 }
 
@@ -124,10 +128,10 @@ EOS
 }
 
 data "helm_repository" "pingcap" {
-  provider = "helm.initial"
+  provider   = "helm.initial"
   depends_on = [null_resource.setup-env]
-  name = "pingcap"
-  url = "https://charts.pingcap.org/"
+  name       = "pingcap"
+  url        = "https://charts.pingcap.org/"
 }
 
 resource "helm_release" "tidb-operator" {
@@ -139,10 +143,10 @@ resource "helm_release" "tidb-operator" {
   ]
 
   repository = data.helm_repository.pingcap.name
-  chart = "tidb-operator"
-  version = var.tidb_operator_version
-  namespace = "tidb-admin"
-  name = "tidb-operator"
-  values = [var.operator_helm_values]
-  wait = false
+  chart      = "tidb-operator"
+  version    = var.tidb_operator_version
+  namespace  = "tidb-admin"
+  name       = "tidb-operator"
+  values     = [var.operator_helm_values]
+  wait       = false
 }
