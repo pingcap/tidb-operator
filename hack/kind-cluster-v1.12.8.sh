@@ -162,10 +162,11 @@ echo "start to create k8s cluster"
 kind create cluster --config kind-config.yaml --image kindest/node:${k8s_version} --name=${clusterName}
 export KUBECONFIG="$(kind get kubeconfig-path --name=${clusterName})"
 
-echo "init e2e test env"
+echo "init tidb-operator env"
 kubectl apply -f manifests/local-dind/kube-flannel.yaml
 kubectl apply -f manifests/local-dind/local-volume-provisioner.yaml
 kubectl apply -f manifests/tiller-rbac.yaml
 kubectl apply -f manifests/crd.yaml
+kubectl create ns tidb-operator-e2e
 
 echo "############# success create cluster:[${clusterName}] #############"
