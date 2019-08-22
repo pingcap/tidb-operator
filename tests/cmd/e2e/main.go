@@ -229,5 +229,6 @@ func newTidbClusterConfig(ns, clusterName, password string) *tests.TidbClusterCo
 		},
 		TopologyKey:            topologyKey,
 		EnableConfigMapRollout: true,
+		ClusterVersion:         tidbVersion,
 	}
 }

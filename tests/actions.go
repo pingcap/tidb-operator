@@ -106,6 +106,7 @@ const (
 	operartorChartName                        = "tidb-operator"
 	tidbClusterChartName                      = "tidb-cluster"
 	backupChartName                           = "tidb-backup"
+	drainerChartName                          = "tidb-drainer"
 	statbilityTestTag                         = "stability"
 )
 
@@ -140,8 +141,13 @@ type OperatorActions interface {
 	CheckScheduledBackup(info *TidbClusterConfig) error
 	DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig, withDrainer bool, ts string) error
 	CheckIncrementalBackup(info *TidbClusterConfig, withDrainer bool) error
+	DeployDrainer(info *DrainerConfig, from *TidbClusterConfig) error
+	DeployDrainerOrDie(info *DrainerConfig, from *TidbClusterConfig)
+	CheckDrainer(info *DrainerConfig, source *TidbClusterConfig) error
 	Restore(from *TidbClusterConfig, to *TidbClusterConfig) error
 	CheckRestore(from *TidbClusterConfig, to *TidbClusterConfig) error
+	RestoreIncrementalFiles(from *DrainerConfig, to *TidbClusterConfig) error
+	CheckRestoreIncrementalFiles(from *DrainerConfig, to *TidbClusterConfig) error
 	ForceDeploy(info *TidbClusterConfig) error
 	CreateSecret(info *TidbClusterConfig) error
 	GetPodUIDMap(info *TidbClusterConfig) (map[string]types.UID, error)
@@ -174,6 +180,8 @@ type OperatorActions interface {
 	EmitEvent(info *TidbClusterConfig, msg string)
 	BackupRestore(from, to *TidbClusterConfig) error
 	BackupRestoreOrDie(from, to *TidbClusterConfig)
+	BackupAndRestoreToMultipleClusters(source *TidbClusterConfig, targets []BackupTarget) error
+	BackupAndRestoreToMultipleClustersOrDie(source *TidbClusterConfig, targets []BackupTarget)
 	LabelNodes() error
 	LabelNodesOrDie()
 	CheckDisasterTolerance(info *TidbClusterConfig) error
@@ -250,6 +258,7 @@ type TidbClusterConfig struct {
 	InitSecretName         string
 	BackupSecretName       string
 	EnableConfigMapRollout bool
+	ClusterVersion         string
 
 	PDPreStartScript   string
 	TiDBPreStartScript string
@@ -573,7 +582,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	}
 	for _, chartName := range charts {
 		res, err := exec.Command("helm", "del", "--purge", chartName).CombinedOutput()
-		if err != nil && releaseIsNotFound(err) {
+		if err != nil && !releaseIsNotFound(err) {
 			return fmt.Errorf("failed to delete chart: %s/%s, %v, %s",
 				info.Namespace, chartName, err, string(res))
 		}
@@ -860,6 +869,10 @@ func (oa *operatorActions) tidbClusterChartPath(tag string) string {
 
 func (oa *operatorActions) backupChartPath(tag string) string {
 	return oa.chartPath(backupChartName, tag)
+}
+
+func (oa *operatorActions) drainerChartPath(tag string) string {
+	return oa.chartPath(drainerChartName, tag)
 }
 
 func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterConfig) error {
@@ -1766,11 +1779,12 @@ func (oa *operatorActions) checkoutTag(tagName string) error {
 	cmd := fmt.Sprintf("cd %s && git stash -u && git checkout %s && "+
 		"mkdir -p %s && cp -rf charts/tidb-operator %s && "+
 		"cp -rf charts/tidb-cluster %s && cp -rf charts/tidb-backup %s &&"+
-		"cp -rf manifests %s",
+		"cp -rf manifests %s &&"+
+		"cp -rf charts/tidb-drainer %s",
 		oa.cfg.OperatorRepoDir, tagName,
 		filepath.Join(oa.cfg.ChartDir, tagName), oa.operatorChartPath(tagName),
 		oa.tidbClusterChartPath(tagName), oa.backupChartPath(tagName),
-		oa.manifestPath(tagName))
+		oa.manifestPath(tagName), oa.drainerChartPath(tagName))
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -1954,6 +1968,18 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 	if err != nil {
 		return fmt.Errorf("failed to launch restore job: %v", err)
 	}
+	return nil
+}
+
+func (oa *operatorActions) CleanRestoreJob(from *TidbClusterConfig) error {
+
+	releaseName := fmt.Sprintf("%s-restore", from.ClusterName)
+	res, err := exec.Command("helm", "del", "--purge", releaseName).CombinedOutput()
+	if err != nil && !releaseIsNotFound(err) {
+		return fmt.Errorf("failed to delete release: %s/%s, %v, %s",
+			from.Namespace, releaseName, err, string(res))
+	}
+
 	return nil
 }
 
@@ -2296,24 +2322,23 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	}
 	if withDrainer {
 		sets["binlog.drainer.create"] = "true"
+		from.drainerConfig = []string{
+			"worker-count = 16",
+			"detect-interval = 10",
+			"disable-dispatch = false",
+			`ignore-schemas = ""`,
+			`safe-mode = false`,
+			`txn-batch = 20`,
+			`db-type = "mysql"`,
+			`[syncer.to]`,
+			fmt.Sprintf(`host = "%s-tidb.%s"`, to.ClusterName, to.Namespace),
+			fmt.Sprintf(`user = "%s"`, "root"),
+			fmt.Sprintf(`password = "%s"`, to.Password),
+			fmt.Sprintf(`port = %d`, 4000),
+		}
 	}
 	if ts != "" {
 		sets["binlog.drainer.initialCommitTs"] = ts
-	}
-
-	from.drainerConfig = []string{
-		"worker-count = 16",
-		"detect-interval = 10",
-		"disable-dispatch = false",
-		`ignore-schemas = ""`,
-		`safe-mode = false`,
-		`txn-batch = 20`,
-		`db-type = "mysql"`,
-		`[syncer.to]`,
-		fmt.Sprintf(`host = "%s-tidb.%s"`, to.ClusterName, to.Namespace),
-		fmt.Sprintf(`user = "%s"`, "root"),
-		fmt.Sprintf(`password = "%s"`, to.Password),
-		fmt.Sprintf(`port = %d`, 4000),
 	}
 
 	cmd, err := oa.getHelmUpgradeClusterCmd(from, sets)

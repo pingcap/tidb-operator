@@ -145,6 +145,32 @@ var binlogTemp string = `binlog:
 {{end}}{{end}}
 `
 
+var drainerConfigCommon string = `config: |
+  detect-interval = 10
+  compressor = ""
+  [syncer]
+  worker-count = 16
+  disable-dispatch = false
+  ignore-schemas = "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql"
+  safe-mode = false
+  txn-batch = 20
+`
+
+var fileDrainerConfigTemp string = drainerConfigCommon + `
+  db-type = "file"
+  [syncer.to]
+  dir = "/data/pb"
+`
+
+var sqlDrainerConfigTemp string = drainerConfigCommon + `
+  db-type = "{{ .DbType }}"
+  [syncer.to]
+  host = {{ .Host }}
+  user = {{ .User }}
+  password = {{ .Password }}
+  port = {{ .Port }}
+`
+
 type AffinityInfo struct {
 	ClusterName string
 	Kind        string
@@ -199,6 +225,36 @@ func GetSubValuesOrDie(clusterName, namespace, topologyKey string, pdConfig []st
 	}
 	subValues = fmt.Sprintf("%s%s", subValues, binlogbuff.String())
 	return subValues
+}
+
+func GetDrainerSubValuesOrDie(info *DrainerConfig) string {
+	if info == nil {
+		slack.NotifyAndPanic(fmt.Errorf("Cannot get drainer sub values, the drainer config is nil"))
+	}
+	buff := new(bytes.Buffer)
+	switch info.DbType {
+	case DbTypeFile:
+		temp, err := template.New("file-drainer").Parse(fileDrainerConfigTemp)
+		if err != nil {
+			slack.NotifyAndPanic(err)
+		}
+		if err := temp.Execute(buff, &info); err != nil {
+			slack.NotifyAndPanic(err)
+		}
+	case DbTypeTiDB:
+		fallthrough
+	case DbTypeMySQL:
+		temp, err := template.New("sql-drainer").Parse(sqlDrainerConfigTemp)
+		if err != nil {
+			slack.NotifyAndPanic(err)
+		}
+		if err := temp.Execute(buff, &info); err != nil {
+			slack.NotifyAndPanic(err)
+		}
+	default:
+		slack.NotifyAndPanic(fmt.Errorf("db-type %s has not been suppored yet", info.DbType))
+	}
+	return buff.String()
 }
 
 const (
