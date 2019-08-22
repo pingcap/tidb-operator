@@ -310,7 +310,7 @@ func (h *ha) realUpdatePVCFn(pvc *apiv1.PersistentVolumeClaim) error {
 
 	labels := pvc.GetLabels()
 	ann := pvc.GetAnnotations()
-	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		_, updateErr := h.kubeCli.CoreV1().PersistentVolumeClaims(ns).Update(pvc)
 		if updateErr == nil {
 			glog.Infof("update PVC: [%s/%s] successfully, TidbCluster: %s", ns, pvcName, tcName)
@@ -329,7 +329,6 @@ func (h *ha) realUpdatePVCFn(pvc *apiv1.PersistentVolumeClaim) error {
 
 		return updateErr
 	})
-	return err
 }
 
 func (h *ha) realPVCGetFn(ns, pvcName string) (*apiv1.PersistentVolumeClaim, error) {
