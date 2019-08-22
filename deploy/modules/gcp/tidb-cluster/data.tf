@@ -18,4 +18,13 @@ data "external" "monitor_port" {
   program    = ["bash", "-c", "kubectl --kubeconfig ${var.kubeconfig_path} get svc -n ${var.cluster_name} ${var.cluster_name}-grafana -o json | jq '.spec.ports | .[] | select( .name == \"grafana\") | {port: .port|tostring}'"]
 }
 
-data "google_compute_zones" "available" {}
+locals {
+  # TODO Update related code when node locations is avaiable in attributes of cluster resource.
+  cmd_get_cluster_locations = <<EOT
+gcloud --project ${var.gcp_project} container clusters list --filter='name=${var.gke_cluster_name}' --format='json[no-heading](locations)' --region ${var.gke_cluster_location} | jq '.[0] | .locations |= join(",")'
+EOT
+}
+
+data "external" "cluster_locations" {
+  program = ["bash", "-c", local.cmd_get_cluster_locations]
+}

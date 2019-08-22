@@ -125,7 +125,7 @@ resource "google_container_node_pool" "monitor_pool" {
 }
 
 locals {
-  num_availability_zones = length(data.google_compute_zones.available)
+  num_availability_zones = length(split(",", data.external.cluster_locations.result["locations"]))
 }
 
 module "tidb-cluster" {
@@ -143,7 +143,7 @@ module "tidb-cluster" {
 
 resource "null_resource" "wait-lb-ip" {
   depends_on = [
-    google_container_node_pool.tidb_pool,
+    module.tidb-cluster
   ]
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
