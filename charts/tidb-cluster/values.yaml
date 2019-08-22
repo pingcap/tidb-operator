@@ -161,18 +161,32 @@ tikv:
   # (choose the version matching your tikv) for detailed explanation of each parameter.
   config: |
     log-level = "info"
-  # # Here are some parameters you MUST to customize (Please configure in the above `tikv.config` section):
-  # [storage.block-cache]
-  #   shared = true
-  #
-  #   # Normally it should be tuned to 30%-50% of `tikv.resources.limits.memory`, for example: 32Gi -> 16GB
-  #   capacity = "1GB"
+  # # Here are some parameters you MUST customize (Please configure in the above `tikv.config` section):
   #
   # [readpool.coprocessor]
   #   # Normally these three parameters should be tuned to 80% of `tikv.resources.limits.cpu`, for example: 10000m -> 8
   #   high-concurrency = 8
   #   normal-concurrency = 8
   #   low-concurrency = 8
+  #
+  # # For TiKV v2.x:
+  # [rocksdb.defaultcf]
+  # ## block-cache used to cache uncompressed blocks, big block-cache can speed up read.
+  # ## in normal cases should tune to 30%-50% `tikv.resources.limits.memory`
+  # # block-cache-size = "1GB"
+  #
+  # [rocksdb.writecf]
+  # ## in normal cases should tune to 10%-30% `tikv.resources.limits.memory`
+  # # block-cache-size = "256MB"
+  #
+  # # From TiKV v3.0.0 on, you do not need to configure
+  # #  [rocksdb.defaultcf].block-cache-size and [rocksdb.writecf].block-cache-size.
+  # # Instead, configure [storage.block-cache] as below:
+  # [storage.block-cache]
+  #   shared = true
+  #
+  #   # Normally it should be tuned to 30%-50% of `tikv.resources.limits.memory`, for example: 32Gi -> 16GB
+  #   capacity = "1GB"
 
   replicas: 3
   image: pingcap/tikv:v3.0.1
@@ -223,7 +237,7 @@ tidb:
   config: |
     [log]
     level = "info"
-  # # Here are some parameters you MUST to customize (Please configure in the above 'tidb.config' section):
+  # # Here are some parameters you MUST customize (Please configure in the above 'tidb.config' section):
   # [performance]
   #   # Normally it should be tuned to `tidb.resources.limits.cpu`, for example: 16000m -> 16
   #   max-procs = 0
