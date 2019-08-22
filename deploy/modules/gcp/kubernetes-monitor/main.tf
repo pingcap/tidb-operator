@@ -5,10 +5,10 @@ resource "null_resource" "setup-env" {
   ]
   provisioner "local-exec" {
     working_dir = path.cwd
+    interpreter = ["bash", "-c"]
     command     = <<EOS
 # Kubernetes cluster monitor
 mkdir monitor
-enable = var.install_prometheus_operator
 if var.install_prometheus_operator; then
     wget https://raw.githubusercontent.com/pingcap/monitoring/master/k8s-cluster-monitor/manifests/archive/prometheus-operator.tar.gz
     tar -zxvf prometheus-operator.tar.gz -C monitor/
