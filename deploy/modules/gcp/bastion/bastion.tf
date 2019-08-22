@@ -1,5 +1,5 @@
 resource "google_compute_firewall" "allow_ssh_bastion" {
-  name    = "allow-ssh-bastion"
+  name    = "${var.vpc_name}-allow-ssh-bastion"
   network = var.vpc_name
   project = var.gcp_project
 
@@ -13,7 +13,7 @@ resource "google_compute_firewall" "allow_ssh_bastion" {
 }
 
 resource "google_compute_firewall" "allow_mysql_from_bastion" {
-  name    = "allow-mysql-from-bastion"
+  name    = "${var.vpc_name}-allow-mysql-from-bastion"
   network = var.vpc_name
   project = var.gcp_project
 
@@ -27,7 +27,7 @@ resource "google_compute_firewall" "allow_mysql_from_bastion" {
 }
 
 resource "google_compute_firewall" "allow_ssh_from_bastion" {
-  name    = "allow-ssh-from-bastion"
+  name    = "${var.vpc_name}-allow-ssh-from-bastion"
   network = var.vpc_name
   project = var.gcp_project
 

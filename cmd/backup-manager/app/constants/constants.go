@@ -17,7 +17,7 @@ import "time"
 
 const (
 	// ResyncDuration is the informer's resync duration
-	ResyncDuration = 5 * time.Second
+	ResyncDuration = 10 * time.Second
 
 	// BackupRootPath is the root path to backup data
 	BackupRootPath = "/backup"

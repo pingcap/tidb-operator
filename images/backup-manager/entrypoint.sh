@@ -50,19 +50,18 @@ BACKUP_BIN=/tidb-backup-manager
 case "$1" in
     backup)
         shift 1
-        $BACKUP_BIN backup "$@"
+        echo "$BACKUP_BIN backup $@"
+        exec $BACKUP_BIN backup "$@"
         ;;
     restore)
         shift 1
-        $BACKUP_BIN restore "$@"
+        echo "$BACKUP_BIN restore $@"
+        exec $BACKUP_BIN restore "$@"
         ;;
     clean)
         shift 1
-        $BACKUP_BIN clean "$@"
-        ;;
-    schedule-backup)
-        shift 1
-        $BACKUP_BIN $VERBOSE schedule-backup "$@"
+        echo "$BACKUP_BIN clean $@"
+        exec $BACKUP_BIN clean "$@"
         ;;
     *)
         echo "Usage: $0 {backup|restore|clean}"

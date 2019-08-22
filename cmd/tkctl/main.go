@@ -14,6 +14,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -25,7 +26,8 @@ import (
 )
 
 func main() {
-	flags := pflag.NewFlagSet("tkc", pflag.ExitOnError)
+	flags := pflag.NewFlagSet("tkctl", pflag.ExitOnError)
+	flag.CommandLine.Parse([]string{})
 	pflag.CommandLine = flags
 
 	command := cmd.NewTkcCommand(genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr})
