@@ -44,6 +44,7 @@ module "tidb-operator" {
   vpc_name                      = var.vpc_name
   subnetwork_name               = module.vpc.private_subnetwork_name
   gcp_project                   = var.GCP_PROJECT
+  gke_version                   = var.gke_version
   location                      = local.location
   node_locations                = var.node_locations
   kubeconfig_path               = local.kubeconfig

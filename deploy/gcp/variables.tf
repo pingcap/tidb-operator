@@ -18,7 +18,7 @@ variable "location" {
 variable "node_locations" {
   description = "The list of zones in which the cluster's nodes should be located. These must be in the same region as the cluster zone for zonal clusters, or in the region of a regional cluster. In a multi-zonal cluster, the number of nodes specified in initial_node_count is created in all specified zones as well as the primary zone. If specified for a regional cluster, nodes will be created in only these zones."
   type        = list(string)
-  default = []
+  default     = []
 }
 
 variable "tidb_version" {
@@ -108,7 +108,7 @@ variable "tikv_image_type" {
 
 variable "tikv_local_ssd_count" {
   description = "TiKV node pool local ssd count (cannot be changed after the node pool is created)"
-  default = 1
+  default     = 1
 }
 
 variable "monitor_instance_type" {

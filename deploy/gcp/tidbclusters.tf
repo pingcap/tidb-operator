@@ -39,6 +39,6 @@ module "default-tidb-cluster" {
   tikv_node_count            = var.tikv_count
   tidb_node_count            = var.tidb_count
   monitor_node_count         = var.monitor_count
-  tikv_local_ssd_count 	     = var.tikv_local_ssd_count
+  tikv_local_ssd_count       = var.tikv_local_ssd_count
   override_values            = var.override_values
 }

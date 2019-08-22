@@ -1,10 +1,10 @@
 resource "google_container_cluster" "cluster" {
-  name       = var.gke_name
-  network    = var.vpc_name
-  subnetwork = var.subnetwork_name
-  location   = var.location
+  name           = var.gke_name
+  network        = var.vpc_name
+  subnetwork     = var.subnetwork_name
+  location       = var.location
   node_locations = var.node_locations
-  project    = var.gcp_project
+  project        = var.gcp_project
 
   master_auth {
     username = ""
@@ -44,8 +44,8 @@ resource "google_container_cluster" "cluster" {
 }
 
 locals {
-   # TODO better way to detect whether the cluster is zonal or regional
-   cmd_get_cluster_credentials = length(split("-", var.location)) == 3 ?  "gcloud --project ${var.gcp_project} container clusters get-credentials ${google_container_cluster.cluster.name} --zone ${var.location}" : "gcloud --project ${var.gcp_project} container clusters get-credentials ${google_container_cluster.cluster.name} --region ${var.location}"
+  # TODO better way to detect whether the cluster is zonal or regional
+  cmd_get_cluster_credentials = length(split("-", var.location)) == 3 ? "gcloud --project ${var.gcp_project} container clusters get-credentials ${google_container_cluster.cluster.name} --zone ${var.location}" : "gcloud --project ${var.gcp_project} container clusters get-credentials ${google_container_cluster.cluster.name} --region ${var.location}"
 }
 
 resource "null_resource" "get-credentials" {
@@ -124,10 +124,10 @@ EOS
 }
 
 data "helm_repository" "pingcap" {
-  provider   = "helm.initial"
+  provider = "helm.initial"
   depends_on = [null_resource.setup-env]
-  name       = "pingcap"
-  url        = "https://charts.pingcap.org/"
+  name = "pingcap"
+  url = "https://charts.pingcap.org/"
 }
 
 resource "helm_release" "tidb-operator" {
@@ -139,10 +139,10 @@ resource "helm_release" "tidb-operator" {
   ]
 
   repository = data.helm_repository.pingcap.name
-  chart      = "tidb-operator"
-  version    = var.tidb_operator_version
-  namespace  = "tidb-admin"
-  name       = "tidb-operator"
-  values     = [var.operator_helm_values]
-  wait       = false
+  chart = "tidb-operator"
+  version = var.tidb_operator_version
+  namespace = "tidb-admin"
+  name = "tidb-operator"
+  values = [var.operator_helm_values]
+  wait = false
 }
