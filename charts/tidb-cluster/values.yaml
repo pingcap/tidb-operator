@@ -608,11 +608,24 @@ importer:
   image: pingcap/tidb-lightning:v3.0.1
   imagePullPolicy: IfNotPresent
   storageClassName: local-storage
-  storage: 20Gi
+  storage: 200Gi
+  resources: {}
+    # limits:
+    #   cpu: 16000m
+    #   memory: 8Gi
+    # requests:
+    #   cpu: 16000m
+    #   memory: 8Gi
   affinity: {}
   tolerations: []
+  pushgatewayImage: prom/pushgateway:v0.3.1
+  pushgatewayImagePullPolicy: IfNotPresent
   config: |
     log-level = "info"
+    [metrics]
+    job = "tikv-importer"
+    interval = "15s"
+    address = "localhost:9091"
 
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"

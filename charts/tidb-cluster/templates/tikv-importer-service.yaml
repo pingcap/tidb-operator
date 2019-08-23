@@ -13,7 +13,7 @@ spec:
   clusterIP: None
   ports:
   - name: importer
-    port: 20170
+    port: 8287
   selector:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}

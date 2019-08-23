@@ -24,16 +24,15 @@ targetTidbCluster:
 
 resources: {}
   # limits:
-  #  cpu: 100m
-  #  memory: 128Mi
+  #  cpu: 16000m
+  #  memory: 8Gi
   # requests:
-  #  cpu: 100m
-  #  memory: 128Mi
+  #  cpu: 16000m
+  #  memory: 8Gi
 
 nodeSelector: {}
 
 tolerations: []
-
 affinity: {}
 
 config: |

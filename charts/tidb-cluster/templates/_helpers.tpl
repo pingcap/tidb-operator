@@ -111,7 +111,6 @@ drainer-config: |-
 {{ include "drainer-configmap.data" . | sha256sum | trunc 8 }}
 {{- end -}}
 
-
 {{/*
 Encapsulate tikv-importer configmap data for consistent digest calculation
 */}}
