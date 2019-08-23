@@ -100,5 +100,5 @@ variable "install_prometheus_operator" {
 
 variable "install_kubernetes_monitor" {
    description = "Whether installing kubernetes cluster monitoring, it depends on prometheus operator"
-   default     = false
+   default     = true
 }

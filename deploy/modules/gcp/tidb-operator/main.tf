@@ -100,6 +100,7 @@ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.t
 kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.tidb_operator_version}/manifests/tiller-rbac.yaml
 kubectl apply -k manifests/local-ssd
 kubectl apply -f manifests/gke/persistent-disk.yaml
+
 helm init --service-account tiller --upgrade --wait
 until helm ls; do
   echo "Wait until tiller is ready"
