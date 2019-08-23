@@ -13,14 +13,14 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: {{ include "tidb-lightning.name" . }}
-        app.kubernetes.io/instance:  {{ .Release.Name }}
+        app.kubernetes.io/instance:  {{ .Values.targetTidbCluster.name }}
         app.kubernetes.io/component: tidb-lightning
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/metrics"
         prometheus.io/port: "8289"
     spec:
-      {{ if .Values.dataSource.local.nodeName -}}
+      {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
       nodeName: {{ .Values.dataSource.local.nodeName }}
       {{ else -}}
       initContainers:
@@ -67,6 +67,10 @@ spec:
               echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "tidb-lightning exits abnormally, please exec into my container to do manual intervention"
               tail -f /dev/null
           fi
+        {{- if .Values.resources }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+        {{- end }}
         volumeMounts:
         - name: config
           mountPath: /etc/tidb-lightning
@@ -96,3 +100,11 @@ spec:
         persistentVolumeClaim:
           claimName: {{ include "tidb-lightning.name" . }}
       {{ end -}}
+    {{- if .Values.affinity }}
+      affinity:
+{{ toYaml .Values.affinity | indent 6 }}
+    {{- end }}
+    {{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 6 }}
+    {{- end }}
