@@ -52,7 +52,7 @@ func NewTiDBDiscovery(cli versioned.Interface, kubeCli kubernetes.Interface) TiD
 	td := &tidbDiscovery{
 		cli:         cli,
 		certControl: controller.NewRealCertControl(kubeCli),
-		pdControl:   pdapi.NewDefaultPDControl(),
+		pdControl:   pdapi.NewDefaultPDControl(kubeCli),
 		clusters:    map[string]*clusterInfo{},
 	}
 	td.tcGetFn = td.realTCGetFn
@@ -125,7 +125,7 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 func (td *tidbDiscovery) syncDiscoveryClientCerts(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	commonName := fmt.Sprintf("%s-discovery", tcName)
+	commonName := fmt.Sprintf("%s-pd-client", tcName)
 
 	if td.certControl.CheckSecret(ns, commonName) {
 		return nil

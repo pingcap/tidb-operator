@@ -12,9 +12,7 @@ import (
 )
 
 const (
-	k8sCAFile  = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-	clientCert = "/var/lib/client-tls/cert"
-	clientKey  = "/var/lib/client-tls/key"
+	k8sCAFile = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 )
 
 // DeferClose captures and prints the error from closing (if an error occurs).
@@ -43,7 +41,7 @@ func GetBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 	}
 	defer DeferClose(res.Body)
 	if res.StatusCode >= 400 {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL %s", res.StatusCode, apiURL))
+		errMsg := fmt.Errorf("Error response %v URL %s", res.StatusCode, apiURL)
 		return nil, errMsg
 	}
 	body, err := ioutil.ReadAll(res.Body)
@@ -74,13 +72,17 @@ func ReadCACerts() (*x509.CertPool, error) {
 	return rootCAs, nil
 }
 
-func ReadCerts() (*x509.CertPool, tls.Certificate, error) {
+func LoadCerts(cert []byte, key []byte) (*x509.CertPool, tls.Certificate, error) {
+	if cert == nil || key == nil {
+		return nil, tls.Certificate{}, fmt.Errorf("fail to load certs, cert and key can not be empty")
+	}
+
 	rootCAs, err := ReadCACerts()
 	if err != nil {
 		return rootCAs, tls.Certificate{}, err
 	}
 
 	// load client cert
-	cert, err := tls.LoadX509KeyPair(clientCert, clientKey)
-	return rootCAs, cert, err
+	tlsCert, err := tls.LoadX509KeyPair(string(cert), string(key))
+	return rootCAs, tlsCert, err
 }

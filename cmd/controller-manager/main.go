@@ -185,5 +185,5 @@ func generateClientCert(ns string, commonName string, certController controller.
 		commonName,
 	}
 
-	return certController.Create(ns, commonName, commonName, hostList, ipList, "controller-manager")
+	return certController.Create(ns, commonName, commonName, hostList, ipList, "pd-client")
 }

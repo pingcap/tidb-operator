@@ -74,7 +74,7 @@ func (rcc *realCertControl) Create(ns string, instance string, commonName string
 	}
 
 	// sign certificate
-	csr, err := rcc.sendCSR(ns, instance, rawCSR, suffix)
+	csr, err := rcc.sendCSR(ns, instance, rawCSR, csrName)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (rcc *realCertControl) Create(ns string, instance string, commonName string
 
 	csrCh, err := rcc.kubeCli.Certificates().CertificateSigningRequests().Watch(watchReq)
 	if err != nil {
-		glog.Errorf("error watch CSR for [%s/%s]: %s", ns, instance, csrName, suffix)
+		glog.Errorf("error watch CSR for [%s/%s]: %s", ns, instance, csrName)
 		return err
 	}
 
@@ -102,7 +102,7 @@ func (rcc *realCertControl) Create(ns string, instance string, commonName string
 	for {
 		select {
 		case <-tick:
-			glog.Infof("CSR still not approved for [%s/%s]: %s, retry later", ns, instance, csrName, suffix)
+			glog.Infof("CSR still not approved for [%s/%s]: %s, retry later", ns, instance, csrName)
 			continue
 		case event, ok := <-watchCh:
 			if !ok {
@@ -119,7 +119,7 @@ func (rcc *realCertControl) Create(ns string, instance string, commonName string
 			if updatedCSR.UID == csr.UID &&
 				approveCond == capi.CertificateApproved &&
 				updatedCSR.Status.Certificate != nil {
-				glog.Infof("signed certificate for [%s/%s]: %s", ns, instance, csrName, suffix)
+				glog.Infof("signed certificate for [%s/%s]: %s", ns, instance, csrName)
 
 				// save signed certificate and key to secret
 				err = rcc.SaveToSecret(ns, instance, suffix, updatedCSR.Status.Certificate, key)
@@ -158,9 +158,7 @@ func (rcc *realCertControl) getCSR(ns string, instance string, csrName string) (
 	return nil, fmt.Errorf("CSR %s/%s already exist, but not created by tidb-operator, skip it", ns, csrName)
 }
 
-func (rcc *realCertControl) sendCSR(ns string, instance string, rawCSR []byte, suffix string) (*capi.CertificateSigningRequest, error) {
-	csrName := fmt.Sprintf("%s-%s", instance, suffix)
-
+func (rcc *realCertControl) sendCSR(ns string, instance string, rawCSR []byte, csrName string) (*capi.CertificateSigningRequest, error) {
 	var csr *capi.CertificateSigningRequest
 
 	csr, err := rcc.getCSR(ns, instance, csrName)
@@ -175,7 +173,7 @@ func (rcc *realCertControl) sendCSR(ns string, instance string, rawCSR []byte, s
 			return nil, fmt.Errorf("failed to delete exist old CSR for [%s/%s]: %s, error: %v", ns, instance, csrName, err)
 		}
 		glog.Infof("exist old CSR deleted for [%s/%s]: %s", ns, instance, csrName)
-		return rcc.sendCSR(ns, instance, rawCSR, suffix)
+		return rcc.sendCSR(ns, instance, rawCSR, csrName)
 	}
 
 	csr = &capi.CertificateSigningRequest{
