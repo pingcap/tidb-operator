@@ -143,7 +143,7 @@ module "tidb-cluster" {
   override_values            = var.override_values
   kubeconfig_filename        = var.kubeconfig_path
   base_values                = file("${path.module}/values/default.yaml")
-  wait_on_resource           = [google_container_node_pool.tidb_pool]
+  wait_on_resource           = [var.tidb_operator_id]
 }
 
 resource "null_resource" "wait-lb-ip" {

@@ -13,6 +13,7 @@ module "default-tidb-cluster" {
   }
   source                     = "../modules/gcp/tidb-cluster"
   cluster_id                 = module.tidb-operator.cluster_id
+  tidb_operator_id           = module.tidb-operator.tidb_operator_id
   gcp_project                = var.GCP_PROJECT
   gke_cluster_location       = var.GCP_REGION
   gke_cluster_name           = var.gke_name
