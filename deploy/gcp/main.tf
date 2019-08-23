@@ -55,7 +55,7 @@ module "bastion" {
 
 module "kubernetes-monitor" {
   source                      = "../modules/gcp/kubernetes-monitor"
-  kubeconfig_path             = local.kubeconfig
+  kubeconfig_path             = module.tidb-operator.kubeconfig_path
   install_kubernetes_monitor  = var.install_kubernetes_monitor
   install_prometheus_operator = var.install_prometheus_operator
 }

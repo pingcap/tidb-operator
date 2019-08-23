@@ -88,7 +88,7 @@ module "tidb-cluster" {
 
 module "kubernetes-monitor" {
   source                      = "../modules/aliyun/kubernetes-monitor"
-  kubeconfig_file             = local.kubeconfig
+  kubeconfig_file             = module.tidb-operator.kubeconfig_filename
   install_kubernetes_monitor  = var.install_kubernetes_monitor
   install_prometheus_operator = var.install_prometheus_operator
 }

@@ -18,8 +18,8 @@ fi
 if ${var.install_kubernetes_monitor}; then
     wget https://raw.githubusercontent.com/pingcap/monitoring/master/k8s-cluster-monitor/manifests/archive/prometheus.tar.gz
     tar -zxvf prometheus.tar.gz -C monitor/
-    sed -i'.bak' 's/local-storage/ebs-gp2/g' monitor/manifests/prometheus/grafana-pvc.yaml
-    sed -i'.bak' 's/local-storage/ebs-gp2/g' monitor/manifests/prometheus/prometheus-prometheus.yaml
+    sed -i'.bak' 's/local-storage/pd-ssd/g' monitor/manifests/prometheus/grafana-pvc.yaml
+    sed -i'.bak' 's/local-storage/pd-ssd/g' monitor/manifests/prometheus/prometheus-prometheus.yaml
     rm -rf monitor/manifests/prometheus/*.bak
     kubectl apply -f monitor/manifests/prometheus
 fi
