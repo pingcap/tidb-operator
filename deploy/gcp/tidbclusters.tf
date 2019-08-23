@@ -8,7 +8,7 @@ provider "helm" {
   insecure       = true
   install_tiller = false
   kubernetes {
-    config_path = local.kubeconfig
+    config_path = data.local_file.kubeconfig.filename
   }
 }
 module "default-tidb-cluster" {
@@ -21,7 +21,7 @@ module "default-tidb-cluster" {
   gke_cluster_name           = module.tidb-operator.gke_cluster_name
   cluster_name               = var.default_tidb_cluster_name
   cluster_version            = var.tidb_version
-  kubeconfig_path            = local.kubeconfig
+  kubeconfig_path            = data.local_file.kubeconfig.filename
   tidb_cluster_chart_version = coalesce(var.tidb_operator_chart_version, var.tidb_operator_version)
   pd_instance_type           = var.pd_instance_type
   tikv_instance_type         = var.tikv_instance_type
