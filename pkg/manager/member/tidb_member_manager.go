@@ -136,13 +136,13 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if tc.Spec.EnableTLSServer {
+	if tc.Spec.EnableTLSCluster {
 		err := tmm.syncTiDBServerCerts(tc)
 		if err != nil {
 			return err
 		}
 	}
-	if tc.Spec.EnableTLSClient {
+	if tc.Spec.TiDB.EnableTLSClient {
 		err := tmm.syncTiDBClientCerts(tc)
 		if err != nil {
 			return err
@@ -289,7 +289,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			Name: "tidb-tls", ReadOnly: true, MountPath: "/var/lib/tidb-tls",
 		})
 	}
-	if tc.Spec.EnableTLSClient {
+	if tc.Spec.TiDB.EnableTLSClient {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-tls-client", ReadOnly: true, MountPath: "/var/lib/tidb-tls-client",
 		})
@@ -323,7 +323,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			},
 		})
 	}
-	if tc.Spec.EnableTLSClient {
+	if tc.Spec.TiDB.EnableTLSClient {
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-tls-client", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{

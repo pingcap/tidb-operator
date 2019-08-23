@@ -176,7 +176,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if tc.Spec.EnableTLSServer {
+	if tc.Spec.EnableTLSCluster {
 		err := pmm.syncPDServerCerts(tc)
 		if err != nil {
 			return err

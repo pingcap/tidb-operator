@@ -163,7 +163,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if tc.Spec.EnableTLSServer {
+	if tc.Spec.EnableTLSCluster {
 		err := tkmm.syncTiKVServerCerts(tc)
 		if err != nil {
 			return err
