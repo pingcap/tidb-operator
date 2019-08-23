@@ -24,6 +24,8 @@ locals {
   # TODO Update related code when node locations is avaiable in attributes of cluster resource.
   cmd_get_cluster_locations = <<EOT
 gcloud --project ${var.gcp_project} container clusters list --filter='name=${var.gke_cluster_name}' --format='json[no-heading](locations)' ${local.cluster_location_args} | jq '.[0] | .locations |= join(",")'
+=======
+gcloud --project ${var.gcp_project} container clusters list --filter='name=${var.gke_cluster_name}' --format='json[no-heading](locations)' ${local.cluster_location_args} | jq '{"locations": (if (. | length) > 0 then .[0].locations | join(",") else "" end) }'
 EOT
 }
 
