@@ -47,6 +47,7 @@ spec:
     annotations:
 {{ toYaml .Values.pd.annotations | indent 6 }}
   {{- end }}
+    hostNetwork: {{ .Values.pd.hostNetwork }}
   tikv:
     replicas: {{ .Values.tikv.replicas }}
     image: {{ .Values.tikv.image }}
@@ -69,6 +70,7 @@ spec:
     annotations:
 {{ toYaml .Values.tikv.annotations | indent 6 }}
   {{- end }}
+    hostNetwork: {{ .Values.tikv.hostNetwork }}
   tidb:
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}
@@ -88,6 +90,7 @@ spec:
     annotations:
 {{ toYaml .Values.tidb.annotations | indent 6 }}
   {{- end }}
+    hostNetwork: {{ .Values.tidb.hostNetwork }}
     binlogEnabled: {{ .Values.binlog.pump.create | default false }}
     maxFailoverCount: {{ .Values.tidb.maxFailoverCount | default 3 }}
     separateSlowLog: {{ .Values.tidb.separateSlowLog | default false }}

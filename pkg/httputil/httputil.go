@@ -78,7 +78,7 @@ func ReadCACerts() (*x509.CertPool, error) {
 func ReadCerts() (*x509.CertPool, tls.Certificate, error) {
 	rootCAs, err := ReadCACerts()
 	if err != nil {
-		return rootCAs, nil, err
+		return rootCAs, tls.Certificate{}, err
 	}
 
 	// load client cert
