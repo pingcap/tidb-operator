@@ -5,7 +5,7 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ include "drainer.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: drainer
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
@@ -15,5 +15,5 @@ spec:
     port: 8249
   selector:
     app.kubernetes.io/name: {{ include "drainer.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: drainer
