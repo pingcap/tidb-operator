@@ -41,6 +41,10 @@ resource "google_container_node_pool" "tikv_pool" {
   name       = "${var.cluster_name}-tikv-pool"
   node_count = var.tikv_node_count
 
+  depends_on = [
+    var.cluster_id
+  ]
+
   management {
     auto_repair  = false
     auto_upgrade = false

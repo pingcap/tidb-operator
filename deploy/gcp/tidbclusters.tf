@@ -1,32 +1,24 @@
-data "local_file" "kubeconfig" {
-  depends_on = [module.tidb-operator.cluster_id]
-  filename   = module.tidb-operator.kubeconfig_path
-}
-resource "local_file" "kubeconfig" {
-  depends_on = [module.tidb-operator.cluster_id]
-  content    = data.local_file.kubeconfig.content
-  filename   = module.tidb-operator.kubeconfig_path
-}
-
 provider "helm" {
   alias          = "gke"
   insecure       = true
   install_tiller = false
   kubernetes {
-    config_path = local_file.kubeconfig.filename
+    config_path = local.kubeconfig
   }
 }
+
 module "default-tidb-cluster" {
   providers = {
     helm = "helm.gke"
   }
   source                     = "../modules/gcp/tidb-cluster"
-  gcp_project                = module.tidb-operator.gcp_project
-  gke_cluster_location       = module.tidb-operator.gke_cluster_location
-  gke_cluster_name           = module.tidb-operator.gke_cluster_name
+  cluster_id                 = module.tidb-operator.cluster_id
+  gcp_project                = var.GCP_PROJECT
+  gke_cluster_location       = var.GCP_REGION
+  gke_cluster_name           = var.gke_name
   cluster_name               = var.default_tidb_cluster_name
   cluster_version            = var.tidb_version
-  kubeconfig_path            = module.tidb-operator.kubeconfig_path
+  kubeconfig_path            = local.kubeconfig
   tidb_cluster_chart_version = coalesce(var.tidb_operator_chart_version, var.tidb_operator_version)
   pd_instance_type           = var.pd_instance_type
   tikv_instance_type         = var.tikv_instance_type

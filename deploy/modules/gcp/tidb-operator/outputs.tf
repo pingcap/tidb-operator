@@ -13,7 +13,3 @@ output "gcp_project" {
 output "gke_cluster_location" {
   value = google_container_cluster.cluster.location
 }
-
-output "kubeconfig_path" {
-  value = local_file.kubeconfig.filename
-}

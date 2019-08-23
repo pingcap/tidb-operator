@@ -1,3 +1,6 @@
+variable "cluster_id" {
+  description = "GKE cluster ID. This depends on a running cluster. Please create a cluster first and pass ID here."
+}
 variable "cluster_name" {}
 variable "cluster_version" {
   description = "The TiDB cluster version"

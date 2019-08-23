@@ -65,24 +65,13 @@ resource "null_resource" "get-credentials" {
   }
 }
 
-data "local_file" "kubeconfig" {
-  depends_on = [google_container_cluster.cluster, null_resource.get-credentials]
-  filename   = var.kubeconfig_path
-}
-
-resource "local_file" "kubeconfig" {
-  depends_on = [google_container_cluster.cluster, null_resource.get-credentials]
-  content    = data.local_file.kubeconfig.content
-  filename   = var.kubeconfig_path
-}
-
 provider "helm" {
   alias    = "initial"
   insecure = true
   # service_account = "tiller"
   install_tiller = false # currently this doesn't work, so we install tiller in the local-exec provisioner. See https://github.com/terraform-providers/terraform-provider-helm/issues/148
   kubernetes {
-    config_path = local_file.kubeconfig.filename
+    config_path = var.kubeconfig_path
   }
 }
 
