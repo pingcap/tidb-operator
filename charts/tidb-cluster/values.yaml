@@ -51,7 +51,7 @@ enableConfigMapRollout: true
 
 pd:
   # Please refer to https://github.com/pingcap/pd/blob/master/conf/config.toml for the default
-  # pd configurations (change to the tags of your pd version), 
+  # pd configurations (change to the tags of your pd version),
   # just follow the format in the file and configure in the 'config' section
   # as below if you want to customize any configuration.
   # Please refer to https://pingcap.com/docs-cn/v3.0/reference/configuration/pd-server/configuration-file/
@@ -61,7 +61,7 @@ pd:
     level = "info"
     [replication]
     location-labels = ["region", "zone", "rack", "host"]
-  
+
   replicas: 3
   image: pingcap/pd:v3.0.5
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -602,6 +602,17 @@ scheduledBackup:
     requests: {}
     #   cpu: 4000m
     #   memory: 4Gi
+
+importer:
+  create: false
+  image: pingcap/tidb-lightning:v3.0.1
+  imagePullPolicy: IfNotPresent
+  storageClassName: local-storage
+  storage: 20Gi
+  affinity: {}
+  tolerations: []
+  config: |
+    log-level = "info"
 
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"

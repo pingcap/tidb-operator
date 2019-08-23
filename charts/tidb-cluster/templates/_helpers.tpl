@@ -110,3 +110,18 @@ drainer-config: |-
 {{- define "drainer-configmap.data-digest" -}}
 {{ include "drainer-configmap.data" . | sha256sum | trunc 8 }}
 {{- end -}}
+
+
+{{/*
+Encapsulate tikv-importer configmap data for consistent digest calculation
+*/}}
+{{- define "importer-configmap.data" -}}
+config-file: |-
+    {{- if .Values.importer.config }}
+{{ .Values.importer.config | indent 2 }}
+    {{- end -}}
+{{- end -}}
+
+{{- define "importer-configmap.data-digest" -}}
+{{ include "importer-configmap.data" . | sha256sum | trunc 8 }}
+{{- end -}}

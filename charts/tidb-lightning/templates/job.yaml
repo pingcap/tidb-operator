@@ -1,0 +1,98 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "tidb-lightning.name" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "tidb-lightning.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: tidb-lightning
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "tidb-lightning.name" . }}
+        app.kubernetes.io/instance:  {{ .Release.Name }}
+        app.kubernetes.io/component: tidb-lightning
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8289"
+    spec:
+      {{ if .Values.dataSource.local.nodeName -}}
+      nodeName: {{ .Values.dataSource.local.nodeName }}
+      {{ else -}}
+      initContainers:
+      - name: data-retriever
+        image: {{ .Values.dataSource.remote.rcloneImage }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -euo pipefail
+          filename=$(basename {{ .Values.dataSource.remote.path }})
+          rclone --config /etc/rclone/rclone.conf copy -P {{ .Values.dataSource.remote.path }} /data
+          cd /data && tar xzvf ${filename}
+        volumeMounts:
+        - name: credentials
+          mountPath: /etc/rclone
+        - name: data
+          mountPath: /data
+      {{ end -}}
+      restartPolicy: Never      # if lightning fails, manual intervention is required so no restart
+      containers:
+      - name: tidb-lightning
+        image: {{ .Values.image }}
+        imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          data_dir=$(dirname $(find /var/lib/tidb-lightning -name metadata 2>/dev/null) 2>/dev/null)
+          /tidb-lightning \
+          --pd-urls={{ .Values.targetTidbCluster.name }}-pd.{{ .Values.targetTidbCluster.namespace}}:2379 \
+          --status-addr=0.0.0.0:8289 \
+          --importer={{ .Values.targetTidbCluster.name }}-importer.{{ .Values.targetTidbCluster.namespace }}:20170 \
+          --server-mode=false \
+          --tidb-user=root \
+          --tidb-host={{ .Values.targetTidbCluster.name }}-tidb.{{ .Values.targetTidbCluster.namespace }} \
+          {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
+          --d={{ .Values.dataSource.local.hostPath }} \
+          {{ else -}}
+          --d=${data_dir} \
+          {{ end -}}
+          --config=/etc/tidb-lightning/tidb-lightning.toml
+          if [ $? != 0 ]; then
+              echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "tidb-lightning exits abnormally, please exec into my container to do manual intervention"
+              tail -f /dev/null
+          fi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/tidb-lightning
+        - name: data
+          {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName }}
+          mountPath: {{ .Values.dataSource.local.hostPath }}
+          {{ else -}}
+          mountPath: /var/lib/tidb-lightning
+          {{- end }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "tidb-lightning.name" . }}-{{ template "lightning-configmap.data-digest" . }}
+          items:
+          - key: config-file
+            path: tidb-lightning.toml
+      {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
+      - name: data
+        hostPath:
+          path: {{ .Values.dataSource.local.hostPath }}
+          type: Directory
+      {{ else -}}
+      - name: credentials
+        secret:
+          secretName: {{ .Values.dataSource.remote.secretName }}
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "tidb-lightning.name" . }}
+      {{ end -}}

@@ -1,0 +1,7 @@
+1. Check tidb-lightning status
+  kubectl get job -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ include "tidb-lightning.name" . }}
+  kubectl get po -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ include "tidb-lightning.name" . }}
+2. Check tidb-lightning logs
+  kubectl logs -f -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ include "tidb-lightning.name" . }}
+3. View tidb-lightning status page
+  kubectl port-forward -n {{ .Release.Namespace }} svc/
