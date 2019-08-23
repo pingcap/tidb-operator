@@ -20,7 +20,7 @@ dataSource:
 
 targetTidbCluster:
   name: tidb-cluster
-  namespace: tidb
+  user: root
 
 resources: {}
   # limits:
