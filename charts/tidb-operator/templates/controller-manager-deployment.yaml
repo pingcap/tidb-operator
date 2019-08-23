@@ -52,12 +52,3 @@ spec:
                 fieldPath: metadata.namespace
           - name: TZ
             value: {{ .Values.timezone | default "UTC" }}
-        volumeMounts:
-        - mountPath: /var/lib/client-tls
-          name: tls
-          readOnly: true
-      volumes:
-      - name: tls
-        secret:
-          defaultMode: 420
-          secretName: tidb-operator-controller-manager

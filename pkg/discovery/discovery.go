@@ -125,9 +125,10 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 func (td *tidbDiscovery) syncDiscoveryClientCerts(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	commonName := fmt.Sprintf("%s-pd-client", tcName)
+	commonName := fmt.Sprintf("%s-discovery", tcName)
+	csrName := fmt.Sprintf("%s-pd-client", tcName)
 
-	if td.certControl.CheckSecret(ns, commonName) {
+	if td.certControl.CheckSecret(ns, csrName) {
 		return nil
 	}
 
@@ -136,7 +137,7 @@ func (td *tidbDiscovery) syncDiscoveryClientCerts(tc *v1alpha1.TidbCluster) erro
 		commonName,
 	}
 
-	return td.certControl.Create(ns, tcName, commonName, hostList, ipList, "discovery")
+	return td.certControl.Create(ns, tcName, commonName, hostList, ipList, "pd-client")
 }
 
 func (td *tidbDiscovery) realTCGetFn(ns, tcName string) (*v1alpha1.TidbCluster, error) {
