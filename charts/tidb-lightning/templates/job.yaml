@@ -30,15 +30,7 @@ spec:
         - /bin/sh
         - -c
         - |
-          set -euo pipefail
-          filename=$(basename {{ .Values.dataSource.remote.path }})
-          if find /data -name metadata; then
-              echo "data already exist"
-              exit 0
-          else
-              rclone --config /etc/rclone/rclone.conf copy -P {{ .Values.dataSource.remote.path }} /data
-              cd /data && tar xzvf ${filename}
-          fi
+{{ tuple "scripts/_start_data_retriever.sh.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
         volumeMounts:
         - name: credentials
           mountPath: /etc/rclone
@@ -54,24 +46,7 @@ spec:
         - /bin/sh
         - -c
         - |
-          data_dir=$(dirname $(find /var/lib/tidb-lightning -name metadata 2>/dev/null) 2>/dev/null)
-          /tidb-lightning \
-          --pd-urls={{ .Values.targetTidbCluster.name }}-pd.{{ .Release.Namespace }}:2379 \
-          --status-addr=0.0.0.0:8289 \
-          --importer={{ .Values.targetTidbCluster.name }}-importer.{{ .Release.Namespace }}:8287 \
-          --server-mode=false \
-          --tidb-user={{ .Values.targetTidbCluster.user | default "root" }} \
-          --tidb-host={{ .Values.targetTidbCluster.name }}-tidb.{{ .Release.Namespace }} \
-          {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
-          --d={{ .Values.dataSource.local.hostPath }} \
-          {{ else -}}
-          --d=${data_dir} \
-          {{ end -}}
-          --config=/etc/tidb-lightning/tidb-lightning.toml
-          if [ $? != 0 ]; then
-              echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "tidb-lightning exits abnormally, please exec into my container to do manual intervention"
-              tail -f /dev/null
-          fi
+{{ tuple "scripts/_start_lightning.sh.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
         {{- if .Values.resources }}
         resources:
 {{ toYaml .Values.resources | indent 10 }}
@@ -82,7 +57,7 @@ spec:
         - name: data
           {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName }}
           mountPath: {{ .Values.dataSource.local.hostPath }}
-          {{ else -}}
+          {{- else -}}
           mountPath: /var/lib/tidb-lightning
           {{- end }}
       volumes:
@@ -97,7 +72,7 @@ spec:
         hostPath:
           path: {{ .Values.dataSource.local.hostPath }}
           type: Directory
-      {{ else -}}
+      {{- else -}}
       - name: credentials
         secret:
           secretName: {{ .Values.dataSource.remote.secretName }}
@@ -112,4 +87,4 @@ spec:
     {{- if .Values.tolerations }}
       tolerations:
 {{ toYaml .Values.tolerations | indent 6 }}
-    {{- end }}
+    {{- end -}}

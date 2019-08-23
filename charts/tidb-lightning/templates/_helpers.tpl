@@ -6,6 +6,14 @@ Expand the name of the chart.
 {{ .Release.Name }}-tidb-lightning
 {{- end -}}
 
+{{- define "helm-toolkit.utils.template" -}}
+{{- $name := index . 0 -}}
+{{- $context := index . 1 -}}
+{{- $last := base $context.Template.Name }}
+{{- $wtf := $context.Template.Name | replace $last $name -}}
+{{ include $wtf $context }}
+{{- end -}}
+
 {{/*
 Encapsulate config data for consistent digest calculation
 */}}
