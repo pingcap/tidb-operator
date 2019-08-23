@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tidb-lightning.name" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "tidb-lightning.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: tidb-lightning
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: 8289
+      targetPort: 8289
+      protocol: TCP
+      name: lightning
+  selector:
+    app.kubernetes.io/name: {{ include "tidb-lightning.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: tidb-lightning
