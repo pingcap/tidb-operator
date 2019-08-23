@@ -1,4 +1,8 @@
 data_dir=$(dirname $(find /var/lib/tidb-lightning -name metadata 2>/dev/null) 2>/dev/null)
+if [ -z $data_dir]; then
+    echo "No mydumper files are found, please exec into my container to diagnose"
+    tail -f /dev/null
+fi
 /tidb-lightning \
     --pd-urls={{ .Values.targetTidbCluster.name }}-pd.{{ .Release.Namespace }}:2379 \
     --status-addr=0.0.0.0:8289 \
