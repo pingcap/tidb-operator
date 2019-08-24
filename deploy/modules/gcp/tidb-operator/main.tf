@@ -65,13 +65,30 @@ resource "null_resource" "get-credentials" {
   }
 }
 
+data "local_file" "kubeconfig" {
+  depends_on = [null_resource.get-credentials]
+  filename   = var.kubeconfig_path
+}
+
+# local file resource used to delay helm provider initialization
+resource "local_file" "kubeconfig" {
+  content    = data.local_file.kubeconfig.content
+  filename   = var.kubeconfig_path
+}
+
 provider "helm" {
   alias    = "initial"
   insecure = true
   # service_account = "tiller"
   install_tiller = false # currently this doesn't work, so we install tiller in the local-exec provisioner. See https://github.com/terraform-providers/terraform-provider-helm/issues/148
   kubernetes {
+    # helm provider loads the file when it's initialized, we must wait for it to be created.
+    # However we cannot use resource here, because in refresh phrase, it will
+    # not be resolved and argument default value is used. To work around this,
+    # we defer initialization by using load_config_file argument.
+    # See https://github.com/pingcap/tidb-operator/pull/819#issuecomment-524547459
     config_path = var.kubeconfig_path
+    load_config_file = local_file.kubeconfig.filename != "" ? true : false
   }
 }
 

@@ -1,9 +1,26 @@
+data "local_file" "kubeconfig" {
+  depends_on = [module.tidb-operator.get_credentials_id]
+  filename   = local.kubeconfig
+}
+
+# local file resource used to delay helm provider initialization
+resource "local_file" "kubeconfig" {
+  content    = data.local_file.kubeconfig.content
+  filename   = local.kubeconfig
+}
+
 provider "helm" {
   alias          = "gke"
   insecure       = true
   install_tiller = false
   kubernetes {
+    # helm provider loads the file when it's initialized, we must wait for it to be created.
+    # However we cannot use resource here, because in refresh phrase, it will
+    # not be resolved and argument default value is used. To work around this,
+    # we defer initialization by using load_config_file argument.
+    # See https://github.com/pingcap/tidb-operator/pull/819#issuecomment-524547459
     config_path = local.kubeconfig
+    load_config_file = local_file.kubeconfig.filename != "" ? true : false
   }
 }
 

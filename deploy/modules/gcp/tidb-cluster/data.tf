@@ -30,5 +30,6 @@ EOT
 }
 
 data "external" "cluster_locations" {
+  depends_on = [var.cluster_id]
   program = ["bash", "-c", local.cmd_get_cluster_locations]
 }
