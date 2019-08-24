@@ -8,9 +8,9 @@ service:
   type: NodePort
 
 dataSource:
-  local:
+  local: {}
     # nodeName: kind-worker3
-    hostPath: /data/export-20190820
+    # hostPath: /data/export-20190820
   remote:
     rcloneImage: tynor88/rclone
     storageClassName: local-storage
