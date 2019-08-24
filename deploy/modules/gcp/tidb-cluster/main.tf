@@ -135,6 +135,7 @@ module "tidb-cluster" {
   tikv_count                 = var.tikv_node_count * local.num_availability_zones
   tidb_count                 = var.tidb_node_count * local.num_availability_zones
   tidb_cluster_chart_version = var.tidb_cluster_chart_version
+  cluster_version            = var.cluster_version
   override_values            = var.override_values
   kubeconfig_filename        = var.kubeconfig_path
   base_values                = file("${path.module}/values/default.yaml")
