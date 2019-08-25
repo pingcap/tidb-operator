@@ -39,7 +39,7 @@ spec:
       {{- end }}
         env:
         - name: BACKUP_NAME
-          value: {{ .Values.name | quote }}
+          value: {{ .Values.scheduledBackupName | default .Values.name | quote }}
       {{- if .Values.gcp }}
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: /gcp/credentials.json
@@ -69,10 +69,14 @@ spec:
       volumes:
       - name: data
         persistentVolumeClaim:
+    {{- if .Values.scheduledBackupName }}
+          claimName: {{ .Values.clusterName }}-scheduled-backup
+    {{- else }}
           claimName: {{ .Values.name }}
+    {{- end }}
     {{- if .Values.gcp }}
       - name: gcp-credentials
         secret:
           secretName: {{ .Values.gcp.secretName }}
     {{- end }}
-{{- end }}
+{{- end -}}
