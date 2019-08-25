@@ -9,6 +9,7 @@ metadata:
     app.kubernetes.io/component: tidb-lightning
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
+  backoffLimit: 0               # disable job retry when fails
   template:
     metadata:
       labels:
