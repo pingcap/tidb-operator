@@ -1,3 +1,6 @@
+{{- if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
+data_dir={{ .Values.dataSource.local.hostPath }}
+{{- else -}}
 data_dir=$(dirname $(find /var/lib/tidb-lightning -name metadata 2>/dev/null) 2>/dev/null)
 if [ -z $data_dir ]; then
     if [ ! -z ${FAIL_FAST} ]; then
@@ -7,6 +10,7 @@ if [ -z $data_dir ]; then
         tail -f /dev/null
     fi
 fi
+{{ end }}
 /tidb-lightning \
     --pd-urls={{ .Values.targetTidbCluster.name }}-pd.{{ .Release.Namespace }}:2379 \
     --status-addr=0.0.0.0:8289 \
@@ -14,11 +18,7 @@ fi
     --server-mode=false \
     --tidb-user={{ .Values.targetTidbCluster.user | default "root" }} \
     --tidb-host={{ .Values.targetTidbCluster.name }}-tidb.{{ .Release.Namespace }} \
-    {{- if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName }}
-    --d={{ .Values.dataSource.local.hostPath }} \
-    {{ else -}}
     --d=${data_dir} \
-    {{ end -}}
     --config=/etc/tidb-lightning/tidb-lightning.toml
 
 if [ $? != 0 ]; then
