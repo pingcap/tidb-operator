@@ -13,6 +13,9 @@ spec:
   ports:
     - port: 8289
       targetPort: 8289
+      {{- if .Values.service.nodePort }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}
       protocol: TCP
       name: lightning
   selector:
