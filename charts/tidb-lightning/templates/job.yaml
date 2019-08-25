@@ -51,6 +51,11 @@ spec:
         resources:
 {{ toYaml .Values.resources | indent 10 }}
         {{- end }}
+        {{- if .Values.failFast }}
+        env:
+        - name: FAIL_FAST
+          value: "true"
+        {{- end }}
         volumeMounts:
         - name: config
           mountPath: /etc/tidb-lightning
