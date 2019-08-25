@@ -34,12 +34,6 @@ func NewPrintFlags() *PrintFlags {
 	}
 }
 
-// Copy returns a copy of PrintFlags for mutation
-func (p *PrintFlags) Copy() PrintFlags {
-	printFlags := *p
-	return printFlags
-}
-
 func (p *PrintFlags) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&p.OutputFormat, "output", "o", p.OutputFormat,
 		"Output format. json|yaml|wide")
