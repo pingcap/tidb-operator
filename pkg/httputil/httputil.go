@@ -83,6 +83,6 @@ func LoadCerts(cert []byte, key []byte) (*x509.CertPool, tls.Certificate, error)
 	}
 
 	// load client cert
-	tlsCert, err := tls.LoadX509KeyPair(string(cert), string(key))
+	tlsCert, err := tls.X509KeyPair(cert, key)
 	return rootCAs, tlsCert, err
 }

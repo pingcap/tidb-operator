@@ -220,7 +220,7 @@ func (tmm *tidbMemberManager) syncTiDBServerCerts(tc *v1alpha1.TidbCluster) erro
 		peerName,
 		fmt.Sprintf("%s.%s", svcName, ns),
 		fmt.Sprintf("%s.%s", peerName, ns),
-		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
+		fmt.Sprintf("*.%s.%s", peerName, ns),
 	}
 
 	return tmm.certControl.Create(ns, tcName, svcName, hostList, ipList, "tidb")
@@ -291,7 +291,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 	}
 	if tc.Spec.TiDB.EnableTLSClient {
 		volMounts = append(volMounts, corev1.VolumeMount{
-			Name: "tidb-tls-client", ReadOnly: true, MountPath: "/var/lib/tidb-tls-client",
+			Name: "tidb-client-tls", ReadOnly: true, MountPath: "/var/lib/tidb-client-tls",
 		})
 	}
 
@@ -325,7 +325,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 	}
 	if tc.Spec.TiDB.EnableTLSClient {
 		vols = append(vols, corev1.Volume{
-			Name: "tidb-tls-client", VolumeSource: corev1.VolumeSource{
+			Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: fmt.Sprintf("%s-tidb-client", tcName),
 				},

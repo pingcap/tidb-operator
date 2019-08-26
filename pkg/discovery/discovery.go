@@ -126,11 +126,11 @@ func (td *tidbDiscovery) syncDiscoveryClientCerts(tc *v1alpha1.TidbCluster) erro
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	commonName := fmt.Sprintf("%s-discovery", tcName)
-	csrName := fmt.Sprintf("%s-pd-client", tcName)
+	//csrName := fmt.Sprintf("%s-pd-client", tcName)
 
-	if td.certControl.CheckSecret(ns, csrName) {
-		return nil
-	}
+	//if td.certControl.CheckSecret(ns, csrName) {
+	//	return nil
+	//}
 
 	var ipList []string // empty
 	hostList := []string{

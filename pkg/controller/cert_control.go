@@ -58,11 +58,7 @@ func (rcc *realCertControl) Create(ns string, instance string, commonName string
 	csrName := fmt.Sprintf("%s-%s", instance, suffix)
 
 	// generate certificate if not exist
-	_, _, err := rcc.LoadFromSecret(ns, csrName)
-	if !apierrors.IsNotFound(err) {
-		return err
-	}
-	if err == nil {
+	if rcc.CheckSecret(ns, csrName) {
 		// TODO: validate the cert and key
 		glog.Infof("Secret %s already exist, reusing the key pair. TidbCluster: %s/%s", csrName, ns, csrName)
 		return nil

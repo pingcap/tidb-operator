@@ -73,13 +73,13 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 		secret, err := pdc.kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
 		if err != nil {
 			glog.Errorf("unable to load certificates from secret %s/%s, PDClient may not work: %v", namespace, secretName, err)
-			return &pdClient{url: PdClientURL(namespace, tcName, scheme)}
+			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
 		}
 
 		rootCAs, tlsCert, err := httputil.LoadCerts(secret.Data["cert"], secret.Data["key"])
 		if err != nil {
 			glog.Errorf("unable to load certificates for %s discovery, PDClient may not work: %v", namespace, err)
-			return &pdClient{url: PdClientURL(namespace, tcName, scheme)}
+			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
 		}
 		tlsConfig = &tls.Config{
 			RootCAs:      rootCAs,
@@ -443,7 +443,7 @@ func (pc *pdClient) SetStoreLabels(storeID uint64, labels map[string]string) (bo
 	if err != nil {
 		return false, err
 	}
-	res, err := http.Post(apiURL, "application/json", bytes.NewBuffer(data))
+	res, err := pc.httpClient.Post(apiURL, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		return false, err
 	}
@@ -462,7 +462,7 @@ func (pc *pdClient) BeginEvictLeader(storeID uint64) error {
 	if err != nil {
 		return err
 	}
-	res, err := http.Post(apiURL, "application/json", bytes.NewBuffer(data))
+	res, err := pc.httpClient.Post(apiURL, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}
