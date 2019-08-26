@@ -51,7 +51,7 @@ resource "google_container_node_pool" "tikv_pool" {
     image_type   = var.tikv_image_type
     // This value cannot be changed (instead a new node pool is needed)
     // 1 SSD is 375 GiB
-    local_ssd_count = 1
+    local_ssd_count = var.tikv_local_ssd_count
 
     taint {
       effect = "NO_SCHEDULE"
@@ -135,6 +135,7 @@ module "tidb-cluster" {
   tikv_count                 = var.tikv_node_count * local.num_availability_zones
   tidb_count                 = var.tidb_node_count * local.num_availability_zones
   tidb_cluster_chart_version = var.tidb_cluster_chart_version
+  cluster_version            = var.cluster_version
   override_values            = var.override_values
   kubeconfig_filename        = var.kubeconfig_path
   base_values                = file("${path.module}/values/default.yaml")
