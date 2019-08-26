@@ -61,7 +61,7 @@ if hash kind 2>/dev/null;then
 else
     echo "start install kind"
     GO111MODULE="on" go get sigs.k8s.io/kind@v0.4.0
-    echo PATH=\${PATH}:$(go env GOPATH)/bin >> ${HOME}/.profile && source ${HOME}/.profile
+    echo PATH=${PATH}:$(go env GOPATH)/bin >> ${HOME}/.profile && source ${HOME}/.profile
 fi
 
 echo "############# start create cluster:[${clusterName}] #############"
