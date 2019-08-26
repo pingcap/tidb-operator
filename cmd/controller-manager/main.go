@@ -176,7 +176,8 @@ func main() {
 }
 
 func generateClientCert(ns string, commonName string, certController controller.CertControlInterface) error {
-	if certController.CheckSecret(ns, commonName) {
+	secretName := "tidb-operator-pd-client"
+	if certController.CheckSecret(ns, secretName) {
 		return nil
 	}
 
@@ -185,5 +186,5 @@ func generateClientCert(ns string, commonName string, certController controller.
 		commonName,
 	}
 
-	return certController.Create(ns, commonName, commonName, hostList, ipList, "pd-client")
+	return certController.Create(ns, commonName, commonName, hostList, ipList, "tidb-operator", "pd-client")
 }

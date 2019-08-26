@@ -97,8 +97,8 @@ config-file: |-
     {{- end -}}
     {{- if .Values.tidb.enableTLSClient }}
   ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  ssl-cert = "/var/lib/tidb-client-tls/cert"
-  ssl-key = "/var/lib/tidb-client-tls/key"
+  ssl-cert = "/var/lib/tidb-server-tls/cert"
+  ssl-key = "/var/lib/tidb-server-tls/key"
     {{- end -}}
 
 {{- end -}}

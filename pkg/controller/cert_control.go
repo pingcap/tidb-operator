@@ -16,7 +16,6 @@ package controller
 import (
 	"encoding/pem"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -32,9 +31,9 @@ import (
 
 // CertControlInterface manages certificates used by TiDB clusters
 type CertControlInterface interface {
-	Create(ns string, instance string, commonName string, hostList []string, IPList []string, suffix string) error
+	Create(ns string, instance string, commonName string, hostList []string, IPList []string, component string, suffix string) error
 	LoadFromSecret(ns string, secretName string) ([]byte, []byte, error)
-	SaveToSecret(ns string, instance string, component string, cert []byte, key []byte) error
+	SaveToSecret(ns string, instance string, component string, suffix string, cert []byte, key []byte) error
 	CheckSecret(ns string, secretName string) bool
 	//RevokeCert() error
 	//RenewCert() error
@@ -54,8 +53,13 @@ func NewRealCertControl(
 }
 
 func (rcc *realCertControl) Create(ns string, instance string, commonName string,
-	hostList []string, IPList []string, suffix string) error {
-	csrName := fmt.Sprintf("%s-%s", instance, suffix)
+	hostList []string, IPList []string, component string, suffix string) error {
+	var csrName string
+	if suffix == "" {
+		csrName = instance
+	} else {
+		csrName = fmt.Sprintf("%s-%s", instance, suffix)
+	}
 
 	// generate certificate if not exist
 	if rcc.CheckSecret(ns, csrName) {
@@ -118,7 +122,7 @@ func (rcc *realCertControl) Create(ns string, instance string, commonName string
 				glog.Infof("signed certificate for [%s/%s]: %s", ns, instance, csrName)
 
 				// save signed certificate and key to secret
-				err = rcc.SaveToSecret(ns, instance, suffix, updatedCSR.Status.Certificate, key)
+				err = rcc.SaveToSecret(ns, instance, component, suffix, updatedCSR.Status.Certificate, key)
 				if err == nil {
 					// cleanup the approved csr
 					delOpts := &types.DeleteOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
@@ -143,12 +147,10 @@ func (rcc *realCertControl) getCSR(ns string, instance string, csrName string) (
 		return nil, err
 	}
 
-	// check for exist CSR, overwirte if it was created by operator, otherwise block the process
 	labelTemp := label.New()
 	if csr.Labels[label.NamespaceLabelKey] == ns &&
 		csr.Labels[label.ManagedByLabelKey] == labelTemp[label.ManagedByLabelKey] &&
 		csr.Labels[label.InstanceLabelKey] == instance {
-		glog.Infof("found exist CSR %s/%s created by tidb-operator, overwriting", ns, csrName)
 		return csr, nil
 	}
 	return nil, fmt.Errorf("CSR %s/%s already exist, but not created by tidb-operator, skip it", ns, csrName)
@@ -157,12 +159,14 @@ func (rcc *realCertControl) getCSR(ns string, instance string, csrName string) (
 func (rcc *realCertControl) sendCSR(ns string, instance string, rawCSR []byte, csrName string) (*capi.CertificateSigningRequest, error) {
 	var csr *capi.CertificateSigningRequest
 
+	// check for exist CSR, overwirte if it was created by operator, otherwise block the process
 	csr, err := rcc.getCSR(ns, instance, csrName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create CSR for [%s/%s]: %s, error: %v", ns, instance, csrName, err)
 	}
 
 	if csr != nil {
+		glog.Infof("found exist CSR %s/%s created by tidb-operator, overwriting", ns, csrName)
 		delOpts := &types.DeleteOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
 		err := rcc.kubeCli.Certificates().CertificateSigningRequests().Delete(csrName, delOpts)
 		if err != nil {
@@ -235,10 +239,8 @@ func (rcc *realCertControl) LoadFromSecret(ns string, secretName string) ([]byte
 	return secret.Data["cert"], secret.Data["key"], err
 }
 
-func (rcc *realCertControl) SaveToSecret(ns string, instance string, component string, cert []byte, key []byte) error {
-	secretName := fmt.Sprintf("%s-%s", instance, component)
-	// the client cert is part of tidb component
-	componentName := strings.TrimSuffix(component, "-client")
+func (rcc *realCertControl) SaveToSecret(ns string, instance string, component string, suffix string, cert []byte, key []byte) error {
+	secretName := fmt.Sprintf("%s-%s", instance, suffix)
 
 	secret := &corev1.Secret{
 		ObjectMeta: types.ObjectMeta{
@@ -255,7 +257,7 @@ func (rcc *realCertControl) SaveToSecret(ns string, instance string, component s
 	secret.Labels[label.NamespaceLabelKey] = ns
 	secret.Labels[label.ManagedByLabelKey] = labelTemp[label.ManagedByLabelKey]
 	secret.Labels[label.InstanceLabelKey] = instance
-	secret.Labels[label.ComponentLabelKey] = componentName
+	secret.Labels[label.ComponentLabelKey] = component
 
 	_, err := rcc.kubeCli.CoreV1().Secrets(ns).Create(secret)
 	glog.Infof("save cert to secret %s/%s, error: %v", ns, secretName, err)

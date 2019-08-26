@@ -17,14 +17,15 @@ scrape_configs:
       namespaces:
         names:
         - {{ .Release.Namespace }}
-{{- if .Values.enableTLSCluster }}
-    scheme: https
-{{- end }}
     tls_config:
       insecure_skip_verify: true
-{{- if .Values.enableTLSCluster }}
+    {{- if .Values.enableTLSCluster }}
       ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-{{- end }}
+      cert_file: /var/lib/pd-client-tls/cert
+      key_file: /var/lib/pd-client-tls/key
+
+    scheme: https
+    {{- end }}
     relabel_configs:
     - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
       action: keep
