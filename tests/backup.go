@@ -34,7 +34,7 @@ type BackupTarget struct {
 
 func (t *BackupTarget) GetDrainerConfig(source *TidbClusterConfig, ts string) *DrainerConfig {
 	drainerConfig := &DrainerConfig{
-		DrainerName:       fmt.Sprintf("%s-drainer", t.TargetCluster.ClusterName),
+		DrainerName:       fmt.Sprintf("%s-%s-drainer", source.ClusterName, t.IncrementalType),
 		InitialCommitTs:   ts,
 		OperatorTag:       source.OperatorTag,
 		SourceClusterName: source.ClusterName,

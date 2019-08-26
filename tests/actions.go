@@ -578,7 +578,9 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		fmt.Sprintf("%s-backup", info.ClusterName),
 		fmt.Sprintf("%s-restore", info.ClusterName),
 		fmt.Sprintf("%s-scheduler-backup", info.ClusterName),
-		fmt.Sprintf("%s-drainer", info.ClusterName),
+		fmt.Sprintf("%s-%s-drainer", info.ClusterName, DbTypeFile),
+		fmt.Sprintf("%s-%s-drainer", info.ClusterName, DbTypeTiDB),
+		fmt.Sprintf("%s-%s-drainer", info.ClusterName, DbTypeMySQL),
 	}
 	for _, chartName := range charts {
 		res, err := exec.Command("helm", "del", "--purge", chartName).CombinedOutput()
@@ -637,19 +639,20 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete jobs: %v, %s", err, string(res))
 	}
 
-	// delete all pvcs
-	allPvcSet := label.Label{}.Instance(info.ClusterName).String()
-	if res, err := exec.Command("kubectl", "delete", "pvc", "-n", info.Namespace, "-l", allPvcSet).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to delete pvc: %v, %s", err, string(res))
+	resources := []string{"pvc"}
+	for _, resource := range resources {
+		if res, err := exec.Command("kubectl", "delete", resource, "-n", info.Namespace, "-l",
+			setStr).CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to delete %s: %v, %s", resource, err, string(res))
+		}
 	}
 
-	//resources := []string{"pvc"}
-	//for _, resource := range resources {
-	//	if res, err := exec.Command("kubectl", "delete", resource, "-n", info.Namespace, "-l",
-	//		setStr).CombinedOutput(); err != nil {
-	//		return fmt.Errorf("failed to delete %s: %v, %s", resource, err, string(res))
-	//	}
-	//}
+	// delete pvc of drainer
+	drainerPvcSet := label.Label{}.Instance(info.ClusterName).Component("drainer").String()
+	if res, err := exec.Command("kubectl", "delete", "pvc", "-n", info.Namespace, "-l",
+		drainerPvcSet).CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to delete pvc: %v, %s", drainerPvcSet, err, string(res))
+	}
 
 	// delete all configmaps
 	allConfigMaps := label.New().Instance(info.ClusterName).String()

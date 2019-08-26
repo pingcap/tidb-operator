@@ -42,13 +42,13 @@ spec:
   serviceAccount: tidb-operator-stability
   containers:
   - name: tidb-operator-stability
-    image: hub.pingcap.net/aylei/tidb-operator-stability-test:multiple-drainers21
+    image: ""
     imagePullPolicy: Always
     command:
     - /usr/local/bin/stability-test
     - --config=/etc/tidb-operator-stability/config.yaml
-    - --operator-image=pingcap/tidb-operator:latest
-    - --operator-tag=master
+    - --operator-image=pingcap/tidb-operator:v1.0.0
+    - --operator-tag=v1.0.0
     - --slack-webhook-url=""
     volumeMounts:
     - mountPath: /logDir

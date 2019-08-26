@@ -70,7 +70,6 @@ func run() {
 	cli, kubeCli := client.NewCliOrDie()
 
 	ocfg := newOperatorConfig()
-	ocfg.Tag = "master"
 
 	cluster1 := newTidbClusterConfig("ns1", "cluster1")
 	cluster2 := newTidbClusterConfig("ns2", "cluster2")
