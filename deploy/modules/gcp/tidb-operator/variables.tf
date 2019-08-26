@@ -11,12 +11,18 @@ variable "subnetwork_name" {
   description = "The name of the subnetwork in which to place the cluster"
 }
 
-variable "gcp_region" {
-  description = "The GCP region"
-}
-
 variable "gcp_project" {
   description = "The GCP project name"
+}
+
+variable "location" {
+  description = "The GKE cluster location. If you specify a zone (such as us-central1-a), the cluster will be a zonal cluster with a single cluster master. If you specify a region (such as us-west1), the cluster will be a regional cluster with multiple masters spread across zones in the region."
+  type        = string
+}
+
+variable "node_locations" {
+  description = "The list of zones in which the cluster's nodes should be located. These must be in the same region as the cluster zone for zonal clusters, or in the region of a regional cluster. In a multi-zonal cluster, the number of nodes specified in initial_node_count is created in all specified zones as well as the primary zone. If specified for a regional cluster, nodes will be created in only these zones."
+  type        = list(string)
 }
 
 variable "gke_version" {
