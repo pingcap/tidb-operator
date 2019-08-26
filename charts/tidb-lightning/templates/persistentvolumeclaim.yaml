@@ -1,3 +1,4 @@
+{{ if not .Values.dataSource.adhoc.pvcName }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -15,3 +16,4 @@ spec:
   resources:
     requests:
       storage: {{ .Values.dataSource.remote.storage }}
+{{ end -}}

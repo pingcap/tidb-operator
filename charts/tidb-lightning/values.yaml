@@ -15,6 +15,12 @@ dataSource:
   local: {}
     # nodeName: kind-worker3
     # hostPath: /data/export-20190820
+  # The backup data is on a PVC which is from tidb-backup or scheduled backup, and is not uploaded to cloud storage yet.
+  # Note: when using this mode, the lightning needs to be deployed in the same namespace as the PVC
+  # and the `targetTidbCluster.namespace` needs to be configured explicitly
+  adhoc: {}
+    # pvcName: tidb-cluster-scheduled-backup
+    # backupName: scheduled-backup-20190822-041004
   remote:
     rcloneImage: tynor88/rclone
     storageClassName: local-storage
@@ -24,6 +30,8 @@ dataSource:
 
 targetTidbCluster:
   name: tidb-cluster
+  # namespace is the target tidb cluster namespace, can be omitted if the lightning is deployed in the same namespace of the target tidb cluster
+  namespace: ""
   user: root
 
 resources: {}

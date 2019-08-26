@@ -23,7 +23,7 @@ spec:
     spec:
       {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
       nodeName: {{ .Values.dataSource.local.nodeName }}
-      {{ else -}}
+      {{ else if not .Values.dataSource.adhoc.pvcName -}}
       initContainers:
       - name: data-retriever
         image: {{ .Values.dataSource.remote.rcloneImage }}
@@ -78,7 +78,11 @@ spec:
         hostPath:
           path: {{ .Values.dataSource.local.hostPath }}
           type: Directory
-      {{- else -}}
+      {{- else if .Values.dataSource.adhoc.pvcName -}}
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ .Values.dataSource.adhoc.pvcName }}
+      {{ else }}
       - name: credentials
         secret:
           secretName: {{ .Values.dataSource.remote.secretName }}
