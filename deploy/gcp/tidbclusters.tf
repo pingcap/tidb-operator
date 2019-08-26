@@ -32,7 +32,7 @@ module "default-tidb-cluster" {
   cluster_id                 = module.tidb-operator.cluster_id
   tidb_operator_id           = module.tidb-operator.tidb_operator_id
   gcp_project                = var.GCP_PROJECT
-  gke_cluster_location       = var.GCP_REGION
+  gke_cluster_location       = local.location
   gke_cluster_name           = var.gke_name
   cluster_name               = var.default_tidb_cluster_name
   cluster_version            = var.tidb_version
