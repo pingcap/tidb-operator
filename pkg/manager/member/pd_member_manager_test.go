@@ -778,7 +778,8 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
 	podControl := controller.NewFakePodControl(podInformer)
-	pdControl := pdapi.NewFakePDControl()
+	pdControl := pdapi.NewFakePDControl(kubeCli)
+	certControl := controller.NewFakeCertControl(kubeCli)
 	pdScaler := NewFakePDScaler()
 	autoFailover := true
 	pdFailover := NewFakePDFailover()
@@ -788,11 +789,12 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 		pdControl,
 		setControl,
 		svcControl,
+		podControl,
+		certControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
 		podInformer.Lister(),
 		epsInformer.Lister(),
-		podControl,
 		pvcInformer.Lister(),
 		pdScaler,
 		pdUpgrader,

@@ -275,3 +275,7 @@ func (rcc *realCertControl) CheckSecret(ns string, secretName string) bool {
 }
 
 var _ CertControlInterface = &realCertControl{}
+
+type FakeCertControl struct {
+	realCertControl
+}

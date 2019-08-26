@@ -241,7 +241,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	tcc.setListerSynced = alwaysReady
 	recorder := record.NewFakeRecorder(10)
 
-	pdControl := pdapi.NewFakePDControl()
+	pdControl := pdapi.NewFakePDControl(kubeCli)
 	tidbControl := controller.NewFakeTiDBControl()
 	svcControl := controller.NewRealServiceControl(
 		kubeCli,
@@ -256,6 +256,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
+	certControl := controller.NewRealCertControl(kubeCli)
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
 	pdFailover := mm.NewFakePDFailover()
@@ -271,11 +272,12 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			pdControl,
 			setControl,
 			svcControl,
+			podControl,
+			certControl,
 			setInformer.Lister(),
 			svcInformer.Lister(),
 			podInformer.Lister(),
 			epsInformer.Lister(),
-			podControl,
 			pvcInformer.Lister(),
 			pdScaler,
 			pdUpgrader,
@@ -286,6 +288,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			pdControl,
 			setControl,
 			svcControl,
+			certControl,
 			setInformer.Lister(),
 			svcInformer.Lister(),
 			podInformer.Lister(),
@@ -303,6 +306,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			),
 			svcControl,
 			tidbControl,
+			certControl,
 			setInformer.Lister(),
 			svcInformer.Lister(),
 			podInformer.Lister(),

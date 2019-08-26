@@ -615,9 +615,9 @@ type FakePDControl struct {
 	defaultPDControl
 }
 
-func NewFakePDControl() *FakePDControl {
+func NewFakePDControl(kubeCli kubernetes.Interface) *FakePDControl {
 	return &FakePDControl{
-		defaultPDControl{pdClients: map[string]PDClient{}},
+		defaultPDControl{kubeCli: kubeCli, pdClients: map[string]PDClient{}},
 	}
 }
 
