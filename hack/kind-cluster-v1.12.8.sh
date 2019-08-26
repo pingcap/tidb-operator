@@ -1,9 +1,59 @@
 #!/usr/bin/env bash
 set -e
 
-clusterName=${1:-kind}
-nodeNum=${2:-6}
-k8s_version=v1.12.8
+usage() {
+    cat <<EOF
+This script use kind to create Kubernetes cluster,about kind please refer: https://kind.sigs.k8s.io/
+Before run this script,please ensure that:
+* have installed docker
+* have installed golang (version >= 1.11)
+* have install helm / kubectl
+
+Options:
+       -n,--name               Name of the Kubernete cluster,default value: kind
+       -c,--nodeNum            the count of the cluster nodes,default value: 6
+       -v,--k8sVersion        version of the Kubernetes cluster,default value: v1.12.8
+Usage:
+    $0 --name testCluster --nodeNum 4 --k8sVersion v1.12.9
+EOF
+    exit 1
+}
+
+while [[ $# -gt 0 ]]
+do
+key="$1"
+
+case $key in
+    -n|--name)
+    clusterName="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    -c|--nodeNum)
+    nodeNum="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    -v|--k8sVersion)
+    k8sVersion="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    *)    # unknown option
+    echo "unknown option: $key"
+    usage
+    exit 1
+    ;;
+esac
+done
+
+clusterName=${clusterName:-kind}
+nodeNum=${nodeNum:-6}
+k8sVersion=${k8sVersion:-v1.12.8}
+
+echo "clusterName: ${clusterName}"
+echo "nodeNum: ${nodeNum}"
+echo "k8sVersion: ${k8sVersion}"
 
 echo "############ install kind ##############"
 if hash kind 2>/dev/null;then
@@ -65,7 +115,7 @@ EOF
 done
 
 echo "start to create k8s cluster"
-kind create cluster --config ${configFile} --image kindest/node:${k8s_version} --name=${clusterName}
+kind create cluster --config ${configFile} --image kindest/node:${k8sVersion} --name=${clusterName}
 export KUBECONFIG="$(kind get kubeconfig-path --name=${clusterName})"
 
 echo "init tidb-operator env"
