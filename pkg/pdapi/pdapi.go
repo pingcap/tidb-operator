@@ -31,6 +31,7 @@ import (
 	"github.com/pingcap/pd/pkg/typeutil"
 	"github.com/pingcap/pd/server"
 	"github.com/pingcap/tidb-operator/pkg/httputil"
+	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -76,7 +77,7 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
 		}
 
-		rootCAs, tlsCert, err := httputil.LoadCerts(secret.Data["cert"], secret.Data["key"])
+		rootCAs, tlsCert, err := certutil.LoadCerts(secret.Data["cert"], secret.Data["key"])
 		if err != nil {
 			glog.Errorf("unable to load certificates for %s discovery, PDClient may not work: %v", namespace, err)
 			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}

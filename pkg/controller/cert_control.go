@@ -14,6 +14,8 @@
 package controller
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"time"
@@ -235,8 +237,11 @@ func (rcc *realCertControl) RenewCert() error {
 // LoadFromSecret loads cert and key from Secret matching the name
 func (rcc *realCertControl) LoadFromSecret(ns string, secretName string) ([]byte, []byte, error) {
 	secret, err := rcc.kubeCli.CoreV1().Secrets(ns).Get(secretName, types.GetOptions{})
+	if err != nil {
+		return nil, nil, err
+	}
 
-	return secret.Data["cert"], secret.Data["key"], err
+	return secret.Data["cert"], secret.Data["key"], nil
 }
 
 func (rcc *realCertControl) SaveToSecret(ns string, instance string, component string, suffix string, cert []byte, key []byte) error {
@@ -266,12 +271,49 @@ func (rcc *realCertControl) SaveToSecret(ns string, instance string, component s
 
 // CheckSecret returns true if the secret already exist
 func (rcc *realCertControl) CheckSecret(ns string, secretName string) bool {
-	_, _, err := rcc.LoadFromSecret(ns, secretName)
-	if err == nil {
-		// TODO: validate the cert and key
-		return true
+	certBytes, keyBytes, err := rcc.LoadFromSecret(ns, secretName)
+	if err != nil {
+		return false
 	}
-	return false
+
+	// validate if the certificate is valid
+	block, _ := pem.Decode(certBytes)
+	if block == nil {
+		glog.Errorf("certificate validation failed for [%s/%s], can not decode cert to PEM", ns, secretName, err)
+		return false
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		glog.Errorf("certificate validation failed for [%s/%s], can not parse cert, %v", ns, secretName, err)
+		return false
+	}
+	rootCAs, err := certutil.ReadCACerts()
+	if err != nil {
+		glog.Errorf("certificate validation failed for [%s/%s], error loading CAs, %v", ns, secretName, err)
+		return false
+	}
+
+	verifyOpts := x509.VerifyOptions{
+		Roots: rootCAs,
+		KeyUsages: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageClientAuth,
+			x509.ExtKeyUsageServerAuth,
+		},
+	}
+	_, err = cert.Verify(verifyOpts)
+	if err != nil {
+		glog.Errorf("certificate validation failed for [%s/%s], %v", ns, secretName, err)
+		return false
+	}
+
+	// validate if the certificate and private key matches
+	_, err = tls.X509KeyPair(certBytes, keyBytes)
+	if err != nil {
+		glog.Errorf("certificate validation failed for [%s/%s], error loading key pair, %v", ns, secretName, err)
+		return false
+	}
+
+	return true
 }
 
 var _ CertControlInterface = &realCertControl{}

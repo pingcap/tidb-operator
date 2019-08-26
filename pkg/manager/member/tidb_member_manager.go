@@ -213,8 +213,8 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 func (tmm *tidbMemberManager) syncTiDBClusterCerts(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	svcName := fmt.Sprintf("%s-tidb", tcName)
-	peerName := fmt.Sprintf("%s-tidb-peer", tcName)
+	svcName := controller.TiDBMemberName(tcName)
+	peerName := controller.TiDBPeerMemberName(tcName)
 
 	if tmm.certControl.CheckSecret(ns, svcName) {
 		return nil
@@ -357,7 +357,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-server-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: fmt.Sprintf("%s-tidb-server", tcName),
+					SecretName: controller.TiDBMemberName(tcName),
 				},
 			},
 		})

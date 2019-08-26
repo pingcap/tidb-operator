@@ -247,8 +247,8 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 func (tkmm *tikvMemberManager) syncTiKVServerCerts(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	svcName := fmt.Sprintf("%s-tikv", tcName)
-	peerName := fmt.Sprintf("%s-tikv-peer", tcName)
+	svcName := controller.TiKVMemberName(tcName)
+	peerName := controller.TiKVPeerMemberName(tcName)
 
 	if tkmm.certControl.CheckSecret(ns, svcName) {
 		return nil

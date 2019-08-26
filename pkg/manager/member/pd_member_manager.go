@@ -253,8 +253,8 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 func (pmm *pdMemberManager) syncPDServerCerts(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	svcName := fmt.Sprintf("%s-pd", tcName)
-	peerName := fmt.Sprintf("%s-pd-peer", tcName)
+	svcName := controller.PDMemberName(tcName)
+	peerName := controller.PDPeerMemberName(tcName)
 
 	if pmm.certControl.CheckSecret(ns, svcName) {
 		return nil
