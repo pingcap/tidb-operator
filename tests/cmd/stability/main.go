@@ -70,6 +70,7 @@ func run() {
 	cli, kubeCli := client.NewCliOrDie()
 
 	ocfg := newOperatorConfig()
+	ocfg.Tag = "master"
 
 	cluster1 := newTidbClusterConfig("ns1", "cluster1")
 	cluster2 := newTidbClusterConfig("ns2", "cluster2")
@@ -303,7 +304,7 @@ func run() {
 		},
 		{
 			TargetCluster:   fileRestoreCluster1,
-			IsAdditional:    false,
+			IsAdditional:    true,
 			IncrementalType: tests.DbTypeFile,
 		},
 	}
@@ -332,7 +333,7 @@ func run() {
 			},
 			{
 				TargetCluster:   fileRestoreCluster2,
-				IsAdditional:    false,
+				IsAdditional:    true,
 				IncrementalType: tests.DbTypeFile,
 			},
 		}
@@ -408,5 +409,6 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 		Monitor:          true,
 		BlockWriteConfig: cfg.BlockWriter,
 		TopologyKey:      topologyKey,
+		ClusterVersion:   tidbVersion,
 	}
 }

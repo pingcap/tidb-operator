@@ -145,7 +145,9 @@ var binlogTemp string = `binlog:
 {{end}}{{end}}
 `
 
-var drainerConfigCommon string = `config: |
+var drainerConfigCommon string = `
+initialCommitTs: "{{ .InitialCommitTs }}"
+config: |
   detect-interval = 10
   compressor = ""
   [syncer]
@@ -210,9 +212,9 @@ func GetSubValuesOrDie(clusterName, namespace, topologyKey string, pdConfig []st
 	}
 	subValues := fmt.Sprintf("%s%s%s", pdbuff.String(), tikvbuff.String(), tidbbuff.String())
 
-	if pumpConfig == nil && drainerConfig == nil {
-		return subValues
-	}
+	//if pumpConfig == nil && drainerConfig == nil {
+	//	return subValues
+	//}
 
 	btemp, err := template.New("binlog").Parse(binlogTemp)
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
+	sql_util "github.com/pingcap/tidb-operator/tests/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,13 +19,11 @@ import (
 
 const (
 	DrainerReplicas          int32 = 1
-	RunReparoCommandTemplate       = `kubectl exec -it {{ .PodName }} -- bash -c \
-"wget http://download.pingcap.org/tidb-binlog-cluster-latest-linux-amd64.tar.gz && \
-tar -xzf tidb-binlog-cluster-latest-linux-amd64.tar.gz && \
-cd tidb-binlog-cluster-latest-linux-amd64/bin && \
-echo '{{ .ReparoConfig }}' > reparo.toml && \
-./reparo -config reparo.toml"
-`
+	// TODO: better way to do incremental restore from pb files
+	RunReparoCommandTemplate       = `kubectl exec -n={{ .Namespace }} {{ .PodName }} -- sh -c \
+"while [ \$(grep -r 'commitTS' /data.drainer/savepoint| awk '{print (\$3)}') -lt {{ .StopTSO }} ]; do echo 'wait end tso reached' && sleep 60; done; \
+printf '{{ .ReparoConfig }}' > reparo.toml && \
+./reparo -config reparo.toml > /data/reparo.log" `
 )
 
 type BackupTarget struct {
@@ -35,7 +34,7 @@ type BackupTarget struct {
 
 func (t *BackupTarget) GetDrainerConfig(source *TidbClusterConfig, ts string) *DrainerConfig {
 	drainerConfig := &DrainerConfig{
-		DrainerName:       fmt.Sprintf("to-%s-%s", t.TargetCluster.ClusterName, t.IncrementalType),
+		DrainerName:       fmt.Sprintf("%s-drainer", t.TargetCluster.ClusterName),
 		InitialCommitTs:   ts,
 		OperatorTag:       source.OperatorTag,
 		SourceClusterName: source.ClusterName,
@@ -62,35 +61,28 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 		return err
 	}
 
+	// Restoring via reparo is slow, so we stop inserting data as early as possible to reduce the size of incremental data
+	oa.StopInsertDataTo(source)
+
 	ts, err := oa.CheckAdHocBackup(source)
 	if err != nil {
 		glog.Errorf("cluster:[%s] deploy happen error: %v", source.ClusterName, err)
 		return err
 	}
 
-	// Restore can only be done serially due to name collision
-	for i := range targets {
-		err = oa.CheckTidbClusterStatus(targets[i].TargetCluster)
+	prepareIncremental := func(source *TidbClusterConfig, target BackupTarget) error {
+		err = oa.CheckTidbClusterStatus(target.TargetCluster)
 		if err != nil {
-			glog.Errorf("cluster:[%s] deploy faild error: %v", targets[i].TargetCluster.ClusterName, err)
+			glog.Errorf("cluster:[%s] deploy faild error: %v", target.TargetCluster.ClusterName, err)
 			return err
 		}
 
-		err = oa.Restore(source, targets[i].TargetCluster)
+		err = oa.Restore(source, target.TargetCluster)
 		if err != nil {
 			glog.Errorf("from cluster:[%s] to cluster [%s] restore happen error: %v",
-				source.ClusterName, targets[i].TargetCluster.ClusterName, err)
+				source.ClusterName, target.TargetCluster.ClusterName, err)
 			return err
 		}
-
-		err = oa.CleanRestoreJob(source)
-		if err != nil && !releaseIsNotFound(err) {
-			glog.Errorf("clean the from cluster:[%s] to cluster [%s] restore job happen error: %v",
-				source.ClusterName, targets[i].TargetCluster.ClusterName, err)
-		}
-	}
-
-	prepareIncremental := func(source *TidbClusterConfig, target BackupTarget) error {
 		err = oa.CheckRestore(source, target.TargetCluster)
 		if err != nil {
 			glog.Errorf("from cluster:[%s] to cluster [%s] restore failed error: %v",
@@ -102,10 +94,10 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 			// Deploy an additional drainer release
 			drainerConfig := target.GetDrainerConfig(source, ts)
 			if err := oa.DeployDrainer(drainerConfig, source); err != nil {
-				return nil
+				return err
 			}
 			if err := oa.CheckDrainer(drainerConfig, source); err != nil {
-				return nil
+				return err
 			}
 		} else {
 			// Enable drainer of the source TiDB cluster release
@@ -116,38 +108,58 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 		return nil
 	}
 
-	checkIncremental := func(source *TidbClusterConfig, target BackupTarget) error {
+	checkIncremental := func(source *TidbClusterConfig, target BackupTarget, stopWriteTS int64) error {
 		if target.IncrementalType == DbTypeFile {
-			if err := oa.RestoreIncrementalFiles(target.GetDrainerConfig(source, ts), target.TargetCluster); err != nil {
+			var eg errgroup.Group
+			// Run reparo restoring and check concurrently to show restoring progress
+			eg.Go(func() error {
+				return oa.RestoreIncrementalFiles(target.GetDrainerConfig(source, ts), target.TargetCluster, stopWriteTS)
+			})
+			eg.Go(func() error {
+				return oa.CheckDataConsistency(source, target.TargetCluster, 60 * time.Minute)
+			})
+			if err := eg.Wait(); err != nil {
+				return err
+			}
+		} else {
+			if err := oa.CheckDataConsistency(source, target.TargetCluster, 30 * time.Minute); err != nil {
 				return err
 			}
 		}
 
-		if err := oa.CheckDataConsistency(source, target.TargetCluster); err != nil {
-			return err
-		}
 		return nil
 	}
 
 	var eg errgroup.Group
-	for i := range targets {
+	for _, target := range targets {
+		target := target
 		eg.Go(func() error {
-			return prepareIncremental(source, targets[i])
+			return prepareIncremental(source, target)
 		})
 	}
 	if err := eg.Wait(); err != nil {
 		return err
 	}
 
-	glog.Infof("waiting 1 minutes to insert into more records")
+	go oa.BeginInsertDataToOrDie(source)
+	if err != nil {
+		return err
+	}
+	glog.Infof("waiting 1 minute to insert into more records")
 	time.Sleep(1 * time.Minute)
 
 	glog.Infof("cluster[%s] stop insert data", source.ClusterName)
 	oa.StopInsertDataTo(source)
 
-	for i := range targets {
+	stopWriteTS, err := sql_util.ShowMasterCommitTS(getDSN(source.Namespace, source.ClusterName, "test", source.Password))
+	if err != nil {
+		return err
+	}
+
+	for _, target := range targets {
+		target := target
 		eg.Go(func() error {
-			return checkIncremental(source, targets[i])
+			return checkIncremental(source, target, stopWriteTS)
 		})
 	}
 	if err := eg.Wait(); err != nil {
@@ -209,7 +221,7 @@ func (oa *operatorActions) DeployAndCheckIncrementalBackup(from, to *TidbCluster
 	return nil
 }
 
-func (oa *operatorActions) CheckDataConsistency(from, to *TidbClusterConfig) error {
+func (oa *operatorActions) CheckDataConsistency(from, to *TidbClusterConfig, timeout time.Duration) error {
 	fn := func() (bool, error) {
 		b, err := to.DataIsTheSameAs(from)
 		if err != nil {
@@ -222,7 +234,7 @@ func (oa *operatorActions) CheckDataConsistency(from, to *TidbClusterConfig) err
 		return false, nil
 	}
 
-	if err := wait.Poll(DefaultPollInterval, 30*time.Minute, fn); err != nil {
+	if err := wait.Poll(DefaultPollInterval, timeout, fn); err != nil {
 		return err
 	}
 	return nil
@@ -238,8 +250,13 @@ func (oa *operatorActions) DeployDrainer(info *DrainerConfig, source *TidbCluste
 		return err
 	}
 
+	override := map[string]string{}
+	if len(oa.cfg.AdditionalDrainerVersion) > 0 {
+		override["clusterVersion"] = oa.cfg.AdditionalDrainerVersion
+	}
+
 	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s -f %s",
-		oa.drainerChartPath(source.OperatorTag), info.DrainerName, source.Namespace, info.DrainerHelmString(nil, source), valuesPath)
+		oa.drainerChartPath(source.OperatorTag), info.DrainerName, source.Namespace, info.DrainerHelmString(override, source), valuesPath)
 	glog.Info(cmd)
 
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
@@ -287,20 +304,22 @@ func (oa *operatorActions) CheckDrainer(info *DrainerConfig, source *TidbCluster
 	return nil
 }
 
-func (oa *operatorActions) RestoreIncrementalFiles(from *DrainerConfig, to *TidbClusterConfig) error {
+func (oa *operatorActions) RestoreIncrementalFiles(from *DrainerConfig, to *TidbClusterConfig, stopTSO int64) error {
 	glog.Infof("restoring incremental data from drainer [%s/%s] to TiDB cluster [%s/%s]",
 		from.Namespace, from.DrainerName, to.Namespace, to.ClusterName)
 
 	// TODO: better incremental files restore solution
 	reparoConfig := strings.Join([]string{
-		`data-dir = "/data/pb"`,
-		`log-level = "info"`,
-		`dest-type = "mysql"`,
+		`data-dir = \"/data/pb\"`,
+		`log-level = \"info\"`,
+		`dest-type = \"mysql\"`,
+		`safe-mode = true`,
+		fmt.Sprintf(`stop-tso = %d`, stopTSO),
 		`[dest-db]`,
-		fmt.Sprintf(`host = "%s"`, util.GetTidbServiceName(to.ClusterName)),
+		fmt.Sprintf(`host = \"%s\"`, util.GetTidbServiceName(to.ClusterName)),
 		"port = 4000",
-		`user = "root"`,
-		`password = ""`,
+		`user = \"root\"`,
+		fmt.Sprintf(`password = \"%s\"`, to.Password),
 	}, "\n")
 
 	temp, err := template.New("reparo-command").Parse(RunReparoCommandTemplate)
@@ -309,22 +328,25 @@ func (oa *operatorActions) RestoreIncrementalFiles(from *DrainerConfig, to *Tidb
 	}
 	buff := new(bytes.Buffer)
 	if err := temp.Execute(buff, &struct {
+		Namespace    string
 		ReparoConfig string
 		PodName      string
+		StopTSO      int64
 	}{
+		Namespace:    from.Namespace,
 		ReparoConfig: reparoConfig,
 		PodName:      fmt.Sprintf("%s-%s-drainer-0", from.SourceClusterName, from.DrainerName),
+		StopTSO:      stopTSO,
 	}); err != nil {
 		return err
 	}
 
-	if res, err := exec.Command("/bin/sh", "-c", buff.String()).CombinedOutput(); err != nil {
+	cmd := buff.String()
+	glog.Infof("Restore incremental data, command: \n%s", cmd)
+
+	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to restore incremental files from dainer [%s/%s] to TiDB cluster [%s/%s], %v, %s",
 			from.Namespace, from.DrainerName, to.Namespace, to.ClusterName, err, res)
 	}
-	return nil
-}
-
-func (oa *operatorActions) CheckRestoreIncrementalFiles(from *DrainerConfig, to *TidbClusterConfig) error {
 	return nil
 }

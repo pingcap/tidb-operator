@@ -146,8 +146,7 @@ type OperatorActions interface {
 	CheckDrainer(info *DrainerConfig, source *TidbClusterConfig) error
 	Restore(from *TidbClusterConfig, to *TidbClusterConfig) error
 	CheckRestore(from *TidbClusterConfig, to *TidbClusterConfig) error
-	RestoreIncrementalFiles(from *DrainerConfig, to *TidbClusterConfig) error
-	CheckRestoreIncrementalFiles(from *DrainerConfig, to *TidbClusterConfig) error
+	RestoreIncrementalFiles(from *DrainerConfig, to *TidbClusterConfig, stopTSO int64) error
 	ForceDeploy(info *TidbClusterConfig) error
 	CreateSecret(info *TidbClusterConfig) error
 	GetPodUIDMap(info *TidbClusterConfig) (map[string]types.UID, error)
@@ -579,10 +578,11 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		fmt.Sprintf("%s-backup", info.ClusterName),
 		fmt.Sprintf("%s-restore", info.ClusterName),
 		fmt.Sprintf("%s-scheduler-backup", info.ClusterName),
+		fmt.Sprintf("%s-drainer", info.ClusterName),
 	}
 	for _, chartName := range charts {
 		res, err := exec.Command("helm", "del", "--purge", chartName).CombinedOutput()
-		if err != nil && !releaseIsNotFound(err) {
+		if err != nil && !notFound(string(res)) {
 			return fmt.Errorf("failed to delete chart: %s/%s, %v, %s",
 				info.Namespace, chartName, err, string(res))
 		}
@@ -637,13 +637,19 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete jobs: %v, %s", err, string(res))
 	}
 
-	resources := []string{"pvc"}
-	for _, resource := range resources {
-		if res, err := exec.Command("kubectl", "delete", resource, "-n", info.Namespace, "-l",
-			setStr).CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to delete %s: %v, %s", resource, err, string(res))
-		}
+	// delete all pvcs
+	allPvcSet := label.Label{}.Instance(info.ClusterName).String()
+	if res, err := exec.Command("kubectl", "delete", "pvc", "-n", info.Namespace, "-l", allPvcSet).CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to delete pvc: %v, %s", err, string(res))
 	}
+
+	//resources := []string{"pvc"}
+	//for _, resource := range resources {
+	//	if res, err := exec.Command("kubectl", "delete", resource, "-n", info.Namespace, "-l",
+	//		setStr).CombinedOutput(); err != nil {
+	//		return fmt.Errorf("failed to delete %s: %v, %s", resource, err, string(res))
+	//	}
+	//}
 
 	// delete all configmaps
 	allConfigMaps := label.New().Instance(info.ClusterName).String()
@@ -1752,6 +1758,10 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 	return nil
 }
 
+func GetD(ns, tcName, databaseName, password string) string {
+	return fmt.Sprintf("root:%s@(%s-tidb.%s:4000)/%s?charset=utf8", password, tcName, ns, databaseName)
+}
+
 func getDSN(ns, tcName, databaseName, password string) string {
 	return fmt.Sprintf("root:%s@(%s-tidb.%s:4000)/%s?charset=utf8", password, tcName, ns, databaseName)
 }
@@ -1917,7 +1927,8 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) (string, er
 func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfig) error {
 	oa.EmitEvent(from, fmt.Sprintf("RestoreBackup: target: %s", to.ClusterName))
 	oa.EmitEvent(to, fmt.Sprintf("RestoreBackup: source: %s", from.ClusterName))
-	glog.Infof("deploying restore cluster[%s/%s]", from.Namespace, from.ClusterName)
+	glog.Infof("deploying restore, the data is from cluster[%s/%s] to cluster[%s/%s]",
+		from.Namespace, from.ClusterName, to.Namespace, to.ClusterName)
 
 	sets := map[string]string{
 		"name":         to.BackupName,
@@ -1929,7 +1940,7 @@ func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfi
 
 	setString := to.BackupHelmSetString(sets)
 
-	restoreName := fmt.Sprintf("%s-restore", from.ClusterName)
+	restoreName := fmt.Sprintf("%s-restore", to.ClusterName)
 	cmd := fmt.Sprintf("helm install -n %s --namespace %s %s --set-string %s",
 		restoreName, to.Namespace, oa.backupChartPath(to.OperatorTag), setString)
 	glog.Infof("install restore [%s]", cmd)
@@ -1968,18 +1979,6 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 	if err != nil {
 		return fmt.Errorf("failed to launch restore job: %v", err)
 	}
-	return nil
-}
-
-func (oa *operatorActions) CleanRestoreJob(from *TidbClusterConfig) error {
-
-	releaseName := fmt.Sprintf("%s-restore", from.ClusterName)
-	res, err := exec.Command("helm", "del", "--purge", releaseName).CombinedOutput()
-	if err != nil && !releaseIsNotFound(err) {
-		return fmt.Errorf("failed to delete release: %s/%s, %v, %s",
-			from.Namespace, releaseName, err, string(res))
-	}
-
 	return nil
 }
 
@@ -2314,8 +2313,15 @@ func (tc *TidbClusterConfig) FullName() string {
 }
 
 func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig, withDrainer bool, ts string) error {
-	oa.EmitEvent(from, fmt.Sprintf("DeployIncrementalBackup: slave: %s", to.ClusterName))
-	glog.Infof("begin to deploy incremental backup cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
+	if withDrainer {
+		oa.EmitEvent(from, fmt.Sprintf("DeployIncrementalBackup: slave: %s", to.ClusterName))
+		glog.Infof("begin to deploy incremental backup, source cluster[%s/%s], target cluster [%s/%s]",
+			from.Namespace, from.ClusterName, to.Namespace, to.ClusterName)
+	} else {
+		oa.EmitEvent(from, "Enable pump cluster")
+		glog.Infof("begin to enable pump for cluster[%s/%s], target cluster [%s/%s]",
+			from.Namespace, from.ClusterName)
+	}
 
 	sets := map[string]string{
 		"binlog.pump.create": "true",
