@@ -31,9 +31,14 @@ module "default-tidb-cluster" {
   pd_instance_type           = var.pd_instance_type
   tikv_instance_type         = var.tikv_instance_type
   tidb_instance_type         = var.tidb_instance_type
+  pd_image_type              = var.pd_image_type
+  tikv_image_type            = var.tikv_image_type
+  tidb_image_type            = var.tidb_image_type
   monitor_instance_type      = var.monitor_instance_type
   pd_node_count              = var.pd_count
   tikv_node_count            = var.tikv_count
   tidb_node_count            = var.tidb_count
   monitor_node_count         = var.monitor_count
+  tikv_local_ssd_count       = var.tikv_local_ssd_count
+  override_values            = var.override_values
 }

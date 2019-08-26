@@ -69,7 +69,7 @@ func (bss *realBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		_, updateErr := bss.cli.PingcapV1alpha1().BackupSchedules(ns).Update(bs)
 		if updateErr == nil {
-			glog.Infof("Backup: [%s/%s] updated successfully", ns, bsName)
+			glog.Infof("BackupSchedule: [%s/%s] updated successfully", ns, bsName)
 			return nil
 		}
 		if updated, err := bss.bsLister.BackupSchedules(ns).Get(bsName); err == nil {

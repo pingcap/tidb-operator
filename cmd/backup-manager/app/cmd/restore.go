@@ -18,25 +18,26 @@ import (
 
 	// registry mysql drive
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/restore"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/tools/cache"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 // NewRestoreCommand implements the restore command
-func NewRestoreCommand(kubecfg string) *cobra.Command {
+func NewRestoreCommand() *cobra.Command {
 	ro := restore.RestoreOpts{}
 
 	cmd := &cobra.Command{
 		Use:   "restore",
 		Short: "Restore specific tidb cluster.",
 		Run: func(cmd *cobra.Command, args []string) {
-			util.SkipValidFlags = []string{"backupPath", "backupName"}
-			util.ValidCmdFlags(cmd)
+			util.ValidCmdFlags(cmd.CommandPath(), cmd.LocalFlags())
 			cmdutil.CheckErr(runRestore(ro, kubecfg))
 		},
 	}
@@ -59,13 +60,18 @@ func runRestore(restoreOpts restore.RestoreOpts, kubecfg string) error {
 		informers.WithNamespace(restoreOpts.Namespace),
 	}
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, constants.ResyncDuration, options...)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go informerFactory.Start(ctx.Done())
 	recorder := util.NewEventRecorder(kubeCli, "restore")
 	restoreInformer := informerFactory.Pingcap().V1alpha1().Restores()
 	statusUpdater := controller.NewRealRestoreConditionUpdater(cli, restoreInformer.Lister(), recorder)
 
-	rm := restore.NewRestoreManager(cli, statusUpdater, restoreOpts)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go informerFactory.Start(ctx.Done())
+
+	// waiting for the shared informer's store has synced.
+	cache.WaitForCacheSync(ctx.Done(), restoreInformer.Informer().HasSynced)
+
+	glog.Infof("start to process restore %s", restoreOpts)
+	rm := restore.NewRestoreManager(restoreInformer.Lister(), statusUpdater, restoreOpts)
 	return rm.ProcessRestore()
 }

@@ -14,12 +14,15 @@
 package backup
 
 import (
+	"fmt"
+
+	"github.com/pingcap/tidb-operator/pkg/controller"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	errorutils "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/record"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	"k8s.io/kubernetes/pkg/util/slice"
 )
 
 // ControlInterface implements the control logic for updating Backup
@@ -27,43 +30,76 @@ import (
 // Currently, there is only one implementation.
 type ControlInterface interface {
 	// UpdateBackup implements the control logic for backup job and backup clean job's creation, deletion
-	UpdateBackup(schedule *v1alpha1.Backup) error
+	UpdateBackup(backup *v1alpha1.Backup) error
 }
 
 // NewDefaultBackupControl returns a new instance of the default implementation BackupControlInterface that
 // implements the documented semantics for Backup.
 func NewDefaultBackupControl(
-	statusUpdater controller.BackupConditionUpdaterInterface,
-	backupManager backup.BackupManager,
-	recorder record.EventRecorder) ControlInterface {
+	cli versioned.Interface,
+	backupManager backup.BackupManager) ControlInterface {
 	return &defaultBackupControl{
-		statusUpdater,
+		cli,
 		backupManager,
-		recorder,
 	}
 }
 
 type defaultBackupControl struct {
-	statusUpdater controller.BackupConditionUpdaterInterface
+	cli           versioned.Interface
 	backupManager backup.BackupManager
-	recorder      record.EventRecorder
 }
 
 // UpdateBackup executes the core logic loop for a Backup.
 func (bc *defaultBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
-	var errs []error
-	oldStatus := backup.Status.DeepCopy()
-
-	if err := bc.updateBackup(backup); err != nil {
-		errs = append(errs, err)
-	}
-	if apiequality.Semantic.DeepEqual(&backup.Status, oldStatus) {
-		return errorutils.NewAggregate(errs)
+	backup.SetGroupVersionKind(controller.BackupControllerKind)
+	if err := bc.addProtectionFinalizer(backup); err != nil {
+		return err
 	}
 
-	return errorutils.NewAggregate(errs)
+	if err := bc.removeProtectionFinalizer(backup); err != nil {
+		return err
+	}
+
+	return bc.updateBackup(backup)
 }
 
 func (bc *defaultBackupControl) updateBackup(backup *v1alpha1.Backup) error {
 	return bc.backupManager.Sync(backup)
+}
+
+func (bc *defaultBackupControl) addProtectionFinalizer(backup *v1alpha1.Backup) error {
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+
+	if needToAddFinalizer(backup) {
+		backup.Finalizers = append(backup.Finalizers, label.BackupProtectionFinalizer)
+		_, err := bc.cli.PingcapV1alpha1().Backups(ns).Update(backup)
+		if err != nil {
+			return fmt.Errorf("add backup %s/%s protection finalizers failed, err: %v", ns, name, err)
+		}
+	}
+	return nil
+}
+
+func (bc *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backup) error {
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+
+	if isDeletionCandidate(backup) && v1alpha1.IsBackupClean(backup) {
+		backup.Finalizers = slice.RemoveString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
+		_, err := bc.cli.PingcapV1alpha1().Backups(ns).Update(backup)
+		if err != nil {
+			return fmt.Errorf("remove backup %s/%s protection finalizers failed, err: %v", ns, name, err)
+		}
+		return controller.RequeueErrorf(fmt.Sprintf("backup %s/%s has been cleaned up", ns, name))
+	}
+	return nil
+}
+
+func needToAddFinalizer(backup *v1alpha1.Backup) bool {
+	return backup.DeletionTimestamp == nil && !slice.ContainsString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
+}
+
+func isDeletionCandidate(backup *v1alpha1.Backup) bool {
+	return backup.DeletionTimestamp != nil && slice.ContainsString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
 }
