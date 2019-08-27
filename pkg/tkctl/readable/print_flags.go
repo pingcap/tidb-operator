@@ -36,7 +36,7 @@ func NewPrintFlags() *PrintFlags {
 
 func (p *PrintFlags) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&p.OutputFormat, "output", "o", p.OutputFormat,
-		"Output format. json|yaml|default.")
+		"Output format. json|yaml|wide")
 	p.JSONYamlPrintFlags.AddFlags(cmd)
 }
 
@@ -53,6 +53,7 @@ func (p *PrintFlags) ToPrinter(withKind, withNamespace bool) (printers.ResourceP
 	printer := kubeprinters.NewHumanReadablePrinter(scheme.Codecs.UniversalDecoder(),
 		kubeprinters.PrintOptions{
 			WithNamespace: withNamespace,
+			Wide:          p.OutputFormat == "wide",
 			WithKind:      withKind,
 		})
 	// Add custom handlers
