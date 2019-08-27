@@ -1,4 +1,5 @@
-{{ if not .Values.dataSource.adhoc.pvcName }}
+{{ if or .Values.dataSource.adhoc.pvcName (and .Values.dataSource.local.nodeName .Values.dataSource.local.hostPath) }}
+{{- else -}}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
