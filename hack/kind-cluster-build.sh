@@ -9,7 +9,7 @@ Before run this script,please ensure that:
 * have installed docker
 
 Options:
-       -n,--name               Name of the Kubernete cluster,default value: kind
+       -n,--name               name of the Kubernetes cluster,default value: kind
        -c,--nodeNum            the count of the cluster nodes,default value: 6
        -k,--k8sVersion         version of the Kubernetes cluster,default value: v1.12.8
        -v,--volumeNum          the volumes number of each kubernetes node,default value: 9
