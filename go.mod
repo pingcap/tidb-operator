@@ -41,7 +41,6 @@ require (
 	github.com/golangplus/fmt v0.0.0-20150411045040-2a5d6d7d2995 // indirect
 	github.com/golangplus/testing v0.0.0-20180327235837-af21d9c3145e // indirect
 	github.com/google/btree v0.0.0-20180124185431-e89373fe6b4a // indirect
-	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect
 	github.com/googleapis/gnostic v0.2.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2 // indirect
@@ -121,7 +120,7 @@ require (
 	k8s.io/apiserver v0.0.0-20190118115647-a748535592ba
 	k8s.io/cli-runtime v0.0.0-20190118125240-caee4253d968
 	k8s.io/client-go v2.0.0-alpha.0.0.20190115164855-701b91367003+incompatible
-	k8s.io/code-generator v0.0.0-20190807220449-91311fc7abe8
+	k8s.io/code-generator v0.0.0-20190808180452-d0071a119380
 	k8s.io/gengo v0.0.0-20190327210449-e17681d19d3a // indirect; indirec
 	k8s.io/klog v0.3.1
 	k8s.io/kubernetes v1.12.5

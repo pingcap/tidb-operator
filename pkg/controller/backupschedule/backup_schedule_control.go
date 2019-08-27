@@ -27,7 +27,7 @@ import (
 // Currently, there is only one implementation.
 type ControlInterface interface {
 	// UpdateBackupSchedule implements the control logic for backup schedule
-	UpdateBackupSchedule(schedule *v1alpha1.BackupSchedule) error
+	UpdateBackupSchedule(backupSchedule *v1alpha1.BackupSchedule) error
 }
 
 // NewDefaultBackupScheduleControl returns a new instance of the default implementation BackupScheduleControlInterface that
