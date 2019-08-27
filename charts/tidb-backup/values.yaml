@@ -41,7 +41,10 @@ storage:
   className: local-storage
   size: 100Gi
 
-# backupOptions is the options of mydumper https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
+# -t is thread count, larger thread count will speed up the backup, but may impact the performance of the upstream TiDB.
+# -F is the chunk size, a big table is partitioned into many chunks.
+# Other useful options are -B for database, and -T for tables.
+# See https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options for more options.
 backupOptions: "-t 16 -F 256 --skip-tz-utc --verbose=3"
 # Set the tidb_snapshot to be used for the backup
 # Use `show master status` to get the ts:
