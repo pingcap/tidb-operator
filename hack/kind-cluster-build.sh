@@ -7,8 +7,6 @@ This script use kind to create Kubernetes cluster,about kind please refer: https
 Before run this script,please ensure that:
 * have installed git (version >= v2.15.1)
 * have installed docker
-* have installed golang (version >= 1.11)
-* have install helm / kubectl
 
 Options:
        -n,--name               Name of the Kubernete cluster,default value: kind
@@ -27,20 +25,20 @@ key="$1"
 case $key in
     -n|--name)
     clusterName="$2"
-    shift # past argument
-    shift # past value
+    shift
+    shift
     ;;
     -c|--nodeNum)
     nodeNum="$2"
-    shift # past argument
-    shift # past value
+    shift
+    shift
     ;;
     -v|--k8sVersion)
     k8sVersion="$2"
-    shift # past argument
-    shift # past value
+    shift
+    shift
     ;;
-    *)    # unknown option
+    *)
     echo "unknown option: $key"
     usage
     exit 1
@@ -56,13 +54,37 @@ echo "clusterName: ${clusterName}"
 echo "nodeNum: ${nodeNum}"
 echo "k8sVersion: ${k8sVersion}"
 
-echo "############ install kind ##############"
+echo "############ check kind ##############"
 if hash kind 2>/dev/null;then
     echo "kind have installed"
 else
-    echo "start install kind"
-    GO111MODULE="on" go get sigs.k8s.io/kind@v0.4.0
-    echo PATH=${PATH}:$(go env GOPATH)/bin >> ${HOME}/.profile && source ${HOME}/.profile
+    echo "this script needs kind, please install kind first."
+    ehco "you can refer: https://kind.sigs.k8s.io/"
+    exit 1
+fi
+
+echo "############ check kubectl##############"
+if hash kubectl 2>/dev/null;then
+    echo "kubectl have installed"
+else
+    echo "this script needs kubectl, please install kubectl first."
+    exit 1
+fi
+
+echo "############ check helm ##############"
+if hash helm 2>/dev/null;then
+    echo "helm have installed"
+else
+    echo "this script needs helm, please install helm first"
+    exit 1
+fi
+
+echo "############ check docker ##############"
+if hash docker 2>/dev/null;then
+    echo "docker have installed"
+else
+    echo "this script needs docker, please install docker first"
+    exit 1
 fi
 
 echo "############# start create cluster:[${clusterName}] #############"
