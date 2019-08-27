@@ -15,6 +15,7 @@ package debug
 
 import (
 	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/executor"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
@@ -31,16 +32,16 @@ import (
 const (
 	debugExample = `
 	# debug a container in the running pod, the first container will be picked by default
-	tkc debug POD_NAME
+	tkctl debug POD_NAME
 
 	# specify namespace or container
-	tkc debug --namespace foo POD_NAME -c CONTAINER_NAME
+	tkctl debug --namespace foo POD_NAME -c CONTAINER_NAME
 
 	# override the default troubleshooting image
-	tkc debug POD_NAME --image aylei/debug-jvm
+	tkctl debug POD_NAME --image aylei/debug-jvm
 
 	# override entrypoint of debug container
-	tkc debug POD_NAME --image aylei/debug-jvm /bin/bash
+	tkctl debug POD_NAME --image aylei/debug-jvm /bin/bash
 
 `
 	debugLongDesc = `
