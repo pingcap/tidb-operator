@@ -66,8 +66,7 @@ func ReadCACerts() (*x509.CertPool, error) {
 	// load k8s CA cert
 	caCert, err := ioutil.ReadFile(k8sCAFile)
 	if err != nil {
-		glog.Errorf("fail to read CA file %s, error: %v", k8sCAFile, err)
-		return nil, err
+		return nil, fmt.Errorf("fail to read CA file %s, error: %v", k8sCAFile, err)
 	}
 	if ok := rootCAs.AppendCertsFromPEM(caCert); !ok {
 		glog.Warningf("fail to append CA file to pool, using system CAs only")
