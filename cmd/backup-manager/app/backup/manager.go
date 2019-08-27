@@ -16,13 +16,14 @@ package backup
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,18 +31,18 @@ import (
 
 // BackupManager mainly used to manage backup related work
 type BackupManager struct {
-	Cli           versioned.Interface
+	backupLister  listers.BackupLister
 	StatusUpdater controller.BackupConditionUpdaterInterface
 	BackupOpts
 }
 
 // NewBackupManager return a BackupManager
 func NewBackupManager(
-	cli versioned.Interface,
+	backupLister listers.BackupLister,
 	statusUpdater controller.BackupConditionUpdaterInterface,
 	backupOpts BackupOpts) *BackupManager {
 	return &BackupManager{
-		cli,
+		backupLister,
 		statusUpdater,
 		backupOpts,
 	}
@@ -49,17 +50,9 @@ func NewBackupManager(
 
 // ProcessBackup used to process the backup logic
 func (bm *BackupManager) ProcessBackup() error {
-	backup, err := bm.Cli.PingcapV1alpha1().Backups(bm.Namespace).Get(bm.BackupName, metav1.GetOptions{})
+	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.BackupName)
 	if err != nil {
 		return fmt.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.BackupName, err)
-	}
-	// The backup job has been scheduled successfully, update related status.
-	err = bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupScheduled,
-		Status: corev1.ConditionTrue,
-	})
-	if err != nil {
-		return err
 	}
 
 	db, err := util.OpenDB(bm.getDSN(constants.TidbMetaDB))
@@ -67,7 +60,7 @@ func (bm *BackupManager) ProcessBackup() error {
 		return err
 	}
 	defer db.Close()
-	return bm.performBackup(backup, db)
+	return bm.performBackup(backup.DeepCopy(), db)
 }
 
 func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
@@ -92,7 +85,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 	glog.Infof("cluster %s %s is %s", bm, constants.TikvGCVariable, oldTikvGCTime)
 
-	err = bm.setTikvGClifeTime(db, constants.TikvGCLifeTime)
+	err = bm.setTikvGCLifeTime(db, constants.TikvGCLifeTime)
 	if err != nil {
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
@@ -101,7 +94,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Message: err.Error(),
 		})
 	}
-	glog.Infof("increase cluster %s %s to %s success", bm, constants.TikvGCVariable, constants.TikvGCLifeTime)
+	glog.Infof("set cluster %s %s to %s success", bm, constants.TikvGCVariable, constants.TikvGCLifeTime)
 
 	backupFullPath, err := bm.dumpTidbClusterData()
 	if err != nil {
@@ -114,12 +107,12 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 	glog.Infof("dump cluster %s data success", bm)
 
-	err = bm.setTikvGClifeTime(db, oldTikvGCTime)
+	err = bm.setTikvGCLifeTime(db, oldTikvGCTime)
 	if err != nil {
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
-			Reason:  "RestTikvGCLifeTimeFailed",
+			Reason:  "ResetTikvGCLifeTimeFailed",
 			Message: err.Error(),
 		})
 	}
@@ -138,7 +131,6 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 	glog.Infof("archive cluster %s backup data %s success", bm, archiveBackupPath)
 
-	// TODO: Maybe use rclone size command to get the archived backup file size is more efficiently than du
 	size, err := getBackupSize(archiveBackupPath)
 	if err != nil {
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -161,7 +153,8 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 	glog.Infof("get cluster %s commitTs %s success", bm, commitTs)
 
-	bucketURI := bm.getDestBucketURI()
+	remotePath := strings.TrimPrefix(archiveBackupPath, constants.BackupRootPath+"/")
+	bucketURI := bm.getDestBucketURI(remotePath)
 	err = bm.backupDataToRemote(archiveBackupPath, bucketURI)
 	if err != nil {
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -189,18 +182,12 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 
 // ProcessCleanBackup used to clean the specific backup
 func (bm *BackupManager) ProcessCleanBackup() error {
-	backup, err := bm.Cli.PingcapV1alpha1().Backups(bm.Namespace).Get(bm.BackupName, metav1.GetOptions{})
+	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.BackupName)
 	if err != nil {
 		return fmt.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.BackupName, err)
 	}
-	err = bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupClean,
-		Status: corev1.ConditionFalse,
-	})
-	if err != nil {
-		return err
-	}
-	return bm.performCleanBackup(backup)
+
+	return bm.performCleanBackup(backup.DeepCopy())
 }
 
 func (bm *BackupManager) performCleanBackup(backup *v1alpha1.Backup) error {
@@ -221,13 +208,11 @@ func (bm *BackupManager) performCleanBackup(backup *v1alpha1.Backup) error {
 			Message: err.Error(),
 		})
 	}
-	err = bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+
+	glog.Infof("clean cluster %s backup %s success", bm, backup.Status.BackupPath)
+
+	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupClean,
 		Status: corev1.ConditionTrue,
 	})
-	if err != nil {
-		return err
-	}
-	glog.Infof("clean cluster %s backup %s success", bm, backup.Status.BackupPath)
-	return nil
 }

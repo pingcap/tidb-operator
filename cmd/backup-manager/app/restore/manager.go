@@ -21,7 +21,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,18 +29,18 @@ import (
 
 // RestoreManager mainly used to manage backup related work
 type RestoreManager struct {
-	Cli           versioned.Interface
+	restoreLister listers.RestoreLister
 	StatusUpdater controller.RestoreConditionUpdaterInterface
 	RestoreOpts
 }
 
 // NewRestoreManager return a RestoreManager
 func NewRestoreManager(
-	cli versioned.Interface,
+	restoreLister listers.RestoreLister,
 	statusUpdater controller.RestoreConditionUpdaterInterface,
 	backupOpts RestoreOpts) *RestoreManager {
 	return &RestoreManager{
-		cli,
+		restoreLister,
 		statusUpdater,
 		backupOpts,
 	}
@@ -48,48 +48,35 @@ func NewRestoreManager(
 
 // ProcessRestore used to process the restore logic
 func (rm *RestoreManager) ProcessRestore() error {
-	restore, err := rm.Cli.PingcapV1alpha1().Restores(rm.Namespace).Get(rm.RestoreName, metav1.GetOptions{})
+	restore, err := rm.restoreLister.Restores(rm.Namespace).Get(rm.RestoreName)
 	if err != nil {
 		return fmt.Errorf("can't find cluster %s restore %s CRD object, err: %v", rm, rm.RestoreName, err)
 	}
-	// The restore job has been scheduled successfully, update related status.
-	err = rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-		Type:   v1alpha1.RestoreScheduled,
+
+	if rm.BackupPath == "" {
+		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestoreFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "BackupPathIsEmpty",
+			Message: fmt.Sprintf("backup %s path is empty", rm.BackupName),
+		})
+	}
+	return rm.performRestore(restore.DeepCopy())
+}
+
+func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
+	started := time.Now()
+
+	err := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		Type:   v1alpha1.RestoreRunning,
 		Status: corev1.ConditionTrue,
 	})
 	if err != nil {
 		return err
 	}
 
-	if rm.BackupPath == "" {
-		backup, err := rm.Cli.PingcapV1alpha1().Backups(rm.Namespace).Get(rm.BackupName, metav1.GetOptions{})
-		if err != nil {
-			return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-				Type:    v1alpha1.RestoreFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "GetBackupFailed",
-				Message: fmt.Sprintf("get cluster %s backup %s CRD object failed, err: %v", rm, rm.BackupName, err),
-			})
-		}
-		if backup.Status.BackupPath == "" {
-			return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-				Type:    v1alpha1.RestoreFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "BackupPathIsEmpty",
-				Message: fmt.Sprintf("backup %s path is empty", backup.GetName()),
-			})
-		}
-		rm.BackupPath = backup.Status.BackupPath
-	}
-	return rm.performRestore(restore)
-}
-
-func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
-	started := time.Now()
-
 	restoreDataPath := rm.getRestoreDataPath()
-	err := rm.downloadBackupData(restoreDataPath)
-	if err != nil {
+	if err := rm.downloadBackupData(restoreDataPath); err != nil {
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
@@ -120,7 +107,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 			Message: fmt.Sprintf("loader backup %s data failed, err: %v", restoreDataPath, err),
 		})
 	}
-	glog.Infof("restore cluster %s backup %s data success", rm, rm.BackupPath)
+	glog.Infof("restore cluster %s from backup %s success", rm, rm.BackupPath)
 
 	finish := time.Now()
 

@@ -7,3 +7,4 @@ parameters:
 provisioner: alicloud/disk
 reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
