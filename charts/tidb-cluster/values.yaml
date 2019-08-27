@@ -49,7 +49,7 @@ enableConfigMapRollout: true
 
 pd:
   # Please refer to https://github.com/pingcap/pd/blob/master/conf/config.toml for the default
-  # pd configurations (change to the tags of your pd version), 
+  # pd configurations (change to the tags of your pd version),
   # just follow the format in the file and configure in the 'config' section
   # as below if you want to customize any configuration.
   # Please refer to https://pingcap.com/docs-cn/v3.0/reference/configuration/pd-server/configuration-file/
@@ -59,7 +59,7 @@ pd:
     level = "info"
     [replication]
     location-labels = ["region", "zone", "rack", "host"]
-  
+
   replicas: 3
   image: pingcap/pd:v3.0.1
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -165,53 +165,32 @@ tikv:
   # (choose the version matching your tikv) for detailed explanation of each parameter.
   config: |
     log-level = "info"
-    [server]
-    status-addr = "0.0.0.0:20180"
-
-  # Here are some parameters you may want to customize (Please configure in the above 'config' section):
-  # [readpool.storage]
-  # ## Size of the thread pool for high-priority operations.
-  # # high-concurrency = 4
-  # ## Size of the thread pool for normal-priority operations.
-  # # normal-concurrency = 4
-  # ## Size of the thread pool for low-priority operations.
-  # # low-concurrency = 4
+  # # Here are some parameters you MUST customize (Please configure in the above `tikv.config` section):
+  #
   # [readpool.coprocessor]
-  # ## Most read requests from TiDB are sent to the coprocessor of TiKV. high/normal/low-concurrency is
-  # ## used to set the number of threads of the coprocessor.
-  # ## If there are many read requests, you can increase these config values (but keep it within the
-  # ## number of system CPU cores). For example, for a 32-core machine deployed with TiKV, you can even
-  # ## set these config to 30 in heavy read scenarios.
-  # ## If CPU_NUM > 8, the default thread pool size for coprocessors is set to CPU_NUM * 0.8.
-  # # high-concurrency = 8
-  # # normal-concurrency = 8
-  # # low-concurrency = 8
-  # [server]
-  # ## Size of the thread pool for the gRPC server.
-  # # grpc-concurrency = 4
-  # [storage]
-  # ## Scheduler's worker pool size, i.e. the number of write threads.
-  # ## It should be less than total CPU cores. When there are frequent write operations, set it to a
-  # ## higher value. More specifically, you can run `top -H -p tikv-pid` to check whether the threads
-  # ## named `sched-worker-pool` are busy.
-  # # scheduler-worker-pool-size = 4
-  #### Below parameters available in TiKV 2.x only
+  #   # Normally these three parameters should be tuned to 80% of `tikv.resources.limits.cpu`, for example: 10000m -> 8
+  #   high-concurrency = 8
+  #   normal-concurrency = 8
+  #   low-concurrency = 8
+  #
+  # # For TiKV v2.x:
   # [rocksdb.defaultcf]
   # ## block-cache used to cache uncompressed blocks, big block-cache can speed up read.
-  # ## in normal cases should tune to 30%-50% tikv.resources.limits.memory
+  # ## in normal cases should tune to 30%-50% `tikv.resources.limits.memory`
   # # block-cache-size = "1GB"
+  #
   # [rocksdb.writecf]
-  # ## in normal cases should tune to 10%-30% tikv.resources.limits.memory
+  # ## in normal cases should tune to 10%-30% `tikv.resources.limits.memory`
   # # block-cache-size = "256MB"
-  #### Below parameters available in TiKV 3.x and above only
+  #
+  # # From TiKV v3.0.0 on, you do not need to configure
+  # #  [rocksdb.defaultcf].block-cache-size and [rocksdb.writecf].block-cache-size.
+  # # Instead, configure [storage.block-cache] as below:
   # [storage.block-cache]
-  # ## Size of the shared block cache. Normally it should be tuned to 30%-50% of container's total memory.
-  # # capacity = "1GB"
-  # [raftstore]
-  # ## true (default value) for high reliability, this can prevent data loss when power failure.
-  # # sync-log = true
-  # # apply-pool-size = 2
-  # # store-pool-size = 2
+  #   shared = true
+  #
+  #   # Normally it should be tuned to 30%-50% of `tikv.resources.limits.memory`, for example: 32Gi -> 16GB
+  #   capacity = "1GB"
 
   replicas: 3
   image: pingcap/tikv:v3.0.1
@@ -266,7 +245,11 @@ tidb:
   config: |
     [log]
     level = "info"
-  
+  # # Here are some parameters you MUST customize (Please configure in the above 'tidb.config' section):
+  # [performance]
+  #   # Normally it should be tuned to `tidb.resources.limits.cpu`, for example: 16000m -> 16
+  #   max-procs = 0
+
   replicas: 2
   # The secret name of root password, you can create secret with following command:
   # kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
@@ -573,6 +556,30 @@ scheduledBackup:
   # You can create the secret by:
   # kubectl create secret generic s3-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
   # secretName: s3-backup-secret
+
+importer:
+  create: false
+  image: pingcap/tidb-lightning:v3.0.1
+  imagePullPolicy: IfNotPresent
+  storageClassName: local-storage
+  storage: 200Gi
+  resources: {}
+    # limits:
+    #   cpu: 16000m
+    #   memory: 8Gi
+    # requests:
+    #   cpu: 16000m
+    #   memory: 8Gi
+  affinity: {}
+  tolerations: []
+  pushgatewayImage: prom/pushgateway:v0.3.1
+  pushgatewayImagePullPolicy: IfNotPresent
+  config: |
+    log-level = "info"
+    [metrics]
+    job = "tikv-importer"
+    interval = "15s"
+    address = "localhost:9091"
 
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"

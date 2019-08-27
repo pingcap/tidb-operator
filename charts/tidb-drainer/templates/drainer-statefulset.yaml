@@ -5,14 +5,14 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ include "drainer.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: drainer
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "drainer.name" . }}
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/instance: {{ .Values.clusterName }}
       app.kubernetes.io/managed-by: {{ .Release.Service }}
       app.kubernetes.io/component: drainer
   serviceName: {{ include "drainer.name" . }}
@@ -25,7 +25,7 @@ spec:
         prometheus.io/port: "8249"
       labels:
         app.kubernetes.io/name: {{ include "drainer.name" . }}
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/instance: {{ .Values.clusterName }}
         app.kubernetes.io/managed-by: {{ .Release.Service }}
         app.kubernetes.io/component: drainer
     spec:
