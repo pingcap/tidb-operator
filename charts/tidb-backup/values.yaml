@@ -6,8 +6,14 @@
 clusterName: demo
 
 mode: backup # backup | restore | scheduled-restore
-# name is the backup name
+
+# name is the backup dir name and pvc name for ad-hoc backup and restore
 name: fullbackup-{{ date "200601021504" .Release.Time }}
+
+# scheduledBackupName is the name of a scheduled backup directory,
+# used to restore the tidb cluster from scheduled backup.
+# scheduledBackupName: scheduled-backup-20190822-041004
+
 image:
   pullPolicy: IfNotPresent
   # https://github.com/pingcap/tidb-cloud-backup

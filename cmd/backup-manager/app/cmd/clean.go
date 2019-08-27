@@ -18,25 +18,26 @@ import (
 
 	// registry mysql drive
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/tools/cache"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 // NewCleanCommand implements the clean command
-func NewCleanCommand(kubecfg string) *cobra.Command {
+func NewCleanCommand() *cobra.Command {
 	bo := backup.BackupOpts{}
 
 	cmd := &cobra.Command{
 		Use:   "clean",
 		Short: "Clean specific tidb cluster backup.",
 		Run: func(cmd *cobra.Command, args []string) {
-			util.SkipValidFlags = []string{"tidbservice", "password", "user", "storageType"}
-			util.ValidCmdFlags(cmd)
+			util.ValidCmdFlags(cmd.CommandPath(), cmd.LocalFlags())
 			cmdutil.CheckErr(runClean(bo, kubecfg))
 		},
 	}
@@ -54,13 +55,19 @@ func runClean(backupOpts backup.BackupOpts, kubecfg string) error {
 		informers.WithNamespace(backupOpts.Namespace),
 	}
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, constants.ResyncDuration, options...)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go informerFactory.Start(ctx.Done())
+
 	recorder := util.NewEventRecorder(kubeCli, "backup")
 	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
 	statusUpdater := controller.NewRealBackupConditionUpdater(cli, backupInformer.Lister(), recorder)
 
-	bm := backup.NewBackupManager(cli, statusUpdater, backupOpts)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go informerFactory.Start(ctx.Done())
+
+	// waiting for the shared informer's store has synced.
+	cache.WaitForCacheSync(ctx.Done(), backupInformer.Informer().HasSynced)
+
+	glog.Infof("start to clean backup %s", backupOpts)
+	bm := backup.NewBackupManager(backupInformer.Lister(), statusUpdater, backupOpts)
 	return bm.ProcessCleanBackup()
 }

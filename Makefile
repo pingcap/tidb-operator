@@ -25,8 +25,9 @@ TEST_COVER_PACKAGES:=go list ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/t
 
 default: build
 
-docker-push: docker
+docker-push: docker backup-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:latest"
 
 docker: build
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest" images/tidb-operator
