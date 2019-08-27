@@ -61,14 +61,14 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 		return err
 	}
 
-	// Restoring via reparo is slow, so we stop inserting data as early as possible to reduce the size of incremental data
-	oa.StopInsertDataTo(source)
-
 	ts, err := oa.CheckAdHocBackup(source)
 	if err != nil {
 		glog.Errorf("cluster:[%s] deploy happen error: %v", source.ClusterName, err)
 		return err
 	}
+
+	// Restoring via reparo is slow, so we stop inserting data as early as possible to reduce the size of incremental data
+	oa.StopInsertDataTo(source)
 
 	prepareIncremental := func(source *TidbClusterConfig, target BackupTarget) error {
 		err = oa.CheckTidbClusterStatus(target.TargetCluster)
