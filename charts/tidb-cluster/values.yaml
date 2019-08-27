@@ -520,7 +520,7 @@ scheduledBackup:
   # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#starting-deadline
   startingDeadlineSeconds: 3600
   # https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
-  options: "--verbose=3"
+  options: "-t 16 -F 256 --skip-tz-utc --verbose=3"
   # secretName is the name of the secret which stores user and password used for backup
   # Note: you must give the user enough privilege to do the backup
   # you can create the secret by:
