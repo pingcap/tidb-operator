@@ -521,6 +521,9 @@ scheduledBackup:
   startingDeadlineSeconds: 3600
   # https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
   options: "--verbose=3"
+  # The time limit during which data is retained for each GC when backup, in the format of Go Duration.
+  # When a GC happens, the current time minus this value is the safe point.
+  tikvGCLifeTime: 3h
   # secretName is the name of the secret which stores user and password used for backup
   # Note: you must give the user enough privilege to do the backup
   # you can create the secret by:
