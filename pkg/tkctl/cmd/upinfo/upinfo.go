@@ -42,13 +42,13 @@ const (
 `
 	upinfoExample = `
 		# get current tidb cluster info (set by tkc user)
-		tkc upinfo
+		tkctl upinfo
 
 		# get specified tidb cluster component upgrade info
-		tkc upinfo -t another-cluster
+		tkctl upinfo -t another-cluster
 `
 	infoUsage = `expected 'upinfo -t CLUSTER_NAME' for the upinfo command or 
-using 'tkc use' to set tidb cluster first.
+using 'tkctl use' to set tidb cluster first.
 `
 	UPDATED  = "updated"
 	UPDATING = "updating"
