@@ -11,7 +11,8 @@ Before run this script,please ensure that:
 Options:
        -n,--name               Name of the Kubernete cluster,default value: kind
        -c,--nodeNum            the count of the cluster nodes,default value: 6
-       -v,--k8sVersion        version of the Kubernetes cluster,default value: v1.12.8
+       -k,--k8sVersion         version of the Kubernetes cluster,default value: v1.12.8
+       -v,--volumeNum          the volumes number of each kubernetes node,default value: 9
 Usage:
     $0 --name testCluster --nodeNum 4 --k8sVersion v1.12.9
 EOF
@@ -33,8 +34,13 @@ case $key in
     shift
     shift
     ;;
-    -v|--k8sVersion)
+    -k|--k8sVersion)
     k8sVersion="$2"
+    shift
+    shift
+    ;;
+    -v|--volumeNum)
+    volumeNum="$2"
     shift
     shift
     ;;
@@ -49,43 +55,24 @@ done
 clusterName=${clusterName:-kind}
 nodeNum=${nodeNum:-6}
 k8sVersion=${k8sVersion:-v1.12.8}
+volumeNum=${volumeNum:-9}
 
 echo "clusterName: ${clusterName}"
 echo "nodeNum: ${nodeNum}"
 echo "k8sVersion: ${k8sVersion}"
+echo "volumeNum: ${volumeNum}"
 
-echo "############ check kind ##############"
-if hash kind 2>/dev/null;then
-    echo "kind have installed"
-else
-    echo "this script needs kind, please install kind first."
-    echo "you can refer: https://kind.sigs.k8s.io/"
-    exit 1
-fi
-
-echo "############ check kubectl##############"
-if hash kubectl 2>/dev/null;then
-    echo "kubectl have installed"
-else
-    echo "this script needs kubectl, please install kubectl first."
-    exit 1
-fi
-
-echo "############ check helm ##############"
-if hash helm 2>/dev/null;then
-    echo "helm have installed"
-else
-    echo "this script needs helm, please install helm first"
-    exit 1
-fi
-
-echo "############ check docker ##############"
-if hash docker 2>/dev/null;then
-    echo "docker have installed"
-else
-    echo "this script needs docker, please install docker first"
-    exit 1
-fi
+# check requirements
+for requirement in kind kubectl helm docker
+do
+    echo "############ check ${requirement} ##############"
+    if hash ${requirement} 2>/dev/null;then
+        echo "${requirement} have installed"
+    else
+        echo "this script needs ${requirement}, please install ${requirement} first."
+        exit 1
+    fi
+done
 
 echo "############# start create cluster:[${clusterName}] #############"
 
@@ -95,10 +82,6 @@ echo "clean data dir: ${data_dir}"
 if [ -d ${data_dir} ]; then
     rm -rf ${data_dir}
 fi
-
-echo "init the mount dirs for kind cluster"
-maxindex=$[nodeNum-1]
-mkdir -p ${data_dir}/worker{0..${maxindex}}/vol{1..9}
 
 configFile=${HOME}/kind/${clusterName}/kind-config.yaml
 
@@ -111,30 +94,21 @@ nodes:
 - role: control-plane
 EOF
 
-for ((i=0;i<=${maxindex};i++))
+for ((i=0;i<${nodeNum};i++))
 do
+mkdir -p ${data_dir}/worker${i}
 cat <<EOF >>  ${configFile}
 - role: worker
   extraMounts:
-  - containerPath: /mnt/disks/vol1
-    hostPath: ${data_dir}/worker${i}/vol1
-  - containerPath: /mnt/disks/vol2
-    hostPath: ${data_dir}/worker${i}/vol2
-  - containerPath: /mnt/disks/vol3
-    hostPath: ${data_dir}/worker${i}/vol3
-  - containerPath: /mnt/disks/vol4
-    hostPath: ${data_dir}/worker${i}/vol4
-  - containerPath: /mnt/disks/vol5
-    hostPath: ${data_dir}/worker${i}/vol5
-  - containerPath: /mnt/disks/vol6
-    hostPath: ${data_dir}/worker${i}/vol6
-  - containerPath: /mnt/disks/vol7
-    hostPath: ${data_dir}/worker${i}/vol7
-  - containerPath: /mnt/disks/vol8
-    hostPath: ${data_dir}/worker${i}/vol8
-  - containerPath: /mnt/disks/vol9
-    hostPath: ${data_dir}/worker${i}/vol9
 EOF
+    for ((k=1;k<=${volumeNum};k++))
+    do
+        mkdir -p ${data_dir}/worker${i}/vol${k}
+        cat <<EOF >> ${configFile}
+  - containerPath: /mnt/disks/vol${k}
+    hostPath: ${data_dir}/worker${i}/vol${k}
+EOF
+    done
 done
 
 echo "start to create k8s cluster"
