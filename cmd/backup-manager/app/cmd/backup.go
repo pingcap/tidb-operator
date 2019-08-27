@@ -61,7 +61,7 @@ func runBackup(backupOpts backup.BackupOpts, kubecfg string) error {
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, constants.ResyncDuration, options...)
 	recorder := util.NewEventRecorder(kubeCli, "backup")
 	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
-	statusUpdater := controller.NewRealBackupConditionUpdater(cli, backupInformer.Lister(), recorder)
+	statusUpdater := controller.NewRealBackupStatusUpdater(cli, backupInformer.Lister(), recorder)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

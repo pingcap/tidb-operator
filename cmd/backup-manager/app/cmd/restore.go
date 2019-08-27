@@ -62,7 +62,7 @@ func runRestore(restoreOpts restore.RestoreOpts, kubecfg string) error {
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, constants.ResyncDuration, options...)
 	recorder := util.NewEventRecorder(kubeCli, "restore")
 	restoreInformer := informerFactory.Pingcap().V1alpha1().Restores()
-	statusUpdater := controller.NewRealRestoreConditionUpdater(cli, restoreInformer.Lister(), recorder)
+	statusUpdater := controller.NewRealRestoreStatusUpdater(cli, restoreInformer.Lister(), recorder)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

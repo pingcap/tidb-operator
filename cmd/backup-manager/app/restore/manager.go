@@ -24,20 +24,22 @@ import (
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
 )
 
 // RestoreManager mainly used to manage backup related work
 type RestoreManager struct {
 	restoreLister listers.RestoreLister
-	StatusUpdater controller.RestoreConditionUpdaterInterface
+	statusUpdater controller.RestoreStatusUpdaterInterface
 	RestoreOpts
 }
 
 // NewRestoreManager return a RestoreManager
 func NewRestoreManager(
 	restoreLister listers.RestoreLister,
-	statusUpdater controller.RestoreConditionUpdaterInterface,
+	statusUpdater controller.RestoreStatusUpdaterInterface,
 	backupOpts RestoreOpts) *RestoreManager {
 	return &RestoreManager{
 		restoreLister,
@@ -54,58 +56,79 @@ func (rm *RestoreManager) ProcessRestore() error {
 	}
 
 	if rm.BackupPath == "" {
-		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		v1alpha1.UpdateRestoreCondition(&restore.Status, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "BackupPathIsEmpty",
 			Message: fmt.Sprintf("backup %s path is empty", rm.BackupName),
 		})
+		return rm.statusUpdater.UpdateRestoreStatus(restore.DeepCopy(), &restore.Status)
 	}
-	return rm.performRestore(restore.DeepCopy())
+
+	var errs []error
+	oldStatus := restore.Status.DeepCopy()
+
+	if err := rm.performRestore(restore); err != nil {
+		errs = append(errs, err)
+	}
+
+	if apiequality.Semantic.DeepEqual(&restore.Status, oldStatus) {
+		// without status update, return directly
+		return errorutils.NewAggregate(errs)
+	}
+
+	if err := rm.statusUpdater.UpdateRestoreStatus(restore.DeepCopy(), &restore.Status); err != nil {
+		errs = append(errs, err)
+	}
+
+	return errorutils.NewAggregate(errs)
 }
 
 func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 	started := time.Now()
 
-	err := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+	v1alpha1.UpdateRestoreCondition(&restore.Status, &v1alpha1.RestoreCondition{
 		Type:   v1alpha1.RestoreRunning,
 		Status: corev1.ConditionTrue,
 	})
-	if err != nil {
+	if err := rm.statusUpdater.UpdateRestoreStatus(restore.DeepCopy(), &restore.Status); err != nil {
 		return err
 	}
 
 	restoreDataPath := rm.getRestoreDataPath()
 	if err := rm.downloadBackupData(restoreDataPath); err != nil {
-		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		v1alpha1.UpdateRestoreCondition(&restore.Status, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "DownloadBackupDataFailed",
-			Message: fmt.Sprintf("download backup %s data failed, err: %v", rm.BackupPath, err),
+			Message: err.Error(),
 		})
+		return err
 	}
 	glog.Infof("download cluster %s backup %s data success", rm, rm.BackupPath)
 
 	restoreDataDir := filepath.Dir(restoreDataPath)
 	unarchiveDataPath, err := unarchiveBackupData(restoreDataPath, restoreDataDir)
 	if err != nil {
-		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		v1alpha1.UpdateRestoreCondition(&restore.Status, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "UnarchiveBackupDataFailed",
-			Message: fmt.Sprintf("unarchive backup %s data failed, err: %v", restoreDataPath, err),
+			Message: err.Error(),
 		})
+		return err
 	}
 	glog.Infof("unarchive cluster %s backup %s data success", rm, restoreDataPath)
 
 	err = rm.loadTidbClusterData(unarchiveDataPath)
 	if err != nil {
-		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		v1alpha1.UpdateRestoreCondition(&restore.Status, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "LoaderBackupDataFailed",
-			Message: fmt.Sprintf("loader backup %s data failed, err: %v", restoreDataPath, err),
+			Message: err.Error(),
 		})
+		return err
 	}
 	glog.Infof("restore cluster %s from backup %s success", rm, rm.BackupPath)
 
@@ -114,8 +137,9 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 	restore.Status.TimeStarted = metav1.Time{Time: started}
 	restore.Status.TimeCompleted = metav1.Time{Time: finish}
 
-	return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+	v1alpha1.UpdateRestoreCondition(&restore.Status, &v1alpha1.RestoreCondition{
 		Type:   v1alpha1.RestoreComplete,
 		Status: corev1.ConditionTrue,
 	})
+	return nil
 }

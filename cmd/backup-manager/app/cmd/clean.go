@@ -58,7 +58,7 @@ func runClean(backupOpts backup.BackupOpts, kubecfg string) error {
 
 	recorder := util.NewEventRecorder(kubeCli, "backup")
 	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
-	statusUpdater := controller.NewRealBackupConditionUpdater(cli, backupInformer.Lister(), recorder)
+	statusUpdater := controller.NewRealBackupStatusUpdater(cli, backupInformer.Lister(), recorder)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
