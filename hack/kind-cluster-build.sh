@@ -59,7 +59,7 @@ if hash kind 2>/dev/null;then
     echo "kind have installed"
 else
     echo "this script needs kind, please install kind first."
-    ehco "you can refer: https://kind.sigs.k8s.io/"
+    echo "you can refer: https://kind.sigs.k8s.io/"
     exit 1
 fi
 
