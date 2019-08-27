@@ -39,7 +39,7 @@ func ShowMasterCommitTS(dsn string) (int64, error) {
 	}
 	idx := -1
 	vals := make([]interface{}, len(cols))
-	for i, _ := range cols {
+	for i := range cols {
 		if strings.ToLower(cols[i]) == "position" {
 			vals[i] = new(int64)
 			idx = i

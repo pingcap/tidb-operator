@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	DrainerReplicas          int32 = 1
+	DrainerReplicas int32 = 1
 	// TODO: better way to do incremental restore from pb files
-	RunReparoCommandTemplate       = `kubectl exec -n={{ .Namespace }} {{ .PodName }} -- sh -c \
+	RunReparoCommandTemplate = `kubectl exec -n={{ .Namespace }} {{ .PodName }} -- sh -c \
 "while [ \$(grep -r 'commitTS' /data.drainer/savepoint| awk '{print (\$3)}') -lt {{ .StopTSO }} ]; do echo 'wait end tso reached' && sleep 60; done; \
 printf '{{ .ReparoConfig }}' > reparo.toml && \
 ./reparo -config reparo.toml > /data/reparo.log" `
@@ -116,13 +116,13 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 				return oa.RestoreIncrementalFiles(target.GetDrainerConfig(source, ts), target.TargetCluster, stopWriteTS)
 			})
 			eg.Go(func() error {
-				return oa.CheckDataConsistency(source, target.TargetCluster, 60 * time.Minute)
+				return oa.CheckDataConsistency(source, target.TargetCluster, 60*time.Minute)
 			})
 			if err := eg.Wait(); err != nil {
 				return err
 			}
 		} else {
-			if err := oa.CheckDataConsistency(source, target.TargetCluster, 30 * time.Minute); err != nil {
+			if err := oa.CheckDataConsistency(source, target.TargetCluster, 30*time.Minute); err != nil {
 				return err
 			}
 		}
@@ -204,10 +204,7 @@ func (oa *operatorActions) DeployAndCheckPump(tc *TidbClusterConfig) error {
 		return err
 	}
 
-	if err := oa.CheckIncrementalBackup(tc, false); err != nil {
-		return err
-	}
-	return nil
+	return oa.CheckIncrementalBackup(tc, false)
 }
 
 func (oa *operatorActions) DeployAndCheckIncrementalBackup(from, to *TidbClusterConfig, ts string) error {
@@ -215,10 +212,7 @@ func (oa *operatorActions) DeployAndCheckIncrementalBackup(from, to *TidbCluster
 		return err
 	}
 
-	if err := oa.CheckIncrementalBackup(from, true); err != nil {
-		return err
-	}
-	return nil
+	return oa.CheckIncrementalBackup(from, true)
 }
 
 func (oa *operatorActions) CheckDataConsistency(from, to *TidbClusterConfig, timeout time.Duration) error {
@@ -234,10 +228,7 @@ func (oa *operatorActions) CheckDataConsistency(from, to *TidbClusterConfig, tim
 		return false, nil
 	}
 
-	if err := wait.Poll(DefaultPollInterval, timeout, fn); err != nil {
-		return err
-	}
-	return nil
+	return wait.Poll(DefaultPollInterval, timeout, fn)
 }
 
 func (oa *operatorActions) DeployDrainer(info *DrainerConfig, source *TidbClusterConfig) error {
@@ -298,7 +289,7 @@ func (oa *operatorActions) CheckDrainer(info *DrainerConfig, source *TidbCluster
 
 	err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
 	if err != nil {
-		return fmt.Errorf("failed to install drainer [%s/%s], %v", source.Namespace, info.DrainerName)
+		return fmt.Errorf("failed to install drainer [%s/%s], %v", source.Namespace, info.DrainerName, err)
 	}
 
 	return nil

@@ -651,7 +651,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	drainerPvcSet := label.Label{}.Instance(info.ClusterName).Component("drainer").String()
 	if res, err := exec.Command("kubectl", "delete", "pvc", "-n", info.Namespace, "-l",
 		drainerPvcSet).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to delete pvc: %v, %s", drainerPvcSet, err, string(res))
+		return fmt.Errorf("failed to delete drainer pvc: %v, %s", err, string(res))
 	}
 
 	// delete all configmaps
@@ -2322,7 +2322,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 			from.Namespace, from.ClusterName, to.Namespace, to.ClusterName)
 	} else {
 		oa.EmitEvent(from, "Enable pump cluster")
-		glog.Infof("begin to enable pump for cluster[%s/%s], target cluster [%s/%s]",
+		glog.Infof("begin to enable pump for cluster[%s/%s]",
 			from.Namespace, from.ClusterName)
 	}
 
