@@ -42,7 +42,7 @@ storage:
   size: 100Gi
 
 # backupOptions is the options of mydumper https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
-backupOptions: "--verbose=3"
+backupOptions: "-t 16 -F 256 --skip-tz-utc --verbose=3"
 # Set the tidb_snapshot to be used for the backup
 # Use `show master status` to get the ts:
 #   MySQL [(none)]> show master status;
