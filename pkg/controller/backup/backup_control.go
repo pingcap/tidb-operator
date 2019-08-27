@@ -16,12 +16,13 @@ package backup
 import (
 	"fmt"
 
-	"github.com/pingcap/tidb-operator/pkg/controller"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/kubernetes/pkg/util/slice"
 )
 
@@ -37,16 +38,19 @@ type ControlInterface interface {
 // implements the documented semantics for Backup.
 func NewDefaultBackupControl(
 	cli versioned.Interface,
-	backupManager backup.BackupManager) ControlInterface {
+	backupManager backup.BackupManager,
+	statusUpdater controller.BackupStatusUpdaterInterface) ControlInterface {
 	return &defaultBackupControl{
 		cli,
 		backupManager,
+		statusUpdater,
 	}
 }
 
 type defaultBackupControl struct {
 	cli           versioned.Interface
 	backupManager backup.BackupManager
+	statusUpdater controller.BackupStatusUpdaterInterface
 }
 
 // UpdateBackup executes the core logic loop for a Backup.
@@ -60,7 +64,23 @@ func (bc *defaultBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
 		return err
 	}
 
-	return bc.updateBackup(backup)
+	var errs []error
+	oldStatus := backup.Status.DeepCopy()
+
+	if err := bc.updateBackup(backup); err != nil {
+		errs = append(errs, err)
+	}
+
+	if apiequality.Semantic.DeepEqual(&backup.Status, oldStatus) {
+		// without status update, return directly
+		return errorutils.NewAggregate(errs)
+	}
+
+	if err := bc.statusUpdater.UpdateBackupStatus(backup.DeepCopy(), &backup.Status); err != nil {
+		errs = append(errs, err)
+	}
+
+	return errorutils.NewAggregate(errs)
 }
 
 func (bc *defaultBackupControl) updateBackup(backup *v1alpha1.Backup) error {

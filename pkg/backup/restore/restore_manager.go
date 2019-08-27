@@ -33,19 +33,17 @@ import (
 )
 
 type restoreManager struct {
-	backupLister  listers.BackupLister
-	statusUpdater controller.RestoreConditionUpdaterInterface
-	secretLister  corelisters.SecretLister
-	jobLister     batchlisters.JobLister
-	jobControl    controller.JobControlInterface
-	pvcLister     corelisters.PersistentVolumeClaimLister
-	pvcControl    controller.GeneralPVCControlInterface
+	backupLister listers.BackupLister
+	secretLister corelisters.SecretLister
+	jobLister    batchlisters.JobLister
+	jobControl   controller.JobControlInterface
+	pvcLister    corelisters.PersistentVolumeClaimLister
+	pvcControl   controller.GeneralPVCControlInterface
 }
 
 // NewRestoreManager return restoreManager
 func NewRestoreManager(
 	backupLister listers.BackupLister,
-	statusUpdater controller.RestoreConditionUpdaterInterface,
 	secretLister corelisters.SecretLister,
 	jobLister batchlisters.JobLister,
 	jobControl controller.JobControlInterface,
@@ -54,7 +52,6 @@ func NewRestoreManager(
 ) backup.RestoreManager {
 	return &restoreManager{
 		backupLister,
-		statusUpdater,
 		secretLister,
 		jobLister,
 		jobControl,
@@ -85,7 +82,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	// not found restore job, need to create it
 	backup, reason, err := rm.getBackupFromRestore(restore)
 	if err != nil {
-		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		v1alpha1.UpdateRestoreCondition(&restore.Status, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
@@ -96,7 +93,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 
 	job, reason, err := rm.makeRestoreJob(restore, backup)
 	if err != nil {
-		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		v1alpha1.UpdateRestoreCondition(&restore.Status, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
@@ -107,7 +104,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 
 	reason, err = rm.ensureRestorePVCExist(restore)
 	if err != nil {
-		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		v1alpha1.UpdateRestoreCondition(&restore.Status, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
@@ -118,7 +115,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 
 	if err := rm.jobControl.CreateJob(restore, job); err != nil {
 		errMsg := fmt.Errorf("create restore %s/%s job %s failed, err: %v", ns, name, restoreJobName, err)
-		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		v1alpha1.UpdateRestoreCondition(&restore.Status, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateRestoreJobFailed",
@@ -127,10 +124,11 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return errMsg
 	}
 
-	return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+	v1alpha1.UpdateRestoreCondition(&restore.Status, &v1alpha1.RestoreCondition{
 		Type:   v1alpha1.RestoreScheduled,
 		Status: corev1.ConditionTrue,
 	})
+	return nil
 }
 
 func (rm *restoreManager) getBackupFromRestore(restore *v1alpha1.Restore) (*v1alpha1.Backup, string, error) {

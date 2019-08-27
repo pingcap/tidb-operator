@@ -17,6 +17,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
 )
 
 // ControlInterface implements the control logic for updating Restore
@@ -29,18 +31,42 @@ type ControlInterface interface {
 
 // NewDefaultRestoreControl returns a new instance of the default implementation RestoreControlInterface that
 // implements the documented semantics for Restore.
-func NewDefaultRestoreControl(restoreManager backup.RestoreManager) ControlInterface {
+func NewDefaultRestoreControl(
+	restoreManager backup.RestoreManager,
+	statusUpdater controller.RestoreStatusUpdaterInterface) ControlInterface {
 	return &defaultRestoreControl{
 		restoreManager,
+		statusUpdater,
 	}
 }
 
 type defaultRestoreControl struct {
 	restoreManager backup.RestoreManager
+	statusUpdater  controller.RestoreStatusUpdaterInterface
 }
 
 // UpdateRestore executes the core logic loop for a Restore.
 func (rc *defaultRestoreControl) UpdateRestore(restore *v1alpha1.Restore) error {
+	var errs []error
+	oldStatus := restore.Status.DeepCopy()
+
+	if err := rc.updateRestore(restore); err != nil {
+		errs = append(errs, err)
+	}
+
+	if apiequality.Semantic.DeepEqual(&restore.Status, oldStatus) {
+		// without status update, return directly
+		return errorutils.NewAggregate(errs)
+	}
+
+	if err := rc.statusUpdater.UpdateRestoreStatus(restore.DeepCopy(), &restore.Status); err != nil {
+		errs = append(errs, err)
+	}
+
+	return errorutils.NewAggregate(errs)
+}
+
+func (rc *defaultRestoreControl) updateRestore(restore *v1alpha1.Restore) error {
 	restore.SetGroupVersionKind(controller.RestoreControllerKind)
 	return rc.restoreManager.Sync(restore)
 }

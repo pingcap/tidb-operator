@@ -35,20 +35,17 @@ type BackupCleaner interface {
 }
 
 type backupCleaner struct {
-	statusUpdater controller.BackupConditionUpdaterInterface
-	secretLister  corelisters.SecretLister
-	jobLister     batchlisters.JobLister
-	jobControl    controller.JobControlInterface
+	secretLister corelisters.SecretLister
+	jobLister    batchlisters.JobLister
+	jobControl   controller.JobControlInterface
 }
 
 // NewBackupCleaner returns a BackupCleaner
 func NewBackupCleaner(
-	statusUpdater controller.BackupConditionUpdaterInterface,
 	secretLister corelisters.SecretLister,
 	jobLister batchlisters.JobLister,
 	jobControl controller.JobControlInterface) BackupCleaner {
 	return &backupCleaner{
-		statusUpdater,
 		secretLister,
 		jobLister,
 		jobControl,
@@ -74,15 +71,16 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 
 	if backup.Status.BackupPath == "" {
 		// the backup path is empty, so there is no need to clean up backup data
-		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		v1alpha1.UpdateBackupCondition(&backup.Status, &v1alpha1.BackupCondition{
 			Type:   v1alpha1.BackupClean,
 			Status: corev1.ConditionTrue,
 		})
+		return nil
 	}
 	// not found clean job, create it
 	job, reason, err := bc.makeCleanJob(backup)
 	if err != nil {
-		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		v1alpha1.UpdateBackupCondition(&backup.Status, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
@@ -93,7 +91,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 
 	if err := bc.jobControl.CreateJob(backup, job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, cleanJobName, err)
-		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		v1alpha1.UpdateBackupCondition(&backup.Status, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateCleanJobFailed",
@@ -102,10 +100,11 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 		return errMsg
 	}
 
-	return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	v1alpha1.UpdateBackupCondition(&backup.Status, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupClean,
 		Status: corev1.ConditionFalse,
 	})
+	return nil
 }
 
 func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {

@@ -71,10 +71,10 @@ func NewController(
 	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	secretInformer := kubeInformerFactory.Core().V1().Secrets()
-	statusUpdater := controller.NewRealBackupConditionUpdater(cli, backupInformer.Lister(), recorder)
+	statusUpdater := controller.NewRealBackupStatusUpdater(cli, backupInformer.Lister(), recorder)
 	jobControl := controller.NewRealJobControl(kubeCli, recorder)
 	pvcControl := controller.NewRealGeneralPVCControl(kubeCli, recorder)
-	backupCleaner := backup.NewBackupCleaner(statusUpdater, secretInformer.Lister(), jobInformer.Lister(), jobControl)
+	backupCleaner := backup.NewBackupCleaner(secretInformer.Lister(), jobInformer.Lister(), jobControl)
 
 	bkc := &Controller{
 		kubeClient: kubeCli,
@@ -83,13 +83,13 @@ func NewController(
 			cli,
 			backup.NewBackupManager(
 				backupCleaner,
-				statusUpdater,
 				secretInformer.Lister(),
 				jobInformer.Lister(),
 				jobControl,
 				pvcInformer.Lister(),
 				pvcControl,
 			),
+			statusUpdater,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),

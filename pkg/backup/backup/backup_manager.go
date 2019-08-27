@@ -33,7 +33,6 @@ import (
 
 type backupManager struct {
 	backupCleaner BackupCleaner
-	statusUpdater controller.BackupConditionUpdaterInterface
 	secretLister  corelisters.SecretLister
 	jobLister     batchlisters.JobLister
 	jobControl    controller.JobControlInterface
@@ -44,7 +43,6 @@ type backupManager struct {
 // NewBackupManager return backupManager
 func NewBackupManager(
 	backupCleaner BackupCleaner,
-	statusUpdater controller.BackupConditionUpdaterInterface,
 	secretLister corelisters.SecretLister,
 	jobLister batchlisters.JobLister,
 	jobControl controller.JobControlInterface,
@@ -53,7 +51,6 @@ func NewBackupManager(
 ) backup.BackupManager {
 	return &backupManager{
 		backupCleaner,
-		statusUpdater,
 		secretLister,
 		jobLister,
 		jobControl,
@@ -93,7 +90,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	// not found backup job, so we need to create it
 	job, reason, err := bm.makeBackupJob(backup)
 	if err != nil {
-		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		v1alpha1.UpdateBackupCondition(&backup.Status, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
@@ -104,7 +101,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 
 	reason, err = bm.ensureBackupPVCExist(backup)
 	if err != nil {
-		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		v1alpha1.UpdateBackupCondition(&backup.Status, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
@@ -115,7 +112,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 
 	if err := bm.jobControl.CreateJob(backup, job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
-		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		v1alpha1.UpdateBackupCondition(&backup.Status, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateBackupJobFailed",
@@ -124,10 +121,11 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return errMsg
 	}
 
-	return bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	v1alpha1.UpdateBackupCondition(&backup.Status, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupScheduled,
 		Status: corev1.ConditionTrue,
 	})
+	return nil
 }
 
 func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
