@@ -33,19 +33,19 @@ type ControlInterface interface {
 // NewDefaultBackupScheduleControl returns a new instance of the default implementation BackupScheduleControlInterface that
 // implements the documented semantics for BackupSchedule.
 func NewDefaultBackupScheduleControl(
-	statusUpdater controller.BackupScheduleStatusUpdaterInterface,
 	bsManager backup.BackupScheduleManager,
+	statusUpdater controller.BackupScheduleStatusUpdaterInterface,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultBackupScheduleControl{
-		statusUpdater,
 		bsManager,
+		statusUpdater,
 		recorder,
 	}
 }
 
 type defaultBackupScheduleControl struct {
-	statusUpdater controller.BackupScheduleStatusUpdaterInterface
 	bsManager     backup.BackupScheduleManager
+	statusUpdater controller.BackupScheduleStatusUpdaterInterface
 	recorder      record.EventRecorder
 }
 
@@ -57,10 +57,13 @@ func (bsc *defaultBackupScheduleControl) UpdateBackupSchedule(bs *v1alpha1.Backu
 	if err := bsc.updateBackupSchedule(bs); err != nil {
 		errs = append(errs, err)
 	}
+
 	if apiequality.Semantic.DeepEqual(&bs.Status, oldStatus) {
+		// without status update, return directly
 		return errorutils.NewAggregate(errs)
 	}
-	if err := bsc.statusUpdater.UpdateBackupScheduleStatus(bs.DeepCopy(), &bs.Status, oldStatus); err != nil {
+
+	if err := bsc.statusUpdater.UpdateBackupScheduleStatus(bs.DeepCopy(), &bs.Status); err != nil {
 		errs = append(errs, err)
 	}
 

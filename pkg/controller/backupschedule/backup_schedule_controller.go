@@ -78,13 +78,13 @@ func NewController(
 		kubeClient: kubeCli,
 		cli:        cli,
 		control: NewDefaultBackupScheduleControl(
-			statusUpdater,
 			backupschedule.NewBackupScheduleManager(
 				backupInformer.Lister(),
 				backupControl,
 				jobInformer.Lister(),
 				jobControl,
 			),
+			statusUpdater,
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
