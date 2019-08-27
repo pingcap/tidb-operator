@@ -15,8 +15,10 @@ package v1alpha1
 
 import (
 	"fmt"
+	"sort"
 
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -54,21 +56,17 @@ func UpdateRestoreCondition(status *RestoreStatus, condition *RestoreCondition) 
 	if oldCondition == nil {
 		// We are adding new Restore condition.
 		status.Conditions = append(status.Conditions, *condition)
+		sort.Sort(byRestoreConditionType(status.Conditions))
 		return true
 	}
 	// We are updating an existing condition, so we need to check if it has changed.
 	if condition.Status == oldCondition.Status {
 		condition.LastTransitionTime = oldCondition.LastTransitionTime
 	}
-
-	isUpdate := condition.Status == oldCondition.Status &&
-		condition.Reason == oldCondition.Reason &&
-		condition.Message == oldCondition.Message &&
-		condition.LastTransitionTime.Equal(&oldCondition.LastTransitionTime)
-
 	status.Conditions[conditionIndex] = *condition
-	// Return true if one of the fields have changed.
-	return !isUpdate
+
+	sort.Sort(byRestoreConditionType(status.Conditions))
+	return apiequality.Semantic.DeepEqual(condition, oldCondition)
 }
 
 // IsRestoreComplete returns true if a Restore has successfully completed
@@ -81,4 +79,12 @@ func IsRestoreComplete(restore *Restore) bool {
 func IsRestoreScheduled(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreScheduled)
 	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+type byRestoreConditionType []RestoreCondition
+
+func (b byRestoreConditionType) Len() int      { return len(b) }
+func (b byRestoreConditionType) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
+func (b byRestoreConditionType) Less(i, j int) bool {
+	return b[i].Type < b[j].Type
 }
