@@ -3,7 +3,7 @@ resource "google_container_cluster" "cluster" {
   network        = var.vpc_name
   subnetwork     = var.subnetwork_name
   location       = var.location
-  node_locations = var.node_locations
+  node_locations = length(var.node_locations) == 0 ? null : var.node_locations
   project        = var.gcp_project
 
   master_auth {
