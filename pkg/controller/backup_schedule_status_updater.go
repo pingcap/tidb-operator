@@ -24,7 +24,6 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -36,11 +35,10 @@ import (
 type BackupScheduleStatusUpdaterInterface interface {
 	// UpdateBackupScheduleStatus sets the backupSchedule's Status to status. Implementations are required to retry on conflicts,
 	// but fail on other errors. If the returned error is nil backup's Status has been successfully set to status.
-	UpdateBackupScheduleStatus(*v1alpha1.BackupSchedule, *v1alpha1.BackupScheduleStatus, *v1alpha1.BackupScheduleStatus) error
+	UpdateBackupScheduleStatus(*v1alpha1.BackupSchedule, *v1alpha1.BackupScheduleStatus) error
 }
 
-// returns a BackupScheduleStatusUpdaterInterface that updates the Status of a BackupSchedule,
-// using the supplied client and bsLister.
+// NewRealBackupScheduleStatusUpdater returns a BackupScheduleStatusUpdaterInterface that updates the Status of a BackupSchedule
 func NewRealBackupScheduleStatusUpdater(
 	cli versioned.Interface,
 	bsLister listers.BackupScheduleLister,
@@ -60,8 +58,7 @@ type realBackupScheduleStatusUpdater struct {
 
 func (bss *realBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(
 	bs *v1alpha1.BackupSchedule,
-	newStatus *v1alpha1.BackupScheduleStatus,
-	oldStatus *v1alpha1.BackupScheduleStatus) error {
+	status *v1alpha1.BackupScheduleStatus) error {
 
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
@@ -75,16 +72,15 @@ func (bss *realBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(
 		if updated, err := bss.bsLister.BackupSchedules(ns).Get(bsName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			bs = updated.DeepCopy()
-			bs.Status = *newStatus
+			bs.Status = *status
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated backupSchedule %s/%s from lister: %v", ns, bsName, err))
 		}
 
 		return updateErr
 	})
-	if !apiequality.Semantic.DeepEqual(newStatus, oldStatus) {
-		bss.recordBackupScheduleEvent("update", bs, err)
-	}
+
+	bss.recordBackupScheduleEvent("update", bs, err)
 	return err
 }
 
@@ -128,7 +124,7 @@ func (fbs *FakeBackupScheduleStatusUpdater) SetUpdateBackupScheduleError(err err
 }
 
 // UpdateBackupSchedule updates the BackupSchedule
-func (fbs *FakeBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(bs *v1alpha1.BackupSchedule, _ *v1alpha1.BackupScheduleStatus, _ *v1alpha1.BackupScheduleStatus) error {
+func (fbs *FakeBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(bs *v1alpha1.BackupSchedule, _ *v1alpha1.BackupScheduleStatus) error {
 	defer fbs.updateBackupScheduleTracker.inc()
 	if fbs.updateBackupScheduleTracker.errorReady() {
 		defer fbs.updateBackupScheduleTracker.reset()
