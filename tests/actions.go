@@ -2316,6 +2316,10 @@ func (tc *TidbClusterConfig) FullName() string {
 }
 
 func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *TidbClusterConfig, withDrainer bool, ts string) error {
+
+	if withDrainer && to == nil {
+		return fmt.Errorf("Target cluster is nil when deploying drainer")
+	}
 	if withDrainer {
 		oa.EmitEvent(from, fmt.Sprintf("DeployIncrementalBackup: slave: %s", to.ClusterName))
 		glog.Infof("begin to deploy incremental backup, source cluster[%s/%s], target cluster [%s/%s]",
@@ -2330,54 +2334,38 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	// https://github.com/pingcap/tidb-operator/pull/693
 	isv1 := from.OperatorTag == "v1.0.0"
 
-	var sets map[string]string
-	if isv1 {
-		sets = map[string]string{
-			"binlog.pump.create":            "true",
-			"binlog.drainer.destDBType":     "mysql",
-			"binlog.drainer.mysql.host":     fmt.Sprintf("%s-tidb.%s", to.ClusterName, to.Namespace),
-			"binlog.drainer.mysql.user":     "root",
-			"binlog.drainer.mysql.password": to.Password,
-			"binlog.drainer.mysql.port":     "4000",
-			"binlog.drainer.ignoreSchemas":  "",
-		}
-	} else {
-		sets = map[string]string{
-			"binlog.pump.create": "true",
-		}
-		from.drainerConfig = []string{
-			"worker-count = 16",
-			"detect-interval = 10",
-			"disable-dispatch = false",
-			`ignore-schemas = ""`,
-			`safe-mode = false`,
-			`txn-batch = 20`,
-			`db-type = "mysql"`,
-			`[syncer.to]`,
-			fmt.Sprintf(`host = "%s-tidb.%s"`, to.ClusterName, to.Namespace),
-			fmt.Sprintf(`user = "%s"`, "root"),
-			fmt.Sprintf(`password = "%s"`, to.Password),
-			fmt.Sprintf(`port = %d`, 4000),
-		}
+	sets := map[string]string{
+		"binlog.pump.create": "true",
 	}
 
 	if withDrainer {
 		sets["binlog.drainer.create"] = "true"
-		from.drainerConfig = []string{
-			"worker-count = 16",
-			"detect-interval = 10",
-			"disable-dispatch = false",
-			`ignore-schemas = ""`,
-			`safe-mode = false`,
-			`txn-batch = 20`,
-			`db-type = "mysql"`,
-			`[syncer.to]`,
-			fmt.Sprintf(`host = "%s-tidb.%s"`, to.ClusterName, to.Namespace),
-			fmt.Sprintf(`user = "%s"`, "root"),
-			fmt.Sprintf(`password = "%s"`, to.Password),
-			fmt.Sprintf(`port = %d`, 4000),
+		if isv1 {
+			sets["binlog.pump.create"] = "true"
+			sets["binlog.drainer.destDBType"] = "mysql"
+			sets["binlog.drainer.mysql.host"] = fmt.Sprintf("%s-tidb.%s", to.ClusterName, to.Namespace)
+			sets["binlog.drainer.mysql.user"] = "root"
+			sets["binlog.drainer.mysql.password"] = to.Password
+			sets["binlog.drainer.mysql.port"] = "4000"
+			sets["binlog.drainer.ignoreSchemas"] = ""
+		} else {
+			from.drainerConfig = []string{
+				"worker-count = 16",
+				"detect-interval = 10",
+				"disable-dispatch = false",
+				`ignore-schemas = ""`,
+				`safe-mode = false`,
+				`txn-batch = 20`,
+				`db-type = "mysql"`,
+				`[syncer.to]`,
+				fmt.Sprintf(`host = "%s-tidb.%s"`, to.ClusterName, to.Namespace),
+				fmt.Sprintf(`user = "%s"`, "root"),
+				fmt.Sprintf(`password = "%s"`, to.Password),
+				fmt.Sprintf(`port = %d`, 4000),
+			}
 		}
 	}
+
 	if ts != "" {
 		sets["binlog.drainer.initialCommitTs"] = ts
 	}
