@@ -140,7 +140,7 @@ To re-run e2e tests, delete the testing pod and apply it again.
 Execute the follow command to create a [kind](https://kind.sigs.k8s.io/) Kubernetes environment.  
 
 ```sh
-$ ./hack/kind-cluster-v1.12.8.sh
+$ ./hack/kind-cluster-build.sh
 ```
 
 Then you can build and push Docker images to the public Docker registry (There have not docker registry in Kind Kubernetes environment currently)
