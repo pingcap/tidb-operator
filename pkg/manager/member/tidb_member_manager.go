@@ -136,29 +136,28 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if tc.Spec.EnableTLSCluster {
-		err := tmm.syncTiDBClusterCerts(tc)
-		if err != nil {
-			return err
-		}
-	}
-	if tc.Spec.TiDB.EnableTLSClient {
-		err := tmm.syncTiDBServerCerts(tc)
-		if err != nil {
-			return err
-		}
-		err = tmm.syncTiDBClientCerts(tc)
-		if err != nil {
-			return err
-		}
-	}
-
 	newTiDBSet := tmm.getNewTiDBSetForTidbCluster(tc)
 	oldTiDBSetTemp, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetLastAppliedConfigAnnotation(newTiDBSet)
 		if err != nil {
 			return err
+		}
+		if tc.Spec.EnableTLSCluster {
+			err := tmm.syncTiDBClusterCerts(tc)
+			if err != nil {
+				return err
+			}
+		}
+		if tc.Spec.TiDB.EnableTLSClient {
+			err := tmm.syncTiDBServerCerts(tc)
+			if err != nil {
+				return err
+			}
+			err = tmm.syncTiDBClientCerts(tc)
+			if err != nil {
+				return err
+			}
 		}
 		err = tmm.setControl.CreateStatefulSet(tc, newTiDBSet)
 		if err != nil {
@@ -220,7 +219,6 @@ func (tmm *tidbMemberManager) syncTiDBClusterCerts(tc *v1alpha1.TidbCluster) err
 		return nil
 	}
 
-	var ipList []string // empty
 	hostList := []string{
 		svcName,
 		peerName,
@@ -229,7 +227,16 @@ func (tmm *tidbMemberManager) syncTiDBClusterCerts(tc *v1alpha1.TidbCluster) err
 		fmt.Sprintf("*.%s.%s", peerName, ns),
 	}
 
-	return tmm.certControl.Create(ns, tcName, svcName, hostList, ipList, "tidb", "tidb")
+	certOpts := &controller.TiDBClusterCertOptions{
+		Namespace:  ns,
+		Instance:   tcName,
+		CommonName: svcName,
+		HostList:   hostList,
+		Component:  "tidb",
+		Suffix:     "tidb",
+	}
+
+	return tmm.certControl.Create(certOpts)
 }
 
 // syncTiDBServerCerts creates the cert pair for TiDB if not exist, the cert
@@ -244,13 +251,21 @@ func (tmm *tidbMemberManager) syncTiDBServerCerts(tc *v1alpha1.TidbCluster) erro
 		return nil
 	}
 
-	var ipList []string // empty
 	hostList := []string{
 		svcName,
 		fmt.Sprintf("%s.%s", svcName, ns),
 	}
 
-	return tmm.certControl.Create(ns, tcName, svcName, hostList, ipList, "tidb", suffix)
+	certOpts := &controller.TiDBClusterCertOptions{
+		Namespace:  ns,
+		Instance:   tcName,
+		CommonName: svcName,
+		HostList:   hostList,
+		Component:  "tidb",
+		Suffix:     suffix,
+	}
+
+	return tmm.certControl.Create(certOpts)
 }
 
 // syncTiDBClientCerts creates the cert pair for TiDB if not exist, the cert
@@ -265,12 +280,20 @@ func (tmm *tidbMemberManager) syncTiDBClientCerts(tc *v1alpha1.TidbCluster) erro
 		return nil
 	}
 
-	var ipList []string // empty
 	hostList := []string{
 		commonName,
 	}
 
-	return tmm.certControl.Create(ns, tcName, commonName, hostList, ipList, "tidb", suffix)
+	certOpts := &controller.TiDBClusterCertOptions{
+		Namespace:  ns,
+		Instance:   tcName,
+		CommonName: commonName,
+		HostList:   hostList,
+		Component:  "tidb",
+		Suffix:     suffix,
+	}
+
+	return tmm.certControl.Create(certOpts)
 }
 
 func (tmm *tidbMemberManager) getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {

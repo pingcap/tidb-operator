@@ -50,10 +50,9 @@ type clusterInfo struct {
 // NewTiDBDiscovery returns a TiDBDiscovery
 func NewTiDBDiscovery(cli versioned.Interface, kubeCli kubernetes.Interface) TiDBDiscovery {
 	td := &tidbDiscovery{
-		cli:         cli,
-		certControl: controller.NewRealCertControl(kubeCli),
-		pdControl:   pdapi.NewDefaultPDControl(kubeCli),
-		clusters:    map[string]*clusterInfo{},
+		cli:       cli,
+		pdControl: pdapi.NewDefaultPDControl(kubeCli),
+		clusters:  map[string]*clusterInfo{},
 	}
 	td.tcGetFn = td.realTCGetFn
 	return td
@@ -96,13 +95,6 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	currentCluster = td.clusters[keyName]
 	currentCluster.peers[podName] = struct{}{}
 
-	if tc.Spec.EnableTLSCluster {
-		err := td.syncDiscoveryClientCerts(tc)
-		if err != nil {
-			return "", err
-		}
-	}
-
 	if len(currentCluster.peers) == int(replicas) {
 		delete(currentCluster.peers, podName)
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
@@ -120,19 +112,6 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	}
 	delete(currentCluster.peers, podName)
 	return fmt.Sprintf("--join=%s", strings.Join(membersArr, ",")), nil
-}
-
-func (td *tidbDiscovery) syncDiscoveryClientCerts(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	commonName := fmt.Sprintf("%s-pd-client", tcName)
-
-	var ipList []string // empty
-	hostList := []string{
-		commonName,
-	}
-
-	return td.certControl.Create(ns, tcName, commonName, hostList, ipList, "discovery", "pd-client")
 }
 
 func (td *tidbDiscovery) realTCGetFn(ns, tcName string) (*v1alpha1.TidbCluster, error) {

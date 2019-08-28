@@ -91,6 +91,8 @@ func NewController(
 	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
+	csrInformer := kubeInformerFactory.Certificates().V1beta1().CertificateSigningRequests()
+	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 
 	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
 	pdControl := pdapi.NewDefaultPDControl(kubeCli)
@@ -100,7 +102,8 @@ func NewController(
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
-	certControl := controller.NewRealCertControl(kubeCli)
+	secControl := controller.NewRealSecretControl(kubeCli, secretInformer.Lister())
+	certControl := controller.NewRealCertControl(kubeCli, csrInformer.Lister(), secControl)
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
 	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister())

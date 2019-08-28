@@ -163,13 +163,6 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if tc.Spec.EnableTLSCluster {
-		err := tkmm.syncTiKVServerCerts(tc)
-		if err != nil {
-			return err
-		}
-	}
-
 	newSet, err := tkmm.getNewSetForTidbCluster(tc)
 	if err != nil {
 		return err
@@ -183,6 +176,12 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		err = SetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
 			return err
+		}
+		if tc.Spec.EnableTLSCluster {
+			err := tkmm.syncTiKVServerCerts(tc)
+			if err != nil {
+				return err
+			}
 		}
 		err = tkmm.setControl.CreateStatefulSet(tc, newSet)
 		if err != nil {
@@ -254,14 +253,22 @@ func (tkmm *tikvMemberManager) syncTiKVServerCerts(tc *v1alpha1.TidbCluster) err
 		return nil
 	}
 
-	var ipList []string // empty
 	hostList := []string{
 		peerName,
 		fmt.Sprintf("%s.%s", peerName, ns),
 		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
 	}
 
-	return tkmm.certControl.Create(ns, tcName, svcName, hostList, ipList, "tikv", "tikv")
+	certOpts := &controller.TiDBClusterCertOptions{
+		Namespace:  ns,
+		Instance:   tcName,
+		CommonName: svcName,
+		HostList:   hostList,
+		Component:  "tikv",
+		Suffix:     "tikv",
+	}
+
+	return tkmm.certControl.Create(certOpts)
 }
 
 func (tkmm *tikvMemberManager) getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {

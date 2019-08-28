@@ -14,8 +14,6 @@
 package controller
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"time"
@@ -24,59 +22,73 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	capi "k8s.io/api/certificates/v1beta1"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
+	certlisters "k8s.io/client-go/listers/certificates/v1beta1"
 )
+
+// TiDBClusterCertOptions contains information needed to create new certificates
+type TiDBClusterCertOptions struct {
+	Namespace  string
+	Instance   string
+	CommonName string
+	HostList   []string
+	IPList     []string
+	Suffix     string
+	Component  string
+}
 
 // CertControlInterface manages certificates used by TiDB clusters
 type CertControlInterface interface {
-	Create(ns string, instance string, commonName string, hostList []string, IPList []string, component string, suffix string) error
-	LoadFromSecret(ns string, secretName string) ([]byte, []byte, error)
-	SaveToSecret(ns string, instance string, component string, suffix string, cert []byte, key []byte) error
+	Create(certOpts *TiDBClusterCertOptions) error
 	CheckSecret(ns string, secretName string) bool
 	//RevokeCert() error
 	//RenewCert() error
 }
 
 type realCertControl struct {
-	kubeCli kubernetes.Interface
+	kubeCli    kubernetes.Interface
+	csrLister  certlisters.CertificateSigningRequestLister
+	secControl SecretControlInterface
 }
 
 // NewRealCertControl creates a new CertControlInterface
 func NewRealCertControl(
 	kubeCli kubernetes.Interface,
+	csrLister certlisters.CertificateSigningRequestLister,
+	secControl SecretControlInterface,
 ) CertControlInterface {
 	return &realCertControl{
-		kubeCli: kubeCli,
+		kubeCli:    kubeCli,
+		csrLister:  csrLister,
+		secControl: secControl,
 	}
 }
 
-func (rcc *realCertControl) Create(ns string, instance string, commonName string,
-	hostList []string, IPList []string, component string, suffix string) error {
+func (rcc *realCertControl) Create(certOpts *TiDBClusterCertOptions) error {
 	var csrName string
-	if suffix == "" {
-		csrName = instance
+	if certOpts.Suffix == "" {
+		csrName = certOpts.Instance
 	} else {
-		csrName = fmt.Sprintf("%s-%s", instance, suffix)
+		csrName = fmt.Sprintf("%s-%s", certOpts.Instance, certOpts.Suffix)
 	}
 
 	// generate certificate if not exist
-	if rcc.CheckSecret(ns, csrName) {
+	if rcc.secControl.Check(certOpts.Namespace, csrName) {
 		// TODO: validate the cert and key
-		glog.Infof("Secret %s already exist, reusing the key pair. TidbCluster: %s/%s", csrName, ns, csrName)
+		glog.Infof("Secret %s already exist, reusing the key pair. TidbCluster: %s/%s", csrName, certOpts.Namespace, csrName)
 		return nil
 	}
 
-	rawCSR, key, err := certutil.NewCSR(commonName, hostList, IPList)
+	rawCSR, key, err := certutil.NewCSR(certOpts.CommonName, certOpts.HostList, certOpts.IPList)
 	if err != nil {
-		return fmt.Errorf("fail to generate new key and certificate for %s/%s, %v", ns, csrName, err)
+		return fmt.Errorf("fail to generate new key and certificate for %s/%s, %v", certOpts.Namespace, csrName, err)
 	}
 
 	// sign certificate
-	csr, err := rcc.sendCSR(ns, instance, rawCSR, csrName)
+	csr, err := rcc.sendCSR(certOpts.Namespace, certOpts.Instance, rawCSR, csrName)
 	if err != nil {
 		return err
 	}
@@ -96,7 +108,7 @@ func (rcc *realCertControl) Create(ns string, instance string, commonName string
 
 	csrCh, err := rcc.kubeCli.Certificates().CertificateSigningRequests().Watch(watchReq)
 	if err != nil {
-		glog.Errorf("error watch CSR for [%s/%s]: %s", ns, instance, csrName)
+		glog.Errorf("error watch CSR for [%s/%s]: %s", certOpts.Namespace, certOpts.Instance, csrName)
 		return err
 	}
 
@@ -104,7 +116,7 @@ func (rcc *realCertControl) Create(ns string, instance string, commonName string
 	for {
 		select {
 		case <-tick:
-			glog.Infof("CSR still not approved for [%s/%s]: %s, retry later", ns, instance, csrName)
+			glog.Infof("CSR still not approved for [%s/%s]: %s, retry later", certOpts.Namespace, certOpts.Instance, csrName)
 			continue
 		case event, ok := <-watchCh:
 			if !ok {
@@ -121,10 +133,10 @@ func (rcc *realCertControl) Create(ns string, instance string, commonName string
 			if updatedCSR.UID == csr.UID &&
 				approveCond == capi.CertificateApproved &&
 				updatedCSR.Status.Certificate != nil {
-				glog.Infof("signed certificate for [%s/%s]: %s", ns, instance, csrName)
+				glog.Infof("signed certificate for [%s/%s]: %s", certOpts.Namespace, certOpts.Instance, csrName)
 
 				// save signed certificate and key to secret
-				err = rcc.SaveToSecret(ns, instance, component, suffix, updatedCSR.Status.Certificate, key)
+				err = rcc.secControl.Create(certOpts, updatedCSR.Status.Certificate, key)
 				if err == nil {
 					// cleanup the approved csr
 					delOpts := &types.DeleteOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
@@ -138,8 +150,7 @@ func (rcc *realCertControl) Create(ns string, instance string, commonName string
 }
 
 func (rcc *realCertControl) getCSR(ns string, instance string, csrName string) (*capi.CertificateSigningRequest, error) {
-	getOpts := types.GetOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
-	csr, err := rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Get(csrName, getOpts)
+	csr, err := rcc.csrLister.Get(csrName)
 	if err != nil && apierrors.IsNotFound(err) {
 		// it's supposed to be not found
 		return nil, nil
@@ -234,86 +245,8 @@ func (rcc *realCertControl) RenewCert() error {
 }
 */
 
-// LoadFromSecret loads cert and key from Secret matching the name
-func (rcc *realCertControl) LoadFromSecret(ns string, secretName string) ([]byte, []byte, error) {
-	secret, err := rcc.kubeCli.CoreV1().Secrets(ns).Get(secretName, types.GetOptions{})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return secret.Data["cert"], secret.Data["key"], nil
-}
-
-func (rcc *realCertControl) SaveToSecret(ns string, instance string, component string, suffix string, cert []byte, key []byte) error {
-	secretName := fmt.Sprintf("%s-%s", instance, suffix)
-
-	secret := &corev1.Secret{
-		ObjectMeta: types.ObjectMeta{
-			Name:   secretName,
-			Labels: make(map[string]string),
-		},
-		Data: map[string][]byte{
-			"cert": cert,
-			"key":  key,
-		},
-	}
-
-	labelTemp := label.New()
-	secret.Labels[label.NamespaceLabelKey] = ns
-	secret.Labels[label.ManagedByLabelKey] = labelTemp[label.ManagedByLabelKey]
-	secret.Labels[label.InstanceLabelKey] = instance
-	secret.Labels[label.ComponentLabelKey] = component
-
-	_, err := rcc.kubeCli.CoreV1().Secrets(ns).Create(secret)
-	glog.Infof("save cert to secret %s/%s, error: %v", ns, secretName, err)
-	return err
-}
-
-// CheckSecret returns true if the secret already exist
 func (rcc *realCertControl) CheckSecret(ns string, secretName string) bool {
-	certBytes, keyBytes, err := rcc.LoadFromSecret(ns, secretName)
-	if err != nil {
-		return false
-	}
-
-	// validate if the certificate is valid
-	block, _ := pem.Decode(certBytes)
-	if block == nil {
-		glog.Errorf("certificate validation failed for [%s/%s], can not decode cert to PEM", ns, secretName, err)
-		return false
-	}
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		glog.Errorf("certificate validation failed for [%s/%s], can not parse cert, %v", ns, secretName, err)
-		return false
-	}
-	rootCAs, err := certutil.ReadCACerts()
-	if err != nil {
-		glog.Errorf("certificate validation failed for [%s/%s], error loading CAs, %v", ns, secretName, err)
-		return false
-	}
-
-	verifyOpts := x509.VerifyOptions{
-		Roots: rootCAs,
-		KeyUsages: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageClientAuth,
-			x509.ExtKeyUsageServerAuth,
-		},
-	}
-	_, err = cert.Verify(verifyOpts)
-	if err != nil {
-		glog.Errorf("certificate validation failed for [%s/%s], %v", ns, secretName, err)
-		return false
-	}
-
-	// validate if the certificate and private key matches
-	_, err = tls.X509KeyPair(certBytes, keyBytes)
-	if err != nil {
-		glog.Errorf("certificate validation failed for [%s/%s], error loading key pair, %v", ns, secretName, err)
-		return false
-	}
-
-	return true
+	return rcc.secControl.Check(ns, secretName)
 }
 
 var _ CertControlInterface = &realCertControl{}

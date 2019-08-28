@@ -136,7 +136,10 @@ func main() {
 	}
 
 	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
-	certController := controller.NewRealCertControl(kubeCli)
+	secControl := controller.NewRealSecretControl(kubeCli, kubeInformerFactory.Core().V1().Secrets().Lister())
+	certController := controller.NewRealCertControl(kubeCli,
+		kubeInformerFactory.Certificates().V1beta1().CertificateSigningRequests().Lister(),
+		secControl)
 	backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
@@ -181,10 +184,18 @@ func generateClientCert(ns string, commonName string, certController controller.
 		return nil
 	}
 
-	var ipList []string // empty
 	hostList := []string{
 		commonName,
 	}
 
-	return certController.Create(ns, commonName, commonName, hostList, ipList, "tidb-operator", "pd-client")
+	certOpts := &controller.TiDBClusterCertOptions{
+		Namespace:  ns,
+		Instance:   commonName,
+		CommonName: commonName,
+		HostList:   hostList,
+		Component:  "tidb-operator",
+		Suffix:     "pd-client",
+	}
+
+	return certController.Create(certOpts)
 }

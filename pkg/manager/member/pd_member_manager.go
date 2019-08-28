@@ -176,13 +176,6 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if tc.Spec.EnableTLSCluster {
-		err := pmm.syncPDServerCerts(tc)
-		if err != nil {
-			return err
-		}
-	}
-
 	newPDSet, err := pmm.getNewPDSetForTidbCluster(tc)
 	if err != nil {
 		return err
@@ -196,6 +189,16 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		err = SetLastAppliedConfigAnnotation(newPDSet)
 		if err != nil {
 			return err
+		}
+		if tc.Spec.EnableTLSCluster {
+			err := pmm.syncPDServerCerts(tc)
+			if err != nil {
+				return err
+			}
+			err = pmm.syncPDClientCerts(tc)
+			if err != nil {
+				return err
+			}
 		}
 		if err := pmm.setControl.CreateStatefulSet(tc, newPDSet); err != nil {
 			return err
@@ -250,6 +253,27 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	return pmm.updateStatefulSet(tc, newPDSet, oldPDSet)
 }
 
+func (pmm *pdMemberManager) syncPDClientCerts(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	commonName := fmt.Sprintf("%s-pd-client", tcName)
+
+	hostList := []string{
+		commonName,
+	}
+
+	certOpts := &controller.TiDBClusterCertOptions{
+		Namespace:  ns,
+		Instance:   tcName,
+		CommonName: commonName,
+		HostList:   hostList,
+		Component:  "pd",
+		Suffix:     "pd-client",
+	}
+
+	return pmm.certControl.Create(certOpts)
+}
+
 func (pmm *pdMemberManager) syncPDServerCerts(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
@@ -260,7 +284,6 @@ func (pmm *pdMemberManager) syncPDServerCerts(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	var ipList []string // empty
 	hostList := []string{
 		svcName,
 		peerName,
@@ -269,7 +292,16 @@ func (pmm *pdMemberManager) syncPDServerCerts(tc *v1alpha1.TidbCluster) error {
 		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
 	}
 
-	return pmm.certControl.Create(ns, tcName, svcName, hostList, ipList, "pd", "pd")
+	certOpts := &controller.TiDBClusterCertOptions{
+		Namespace:  ns,
+		Instance:   tcName,
+		CommonName: svcName,
+		HostList:   hostList,
+		Component:  "pd",
+		Suffix:     "pd",
+	}
+
+	return pmm.certControl.Create(certOpts)
 }
 
 func (pmm *pdMemberManager) updateStatefulSet(tc *v1alpha1.TidbCluster, newPDSet, oldPDSet *apps.StatefulSet) error {
