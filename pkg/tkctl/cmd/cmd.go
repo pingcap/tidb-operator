@@ -27,8 +27,14 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/use"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/version"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
+
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	// TODO: import azure auth plugin after updating to k8s 1.13+
+	_ "k8s.io/client-go/plugin/pkg/client/auth/exec"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/openstack"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 )
 
