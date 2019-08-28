@@ -9,6 +9,7 @@ Before run this script,please ensure that:
 * have installed docker
 
 Options:
+       -h,--help               prints the usage message
        -n,--name               name of the Kubernetes cluster,default value: kind
        -c,--nodeNum            the count of the cluster nodes,default value: 6
        -k,--k8sVersion         version of the Kubernetes cluster,default value: v1.12.8
@@ -16,7 +17,6 @@ Options:
 Usage:
     $0 --name testCluster --nodeNum 4 --k8sVersion v1.12.9
 EOF
-    exit 1
 }
 
 while [[ $# -gt 0 ]]
@@ -43,6 +43,10 @@ case $key in
     volumeNum="$2"
     shift
     shift
+    ;;
+    -h|--help)
+    usage
+    exit 0
     ;;
     *)
     echo "unknown option: $key"
