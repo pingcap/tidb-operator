@@ -15,6 +15,7 @@ package use
 
 import (
 	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/spf13/cobra"
@@ -32,10 +33,10 @@ const (
 `
 	useExample = `
 		# specify a tidb cluster to use
-		tkc use demo-cluster
+		tkctl use demo-cluster
 
 		# specify kubernetes context and namespace
-		tkc use --context=demo-ctx --namespace=demo-ns demo-cluster
+		tkctl use --context=demo-ctx --namespace=demo-ns demo-cluster
 `
 	useUsage = "expected 'use CLUSTER_NAME' for the use command"
 )
