@@ -100,8 +100,8 @@ scrape_configs:
       action: replace
       target_label: kubernetes_pod_ip
     - source_labels: [__meta_kubernetes_pod_name]
-      action: drop
-      regex: .*\-(tidb|pd)\-\d*$
+      action: keep
+      regex: .*\-tikv\-\d*$
     - source_labels: [__meta_kubernetes_pod_name]
       action: replace
       target_label: instance
