@@ -15,7 +15,6 @@ package cmd
 
 import (
 	"flag"
-	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/version"
 	"io"
 
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/completion"
@@ -26,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/list"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/upinfo"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/use"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/version"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
