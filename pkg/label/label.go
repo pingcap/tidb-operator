@@ -35,7 +35,6 @@ const (
 	// InstanceLabelKey is Kubernetes recommended label key, it represents a unique name identifying the instance of an application
 	// It's set by helm when installing a release
 	InstanceLabelKey string = "app.kubernetes.io/instance"
-
 	// NamespaceLabelKey is label key used in PV for easy querying
 	NamespaceLabelKey string = "app.kubernetes.io/namespace"
 
@@ -48,16 +47,16 @@ const (
 
 	// BackupScheduleLabelKey is backup schedule key
 	BackupScheduleLabelKey string = "tidb.pingcap.com/backup-schedule"
-
 	// BackupLabelKey is backup key
 	BackupLabelKey string = "tidb.pingcap.com/backup"
-
 	// RestoreLabelKey is restore key
 	RestoreLabelKey string = "tidb.pingcap.com/restore"
 
 	// BackupProtectionFinalizer is the name of finalizer on backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
 
+	//AnnBackupPVC is backup annotation representing the PVC used by this backup
+	AnnBackupPVC string = "tidb.pingcap.com/backup-pvc"
 	// AnnFailTiDBScheduler is for injecting a failure into the TiDB custom scheduler
 	// A pod with this annotation will produce an error when scheduled.
 	AnnFailTiDBScheduler string = "tidb.pingcap.com/fail-scheduler"
