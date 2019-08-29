@@ -16,12 +16,12 @@ package get
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/alias"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/tkctl/alias"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	"github.com/spf13/cobra"
@@ -40,26 +40,20 @@ import (
 const (
 	getLongDesc = `
 		Get tidb component detail.
-
 		Available components include: all, pd, tidb, tikv, volume
 		You can omit --tidbcluster=<name> option by running 'tkctl use <name>',
 `
 	getExample = `
 		# get PD details 
 		tkctl get pd
-
 		# get multiple kinds of resources
 		tkctl get tikv,tidb,volume
-
 		# get volume details and choose different format
 		tkctl get volume -o yaml
-
 		# get details of a specific pd/tikv/tidb/volume
 		tkctl get volume <volume-name> -oyaml
-
 		# output all columns, including omitted columns
 		tkctl get pd,volume -owide
-
 		# get all components
 		tkctl get all
 `
@@ -215,30 +209,9 @@ func (o *GetOptions) Run(tkcContext *config.TkcContext, cmd *cobra.Command, args
 
 	multiTidbCluster := len(tcs) > 1
 	var errs []error
-	for i := range tcs {
-		tc := tcs[i]
-		if printTidbInfo {
-			w.Write([]byte(fmt.Sprintf("Cluster: %s/%s\n", tc.Namespace, tc.Name)))
-			w.Flush()
-		}
-		flushPods := func(kind string) {
-			podList, err := o.kubeCli.CoreV1().Pods(tc.Namespace).List(metav1.ListOptions{
-				LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.InstanceLabelKey, tc.Name, label.ComponentLabelKey, kind),
-			})
-			if err != nil {
-				errs = append(errs, err)
-			}
-			switch kind {
-			case kindTiKV:
-				tikvList := &alias.TikvList{}
-				tikvList.FromPodList(podList)
-				printer.PrintObj(tikvList, w)
-				break
-			default:
-				printer.PrintObj(podList, w)
-				break
-			}
-			w.Flush()
+	for i, tc := range tcs {
+		if multiTidbCluster {
+			o.Out.Write([]byte(fmt.Sprintf("Cluster: %s/%s\n", tc.Namespace, tc.Name)))
 		}
 
 		// TODO: do a big batch or steadily print parts in minor step?
@@ -301,7 +274,14 @@ func (o *GetOptions) PrintOutput(tc *v1alpha1.TidbCluster, resourceType string, 
 		if err != nil {
 			return err
 		}
-
+		switch resourceType {
+		case kindTiKV:
+			tikvList := &alias.TikvList{}
+			tikvList.FromPodList(podList)
+			return printer.PrintObj(tikvList, o.Out)
+		default:
+			break
+		}
 		return printer.PrintObj(podList, o.Out)
 	case kindVolume:
 		var objs []runtime.Object

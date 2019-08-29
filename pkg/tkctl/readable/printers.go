@@ -165,8 +165,11 @@ func printPod(pod *v1.Pod, options printers.PrintOptions) ([]metav1beta1.TableRo
 		columns.MemInfo,
 		columns.CPUInfo,
 		columns.Restarts,
-		columns.Age,
-		columns.HostIP)
+		columns.Age)
+
+	if options.Wide {
+		row.Cells = append(row.Cells, columns.PodIP, columns.NodeName)
+	}
 	componentKind := pod.Labels[componentLabel]
 	switch componentKind {
 	case kindTiKV:
