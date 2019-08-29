@@ -19,8 +19,8 @@ fi
 gc_life_time=`/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "select variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"`
 echo "Old TiKV GC life time is ${gc_life_time}"
 
-echo "Increase TiKV GC life time to {{ .Values.scheduledBackup.tikvGCLifeTime | default 720h }}"
-/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "update mysql.tidb set variable_value='{{ .Values.scheduledBackup.tikvGCLifeTime | default 720h }}' where variable_name='tikv_gc_life_time';"
+echo "Increase TiKV GC life time to {{ .Values.scheduledBackup.tikvGCLifeTime | default "720h" }}"
+/usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "update mysql.tidb set variable_value='{{ .Values.scheduledBackup.tikvGCLifeTime | default "720h" }}' where variable_name='tikv_gc_life_time';"
 /usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "select variable_name,variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"
 
 /mydumper \
