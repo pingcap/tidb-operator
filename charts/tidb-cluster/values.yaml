@@ -524,6 +524,9 @@ scheduledBackup:
   # Other useful options are -B for database, and -T for tables.
   # See https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options for more options.
   options: "-t 16 -F 256 --skip-tz-utc --verbose=3"
+  # The time limit during which data is retained for each GC when backup, in the format of Go Duration.
+  # When a GC happens, the current time minus this value is the safe point.
+  tikvGCLifeTime: 720h
   # secretName is the name of the secret which stores user and password used for backup
   # Note: you must give the user enough privilege to do the backup
   # you can create the secret by:
