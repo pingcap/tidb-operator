@@ -18,6 +18,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/alias"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	"github.com/spf13/cobra"
@@ -210,7 +211,15 @@ func (o *GetOptions) Run(tkcContext *config.TkcContext, cmd *cobra.Command, args
 			if err != nil {
 				errs = append(errs, err)
 			}
-			printer.PrintObj(podList, w)
+			switch kind {
+			case kindTiKV:
+				tikvList := &alias.TikvList{}
+				tikvList.FromPodList(podList)
+				printer.PrintObj(tikvList, w)
+				break
+			default:
+				printer.PrintObj(podList, w)
+			}
 			w.Flush()
 		}
 		// TODO: do a big batch or steadily print parts in minor step?
