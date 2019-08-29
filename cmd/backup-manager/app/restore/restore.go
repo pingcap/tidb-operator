@@ -22,6 +22,7 @@ import (
 	"github.com/mholt/archiver"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 )
 
 // RestoreOpts contains the input arguments to the restore command
@@ -40,19 +41,37 @@ func (ro *RestoreOpts) String() string {
 	return fmt.Sprintf("%s/%s", ro.Namespace, ro.TcName)
 }
 
-func (ro *RestoreOpts) getRestoreDataPath() string {
+func (ro *RestoreOpts) getRestoreDataPath() (string, error) {
+	pathSlice := strings.Split(ro.BackupPath, "://")
+	if len(pathSlice) != 2 {
+		return "", fmt.Errorf("cluster %s, backup path %s is invalid", ro, ro.BackupPath)
+	}
+
+	if pathSlice[0] == string(v1alpha1.BackupStorageTypeLocal) {
+		return strings.TrimPrefix(ro.BackupPath, "local:/"), nil
+	}
+
 	backupName := filepath.Base(ro.BackupPath)
 	NsClusterName := fmt.Sprintf("%s_%s", ro.Namespace, ro.TcName)
-	return filepath.Join(constants.BackupRootPath, NsClusterName, backupName)
+	return filepath.Join(constants.BackupRootPath, NsClusterName, backupName), nil
 }
 
 func (ro *RestoreOpts) downloadBackupData(localPath string) error {
+	pathSlice := strings.Split(ro.BackupPath, "://")
+	if len(pathSlice) != 2 {
+		return fmt.Errorf("cluster %s, backup path %s is invalid", ro, ro.BackupPath)
+	}
+
+	if pathSlice[0] == string(v1alpha1.BackupStorageTypeLocal) {
+		return nil
+	}
+
 	if err := util.EnsureDirectoryExist(filepath.Dir(localPath)); err != nil {
 		return err
 	}
 
-	remoteBucket := util.NormalizeBucketURI(ro.BackupPath)
-	rcCopy := exec.Command("rclone", constants.RcloneConfigArg, "copyto", remoteBucket, localPath)
+	bucketURI := util.NormalizeBucketURI(ro.BackupPath)
+	rcCopy := exec.Command("rclone", constants.RcloneConfigArg, "copyto", bucketURI, localPath)
 	if err := rcCopy.Start(); err != nil {
 		return fmt.Errorf("cluster %s, start rclone copyto command for download backup data %s falied, err: %v", ro, ro.BackupPath, err)
 	}
@@ -87,15 +106,13 @@ func (ro *RestoreOpts) loadTidbClusterData(restorePath string) error {
 
 // unarchiveBackupData unarchive backup data to dest dir
 func unarchiveBackupData(backupFile, destDir string) (string, error) {
-	var unarchiveBackupPath string
 	if err := util.EnsureDirectoryExist(destDir); err != nil {
-		return unarchiveBackupPath, err
+		return "", err
 	}
 	backupName := strings.TrimSuffix(filepath.Base(backupFile), constants.DefaultArchiveExtention)
 	err := archiver.Unarchive(backupFile, destDir)
 	if err != nil {
-		return unarchiveBackupPath, fmt.Errorf("unarchive backup data %s to %s failed, err: %v", backupFile, destDir, err)
+		return "", fmt.Errorf("unarchive backup data %s to %s failed, err: %v", backupFile, destDir, err)
 	}
-	unarchiveBackupPath = filepath.Join(destDir, backupName)
-	return unarchiveBackupPath, nil
+	return filepath.Join(destDir, backupName), nil
 }

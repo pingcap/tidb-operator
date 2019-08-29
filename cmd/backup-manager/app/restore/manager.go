@@ -75,7 +75,14 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 		return err
 	}
 
-	restoreDataPath := rm.getRestoreDataPath()
+	restoreDataPath, err := rm.getRestoreDataPath()
+	return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		Type:    v1alpha1.RestoreFailed,
+		Status:  corev1.ConditionTrue,
+		Reason:  "InvalidBackupPath",
+		Message: err.Error(),
+	})
+
 	if err := rm.downloadBackupData(restoreDataPath); err != nil {
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,

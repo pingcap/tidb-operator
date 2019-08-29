@@ -16,7 +16,6 @@ package backup
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -153,8 +152,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 	glog.Infof("get cluster %s commitTs %s success", bm, commitTs)
 
-	remotePath := strings.TrimPrefix(archiveBackupPath, constants.BackupRootPath+"/")
-	bucketURI := bm.getDestBucketURI(remotePath)
+	bucketURI := bm.getDestBucketURI(archiveBackupPath)
 	err = bm.backupDataToRemote(archiveBackupPath, bucketURI)
 	if err != nil {
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{

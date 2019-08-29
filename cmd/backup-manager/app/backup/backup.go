@@ -23,6 +23,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+
 	"github.com/golang/glog"
 	"github.com/mholt/archiver"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
@@ -53,8 +55,13 @@ func (bo *BackupOpts) getBackupRelativePath() string {
 	return fmt.Sprintf("%s_%s/%s", bo.Namespace, bo.TcName, backupName)
 }
 
-func (bo *BackupOpts) getDestBucketURI(remotePath string) string {
-	return fmt.Sprintf("%s://%s", bo.StorageType, remotePath)
+func (bo *BackupOpts) getDestBucketURI(destPath string) string {
+	if bo.BackupName != string(v1alpha1.BackupStorageTypeLocal) {
+		destPath = strings.TrimPrefix(destPath, constants.BackupRootPath+"/")
+	} else {
+		destPath = strings.TrimPrefix(destPath, "/")
+	}
+	return fmt.Sprintf("%s://%s", bo.StorageType, destPath)
 }
 
 func (bo *BackupOpts) getTikvGCLifeTime(db *sql.DB) (string, error) {
@@ -106,6 +113,11 @@ func (bo *BackupOpts) dumpTidbClusterData() (string, error) {
 }
 
 func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
+	if bo.StorageType == string(v1alpha1.BackupStorageTypeLocal) {
+		// if the backup storage type is local, do nothing
+		return nil
+	}
+
 	destBucket := util.NormalizeBucketURI(bucketURI)
 	tmpDestBucket := fmt.Sprintf("%s.tmp", destBucket)
 	// TODO: We may need to use exec.CommandContext to control timeouts.
@@ -113,6 +125,7 @@ func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
 	if err := rcCopy.Start(); err != nil {
 		return fmt.Errorf("cluster %s, start rclone copyto command for upload backup data %s failed, err: %v", bo, bucketURI, err)
 	}
+
 	if err := rcCopy.Wait(); err != nil {
 		return fmt.Errorf("cluster %s, execute rclone copyto command for upload backup data %s failed, err: %v", bo, bucketURI, err)
 	}
