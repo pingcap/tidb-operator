@@ -31,5 +31,6 @@ done
 -config=/etc/drainer/drainer.toml \
 -disable-detect={{ .Values.binlog.drainer.disableDetect | default false }} \
 -initial-commit-ts={{ .Values.binlog.drainer.initialCommitTs | default 0 }} \
+-cache-binlog-count={{ .Values.binlog.drainer.cacheBinlogCount | default 16 }} \
 -data-dir=/data \
 -log-file=

@@ -481,6 +481,9 @@ binlog:
       # kafkaAddrs: "127.0.0.1:9092"
       # kafkaVersion: "0.8.2.0"
 
+    # max binlog records that being cached
+    cacheBinlogCount: 16
+
     # Please refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml for the default
     # drainer configurations (change to the tags of your drainer version),
     # just follow the format in the file and configure in the 'config' section
