@@ -519,8 +519,11 @@ scheduledBackup:
   failedJobsHistoryLimit: 1
   # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#starting-deadline
   startingDeadlineSeconds: 3600
-  # https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
-  options: "--verbose=3"
+  # -t is thread count, larger thread count will speed up the backup, but may impact the performance of the upstream TiDB.
+  # -F is the chunk size, a big table is partitioned into many chunks.
+  # Other useful options are -B for database, and -T for tables.
+  # See https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options for more options.
+  options: "-t 16 -F 256 --skip-tz-utc --verbose=3"
   # secretName is the name of the secret which stores user and password used for backup
   # Note: you must give the user enough privilege to do the backup
   # you can create the secret by:
