@@ -15,6 +15,7 @@ package readable
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
@@ -31,11 +32,7 @@ import (
 )
 
 const (
-	unset          = "<none>"
-	kindPD         = "pd"
-	kindTiKV       = "tikv"
-	kindTiDB       = "tidb"
-	componentLabel = "app.kubernetes.io/component"
+	unset = "<none>"
 )
 
 // PodBasicColumns holds common columns for all kinds of pod
@@ -170,9 +167,9 @@ func printPod(pod *v1.Pod, options printers.PrintOptions) ([]metav1beta1.TableRo
 	if options.Wide {
 		row.Cells = append(row.Cells, columns.PodIP, columns.NodeName)
 	}
-	componentKind := pod.Labels[componentLabel]
+	componentKind := pod.Labels[label.ComponentLabelKey]
 	switch componentKind {
-	case kindTiKV:
+	case label.TiKVLabelVal:
 		extraInfoColumn := extraTikvDataColumn(pod)
 		row.Cells = append(row.Cells, extraInfoColumn.StoreId)
 		break
@@ -389,7 +386,7 @@ func translateTimestampSince(timestamp metav1.Time) string {
 
 // extra Component Tikv Data
 func extraTikvDataColumn(pod *v1.Pod) *TikvExtraInfoColumn {
-	storeId := pod.Labels["tidb.pingcap.com/store-id"]
+	storeId := pod.Labels[label.StoreIDLabelKey]
 	return &TikvExtraInfoColumn{
 		StoreId: storeId,
 	}
