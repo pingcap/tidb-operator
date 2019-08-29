@@ -465,8 +465,8 @@ binlog:
     # the number of SQL statements of a transaction that are output to the downstream database (20 by default)
     txnBatch: 20
     # downstream storage, equal to --dest-db-type
-    # valid values are "mysql", "pb", "kafka"
-    destDBType: pb
+    # valid values are "mysql", "file", "tidb", "kafka"
+    destDBType: file
     mysql: {}
       # host: "127.0.0.1"
       # user: "root"
