@@ -40,6 +40,7 @@ type restoreManager struct {
 	jobControl    controller.JobControlInterface
 	pvcLister     corelisters.PersistentVolumeClaimLister
 	pvcControl    controller.GeneralPVCControlInterface
+	podLister     corelisters.PodLister
 }
 
 // NewRestoreManager return restoreManager
@@ -51,6 +52,7 @@ func NewRestoreManager(
 	jobControl controller.JobControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pvcControl controller.GeneralPVCControlInterface,
+	podLister corelisters.PodLister,
 ) backup.RestoreManager {
 	return &restoreManager{
 		backupLister,
@@ -60,6 +62,7 @@ func NewRestoreManager(
 		jobControl,
 		pvcLister,
 		pvcControl,
+		podLister,
 	}
 }
 
@@ -134,17 +137,16 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 }
 
 func (rm *restoreManager) getBackupFromRestore(restore *v1alpha1.Restore) (*v1alpha1.Backup, string, error) {
-	backupNs := restore.Spec.BackupNamespace
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
-	backup, err := rm.backupLister.Backups(backupNs).Get(restore.Spec.Backup)
+	backup, err := rm.backupLister.Backups(ns).Get(restore.Spec.Backup)
 	if err != nil {
-		errMsg := fmt.Errorf("restore %s/%s get backup %s/%s failed, err: %v", ns, name, backupNs, restore.Spec.Backup, err)
+		errMsg := fmt.Errorf("restore %s/%s get backup %s failed, err: %v", ns, name, restore.Spec.Backup, err)
 		return nil, "BackupNotFound", errMsg
 	}
 	if backup.Status.BackupPath == "" {
-		errMsg := fmt.Errorf("restore %s/%s backup %s/%s backupPath is empty", ns, name, backupNs, restore.Spec.Backup)
+		errMsg := fmt.Errorf("restore %s/%s backup %s backupPath is empty", ns, name, restore.Spec.Backup)
 		return nil, "BackupPathIsEmpty", errMsg
 	}
 
@@ -165,6 +167,12 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore, backup *v1al
 		return nil, reason, err
 	}
 
+	pvcName, reason, err := rm.getQualifiedRestorePVC(restore, backup)
+	if err != nil {
+		return nil, reason, err
+	}
+
+	tidbSvc := fmt.Sprintf("%s.%s", controller.TiDBMemberName(restore.Spec.Cluster), restore.Spec.RestoreNamespace)
 	args := []string{
 		"restore",
 		fmt.Sprintf("--namespace=%s", ns),
@@ -172,7 +180,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore, backup *v1al
 		fmt.Sprintf("--tidbcluster=%s", restore.Spec.Cluster),
 		fmt.Sprintf("--backupPath=%s", backup.Status.BackupPath),
 		fmt.Sprintf("--backupName=%s", backup.GetName()),
-		fmt.Sprintf("--tidbservice=%s", controller.TiDBMemberName(restore.Spec.Cluster)),
+		fmt.Sprintf("--tidbservice=%s", tidbSvc),
 		fmt.Sprintf("--password=%s", password),
 		fmt.Sprintf("--user=%s", user),
 	}
@@ -204,7 +212,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore, backup *v1al
 					Name: label.RestoreJobLabelVal,
 					VolumeSource: corev1.VolumeSource{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: restore.GetRestorePVCName(),
+							ClaimName: pvcName,
 						},
 					},
 				},
@@ -220,6 +228,9 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore, backup *v1al
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetRestoreOwnerRef(restore),
 			},
+			Annotations: map[string]string{
+				label.AnnBackupPVC: pvcName,
+			},
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit: controller.Int32Ptr(0),
@@ -227,6 +238,27 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore, backup *v1al
 		},
 	}
 	return job, "", nil
+}
+
+func (rm *restoreManager) getQualifiedRestorePVC(restore *v1alpha1.Restore, backup *v1alpha1.Backup) (string, string, error) {
+	ns := backup.GetNamespace()
+	pvcName := restore.GetRestorePVCName()
+
+	if backup.Spec.StorageType == v1alpha1.BackupStorageTypeLocal {
+		// If we need restore from local filesystem, restore job does need to share a PVC with backup
+		pvcName = backup.GetBackupPVCName()
+	}
+
+	job, reason, err := backuputil.GetOccupyJobOfPVC(rm.jobLister, rm.podLister, ns, pvcName)
+	if err != nil {
+		return pvcName, reason, err
+	}
+
+	if err := backuputil.DeleteOccupyJob(job, rm.jobControl); err != nil {
+		return pvcName, "DeleteOcupyJobFailed", err
+	}
+
+	return pvcName, "", nil
 }
 
 func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (string, error) {

@@ -17,9 +17,17 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
@@ -36,8 +44,8 @@ func CheckAllKeysExistInSecret(secret *corev1.Secret, keys ...string) (string, b
 	return strings.Join(notExistKeys, ","), len(notExistKeys) == 0
 }
 
-// GenerateCephCertEnvVar generate the env info in order to access ceph
-func GenerateCephCertEnvVar(secret *corev1.Secret, endpoint string) ([]corev1.EnvVar, error) {
+// generateCephCertEnvVar generate the env info for ceph
+func generateCephCertEnvVar(secret *corev1.Secret, endpoint string) ([]corev1.EnvVar, error) {
 	var envVars []corev1.EnvVar
 
 	if !strings.Contains(endpoint, "://") {
@@ -88,10 +96,13 @@ func GenerateStorageCertEnv(backup *v1alpha1.Backup, secretLister corelisters.Se
 			return certEnv, "KeyNotExist", err
 		}
 
-		certEnv, err = GenerateCephCertEnvVar(secret, backup.Spec.Ceph.Endpoint)
+		certEnv, err = generateCephCertEnvVar(secret, backup.Spec.Ceph.Endpoint)
 		if err != nil {
 			return certEnv, "InvalidCephEndpoint", err
 		}
+	case v1alpha1.BackupStorageTypeLocal:
+		// if the backup storage type is local, do nothing
+		break
 	default:
 		err := fmt.Errorf("backup %s/%s don't support storage type %s", ns, name, backup.Spec.StorageType)
 		return certEnv, "NotSupportStorageType", err
@@ -122,4 +133,108 @@ func GetTidbUserAndPassword(backup *v1alpha1.Backup, secretLister corelisters.Se
 	user = string(secret.Data[constants.TidbUserKey])
 	password = string(secret.Data[constants.TidbPasswordKey])
 	return
+}
+
+func DeleteOccupyJob(job *batchv1.Job, jobControl controller.JobControlInterface) error {
+	if job == nil {
+		// PVC is not occupied by backup or restore jobs, do nothing
+		return nil
+	}
+
+	ns := job.GetNamespace()
+	jobName := job.GetName()
+
+	controllerRef := metav1.GetControllerOf(job)
+	if controllerRef == nil {
+		return fmt.Errorf("can't find job %s/%s owner reference", ns, jobName)
+	}
+
+	pvcName := job.Annotations[label.AnnBackupPVC]
+	if job.Status.Failed == 0 && job.Status.Succeeded == 0 {
+		// job is still running, return a requeue error
+		return controller.RequeueErrorf("the job %s/%s that occupies PVC %s is still running", ns, jobName, pvcName)
+	}
+
+	job.SetGroupVersionKind(v1alpha1.SchemeGroupVersion.WithKind(controllerRef.Kind))
+	return jobControl.DeleteJob(job, job)
+}
+
+// GetOccupyJobOfPVC return the job that used the specific PVC
+func GetOccupyJobOfPVC(jobList batchlisters.JobLister, podLister corelisters.PodLister, ns, pvc string) (*batchv1.Job, string, error) {
+	pods, err := podLister.Pods(ns).List(labels.Everything())
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, "", nil
+		}
+		return nil, "ListPodsFailed", err
+	}
+
+	for _, pod := range pods {
+		if pod.Spec.NodeName == "" {
+			// This pod is not scheduled. Therefore this pod does not block the PVC used by other pod.
+			continue
+		}
+		for _, volume := range pod.Spec.Volumes {
+			if volume.PersistentVolumeClaim == nil {
+				continue
+			}
+			if volume.PersistentVolumeClaim.ClaimName != pvc {
+				continue
+			}
+			job := resolveJobFromPod(jobList, pod)
+			if job == nil {
+				err := fmt.Errorf("PVC %s/%s is occupied by an unexpected pod %s", ns, pvc, pod.GetName())
+				return nil, "UnknownPVCOccupation", err
+			}
+			// A PVC can only be occupied by a pod, so once we find the occupied job, return quickly.
+			return job, "", nil
+		}
+
+	}
+
+	return nil, "", nil
+}
+
+// resolveJobFromPod returns the Job by a Pod,
+// or nil if the Pod could not be resolved to a matching Job
+// of the correct Kind.
+func resolveJobFromPod(jobList batchlisters.JobLister, pod *corev1.Pod) *batchv1.Job {
+	ns := pod.GetNamespace()
+
+	controllerRef := metav1.GetControllerOf(pod)
+	if controllerRef == nil {
+		return nil
+	}
+
+	// We can't look up by UID, so look up by Name and then verify UID.
+	// Don't even try to look up by Name if it's the wrong Kind.
+	if controllerRef.Kind != "Job" {
+		return nil
+	}
+
+	jobName := controllerRef.Name
+	if !strings.HasPrefix(jobName, "backup") || !strings.HasPrefix(jobName, "restore") {
+		// This pod does not belong to backup or restore job
+		return nil
+	}
+
+	job, err := jobList.Jobs(ns).Get(jobName)
+	if err != nil {
+		return nil
+	}
+
+	if job.UID != controllerRef.UID {
+		// The controller we found with this Name is not the same one that the
+		// ControllerRef points to.
+		return nil
+	}
+	return job
+}
+
+type ByCreateTime []*v1alpha1.Backup
+
+func (b ByCreateTime) Len() int      { return len(b) }
+func (b ByCreateTime) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
+func (b ByCreateTime) Less(i, j int) bool {
+	return b[j].ObjectMeta.CreationTimestamp.Before(&b[i].ObjectMeta.CreationTimestamp)
 }

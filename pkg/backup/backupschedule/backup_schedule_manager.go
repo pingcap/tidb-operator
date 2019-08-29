@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -29,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
+	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 type backupScheduleManager struct {
@@ -36,6 +38,7 @@ type backupScheduleManager struct {
 	backupControl controller.BackupControlInterface
 	jobLister     batchlisters.JobLister
 	jobControl    controller.JobControlInterface
+	podLister     corelisters.PodLister
 }
 
 // NewBackupScheduleManager return a *backupScheduleManager
@@ -44,12 +47,14 @@ func NewBackupScheduleManager(
 	backupControl controller.BackupControlInterface,
 	jobLister batchlisters.JobLister,
 	jobControl controller.JobControlInterface,
+	podLister corelisters.PodLister,
 ) backup.BackupScheduleManager {
 	return &backupScheduleManager{
 		backupLister,
 		backupControl,
 		jobLister,
 		jobControl,
+		podLister,
 	}
 }
 
@@ -67,11 +72,6 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 		return err
 	}
 
-	// delete the last backup job for release the backup PVC
-	if err := bm.deleteLastBackupJob(bs); err != nil {
-		return nil
-	}
-
 	backup, err := bm.createBackup(bs, *scheduledTime)
 	if err != nil {
 		return err
@@ -80,31 +80,6 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 	bs.Status.LastBackup = backup.GetName()
 	bs.Status.LastBackupTime = &metav1.Time{Time: *scheduledTime}
 	return nil
-}
-
-func (bm *backupScheduleManager) deleteLastBackupJob(bs *v1alpha1.BackupSchedule) error {
-	ns := bs.GetNamespace()
-	bsName := bs.GetName()
-
-	backup, err := bm.backupLister.Backups(ns).Get(bs.Status.LastBackup)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, bs.Status.LastBackup, err)
-	}
-
-	jobName := backup.GetBackupJobName()
-	job, err := bm.jobLister.Jobs(ns).Get(jobName)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		return fmt.Errorf("backup schedule %s/%s, get backup %s job %s failed, err: %v", ns, bsName, backup.GetName(), jobName, err)
-	}
-
-	backup.SetGroupVersionKind(controller.BackupControllerKind)
-	return bm.jobControl.DeleteJob(backup, job)
 }
 
 func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedule) error {
@@ -215,7 +190,18 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupScheduleOwnerRef(bs),
 			},
+			Annotations: make(map[string]string),
 		},
+	}
+	backup.Annotations[label.AnnBackupPVC] = backup.GetBackupPVCName()
+
+	job, _, err := backuputil.GetOccupyJobOfPVC(bm.jobLister, bm.podLister, ns, backup.GetBackupPVCName())
+	if err != nil {
+		return nil, err
+	}
+
+	if err := backuputil.DeleteOccupyJob(job, bm.jobControl); err != nil {
+		return nil, err
 	}
 
 	return bm.backupControl.CreateBackup(backup)
@@ -234,10 +220,11 @@ func (bm *backupScheduleManager) backupGC(bs *v1alpha1.BackupSchedule) {
 	backupsList, err := bm.backupLister.Backups(ns).List(selector)
 	if err != nil {
 		glog.Errorf("get backup schedule %s/%s backup list failed, selector: %s, err: %v", ns, bsName, selector, err)
+		return
 	}
 
 	// sort backups by creation time before removing extra backups
-	sort.Sort(byCreateTime(backupsList))
+	sort.Sort(backuputil.ByCreateTime(backupsList))
 
 	for i, backup := range backupsList {
 		if i >= bs.Spec.MaxBackups {
@@ -248,14 +235,6 @@ func (bm *backupScheduleManager) backupGC(bs *v1alpha1.BackupSchedule) {
 			}
 		}
 	}
-}
-
-type byCreateTime []*v1alpha1.Backup
-
-func (b byCreateTime) Len() int      { return len(b) }
-func (b byCreateTime) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
-func (b byCreateTime) Less(i, j int) bool {
-	return b[j].ObjectMeta.CreationTimestamp.Before(&b[i].ObjectMeta.CreationTimestamp)
 }
 
 var _ backup.BackupScheduleManager = &backupScheduleManager{}

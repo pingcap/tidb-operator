@@ -204,6 +204,9 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupOwnerRef(backup),
 			},
+			Annotations: map[string]string{
+				label.AnnBackupPVC: backup.GetBackupPVCName(),
+			},
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit: controller.Int32Ptr(0),

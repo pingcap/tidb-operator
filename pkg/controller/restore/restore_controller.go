@@ -71,6 +71,7 @@ func NewController(
 	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
 	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
+	podInformer := kubeInformerFactory.Core().V1().Pods()
 	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 	statusUpdater := controller.NewRealRestoreConditionUpdater(cli, restoreInformer.Lister(), recorder)
 	jobControl := controller.NewRealJobControl(kubeCli, recorder)
@@ -88,6 +89,7 @@ func NewController(
 				jobControl,
 				pvcInformer.Lister(),
 				pvcControl,
+				podInformer.Lister(),
 			),
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(

@@ -70,6 +70,7 @@ func NewController(
 	bsInformer := informerFactory.Pingcap().V1alpha1().BackupSchedules()
 	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
 	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
+	podInformer := kubeInformerFactory.Core().V1().Pods()
 	backupControl := controller.NewRealBackupControl(cli, recorder)
 	statusUpdater := controller.NewRealBackupScheduleStatusUpdater(cli, bsInformer.Lister(), recorder)
 	jobControl := controller.NewRealJobControl(kubeCli, recorder)
@@ -84,6 +85,7 @@ func NewController(
 				backupControl,
 				jobInformer.Lister(),
 				jobControl,
+				podInformer.Lister(),
 			),
 			recorder,
 		),
