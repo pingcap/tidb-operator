@@ -31,4 +31,5 @@ done
 -config=/etc/drainer/drainer.toml \
 -disable-detect={{ .Values.disableDetect | default false }} \
 -initial-commit-ts={{ .Values.initialCommitTs | default 0 }} \
+-data-dir=/data \
 -log-file=""

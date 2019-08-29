@@ -4,6 +4,7 @@ set -euo pipefail
 -L={{ .Values.binlog.pump.logLevel | default "info" }} \
 -advertise-addr=`echo ${HOSTNAME}`.{{ template "cluster.name" . }}-pump:8250 \
 -config=/etc/pump/pump.toml \
+-data-dir=/data \
 -log-file=
 
 if [ $? == 0 ]; then
