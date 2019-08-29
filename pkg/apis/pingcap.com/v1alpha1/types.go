@@ -292,14 +292,21 @@ type BackupStorageType string
 const (
 	// BackupStorageTypeCeph represents the backend storage type is ceph.
 	BackupStorageTypeCeph BackupStorageType = "ceph"
+
+	// BackupStorageTypeLocal represents the backend storage type is local filesystem
+	BackupStorageTypeLocal BackupStorageType = "local"
 )
 
-// StorageProvider defines the configuration for storing a backup in backend storage.
+// StorageProvider defines the configuration for storing backups on backend storage.
 type StorageProvider struct {
+	// Ceph defines the ceph backup storage spec
 	Ceph *CephStorageProvider `json:"ceph"`
+
+	// Local defines the local filesystem backup storage spec
+	Local *LocalStorageProvider `json:"local"`
 }
 
-// cephStorageProvider represents an ceph compatible bucket for storing backups.
+// cephStorageProvider provides the spec how to store backups on ceph.
 type CephStorageProvider struct {
 	// Region in which the ceph bucket is located.
 	Region string `json:"region"`
@@ -311,6 +318,9 @@ type CephStorageProvider struct {
 	// ceph object store access key and secret key.
 	SecretName string `json:"secretName"`
 }
+
+// LocalStorageProvider provides the spec how to store backups on local filesystem
+type LocalStorageProvider struct{}
 
 // BackupType represents the backup type.
 type BackupType string
@@ -478,8 +488,8 @@ type RestoreSpec struct {
 	Cluster string `json:"cluster"`
 	// Backup represents the backup object to be restored.
 	Backup string `json:"backup"`
-	// Namespace is the namespace of the backup.
-	BackupNamespace string `json:"backupNamespace"`
+	//RestoreNamespace is the namespace of the restore tidb cluster.
+	RestoreNamespace string `json:"backupNamespace"`
 	// SecretName is the name of the secret which stores
 	// tidb cluster's username and password.
 	SecretName string `json:"secretName"`
