@@ -40,6 +40,7 @@ import (
 const (
 	getLongDesc = `
 		Get tidb component detail.
+
 		Available components include: all, pd, tidb, tikv, volume
 		You can omit --tidbcluster=<name> option by running 'tkctl use <name>',
 `
