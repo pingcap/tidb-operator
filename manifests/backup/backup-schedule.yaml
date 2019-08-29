@@ -6,13 +6,13 @@ metadata:
   namespace: test1
 spec:
   maxBackups: 5
-  storageClassName: rook-ceph-block
-  storageSize: 100Gi
   schedule: "1 */1 * * *"
   backupTemplate:
     ceph:
       endpoint: http://10.233.2.161
       secretName: ceph-secret
     storageType: ceph
+    storageClassName: rook-ceph-block
+    storageSize: 100Gi
     cluster: demo1
     tidbSecretName: backup-demo1-tidb-secret
