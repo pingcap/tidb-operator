@@ -87,8 +87,8 @@ func AddHandlers(h printers.PrintHandler) {
 		Description: "Tikv Store Id",
 	}
 	tikvPodColumns = append(tikvPodColumns, storeId)
-	h.TableHandler(tikvPodColumns, PrintTikvList)
-	h.TableHandler(tikvPodColumns, PrintTikv)
+	h.TableHandler(tikvPodColumns, printTikvList)
+	h.TableHandler(tikvPodColumns, printTikv)
 	// TODO: add available space for volume
 	volumeColumns := []metav1beta1.TableColumnDefinition{
 		{Name: "Volume", Type: "string", Format: "name", Description: "Volume name"},
@@ -179,11 +179,11 @@ func printPod(pod *v1.Pod, options printers.PrintOptions) ([]metav1beta1.TableRo
 	return []metav1beta1.TableRow{row}, nil
 }
 
-func PrintTikvList(tikvList *alias.TikvList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+func printTikvList(tikvList *alias.TikvList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
 	return printPodList(tikvList.ToPodList(), options)
 }
 
-func PrintTikv(tikv *alias.Tikv, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+func printTikv(tikv *alias.Tikv, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
 	return printPod(tikv.ToPod(), options)
 }
 
