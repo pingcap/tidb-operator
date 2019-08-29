@@ -219,6 +219,7 @@ func (o *GetOptions) Run(tkcContext *config.TkcContext, cmd *cobra.Command, args
 				break
 			default:
 				printer.PrintObj(podList, w)
+				break
 			}
 			w.Flush()
 		}
