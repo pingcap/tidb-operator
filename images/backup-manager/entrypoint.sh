@@ -33,6 +33,8 @@ storage_class = ${GCS_STORAGE_CLASS:-"MULTI_REGIONAL"}
 type = azureblob
 account = ${AZUREBLOB_ACCOUNT}
 key = ${AZUREBLOB_KEY}
+[local]
+type = local
 EOF
 
 if [[ -n "${GCS_SERVICE_ACCOUNT_JSON_KEY:-}" ]]; then
