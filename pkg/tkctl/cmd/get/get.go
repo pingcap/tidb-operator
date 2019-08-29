@@ -46,14 +46,19 @@ const (
 	getExample = `
 		# get PD details 
 		tkctl get pd
+
 		# get multiple kinds of resources
 		tkctl get tikv,tidb,volume
+
 		# get volume details and choose different format
 		tkctl get volume -o yaml
+
 		# get details of a specific pd/tikv/tidb/volume
 		tkctl get volume <volume-name> -oyaml
+
 		# output all columns, including omitted columns
 		tkctl get pd,volume -owide
+
 		# get all components
 		tkctl get all
 `
