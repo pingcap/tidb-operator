@@ -58,6 +58,7 @@ func main() {
 	cluster1 := newTidbClusterConfig(ns, "cluster1", "")
 	cluster2 := newTidbClusterConfig(ns, "cluster2", "admin")
 	cluster2.Resources["pd.replicas"] = "1"
+	cluster2.Resources["enableTLSCluster"] = "true"
 	cluster3 := newTidbClusterConfig(ns, "cluster3", "admin")
 	cluster4 := newTidbClusterConfig(ns, "cluster4", "admin")
 

@@ -77,7 +77,6 @@ func (rcc *realCertControl) Create(certOpts *TiDBClusterCertOptions) error {
 
 	// generate certificate if not exist
 	if rcc.secControl.Check(certOpts.Namespace, csrName) {
-		// TODO: validate the cert and key
 		glog.Infof("Secret %s already exist, reusing the key pair. TidbCluster: %s/%s", csrName, certOpts.Namespace, csrName)
 		return nil
 	}
@@ -227,6 +226,7 @@ func (rcc *realCertControl) approveCSR(csr *capi.CertificateSigningRequest) erro
 		Reason:  "AutoApproved",
 		Message: "Auto approved by TiDB Operator",
 	})
+
 	_, err := rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().UpdateApproval(csr)
 	if err != nil {
 		return fmt.Errorf("error updating approval for csr: %v", err)

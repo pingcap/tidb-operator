@@ -69,7 +69,7 @@ func NewFaultTriggerAction(cli versioned.Interface, kubeCli kubernetes.Interface
 	return &faultTriggerActions{
 		cli:       cli,
 		kubeCli:   kubeCli,
-		pdControl: pdapi.NewDefaultPDControl(),
+		pdControl: pdapi.NewDefaultPDControl(kubeCli),
 		cfg:       cfg,
 	}
 }
