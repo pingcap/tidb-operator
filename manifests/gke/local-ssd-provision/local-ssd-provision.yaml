@@ -66,6 +66,11 @@ spec:
                 set -euo pipefail
                 set -x
 
+                # discard,nobarrier are required to optimize local SSD
+                # performance in GCP, see
+                # https://cloud.google.com/compute/docs/disks/performance#optimize_local_ssd
+                mnt_opts="defaults,nodelalloc,noatime,discard,nobarrier"
+
                 # use /var because it is writeable on COS
                 if ! findmnt -n -a -l | grep /mnt/disks/ssd ; then
                   if test -f /var/ssd_mounts ; then
@@ -128,9 +133,9 @@ spec:
                         mnt_dir="/mnt/disks/$uuid"
                         mkdir -p "$mnt_dir"
                         if ! grep "$uuid" /etc/fstab ; then
-                          echo "UUID=$uuid $mnt_dir ext4 rw,relatime,discard,nobarrier,data=ordered" >> /etc/fstab
+                          echo "UUID=$uuid $mnt_dir ext4 $mnt_opts" >> /etc/fstab
                         fi
-                        mount -U "$uuid" -t ext4 --target "$mnt_dir" --options 'rw,relatime,discard,nobarrier,data=ordered'
+                        mount -U "$uuid" -t ext4 --target "$mnt_dir" --options "$mnt_opts"
                         chmod a+w "$mnt_dir"
                       fi
                     done
@@ -173,9 +178,9 @@ spec:
                 mkdir -p "$mnt_dir"
 
                 if ! grep "$uuid" /etc/fstab ; then
-                  echo "UUID=$uuid $mnt_dir ext4 rw,relatime,discard,nobarrier,data=ordered" >> /etc/fstab
+                  echo "UUID=$uuid $mnt_dir ext4 $mnt_opts" >> /etc/fstab
                 fi
-                mount -U "$uuid" -t ext4 --target "$mnt_dir" --options 'rw,relatime,discard,nobarrier,data=ordered'
+                mount -U "$uuid" -t ext4 --target "$mnt_dir" --options "$mnt_opts"
                 chmod a+w "$mnt_dir"
       containers:
         - image: "quay.io/external_storage/local-volume-provisioner:v2.3.2"
