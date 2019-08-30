@@ -79,6 +79,7 @@ do
 done
 
 echo "############# start create cluster:[${clusterName}] #############"
+mkdir -p ${HOME}/kind/${clusterName}
 
 data_dir=${HOME}/kind/${clusterName}/data
 
