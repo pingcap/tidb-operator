@@ -60,7 +60,7 @@ function tidb_operator::version::ldflag() {
   local key=${1}
   local val=${2}
 
-  echo "-X 'github.com/pingcap/tidb-operator/version.${key}=${val}'"
+  echo "-X 'github.com/pingcap/tidb-operator/pkg/version.${key}=${val}'"
 }
 
 # Prints the value that needs to be passed to the -ldflags parameter of go build
