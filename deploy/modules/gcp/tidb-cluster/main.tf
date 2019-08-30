@@ -41,6 +41,11 @@ resource "google_container_node_pool" "tikv_pool" {
   name       = "${var.cluster_name}-tikv-pool"
   node_count = var.tikv_node_count
 
+  # tikv_pool is the first resource of node pools to create in this module, wait for the cluster to be ready
+  depends_on = [
+    var.cluster_id
+  ]
+
   management {
     auto_repair  = false
     auto_upgrade = false
@@ -139,7 +144,7 @@ module "tidb-cluster" {
   override_values            = var.override_values
   kubeconfig_filename        = var.kubeconfig_path
   base_values                = file("${path.module}/values/default.yaml")
-  wait_on_resource           = [google_container_node_pool.tidb_pool]
+  wait_on_resource           = [google_container_node_pool.tidb_pool, var.tidb_operator_id]
 }
 
 resource "null_resource" "wait-lb-ip" {
