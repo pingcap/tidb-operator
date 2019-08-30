@@ -143,6 +143,18 @@ Execute the follow command to create a [kind](https://kind.sigs.k8s.io/) Kuberne
 $ ./hack/kind-cluster-build.sh
 ```
 
+If you have customization requirements,please refer the help info:
+
+```
+$ ./hack/kind-cluster-build.sh --help
+```
+
+Setting `KUBECONFIG` env parameter before use the kubernetes cluster
+
+```
+export KUBECONFIG=$(kind get kubeconfig-path --name=<clusterName>)
+```
+
 Then you can build and push Docker images to the public Docker registry (There have not docker registry in Kind Kubernetes environment currently)
 
 ```sh
