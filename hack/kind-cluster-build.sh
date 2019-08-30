@@ -5,7 +5,6 @@ usage() {
     cat <<EOF
 This script use kind to create Kubernetes cluster,about kind please refer: https://kind.sigs.k8s.io/
 Before run this script,please ensure that:
-* have installed git (version >= v2.15.1)
 * have installed docker
 
 Options:
