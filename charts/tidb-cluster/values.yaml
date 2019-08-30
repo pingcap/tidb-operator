@@ -359,7 +359,7 @@ monitor:
     imagePullPolicy: IfNotPresent
     service:
       type: NodePort
-    resources:
+    resources: {}
       # limits:
       #  cpu: 50m
       #  memory: 64Mi
