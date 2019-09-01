@@ -52,15 +52,15 @@ spec:
                 fieldPath: metadata.namespace
           - name: TZ
             value: {{ .Values.timezone | default "UTC" }}
-    {{- with .Values.scheduler.nodeSelector }}
+    {{- with .Values.controllerManager.nodeSelector }}
       nodeSelector:
 {{ toYaml . | indent 8 }}
     {{- end }}
-    {{- with .Values.scheduler.affinity }}
+    {{- with .Values.controllerManager.affinity }}
       affinity:
 {{ toYaml . | indent 8 }}
     {{- end }}
-    {{- with .Values.scheduler.tolerations }}
+    {{- with .Values.controllerManager.tolerations }}
       tolerations:
 {{ toYaml . | indent 8 }}
     {{- end }}
