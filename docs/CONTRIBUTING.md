@@ -155,7 +155,7 @@ Setting `KUBECONFIG` env parameter before use the kubernetes cluster
 export KUBECONFIG=$(kind get kubeconfig-path --name=<clusterName>)
 ```
 
-Then you can build and push Docker images to the public Docker registry (There have not docker registry in Kind Kubernetes environment currently)
+Currently, there is no local docker registry in the Kind cluster, so you have to build and push the Docker images to a public Docker registry:
 
 ```sh
 $ export DOCKER_REGISTRY=<pulic-docker-registry>
