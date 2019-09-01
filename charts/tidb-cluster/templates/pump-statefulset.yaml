@@ -55,6 +55,8 @@ spec:
           mountPath: /data
         - name: config
           mountPath: /etc/pump
+        resources:
+{{ toYaml .Values.binlog.pump.resources | indent 10 }}
       volumes:
       - name: config
         configMap:
