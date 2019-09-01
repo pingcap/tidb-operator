@@ -149,7 +149,7 @@ If you have customization requirements, please refer the help info:
 $ ./hack/kind-cluster-build.sh --help
 ```
 
-Setting `KUBECONFIG` env parameter before use the kubernetes cluster
+Setting `KUBECONFIG` environment variable before using the Kubernetes cluster:
 
 ```
 export KUBECONFIG=$(kind get kubeconfig-path --name=<clusterName>)
