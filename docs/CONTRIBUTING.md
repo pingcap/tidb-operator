@@ -137,7 +137,7 @@ To re-run e2e tests, delete the testing pod and apply it again.
 
 ##### Run e2e tests in kind 
 
-Execute the follow command to create a [kind](https://kind.sigs.k8s.io/) Kubernetes environment.  
+Use the following command to create a [kind](https://kind.sigs.k8s.io/) Kubernetes environment.  
 
 ```sh
 $ ./hack/kind-cluster-build.sh
