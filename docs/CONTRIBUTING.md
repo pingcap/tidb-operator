@@ -163,7 +163,7 @@ $ make docker-push
 $ make e2e-docker-push
 ```
 
-After Docker images are pushed to the public Docker registry, run e2e tests:
+After the Docker images are pushed to the public Docker registry, run e2e tests:
 
 ```sh
 $ sed -i "s#127.0.0.1:5000/pingcap/tidb-operator-e2e:latest#${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest#" tests/manifests/e2e/e2e.yaml
