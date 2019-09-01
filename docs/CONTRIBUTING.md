@@ -143,7 +143,7 @@ Execute the follow command to create a [kind](https://kind.sigs.k8s.io/) Kuberne
 $ ./hack/kind-cluster-build.sh
 ```
 
-If you have customization requirements,please refer the help info:
+If you have customization requirements, please refer the help info:
 
 ```
 $ ./hack/kind-cluster-build.sh --help
