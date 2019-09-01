@@ -100,8 +100,8 @@ EOF
 
 for ((i=0;i<${nodeNum};i++))
 do
-mkdir -p ${data_dir}/worker${i}
-cat <<EOF >>  ${configFile}
+    mkdir -p ${data_dir}/worker${i}
+    cat <<EOF >>  ${configFile}
 - role: worker
   extraMounts:
 EOF
