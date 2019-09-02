@@ -15,8 +15,8 @@ imagePullPolicy: IfNotPresent
 defaultStorageClassName: local-storage
 
 # tidbBackupManagerImage is tidb backup manager image
-tidbBackupManagerImage: pingcap/tidb-backup-manager:latest
-defaultBackupStorageClassName: local-storage
+# tidbBackupManagerImage: pingcap/tidb-backup-manager:latest
+# defaultBackupStorageClassName: local-storage
 
 controllerManager:
   # With rbac.create=false, the user is responsible for creating this account
