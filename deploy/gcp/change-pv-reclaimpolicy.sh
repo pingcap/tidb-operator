@@ -4,19 +4,27 @@
 # Run before terraform destroy
 
 set -euo pipefail
+
+usage="usage: $0 <kubeconfigfile> <namespace>"
+
+if (( $# != 2 )); then
+    printf "%s\n" "$usage" >&2
+    exit 1
+fi
+
 set -x
 
-KUBECONFIGFILE=$1
-NAMESPACE=$2
+kubeconfigfile=$1
+namespace=$2
 
-if [[ ! -f ${KUBECONFIGFILE} ]]; then
-    echo "The given kubeconfig file does not exist"
+if ! [[ -f $kubeconfigfile ]]; then
+    printf "The given kubeconfig file (%s) does not exist\n" "$kubeconfigfile" >&2
     exit 1
 fi
 
-if ! kubectl --kubeconfig ${KUBECONFIGFILE} get ns ${NAMESPACE}; then
-    echo "The given namespace was not found in the kubernetes cluster for the given kubeconfig file"
+if ! kubectl --kubeconfig "$kubeconfigfile" get ns "$namespace"; then
+    printf "The given namespace (%s) was not found in the kubernetes cluster for the given kubeconfig file (%s)" "$namespace" "$kubeconfigfile" >&2
     exit 1
 fi
 
-kubectl --kubeconfig ${KUBECONFIGFILE} get pvc -n ${NAMESPACE} -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl --kubeconfig ${KUBECONFIGFILE} patch pv {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+kubectl --kubeconfig "$kubeconfigfile" get pvc -n "$namespace" -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl --kubeconfig "$kubeconfigfile" patch pv {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
