@@ -1818,7 +1818,6 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 		"user":            "root",
 		"password":        info.Password,
 		"storage.size":    "10Gi",
-		"backupOptions":   "\"--verbose=3\"",
 		"initialCommitTs": strings.TrimSpace(tsStr),
 	}
 
