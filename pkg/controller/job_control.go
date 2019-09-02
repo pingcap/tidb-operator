@@ -23,7 +23,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	batchinformers "k8s.io/client-go/informers/batch/v1"
 	"k8s.io/client-go/kubernetes"
+	batchlisters "k8s.io/client-go/listers/batch/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -104,3 +107,56 @@ func (rjc *realJobControl) recordJobEvent(verb string, obj runtime.Object, job *
 }
 
 var _ JobControlInterface = &realJobControl{}
+
+// FakeJobControl is a fake JobControlInterface
+type FakeJobControl struct {
+	JobLister        batchlisters.JobLister
+	JobIndexer       cache.Indexer
+	createJobTracker requestTracker
+	deleteJobTracker requestTracker
+}
+
+// NewFakeJobControl returns a FakeJobControl
+func NewFakeJobControl(jobInformer batchinformers.JobInformer) *FakeJobControl {
+	return &FakeJobControl{
+		jobInformer.Lister(),
+		jobInformer.Informer().GetIndexer(),
+		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
+	}
+}
+
+// SetCreateJobError sets the error attributes of createJobTracker
+func (fjc *FakeJobControl) SetCreateJobError(err error, after int) {
+	fjc.createJobTracker.err = err
+	fjc.createJobTracker.after = after
+}
+
+// SetDeleteJobError sets the error attributes of deleteJobTracker
+func (fjc *FakeJobControl) SetDeleteJobError(err error, after int) {
+	fjc.deleteJobTracker.err = err
+	fjc.deleteJobTracker.after = after
+}
+
+// CreateJob adds the job to JobIndexer
+func (fjc *FakeJobControl) CreateJob(_ runtime.Object, job *batchv1.Job) error {
+	defer fjc.createJobTracker.inc()
+	if fjc.createJobTracker.errorReady() {
+		defer fjc.createJobTracker.reset()
+		return fjc.createJobTracker.err
+	}
+
+	return fjc.JobIndexer.Add(job)
+}
+
+// DeleteJob deletes the job
+func (fjc *FakeJobControl) DeleteJob(_ runtime.Object, _ *batchv1.Job) error {
+	defer fjc.deleteJobTracker.inc()
+	if fjc.deleteJobTracker.errorReady() {
+		defer fjc.deleteJobTracker.reset()
+		return fjc.deleteJobTracker.err
+	}
+	return nil
+}
+
+var _ JobControlInterface = &FakeJobControl{}
