@@ -33,13 +33,13 @@ const (
 `
 	listExample = `
 		# list all clusters and sync to local config
-		tkc list
+		tkctl list
 
 		# filter by namespace
-		tkc list --namespace=foo
+		tkctl list --namespace=foo
 
 		# get tidb cluster in all namespaces
-		tkc list -A
+		tkctl list -A
 `
 )
 

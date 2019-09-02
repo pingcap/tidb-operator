@@ -1,3 +1,8 @@
+locals {
+  # Create a regional cluster in current region by default.
+  location = var.location != "" ? var.location : var.GCP_REGION
+}
+
 provider "google" {
   credentials = file(var.GCP_CREDENTIALS_PATH)
   region      = var.GCP_REGION
@@ -39,10 +44,13 @@ module "tidb-operator" {
   vpc_name                      = var.vpc_name
   subnetwork_name               = module.vpc.private_subnetwork_name
   gcp_project                   = var.GCP_PROJECT
-  gcp_region                    = var.GCP_REGION
+  gke_version                   = var.gke_version
+  location                      = local.location
+  node_locations                = var.node_locations
   kubeconfig_path               = local.kubeconfig
   tidb_operator_version         = var.tidb_operator_version
   maintenance_window_start_time = var.maintenance_window_start_time
+  operator_helm_values          = var.operator_helm_values
 }
 
 module "bastion" {
