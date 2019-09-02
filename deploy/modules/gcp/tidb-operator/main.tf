@@ -65,17 +65,6 @@ resource "null_resource" "get-credentials" {
   }
 }
 
-data "local_file" "kubeconfig" {
-  depends_on = [null_resource.get-credentials]
-  filename   = var.kubeconfig_path
-}
-
-# local file resource used to delay helm provider initialization
-resource "local_file" "kubeconfig" {
-  content    = data.local_file.kubeconfig.content
-  filename   = var.kubeconfig_path
-}
-
 provider "helm" {
   alias    = "initial"
   insecure = true
@@ -88,7 +77,8 @@ provider "helm" {
     # we defer initialization by using load_config_file argument.
     # See https://github.com/pingcap/tidb-operator/pull/819#issuecomment-524547459
     config_path = var.kubeconfig_path
-    load_config_file = local_file.kubeconfig.filename != "" ? true : false
+    # used to delay helm provisioner initialization in apply phrase
+    load_config_file = null_resource.get-credentials.id != "" ? true : null
   }
 }
 
