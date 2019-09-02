@@ -110,18 +110,40 @@ $ make test
 
 #### Run e2e tests
 
-##### Run e2e tests in dind
+First you should build a local Kubernetes environment for e2e tests, so we provide the following two ways to build Kubernetes cluster: dind and kind. Both of them are available, but we recommend using kind, because it is easier to use and more stable
 
-First we should build a DinD Kubernetes environment. Follow [this guide](./local-dind-tutorial.md) to spin up a local DinD Kubernetes cluster.
+* Use dind to build Kubernetes cluster
 
-Then you can build and push Docker images to the DinD Docker registry. The DinD Docker registry is available as `localhost:5000` both on the host machine and inside the DinD.
+    Follow [this guide](./local-dind-tutorial.md) to spin up a local DinD Kubernetes cluster.
+
+* Use kind to build Kubernetes cluster
+
+    Use the following command to create a [kind](https://kind.sigs.k8s.io/) local kind Kubernetes environment.  
+    
+    ```sh
+    $ ./hack/kind-cluster-build.sh
+    ```
+    
+    If you have customization requirements, please refer the help info:
+    
+    ```
+    $ ./hack/kind-cluster-build.sh --help
+    ```
+    
+    Setting `KUBECONFIG` environment variable before using the Kubernetes cluster:
+    
+    ```
+    export KUBECONFIG=$(kind get kubeconfig-path --name=<clusterName>)
+    ```
+
+Then you can build and push Docker images to the inner Docker registry. The inner Docker registry is available as `localhost:5000` both on the host machine and inside the Kubernetes cluster.
 
 ```sh
 $ make docker-push
 $ make e2e-docker-push
 ```
 
-After Docker images are pushed to the DinD Docker registry, run e2e tests:
+After Docker images are pushed to the inner Docker registry, run e2e tests:
 
 ```sh
 $ kubectl apply -f tests/manifests/e2e/e2e.yaml
@@ -134,48 +156,6 @@ $ kubectl -n=tidb-operator-e2e logs -f tidb-operator-e2e
 ```
 
 To re-run e2e tests, delete the testing pod and apply it again.
-
-##### Run e2e tests in kind 
-
-Use the following command to create a [kind](https://kind.sigs.k8s.io/) Kubernetes environment.  
-
-```sh
-$ ./hack/kind-cluster-build.sh
-```
-
-If you have customization requirements, please refer the help info:
-
-```
-$ ./hack/kind-cluster-build.sh --help
-```
-
-Setting `KUBECONFIG` environment variable before using the Kubernetes cluster:
-
-```
-export KUBECONFIG=$(kind get kubeconfig-path --name=<clusterName>)
-```
-
-Currently, there is no local docker registry in the Kind cluster, so you have to build and push the Docker images to a public Docker registry:
-
-```sh
-$ export DOCKER_REGISTRY=<pulic-docker-registry>
-$ make docker-push
-$ make e2e-docker-push
-```
-
-After the Docker images are pushed to the public Docker registry, run e2e tests:
-
-```sh
-$ sed -i "s#127.0.0.1:5000/pingcap/tidb-operator-e2e:latest#${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest#" tests/manifests/e2e/e2e.yaml
-$ sed -i "s#pingcap/tidb-operator:latest#${DOCKER_REGISTRY}/pingcap/tidb-operator:latest#" tests/manifests/e2e/e2e.yaml
-$ kubectl apply -f tests/manifests/e2e/e2e.yaml
-```
-
-You can get the e2e test report from the log of testing pod: 
-
-```sh
-$ kubectl -n=tidb-operator-e2e logs -f tidb-operator-e2e
-```
 
 ### Step 5: Keep your branch in sync
 
