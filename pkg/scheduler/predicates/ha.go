@@ -269,7 +269,7 @@ func (h *ha) realAcquireLock(pod *apiv1.Pod) (*apiv1.PersistentVolumeClaim, *api
 			return schedulingPVC, currentPVC, err
 		}
 		if schedulingPVC.Status.Phase != apiv1.ClaimBound || schedulingPod.Spec.NodeName == "" {
-			return schedulingPVC, currentPVC, fmt.Errorf("waiting for Pod %s/%s scheduling", ns, strings.TrimPrefix(schedulingPVC.GetName(), component+"-"))
+			return schedulingPVC, currentPVC, fmt.Errorf("waiting for Pod %s/%s scheduling", ns, schedulingPodName)
 		}
 	}
 
