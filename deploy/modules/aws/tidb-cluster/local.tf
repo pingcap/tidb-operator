@@ -35,6 +35,9 @@ locals {
     placement_group               = ""                         # The name of the placement group into which to launch the instances, if any.
   }
 
+  # 169.254.169.254 is the authoritative AWS metadata server, see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html
+  aws_zone_getter = "$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)"
+
   tidb_cluster_worker_groups = [
     {
       name                 = "${var.cluster_name}-pd"
@@ -42,7 +45,14 @@ locals {
       instance_type        = var.pd_instance_type
       root_volume_size     = "50"
       public_ip            = false
-      kubelet_extra_args   = "--register-with-taints=dedicated=${var.cluster_name}-pd:NoSchedule --node-labels=dedicated=${var.cluster_name}-pd,pingcap.com/aws-local-ssd=true"
+      # the space separator is safe when the extra args is empty or prefixed by spaces (the same hereafter)
+      kubelet_extra_args   = join(" ",
+        [
+          "--register-with-taints=dedicated=${var.cluster_name}-pd:NoSchedule",
+          "--node-labels=dedicated=${var.cluster_name}-pd,pingcap.com/aws-local-ssd=true,zone=${local.aws_zone_getter}",
+          lookup(var.group_kubelet_extra_args, "pd", var.kubelet_extra_args)
+        ]
+      )
       asg_desired_capacity = var.pd_count
       asg_max_size         = var.pd_count + 2
       # additional_userdata  = file("userdata.sh")
@@ -53,7 +63,13 @@ locals {
       instance_type        = var.tikv_instance_type
       root_volume_size     = "50"
       public_ip            = false
-      kubelet_extra_args   = "--register-with-taints=dedicated=${var.cluster_name}-tikv:NoSchedule --node-labels=dedicated=${var.cluster_name}-tikv,pingcap.com/aws-local-ssd=true"
+      kubelet_extra_args   = join(" ",
+        [
+          "--register-with-taints=dedicated=${var.cluster_name}-tikv:NoSchedule",
+          "--node-labels=dedicated=${var.cluster_name}-tikv,pingcap.com/aws-local-ssd=true,zone=${local.aws_zone_getter}",
+          lookup(var.group_kubelet_extra_args, "tikv", var.kubelet_extra_args)
+        ]
+      )
       asg_desired_capacity = var.tikv_count
       asg_max_size         = var.tikv_count + 2
       pre_userdata         = file("${path.module}/pre_userdata")
@@ -66,7 +82,13 @@ locals {
       root_volume_type     = "gp2"
       root_volume_size     = "50"
       public_ip            = false
-      kubelet_extra_args   = "--register-with-taints=dedicated=${var.cluster_name}-tidb:NoSchedule --node-labels=dedicated=${var.cluster_name}-tidb"
+      kubelet_extra_args   = join(" ",
+        [
+          "--register-with-taints=dedicated=${var.cluster_name}-tidb:NoSchedule",
+          "--node-labels=dedicated=${var.cluster_name}-tidb,zone=${local.aws_zone_getter}",
+          lookup(var.group_kubelet_extra_args, "tidb", var.kubelet_extra_args)
+        ]
+      )
       asg_desired_capacity = var.tidb_count
       asg_max_size         = var.tidb_count + 2
     },
@@ -77,6 +99,12 @@ locals {
       root_volume_type     = "gp2"
       root_volume_size     = "50"
       public_ip            = false
+      kubelet_extra_args   = join(" ",
+        [
+          "--node-labels=zone=${local.aws_zone_getter}",
+          lookup(var.group_kubelet_extra_args, "monitor", var.kubelet_extra_args)
+        ]
+      )
       asg_desired_capacity = 1
       asg_max_size         = 3
     }
