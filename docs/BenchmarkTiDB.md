@@ -14,7 +14,7 @@
 You must run a TiDB cluster in your Kubernetes environment first. You can follow our
 docs [here](https://pingcap.com/docs/v3.0/tidb-in-kubernetes/deploy/prerequisites/).
 
-Please note that it's recommended to prepare a dedicated node to run you
+Please note that it's recommended to prepare a dedicated node to run your
 benchmark tool, e.g. sysbench.
 
 We also require [kustomize] to customize our manifest yaml files. You can
