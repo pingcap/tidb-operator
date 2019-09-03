@@ -19,7 +19,6 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
@@ -43,11 +42,11 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 	name := ar.Request.Name
 	namespace := ar.Request.Namespace
-	glog.Infof("admit statefulsets [%s/%s]", name, namespace)
+	glog.V(4).Infof("admit statefulsets [%s/%s]", namespace, name)
 
 	setResource := metav1.GroupVersionResource{Group: "apps", Version: "v1beta1", Resource: "statefulsets"}
 	if ar.Request.Resource != setResource {
-		err := fmt.Errorf("expect resource to be %s", setResource)
+		err := fmt.Errorf("expect resource to be %s instead of %s", setResource, ar.Request.Resource)
 		glog.Errorf("%v", err)
 		return util.ARFail(err)
 	}
@@ -55,13 +54,13 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	if versionCli == nil {
 		cfg, err := rest.InClusterConfig()
 		if err != nil {
-			glog.Errorf("failed to get config: %v", err)
+			glog.Errorf("statefulset %s/%s, get k8s cluster config failed, err: %v", namespace, name, err)
 			return util.ARFail(err)
 		}
 
 		versionCli, err = versioned.NewForConfig(cfg)
 		if err != nil {
-			glog.Errorf("failed to create Clientset: %v", err)
+			glog.Errorf("statefulset %s/%s, create Clientset failed, err: %v", namespace, name, err)
 			return util.ARFail(err)
 		}
 	}
@@ -69,32 +68,44 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	raw := ar.Request.OldObject.Raw
 	set := apps.StatefulSet{}
 	if _, _, err := deserializer.Decode(raw, nil, &set); err != nil {
-		glog.Errorf("deseriralizer fail to decode request %v", err)
+		glog.Errorf("statefulset %s/%s, decode request failed, err: %v", namespace, name, err)
 		return util.ARFail(err)
+	}
+
+	l := label.Label(set.Labels)
+
+	if !(l.IsTiDB() || l.IsTiKV()) {
+		// If it is not statefulset of tikv and tidb, return quickly.
+		return util.ARSuccess()
 	}
 
 	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(set.Labels[label.InstanceLabelKey], metav1.GetOptions{})
 	if err != nil {
-		glog.Errorf("fail to fetch tidbcluster info namespace %s clustername(instance) %s err %v", namespace, set.Labels[label.InstanceLabelKey], err)
+		glog.Errorf("get tidbcluster %s/%s failed, statefulset %s, err %v", namespace, set.Labels[label.InstanceLabelKey], name, err)
 		return util.ARFail(err)
 	}
 
-	if set.Labels[label.ComponentLabelKey] == label.TiDBLabelVal {
-		protect, ok := tc.Annotations[label.AnnTiDBPartition]
-
-		if ok {
-			partition, err := strconv.ParseInt(protect, 10, 32)
-			if err != nil {
-				glog.Errorf("fail to convert protect to int namespace %s name %s err %v", namespace, name, err)
-				return util.ARFail(err)
-			}
-
-			if (*set.Spec.UpdateStrategy.RollingUpdate.Partition) <= int32(partition) && tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-				glog.Infof("set has been protect by annotations name %s namespace %s", name, namespace)
-				return util.ARFail(errors.New("protect by annotation"))
-			}
-		}
+	var partitionStr string
+	partitionStr = tc.Annotations[label.AnnTiDBPartition]
+	if l.IsTiKV() {
+		partitionStr = tc.Annotations[label.AnnTiKVPartition]
 	}
 
+	if len(partitionStr) == 0 {
+		return util.ARSuccess()
+	}
+
+	partition, err := strconv.ParseInt(partitionStr, 10, 32)
+	if err != nil {
+		glog.Errorf("statefulset %s/%s, convert partition str %s to int failed, err: %v", namespace, name, partitionStr, err)
+		return util.ARFail(err)
+	}
+
+	setPartition := *set.Spec.UpdateStrategy.RollingUpdate.Partition
+	if setPartition > 0 && setPartition <= int32(partition) {
+		glog.V(4).Infof("statefulset %s/%s has been protect by partition %s annotations", namespace, name, partitionStr)
+		return util.ARFail(errors.New("protect by partition annotation"))
+	}
+	glog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, setPartition, partition)
 	return util.ARSuccess()
 }

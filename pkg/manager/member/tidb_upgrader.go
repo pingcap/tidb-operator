@@ -57,6 +57,10 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 		return nil
 	}
 
+	if tc.Status.TiDB.StatefulSet.UpdateRevision == tc.Status.TiDB.StatefulSet.CurrentRevision {
+		return nil
+	}
+
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	for i := tc.Status.TiDB.StatefulSet.Replicas - 1; i >= 0; i-- {
 		podName := tidbPodName(tcName, i)
