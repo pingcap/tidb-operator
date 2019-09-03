@@ -111,6 +111,18 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 			},
 		},
 		{
+			name: "upgrade revision equals current revision",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+				tc.Status.TiDB.StatefulSet.UpdateRevision = tc.Status.TiDB.StatefulSet.CurrentRevision
+			},
+			getLastAppliedConfigErr: false,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(1); return &i }())))
+			},
+		},
+		{
 			name: "get apply config error",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
