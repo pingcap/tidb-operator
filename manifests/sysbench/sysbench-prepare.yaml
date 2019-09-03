@@ -1,0 +1,56 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sysbench-prepare
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+      - name: set-global-variable
+        image: uhub.ucloud.cn/pingcap/sysbench:latest
+        command:
+        - /bin/sh
+        - -c
+        - |-
+          mysql -h${TIDB_HOST} -P4000 -uroot -Nse 'set @@global.tidb_hashagg_final_concurrency=1;'
+          mysql -h${TIDB_HOST} -P4000 -uroot -Nse 'set @@global.tidb_hashagg_partial_concurrency=1;'
+          mysql -h${TIDB_HOST} -P4000 -uroot -Nse 'set @@global.tidb_disable_txn_auto_retry=0;'
+          mysql -h${TIDB_HOST} -P4000 -uroot -Nse 'create database if not exists sbtest;'
+        env:
+        - name: TIDB_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['tidb-host']
+      containers:
+      - name: sysbench-prepare
+        image: uhub.ucloud.cn/pingcap/sysbench:latest
+        env:
+        - name: TABLE_COUNT
+          value: "16"
+        - name: TABLE_SIZE
+          value: "10000000"
+        - name: TEST_NAME
+          value: "oltp_common"
+        - name: TIDB_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['tidb-host']
+        command:
+        - sysbench
+        - --config-file=/etc/sysbench/prepare.conf
+        - --mysql-host=$(TIDB_HOST)
+        - $(TEST_NAME)
+        - --tables=$(TABLE_COUNT)
+        - --table-size=$(TABLE_SIZE)
+        - prepare
+        volumeMounts:
+        - name: config
+          mountPath: /etc/sysbench
+      volumes:
+      - name: config
+        configMap:
+          name: sysbench-config
+          items:
+          - key: prepare-config
+            path: prepare.conf

@@ -1,0 +1,5 @@
+resources:
+- sysbench-config.yaml
+- sysbench-prepare.yaml
+- sysbench-warmup.yaml
+- sysbench-run.yaml

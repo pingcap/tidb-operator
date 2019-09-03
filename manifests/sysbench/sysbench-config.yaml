@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sysbench-config
+data:
+  prepare-config: |
+    mysql-port=4000
+    mysql-user=root
+    mysql-db=sbtest
+    time=600
+    threads=16
+    report-interval=10
+    db-driver=mysql
+    rand-type=uniform
+    rand-seed=0
+  warmup-config: |
+    mysql-port=4000
+    mysql-user=root
+    mysql-db=sbtest
+    time=600
+    threads=500
+    report-interval=10
+    db-driver=mysql
+    rand-type=uniform
+    rand-seed=0
+  bench-config: |
+    mysql-port=4000
+    mysql-user=root
+    mysql-db=sbtest
+    time=300
+    threads=500
+    report-interval=10
+    db-driver=mysql
+    rand-type=uniform
+    rand-seed=0
