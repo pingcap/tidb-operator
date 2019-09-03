@@ -20,8 +20,11 @@ import (
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -96,3 +99,57 @@ func (rbc *realBackupControl) recordBackupEvent(verb string, backup *v1alpha1.Ba
 }
 
 var _ BackupControlInterface = &realBackupControl{}
+
+// FakeBackupControl is a fake BackupControlInterface
+type FakeBackupControl struct {
+	BackupLister        listers.BackupLister
+	BackupIndexer       cache.Indexer
+	createBackupTracker requestTracker
+	deleteBackupTracker requestTracker
+}
+
+// NewFakeBackupControl returns a FakeBackupControl
+func NewFakeBackupControl(backupInformer informers.BackupInformer) *FakeBackupControl {
+	return &FakeBackupControl{
+		backupInformer.Lister(),
+		backupInformer.Informer().GetIndexer(),
+		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
+	}
+}
+
+// SetCreateBackupError sets the error attributes of createBackupTracker
+func (fbc *FakeBackupControl) SetCreateBackupError(err error, after int) {
+	fbc.createBackupTracker.err = err
+	fbc.createBackupTracker.after = after
+}
+
+// SetDeleteBackupError sets the error attributes of deleteBackupTracker
+func (fbc *FakeBackupControl) SetDeleteBackupError(err error, after int) {
+	fbc.deleteBackupTracker.err = err
+	fbc.deleteBackupTracker.after = after
+}
+
+// CreateBackup adds the backup to BackupIndexer
+func (fbc *FakeBackupControl) CreateBackup(backup *v1alpha1.Backup) (*v1alpha1.Backup, error) {
+	defer fbc.createBackupTracker.inc()
+	if fbc.createBackupTracker.errorReady() {
+		defer fbc.createBackupTracker.reset()
+		return backup, fbc.createBackupTracker.err
+	}
+
+	return backup, fbc.BackupIndexer.Add(backup)
+}
+
+// DeleteBackup deletes the backup from BackupIndexer
+func (fbc *FakeBackupControl) DeleteBackup(backup *v1alpha1.Backup) error {
+	defer fbc.createBackupTracker.inc()
+	if fbc.createBackupTracker.errorReady() {
+		defer fbc.createBackupTracker.reset()
+		return fbc.createBackupTracker.err
+	}
+
+	return fbc.BackupIndexer.Delete(backup)
+}
+
+var _ BackupControlInterface = &FakeBackupControl{}
