@@ -17,6 +17,7 @@ import (
 	"flag"
 	"io"
 
+	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/check"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/completion"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/ctop"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/debug"
@@ -72,6 +73,7 @@ func NewTkcCommand(streams genericclioptions.IOStreams) *cobra.Command {
 			Message: "Cluster Management Commands:",
 			Commands: []*cobra.Command{
 				list.NewCmdList(tkcContext, streams),
+				check.NewCmdCheck(tkcContext, streams),
 				get.NewCmdGet(tkcContext, streams),
 				info.NewCmdInfo(tkcContext, streams),
 				use.NewCmdUse(tkcContext, streams),
