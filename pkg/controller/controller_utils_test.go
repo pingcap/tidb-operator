@@ -363,6 +363,23 @@ func newBackup() *v1alpha1.Backup {
 	return backup
 }
 
+func newPVCFromBackup(backup *v1alpha1.Backup) *corev1.PersistentVolumeClaim {
+	return &corev1.PersistentVolumeClaim{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "PersistentVolumeClaim",
+			APIVersion: "v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      backup.GetBackupPVCName(),
+			Namespace: corev1.NamespaceDefault,
+			UID:       types.UID("test"),
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			VolumeName: "backup-pv-1",
+		},
+	}
+}
+
 func newJobFromBackup(backup *v1alpha1.Backup) *batchv1.Job {
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
