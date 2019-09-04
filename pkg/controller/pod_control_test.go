@@ -382,8 +382,8 @@ func TestPodControlUpdatePodConflictSuccess(t *testing.T) {
 
 func newFakeClientRecorderAndPDControl() (*fake.Clientset, *pdapi.FakePDControl, corelisters.PodLister, cache.Indexer, *record.FakeRecorder) {
 	fakeClient := &fake.Clientset{}
-	pdControl := pdapi.NewFakePDControl()
 	kubeCli := kubefake.NewSimpleClientset()
+	pdControl := pdapi.NewFakePDControl(kubeCli)
 	recorder := record.NewFakeRecorder(10)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	podInformer := kubeInformerFactory.Core().V1().Pods()

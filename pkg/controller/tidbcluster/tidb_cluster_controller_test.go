@@ -225,6 +225,8 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 	epsInformer := kubeInformerFactory.Core().V1().Endpoints()
+	csrInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Certificates().V1beta1().CertificateSigningRequests()
+	secretInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Secrets()
 	autoFailover := true
 
 	tcc := NewController(
@@ -256,7 +258,8 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
-	certControl := controller.NewRealCertControl(kubeCli)
+	secControl := controller.NewRealSecretControl(kubeCli, secretInformer.Lister())
+	certControl := controller.NewRealCertControl(kubeCli, csrInformer.Lister(), secControl)
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
 	pdFailover := mm.NewFakePDFailover()

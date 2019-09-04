@@ -171,7 +171,7 @@ func (rcc *realCertControl) getCSR(ns string, instance string, csrName string) (
 func (rcc *realCertControl) sendCSR(ns string, instance string, rawCSR []byte, csrName string) (*capi.CertificateSigningRequest, error) {
 	var csr *capi.CertificateSigningRequest
 
-	// check for exist CSR, overwirte if it was created by operator, otherwise block the process
+	// check for exist CSR, overwrite if it was created by operator, otherwise block the process
 	csr, err := rcc.getCSR(ns, instance, csrName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create CSR for [%s/%s]: %s, error: %v", ns, instance, csrName, err)
@@ -253,4 +253,16 @@ var _ CertControlInterface = &realCertControl{}
 
 type FakeCertControl struct {
 	realCertControl
+}
+
+func NewFakeCertControl(
+	kubeCli kubernetes.Interface,
+	csrLister certlisters.CertificateSigningRequestLister,
+	secControl SecretControlInterface,
+) CertControlInterface {
+	return &realCertControl{
+		kubeCli:    kubeCli,
+		csrLister:  csrLister,
+		secControl: secControl,
+	}
 }

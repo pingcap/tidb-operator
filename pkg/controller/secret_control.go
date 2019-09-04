@@ -99,7 +99,7 @@ func (rsc *realSecretControl) Check(ns string, secretName string) bool {
 	// validate if the certificate is valid
 	block, _ := pem.Decode(certBytes)
 	if block == nil {
-		glog.Errorf("certificate validation failed for [%s/%s], can not decode cert to PEM", ns, secretName, err)
+		glog.Errorf("certificate validation failed for [%s/%s], can not decode cert to PEM", ns, secretName)
 		return false
 	}
 	cert, err := x509.ParseCertificate(block.Bytes)
@@ -140,4 +140,14 @@ var _ SecretControlInterface = &realSecretControl{}
 
 type FakeSecretControl struct {
 	realSecretControl
+}
+
+func NewFakeSecretControl(
+	kubeCli kubernetes.Interface,
+	secretLister corelisters.SecretLister,
+) SecretControlInterface {
+	return &realSecretControl{
+		kubeCli:      kubeCli,
+		secretLister: secretLister,
+	}
 }
