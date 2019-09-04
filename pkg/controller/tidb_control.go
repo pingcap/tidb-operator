@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -55,18 +56,37 @@ type defaultTiDBControl struct {
 
 // NewDefaultTiDBControl returns a defaultTiDBControl instance
 func NewDefaultTiDBControl() TiDBControlInterface {
-	httpClient := &http.Client{Timeout: timeout}
-	return &defaultTiDBControl{httpClient: httpClient}
+	return &defaultTiDBControl{httpClient: &http.Client{Timeout: timeout}}
+}
+
+func (tdc *defaultTiDBControl) useTLSHTTPClient(enableTLS bool) error {
+	if enableTLS {
+		rootCAs, err := httputil.ReadCACerts()
+		if err != nil {
+			return err
+		}
+		config := &tls.Config{
+			RootCAs: rootCAs,
+		}
+		tdc.httpClient.Transport = &http.Transport{TLSClientConfig: config}
+	}
+	return nil
 }
 
 func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster) map[string]bool {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
+	scheme := tc.Scheme()
 
 	result := map[string]bool{}
+
+	if err := tdc.useTLSHTTPClient(tc.Spec.EnableTLSCluster); err != nil {
+		return result
+	}
+
 	for i := 0; i < int(tc.TiDBRealReplicas()); i++ {
 		hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), i)
-		url := fmt.Sprintf("http://%s.%s.%s:10080/status", hostName, TiDBPeerMemberName(tcName), ns)
+		url := fmt.Sprintf("%s://%s.%s.%s:10080/status", scheme, hostName, TiDBPeerMemberName(tcName), ns)
 		_, err := tdc.getBodyOK(url)
 		if err != nil {
 			result[hostName] = false
@@ -80,9 +100,13 @@ func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster) map[string]bo
 func (tdc *defaultTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
+	scheme := tc.Scheme()
+	if err := tdc.useTLSHTTPClient(tc.Spec.EnableTLSCluster); err != nil {
+		return false, err
+	}
 
 	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
-	url := fmt.Sprintf("http://%s.%s.%s:10080/ddl/owner/resign", hostName, TiDBPeerMemberName(tcName), ns)
+	url := fmt.Sprintf("%s://%s.%s.%s:10080/ddl/owner/resign", scheme, hostName, TiDBPeerMemberName(tcName), ns)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return false, err
@@ -105,9 +129,13 @@ func (tdc *defaultTiDBControl) ResignDDLOwner(tc *v1alpha1.TidbCluster, ordinal 
 func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*dbInfo, error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
+	scheme := tc.Scheme()
+	if err := tdc.useTLSHTTPClient(tc.Spec.EnableTLSCluster); err != nil {
+		return nil, err
+	}
 
 	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
-	url := fmt.Sprintf("http://%s.%s.%s:10080/info", hostName, TiDBPeerMemberName(tcName), ns)
+	url := fmt.Sprintf("%s://%s.%s.%s:10080/info", scheme, hostName, TiDBPeerMemberName(tcName), ns)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return nil, err
@@ -136,9 +164,13 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
+	scheme := tc.Scheme()
+	if err := tdc.useTLSHTTPClient(tc.Spec.EnableTLSCluster); err != nil {
+		return nil, err
+	}
 
 	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
-	url := fmt.Sprintf("http://%s.%s.%s:10080/settings", hostName, TiDBPeerMemberName(tcName), ns)
+	url := fmt.Sprintf("%s://%s.%s.%s:10080/settings", scheme, hostName, TiDBPeerMemberName(tcName), ns)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err

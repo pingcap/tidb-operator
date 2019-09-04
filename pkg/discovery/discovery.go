@@ -94,10 +94,10 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 
 	if len(currentCluster.peers) == int(replicas) {
 		delete(currentCluster.peers, podName)
-		return fmt.Sprintf("--initial-cluster=%s=http://%s", podName, advertisePeerUrl), nil
+		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
 
-	pdClient := td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
+	pdClient := td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSCluster)
 	membersInfo, err := pdClient.GetMembers()
 	if err != nil {
 		return "", err
