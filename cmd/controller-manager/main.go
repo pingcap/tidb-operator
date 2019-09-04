@@ -29,7 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
 	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
-	"github.com/pingcap/tidb-operator/version"
+	"github.com/pingcap/tidb-operator/pkg/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
