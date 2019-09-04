@@ -196,6 +196,8 @@ tikv:
   #
   #   # Normally it should be tuned to 30%-50% of `tikv.resources.limits.memory`, for example: 32Gi -> 16GB
   #   capacity = "1GB"
+  # Note that we can't set raftstore.capacity in config because it will be overridden by the command line parameter, 
+  # we can only set capacity in tikv.resources.limits.storage.
 
   replicas: 3
   image: pingcap/tikv:v3.0.1
@@ -212,7 +214,7 @@ tikv:
     limits: {}
     #   cpu: 16000m
     #   memory: 32Gi
-    #   storage: 300Gi
+    #   storage: 300Gi # We can set capacity here.
     requests:
       # cpu: 12000m
       # memory: 24Gi
