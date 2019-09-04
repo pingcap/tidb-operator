@@ -45,7 +45,7 @@ spec:
       {{- end }}
         env:
         - name: BACKUP_NAME
-          value: {{ .Values.name | quote }}
+          value: {{ tpl .Values.name . | quote }}
       {{- if .Values.gcp }}
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: /gcp/credentials.json
@@ -76,7 +76,7 @@ spec:
       volumes:
       - name: data
         persistentVolumeClaim:
-          claimName: {{ .Values.name }}
+          claimName: {{ tpl .Values.name . }}
     {{- if .Values.gcp }}
       - name: gcp-credentials
         secret:

@@ -51,6 +51,8 @@ spec:
               mountPath: "/gcp"
               readOnly: true
           {{- end }}
+            resources:
+{{ toYaml .Values.scheduledBackup.resources | indent 14 }}
             env:
             - name: POD_NAME
               valueFrom:
