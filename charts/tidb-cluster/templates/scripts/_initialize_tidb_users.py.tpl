@@ -22,7 +22,5 @@ with open('/data/init.sql', 'r') as sql:
 {{- end }}
 if permit_host != '%%':
     conn.cursor().execute("update mysql.user set Host=%s where User='root';", (permit_host,))
-    conn.cursor().execute("flush privileges;")
-    conn.commit()
 conn.cursor().execute("flush privileges;")
 conn.commit()
