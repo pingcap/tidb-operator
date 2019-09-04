@@ -11,6 +11,7 @@ ifeq ($(GO111), 1)
 $(error Please upgrade your Go compiler to 1.11 or higher version)
 endif
 
+# Enable GO111MODULE=on explicitly, disable it with GO111MODULE=off when necessary.
 export GO111MODULE := on
 GOOS := $(if $(GOOS),$(GOOS),linux)
 GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
