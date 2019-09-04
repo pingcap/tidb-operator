@@ -11,9 +11,9 @@ ifeq ($(GO111), 1)
 $(error Please upgrade your Go compiler to 1.11 or higher version)
 endif
 
+export GO111MODULE := on
 GOOS := $(if $(GOOS),$(GOOS),linux)
 GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
-GO111MODULE := on
 GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO     := $(GOENV) go build
 GOTEST := CGO_ENABLED=0 go test -v -cover
@@ -55,7 +55,7 @@ backup-docker: backup-manager
 
 e2e-setup:
 	# ginkgo doesn't work with retool for Go 1.11
-	@GO_ENABLED=0 go get github.com/onsi/ginkgo@v1.6.0
+	@CGO_ENABLED=0 go get github.com/onsi/ginkgo@v1.6.0
 
 e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest"
