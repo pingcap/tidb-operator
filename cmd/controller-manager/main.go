@@ -137,7 +137,7 @@ func main() {
 
 	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
 	secControl := controller.NewRealSecretControl(kubeCli, kubeInformerFactory.Core().V1().Secrets().Lister())
-	certController := controller.NewRealCertControl(kubeCli,
+	certControl := controller.NewRealCertControl(kubeCli,
 		kubeInformerFactory.Certificates().V1beta1().CertificateSigningRequests().Lister(),
 		secControl)
 	backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
@@ -149,7 +149,7 @@ func main() {
 	go kubeInformerFactory.Start(controllerCtx.Done())
 
 	onStarted := func(ctx context.Context) {
-		if err := generateClientCert(ns, "tidb-operator", certController); err != nil {
+		if err := generateClientCert(ns, "tidb-operator", certControl); err != nil {
 			return
 		}
 		go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
@@ -178,9 +178,9 @@ func main() {
 	glog.Fatal(http.ListenAndServe(":6060", nil))
 }
 
-func generateClientCert(ns string, commonName string, certController controller.CertControlInterface) error {
+func generateClientCert(ns string, commonName string, certControl controller.CertControlInterface) error {
 	secretName := "tidb-operator-pd-client"
-	if certController.CheckSecret(ns, secretName) {
+	if certControl.CheckSecret(ns, secretName) {
 		return nil
 	}
 
@@ -197,5 +197,5 @@ func generateClientCert(ns string, commonName string, certController controller.
 		Suffix:     "pd-client",
 	}
 
-	return certController.Create(certOpts)
+	return certControl.Create(certOpts)
 }

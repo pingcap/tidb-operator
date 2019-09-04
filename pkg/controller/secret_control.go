@@ -90,6 +90,7 @@ func (rsc *realSecretControl) Load(ns string, secretName string) ([]byte, []byte
 func (rsc *realSecretControl) Check(ns string, secretName string) bool {
 	certBytes, keyBytes, err := rsc.Load(ns, secretName)
 	if err != nil {
+		glog.Errorf("certificate validation failed for [%s/%s], error loading cert from secret, %v", ns, secretName, err)
 		return false
 	}
 

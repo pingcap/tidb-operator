@@ -93,7 +93,7 @@ type TidbClusterSpec struct {
 	Services        []Service                            `json:"services,omitempty"`
 	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 	Timezone        string                               `json:"timezone,omitempty"`
-	// Enable TLS connection between TiDB server compoments
+	// Enable TLS connection between TiDB server components
 	EnableTLSCluster bool `json:"enableTLSCluster,omitempty"`
 }
 
