@@ -67,8 +67,10 @@ const (
 	AnnPVCDeferDeleting = "tidb.pingcap.com/pvc-defer-deleting"
 	// AnnPVCPodScheduling is pod scheduling annotation key, it represents whether the pod is scheduling
 	AnnPVCPodScheduling = "tidb.pingcap.com/pod-scheduling"
-	// AnnTiDBPartition is pod annotation which TiDB pod chould upgrade to
+	// AnnTiDBPartition is pod annotation which TiDB pod should upgrade to
 	AnnTiDBPartition string = "tidb.pingcap.com/tidb-partition"
+	// AnnTiKVPartition is pod annotation which TiKV pod should upgrade to
+	AnnTiKVPartition string = "tidb.pingcap.com/tikv-partition"
 	// AnnForceUpgradeKey is tc annotation key to indicate whether force upgrade should be done
 	AnnForceUpgradeKey = "tidb.pingcap.com/force-upgrade"
 
