@@ -72,7 +72,9 @@ func (rsc *realSecretControl) Create(certOpts *TiDBClusterCertOptions, cert []by
 	secret.Labels[label.ComponentLabelKey] = certOpts.Component
 
 	_, err := rsc.kubeCli.CoreV1().Secrets(certOpts.Namespace).Create(secret)
-	glog.Infof("save cert to secret %s/%s, error: %v", certOpts.Namespace, secretName, err)
+	if err == nil {
+		glog.Infof("save cert to secret %s/%s", certOpts.Namespace, secretName)
+	}
 	return err
 }
 
