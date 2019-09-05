@@ -38,10 +38,10 @@ const (
 // from being used by the new pod. However, the PVC might not be deleted
 // immediately in the apiserver because of finalizers (e.g.
 // kubernetes.io/pvc-protection) and the statefulset controller may not have
-// received PVC delete event when it tries to create the new replica.
-// Statefulset controller will create the new pod which will be pending forever
-// because no PVC to use. We need to clean these orphan pods and let the
-// statefulset controller to create PVC(s) for them.
+// received PVC delete event when it tries to create the new replica and the
+// new pod will be pending forever because no PVC to use. We need to clean
+// these orphan pods and let the statefulset controller to create PVC(s) for
+// them.
 //
 // https://github.com/kubernetes/kubernetes/blob/84fe3db5cf58bf0fc8ff792b885465ceaf70a435/pkg/controller/statefulset/stateful_pod_control.go#L175-L199
 //
