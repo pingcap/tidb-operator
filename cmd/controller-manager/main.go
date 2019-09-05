@@ -142,7 +142,7 @@ func main() {
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Start informer factories after all controller are initializated.
+	// Start informer factories after all controller are initialized.
 	informerFactory.Start(controllerCtx.Done())
 	kubeInformerFactory.Start(controllerCtx.Done())
 
