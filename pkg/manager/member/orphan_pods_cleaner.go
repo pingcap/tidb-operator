@@ -130,7 +130,7 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 		// if the PVC is not found in apiserver (also informer cache) and the
 		// phase of the Pod is Pending, delete it and let the stateful
 		// controller to create the pod and its PVC(s) again
-		apiPod, err := opc.kubeCli.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
+		apiPod, err := opc.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			skipReason[podName] = skipReasonOrphanPodsCleanerPodIsNotFound
 			continue
