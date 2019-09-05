@@ -115,7 +115,7 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 			return skipReason, err
 		}
 
-		// check api server
+		// if PVC not found in cache, re-check from apiserver directly to make sure the PVC really not exist
 		_, err = opc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
 		if err == nil {
 			skipReason[podName] = skipReasonOrphanPodsCleanerPVCIsFound
