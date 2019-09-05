@@ -47,6 +47,11 @@ discovery:
 # if the ConfigMap was not changed.
 enableConfigMapRollout: true
 
+# Whether enable TLS connections between server nodes.
+# When enabled, PD/TiDB/TiKV will use TLS encrypted connections to transfer data between each node,
+# certificates will be generated automatically (if not already present).
+enableTLSCluster: false
+
 pd:
   # Please refer to https://github.com/pingcap/pd/blob/master/conf/config.toml for the default
   # pd configurations (change to the tags of your pd version),
@@ -191,6 +196,8 @@ tikv:
   #
   #   # Normally it should be tuned to 30%-50% of `tikv.resources.limits.memory`, for example: 32Gi -> 16GB
   #   capacity = "1GB"
+  # Note that we can't set raftstore.capacity in config because it will be overridden by the command line parameter, 
+  # we can only set capacity in tikv.resources.limits.storage.
 
   replicas: 3
   image: pingcap/tikv:v3.0.1
@@ -207,7 +214,7 @@ tikv:
     limits: {}
     #   cpu: 16000m
     #   memory: 32Gi
-    #   storage: 300Gi
+    #   storage: 300Gi # We can set capacity here.
     requests:
       # cpu: 12000m
       # memory: 24Gi
@@ -245,6 +252,7 @@ tidb:
   config: |
     [log]
     level = "info"
+
   # # Here are some parameters you MUST customize (Please configure in the above 'tidb.config' section):
   # [performance]
   #   # Normally it should be tuned to `tidb.resources.limits.cpu`, for example: 16000m -> 16
@@ -310,6 +318,15 @@ tidb:
         cpu: 20m
         memory: 5Mi
 
+  initializer:
+    resources: {}
+    # limits:
+    #  cpu: 100m
+    #  memory: 100Mi
+    # requests:
+    #  cpu: 100m
+    #  memory: 100Mi
+
   # tidb plugin configuration
   plugin:
     # enable plugin or not
@@ -318,6 +335,12 @@ tidb:
     directory: /plugins
     # the start argument to specify the plugin id (name "-" version) that needs to be loaded, e.g. 'conn_limit-1'.
     list: ["whitelist-1"]
+
+  # Whether enable TLS connection between TiDB server and MySQL client.
+  # When enabled, TiDB will accept TLS encrypted connections from MySQL client, certificates will be generated
+  # automatically.
+  # Note: TLS connection is not forced on the server side, plain connections are also accepted after enableing.
+  enableTLSClient: false
 
 # mysqlClient is used to set password for TiDB
 # it must has Python MySQL client installed
@@ -337,12 +360,26 @@ monitor:
   initializer:
     image: pingcap/tidb-monitor-initializer:v3.0.1
     imagePullPolicy: IfNotPresent
+    resources: {}
+    # limits:
+    #  cpu: 50m
+    #  memory: 64Mi
+    # requests:
+    #  cpu: 50m
+    #  memory: 64Mi
   reloader:
     create: true
     image: pingcap/tidb-monitor-reloader:v1.0.0
     imagePullPolicy: IfNotPresent
     service:
       type: NodePort
+    resources: {}
+      # limits:
+      #  cpu: 50m
+      #  memory: 64Mi
+      # requests:
+      #  cpu: 50m
+      #  memory: 64Mi
   grafana:
     create: true
     image: grafana/grafana:6.0.1
@@ -418,6 +455,13 @@ binlog:
     gc: 7
     # number of seconds between heartbeat ticks (in 2 seconds)
     heartbeatInterval: 2
+    resources:
+      limits: {}
+      #   cpu: 8000m
+      #   memory: 8Gi
+      requests: {}
+      #   cpu: 4000m
+      #   memory: 4Gi
 
     # Please refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/pump/pump.toml for the default
     # pump configurations (change to the tags of your pump version),
@@ -465,8 +509,8 @@ binlog:
     # the number of SQL statements of a transaction that are output to the downstream database (20 by default)
     txnBatch: 20
     # downstream storage, equal to --dest-db-type
-    # valid values are "mysql", "pb", "kafka"
-    destDBType: pb
+    # valid values are "mysql", "file", "tidb", "kafka"
+    destDBType: file
     mysql: {}
       # host: "127.0.0.1"
       # user: "root"
@@ -480,6 +524,13 @@ binlog:
       # zookeeperAddrs: "127.0.0.1:2181"
       # kafkaAddrs: "127.0.0.1:9092"
       # kafkaVersion: "0.8.2.0"
+    resources:
+      limits: {}
+      #   cpu: 8000m
+      #   memory: 8Gi
+      requests: {}
+      #   cpu: 4000m
+      #   memory: 4Gi
 
     # Please refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml for the default
     # drainer configurations (change to the tags of your drainer version),
@@ -502,7 +553,7 @@ binlog:
 scheduledBackup:
   create: false
   # https://github.com/pingcap/tidb-cloud-backup
-  mydumperImage: pingcap/tidb-cloud-backup:20190610
+  mydumperImage: pingcap/tidb-cloud-backup:20190828
   mydumperImagePullPolicy: IfNotPresent
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -519,8 +570,14 @@ scheduledBackup:
   failedJobsHistoryLimit: 1
   # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#starting-deadline
   startingDeadlineSeconds: 3600
-  # https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
-  options: "--verbose=3"
+  # -t is thread count, larger thread count will speed up the backup, but may impact the performance of the upstream TiDB.
+  # -F is the chunk size, a big table is partitioned into many chunks.
+  # Other useful options are -B for database, and -T for tables.
+  # See https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options for more options.
+  options: "-t 16 -F 256 --skip-tz-utc --verbose=3"
+  # The time limit during which data is retained for each GC when backup, in the format of Go Duration.
+  # When a GC happens, the current time minus this value is the safe point.
+  tikvGCLifeTime: 720h
   # secretName is the name of the secret which stores user and password used for backup
   # Note: you must give the user enough privilege to do the backup
   # you can create the secret by:
@@ -553,6 +610,14 @@ scheduledBackup:
   # You can create the secret by:
   # kubectl create secret generic s3-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
   # secretName: s3-backup-secret
+
+  resources:
+    limits: {}
+    #   cpu: 8000m
+    #   memory: 8Gi
+    requests: {}
+    #   cpu: 4000m
+    #   memory: 4Gi
 
 importer:
   create: false

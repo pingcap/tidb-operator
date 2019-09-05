@@ -279,6 +279,12 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tikv"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
+	if tc.Spec.EnableTLSCluster {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tikv-tls", ReadOnly: true, MountPath: "/var/lib/tikv-tls",
+		})
+	}
+
 	vols := []corev1.Volume{
 		annVolume,
 		{Name: "config", VolumeSource: corev1.VolumeSource{
@@ -297,6 +303,15 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tikv_start_script.sh"}},
 			}},
 		},
+	}
+	if tc.Spec.EnableTLSCluster {
+		vols = append(vols, corev1.Volume{
+			Name: "tikv-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: controller.TiKVMemberName(tcName),
+				},
+			},
+		})
 	}
 
 	var q resource.Quantity

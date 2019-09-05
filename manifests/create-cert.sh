@@ -51,12 +51,6 @@ if [ ! -x "$(command -v openssl)" ]; then
     exit 1
 fi
 
-CURDIR=$(cd $(dirname ${BASH_SOURCE[0]}); pwd )
-
-# reset namespace and ca_bundle of webhook.yaml
-sed -i "s/caBundle:.*/caBundle: \${CA_BUNDLE}/g" $CURDIR/webhook.yaml
-sed -i "s/namespace:.*/namespace: \${NAMESPACE}/g" $CURDIR/webhook.yaml
-
 csrName=${service}.${namespace}
 tmpdir=$(mktemp -d)
 
@@ -130,4 +124,22 @@ kubectl create secret generic ${secret} \
         --dry-run -o yaml |
     kubectl -n ${namespace} apply -f -
 
-sed -i "s/namespace: .*$/namespace: ${namespace}/g" $CURDIR/webhook.yaml
+
+CURDIR=$(cd $(dirname ${BASH_SOURCE[0]}); pwd )
+os=`uname -s| tr '[A-Z]' '[a-z]'`
+
+case ${os} in
+  linux)
+    sed -i "s/caBundle:.*/caBundle: \${CA_BUNDLE}/g" $CURDIR/webhook.yaml
+    sed -i "s/namespace:.*/namespace: \${NAMESPACE}/g" $CURDIR/webhook.yaml
+    sed -i "s/namespace: \${NAMESPACE}/namespace: ${namespace}/g" $CURDIR/webhook.yaml
+    ;;
+  darwin)
+    sed -i "" "s/caBundle:.*/caBundle: \${CA_BUNDLE}/g" $CURDIR/webhook.yaml
+    sed -i "" "s/namespace:.*/namespace: \${NAMESPACE}/g" $CURDIR/webhook.yaml
+    sed -i "" "s/namespace: \${NAMESPACE}/namespace: ${namespace}/g" $CURDIR/webhook.yaml
+    ;;
+    *)
+    echo "invalid os ${os}, only support Linux and Darwin" >&2
+    ;;
+esac
