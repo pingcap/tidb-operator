@@ -99,6 +99,9 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 						Namespace: metav1.NamespaceDefault,
 						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
 					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+					},
 				},
 			},
 			pvcs: nil,
@@ -128,6 +131,9 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 								},
 							},
 						},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
 					},
 				},
 			},

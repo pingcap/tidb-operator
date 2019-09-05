@@ -86,6 +86,11 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 			continue
 		}
 
+		if pod.Status.Phase != v1.PodPending {
+			skipReason[podName] = skipReasonOrphanPodsCleanerPodIsNotPending
+			continue
+		}
+
 		// TODO support multiple pvcs case?
 		var pvcName string
 		for _, vol := range pod.Spec.Volumes {
@@ -121,12 +126,8 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 		}
 
 		// if the PVC is not found in apiserver (also informer cache) and the
-		// phrase of the Pod is Pending, delete it and let the stateful
+		// phase of the Pod is Pending, delete it and let the stateful
 		// controller to create the pod and its PVC(s) again
-		if pod.Status.Phase != v1.PodPending {
-			skipReason[podName] = skipReasonOrphanPodsCleanerPodIsNotPending
-			continue
-		}
 		err = opc.podControl.DeletePod(tc, pod)
 		if err != nil {
 			glog.Errorf("orphan pods cleaner: failed to clean orphan pod: %s/%s, %v", ns, podName, err)
