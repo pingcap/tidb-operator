@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 )
@@ -42,7 +43,7 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		opc, podIndexer, pvcIndexer, podControl := newFakeOrphanPodsCleaner()
+		opc, podIndexer, pvcIndexer, client, podControl := newFakeOrphanPodsCleaner()
 		if test.pods != nil {
 			for _, pod := range test.pods {
 				podIndexer.Add(pod)
@@ -50,6 +51,7 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 		}
 		if test.pvcs != nil {
 			for _, pvc := range test.pvcs {
+				client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
 				pvcIndexer.Add(pvc)
 			}
 		}
@@ -354,13 +356,13 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 	}
 }
 
-func newFakeOrphanPodsCleaner() (*orphanPodsCleaner, cache.Indexer, cache.Indexer, *controller.FakePodControl) {
+func newFakeOrphanPodsCleaner() (*orphanPodsCleaner, cache.Indexer, cache.Indexer, kubernetes.Interface, *controller.FakePodControl) {
 	kubeCli := kubefake.NewSimpleClientset()
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	podControl := controller.NewFakePodControl(podInformer)
 
-	return &orphanPodsCleaner{podInformer.Lister(), podControl, pvcInformer.Lister()},
-		podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), podControl
+	return &orphanPodsCleaner{podInformer.Lister(), podControl, pvcInformer.Lister(), kubeCli},
+		podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), kubeCli, podControl
 }

@@ -19,6 +19,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
@@ -29,6 +31,18 @@ const (
 )
 
 // OrphanPodsCleaner implements the logic for cleaning the orphan pods(has no pvc)
+//
+// In scaling out and failover, we will try to delete the old PVC to prevent it
+// from being used by the new pod. However, the PVC might not be deleted
+// immediately in the apiserver because of finalizers (e.g.
+// kubernetes.io/pvc-protection) and the statefulset controller may not have
+// received PVC delete event when it tries to create the new replica.
+// Statefulset controller will create the new pod which will be pending forever
+// because no PVC to use. We need to clean these orphan pods and let the
+// statefulset controller to create PVC(s) for them.
+//
+// https://github.com/kubernetes/kubernetes/blob/84fe3db5cf58bf0fc8ff792b885465ceaf70a435/pkg/controller/statefulset/stateful_pod_control.go#L175-L199
+//
 type OrphanPodsCleaner interface {
 	Clean(*v1alpha1.TidbCluster) (map[string]string, error)
 }
@@ -37,13 +51,15 @@ type orphanPodsCleaner struct {
 	podLister  corelisters.PodLister
 	podControl controller.PodControlInterface
 	pvcLister  corelisters.PersistentVolumeClaimLister
+	kubeCli    kubernetes.Interface
 }
 
 // NewOrphanPodsCleaner returns a OrphanPodsCleaner
 func NewOrphanPodsCleaner(podLister corelisters.PodLister,
 	podControl controller.PodControlInterface,
-	pvcLister corelisters.PersistentVolumeClaimLister) OrphanPodsCleaner {
-	return &orphanPodsCleaner{podLister, podControl, pvcLister}
+	pvcLister corelisters.PersistentVolumeClaimLister,
+	kubeCli kubernetes.Interface) OrphanPodsCleaner {
+	return &orphanPodsCleaner{podLister, podControl, pvcLister, kubeCli}
 }
 
 func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string, error) {
@@ -68,6 +84,7 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 			continue
 		}
 
+		// TODO support multiple pvcs case?
 		var pvcName string
 		for _, vol := range pod.Spec.Volumes {
 			if vol.PersistentVolumeClaim != nil {
@@ -80,7 +97,9 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 			continue
 		}
 
-		_, err := opc.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
+		var err error
+		// check informer cache
+		_, err = opc.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 		if err == nil {
 			skipReason[podName] = skipReasonOrphanPodsCleanerPVCIsFound
 			continue
@@ -89,6 +108,19 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 			return skipReason, err
 		}
 
+		// check api server
+		_, err = opc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
+		if err == nil {
+			skipReason[podName] = skipReasonOrphanPodsCleanerPVCIsFound
+			continue
+		}
+		if !errors.IsNotFound(err) {
+			return skipReason, err
+		}
+
+		// if the PVC is not found in apiserver (also informer cache) and the
+		// phrase of the Pod is Pending, delete it and let the stateful
+		// controller to create the pod and its PVC(s) again
 		err = opc.podControl.DeletePod(tc, pod)
 		if err != nil {
 			glog.Errorf("orphan pods cleaner: failed to clean orphan pod: %s/%s, %v", ns, podName, err)
