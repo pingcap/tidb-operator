@@ -18,6 +18,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -25,9 +26,10 @@ import (
 )
 
 const (
-	skipReasonOrphanPodsCleanerIsNotPDOrTiKV  = "orphan pods cleaner: member type is not pd or tikv"
-	skipReasonOrphanPodsCleanerPVCNameIsEmpty = "orphan pods cleaner: pvcName is empty"
-	skipReasonOrphanPodsCleanerPVCIsFound     = "orphan pods cleaner: pvc is found"
+	skipReasonOrphanPodsCleanerIsNotPDOrTiKV   = "orphan pods cleaner: member type is not pd or tikv"
+	skipReasonOrphanPodsCleanerPVCNameIsEmpty  = "orphan pods cleaner: pvcName is empty"
+	skipReasonOrphanPodsCleanerPVCIsFound      = "orphan pods cleaner: pvc is found"
+	skipReasonOrphanPodsCleanerPodIsNotPending = "orphan pods cleaner: pod is not pending"
 )
 
 // OrphanPodsCleaner implements the logic for cleaning the orphan pods(has no pvc)
@@ -121,6 +123,10 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 		// if the PVC is not found in apiserver (also informer cache) and the
 		// phrase of the Pod is Pending, delete it and let the stateful
 		// controller to create the pod and its PVC(s) again
+		if pod.Status.Phase != v1.PodPending {
+			skipReason[podName] = skipReasonOrphanPodsCleanerPodIsNotPending
+			continue
+		}
 		err = opc.podControl.DeletePod(tc, pod)
 		if err != nil {
 			glog.Errorf("orphan pods cleaner: failed to clean orphan pod: %s/%s, %v", ns, podName, err)

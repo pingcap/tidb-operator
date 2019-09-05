@@ -159,6 +159,9 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 							},
 						},
 					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+					},
 				},
 			},
 			pvcs: []*corev1.PersistentVolumeClaim{
@@ -196,6 +199,9 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 							},
 						},
 					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+					},
 				},
 			},
 			pvcs: []*corev1.PersistentVolumeClaim{},
@@ -205,6 +211,39 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 				_, err = opc.podLister.Pods("default").Get("pod-1")
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "not found")).To(BeTrue())
+			},
+		},
+		{
+			name: "pvc is not found but pod is not pending",
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-1",
+						Namespace: metav1.NamespaceDefault,
+						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+					},
+					Spec: corev1.PodSpec{
+						Volumes: []corev1.Volume{
+							{
+								Name: "pd",
+								VolumeSource: corev1.VolumeSource{
+									PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+										ClaimName: "pvc-1",
+									},
+								},
+							},
+						},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+					},
+				},
+			},
+			pvcs: []*corev1.PersistentVolumeClaim{},
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, opc *orphanPodsCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["pod-1"]).To(Equal(skipReasonOrphanPodsCleanerPodIsNotPending))
 			},
 		},
 		{
@@ -227,6 +266,9 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 								},
 							},
 						},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
 					},
 				},
 			},
@@ -259,6 +301,9 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 							},
 						},
 					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -277,6 +322,9 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 								},
 							},
 						},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
 					},
 				},
 				{
@@ -297,6 +345,9 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 							},
 						},
 					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -315,6 +366,9 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 								},
 							},
 						},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
 					},
 				},
 			},
