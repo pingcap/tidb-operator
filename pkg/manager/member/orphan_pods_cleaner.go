@@ -30,6 +30,8 @@ const (
 	skipReasonOrphanPodsCleanerPVCNameIsEmpty  = "orphan pods cleaner: pvcName is empty"
 	skipReasonOrphanPodsCleanerPVCIsFound      = "orphan pods cleaner: pvc is found"
 	skipReasonOrphanPodsCleanerPodIsNotPending = "orphan pods cleaner: pod is not pending"
+	skipReasonOrphanPodsCleanerPodIsNotFound   = "orphan pods cleaner: pod does not exist anymore"
+	skipReasonOrphanPodsCleanerPodChanged      = "orphan pods cleaner: pod changed before deletion"
 )
 
 // OrphanPodsCleaner implements the logic for cleaning the orphan pods(has no pvc)
@@ -128,6 +130,20 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 		// if the PVC is not found in apiserver (also informer cache) and the
 		// phase of the Pod is Pending, delete it and let the stateful
 		// controller to create the pod and its PVC(s) again
+		apiPod, err := opc.kubeCli.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
+		if errors.IsNotFound(err) {
+			skipReason[podName] = skipReasonOrphanPodsCleanerPodIsNotFound
+			continue
+		}
+		if err != nil {
+			return skipReason, err
+		}
+		// try our best to avoid deleting wrong object in apiserver
+		// TODO upgrade to use deleteOption.Preconditions.ResourceVersion in client-go 1.14+
+		if apiPod.UID != pod.UID || apiPod.ResourceVersion != pod.ResourceVersion {
+			skipReason[podName] = skipReasonOrphanPodsCleanerPodChanged
+			continue
+		}
 		err = opc.podControl.DeletePod(tc, pod)
 		if err != nil {
 			glog.Errorf("orphan pods cleaner: failed to clean orphan pod: %s/%s, %v", ns, podName, err)

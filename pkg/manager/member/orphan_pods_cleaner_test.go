@@ -36,6 +36,7 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 	type testcase struct {
 		name            string
 		pods            []*corev1.Pod
+		apiPods         []*corev1.Pod
 		pvcs            []*corev1.PersistentVolumeClaim
 		deletePodFailed bool
 		expectFn        func(*GomegaWithT, map[string]string, *orphanPodsCleaner, error)
@@ -46,7 +47,13 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 		opc, podIndexer, pvcIndexer, client, podControl := newFakeOrphanPodsCleaner()
 		if test.pods != nil {
 			for _, pod := range test.pods {
+				client.CoreV1().Pods(pod.Namespace).Create(pod)
 				podIndexer.Add(pod)
+			}
+		}
+		if test.apiPods != nil {
+			for _, pod := range test.apiPods {
+				client.CoreV1().Pods(pod.Namespace).Update(pod)
 			}
 		}
 		if test.pvcs != nil {
@@ -250,6 +257,67 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(1))
 				g.Expect(skipReason["pod-1"]).To(Equal(skipReasonOrphanPodsCleanerPodIsNotPending))
+			},
+		},
+		{
+			name: "pvc is not found but pod changed in apiserver",
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "pod-1",
+						UID:             "pod-1-uid",
+						ResourceVersion: "1",
+						Namespace:       metav1.NamespaceDefault,
+						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+					},
+					Spec: corev1.PodSpec{
+						Volumes: []corev1.Volume{
+							{
+								Name: "pd",
+								VolumeSource: corev1.VolumeSource{
+									PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+										ClaimName: "pvc-1",
+									},
+								},
+							},
+						},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+					},
+				},
+			},
+			apiPods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "pod-1",
+						UID:             "pod-1-uid",
+						ResourceVersion: "2",
+						Namespace:       metav1.NamespaceDefault,
+						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+					},
+					Spec: corev1.PodSpec{
+						Volumes: []corev1.Volume{
+							{
+								Name: "pd",
+								VolumeSource: corev1.VolumeSource{
+									PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+										ClaimName: "pvc-1",
+									},
+								},
+							},
+						},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+					},
+				},
+			},
+			pvcs: []*corev1.PersistentVolumeClaim{},
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, opc *orphanPodsCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["pod-1"]).To(Equal(skipReasonOrphanPodsCleanerPodChanged))
 			},
 		},
 		{
