@@ -132,7 +132,7 @@ func main() {
 		oa.CheckTidbClusterStatusOrDie(cluster2)
 		oa.CheckDisasterToleranceOrDie(cluster2)
 
-		cluster2.ScalePD(3)
+		cluster2.ScaleTiDB(3)
 		oa.ScaleTidbClusterOrDie(cluster2)
 		oa.CheckTidbClusterStatusOrDie(cluster2)
 
