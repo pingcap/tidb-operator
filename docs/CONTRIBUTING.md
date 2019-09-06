@@ -116,9 +116,11 @@ First you should build a local Kubernetes environment for e2e tests, so we provi
 
     Follow [this guide](./local-dind-tutorial.md) to spin up a local DinD Kubernetes cluster.
 
-* Use kind to build Kubernetes cluster
+* Use kind to build Kubernetes cluster 
 
-    Use the following command to create a [kind](https://kind.sigs.k8s.io/) local kind Kubernetes environment.  
+    Please ensure you have install [kind](https://kind.sigs.k8s.io/) and it's version >= v0.4.0
+    
+    Use the following command to create a local kind Kubernetes environment.  
     
     ```sh
     $ ./hack/kind-cluster-build.sh
