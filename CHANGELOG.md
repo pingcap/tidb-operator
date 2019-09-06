@@ -13,32 +13,54 @@
 - Reduce e2e run time from `60m` to `20m`
 - Prevent pump progress from an exit with 0 if the pump become `offline`
 - Users can now expand cloud storage PV dynamically by increasing PVC storage size
+- Add tikvGCLifeTime option to backup
+- Add important parameters to `tikv.config` and `tidb.config` in `values.yaml`
+- Support restore tidb cluster from a specified scheduled backup dir
+- Enable cloud storage volume expansion & label local volume
+- Document and improve HA algorithm
 
 ### Bug fixes
 
 - Fix tikv scale in failure in some cases after tikv failover
 - Fix error handling for UpdateService
+- Fix some orphan pods cleaner bugs
+- Fix setting StatefulSet partition bug
+- Fix ad-hoc full backup failure due to incorrect claimName
+- Fix pump offline: pump progress will exit with `0` if offline
+- Fix tikv scale in failure in some cases
+- Fix an incorrect condition judgment
 
 ## Detailed Bug Fixes and Changes
 
-- add a script to remove orphaned K8s disks ([#770](https://github.com/pingcap/tidb-operator/pull/770))
-- enable cloud storage volume expansion & label local volume ([#781](https://github.com/pingcap/tidb-operator/pull/781))
-- fix pump offline: pump progress will exit with 0 if offline ([#778](https://github.com/pingcap/tidb-operator/pull/778))
-- deploy: Modularize gcp terraform ([#717](https://github.com/pingcap/tidb-operator/pull/717))
+- fix some orphan pods cleaner bugs ([#878](https://github.com/pingcap/tidb-operator/pull/878))
+- pkg/manager/member: Fix setting StatefulSet partition bug ([#830](https://github.com/pingcap/tidb-operator/pull/830))
+- add tikvGCLifeTime option ([#835](https://github.com/pingcap/tidb-operator/pull/835))
+- add recommendations options to mydumper ([#828](https://github.com/pingcap/tidb-operator/pull/828))
+- fix ad-hoc full backup failure due to incorrect claimName ([#836](https://github.com/pingcap/tidb-operator/pull/836))
+- improve tkctl get command output ([#822](https://github.com/pingcap/tidb-operator/pull/822))
+- chart: add important parameters to tikv and tidb config ([#786](https://github.com/pingcap/tidb-operator/pull/786))
+- test: fix v1.0.0 don't support `binlog.drainer.config` ([#775](https://github.com/pingcap/tidb-operator/pull/775))
+- support restore tidb cluster from a specified scheduled backup dir ([#804](https://github.com/pingcap/tidb-operator/pull/804))
+- fix `extraLabels` description in `values.yaml` ([#763](https://github.com/pingcap/tidb-operator/pull/763))
+- fix tkctl log output exception ([#797](https://github.com/pingcap/tidb-operator/pull/797))
 - add a script to remove orphaned K8s disks ([#745](https://github.com/pingcap/tidb-operator/pull/745))
+- enable cloud storage volume expansion & label local volume ([#772](https://github.com/pingcap/tidb-operator/pull/772))
+- fix pump offline: pump progress will exit with 0 if offline ([#769](https://github.com/pingcap/tidb-operator/pull/769))
+- deploy: Modularize gcp terraform ([#717](https://github.com/pingcap/tidb-operator/pull/717))
 - binlog: support `binlog.pump.config` configurations for pump and drainer ([#693](https://github.com/pingcap/tidb-operator/pull/693))
 - Remove duplicate key values ([#758](https://github.com/pingcap/tidb-operator/pull/758))
-- e2e: Make incremental backup test work ([#764](https://github.com/pingcap/tidb-operator/pull/764))
-- fix e2e test compatible with v1.0.0 ([#757](https://github.com/pingcap/tidb-operator/pull/757))
-- Add tidb-backup job reources limits ([#729](https://github.com/pingcap/tidb-operator/pull/729))
-- e2e: extend the wating time of CheckManualPauseTiDB process ([#752](https://github.com/pingcap/tidb-operator/pull/752))
-- e2e: add retry logic for LabelNodes function ([#735](https://github.com/pingcap/tidb-operator/pull/735))
 - some typo fix ([#738](https://github.com/pingcap/tidb-operator/pull/738))
-- add affinity to pump/drainer ([#741](https://github.com/pingcap/tidb-operator/pull/741))
+- e2e: extend the wating time of CheckManualPauseTiDB process ([#752](https://github.com/pingcap/tidb-operator/pull/752))
+- Add tidb-backup job reources limits ([#729](https://github.com/pingcap/tidb-operator/pull/729))
+- fix e2e test compatible with v1.0.0 ([#757](https://github.com/pingcap/tidb-operator/pull/757))
+- e2e: Make incremental backup test work ([#764](https://github.com/pingcap/tidb-operator/pull/764))
+- e2e: add retry logic for LabelNodes function ([#735](https://github.com/pingcap/tidb-operator/pull/735))
 - Fix tikv scale in failure in some cases ([#726](https://github.com/pingcap/tidb-operator/pull/726))
+- add affinity to pump/drainer ([#741](https://github.com/pingcap/tidb-operator/pull/741))
+- refine clean logic ([#719](https://github.com/pingcap/tidb-operator/pull/719))
 - scheduler: inject a failure by pod annotation ([#716](https://github.com/pingcap/tidb-operator/pull/716))
 - Updated readme links to point to correct pingcap.com/docs URLs for English and Chinese ([#732](https://github.com/pingcap/tidb-operator/pull/732))
-- refine clean logic ([#719](https://github.com/pingcap/tidb-operator/pull/719))
+- document and improve HA algorithm ([#670](https://github.com/pingcap/tidb-operator/pull/670))
 - pkg/controller: fix an incorrect condition judgment ([#718](https://github.com/pingcap/tidb-operator/pull/718))
 - upgrade local-volume-provisioner to v2.3.2 ([#696](https://github.com/pingcap/tidb-operator/pull/696))
 - tests: reduce e2e test run time ([#713](https://github.com/pingcap/tidb-operator/pull/713))
