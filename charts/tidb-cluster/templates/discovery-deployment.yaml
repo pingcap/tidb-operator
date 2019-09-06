@@ -45,4 +45,14 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-
+{{- if .Values.enableTLSCluster }}
+        volumeMounts:
+        - mountPath: /var/lib/tls
+          name: tls
+          readOnly: true
+      volumes:
+      - name: tls
+        secret:
+          defaultMode: 420
+          secretName: client-tls
+{{- end -}}
