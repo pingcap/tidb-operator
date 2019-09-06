@@ -56,16 +56,26 @@ spec:
         env:
         - name: GF_PROVISIONING_PATH
           value: /grafana-dashboard-definitions/tidb
+        - name: GF_DATASOURCE_PATH
+          value: /etc/grafana/provisioning/datasources
         - name: TIDB_CLUSTER_NAME
           value: {{ template "cluster.name" . }}
         - name: TIDB_ENABLE_BINLOG
           value: {{ .Values.binlog.pump.create | default false | quote }}
+        - name: TIDB_ENABLE_IMPORTER
+          value: {{ .Values.importer.create | default false | quote }}
         - name:  PROM_CONFIG_PATH
           value: /prometheus-rules
       {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
       {{- end }}
+        - name: GF_NODE_EXPORTER_DATASOURCE_URL
+          value: {{ .Values.monitor.initializer.config.NODE_EXPORTER_PROM_URL }}
+        - name: GF_TIDB_CLUSTER_URL
+          value: http://127.0.0.1:9090
+        - name: TIDB_CLUSTER_NAMESPACE
+          value: {{ .Release.Namespace }}
         command:
         - /bin/sh
         - -c
@@ -84,6 +94,9 @@ spec:
           readOnly: false
         - name: monitor-data
           mountPath: /data
+        - name: grafana-datasources
+          mountPath: /etc/grafana/provisioning/datasources
+          readOnly: false
         resources:
 {{ toYaml .Values.monitor.initializer.resources | indent 10 }}
       containers:
@@ -180,7 +193,7 @@ spec:
           - name: monitor-data
             mountPath: /data
           - mountPath: /etc/grafana/provisioning/datasources
-            name: datasource
+            name: grafana-datasources
             readOnly: false
           - mountPath: /etc/grafana/provisioning/dashboards
             name: dashboards-provisioning
@@ -204,12 +217,8 @@ spec:
           - key: prometheus-config
             path: prometheus.yml
       {{- if .Values.monitor.grafana.create }}
-      - configMap:
-          name: {{ template "cluster.name" . }}-monitor
-          items:
-          - key: datasource-config
-            path: datasource.yaml
-        name: datasource
+      - emptyDir: {}
+        name: grafana-datasources
       - configMap:
           name: {{ template "cluster.name" . }}-monitor
           items:
