@@ -118,7 +118,7 @@ First you should build a local Kubernetes environment for e2e tests, so we provi
 
 * Use kind to build Kubernetes cluster 
 
-    Please ensure you have install [kind](https://kind.sigs.k8s.io/) and it's version >= v0.4.0
+    Please ensure you have install [kind](https://kind.sigs.k8s.io/) and it's version == v0.4.0
     
     Use the following command to create a local kind Kubernetes environment.  
     

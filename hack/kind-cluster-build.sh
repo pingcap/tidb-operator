@@ -6,7 +6,7 @@ usage() {
 This script use kind to create Kubernetes cluster,about kind please refer: https://kind.sigs.k8s.io/
 Before run this script,please ensure that:
 * have installed docker
-* have installed kind and kind's version >= v0.4.0
+* have installed kind and kind's version == v0.4.0
 
 Options:
        -h,--help               prints the usage message
