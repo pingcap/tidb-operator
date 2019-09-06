@@ -84,7 +84,7 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	if controllerRef == nil || controllerRef.Kind != controller.ControllerKind.Kind {
 		// In this case, we can't tell if this statefulset is controlled by tidb-operator,
 		// so we don't block this statefulset upgrade, return directly.
-		glog.Warningf("statefulset %s/%s has tidb or tikv component label but doesn't have owner reference or the owner reference is not TidbCluster")
+		glog.Warningf("statefulset %s/%s has tidb or tikv component label but doesn't have owner reference or the owner reference is not TidbCluster", namespace, name)
 		return util.ARSuccess()
 	}
 
