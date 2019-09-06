@@ -31,8 +31,3 @@ vendor
 tests/e2e/e2e.test
 .orig
 tkc
-
-api/pkg/apis/wardle/v1alpha1/zz_generated.*
-api/pkg/apis/wardle/zz_generated.deepcopy.go
-api/pkg/generated
-api/artifacts/image/tidb-apiserver

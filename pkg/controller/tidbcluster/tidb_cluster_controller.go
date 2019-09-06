@@ -177,6 +177,7 @@ func NewController(
 				podInformer.Lister(),
 				podControl,
 				pvcInformer.Lister(),
+				kubeCli,
 			),
 			recorder,
 		),
@@ -216,10 +217,6 @@ func (tcc *Controller) Run(workers int, stopCh <-chan struct{}) {
 
 	glog.Info("Starting tidbcluster controller")
 	defer glog.Info("Shutting down tidbcluster controller")
-
-	if !cache.WaitForCacheSync(stopCh, tcc.tcListerSynced, tcc.setListerSynced) {
-		return
-	}
 
 	for i := 0; i < workers; i++ {
 		go wait.Until(tcc.worker, time.Second, stopCh)
