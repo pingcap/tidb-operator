@@ -994,7 +994,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 			glog.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 			continue
 		}
-		pdClient := pdapi.NewDefaultPDControl().GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
+		pdClient := pdapi.NewDefaultPDControl().GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSCluster)
 
 		replicas := tc.TiKVRealReplicas()
 		for i := replicas - 1; i >= 0; i-- {

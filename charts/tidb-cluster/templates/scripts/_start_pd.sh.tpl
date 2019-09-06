@@ -58,12 +58,14 @@ while true; do
     fi
 done
 
+SCHEME={{ if .Values.enableTLSCluster }}"https"{{ else }}"http"{{ end }}
+
 ARGS="--data-dir=/var/lib/pd \
 --name=${POD_NAME} \
---peer-urls=http://0.0.0.0:2380 \
---advertise-peer-urls=http://${domain}:2380 \
---client-urls=http://0.0.0.0:2379 \
---advertise-client-urls=http://${domain}:2379 \
+--peer-urls=${SCHEME}://0.0.0.0:2380 \
+--advertise-peer-urls=${SCHEME}://${domain}:2380 \
+--client-urls=${SCHEME}://0.0.0.0:2379 \
+--advertise-client-urls=${SCHEME}://${domain}:2379 \
 --config=/etc/pd/pd.toml \
 "
 

@@ -93,6 +93,8 @@ type TidbClusterSpec struct {
 	Services        []Service                            `json:"services,omitempty"`
 	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 	Timezone        string                               `json:"timezone,omitempty"`
+	// Enable TLS connection between TiDB server compoments
+	EnableTLSCluster bool `json:"enableTLSCluster,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -103,7 +105,7 @@ type TidbClusterStatus struct {
 	TiDB      TiDBStatus `json:"tidb,omitempty"`
 }
 
-// PDSpec contains details of PD member
+// PDSpec contains details of PD members
 type PDSpec struct {
 	ContainerSpec
 	Replicas         int32               `json:"replicas"`
@@ -115,7 +117,7 @@ type PDSpec struct {
 	StorageClassName string              `json:"storageClassName,omitempty"`
 }
 
-// TiDBSpec contains details of PD member
+// TiDBSpec contains details of TiDB members
 type TiDBSpec struct {
 	ContainerSpec
 	Replicas         int32                 `json:"replicas"`
@@ -129,6 +131,7 @@ type TiDBSpec struct {
 	MaxFailoverCount int32                 `json:"maxFailoverCount,omitempty"`
 	SeparateSlowLog  bool                  `json:"separateSlowLog,omitempty"`
 	SlowLogTailer    TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
+	EnableTLSClient  bool                  `json:"enableTLSClient,omitempty"`
 }
 
 // TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB
@@ -136,7 +139,7 @@ type TiDBSlowLogTailerSpec struct {
 	ContainerSpec
 }
 
-// TiKVSpec contains details of PD member
+// TiKVSpec contains details of TiKV members
 type TiKVSpec struct {
 	ContainerSpec
 	Replicas         int32               `json:"replicas"`
