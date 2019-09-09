@@ -105,7 +105,8 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 
 	membersArr := make([]string, 0)
 	for _, member := range membersInfo.Members {
-		membersArr = append(membersArr, member.PeerUrls[0])
+		memberURL := strings.ReplaceAll(member.PeerUrls[0], ":2380", ":2379")
+		membersArr = append(membersArr, fmt.Sprintf("%s", memberURL))
 	}
 	delete(currentCluster.peers, podName)
 	return fmt.Sprintf("--join=%s", strings.Join(membersArr, ",")), nil
