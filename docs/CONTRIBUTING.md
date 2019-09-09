@@ -148,8 +148,7 @@ $ make e2e-docker-push
 After Docker images are pushed to the inner Docker registry, run e2e tests:
 
 ```sh
-# replace 127.0.0.1:5000 with localhost:5000 to make it work with containerd
-$ set 's/127.0.0.1:5000/localhost:5000/g' tests/manifests/e2e/e2e.yaml | kubectl apply -f -
+$ kubectl apply -f tests/manifests/e2e/e2e.yaml
 ```
 
 You can get the e2e test report from the log of testing pod: 
