@@ -279,6 +279,6 @@ If you configured local HTTP proxy in your docker, images may cannot be pulled
 because http proxy is inaccessible.
 
 If you cannot remove http proxy settings, you can either whitelist image
-domains in NO_PROXY environment or use 'kind load docker-image' command to load
-images into nodes.
+domains in NO_PROXY environment or use 'docker pull <image> && kind load
+docker-image <image>' command to load images into nodes.
 EOF
