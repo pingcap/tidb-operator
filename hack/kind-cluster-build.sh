@@ -259,9 +259,9 @@ EOF
 kubectl apply -f ${registryFile}
 
 echo "init tidb-operator env"
-kubectl apply -f manifests/local-dind/local-volume-provisioner.yaml
-kubectl apply -f manifests/tiller-rbac.yaml
-kubectl apply -f manifests/crd.yaml
+kubectl apply -f ${ROOT}/manifests/local-dind/local-volume-provisioner.yaml
+kubectl apply -f ${ROOT}/manifests/tiller-rbac.yaml
+kubectl apply -f ${ROOT}/manifests/crd.yaml
 kubectl create ns tidb-operator-e2e
 helm init --service-account=tiller --wait
 
