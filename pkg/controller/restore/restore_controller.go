@@ -117,10 +117,6 @@ func (rsc *Controller) Run(workers int, stopCh <-chan struct{}) {
 	glog.Info("Starting restore controller")
 	defer glog.Info("Shutting down restore controller")
 
-	if !cache.WaitForCacheSync(stopCh, rsc.restoreListerSynced) {
-		return
-	}
-
 	for i := 0; i < workers; i++ {
 		go wait.Until(rsc.worker, time.Second, stopCh)
 	}
