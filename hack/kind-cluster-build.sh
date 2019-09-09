@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
+cd $ROOT
+
 usage() {
     cat <<EOF
 This script use kind to create Kubernetes cluster,about kind please refer: https://kind.sigs.k8s.io/
