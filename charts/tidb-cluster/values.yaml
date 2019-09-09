@@ -570,6 +570,12 @@ scheduledBackup:
   failedJobsHistoryLimit: 1
   # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#starting-deadline
   startingDeadlineSeconds: 3600
+  # https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#pod-backoff-failure-policy
+  backoffLimit: 6
+  # https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#job-termination-and-cleanup
+  # activeDeadlineSeconds: 10800
+  # https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#handling-pod-and-container-failures
+  restartPolicy: OnFailure
   # -t is thread count, larger thread count will speed up the backup, but may impact the performance of the upstream TiDB.
   # -F is the chunk size, a big table is partitioned into many chunks.
   # Other useful options are -B for database, and -T for tables.
