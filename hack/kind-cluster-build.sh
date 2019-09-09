@@ -94,8 +94,6 @@ configFile=${workDir}/kind-config.yaml
 cat <<EOF > ${configFile}
 kind: Cluster
 apiVersion: kind.sigs.k8s.io/v1alpha3
-networking:
-  disableDefaultCNI: true
 nodes:
 - role: control-plane
   extraPortMappings:
@@ -258,14 +256,29 @@ EOF
 kubectl apply -f ${registryFile}
 
 echo "init tidb-operator env"
-kubectl apply -f manifests/local-dind/kube-flannel.yaml
 kubectl apply -f manifests/local-dind/local-volume-provisioner.yaml
 kubectl apply -f manifests/tiller-rbac.yaml
 kubectl apply -f manifests/crd.yaml
 kubectl create ns tidb-operator-e2e
 helm init --service-account=tiller --wait
 
+# This is required because current tidb-operator-e2e use a DIND-only image `mirantis/hypokube:final`
+# FIXME: remove this
+docker pull gcr.io/google-containers/kube-scheduler:v1.12.2
+docker tag gcr.io/google-containers/kube-scheduler:v1.12.2 mirantis/hypokube:final
+kind load docker-image --name=${clusterName} mirantis/hypokube:final
+
 echo "############# success create cluster:[${clusterName}] #############"
 
 echo "To start using your cluster, run:"
 echo "    export KUBECONFIG=$(kind get kubeconfig-path --name=${clusterName})"
+echo ""
+echo <<EOF
+NOTE: In kind, nodes run docker network and cannot access host network.
+If you configured local HTTP proxy in your docker, images may cannot be pulled
+because http proxy is inaccessible.
+
+If you cannot remove http proxy settings, you can either whitelist image
+domains in NO_PROXY environment or use 'kind load docker-image' command to load
+images into nodes.
+EOF
