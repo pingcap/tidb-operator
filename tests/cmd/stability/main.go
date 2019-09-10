@@ -260,26 +260,26 @@ func run() {
 		// stop all kube-scheduler pods
 		for _, physicalNode := range cfg.APIServers {
 			for _, vNode := range physicalNode.Nodes {
-				fta.StopKubeSchedulerOrDie(vNode)
+				fta.StopKubeSchedulerOrDie(vNode.IP)
 			}
 		}
 		oa.CheckKubeSchedulerDownOrDie(ocfg, clusters)
 		for _, physicalNode := range cfg.APIServers {
 			for _, vNode := range physicalNode.Nodes {
-				fta.StartKubeSchedulerOrDie(vNode)
+				fta.StartKubeSchedulerOrDie(vNode.IP)
 			}
 		}
 
 		// stop all kube-controller-manager pods
 		for _, physicalNode := range cfg.APIServers {
 			for _, vNode := range physicalNode.Nodes {
-				fta.StopKubeControllerManagerOrDie(vNode)
+				fta.StopKubeControllerManagerOrDie(vNode.IP)
 			}
 		}
 		oa.CheckKubeControllerManagerDownOrDie(ocfg, clusters)
 		for _, physicalNode := range cfg.APIServers {
 			for _, vNode := range physicalNode.Nodes {
-				fta.StartKubeControllerManagerOrDie(vNode)
+				fta.StartKubeControllerManagerOrDie(vNode.IP)
 			}
 		}
 	}

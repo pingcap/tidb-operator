@@ -232,7 +232,7 @@ func (s *Server) getVM(name string) (*manager.VM, error) {
 	}
 
 	for _, vm := range vms {
-		if name == vm.Name || name == vm.IP {
+		if name == vm.Name {
 			return vm, nil
 		}
 	}

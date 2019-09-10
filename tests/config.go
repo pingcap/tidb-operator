@@ -57,8 +57,13 @@ type Config struct {
 
 // Nodes defines a series of nodes that belong to the same physical node.
 type Nodes struct {
-	PhysicalNode string   `yaml:"physical_node" json:"physical_node"`
-	Nodes        []string `yaml:"nodes" json:"nodes"`
+	PhysicalNode string `yaml:"physical_node" json:"physical_node"`
+	Nodes        []Node `yaml:"nodes" json:"nodes"`
+}
+
+type Node struct {
+	IP   string `yaml:"ip" json:"ip"`
+	Name string `yaml:"name" json:"name"`
 }
 
 // NewConfig creates a new config.
