@@ -82,7 +82,7 @@ func AddHandlers(h printers.PrintHandler) {
 	//tikv columns
 	tikvPodColumns := commonPodColumns
 	storeId := metav1beta1.TableColumnDefinition{
-		Name:        "StoreId",
+		Name:        "StoreID",
 		Type:        "string",
 		Description: "TiKV StoreID",
 	}
