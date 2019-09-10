@@ -84,7 +84,7 @@ func AddHandlers(h printers.PrintHandler) {
 	storeId := metav1beta1.TableColumnDefinition{
 		Name:        "StoreId",
 		Type:        "string",
-		Description: "Tikv Store Id",
+		Description: "TiKV StoreID",
 	}
 	tikvPodColumns = append(tikvPodColumns, storeId)
 	h.TableHandler(tikvPodColumns, printTikvList)
