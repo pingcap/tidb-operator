@@ -13,38 +13,20 @@
 
 package manager
 
-import (
-	"fmt"
-	"sync"
-)
-
 // Manager to manager fault trigger
 type Manager struct {
-	sync.RWMutex
-	vmCache map[string]string
+	VMManager
 }
 
 // NewManager returns a manager instance
-func NewManager() *Manager {
+func NewManager(vmManagerName string) *Manager {
+	var vmManager VMManager
+	if vmManagerName == "qm" {
+		vmManager = &QMVMManager{}
+	} else {
+		vmManager = &VirshVMManager{}
+	}
 	return &Manager{
-		vmCache: make(map[string]string),
+		vmManager,
 	}
-}
-
-func (m *Manager) setVMCache(key, val string) {
-	m.Lock()
-	m.vmCache[key] = val
-	m.Unlock()
-}
-
-func (m *Manager) getVMCache(key string) (string, error) {
-	m.RLock()
-	defer m.RUnlock()
-
-	val, ok := m.vmCache[key]
-	if !ok {
-		return "", fmt.Errorf("vm %s not in cache", key)
-	}
-
-	return val, nil
 }
