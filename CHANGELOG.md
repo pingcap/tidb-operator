@@ -5,7 +5,7 @@
 ### Action Required
 
 - ACTION REQUIRED: We fixed a serious bug ([#878](https://github.com/pingcap/tidb-operator/pull/878)) that could cause all `PD` and `TiKV` pods to be accidentally deleted when `kube-apiserver` fails. We strongly suggest users upgrade to `v1.0.1`.
-- ACTION REQUIRED: There is a bug ([#29](https://github.com/pingcap/mydumper/pull/29)) in `mydumper` which may cause the value of a column not to be included in the exported data . We strongly suggest users upgrade the backup image to `pingcap/tidb-cloud-backup:20190828`.
+- ACTION REQUIRED: There is a bug ([#29](https://github.com/pingcap/mydumper/pull/29)) in `pingcap/mydumper` which may cause the value of a column not to be included in the exported data . We strongly suggest users upgrade the backup image to `pingcap/tidb-cloud-backup:20190828`.
 
 ### Improvements
 
