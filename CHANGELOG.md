@@ -2,6 +2,10 @@
 
 ## v1.0.1 What's New
 
+### Action Required
+
+- ACTION REQUIRED: In this release, we fixed a serious bug ([#878](https://github.com/pingcap/tidb-operator/pull/878)) that could cause all `PD` and `TiKV` pods to be accidentally deleted when `kube-apiserver` fails. We strongly suggest users upgrade to this version.
+
 ### Improvements
 
 - Modularize gcp terraform
