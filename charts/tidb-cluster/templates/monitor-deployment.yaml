@@ -66,6 +66,10 @@ spec:
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
       {{- end }}
+        - name: PROM_PERSISTENT_DIR
+          value: /data
+        - name: TIDB_VERSION
+          value: {{ .Values.tidb.image }}
         command:
         - /bin/sh
         - -c
@@ -125,6 +129,8 @@ spec:
         imagePullPolicy: {{ .Values.monitor.reloader.imagePullPolicy | default "IfNotPresent" }}
         command:
         - /bin/reload
+        - --root-store-path=/data
+        - --sub-store-path={{ .Values.tidb.image }}
         - --watch-path=/prometheus-rules/rules
         - --prometheus-url=http://127.0.0.1:9090
         ports:
@@ -135,6 +141,8 @@ spec:
           - name: prometheus-rules
             mountPath: /prometheus-rules
             readOnly: false
+          - name: monitor-data
+            mountPath: /data
       {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
         env:
         - name: TZ
