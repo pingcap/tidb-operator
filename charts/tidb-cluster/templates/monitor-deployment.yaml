@@ -62,6 +62,10 @@ spec:
           value: {{ .Values.binlog.pump.create | default false | quote }}
         - name:  PROM_CONFIG_PATH
           value: /prometheus-rules
+        - name: PROM_PERSISTENT_DIR
+          value: /data
+        - name: TIDB_VERSION
+          value: {{ .Values.tidb.image }}
         command:
         - /bin/sh
         - -c
@@ -121,6 +125,8 @@ spec:
         imagePullPolicy: {{ .Values.monitor.reloader.imagePullPolicy | default "IfNotPresent" }}
         command:
         - /bin/reload
+        - --root-store-path=/data
+        - --sub-store-path={{ .Values.tidb.image }}
         - --watch-path=/prometheus-rules/rules
         - --prometheus-url=http://127.0.0.1:9090
         ports:
@@ -131,6 +137,8 @@ spec:
           - name: prometheus-rules
             mountPath: /prometheus-rules
             readOnly: false
+          - name: monitor-data
+            mountPath: /data
         resources:
 {{ toYaml .Values.monitor.reloader.resources | indent 10 }}
       {{- end }}
