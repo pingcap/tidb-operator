@@ -75,7 +75,7 @@
 - Fix an incorrect condition judgment ([#718](https://github.com/pingcap/tidb-operator/pull/718))
 - Upgrade local-volume-provisioner to v2.3.2 ([#696](https://github.com/pingcap/tidb-operator/pull/696))
 - Reduce e2e test run time ([#713](https://github.com/pingcap/tidb-operator/pull/713))
-- Terraform gke scale out fix ([#711](https://github.com/pingcap/tidb-operator/pull/711))
+- Fix Terraform GKE scale-out issues ([#711](https://github.com/pingcap/tidb-operator/pull/711))
 - Update wording and fix format for v1.0.0 ([#709](https://github.com/pingcap/tidb-operator/pull/709))
 - Update documents ([#705](https://github.com/pingcap/tidb-operator/pull/705))
 
