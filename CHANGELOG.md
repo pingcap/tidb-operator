@@ -66,7 +66,7 @@
 - Fix e2e test compatible with v1.0.0 ([#757](https://github.com/pingcap/tidb-operator/pull/757))
 - Make incremental backup test work ([#764](https://github.com/pingcap/tidb-operator/pull/764))
 - Add retry logic for LabelNodes function ([#735](https://github.com/pingcap/tidb-operator/pull/735))
-- Fix tikv scale in failure in some cases ([#726](https://github.com/pingcap/tidb-operator/pull/726))
+- Fix the TiKV scale-in failure in some cases ([#726](https://github.com/pingcap/tidb-operator/pull/726))
 - Add affinity to Pump and Drainer ([#741](https://github.com/pingcap/tidb-operator/pull/741))
 - Refine clean logic ([#719](https://github.com/pingcap/tidb-operator/pull/719))
 - Inject a failure by pod annotation ([#716](https://github.com/pingcap/tidb-operator/pull/716))
