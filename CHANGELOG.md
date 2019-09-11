@@ -62,7 +62,7 @@
 - Remove duplicate key values ([#758](https://github.com/pingcap/tidb-operator/pull/758))
 - Some typo fix ([#738](https://github.com/pingcap/tidb-operator/pull/738))
 - Extend the wating time of CheckManualPauseTiDB process ([#752](https://github.com/pingcap/tidb-operator/pull/752))
-- Add tidb-backup job reources limits ([#729](https://github.com/pingcap/tidb-operator/pull/729))
+- Set the resource limit for the tidb-backup job  ([#729](https://github.com/pingcap/tidb-operator/pull/729))
 - Fix e2e test compatible with v1.0.0 ([#757](https://github.com/pingcap/tidb-operator/pull/757))
 - Make incremental backup test work ([#764](https://github.com/pingcap/tidb-operator/pull/764))
 - Add retry logic for LabelNodes function ([#735](https://github.com/pingcap/tidb-operator/pull/735))
