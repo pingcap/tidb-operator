@@ -16,6 +16,18 @@ patches:
     apiVersion: batch/v1
     kind: Job
     metadata:
+      name: not-important
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            dedicated: sysbench
+  target:
+    kind: Job
+- patch: |-
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
       name: sysbench-prepare
     spec:
       template:

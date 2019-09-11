@@ -46,19 +46,6 @@ resources:
 - ../manifests/sysbench
 commonAnnotations:
   tidb-host: $TIDB_HOST
-patches:
-- patch: |-
-    apiVersion: batch/v1
-    kind: Job
-    metadata:
-      name: not-important
-    spec:
-      template:
-        spec:
-          nodeSelector:
-            dedicated: sysbench
-  target:
-    kind: Job
 EOF
 ```
 
