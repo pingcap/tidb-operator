@@ -24,7 +24,7 @@
 - Enable cloud storage volume expansion & label local volume
 - Document and improve HA algorithm
 - Support specifying the permit host in the `values.tidb.permitHost` chart
-- Add zone label and reserved resources arguments to kubelet
+- Add the zone label and reserved resources arguments to kubelet
 - Update the default backup image to `pingcap/tidb-cloud-backup:20190828`
 
 ### Bug fixes
