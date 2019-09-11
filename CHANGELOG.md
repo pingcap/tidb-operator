@@ -58,7 +58,7 @@
 - Enable cloud storage volume expansion & label local volume ([#772](https://github.com/pingcap/tidb-operator/pull/772))
 - Pump progress will exit with 0 if offline ([#769](https://github.com/pingcap/tidb-operator/pull/769))
 - Modularize gcp terraform ([#717](https://github.com/pingcap/tidb-operator/pull/717))
-- Support `binlog.pump.config` configurations for pump and drainer ([#693](https://github.com/pingcap/tidb-operator/pull/693))
+- Support `binlog.pump.config` configurations for Pump and Drainer ([#693](https://github.com/pingcap/tidb-operator/pull/693))
 - Remove duplicate key values ([#758](https://github.com/pingcap/tidb-operator/pull/758))
 - Some typo fix ([#738](https://github.com/pingcap/tidb-operator/pull/738))
 - Extend the waiting time of the `CheckManualPauseTiDB` process ([#752](https://github.com/pingcap/tidb-operator/pull/752))
