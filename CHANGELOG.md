@@ -11,7 +11,7 @@
 
 - Modularize GCP Terraform
 - Add a script to remove orphaned k8s disks
-- Support `binlog.pump.config`, `binlog.drainer.config` configurations for pump and drainer
+- Support `binlog.pump.config`, `binlog.drainer.config` configurations for Pump and Drainer
 - Add `tidb-backup` job reources limits
 - Add `affinity` to pump/drainer configration
 - Upgrade local-volume-provisioner to `v2.3.2`
