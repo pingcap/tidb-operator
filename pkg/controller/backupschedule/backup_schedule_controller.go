@@ -176,8 +176,8 @@ func (bsc *Controller) sync(key string) error {
 	return bsc.syncBackupSchedule(bs.DeepCopy())
 }
 
-func (bsc *Controller) syncBackupSchedule(tc *v1alpha1.BackupSchedule) error {
-	return bsc.control.UpdateBackupSchedule(tc)
+func (bsc *Controller) syncBackupSchedule(bs *v1alpha1.BackupSchedule) error {
+	return bsc.control.UpdateBackupSchedule(bs)
 }
 
 // enqueueBackupSchedule enqueues the given restore in the work queue.
