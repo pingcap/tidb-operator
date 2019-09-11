@@ -32,7 +32,7 @@
 - Fix tikv scale-in failure in some cases after tikv failover
 - Fix error handling for UpdateService
 - Fix some orphan pods cleaner bugs
-- Fix setting StatefulSet partition bug
+- Fix the bug of setting the `StatefulSet` partition
 - Fix ad-hoc full backup failure due to incorrect claimName
 - Fix pump offline: pump progress will exit with `0` if offline
 - Fix tikv scale in failure in some cases
