@@ -70,7 +70,7 @@
 - Add affinity to Pump and Drainer ([#741](https://github.com/pingcap/tidb-operator/pull/741))
 - Refine clean logic ([#719](https://github.com/pingcap/tidb-operator/pull/719))
 - Inject a failure by pod annotation ([#716](https://github.com/pingcap/tidb-operator/pull/716))
-- Updated readme links to point to correct pingcap.com/docs URLs for English and Chinese ([#732](https://github.com/pingcap/tidb-operator/pull/732))
+- Update README links to point to correct `pingcap.com/docs` URLs for English and Chinese ([#732](https://github.com/pingcap/tidb-operator/pull/732))
 - Document and improve HA algorithm ([#670](https://github.com/pingcap/tidb-operator/pull/670))
 - Fix an incorrect condition judgment ([#718](https://github.com/pingcap/tidb-operator/pull/718))
 - Upgrade local-volume-provisioner to v2.3.2 ([#696](https://github.com/pingcap/tidb-operator/pull/696))
