@@ -23,7 +23,7 @@
 - Support restoring the TiDB cluster from a specified scheduled backup directory
 - Enable cloud storage volume expansion & label local volume
 - Document and improve HA algorithm
-- Users can designate permitting host in chart values.tidb.permitHost
+- Support specifying the permit host in the `values.tidb.permitHost` chart
 - Add zone label and reserved resources arguments to kubelet
 - Update the default backup image to `pingcap/tidb-cloud-backup:20190828`
 
