@@ -42,7 +42,7 @@
 
 - Update tidb-cloud-backup image tag ([#846](https://github.com/pingcap/tidb-operator/pull/846))
 - Add tidb permit host option ([#779](https://github.com/pingcap/tidb-operator/pull/779))
-- Add zone label and reserved resources for nodes ([#871](https://github.com/pingcap/tidb-operator/pull/871))
+- Add the zone label and reserved resources for nodes ([#871](https://github.com/pingcap/tidb-operator/pull/871))
 - Fix some orphan pods cleaner bugs ([#878](https://github.com/pingcap/tidb-operator/pull/878))
 - Fix setting StatefulSet partition bug ([#830](https://github.com/pingcap/tidb-operator/pull/830))
 - Add tikvGCLifeTime option ([#835](https://github.com/pingcap/tidb-operator/pull/835))
