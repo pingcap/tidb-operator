@@ -14,51 +14,149 @@
 package controller
 
 import (
+	"fmt"
+	"strings"
+
+	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	batchinformers "k8s.io/client-go/informers/batch/v1"
 	"k8s.io/client-go/kubernetes"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 )
 
 // JobControlInterface manages Jobs used in backup、restore and clean
 type JobControlInterface interface {
-	CreateJob(job *batchv1.Job) error
-	DeleteJob(namespace, name string) error
-	GetJob(namespace, name string) (*batchv1.Job, error)
+	CreateJob(object runtime.Object, job *batchv1.Job) error
+	DeleteJob(object runtime.Object, job *batchv1.Job) error
 }
 
 type realJobControl struct {
-	kubeCli   kubernetes.Interface
-	jobLister batchlisters.JobLister
-	recorder  record.EventRecorder
+	kubeCli  kubernetes.Interface
+	recorder record.EventRecorder
 }
 
 // NewRealJobControl creates a new JobControlInterface
 func NewRealJobControl(
 	kubeCli kubernetes.Interface,
-	jobLister batchlisters.JobLister,
 	recorder record.EventRecorder,
 ) JobControlInterface {
 	return &realJobControl{
-		kubeCli:   kubeCli,
-		jobLister: jobLister,
-		recorder:  recorder,
+		kubeCli:  kubeCli,
+		recorder: recorder,
 	}
 }
 
-func (rjc *realJobControl) CreateJob(job *batchv1.Job) error {
-	// TODO: Implement this method
-	return nil
+func (rjc *realJobControl) CreateJob(object runtime.Object, job *batchv1.Job) error {
+	ns := job.GetNamespace()
+	jobName := job.GetName()
+	instanceName := job.GetLabels()[label.InstanceLabelKey]
+	kind := object.GetObjectKind().GroupVersionKind().Kind
+
+	_, err := rjc.kubeCli.BatchV1().Jobs(ns).Create(job)
+	if err != nil {
+		glog.Errorf("failed to create %s job: [%s/%s], cluster: %s, err: %v", strings.ToLower(kind), ns, jobName, instanceName, err)
+	} else {
+		glog.V(4).Infof("create %s job: [%s/%s] successfully, cluster: %s", strings.ToLower(kind), ns, jobName, instanceName)
+	}
+	rjc.recordJobEvent("create", object, job, err)
+	return err
 }
 
-func (rjc *realJobControl) DeleteJob(namespace, name string) error {
-	// TODO: Implement this method
-	return nil
+func (rjc *realJobControl) DeleteJob(object runtime.Object, job *batchv1.Job) error {
+	ns := job.GetNamespace()
+	jobName := job.GetName()
+	instanceName := job.GetLabels()[label.InstanceLabelKey]
+	kind := object.GetObjectKind().GroupVersionKind().Kind
+
+	propForeground := metav1.DeletePropagationForeground
+	opts := &metav1.DeleteOptions{
+		PropagationPolicy: &propForeground,
+	}
+	err := rjc.kubeCli.BatchV1().Jobs(ns).Delete(jobName, opts)
+	if err != nil {
+		glog.Errorf("failed to delete %s job: [%s/%s], cluster: %s, err: %v", strings.ToLower(kind), ns, jobName, instanceName, err)
+	} else {
+		glog.V(4).Infof("delete %s job: [%s/%s] successfully, cluster: %s", strings.ToLower(kind), ns, jobName, instanceName)
+	}
+	rjc.recordJobEvent("delete", object, job, err)
+	return err
 }
 
-func (rjc *realJobControl) GetJob(namespace, name string) (*batchv1.Job, error) {
-	// TODO: Implement this method
-	return nil, nil
+func (rjc *realJobControl) recordJobEvent(verb string, obj runtime.Object, job *batchv1.Job, err error) {
+	jobName := job.GetName()
+	ns := job.GetNamespace()
+	instanceName := job.GetLabels()[label.InstanceLabelKey]
+	kind := obj.GetObjectKind().GroupVersionKind().Kind
+	if err == nil {
+		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
+		msg := fmt.Sprintf("%s job %s/%s for cluster %s %s successful",
+			strings.ToLower(verb), ns, jobName, instanceName, strings.ToLower(kind))
+		rjc.recorder.Event(obj, corev1.EventTypeNormal, reason, msg)
+	} else {
+		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
+		msg := fmt.Sprintf("%s job %s/%s for cluster %s %s failed error: %s",
+			strings.ToLower(verb), ns, jobName, instanceName, strings.ToLower(kind), err)
+		rjc.recorder.Event(obj, corev1.EventTypeWarning, reason, msg)
+	}
 }
 
 var _ JobControlInterface = &realJobControl{}
+
+// FakeJobControl is a fake JobControlInterface
+type FakeJobControl struct {
+	JobLister        batchlisters.JobLister
+	JobIndexer       cache.Indexer
+	createJobTracker requestTracker
+	deleteJobTracker requestTracker
+}
+
+// NewFakeJobControl returns a FakeJobControl
+func NewFakeJobControl(jobInformer batchinformers.JobInformer) *FakeJobControl {
+	return &FakeJobControl{
+		jobInformer.Lister(),
+		jobInformer.Informer().GetIndexer(),
+		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
+	}
+}
+
+// SetCreateJobError sets the error attributes of createJobTracker
+func (fjc *FakeJobControl) SetCreateJobError(err error, after int) {
+	fjc.createJobTracker.err = err
+	fjc.createJobTracker.after = after
+}
+
+// SetDeleteJobError sets the error attributes of deleteJobTracker
+func (fjc *FakeJobControl) SetDeleteJobError(err error, after int) {
+	fjc.deleteJobTracker.err = err
+	fjc.deleteJobTracker.after = after
+}
+
+// CreateJob adds the job to JobIndexer
+func (fjc *FakeJobControl) CreateJob(_ runtime.Object, job *batchv1.Job) error {
+	defer fjc.createJobTracker.inc()
+	if fjc.createJobTracker.errorReady() {
+		defer fjc.createJobTracker.reset()
+		return fjc.createJobTracker.err
+	}
+
+	return fjc.JobIndexer.Add(job)
+}
+
+// DeleteJob deletes the job
+func (fjc *FakeJobControl) DeleteJob(_ runtime.Object, _ *batchv1.Job) error {
+	defer fjc.deleteJobTracker.inc()
+	if fjc.deleteJobTracker.errorReady() {
+		defer fjc.deleteJobTracker.reset()
+		return fjc.deleteJobTracker.err
+	}
+	return nil
+}
+
+var _ JobControlInterface = &FakeJobControl{}

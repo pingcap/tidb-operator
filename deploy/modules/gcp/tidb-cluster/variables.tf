@@ -1,3 +1,11 @@
+variable "cluster_id" {
+  description = "GKE cluster ID. This module depends on a running cluster. Please create a cluster first and pass ID here."
+}
+
+variable "tidb_operator_id" {
+  description = "TiDB Operator ID. We must wait for tidb-operator is ready before creating TiDB clusters."
+}
+
 variable "cluster_name" {}
 variable "cluster_version" {
   description = "The TiDB cluster version"
@@ -43,4 +51,24 @@ variable "tidb_instance_type" {}
 
 variable "monitor_instance_type" {
   default = "n1-standard-2"
+}
+
+variable "pd_image_type" {
+  description = "PD image type, avaiable: UBUNTU/COS"
+  default     = "COS"
+}
+
+variable "tidb_image_type" {
+  description = "TiDB image type, avaiable: UBUNTU/COS"
+  default     = "COS"
+}
+
+variable "tikv_image_type" {
+  description = "TiKV image type, avaiable: UBUNTU/COS"
+  default     = "COS"
+}
+
+variable "tikv_local_ssd_count" {
+  description = "TiKV node pool local ssd count (cannot be changed after the node pool is created)"
+  default     = 1
 }

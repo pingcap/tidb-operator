@@ -14,9 +14,26 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// GetCleanJobName return the clean job name
+func (bk *Backup) GetCleanJobName() string {
+	return fmt.Sprintf("clean-%s", bk.GetName())
+}
+
+// GetBackupJobName return the backup job name
+func (bk *Backup) GetBackupJobName() string {
+	return fmt.Sprintf("backup-%s", bk.GetName())
+}
+
+// GetBackupPVCName return the backup pvc name
+func (bk *Backup) GetBackupPVCName() string {
+	return fmt.Sprintf("%s-backup-pvc", bk.Spec.Cluster)
+}
 
 // GetBackupCondition get the specify type's BackupCondition from the given BackupStatus
 func GetBackupCondition(status *BackupStatus, conditionType BackupConditionType) (int, *BackupCondition) {
@@ -62,5 +79,23 @@ func UpdateBackupCondition(status *BackupStatus, condition *BackupCondition) boo
 // IsBackupComplete returns true if a Backup has successfully completed
 func IsBackupComplete(backup *Backup) bool {
 	_, condition := GetBackupCondition(&backup.Status, BackupComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsBackupFailed returns true if a Backup has failed
+func IsBackupFailed(backup *Backup) bool {
+	_, condition := GetBackupCondition(&backup.Status, BackupFailed)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsBackupScheduled returns true if a Backup has successfully scheduled
+func IsBackupScheduled(backup *Backup) bool {
+	_, condition := GetBackupCondition(&backup.Status, BackupScheduled)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsBackupClean returns true if a Backup has successfully clean
+func IsBackupClean(backup *Backup) bool {
+	_, condition := GetBackupCondition(&backup.Status, BackupClean)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }

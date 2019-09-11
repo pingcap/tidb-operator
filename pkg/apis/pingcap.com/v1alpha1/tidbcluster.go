@@ -158,3 +158,10 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 func (tc *TidbCluster) GetClusterID() string {
 	return tc.Status.ClusterID
 }
+
+func (tc *TidbCluster) Scheme() string {
+	if tc.Spec.EnableTLSCluster {
+		return "https"
+	}
+	return "http"
+}
