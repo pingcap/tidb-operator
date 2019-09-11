@@ -259,3 +259,24 @@ func (b byCreateTime) Less(i, j int) bool {
 }
 
 var _ backup.BackupScheduleManager = &backupScheduleManager{}
+
+type FakeBackupScheduleManager struct {
+	err error
+}
+
+func NewFakeBackupScheduleManager() *FakeBackupScheduleManager {
+	return &FakeBackupScheduleManager{}
+}
+
+func (fbsm *FakeBackupScheduleManager) SetSyncError(err error) {
+	fbsm.err = err
+}
+
+func (fbsm *FakeBackupScheduleManager) Sync(_ *v1alpha1.BackupSchedule) error {
+	if fbsm.err != nil {
+		return fbsm.err
+	}
+	return nil
+}
+
+var _ backup.BackupScheduleManager = &FakeBackupScheduleManager{}
