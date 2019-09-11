@@ -6,8 +6,8 @@
 - [Sysbench](#sysbench)
   * [Customize with kustomize](#customize-with-kustomize)
   * [Prepare: Create test tables and insert test records](#prepare-create-test-tables-and-insert-test-records)
-  * [Warmup: Warmup TiDB](#warmup-warmup-tidb)
-  * [Run: Run benchmarks](#run-run-benchmarks)
+  * [Warmup TiDB](#warmup-tidb)
+  * [Run benchmark](#run-benchmark)
 
 ## Prerequisites
 
@@ -92,7 +92,7 @@ kubectl apply -f sysbench/output/*prepare.yaml
 
 You can run `kubectl logs -l job-name=sysbench-prepare` to view logs.
 
-### Warmup: Warmup TiDB
+### Warmup TiDB
 
 ```
 kubectl apply -f sysbench/output/*warmup.yaml
@@ -100,7 +100,7 @@ kubectl apply -f sysbench/output/*warmup.yaml
 
 You can run `kubectl logs -l job-name=sysbench-warmup` to view logs.
 
-### Run: Run benchmarks
+### Run benchmark
 
 ```
 kubectl apply -f sysbench/output/*bench.yaml
