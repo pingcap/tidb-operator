@@ -20,6 +20,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	"k8s.io/api/admission/v1beta1"
@@ -79,9 +80,18 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		return util.ARSuccess()
 	}
 
-	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(set.Labels[label.InstanceLabelKey], metav1.GetOptions{})
+	controllerRef := metav1.GetControllerOf(&set)
+	if controllerRef == nil || controllerRef.Kind != controller.ControllerKind.Kind {
+		// In this case, we can't tell if this statefulset is controlled by tidb-operator,
+		// so we don't block this statefulset upgrade, return directly.
+		glog.Warningf("statefulset %s/%s has tidb or tikv component label but doesn't have owner reference or the owner reference is not TidbCluster", namespace, name)
+		return util.ARSuccess()
+	}
+
+	tcName := controllerRef.Name
+	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
 	if err != nil {
-		glog.Errorf("get tidbcluster %s/%s failed, statefulset %s, err %v", namespace, set.Labels[label.InstanceLabelKey], name, err)
+		glog.Errorf("get tidbcluster %s/%s failed, statefulset %s, err %v", namespace, tcName, name, err)
 		return util.ARFail(err)
 	}
 
