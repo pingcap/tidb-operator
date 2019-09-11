@@ -45,7 +45,7 @@
 - Add the zone label and reserved resources for nodes ([#871](https://github.com/pingcap/tidb-operator/pull/871))
 - Fix some orphan pods cleaner bugs ([#878](https://github.com/pingcap/tidb-operator/pull/878))
 - Fix the bug of setting the `StatefulSet` partition ([#830](https://github.com/pingcap/tidb-operator/pull/830))
-- Add tikvGCLifeTime option ([#835](https://github.com/pingcap/tidb-operator/pull/835))
+- Add the `tikvGCLifeTime` option ([#835](https://github.com/pingcap/tidb-operator/pull/835))
 - Add recommendations options to mydumper ([#828](https://github.com/pingcap/tidb-operator/pull/828))
 - Fix ad-hoc full backup failure due to incorrect claimName ([#836](https://github.com/pingcap/tidb-operator/pull/836))
 - Improve tkctl get command output ([#822](https://github.com/pingcap/tidb-operator/pull/822))
