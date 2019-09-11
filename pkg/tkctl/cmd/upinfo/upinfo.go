@@ -41,7 +41,7 @@ const (
 		You can omit --tidbcluster=<name> option by running 'tkc use <clusterName>',
 `
 	upinfoExample = `
-		# get current tidb cluster info (set by tkc user)
+		# get current tidb cluster info (set by tkctl user)
 		tkctl upinfo
 
 		# get specified tidb cluster component upgrade info
