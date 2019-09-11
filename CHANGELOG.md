@@ -5,7 +5,7 @@
 ### Action Required
 
 - ACTION REQUIRED: We fixed a serious bug ([#878](https://github.com/pingcap/tidb-operator/pull/878)) that could cause all `PD` and `TiKV` pods to be accidentally deleted when `kube-apiserver` fails. This would cause TiDB service outage. So users using `v1.0.0` or prior versions **must** upgrade to `v1.0.1`.
-- ACTION REQUIRED: There is a bug ([#29](https://github.com/pingcap/mydumper/pull/29)) in `pingcap/mydumper` which may cause the value of a column not to be included in the exported data . We strongly suggest users upgrade the backup image to `pingcap/tidb-cloud-backup:20190828`.
+- ACTION REQUIRED: The backup tool image [pingcap/tidb-cloud-backup](https://hub.docker.com/r/pingcap/tidb-cloud-backup) uses a forked version of [`Mydumper`](https://github.com/pingcap/mydumper). The current version `pingcap/tidb-cloud-backup:20190610` contains a serious bug that could cause the exported data lack of a column. This is fixed in [#29](https://github.com/pingcap/mydumper/pull/29). And the default image used now contains this fixed version. So users using the old version image for backup **must** upgrade to using `pingcap/tidb-cloud-backup:201908028` and do a new full backup to avoid potential data inconsistency.
 
 ### Improvements
 
@@ -29,13 +29,12 @@
 
 ### Bug fixes
 
-- Fix tikv scale-in failure in some cases after tikv failover
+- Fix the TiKV scale-in failure in some cases after the TiKV failover
 - Fix error handling for UpdateService
 - Fix some orphan pods cleaner bugs
 - Fix the bug of setting the `StatefulSet` partition
 - Fix ad-hoc full backup failure due to incorrect `claimName`
 - Fix the offline Pump: the Pump process will exit with `0` if going offline
-- Fix tikv scale in failure in some cases
 - Fix an incorrect condition judgment
 
 ## Detailed Bug Fixes and Changes
