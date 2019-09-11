@@ -60,7 +60,7 @@
 - Modularize GCP Terraform ([#717](https://github.com/pingcap/tidb-operator/pull/717))
 - Support `binlog.pump.config` configurations for Pump and Drainer ([#693](https://github.com/pingcap/tidb-operator/pull/693))
 - Remove duplicate key values ([#758](https://github.com/pingcap/tidb-operator/pull/758))
-- Some typo fix ([#738](https://github.com/pingcap/tidb-operator/pull/738))
+- Fix some typos ([#738](https://github.com/pingcap/tidb-operator/pull/738))
 - Extend the waiting time of the `CheckManualPauseTiDB` process ([#752](https://github.com/pingcap/tidb-operator/pull/752))
 - Set the resource limit for the tidb-backup job  ([#729](https://github.com/pingcap/tidb-operator/pull/729))
 - Fix e2e test compatible with v1.0.0 ([#757](https://github.com/pingcap/tidb-operator/pull/757))
