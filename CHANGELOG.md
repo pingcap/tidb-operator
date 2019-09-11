@@ -16,7 +16,7 @@
 - Add `affinity` to Pump and Drainer configurations
 - Upgrade local-volume-provisioner to `v2.3.2`
 - Reduce e2e run time from `60m` to `20m`
-- Prevent pump progress from an exit with 0 if the pump become `offline`
+- Prevent the Pump process from exiting with `0` if the Pump becomes `offline`
 - Users can now expand cloud storage PV dynamically by increasing PVC storage size
 - Add tikvGCLifeTime option to backup
 - Add important parameters to `tikv.config` and `tidb.config` in `values.yaml`
