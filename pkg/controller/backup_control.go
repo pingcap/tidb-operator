@@ -102,10 +102,10 @@ var _ BackupControlInterface = &realBackupControl{}
 
 // FakeBackupControl is a fake BackupControlInterface
 type FakeBackupControl struct {
-	BackupLister        listers.BackupLister
-	BackupIndexer       cache.Indexer
-	createBackupTracker requestTracker
-	deleteBackupTracker requestTracker
+	backupLister        listers.BackupLister
+	backupIndexer       cache.Indexer
+	createBackupTracker RequestTracker
+	deleteBackupTracker RequestTracker
 }
 
 // NewFakeBackupControl returns a FakeBackupControl
@@ -113,43 +113,41 @@ func NewFakeBackupControl(backupInformer informers.BackupInformer) *FakeBackupCo
 	return &FakeBackupControl{
 		backupInformer.Lister(),
 		backupInformer.Informer().GetIndexer(),
-		requestTracker{0, nil, 0},
-		requestTracker{0, nil, 0},
+		RequestTracker{},
+		RequestTracker{},
 	}
 }
 
 // SetCreateBackupError sets the error attributes of createBackupTracker
 func (fbc *FakeBackupControl) SetCreateBackupError(err error, after int) {
-	fbc.createBackupTracker.err = err
-	fbc.createBackupTracker.after = after
+	fbc.createBackupTracker.SetError(err).SetAfter(after)
 }
 
 // SetDeleteBackupError sets the error attributes of deleteBackupTracker
 func (fbc *FakeBackupControl) SetDeleteBackupError(err error, after int) {
-	fbc.deleteBackupTracker.err = err
-	fbc.deleteBackupTracker.after = after
+	fbc.deleteBackupTracker.SetError(err).SetAfter(after)
 }
 
 // CreateBackup adds the backup to BackupIndexer
 func (fbc *FakeBackupControl) CreateBackup(backup *v1alpha1.Backup) (*v1alpha1.Backup, error) {
-	defer fbc.createBackupTracker.inc()
-	if fbc.createBackupTracker.errorReady() {
-		defer fbc.createBackupTracker.reset()
-		return backup, fbc.createBackupTracker.err
+	defer fbc.createBackupTracker.Inc()
+	if fbc.createBackupTracker.ErrorReady() {
+		defer fbc.createBackupTracker.Reset()
+		return backup, fbc.createBackupTracker.GetError()
 	}
 
-	return backup, fbc.BackupIndexer.Add(backup)
+	return backup, fbc.backupIndexer.Add(backup)
 }
 
 // DeleteBackup deletes the backup from BackupIndexer
 func (fbc *FakeBackupControl) DeleteBackup(backup *v1alpha1.Backup) error {
-	defer fbc.createBackupTracker.inc()
-	if fbc.createBackupTracker.errorReady() {
-		defer fbc.createBackupTracker.reset()
-		return fbc.createBackupTracker.err
+	defer fbc.createBackupTracker.Inc()
+	if fbc.createBackupTracker.ErrorReady() {
+		defer fbc.createBackupTracker.Reset()
+		return fbc.createBackupTracker.GetError()
 	}
 
-	return fbc.BackupIndexer.Delete(backup)
+	return fbc.backupIndexer.Delete(backup)
 }
 
 var _ BackupControlInterface = &FakeBackupControl{}
