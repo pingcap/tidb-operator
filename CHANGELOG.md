@@ -17,7 +17,7 @@
 - Upgrade local-volume-provisioner to `v2.3.2`
 - Reduce e2e run time from `60m` to `20m`
 - Prevent the Pump process from exiting with `0` if the Pump becomes `offline`
-- Users can now expand cloud storage PV dynamically by increasing PVC storage size
+- Support expanding cloud storage PV dynamically by increasing PVC storage size
 - Add tikvGCLifeTime option to backup
 - Add important parameters to `tikv.config` and `tidb.config` in `values.yaml`
 - Support restore tidb cluster from a specified scheduled backup dir
