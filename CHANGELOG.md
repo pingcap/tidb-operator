@@ -20,7 +20,7 @@
 - Support expanding cloud storage PV dynamically by increasing PVC storage size
 - Add the `tikvGCLifeTime` option to do backup
 - Add important parameters to `tikv.config` and `tidb.config` in `values.yaml`
-- Support restore tidb cluster from a specified scheduled backup dir
+- Support restoring the TiDB cluster from a specified scheduled backup directory
 - Enable cloud storage volume expansion & label local volume
 - Document and improve HA algorithm
 - Users can designate permitting host in chart values.tidb.permitHost
