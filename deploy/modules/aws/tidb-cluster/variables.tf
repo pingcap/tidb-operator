@@ -147,3 +147,14 @@ variable "iam_path" {
   description = "If provided, all IAM roles will be created on this path."
   default     = "/"
 }
+
+variable "kubelet_extra_args" {
+  description = "Extra arguments passed to kubelet"
+  default     = "--kube-reserved memory=0.3Gi,ephemeral-storage=1Gi --system-reserved memory=0.2Gi,ephemeral-storage=1Gi"
+}
+
+variable "group_kubelet_extra_args" {
+  description = "If provided, override the kubelet_extra_args for a specific node group which matches the key of map (e.g. tidb, tikv, pd, monitor)"
+  type        = map(string)
+  default = {}
+}

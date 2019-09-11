@@ -20,6 +20,8 @@ metadata:
 spec:
   pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
   timezone: {{ .Values.timezone | default "UTC" }}
+  enableTLSCluster: {{ .Values.enableTLSCluster | default false }}
+  enableTLSClient: {{ .Values.enableTLSClient | default false }}
   services:
 {{ toYaml .Values.services | indent 4 }}
   schedulerName: {{ .Values.schedulerName | default "default-scheduler" }}

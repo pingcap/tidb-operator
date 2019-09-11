@@ -47,6 +47,11 @@ discovery:
 # if the ConfigMap was not changed.
 enableConfigMapRollout: true
 
+# Whether enable TLS connections between server nodes.
+# When enabled, PD/TiDB/TiKV will use TLS encrypted connections to transfer data between each node,
+# certificates will be generated automatically (if not already present).
+enableTLSCluster: false
+
 pd:
   # Please refer to https://github.com/pingcap/pd/blob/master/conf/config.toml for the default
   # pd configurations (change to the tags of your pd version),
@@ -247,6 +252,7 @@ tidb:
   config: |
     [log]
     level = "info"
+
   # # Here are some parameters you MUST customize (Please configure in the above 'tidb.config' section):
   # [performance]
   #   # Normally it should be tuned to `tidb.resources.limits.cpu`, for example: 16000m -> 16
@@ -257,6 +263,9 @@ tidb:
   # kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
   # If unset, the root password will be empty and you can set it after connecting
   # passwordSecretName: tidb-secret
+  # permitHost is the host which will only be allowed to connect to the TiDB.
+  # If unset, defaults to '%' which means allow any host to connect to the TiDB.
+  # permitHost: 127.0.0.1
   # initSql is the SQL statements executed after the TiDB cluster is bootstrapped.
   # initSql: |-
   #   create database app;
@@ -329,6 +338,12 @@ tidb:
     directory: /plugins
     # the start argument to specify the plugin id (name "-" version) that needs to be loaded, e.g. 'conn_limit-1'.
     list: ["whitelist-1"]
+
+  # Whether enable TLS connection between TiDB server and MySQL client.
+  # When enabled, TiDB will accept TLS encrypted connections from MySQL client, certificates will be generated
+  # automatically.
+  # Note: TLS connection is not forced on the server side, plain connections are also accepted after enableing.
+  enableTLSClient: false
 
 # mysqlClient is used to set password for TiDB
 # it must has Python MySQL client installed
