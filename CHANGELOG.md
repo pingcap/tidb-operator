@@ -13,7 +13,7 @@
 - Add a script to remove orphaned k8s disks
 - Support `binlog.pump.config`, `binlog.drainer.config` configurations for Pump and Drainer
 - Set the resource limit for the `tidb-backup` job
-- Add `affinity` to pump/drainer configration
+- Add `affinity` to Pump and Drainer configurations
 - Upgrade local-volume-provisioner to `v2.3.2`
 - Reduce e2e run time from `60m` to `20m`
 - Prevent pump progress from an exit with 0 if the pump become `offline`
