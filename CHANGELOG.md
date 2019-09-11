@@ -9,7 +9,7 @@
 
 ### Improvements
 
-- Modularize gcp terraform
+- Modularize GCP Terraform
 - Add a script to remove orphaned k8s disks
 - Support `binlog.pump.config`, `binlog.drainer.config` configurations for pump and drainer
 - Add `tidb-backup` job reources limits
