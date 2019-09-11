@@ -4,8 +4,8 @@
 
 ### Action Required
 
-- ACTION REQUIRED: We fixed a serious bug ([#878](https://github.com/pingcap/tidb-operator/pull/878)) that could cause all `PD` and `TiKV` pods to be accidentally deleted when `kube-apiserver` fails. This would cause TiDB service outage. So users using `v1.0.0` or prior versions **must** upgrade to `v1.0.1`.
-- ACTION REQUIRED: The backup tool image [pingcap/tidb-cloud-backup](https://hub.docker.com/r/pingcap/tidb-cloud-backup) uses a forked version of [`Mydumper`](https://github.com/pingcap/mydumper). The current version `pingcap/tidb-cloud-backup:20190610` contains a serious bug that could cause the exported data lack of a column. This is fixed in [#29](https://github.com/pingcap/mydumper/pull/29). And the default image used now contains this fixed version. So users using the old version image for backup **must** upgrade to using `pingcap/tidb-cloud-backup:201908028` and do a new full backup to avoid potential data inconsistency.
+- ACTION REQUIRED: We fixed a serious bug ([#878](https://github.com/pingcap/tidb-operator/pull/878)) that could cause all `PD` and `TiKV` pods to be accidentally deleted when `kube-apiserver` fails. This would cause TiDB service outage. So if you are using `v1.0.0` or prior versions, you **must** upgrade to `v1.0.1`.
+- ACTION REQUIRED: The backup tool image [pingcap/tidb-cloud-backup](https://hub.docker.com/r/pingcap/tidb-cloud-backup) uses a forked version of [`Mydumper`](https://github.com/pingcap/mydumper). The current version `pingcap/tidb-cloud-backup:20190610` contains a serious bug that could result in a missing column in the exported data. This is fixed in [#29](https://github.com/pingcap/mydumper/pull/29). And the default image used now contains this fixed version. So if you are using the old version image for backup, you **must** upgrade to use `pingcap/tidb-cloud-backup:201908028` and do a new full backup to avoid potential data inconsistency.
 
 ### Improvements
 
@@ -45,7 +45,7 @@
 - Fix some orphan pods cleaner bugs ([#878](https://github.com/pingcap/tidb-operator/pull/878))
 - Fix the bug of setting the `StatefulSet` partition ([#830](https://github.com/pingcap/tidb-operator/pull/830))
 - Add the `tikvGCLifeTime` option ([#835](https://github.com/pingcap/tidb-operator/pull/835))
-- Add recommendations options to mydumper ([#828](https://github.com/pingcap/tidb-operator/pull/828))
+- Add recommendations options to Mydumper ([#828](https://github.com/pingcap/tidb-operator/pull/828))
 - Fix ad-hoc full backup failure due to incorrect `claimName` ([#836](https://github.com/pingcap/tidb-operator/pull/836))
 - Improve `tkctl get` command output ([#822](https://github.com/pingcap/tidb-operator/pull/822))
 - Add important parameters to TiKV and TiDB configurations ([#786](https://github.com/pingcap/tidb-operator/pull/786))
@@ -61,13 +61,13 @@
 - Remove duplicate key values ([#758](https://github.com/pingcap/tidb-operator/pull/758))
 - Fix some typos ([#738](https://github.com/pingcap/tidb-operator/pull/738))
 - Extend the waiting time of the `CheckManualPauseTiDB` process ([#752](https://github.com/pingcap/tidb-operator/pull/752))
-- Set the resource limit for the tidb-backup job  ([#729](https://github.com/pingcap/tidb-operator/pull/729))
+- Set the resource limit for the `tidb-backup` job  ([#729](https://github.com/pingcap/tidb-operator/pull/729))
 - Fix e2e test compatible with v1.0.0 ([#757](https://github.com/pingcap/tidb-operator/pull/757))
 - Make incremental backup test work ([#764](https://github.com/pingcap/tidb-operator/pull/764))
-- Add retry logic for LabelNodes function ([#735](https://github.com/pingcap/tidb-operator/pull/735))
+- Add retry logic for `LabelNodes` function ([#735](https://github.com/pingcap/tidb-operator/pull/735))
 - Fix the TiKV scale-in failure in some cases ([#726](https://github.com/pingcap/tidb-operator/pull/726))
 - Add affinity to Pump and Drainer ([#741](https://github.com/pingcap/tidb-operator/pull/741))
-- Refine clean logic ([#719](https://github.com/pingcap/tidb-operator/pull/719))
+- Refine cleanup logic ([#719](https://github.com/pingcap/tidb-operator/pull/719))
 - Inject a failure by pod annotation ([#716](https://github.com/pingcap/tidb-operator/pull/716))
 - Update README links to point to correct `pingcap.com/docs` URLs for English and Chinese ([#732](https://github.com/pingcap/tidb-operator/pull/732))
 - Document and improve HA algorithm ([#670](https://github.com/pingcap/tidb-operator/pull/670))
