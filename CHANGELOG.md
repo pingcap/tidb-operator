@@ -29,7 +29,7 @@
 
 ### Bug fixes
 
-- Fix tikv scale in failure in some cases after tikv failover
+- Fix tikv scale-in failure in some cases after tikv failover
 - Fix error handling for UpdateService
 - Fix some orphan pods cleaner bugs
 - Fix setting StatefulSet partition bug
