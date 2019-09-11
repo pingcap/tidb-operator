@@ -34,7 +34,7 @@
 - Fix some orphan pods cleaner bugs
 - Fix the bug of setting the `StatefulSet` partition
 - Fix ad-hoc full backup failure due to incorrect `claimName`
-- Fix pump offline: pump progress will exit with `0` if offline
+- Fix the offline Pump: the Pump process will exit with `0` if going offline
 - Fix tikv scale in failure in some cases
 - Fix an incorrect condition judgment
 
