@@ -27,7 +27,7 @@ import (
 
 var (
 	// controllerKind contains the schema.GroupVersionKind for tidbcluster controller type.
-	controllerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbCluster")
+	ControllerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbCluster")
 
 	// BackupControllerKind contains the schema.GroupVersionKind for backup controller type.
 	BackupControllerKind = v1alpha1.SchemeGroupVersion.WithKind("Backup")
@@ -86,8 +86,8 @@ func GetOwnerRef(tc *v1alpha1.TidbCluster) metav1.OwnerReference {
 	controller := true
 	blockOwnerDeletion := true
 	return metav1.OwnerReference{
-		APIVersion:         controllerKind.GroupVersion().String(),
-		Kind:               controllerKind.Kind,
+		APIVersion:         ControllerKind.GroupVersion().String(),
+		Kind:               ControllerKind.Kind,
 		Name:               tc.GetName(),
 		UID:                tc.GetUID(),
 		Controller:         &controller,

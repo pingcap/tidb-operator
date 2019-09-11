@@ -114,10 +114,6 @@ func (bsc *Controller) Run(workers int, stopCh <-chan struct{}) {
 	glog.Info("Starting backup schedule controller")
 	defer glog.Info("Shutting down backup schedule controller")
 
-	if !cache.WaitForCacheSync(stopCh, bsc.bsListerSynced) {
-		return
-	}
-
 	for i := 0; i < workers; i++ {
 		go wait.Until(bsc.worker, time.Second, stopCh)
 	}
