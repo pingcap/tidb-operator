@@ -12,7 +12,7 @@
 - Modularize GCP Terraform
 - Add a script to remove orphaned k8s disks
 - Support `binlog.pump.config`, `binlog.drainer.config` configurations for Pump and Drainer
-- Add `tidb-backup` job reources limits
+- Set the resource limit for the `tidb-backup` job
 - Add `affinity` to pump/drainer configration
 - Upgrade local-volume-provisioner to `v2.3.2`
 - Reduce e2e run time from `60m` to `20m`
