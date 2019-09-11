@@ -61,7 +61,7 @@
 - Support `binlog.pump.config` configurations for pump and drainer ([#693](https://github.com/pingcap/tidb-operator/pull/693))
 - Remove duplicate key values ([#758](https://github.com/pingcap/tidb-operator/pull/758))
 - Some typo fix ([#738](https://github.com/pingcap/tidb-operator/pull/738))
-- Extend the wating time of CheckManualPauseTiDB process ([#752](https://github.com/pingcap/tidb-operator/pull/752))
+- Extend the waiting time of the `CheckManualPauseTiDB` process ([#752](https://github.com/pingcap/tidb-operator/pull/752))
 - Set the resource limit for the tidb-backup job  ([#729](https://github.com/pingcap/tidb-operator/pull/729))
 - Fix e2e test compatible with v1.0.0 ([#757](https://github.com/pingcap/tidb-operator/pull/757))
 - Make incremental backup test work ([#764](https://github.com/pingcap/tidb-operator/pull/764))
