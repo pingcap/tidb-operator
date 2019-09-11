@@ -128,9 +128,9 @@ type FakeStatefulSetControl struct {
 	SetIndexer               cache.Indexer
 	TcLister                 v1listers.TidbClusterLister
 	TcIndexer                cache.Indexer
-	createStatefulSetTracker requestTracker
-	updateStatefulSetTracker requestTracker
-	deleteStatefulSetTracker requestTracker
+	createStatefulSetTracker RequestTracker
+	updateStatefulSetTracker RequestTracker
+	deleteStatefulSetTracker RequestTracker
 	statusChange             func(set *apps.StatefulSet)
 }
 
@@ -141,29 +141,26 @@ func NewFakeStatefulSetControl(setInformer appsinformers.StatefulSetInformer, tc
 		setInformer.Informer().GetIndexer(),
 		tcInformer.Lister(),
 		tcInformer.Informer().GetIndexer(),
-		requestTracker{0, nil, 0},
-		requestTracker{0, nil, 0},
-		requestTracker{0, nil, 0},
+		RequestTracker{},
+		RequestTracker{},
+		RequestTracker{},
 		nil,
 	}
 }
 
 // SetCreateStatefulSetError sets the error attributes of createStatefulSetTracker
 func (ssc *FakeStatefulSetControl) SetCreateStatefulSetError(err error, after int) {
-	ssc.createStatefulSetTracker.err = err
-	ssc.createStatefulSetTracker.after = after
+	ssc.createStatefulSetTracker.SetError(err).SetAfter(after)
 }
 
 // SetUpdateStatefulSetError sets the error attributes of updateStatefulSetTracker
 func (ssc *FakeStatefulSetControl) SetUpdateStatefulSetError(err error, after int) {
-	ssc.updateStatefulSetTracker.err = err
-	ssc.updateStatefulSetTracker.after = after
+	ssc.updateStatefulSetTracker.SetError(err).SetAfter(after)
 }
 
 // SetDeleteStatefulSetError sets the error attributes of deleteStatefulSetTracker
 func (ssc *FakeStatefulSetControl) SetDeleteStatefulSetError(err error, after int) {
-	ssc.deleteStatefulSetTracker.err = err
-	ssc.deleteStatefulSetTracker.after = after
+	ssc.deleteStatefulSetTracker.SetError(err).SetAfter(after)
 }
 
 func (ssc *FakeStatefulSetControl) SetStatusChange(fn func(*apps.StatefulSet)) {
@@ -173,13 +170,13 @@ func (ssc *FakeStatefulSetControl) SetStatusChange(fn func(*apps.StatefulSet)) {
 // CreateStatefulSet adds the statefulset to SetIndexer
 func (ssc *FakeStatefulSetControl) CreateStatefulSet(_ *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	defer func() {
-		ssc.createStatefulSetTracker.inc()
+		ssc.createStatefulSetTracker.Inc()
 		ssc.statusChange = nil
 	}()
 
-	if ssc.createStatefulSetTracker.errorReady() {
-		defer ssc.createStatefulSetTracker.reset()
-		return ssc.createStatefulSetTracker.err
+	if ssc.createStatefulSetTracker.ErrorReady() {
+		defer ssc.createStatefulSetTracker.Reset()
+		return ssc.createStatefulSetTracker.GetError()
 	}
 
 	if ssc.statusChange != nil {
@@ -192,13 +189,13 @@ func (ssc *FakeStatefulSetControl) CreateStatefulSet(_ *v1alpha1.TidbCluster, se
 // UpdateStatefulSet updates the statefulset of SetIndexer
 func (ssc *FakeStatefulSetControl) UpdateStatefulSet(_ *v1alpha1.TidbCluster, set *apps.StatefulSet) (*apps.StatefulSet, error) {
 	defer func() {
-		ssc.updateStatefulSetTracker.inc()
+		ssc.updateStatefulSetTracker.Inc()
 		ssc.statusChange = nil
 	}()
 
-	if ssc.updateStatefulSetTracker.errorReady() {
-		defer ssc.updateStatefulSetTracker.reset()
-		return nil, ssc.updateStatefulSetTracker.err
+	if ssc.updateStatefulSetTracker.ErrorReady() {
+		defer ssc.updateStatefulSetTracker.Reset()
+		return nil, ssc.updateStatefulSetTracker.GetError()
 	}
 
 	if ssc.statusChange != nil {
