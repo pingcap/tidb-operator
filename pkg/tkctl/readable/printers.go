@@ -180,11 +180,13 @@ func printPod(pod *v1.Pod, options printers.PrintOptions) ([]metav1beta1.TableRo
 }
 
 func printTikvList(tikvList *alias.TikvList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
-	return printPodList(tikvList.ToPodList(), options)
+	podList := apiv1.PodList(*tikvList)
+	return printPodList(&podList, options)
 }
 
 func printTikv(tikv *alias.Tikv, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
-	return printPod(tikv.ToPod(), options)
+	pod := apiv1.Pod(*tikv)
+	return printPod(&pod, options)
 }
 
 func printVolumeList(volumeList *v1.PersistentVolumeList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {

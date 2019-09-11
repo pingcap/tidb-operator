@@ -282,8 +282,7 @@ func (o *GetOptions) PrintOutput(tc *v1alpha1.TidbCluster, resourceType string, 
 		}
 		switch resourceType {
 		case kindTiKV:
-			tikvList := &alias.TikvList{}
-			tikvList.FromPodList(podList)
+			tikvList := alias.TikvList(*podList)
 			return printer.PrintObj(tikvList, o.Out)
 		default:
 			break
