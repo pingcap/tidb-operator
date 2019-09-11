@@ -7,7 +7,7 @@ spec:
     spec:
       restartPolicy: OnFailure
       initContainers:
-      - name: set-global-variable
+      - name: init
         image: uhub.ucloud.cn/pingcap/sysbench:latest
         command:
         - /bin/sh
@@ -17,10 +17,7 @@ spec:
           if [ -n "$TIDB_PASSWORD" ]; then
             MYSQL_OPTS+=" -p${TIDB_PASSWORD}"
           fi
-          mysql $MYSQL_OPTS -Nse 'set @@global.tidb_hashagg_final_concurrency=1;'
-          mysql $MYSQL_OPTS -Nse 'set @@global.tidb_hashagg_partial_concurrency=1;'
-          mysql $MYSQL_OPTS -Nse 'set @@global.tidb_disable_txn_auto_retry=0;'
-          mysql $MYSQL_OPTS -Nse 'create database if not exists sbtest;'
+          mysql $MYSQL_OPTS -Nse "create database if not exists ${TIDB_DB};"
         env:
         - name: TIDB_HOST
           valueFrom:
@@ -38,6 +35,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.annotations['tidb-password']
+        - name: TIDB_DB
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['tidb-db']
       containers:
       - name: sysbench-prepare
         image: uhub.ucloud.cn/pingcap/sysbench:latest
