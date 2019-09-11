@@ -14,62 +14,111 @@
 package backupschedule
 
 import (
+	"fmt"
+	"strings"
 	"testing"
-
-	"github.com/pingcap/tidb-operator/pkg/backup/backupschedule"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/kubernetes/staging/src/k8s.io/client-go/util/workqueue"
 )
 
 func TestBackupScheduleControllerEnqueueBackupSchedule(t *testing.T) {
 	g := NewGomegaWithT(t)
 	bks := newBackupSchedule()
-	bsc, _ := newFakeBackupScheduleController()
+	bsc, _, _ := newFakeBackupScheduleController()
 	bsc.enqueueBackupSchedule(bks)
 	g.Expect(bsc.queue.Len()).To(Equal(1))
 }
 
+func TestBackupScheduleControllerSync(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name                        string
+		addBsToIndexer              bool
+		errWhenUpdateBackupSchedule bool
+		errExpectFn                 func(*GomegaWithT, error)
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		bks := newBackupSchedule()
+		bsc, bsIndexer, bsControl := newFakeBackupScheduleController()
+
+		if test.addBsToIndexer {
+			err := bsIndexer.Add(bks)
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(bks)
+		g.Expect(err).NotTo(HaveOccurred())
+
+		if test.errWhenUpdateBackupSchedule {
+			bsControl.SetUpdateBackupScheduleError(fmt.Errorf("update backup schedule failed"), 0)
+		}
+
+		err = bsc.sync(key)
+
+		if test.errExpectFn != nil {
+			test.errExpectFn(g, err)
+		}
+	}
+
+	tests := []testcase{
+		{
+			name:                        "normal",
+			addBsToIndexer:              true,
+			errWhenUpdateBackupSchedule: false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+		},
+		{
+			name:                        "can't found backup schedule",
+			addBsToIndexer:              false,
+			errWhenUpdateBackupSchedule: false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+		},
+		{
+			name:                        "update backup schedule failed",
+			addBsToIndexer:              true,
+			errWhenUpdateBackupSchedule: true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "update backup schedule failed")).To(Equal(true))
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+
+}
+
 func alreadySynced() bool { return true }
 
-func newFakeBackupScheduleController() (*Controller, cache.Indexer) {
+func newFakeBackupScheduleController() (*Controller, cache.Indexer, *FakeBackupScheduleControl) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	informerFactory := informers.NewSharedInformerFactory(cli, 0)
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	recorder := record.NewFakeRecorder(10)
 
 	bsInformer := informerFactory.Pingcap().V1alpha1().BackupSchedules()
-	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
-	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
-	backupControl := controller.NewRealBackupControl(cli, recorder)
-	statusUpdater := controller.NewRealBackupScheduleStatusUpdater(cli, bsInformer.Lister(), recorder)
-	jobControl := controller.NewRealJobControl(kubeCli, recorder)
+	backupScheduleControl := NewFakeBackupScheduleControl(bsInformer)
 
 	bsc := &Controller{
 		kubeClient: kubeCli,
 		cli:        cli,
-		control: NewDefaultBackupScheduleControl(
-			statusUpdater,
-			backupschedule.NewBackupScheduleManager(
-				backupInformer.Lister(),
-				backupControl,
-				jobInformer.Lister(),
-				jobControl,
-			),
-			recorder,
-		),
+		control:    backupScheduleControl,
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
 			"backupSchedule",
@@ -84,9 +133,9 @@ func newFakeBackupScheduleController() (*Controller, cache.Indexer) {
 		DeleteFunc: bsc.enqueueBackupSchedule,
 	})
 	bsc.bsLister = bsInformer.Lister()
-	bsc.bsListerSynced = bsInformer.Informer().HasSynced
+	bsc.bsListerSynced = alreadySynced
 
-	return bsc
+	return bsc, bsInformer.Informer().GetIndexer(), backupScheduleControl
 }
 
 func newBackupSchedule() *v1alpha1.BackupSchedule {
