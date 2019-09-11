@@ -51,7 +51,7 @@
 - Improve `tkctl get` command output ([#822](https://github.com/pingcap/tidb-operator/pull/822))
 - Add important parameters to TiKV and TiDB configurations ([#786](https://github.com/pingcap/tidb-operator/pull/786))
 - Fix the issue that `binlog.drainer.config` is not supported in v1.0.0 ([#775](https://github.com/pingcap/tidb-operator/pull/775))
-- Support restore tidb cluster from a specified scheduled backup dir ([#804](https://github.com/pingcap/tidb-operator/pull/804))
+- Support restoring the TiDB cluster from a specified scheduled backup directory ([#804](https://github.com/pingcap/tidb-operator/pull/804))
 - Fix `extraLabels` description in `values.yaml` ([#763](https://github.com/pingcap/tidb-operator/pull/763))
 - Fix tkctl log output exception ([#797](https://github.com/pingcap/tidb-operator/pull/797))
 - Add a script to remove orphaned K8s disks ([#745](https://github.com/pingcap/tidb-operator/pull/745))
