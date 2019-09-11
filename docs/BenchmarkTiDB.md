@@ -36,8 +36,6 @@ Configure environments:
 TIDB_HOST="<your-tidb-host>" # this can be tidb service name, pod ip or load balancer ip, etc.
 ```
 
-**Of course, you can edit the files later.**
-
 Create `kustomization.yaml`:
 
 ```
@@ -49,26 +47,40 @@ resources:
 commonAnnotations:
   tidb-host: $TIDB_HOST
 patches:
-- path: patch.yaml
+- patch: |-
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: not-important
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            dedicated: sysbench
   target:
     kind: Job
 EOF
 ```
 
-Create `patch.yaml`:
+Optionally, if you want to change tidb user, port, password or other
+configurations you can customize them in `commonAnnotations` or `patches`
+fields:
 
 ```
-cat <<EOF > sysbench/patch.yaml
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: not-important
-spec:
-  template:
+commonAnnotations:
+  tidb-password: "root"
+patches:
+- patch: |-
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: sysbench-bench
     spec:
-      nodeSelector:
-        dedicated: sysbench
-EOF
+      template:
+        metadata:
+          annotations:
+            sysbench-threads: "100"
+            sysbench-test-name: oltp_read_write
 ```
 
 Label the node to run sysbench:
@@ -80,6 +92,7 @@ kubectl label nodes <sysbench-node> dedicated=sysbench
 Run `kustomize`:
 
 ```
+mkdir sysbench/output
 kustomize build sysbench/ -o sysbench/output/
 ```
 
@@ -103,7 +116,7 @@ You can run `kubectl logs -l job-name=sysbench-warmup` to view logs.
 ### Run: Run benchmarks
 
 ```
-kubectl apply -f sysbench/output/*run.yaml
+kubectl apply -f sysbench/output/*bench.yaml
 ```
 
-You can run `kubectl logs -l job-name=sysbench-run` to view logs.
+You can run `kubectl logs -l job-name=sysbench-bench` to view logs.
