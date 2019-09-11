@@ -141,8 +141,23 @@ func main() {
 	bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go informerFactory.Start(controllerCtx.Done())
-	go kubeInformerFactory.Start(controllerCtx.Done())
+
+	// Start informer factories after all controller are initialized.
+	informerFactory.Start(controllerCtx.Done())
+	kubeInformerFactory.Start(controllerCtx.Done())
+
+	// Wait for all started informers' cache were synced.
+	for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
+		if !synced {
+			glog.Fatalf("error syncing informer for %v", v)
+		}
+	}
+	for v, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
+		if !synced {
+			glog.Fatalf("error syncing informer for %v", v)
+		}
+	}
+	glog.Infof("cache of informer factories sync successfully")
 
 	onStarted := func(ctx context.Context) {
 		go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)

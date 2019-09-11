@@ -94,10 +94,10 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 
 	if len(currentCluster.peers) == int(replicas) {
 		delete(currentCluster.peers, podName)
-		return fmt.Sprintf("--initial-cluster=%s=http://%s", podName, advertisePeerUrl), nil
+		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
 
-	pdClient := td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName())
+	pdClient := td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSCluster)
 	membersInfo, err := pdClient.GetMembers()
 	if err != nil {
 		return "", err
@@ -105,7 +105,8 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 
 	membersArr := make([]string, 0)
 	for _, member := range membersInfo.Members {
-		membersArr = append(membersArr, member.PeerUrls[0])
+		memberURL := strings.ReplaceAll(member.PeerUrls[0], ":2380", ":2379")
+		membersArr = append(membersArr, memberURL)
 	}
 	delete(currentCluster.peers, podName)
 	return fmt.Sprintf("--join=%s", strings.Join(membersArr, ",")), nil
