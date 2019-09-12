@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestParseVMs(t *testing.T) {
+func TestVirshParseVMs(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	data := `
@@ -24,7 +24,7 @@ func TestParseVMs(t *testing.T) {
 	var expectedVMs []*VM
 	expectedVMs = append(expectedVMs, &VM{
 		Name:   "vm2",
-		Status: "running",
+		Status: "shut",
 	})
 	expectedVMs = append(expectedVMs, &VM{
 		Name:   "vm3",
@@ -32,7 +32,7 @@ func TestParseVMs(t *testing.T) {
 	})
 	expectedVMs = append(expectedVMs, &VM{
 		Name:   "vm1",
-		Status: "shut off",
+		Status: "running",
 	})
 	g.Expect(vms).To(Equal(expectedVMs))
 }
