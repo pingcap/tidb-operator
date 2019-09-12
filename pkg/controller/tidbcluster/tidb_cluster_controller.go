@@ -172,6 +172,11 @@ func NewController(
 				pvcInformer.Lister(),
 				kubeCli,
 			),
+			mm.NewRealPVCCleaner(
+				podInformer.Lister(),
+				pvcControl,
+				pvcInformer.Lister(),
+			),
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
