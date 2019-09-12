@@ -64,6 +64,7 @@ uploader \
 {{- if and (.Values.scheduledBackup.cleanupAfterUpload) (or (.Values.scheduledBackup.gcp) (or .Values.scheduledBackup.ceph .Values.scheduledBackup.s3)) }}
 if [ $? -eq 0 ]; then
     if [ -d "${backupPath}" -a -n "${backupName}" ]; then
+        echo "Removing the directory ${backupPath}"
         rm -rf "${backupPath}"
     fi
 fi
