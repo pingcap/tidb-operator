@@ -62,11 +62,12 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	if oldSet.Spec.UpdateStrategy.Type == apps.OnDeleteStatefulSetStrategyType || oldSet.Spec.UpdateStrategy.RollingUpdate == nil {
-		// Manually bypass tidb-operator to modify statefulset directly, such as modify tidb statefulset's RollingUpdate policy to OnDelete policy,
+		// Manually bypass tidb-operator to modify statefulset directly, such as modify tidb statefulset's RollingUpdate strategy to OnDelete strategy,
 		// or set RollingUpdate to nil, skip tidb-operator's rolling update logic in order to speed up the upgrade in the test environment occasionally.
 		// If we encounter this situation, we will let the native statefulset controller do the upgrade completely, which may be unsafe for upgrading tidb.
-		// Therefore, in the production environment, we should try to avoid modifying the tidb statefulset upgrade strategy directly.
-		glog.Warningf("tidbcluster: [%s/%s] tidb statefulset's %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
+		// Therefore, in the production environment, we should try to avoid modifying the tidb statefulset update strategy directly.
+		newSet.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
+		glog.Warningf("tidbcluster: [%s/%s] tidb statefulset %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
 		return nil
 	}
 
