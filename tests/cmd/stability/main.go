@@ -301,11 +301,13 @@ func run() {
 			IsAdditional:    false,
 			IncrementalType: tests.DbTypeTiDB,
 		},
-		{
+	}
+	if ocfg.Tag != "v1.0.0" {
+		backupTargets = append(backupTargets, tests.BackupTarget{
 			TargetCluster:   fileRestoreCluster1,
 			IsAdditional:    true,
 			IncrementalType: tests.DbTypeFile,
-		},
+		})
 	}
 	caseFn(preUpgrade, onePDCluster1, backupTargets, upgradeVersions[0])
 
@@ -330,11 +332,14 @@ func run() {
 				IsAdditional:    false,
 				IncrementalType: tests.DbTypeTiDB,
 			},
-			{
+		}
+
+		if ocfg.Tag != "v1.0.0" {
+			postUpgradeBackupTargets = append(postUpgradeBackupTargets, tests.BackupTarget{
 				TargetCluster:   fileRestoreCluster2,
 				IsAdditional:    true,
 				IncrementalType: tests.DbTypeFile,
-			},
+			})
 		}
 		// caseFn(postUpgrade, restoreCluster2, tidbUpgradeVersion)
 		caseFn(postUpgrade, onePDCluster2, postUpgradeBackupTargets, v)
@@ -355,6 +360,7 @@ func newOperatorConfig() *tests.OperatorConfig {
 		Image:          cfg.OperatorImage,
 		Tag:            cfg.OperatorTag,
 		SchedulerImage: "gcr.io/google-containers/hyperkube",
+		SchedulerTag:   "v1.12.2",
 		SchedulerFeatures: []string{
 			"StableScheduling=true",
 		},

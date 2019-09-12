@@ -15,8 +15,6 @@ package manager
 
 import (
 	"fmt"
-
-	"github.com/pingcap/tidb-operator/tests/slack"
 )
 
 // Manager to manager fault trigger
@@ -32,7 +30,7 @@ func NewManager(vmManagerName string) *Manager {
 	} else if vmManagerName == "virsh" {
 		vmManager = &VirshVMManager{}
 	} else {
-		slack.NotifyAndPanic(fmt.Errorf("stability test have not supported the vm manager:[%s],please choose [qm] or [virsh].", vmManagerName))
+		panic(fmt.Errorf("stability test have not supported the vm manager:[%s],please choose [qm] or [virsh]", vmManagerName))
 	}
 	return &Manager{
 		vmManager,
