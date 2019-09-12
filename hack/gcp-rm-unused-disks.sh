@@ -18,38 +18,40 @@ set -euo pipefail
 
 DRY_RUN="${DRY_RUN:-}"
 
-REGIONS=$(gcloud compute disks list | awk '{print $2}' | grep -v LOCATION | sort | uniq | cut -d "-" -f 1-2 | uniq)
-disk_zones=$(gcloud compute disks list | awk '{print $2}' | grep -v LOCATION | sort | uniq | xargs echo -n)
+project="${GCP_PROJECT:-$(gcloud config get-value project)}"
+gcloud=( gcloud --project "$project" )
 
-PROJECT="${PROJECT:-$(gcloud config get-value project)}"
-echo "using PROJECT: $PROJECT"
-echo "looking at REGIONS: $REGIONS"
+regions=$("${gcloud[@]}" compute disks list | awk '{print $2}' | grep -v LOCATION | sort | uniq | cut -d "-" -f 1-2 | uniq)
+disk_zones=$("${gcloud[@]}" compute disks list | awk '{print $2}' | grep -v LOCATION | sort | uniq | xargs echo -n)
+
+echo "using PROJECT: $project"
+echo "looking at REGIONS: $regions"
+
+temp_dir="$(mktemp -q -d -t "$(basename "$0").XXXXXX" 2>/dev/null || mktemp -q -d)"
+cd "$temp_dir"
+trap "rm -r $temp_dir" "EXIT"
 
 pv_file="pvs.txt"
 node_file=nodes.txt
 instance_file=instances.txt
-trap "rm -f $pv_file $node_file" "EXIT"
 
 export KUBECONFIG=./kubeconfig
 touch "$KUBECONFIG"
 chmod 0600 "$KUBECONFIG"
-trap "rm -f $KUBECONFIG" "EXIT"
 
 declare -A disks
 
-echo "$REGIONS" | while read -r region ; do
-  zones=$(gcloud compute zones list | grep  "$region" | awk '{print $1}')
+echo "$regions" | while read -r region ; do
+  zones=$("${gcloud[@]}" compute zones list | grep  "$region" | awk '{print $1}')
 
   # Get the disk listings first. Otherwise we might think the instance using the disk does not exist if it was just created
   echo "$zones" | while read -r zone ; do
-    gcloud compute instances list --filter="zone:($zone)" > "$zone-$instance_file"
-    trap "rm -f $zone-$instance_file" "EXIT"
-    gcloud compute disks list --filter="zone:($zone)" > "$zone-disks"
-    trap "rm -f $zone-disks" "EXIT"
+    "${gcloud[@]}" compute instances list --filter="zone:($zone)" > "$zone-$instance_file"
+    "${gcloud[@]}" compute disks list --filter="zone:($zone)" > "$zone-disks.txt"
   done
 
   rm -f $pv_file $node_file
-  clusters=$(gcloud container clusters list --filter="location:($region)" --format json | jq -r -c '.[] | (.name + " " + .location)')
+  clusters=$("${gcloud[@]}" container clusters list --filter="location:($region)" --format json | jq -r -c '.[] | (.name + " " + .location)')
   if [[ -z "$clusters" ]] ; then
     touch $pv_file $node_file
   else
@@ -58,7 +60,7 @@ echo "$REGIONS" | while read -r region ; do
       if [[ -z "$(echo "$location" | cut -d '-' -f 3)" ]] ; then
         location_type="--region"
       fi
-      gcloud container clusters get-credentials "$name" "$location_type" $location
+      "${gcloud[@]}" container clusters get-credentials "$name" "$location_type" $location
       kubectl describe pv | awk '/PDName:/ {print $2}' | sort >> $pv_file
       kubectl get node --no-headers | awk '{print $1}' | sort >> $node_file
     done
@@ -66,13 +68,13 @@ echo "$REGIONS" | while read -r region ; do
   rm -f "$KUBECONFIG"
 
   echo "$zones" | while read -r zone ; do
-    if disks=$(cat "$zone-disks" | grep gke | awk '{print $1}') ; then
+    if disks=$(cat "$zone-disks.txt" | grep gke | awk '{print $1}') ; then
       echo "  ZONE $zone"
       echo "$disks" | while read -r disk ; do
 	  if grep "$disk" $pv_file > /dev/null ; then
 	    echo "KEEP disk $disk used by pv"
 	  else
-	    disk_json=$(gcloud compute disks describe "$disk" --zone "$zone" --format json)
+	    disk_json=$("${gcloud[@]}" compute disks describe "$disk" --zone "$zone" --format json)
 	    node="$(echo "$disk_json" | jq -r '.selfLink')"
             if instance=$(grep "$node" $zone-$instance_file) >/dev/null ; then
 	      echo "KEEP disk $disk $zone used by instance $instance"
@@ -82,7 +84,7 @@ echo "$REGIONS" | while read -r region ; do
 	      if [[ "$users_null" == null ]] ; then
 	        if [[ -z $DRY_RUN ]] ; then
 	          echo "DELETE disk $disk $zone ${disk_gb}GB"
-	          echo "Y" | gcloud compute disks delete "$disk" --zone "$zone"
+	          echo "Y" | "${gcloud[@]}" compute disks delete "$disk" --zone "$zone"
 	        else
 	          echo "DRY RUN: would delete disk $disk $zone ${disk_gb}GB"
 		fi
@@ -113,7 +115,7 @@ echo "$REGIONS" | while read -r region ; do
 		    else
 	              if [[ -z $DRY_RUN ]] ; then
 		        echo "DELETE disk $disk $zone ${disk_gb}GB"
-		        echo "Y" | gcloud compute disks delete "$disk" --zone "$zone"
+		        echo "Y" | "${gcloud[@]}" compute disks delete "$disk" --zone "$zone"
 		      else
 		        echo "DRY RUN: would delete disk $disk $zone ${disk_gb}GB"
 		      fi
@@ -128,8 +130,9 @@ echo "$REGIONS" | while read -r region ; do
   done
 done
 
+
 # Just in case the original listing was paged.
-other_zones=$(gcloud compute disks list --filter="NOT zone:($disk_zones)" | wc -l)
+other_zones=$("${gcloud[@]}" compute disks list --filter="NOT zone:($disk_zones)" | wc -l)
 if [[ $other_zones -gt 0 ]] ; then
   echo "Seeing new regions now. Run this script again"
   exit 1
