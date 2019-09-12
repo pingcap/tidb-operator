@@ -75,8 +75,10 @@ func run() {
 	cluster2 := newTidbClusterConfig("ns2", "cluster2")
 	cluster3 := newTidbClusterConfig("ns2", "cluster3")
 
-	restoreCluster1 := newTidbClusterConfig("ns1", "restore1")
-	restoreCluster2 := newTidbClusterConfig("ns2", "restore2")
+	directRestoreCluster1 := newTidbClusterConfig("ns1", "restore1")
+	fileRestoreCluster1 := newTidbClusterConfig("ns1", "file-restore1")
+	directRestoreCluster2 := newTidbClusterConfig("ns2", "restore2")
+	fileRestoreCluster2 := newTidbClusterConfig("ns2", "file-restore2")
 
 	onePDCluster1 := newTidbClusterConfig("ns1", "one-pd-cluster-1")
 	onePDCluster2 := newTidbClusterConfig("ns2", "one-pd-cluster-2")
@@ -87,8 +89,10 @@ func run() {
 		cluster1,
 		cluster2,
 		cluster3,
-		restoreCluster1,
-		restoreCluster2,
+		directRestoreCluster1,
+		fileRestoreCluster1,
+		directRestoreCluster2,
+		fileRestoreCluster2,
 		onePDCluster1,
 		onePDCluster2,
 	}
@@ -118,7 +122,7 @@ func run() {
 		oa.CleanTidbClusterOrDie(cluster)
 	}
 
-	caseFn := func(clusters []*tests.TidbClusterConfig, onePDClsuter *tests.TidbClusterConfig, restoreCluster *tests.TidbClusterConfig, upgradeVersion string) {
+	caseFn := func(clusters []*tests.TidbClusterConfig, onePDClsuter *tests.TidbClusterConfig, backupTargets []tests.BackupTarget, upgradeVersion string) {
 		// check env
 		fta.CheckAndRecoverEnvOrDie()
 		oa.CheckK8sAvailableOrDie(nil, nil)
@@ -206,10 +210,12 @@ func run() {
 		}
 
 		// backup and restore
-		oa.DeployTidbClusterOrDie(restoreCluster)
-		addDeployedClusterFn(restoreCluster)
-		oa.CheckTidbClusterStatusOrDie(restoreCluster)
-		oa.BackupRestoreOrDie(clusters[0], restoreCluster)
+		for i := range backupTargets {
+			oa.DeployTidbClusterOrDie(backupTargets[i].TargetCluster)
+			addDeployedClusterFn(backupTargets[i].TargetCluster)
+			oa.CheckTidbClusterStatusOrDie(backupTargets[i].TargetCluster)
+		}
+		oa.BackupAndRestoreToMultipleClustersOrDie(clusters[0], backupTargets)
 
 		// delete operator
 		oa.CleanOperatorOrDie(ocfg)
@@ -289,7 +295,19 @@ func run() {
 		cluster1,
 		cluster2,
 	}
-	caseFn(preUpgrade, onePDCluster1, restoreCluster1, upgradeVersions[0])
+	backupTargets := []tests.BackupTarget{
+		{
+			TargetCluster:   directRestoreCluster1,
+			IsAdditional:    false,
+			IncrementalType: tests.DbTypeTiDB,
+		},
+		{
+			TargetCluster:   fileRestoreCluster1,
+			IsAdditional:    true,
+			IncrementalType: tests.DbTypeFile,
+		},
+	}
+	caseFn(preUpgrade, onePDCluster1, backupTargets, upgradeVersions[0])
 
 	// after operator upgrade
 	if cfg.UpgradeOperatorImage != "" && cfg.UpgradeOperatorTag != "" {
@@ -306,8 +324,20 @@ func run() {
 		if len(upgradeVersions) == 2 {
 			v = upgradeVersions[1]
 		}
+		postUpgradeBackupTargets := []tests.BackupTarget{
+			{
+				TargetCluster:   directRestoreCluster2,
+				IsAdditional:    false,
+				IncrementalType: tests.DbTypeTiDB,
+			},
+			{
+				TargetCluster:   fileRestoreCluster2,
+				IsAdditional:    true,
+				IncrementalType: tests.DbTypeFile,
+			},
+		}
 		// caseFn(postUpgrade, restoreCluster2, tidbUpgradeVersion)
-		caseFn(postUpgrade, onePDCluster2, restoreCluster2, v)
+		caseFn(postUpgrade, onePDCluster2, postUpgradeBackupTargets, v)
 	}
 
 	for _, cluster := range allClusters {
@@ -378,5 +408,6 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 		Monitor:          true,
 		BlockWriteConfig: cfg.BlockWriter,
 		TopologyKey:      topologyKey,
+		ClusterVersion:   tidbVersion,
 	}
 }

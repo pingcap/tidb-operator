@@ -60,6 +60,7 @@ func (tc *TidbClusterConfig) UpgradeTiDB(image string) *TidbClusterConfig {
 }
 
 func (tc *TidbClusterConfig) UpgradeAll(tag string) *TidbClusterConfig {
+	tc.ClusterVersion = tag
 	return tc.
 		UpgradePD("pingcap/pd:" + tag).
 		UpgradeTiKV("pingcap/tikv:" + tag).
