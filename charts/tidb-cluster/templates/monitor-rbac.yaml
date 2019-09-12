@@ -1,13 +1,13 @@
 {{- if .Values.monitor.create }}
 {{- if .Values.rbac.create }}
 apiVersion: rbac.authorization.k8s.io/v1beta1
-  {{- if .Values.rbac.cross_namespace }}
+  {{- if .Values.rbac.crossNamespace }}
 kind: ClusterRole
   {{- else }}
 kind: Role
   {{- end }}
 metadata:
-  {{- if .Values.rbac.cross_namespace }}
+  {{- if .Values.rbac.crossNamespace }}
   name: {{ template "cluster.name" . }}:monitor
   {{- else }}
   name: {{ template "cluster.name" . }}-monitor
@@ -23,19 +23,19 @@ rules:
   resources:
   - pods
   verbs: ["get", "list", "watch"]
-  {{- if .Values.rbac.cross_namespace }}
+  {{- if .Values.rbac.crossNamespace }}
 - nonResourceURLs: ["/metrics"]
   verbs: ["get"]
   {{- end }}
 ---
-  {{- if .Values.rbac.cross_namespace }}
+  {{- if .Values.rbac.crossNamespace }}
 kind: ClusterRoleBinding
   {{- else }}
 kind: RoleBinding
   {{- end }}
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  {{- if .Values.rbac.cross_namespace }}
+  {{- if .Values.rbac.crossNamespace }}
   name: {{ template "cluster.name" . }}:monitor
   {{- else }}
   name: {{ template "cluster.name" . }}-monitor
@@ -53,18 +53,15 @@ subjects:
   {{- else }}
   name: {{ template "cluster.name" . }}-monitor
   {{- end }}
-  {{- if .Values.rbac.cross_namespace }}
+  {{- if .Values.rbac.crossNamespace }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
 roleRef:
-  {{- if .Values.rbac.cross_namespace }}
+  {{- if .Values.rbac.crossNamespace }}
   kind: ClusterRole
-  {{- else }}
-  kind: Role
-  {{- end }}
-  {{- if .Values.rbac.cross_namespace }}
   name: {{ template "cluster.name" . }}:monitor
   {{- else }}
+  kind: Role
   name: {{ template "cluster.name" . }}-monitor
   {{- end }}
   apiGroup: rbac.authorization.k8s.io

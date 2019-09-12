@@ -14,7 +14,7 @@ scrape_configs:
     honor_labels: true
     kubernetes_sd_configs:
     - role: pod
-    {{- if not .Values.rbac.cross_namespace }}
+    {{- if not .Values.rbac.crossNamespace }}
       namespaces:
         names:
         - {{ .Release.Namespace }}
