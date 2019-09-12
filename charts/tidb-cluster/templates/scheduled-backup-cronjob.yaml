@@ -25,6 +25,10 @@ spec:
         app.kubernetes.io/component: scheduled-backup
         helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
     spec:
+      backoffLimit: {{ .Values.scheduledBackup.backoffLimit | default 6 }}
+    {{- if .Values.scheduledBackup.activeDeadlineSeconds }}
+      activeDeadlineSeconds: {{ .Values.scheduledBackup.activeDeadlineSeconds }}
+    {{- end }}
       template:
         metadata:
           labels:
@@ -88,7 +92,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.scheduledBackup.secretName }}
                   key: password
-          restartPolicy: OnFailure
+          restartPolicy: {{ .Values.scheduledBackup.restartPolicy | default "OnFailure" }}
           volumes:
           - name: data
             persistentVolumeClaim:
