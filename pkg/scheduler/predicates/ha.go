@@ -29,9 +29,11 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/retry"
 )
 
 type ha struct {
@@ -267,7 +269,7 @@ func (h *ha) realAcquireLock(pod *apiv1.Pod) (*apiv1.PersistentVolumeClaim, *api
 			return schedulingPVC, currentPVC, err
 		}
 		if schedulingPVC.Status.Phase != apiv1.ClaimBound || schedulingPod.Spec.NodeName == "" {
-			return schedulingPVC, currentPVC, fmt.Errorf("waiting for Pod %s/%s scheduling", ns, strings.TrimPrefix(schedulingPVC.GetName(), component+"-"))
+			return schedulingPVC, currentPVC, fmt.Errorf("waiting for Pod %s/%s scheduling", ns, schedulingPodName)
 		}
 	}
 
@@ -302,8 +304,31 @@ func (h *ha) realPVCListFn(ns, instanceName, component string) (*apiv1.Persisten
 }
 
 func (h *ha) realUpdatePVCFn(pvc *apiv1.PersistentVolumeClaim) error {
-	_, err := h.kubeCli.CoreV1().PersistentVolumeClaims(pvc.GetNamespace()).Update(pvc)
-	return err
+	ns := pvc.GetNamespace()
+	tcName := pvc.Labels[label.InstanceLabelKey]
+	pvcName := pvc.GetName()
+
+	labels := pvc.GetLabels()
+	ann := pvc.GetAnnotations()
+	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		_, updateErr := h.kubeCli.CoreV1().PersistentVolumeClaims(ns).Update(pvc)
+		if updateErr == nil {
+			glog.Infof("update PVC: [%s/%s] successfully, TidbCluster: %s", ns, pvcName, tcName)
+			return nil
+		}
+		glog.Errorf("failed to update PVC: [%s/%s], TidbCluster: %s, error: %v", ns, pvcName, tcName, updateErr)
+
+		if updated, err := h.pvcGetFn(ns, pvcName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			pvc = updated.DeepCopy()
+			pvc.Labels = labels
+			pvc.Annotations = ann
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated PVC %s/%s from lister: %v", ns, pvcName, err))
+		}
+
+		return updateErr
+	})
 }
 
 func (h *ha) realPVCGetFn(ns, pvcName string) (*apiv1.PersistentVolumeClaim, error) {
