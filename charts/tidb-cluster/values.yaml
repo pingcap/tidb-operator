@@ -10,7 +10,7 @@ rbac:
 # clusterName is the TiDB cluster name, if not specified, the chart release name will be used
 # clusterName: demo
 
-# Add additional TidbCluster labels
+# Add extra labels to TidbCluster object
 # ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 extraLabels: {}
 
@@ -30,7 +30,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.0.0-rc.1
+  image: pingcap/tidb-operator:v1.0.0
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -47,9 +47,14 @@ discovery:
 # if the ConfigMap was not changed.
 enableConfigMapRollout: true
 
+# Whether enable TLS connections between server nodes.
+# When enabled, PD/TiDB/TiKV will use TLS encrypted connections to transfer data between each node,
+# certificates will be generated automatically (if not already present).
+enableTLSCluster: false
+
 pd:
   # Please refer to https://github.com/pingcap/pd/blob/master/conf/config.toml for the default
-  # pd configurations (change to the tags of your pd version), 
+  # pd configurations (change to the tags of your pd version),
   # just follow the format in the file and configure in the 'config' section
   # as below if you want to customize any configuration.
   # Please refer to https://pingcap.com/docs-cn/v3.0/reference/configuration/pd-server/configuration-file/
@@ -59,7 +64,7 @@ pd:
     level = "info"
     [replication]
     location-labels = ["region", "zone", "rack", "host"]
-  
+
   replicas: 3
   image: pingcap/pd:v3.0.1
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -152,6 +157,10 @@ pd:
   #   effect: "NoSchedule"
   annotations: {}
 
+  # Use the host's network namespace if enabled.
+  # Default to false.
+  hostNetwork: false
+
 tikv:
   # Please refer to https://github.com/tikv/tikv/blob/master/etc/config-template.toml for the default
   # tikv configurations (change to the tags of your tikv version),
@@ -161,51 +170,34 @@ tikv:
   # (choose the version matching your tikv) for detailed explanation of each parameter.
   config: |
     log-level = "info"
-  
-  # Here are some parameters you may want to customize (Please configure in the above 'config' section):
-  # [readpool.storage]
-  # ## Size of the thread pool for high-priority operations.
-  # # high-concurrency = 4
-  # ## Size of the thread pool for normal-priority operations.
-  # # normal-concurrency = 4
-  # ## Size of the thread pool for low-priority operations.
-  # # low-concurrency = 4
+  # # Here are some parameters you MUST customize (Please configure in the above `tikv.config` section):
+  #
   # [readpool.coprocessor]
-  # ## Most read requests from TiDB are sent to the coprocessor of TiKV. high/normal/low-concurrency is
-  # ## used to set the number of threads of the coprocessor.
-  # ## If there are many read requests, you can increase these config values (but keep it within the
-  # ## number of system CPU cores). For example, for a 32-core machine deployed with TiKV, you can even
-  # ## set these config to 30 in heavy read scenarios.
-  # ## If CPU_NUM > 8, the default thread pool size for coprocessors is set to CPU_NUM * 0.8.
-  # # high-concurrency = 8
-  # # normal-concurrency = 8
-  # # low-concurrency = 8
-  # [server]
-  # ## Size of the thread pool for the gRPC server.
-  # # grpc-concurrency = 4
-  # [storage]
-  # ## Scheduler's worker pool size, i.e. the number of write threads.
-  # ## It should be less than total CPU cores. When there are frequent write operations, set it to a
-  # ## higher value. More specifically, you can run `top -H -p tikv-pid` to check whether the threads
-  # ## named `sched-worker-pool` are busy.
-  # # scheduler-worker-pool-size = 4
-  #### Below parameters available in TiKV 2.x only
+  #   # Normally these three parameters should be tuned to 80% of `tikv.resources.limits.cpu`, for example: 10000m -> 8
+  #   high-concurrency = 8
+  #   normal-concurrency = 8
+  #   low-concurrency = 8
+  #
+  # # For TiKV v2.x:
   # [rocksdb.defaultcf]
   # ## block-cache used to cache uncompressed blocks, big block-cache can speed up read.
-  # ## in normal cases should tune to 30%-50% tikv.resources.limits.memory
+  # ## in normal cases should tune to 30%-50% `tikv.resources.limits.memory`
   # # block-cache-size = "1GB"
+  #
   # [rocksdb.writecf]
-  # ## in normal cases should tune to 10%-30% tikv.resources.limits.memory
+  # ## in normal cases should tune to 10%-30% `tikv.resources.limits.memory`
   # # block-cache-size = "256MB"
-  #### Below parameters available in TiKV 3.x and above only
+  #
+  # # From TiKV v3.0.0 on, you do not need to configure
+  # #  [rocksdb.defaultcf].block-cache-size and [rocksdb.writecf].block-cache-size.
+  # # Instead, configure [storage.block-cache] as below:
   # [storage.block-cache]
-  # ## Size of the shared block cache. Normally it should be tuned to 30%-50% of container's total memory.
-  # # capacity = "1GB"
-  # [raftstore]
-  # ## true (default value) for high reliability, this can prevent data loss when power failure.
-  # # sync-log = true
-  # # apply-pool-size = 2
-  # # store-pool-size = 2
+  #   shared = true
+  #
+  #   # Normally it should be tuned to 30%-50% of `tikv.resources.limits.memory`, for example: 32Gi -> 16GB
+  #   capacity = "1GB"
+  # Note that we can't set raftstore.capacity in config because it will be overridden by the command line parameter, 
+  # we can only set capacity in tikv.resources.limits.storage.
 
   replicas: 3
   image: pingcap/tikv:v3.0.1
@@ -222,7 +214,7 @@ tikv:
     limits: {}
     #   cpu: 16000m
     #   memory: 32Gi
-    #   storage: 300Gi
+    #   storage: 300Gi # We can set capacity here.
     requests:
       # cpu: 12000m
       # memory: 24Gi
@@ -246,6 +238,10 @@ tikv:
   #   effect: "NoSchedule"
   annotations: {}
 
+  # Use the host's network namespace if enabled.
+  # Default to false.
+  hostNetwork: false
+
 tidb:
   # Please refer to https://github.com/pingcap/tidb/blob/master/config/config.toml.example for the default
   # tidb configurations(change to the tags of your tidb version),
@@ -256,12 +252,20 @@ tidb:
   config: |
     [log]
     level = "info"
-  
+
+  # # Here are some parameters you MUST customize (Please configure in the above 'tidb.config' section):
+  # [performance]
+  #   # Normally it should be tuned to `tidb.resources.limits.cpu`, for example: 16000m -> 16
+  #   max-procs = 0
+
   replicas: 2
   # The secret name of root password, you can create secret with following command:
   # kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
   # If unset, the root password will be empty and you can set it after connecting
   # passwordSecretName: tidb-secret
+  # permitHost is the host which will only be allowed to connect to the TiDB.
+  # If unset, defaults to '%' which means allow any host to connect to the TiDB.
+  # permitHost: 127.0.0.1
   # initSql is the SQL statements executed after the TiDB cluster is bootstrapped.
   # initSql: |-
   #   create database app;
@@ -295,6 +299,11 @@ tidb:
   #   value: tidb
   #   effect: "NoSchedule"
   annotations: {}
+
+  # Use the host's network namespace if enabled.
+  # Default to false.
+  hostNetwork: false
+
   maxFailoverCount: 3
   service:
     type: NodePort
@@ -312,6 +321,15 @@ tidb:
         cpu: 20m
         memory: 5Mi
 
+  initializer:
+    resources: {}
+    # limits:
+    #  cpu: 100m
+    #  memory: 100Mi
+    # requests:
+    #  cpu: 100m
+    #  memory: 100Mi
+
   # tidb plugin configuration
   plugin:
     # enable plugin or not
@@ -320,6 +338,12 @@ tidb:
     directory: /plugins
     # the start argument to specify the plugin id (name "-" version) that needs to be loaded, e.g. 'conn_limit-1'.
     list: ["whitelist-1"]
+
+  # Whether enable TLS connection between TiDB server and MySQL client.
+  # When enabled, TiDB will accept TLS encrypted connections from MySQL client, certificates will be generated
+  # automatically.
+  # Note: TLS connection is not forced on the server side, plain connections are also accepted after enableing.
+  enableTLSClient: false
 
 # mysqlClient is used to set password for TiDB
 # it must has Python MySQL client installed
@@ -336,6 +360,29 @@ monitor:
   persistent: false
   storageClassName: local-storage
   storage: 10Gi
+  initializer:
+    image: pingcap/tidb-monitor-initializer:v3.0.1
+    imagePullPolicy: IfNotPresent
+    resources: {}
+    # limits:
+    #  cpu: 50m
+    #  memory: 64Mi
+    # requests:
+    #  cpu: 50m
+    #  memory: 64Mi
+  reloader:
+    create: true
+    image: pingcap/tidb-monitor-reloader:v1.0.0
+    imagePullPolicy: IfNotPresent
+    service:
+      type: NodePort
+    resources: {}
+      # limits:
+      #  cpu: 50m
+      #  memory: 64Mi
+      # requests:
+      #  cpu: 50m
+      #  memory: 64Mi
   grafana:
     create: true
     image: grafana/grafana:6.0.1
@@ -362,7 +409,7 @@ monitor:
     service:
       type: NodePort
   prometheus:
-    image: prom/prometheus:v2.2.1
+    image: prom/prometheus:v2.11.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     resources:
@@ -399,12 +446,36 @@ binlog:
     # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
     storageClassName: local-storage
     storage: 20Gi
+    # affinity for pump pod assignment, default: empty
+    # ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+    affinity: {}
+    # tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+    # refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+    tolerations: []
     syncLog: true
     # a integer value to control expiry date of the binlog data, indicates for how long (in days) the binlog data would be stored.
     # must bigger than 0
     gc: 7
     # number of seconds between heartbeat ticks (in 2 seconds)
     heartbeatInterval: 2
+    resources:
+      limits: {}
+      #   cpu: 8000m
+      #   memory: 8Gi
+      requests: {}
+      #   cpu: 4000m
+      #   memory: 4Gi
+
+    # Please refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/pump/pump.toml for the default
+    # pump configurations (change to the tags of your pump version),
+    # just follow the format in the file and configure in the 'config' section
+    # as below if you want to customize any configuration.
+    # config: |
+    #   gc = 7
+    #   heartbeat-interval = 2
+    #   [storage]
+    #   sync-log = true
+    #   stop-write-at-available-space = "10Gi"
 
   drainer:
     create: false
@@ -417,6 +488,12 @@ binlog:
     # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
     storageClassName: local-storage
     storage: 10Gi
+    # affinity for drainer pod assignment, default: empty
+    # ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+    affinity: {}
+    # tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+    # refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+    tolerations: []
     # the number of the concurrency of the downstream for synchronization. The bigger the value,
     # the better throughput performance of the concurrency (16 by default)
     workerCount: 16
@@ -435,8 +512,8 @@ binlog:
     # the number of SQL statements of a transaction that are output to the downstream database (20 by default)
     txnBatch: 20
     # downstream storage, equal to --dest-db-type
-    # valid values are "mysql", "pb", "kafka"
-    destDBType: pb
+    # valid values are "mysql", "file", "tidb", "kafka"
+    destDBType: file
     mysql: {}
       # host: "127.0.0.1"
       # user: "root"
@@ -450,11 +527,36 @@ binlog:
       # zookeeperAddrs: "127.0.0.1:2181"
       # kafkaAddrs: "127.0.0.1:9092"
       # kafkaVersion: "0.8.2.0"
+    resources:
+      limits: {}
+      #   cpu: 8000m
+      #   memory: 8Gi
+      requests: {}
+      #   cpu: 4000m
+      #   memory: 4Gi
+
+    # Please refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml for the default
+    # drainer configurations (change to the tags of your drainer version),
+    # just follow the format in the file and configure in the 'config' section
+    # as below if you want to customize any configuration.
+    # config: |
+    #   worker-count = 16
+    #   detect-interval = 10
+    #   disable-dispatch = false
+    #   ignore-schemas = "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql"
+    #   safe-mode = false
+    #   txn-batch = 20
+    #   db-type = "mysql"
+    #   [syncer.to]
+    #   # host = "127.0.0.1"
+    #   # user = "root"
+    #   # password = ""
+    #   # port = 3306
 
 scheduledBackup:
   create: false
   # https://github.com/pingcap/tidb-cloud-backup
-  mydumperImage: pingcap/tidb-cloud-backup:20190610
+  mydumperImage: pingcap/tidb-cloud-backup:20190828
   mydumperImagePullPolicy: IfNotPresent
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -462,6 +564,8 @@ scheduledBackup:
   # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
   storageClassName: local-storage
   storage: 100Gi
+  # When set to true, cleans up the backup data on storage upon successful upload to the cloud object storage
+  cleanupAfterUpload: false
   # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#schedule
   schedule: "0 0 * * *"
   # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#suspend
@@ -471,8 +575,20 @@ scheduledBackup:
   failedJobsHistoryLimit: 1
   # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#starting-deadline
   startingDeadlineSeconds: 3600
-  # https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
-  options: "--verbose=3"
+  # https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#pod-backoff-failure-policy
+  backoffLimit: 6
+  # https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#job-termination-and-cleanup
+  # activeDeadlineSeconds: 10800
+  # https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#handling-pod-and-container-failures
+  restartPolicy: OnFailure
+  # -t is thread count, larger thread count will speed up the backup, but may impact the performance of the upstream TiDB.
+  # -F is the chunk size, a big table is partitioned into many chunks.
+  # Other useful options are -B for database, and -T for tables.
+  # See https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options for more options.
+  options: "-t 16 -F 256 --skip-tz-utc --verbose=3"
+  # The time limit during which data is retained for each GC when backup, in the format of Go Duration.
+  # When a GC happens, the current time minus this value is the safe point.
+  tikvGCLifeTime: 720h
   # secretName is the name of the secret which stores user and password used for backup
   # Note: you must give the user enough privilege to do the backup
   # you can create the secret by:
@@ -505,6 +621,38 @@ scheduledBackup:
   # You can create the secret by:
   # kubectl create secret generic s3-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
   # secretName: s3-backup-secret
+
+  resources:
+    limits: {}
+    #   cpu: 8000m
+    #   memory: 8Gi
+    requests: {}
+    #   cpu: 4000m
+    #   memory: 4Gi
+
+importer:
+  create: false
+  image: pingcap/tidb-lightning:v3.0.1
+  imagePullPolicy: IfNotPresent
+  storageClassName: local-storage
+  storage: 200Gi
+  resources: {}
+    # limits:
+    #   cpu: 16000m
+    #   memory: 8Gi
+    # requests:
+    #   cpu: 16000m
+    #   memory: 8Gi
+  affinity: {}
+  tolerations: []
+  pushgatewayImage: prom/pushgateway:v0.3.1
+  pushgatewayImagePullPolicy: IfNotPresent
+  config: |
+    log-level = "info"
+    [metrics]
+    job = "tikv-importer"
+    interval = "15s"
+    address = "localhost:9091"
 
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"

@@ -437,6 +437,12 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 		{Name: v1alpha1.PDMemberType.String(), MountPath: "/var/lib/pd"},
 	}
+	if tc.Spec.EnableTLSCluster {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "pd-tls", ReadOnly: true, MountPath: "/var/lib/pd-tls",
+		})
+	}
+
 	vols := []corev1.Volume{
 		annVolume,
 		{Name: "config",
@@ -459,6 +465,15 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 				},
 			},
 		},
+	}
+	if tc.Spec.EnableTLSCluster {
+		vols = append(vols, corev1.Volume{
+			Name: "pd-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: controller.PDMemberName(tcName),
+				},
+			},
+		})
 	}
 
 	var q resource.Quantity
@@ -484,6 +499,11 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 		}
 	}
 
+	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
+	if tc.Spec.PD.HostNetwork {
+		dnsPolicy = corev1.DNSClusterFirstWithHostNet
+	}
+
 	pdSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
@@ -503,6 +523,8 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 					SchedulerName: tc.Spec.SchedulerName,
 					Affinity:      tc.Spec.PD.Affinity,
 					NodeSelector:  tc.Spec.PD.NodeSelector,
+					HostNetwork:   tc.Spec.PD.HostNetwork,
+					DNSPolicy:     dnsPolicy,
 					Containers: []corev1.Container{
 						{
 							Name:            v1alpha1.PDMemberType.String(),
@@ -529,6 +551,14 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{
 											FieldPath: "metadata.namespace",
+										},
+									},
+								},
+								{
+									Name: "POD_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
 										},
 									},
 								},

@@ -22,7 +22,6 @@ import (
 	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
 	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
@@ -60,9 +59,6 @@ func NewRealServiceControl(kubeCli kubernetes.Interface, svcLister corelisters.S
 
 func (sc *realServiceControl) CreateService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
 	_, err := sc.kubeCli.CoreV1().Services(tc.Namespace).Create(svc)
-	if apierrors.IsAlreadyExists(err) {
-		return err
-	}
 	sc.recordServiceEvent("create", tc, svc, err)
 	return err
 }
@@ -83,10 +79,10 @@ func (sc *realServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev
 		}
 
 		if updated, err := sc.svcLister.Services(tc.Namespace).Get(svcName); err != nil {
+			utilruntime.HandleError(fmt.Errorf("error getting updated Service %s/%s from lister: %v", ns, svcName, err))
+		} else {
 			svc = updated.DeepCopy()
 			svc.Spec = *svcSpec
-		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated Service %s/%s from lister: %v", ns, svcName, err))
 		}
 
 		return updateErr
@@ -102,8 +98,8 @@ func (sc *realServiceControl) DeleteService(tc *v1alpha1.TidbCluster, svc *corev
 }
 
 func (sc *realServiceControl) recordServiceEvent(verb string, tc *v1alpha1.TidbCluster, svc *corev1.Service, err error) {
-	tcName := tc.Name
-	svcName := svc.Name
+	tcName := tc.GetName()
+	svcName := svc.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s Service %s in TidbCluster %s successful",

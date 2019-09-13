@@ -14,9 +14,6 @@ scrape_configs:
     honor_labels: true
     kubernetes_sd_configs:
     - role: pod
-      namespaces:
-        names:
-        - {{ .Release.Namespace }}
     tls_config:
       insecure_skip_verify: true
     relabel_configs:
@@ -51,4 +48,4 @@ scrape_configs:
       action: replace
       target_label: cluster
 rule_files:
-  - 'alert.rules'
+  - '/prometheus-rules/rules/*.rules.yml'

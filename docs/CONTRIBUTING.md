@@ -58,7 +58,7 @@ Set your clone to track upstream repository.
 
 ```sh
 $ cd $working_dir/tidb-operator
-$ git remote add upstream git@github.com:pingcap/tidb-operator.git
+$ git remote add upstream https://github.com/pingcap/tidb-operator
 ```
 
 Since you don't have write access to the upstream repository, you need to disable pushing to upstream master:
@@ -110,16 +110,42 @@ $ make test
 
 #### Run e2e tests
 
-For e2e tests, we recommend DinD Kubernetes environment. Follow [this guide](./local-dind-tutorial.md) to spin up a local DinD Kubernetes cluster.
+First you should build a local Kubernetes environment for e2e tests, so we provide the following two ways to build Kubernetes cluster: dind and kind. Both of them are available, but we recommend using kind, because it is easier to use and more stable
 
-Then you can build and push Docker images to the DinD Docker registry. The DinD Docker registry is available as `localhost:5000` both on the host machine and inside the DinD.
+* Use dind to build Kubernetes cluster
+
+    Follow [this guide](./local-dind-tutorial.md) to spin up a local DinD Kubernetes cluster.
+
+* Use kind to build Kubernetes cluster 
+
+    Please ensure you have install [kind](https://kind.sigs.k8s.io/) and it's version == v0.4.0
+    
+    Use the following command to create a local kind Kubernetes environment.  
+    
+    ```sh
+    $ ./hack/kind-cluster-build.sh
+    ```
+    
+    If you have customization requirements, please refer the help info:
+    
+    ```
+    $ ./hack/kind-cluster-build.sh --help
+    ```
+    
+    Setting `KUBECONFIG` environment variable before using the Kubernetes cluster:
+    
+    ```
+    export KUBECONFIG=$(kind get kubeconfig-path --name=<clusterName>)
+    ```
+
+Then you can build and push Docker images to the inner Docker registry. The inner Docker registry is available as `localhost:5000` both on the host machine and inside the Kubernetes cluster.
 
 ```sh
 $ make docker-push
 $ make e2e-docker-push
 ```
 
-After Docker images are pushed to the DinD Docker registry, run e2e tests:
+After Docker images are pushed to the inner Docker registry, run e2e tests:
 
 ```sh
 $ kubectl apply -f tests/manifests/e2e/e2e.yaml

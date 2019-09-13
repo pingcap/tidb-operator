@@ -5,7 +5,7 @@ variable "kubeconfig_filename" {
 
 variable "tidb_cluster_chart_version" {
   description = "tidb-cluster chart version"
-  default     = "v1.0.0-beta.3"
+  default     = "v1.0.0"
 }
 
 variable "cluster_name" {
@@ -52,4 +52,9 @@ variable "local_exec_interpreter" {
   description = "Command to run for local-exec resources. Must be a shell-style interpreter. If you are on Windows Git Bash is a good choice."
   type        = list(string)
   default     = ["/bin/sh", "-c"]
+}
+
+variable "wait_on_resource" {
+  description = "An optional resource to pass in to wait on before running"
+  default = []
 }

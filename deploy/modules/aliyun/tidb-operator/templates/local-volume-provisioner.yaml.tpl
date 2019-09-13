@@ -4,6 +4,8 @@ metadata:
   name: local-provisioner-config
   namespace: kube-system
 data:
+  nodeLabelsForPV: |
+    - kubernetes.io/hostname
   storageClassMap: |
     local-volume:
        vendor: alibabacloud

@@ -10,6 +10,5 @@ metadata:
     app.kubernetes.io/component: drainer
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 data:
-  drainer-config: |-
-{{ tuple "config/_drainer-config.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{ include "drainer-configmap.data" . | indent 2 }}
 {{- end -}}
