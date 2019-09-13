@@ -140,9 +140,9 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newTiDBSet := tmm.getNewTiDBSetForTidbCluster(tc)
 	oldTiDBSetTemp, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 	if errors.IsNotFound(err) {
+		newTiDBSet := tmm.getNewTiDBSetForTidbCluster(tc, nil)
 		err = SetLastAppliedConfigAnnotation(newTiDBSet)
 		if err != nil {
 			return err
@@ -154,6 +154,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		tc.Status.TiDB.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
 	}
+	newTiDBSet := tmm.getNewTiDBSetForTidbCluster(tc, oldTiDBSetTemp)
 	initialized, err := controller.GetPDClient(tmm.pdControl, tc).GetClusterInitialized()
 	if err != nil {
 		return err
@@ -233,7 +234,7 @@ func (tmm *tidbMemberManager) getNewTiDBHeadlessServiceForTidbCluster(tc *v1alph
 	}
 }
 
-func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
+func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet) *apps.StatefulSet {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
@@ -370,6 +371,14 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		dnsPolicy = corev1.DNSClusterFirstWithHostNet
 	}
 
+	// Don't change the init containers when upgrading
+	var initContainers []corev1.Container
+	if oldSet == nil {
+		initContainers = []corev1.Container{WaitForPDContainer(tc.GetName(), tmm.operatorImage, []string{"-" + pdapi.WaitForInitializationFlag})}
+	} else {
+		initContainers = oldSet.Spec.Template.Spec.InitContainers
+	}
+
 	tidbLabel := label.New().Instance(instanceName).TiDB()
 	podAnnotations := CombineAnnotations(controller.AnnProm(10080), tc.Spec.TiDB.Annotations)
 	tidbSet := &apps.StatefulSet{
@@ -391,7 +400,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 					SchedulerName:  tc.Spec.SchedulerName,
 					Affinity:       tc.Spec.TiDB.Affinity,
 					NodeSelector:   tc.Spec.TiDB.NodeSelector,
-					InitContainers: []corev1.Container{WaitForPDContainer(tc.GetName(), tmm.operatorImage, []string{"-" + pdapi.WaitForInitializationFlag})},
+					InitContainers: initContainers,
 					HostNetwork:    tc.Spec.PD.HostNetwork,
 					DNSPolicy:      dnsPolicy,
 					Containers:     containers,
