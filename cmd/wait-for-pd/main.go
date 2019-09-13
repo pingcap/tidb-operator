@@ -14,15 +14,15 @@
 package main
 
 import (
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	"github.com/pingcap/tidb-operator/version"
-	"k8s.io/apiserver/pkg/util/logs"
-
 	"flag"
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/version"
+	"k8s.io/apiserver/pkg/util/logs"
 )
 
 const (
