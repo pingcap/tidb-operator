@@ -15,6 +15,7 @@ package pdapi
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -47,7 +48,7 @@ type Namespace string
 // PDControlInterface is an interface that knows how to manage and get tidb cluster's PD client
 type PDControlInterface interface {
 	// GetPDClient provides PDClient of the tidb cluster.
-	GetPDClient(Namespace, string) PDClient
+	GetPDClient(Namespace, string, bool) PDClient
 }
 
 // defaultPDControl is the default implementation of PDControlInterface.
@@ -62,24 +63,29 @@ func NewDefaultPDControl() PDControlInterface {
 }
 
 // GetPDClient provides a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
-func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string) PDClient {
+func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tlsEnabled bool) PDClient {
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
-	key := pdClientKey(namespace, tcName)
+
+	scheme := "http"
+	if tlsEnabled {
+		scheme = "https"
+	}
+	key := pdClientKey(scheme, namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
-		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName), timeout)
+		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), timeout, tlsEnabled)
 	}
 	return pdc.pdClients[key]
 }
 
 // pdClientKey returns the pd client key
-func pdClientKey(namespace Namespace, clusterName string) string {
-	return fmt.Sprintf("%s.%s", clusterName, string(namespace))
+func pdClientKey(scheme string, namespace Namespace, clusterName string) string {
+	return fmt.Sprintf("%s.%s.%s", scheme, clusterName, string(namespace))
 }
 
 // pdClientUrl builds the url of pd client
-func PdClientURL(namespace Namespace, clusterName string) string {
-	return fmt.Sprintf("http://%s-pd.%s:2379", clusterName, string(namespace))
+func PdClientURL(namespace Namespace, clusterName string, scheme string) string {
+	return fmt.Sprintf("%s://%s-pd.%s:2379", scheme, clusterName, string(namespace))
 }
 
 // PDClient provides pd server's api
@@ -142,10 +148,26 @@ type pdClient struct {
 }
 
 // NewPDClient returns a new PDClient
-func NewPDClient(url string, timeout time.Duration) PDClient {
+func NewPDClient(url string, timeout time.Duration, tlsEnabled bool) PDClient {
+	httpClient := &http.Client{Timeout: timeout}
+	if tlsEnabled {
+		rootCAs, cert, err := httputil.ReadCerts()
+		if err != nil {
+			glog.Errorf("fail to load certs, fallback to plain connection, err: %s", err)
+		} else {
+			config := &tls.Config{
+				RootCAs:      rootCAs,
+				Certificates: []tls.Certificate{cert},
+			}
+			httpClient = &http.Client{
+				Timeout:   timeout,
+				Transport: &http.Transport{TLSClientConfig: config},
+			}
+		}
+	}
 	return &pdClient{
 		url:        url,
-		httpClient: &http.Client{Timeout: timeout},
+		httpClient: httpClient,
 	}
 }
 
@@ -630,7 +652,7 @@ func NewFakePDControl() *FakePDControl {
 }
 
 func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclient PDClient) {
-	fpc.defaultPDControl.pdClients[pdClientKey(namespace, tcName)] = pdclient
+	fpc.defaultPDControl.pdClients[pdClientKey("http", namespace, tcName)] = pdclient
 }
 
 type ActionType string

@@ -12,6 +12,8 @@ metadata:
   name: local-provisioner-config
   namespace: kube-system
 data:
+  nodeLabelsForPV: |
+    - kubernetes.io/hostname
   storageClassMap: |
     local-storage:
       hostDir: /mnt/disks
@@ -20,8 +22,9 @@ data:
 ---
 # Local SSD provisioner
 # Remount disks with a UUID. Ensure the nobarrier options is set.
-# This will combine all disks with LVM.
+# This will combine all disks with mdadm or LVM.
 # If you don't want to combine disks, you can set NO_COMBINE_LOCAL_SSD=1
+# mdadm is preferred over LVM, to use LVM set USE_LVM=1
 apiVersion: extensions/v1beta1
 kind: DaemonSet
 metadata:
@@ -53,11 +56,20 @@ spec:
             name: local-disks
             mountPropagation: Bidirectional
           env:
+          #- name: NO_COMBINE_LOCAL_SSD
+          #  value: "1"
+          #- name: USE_LVM
+          #  value: "1"
           - name: STARTUP_SCRIPT
             value: |
                 #!/usr/bin/env bash
                 set -euo pipefail
                 set -x
+
+                # discard,nobarrier are required to optimize local SSD
+                # performance in GCP, see
+                # https://cloud.google.com/compute/docs/disks/performance#optimize_local_ssd
+                mnt_opts="defaults,nodelalloc,noatime,discard,nobarrier"
 
                 # use /var because it is writeable on COS
                 if ! findmnt -n -a -l | grep /mnt/disks/ssd ; then
@@ -86,21 +98,34 @@ spec:
                   fi
                 done
 
-                if ! /sbin/pvs | grep volume_all_ssds ; then
-                  # Don't combine with lvm if there is 1 disk or the environment variable is set.
-                  # lvm does have overhead, so if there is just 1 disk do not use lvm.
+                devs=$(echo "$ssd_mounts" | awk '{print $2}')
+                raid_dev=/dev/md0
+
+                # If RAID or LVM is already in use, this may have been re-deployed.
+                # Don't try to change the disks.
+                pvs=$((test -x /sbin/pvs && /sbin/pvs) || echo "")
+                if ! test -e $raid_dev && ! echo "$pvs" | grep volume_all_ssds ; then
+                  # wipe all devices
+                  echo "$devs" | while read -r dev ; do
+                    dev_basename=$(basename "$dev")
+                    mkdir -p /var/dev_wiped/
+                    if ! test -f /var/dev_wiped/$dev_basename ; then
+                      if findmnt -n -a -l --nofsroot | grep "$dev" ; then
+                        echo "$dev" already individually mounted
+                        exit 1
+                      fi
+                      /sbin/wipefs --all "$dev"
+                      touch /var/dev_wiped/$dev_basename
+                    fi
+                  done
+
+                  # Don't combine if there is 1 disk or the environment variable is set.
+                  # lvm and mdadm do have overhead, so don't use them if there is just 1 disk
                   # remount with uuid, set mount options (nobarrier), and exit
                   NO_COMBINE_LOCAL_SSD="${NO_COMBINE_LOCAL_SSD:-""}"
-                  if ! test -z "$NO_COMBINE_LOCAL_SSD" || [ "$(echo "$ssd_mounts" | wc -l)" -eq 1 ] ; then
-                    devs=$(echo "$ssd_mounts" | awk '{print $2}')
+                  if ! test -z "$NO_COMBINE_LOCAL_SSD" || [ "$(echo "$devs" | wc -l)" -eq 1 ] ; then
                     echo "$devs" | while read -r dev ; do
-                      if ! $(findmnt -n -a -l --nofsroot | grep "$dev") ; then
-                        dev_basename=$(basename "$dev")
-                        mkdir -p /var/dev_wiped/
-                        if ! test -f /var/dev_wiped/$dev_basename ; then
-                          /sbin/wipefs --all "$dev"
-                          touch /var/dev_wiped/$dev_basename
-                        fi
+                      if ! findmnt -n -a -l --nofsroot | grep "$dev" ; then
                         if ! uuid=$(blkid -s UUID -o value "$dev") ; then
                           mkfs.ext4 "$dev"
                           uuid=$(blkid -s UUID -o value "$dev")
@@ -108,49 +133,57 @@ spec:
                         mnt_dir="/mnt/disks/$uuid"
                         mkdir -p "$mnt_dir"
                         if ! grep "$uuid" /etc/fstab ; then
-                          echo "UUID=$uuid $mnt_dir ext4 rw,relatime,discard,nobarrier,data=ordered" >> /etc/fstab
+                          echo "UUID=$uuid $mnt_dir ext4 $mnt_opts" >> /etc/fstab
                         fi
-                        mount -U "$uuid" -t ext4 --target "$mnt_dir" --options 'rw,relatime,discard,nobarrier,data=ordered'
+                        mount -U "$uuid" -t ext4 --target "$mnt_dir" --options "$mnt_opts"
+                        chmod a+w "$mnt_dir"
                       fi
                     done
 
                     exit 0
                   fi
-
-                  for dev in $(echo "$ssd_mounts" | awk '{print $2}') ; do
-                    if $(findmnt -n -a -l --nofsroot | grep "$dev") ; then
-                      echo "$dev" already individually mounted
-                      exit 1
-                    fi
-                    /sbin/wipefs --all "$dev"
-                  done
-                  echo "$ssd_mounts" | awk '{print $2}' | xargs /sbin/pvcreate
                 fi
 
-                /sbin/pvdisplay
-                if ! /sbin/vgs | grep volume_all_ssds ; then
-                  echo "$ssd_mounts" | awk '{print $2}' | xargs /sbin/vgcreate volume_all_ssds
+                new_dev=
+                USE_LVM="${USE_LVM:-""}"
+                # If RAID is available use it because it performs better than LVM
+                if test -e $raid_dev || (test -x /sbin/mdadm && test -z "$USE_LVM") ; then
+                  if ! test -e $raid_dev ; then
+                    echo "$devs" | xargs /sbin/mdadm --create $raid_dev --level=0 --raid-devices=$(echo "$devs" | wc -l)
+                    sudo mkfs.ext4 -F $raid_dev
+                    new_dev=$raid_dev
+                  fi
+                else
+                  if ! echo "$pvs" | grep volume_all_ssds ; then
+                    echo "$devs" | xargs /sbin/pvcreate
+                  fi
+                  /sbin/pvdisplay
+                  if ! /sbin/vgs | grep volume_all_ssds ; then
+                    echo "$devs" | xargs /sbin/vgcreate volume_all_ssds
+                  fi
+                  /sbin/vgdisplay
+                  if ! /sbin/lvs | grep logical_all_ssds ; then
+                    /sbin/lvcreate -l 100%FREE -n logical_all_ssds volume_all_ssds
+                  fi
+                  /sbin/lvdisplay
+                  new_dev=/dev/volume_all_ssds/logical_all_ssds
                 fi
-                /sbin/vgdisplay
-                if ! /sbin/lvs | grep logical_all_ssds ; then
-                  /sbin/lvcreate -l 100%FREE -n logical_all_ssds volume_all_ssds
-                fi
-                /sbin/lvdisplay
 
-                if ! uuid=$(blkid -s UUID -o value /dev/volume_all_ssds/logical_all_ssds) ; then
-                  mkfs.ext4 /dev/volume_all_ssds/logical_all_ssds
-                  uuid=$(blkid -s UUID -o value /dev/volume_all_ssds/logical_all_ssds)
+                if ! uuid=$(blkid -s UUID -o value $new_dev) ; then
+                  mkfs.ext4 $new_dev
+                  uuid=$(blkid -s UUID -o value $new_dev)
                 fi
 
                 mnt_dir="/mnt/disks/$uuid"
                 mkdir -p "$mnt_dir"
 
                 if ! grep "$uuid" /etc/fstab ; then
-                  echo "UUID=$uuid $mnt_dir ext4 rw,relatime,discard,nobarrier,data=ordered" >> /etc/fstab
-                  mount -U "$uuid" -t ext4 --target "$mnt_dir" --options 'rw,relatime,discard,nobarrier,data=ordered'
+                  echo "UUID=$uuid $mnt_dir ext4 $mnt_opts" >> /etc/fstab
                 fi
+                mount -U "$uuid" -t ext4 --target "$mnt_dir" --options "$mnt_opts"
+                chmod a+w "$mnt_dir"
       containers:
-        - image: "quay.io/external_storage/local-volume-provisioner:v2.2.0"
+        - image: "quay.io/external_storage/local-volume-provisioner:v2.3.2"
           name: provisioner
           securityContext:
             privileged: true
@@ -171,7 +204,7 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: JOB_CONTAINER_IMAGE
-            value: "quay.io/external_storage/local-volume-provisioner:v2.2.0"
+            value: "quay.io/external_storage/local-volume-provisioner:v2.3.2"
           volumeMounts:
             - mountPath: /etc/provisioner/config
               name: provisioner-config

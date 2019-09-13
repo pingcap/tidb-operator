@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/golang/glog"
 )
 
 func (tc *TidbClusterConfig) set(name string, value string) (string, bool) {
@@ -31,6 +33,17 @@ func (tc *TidbClusterConfig) ScaleTiDB(replicas uint) *TidbClusterConfig {
 	return tc
 }
 
+func (tc *TidbClusterConfig) RunInHost(flag bool) *TidbClusterConfig {
+	val := "false"
+	if flag {
+		val = "true"
+	}
+	tc.set("pd.hostNetwork", val)
+	tc.set("tikv.hostNetwork", val)
+	tc.set("tidb.hostNetwork", val)
+	return tc
+}
+
 func (tc *TidbClusterConfig) UpgradePD(image string) *TidbClusterConfig {
 	tc.PDImage = image
 	return tc
@@ -47,6 +60,7 @@ func (tc *TidbClusterConfig) UpgradeTiDB(image string) *TidbClusterConfig {
 }
 
 func (tc *TidbClusterConfig) UpgradeAll(tag string) *TidbClusterConfig {
+	tc.ClusterVersion = tag
 	return tc.
 		UpgradePD("pingcap/pd:" + tag).
 		UpgradeTiKV("pingcap/tikv:" + tag).
@@ -113,7 +127,7 @@ func (tc *TidbClusterConfig) BuildSubValues(path string) (string, error) {
 		"[log]",
 		`level = "info"`,
 	}
-	subValues := GetSubValuesOrDie(tc.ClusterName, tc.Namespace, tc.TopologyKey, pdConfig, tikvConfig, tidbConfig)
+	subValues := GetSubValuesOrDie(tc.ClusterName, tc.Namespace, tc.TopologyKey, pdConfig, tikvConfig, tidbConfig, tc.pumpConfig, tc.drainerConfig)
 	subVaulesPath := fmt.Sprintf("%s/%s.yaml", path, tc.ClusterName)
 	_, err := os.Stat(subVaulesPath)
 	if err != nil {
@@ -134,5 +148,6 @@ func (tc *TidbClusterConfig) BuildSubValues(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	glog.Infof("subValues:\n %s", subValues)
 	return subVaulesPath, nil
 }

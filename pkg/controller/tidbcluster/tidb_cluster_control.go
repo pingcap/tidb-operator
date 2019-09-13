@@ -42,6 +42,7 @@ func NewDefaultTidbClusterControl(
 	reclaimPolicyManager manager.Manager,
 	metaManager manager.Manager,
 	orphanPodsCleaner member.OrphanPodsCleaner,
+	pvcCleaner member.PVCCleanerInterface,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		tcControl,
@@ -51,6 +52,7 @@ func NewDefaultTidbClusterControl(
 		reclaimPolicyManager,
 		metaManager,
 		orphanPodsCleaner,
+		pvcCleaner,
 		recorder,
 	}
 }
@@ -63,6 +65,7 @@ type defaultTidbClusterControl struct {
 	reclaimPolicyManager manager.Manager
 	metaManager          manager.Manager
 	orphanPodsCleaner    member.OrphanPodsCleaner
+	pvcCleaner           member.PVCCleanerInterface
 	recorder             record.EventRecorder
 }
 
@@ -153,6 +156,12 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	//   - label.MemberIDLabelKey
 	//   - label.NamespaceLabelKey
 	if err := tcc.metaManager.Sync(tc); err != nil {
+		return err
+	}
+
+	// cleaning the pod scheduling annotation for pd and tikv
+	_, err := tcc.pvcCleaner.Clean(tc)
+	if err != nil {
 		return err
 	}
 

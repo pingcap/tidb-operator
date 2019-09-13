@@ -290,6 +290,12 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tikv"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
+	if tc.Spec.EnableTLSCluster {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tikv-tls", ReadOnly: true, MountPath: "/var/lib/tikv-tls",
+		})
+	}
+
 	vols := []corev1.Volume{
 		annVolume,
 		{Name: "config", VolumeSource: corev1.VolumeSource{
@@ -308,6 +314,15 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tikv_start_script.sh"}},
 			}},
 		},
+	}
+	if tc.Spec.EnableTLSCluster {
+		vols = append(vols, corev1.Volume{
+			Name: "tikv-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: controller.TiKVMemberName(tcName),
+				},
+			},
+		})
 	}
 
 	var q resource.Quantity
@@ -331,6 +346,11 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 		storageClassName = controller.DefaultStorageClassName
 	}
 
+	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
+	if tc.Spec.PD.HostNetwork {
+		dnsPolicy = corev1.DNSClusterFirstWithHostNet
+	}
+
 	tikvset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
@@ -351,6 +371,8 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 					Affinity:       tc.Spec.TiKV.Affinity,
 					NodeSelector:   tc.Spec.TiKV.NodeSelector,
 					InitContainers: []corev1.Container{WaitForPDContainer(tc.GetName(), tkmm.operatorImage, []string{"-" + pdapi.WaitForLeaderFlag})},
+					HostNetwork:    tc.Spec.PD.HostNetwork,
+					DNSPolicy:      dnsPolicy,
 					Containers: []corev1.Container{
 						{
 							Name:            v1alpha1.TiKVMemberType.String(),
@@ -375,6 +397,14 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{
 											FieldPath: "metadata.namespace",
+										},
+									},
+								},
+								{
+									Name: "POD_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
 										},
 									},
 								},

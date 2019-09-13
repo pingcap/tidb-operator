@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	"github.com/robfig/cron"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
 )
@@ -74,8 +75,10 @@ func run() {
 	cluster2 := newTidbClusterConfig("ns2", "cluster2")
 	cluster3 := newTidbClusterConfig("ns2", "cluster3")
 
-	restoreCluster1 := newTidbClusterConfig("ns1", "restore1")
-	restoreCluster2 := newTidbClusterConfig("ns2", "restore2")
+	directRestoreCluster1 := newTidbClusterConfig("ns1", "restore1")
+	fileRestoreCluster1 := newTidbClusterConfig("ns1", "file-restore1")
+	directRestoreCluster2 := newTidbClusterConfig("ns2", "restore2")
+	fileRestoreCluster2 := newTidbClusterConfig("ns2", "file-restore2")
 
 	onePDCluster1 := newTidbClusterConfig("ns1", "one-pd-cluster-1")
 	onePDCluster2 := newTidbClusterConfig("ns2", "one-pd-cluster-2")
@@ -86,8 +89,10 @@ func run() {
 		cluster1,
 		cluster2,
 		cluster3,
-		restoreCluster1,
-		restoreCluster2,
+		directRestoreCluster1,
+		fileRestoreCluster1,
+		directRestoreCluster2,
+		fileRestoreCluster2,
 		onePDCluster1,
 		onePDCluster2,
 	}
@@ -117,7 +122,7 @@ func run() {
 		oa.CleanTidbClusterOrDie(cluster)
 	}
 
-	caseFn := func(clusters []*tests.TidbClusterConfig, onePDClsuter *tests.TidbClusterConfig, restoreCluster *tests.TidbClusterConfig, upgradeVersion string) {
+	caseFn := func(clusters []*tests.TidbClusterConfig, onePDClsuter *tests.TidbClusterConfig, backupTargets []tests.BackupTarget, upgradeVersion string) {
 		// check env
 		fta.CheckAndRecoverEnvOrDie()
 		oa.CheckK8sAvailableOrDie(nil, nil)
@@ -205,10 +210,12 @@ func run() {
 		}
 
 		// backup and restore
-		oa.DeployTidbClusterOrDie(restoreCluster)
-		addDeployedClusterFn(restoreCluster)
-		oa.CheckTidbClusterStatusOrDie(restoreCluster)
-		oa.BackupRestoreOrDie(clusters[0], restoreCluster)
+		for i := range backupTargets {
+			oa.DeployTidbClusterOrDie(backupTargets[i].TargetCluster)
+			addDeployedClusterFn(backupTargets[i].TargetCluster)
+			oa.CheckTidbClusterStatusOrDie(backupTargets[i].TargetCluster)
+		}
+		oa.BackupAndRestoreToMultipleClustersOrDie(clusters[0], backupTargets)
 
 		// delete operator
 		oa.CleanOperatorOrDie(ocfg)
@@ -231,13 +238,25 @@ func run() {
 		// truncate tikv sst file
 		oa.TruncateSSTFileThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
 
-		// stop etcd
+		// stop one etcd
 		faultEtcd := tests.SelectNode(cfg.ETCDs)
 		fta.StopETCDOrDie(faultEtcd)
 		defer fta.StartETCDOrDie(faultEtcd)
 		time.Sleep(3 * time.Minute)
-		oa.CheckOneEtcdDownOrDie(ocfg, deployedClusters, faultEtcd)
+		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, faultEtcd)
 		fta.StartETCDOrDie(faultEtcd)
+
+		// stop all etcds
+		fta.StopETCDOrDie()
+		time.Sleep(10 * time.Minute)
+		fta.StartETCDOrDie()
+		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, "")
+
+		// stop all kubelets
+		fta.StopKubeletOrDie()
+		time.Sleep(10 * time.Minute)
+		fta.StartKubeletOrDie()
+		oa.CheckKubeletDownOrDie(ocfg, deployedClusters, "")
 
 		// stop all kube-proxy and k8s/operator/tidbcluster is available
 		fta.StopKubeProxyOrDie()
@@ -276,7 +295,19 @@ func run() {
 		cluster1,
 		cluster2,
 	}
-	caseFn(preUpgrade, onePDCluster1, restoreCluster1, upgradeVersions[0])
+	backupTargets := []tests.BackupTarget{
+		{
+			TargetCluster:   directRestoreCluster1,
+			IsAdditional:    false,
+			IncrementalType: tests.DbTypeTiDB,
+		},
+		{
+			TargetCluster:   fileRestoreCluster1,
+			IsAdditional:    true,
+			IncrementalType: tests.DbTypeFile,
+		},
+	}
+	caseFn(preUpgrade, onePDCluster1, backupTargets, upgradeVersions[0])
 
 	// after operator upgrade
 	if cfg.UpgradeOperatorImage != "" && cfg.UpgradeOperatorTag != "" {
@@ -293,8 +324,20 @@ func run() {
 		if len(upgradeVersions) == 2 {
 			v = upgradeVersions[1]
 		}
+		postUpgradeBackupTargets := []tests.BackupTarget{
+			{
+				TargetCluster:   directRestoreCluster2,
+				IsAdditional:    false,
+				IncrementalType: tests.DbTypeTiDB,
+			},
+			{
+				TargetCluster:   fileRestoreCluster2,
+				IsAdditional:    true,
+				IncrementalType: tests.DbTypeFile,
+			},
+		}
 		// caseFn(postUpgrade, restoreCluster2, tidbUpgradeVersion)
-		caseFn(postUpgrade, onePDCluster2, restoreCluster2, v)
+		caseFn(postUpgrade, onePDCluster2, postUpgradeBackupTargets, v)
 	}
 
 	for _, cluster := range allClusters {
@@ -303,4 +346,68 @@ func run() {
 
 	slack.SuccessCount++
 	glog.Infof("################## Stability test finished at: %v\n\n\n\n", time.Now().Format(time.RFC3339))
+}
+
+func newOperatorConfig() *tests.OperatorConfig {
+	return &tests.OperatorConfig{
+		Namespace:      "pingcap",
+		ReleaseName:    "operator",
+		Image:          cfg.OperatorImage,
+		Tag:            cfg.OperatorTag,
+		SchedulerImage: "gcr.io/google-containers/hyperkube",
+		SchedulerFeatures: []string{
+			"StableScheduling=true",
+		},
+		LogLevel:           "2",
+		WebhookServiceName: tests.WebhookServiceName,
+		WebhookSecretName:  "webhook-secret",
+		WebhookConfigName:  "webhook-config",
+		ImagePullPolicy:    v1.PullAlways,
+		TestMode:           true,
+	}
+}
+
+func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
+	tidbVersion := cfg.GetTiDBVersionOrDie()
+	topologyKey := "rack"
+	return &tests.TidbClusterConfig{
+		Namespace:        ns,
+		ClusterName:      clusterName,
+		OperatorTag:      cfg.OperatorTag,
+		PDImage:          fmt.Sprintf("pingcap/pd:%s", tidbVersion),
+		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
+		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
+		StorageClassName: "local-storage",
+		UserName:         "root",
+		Password:         "admin",
+		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName),
+		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName),
+		BackupName:       "backup",
+		Resources: map[string]string{
+			"pd.resources.limits.cpu":        "1000m",
+			"pd.resources.limits.memory":     "2Gi",
+			"pd.resources.requests.cpu":      "200m",
+			"pd.resources.requests.memory":   "1Gi",
+			"tikv.resources.limits.cpu":      "8000m",
+			"tikv.resources.limits.memory":   "16Gi",
+			"tikv.resources.requests.cpu":    "1000m",
+			"tikv.resources.requests.memory": "2Gi",
+			"tidb.resources.limits.cpu":      "8000m",
+			"tidb.resources.limits.memory":   "8Gi",
+			"tidb.resources.requests.cpu":    "500m",
+			"tidb.resources.requests.memory": "1Gi",
+			"monitor.persistent":             "true",
+			"discovery.image":                cfg.OperatorImage,
+			"tikv.defaultcfBlockCacheSize":   "8GB",
+			"tikv.writecfBlockCacheSize":     "2GB",
+		},
+		Args: map[string]string{
+			"binlog.drainer.workerCount": "1024",
+			"binlog.drainer.txnBatch":    "512",
+		},
+		Monitor:          true,
+		BlockWriteConfig: cfg.BlockWriter,
+		TopologyKey:      topologyKey,
+		ClusterVersion:   tidbVersion,
+	}
 }

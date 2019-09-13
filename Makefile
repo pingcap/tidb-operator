@@ -11,11 +11,13 @@ ifeq ($(GO111), 1)
 $(error Please upgrade your Go compiler to 1.11 or higher version)
 endif
 
+# Enable GO111MODULE=on explicitly, disable it with GO111MODULE=off when necessary.
+export GO111MODULE := on
 GOOS := $(if $(GOOS),$(GOOS),linux)
 GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
-GOENV  := GO15VENDOREXPERIMENT="1" GO111MODULE=on CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
+GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO     := $(GOENV) go build
-GOTEST := CGO_ENABLED=0 GO111MODULE=on go test -v -cover
+GOTEST := CGO_ENABLED=0 go test -v -cover
 
 PACKAGE_LIST := go list ./... | grep -vE "pkg/client" | grep -vE "zz_generated"
 PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
@@ -25,8 +27,9 @@ TEST_COVER_PACKAGES:=go list ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/t
 
 default: build
 
-docker-push: docker
+docker-push: docker backup-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:latest"
 
 docker: build
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest" images/tidb-operator
@@ -48,9 +51,15 @@ admission-controller:
 wait-for-pd:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/wait-for-pd cmd/wait-for-pd/main.go
 
+backup-manager:
+	$(GO) -ldflags '$(LDFLAGS)' -o images/backup-manager/bin/tidb-backup-manager cmd/backup-manager/main.go
+
+backup-docker: backup-manager
+	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:latest" images/backup-manager
+
 e2e-setup:
 	# ginkgo doesn't work with retool for Go 1.11
-	@GO111MODULE=on CGO_ENABLED=0 go get github.com/onsi/ginkgo@v1.6.0
+	@CGO_ENABLED=0 go get github.com/onsi/ginkgo@v1.6.0
 
 e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest"
@@ -98,7 +107,7 @@ check-static:
 	@echo "gofmt checking"
 	gofmt -s -l -w $(FILES) 2>&1| $(FAIL_ON_STDOUT)
 	@echo "go vet check"
-	@GO111MODULE=on go vet -all $$($(PACKAGE_LIST)) 2>&1
+	@go vet -all $$($(PACKAGE_LIST)) 2>&1
 	@echo "mispell and ineffassign checking"
 	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all \
 	  --enable misspell \
@@ -123,7 +132,7 @@ errcheck:
 check-shadow:
 	@echo "go vet shadow checking"
 	go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
-	@GO111MODULE=on go vet -vettool=$(which shadow) $$($(PACKAGE_LIST))
+	@go vet -vettool=$(which shadow) $$($(PACKAGE_LIST))
 
 lint:
 	@echo "linting"
@@ -131,7 +140,7 @@ lint:
 
 tidy:
 	@echo "go mod tidy"
-	GO111MODULE=on go mod tidy
+	go mod tidy
 	git diff --quiet go.mod go.sum
 
 check-gosec:
