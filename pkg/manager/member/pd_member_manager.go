@@ -195,18 +195,20 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	}
 
 	oldPDSet := oldPDSetTmp.DeepCopy()
-
-	if err := pmm.syncTidbClusterStatus(tc, oldPDSet); err != nil {
-		return err
-	}
+	syncErr := pmm.syncTidbClusterStatus(tc, oldPDSet)
 
 	if !tc.Status.PD.Synced {
 		force := needForceUpgrade(tc)
 		if force {
+			if syncErr != nil {
+				glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, syncErr)
+			}
 			tc.Status.PD.Phase = v1alpha1.UpgradePhase
 			setUpgradePartition(newPDSet, 0)
 			errSTS := pmm.updateStatefulSet(tc, newPDSet, oldPDSet)
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
+		} else if syncErr != nil {
+			return syncErr
 		}
 	}
 
