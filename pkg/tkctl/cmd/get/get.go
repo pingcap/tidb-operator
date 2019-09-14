@@ -16,6 +16,7 @@ package get
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/alias"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
@@ -279,7 +280,13 @@ func (o *GetOptions) PrintOutput(tc *v1alpha1.TidbCluster, resourceType string, 
 		if err != nil {
 			return err
 		}
-
+		switch resourceType {
+		case kindTiKV:
+			tikvList := alias.TikvList(*podList)
+			return printer.PrintObj(&tikvList, o.Out)
+		default:
+			break
+		}
 		return printer.PrintObj(podList, o.Out)
 	case kindVolume:
 		var objs []runtime.Object

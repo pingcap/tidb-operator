@@ -15,9 +15,11 @@ package readable
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/alias"
 	"k8s.io/api/core/v1"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -48,6 +50,10 @@ type PodBasicColumns struct {
 	CPUInfo string
 }
 
+type TikvExtraInfoColumn struct {
+	StoreId string
+}
+
 func AddHandlers(h printers.PrintHandler) {
 	tidbClusterColumns := []metav1beta1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
@@ -73,6 +79,16 @@ func AddHandlers(h printers.PrintHandler) {
 	}
 	h.TableHandler(commonPodColumns, printPod)
 	h.TableHandler(commonPodColumns, printPodList)
+	//tikv columns
+	tikvPodColumns := commonPodColumns
+	storeId := metav1beta1.TableColumnDefinition{
+		Name:        "StoreID",
+		Type:        "string",
+		Description: "TiKV StoreID",
+	}
+	tikvPodColumns = append(tikvPodColumns, storeId)
+	h.TableHandler(tikvPodColumns, printTikvList)
+	h.TableHandler(tikvPodColumns, printTikv)
 	// TODO: add available space for volume
 	volumeColumns := []metav1beta1.TableColumnDefinition{
 		{Name: "Volume", Type: "string", Format: "name", Description: "Volume name"},
@@ -151,7 +167,26 @@ func printPod(pod *v1.Pod, options printers.PrintOptions) ([]metav1beta1.TableRo
 	if options.Wide {
 		row.Cells = append(row.Cells, columns.PodIP, columns.NodeName)
 	}
+	componentKind := pod.Labels[label.ComponentLabelKey]
+	switch componentKind {
+	case label.TiKVLabelVal:
+		extraInfoColumn := extraTikvDataColumn(pod)
+		row.Cells = append(row.Cells, extraInfoColumn.StoreId)
+		break
+	default:
+		break
+	}
 	return []metav1beta1.TableRow{row}, nil
+}
+
+func printTikvList(tikvList *alias.TikvList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+	podList := apiv1.PodList(*tikvList)
+	return printPodList(&podList, options)
+}
+
+func printTikv(tikv *alias.Tikv, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+	pod := apiv1.Pod(*tikv)
+	return printPod(&pod, options)
 }
 
 func printVolumeList(volumeList *v1.PersistentVolumeList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
@@ -349,4 +384,12 @@ func translateTimestampSince(timestamp metav1.Time) string {
 	}
 
 	return duration.HumanDuration(time.Since(timestamp.Time))
+}
+
+// extra Component Tikv Data
+func extraTikvDataColumn(pod *v1.Pod) *TikvExtraInfoColumn {
+	storeId := pod.Labels[label.StoreIDLabelKey]
+	return &TikvExtraInfoColumn{
+		StoreId: storeId,
+	}
 }
