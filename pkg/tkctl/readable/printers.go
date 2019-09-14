@@ -15,6 +15,10 @@ package readable
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/kubernetes/pkg/printers/internalversion"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
@@ -349,4 +353,96 @@ func translateTimestampSince(timestamp metav1.Time) string {
 	}
 
 	return duration.HumanDuration(time.Since(timestamp.Time))
+}
+
+// printLabelsMultiline prints multiple labels with a proper alignment.
+func PrintLabelsMultiline(w internalversion.PrefixWriter, title string, labels map[string]string) {
+	PrintLabelsMultilineWithIndent(w, "", title, "\t", labels, sets.NewString())
+}
+
+// printLabelsMultiline prints multiple labels with a user-defined alignment.
+func PrintLabelsMultilineWithIndent(w internalversion.PrefixWriter, initialIndent, title, innerIndent string, labels map[string]string, skip sets.String) {
+	w.Write(LEVEL_0, "%s%s:%s", initialIndent, title, innerIndent)
+
+	if labels == nil || len(labels) == 0 {
+		w.WriteLine("<none>")
+		return
+	}
+
+	// to print labels in the sorted order
+	keys := make([]string, 0, len(labels))
+	for key := range labels {
+		if skip.Has(key) {
+			continue
+		}
+		keys = append(keys, key)
+	}
+	if len(keys) == 0 {
+		w.WriteLine("<none>")
+		return
+	}
+	sort.Strings(keys)
+
+	for i, key := range keys {
+		if i != 0 {
+			w.Write(LEVEL_0, "%s", initialIndent)
+			w.Write(LEVEL_0, "%s", innerIndent)
+		}
+		w.Write(LEVEL_0, "%s=%s\n", key, labels[key])
+		i++
+	}
+}
+
+// printAnnotationsMultiline prints multiple annotations with a proper alignment.
+func PrintAnnotationsMultiline(w internalversion.PrefixWriter, title string, annotations map[string]string) {
+	PrintAnnotationsMultilineWithIndent(w, "", title, "\t", annotations, sets.NewString())
+}
+
+// printAnnotationsMultilineWithIndent prints multiple annotations with a user-defined alignment.
+// If annotation string is too long, we omit chars more than 200 length.
+func PrintAnnotationsMultilineWithIndent(w internalversion.PrefixWriter, initialIndent, title, innerIndent string, annotations map[string]string, skip sets.String) {
+
+	w.Write(LEVEL_0, "%s%s:%s", initialIndent, title, innerIndent)
+
+	if len(annotations) == 0 {
+		w.WriteLine("<none>")
+		return
+	}
+
+	// to print labels in the sorted order
+	keys := make([]string, 0, len(annotations))
+	for key := range annotations {
+		if skip.Has(key) {
+			continue
+		}
+		keys = append(keys, key)
+	}
+	if len(annotations) == 0 {
+		w.WriteLine("<none>")
+		return
+	}
+	sort.Strings(keys)
+	indent := initialIndent + innerIndent
+	for i, key := range keys {
+		if i != 0 {
+			w.Write(LEVEL_0, indent)
+		}
+		value := strings.TrimSuffix(annotations[key], "\n")
+		if (len(value)+len(key)+2) > 100 || strings.Contains(value, "\n") {
+			w.Write(LEVEL_0, "%s:\n", key)
+			for _, s := range strings.Split(value, "\n") {
+				w.Write(LEVEL_0, "%s  %s\n", indent, shorten(s, 98))
+			}
+		} else {
+			w.Write(LEVEL_0, "%s: %s\n", key, value)
+		}
+		i++
+	}
+}
+
+func shorten(s string, maxLength int) string {
+	if len(s) > maxLength {
+		return s[:maxLength] + "..."
+	}
+	return s
 }
