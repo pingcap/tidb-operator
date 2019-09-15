@@ -37,48 +37,74 @@ locals {
 
   tidb_cluster_worker_groups = [
     {
-      name                 = "${var.cluster_name}-pd"
-      key_name             = var.ssh_key_name
-      instance_type        = var.pd_instance_type
-      root_volume_size     = "50"
-      public_ip            = false
-      kubelet_extra_args   = "--register-with-taints=dedicated=${var.cluster_name}-pd:NoSchedule --node-labels=dedicated=${var.cluster_name}-pd,pingcap.com/aws-local-ssd=true"
+      name             = "${var.cluster_name}-pd"
+      key_name         = var.ssh_key_name
+      instance_type    = var.pd_instance_type
+      root_volume_size = "50"
+      public_ip        = false
+      # the space separator is safe when the extra args is empty or prefixed by spaces (the same hereafter)
+      kubelet_extra_args = join(" ",
+        [
+          "--register-with-taints=dedicated=${var.cluster_name}-pd:NoSchedule",
+          "--node-labels=dedicated=${var.cluster_name}-pd,pingcap.com/aws-local-ssd=true,zone=${local.aws_zone_getter}",
+          lookup(var.group_kubelet_extra_args, "pd", var.kubelet_extra_args)
+        ]
+      )
       asg_desired_capacity = var.pd_count
       asg_max_size         = var.pd_count + 2
       # additional_userdata  = file("userdata.sh")
     },
     {
-      name                 = "${var.cluster_name}-tikv"
-      key_name             = var.ssh_key_name
-      instance_type        = var.tikv_instance_type
-      root_volume_size     = "50"
-      public_ip            = false
-      kubelet_extra_args   = "--register-with-taints=dedicated=${var.cluster_name}-tikv:NoSchedule --node-labels=dedicated=${var.cluster_name}-tikv,pingcap.com/aws-local-ssd=true"
+      name             = "${var.cluster_name}-tikv"
+      key_name         = var.ssh_key_name
+      instance_type    = var.tikv_instance_type
+      root_volume_size = "50"
+      public_ip        = false
+      kubelet_extra_args = join(" ",
+        [
+          "--register-with-taints=dedicated=${var.cluster_name}-tikv:NoSchedule",
+          "--node-labels=dedicated=${var.cluster_name}-tikv,pingcap.com/aws-local-ssd=true,zone=${local.aws_zone_getter}",
+          lookup(var.group_kubelet_extra_args, "tikv", var.kubelet_extra_args)
+        ]
+      )
       asg_desired_capacity = var.tikv_count
       asg_max_size         = var.tikv_count + 2
       pre_userdata         = file("${path.module}/pre_userdata")
       # additional_userdata  = file("userdata.sh")
     },
     {
-      name                 = "${var.cluster_name}-tidb"
-      key_name             = var.ssh_key_name
-      instance_type        = var.tidb_instance_type
-      root_volume_type     = "gp2"
-      root_volume_size     = "50"
-      public_ip            = false
-      kubelet_extra_args   = "--register-with-taints=dedicated=${var.cluster_name}-tidb:NoSchedule --node-labels=dedicated=${var.cluster_name}-tidb"
+      name             = "${var.cluster_name}-tidb"
+      key_name         = var.ssh_key_name
+      instance_type    = var.tidb_instance_type
+      root_volume_type = "gp2"
+      root_volume_size = "50"
+      public_ip        = false
+      kubelet_extra_args = join(" ",
+        [
+          "--allowed-unsafe-sysctls=\\\"net.*\\\"",
+          "--register-with-taints=dedicated=${var.cluster_name}-tidb:NoSchedule",
+          "--node-labels=dedicated=${var.cluster_name}-tidb,zone=${local.aws_zone_getter}",
+          lookup(var.group_kubelet_extra_args, "tidb", var.kubelet_extra_args)
+        ]
+      )
       asg_desired_capacity = var.tidb_count
       asg_max_size         = var.tidb_count + 2
     },
     {
-      name                 = "${var.cluster_name}-monitor"
-      key_name             = var.ssh_key_name
-      instance_type        = var.monitor_instance_type
-      root_volume_type     = "gp2"
-      root_volume_size     = "50"
-      public_ip            = false
-      asg_desired_capacity = 1
-      asg_max_size         = 3
+      name             = "${var.cluster_name}-monitor"
+      key_name         = var.ssh_key_name
+      instance_type    = var.monitor_instance_type
+      root_volume_type = "gp2"
+      root_volume_size = "50"
+      public_ip        = false
+      kubelet_extra_args = join(" ",
+        [
+          "--node-labels=zone=${local.aws_zone_getter}",
+          lookup(var.group_kubelet_extra_args, "monitor", var.kubelet_extra_args)
+        ]
+      )
+      asg_desired_capacity  = 1
+      asg_max_size          = 3
     }
   ]
 
