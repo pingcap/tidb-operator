@@ -364,7 +364,6 @@ func newOperatorConfig() *tests.OperatorConfig {
 		Image:          cfg.OperatorImage,
 		Tag:            cfg.OperatorTag,
 		SchedulerImage: "gcr.io/google-containers/hyperkube",
-		SchedulerTag:   "v1.12.2",
 		SchedulerFeatures: []string{
 			"StableScheduling=true",
 		},
