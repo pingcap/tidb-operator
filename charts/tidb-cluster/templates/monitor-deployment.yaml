@@ -62,8 +62,6 @@ spec:
           value: {{ template "cluster.name" . }}
         - name: TIDB_ENABLE_BINLOG
           value: {{ .Values.binlog.pump.create | default false | quote }}
-        - name: TIDB_ENABLE_IMPORTER
-          value: {{ .Values.importer.create | default false | quote }}
         - name:  PROM_CONFIG_PATH
           value: /prometheus-rules
         - name: GF_K8S_PROMETHEUS_URL
@@ -90,7 +88,7 @@ spec:
           readOnly: false
         - name: monitor-data
           mountPath: /data
-        - name: grafana-datasources
+        - name: datasource
           mountPath: /etc/grafana/provisioning/datasources
           readOnly: false
         resources:
@@ -184,7 +182,7 @@ spec:
           - name: monitor-data
             mountPath: /data
           - mountPath: /etc/grafana/provisioning/datasources
-            name: grafana-datasources
+            name: datasource
             readOnly: false
           - mountPath: /etc/grafana/provisioning/dashboards
             name: dashboards-provisioning
@@ -209,7 +207,7 @@ spec:
             path: prometheus.yml
       {{- if .Values.monitor.grafana.create }}
       - emptyDir: {}
-        name: grafana-datasources
+        name: datasource
       - configMap:
           name: {{ template "cluster.name" . }}-monitor
           items:
