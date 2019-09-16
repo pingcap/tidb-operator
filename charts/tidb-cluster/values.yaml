@@ -239,7 +239,7 @@ tikv:
   # Default to false.
   hostNetwork: false
 
-  # Specify the security context of PD Pod.
+  # Specify the security context of TiKV Pod.
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
   podSecurityContext: {}
 
@@ -301,7 +301,7 @@ tidb:
   # Default to false.
   hostNetwork: false
 
-  # Specify the security context of PD Pod.
+  # Specify the security context of TiDB Pod.
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
   podSecurityContext: {}
 
