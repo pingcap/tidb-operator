@@ -90,9 +90,10 @@ type TidbClusterSpec struct {
 	TiKV            TiKVSpec            `json:"tikv,omitempty"`
 	TiKVPromGateway TiKVPromGatewaySpec `json:"tikvPromGateway,omitempty"`
 	// Services list non-headless services type used in TidbCluster
-	Services        []Service                            `json:"services,omitempty"`
-	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
-	Timezone        string                               `json:"timezone,omitempty"`
+	Services         []Service                            `json:"services,omitempty"`
+	PVReclaimPolicy  corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
+	Timezone         string                               `json:"timezone,omitempty"`
+	MaxFailoverCount int32                                `json:"maxFailoverCount,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -106,27 +107,21 @@ type TidbClusterStatus struct {
 // PDSpec contains details of PD member
 type PDSpec struct {
 	ContainerSpec
-	Replicas         int32               `json:"replicas"`
-	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
-	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
-	StorageClassName string              `json:"storageClassName,omitempty"`
-	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
-	Annotations      map[string]string   `json:"annotations,omitempty"`
+	PodAttributesSpec
+	Replicas         int32  `json:"replicas"`
+	StorageClassName string `json:"storageClassName,omitempty"`
 }
 
 // TiDBSpec contains details of PD member
 type TiDBSpec struct {
 	ContainerSpec
+	PodAttributesSpec
 	Replicas         int32                 `json:"replicas"`
-	Affinity         *corev1.Affinity      `json:"affinity,omitempty"`
-	NodeSelector     map[string]string     `json:"nodeSelector,omitempty"`
 	StorageClassName string                `json:"storageClassName,omitempty"`
-	Tolerations      []corev1.Toleration   `json:"tolerations,omitempty"`
-	Annotations      map[string]string     `json:"annotations,omitempty"`
 	BinlogEnabled    bool                  `json:"binlogEnabled,omitempty"`
-	MaxFailoverCount int32                 `json:"maxFailoverCount,omitempty"`
 	SeparateSlowLog  bool                  `json:"separateSlowLog,omitempty"`
 	SlowLogTailer    TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
+	MaxFailoverCount int32                 `json:"maxFailoverCount,omitempty"`
 }
 
 // TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB
@@ -137,14 +132,11 @@ type TiDBSlowLogTailerSpec struct {
 // TiKVSpec contains details of TiKV members
 type TiKVSpec struct {
 	ContainerSpec
-	Privileged       bool                `json:"privileged,omitempty"`
-	Replicas         int32               `json:"replicas"`
-	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
-	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
-	StorageClassName string              `json:"storageClassName,omitempty"`
-	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
-	Annotations      map[string]string   `json:"annotations,omitempty"`
-	MaxFailoverCount int32               `json:"maxFailoverCount,omitempty"`
+	PodAttributesSpec
+	Replicas         int32  `json:"replicas"`
+	Privileged       bool   `json:"privileged,omitempty"`
+	StorageClassName string `json:"storageClassName,omitempty"`
+	MaxFailoverCount int32  `json:"maxFailoverCount,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
@@ -158,6 +150,15 @@ type ContainerSpec struct {
 	ImagePullPolicy corev1.PullPolicy    `json:"imagePullPolicy,omitempty"`
 	Requests        *ResourceRequirement `json:"requests,omitempty"`
 	Limits          *ResourceRequirement `json:"limits,omitempty"`
+}
+
+// PodAttributesControlSpec is a spec of some general attributes of TiKV, TiDB and PD Pods
+type PodAttributesSpec struct {
+	Affinity           *corev1.Affinity           `json:"affinity,omitempty"`
+	NodeSelector       map[string]string          `json:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration        `json:"tolerations,omitempty"`
+	Annotations        map[string]string          `json:"annotations,omitempty"`
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 }
 
 // Service represent service type used in TidbCluster

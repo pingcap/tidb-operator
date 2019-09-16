@@ -113,7 +113,7 @@ require (
 	k8s.io/apiserver v0.0.0-20190118115647-a748535592ba
 	k8s.io/cli-runtime v0.0.0-20190118125240-caee4253d968
 	k8s.io/client-go v0.0.0-20190115164855-701b91367003
-	k8s.io/code-generator v0.0.0-20191109100332-a9a0d9c0b3aa
+	k8s.io/code-generator v0.0.0-20191114215150-2a85f169f05f
 	k8s.io/klog v1.0.0
 	k8s.io/kubernetes v1.12.5
 	k8s.io/metrics v0.0.0-20190118124808-33c1aed8dc65 // indirect

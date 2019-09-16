@@ -10,6 +10,7 @@ root        hard        nofile        1000000
 root        soft        core          unlimited
 root        soft        stack         10240
 EOF
+
 # config docker ulimit
 cp /usr/lib/systemd/system/docker.service /etc/systemd/system/docker.service
 sed -i 's/LimitNOFILE=infinity/LimitNOFILE=1048576/' /etc/systemd/system/docker.service

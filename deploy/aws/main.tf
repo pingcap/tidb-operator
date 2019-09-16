@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 locals {
-  eks = module.tidb-operator.eks
+  eks     = module.tidb-operator.eks
   subnets = module.vpc.private_subnets
 }
 
