@@ -31,5 +31,15 @@ func (t TikvList) GetObjectKind() schema.ObjectKind {
 }
 
 func (t TikvList) DeepCopyObject() runtime.Object {
-	return t.PodList.DeepCopyObject()
+	out := TikvList{
+		PodList:    nil,
+		TikvStatus: nil,
+	}
+	if t.PodList != nil {
+		out.PodList = t.PodList.DeepCopy()
+	}
+	if t.TikvStatus != nil {
+		out.TikvStatus = t.TikvStatus.DeepCopy()
+	}
+	return out
 }
