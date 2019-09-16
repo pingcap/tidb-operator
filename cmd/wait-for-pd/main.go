@@ -21,7 +21,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	"github.com/pingcap/tidb-operator/version"
+	"github.com/pingcap/tidb-operator/pkg/version"
 	"k8s.io/apiserver/pkg/util/logs"
 )
 
@@ -86,7 +86,9 @@ func main() {
 		glog.Fatalf("Expected NAMESPACE env variable to be set")
 	}
 
-	pdClient := pdapi.NewPDClient(pdapi.PdClientURL(pdapi.Namespace(namespace), tcName), timeout)
+	// This is just a check for intialization at startup, it doesn't seem valuable to try to hide it with https
+	// Just being able to observe that there is network traffic going on with this program pretty much tells you everything you would want to know here.
+	pdClient := pdapi.NewPDClient(pdapi.PdClientURL(pdapi.Namespace(namespace), tcName, "http"), timeout, false)
 
 	var waitFunction func() bool
 
