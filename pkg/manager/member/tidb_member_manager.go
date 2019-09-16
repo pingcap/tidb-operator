@@ -229,6 +229,12 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tidb"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
+	if tc.Spec.EnableTLSCluster {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-tls", ReadOnly: true, MountPath: "/var/lib/tidb-tls",
+		})
+	}
+
 	vols := []corev1.Volume{
 		annVolume,
 		{Name: "config", VolumeSource: corev1.VolumeSource{
@@ -247,6 +253,15 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tidb_start_script.sh"}},
 			}},
 		},
+	}
+	if tc.Spec.EnableTLSCluster {
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: controller.TiDBMemberName(tcName),
+				},
+			},
+		})
 	}
 
 	var containers []corev1.Container
@@ -298,6 +313,10 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		},
 	}
 
+	scheme := corev1.URISchemeHTTP
+	if tc.Spec.EnableTLSCluster {
+		scheme = corev1.URISchemeHTTPS
+	}
 	containers = append(containers, corev1.Container{
 		Name:            v1alpha1.TiDBMemberType.String(),
 		Image:           tc.Spec.TiDB.Image,
@@ -321,13 +340,19 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
 				HTTPGet: &corev1.HTTPGetAction{
-					Path: "/status",
-					Port: intstr.FromInt(10080),
+					Path:   "/status",
+					Port:   intstr.FromInt(10080),
+					Scheme: scheme,
 				},
 			},
 			InitialDelaySeconds: int32(10),
 		},
 	})
+
+	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
+	if tc.Spec.PD.HostNetwork {
+		dnsPolicy = corev1.DNSClusterFirstWithHostNet
+	}
 
 	tidbLabel := label.New().Instance(instanceName).TiDB()
 	podAnnotations := CombineAnnotations(controller.AnnProm(10080), tc.Spec.TiDB.Annotations)
@@ -350,6 +375,8 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 					SchedulerName: tc.Spec.SchedulerName,
 					Affinity:      tc.Spec.TiDB.Affinity,
 					NodeSelector:  tc.Spec.TiDB.NodeSelector,
+					HostNetwork:   tc.Spec.PD.HostNetwork,
+					DNSPolicy:     dnsPolicy,
 					Containers:    containers,
 					RestartPolicy: corev1.RestartPolicyAlways,
 					Tolerations:   tc.Spec.TiDB.Tolerations,

@@ -93,6 +93,8 @@ type TidbClusterSpec struct {
 	Services        []Service                            `json:"services,omitempty"`
 	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 	Timezone        string                               `json:"timezone,omitempty"`
+	// Enable TLS connection between TiDB server compoments
+	EnableTLSCluster bool `json:"enableTLSCluster,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -103,30 +105,33 @@ type TidbClusterStatus struct {
 	TiDB      TiDBStatus `json:"tidb,omitempty"`
 }
 
-// PDSpec contains details of PD member
+// PDSpec contains details of PD members
 type PDSpec struct {
 	ContainerSpec
 	Replicas         int32               `json:"replicas"`
 	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
 	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
-	StorageClassName string              `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
 	Annotations      map[string]string   `json:"annotations,omitempty"`
+	HostNetwork      bool                `json:"hostNetwork,omitempty"`
+	StorageClassName string              `json:"storageClassName,omitempty"`
 }
 
-// TiDBSpec contains details of PD member
+// TiDBSpec contains details of TiDB members
 type TiDBSpec struct {
 	ContainerSpec
 	Replicas         int32                 `json:"replicas"`
 	Affinity         *corev1.Affinity      `json:"affinity,omitempty"`
 	NodeSelector     map[string]string     `json:"nodeSelector,omitempty"`
-	StorageClassName string                `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration   `json:"tolerations,omitempty"`
 	Annotations      map[string]string     `json:"annotations,omitempty"`
+	HostNetwork      bool                  `json:"hostNetwork,omitempty"`
+	StorageClassName string                `json:"storageClassName,omitempty"`
 	BinlogEnabled    bool                  `json:"binlogEnabled,omitempty"`
 	MaxFailoverCount int32                 `json:"maxFailoverCount,omitempty"`
 	SeparateSlowLog  bool                  `json:"separateSlowLog,omitempty"`
 	SlowLogTailer    TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
+	EnableTLSClient  bool                  `json:"enableTLSClient,omitempty"`
 }
 
 // TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB
@@ -134,16 +139,17 @@ type TiDBSlowLogTailerSpec struct {
 	ContainerSpec
 }
 
-// TiKVSpec contains details of PD member
+// TiKVSpec contains details of TiKV members
 type TiKVSpec struct {
 	ContainerSpec
-	Privileged       bool                `json:"privileged,omitempty"`
 	Replicas         int32               `json:"replicas"`
 	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
 	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
-	StorageClassName string              `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
 	Annotations      map[string]string   `json:"annotations,omitempty"`
+	HostNetwork      bool                `json:"hostNetwork,omitempty"`
+	Privileged       bool                `json:"privileged,omitempty"`
+	StorageClassName string              `json:"storageClassName,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
@@ -321,17 +327,21 @@ const (
 
 // BackupSpec contains the backup specification for a tidb cluster.
 type BackupSpec struct {
+	// Cluster is the Cluster to backup.
+	Cluster string `json:"cluster"`
+	// TidbSecretName is the name of secret which stores
+	// tidb cluster's username and password.
+	TidbSecretName string `json:"tidbSecretName"`
+	// Type is the backup type for tidb cluster.
+	Type BackupType `json:"backupType"`
 	// StorageType is the backup storage type.
 	StorageType BackupStorageType `json:"storageType"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
-	// Type is the backup type for tidb cluster.
-	Type BackupType `json:"backupType"`
-	// Cluster is the Cluster to backup.
-	Cluster string `json:"cluster"`
-	// SecretName is the name of secret which stores
-	// tidb cluster's username and password.
-	SecretName string `json:"secretName"`
+	// StorageClassName is the storage class for backup job's PV.
+	StorageClassName string `json:"storageClassName"`
+	// StorageSize is the request storage size for backup job
+	StorageSize string `json:"storageSize"`
 }
 
 // BackupConditionType represents a valid condition of a Backup.
@@ -366,7 +376,7 @@ type BackupStatus struct {
 	BackupPath string `json:"backupPath"`
 	// TimeStarted is the time at which the backup was started.
 	TimeStarted metav1.Time `json:"timeStarted"`
-	// TimeCompleted is the time at which the backup completed.
+	// TimeCompleted is the time at which the backup was completed.
 	TimeCompleted metav1.Time `json:"timeCompleted"`
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize"`
@@ -405,6 +415,10 @@ type BackupScheduleSpec struct {
 	MaxBackups int `json:"maxBackups"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
+	// StorageClassName is the storage class for backup job's PV.
+	StorageClassName string `json:"storageClassName"`
+	// StorageSize is the request storage size for backup job
+	StorageSize string `json:"storageSize"`
 }
 
 // BackupScheduleStatus represents the current state of a BackupSchedule.
@@ -412,7 +426,7 @@ type BackupScheduleStatus struct {
 	// LastBackup represents the last backup.
 	LastBackup string `json:"lastBackup"`
 	// LastBackupTime represents the last time the backup was successfully created.
-	LastBackupTime metav1.Time `json:"lastBackupTime"`
+	LastBackupTime *metav1.Time `json:"lastBackupTime"`
 }
 
 // +genclient
@@ -467,18 +481,22 @@ type RestoreSpec struct {
 	Cluster string `json:"cluster"`
 	// Backup represents the backup object to be restored.
 	Backup string `json:"backup"`
-	// BackupPath is the location of the backup.
-	BackupPath string `json:"backupPath"`
+	// Namespace is the namespace of the backup.
+	BackupNamespace string `json:"backupNamespace"`
 	// SecretName is the name of the secret which stores
 	// tidb cluster's username and password.
 	SecretName string `json:"secretName"`
+	// StorageClassName is the storage class for restore job's PV.
+	StorageClassName string `json:"storageClassName"`
+	// StorageSize is the request storage size for restore job
+	StorageSize string `json:"storageSize"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.
 type RestoreStatus struct {
 	// TimeStarted is the time at which the restore was started.
 	TimeStarted metav1.Time `json:"timeStarted"`
-	// TimeCompleted is the time at which the restore completed.
+	// TimeCompleted is the time at which the restore was completed.
 	TimeCompleted metav1.Time        `json:"timeCompleted"`
 	Conditions    []RestoreCondition `json:"conditions"`
 }

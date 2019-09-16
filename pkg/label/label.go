@@ -49,6 +49,12 @@ const (
 	// BackupScheduleLabelKey is backup schedule key
 	BackupScheduleLabelKey string = "tidb.pingcap.com/backup-schedule"
 
+	// BackupLabelKey is backup key
+	BackupLabelKey string = "tidb.pingcap.com/backup"
+
+	// RestoreLabelKey is restore key
+	RestoreLabelKey string = "tidb.pingcap.com/restore"
+
 	// BackupProtectionFinalizer is the name of finalizer on backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
 
@@ -61,8 +67,10 @@ const (
 	AnnPVCDeferDeleting = "tidb.pingcap.com/pvc-defer-deleting"
 	// AnnPVCPodScheduling is pod scheduling annotation key, it represents whether the pod is scheduling
 	AnnPVCPodScheduling = "tidb.pingcap.com/pod-scheduling"
-	// AnnTiDBPartition is pod annotation which TiDB pod chould upgrade to
+	// AnnTiDBPartition is pod annotation which TiDB pod should upgrade to
 	AnnTiDBPartition string = "tidb.pingcap.com/tidb-partition"
+	// AnnTiKVPartition is pod annotation which TiKV pod should upgrade to
+	AnnTiKVPartition string = "tidb.pingcap.com/tikv-partition"
 	// AnnForceUpgradeKey is tc annotation key to indicate whether force upgrade should be done
 	AnnForceUpgradeKey = "tidb.pingcap.com/force-upgrade"
 
@@ -75,16 +83,47 @@ const (
 	TiDBLabelVal string = "tidb"
 	// TiKVLabelVal is TiKV label value
 	TiKVLabelVal string = "tikv"
+
+	// CleanJobLabelVal is clean job label value
+	CleanJobLabelVal string = "clean"
+	// RestoreJobLabelVal is restore job label value
+	RestoreJobLabelVal string = "restore"
+	// BackupJobLabelVal is backup job label value
+	BackupJobLabelVal string = "backup"
 )
 
 // Label is the label field in metadata
 type Label map[string]string
 
-// New initialize a new Label
+// New initialize a new Label for components of tidb cluster
 func New() Label {
 	return Label{
 		NameLabelKey:      "tidb-cluster",
 		ManagedByLabelKey: "tidb-operator",
+	}
+}
+
+// NewBackup initialize a new Label for Jobs of bakcup
+func NewBackup() Label {
+	return Label{
+		NameLabelKey:      "backup",
+		ManagedByLabelKey: "backup-operator",
+	}
+}
+
+// NewRestore initialize a new Label for Jobs of restore
+func NewRestore() Label {
+	return Label{
+		NameLabelKey:      "restore",
+		ManagedByLabelKey: "restore-operator",
+	}
+}
+
+// NewBackupSchedule initialize a new Label for backups of bakcup schedule
+func NewBackupSchedule() Label {
+	return Label{
+		NameLabelKey:      "backup-schedule",
+		ManagedByLabelKey: "backup-schedule-operator",
 	}
 }
 
@@ -109,6 +148,42 @@ func (l Label) Component(name string) Label {
 // ComponentType returns component type
 func (l Label) ComponentType() string {
 	return l[ComponentLabelKey]
+}
+
+// CleanJob assigns clean to component key in label
+func (l Label) CleanJob() Label {
+	l.Component(CleanJobLabelVal)
+	return l
+}
+
+// BackupJob assigns backup to component key in label
+func (l Label) BackupJob() Label {
+	l.Component(BackupJobLabelVal)
+	return l
+}
+
+// RestoreJob assigns restore to component key in label
+func (l Label) RestoreJob() Label {
+	l.Component(RestoreJobLabelVal)
+	return l
+}
+
+// Backup assigns specific value to backup key in label
+func (l Label) Backup(val string) Label {
+	l[BackupLabelKey] = val
+	return l
+}
+
+// BackupSchedule assigns specific value to backup schedule key in label
+func (l Label) BackupSchedule(val string) Label {
+	l[BackupScheduleLabelKey] = val
+	return l
+}
+
+// Restore assigns specific value to restore key in label
+func (l Label) Restore(val string) Label {
+	l[RestoreLabelKey] = val
+	return l
 }
 
 // PD assigns pd to component key in label

@@ -15,6 +15,8 @@ package info
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -22,7 +24,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
 	"github.com/spf13/cobra"
-	"io"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -38,13 +39,13 @@ const (
 `
 	infoExample = `
 		# get current tidb cluster info (set by tkc use)
-		tkc info
+		tkctl info
 
 		# get specified tidb cluster info
-		tkc info -t another-cluster
+		tkctl info -t another-cluster
 `
 	infoUsage = `expected 'info -t CLUSTER_NAME' for the info command or 
-using 'tkc use' to set tidb cluster first.
+using 'tkctl use' to set tidb cluster first.
 `
 )
 

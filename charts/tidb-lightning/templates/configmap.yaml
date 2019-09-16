@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "tidb-lightning.name" . }}-{{ template "lightning-configmap.data-digest" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "tidb-lightning.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.targetTidbCluster.name }}
+    app.kubernetes.io/component: tidb-lightning
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+data:
+{{ include "lightning-configmap.data" . | indent 2 }}

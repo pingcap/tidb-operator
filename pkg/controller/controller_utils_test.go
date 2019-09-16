@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	apps "k8s.io/api/apps/v1beta1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -42,8 +43,8 @@ func TestGetOwnerRef(t *testing.T) {
 	tc := newTidbCluster()
 	tc.UID = types.UID("demo-uid")
 	ref := GetOwnerRef(tc)
-	g.Expect(ref.APIVersion).To(Equal(controllerKind.GroupVersion().String()))
-	g.Expect(ref.Kind).To(Equal(controllerKind.Kind))
+	g.Expect(ref.APIVersion).To(Equal(ControllerKind.GroupVersion().String()))
+	g.Expect(ref.Kind).To(Equal(ControllerKind.Kind))
 	g.Expect(ref.Name).To(Equal(tc.GetName()))
 	g.Expect(ref.UID).To(Equal(types.UID("demo-uid")))
 	g.Expect(*ref.Controller).To(BeTrue())
@@ -350,6 +351,43 @@ func newService(tc *v1alpha1.TidbCluster, _ string) *corev1.Service {
 		},
 	}
 	return svc
+}
+
+func newBackup() *v1alpha1.Backup {
+	backup := &v1alpha1.Backup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-backup",
+			Namespace: metav1.NamespaceDefault,
+		},
+	}
+	return backup
+}
+
+func newPVCFromBackup(backup *v1alpha1.Backup) *corev1.PersistentVolumeClaim {
+	return &corev1.PersistentVolumeClaim{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "PersistentVolumeClaim",
+			APIVersion: "v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      backup.GetBackupPVCName(),
+			Namespace: corev1.NamespaceDefault,
+			UID:       types.UID("test"),
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			VolumeName: "backup-pv-1",
+		},
+	}
+}
+
+func newJobFromBackup(backup *v1alpha1.Backup) *batchv1.Job {
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      backup.GetBackupJobName(),
+			Namespace: metav1.NamespaceDefault,
+		},
+	}
+	return job
 }
 
 func newStatefulSet(tc *v1alpha1.TidbCluster, _ string) *apps.StatefulSet {

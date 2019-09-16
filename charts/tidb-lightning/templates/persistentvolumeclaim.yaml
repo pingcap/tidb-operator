@@ -1,0 +1,20 @@
+{{ if or .Values.dataSource.adhoc.pvcName (and .Values.dataSource.local.nodeName .Values.dataSource.local.hostPath) }}
+{{- else -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "tidb-lightning.name" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "tidb-lightning.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.targetTidbCluster.name }}
+    app.kubernetes.io/component: tidb-lightning
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  storageClassName: {{ .Values.dataSource.remote.storageClassName }}
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.dataSource.remote.storage }}
+{{ end -}}
