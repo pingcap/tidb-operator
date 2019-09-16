@@ -163,6 +163,10 @@ func (o *dumpInfoOptions) Run() error {
 		return err
 	}
 
+	if _, err := rWriter.Write([]byte("----------------pods---------------\n")); err != nil {
+		return err
+	}
+
 	// dump detail information and logs of pods.
 	for _, pod := range podList.Items {
 		if err := NewPodDumper(o.kubeCli, pod, int64(o.since.Seconds()), o.byteReadLimit).Dump(o.logPath, rWriter); err != nil {
@@ -193,7 +197,11 @@ func (d *tidbClusterDumper) Dump(logPath string, resourceWriter io.Writer) error
 	}
 	defer logFile.Close()
 
-	if err = DumpObj(d.tc, "tidbclusters", resourceWriter); err != nil {
+	if _, err := resourceWriter.Write([]byte("----------------tidbclusters---------------\n")); err != nil {
+		return err
+	}
+
+	if err = DumpObj(d.tc, resourceWriter); err != nil {
 		return err
 	}
 
@@ -227,6 +235,10 @@ func (d *tidbClusterStatefulDumper) Dump(logPath string, resourceWriter io.Write
 	}
 	defer logFile.Close()
 
+	if _, err := resourceWriter.Write([]byte("----------------statefulset---------------\n")); err != nil {
+		return err
+	}
+
 	for _, sn := range []string{
 		controller.TiDBMemberName(d.tc.Name),
 		controller.TiKVMemberName(d.tc.Name),
@@ -241,7 +253,7 @@ func (d *tidbClusterStatefulDumper) Dump(logPath string, resourceWriter io.Write
 			return err
 		}
 
-		if err = DumpObj(ps, "statefulset", resourceWriter); err != nil {
+		if err = DumpObj(ps, resourceWriter); err != nil {
 			return err
 		}
 
@@ -284,7 +296,7 @@ func NewPodDumper(kubeCli *kubernetes.Clientset, pod v1.Pod, sinceSeconds int64,
 
 // Dump dump detail information and logs of pod from a particular pod.
 func (d *podDumper) Dump(logPath string, resourceWriter io.Writer) error {
-	if err := DumpObj(&d.pod, "pods", resourceWriter); err != nil {
+	if err := DumpObj(&d.pod, resourceWriter); err != nil {
 		return err
 	}
 
@@ -386,11 +398,7 @@ func getLogStream(kubeCli *kubernetes.Clientset, pod v1.Pod, logOptions *v1.PodL
 }
 
 // DumpObj print wide output to the file.
-func DumpObj(obj runtime.Object, name string, writer io.Writer) error {
-	if _, err := writer.Write([]byte("----------------" + name + "---------------\n")); err != nil {
-		return err
-	}
-
+func DumpObj(obj runtime.Object, writer io.Writer) error {
 	// create kubectl HumanReadablePrinter
 	printFlags := &readable.PrintFlags{
 		JSONYamlPrintFlags: genericclioptions.NewJSONYamlPrintFlags(),
