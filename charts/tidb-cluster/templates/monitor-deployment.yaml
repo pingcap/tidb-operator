@@ -70,7 +70,7 @@ spec:
       {{- end }}
         - name: GF_NODE_EXPORTER_DATASOURCE_URL
         - name: GF_K8S_PROMETHEUS_URL
-          value: {{ .Values.monitor.initializer.config.NODE_EXPORTER_PROM_URL }}
+          value: {{ .Values.monitor.initializer.config.K8S_PROMETHEUS_URL }}
         - name: GF_TIDB_PROMETHEUS_URL
           value: http://127.0.0.1:9090
         - name: TIDB_CLUSTER_NAMESPACE
