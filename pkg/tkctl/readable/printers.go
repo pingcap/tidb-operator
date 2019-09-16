@@ -171,7 +171,7 @@ func printPod(pod *v1.Pod, options printers.PrintOptions) ([]metav1beta1.TableRo
 	return []metav1beta1.TableRow{row}, nil
 }
 
-// add more columns for tikv column
+// add more columns for tikv info
 func printTikvList(tikvList *alias.TikvList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
 	podList := tikvList.PodList
 	metaTableRows, err := printPodList(podList, options)
@@ -187,10 +187,15 @@ func printTikvList(tikvList *alias.TikvList, options printers.PrintOptions) ([]m
 				break
 			}
 		}
-		if tikvList.TikvStatus != nil {
-			row.Cells = append(row.Cells, storeId, tikvList.TikvStatus.Stores[storeId].State)
+		if len(storeId) > 0 {
+			row.Cells = append(row.Cells, storeId)
+			if tikvList.TikvStatus != nil {
+				row.Cells = append(row.Cells, tikvList.TikvStatus.Stores[storeId].State)
+			} else {
+				row.Cells = append(row.Cells, unset)
+			}
 		} else {
-			row.Cells = append(row.Cells, storeId, unset)
+			row.Cells = append(row.Cells, unset, unset)
 		}
 		metaTableRows[id] = row
 	}
