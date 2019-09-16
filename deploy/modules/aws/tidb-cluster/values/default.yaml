@@ -25,7 +25,7 @@ tidb:
     - name: net.ipv4.tcp_keepalive_time
       value: "300"
     - name: net.ipv4.tcp_keepalive_intvl
-      value: "300"
+      value: "75"
 monitor:
   storage: 100Gi
   storageClassName: ebs-gp2

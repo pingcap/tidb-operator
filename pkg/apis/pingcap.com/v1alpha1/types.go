@@ -93,7 +93,6 @@ type TidbClusterSpec struct {
 	Services         []Service                            `json:"services,omitempty"`
 	PVReclaimPolicy  corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 	Timezone         string                               `json:"timezone,omitempty"`
-	MaxFailoverCount int32                                `json:"maxFailoverCount,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
