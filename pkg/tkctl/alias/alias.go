@@ -14,29 +14,22 @@
 package alias
 
 import (
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-type Tikv v1.Pod
-
-type TikvList v1.PodList
-
-// implement type Object interface
-func (t Tikv) GetObjectKind() schema.ObjectKind {
-	return t.GetObjectKind()
-}
-
-func (t Tikv) DeepCopyObject() runtime.Object {
-	return t.DeepCopyObject()
+type TikvList struct {
+	PodList    *v1.PodList
+	TikvStatus *v1alpha1.TiKVStatus
 }
 
 // implement type Object interface
 func (t TikvList) GetObjectKind() schema.ObjectKind {
-	return t.GetObjectKind()
+	return t.PodList.GetObjectKind()
 }
 
 func (t TikvList) DeepCopyObject() runtime.Object {
-	return t.DeepCopyObject()
+	return t.PodList.DeepCopyObject()
 }
