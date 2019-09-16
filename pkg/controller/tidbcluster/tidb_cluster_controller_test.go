@@ -306,7 +306,6 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 			),
 			svcControl,
 			tidbControl,
-			pdControl,
 			setInformer.Lister(),
 			svcInformer.Lister(),
 			podInformer.Lister(),

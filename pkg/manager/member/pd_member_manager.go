@@ -275,10 +275,9 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	}
 
 	pdClient := controller.GetPDClient(pmm.pdControl, tc)
-
-	healthInfo, err := pdClient.GetHealth()
-	if err != nil {
+	handlePDAPIError := func(err error) error {
 		tc.Status.PD.Synced = false
+
 		// get endpoints info
 		eps, epErr := pmm.epsLister.Endpoints(ns).Get(controller.PDMemberName(tcName))
 		if epErr != nil {
@@ -292,17 +291,29 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		return controller.RequeueErrorf("error getting PD health: %v", err)
 	}
 
+	initialized, err := pdClient.GetClusterInitialized()
+	if err != nil {
+		return handlePDAPIError(err)
+	}
+	tc.Status.PD.Initialized = initialized
+
 	cluster, err := pdClient.GetCluster()
 	if err != nil {
-		tc.Status.PD.Synced = false
-		return err
+		return handlePDAPIError(err)
 	}
+
 	tc.Status.ClusterID = strconv.FormatUint(cluster.Id, 10)
 	leader, err := pdClient.GetPDLeader()
 	if err != nil {
-		tc.Status.PD.Synced = false
-		return err
+		return handlePDAPIError(err)
 	}
+	tc.Status.PD.Leader = tc.Status.PD.Members[leader.GetName()]
+
+	healthInfo, err := pdClient.GetHealth()
+	if err != nil {
+		return handlePDAPIError(err)
+	}
+
 	pdStatus := map[string]v1alpha1.PDMember{}
 	for _, memberHealth := range healthInfo.Healths {
 		id := memberHealth.MemberID
@@ -334,10 +345,9 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 
 		pdStatus[name] = status
 	}
+	tc.Status.PD.Members = pdStatus
 
 	tc.Status.PD.Synced = true
-	tc.Status.PD.Members = pdStatus
-	tc.Status.PD.Leader = tc.Status.PD.Members[leader.GetName()]
 
 	return nil
 }

@@ -212,15 +212,10 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 
 		pmm, fakeSetControl, fakeSvcControl, fakePDControl, _, _, _ := newFakePDMemberManager()
 		pdClient := controller.NewFakePDClient(fakePDControl, tc)
-		if test.errWhenGetPDHealth {
-			pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
-				return nil, fmt.Errorf("failed to get health of pd cluster")
-			})
-		} else {
-			pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
-				return test.pdHealth, nil
-			})
-		}
+
+		pdClient.AddReaction(pdapi.GetClusterInitializedActionType, func(action *pdapi.Action) (interface{}, error) {
+			return func() *bool { return nil }(), nil
+		})
 
 		if test.errWhenGetCluster {
 			pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
@@ -229,6 +224,16 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		} else {
 			pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
 				return &metapb.Cluster{Id: uint64(1)}, nil
+			})
+		}
+
+		if test.errWhenGetPDHealth {
+			pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
+				return nil, fmt.Errorf("failed to get health of pd cluster")
+			})
+		} else {
+			pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
+				return test.pdHealth, nil
 			})
 		}
 
@@ -569,6 +574,9 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 		pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
 			return &metapb.Cluster{Id: uint64(1)}, nil
 		})
+		pdClient.AddReaction(pdapi.GetClusterInitializedActionType, func(action *pdapi.Action) (interface{}, error) {
+			return func() *bool { return nil }(), nil
+		})
 
 		fakeSetControl.SetStatusChange(test.statusChange)
 
@@ -659,6 +667,9 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 		pmm, fakeSetControl, _, fakePDControl, _, _, _ := newFakePDMemberManager()
 		pdClient := controller.NewFakePDClient(fakePDControl, tc)
 
+		pdClient.AddReaction(pdapi.GetClusterInitializedActionType, func(action *pdapi.Action) (interface{}, error) {
+			return func() *bool { return nil }(), nil
+		})
 		pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
 			return test.pdHealth, nil
 		})

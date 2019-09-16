@@ -43,7 +43,6 @@ type tidbMemberManager struct {
 	setControl                   controller.StatefulSetControlInterface
 	svcControl                   controller.ServiceControlInterface
 	tidbControl                  controller.TiDBControlInterface
-	pdControl                    pdapi.PDControlInterface
 	setLister                    v1beta1.StatefulSetLister
 	svcLister                    corelisters.ServiceLister
 	podLister                    corelisters.PodLister
@@ -58,7 +57,6 @@ type tidbMemberManager struct {
 func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	tidbControl controller.TiDBControlInterface,
-	pdControl pdapi.PDControlInterface,
 	setLister v1beta1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
@@ -70,7 +68,6 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 		setControl:                   setControl,
 		svcControl:                   svcControl,
 		tidbControl:                  tidbControl,
-		pdControl:                    pdControl,
 		setLister:                    setLister,
 		svcLister:                    svcLister,
 		podLister:                    podLister,
@@ -155,10 +152,8 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return nil
 	}
 	newTiDBSet := tmm.getNewTiDBSetForTidbCluster(tc, oldTiDBSetTemp)
-	initialized, err := controller.GetPDClient(tmm.pdControl, tc).GetClusterInitialized()
-	if err != nil {
-		return err
-	}
+
+	initialized := tc.Status.PD.Initialized
 	// initialized is nil in TiDB versions (< 3.0)
 	if (initialized != nil && !*initialized) || (initialized == nil && !tc.TiKVIsAvailable()) {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
