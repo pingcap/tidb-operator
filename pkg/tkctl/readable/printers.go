@@ -189,7 +189,7 @@ func printTikvList(tikvList *alias.TikvList, options printers.PrintOptions) ([]m
 		}
 		if len(storeId) > 0 {
 			row.Cells = append(row.Cells, storeId)
-			if tikvList.TikvStatus != nil {
+			if tikvList.TikvStatus != nil && tikvList.TikvStatus.Stores != nil {
 				row.Cells = append(row.Cells, tikvList.TikvStatus.Stores[storeId].State)
 			} else {
 				row.Cells = append(row.Cells, unset)
