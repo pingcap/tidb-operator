@@ -83,12 +83,12 @@ func AddHandlers(h printers.PrintHandler) {
 		Type:        "string",
 		Description: "TiKV StoreID",
 	}
-	storeStatus := metav1beta1.TableColumnDefinition{
-		Name:        "Store Status",
+	storeState := metav1beta1.TableColumnDefinition{
+		Name:        "Store State",
 		Type:        "string",
-		Description: "TiKV Store Status",
+		Description: "TiKV Store State",
 	}
-	tikvPodColumns = append(tikvPodColumns, storeId, storeStatus)
+	tikvPodColumns = append(tikvPodColumns, storeId, storeState)
 	h.TableHandler(tikvPodColumns, printTikvList)
 	// TODO: add available space for volume
 	volumeColumns := []metav1beta1.TableColumnDefinition{
