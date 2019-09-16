@@ -65,7 +65,7 @@ spec:
         - name:  PROM_CONFIG_PATH
           value: /prometheus-rules
         - name: GF_K8S_PROMETHEUS_URL
-          value: {{ .Values.monitor.initializer.config.NODE_EXPORTER_PROM_URL }}
+          value: {{ .Values.monitor.initializer.config.K8S_PROMETHEUS_URL }}
         - name: GF_TIDB_PROMETHEUS_URL
           value: http://127.0.0.1:9090
         - name: TIDB_CLUSTER_NAMESPACE
