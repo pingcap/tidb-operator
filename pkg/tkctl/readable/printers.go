@@ -187,10 +187,16 @@ func printTikvList(tikvList *alias.TikvList, options printers.PrintOptions) ([]m
 				break
 			}
 		}
+		// judge if storeID exists
 		if len(storeId) > 0 {
 			row.Cells = append(row.Cells, storeId)
+			// judge if tikv Store State exists
 			if tikvList.TikvStatus != nil && tikvList.TikvStatus.Stores != nil {
-				row.Cells = append(row.Cells, tikvList.TikvStatus.Stores[storeId].State)
+				if _, ok := tikvList.TikvStatus.Stores[storeId]; ok {
+					row.Cells = append(row.Cells, tikvList.TikvStatus.Stores[storeId].State)
+				} else {
+					row.Cells = append(row.Cells, unset)
+				}
 			} else {
 				row.Cells = append(row.Cells, unset)
 			}
