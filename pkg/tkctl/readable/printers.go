@@ -14,14 +14,15 @@
 package readable
 
 import (
+	"bytes"
 	"fmt"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/alias"
+	appsv1 "k8s.io/api/apps/v1"
+	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -29,9 +30,7 @@ import (
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/duration"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/printers"
-	"k8s.io/kubernetes/pkg/printers/internalversion"
 	"k8s.io/kubernetes/pkg/util/node"
 )
 
@@ -105,6 +104,17 @@ func AddHandlers(h printers.PrintHandler) {
 	}
 	h.TableHandler(volumeColumns, printVolume)
 	h.TableHandler(volumeColumns, printVolumeList)
+
+	statefulSetColumnDefinitions := []metav1beta1.TableColumnDefinition{
+		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
+		{Name: "Desired", Type: "string", Description: appsv1beta1.StatefulSetSpec{}.SwaggerDoc()["replicas"]},
+		{Name: "Current", Type: "string", Description: appsv1beta1.StatefulSetStatus{}.SwaggerDoc()["replicas"]},
+		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
+		{Name: "Containers", Type: "string", Priority: 1, Description: "Names of each container in the template."},
+		{Name: "Images", Type: "string", Priority: 1, Description: "Images referenced by each container in the template."},
+	}
+	h.TableHandler(statefulSetColumnDefinitions, printStatefulSet)
+	h.TableHandler(statefulSetColumnDefinitions, printStatefulSetList)
 }
 
 func printTidbClusterList(tcs *v1alpha1.TidbClusterList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
@@ -398,94 +408,45 @@ func extraTikvDataColumn(pod *v1.Pod) *TikvExtraInfoColumn {
 	}
 }
 
-// printLabelsMultiline prints multiple labels with a proper alignment.
-func PrintLabelsMultiline(w internalversion.PrefixWriter, title string, labels map[string]string) {
-	PrintLabelsMultilineWithIndent(w, "", title, "\t", labels, sets.NewString())
+func printStatefulSet(obj *appsv1.StatefulSet, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+	row := metav1beta1.TableRow{
+		Object: runtime.RawExtension{Object: obj},
+	}
+	desiredReplicas := obj.Spec.Replicas
+	currentReplicas := obj.Status.Replicas
+	createTime := translateTimestampSince(obj.CreationTimestamp)
+	row.Cells = append(row.Cells, obj.Name, int64(*desiredReplicas), int64(currentReplicas), createTime)
+	if options.Wide {
+		names, images := layoutContainerCells(obj.Spec.Template.Spec.Containers)
+		row.Cells = append(row.Cells, names, images)
+	}
+	return []metav1beta1.TableRow{row}, nil
 }
 
-// printLabelsMultiline prints multiple labels with a user-defined alignment.
-func PrintLabelsMultilineWithIndent(w internalversion.PrefixWriter, initialIndent, title, innerIndent string, labels map[string]string, skip sets.String) {
-	w.Write(LEVEL_0, "%s%s:%s", initialIndent, title, innerIndent)
-
-	if labels == nil || len(labels) == 0 {
-		w.WriteLine("<none>")
-		return
-	}
-
-	// to print labels in the sorted order
-	keys := make([]string, 0, len(labels))
-	for key := range labels {
-		if skip.Has(key) {
-			continue
+func printStatefulSetList(list *appsv1.StatefulSetList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+	rows := make([]metav1beta1.TableRow, 0, len(list.Items))
+	for i := range list.Items {
+		r, err := printStatefulSet(&list.Items[i], options)
+		if err != nil {
+			return nil, err
 		}
-		keys = append(keys, key)
+		rows = append(rows, r...)
 	}
-	if len(keys) == 0 {
-		w.WriteLine("<none>")
-		return
-	}
-	sort.Strings(keys)
-
-	for i, key := range keys {
-		if i != 0 {
-			w.Write(LEVEL_0, "%s", initialIndent)
-			w.Write(LEVEL_0, "%s", innerIndent)
-		}
-		w.Write(LEVEL_0, "%s=%s\n", key, labels[key])
-		i++
-	}
+	return rows, nil
 }
 
-// printAnnotationsMultiline prints multiple annotations with a proper alignment.
-func PrintAnnotationsMultiline(w internalversion.PrefixWriter, title string, annotations map[string]string) {
-	PrintAnnotationsMultilineWithIndent(w, "", title, "\t", annotations, sets.NewString())
-}
+// Lay out all the containers on one line if use wide output.
+func layoutContainerCells(containers []v1.Container) (names string, images string) {
+	var namesBuffer bytes.Buffer
+	var imagesBuffer bytes.Buffer
 
-// printAnnotationsMultilineWithIndent prints multiple annotations with a user-defined alignment.
-// If annotation string is too long, we omit chars more than 200 length.
-func PrintAnnotationsMultilineWithIndent(w internalversion.PrefixWriter, initialIndent, title, innerIndent string, annotations map[string]string, skip sets.String) {
-
-	w.Write(LEVEL_0, "%s%s:%s", initialIndent, title, innerIndent)
-
-	if len(annotations) == 0 {
-		w.WriteLine("<none>")
-		return
-	}
-
-	// to print labels in the sorted order
-	keys := make([]string, 0, len(annotations))
-	for key := range annotations {
-		if skip.Has(key) {
-			continue
+	for i, container := range containers {
+		namesBuffer.WriteString(container.Name)
+		imagesBuffer.WriteString(container.Image)
+		if i != len(containers)-1 {
+			namesBuffer.WriteString(",")
+			imagesBuffer.WriteString(",")
 		}
-		keys = append(keys, key)
 	}
-	if len(annotations) == 0 {
-		w.WriteLine("<none>")
-		return
-	}
-	sort.Strings(keys)
-	indent := initialIndent + innerIndent
-	for i, key := range keys {
-		if i != 0 {
-			w.Write(LEVEL_0, indent)
-		}
-		value := strings.TrimSuffix(annotations[key], "\n")
-		if (len(value)+len(key)+2) > 100 || strings.Contains(value, "\n") {
-			w.Write(LEVEL_0, "%s:\n", key)
-			for _, s := range strings.Split(value, "\n") {
-				w.Write(LEVEL_0, "%s  %s\n", indent, shorten(s, 98))
-			}
-		} else {
-			w.Write(LEVEL_0, "%s: %s\n", key, value)
-		}
-		i++
-	}
-}
-
-func shorten(s string, maxLength int) string {
-	if len(s) > maxLength {
-		return s[:maxLength] + "..."
-	}
-	return s
+	return namesBuffer.String(), imagesBuffer.String()
 }
