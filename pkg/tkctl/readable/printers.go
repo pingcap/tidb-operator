@@ -187,7 +187,11 @@ func printTikvList(tikvList *alias.TikvList, options printers.PrintOptions) ([]m
 				break
 			}
 		}
-		row.Cells = append(row.Cells, storeId, tikvList.TikvStatus.Stores[storeId].State)
+		if tikvList.TikvStatus != nil {
+			row.Cells = append(row.Cells, storeId, tikvList.TikvStatus.Stores[storeId].State)
+		} else {
+			row.Cells = append(row.Cells, storeId, unset)
+		}
 		metaTableRows[id] = row
 	}
 	return metaTableRows, nil
