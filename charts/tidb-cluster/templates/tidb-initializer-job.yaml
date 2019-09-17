@@ -39,8 +39,7 @@ spec:
           - name: init-sql
             mountPath: /data
             readOnly: true
-          {{- end }}
-          {{- if .Values.tidb.initSql }}
+          {{- else if .Values.tidb.initSql }}
           - name: init-sql
             mountPath: /data
             readOnly: true
