@@ -789,8 +789,10 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		}
 
 		glog.V(4).Infof("check all pd and tikv instances have not pod scheduling annotation")
-		if b, err := oa.podsScheduleAnnHaveDeleted(tc); !b && err == nil {
-			return false, nil
+		if info.OperatorTag != "v1.0.0" {
+			if b, err := oa.podsScheduleAnnHaveDeleted(tc); !b && err == nil {
+				return false, nil
+			}
 		}
 
 		glog.V(4).Infof("check store labels")
