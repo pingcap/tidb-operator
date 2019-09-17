@@ -269,6 +269,10 @@ tidb:
   # If unset, defaults to '%' which means allow any host to connect to the TiDB.
   # permitHost: 127.0.0.1
   # initSql is the SQL statements executed after the TiDB cluster is bootstrapped.
+  # The configmap name of init sql and the name of file must be init-sql with no file extension, you can create configmap with following command:
+  # kubectl create configmap tidb-initsql --from-file=init-sql=/path/to/your/init-sql --namespace=<namespace>
+  # If both initSqlConfigMapName and initSql are set, the initSqlConfigMapName will be used.
+  # initSqlConfigMapName: tidb-initsql
   # initSql: |-
   #   create database app;
   image: pingcap/tidb:v3.0.1
