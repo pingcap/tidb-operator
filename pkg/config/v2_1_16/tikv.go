@@ -1,5 +1,14 @@
 package config
 
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	gh "github.com/dustin/go-humanize"
+	"github.com/pkg/errors"
+)
+
 type TikvConfig struct {
 	LogLevel                     string          `toml:"log-level" json:"log-level"`
 	LogFile                      string          `toml:"log-file" json:"log-level"`
@@ -26,24 +35,24 @@ type DBConfig struct {
 	WalRecoveryMode                  DBRecoveryMode `toml:"wal-recovery-mode" json:"wal-recovery-mode"`
 	WalDir                           string         `toml:"wal-dir" json:"wal-dir"`
 	WalTTLSeconds                    uint64         `toml:"wal-ttl-seconds" json:"wal-ttl-seconds"`
-	WalSizeLimit                     ByteSize       `toml:"wal-size-limit" json:"wal-size-limit"`
-	MaxTotalWalSize                  ByteSize       `toml:"max-total-wal-size" json:"max-total-wal-size"`
+	WalSizeLimit                     ReadableSize   `toml:"wal-size-limit" json:"wal-size-limit"`
+	MaxTotalWalSize                  ReadableSize   `toml:"max-total-wal-size" json:"max-total-wal-size"`
 	MaxBackgroundJobs                int32          `toml:"max-background-jobs" json:"max-background-jobs"`
-	MaxManifestFileSize              ByteSize       `toml:"max-manifest-file-size" json:"max-manifest-file-size"`
+	MaxManifestFileSize              ReadableSize   `toml:"max-manifest-file-size" json:"max-manifest-file-size"`
 	CreateIfMissing                  bool           `toml:"create-if-missing" json:"create-if-missing"`
 	MaxOpenFiles                     int32          `toml:"max-open-files" json:"max-open-files"`
 	EnableStatistics                 bool           `toml:"enable-statistics" json:"enable-statistics"`
 	StatsDumpPeriod                  Duration       `toml:"stats-dump-period" json:"stats-dump-period"`
-	CompactionReadaheadSize          ByteSize       `toml:"compaction-readahead-size" json:"compaction-readhead-size"`
-	InfoLogMaxSize                   ByteSize       `toml:"info-log-max-size" json:"info-log-max-size"`
+	CompactionReadaheadSize          ReadableSize   `toml:"compaction-readahead-size" json:"compaction-readhead-size"`
+	InfoLogMaxSize                   ReadableSize   `toml:"info-log-max-size" json:"info-log-max-size"`
 	InfoLogRollTime                  Duration       `toml:"info-log-roll-time" json:"info-log-roll-time"`
 	InfoLogKeepLogFileNum            uint64         `toml:"info-log-keep-log-file-num" json:"info-log-keep-log-file-num"`
 	InfoLogDir                       string         `toml:"info-log-dir" json:"info-log-dir"`
-	RateBytesPerSec                  ByteSize       `toml:"rate-bytes-per-sec" json:"rate-bytes-per-sec"`
-	BytesPerSync                     ByteSize       `toml:"bytes-per-sync" json:"bytes-per-sync"`
-	WalBytesPerSync                  ByteSize       `toml:"wal-bytes-per-sync" json:"wal-bytes-per-sync"`
+	RateBytesPerSec                  ReadableSize   `toml:"rate-bytes-per-sec" json:"rate-bytes-per-sec"`
+	BytesPerSync                     ReadableSize   `toml:"bytes-per-sync" json:"bytes-per-sync"`
+	WalBytesPerSync                  ReadableSize   `toml:"wal-bytes-per-sync" json:"wal-bytes-per-sync"`
 	MaxSubCompactions                uint32         `toml:"max-sub-compactions" json:"max-sub-compactions"`
-	WritableFileMaxBufferSize        ByteSize       `toml:"writable-file-max-buffer-size" json:"writable-file-max-buffer-size"`
+	WritableFileMaxBufferSize        ReadableSize   `toml:"writable-file-max-buffer-size" json:"writable-file-max-buffer-size"`
 	UseDirectIOForFlushAndCompaction bool           `toml:"use-direct-io-for-flush-and-compaction" json:"use-direct-io-for-flush-and-compaction"`
 	EnablePipelinedWrite             bool           `toml:"enable-pipelined-write" json:"enable-pipelined-write"`
 	Defaultcf                        CfConfig       `toml:"defaultcf" json:"defaultcf"`
@@ -53,41 +62,41 @@ type DBConfig struct {
 }
 
 type ImportConfig struct {
-	ImportDir           string   `toml:"import-dir" json:"import-dir"`
-	NumThreads          uint     `toml:"num-threads" json:"num-threads"`
-	NumImportJobs       uint     `toml:"num-import-jobs" json:"num-import-jobs"`
-	NumImportSstJobs    uint     `toml:"num-import-sst-jobs" json:"num-import-sst-jobs"`
-	MaxPrepareDuration  Duration `toml:"max-prepare-duration" json:"max-prepare-duration"`
-	RegionSplitSize     ByteSize `toml:"region-split-size" json:"region-split-size"`
-	StreamChannelWindow uint     `toml:"stream-channel-window" json:"stream-channel-window"`
-	MaxOpenEngines      uint     `toml:"max-open-engines" json:"max-open-engines"`
-	UploadSpeedLimit    ByteSize `toml:"upload-speed-limit" json:"upload-speed-limit"`
-	MinAvailableRatio   float64  `toml:"min-available-ratio" json:"min-available-ratio"`
+	ImportDir           string       `toml:"import-dir" json:"import-dir"`
+	NumThreads          uint         `toml:"num-threads" json:"num-threads"`
+	NumImportJobs       uint         `toml:"num-import-jobs" json:"num-import-jobs"`
+	NumImportSstJobs    uint         `toml:"num-import-sst-jobs" json:"num-import-sst-jobs"`
+	MaxPrepareDuration  Duration     `toml:"max-prepare-duration" json:"max-prepare-duration"`
+	RegionSplitSize     ReadableSize `toml:"region-split-size" json:"region-split-size"`
+	StreamChannelWindow uint         `toml:"stream-channel-window" json:"stream-channel-window"`
+	MaxOpenEngines      uint         `toml:"max-open-engines" json:"max-open-engines"`
+	UploadSpeedLimit    ReadableSize `toml:"upload-speed-limit" json:"upload-speed-limit"`
+	MinAvailableRatio   float64      `toml:"min-available-ratio" json:"min-available-ratio"`
 }
 
 type RaftDBConfig struct {
 	WalRecoveryMode                  DBRecoveryMode `toml:"wal-recovery-mode" json:"wal-recovery-mode"`
 	WalDir                           string         `toml:"wal-dir" json:"wal-dir"`
 	WalTTLSeconds                    uint64         `toml:"wal-ttl-seconds" json:"wal-ttl-seconds"`
-	WalSizeLimit                     ByteSize       `toml:"wal-size-limit" json:"wal-size-limit"`
-	MaxTotalWalSize                  ByteSize       `toml:"max-total-wal-size" json:"max-total-wal-size"`
-	MaxManifestFileSize              ByteSize       `toml:"max-manifest-file-size" json:"max-manifest-file-size"`
+	WalSizeLimit                     ReadableSize   `toml:"wal-size-limit" json:"wal-size-limit"`
+	MaxTotalWalSize                  ReadableSize   `toml:"max-total-wal-size" json:"max-total-wal-size"`
+	MaxManifestFileSize              ReadableSize   `toml:"max-manifest-file-size" json:"max-manifest-file-size"`
 	CreateIfMissing                  bool           `toml:"create-if-missing" json:"create-if-missing"`
 	MaxOpenFiles                     int32          `toml:"max-open-files" json:"max-open-files"`
 	EnableStatistics                 bool           `toml:"enable-statistics" json:"enable-statistics"`
 	StatsDumpPeriod                  Duration       `toml:"stats-dump-period" json:"stats-dump-period"`
-	CompactionReadaheadSize          ByteSize       `toml:"compaction-readahead-size" json:"compaction-readhead-size"`
-	InfoLogMaxSize                   ByteSize       `toml:"info-log-max-size" json:"info-log-max-size"`
+	CompactionReadaheadSize          ReadableSize   `toml:"compaction-readahead-size" json:"compaction-readhead-size"`
+	InfoLogMaxSize                   ReadableSize   `toml:"info-log-max-size" json:"info-log-max-size"`
 	InfoLogRollTime                  Duration       `toml:"info-log-roll-time" json:"info-log-roll-time"`
 	InfoLogKeepLogFileNum            uint64         `toml:"info-log-keep-log-file-num" json:"info-log-keep-log-file-num"`
 	InfoLogDir                       string         `toml:"info-log-dir" json:"info-log-dir"`
 	MaxSubCompactions                uint32         `toml:"max-sub-compactions" json:"max-sub-compactions"`
-	WritableFileMaxBufferSize        ByteSize       `toml:"writable-file-max-buffer-size" json:"writable-file-max-buffer-size"`
+	WritableFileMaxBufferSize        ReadableSize   `toml:"writable-file-max-buffer-size" json:"writable-file-max-buffer-size"`
 	UseDirectIoForFlushAndCompaction bool           `toml:"use-direct-io-for-flush-and-compaction" json:"use-direct-io-for-flush-and-compaction"`
 	EnablePipelinedWrite             bool           `toml:"enable-pipelined-write" json:"enable-pipelined-write"`
 	AllowConcurrentMemtableWrite     bool           `toml:"allow-concurrent-memtable-write" json:"allow-concurrent-memtable-write"`
-	BytesPerSync                     ByteSize       `toml:"bytes-per-sync" json:"bytes-per-sync"`
-	WalBytesPerSync                  ByteSize       `toml:"wal-bytes-per-sync" json:"wal-bytes-per-sync"`
+	BytesPerSync                     ReadableSize   `toml:"bytes-per-sync" json:"bytes-per-sync"`
+	WalBytesPerSync                  ReadableSize   `toml:"wal-bytes-per-sync" json:"wal-bytes-per-sync"`
 	Defaultcf                        CfConfig       `toml:"defaultcf" json:"defaultcf"`
 }
 
@@ -103,8 +112,8 @@ type CopConfig struct {
 	/// When region [a,e) size meets region_max_size, it will be split into
 	/// several regions [a,b), [b,c), [c,d), [d,e). And the size of [a,b),
 	/// [b,c), [c,d) will be region_split_size (maybe a little larger).
-	RegionMaxSize   ByteSize `toml:"region-max-size" json:"region-max-size"`
-	RegionSplitSize ByteSize `toml:"region-split-size" json:"region-split-size"`
+	RegionMaxSize   ReadableSize `toml:"region-max-size" json:"region-max-size"`
+	RegionSplitSize ReadableSize `toml:"region-split-size" json:"region-split-size"`
 
 	/// When the number of keys in region [a,e) meets the region_max_keys,
 	/// it will be split into two several regions [a,b), [b,c), [c,d), [d,e).
@@ -172,7 +181,7 @@ type ServerConfig struct {
 	GRPCConcurrency             uint
 	GRPCConcurrentStream        int32
 	GRPCRaftConnNum             uint
-	GRPCStreamInitialWindowSize ByteSize
+	GRPCStreamInitialWindowSize ReadableSize
 	GRPCKeepaliveTime           Duration
 	GRPCKeepaliveTimeout        Duration
 	/// How many snapshots can be sent concurrently.
@@ -184,8 +193,8 @@ type ServerConfig struct {
 	EndPointBatchRowLimit            uint
 	EndPointStreamBatchRowLimit      uint
 	EndPointRequestMaxHandleDuration Duration
-	SnapMaxWriteBytesPerSec          ByteSize
-	SnapMaxTotalSize                 ByteSize
+	SnapMaxWriteBytesPerSec          ReadableSize
+	SnapMaxTotalSize                 ReadableSize
 
 	// Server labels to specify some attributes about this server.
 	Labels map[string]string `toml:"labels" json:"labels"`
@@ -194,20 +203,20 @@ type ServerConfig struct {
 	EndPointConcurrency *uint
 
 	// deprecated. use readpool.coprocessor.stack_size.
-	EndPointStackSize *ByteSize
+	EndPointStackSize *ReadableSize
 
 	// deprecated. use readpool.coprocessor.max_tasks_per_worker_xx.
 	EndPointMaxTasks *uint
 }
 
 type StorageConfig struct {
-	DataDir                        string   `toml:"data-dir" json:"data-dir"`
-	GCRatioThreshold               float64  `toml:"gc-ratio-threshold" json:"gc-ratio-threshold"`
-	MaxKeySize                     uint     `toml:"max-key-size" json:"max-key-size"`
-	SchedulerNotifyCapacity        uint     `toml:"scheduler-notify-capacity" json:"scheduler-notify-capacity"`
-	SchedulerConcurrency           uint     `toml:"scheduler-concurrency" json:"scheduler-concurrency"`
-	SchedulerWorkerPoolSize        uint     `toml:"scheduler-worker-pool-size" json:"scheduler-worker-pool-size"`
-	SchedulerPendingWriteThreshold ByteSize `toml:"scheduler-pending-write-threshold" json:"scheduler-pending-write-threshold"`
+	DataDir                        string       `toml:"data-dir" json:"data-dir"`
+	GCRatioThreshold               float64      `toml:"gc-ratio-threshold" json:"gc-ratio-threshold"`
+	MaxKeySize                     uint         `toml:"max-key-size" json:"max-key-size"`
+	SchedulerNotifyCapacity        uint         `toml:"scheduler-notify-capacity" json:"scheduler-notify-capacity"`
+	SchedulerConcurrency           uint         `toml:"scheduler-concurrency" json:"scheduler-concurrency"`
+	SchedulerWorkerPoolSize        uint         `toml:"scheduler-worker-pool-size" json:"scheduler-worker-pool-size"`
+	SchedulerPendingWriteThreshold ReadableSize `toml:"scheduler-pending-write-threshold" json:"scheduler-pending-write-threshold"`
 }
 
 type RaftStoreConfig struct {
@@ -218,7 +227,7 @@ type RaftStoreConfig struct {
 	RaftdbPath string
 
 	// store capacity. 0 means no limit.
-	Capacity ByteSize
+	Capacity ReadableSize
 
 	// RaftBaseTickInterval is a base tick interval (ms).
 	RaftBaseTickInterval        Duration
@@ -226,10 +235,10 @@ type RaftStoreConfig struct {
 	RaftElectionTimeoutTicks    uint
 	RaftMinElectionTimeoutTicks uint
 	RaftMaxElectionTimeoutTicks uint
-	RaftMaxSizePerMsg           ByteSize
+	RaftMaxSizePerMsg           ReadableSize
 	RaftMaxInflightMsgs         uint
 	// When the entry exceed the max size, reject to propose it.
-	RaftEntryMaxSize ByteSize
+	RaftEntryMaxSize ReadableSize
 
 	// Interval to gc unnecessary raft log (ms).
 	RaftLogGcTickInterval Duration
@@ -239,7 +248,7 @@ type RaftStoreConfig struct {
 	RaftLogGcCountLimit uint64
 	// When the approximate size of raft log entries exceed this value,
 	// gc will be forced trigger.
-	RaftLogGcSizeLimit ByteSize
+	RaftLogGcSizeLimit ReadableSize
 	// When a peer is not responding for this time, leader will not keep entry cache for it.
 	RaftEntryCacheLifeTime Duration
 	// When a peer is newly added, reject transferring leader to the peer for a while.
@@ -249,7 +258,7 @@ type RaftStoreConfig struct {
 	SplitRegionCheckTickInterval Duration
 	/// When size change of region exceed the diff since last check, it
 	/// will be checked again whether it should be split.
-	RegionSplitCheckDiff ByteSize
+	RegionSplitCheckDiff ReadableSize
 	/// Interval (ms) to check whether start compaction for a region.
 	RegionCompactCheckInterval Duration
 	// delay time before deleting a stale peer
@@ -266,7 +275,7 @@ type RaftStoreConfig struct {
 	SnapMgrGcTickInterval          Duration
 	SnapGcTimeout                  Duration
 	LockCfCompactInterval          Duration
-	LockCfCompactBytesThreshold    ByteSize
+	LockCfCompactBytesThreshold    ReadableSize
 
 	NotifyCapacity  uint
 	MessagesPerTick uint
@@ -286,7 +295,7 @@ type RaftStoreConfig struct {
 
 	LeaderTransferMaxLogLag uint64
 
-	SnapApplyBatchSize ByteSize
+	SnapApplyBatchSize ReadableSize
 
 	// Interval (ms) to check region whether the data is consistent.
 	ConsistencyCheckInterval Duration
@@ -315,8 +324,8 @@ type RaftStoreConfig struct {
 
 	// Deprecated! These two configuration has been moved to Coprocessor.
 	// They are preserved for compatibility check.
-	RegionMaxSize   ByteSize
-	RegionSplitSize ByteSize
+	RegionMaxSize   ReadableSize
+	RegionSplitSize ReadableSize
 }
 
 type ReadPool struct {
@@ -326,12 +335,12 @@ type ReadPool struct {
 	MaxTasksPerWorkerHigh   uint
 	MaxTasksPerWorkerNormal uint
 	MaxTasksPerWorkerLow    uint
-	StackSize               ByteSize
+	StackSize               ReadableSize
 }
 
 type CfConfig struct {
-	BlockSize                       ByteSize             `toml:"block-size" json:"block-size"`
-	BlockCacheSize                  ByteSize             `toml:"block-cache-size" json:"block-cache-size"`
+	BlockSize                       ReadableSize         `toml:"block-size" json:"block-size"`
+	BlockCacheSize                  ReadableSize         `toml:"block-cache-size" json:"block-cache-size"`
 	DisableBlockCache               bool                 `toml:"disable-block-cache" json:"disable-block-cache"`
 	CacheIndexAndFilterBlocks       bool                 `toml:"cache-index-and-filter-blocks" json:"cache-index-and-filter-blocks"`
 	PinL0FilterAndIndexBlocks       bool                 `toml:"pin-l0-filter-and-index-blocks" json:"pin-l0-filter-and-index-blocks"`
@@ -341,21 +350,63 @@ type CfConfig struct {
 	BlockBasedBloomFilter           bool                 `toml:"block-based-bloom-filter" json:"block-based-bloom-filter"`
 	ReadAmpBytesPerBit              uint32               `toml:"read-amp-bytes-per-bit" json:"read-amp-bytes-per-bit"`
 	CompressionPerLevel             [7]DBCompressionType `toml:"compression-per-level" json:"compression-per-level"`
-	WriteBufferSize                 ByteSize             `toml:"write-buffer-size" json:"write-buffer-size"`
+	WriteBufferSize                 ReadableSize         `toml:"write-buffer-size" json:"write-buffer-size"`
 	MaxWriteBufferNumber            int32                `toml:"max-write-buffer-number" json:"max-write-buffer-number"`
 	MinWriteBufferNumberToMerge     int32                `toml:"min-write-buffer-number-to-merge" json:"min-write-buffer-number-to-merge"`
-	MaxBytesForLevelBase            ByteSize             `toml:"max-bytes-for-level-base" json:"max-bytes-for-level-base"`
-	TargetFileSizeBase              ByteSize             `toml:"target-file-size-base" json:"target-file-size-base"`
+	MaxBytesForLevelBase            ReadableSize         `toml:"max-bytes-for-level-base" json:"max-bytes-for-level-base"`
+	TargetFileSizeBase              ReadableSize         `toml:"target-file-size-base" json:"target-file-size-base"`
 	Level0FileNumCompactionTrigger  int32                `toml:"level0-file-num-compaction-trigger" json:"level0-file-num-compaction-trigger"`
 	Level0SlowdownWritesTrigger     int32                `toml:"level0-slowdown-writes-trigger" json:"level0-slowdown-writes-trigger"`
 	Level0StopWritesTrigger         int32                `toml:"level0-stop-writes-trigger" json:"level0-stop-writes-trigger"`
-	MaxCompactionBytes              ByteSize             `toml:"max-compaction-bytes" json:"max-compaction-bytes"`
+	MaxCompactionBytes              ReadableSize         `toml:"max-compaction-bytes" json:"max-compaction-bytes"`
 	CompactionPri                   CompactionPriority   `toml:"compaction-pri" json:"compaction-pri"`
 	DynamicLevelBytes               bool                 `toml:"dynamic-level-bytes" json:"dynamic-level-bytes"`
 	NumLevels                       int32                `toml:"num-levels" json:"num-levels"`
 	MaxBytesForLevelMultiplier      int32                `toml:"max-bytes-for-level-multiplier" json:"max-bytes-for-level-multiplier"`
 	CompactionStyle                 DBCompactionStyle    `toml:"compaction-style" json:"compaction-style"`
 	DisableAutoCompactions          bool                 `toml:"disable-auto-compactions" json:"disable-auto-compactions"`
-	SoftPendingCompactionBytesLimit ByteSize             `toml:"soft-pending-compaction-bytes-limit" json:"soft-pending-compaction-bytes-limit"`
-	HardPendingCompactionBytesLimit ByteSize             `toml:"hard-pending-compaction-bytes-limit" json:"hard-pending-compaction-bytes-limit"`
+	SoftPendingCompactionBytesLimit ReadableSize         `toml:"soft-pending-compaction-bytes-limit" json:"soft-pending-compaction-bytes-limit"`
+	HardPendingCompactionBytesLimit ReadableSize         `toml:"hard-pending-compaction-bytes-limit" json:"hard-pending-compaction-bytes-limit"`
+}
+
+// ReadableSize is a retype uint64 for TOML and JSON.
+// Old TiKV can only parse `KB`, `MB`, `GB` and `TB`, while new TiKV accepts `KiB`, `MiB`, `GiB` and `TiB`
+// This can easily be misconfigured
+type ReadableSize uint64
+
+// MarshalJSON returns the size as a JSON string.
+func (b ReadableSize) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + gh.IBytes(uint64(b)) + `"`), nil
+}
+
+// UnmarshalJSON parses a JSON string into the bytesize.
+func (b *ReadableSize) UnmarshalJSON(text []byte) error {
+	s, err := strconv.Unquote(string(text))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if strings.HasSuffix(s, "KiB") || strings.HasSuffix(s, "MiB") || strings.HasSuffix(s, "GiB") {
+		return fmt.Errorf("Unrecognized unit for %s", s)
+	}
+	v, err := gh.ParseBytes(s)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	*b = ReadableSize(v)
+	return nil
+}
+
+// UnmarshalText parses a Toml string into the bytesize.
+func (b *ReadableSize) UnmarshalText(text []byte) error {
+	s := string(text)
+	if strings.HasSuffix(s, "KiB") || strings.HasSuffix(s, "MiB") ||
+		strings.HasSuffix(s, "GiB") || strings.HasSuffix(s, "TiB") {
+		return fmt.Errorf("Unrecognized unit for %s", s)
+	}
+	v, err := gh.ParseBytes(string(text))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	*b = ReadableSize(v)
+	return nil
 }

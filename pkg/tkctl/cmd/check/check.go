@@ -49,10 +49,10 @@ const (
 `
 	checkExample = `
       # check config from local chart
-      tkctl check -t demo --chart charts/tidb-cluster --values charts/tidb-cluster/values.yaml
+      tkctl check --chart charts/tidb-cluster --values charts/tidb-cluster/values.yaml
 
       # check config from remote chart
-      tkctl check -t demo --chart pingcap/tidb-cluster --values charts/tidb-cluster/values.yaml --version v1.1.0-alpha.2
+      tkctl check --chart pingcap/tidb-cluster --values charts/tidb-cluster/values.yaml --version v1.1.0-alpha.2
 `
 	// AWS load balancer annotations
 	awsILBAnnotationKey    = "service.beta.kubernetes.io/aws-load-balancer-internal"
@@ -87,6 +87,7 @@ type CheckOptions struct {
 	ValuesFile      string
 	Cloud           string
 	DryRun          bool
+	Verbose         bool
 
 	genericclioptions.IOStreams
 }
@@ -115,6 +116,7 @@ func NewCmdCheck(tkcContext *config.TkcContext, streams genericclioptions.IOStre
 	cmd.Flags().StringVarP(&options.ValuesFile, "values", "f", "tidb-cluster.yaml", "tidb-cluster values file")
 	cmd.Flags().StringVarP(&options.Chart, "chart", "", "pingcap/tidb-cluster", "tidb cluster chart path, local path or remote repo path")
 	cmd.Flags().StringVarP(&options.ChartVersion, "chart-version", "", "v1.0.0", "tidb cluster chart version")
+	cmd.Flags().BoolVarP(&options.Verbose, "verbose", "", false, "whether to display verbose message")
 	flags := cmd.PersistentFlags()
 	settings.AddFlags(flags)
 	settings.Init(flags)
@@ -180,7 +182,7 @@ func (o *CheckOptions) Run() error {
 		errorPrintln("component version mismatch")
 		return errors.New("cluster component version mismatch")
 	}
-	infoPrintln("component version matches, all versions are ", getImageVersion(tidbcluster.Spec.PD.Image))
+	infoPrintln("component version matches, all versions are", getImageVersion(tidbcluster.Spec.PD.Image))
 
 	o.checkTidbService(tidbSvc)
 	checkResourceSettings(&tidbcluster, pumpSts, drainerSts)
@@ -189,30 +191,34 @@ func (o *CheckOptions) Run() error {
 	var pdcfg *config_v2_1_16.PdConfig
 	var tikvcfg *config_v2_1_16.TikvConfig
 	if cfg, exist := tidbConfigMap.Data["config-file"]; exist {
-		infoPrintln("#### TiDB Config ####")
-		fmt.Println(cfg)
-		infoPrintln("#### TiDB Config ####\n")
+		if o.Verbose {
+			infoPrintln("#### TiDB Config ####")
+			fmt.Println(cfg)
+			infoPrintln("#### TiDB Config ####\n")
+		}
 		_, err = toml.Decode(cfg, &tidbcfg)
 		if err != nil {
 			return fmt.Errorf("failed to decode tidb config: %v", err)
 		}
 		if tidbcfg.Log.Level != "info" {
-			warnPrintln("TiDB log-level:", tidbcfg.Log.Level)
+			warnPrintf("The recommended TiDB log-level is info, the current is %s\n", tidbcfg.Log.Level)
 		}
 		if tidbcfg.Binlog.IgnoreError {
 			warnPrintln("TiDB binlog.ignore-error is enabled")
 		}
 		if tidbcfg.PreparedPlanCache.Enabled {
-			warnPrintln("TiDB prepared-plan-cache is experimental feature")
+			warnPrintln("TiDB prepared-plan-cache is an experimental feature, not recommended for production use")
 		}
 		if tidbcfg.TxnLocalLatches.Enabled {
 			warnPrintln("TiDB txn-local-latches is for write conflict heavy business")
 		}
 	}
 	if cfg, exist := tikvConfigMap.Data["config-file"]; exist {
-		infoPrintln("#### TiKV Config ####")
-		fmt.Println(cfg)
-		infoPrintln("#### TiKV Config ####\n")
+		if o.Verbose {
+			infoPrintln("#### TiKV Config ####")
+			fmt.Println(cfg)
+			infoPrintln("#### TiKV Config ####\n")
+		}
 		_, err = toml.Decode(cfg, &tikvcfg)
 		if err != nil {
 			return fmt.Errorf("failed to decode tikv config: %v", err)
@@ -227,35 +233,39 @@ func (o *CheckOptions) Run() error {
 				errorPrintf("TiKV rocksdb.writecf.block-cache-size should be 10%% ~ 30%% of memory limit, but got %d/%d\n", tikvcfg.Rocksdb.Writecf.BlockCacheSize, m)
 			}
 			if int64(tikvcfg.Rocksdb.Defaultcf.BlockCacheSize) < 3*m/10 || int64(tikvcfg.Rocksdb.Defaultcf.BlockCacheSize) > m/2 {
-				errorPrintf("TiKV rocksdb.writecf.block-cache-size should be 30%% ~ 50%% of memory limit, but got %d/%d\n", tikvcfg.Rocksdb.Defaultcf.BlockCacheSize, m)
+				errorPrintf("TiKV rocksdb.defaultcf.block-cache-size should be 30%% ~ 50%% of memory limit, but got %d/%d\n", tikvcfg.Rocksdb.Defaultcf.BlockCacheSize, m)
 			}
 			infoPrintf("TiKV rocksdb.lockcf.block-cache-size: %dMiB\n", tikvcfg.Rocksdb.Lockcf.BlockCacheSize/1024/1024)
 		}
 		if !tikvcfg.RaftStore.SyncLog {
-			errorPrintln("Raftstore sync-log is disable")
+			errorPrintln("Raftstore sync-log is disabled")
 		}
 		if tikvcfg.LogLevel != "info" {
-			warnPrintln("TiKV log-level:", tikvcfg.LogLevel)
+			warnPrintf("The recommended TiKV log-level is info, the current is %s\n", tikvcfg.LogLevel)
 		}
 	}
 	if cfg, exist := pumpConfigMap.Data["pump-config"]; exist {
-		infoPrintln("#### Pump Config ####")
-		fmt.Println(cfg)
-		infoPrintln("#### Pump Config ####\n")
+		if o.Verbose {
+			infoPrintln("#### Pump Config ####")
+			fmt.Println(cfg)
+			infoPrintln("#### Pump Config ####\n")
+		}
 	}
 	if cfg, exist := pdConfigMap.Data["config-file"]; exist {
-		infoPrintln("#### PD Config ####")
-		fmt.Println(cfg)
-		infoPrintln("#### PD Config ####\n")
+		if o.Verbose {
+			infoPrintln("#### PD Config ####")
+			fmt.Println(cfg)
+			infoPrintln("#### PD Config ####\n")
+		}
 		_, err = toml.Decode(cfg, &pdcfg)
 		if err != nil {
 			return fmt.Errorf("failed to decode pd config: %v", err)
 		}
 		if pdcfg.Log.Level != "info" {
-			warnPrintln("PD log-level:", pdcfg.Log.Level)
+			warnPrintf("The recommended PD log-level is info, the current is %s\n", pdcfg.Log.Level)
 		}
-		if pdcfg.Replication.MaxReplicas != 3 {
-			warnPrintln("TiKV data replication factor is", pdcfg.Replication.MaxReplicas)
+		if pdcfg.Replication.MaxReplicas != 3 && pdcfg.Replication.MaxReplicas != 5 {
+			errorPrintf("Production cluster must set TiKV data replication factor to 3 or 5, the current is %d\n", pdcfg.Replication.MaxReplicas)
 		}
 	}
 	return nil
@@ -265,30 +275,34 @@ func checkResourceSettings(tc *v1alpha1.TidbCluster, pump *appsv1.StatefulSet, d
 	pdResources := util.ResourceRequirement(tc.Spec.PD.ContainerSpec)
 	tikvResources := util.ResourceRequirement(tc.Spec.TiKV.ContainerSpec)
 	tidbResources := util.ResourceRequirement(tc.Spec.TiDB.ContainerSpec)
-	if err := compareResources(pdResources); err != nil {
+	slowlogTailerResources := util.ResourceRequirement(tc.Spec.TiDB.SlowLogTailer.ContainerSpec)
+	if err := compareResources("pd", pdResources); err != nil {
 		errorPrintf("PD resources settings (%v) error: %v\n", pdResources, err)
 	}
-	if err := compareResources(tikvResources); err != nil {
+	if err := compareResources("tikv", tikvResources); err != nil {
 		errorPrintf("TiKV resources settings (%v) error: %v\n", tikvResources, err)
 	}
-	if err := compareResources(tidbResources); err != nil {
+	if err := compareResources("tidb", tidbResources); err != nil {
 		errorPrintf("TiDB resources settings (%v) error: %v\n", tidbResources, err)
+	}
+	if err := compareResources("slowLogTailer", slowlogTailerResources); err != nil {
+		errorPrintf("TiDB slowlog tailer resources settings (%v) error: %v\n", slowlogTailerResources, err)
 	}
 
 	if container := getContainerFromSts(pump, "pump"); container != nil {
-		if err := compareResources(container.Resources); err != nil {
+		if err := compareResources("pump", container.Resources); err != nil {
 			errorPrintf("Pump resources settings (%v) error: %v\n", container.Resources, err)
 		}
 	}
 	if container := getContainerFromSts(drainer, "drainer"); container != nil {
-		if err := compareResources(container.Resources); err != nil {
+		if err := compareResources("drainer", container.Resources); err != nil {
 			errorPrintf("Drainer resources settings (%v) error: %v\n", container.Resources, err)
 		}
 	}
 }
 
 // check requests and limits cpu/memory not zero, requests <= limits, (warn if cpu is not integer, or not Guaranteed QoS)
-func compareResources(requirement corev1.ResourceRequirements) error {
+func compareResources(component string, requirement corev1.ResourceRequirements) error {
 	cpuRequest := requirement.Requests[corev1.ResourceCPU]
 	cpuLimit := requirement.Limits[corev1.ResourceCPU]
 	memoryRequest := requirement.Requests[corev1.ResourceMemory]
@@ -299,7 +313,7 @@ func compareResources(requirement corev1.ResourceRequirements) error {
 	}
 	switch cpuRequest.Cmp(cpuLimit) {
 	case -1:
-		warnPrintln("CPU request < CPU limit, not Guaranteed QoS")
+		warnPrintf("%s CPU request (%v) < CPU limit (%v), not Guaranteed QoS\n", component, cpuRequest, cpuLimit)
 	case 0:
 	case 1:
 		return fmt.Errorf("CPU request > CPU limit")
@@ -307,7 +321,7 @@ func compareResources(requirement corev1.ResourceRequirements) error {
 	_, b1 := cpuRequest.AsInt64()
 	_, b2 := cpuLimit.AsInt64()
 	if !b1 || !b2 {
-		fmt.Errorf("CPU request or limit cannot convert as integer, taskset will not set")
+		return fmt.Errorf("CPU request or limit cannot convert as integer, taskset will not set")
 	}
 
 	if memoryRequest.IsZero() || memoryLimit.IsZero() {
@@ -315,10 +329,10 @@ func compareResources(requirement corev1.ResourceRequirements) error {
 	}
 	switch memoryRequest.Cmp(memoryLimit) {
 	case -1:
-		warnPrintln("memory request < memory limit, not Guaranteed QoS")
+		warnPrintf("%s memory request (%v) < memory limit (%v), not Guaranteed QoS\n", component, memoryRequest, memoryLimit)
 	case 0:
 	case 1:
-		fmt.Errorf("memory request > memory limit")
+		return fmt.Errorf("memory request > memory limit")
 	}
 	return nil
 }
@@ -336,14 +350,12 @@ func componentVersionMatches(tc *v1alpha1.TidbCluster, pump *appsv1.StatefulSet,
 	}
 	if pdVersion != "" && pdVersion == tikvVersion &&
 		pdVersion == tidbVersion {
-		if pump == nil || pdVersion == pumpVersion {
-			return true
-		}
-		if drainer == nil || pdVersion == drainerVersion {
+		if (pump == nil || pdVersion == pumpVersion) &&
+			(drainer == nil || pdVersion == drainerVersion) {
 			return true
 		}
 	}
-	errorPrintf("cluster component version mismatch: (pd, %s), (tikv, %s), (tidb, %s), (pump, %s)\n", pdVersion, tikvVersion, tidbVersion, pumpVersion)
+	errorPrintf("cluster component version mismatch: (pd, %s), (tikv, %s), (tidb, %s), (pump, %s), (drainer, %s)\n", pdVersion, tikvVersion, tidbVersion, pumpVersion, drainerVersion)
 	return false
 }
 
@@ -431,8 +443,15 @@ func (o *CheckOptions) checkTidbService(svc corev1.Service) {
 	}
 	annotations := svc.Annotations
 	if o.Cloud != "" {
-		if svc.Spec.Type != "LoadBalancer" || annotations == nil {
+		if svc.Spec.Type != "LoadBalancer" {
 			errorPrintln("TiDB Service not exposed as load balancer on", o.Cloud)
+			return
+		}
+		if annotations == nil {
+			// When using LoadBalancer without any annotations on public cloud,
+			// the LoadBalancer will be a public load balancer
+			errorPrintln("TiDB Service is using public load balancer on", o.Cloud)
+			return
 		}
 		switch strings.ToLower(o.Cloud) {
 		case "aws":
