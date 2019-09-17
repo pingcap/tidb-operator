@@ -18,6 +18,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
+	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -145,6 +146,8 @@ func (o *dumpInfoOptions) Run() error {
 		return err
 	}
 
+	tc.SetGroupVersionKind(controller.ControllerKind)
+
 	// dump tidb cluster object information.
 	if err := NewTiDBClusterDumper(tc).Dump(o.logPath, rWriter); err != nil {
 		return err
@@ -248,6 +251,7 @@ func (d *tidbClusterStatefulDumper) Dump(logPath string, resourceWriter io.Write
 		if err != nil {
 			return err
 		}
+		ps.SetGroupVersionKind(apps.SchemeGroupVersion.WithKind("StatefulSet"))
 
 		if err = writeString(logFile, "#"+sn+"\n"); err != nil {
 			return err
@@ -286,6 +290,7 @@ type podDumper struct {
 
 // NewPodDumper returns a podDumper.
 func NewPodDumper(kubeCli *kubernetes.Clientset, pod v1.Pod, sinceSeconds int64, byteReadLimit int64) *podDumper {
+	pod.SetGroupVersionKind(v1.SchemeGroupVersion.WithKind("Pod"))
 	return &podDumper{
 		kubeCli:       kubeCli,
 		pod:           pod,
