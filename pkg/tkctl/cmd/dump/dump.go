@@ -84,7 +84,7 @@ func NewCmdDumpInfo(tkcContext *config.TkcContext, streams genericclioptions.IOS
 	cmd.Flags().StringVar(&o.logPath, "path", "", "The log path to dump.")
 	cmd.Flags().DurationVar(&o.since, "since", 3600000000000, "Return logs newer than a relative duration like 1m, or 3h.")
 	cmd.Flags().Int64Var(&o.byteReadLimit, "byteReadLimit", 500000, "The maximum number of bytes dump log.")
-	cmd.MarkFlagRequired("path")
+	cmdutil.CheckErr(cmd.MarkFlagRequired("path"))
 	return cmd
 }
 
@@ -135,9 +135,14 @@ func (o *dumpInfoOptions) Run() error {
 	if err != nil {
 		return err
 	}
-	defer resourceFile.Close()
+	defer func() {
+		cmdutil.CheckErr(resourceFile.Close())
+	}()
+
 	rWriter := bufio.NewWriter(resourceFile)
-	defer rWriter.Flush()
+	defer func() {
+		cmdutil.CheckErr(rWriter.Flush())
+	}()
 
 	tc, err := o.tcCli.PingcapV1alpha1().
 		TidbClusters(o.namespace).
@@ -198,7 +203,9 @@ func (d *tidbClusterDumper) Dump(logPath string, resourceWriter io.Writer) error
 	if err != nil {
 		return err
 	}
-	defer logFile.Close()
+	defer func() {
+		cmdutil.CheckErr(logFile.Close())
+	}()
 
 	if _, err := resourceWriter.Write([]byte("----------------tidbclusters---------------\n")); err != nil {
 		return err
@@ -236,7 +243,10 @@ func (d *tidbClusterStatefulDumper) Dump(logPath string, resourceWriter io.Write
 	if err != nil {
 		return err
 	}
-	defer logFile.Close()
+
+	defer func() {
+		cmdutil.CheckErr(logFile.Close())
+	}()
 
 	if _, err := resourceWriter.Write([]byte("----------------statefulset---------------\n")); err != nil {
 		return err
@@ -318,11 +328,8 @@ func (d *podDumper) Dump(logPath string, resourceWriter io.Writer) error {
 	if err := createPathIfNotExist(path); err != nil {
 		return err
 	}
-	if err := d.DumpLog(path); err != nil {
-		return err
-	}
 
-	return nil
+	return d.DumpLog(path)
 }
 
 // Dump dump the details of a named Pod from a particular namespace.
@@ -331,15 +338,13 @@ func (d *podDumper) DumpDetail(logPath string) error {
 	if err != nil {
 		return err
 	}
-	defer logFile.Close()
+	defer func() {
+		cmdutil.CheckErr(logFile.Close())
+	}()
 
 	body, err := yaml.Marshal(d.pod)
-	if err := writeString(logFile, string(body)); err != nil {
-		return err
-	}
 
-	return nil
-
+	return writeString(logFile, string(body))
 }
 
 // Dump dump dump the logs for the last terminated container and current running container. If info about the container is not available then a specific
@@ -350,8 +355,9 @@ func (d *podDumper) DumpLog(logPath string) error {
 			return err
 		}
 
-		// ignore error for previous container log
-		d.DumpContainerLog(filepath.Join(logPath, fmt.Sprintf("%s-%s-%s-p.log", d.pod.Name, c.Name, d.pod.Namespace)), c.Name, true)
+		if err := d.DumpContainerLog(filepath.Join(logPath, fmt.Sprintf("%s-%s-%s-p.log", d.pod.Name, c.Name, d.pod.Namespace)), c.Name, true); err != nil {
+			// ignore error for previous container log
+		}
 	}
 
 	return nil
@@ -369,7 +375,9 @@ func (d *podDumper) DumpContainerLog(logPath string, containerName string, previ
 	if err != nil {
 		return err
 	}
-	defer logFile.Close()
+	defer func() {
+		cmdutil.CheckErr(logFile.Close())
+	}()
 
 	written, err := io.Copy(logFile, body)
 	if err != nil {
@@ -377,7 +385,9 @@ func (d *podDumper) DumpContainerLog(logPath string, containerName string, previ
 	}
 
 	if written == 0 {
-		os.Remove(logPath)
+		if err := os.Remove(logPath); err != nil {
+			//ignore
+		}
 	}
 
 	return nil
