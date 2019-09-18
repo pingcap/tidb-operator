@@ -5,6 +5,7 @@
 - [Prerequisites](#prerequisites)
 - [Sysbench](#sysbench)
   * [Customize with kustomize](#customize-with-kustomize)
+    + [More customizations](#more-customizations)
   * [Prepare: Create test tables and insert test records](#prepare-create-test-tables-and-insert-test-records)
   * [Warmup TiDB](#warmup-tidb)
   * [Run benchmark](#run-benchmark)
@@ -39,8 +40,7 @@ TIDB_HOST="<your-tidb-host>" # this can be tidb service name, pod ip or load bal
 Create `kustomization.yaml`:
 
 ```
-mkdir sysbench
-cp manifests/sysbench sysbench/manifests -r
+mkdir -p sysbench/output
 cat <<EOF > sysbench/kustomization.yaml
 resources:
 - ../manifests/sysbench
@@ -79,8 +79,21 @@ kubectl label nodes <sysbench-node> dedicated=sysbench
 Run `kustomize`:
 
 ```
-mkdir sysbench/output
 kustomize build sysbench/ -o sysbench/output/
+```
+
+#### More customizations
+
+Change sysbench image, here is an example:
+
+```
+patches:
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/image
+      value: your-sysbench-image
+  target:
+    kind: Job
 ```
 
 ### Prepare: Create test tables and insert test records
