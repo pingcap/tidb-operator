@@ -97,6 +97,7 @@ func NewConfig() (*Config, error) {
 	flag.StringVar(&cfg.OperatorRepoUrl, "operator-repo-url", "https://github.com/pingcap/tidb-operator.git", "tidb-operator repo url used")
 	flag.StringVar(&cfg.ChartDir, "chart-dir", "", "chart dir")
 	flag.StringVar(&slack.WebhookURL, "slack-webhook-url", "", "slack webhook url")
+	flag.StringVar(&slack.TestName, "test-name", "operator-test", "the stability test name")
 	flag.Parse()
 
 	operatorRepo, err := ioutil.TempDir("", "tidb-operator")
