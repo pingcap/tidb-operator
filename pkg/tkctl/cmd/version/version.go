@@ -19,7 +19,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
-	"github.com/pingcap/tidb-operator/version"
+	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"

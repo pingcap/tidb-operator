@@ -42,6 +42,7 @@ require (
 	github.com/golangplus/testing v0.0.0-20180327235837-af21d9c3145e // indirect
 	github.com/google/btree v0.0.0-20180124185431-e89373fe6b4a // indirect
 	github.com/googleapis/gnostic v0.2.0 // indirect
+	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2 // indirect
 	github.com/gorilla/websocket v1.2.0 // indirect
@@ -101,6 +102,7 @@ require (
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1 // indirect
 	golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421 // indirect
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
 	google.golang.org/genproto v0.0.0-20180731170733-daca94659cb5 // indirect
 	google.golang.org/grpc v1.12.0 // indirect

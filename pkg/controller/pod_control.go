@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -111,7 +112,8 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 	clusterID := labels[label.ClusterIDLabelKey]
 	memberID := labels[label.MemberIDLabelKey]
 	storeID := labels[label.StoreIDLabelKey]
-	pdClient := rpc.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tcName)
+
+	pdClient := rpc.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tcName, tc.Spec.EnableTLSCluster)
 	if labels[label.ClusterIDLabelKey] == "" {
 		cluster, err := pdClient.GetCluster()
 		if err != nil {
@@ -191,7 +193,9 @@ func (rpc *realPodControl) DeletePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) 
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	podName := pod.GetName()
-	err := rpc.kubeCli.CoreV1().Pods(ns).Delete(podName, nil)
+	preconditions := metav1.Preconditions{UID: &pod.UID}
+	deleteOptions := metav1.DeleteOptions{Preconditions: &preconditions}
+	err := rpc.kubeCli.CoreV1().Pods(ns).Delete(podName, &deleteOptions)
 	if err != nil {
 		glog.Errorf("failed to delete Pod: [%s/%s], TidbCluster: %s, %v", ns, podName, tcName, err)
 	} else {

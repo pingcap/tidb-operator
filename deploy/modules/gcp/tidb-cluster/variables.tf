@@ -1,3 +1,11 @@
+variable "cluster_id" {
+  description = "GKE cluster ID. This module depends on a running cluster. Please create a cluster first and pass ID here."
+}
+
+variable "tidb_operator_id" {
+  description = "TiDB Operator ID. We must wait for tidb-operator is ready before creating TiDB clusters."
+}
+
 variable "cluster_name" {}
 variable "cluster_version" {
   description = "The TiDB cluster version"
@@ -5,7 +13,7 @@ variable "cluster_version" {
 }
 variable "tidb_cluster_chart_version" {
   description = "The TiDB cluster chart version"
-  default     = "v1.0.0"
+  default     = "v1.0.1"
 }
 variable "override_values" {
   description = "YAML formatted values that will be passed in to the tidb-cluster helm release"
