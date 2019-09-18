@@ -16,7 +16,7 @@ for file in os.listdir(password_dir):
     else:
         conn.cursor().execute("create user %s@%s identified by %s;", (user, permit_host, password,))
 {{- end }}
-{{- if .Values.tidb.initSql }}
+{{- if or .Values.tidb.initSql .Values.tidb.initSqlConfigMapName }}
 with open('/data/init.sql', 'r') as sql:
     for line in sql.readlines():
         conn.cursor().execute(line)

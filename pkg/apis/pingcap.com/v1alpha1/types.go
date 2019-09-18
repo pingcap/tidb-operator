@@ -108,24 +108,16 @@ type TidbClusterStatus struct {
 // PDSpec contains details of PD members
 type PDSpec struct {
 	ContainerSpec
-	Replicas         int32               `json:"replicas"`
-	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
-	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
-	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
-	Annotations      map[string]string   `json:"annotations,omitempty"`
-	HostNetwork      bool                `json:"hostNetwork,omitempty"`
-	StorageClassName string              `json:"storageClassName,omitempty"`
+	PodAttributesSpec
+	Replicas         int32  `json:"replicas"`
+	StorageClassName string `json:"storageClassName,omitempty"`
 }
 
 // TiDBSpec contains details of TiDB members
 type TiDBSpec struct {
 	ContainerSpec
+	PodAttributesSpec
 	Replicas         int32                 `json:"replicas"`
-	Affinity         *corev1.Affinity      `json:"affinity,omitempty"`
-	NodeSelector     map[string]string     `json:"nodeSelector,omitempty"`
-	Tolerations      []corev1.Toleration   `json:"tolerations,omitempty"`
-	Annotations      map[string]string     `json:"annotations,omitempty"`
-	HostNetwork      bool                  `json:"hostNetwork,omitempty"`
 	StorageClassName string                `json:"storageClassName,omitempty"`
 	BinlogEnabled    bool                  `json:"binlogEnabled,omitempty"`
 	MaxFailoverCount int32                 `json:"maxFailoverCount,omitempty"`
@@ -142,14 +134,10 @@ type TiDBSlowLogTailerSpec struct {
 // TiKVSpec contains details of TiKV members
 type TiKVSpec struct {
 	ContainerSpec
-	Replicas         int32               `json:"replicas"`
-	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
-	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
-	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
-	Annotations      map[string]string   `json:"annotations,omitempty"`
-	HostNetwork      bool                `json:"hostNetwork,omitempty"`
-	Privileged       bool                `json:"privileged,omitempty"`
-	StorageClassName string              `json:"storageClassName,omitempty"`
+	PodAttributesSpec
+	Replicas         int32  `json:"replicas"`
+	Privileged       bool   `json:"privileged,omitempty"`
+	StorageClassName string `json:"storageClassName,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
@@ -163,6 +151,16 @@ type ContainerSpec struct {
 	ImagePullPolicy corev1.PullPolicy    `json:"imagePullPolicy,omitempty"`
 	Requests        *ResourceRequirement `json:"requests,omitempty"`
 	Limits          *ResourceRequirement `json:"limits,omitempty"`
+}
+
+// PodAttributesControlSpec is a spec of some general attributes of TiKV, TiDB and PD Pods
+type PodAttributesSpec struct {
+	Affinity           *corev1.Affinity           `json:"affinity,omitempty"`
+	NodeSelector       map[string]string          `json:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration        `json:"tolerations,omitempty"`
+	Annotations        map[string]string          `json:"annotations,omitempty"`
+	HostNetwork        bool                       `json:"hostNetwork,omitempty"`
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 }
 
 // Service represent service type used in TidbCluster
