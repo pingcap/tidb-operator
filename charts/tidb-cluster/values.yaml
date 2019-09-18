@@ -6,6 +6,8 @@
 # If you set rbac.create to false, you need to provide a value for monitor.serviceAccount
 rbac:
   create: true
+  # Set to true to enable cross-namespace monitoring
+  crossNamespace: false
 
 # clusterName is the TiDB cluster name, if not specified, the chart release name will be used
 # clusterName: demo
@@ -30,7 +32,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.0.0
+  image: pingcap/tidb-operator:v1.0.1
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -263,7 +265,14 @@ tidb:
   # kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
   # If unset, the root password will be empty and you can set it after connecting
   # passwordSecretName: tidb-secret
+  # permitHost is the host which will only be allowed to connect to the TiDB.
+  # If unset, defaults to '%' which means allow any host to connect to the TiDB.
+  # permitHost: 127.0.0.1
   # initSql is the SQL statements executed after the TiDB cluster is bootstrapped.
+  # The configmap name of init sql and the name of file must be init-sql with no file extension, you can create configmap with following command:
+  # kubectl create configmap tidb-initsql --from-file=init-sql=/path/to/your/init-sql --namespace=<namespace>
+  # If both initSqlConfigMapName and initSql are set, the initSqlConfigMapName will be used.
+  # initSqlConfigMapName: tidb-initsql
   # initSql: |-
   #   create database app;
   image: pingcap/tidb:v3.0.1
@@ -563,6 +572,8 @@ scheduledBackup:
   # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
   storageClassName: local-storage
   storage: 100Gi
+  # When set to true, cleans up the backup data on storage upon successful upload to the cloud object storage
+  cleanupAfterUpload: false
   # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#schedule
   schedule: "0 0 * * *"
   # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#suspend
@@ -572,6 +583,12 @@ scheduledBackup:
   failedJobsHistoryLimit: 1
   # https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#starting-deadline
   startingDeadlineSeconds: 3600
+  # https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#pod-backoff-failure-policy
+  backoffLimit: 6
+  # https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#job-termination-and-cleanup
+  # activeDeadlineSeconds: 10800
+  # https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#handling-pod-and-container-failures
+  restartPolicy: OnFailure
   # -t is thread count, larger thread count will speed up the backup, but may impact the performance of the upstream TiDB.
   # -F is the chunk size, a big table is partitioned into many chunks.
   # Other useful options are -B for database, and -T for tables.
