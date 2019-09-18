@@ -29,7 +29,7 @@ import (
 
 const (
 	dumpLongDesc = `
-		Dump a tidb cluster information of a specified cluster.
+		Export a tidb cluster diagnostic information of a specified cluster.
 		
 		You may omit --tidbcluster option by running 'tkc use <clusterName>'.
 `
