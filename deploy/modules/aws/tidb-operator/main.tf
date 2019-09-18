@@ -1,6 +1,7 @@
 module "eks" {
   source = "terraform-aws-modules/eks/aws"
 
+  version            = "5.1.0"
   cluster_name       = var.eks_name
   cluster_version    = var.eks_version
   vpc_id             = var.vpc_id
