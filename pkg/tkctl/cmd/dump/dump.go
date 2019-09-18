@@ -343,6 +343,9 @@ func (d *podDumper) DumpDetail(logPath string) error {
 	}()
 
 	body, err := yaml.Marshal(d.pod)
+	if err != nil {
+		return err
+	}
 
 	return writeString(logFile, string(body))
 }
@@ -355,9 +358,7 @@ func (d *podDumper) DumpLog(logPath string) error {
 			return err
 		}
 
-		if err := d.DumpContainerLog(filepath.Join(logPath, fmt.Sprintf("%s-%s-%s-p.log", d.pod.Name, c.Name, d.pod.Namespace)), c.Name, true); err != nil {
-			// ignore error for previous container log
-		}
+		d.DumpContainerLog(filepath.Join(logPath, fmt.Sprintf("%s-%s-%s-p.log", d.pod.Name, c.Name, d.pod.Namespace)), c.Name, true)
 	}
 
 	return nil
@@ -385,9 +386,8 @@ func (d *podDumper) DumpContainerLog(logPath string, containerName string, previ
 	}
 
 	if written == 0 {
-		if err := os.Remove(logPath); err != nil {
-			//ignore
-		}
+		// ignore error
+		os.Remove(logPath)
 	}
 
 	return nil
