@@ -191,9 +191,9 @@ type OperatorActions interface {
 	GetTidbMemberAssignedNodesOrDie(info *TidbClusterConfig) map[string]string
 	CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error
 	CheckTidbMemberAssignedNodesOrDie(info *TidbClusterConfig, oldAssignedNodes map[string]string)
-	SetPartitionAnnotation(tcName string, nameSpace string, ordinal int) error
-	CheckManualPauseTiDB(info *TidbClusterConfig) error
+	SetPartitionAnnotation(namespace string, tcName string, component string, ordinal int) error
 	CheckManualPauseTiDBOrDie(info *TidbClusterConfig)
+	CheckManualPauseTiKVOrDie(info *TidbClusterConfig)
 }
 
 type operatorActions struct {
@@ -968,10 +968,10 @@ func (oa *operatorActions) CheckScaledCorrectly(info *TidbClusterConfig, podUIDs
 	})
 }
 
-func (oa *operatorActions) SetPartitionAnnotation(tcName string, nameSpace string, ordinal int) error {
+func (oa *operatorActions) SetPartitionAnnotation(namespace, tcName, component string, ordinal int) error {
 	// add annotation to pause statefulset upgrade process
-	cmd := fmt.Sprintf("kubectl annotate tc %s -n %s tidb.pingcap.com/tidb-partition=%d --overwrite",
-		tcName, nameSpace, ordinal)
+	cmd := fmt.Sprintf("kubectl annotate tc %s -n %s tidb.pingcap.com/%s-partition=%d --overwrite",
+		tcName, namespace, component, ordinal)
 	glog.Infof("%s", cmd)
 	_, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -2766,15 +2766,16 @@ func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, set
 	return fmt.Sprintf(" %s --values %s", cmd, svFilePath), nil
 }
 
-func (oa *operatorActions) CheckManualPauseTiDB(info *TidbClusterConfig) error {
+func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, component string) error {
 
 	var tc *v1alpha1.TidbCluster
-	var tidbSet *v1beta1.StatefulSet
+	var set *v1beta1.StatefulSet
+	var setName string
 	var err error
 	ns := info.Namespace
 
 	// set partition annotation to protect tidb pod
-	if err = oa.SetPartitionAnnotation(info.ClusterName, ns, 1); err != nil {
+	if err = oa.SetPartitionAnnotation(ns, info.ClusterName, component, 1); err != nil {
 		return fmt.Errorf("failed to SetPartitionAnnotation: [%s/%s], %v", ns, info.ClusterName, err)
 	}
 
@@ -2785,26 +2786,60 @@ func (oa *operatorActions) CheckManualPauseTiDB(info *TidbClusterConfig) error {
 			return false, nil
 		}
 
-		podName := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.Name), 1)
-
-		tidbPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
-		if err != nil {
-			glog.Infof("fail to get pod in CheckManualPauseTiDB [%s/%s]", ns, podName)
-			return false, nil
-		}
-
-		if tidbPod.Labels[v1beta1.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision &&
-			tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-			if member, ok := tc.Status.TiDB.Members[tidbPod.Name]; !ok || !member.Health {
-				glog.Infof("wait for tidb pod [%s/%s] ready member health %t ok %t", ns, podName, member.Health, ok)
-			} else {
-				return true, nil
+		switch component {
+		case label.TiDBLabelVal:
+			podName := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.Name), 1)
+			setName = controller.TiDBMemberName(info.ClusterName)
+			tidbPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+			if err != nil {
+				glog.Infof("fail to get pod in CheckManualPauseCompoent tidb [%s/%s]", ns, podName)
+				return false, nil
 			}
-		} else {
-			glog.Infof("tidbset is not in upgrade phase or pod is not upgrade done [%s/%s]", ns, podName)
-		}
 
-		return false, nil
+			if tidbPod.Labels[v1beta1.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision &&
+				tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+				if member, ok := tc.Status.TiDB.Members[tidbPod.Name]; !ok || !member.Health {
+					glog.Infof("wait for tidb pod [%s/%s] ready member health %t ok %t", ns, podName, member.Health, ok)
+				} else {
+					return true, nil
+				}
+			} else {
+				glog.Infof("tidbset is not in upgrade phase or pod is not upgrade done [%s/%s]", ns, podName)
+			}
+
+			return false, nil
+		case label.TiKVLabelVal:
+			podName := fmt.Sprintf("%s-%d", controller.TiKVMemberName(tc.Name), 1)
+			setName = controller.TiKVMemberName(info.ClusterName)
+			tikvPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+			if err != nil {
+				glog.Infof("fail to get pod in CheckManualPauseCompoent tikv [%s/%s]", ns, podName)
+				return false, nil
+			}
+
+			if tikvPod.Labels[v1beta1.ControllerRevisionHashLabelKey] == tc.Status.TiKV.StatefulSet.UpdateRevision &&
+				tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
+
+				var tikvStore *v1alpha1.TiKVStore
+				for _, store := range tc.Status.TiKV.Stores {
+					if store.PodName == podName {
+						tikvStore = &store
+						break
+					}
+				}
+				if tikvStore == nil || tikvStore.State != v1alpha1.TiKVStateUp {
+					glog.Infof("wait for tikv pod [%s/%s] ready store state %t", ns, podName, tikvStore.State)
+				} else {
+					return true, nil
+				}
+			} else {
+				glog.Infof("tikvset is not in upgrade phase or pod is not upgrade done [%s/%s]", ns, podName)
+			}
+
+			return false, nil
+		default:
+			return false, fmt.Errorf("invalid component %s", component)
+		}
 	}
 
 	// wait for the tidb statefulset is upgrade to the protect one
@@ -2814,18 +2849,17 @@ func (oa *operatorActions) CheckManualPauseTiDB(info *TidbClusterConfig) error {
 
 	time.Sleep(30 * time.Second)
 
-	tidbSetName := controller.TiDBMemberName(info.ClusterName)
-	if tidbSet, err = oa.kubeCli.AppsV1beta1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{}); err != nil {
-		return fmt.Errorf("failed to get statefulset: [%s/%s], %v", ns, tidbSetName, err)
+	if set, err = oa.kubeCli.AppsV1beta1().StatefulSets(ns).Get(setName, metav1.GetOptions{}); err != nil {
+		return fmt.Errorf("failed to get statefulset: [%s/%s], %v", ns, setName, err)
 	}
 
-	if (*tidbSet.Spec.UpdateStrategy.RollingUpdate.Partition) < 1 {
+	if *set.Spec.UpdateStrategy.RollingUpdate.Partition < 1 {
 		return fmt.Errorf("pause partition is not correct in upgrade phase [%s/%s] partition %d annotation %d",
-			ns, tidbSetName, (*tidbSet.Spec.UpdateStrategy.RollingUpdate.Partition), 1)
+			ns, setName, *set.Spec.UpdateStrategy.RollingUpdate.Partition, 1)
 	}
 
-	if err = oa.SetPartitionAnnotation(tc.Name, ns, 0); err != nil {
-		return fmt.Errorf("fail to set annotation for [%s/%s]", ns, tidbSetName)
+	if err = oa.SetPartitionAnnotation(ns, tc.Name, component, 0); err != nil {
+		return fmt.Errorf("fail to set annotation for [%s/%s]", ns, setName)
 	}
 
 	return nil
@@ -2833,7 +2867,15 @@ func (oa *operatorActions) CheckManualPauseTiDB(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) CheckManualPauseTiDBOrDie(info *TidbClusterConfig) {
 	// add annotation to pause statefulset upgrade process and check
-	err := oa.CheckManualPauseTiDB(info)
+	err := oa.checkManualPauseComponent(info, label.TiDBLabelVal)
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+func (oa *operatorActions) CheckManualPauseTiKVOrDie(info *TidbClusterConfig) {
+	// add annotation to pause statefulset upgrade process and check
+	err := oa.checkManualPauseComponent(info, label.TiKVLabelVal)
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}

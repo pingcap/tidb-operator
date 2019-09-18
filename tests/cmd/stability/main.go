@@ -172,6 +172,7 @@ func run() {
 			oa.UpgradeTidbClusterOrDie(cluster)
 			oa.CheckUpgradeOrDie(ctx, cluster)
 			if idx == 0 {
+				oa.CheckManualPauseTiKVOrDie(cluster)
 				oa.CheckManualPauseTiDBOrDie(cluster)
 			}
 			oa.CheckTidbClusterStatusOrDie(cluster)

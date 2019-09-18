@@ -142,6 +142,7 @@ func main() {
 		cluster2.UpgradeAll(upgradeVersions[0])
 		oa.UpgradeTidbClusterOrDie(cluster2)
 		oa.CheckUpgradeOrDie(ctx, cluster2)
+		oa.CheckManualPauseTiKVOrDie(cluster2)
 		oa.CheckManualPauseTiDBOrDie(cluster2)
 		oa.CheckTidbClusterStatusOrDie(cluster2)
 		oa.CheckTidbMemberAssignedNodesOrDie(cluster2, assignedNodes)
