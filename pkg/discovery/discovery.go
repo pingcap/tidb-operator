@@ -20,10 +20,7 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // TiDBDiscovery helps new PD member to discover all other members in cluster bootstrap phase.
@@ -31,12 +28,21 @@ type TiDBDiscovery interface {
 	Discover(string) (string, error)
 }
 
+type Cluster struct {
+	PDClient        pdapi.PDClient
+	Replicas        int32
+	ResourceVersion string
+	Scheme          string
+}
+
+type GetCluster = func(ns, tcName string) (Cluster, error)
+type MakeGetCluster = func(pdControl pdapi.PDControlInterface) GetCluster
+
 type tidbDiscovery struct {
-	cli       versioned.Interface
-	lock      sync.Mutex
-	clusters  map[string]*clusterInfo
-	tcGetFn   func(ns, tcName string) (*v1alpha1.TidbCluster, error)
-	pdControl pdapi.PDControlInterface
+	lock       sync.Mutex
+	clusters   map[string]*clusterInfo
+	pdControl  pdapi.PDControlInterface
+	getCluster GetCluster
 }
 
 type clusterInfo struct {
@@ -45,13 +51,12 @@ type clusterInfo struct {
 }
 
 // NewTiDBDiscovery returns a TiDBDiscovery
-func NewTiDBDiscovery(cli versioned.Interface) TiDBDiscovery {
+func NewTiDBDiscovery(getCluster MakeGetCluster) TiDBDiscovery {
 	td := &tidbDiscovery{
-		cli:       cli,
 		pdControl: pdapi.NewDefaultPDControl(),
 		clusters:  map[string]*clusterInfo{},
 	}
-	td.tcGetFn = td.realTCGetFn
+	td.getCluster = getCluster(td.pdControl)
 	return td
 }
 
@@ -74,31 +79,29 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	if ns != podNamespace {
 		return "", fmt.Errorf("the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
 	}
-	tc, err := td.tcGetFn(ns, tcName)
+	keyName := fmt.Sprintf("%s/%s", ns, tcName)
+	cluster, err := td.getCluster(ns, tcName)
 	if err != nil {
 		return "", err
 	}
-	keyName := fmt.Sprintf("%s/%s", ns, tcName)
-	// TODO: the replicas should be the total replicas of pd sets.
-	replicas := tc.Spec.PD.Replicas
 
 	currentCluster := td.clusters[keyName]
-	if currentCluster == nil || currentCluster.resourceVersion != tc.ResourceVersion {
+	if currentCluster == nil || currentCluster.resourceVersion != cluster.ResourceVersion {
 		td.clusters[keyName] = &clusterInfo{
-			resourceVersion: tc.ResourceVersion,
+			resourceVersion: cluster.ResourceVersion,
 			peers:           map[string]struct{}{},
 		}
 	}
 	currentCluster = td.clusters[keyName]
 	currentCluster.peers[podName] = struct{}{}
 
-	if len(currentCluster.peers) == int(replicas) {
+	// TODO: the replicas should be the total replicas of pd sets.
+	if len(currentCluster.peers) == int(cluster.Replicas) {
 		delete(currentCluster.peers, podName)
-		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
+		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, cluster.Scheme, advertisePeerUrl), nil
 	}
 
-	pdClient := td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSCluster)
-	membersInfo, err := pdClient.GetMembers()
+	membersInfo, err := cluster.PDClient.GetMembers()
 	if err != nil {
 		return "", err
 	}
@@ -110,8 +113,4 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	}
 	delete(currentCluster.peers, podName)
 	return fmt.Sprintf("--join=%s", strings.Join(membersArr, ",")), nil
-}
-
-func (td *tidbDiscovery) realTCGetFn(ns, tcName string) (*v1alpha1.TidbCluster, error) {
-	return td.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 }

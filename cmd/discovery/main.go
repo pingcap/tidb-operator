@@ -2,18 +2,10 @@ package main
 
 import (
 	"flag"
-	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"time"
 
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/discovery/server"
-	"github.com/pingcap/tidb-operator/pkg/version"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apiserver/pkg/util/logs"
-	"k8s.io/client-go/rest"
+	"github.com/pingcap/tidb-operator/pkg/discovery/k8s"
 )
 
 var (
@@ -30,25 +22,9 @@ func init() {
 
 func main() {
 	if printVersion {
-		version.PrintVersionInfo()
+		k8s.PrintVersionInfo()
 		os.Exit(0)
 	}
-	version.LogVersionInfo()
-
-	logs.InitLogs()
-	defer logs.FlushLogs()
-
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		glog.Fatalf("failed to get config: %v", err)
-	}
-	cli, err := versioned.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("failed to create Clientset: %v", err)
-	}
-
-	go wait.Forever(func() {
-		server.StartServer(cli, port)
-	}, 5*time.Second)
-	glog.Fatal(http.ListenAndServe(":6060", nil))
+	k8s.LogVersionInfo()
+	k8s.RunDiscoveryService(port)
 }

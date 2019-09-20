@@ -21,7 +21,6 @@ import (
 
 	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/discovery"
 )
 
@@ -30,8 +29,8 @@ type server struct {
 }
 
 // StartServer starts a TiDB Discovery server
-func StartServer(cli versioned.Interface, port int) {
-	svr := &server{discovery.NewTiDBDiscovery(cli)}
+func StartServer(makeGetCluster discovery.MakeGetCluster, port int) {
+	svr := &server{discovery.NewTiDBDiscovery(makeGetCluster)}
 
 	ws := new(restful.WebService)
 	ws.Route(ws.GET("/new/{advertise-peer-url}").To(svr.newHandler))
