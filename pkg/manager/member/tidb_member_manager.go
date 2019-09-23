@@ -382,6 +382,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 					Tolerations:     tc.Spec.TiDB.Tolerations,
 					Volumes:         vols,
 					SecurityContext: tc.Spec.TiDB.PodSecurityContext,
+					PriorityClassName: tc.Spec.TiDB.PriorityClassName,
 				},
 			},
 			ServiceName:         controller.TiDBPeerMemberName(tcName),

@@ -585,6 +585,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 					Tolerations:     tc.Spec.PD.Tolerations,
 					Volumes:         vols,
 					SecurityContext: tc.Spec.PD.PodSecurityContext,
+					PriorityClassName: tc.Spec.PD.PriorityClassName,
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
