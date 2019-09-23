@@ -21,7 +21,7 @@ schedulerName: tidb-scheduler
 timezone: UTC
 
 # reclaim policy of a PV, default: Retain.
-# you must set it to Retain to ensure data security in production environment.
+# you must set it to Retain to ensure data safety in production environment.
 # https://pingcap.com/docs/v3.0/tidb-in-kubernetes/reference/configuration/local-pv/#data-security
 pvReclaimPolicy: Retain
 
