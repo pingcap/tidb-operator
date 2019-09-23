@@ -15,9 +15,9 @@ package controller
 
 import (
 	"fmt"
-	"math"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -154,8 +154,14 @@ func GetServiceType(services []v1alpha1.Service, serviceName string) corev1.Serv
 	return corev1.ServiceTypeClusterIP
 }
 
-// TiKVCapacity returns string resource requirement,
-// tikv uses GB, TB as unit suffix, but it actually means GiB, TiB
+func roundUpSize(bytes int64, baseBytes int64) int64 {
+	return (bytes + baseBytes - 1) / baseBytes
+}
+
+// TiKVCapacity returns string resource requirement, tikv-server uses MB, GB,
+// TB as unit suffix, but it actually means MiB, GiB, TiB, so we cannot use
+// resource.String() directly. We must convert it to tikv-server units.
+// Minimum unit we use is MB, capacity less than 1MB is ignored.
 func TiKVCapacity(limits *v1alpha1.ResourceRequirement) string {
 	defaultArgs := "0"
 	if limits == nil || limits.Storage == "" {
@@ -171,7 +177,11 @@ func TiKVCapacity(limits *v1alpha1.ResourceRequirement) string {
 		glog.Errorf("quantity %s can't be converted to int64", q.String())
 		return defaultArgs
 	}
-	return fmt.Sprintf("%dGB", int(float64(i)/math.Pow(2, 30)))
+	if i%humanize.GiByte == 0 {
+		return fmt.Sprintf("%dGB", i/humanize.GiByte)
+	} else {
+		return fmt.Sprintf("%dMB", roundUpSize(i, humanize.MiByte))
+	}
 }
 
 func GetSlowLogTailerImage(cluster *v1alpha1.TidbCluster) string {
