@@ -258,7 +258,7 @@ tikv:
 
   # Specify the priorityClassName for TiKV Pod.
   # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
-  priorityClassName:
+  priorityClassName: ""
 
 tidb:
   # Please refer to https://github.com/pingcap/tidb/blob/master/config/config.toml.example for the default
