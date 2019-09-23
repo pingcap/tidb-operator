@@ -169,7 +169,7 @@ pd:
 
   # Specify the priorityClassName for PD Pod.
   # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
-  priorityClassName:
+  priorityClassName: ""
 
 tikv:
   # Please refer to https://github.com/tikv/tikv/blob/master/etc/config-template.toml for the default
@@ -332,7 +332,7 @@ tidb:
 
   # Specify the priorityClassName for TiDB Pod.
   # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
-  priorityClassName:
+  priorityClassName: ""
 
   maxFailoverCount: 3
   service:
