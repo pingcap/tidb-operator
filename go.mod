@@ -121,9 +121,8 @@ require (
 	k8s.io/apiserver v0.0.0-20190118115647-a748535592ba
 	k8s.io/cli-runtime v0.0.0-20190118125240-caee4253d968
 	k8s.io/client-go v2.0.0-alpha.0.0.20190115164855-701b91367003+incompatible
-	k8s.io/code-generator v0.0.0-20190808180452-d0071a119380
-	k8s.io/gengo v0.0.0-20190327210449-e17681d19d3a // indirect; indirec
-	k8s.io/klog v0.3.1
+	k8s.io/code-generator v0.0.0-20190912042602-ebc0eb3a5c23
+	k8s.io/klog v0.4.0
 	k8s.io/kubernetes v1.12.5
 	k8s.io/metrics v0.0.0-20190118124808-33c1aed8dc65 // indirect
 	k8s.io/utils v0.0.0-20190308190857-21c4ce38f2a7 // indirect
