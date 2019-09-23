@@ -558,8 +558,9 @@ binlog:
     # just follow the format in the file and configure in the 'config' section
     # as below if you want to customize any configuration.
     # config: |
-    #   worker-count = 16
     #   detect-interval = 10
+    #   [syncer]
+    #   worker-count = 16
     #   disable-dispatch = false
     #   ignore-schemas = "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql"
     #   safe-mode = false
