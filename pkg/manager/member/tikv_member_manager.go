@@ -419,6 +419,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 					Tolerations:     tc.Spec.TiKV.Tolerations,
 					Volumes:         vols,
 					SecurityContext: tc.Spec.TiKV.PodSecurityContext,
+					PriorityClassName: tc.Spec.TiKV.PriorityClassName,
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
