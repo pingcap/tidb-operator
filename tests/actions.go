@@ -2346,8 +2346,10 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 			"binlog.pump.create": "true",
 		}
 		from.drainerConfig = []string{
-			"worker-count = 16",
-			"detect-interval = 10",
+			`detect-interval = 10`,
+			`compressor = ""`,
+			`[syncer]`,
+			`worker-count = 16`,
 			"disable-dispatch = false",
 			`ignore-schemas = ""`,
 			`safe-mode = false`,
