@@ -15,9 +15,11 @@ package readable
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/alias"
 	"k8s.io/api/core/v1"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -30,7 +32,8 @@ import (
 )
 
 const (
-	unset = "<none>"
+	unset        = "<none>"
+	podNameIndex = 0
 )
 
 // PodBasicColumns holds common columns for all kinds of pod
@@ -73,6 +76,20 @@ func AddHandlers(h printers.PrintHandler) {
 	}
 	h.TableHandler(commonPodColumns, printPod)
 	h.TableHandler(commonPodColumns, printPodList)
+	//tikv columns
+	tikvPodColumns := commonPodColumns
+	storeId := metav1beta1.TableColumnDefinition{
+		Name:        "StoreID",
+		Type:        "string",
+		Description: "TiKV StoreID",
+	}
+	storeState := metav1beta1.TableColumnDefinition{
+		Name:        "Store State",
+		Type:        "string",
+		Description: "TiKV Store State",
+	}
+	tikvPodColumns = append(tikvPodColumns, storeId, storeState)
+	h.TableHandler(tikvPodColumns, printTikvList)
 	// TODO: add available space for volume
 	volumeColumns := []metav1beta1.TableColumnDefinition{
 		{Name: "Volume", Type: "string", Format: "name", Description: "Volume name"},
@@ -152,6 +169,39 @@ func printPod(pod *v1.Pod, options printers.PrintOptions) ([]metav1beta1.TableRo
 		row.Cells = append(row.Cells, columns.PodIP, columns.NodeName)
 	}
 	return []metav1beta1.TableRow{row}, nil
+}
+
+// add more columns for tikv info
+func printTikvList(tikvList *alias.TikvList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+	podList := tikvList.PodList
+	metaTableRows, err := printPodList(podList, options)
+	if err != nil {
+		return nil, err
+	}
+	for id, row := range metaTableRows {
+		podName := row.Cells[podNameIndex].(string)
+		var storeId string
+		for _, pod := range tikvList.PodList.Items {
+			if podName == pod.Name {
+				storeId = pod.Labels[label.StoreIDLabelKey]
+				break
+			}
+		}
+		viewStoreId := unset
+		viewStoreState := unset
+		// set storeId and tikv Store State if existed
+		if len(storeId) > 0 {
+			viewStoreId = storeId
+			if tikvList.TikvStatus != nil && tikvList.TikvStatus.Stores != nil {
+				if _, ok := tikvList.TikvStatus.Stores[storeId]; ok {
+					viewStoreState = tikvList.TikvStatus.Stores[storeId].State
+				}
+			}
+		}
+		row.Cells = append(row.Cells, viewStoreId, viewStoreState)
+		metaTableRows[id] = row
+	}
+	return metaTableRows, nil
 }
 
 func printVolumeList(volumeList *v1.PersistentVolumeList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {

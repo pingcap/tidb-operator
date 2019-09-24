@@ -396,7 +396,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 					SchedulerName: tc.Spec.SchedulerName,
 					Affinity:      tc.Spec.TiKV.Affinity,
 					NodeSelector:  tc.Spec.TiKV.NodeSelector,
-					HostNetwork:   tc.Spec.PD.HostNetwork,
+					HostNetwork:   tc.Spec.TiKV.HostNetwork,
 					DNSPolicy:     dnsPolicy,
 					Containers: []corev1.Container{
 						{
@@ -452,9 +452,11 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 							},
 						},
 					},
-					RestartPolicy: corev1.RestartPolicyAlways,
-					Tolerations:   tc.Spec.TiKV.Tolerations,
-					Volumes:       vols,
+					RestartPolicy:     corev1.RestartPolicyAlways,
+					Tolerations:       tc.Spec.TiKV.Tolerations,
+					Volumes:           vols,
+					SecurityContext:   tc.Spec.TiKV.PodSecurityContext,
+					PriorityClassName: tc.Spec.TiKV.PriorityClassName,
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{

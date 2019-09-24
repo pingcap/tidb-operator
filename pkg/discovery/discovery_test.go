@@ -276,7 +276,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 				g.Expect(len(td.clusters)).To(Equal(1))
 				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(1))
 				g.Expect(td.clusters["default/demo"].peers["demo-pd-1"]).To(Equal(struct{}{}))
-				g.Expect(s).To(Equal("--join=demo-pd-2.demo-pd-peer.default.svc:2380"))
+				g.Expect(s).To(Equal("--join=demo-pd-2.demo-pd-peer.default.svc:2379"))
 			},
 		},
 		{
@@ -308,7 +308,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(td.clusters)).To(Equal(1))
 				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(0))
-				g.Expect(s).To(Equal("--join=demo-pd-0.demo-pd-peer.default.svc:2380,demo-pd-2.demo-pd-peer.default.svc:2380"))
+				g.Expect(s).To(Equal("--join=demo-pd-0.demo-pd-peer.default.svc:2379,demo-pd-2.demo-pd-peer.default.svc:2379"))
 			},
 		},
 		{
@@ -345,7 +345,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(td.clusters)).To(Equal(1))
 				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(0))
-				g.Expect(s).To(Equal("--join=demo-pd-0.demo-pd-peer.default.svc:2380,demo-pd-1.demo-pd-peer.default.svc:2380,demo-pd-2.demo-pd-peer.default.svc:2380"))
+				g.Expect(s).To(Equal("--join=demo-pd-0.demo-pd-peer.default.svc:2379,demo-pd-1.demo-pd-peer.default.svc:2379,demo-pd-2.demo-pd-peer.default.svc:2379"))
 			},
 		},
 		{
@@ -393,7 +393,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 				g.Expect(len(td.clusters)).To(Equal(2))
 				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(0))
 				g.Expect(len(td.clusters["default/demo-1"].peers)).To(Equal(3))
-				g.Expect(s).To(Equal("--join=demo-pd-0.demo-pd-peer.default.svc:2380,demo-pd-1.demo-pd-peer.default.svc:2380,demo-pd-2.demo-pd-peer.default.svc:2380,demo-pd-3.demo-pd-peer.default.svc:2380"))
+				g.Expect(s).To(Equal("--join=demo-pd-0.demo-pd-peer.default.svc:2379,demo-pd-1.demo-pd-peer.default.svc:2379,demo-pd-2.demo-pd-peer.default.svc:2379,demo-pd-3.demo-pd-peer.default.svc:2379"))
 			},
 		},
 	}

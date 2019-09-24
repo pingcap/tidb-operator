@@ -14,6 +14,11 @@ scrape_configs:
     honor_labels: true
     kubernetes_sd_configs:
     - role: pod
+    {{- if not .Values.rbac.crossNamespace }}
+      namespaces:
+        names:
+        - {{ .Release.Namespace }}
+    {{- end }}
     tls_config:
       insecure_skip_verify: true
     {{- if .Values.enableTLSCluster }}
