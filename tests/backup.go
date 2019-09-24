@@ -145,11 +145,14 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 	if err != nil {
 		return err
 	}
-	glog.Infof("waiting 1 minute to insert into more records")
-	time.Sleep(1 * time.Minute)
+	glog.Infof("waiting 30 seconds to insert into more records")
+	time.Sleep(30 * time.Second)
 
 	glog.Infof("cluster[%s] stop insert data", source.ClusterName)
 	oa.StopInsertDataTo(source)
+
+	glog.Infof("wait on-going inserts to be drained for 60 seconds")
+	time.Sleep(60 * time.Second)
 
 	stopWriteTS, err := sql_util.ShowMasterCommitTS(getDSN(source.Namespace, source.ClusterName, "test", source.Password))
 	if err != nil {
