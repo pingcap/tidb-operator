@@ -21,7 +21,7 @@ const (
 	DrainerReplicas int32 = 1
 	// TODO: better way to do incremental restore from pb files
 	RunReparoCommandTemplate = `kubectl exec -n={{ .Namespace }} {{ .PodName }} -- sh -c \
-"while [ \$(grep -r 'commitTS' /data.drainer/savepoint| awk '{print (\$3)}') -lt {{ .StopTSO }} ]; do echo 'wait end tso reached' && sleep 60; done; \
+"while [ \$(grep -r 'commitTS' /data/savepoint| awk '{print (\$3)}') -lt {{ .StopTSO }} ]; do echo 'wait end tso reached' && sleep 60; done; \
 printf '{{ .ReparoConfig }}' > reparo.toml && \
 ./reparo -config reparo.toml > /data/reparo.log" `
 )
