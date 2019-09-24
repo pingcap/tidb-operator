@@ -154,14 +154,10 @@ func GetServiceType(services []v1alpha1.Service, serviceName string) corev1.Serv
 	return corev1.ServiceTypeClusterIP
 }
 
-func roundUpSize(bytes int64, baseBytes int64) int64 {
-	return (bytes + baseBytes - 1) / baseBytes
-}
-
-// TiKVCapacity returns string resource requirement, tikv-server uses MB, GB,
-// TB as unit suffix, but it actually means MiB, GiB, TiB, so we cannot use
-// resource.String() directly. We must convert it to tikv-server units.
-// Minimum unit we use is MB, capacity less than 1MB is ignored.
+// TiKVCapacity returns string resource requirement. In tikv-server, KB/MB/GB
+// equal to MiB/GiB/TiB, so we cannot use resource.String() directly.
+// Minimum unit we use is MiB, capacity less than 1MiB is ignored.
+// https://github.com/tikv/tikv/blob/v3.0.3/components/tikv_util/src/config.rs#L155-L168
 func TiKVCapacity(limits *v1alpha1.ResourceRequirement) string {
 	defaultArgs := "0"
 	if limits == nil || limits.Storage == "" {
@@ -178,10 +174,9 @@ func TiKVCapacity(limits *v1alpha1.ResourceRequirement) string {
 		return defaultArgs
 	}
 	if i%humanize.GiByte == 0 {
-		return fmt.Sprintf("%dGB", i/humanize.GiByte)
-	} else {
-		return fmt.Sprintf("%dMB", roundUpSize(i, humanize.MiByte))
+		return fmt.Sprintf("%dGiB", i/humanize.GiByte)
 	}
+	return fmt.Sprintf("%dMiB", i/humanize.MiByte)
 }
 
 func GetSlowLogTailerImage(cluster *v1alpha1.TidbCluster) string {

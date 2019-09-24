@@ -119,7 +119,7 @@ func TestTiKVCapacity(t *testing.T) {
 				Storage: "100Gi",
 			},
 			expectFn: func(g *GomegaWithT, s string) {
-				g.Expect(s).To(Equal("100GB"))
+				g.Expect(s).To(Equal("100GiB"))
 			},
 		},
 		{
@@ -138,7 +138,7 @@ func TestTiKVCapacity(t *testing.T) {
 				Storage: "1G",
 			},
 			expectFn: func(g *GomegaWithT, s string) {
-				g.Expect(s).To(Equal("954MB"))
+				g.Expect(s).To(Equal("953MiB"))
 			},
 		},
 		{
@@ -147,7 +147,7 @@ func TestTiKVCapacity(t *testing.T) {
 				Storage: "1.5G",
 			},
 			expectFn: func(g *GomegaWithT, s string) {
-				g.Expect(s).To(Equal("1431MB"))
+				g.Expect(s).To(Equal("1430MiB"))
 			},
 		},
 	}
