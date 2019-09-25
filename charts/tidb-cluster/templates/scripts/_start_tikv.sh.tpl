@@ -37,9 +37,12 @@ ARGS="--pd=${SCHEME}://${CLUSTER_NAME}-pd:2379 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \
 --data-dir=/var/lib/tikv \
---capacity=${CAPACITY} \
 --config=/etc/tikv/tikv.toml
 "
+
+if [ -n "${CAPACITY:-}" ]; then
+    ARGS="${ARGS} --capacity=${CAPACITY}"
+fi
 
 echo "starting tikv-server ..."
 echo "/tikv-server ${ARGS}"

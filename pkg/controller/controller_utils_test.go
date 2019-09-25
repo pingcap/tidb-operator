@@ -80,72 +80,46 @@ func TestTiKVCapacity(t *testing.T) {
 
 	type testcase struct {
 		name     string
-		limit    *v1alpha1.ResourceRequirement
+		capacity string
 		expectFn func(*GomegaWithT, string)
 	}
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
-		test.expectFn(g, TiKVCapacity(test.limit))
+		test.expectFn(g, TiKVCapacity(test.capacity))
 	}
 	tests := []testcase{
 		{
-			name:  "limit is nil",
-			limit: nil,
+			name:     "failed to parse quantity",
+			capacity: "100x",
 			expectFn: func(g *GomegaWithT, s string) {
 				g.Expect(s).To(Equal("0"))
 			},
 		},
 		{
-			name: "storage is empty",
-			limit: &v1alpha1.ResourceRequirement{
-				Storage: "",
-			},
-			expectFn: func(g *GomegaWithT, s string) {
-				g.Expect(s).To(Equal("0"))
-			},
-		},
-		{
-			name: "failed to parse quantity",
-			limit: &v1alpha1.ResourceRequirement{
-				Storage: "100x",
-			},
-			expectFn: func(g *GomegaWithT, s string) {
-				g.Expect(s).To(Equal("0"))
-			},
-		},
-		{
-			name: "100Gi",
-			limit: &v1alpha1.ResourceRequirement{
-				Storage: "100Gi",
-			},
+			name:     "100Gi",
+			capacity: "100Gi",
 			expectFn: func(g *GomegaWithT, s string) {
 				g.Expect(s).To(Equal("100GB"))
 			},
 		},
 		{
-			name: "100GiB",
-			limit: &v1alpha1.ResourceRequirement{
-				Storage: "100GiB",
-			},
+			name:     "100GiB",
+			capacity: "100GiB",
 			expectFn: func(g *GomegaWithT, s string) {
 				// GiB is an invalid suffix
 				g.Expect(s).To(Equal("0"))
 			},
 		},
 		{
-			name: "1G",
-			limit: &v1alpha1.ResourceRequirement{
-				Storage: "1G",
-			},
+			name:     "1G",
+			capacity: "1G",
 			expectFn: func(g *GomegaWithT, s string) {
 				g.Expect(s).To(Equal("953MB"))
 			},
 		},
 		{
-			name: "1.5G",
-			limit: &v1alpha1.ResourceRequirement{
-				Storage: "1.5G",
-			},
+			name:     "1.5G",
+			capacity: "1.5G",
 			expectFn: func(g *GomegaWithT, s string) {
 				g.Expect(s).To(Equal("1430MB"))
 			},

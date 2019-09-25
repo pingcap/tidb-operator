@@ -160,14 +160,11 @@ func GetServiceType(services []v1alpha1.Service, serviceName string) corev1.Serv
 // https://github.com/tikv/tikv/blob/v3.0.3/components/tikv_util/src/config.rs#L155-L168
 // For backward compatibility with old TiKV versions, we should use GB/MB
 // rather than GiB/MiB, see https://github.com/tikv/tikv/blob/v2.1.16/src/util/config.rs#L359.
-func TiKVCapacity(limits *v1alpha1.ResourceRequirement) string {
+func TiKVCapacity(capacity string) string {
 	defaultArgs := "0"
-	if limits == nil || limits.Storage == "" {
-		return defaultArgs
-	}
-	q, err := resource.ParseQuantity(limits.Storage)
+	q, err := resource.ParseQuantity(capacity)
 	if err != nil {
-		glog.Errorf("failed to parse quantity %s: %v", limits.Storage, err)
+		glog.Errorf("failed to parse quantity %s: %v", capacity, err)
 		return defaultArgs
 	}
 	i, b := q.AsInt64()
