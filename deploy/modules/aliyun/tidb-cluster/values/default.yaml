@@ -15,6 +15,7 @@ tidb:
   logLevel: info
   service:
     type: LoadBalancer
+    externalTrafficPolicy: Local
     exposeStatus: true
     annotations:
       service.beta.kubernetes.io/alicloud-loadbalancer-address-type: intranet
