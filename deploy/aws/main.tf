@@ -27,13 +27,14 @@ module "vpc" {
 module "tidb-operator" {
   source = "../modules/aws/tidb-operator"
 
-  eks_name           = var.eks_name
-  eks_version        = var.eks_version
-  operator_version   = var.operator_version
-  config_output_path = "credentials/"
-  subnets            = local.subnets
-  vpc_id             = module.vpc.vpc_id
-  ssh_key_name       = module.key-pair.key_name
+  eks_name             = var.eks_name
+  eks_version          = var.eks_version
+  operator_version     = var.operator_version
+  config_output_path   = "credentials/"
+  subnets              = local.subnets
+  vpc_id               = module.vpc.vpc_id
+  ssh_key_name         = module.key-pair.key_name
+  operator_helm_values = var.operator_values == "" ? "" : file(var.operator_values)
 }
 
 module "bastion" {
