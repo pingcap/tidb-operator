@@ -26,6 +26,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -493,6 +494,15 @@ func (oa *operatorActions) CleanOperatorOrDie(info *OperatorConfig) {
 
 func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 	glog.Infof("upgrading tidb-operator %s", info.ReleaseName)
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(
+			label.New().Labels()).String(),
+	}
+	pods1, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(listOptions)
+	if err != nil {
+		return err
+	}
 	if err := oa.checkoutTag(info.Tag); err != nil {
 		return err
 	}
@@ -505,7 +515,38 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 	if err != nil {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
 	}
-	return nil
+
+	time.Sleep(5 * time.Minute)
+	pods2, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(listOptions)
+	if err != nil {
+		return err
+	}
+
+	return ensurePodsUnchanged(pods1, pods2)
+}
+
+func ensurePodsUnchanged(pods1, pods2 *corev1.PodList) error {
+	if reflect.DeepEqual(getUID(pods1), getUID(pods2)) {
+		glog.V(4).Infof("%#v", pods1)
+		glog.V(4).Infof("%#v", pods2)
+		glog.V(4).Infof("pods unchanged after operator upgraded")
+		return nil
+	}
+
+	glog.Infof("%#v", pods1)
+	glog.Infof("%#v", pods2)
+	return fmt.Errorf("some pods changed after operator upgraded")
+}
+
+func getUID(pods *corev1.PodList) []string {
+	arr := make([]string, 0, len(pods.Items))
+
+	for _, pod := range pods.Items {
+		arr = append(arr, string(pod.UID))
+	}
+
+	sort.Strings(arr)
+	return arr
 }
 
 func (oa *operatorActions) UpgradeOperatorOrDie(info *OperatorConfig) {
@@ -634,24 +675,34 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		afterPVCNames = append(afterPVCNames, pvc.GetName())
 	}
 	glog.V(4).Info(afterPVCNames)
-
-	pvList, err = oa.kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return err
-	}
-	var afterPVNames []string
-	for _, pv := range pvList.Items {
-		afterPVNames = append(afterPVNames, pv.GetName())
-	}
-	glog.V(4).Info(afterPVNames)
-
 	if !reflect.DeepEqual(beforePVCNames, afterPVCNames) {
 		return fmt.Errorf("pvc changed when we delete cluster: %s/%s, before: %v, after: %v",
 			ns, tcName, beforePVCNames, afterPVCNames)
 	}
-	if !reflect.DeepEqual(beforePVNames, afterPVNames) {
-		return fmt.Errorf("pv changed when we delete cluster: %s/%s, before: %v, after: %v",
-			ns, tcName, beforePVNames, afterPVNames)
+
+	waitPVFn := func() (done bool, err error) {
+		pvList, err = oa.kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{LabelSelector: selector.String()})
+		if err != nil {
+			return false, nil
+		}
+		var afterPVNames []string
+		for _, pv := range pvList.Items {
+			afterPVNames = append(afterPVNames, pv.GetName())
+		}
+		glog.V(4).Info(afterPVNames)
+
+		if !reflect.DeepEqual(beforePVNames, afterPVNames) {
+			glog.Errorf("pv changed when we delete cluster: %s/%s, before: %v, after: %v",
+				ns, tcName, beforePVNames, afterPVNames)
+			return false, nil
+		}
+
+		return true, nil
+	}
+
+	err = wait.Poll(oa.pollInterval, DefaultPollTimeout, waitPVFn)
+	if err != nil {
+		return err
 	}
 
 	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(info.GenerateBackupDirPodName(), &metav1.DeleteOptions{})

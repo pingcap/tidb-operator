@@ -319,7 +319,6 @@ func run() {
 		ocfg.Image = cfg.UpgradeOperatorImage
 		ocfg.Tag = cfg.UpgradeOperatorTag
 		oa.UpgradeOperatorOrDie(ocfg)
-		time.Sleep(5 * time.Minute)
 		postUpgrade := []*tests.TidbClusterConfig{
 			cluster3,
 			cluster1,
