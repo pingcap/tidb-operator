@@ -63,14 +63,6 @@ func main() {
 	cluster5 := newTidbClusterConfig(ns, "cluster5", "", "v2.1.16") // for v2.1.x series
 	cluster5.Resources["tikv.resources.limits.storage"] = "1G"
 
-	allClusters := []*tests.TidbClusterConfig{
-		cluster1,
-		cluster2,
-		cluster3,
-		cluster4,
-		cluster5,
-	}
-
 	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, cfg, nil)
 	oa.LabelNodesOrDie()
 	oa.CleanOperatorOrDie(ocfg)
@@ -81,10 +73,8 @@ func main() {
 	 * - deployment
 	 * - scaling
 	 * - update configuration
-	 * - switch back and forth between pod network and host network
 	 */
-	fn1 := func(wg *sync.WaitGroup, cluster *tests.TidbClusterConfig) {
-		defer wg.Done()
+	testBasic := func(wg *sync.WaitGroup, cluster *tests.TidbClusterConfig) {
 		oa.CleanTidbClusterOrDie(cluster)
 		oa.DeployTidbClusterOrDie(cluster)
 		oa.CheckTidbClusterStatusOrDie(cluster)
@@ -124,23 +114,12 @@ func main() {
 		oa.UpgradeTidbClusterOrDie(cluster)
 		oa.CheckTidbClusterStatusOrDie(cluster)
 
-		// switch to host network
-		cluster.RunInHost(true)
-		oa.UpgradeTidbClusterOrDie(cluster)
-		oa.CheckTidbClusterStatusOrDie(cluster)
-
-		// switch to pod network
-		cluster.RunInHost(false)
-		oa.UpgradeTidbClusterOrDie(cluster)
-		oa.CheckTidbClusterStatusOrDie(cluster)
 	}
 
 	/**
 	 * This test case covers upgrading TiDB version.
 	 */
-	fn2 := func(wg *sync.WaitGroup, cluster *tests.TidbClusterConfig) {
-		defer wg.Done()
-
+	testUpgrade := func(wg *sync.WaitGroup, cluster *tests.TidbClusterConfig) {
 		// deploy
 		oa.CleanTidbClusterOrDie(cluster)
 		oa.DeployTidbClusterOrDie(cluster)
@@ -169,8 +148,7 @@ func main() {
 	/**
 	 * This test case covers backup and restore between two clusters.
 	 */
-	fn3 := func(wg *sync.WaitGroup, clusterA, clusterB *tests.TidbClusterConfig) {
-		defer wg.Done()
+	testBackupAndRestore := func(wg *sync.WaitGroup, clusterA, clusterB *tests.TidbClusterConfig) {
 		oa.CleanTidbClusterOrDie(clusterA)
 		oa.CleanTidbClusterOrDie(clusterB)
 		oa.DeployTidbClusterOrDie(clusterA)
@@ -181,20 +159,61 @@ func main() {
 
 		// backup and restore
 		oa.BackupRestoreOrDie(clusterA, clusterB)
+
+		oa.StopInsertDataTo(clusterA)
+	}
+
+	/**
+	 * This test case switches back and forth between pod network and host network of a single cluster.
+	 * Note that only one cluster can run in host network mode at the same time.
+	 */
+	testHostNetwork := func(wg *sync.WaitGroup, cluster *tests.TidbClusterConfig) {
+		oa.CleanTidbClusterOrDie(cluster)
+		oa.DeployTidbClusterOrDie(cluster)
+		oa.CheckTidbClusterStatusOrDie(cluster)
+		oa.CheckDisasterToleranceOrDie(cluster)
+
+		// switch to host network
+		cluster.RunInHost(true)
+		oa.UpgradeTidbClusterOrDie(cluster)
+		oa.CheckTidbClusterStatusOrDie(cluster)
+
+		// switch to pod network
+		cluster.RunInHost(false)
+		oa.UpgradeTidbClusterOrDie(cluster)
+		oa.CheckTidbClusterStatusOrDie(cluster)
 	}
 
 	var wg sync.WaitGroup
 	wg.Add(4)
-	go fn1(&wg, cluster1)
-	go fn1(&wg, cluster5)
-	go fn2(&wg, cluster2)
-	go fn3(&wg, cluster3, cluster4)
+	go func() {
+		defer wg.Done()
+		testBasic(&wg, cluster1)
+		testHostNetwork(&wg, cluster1)
+		oa.CheckDataRegionDisasterToleranceOrDie(cluster1)
+		oa.CleanTidbClusterOrDie(cluster1)
+	}()
+	go func() {
+		defer wg.Done()
+		testBasic(&wg, cluster5)
+		oa.CheckDataRegionDisasterToleranceOrDie(cluster5)
+		oa.CleanTidbClusterOrDie(cluster5)
+	}()
+	go func() {
+		defer wg.Done()
+		testUpgrade(&wg, cluster2)
+		oa.CheckDataRegionDisasterToleranceOrDie(cluster2)
+		oa.CleanTidbClusterOrDie(cluster2)
+	}()
+	go func() {
+		defer wg.Done()
+		testBackupAndRestore(&wg, cluster3, cluster4)
+		oa.CheckDataRegionDisasterToleranceOrDie(cluster3)
+		oa.CheckDataRegionDisasterToleranceOrDie(cluster4)
+		oa.CleanTidbClusterOrDie(cluster3)
+		oa.CleanTidbClusterOrDie(cluster4)
+	}()
 	wg.Wait()
-
-	// check data regions disaster tolerance
-	for _, clusterInfo := range allClusters {
-		oa.CheckDataRegionDisasterToleranceOrDie(clusterInfo)
-	}
 
 	glog.Infof("\nFinished.")
 }
