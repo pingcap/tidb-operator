@@ -8,6 +8,7 @@ tikv:
 tidb:
   service:
     type: LoadBalancer
+    externalTrafficPolicy: Local
     annotations:
       cloud.google.com/load-balancer-type: "Internal"
   separateSlowLog: true
