@@ -292,6 +292,28 @@ func run() {
 				fta.StartKubeControllerManagerOrDie(vNode.IP)
 			}
 		}
+
+		// stop one kube-apiserver pod
+		faultApiServer := tests.SelectNode(cfg.APIServers)
+		fta.StopKubeAPIServerOrDie(faultApiServer)
+		defer fta.StartKubeAPIServerOrDie(faultApiServer)
+		time.Sleep(3 * time.Minute)
+		oa.CheckOneApiserverDownOrDie(ocfg, clusters, faultApiServer)
+		fta.StartKubeAPIServerOrDie(faultApiServer)
+
+		time.Sleep(time.Minute)
+		// stop all kube-apiserver pods
+		for _, physicalNode := range cfg.APIServers {
+			for _, vNode := range physicalNode.Nodes {
+				fta.StopKubeAPIServerOrDie(vNode.IP)
+			}
+		}
+		oa.CheckAllApiserverDownOrDie(ocfg, clusters)
+		for _, physicalNode := range cfg.APIServers {
+			for _, vNode := range physicalNode.Nodes {
+				fta.StartKubeAPIServerOrDie(vNode.IP)
+			}
+		}
 	}
 
 	// before operator upgrade
