@@ -1797,7 +1797,13 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 	values.Set("start", fmt.Sprintf("%d", start.Unix()))
 	values.Set("end", fmt.Sprintf("%d", end.Unix()))
 	values.Set("step", "30")
-	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources/proxy/1/api/v1/query_range?%s", svcName, ns, values.Encode())
+
+	datasourceID, err := getDatasourceID(svcName, ns)
+	if err != nil {
+		return err
+	}
+
+	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources/proxy/%d/api/v1/query_range?%s", svcName, ns, datasourceID, values.Encode())
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return err
@@ -1842,6 +1848,51 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 		clusterInfo.GrafanaClient = client
 	}
 	return nil
+}
+
+func getDatasourceID(svcName, namespace string) (int, error) {
+	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources", svcName, namespace)
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	req.SetBasicAuth(grafanaUsername, grafanaPassword)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		err := resp.Body.Close()
+		glog.Warning("close reponse failed", err)
+	}()
+
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	datasources := []struct {
+		Id   int    `json:"id"`
+		Name string `json:"name"`
+	}{}
+
+	if err := json.Unmarshal(buf, &datasources); err != nil {
+		return 0, err
+	}
+
+	for _, ds := range datasources {
+		if ds.Name == "tidb-cluster" {
+			return ds.Id, nil
+		}
+	}
+
+	return 0, pingcapErrors.New("not found tidb-cluster datasource")
+}
+
+func GetD(ns, tcName, databaseName, password string) string {
+	return fmt.Sprintf("root:%s@(%s-tidb.%s:4000)/%s?charset=utf8", password, tcName, ns, databaseName)
 }
 
 func getDSN(ns, tcName, databaseName, password string) string {
