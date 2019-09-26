@@ -17,10 +17,11 @@ import (
 	"flag"
 	"io"
 
+	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/diagnose"
+
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/completion"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/ctop"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/debug"
-	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/dump"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/get"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/info"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/list"
@@ -79,7 +80,7 @@ func NewTkcCommand(streams genericclioptions.IOStreams) *cobra.Command {
 				use.NewCmdUse(tkcContext, streams),
 				version.NewCmdVersion(tkcContext, streams.Out),
 				upinfo.NewCmdUpInfo(tkcContext, streams),
-				dump.NewCmdDumpInfo(tkcContext, streams),
+				diagnose.NewCmdDiagnoseInfo(tkcContext, streams),
 			},
 		},
 		{

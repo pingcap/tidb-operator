@@ -1,4 +1,4 @@
-package dump
+package diagnose
 
 import (
 	"bufio"
@@ -9,14 +9,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ghodss/yaml"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
-
-	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -28,23 +27,23 @@ import (
 )
 
 const (
-	dumpLongDesc = `
+	diagnoseLongDesc = `
 		Export a tidb cluster diagnostic information of a specified cluster.
 		
 		You may omit --tidbcluster option by running 'tkc use <clusterName>'.
 `
-	dumpExample = `
+	diagnoseExample = `
 		# specify a tidb cluster to use
-		tkctl dump
+		tkctl diagnose
 
-		# dump specify tidb cluster information
-		tkctl dump -t demo-cluster
+		# diagnose specify tidb cluster information
+		tkctl diagnose -t demo-cluster
 `
-	dumpUsage = `expected 'dump -t CLUSTER_NAME' for the dump command or
+	diagnoseUsage = `expected 'diagnose -t CLUSTER_NAME' for the diagnose command or
 using 'tkctl use to set tidb cluster first.'`
 )
 
-type dumpInfoOptions struct {
+type diagnoseInfoOptions struct {
 	kubeContext     string
 	namespace       string
 	tidbClusterName string
@@ -59,22 +58,22 @@ type dumpInfoOptions struct {
 	genericclioptions.IOStreams
 }
 
-// NewDumpInfoOptions returns a DumpInfoOptions
-func NewDumpInfoOptions(streams genericclioptions.IOStreams) *dumpInfoOptions {
-	return &dumpInfoOptions{
+// NewDiagnoseInfoOptions returns a diagnoseInfoOptions.
+func NewDiagnoseInfoOptions(streams genericclioptions.IOStreams) *diagnoseInfoOptions {
+	return &diagnoseInfoOptions{
 		IOStreams: streams,
 	}
 }
 
-// NewCmdDumpInfo creates the dump command to dump specify tidb cluster information
-func NewCmdDumpInfo(tkcContext *config.TkcContext, streams genericclioptions.IOStreams) *cobra.Command {
-	o := NewDumpInfoOptions(streams)
+// NewCmdDiagnoseInfo creates the diagnose command to export diagnose information of specify tidb cluster.
+func NewCmdDiagnoseInfo(tkcContext *config.TkcContext, streams genericclioptions.IOStreams) *cobra.Command {
+	o := NewDiagnoseInfoOptions(streams)
 
 	cmd := &cobra.Command{
-		Use:     "dump",
-		Short:   "dump tidb cluster log and kubernetes object information",
-		Long:    dumpLongDesc,
-		Example: dumpExample,
+		Use:     "diagnose",
+		Short:   "export a tidb cluster diagnostic information",
+		Long:    diagnoseLongDesc,
+		Example: diagnoseExample,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(o.Complete(tkcContext, cmd, args))
 			cmdutil.CheckErr(o.Run())
@@ -82,13 +81,13 @@ func NewCmdDumpInfo(tkcContext *config.TkcContext, streams genericclioptions.IOS
 	}
 
 	cmd.Flags().StringVar(&o.logPath, "path", "", "The log path to dump.")
-	cmd.Flags().DurationVar(&o.since, "since", 3600000000000, "Return logs newer than a relative duration like 1m, or 3h.")
+	cmd.Flags().DurationVar(&o.since, "since", time.Duration(1)*time.Hour, "Return logs newer than a relative duration like 1m, or 3h.")
 	cmd.Flags().Int64Var(&o.byteReadLimit, "byteReadLimit", 500000, "The maximum number of bytes dump log.")
 	cmdutil.CheckErr(cmd.MarkFlagRequired("path"))
 	return cmd
 }
 
-func (o *dumpInfoOptions) Complete(tkcContext *config.TkcContext, cmd *cobra.Command, args []string) error {
+func (o *diagnoseInfoOptions) Complete(tkcContext *config.TkcContext, cmd *cobra.Command, args []string) error {
 	clientConfig, err := tkcContext.ToTkcClientConfig()
 	if err != nil {
 		return err
@@ -97,7 +96,7 @@ func (o *dumpInfoOptions) Complete(tkcContext *config.TkcContext, cmd *cobra.Com
 	if tidbClusterName, ok := clientConfig.TidbClusterName(); ok {
 		o.tidbClusterName = tidbClusterName
 	} else {
-		return cmdutil.UsageErrorf(cmd, dumpUsage)
+		return cmdutil.UsageErrorf(cmd, diagnoseUsage)
 	}
 
 	namespace, _, err := clientConfig.Namespace()
@@ -126,7 +125,7 @@ func (o *dumpInfoOptions) Complete(tkcContext *config.TkcContext, cmd *cobra.Com
 	return nil
 }
 
-func (o *dumpInfoOptions) Run() error {
+func (o *diagnoseInfoOptions) Run() error {
 	if err := createPathIfNotExist(o.logPath); err != nil {
 		return err
 	}
@@ -197,7 +196,7 @@ func NewTiDBClusterDumper(tc *v1alpha1.TidbCluster) *tidbClusterDumper {
 	}
 }
 
-// Dump dump the details of tidbclusters from a particular namespace.
+// Dump dumps the details of tidbclusters from a particular namespace.
 func (d *tidbClusterDumper) Dump(logPath string, resourceWriter io.Writer) error {
 	logFile, err := os.Create(filepath.Join(logPath, fmt.Sprintf("%s-%s-tidbcluster-info.yaml", d.tc.Name, d.tc.Namespace)))
 	if err != nil {
@@ -237,7 +236,7 @@ func NewTiDBClusterStatefulDumper(tc *v1alpha1.TidbCluster, kubeCli *kubernetes.
 	}
 }
 
-// Dump dump the details of statefulsets from a particular tidb cluster.
+// Dump dumps the details of statefulsets from a particular tidb cluster.
 func (d *tidbClusterStatefulDumper) Dump(logPath string, resourceWriter io.Writer) error {
 	logFile, err := os.Create(filepath.Join(logPath, fmt.Sprintf("%s-%s-statefulsets-info.yaml", d.tc.Name, d.tc.Namespace)))
 	if err != nil {
@@ -309,7 +308,7 @@ func NewPodDumper(kubeCli *kubernetes.Clientset, pod v1.Pod, sinceSeconds int64,
 	}
 }
 
-// Dump dump detail information and logs of pod from a particular pod.
+// Dump dumps detail information and logs of pod from a particular pod.
 func (d *podDumper) Dump(logPath string, resourceWriter io.Writer) error {
 	if err := DumpObj(&d.pod, resourceWriter); err != nil {
 		return err
@@ -332,7 +331,7 @@ func (d *podDumper) Dump(logPath string, resourceWriter io.Writer) error {
 	return d.DumpLog(path)
 }
 
-// Dump dump the details of a named Pod from a particular namespace.
+// Dump dumps the details of a named Pod from a particular namespace.
 func (d *podDumper) DumpDetail(logPath string) error {
 	logFile, err := os.Create(filepath.Join(logPath, fmt.Sprintf("%s-%s.yaml", d.pod.Name, d.pod.Namespace)))
 	if err != nil {
@@ -350,7 +349,7 @@ func (d *podDumper) DumpDetail(logPath string) error {
 	return writeString(logFile, string(body))
 }
 
-// Dump dump dump the logs for the last terminated container and current running container. If info about the container is not available then a specific
+// Dump dumps the logs for the last terminated container and current running container. If info about the container is not available then a specific
 // error is returned.
 func (d *podDumper) DumpLog(logPath string) error {
 	for _, c := range d.pod.Spec.Containers {
@@ -364,7 +363,7 @@ func (d *podDumper) DumpLog(logPath string) error {
 	return nil
 }
 
-// DumpContainerLog dump logs for particular pod and container. Previous indicates to read archived logs created by log rotation or container crash
+// DumpContainerLog dumps logs for particular pod and container. Previous indicates to read archived logs created by log rotation or container crash
 func (d *podDumper) DumpContainerLog(logPath string, containerName string, previous bool) error {
 	body, err := getLogStream(d.kubeCli, d.pod, mapToLogOptions(containerName, d.sinceSeconds, d.byteReadLimit, previous))
 	if err != nil {
