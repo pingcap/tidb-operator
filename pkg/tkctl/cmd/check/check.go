@@ -52,7 +52,7 @@ const (
       tkctl check --chart charts/tidb-cluster --values charts/tidb-cluster/values.yaml
 
       # check config from remote chart
-      tkctl check --chart pingcap/tidb-cluster --values charts/tidb-cluster/values.yaml --version v1.1.0-alpha.2
+      tkctl check --chart pingcap/tidb-cluster --values charts/tidb-cluster/values.yaml --chart-version v1.1.0-alpha.2
 `
 	// AWS load balancer annotations
 	awsILBAnnotationKey    = "service.beta.kubernetes.io/aws-load-balancer-internal"
@@ -196,10 +196,12 @@ func (o *CheckOptions) Run() error {
 			fmt.Println(cfg)
 			infoPrintln("#### TiDB Config ####\n")
 		}
+		tidbcfg = config_v2_1_16.GetGlobalTidbConfig()
 		_, err = toml.Decode(cfg, &tidbcfg)
 		if err != nil {
 			return fmt.Errorf("failed to decode tidb config: %v", err)
 		}
+		overrideTidbConfig(tidbcfg)
 		if tidbcfg.Log.Level != "info" {
 			warnPrintf("The recommended TiDB log-level is info, the current is %s\n", tidbcfg.Log.Level)
 		}
@@ -219,6 +221,7 @@ func (o *CheckOptions) Run() error {
 			fmt.Println(cfg)
 			infoPrintln("#### TiKV Config ####\n")
 		}
+		tikvcfg = config_v2_1_16.GetDefaultTikvConfig()
 		_, err = toml.Decode(cfg, &tikvcfg)
 		if err != nil {
 			return fmt.Errorf("failed to decode tikv config: %v", err)
@@ -228,14 +231,21 @@ func (o *CheckOptions) Run() error {
 		m, b1 := memoryLimit.AsInt64()
 		if b1 {
 			// rocksdb.writecf.block-cache-size 10%~30% of memory limit
-			// rocksdb.defaultcf.block-cache-size 30%~50% of memory limit
 			if int64(tikvcfg.Rocksdb.Writecf.BlockCacheSize) < m/10 || int64(tikvcfg.Rocksdb.Writecf.BlockCacheSize) > 3*m/10 {
 				errorPrintf("TiKV rocksdb.writecf.block-cache-size should be 10%% ~ 30%% of memory limit, but got %d/%d\n", tikvcfg.Rocksdb.Writecf.BlockCacheSize, m)
 			}
+			// rocksdb.defaultcf.block-cache-size 30%~50% of memory limit
 			if int64(tikvcfg.Rocksdb.Defaultcf.BlockCacheSize) < 3*m/10 || int64(tikvcfg.Rocksdb.Defaultcf.BlockCacheSize) > m/2 {
 				errorPrintf("TiKV rocksdb.defaultcf.block-cache-size should be 30%% ~ 50%% of memory limit, but got %d/%d\n", tikvcfg.Rocksdb.Defaultcf.BlockCacheSize, m)
 			}
-			infoPrintf("TiKV rocksdb.lockcf.block-cache-size: %dMiB\n", tikvcfg.Rocksdb.Lockcf.BlockCacheSize/1024/1024)
+			// rocksdb.lockcf.block-cache-size should be 256MB ~ 2GB
+			if tikvcfg.Rocksdb.Lockcf.BlockCacheSize < 256*1024*1024 || tikvcfg.Rocksdb.Lockcf.BlockCacheSize > 2*1024*1024*1024 {
+				errorPrintf("TiKV rocksdb.lockcf.block-cache-size should be between 256MB ~ 2GB, but got %dMiB\n", tikvcfg.Rocksdb.Lockcf.BlockCacheSize/1024/1024)
+			}
+			// raftdb.defaultcf.block-cache-size should be 256MB ~ 2GB
+			if tikvcfg.Raftdb.Defaultcf.BlockCacheSize < 256*1024*1024 || tikvcfg.Raftdb.Defaultcf.BlockCacheSize > 2*1024*1024*1024 {
+				errorPrintf("TiKV raftdb.defaultcf.block-cache-size should be between 256MB ~ 2GB, but got %dMiB\n", tikvcfg.Raftdb.Defaultcf.BlockCacheSize/1024/1024)
+			}
 		}
 		if !tikvcfg.RaftStore.SyncLog {
 			errorPrintln("Raftstore sync-log is disabled")
@@ -257,11 +267,15 @@ func (o *CheckOptions) Run() error {
 			fmt.Println(cfg)
 			infoPrintln("#### PD Config ####\n")
 		}
-		_, err = toml.Decode(cfg, &pdcfg)
+		meta, err := toml.Decode(cfg, &pdcfg)
 		if err != nil {
 			return fmt.Errorf("failed to decode pd config: %v", err)
 		}
-		if pdcfg.Log.Level != "info" {
+		if err := pdcfg.Adjust(&meta); err != nil {
+			errorPrintf("failed to adjust configuration: %v\n", err)
+		}
+		overridePdConfig(pdcfg)
+		if pdcfg.Log.Level != "" && pdcfg.Log.Level != "info" {
 			warnPrintf("The recommended PD log-level is info, the current is %s\n", pdcfg.Log.Level)
 		}
 		if pdcfg.Replication.MaxReplicas != 3 && pdcfg.Replication.MaxReplicas != 5 {
@@ -269,6 +283,23 @@ func (o *CheckOptions) Run() error {
 		}
 	}
 	return nil
+}
+
+// Use the command line arguments to override PD config
+func overridePdConfig(pdcfg *config_v2_1_16.PdConfig) {
+	pdcfg.DataDir = "/var/lib/pd"
+	pdcfg.Name = "tidb-cluster-pd-0"
+	pdcfg.PeerUrls = "http://0.0.0.0:2380"
+	pdcfg.AdvertisePeerUrls = "http://tidb-cluster-pd-0.tidb-cluster-pd.tidb.svc:2380"
+	pdcfg.ClientUrls = "http://0.0.0.0:2380"
+	pdcfg.AdvertiseClientUrls = "http://tidb-cluster-pd-0.tidb-cluster-pd.tidb.svc:2380"
+}
+
+// Use the command line arguments to override TiDB config
+func overrideTidbConfig(tidbcfg *config_v2_1_16.TidbConfig) {
+	tidbcfg.Store = "tikv"
+	tidbcfg.Host = "0.0.0.0"
+	tidbcfg.Path = "tidb-cluster-pd:2379"
 }
 
 func checkResourceSettings(tc *v1alpha1.TidbCluster, pump *appsv1.StatefulSet, drainer *appsv1.StatefulSet) {

@@ -1,18 +1,44 @@
+// Copyright 2019. PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package config
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"net/url"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/coreos/go-semver/semver"
 	gh "github.com/dustin/go-humanize"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/log"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
+
+var defaultSchedulers = SchedulerConfigs{
+	{Type: "balance-region"},
+	{Type: "balance-leader"},
+	{Type: "hot-region"},
+	{Type: "label"},
+}
 
 // Config is the pd server configuration.
 type PdConfig struct {
@@ -331,5 +357,352 @@ func (s *StringSlice) UnmarshalJSON(text []byte) error {
 		return nil
 	}
 	*s = strings.Split(data, ",")
+	return nil
+}
+
+const (
+	defaultLeaderLease             = int64(3)
+	defaultNextRetryDelay          = time.Second
+	defaultCompactionMode          = "periodic"
+	defaultAutoCompactionRetention = "1h"
+
+	defaultName                = "pd"
+	defaultClientUrls          = "http://127.0.0.1:2379"
+	defaultPeerUrls            = "http://127.0.0.1:2380"
+	defaultInitialClusterState = "new"
+
+	// etcd use 100ms for heartbeat and 1s for election timeout.
+	// We can enlarge both a little to reduce the network aggression.
+	// now embed etcd use TickMs for heartbeat, we will update
+	// after embed etcd decouples tick and heartbeat.
+	defaultTickInterval = 500 * time.Millisecond
+	// embed etcd has a check that `5 * tick > election`
+	defaultElectionInterval = 3000 * time.Millisecond
+
+	defaultHeartbeatStreamRebindInterval = time.Minute
+
+	defaultLeaderPriorityCheckInterval = time.Minute
+
+	defaultDisableErrorVerbose = true
+)
+
+func adjustString(v *string, defValue string) {
+	if len(*v) == 0 {
+		*v = defValue
+	}
+}
+
+func adjustUint64(v *uint64, defValue uint64) {
+	if *v == 0 {
+		*v = defValue
+	}
+}
+
+func adjustInt64(v *int64, defValue int64) {
+	if *v == 0 {
+		*v = defValue
+	}
+}
+
+func adjustFloat64(v *float64, defValue float64) {
+	if *v == 0 {
+		*v = defValue
+	}
+}
+
+func adjustDuration(v *Duration, defValue time.Duration) {
+	if v.Duration == 0 {
+		v.Duration = defValue
+	}
+}
+
+func adjustSchedulers(v *SchedulerConfigs, defValue SchedulerConfigs) {
+	if len(*v) == 0 {
+		*v = defValue
+	}
+}
+
+// Utility to test if a configuration is defined.
+type configMetaData struct {
+	meta *toml.MetaData
+	path []string
+}
+
+func newConfigMetadata(meta *toml.MetaData) *configMetaData {
+	return &configMetaData{meta: meta}
+}
+
+func (m *configMetaData) IsDefined(key string) bool {
+	if m.meta == nil {
+		return false
+	}
+	keys := append([]string(nil), m.path...)
+	keys = append(keys, key)
+	return m.meta.IsDefined(keys...)
+}
+
+func (m *configMetaData) Child(path ...string) *configMetaData {
+	newPath := append([]string(nil), m.path...)
+	newPath = append(newPath, path...)
+	return &configMetaData{
+		meta: m.meta,
+		path: newPath,
+	}
+}
+
+func (m *configMetaData) CheckUndecoded() error {
+	if m.meta == nil {
+		return nil
+	}
+	undecoded := m.meta.Undecoded()
+	if len(undecoded) == 0 {
+		return nil
+	}
+	errInfo := "Config contains undefined item: "
+	for _, key := range undecoded {
+		errInfo += key.String() + ", "
+	}
+	return errors.New(errInfo[:len(errInfo)-2])
+}
+
+// Adjust is used to adjust the PD configurations.
+func (c *PdConfig) Adjust(meta *toml.MetaData) error {
+	configMetaData := newConfigMetadata(meta)
+	if err := configMetaData.CheckUndecoded(); err != nil {
+		c.WarningMsgs = append(c.WarningMsgs, err.Error())
+	}
+	adjustString(&c.Name, defaultName)
+	adjustString(&c.DataDir, fmt.Sprintf("default.%s", c.Name))
+
+	if err := c.validate(); err != nil {
+		return err
+	}
+
+	adjustString(&c.ClientUrls, defaultClientUrls)
+	adjustString(&c.AdvertiseClientUrls, c.ClientUrls)
+	adjustString(&c.PeerUrls, defaultPeerUrls)
+	adjustString(&c.AdvertisePeerUrls, c.PeerUrls)
+
+	if len(c.InitialCluster) == 0 {
+		// The advertise peer urls may be http://127.0.0.1:2380,http://127.0.0.1:2381
+		// so the initial cluster is pd=http://127.0.0.1:2380,pd=http://127.0.0.1:2381
+		items := strings.Split(c.AdvertisePeerUrls, ",")
+
+		sep := ""
+		for _, item := range items {
+			c.InitialCluster += fmt.Sprintf("%s%s=%s", sep, c.Name, item)
+			sep = ","
+		}
+	}
+
+	adjustString(&c.InitialClusterState, defaultInitialClusterState)
+
+	if len(c.Join) > 0 {
+		if _, err := url.Parse(c.Join); err != nil {
+			return errors.Errorf("failed to parse join addr:%s, err:%v", c.Join, err)
+		}
+	}
+
+	adjustInt64(&c.LeaderLease, defaultLeaderLease)
+
+	adjustDuration(&c.TsoSaveInterval, time.Duration(defaultLeaderLease)*time.Second)
+
+	if c.nextRetryDelay == 0 {
+		c.nextRetryDelay = defaultNextRetryDelay
+	}
+
+	adjustString(&c.AutoCompactionMode, defaultCompactionMode)
+	adjustString(&c.AutoCompactionRetention, defaultAutoCompactionRetention)
+	adjustDuration(&c.TickInterval, defaultTickInterval)
+	adjustDuration(&c.ElectionInterval, defaultElectionInterval)
+
+	adjustString(&c.NamespaceClassifier, "table")
+
+	adjustString(&c.Metric.PushJob, c.Name)
+
+	if err := c.Schedule.adjust(configMetaData.Child("schedule")); err != nil {
+		return err
+	}
+	if err := c.Replication.adjust(configMetaData.Child("replication")); err != nil {
+		return err
+	}
+
+	c.adjustLog(configMetaData.Child("log"))
+
+	adjustDuration(&c.heartbeatStreamBindInterval, defaultHeartbeatStreamRebindInterval)
+
+	adjustDuration(&c.leaderPriorityCheckInterval, defaultLeaderPriorityCheckInterval)
+
+	if !configMetaData.IsDefined("enable-prevote") {
+		c.PreVote = true
+	}
+	return nil
+}
+
+func (c *PdConfig) adjustLog(meta *configMetaData) {
+	if !meta.IsDefined("disable-error-verbose") {
+		c.Log.DisableErrorVerbose = defaultDisableErrorVerbose
+	}
+}
+
+func (c *PdConfig) clone() *PdConfig {
+	cfg := &PdConfig{}
+	*cfg = *c
+	return cfg
+}
+
+func (c *PdConfig) String() string {
+	data, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return "<nil>"
+	}
+	return string(data)
+}
+
+const (
+	defaultMaxReplicas            = 3
+	defaultMaxSnapshotCount       = 3
+	defaultMaxPendingPeerCount    = 16
+	defaultMaxMergeRegionSize     = 0
+	defaultMaxMergeRegionKeys     = 0
+	defaultSplitMergeInterval     = 1 * time.Hour
+	defaultPatrolRegionInterval   = 100 * time.Millisecond
+	defaultMaxStoreDownTime       = 30 * time.Minute
+	defaultLeaderScheduleLimit    = 4
+	defaultRegionScheduleLimit    = 4
+	defaultReplicaScheduleLimit   = 8
+	defaultMergeScheduleLimit     = 8
+	defaultHotRegionScheduleLimit = 2
+	defaultTolerantSizeRatio      = 5
+	defaultLowSpaceRatio          = 0.8
+	defaultHighSpaceRatio         = 0.6
+	// defaultHotRegionCacheHitsThreshold is the low hit number threshold of the
+	// hot region.
+	defaultHotRegionCacheHitsThreshold = 3
+)
+
+func (c *ScheduleConfig) adjust(meta *configMetaData) error {
+	if !meta.IsDefined("max-snapshot-count") {
+		adjustUint64(&c.MaxSnapshotCount, defaultMaxSnapshotCount)
+	}
+	if !meta.IsDefined("max-pending-peer-count") {
+		adjustUint64(&c.MaxPendingPeerCount, defaultMaxPendingPeerCount)
+	}
+	if !meta.IsDefined("max-merge-region-size") {
+		adjustUint64(&c.MaxMergeRegionSize, defaultMaxMergeRegionSize)
+	}
+	if !meta.IsDefined("max-merge-region-keys") {
+		adjustUint64(&c.MaxMergeRegionKeys, defaultMaxMergeRegionKeys)
+	}
+	adjustDuration(&c.SplitMergeInterval, defaultSplitMergeInterval)
+	adjustDuration(&c.PatrolRegionInterval, defaultPatrolRegionInterval)
+	adjustDuration(&c.MaxStoreDownTime, defaultMaxStoreDownTime)
+	if !meta.IsDefined("leader-schedule-limit") {
+		adjustUint64(&c.LeaderScheduleLimit, defaultLeaderScheduleLimit)
+	}
+	if !meta.IsDefined("region-schedule-limit") {
+		adjustUint64(&c.RegionScheduleLimit, defaultRegionScheduleLimit)
+	}
+	if !meta.IsDefined("replica-schedule-limit") {
+		adjustUint64(&c.ReplicaScheduleLimit, defaultReplicaScheduleLimit)
+	}
+	if !meta.IsDefined("merge-schedule-limit") {
+		adjustUint64(&c.MergeScheduleLimit, defaultMergeScheduleLimit)
+	}
+	if !meta.IsDefined("hot-region-schedule-limit") {
+		adjustUint64(&c.HotRegionScheduleLimit, defaultHotRegionScheduleLimit)
+	}
+	if !meta.IsDefined("hot-region-cache-hits-threshold") {
+		adjustUint64(&c.HotRegionCacheHitsThreshold, defaultHotRegionCacheHitsThreshold)
+	}
+	if !meta.IsDefined("tolerant-size-ratio") {
+		adjustFloat64(&c.TolerantSizeRatio, defaultTolerantSizeRatio)
+	}
+	adjustFloat64(&c.LowSpaceRatio, defaultLowSpaceRatio)
+	adjustFloat64(&c.HighSpaceRatio, defaultHighSpaceRatio)
+	adjustSchedulers(&c.Schedulers, defaultSchedulers)
+
+	return c.validate()
+}
+
+func (c *ScheduleConfig) validate() error {
+	if c.TolerantSizeRatio < 0 {
+		return errors.New("tolerant-size-ratio should be nonnegative")
+	}
+	if c.LowSpaceRatio < 0 || c.LowSpaceRatio > 1 {
+		return errors.New("low-space-ratio should between 0 and 1")
+	}
+	if c.HighSpaceRatio < 0 || c.HighSpaceRatio > 1 {
+		return errors.New("high-space-ratio should between 0 and 1")
+	}
+	if c.LowSpaceRatio <= c.HighSpaceRatio {
+		return errors.New("low-space-ratio should be larger than high-space-ratio")
+	}
+	return nil
+}
+
+func (c *PdConfig) validate() error {
+	if c.Join != "" && c.InitialCluster != "" {
+		return errors.New("-initial-cluster and -join can not be provided at the same time")
+	}
+	dataDir, err := filepath.Abs(c.DataDir)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	logFile, err := filepath.Abs(c.Log.File.Filename)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	rel, err := filepath.Rel(dataDir, filepath.Dir(logFile))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if !strings.HasPrefix(rel, "..") {
+		return errors.New("log directory shouldn't be the subdirectory of data directory")
+	}
+
+	return nil
+}
+
+func (c *ReplicationConfig) validate() error {
+	for _, label := range c.LocationLabels {
+		err := ValidateLabelString(label)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *ReplicationConfig) adjust(meta *configMetaData) error {
+	adjustUint64(&c.MaxReplicas, defaultMaxReplicas)
+	return c.validate()
+}
+
+const matchRule = "^[A-Za-z0-9]([-A-Za-z0-9_.]*[A-Za-z0-9])?$"
+
+// ValidateLabelString checks the legality of the label string.
+// The valid label consist of alphanumeric characters, '-', '_' or '.',
+// and must start and end with an alphanumeric character.
+func ValidateLabelString(s string) error {
+	isValid, _ := regexp.MatchString(matchRule, s)
+	if !isValid {
+		return errors.Errorf("invalid label: %s", s)
+	}
+	return nil
+}
+
+// ValidateLabels checks the legality of the labels.
+func ValidateLabels(labels []*metapb.StoreLabel) error {
+	for _, label := range labels {
+		err := ValidateLabelString(label.Key)
+		if err != nil {
+			return err
+		}
+		err = ValidateLabelString(label.Value)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
