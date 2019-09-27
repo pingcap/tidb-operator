@@ -484,7 +484,7 @@ type RestoreSpec struct {
 	BackupNamespace string `json:"backupNamespace"`
 	// SecretName is the name of the secret which stores
 	// tidb cluster's username and password.
-	SecretName string `json:"secretName"`
+	TidbSecretName string `json:"tidbSecretName"`
 	// StorageClassName is the storage class for restore job's PV.
 	StorageClassName string `json:"storageClassName"`
 	// StorageSize is the request storage size for restore job
