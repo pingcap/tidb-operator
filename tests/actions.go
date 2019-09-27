@@ -1837,7 +1837,7 @@ func getDatasourceID(svcName, namespace string) (int, error) {
 
 	for _, ds := range datasources {
 		if ds.Name == "tidb-cluster" {
-			return ds.Id
+			return ds.Id, nil
 		}
 	}
 
