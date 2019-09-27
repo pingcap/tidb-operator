@@ -1955,7 +1955,7 @@ func getDatasourceID(svcName, namespace string) (int, error) {
 	}
 	defer func() {
 		err := resp.Body.Close()
-		glog.Warning("close reponse failed", err)
+		glog.Warning("close response failed", err)
 	}()
 
 	buf, err := ioutil.ReadAll(resp.Body)
