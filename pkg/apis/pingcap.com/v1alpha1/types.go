@@ -161,6 +161,7 @@ type PodAttributesSpec struct {
 	Annotations        map[string]string          `json:"annotations,omitempty"`
 	HostNetwork        bool                       `json:"hostNetwork,omitempty"`
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+	PriorityClassName  string                     `json:"priorityClassName,omitempty"`
 }
 
 // Service represent service type used in TidbCluster

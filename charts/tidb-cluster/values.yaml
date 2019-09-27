@@ -22,7 +22,9 @@ schedulerName: tidb-scheduler
 # timezone is the default system timzone for TiDB
 timezone: UTC
 
-# default reclaim policy of a PV
+# reclaim policy of a PV, default: Retain.
+# you must set it to Retain to ensure data safety in production environment.
+# https://pingcap.com/docs/v3.0/tidb-in-kubernetes/reference/configuration/local-pv/#data-security
 pvReclaimPolicy: Retain
 
 # services is the service list to expose, default is ClusterIP
@@ -167,6 +169,10 @@ pd:
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
   podSecurityContext: {}
 
+  # Specify the priorityClassName for PD Pod.
+  # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
+  priorityClassName: ""
+
 tikv:
   # Please refer to https://github.com/tikv/tikv/blob/master/etc/config-template.toml for the default
   # tikv configurations (change to the tags of your tikv version),
@@ -252,6 +258,10 @@ tikv:
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
   podSecurityContext: {}
 
+  # Specify the priorityClassName for TiKV Pod.
+  # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
+  priorityClassName: ""
+
 tidb:
   # Please refer to https://github.com/pingcap/tidb/blob/master/config/config.toml.example for the default
   # tidb configurations(change to the tags of your tidb version),
@@ -321,6 +331,10 @@ tidb:
   # Specify the security context of TiDB Pod.
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
   podSecurityContext: {}
+
+  # Specify the priorityClassName for TiDB Pod.
+  # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
+  priorityClassName: ""
 
   maxFailoverCount: 3
   service:
@@ -558,8 +572,9 @@ binlog:
     # just follow the format in the file and configure in the 'config' section
     # as below if you want to customize any configuration.
     # config: |
-    #   worker-count = 16
     #   detect-interval = 10
+    #   [syncer]
+    #   worker-count = 16
     #   disable-dispatch = false
     #   ignore-schemas = "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql"
     #   safe-mode = false
