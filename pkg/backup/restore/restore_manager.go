@@ -155,7 +155,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore, backup *v1al
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
-	user, password, reason, err := backuputil.GetTidbUserAndPassword(backup, rm.secretLister)
+	user, password, reason, err := backuputil.GetTidbUserAndPassword(ns, name, restore.Spec.TidbSecretName, rm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}

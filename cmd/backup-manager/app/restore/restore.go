@@ -75,12 +75,9 @@ func (ro *RestoreOpts) loadTidbClusterData(restorePath string) error {
 		fmt.Sprintf("-p=%s", ro.Password),
 	}
 
-	loader := exec.Command("/loader", args...)
-	if err := loader.Start(); err != nil {
-		return fmt.Errorf("cluster %s, start loader command %v falied, err: %v", ro, args, err)
-	}
-	if err := loader.Wait(); err != nil {
-		return fmt.Errorf("cluster %s, execute loader command %v failed, err: %v", ro, args, err)
+	output, err := exec.Command("/loader", args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("cluster %s, execute loader command %v failed, output: %s, err: %v", ro, args, string(output), err)
 	}
 	return nil
 }
@@ -92,7 +89,10 @@ func unarchiveBackupData(backupFile, destDir string) (string, error) {
 		return unarchiveBackupPath, err
 	}
 	backupName := strings.TrimSuffix(filepath.Base(backupFile), constants.DefaultArchiveExtention)
-	err := archiver.Unarchive(backupFile, destDir)
+	tarGz := archiver.NewTarGz()
+	// overwrite if the file already exists
+	tarGz.OverwriteExisting = true
+	err := tarGz.Unarchive(backupFile, destDir)
 	if err != nil {
 		return unarchiveBackupPath, fmt.Errorf("unarchive backup data %s to %s failed, err: %v", backupFile, destDir, err)
 	}
