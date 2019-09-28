@@ -1,0 +1,72 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sysbench-warmup
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: sysbench-warmup
+        image: uhub.ucloud.cn/pingcap/sysbench:latest
+        env:
+        - name: TABLE_COUNT
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['table-count']
+        - name: TABLE_SIZE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['table-size']
+        - name: TIDB_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['tidb-host']
+        - name: TIDB_PORT
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['tidb-port']
+        - name: TIDB_USER
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['tidb-user']
+        - name: TIDB_PASSWORD
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['tidb-password']
+        - name: TIDB_DB
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['tidb-db']
+        - name: SYSBENCH_TIME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['sysbench-time']
+        - name: SYSBENCH_THREADS
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['sysbench-threads']
+        command:
+        - sysbench
+        - --config-file=/etc/sysbench/common.conf
+        - --time=$(SYSBENCH_TIME)
+        - --threads=$(SYSBENCH_THREADS)
+        - --mysql-host=$(TIDB_HOST)
+        - --mysql-port=$(TIDB_PORT)
+        - --mysql-user=$(TIDB_USER)
+        - --mysql-password=$(TIDB_PASSWORD)
+        - --mysql-db=$(TIDB_DB)
+        - --tables=$(TABLE_COUNT)
+        - --table-size=$(TABLE_SIZE)
+        - oltp_common
+        - prewarm  
+        volumeMounts:
+        - name: config
+          mountPath: /etc/sysbench
+      volumes:
+      - name: config
+        configMap:
+          name: sysbench-config
+          items:
+          - key: common
+            path: common.conf
