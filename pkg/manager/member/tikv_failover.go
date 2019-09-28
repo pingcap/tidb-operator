@@ -16,6 +16,7 @@ package member
 import (
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -30,6 +31,13 @@ func NewTiKVFailover(tikvFailoverPeriod time.Duration) Failover {
 }
 
 func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	if len(tc.Status.TiKV.FailureStores) >= int(tc.Spec.TiKV.MaxFailoverCount) {
+		glog.Errorf("%s/%s failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiKV.MaxFailoverCount)
+		return nil
+	}
+
 	for storeID, store := range tc.Status.TiKV.Stores {
 		podName := store.PodName
 		if store.LastTransitionTime.IsZero() {

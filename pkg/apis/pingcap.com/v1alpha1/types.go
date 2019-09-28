@@ -134,7 +134,7 @@ type TiDBSlowLogTailerSpec struct {
 	ContainerSpec
 }
 
-// TiKVSpec contains details of PD member
+// TiKVSpec contains details of TiKV members
 type TiKVSpec struct {
 	ContainerSpec
 	Privileged       bool                `json:"privileged,omitempty"`
@@ -144,6 +144,7 @@ type TiKVSpec struct {
 	StorageClassName string              `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
 	Annotations      map[string]string   `json:"annotations,omitempty"`
+	MaxFailoverCount int32               `json:"maxFailoverCount,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
