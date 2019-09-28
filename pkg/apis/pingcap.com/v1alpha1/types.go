@@ -138,6 +138,7 @@ type TiKVSpec struct {
 	Replicas         int32  `json:"replicas"`
 	Privileged       bool   `json:"privileged,omitempty"`
 	StorageClassName string `json:"storageClassName,omitempty"`
+	MaxFailoverCount int32  `json:"maxFailoverCount,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec

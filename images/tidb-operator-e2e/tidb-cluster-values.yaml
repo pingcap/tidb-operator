@@ -112,6 +112,7 @@ tikv:
   #   value: tidb
   #   effect: "NoSchedule"
   annotations: {}
+  maxFailoverCount: 3
 
 tikvPromGateway:
   image: prom/pushgateway:v0.3.1
