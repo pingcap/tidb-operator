@@ -14,6 +14,8 @@
 package tidbcluster
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,10 +23,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
-	"github.com/pingcap/tidb-operator/pkg/manager/meta"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,7 +30,6 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 )
 
 func TestTidbClusterControllerEnqueueTidbCluster(t *testing.T) {
@@ -115,16 +112,14 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                    string
-		initial                 func() *v1alpha1.TidbCluster
-		initialSet              func(*v1alpha1.TidbCluster) *apps.StatefulSet
 		updateSet               func(*apps.StatefulSet) *apps.StatefulSet
 		addTidbClusterToIndexer bool
 		expectedLen             int
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
-		tc := test.initial()
-		set1 := test.initialSet(tc)
+		tc := newTidbCluster()
+		set1 := newStatefuSet(tc)
 		set2 := test.updateSet(set1)
 
 		tcc, tcIndexer, _ := newFakeTidbClusterController()
@@ -140,12 +135,6 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 	tests := []testcase{
 		{
 			name: "normal",
-			initial: func() *v1alpha1.TidbCluster {
-				return newTidbCluster()
-			},
-			initialSet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
-				return newStatefuSet(tc)
-			},
 			updateSet: func(set1 *apps.StatefulSet) *apps.StatefulSet {
 				set2 := *set1
 				set2.ResourceVersion = "1000"
@@ -156,12 +145,6 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 		},
 		{
 			name: "same resouceVersion",
-			initial: func() *v1alpha1.TidbCluster {
-				return newTidbCluster()
-			},
-			initialSet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
-				return newStatefuSet(tc)
-			},
 			updateSet: func(set1 *apps.StatefulSet) *apps.StatefulSet {
 				set2 := *set1
 				return &set2
@@ -171,12 +154,6 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 		},
 		{
 			name: "without controllerRef",
-			initial: func() *v1alpha1.TidbCluster {
-				return newTidbCluster()
-			},
-			initialSet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
-				return newStatefuSet(tc)
-			},
 			updateSet: func(set1 *apps.StatefulSet) *apps.StatefulSet {
 				set2 := *set1
 				set2.ResourceVersion = "1000"
@@ -188,12 +165,6 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 		},
 		{
 			name: "without tidbcluster",
-			initial: func() *v1alpha1.TidbCluster {
-				return newTidbCluster()
-			},
-			initialSet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
-				return newStatefuSet(tc)
-			},
 			updateSet: func(set1 *apps.StatefulSet) *apps.StatefulSet {
 				set2 := *set1
 				set2.ResourceVersion = "1000"
@@ -209,23 +180,85 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 	}
 }
 
+func TestTidbClusterControllerSync(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name                     string
+		addTcToIndexer           bool
+		errWhenUpdateTidbCluster bool
+		errExpectFn              func(*GomegaWithT, error)
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		tc := newTidbCluster()
+		tcc, tcIndexer, tcControl := newFakeTidbClusterController()
+
+		if test.addTcToIndexer {
+			err := tcIndexer.Add(tc)
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(tc)
+		g.Expect(err).NotTo(HaveOccurred())
+
+		if test.errWhenUpdateTidbCluster {
+			tcControl.SetUpdateTCError(fmt.Errorf("update tidb cluster failed"))
+		}
+
+		err = tcc.sync(key)
+
+		if test.errExpectFn != nil {
+			test.errExpectFn(g, err)
+		}
+	}
+
+	tests := []testcase{
+		{
+			name:                     "normal",
+			addTcToIndexer:           true,
+			errWhenUpdateTidbCluster: false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+		},
+		{
+			name:                     "can't found tidb cluster",
+			addTcToIndexer:           false,
+			errWhenUpdateTidbCluster: false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+		},
+		{
+			name:                     "update tidb cluster failed",
+			addTcToIndexer:           true,
+			errWhenUpdateTidbCluster: true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "update tidb cluster failed")).To(Equal(true))
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+
+}
+
 func alwaysReady() bool { return true }
 
-func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) {
+func newFakeTidbClusterController() (*Controller, cache.Indexer, *FakeTidbClusterControlInterface) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	informerFactory := informers.NewSharedInformerFactory(cli, 0)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 
-	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
-	svcInformer := kubeInformerFactory.Core().V1().Services()
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
 	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
-	podInformer := kubeInformerFactory.Core().V1().Pods()
-	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
-	epsInformer := kubeInformerFactory.Core().V1().Endpoints()
 	autoFailover := true
+
+	tcControl := NewFakeTidbClusterControlInterface()
 
 	tcc := NewController(
 		kubeCli,
@@ -239,96 +272,9 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, cache.Indexer) 
 	)
 	tcc.tcListerSynced = alwaysReady
 	tcc.setListerSynced = alwaysReady
-	recorder := record.NewFakeRecorder(10)
 
-	pdControl := pdapi.NewFakePDControl()
-	tidbControl := controller.NewFakeTiDBControl()
-	svcControl := controller.NewRealServiceControl(
-		kubeCli,
-		svcInformer.Lister(),
-		recorder,
-	)
-	setControl := controller.NewRealStatefuSetControl(
-		kubeCli,
-		setInformer.Lister(),
-		recorder,
-	)
-	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
-	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
-	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
-	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
-	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
-	pdFailover := mm.NewFakePDFailover()
-	tikvFailover := mm.NewFakeTiKVFailover()
-	tidbFailover := mm.NewFakeTiDBFailover()
-	pdUpgrader := mm.NewFakePDUpgrader()
-	tikvUpgrader := mm.NewFakeTiKVUpgrader()
-	tidbUpgrader := mm.NewFakeTiDBUpgrader()
-
-	tcc.control = NewDefaultTidbClusterControl(
-		controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder),
-		mm.NewPDMemberManager(
-			pdControl,
-			setControl,
-			svcControl,
-			setInformer.Lister(),
-			svcInformer.Lister(),
-			podInformer.Lister(),
-			epsInformer.Lister(),
-			podControl,
-			pvcInformer.Lister(),
-			pdScaler,
-			pdUpgrader,
-			autoFailover,
-			pdFailover,
-		),
-		mm.NewTiKVMemberManager(
-			pdControl,
-			setControl,
-			svcControl,
-			setInformer.Lister(),
-			svcInformer.Lister(),
-			podInformer.Lister(),
-			nodeInformer.Lister(),
-			autoFailover,
-			tikvFailover,
-			tikvScaler,
-			tikvUpgrader,
-		),
-		mm.NewTiDBMemberManager(
-			controller.NewRealStatefuSetControl(
-				kubeCli,
-				setInformer.Lister(),
-				recorder,
-			),
-			svcControl,
-			tidbControl,
-			setInformer.Lister(),
-			svcInformer.Lister(),
-			podInformer.Lister(),
-			tidbUpgrader,
-			autoFailover,
-			tidbFailover,
-		),
-		meta.NewReclaimPolicyManager(
-			pvcInformer.Lister(),
-			pvInformer.Lister(),
-			pvControl,
-		),
-		meta.NewMetaManager(
-			pvcInformer.Lister(),
-			pvcControl,
-			pvInformer.Lister(),
-			pvControl,
-			podInformer.Lister(),
-			podControl,
-		),
-		mm.NewFakeOrphanPodsCleaner(),
-		mm.NewFakePVCCleaner(),
-		recorder,
-	)
-
-	return tcc, tcInformer.Informer().GetIndexer(), setInformer.Informer().GetIndexer()
+	tcc.control = tcControl
+	return tcc, tcInformer.Informer().GetIndexer(), tcControl
 }
 
 func newTidbCluster() *v1alpha1.TidbCluster {

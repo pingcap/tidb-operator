@@ -15,9 +15,9 @@ package controller
 
 import (
 	"fmt"
-	"math"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -154,8 +154,12 @@ func GetServiceType(services []v1alpha1.Service, serviceName string) corev1.Serv
 	return corev1.ServiceTypeClusterIP
 }
 
-// TiKVCapacity returns string resource requirement,
-// tikv uses GB, TB as unit suffix, but it actually means GiB, TiB
+// TiKVCapacity returns string resource requirement. In tikv-server, KB/MB/GB
+// equal to MiB/GiB/TiB, so we cannot use resource.String() directly.
+// Minimum unit we use is MiB, capacity less than 1MiB is ignored.
+// https://github.com/tikv/tikv/blob/v3.0.3/components/tikv_util/src/config.rs#L155-L168
+// For backward compatibility with old TiKV versions, we should use GB/MB
+// rather than GiB/MiB, see https://github.com/tikv/tikv/blob/v2.1.16/src/util/config.rs#L359.
 func TiKVCapacity(limits *v1alpha1.ResourceRequirement) string {
 	defaultArgs := "0"
 	if limits == nil || limits.Storage == "" {
@@ -171,7 +175,10 @@ func TiKVCapacity(limits *v1alpha1.ResourceRequirement) string {
 		glog.Errorf("quantity %s can't be converted to int64", q.String())
 		return defaultArgs
 	}
-	return fmt.Sprintf("%dGB", int(float64(i)/math.Pow(2, 30)))
+	if i%humanize.GiByte == 0 {
+		return fmt.Sprintf("%dGB", i/humanize.GiByte)
+	}
+	return fmt.Sprintf("%dMB", i/humanize.MiByte)
 }
 
 func GetSlowLogTailerImage(cluster *v1alpha1.TidbCluster) string {
