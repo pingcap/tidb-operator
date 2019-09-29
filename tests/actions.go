@@ -647,6 +647,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	var beforePVNames []string
 	for _, pv := range pvList.Items {
 		beforePVNames = append(beforePVNames, pv.GetName())
+		glog.V(4).Info(pv.Labels)
 	}
 	glog.V(4).Info(beforePVNames)
 
