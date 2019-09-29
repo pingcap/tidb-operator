@@ -229,17 +229,6 @@ tikv:
   #   effect: "NoSchedule"
   annotations: {}
 
-  # Use the host's network namespace if enabled.
-  # Default to false.
-  hostNetwork: false
-
-  # Specify the security context of TiKV Pod.
-  # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
-  podSecurityContext: {}
-
-  # Specify the priorityClassName for TiKV Pod.
-  # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
-  priorityClassName: ""
   # When a TiKV node fails, its status turns to `Disconnected`. After 30 minutes, it turns to `Down`.
   # After waiting for 5 minutes, TiDB Operator creates a new TiKV node if this TiKV node is still down.
   # maxFailoverCount is used to configure the maximum number of TiKV nodes that TiDB Operator can create when failover occurs.

@@ -67,12 +67,6 @@ spec:
     annotations:
 {{ toYaml .Values.tikv.annotations | indent 6 }}
   {{- end }}
-    hostNetwork: {{ .Values.tikv.hostNetwork }}
-    podSecurityContext:
-{{ toYaml .Values.tikv.podSecurityContext | indent 6}}
-  {{- if .Values.tikv.priorityClassName }}
-    priorityClassName: {{ .Values.tikv.priorityClassName }}
-  {{- end }}
     maxFailoverCount: {{ .Values.tikv.maxFailoverCount | default 3 }}
   tidb:
     replicas: {{ .Values.tidb.replicas }}
