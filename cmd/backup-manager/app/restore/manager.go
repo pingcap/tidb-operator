@@ -54,6 +54,7 @@ func (rm *RestoreManager) ProcessRestore() error {
 	}
 
 	if rm.BackupPath == "" {
+		glog.Errorf("backup %s path is empty", rm.BackupName)
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
@@ -77,6 +78,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 
 	restoreDataPath := rm.getRestoreDataPath()
 	if err := rm.downloadBackupData(restoreDataPath); err != nil {
+		glog.Errorf("download cluster %s backup %s data failed, err: %s", rm, rm.BackupPath, err)
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
@@ -89,6 +91,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 	restoreDataDir := filepath.Dir(restoreDataPath)
 	unarchiveDataPath, err := unarchiveBackupData(restoreDataPath, restoreDataDir)
 	if err != nil {
+		glog.Errorf("unarchive cluster %s backup %s data failed, err: %s", rm, restoreDataPath, err)
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
@@ -100,6 +103,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 
 	err = rm.loadTidbClusterData(unarchiveDataPath)
 	if err != nil {
+		glog.Errorf("restore cluster %s from backup %s failed, err: %s", rm, rm.BackupPath, err)
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,

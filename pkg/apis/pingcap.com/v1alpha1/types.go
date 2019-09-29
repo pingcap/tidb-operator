@@ -161,6 +161,7 @@ type PodAttributesSpec struct {
 	Annotations        map[string]string          `json:"annotations,omitempty"`
 	HostNetwork        bool                       `json:"hostNetwork,omitempty"`
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+	PriorityClassName  string                     `json:"priorityClassName,omitempty"`
 }
 
 // Service represent service type used in TidbCluster
@@ -483,7 +484,7 @@ type RestoreSpec struct {
 	BackupNamespace string `json:"backupNamespace"`
 	// SecretName is the name of the secret which stores
 	// tidb cluster's username and password.
-	SecretName string `json:"secretName"`
+	TidbSecretName string `json:"tidbSecretName"`
 	// StorageClassName is the storage class for restore job's PV.
 	StorageClassName string `json:"storageClassName"`
 	// StorageSize is the request storage size for restore job

@@ -100,11 +100,7 @@ func GenerateStorageCertEnv(backup *v1alpha1.Backup, secretLister corelisters.Se
 }
 
 // GetTidbUserAndPassword get the tidb user and password from specific secret
-func GetTidbUserAndPassword(backup *v1alpha1.Backup, secretLister corelisters.SecretLister) (user, password, reason string, err error) {
-	ns := backup.GetNamespace()
-	name := backup.GetName()
-	tidbSecretName := backup.Spec.TidbSecretName
-
+func GetTidbUserAndPassword(ns, name, tidbSecretName string, secretLister corelisters.SecretLister) (user, password, reason string, err error) {
 	secret, err := secretLister.Secrets(ns).Get(tidbSecretName)
 	if err != nil {
 		err = fmt.Errorf("backup %s/%s get tidb secret %s failed, err: %v", ns, name, tidbSecretName, err)
