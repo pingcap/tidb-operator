@@ -15,6 +15,7 @@ package discovery
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -23,99 +24,174 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 )
 
+// PDName is a stable identifier of a PD process
+type PDName string
+
+// ClusterID is a stable identifier of a TIDB cluster
+// A PDName is unique when scoped to a ClusterID
+type ClusterID string
+
 // TiDBDiscovery helps new PD member to discover all other members in cluster bootstrap phase.
 type TiDBDiscovery interface {
-	Discover(string) (string, error)
+	Discover(PDName, ClusterID, url.URL) (string, error)
 }
 
 // Cluster is the information that discovery service needs from an implementation
 type Cluster struct {
-	PDClient        pdapi.PDClient
 	Replicas        int32
 	ResourceVersion string
 	Scheme          string
 }
 
-// HasGetCluster is an interface that has a GetCluster method
-type HasGetCluster interface {
-	GetCluster(ns, tcName string) (Cluster, error)
+// ClusterRefresh is an interface that has a GetCluster method
+type ClusterRefresh interface {
+	GetCluster(clusterID string) (Cluster, error)
 }
 
-// MakeGetCluster makes a HasGetGcluster
-type MakeGetCluster = func(pdControl pdapi.PDControlInterface) HasGetCluster
-
-// GetCluster is an example HasGetCluster implementation
-type GetCluster func(ns, tcName string) (Cluster, error)
-
-// GetCluster satisfies the HasGetCluster interface
-func (gc GetCluster) GetCluster(ns, tcName string) (Cluster, error) {
-	return gc(ns, tcName)
+// ClusterRefreshMembers has a GetMembers and a GetCluster method
+type ClusterRefreshMembers interface {
+	ClusterRefresh
+	GetMembers(clusterID string) (*pdapi.MembersInfo, error)
 }
 
 type tidbDiscovery struct {
-	lock       sync.Mutex
-	clusters   map[string]*clusterInfo
-	pdControl  pdapi.PDControlInterface
-	getCluster HasGetCluster
+	lock     sync.Mutex
+	clusters map[string]*clusterInfo
+}
+
+type tidbDiscoveryWaitMembers struct {
+	tidbDiscovery
+	refresh ClusterRefreshMembers
+}
+
+type tidbDiscoveryImmediate struct {
+	tidbDiscovery
+	refresh ClusterRefresh
+}
+
+func (td tidbDiscoveryImmediate) getDiscovery() tidbDiscovery   { return td.tidbDiscovery }
+func (td tidbDiscoveryWaitMembers) getDiscovery() tidbDiscovery { return td.tidbDiscovery }
+
+type hasDiscovery interface {
+	getDiscovery() tidbDiscovery
 }
 
 type clusterInfo struct {
 	resourceVersion string
-	peers           map[string]struct{}
+	peers           map[PDName]url.URL
 }
 
-// NewTiDBDiscovery returns a TiDBDiscovery
-func NewTiDBDiscovery(getCluster MakeGetCluster) TiDBDiscovery {
-	pdControl := pdapi.NewDefaultPDControl()
-	return &tidbDiscovery{
-		pdControl:  pdControl,
-		clusters:   map[string]*clusterInfo{},
-		getCluster: getCluster(pdControl),
+// NewTiDBDiscoveryWaitMembers returns a TiDBDiscovery
+func NewTiDBDiscoveryWaitMembers(refresher ClusterRefreshMembers) TiDBDiscovery {
+	return &tidbDiscoveryWaitMembers{
+		tidbDiscovery: tidbDiscovery{clusters: map[string]*clusterInfo{}},
+		refresh:       refresher,
 	}
 }
 
-func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
+// NewTiDBDiscoveryImmediate returns a TiDBDiscovery
+func NewTiDBDiscoveryImmediate(refresher ClusterRefresh) TiDBDiscovery {
+	return &tidbDiscoveryImmediate{
+		tidbDiscovery: tidbDiscovery{clusters: map[string]*clusterInfo{}},
+		refresh:       refresher,
+	}
+}
+
+// Discover starts the first PD immediately, join the rest
+func (td *tidbDiscoveryImmediate) Discover(pdName PDName, clusterID ClusterID, pdURL url.URL) (string, error) {
+	if err := validateEmpty(pdName, clusterID, pdURL); err != nil {
+		return "", err
+	}
+	glog.Infof("url is: %s", pdURL.String())
+
+	cluster, gerr := td.refresh.GetCluster(string(clusterID))
+	if gerr != nil {
+		return "", gerr
+	}
+
 	td.lock.Lock()
 	defer td.lock.Unlock()
 
-	if advertisePeerUrl == "" {
-		return "", fmt.Errorf("advertisePeerUrl is empty")
+	currentCluster := td.clusters[string(clusterID)]
+	if currentCluster == nil || currentCluster.resourceVersion != cluster.ResourceVersion {
+		currentCluster = &clusterInfo{
+			resourceVersion: cluster.ResourceVersion,
+			peers:           make(map[PDName]url.URL),
+		}
+		td.clusters[string(clusterID)] = currentCluster
 	}
-	glog.Infof("advertisePeerUrl is: %s", advertisePeerUrl)
-	strArr := strings.Split(advertisePeerUrl, ".")
-	if len(strArr) != 4 {
-		return "", fmt.Errorf("advertisePeerUrl format is wrong: %s", advertisePeerUrl)
+	currentCluster.peers[pdName] = pdURL
+
+	if len(currentCluster.peers) == 1 {
+		if pdURL.Scheme == "" && cluster.Scheme != "" {
+			pdURL.Scheme = cluster.Scheme
+		}
+
+		return fmt.Sprintf("--initial-cluster=%s=%s", pdName, pdURL.String()), nil
 	}
 
-	podName, peerServiceName, ns := strArr[0], strArr[1], strArr[2]
-	tcName := strings.TrimSuffix(peerServiceName, "-pd-peer")
-	podNamespace := os.Getenv("MY_POD_NAMESPACE")
-	if ns != podNamespace {
-		return "", fmt.Errorf("the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
+	peersArr := make([]string, 0)
+	for _, peerURL := range currentCluster.peers {
+		if peerURL.Scheme == "" && peerURL.Scheme != "" {
+			peerURL.Scheme = cluster.Scheme
+		}
+		peersArr = append(peersArr, strings.ReplaceAll(peerURL.String(), ":2380", ":2379"))
 	}
-	keyName := fmt.Sprintf("%s/%s", ns, tcName)
-	cluster, err := td.getCluster.GetCluster(ns, tcName)
-	if err != nil {
+	return fmt.Sprintf("--join=%s", strings.Join(peersArr, ",")), nil
+}
+
+func validateEmpty(pdName PDName, clusterID ClusterID, pdURL url.URL) error {
+	if pdURL.String() == "" {
+		return fmt.Errorf("url is empty")
+	}
+	if pdName == "" {
+		return fmt.Errorf("pd name is empty")
+	}
+	if clusterID == "" {
+		return fmt.Errorf("cluster id is empty")
+	}
+	return nil
+}
+
+// Discover waits for all PD to join before starting the cluster
+// this approach was probably more useful before the PD isinitialized status API was available
+func (td *tidbDiscoveryWaitMembers) Discover(pdName PDName, clusterID ClusterID, pdURL url.URL) (string, error) {
+	if err := validateEmpty(pdName, clusterID, pdURL); err != nil {
 		return "", err
 	}
+	glog.Infof("url is: %s", pdURL.String())
 
-	currentCluster := td.clusters[keyName]
+	cluster, gerr := td.refresh.GetCluster(string(clusterID))
+	if gerr != nil {
+		return "", gerr
+	}
+
+	td.lock.Lock()
+	defer td.lock.Unlock()
+
+	currentCluster := td.clusters[string(clusterID)]
 	if currentCluster == nil || currentCluster.resourceVersion != cluster.ResourceVersion {
-		td.clusters[keyName] = &clusterInfo{
+		currentCluster = &clusterInfo{
 			resourceVersion: cluster.ResourceVersion,
-			peers:           map[string]struct{}{},
+			peers:           make(map[PDName]url.URL),
 		}
+		td.clusters[string(clusterID)] = currentCluster
 	}
-	currentCluster = td.clusters[keyName]
-	currentCluster.peers[podName] = struct{}{}
+	currentCluster.peers[pdName] = pdURL
 
-	// TODO: the replicas should be the total replicas of pd sets.
 	if len(currentCluster.peers) == int(cluster.Replicas) {
-		delete(currentCluster.peers, podName)
-		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, cluster.Scheme, advertisePeerUrl), nil
+		delete(currentCluster.peers, pdName)
+
+		if pdURL.Scheme == "" && cluster.Scheme != "" {
+			pdURL.Scheme = cluster.Scheme
+		}
+
+		return fmt.Sprintf("--initial-cluster=%s=%s", pdName, pdURL.String()), nil
 	}
 
-	membersInfo, err := cluster.PDClient.GetMembers()
+	// We rely on this returning an error before the first initial-cluster
+	// The caller continues to call this API
+	membersInfo, err := td.refresh.GetMembers(string(clusterID))
 	if err != nil {
 		return "", err
 	}
@@ -125,6 +201,44 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		memberURL := strings.ReplaceAll(member.PeerUrls[0], ":2380", ":2379")
 		membersArr = append(membersArr, memberURL)
 	}
-	delete(currentCluster.peers, podName)
+	delete(currentCluster.peers, pdName)
 	return fmt.Sprintf("--join=%s", strings.Join(membersArr, ",")), nil
+}
+
+// ParseURL calls url.Parse and corrects a bug in the implementation
+func ParseURL(inputURL string) (url.URL, error) {
+	parsedURL, err := url.Parse(inputURL)
+	if err != nil {
+		return url.URL{}, err
+	}
+
+	// port parsing is broken when there is no protocol
+	if parsedURL.Hostname() == "" && parsedURL.Scheme != "" && parsedURL.Opaque != "" && strings.Contains(inputURL, ":"+parsedURL.Opaque) {
+		parsedURL.Host = parsedURL.Scheme + ":" + parsedURL.Opaque
+		parsedURL.Scheme = ""
+		parsedURL.Opaque = ""
+	}
+	return *parsedURL, nil
+}
+
+// ParseK8sURL parses the url that we use in tidb-operator on K8s
+func ParseK8sURL(advertisePeerURL string) (PDName, ClusterID, url.URL, error) {
+	parsedURL, err := ParseURL(advertisePeerURL)
+	if err != nil {
+		return "", "", url.URL{}, err
+	}
+
+	strArr := strings.Split(advertisePeerURL, ".")
+	if len(strArr) != 4 {
+		return "", "", parsedURL, fmt.Errorf("advertisePeerURL format is wrong: %s", advertisePeerURL)
+	}
+
+	podName, peerServiceName, ns := strArr[0], strArr[1], strArr[2]
+	tcName := strings.TrimSuffix(peerServiceName, "-pd-peer")
+	podNamespace := os.Getenv("MY_POD_NAMESPACE")
+	if ns != podNamespace {
+		return "", "", parsedURL, fmt.Errorf("the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
+	}
+
+	return PDName(podName), ClusterID(fmt.Sprintf("%s/%s", ns, tcName)), parsedURL, nil
 }

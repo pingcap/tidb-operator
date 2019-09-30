@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -17,10 +18,12 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// PrintVerstionInfo calls version.PrintVersionInfo
 func PrintVersionInfo() {
 	version.PrintVersionInfo()
 }
 
+// LogVerstionInfo calls version.LogVersionInfo
 func LogVersionInfo() {
 	version.LogVersionInfo()
 }
@@ -41,9 +44,9 @@ func RunDiscoveryService(port int) {
 	}
 
 	tcGetFn := makeRealTCGetFn(cli)
-	makeGetCluster := makeGetTidbCluster(tcGetFn)
+	discover := newK8sClusterRefresh(tcGetFn)
 	go wait.Forever(func() {
-		server.StartServer(makeGetCluster, port)
+		server.StartServer(discover, port)
 	}, 5*time.Second)
 	glog.Fatal(http.ListenAndServe(":6060", nil))
 
@@ -54,26 +57,46 @@ type tiDBGetCluster struct {
 	pdControl pdapi.PDControlInterface
 }
 
-func (tgc tiDBGetCluster) GetCluster(ns, tcName string) (discovery.Cluster, error) {
+func (tgc tiDBGetCluster) getTC(clusterID string) (string, string, *v1alpha1.TidbCluster, error) {
+	nsTCName := strings.Split(clusterID, "/")
+	ns := nsTCName[0]
+	tcName := nsTCName[1]
 	tc, err := tgc.tcGetFn(ns, tcName)
+	if err != nil {
+		return ns, tcName, nil, err
+	}
+	return ns, tcName, tc, nil
+}
+
+func (tgc tiDBGetCluster) GetMembers(clusterID string) (*pdapi.MembersInfo, error) {
+	ns, tcName, tc, err := tgc.getTC(clusterID)
+	if err != nil {
+		return nil, err
+	}
+	pdClient := tgc.pdControl.GetPDClient(pdapi.Namespace(ns), tcName, tc.Spec.EnableTLSCluster)
+	return pdClient.GetMembers()
+}
+
+func (tgc tiDBGetCluster) GetCluster(clusterID string) (discovery.Cluster, error) {
+	_, _, tc, err := tgc.getTC(clusterID)
 	if err != nil {
 		return discovery.Cluster{}, err
 	}
+
+	// TODO: the replicas should be the total replicas of pd sets.
 	return discovery.Cluster{
-		PDClient:        tgc.pdControl.GetPDClient(pdapi.Namespace(ns), tcName, tc.Spec.EnableTLSCluster),
 		Replicas:        tc.Spec.PD.Replicas,
 		ResourceVersion: tc.ResourceVersion,
 		Scheme:          tc.Scheme(),
 	}, nil
 }
 
-func makeGetTidbCluster(tcGetFn func(ns, tcName string) (*v1alpha1.TidbCluster, error)) discovery.MakeGetCluster {
-	return func(pdControl pdapi.PDControlInterface) discovery.HasGetCluster {
-		return tiDBGetCluster{
-			tcGetFn:   tcGetFn,
-			pdControl: pdControl,
-		}
-	}
+func newK8sClusterRefresh(tcGetFn func(ns, tcName string) (*v1alpha1.TidbCluster, error)) discovery.TiDBDiscovery {
+	pdControl := pdapi.NewDefaultPDControl()
+	return discovery.NewTiDBDiscoveryWaitMembers(tiDBGetCluster{
+		tcGetFn:   tcGetFn,
+		pdControl: pdControl,
+	})
 }
 
 func makeRealTCGetFn(cli versioned.Interface) func(ns, tcName string) (*v1alpha1.TidbCluster, error) {
