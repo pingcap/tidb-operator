@@ -49,19 +49,29 @@ func RunDiscoveryService(port int) {
 
 }
 
+type tiDBGetCluster struct {
+	tcGetFn   func(ns, tcName string) (*v1alpha1.TidbCluster, error)
+	pdControl pdapi.PDControlInterface
+}
+
+func (tgc tiDBGetCluster) GetCluster(ns, tcName string) (discovery.Cluster, error) {
+	tc, err := tgc.tcGetFn(ns, tcName)
+	if err != nil {
+		return discovery.Cluster{}, err
+	}
+	return discovery.Cluster{
+		PDClient:        tgc.pdControl.GetPDClient(pdapi.Namespace(ns), tcName, tc.Spec.EnableTLSCluster),
+		Replicas:        tc.Spec.PD.Replicas,
+		ResourceVersion: tc.ResourceVersion,
+		Scheme:          tc.Scheme(),
+	}, nil
+}
+
 func makeGetTidbCluster(tcGetFn func(ns, tcName string) (*v1alpha1.TidbCluster, error)) discovery.MakeGetCluster {
-	return func(pdControl pdapi.PDControlInterface) discovery.GetCluster {
-		return func(ns, tcName string) (discovery.Cluster, error) {
-			tc, err := tcGetFn(ns, tcName)
-			if err != nil {
-				return discovery.Cluster{}, err
-			}
-			return discovery.Cluster{
-				PDClient:        pdControl.GetPDClient(pdapi.Namespace(ns), tcName, tc.Spec.EnableTLSCluster),
-				Replicas:        tc.Spec.PD.Replicas,
-				ResourceVersion: tc.ResourceVersion,
-				Scheme:          tc.Scheme(),
-			}, nil
+	return func(pdControl pdapi.PDControlInterface) discovery.HasGetCluster {
+		return tiDBGetCluster{
+			tcGetFn:   tcGetFn,
+			pdControl: pdControl,
 		}
 	}
 }

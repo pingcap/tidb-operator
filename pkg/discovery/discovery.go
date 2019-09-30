@@ -28,6 +28,7 @@ type TiDBDiscovery interface {
 	Discover(string) (string, error)
 }
 
+// Cluster is the information that discovery service needs from an implementation
 type Cluster struct {
 	PDClient        pdapi.PDClient
 	Replicas        int32
@@ -35,14 +36,27 @@ type Cluster struct {
 	Scheme          string
 }
 
-type GetCluster = func(ns, tcName string) (Cluster, error)
-type MakeGetCluster = func(pdControl pdapi.PDControlInterface) GetCluster
+// HasGetCluster is an interface that has a GetCluster method
+type HasGetCluster interface {
+	GetCluster(ns, tcName string) (Cluster, error)
+}
+
+// MakeGetCluster makes a HasGetGcluster
+type MakeGetCluster = func(pdControl pdapi.PDControlInterface) HasGetCluster
+
+// GetCluster is an example HasGetCluster implementation
+type GetCluster func(ns, tcName string) (Cluster, error)
+
+// GetCluster satisfies the HasGetCluster interface
+func (gc GetCluster) GetCluster(ns, tcName string) (Cluster, error) {
+	return gc(ns, tcName)
+}
 
 type tidbDiscovery struct {
 	lock       sync.Mutex
 	clusters   map[string]*clusterInfo
 	pdControl  pdapi.PDControlInterface
-	getCluster GetCluster
+	getCluster HasGetCluster
 }
 
 type clusterInfo struct {
@@ -52,12 +66,12 @@ type clusterInfo struct {
 
 // NewTiDBDiscovery returns a TiDBDiscovery
 func NewTiDBDiscovery(getCluster MakeGetCluster) TiDBDiscovery {
-	td := &tidbDiscovery{
-		pdControl: pdapi.NewDefaultPDControl(),
-		clusters:  map[string]*clusterInfo{},
+	pdControl := pdapi.NewDefaultPDControl()
+	return &tidbDiscovery{
+		pdControl:  pdControl,
+		clusters:   map[string]*clusterInfo{},
+		getCluster: getCluster(pdControl),
 	}
-	td.getCluster = getCluster(td.pdControl)
-	return td
 }
 
 func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
@@ -80,7 +94,7 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		return "", fmt.Errorf("the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, tcName)
-	cluster, err := td.getCluster(ns, tcName)
+	cluster, err := td.getCluster.GetCluster(ns, tcName)
 	if err != nil {
 		return "", err
 	}

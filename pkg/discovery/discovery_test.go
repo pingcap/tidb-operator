@@ -53,7 +53,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 		cluster, err := test.cFn(pdClient)
 		td := &tidbDiscovery{
 			pdControl:  fakePDControl,
-			getCluster: func(_, _ string) (Cluster, error) { return cluster, err },
+			getCluster: GetCluster(func(_, _ string) (Cluster, error) { return cluster, err }),
 			clusters:   test.clusters,
 		}
 		os.Setenv("MY_POD_NAMESPACE", test.ns)
