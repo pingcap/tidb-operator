@@ -177,7 +177,6 @@ func run() {
 			oa.CheckTidbClusterStatusOrDie(cluster)
 			oa.CheckTidbMemberAssignedNodesOrDie(cluster, assignedNodes)
 		}
-		cancel()
 
 		// configuration change
 		for _, cluster := range clusters {
@@ -195,14 +194,19 @@ func run() {
 			cluster.TiKVPreStartScript = strconv.Quote("")
 			cluster.TiDBPreStartScript = strconv.Quote("")
 			oa.UpgradeTidbClusterOrDie(cluster)
+			// wait upgrade complete
+			oa.CheckUpgradeOrDie(ctx, cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
 
 			cluster.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
 				UpdateTiKVGrpcConcurrency(cfg.TiKVGrpcConcurrency).
 				UpdateTiDBTokenLimit(cfg.TiDBTokenLimit)
 			oa.UpgradeTidbClusterOrDie(cluster)
+			// wait upgrade complete
+			oa.CheckUpgradeOrDie(ctx, cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
 		}
+		cancel()
 		oa.CleanWebHookAndServiceOrDie(ocfg)
 
 		for _, cluster := range clusters {

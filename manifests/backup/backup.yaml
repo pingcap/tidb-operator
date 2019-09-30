@@ -1,0 +1,15 @@
+---
+apiVersion: pingcap.com/v1alpha1
+kind: Backup
+metadata:
+  name: demo1-backup
+  namespace: test1
+spec:
+  ceph:
+    endpoint: http://10.233.2.161
+    secretName: ceph-secret
+  storageType: ceph
+  cluster: demo1
+  tidbSecretName: backup-demo1-tidb-secret
+  storageClassName: rook-ceph-block
+  storageSize: 1Gi

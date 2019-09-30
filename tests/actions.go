@@ -2432,10 +2432,12 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 			sets["binlog.drainer.ignoreSchemas"] = ""
 		} else {
 			from.drainerConfig = []string{
-				"worker-count = 16",
-				"detect-interval = 10",
-				"disable-dispatch = false",
-				`ignore-schemas = ""`,
+				`detect-interval = 10`,
+				`compressor = ""`,
+				`[syncer]`,
+				`worker-count = 16`,
+				`disable-dispatch = false`,
+				`ignore-schemas = "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql"`,
 				`safe-mode = false`,
 				`txn-batch = 20`,
 				`db-type = "mysql"`,
