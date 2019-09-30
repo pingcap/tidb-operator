@@ -42,6 +42,11 @@ variable "operator_helm_values" {
   default     = ""
 }
 
+variable "operator_helm_values_file" {
+  description = "The helm values file for TiDB Operator, path is relative to current working dir"
+  default     = ""
+}
+
 variable "create_vpc" {
   default = true
 }
@@ -127,5 +132,9 @@ variable "maintenance_window_start_time" {
 
 variable "override_values" {
   description = "YAML formatted values that will be passed in to the tidb-cluster helm release"
+  default     = ""
+}
+variable "override_values_file" {
+  description = "The helm values file for TiDB Cluster, path is relative to current working dir"
   default     = ""
 }
