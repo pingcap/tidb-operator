@@ -48,6 +48,11 @@ spec:
 {{ toYaml .Values.pd.annotations | indent 6 }}
   {{- end }}
     hostNetwork: {{ .Values.pd.hostNetwork }}
+    podSecurityContext:
+{{ toYaml .Values.pd.podSecurityContext | indent 6}}
+  {{- if .Values.pd.priorityClassName }}
+    priorityClassName: {{ .Values.pd.priorityClassName }}
+  {{- end }}
   tikv:
     replicas: {{ .Values.tikv.replicas }}
     image: {{ .Values.tikv.image }}
@@ -71,6 +76,11 @@ spec:
 {{ toYaml .Values.tikv.annotations | indent 6 }}
   {{- end }}
     hostNetwork: {{ .Values.tikv.hostNetwork }}
+    podSecurityContext:
+{{ toYaml .Values.tikv.podSecurityContext | indent 6}}
+  {{- if .Values.tikv.priorityClassName }}
+    priorityClassName: {{ .Values.tikv.priorityClassName }}
+  {{- end }}
   tidb:
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}
@@ -91,6 +101,11 @@ spec:
 {{ toYaml .Values.tidb.annotations | indent 6 }}
   {{- end }}
     hostNetwork: {{ .Values.tidb.hostNetwork }}
+    podSecurityContext:
+{{ toYaml .Values.tidb.podSecurityContext | indent 6}}
+  {{- if .Values.tidb.priorityClassName }}
+    priorityClassName: {{ .Values.tidb.priorityClassName }}
+  {{- end }}
     binlogEnabled: {{ .Values.binlog.pump.create | default false }}
     maxFailoverCount: {{ .Values.tidb.maxFailoverCount | default 3 }}
     separateSlowLog: {{ .Values.tidb.separateSlowLog | default false }}

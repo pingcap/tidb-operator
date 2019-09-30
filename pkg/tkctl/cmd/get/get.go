@@ -282,7 +282,17 @@ func (o *GetOptions) PrintOutput(tc *v1alpha1.TidbCluster, resourceType string, 
 		}
 		switch resourceType {
 		case kindTiKV:
-			tikvList := alias.TikvList(*podList)
+			tc, err := o.tcCli.PingcapV1alpha1().
+				TidbClusters(o.Namespace).
+				Get(o.TidbClusterName, metav1.GetOptions{})
+			tikvList := alias.TikvList{
+				PodList:    podList,
+				TikvStatus: nil,
+			}
+			if err == nil {
+				tikvStatus := tc.Status.TiKV
+				tikvList.TikvStatus = &tikvStatus
+			}
 			return printer.PrintObj(&tikvList, o.Out)
 		default:
 			break
