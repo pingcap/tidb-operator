@@ -45,6 +45,9 @@ scheduler:
 discovery:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery cmd/discovery/main.go
 
+discover-pd:
+	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discover-pd cmd/discover-pd/main.go
+
 admission-controller:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-controller cmd/admission-controller/main.go
 
