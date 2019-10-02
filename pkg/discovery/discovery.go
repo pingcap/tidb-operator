@@ -34,6 +34,8 @@ type ClusterID string
 // TiDBDiscovery helps new PD member to discover all other members in cluster bootstrap phase.
 type TiDBDiscovery interface {
 	Discover(PDName, ClusterID, url.URL) (string, error)
+	GetAddresses(ClusterID) ([]string, error)
+	DeleteAddress(ClusterID, PDName) error
 }
 
 // Cluster is the information that discovery service needs from an implementation
@@ -97,6 +99,61 @@ func NewTiDBDiscoveryImmediate(refresher ClusterRefresh) TiDBDiscovery {
 	}
 }
 
+func (td *tidbDiscovery) DeleteAddress(clusterID ClusterID, pdName PDName) error {
+	currentCluster := td.clusters[string(clusterID)]
+	if currentCluster == nil {
+		return nil
+	}
+	delete(currentCluster.peers, pdName)
+	return nil
+}
+
+func (td *tidbDiscoveryImmediate) DeleteAddress(clusterID ClusterID, pdName PDName) error {
+	return td.tidbDiscovery.DeleteAddress(clusterID, pdName)
+}
+
+func (td *tidbDiscoveryWaitMembers) DeleteAddress(clusterID ClusterID, pdName PDName) error {
+	return td.tidbDiscovery.DeleteAddress(clusterID, pdName)
+}
+
+func (td *tidbDiscoveryImmediate) GetAddresses(clusterID ClusterID) ([]string, error) {
+	cluster, gerr := td.refresh.GetCluster(string(clusterID))
+	if gerr != nil {
+		return []string{}, gerr
+	}
+
+	currentCluster := td.clusters[string(clusterID)]
+	if currentCluster == nil {
+		return nil, nil
+	}
+
+	peersArr := make([]string, 0)
+	for _, peerURL := range currentCluster.peers {
+		if peerURL.Scheme == "" && cluster.Scheme != "" {
+			peerURL.Scheme = cluster.Scheme
+		}
+		peersArr = append(peersArr, strings.ReplaceAll(peerURL.String(), ":2380", ":2379"))
+	}
+
+	return peersArr, nil
+}
+
+func (td *tidbDiscoveryWaitMembers) GetAddresses(clusterID ClusterID) ([]string, error) {
+	// We rely on this returning an error before the first initial-cluster
+	// The caller continues to call this API
+	membersInfo, err := td.refresh.GetMembers(string(clusterID))
+	if err != nil {
+		return nil, err
+	}
+
+	membersArr := make([]string, 0)
+	for _, member := range membersInfo.Members {
+		memberURL := strings.ReplaceAll(member.PeerUrls[0], ":2380", ":2379")
+		membersArr = append(membersArr, memberURL)
+	}
+	return membersArr, nil
+}
+
 // Discover starts the first PD immediately, join the rest
 func (td *tidbDiscoveryImmediate) Discover(pdName PDName, clusterID ClusterID, pdURL url.URL) (string, error) {
 	if err := validateEmpty(pdName, clusterID, pdURL); err != nil {
@@ -130,14 +187,11 @@ func (td *tidbDiscoveryImmediate) Discover(pdName PDName, clusterID ClusterID, p
 		return fmt.Sprintf("--initial-cluster=%s=%s", pdName, pdURL.String()), nil
 	}
 
-	peersArr := make([]string, 0)
-	for _, peerURL := range currentCluster.peers {
-		if peerURL.Scheme == "" && peerURL.Scheme != "" {
-			peerURL.Scheme = cluster.Scheme
-		}
-		peersArr = append(peersArr, strings.ReplaceAll(peerURL.String(), ":2380", ":2379"))
+	addresses, err := td.GetAddresses(clusterID)
+	if err != nil {
+		return "", err
 	}
-	return fmt.Sprintf("--join=%s", strings.Join(peersArr, ",")), nil
+	return fmt.Sprintf("--join=%s", strings.Join(addresses, ",")), nil
 }
 
 func validateEmpty(pdName PDName, clusterID ClusterID, pdURL url.URL) error {
@@ -189,20 +243,12 @@ func (td *tidbDiscoveryWaitMembers) Discover(pdName PDName, clusterID ClusterID,
 		return fmt.Sprintf("--initial-cluster=%s=%s", pdName, pdURL.String()), nil
 	}
 
-	// We rely on this returning an error before the first initial-cluster
-	// The caller continues to call this API
-	membersInfo, err := td.refresh.GetMembers(string(clusterID))
+	addresses, err := td.GetAddresses(clusterID)
 	if err != nil {
 		return "", err
 	}
-
-	membersArr := make([]string, 0)
-	for _, member := range membersInfo.Members {
-		memberURL := strings.ReplaceAll(member.PeerUrls[0], ":2380", ":2379")
-		membersArr = append(membersArr, memberURL)
-	}
 	delete(currentCluster.peers, pdName)
-	return fmt.Sprintf("--join=%s", strings.Join(membersArr, ",")), nil
+	return fmt.Sprintf("--join=%s", strings.Join(addresses, ",")), nil
 }
 
 // ParseURL calls url.Parse and corrects a bug in the implementation

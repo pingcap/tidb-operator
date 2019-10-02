@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
@@ -33,8 +34,10 @@ func StartServer(discover discovery.TiDBDiscovery, port int) {
 	svr := &server{discover}
 	ws := new(restful.WebService)
 
+	ws.Route(ws.GET("/cluster/{cluster-id}/addresses").To(svr.addresses))
 	// use POST since this is side-effecting
 	ws.Route(ws.POST("/cluster/{cluster-id}/pd/{pd-name}/{advertise-peer-url}").To(svr.idDiscovery))
+	ws.Route(ws.DELETE("/cluster/{cluster-id}/pd/{pd-name}").To(svr.deletePD))
 	// Original k8s url scheme
 	ws.Route(ws.GET("/new/{advertise-peer-url}").To(svr.k8sDiscovery))
 
@@ -43,42 +46,65 @@ func StartServer(discover discovery.TiDBDiscovery, port int) {
 	glog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }
 
+func (svr *server) deletePD(req *restful.Request, resp *restful.Response) {
+}
+func (svr *server) addresses(req *restful.Request, resp *restful.Response) {
+	clusterID := req.PathParameter("cluster-id")
+	msg := fmt.Sprintf("get addresses clusterID=%s", clusterID)
+	result, err := svr.discovery.GetAddresses(discovery.ClusterID(clusterID))
+	if err != nil {
+		respondErr(msg, resp, err)
+		return
+	}
+	svr.sendResult(msg, resp, strings.Join(result, ","))
+}
+
 func (svr *server) k8sDiscovery(req *restful.Request, resp *restful.Response) {
 	advertisePeerURL, err := getURL("advertise-peer-url", req)
+	msg := advertisePeerURL
 	if err != nil {
-		respondErr(resp, err)
+		respondErr(msg, resp, err)
 		return
 	}
 	pdName, clusterID, url, err := discovery.ParseK8sURL(advertisePeerURL)
 	if err != nil {
-		respondErr(resp, err)
+		respondErr(msg, resp, err)
 		return
 	}
 	result, err := svr.discovery.Discover(pdName, clusterID, url)
-	svr.sendResult(advertisePeerURL, resp, result, err)
+	if err != nil {
+		respondErr(msg, resp, err)
+		return
+	}
+	svr.sendResult(msg, resp, result)
 }
 
 func (svr *server) idDiscovery(req *restful.Request, resp *restful.Response) {
-	advertisePeerURL, err := getURL("advertise-peer-url", req)
-	if err != nil {
-		respondErr(resp, err)
-		return
-	}
 	clusterID := req.PathParameter("cluster-id")
 	pdName := req.PathParameter("pd-name")
-	args := fmt.Sprint("clusterID=%s pdName=%s url=%s", clusterID, pdName, advertisePeerURL)
+	advertisePeerURL, err := getURL("advertise-peer-url", req)
+	msg := fmt.Sprintf("clusterID=%s pdName=%s url=%s", clusterID, pdName, advertisePeerURL)
+	if err != nil {
+		respondErr(msg, resp, err)
+		return
+	}
 	url, err := discovery.ParseURL(advertisePeerURL)
 	if err != nil {
-		respondErr(resp, err)
+		respondErr(msg, resp, err)
 		return
 	}
 	result, err := svr.discovery.Discover(discovery.PDName(pdName), discovery.ClusterID(clusterID), url)
-	svr.sendResult(args, resp, result, err)
+	if err != nil {
+		respondErr(msg, resp, err)
+		return
+	}
+	svr.sendResult(msg, resp, result)
 }
 
-func respondErr(resp *restful.Response, err error) {
+func respondErr(msg string, resp *restful.Response, err error) {
+	glog.Errorf("failed to discover: %s, %v", msg, err)
 	glog.Error(err)
-	if writeErr := resp.WriteError(http.StatusInternalServerError, err); writeErr != nil {
+	if writeErr := resp.WriteError(http.StatusBadRequest, err); writeErr != nil {
 		glog.Errorf("failed to writeError: %v", writeErr)
 	}
 	return
@@ -93,16 +119,8 @@ func getURL(key string, req *restful.Request) (string, error) {
 	return string(data), nil
 }
 
-func (svr *server) sendResult(args string, resp *restful.Response, result string, err error) {
-	if err != nil {
-		glog.Errorf("failed to discover: %s, %v", args, err)
-		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
-			glog.Errorf("failed to writeError: %v", err)
-		}
-		return
-	}
-
-	glog.Infof("generated args for %s: %s", args, result)
+func (svr *server) sendResult(msg string, resp *restful.Response, result string) {
+	glog.Infof("%s: %s", msg, result)
 	if _, err := io.WriteString(resp, result); err != nil {
 		glog.Errorf("failed to writeString: %s, %v", result, err)
 	}

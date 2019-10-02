@@ -57,7 +57,7 @@ type getCluster struct{}
 func (gc getCluster) GetCluster(clusterID string) (discovery.Cluster, error) {
 	return discovery.Cluster{
 		Scheme:          scheme,
-		ResourceVersion: clusterID,
+		ResourceVersion: "1",
 		Replicas:        int32(replicas),
 	}, nil
 }
