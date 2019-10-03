@@ -37,6 +37,43 @@ func (tr testRefresher) GetMembers(_ string) (*pdapi.MembersInfo, error) {
 	return tr.getMembersFn()
 }
 
+func TestParseURLHostPort(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name string
+		url  string
+		host string
+		port string
+	}
+
+	tests := []testcase{
+		{
+			name: "domain and port",
+			url:  "host:80",
+			host: "host",
+			port: "80",
+		},
+		{
+			name: "ip and port",
+			url:  "1.2.3.4:80",
+			host: "1.2.3.4",
+			port: "80",
+		},
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+		parsed, err := ParseURL(test.url)
+		g.Expect(err).To(BeNil())
+		g.Expect(parsed.Hostname()).To(Equal(test.host))
+		g.Expect(parsed.Port()).To(Equal(test.port))
+	}
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
 func TestDiscoveryDiscovery(t *testing.T) {
 	g := NewGomegaWithT(t)
 

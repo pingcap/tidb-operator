@@ -251,14 +251,28 @@ func (td *tidbDiscoveryWaitMembers) Discover(pdName PDName, clusterID ClusterID,
 	return fmt.Sprintf("--join=%s", strings.Join(addresses, ",")), nil
 }
 
-// ParseURL calls url.Parse and corrects a bug in the implementation
+// ParseURL calls url.Parse but parses according to user expecdtation when there is no protocol or leading "//" or host brackets "[]"
 func ParseURL(inputURL string) (url.URL, error) {
 	parsedURL, err := url.Parse(inputURL)
 	if err != nil {
-		return url.URL{}, err
+		colonSplit := strings.Split(inputURL, ":")
+		saved := false
+		// just an ip address with a colon
+		if !strings.Contains(inputURL, "//") && len(colonSplit) == 2 && strings.Count(colonSplit[0], ".") >= 3 {
+			var newErr error
+			newURL := "//" + inputURL
+			parsedURL, newErr = url.Parse(newURL)
+			if newErr == nil {
+				saved = true
+			}
+		}
+		if !saved {
+			return url.URL{}, err
+		}
 	}
 
-	// port parsing is broken when there is no protocol
+	// Golang expects a protocol or "//"" before the host if there is a colon port
+	// This is expected behavior according to some RFC
 	if parsedURL.Hostname() == "" && parsedURL.Scheme != "" && parsedURL.Opaque != "" && strings.Contains(inputURL, ":"+parsedURL.Opaque) {
 		parsedURL.Host = parsedURL.Scheme + ":" + parsedURL.Opaque
 		parsedURL.Scheme = ""
