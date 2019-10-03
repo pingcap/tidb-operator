@@ -84,7 +84,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 		clusters     map[string]*clusterInfo
 		cFn          func() (Cluster, error)
 		getMembersFn func() (*pdapi.MembersInfo, error)
-		expectFn     func(*GomegaWithT, *tidbDiscoveryWaitMembers, string, error)
+		expectFn     func(*GomegaWithT, *tidbDiscoveryMembers, string, error)
 	}
 	newClusterOk := func() (Cluster, error) {
 		return newCluster(), nil
@@ -92,7 +92,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		td := &tidbDiscoveryWaitMembers{
+		td := &tidbDiscoveryMembers{
 			tidbDiscovery: tidbDiscovery{clusters: test.clusters},
 			refresh: testRefresher{
 				getCluster:   test.cFn,
@@ -116,7 +116,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			url:      "",
 			clusters: map[string]*clusterInfo{},
 			cFn:      newClusterOk,
-			expectFn: func(g *GomegaWithT, td *tidbDiscoveryWaitMembers, s string, err error) {
+			expectFn: func(g *GomegaWithT, td *tidbDiscoveryMembers, s string, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(err.Error()).To(ContainSubstring("advertisePeerURL format is wrong:"))
 				g.Expect(len(td.clusters)).To(BeZero())
@@ -128,7 +128,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			url:      "demo-pd-0.demo-pd-peer.default:2380",
 			clusters: map[string]*clusterInfo{},
 			cFn:      newClusterOk,
-			expectFn: func(g *GomegaWithT, td *tidbDiscoveryWaitMembers, s string, err error) {
+			expectFn: func(g *GomegaWithT, td *tidbDiscoveryMembers, s string, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "advertisePeerURL format is wrong: ")).To(BeTrue())
 				g.Expect(len(td.clusters)).To(BeZero())
@@ -140,7 +140,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			url:      "demo-pd-0.demo-pd-peer.default.svc:2380",
 			clusters: map[string]*clusterInfo{},
 			cFn:      newClusterOk,
-			expectFn: func(g *GomegaWithT, td *tidbDiscoveryWaitMembers, s string, err error) {
+			expectFn: func(g *GomegaWithT, td *tidbDiscoveryMembers, s string, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "is not equal to discovery namespace:")).To(BeTrue())
 				g.Expect(len(td.clusters)).To(BeZero())
@@ -154,7 +154,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			cFn: func() (Cluster, error) {
 				return Cluster{}, fmt.Errorf("failed to get tidbcluster")
 			},
-			expectFn: func(g *GomegaWithT, td *tidbDiscoveryWaitMembers, s string, err error) {
+			expectFn: func(g *GomegaWithT, td *tidbDiscoveryMembers, s string, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "failed to get tidbcluster")).To(BeTrue())
 				g.Expect(len(td.clusters)).To(BeZero())
@@ -169,7 +169,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			getMembersFn: func() (*pdapi.MembersInfo, error) {
 				return nil, fmt.Errorf("get members failed")
 			},
-			expectFn: func(g *GomegaWithT, td *tidbDiscoveryWaitMembers, s string, err error) {
+			expectFn: func(g *GomegaWithT, td *tidbDiscoveryMembers, s string, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "get members failed")).To(BeTrue())
 				g.Expect(len(td.clusters)).To(Equal(1))
@@ -194,7 +194,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 					}),
 				},
 			},
-			expectFn: func(g *GomegaWithT, td *tidbDiscoveryWaitMembers, s string, err error) {
+			expectFn: func(g *GomegaWithT, td *tidbDiscoveryMembers, s string, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "getMembers failed")).To(BeTrue())
 				g.Expect(len(td.clusters)).To(Equal(1))
@@ -211,7 +211,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			getMembersFn: func() (*pdapi.MembersInfo, error) {
 				return nil, fmt.Errorf("there are no pd members")
 			},
-			expectFn: func(g *GomegaWithT, td *tidbDiscoveryWaitMembers, s string, err error) {
+			expectFn: func(g *GomegaWithT, td *tidbDiscoveryMembers, s string, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "there are no pd members")).To(BeTrue())
 				g.Expect(len(td.clusters)).To(Equal(1))
@@ -235,7 +235,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 					}),
 				},
 			},
-			expectFn: func(g *GomegaWithT, td *tidbDiscoveryWaitMembers, s string, err error) {
+			expectFn: func(g *GomegaWithT, td *tidbDiscoveryMembers, s string, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "there are no pd members 2")).To(BeTrue())
 				g.Expect(len(td.clusters)).To(Equal(1))
@@ -258,7 +258,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 					}),
 				},
 			},
-			expectFn: func(g *GomegaWithT, td *tidbDiscoveryWaitMembers, s string, err error) {
+			expectFn: func(g *GomegaWithT, td *tidbDiscoveryMembers, s string, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(td.clusters)).To(Equal(1))
 				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(2))
@@ -284,7 +284,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 					}),
 				},
 			},
-			expectFn: func(g *GomegaWithT, td *tidbDiscoveryWaitMembers, s string, err error) {
+			expectFn: func(g *GomegaWithT, td *tidbDiscoveryMembers, s string, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "there are no pd members 3")).To(BeTrue())
 				g.Expect(len(td.clusters)).To(Equal(1))
@@ -316,7 +316,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 					}),
 				},
 			},
-			expectFn: func(g *GomegaWithT, td *tidbDiscoveryWaitMembers, s string, err error) {
+			expectFn: func(g *GomegaWithT, td *tidbDiscoveryMembers, s string, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(td.clusters)).To(Equal(1))
 				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(1))
@@ -349,7 +349,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 					}),
 				},
 			},
-			expectFn: func(g *GomegaWithT, td *tidbDiscoveryWaitMembers, s string, err error) {
+			expectFn: func(g *GomegaWithT, td *tidbDiscoveryMembers, s string, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(td.clusters)).To(Equal(1))
 				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(0))
@@ -386,7 +386,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 					peers:           makePeers(map[string]struct{}{}),
 				},
 			},
-			expectFn: func(g *GomegaWithT, td *tidbDiscoveryWaitMembers, s string, err error) {
+			expectFn: func(g *GomegaWithT, td *tidbDiscoveryMembers, s string, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(td.clusters)).To(Equal(1))
 				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(0))
@@ -433,7 +433,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 					}),
 				},
 			},
-			expectFn: func(g *GomegaWithT, td *tidbDiscoveryWaitMembers, s string, err error) {
+			expectFn: func(g *GomegaWithT, td *tidbDiscoveryMembers, s string, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(td.clusters)).To(Equal(2))
 				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(0))

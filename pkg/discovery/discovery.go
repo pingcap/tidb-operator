@@ -31,10 +31,15 @@ type PDName string
 // A PDName is unique when scoped to a ClusterID
 type ClusterID string
 
+type Address struct {
+	Name    string
+	Address string
+}
+
 // TiDBDiscovery helps new PD member to discover all other members in cluster bootstrap phase.
 type TiDBDiscovery interface {
 	Discover(PDName, ClusterID, url.URL) (string, error)
-	GetAddresses(ClusterID) ([]string, error)
+	GetClientAddresses(ClusterID) ([]string, error)
 	DeleteAddress(ClusterID, PDName) error
 }
 
@@ -61,18 +66,18 @@ type tidbDiscovery struct {
 	clusters map[string]*clusterInfo
 }
 
-type tidbDiscoveryWaitMembers struct {
+type tidbDiscoveryMembers struct {
 	tidbDiscovery
 	refresh ClusterRefreshMembers
 }
 
-type tidbDiscoveryImmediate struct {
+type tidbDiscoveryNoMembers struct {
 	tidbDiscovery
 	refresh ClusterRefresh
 }
 
-func (td tidbDiscoveryImmediate) getDiscovery() tidbDiscovery   { return td.tidbDiscovery }
-func (td tidbDiscoveryWaitMembers) getDiscovery() tidbDiscovery { return td.tidbDiscovery }
+func (td tidbDiscoveryNoMembers) getDiscovery() tidbDiscovery { return td.tidbDiscovery }
+func (td tidbDiscoveryMembers) getDiscovery() tidbDiscovery   { return td.tidbDiscovery }
 
 type hasDiscovery interface {
 	getDiscovery() tidbDiscovery
@@ -85,7 +90,7 @@ type clusterInfo struct {
 
 // NewTiDBDiscoveryWaitMembers returns a TiDBDiscovery
 func NewTiDBDiscoveryWaitMembers(refresher ClusterRefreshMembers) TiDBDiscovery {
-	return &tidbDiscoveryWaitMembers{
+	return &tidbDiscoveryMembers{
 		tidbDiscovery: tidbDiscovery{clusters: map[string]*clusterInfo{}},
 		refresh:       refresher,
 	}
@@ -93,7 +98,7 @@ func NewTiDBDiscoveryWaitMembers(refresher ClusterRefreshMembers) TiDBDiscovery 
 
 // NewTiDBDiscoveryImmediate returns a TiDBDiscovery
 func NewTiDBDiscoveryImmediate(refresher ClusterRefresh) TiDBDiscovery {
-	return &tidbDiscoveryImmediate{
+	return &tidbDiscoveryNoMembers{
 		tidbDiscovery: tidbDiscovery{clusters: map[string]*clusterInfo{}},
 		refresh:       refresher,
 	}
@@ -108,18 +113,42 @@ func (td *tidbDiscovery) DeleteAddress(clusterID ClusterID, pdName PDName) error
 	return nil
 }
 
-func (td *tidbDiscoveryImmediate) DeleteAddress(clusterID ClusterID, pdName PDName) error {
+func (td *tidbDiscoveryNoMembers) DeleteAddress(clusterID ClusterID, pdName PDName) error {
 	return td.tidbDiscovery.DeleteAddress(clusterID, pdName)
 }
 
-func (td *tidbDiscoveryWaitMembers) DeleteAddress(clusterID ClusterID, pdName PDName) error {
+func (td *tidbDiscoveryMembers) DeleteAddress(clusterID ClusterID, pdName PDName) error {
 	return td.tidbDiscovery.DeleteAddress(clusterID, pdName)
 }
 
-func (td *tidbDiscoveryImmediate) GetAddresses(clusterID ClusterID) ([]string, error) {
+func (td *tidbDiscoveryNoMembers) GetClientAddresses(clusterID ClusterID) ([]string, error) {
+	addresses, err := td.getNamedAddresses(clusterID)
+	if err != nil {
+		return nil, err
+	}
+	return clientAddresses(addresses), nil
+}
+
+func clientAddresses(addresses []Address) []string {
+	addressesNoName := make([]string, len(addresses))
+	for i, address := range addresses {
+		addressesNoName[i] = strings.ReplaceAll(address.Address, ":2380", ":2379")
+	}
+	return addressesNoName
+}
+
+func (td *tidbDiscoveryMembers) GetClientAddresses(clusterID ClusterID) ([]string, error) {
+	addresses, err := td.getNamedAddresses(clusterID)
+	if err != nil {
+		return nil, err
+	}
+	return clientAddresses(addresses), nil
+}
+
+func (td *tidbDiscoveryNoMembers) getNamedAddresses(clusterID ClusterID) ([]Address, error) {
 	cluster, gerr := td.refresh.GetCluster(string(clusterID))
 	if gerr != nil {
-		return []string{}, gerr
+		return []Address{}, gerr
 	}
 
 	currentCluster := td.clusters[string(clusterID)]
@@ -127,18 +156,21 @@ func (td *tidbDiscoveryImmediate) GetAddresses(clusterID ClusterID) ([]string, e
 		return nil, nil
 	}
 
-	peersArr := make([]string, 0)
-	for _, peerURL := range currentCluster.peers {
+	peersArr := make([]Address, 0)
+	for name, peerURL := range currentCluster.peers {
 		if peerURL.Scheme == "" && cluster.Scheme != "" {
 			peerURL.Scheme = cluster.Scheme
 		}
-		peersArr = append(peersArr, strings.ReplaceAll(peerURL.String(), ":2380", ":2379"))
+		peersArr = append(peersArr, Address{
+			Name:    string(name),
+			Address: peerURL.String(),
+		})
 	}
 
 	return peersArr, nil
 }
 
-func (td *tidbDiscoveryWaitMembers) GetAddresses(clusterID ClusterID) ([]string, error) {
+func (td *tidbDiscoveryMembers) getNamedAddresses(clusterID ClusterID) ([]Address, error) {
 	// We rely on this returning an error before the first initial-cluster
 	// The caller continues to call this API
 	membersInfo, err := td.refresh.GetMembers(string(clusterID))
@@ -146,16 +178,18 @@ func (td *tidbDiscoveryWaitMembers) GetAddresses(clusterID ClusterID) ([]string,
 		return nil, err
 	}
 
-	membersArr := make([]string, 0)
-	for _, member := range membersInfo.Members {
-		memberURL := strings.ReplaceAll(member.PeerUrls[0], ":2380", ":2379")
-		membersArr = append(membersArr, memberURL)
+	addresses := make([]Address, len(membersInfo.Members))
+	for i, member := range membersInfo.Members {
+		addresses[i] = Address{
+			Name:    member.Name,
+			Address: member.PeerUrls[0],
+		}
 	}
-	return membersArr, nil
+	return addresses, nil
 }
 
 // Discover starts the first PD immediately, join the rest
-func (td *tidbDiscoveryImmediate) Discover(pdName PDName, clusterID ClusterID, pdURL url.URL) (string, error) {
+func (td *tidbDiscoveryNoMembers) Discover(pdName PDName, clusterID ClusterID, pdURL url.URL) (string, error) {
 	if err := validateEmpty(pdName, clusterID, pdURL); err != nil {
 		return "", err
 	}
@@ -179,19 +213,29 @@ func (td *tidbDiscoveryImmediate) Discover(pdName PDName, clusterID ClusterID, p
 	}
 	currentCluster.peers[pdName] = pdURL
 
-	if len(currentCluster.peers) == 1 {
-		if pdURL.Scheme == "" && cluster.Scheme != "" {
-			pdURL.Scheme = cluster.Scheme
+	if len(currentCluster.peers) < int(cluster.Replicas) {
+		return "", fmt.Errorf("Waiting for peers to join")
+	}
+
+	if len(currentCluster.peers) > int(cluster.Replicas) {
+		addressesNoName, err := td.GetClientAddresses(clusterID)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("--join=%s", strings.Join(addressesNoName, ",")), nil
+	} else {
+		addresses, err := td.getNamedAddresses(clusterID)
+		if err != nil {
+			return "", err
+		}
+		initialClusterArgs := make([]string, len(addresses))
+		for i, address := range addresses {
+			initialClusterArgs[i] = fmt.Sprintf("%s=%s", address.Name, address.Address)
 		}
 
-		return fmt.Sprintf("--initial-cluster=%s=%s", pdName, pdURL.String()), nil
+		return "--initial-cluster=" + strings.Join(initialClusterArgs, ","), nil
 	}
 
-	addresses, err := td.GetAddresses(clusterID)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("--join=%s", strings.Join(addresses, ",")), nil
 }
 
 func validateEmpty(pdName PDName, clusterID ClusterID, pdURL url.URL) error {
@@ -209,7 +253,7 @@ func validateEmpty(pdName PDName, clusterID ClusterID, pdURL url.URL) error {
 
 // Discover waits for all PD to join before starting the cluster
 // this approach was probably more useful before the PD isinitialized status API was available
-func (td *tidbDiscoveryWaitMembers) Discover(pdName PDName, clusterID ClusterID, pdURL url.URL) (string, error) {
+func (td *tidbDiscoveryMembers) Discover(pdName PDName, clusterID ClusterID, pdURL url.URL) (string, error) {
 	if err := validateEmpty(pdName, clusterID, pdURL); err != nil {
 		return "", err
 	}
@@ -243,7 +287,7 @@ func (td *tidbDiscoveryWaitMembers) Discover(pdName PDName, clusterID ClusterID,
 		return fmt.Sprintf("--initial-cluster=%s=%s", pdName, pdURL.String()), nil
 	}
 
-	addresses, err := td.GetAddresses(clusterID)
+	addresses, err := td.GetClientAddresses(clusterID)
 	if err != nil {
 		return "", err
 	}

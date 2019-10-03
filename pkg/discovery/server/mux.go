@@ -51,7 +51,7 @@ func (svr *server) deletePD(req *restful.Request, resp *restful.Response) {
 func (svr *server) addresses(req *restful.Request, resp *restful.Response) {
 	clusterID := req.PathParameter("cluster-id")
 	msg := fmt.Sprintf("get addresses clusterID=%s", clusterID)
-	result, err := svr.discovery.GetAddresses(discovery.ClusterID(clusterID))
+	result, err := svr.discovery.GetClientAddresses(discovery.ClusterID(clusterID))
 	if err != nil {
 		respondErr(msg, resp, err)
 		return
