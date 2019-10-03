@@ -17,6 +17,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pingcap/tidb-operator/pkg/label"
+
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	apps "k8s.io/api/apps/v1beta1"
@@ -377,6 +379,9 @@ func newBackup() *v1alpha1.Backup {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-backup",
 			Namespace: metav1.NamespaceDefault,
+			Labels: map[string]string{
+				label.BackupScheduleLabelKey: "test-schedule",
+			},
 		},
 	}
 	return backup

@@ -46,7 +46,7 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	}
 
 	if len(tc.Status.TiDB.FailureMembers) >= int(tc.Spec.TiDB.MaxFailoverCount) {
-		glog.Errorf("the failure members count reached the limit:%d", tc.Spec.TiDB.MaxFailoverCount)
+		glog.Warningf("the failure members count reached the limit:%d", tc.Spec.TiDB.MaxFailoverCount)
 		return nil
 	}
 	for _, tidbMember := range tc.Status.TiDB.Members {
