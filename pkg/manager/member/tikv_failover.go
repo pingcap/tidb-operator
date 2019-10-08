@@ -51,7 +51,7 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			if tc.Status.TiKV.FailureStores == nil {
 				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
 			}
-			if len(tc.Status.TiKV.FailureStores) >= int(tc.Spec.TiKV.MaxFailoverCount) {
+			if tc.Spec.TiKV.MaxFailoverCount > 0 && len(tc.Status.TiKV.FailureStores) >= int(tc.Spec.TiKV.MaxFailoverCount) {
 				glog.Warningf("%s/%s failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiKV.MaxFailoverCount)
 				return nil
 			}

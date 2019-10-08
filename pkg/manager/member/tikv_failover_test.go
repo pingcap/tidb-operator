@@ -254,6 +254,48 @@ func TestTiKVFailoverFailover(t *testing.T) {
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(3))
 			},
 		},
+		{
+			name: "exceed max failover count2 but maxFailoverCount = 0",
+			update: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiKV.MaxFailoverCount = 0
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+					"12": {
+						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-12",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+					},
+					"13": {
+						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-13",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
+					},
+					"14": {
+						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-14",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+					},
+				}
+				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{
+					"1": {
+						PodName: "tikv-1",
+						StoreID: "1",
+					},
+					"2": {
+						PodName: "tikv-2",
+						StoreID: "2",
+					},
+					"3": {
+						PodName: "tikv-3",
+						StoreID: "3",
+					},
+				}
+			},
+			err: false,
+			expectFn: func(tc *v1alpha1.TidbCluster) {
+				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(6))
+			},
+		},
 	}
 	for i := range tests {
 		testFn(&tests[i], t)
