@@ -180,37 +180,35 @@ var _ PVCControlInterface = &realPVCControl{}
 // FakePVCControl is a fake PVCControlInterface
 type FakePVCControl struct {
 	PVCIndexer       cache.Indexer
-	updatePVCTracker requestTracker
-	deletePVCTracker requestTracker
+	updatePVCTracker RequestTracker
+	deletePVCTracker RequestTracker
 }
 
 // NewFakePVCControl returns a FakePVCControl
 func NewFakePVCControl(pvcInformer coreinformers.PersistentVolumeClaimInformer) *FakePVCControl {
 	return &FakePVCControl{
 		pvcInformer.Informer().GetIndexer(),
-		requestTracker{0, nil, 0},
-		requestTracker{0, nil, 0},
+		RequestTracker{},
+		RequestTracker{},
 	}
 }
 
 // SetUpdatePVCError sets the error attributes of updatePVCTracker
 func (fpc *FakePVCControl) SetUpdatePVCError(err error, after int) {
-	fpc.updatePVCTracker.err = err
-	fpc.updatePVCTracker.after = after
+	fpc.updatePVCTracker.SetError(err).SetAfter(after)
 }
 
 // SetDeletePVCError sets the error attributes of deletePVCTracker
 func (fpc *FakePVCControl) SetDeletePVCError(err error, after int) {
-	fpc.deletePVCTracker.err = err
-	fpc.deletePVCTracker.after = after
+	fpc.deletePVCTracker.SetError(err).SetAfter(after)
 }
 
 // DeletePVC deletes the pvc
 func (fpc *FakePVCControl) DeletePVC(_ *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) error {
-	defer fpc.deletePVCTracker.inc()
-	if fpc.deletePVCTracker.errorReady() {
-		defer fpc.deletePVCTracker.reset()
-		return fpc.deletePVCTracker.err
+	defer fpc.deletePVCTracker.Inc()
+	if fpc.deletePVCTracker.ErrorReady() {
+		defer fpc.deletePVCTracker.Reset()
+		return fpc.deletePVCTracker.GetError()
 	}
 
 	return fpc.PVCIndexer.Delete(pvc)
@@ -218,10 +216,10 @@ func (fpc *FakePVCControl) DeletePVC(_ *v1alpha1.TidbCluster, pvc *corev1.Persis
 
 // UpdatePVC updates the annotation, labels and spec of pvc
 func (fpc *FakePVCControl) UpdatePVC(_ *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolumeClaim, error) {
-	defer fpc.updatePVCTracker.inc()
-	if fpc.updatePVCTracker.errorReady() {
-		defer fpc.updatePVCTracker.reset()
-		return nil, fpc.updatePVCTracker.err
+	defer fpc.updatePVCTracker.Inc()
+	if fpc.updatePVCTracker.ErrorReady() {
+		defer fpc.updatePVCTracker.Reset()
+		return nil, fpc.updatePVCTracker.GetError()
 	}
 
 	return pvc, fpc.PVCIndexer.Update(pvc)
@@ -229,10 +227,10 @@ func (fpc *FakePVCControl) UpdatePVC(_ *v1alpha1.TidbCluster, pvc *corev1.Persis
 
 // UpdateMetaInfo updates the meta info of pvc
 func (fpc *FakePVCControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) (*corev1.PersistentVolumeClaim, error) {
-	defer fpc.updatePVCTracker.inc()
-	if fpc.updatePVCTracker.errorReady() {
-		defer fpc.updatePVCTracker.reset()
-		return nil, fpc.updatePVCTracker.err
+	defer fpc.updatePVCTracker.Inc()
+	if fpc.updatePVCTracker.ErrorReady() {
+		defer fpc.updatePVCTracker.Reset()
+		return nil, fpc.updatePVCTracker.GetError()
 	}
 	if pvc.Labels == nil {
 		pvc.Labels = make(map[string]string)
