@@ -67,6 +67,7 @@ spec:
     annotations:
 {{ toYaml .Values.tikv.annotations | indent 6 }}
   {{- end }}
+    maxFailoverCount: {{ .Values.tikv.maxFailoverCount | default 3 }}
   tidb:
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}

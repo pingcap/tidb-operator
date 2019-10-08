@@ -229,6 +229,11 @@ tikv:
   #   effect: "NoSchedule"
   annotations: {}
 
+  # When a TiKV node fails, its status turns to `Disconnected`. After 30 minutes, it turns to `Down`.
+  # After waiting for 5 minutes, TiDB Operator creates a new TiKV node if this TiKV node is still down.
+  # maxFailoverCount is used to configure the maximum number of TiKV nodes that TiDB Operator can create when failover occurs.
+  maxFailoverCount: 3
+
 tidb:
   # Please refer to https://github.com/pingcap/tidb/blob/master/config/config.toml.example for the default
   # tidb configurations(change to the tags of your tidb version),
