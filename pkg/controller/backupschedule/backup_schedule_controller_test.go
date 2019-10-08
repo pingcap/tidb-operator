@@ -1,0 +1,168 @@
+// Copyright 2019 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package backupschedule
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+
+	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	kubefake "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/kubernetes/staging/src/k8s.io/client-go/util/workqueue"
+)
+
+func TestBackupScheduleControllerEnqueueBackupSchedule(t *testing.T) {
+	g := NewGomegaWithT(t)
+	bks := newBackupSchedule()
+	bsc, _, _ := newFakeBackupScheduleController()
+	bsc.enqueueBackupSchedule(bks)
+	g.Expect(bsc.queue.Len()).To(Equal(1))
+}
+
+func TestBackupScheduleControllerSync(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name                        string
+		addBsToIndexer              bool
+		errWhenUpdateBackupSchedule bool
+		errExpectFn                 func(*GomegaWithT, error)
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		bks := newBackupSchedule()
+		bsc, bsIndexer, bsControl := newFakeBackupScheduleController()
+
+		if test.addBsToIndexer {
+			err := bsIndexer.Add(bks)
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(bks)
+		g.Expect(err).NotTo(HaveOccurred())
+
+		if test.errWhenUpdateBackupSchedule {
+			bsControl.SetUpdateBackupScheduleError(fmt.Errorf("update backup schedule failed"), 0)
+		}
+
+		err = bsc.sync(key)
+
+		if test.errExpectFn != nil {
+			test.errExpectFn(g, err)
+		}
+	}
+
+	tests := []testcase{
+		{
+			name:                        "normal",
+			addBsToIndexer:              true,
+			errWhenUpdateBackupSchedule: false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+		},
+		{
+			name:                        "can't found backup schedule",
+			addBsToIndexer:              false,
+			errWhenUpdateBackupSchedule: false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+		},
+		{
+			name:                        "update backup schedule failed",
+			addBsToIndexer:              true,
+			errWhenUpdateBackupSchedule: true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "update backup schedule failed")).To(Equal(true))
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+
+}
+
+func alreadySynced() bool { return true }
+
+func newFakeBackupScheduleController() (*Controller, cache.Indexer, *FakeBackupScheduleControl) {
+	cli := fake.NewSimpleClientset()
+	kubeCli := kubefake.NewSimpleClientset()
+	informerFactory := informers.NewSharedInformerFactory(cli, 0)
+
+	bsInformer := informerFactory.Pingcap().V1alpha1().BackupSchedules()
+	backupScheduleControl := NewFakeBackupScheduleControl(bsInformer)
+
+	bsc := &Controller{
+		kubeClient: kubeCli,
+		cli:        cli,
+		control:    backupScheduleControl,
+		queue: workqueue.NewNamedRateLimitingQueue(
+			workqueue.DefaultControllerRateLimiter(),
+			"backupSchedule",
+		),
+	}
+
+	bsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: bsc.enqueueBackupSchedule,
+		UpdateFunc: func(old, cur interface{}) {
+			bsc.enqueueBackupSchedule(cur)
+		},
+		DeleteFunc: bsc.enqueueBackupSchedule,
+	})
+	bsc.bsLister = bsInformer.Lister()
+	bsc.bsListerSynced = alreadySynced
+
+	return bsc, bsInformer.Informer().GetIndexer(), backupScheduleControl
+}
+
+func newBackupSchedule() *v1alpha1.BackupSchedule {
+	return &v1alpha1.BackupSchedule{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "BackupScheduler",
+			APIVersion: "pingcap.com/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-bks",
+			Namespace: corev1.NamespaceDefault,
+			UID:       types.UID("test-bks"),
+		},
+		Spec: v1alpha1.BackupScheduleSpec{
+			Schedule:   "1 */10 * * *",
+			MaxBackups: 10,
+			BackupTemplate: v1alpha1.BackupSpec{
+				Cluster:        "demo1",
+				TidbSecretName: "demo1-tidb-secret",
+				StorageType:    v1alpha1.BackupStorageTypeCeph,
+				StorageProvider: v1alpha1.StorageProvider{
+					Ceph: &v1alpha1.CephStorageProvider{
+						Endpoint:   "http://10.0.0.1",
+						SecretName: "demo",
+					},
+				},
+			},
+		},
+	}
+}
