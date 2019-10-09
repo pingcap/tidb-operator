@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"strings"
 )
 
@@ -29,10 +30,11 @@ const (
 )
 
 type CrdKind struct {
-	Kind       string
-	Plural     string
-	SpecName   string
-	ShortNames []string
+	Kind                    string
+	Plural                  string
+	SpecName                string
+	ShortNames              []string
+	AdditionalPrinterColums []extensionsobj.CustomResourceColumnDefinition
 }
 
 type CrdKinds struct {
