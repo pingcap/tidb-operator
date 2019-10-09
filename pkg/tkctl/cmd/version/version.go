@@ -19,7 +19,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
-	"github.com/pingcap/tidb-operator/version"
+	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -80,7 +80,7 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 	controllers, err := kubeCli.AppsV1().
 		Deployments(core.NamespaceAll).
 		List(v1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.ComponentLabelKey, "controller-manager", label.InstanceLabelKey, "tidb-operator"),
+			LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.ComponentLabelKey, "controller-manager", label.InstanceLabelKey, "operator"),
 		})
 	if err != nil {
 		return err
@@ -88,7 +88,7 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 	schedulers, err := kubeCli.AppsV1().
 		Deployments(core.NamespaceAll).
 		List(v1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.ComponentLabelKey, "scheduler", label.InstanceLabelKey, "tidb-operator"),
+			LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.ComponentLabelKey, "scheduler", label.InstanceLabelKey, "operator"),
 		})
 	if err != nil {
 		return nil

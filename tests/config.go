@@ -43,6 +43,9 @@ type Config struct {
 	TiKVGrpcConcurrency int `yaml:"tikv_grpc_concurrency" json:"tikv_grpc_concurrency"`
 	TiDBTokenLimit      int `yaml:"tidb_token_limit" json:"tidb_token_limit"`
 
+	// old versions of reparo does not support idempotent incremental recover, so we lock the version explicitly
+	AdditionalDrainerVersion string `yaml:"file_drainer_version" json:"file_drainer_version"`
+
 	// Block writer
 	BlockWriter blockwriter.Config `yaml:"block_writer,omitempty"`
 
@@ -64,6 +67,8 @@ type Nodes struct {
 // NewConfig creates a new config.
 func NewConfig() (*Config, error) {
 	cfg := &Config{
+		AdditionalDrainerVersion: "v3.0.2",
+
 		PDMaxReplicas:       5,
 		TiDBTokenLimit:      1024,
 		TiKVGrpcConcurrency: 8,

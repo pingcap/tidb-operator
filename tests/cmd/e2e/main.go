@@ -55,125 +55,155 @@ func main() {
 	cli, kubeCli := client.NewCliOrDie()
 	ocfg := newOperatorConfig()
 
-	cluster1 := newTidbClusterConfig(ns, "cluster1", "")
-	cluster2 := newTidbClusterConfig(ns, "cluster2", "admin")
+	cluster1 := newTidbClusterConfig(ns, "cluster1", "", "")
+	cluster2 := newTidbClusterConfig(ns, "cluster2", "admin", "")
 	cluster2.Resources["pd.replicas"] = "1"
-	cluster3 := newTidbClusterConfig(ns, "cluster3", "admin")
-	cluster4 := newTidbClusterConfig(ns, "cluster4", "admin")
-
-	allClusters := []*tests.TidbClusterConfig{
-		cluster1,
-		cluster2,
-	}
+	cluster3 := newTidbClusterConfig(ns, "cluster3", "admin", "")
+	cluster4 := newTidbClusterConfig(ns, "cluster4", "admin", "")
+	cluster5 := newTidbClusterConfig(ns, "cluster5", "", "v2.1.16") // for v2.1.x series
+	cluster5.Resources["tikv.resources.limits.storage"] = "1G"
 
 	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, cfg, nil)
 	oa.LabelNodesOrDie()
 	oa.CleanOperatorOrDie(ocfg)
 	oa.DeployOperatorOrDie(ocfg)
 
-	fn1 := func(wg *sync.WaitGroup) {
-		defer wg.Done()
-		oa.CleanTidbClusterOrDie(cluster1)
-		oa.DeployTidbClusterOrDie(cluster1)
-		oa.CheckTidbClusterStatusOrDie(cluster1)
-		oa.CheckDisasterToleranceOrDie(cluster1)
+	/**
+	 * This test case covers basic operators of a single cluster.
+	 * - deployment
+	 * - scaling
+	 * - update configuration
+	 */
+	testBasic := func(wg *sync.WaitGroup, cluster *tests.TidbClusterConfig) {
+		oa.CleanTidbClusterOrDie(cluster)
+		oa.DeployTidbClusterOrDie(cluster)
+		oa.CheckTidbClusterStatusOrDie(cluster)
+		oa.CheckDisasterToleranceOrDie(cluster)
 
 		// scale
-		cluster1.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
-		oa.ScaleTidbClusterOrDie(cluster1)
-		oa.CheckTidbClusterStatusOrDie(cluster1)
-		oa.CheckDisasterToleranceOrDie(cluster1)
+		cluster.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
+		oa.ScaleTidbClusterOrDie(cluster)
+		oa.CheckTidbClusterStatusOrDie(cluster)
+		oa.CheckDisasterToleranceOrDie(cluster)
 
-		cluster1.ScaleTiDB(2).ScaleTiKV(4).ScalePD(3)
-		oa.ScaleTidbClusterOrDie(cluster1)
-		oa.CheckTidbClusterStatusOrDie(cluster1)
-		oa.CheckDisasterToleranceOrDie(cluster1)
+		cluster.ScaleTiDB(2).ScaleTiKV(4).ScalePD(3)
+		oa.ScaleTidbClusterOrDie(cluster)
+		oa.CheckTidbClusterStatusOrDie(cluster)
+		oa.CheckDisasterToleranceOrDie(cluster)
 
 		// configuration change
-		cluster1.EnableConfigMapRollout = true
+		cluster.EnableConfigMapRollout = true
 		// moved to stability test because these two cases need too many times
 		// bad conf
-		//cluster1.TiDBPreStartScript = strconv.Quote("exit 1")
-		//cluster1.TiKVPreStartScript = strconv.Quote("exit 1")
-		//cluster1.PDPreStartScript = strconv.Quote("exit 1")
-		//oa.UpgradeTidbClusterOrDie(cluster1)
+		//cluster.TiDBPreStartScript = strconv.Quote("exit 1")
+		//cluster.TiKVPreStartScript = strconv.Quote("exit 1")
+		//cluster.PDPreStartScript = strconv.Quote("exit 1")
+		//oa.UpgradeTidbClusterOrDie(cluster)
 		//time.Sleep(30 * time.Second)
-		//oa.CheckTidbClustersAvailableOrDie([]*tests.TidbClusterConfig{cluster1})
+		//oa.CheckTidbClustersAvailableOrDie([]*tests.TidbClusterConfig{cluster})
 		// rollback conf
-		//cluster1.PDPreStartScript = strconv.Quote("")
-		//cluster1.TiKVPreStartScript = strconv.Quote("")
-		//cluster1.TiDBPreStartScript = strconv.Quote("")
-		//oa.UpgradeTidbClusterOrDie(cluster1)
-		//oa.CheckTidbClusterStatusOrDie(cluster1)
+		//cluster.PDPreStartScript = strconv.Quote("")
+		//cluster.TiKVPreStartScript = strconv.Quote("")
+		//cluster.TiDBPreStartScript = strconv.Quote("")
+		//oa.UpgradeTidbClusterOrDie(cluster)
+		//oa.CheckTidbClusterStatusOrDie(cluster)
 		// correct conf
-		cluster1.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
+		cluster.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
 			UpdateTiKVGrpcConcurrency(cfg.TiKVGrpcConcurrency).
 			UpdateTiDBTokenLimit(cfg.TiDBTokenLimit)
-		oa.UpgradeTidbClusterOrDie(cluster1)
-		oa.CheckTidbClusterStatusOrDie(cluster1)
+		oa.UpgradeTidbClusterOrDie(cluster)
+		oa.CheckTidbClusterStatusOrDie(cluster)
 
-		// switch to host network
-		cluster1.RunInHost(true)
-		oa.UpgradeTidbClusterOrDie(cluster1)
-		oa.CheckTidbClusterStatusOrDie(cluster1)
-
-		// switch to pod network
-		cluster1.RunInHost(false)
-		oa.UpgradeTidbClusterOrDie(cluster1)
-		oa.CheckTidbClusterStatusOrDie(cluster1)
 	}
-	fn2 := func(wg *sync.WaitGroup) {
-		defer wg.Done()
 
+	/**
+	 * This test case covers upgrading TiDB version.
+	 */
+	testUpgrade := func(wg *sync.WaitGroup, cluster *tests.TidbClusterConfig) {
 		// deploy
-		oa.CleanTidbClusterOrDie(cluster2)
-		oa.DeployTidbClusterOrDie(cluster2)
-		oa.CheckTidbClusterStatusOrDie(cluster2)
-		oa.CheckDisasterToleranceOrDie(cluster2)
+		oa.CleanTidbClusterOrDie(cluster)
+		oa.DeployTidbClusterOrDie(cluster)
+		oa.CheckTidbClusterStatusOrDie(cluster)
+		oa.CheckDisasterToleranceOrDie(cluster)
 
-		cluster2.ScalePD(3)
-		oa.ScaleTidbClusterOrDie(cluster2)
-		oa.CheckTidbClusterStatusOrDie(cluster2)
+		cluster.ScalePD(3)
+		oa.ScaleTidbClusterOrDie(cluster)
+		oa.CheckTidbClusterStatusOrDie(cluster)
 
 		// upgrade
 		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
 		ctx, cancel := context.WithCancel(context.Background())
-		assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(cluster2)
-		cluster2.UpgradeAll(upgradeVersions[0])
-		oa.UpgradeTidbClusterOrDie(cluster2)
-		oa.CheckUpgradeOrDie(ctx, cluster2)
-		oa.CheckManualPauseTiDBOrDie(cluster2)
-		oa.CheckTidbClusterStatusOrDie(cluster2)
-		oa.CheckTidbMemberAssignedNodesOrDie(cluster2, assignedNodes)
+		assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(cluster)
+		cluster.UpgradeAll(upgradeVersions[0])
+		oa.UpgradeTidbClusterOrDie(cluster)
+		oa.CheckUpgradeOrDie(ctx, cluster)
+		oa.CheckManualPauseTiDBOrDie(cluster)
+		oa.CheckTidbClusterStatusOrDie(cluster)
+		oa.CheckTidbMemberAssignedNodesOrDie(cluster, assignedNodes)
 		cancel()
 
 		oa.CleanWebHookAndServiceOrDie(ocfg)
 	}
-	fn3 := func(wg *sync.WaitGroup) {
-		defer wg.Done()
-		oa.CleanTidbClusterOrDie(cluster3)
-		oa.CleanTidbClusterOrDie(cluster4)
-		oa.DeployTidbClusterOrDie(cluster3)
-		oa.DeployTidbClusterOrDie(cluster4)
-		oa.CheckTidbClusterStatusOrDie(cluster3)
-		oa.CheckTidbClusterStatusOrDie(cluster4)
-		go oa.BeginInsertDataToOrDie(cluster3)
+
+	/**
+	 * This test case covers backup and restore between two clusters.
+	 */
+	testBackupAndRestore := func(wg *sync.WaitGroup, clusterA, clusterB *tests.TidbClusterConfig) {
+		oa.CleanTidbClusterOrDie(clusterA)
+		oa.CleanTidbClusterOrDie(clusterB)
+		oa.DeployTidbClusterOrDie(clusterA)
+		oa.DeployTidbClusterOrDie(clusterB)
+		oa.CheckTidbClusterStatusOrDie(clusterA)
+		oa.CheckTidbClusterStatusOrDie(clusterB)
+		go oa.BeginInsertDataToOrDie(clusterA)
 
 		// backup and restore
-		oa.BackupRestoreOrDie(cluster3, cluster4)
+		oa.BackupRestoreOrDie(clusterA, clusterB)
+
+		oa.StopInsertDataTo(clusterA)
+	}
+
+	/**
+	 * This test case switches back and forth between pod network and host network of a single cluster.
+	 * Note that only one cluster can run in host network mode at the same time.
+	 */
+	testHostNetwork := func(wg *sync.WaitGroup, cluster *tests.TidbClusterConfig) {
+		// switch to host network
+		cluster.RunInHost(true)
+		oa.UpgradeTidbClusterOrDie(cluster)
+		oa.CheckTidbClusterStatusOrDie(cluster)
+
+		// switch to pod network
+		cluster.RunInHost(false)
+		oa.UpgradeTidbClusterOrDie(cluster)
+		oa.CheckTidbClusterStatusOrDie(cluster)
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(3)
-	go fn1(&wg)
-	go fn2(&wg)
-	go fn3(&wg)
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		testBasic(&wg, cluster1)
+		testHostNetwork(&wg, cluster1)
+		oa.CheckDataRegionDisasterToleranceOrDie(cluster1)
+	}()
+	go func() {
+		defer wg.Done()
+		testBasic(&wg, cluster5)
+		oa.CheckDataRegionDisasterToleranceOrDie(cluster5)
+	}()
+	go func() {
+		defer wg.Done()
+		testUpgrade(&wg, cluster2)
+		oa.CheckDataRegionDisasterToleranceOrDie(cluster2)
+	}()
+	go func() {
+		defer wg.Done()
+		testBackupAndRestore(&wg, cluster3, cluster4)
+		oa.CheckDataRegionDisasterToleranceOrDie(cluster3)
+		oa.CheckDataRegionDisasterToleranceOrDie(cluster4)
+	}()
 	wg.Wait()
-
-	// check data regions disaster tolerance
-	for _, clusterInfo := range allClusters {
-		oa.CheckDataRegionDisasterToleranceOrDie(clusterInfo)
-	}
 
 	glog.Infof("\nFinished.")
 }
@@ -198,8 +228,10 @@ func newOperatorConfig() *tests.OperatorConfig {
 	}
 }
 
-func newTidbClusterConfig(ns, clusterName, password string) *tests.TidbClusterConfig {
-	tidbVersion := cfg.GetTiDBVersionOrDie()
+func newTidbClusterConfig(ns, clusterName, password, tidbVersion string) *tests.TidbClusterConfig {
+	if tidbVersion == "" {
+		tidbVersion = cfg.GetTiDBVersionOrDie()
+	}
 	topologyKey := "rack"
 	return &tests.TidbClusterConfig{
 		Namespace:        ns,
@@ -239,5 +271,6 @@ func newTidbClusterConfig(ns, clusterName, password string) *tests.TidbClusterCo
 		},
 		TopologyKey:            topologyKey,
 		EnableConfigMapRollout: true,
+		ClusterVersion:         tidbVersion,
 	}
 }

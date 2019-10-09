@@ -93,6 +93,8 @@ type TidbClusterSpec struct {
 	Services        []Service                            `json:"services,omitempty"`
 	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 	Timezone        string                               `json:"timezone,omitempty"`
+	// Enable TLS connection between TiDB server compoments
+	EnableTLSCluster bool `json:"enableTLSCluster,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -103,32 +105,25 @@ type TidbClusterStatus struct {
 	TiDB      TiDBStatus `json:"tidb,omitempty"`
 }
 
-// PDSpec contains details of PD member
+// PDSpec contains details of PD members
 type PDSpec struct {
 	ContainerSpec
-	Replicas         int32               `json:"replicas"`
-	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
-	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
-	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
-	Annotations      map[string]string   `json:"annotations,omitempty"`
-	HostNetwork      bool                `json:"hostNetwork,omitempty"`
-	StorageClassName string              `json:"storageClassName,omitempty"`
+	PodAttributesSpec
+	Replicas         int32  `json:"replicas"`
+	StorageClassName string `json:"storageClassName,omitempty"`
 }
 
-// TiDBSpec contains details of PD member
+// TiDBSpec contains details of TiDB members
 type TiDBSpec struct {
 	ContainerSpec
+	PodAttributesSpec
 	Replicas         int32                 `json:"replicas"`
-	Affinity         *corev1.Affinity      `json:"affinity,omitempty"`
-	NodeSelector     map[string]string     `json:"nodeSelector,omitempty"`
-	Tolerations      []corev1.Toleration   `json:"tolerations,omitempty"`
-	Annotations      map[string]string     `json:"annotations,omitempty"`
-	HostNetwork      bool                  `json:"hostNetwork,omitempty"`
 	StorageClassName string                `json:"storageClassName,omitempty"`
 	BinlogEnabled    bool                  `json:"binlogEnabled,omitempty"`
 	MaxFailoverCount int32                 `json:"maxFailoverCount,omitempty"`
 	SeparateSlowLog  bool                  `json:"separateSlowLog,omitempty"`
 	SlowLogTailer    TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
+	EnableTLSClient  bool                  `json:"enableTLSClient,omitempty"`
 }
 
 // TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB
@@ -136,17 +131,14 @@ type TiDBSlowLogTailerSpec struct {
 	ContainerSpec
 }
 
-// TiKVSpec contains details of PD member
+// TiKVSpec contains details of TiKV members
 type TiKVSpec struct {
 	ContainerSpec
-	Replicas         int32               `json:"replicas"`
-	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
-	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
-	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
-	Annotations      map[string]string   `json:"annotations,omitempty"`
-	HostNetwork      bool                `json:"hostNetwork,omitempty"`
-	Privileged       bool                `json:"privileged,omitempty"`
-	StorageClassName string              `json:"storageClassName,omitempty"`
+	PodAttributesSpec
+	Replicas         int32  `json:"replicas"`
+	Privileged       bool   `json:"privileged,omitempty"`
+	StorageClassName string `json:"storageClassName,omitempty"`
+	MaxFailoverCount int32  `json:"maxFailoverCount,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
@@ -160,6 +152,17 @@ type ContainerSpec struct {
 	ImagePullPolicy corev1.PullPolicy    `json:"imagePullPolicy,omitempty"`
 	Requests        *ResourceRequirement `json:"requests,omitempty"`
 	Limits          *ResourceRequirement `json:"limits,omitempty"`
+}
+
+// PodAttributesControlSpec is a spec of some general attributes of TiKV, TiDB and PD Pods
+type PodAttributesSpec struct {
+	Affinity           *corev1.Affinity           `json:"affinity,omitempty"`
+	NodeSelector       map[string]string          `json:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration        `json:"tolerations,omitempty"`
+	Annotations        map[string]string          `json:"annotations,omitempty"`
+	HostNetwork        bool                       `json:"hostNetwork,omitempty"`
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+	PriorityClassName  string                     `json:"priorityClassName,omitempty"`
 }
 
 // Service represent service type used in TidbCluster
@@ -482,7 +485,7 @@ type RestoreSpec struct {
 	BackupNamespace string `json:"backupNamespace"`
 	// SecretName is the name of the secret which stores
 	// tidb cluster's username and password.
-	SecretName string `json:"secretName"`
+	TidbSecretName string `json:"tidbSecretName"`
 	// StorageClassName is the storage class for restore job's PV.
 	StorageClassName string `json:"storageClassName"`
 	// StorageSize is the request storage size for restore job

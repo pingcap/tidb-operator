@@ -114,10 +114,6 @@ func (bsc *Controller) Run(workers int, stopCh <-chan struct{}) {
 	glog.Info("Starting backup schedule controller")
 	defer glog.Info("Shutting down backup schedule controller")
 
-	if !cache.WaitForCacheSync(stopCh, bsc.bsListerSynced) {
-		return
-	}
-
 	for i := 0; i < workers; i++ {
 		go wait.Until(bsc.worker, time.Second, stopCh)
 	}
@@ -176,8 +172,8 @@ func (bsc *Controller) sync(key string) error {
 	return bsc.syncBackupSchedule(bs.DeepCopy())
 }
 
-func (bsc *Controller) syncBackupSchedule(tc *v1alpha1.BackupSchedule) error {
-	return bsc.control.UpdateBackupSchedule(tc)
+func (bsc *Controller) syncBackupSchedule(bs *v1alpha1.BackupSchedule) error {
+	return bsc.control.UpdateBackupSchedule(bs)
 }
 
 // enqueueBackupSchedule enqueues the given restore in the work queue.

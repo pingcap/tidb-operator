@@ -29,7 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
 	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
-	"github.com/pingcap/tidb-operator/version"
+	"github.com/pingcap/tidb-operator/pkg/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
@@ -141,8 +141,23 @@ func main() {
 	bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go informerFactory.Start(controllerCtx.Done())
-	go kubeInformerFactory.Start(controllerCtx.Done())
+
+	// Start informer factories after all controller are initialized.
+	informerFactory.Start(controllerCtx.Done())
+	kubeInformerFactory.Start(controllerCtx.Done())
+
+	// Wait for all started informers' cache were synced.
+	for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
+		if !synced {
+			glog.Fatalf("error syncing informer for %v", v)
+		}
+	}
+	for v, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
+		if !synced {
+			glog.Fatalf("error syncing informer for %v", v)
+		}
+	}
+	glog.Infof("cache of informer factories sync successfully")
 
 	onStarted := func(ctx context.Context) {
 		go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)

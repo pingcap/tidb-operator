@@ -122,9 +122,9 @@ type FakeServiceControl struct {
 	EpsIndexer               cache.Indexer
 	TcLister                 v1listers.TidbClusterLister
 	TcIndexer                cache.Indexer
-	createServiceTracker     requestTracker
-	updateServiceTracker     requestTracker
-	deleteStatefulSetTracker requestTracker
+	createServiceTracker     RequestTracker
+	updateServiceTracker     RequestTracker
+	deleteStatefulSetTracker RequestTracker
 }
 
 // NewFakeServiceControl returns a FakeServiceControl
@@ -135,36 +135,33 @@ func NewFakeServiceControl(svcInformer coreinformers.ServiceInformer, epsInforme
 		epsInformer.Informer().GetIndexer(),
 		tcInformer.Lister(),
 		tcInformer.Informer().GetIndexer(),
-		requestTracker{0, nil, 0},
-		requestTracker{0, nil, 0},
-		requestTracker{0, nil, 0},
+		RequestTracker{},
+		RequestTracker{},
+		RequestTracker{},
 	}
 }
 
 // SetCreateServiceError sets the error attributes of createServiceTracker
 func (ssc *FakeServiceControl) SetCreateServiceError(err error, after int) {
-	ssc.createServiceTracker.err = err
-	ssc.createServiceTracker.after = after
+	ssc.createServiceTracker.SetError(err).SetAfter(after)
 }
 
 // SetUpdateServiceError sets the error attributes of updateServiceTracker
 func (ssc *FakeServiceControl) SetUpdateServiceError(err error, after int) {
-	ssc.updateServiceTracker.err = err
-	ssc.updateServiceTracker.after = after
+	ssc.updateServiceTracker.SetError(err).SetAfter(after)
 }
 
 // SetDeleteServiceError sets the error attributes of deleteServiceTracker
 func (ssc *FakeServiceControl) SetDeleteServiceError(err error, after int) {
-	ssc.deleteStatefulSetTracker.err = err
-	ssc.deleteStatefulSetTracker.after = after
+	ssc.deleteStatefulSetTracker.SetError(err).SetAfter(after)
 }
 
 // CreateService adds the service to SvcIndexer
 func (ssc *FakeServiceControl) CreateService(_ *v1alpha1.TidbCluster, svc *corev1.Service) error {
-	defer ssc.createServiceTracker.inc()
-	if ssc.createServiceTracker.errorReady() {
-		defer ssc.createServiceTracker.reset()
-		return ssc.createServiceTracker.err
+	defer ssc.createServiceTracker.Inc()
+	if ssc.createServiceTracker.ErrorReady() {
+		defer ssc.createServiceTracker.Reset()
+		return ssc.createServiceTracker.GetError()
 	}
 
 	err := ssc.SvcIndexer.Add(svc)
@@ -186,10 +183,10 @@ func (ssc *FakeServiceControl) CreateService(_ *v1alpha1.TidbCluster, svc *corev
 
 // UpdateService updates the service of SvcIndexer
 func (ssc *FakeServiceControl) UpdateService(_ *v1alpha1.TidbCluster, svc *corev1.Service) (*corev1.Service, error) {
-	defer ssc.updateServiceTracker.inc()
-	if ssc.updateServiceTracker.errorReady() {
-		defer ssc.updateServiceTracker.reset()
-		return nil, ssc.updateServiceTracker.err
+	defer ssc.updateServiceTracker.Inc()
+	if ssc.updateServiceTracker.ErrorReady() {
+		defer ssc.updateServiceTracker.Reset()
+		return nil, ssc.updateServiceTracker.GetError()
 	}
 
 	if svc.Spec.Selector != nil {

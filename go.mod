@@ -23,7 +23,7 @@ require (
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
-	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/dustin/go-humanize v1.0.0
 	github.com/eknkc/amber v0.0.0-20171010120322-cdade1c07385 // indirect
 	github.com/elazarl/goproxy v0.0.0-20190421051319-9d40249d3c2f // indirect
 	github.com/elazarl/goproxy/ext v0.0.0-20190421051319-9d40249d3c2f // indirect
@@ -102,6 +102,7 @@ require (
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1 // indirect
 	golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421 // indirect
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
 	google.golang.org/genproto v0.0.0-20180731170733-daca94659cb5 // indirect
 	google.golang.org/grpc v1.12.0 // indirect
@@ -120,9 +121,8 @@ require (
 	k8s.io/apiserver v0.0.0-20190118115647-a748535592ba
 	k8s.io/cli-runtime v0.0.0-20190118125240-caee4253d968
 	k8s.io/client-go v2.0.0-alpha.0.0.20190115164855-701b91367003+incompatible
-	k8s.io/code-generator v0.0.0-20190808180452-d0071a119380
-	k8s.io/gengo v0.0.0-20190327210449-e17681d19d3a // indirect; indirec
-	k8s.io/klog v0.3.1
+	k8s.io/code-generator v0.0.0-20190927075303-016f2b3d74d0
+	k8s.io/klog v1.0.0
 	k8s.io/kubernetes v1.12.5
 	k8s.io/metrics v0.0.0-20190118124808-33c1aed8dc65 // indirect
 	k8s.io/utils v0.0.0-20190308190857-21c4ce38f2a7 // indirect
