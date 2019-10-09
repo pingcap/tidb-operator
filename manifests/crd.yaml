@@ -220,6 +220,10 @@ spec:
     type: integer
     description: The max number of backups we want to keep.
     JSONPath: .spec.maxBackups
+  - name: MaxReservedTime
+    type: string
+    description: The max long time backups we want to keep.
+    JSONPath: .spec.maxReservedTime
   - name: LastBackup
     type: string
     description: The last backup CR name
