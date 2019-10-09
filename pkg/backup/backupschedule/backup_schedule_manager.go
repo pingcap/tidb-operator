@@ -243,7 +243,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 
 	reservedTime, err := time.ParseDuration(*bs.Spec.MaxReservedTime)
 	if err != nil {
-		glog.Errorf("backup schedule %s/%s, invalid MaxKeepTime %s", ns, bsName, *bs.Spec.MaxReservedTime)
+		glog.Errorf("backup schedule %s/%s, invalid MaxReservedTime %s", ns, bsName, *bs.Spec.MaxReservedTime)
 		return
 	}
 
@@ -293,8 +293,8 @@ func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.BackupSchedule, need
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
-	backupLables := label.NewBackupSchedule().Instance(bs.Spec.BackupTemplate.Cluster).BackupSchedule(bsName)
-	selector, err := backupLables.Selector()
+	backupLabels := label.NewBackupSchedule().Instance(bs.Spec.BackupTemplate.Cluster).BackupSchedule(bsName)
+	selector, err := backupLabels.Selector()
 	if err != nil {
 		return nil, fmt.Errorf("generate backup schedule %s/%s label selector failed, err: %v", ns, bsName, err)
 	}
@@ -304,7 +304,7 @@ func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.BackupSchedule, need
 	}
 
 	if needSort {
-		// sort backups by creation time before removing extra backups
+		// sort backups by creation time before removing expired backups
 		sort.Sort(byCreateTime(backupsList))
 	}
 	return backupsList, nil
