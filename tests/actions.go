@@ -647,7 +647,8 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	var beforePVNames []string
 	for _, pv := range pvList.Items {
 		beforePVNames = append(beforePVNames, pv.GetName())
-		glog.V(4).Info(pv.Labels)
+		glog.V(4).Infof("%s, %s, %v", pv.Name, pv.Spec.PersistentVolumeReclaimPolicy, pv.Labels)
+		glog.V(4).Info(pv.Spec.ClaimRef)
 	}
 	glog.V(4).Info(beforePVNames)
 
@@ -1102,6 +1103,8 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 		replicas := tc.TiKVRealReplicas()
 		for i := replicas - 1; i >= 0; i-- {
 			if err := wait.PollImmediate(1*time.Second, 10*time.Minute, func() (done bool, err error) {
+				podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
+				scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
 				schedulers, err := pdClient.GetEvictLeaderSchedulers()
 				if err != nil {
 					glog.Errorf("failed to get evict leader schedulers, %v", err)
@@ -1110,13 +1113,17 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 				glog.V(4).Infof("index:%d,schedulers:%v,error:%v", i, schedulers, err)
 				if len(schedulers) > 1 {
 					glog.Errorf("there are too many evict leader schedulers: %v", schedulers)
+					for _, s := range schedulers {
+						if s == scheduler {
+							glog.Infof("found scheudler: %s", scheduler)
+							return true, nil
+						}
+					}
 					return false, nil
 				}
 				if len(schedulers) == 0 {
 					return false, nil
 				}
-				podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
-				scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
 				if schedulers[0] == scheduler {
 					glog.Infof("index: %d,the schedulers: %s = %s", i, schedulers[0], scheduler)
 					return true, nil
