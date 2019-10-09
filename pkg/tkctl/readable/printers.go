@@ -14,15 +14,12 @@
 package readable
 
 import (
-	"bytes"
 	"fmt"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/alias"
-	appsv1 "k8s.io/api/apps/v1"
-	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -109,17 +106,6 @@ func AddHandlers(h printers.PrintHandler) {
 	}
 	h.TableHandler(volumeColumns, printVolume)
 	h.TableHandler(volumeColumns, printVolumeList)
-
-	statefulSetColumnDefinitions := []metav1beta1.TableColumnDefinition{
-		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
-		{Name: "Desired", Type: "string", Description: appsv1beta1.StatefulSetSpec{}.SwaggerDoc()["replicas"]},
-		{Name: "Current", Type: "string", Description: appsv1beta1.StatefulSetStatus{}.SwaggerDoc()["replicas"]},
-		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
-		{Name: "Containers", Type: "string", Priority: 1, Description: "Names of each container in the template."},
-		{Name: "Images", Type: "string", Priority: 1, Description: "Images referenced by each container in the template."},
-	}
-	h.TableHandler(statefulSetColumnDefinitions, printStatefulSet)
-	h.TableHandler(statefulSetColumnDefinitions, printStatefulSetList)
 }
 
 func printTidbClusterList(tcs *v1alpha1.TidbClusterList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
@@ -425,47 +411,4 @@ func extraTikvDataColumn(pod *v1.Pod) *TikvExtraInfoColumn {
 	return &TikvExtraInfoColumn{
 		StoreId: storeId,
 	}
-}
-
-func printStatefulSet(obj *appsv1.StatefulSet, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
-	row := metav1beta1.TableRow{
-		Object: runtime.RawExtension{Object: obj},
-	}
-	desiredReplicas := obj.Spec.Replicas
-	currentReplicas := obj.Status.Replicas
-	createTime := translateTimestampSince(obj.CreationTimestamp)
-	row.Cells = append(row.Cells, obj.Name, int64(*desiredReplicas), int64(currentReplicas), createTime)
-	if options.Wide {
-		names, images := layoutContainerCells(obj.Spec.Template.Spec.Containers)
-		row.Cells = append(row.Cells, names, images)
-	}
-	return []metav1beta1.TableRow{row}, nil
-}
-
-func printStatefulSetList(list *appsv1.StatefulSetList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
-	rows := make([]metav1beta1.TableRow, 0, len(list.Items))
-	for i := range list.Items {
-		r, err := printStatefulSet(&list.Items[i], options)
-		if err != nil {
-			return nil, err
-		}
-		rows = append(rows, r...)
-	}
-	return rows, nil
-}
-
-// Lay out all the containers on one line if use wide output.
-func layoutContainerCells(containers []v1.Container) (names string, images string) {
-	var namesBuffer bytes.Buffer
-	var imagesBuffer bytes.Buffer
-
-	for i, container := range containers {
-		namesBuffer.WriteString(container.Name)
-		imagesBuffer.WriteString(container.Image)
-		if i != len(containers)-1 {
-			namesBuffer.WriteString(",")
-			imagesBuffer.WriteString(",")
-		}
-	}
-	return namesBuffer.String(), imagesBuffer.String()
 }

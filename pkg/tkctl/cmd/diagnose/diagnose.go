@@ -9,21 +9,31 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
+
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
+
+	"k8s.io/kubernetes/pkg/printers"
+
 	"github.com/ghodss/yaml"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/scheme"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
-	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	"github.com/spf13/cobra"
-	apps "k8s.io/api/apps/v1"
+	appv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/kubernetes/pkg/apis/apps"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	printersinternal "k8s.io/kubernetes/pkg/printers/internalversion"
 )
 
 const (
@@ -51,9 +61,13 @@ type diagnoseInfoOptions struct {
 	tcCli   *versioned.Clientset
 	kubeCli *kubernetes.Clientset
 
+	listOptions metav1.ListOptions
+
 	logPath       string
 	since         time.Duration
 	byteReadLimit int64
+	printer       *printers.HumanReadablePrinter
+	tidbPrinter   printers.ResourcePrinter
 
 	genericclioptions.IOStreams
 }
@@ -122,6 +136,19 @@ func (o *diagnoseInfoOptions) Complete(tkcContext *config.TkcContext, cmd *cobra
 	}
 	o.kubeCli = kubeCli
 
+	o.printer = NewPrinter()
+
+	tidbPrinter, err := NewTiDBPrinter()
+	if err != nil {
+		return err
+	}
+	o.tidbPrinter = tidbPrinter
+
+	o.listOptions = metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s,%s in (%s)", label.InstanceLabelKey, o.tidbClusterName, label.ComponentLabelKey,
+			strings.Join([]string{label.TiDBLabelVal, label.TiKVLabelVal, label.PDLabelVal}, ",")),
+	}
+
 	return nil
 }
 
@@ -153,19 +180,31 @@ func (o *diagnoseInfoOptions) Run() error {
 	tc.SetGroupVersionKind(controller.ControllerKind)
 
 	// dump tidb cluster object information.
-	if err := NewTiDBClusterDumper(tc).Dump(o.logPath, rWriter); err != nil {
+	if err := NewTiDBClusterDumper(tc, o.tidbPrinter).Dump(o.logPath, rWriter); err != nil {
 		return err
 	}
 
 	// dump stateful information by a particular tidb cluster.
-	if err := NewTiDBClusterStatefulDumper(tc, o.kubeCli).Dump(o.logPath, rWriter); err != nil {
+	if err := NewTiDBClusterStatefulDumper(tc, o.kubeCli, o.printer).Dump(o.logPath, rWriter); err != nil {
 		return err
 	}
 
-	podList, err := o.kubeCli.CoreV1().Pods(o.namespace).List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s,%s in (%s)", label.InstanceLabelKey, tc.Name, label.ComponentLabelKey,
-			strings.Join([]string{label.TiDBLabelVal, label.TiKVLabelVal, label.PDLabelVal}, ",")),
-	})
+	// dump pvc information by a particular tidb cluster.
+	if err := NewPvcDumper(o.kubeCli, tc, o.listOptions, o.printer).Dump(o.logPath, rWriter); err != nil {
+		return err
+	}
+
+	// dump services information by a particular tidb cluster.
+	if err := NewSvcDumper(o.kubeCli, tc, o.listOptions, o.printer).Dump(o.logPath, rWriter); err != nil {
+		return err
+	}
+
+	// dump configmaps information by a particular tidb cluster.
+	if err := NewConfigMapDumper(o.kubeCli, tc, o.listOptions, o.printer).Dump(o.logPath, rWriter); err != nil {
+		return err
+	}
+
+	podList, err := o.kubeCli.CoreV1().Pods(o.namespace).List(o.listOptions)
 	if err != nil {
 		return err
 	}
@@ -175,10 +214,22 @@ func (o *diagnoseInfoOptions) Run() error {
 	}
 
 	// dump detail information and logs of pods.
+	pods := api.PodList{}
 	for _, pod := range podList.Items {
 		if err := NewPodDumper(o.kubeCli, pod, int64(o.since.Seconds()), o.byteReadLimit).Dump(o.logPath, rWriter); err != nil {
 			return err
 		}
+
+		if p, err := convertToInternalObj(&pod, ""); err != nil {
+			return err
+		} else {
+			//t :=
+			pods.Items = append(pods.Items, *(p.(*api.Pod)))
+		}
+	}
+
+	if err = o.printer.PrintObj(&pods, rWriter); err != nil {
+		return err
 	}
 
 	return nil
@@ -186,13 +237,15 @@ func (o *diagnoseInfoOptions) Run() error {
 
 // tidbClusterDumper generates information about a tidbclusters object.
 type tidbClusterDumper struct {
-	tc *v1alpha1.TidbCluster
+	tc      *v1alpha1.TidbCluster
+	printer printers.ResourcePrinter
 }
 
 // NewTiDBClusterDummper returns a tidbClusterDumper.
-func NewTiDBClusterDumper(tc *v1alpha1.TidbCluster) *tidbClusterDumper {
+func NewTiDBClusterDumper(tc *v1alpha1.TidbCluster, printer printers.ResourcePrinter) *tidbClusterDumper {
 	return &tidbClusterDumper{
-		tc: tc,
+		tc:      tc,
+		printer: printer,
 	}
 }
 
@@ -210,7 +263,7 @@ func (d *tidbClusterDumper) Dump(logPath string, resourceWriter io.Writer) error
 		return err
 	}
 
-	if err = DumpObj(d.tc, resourceWriter); err != nil {
+	if err = d.printer.PrintObj(d.tc, resourceWriter); err != nil {
 		return err
 	}
 
@@ -226,13 +279,15 @@ func (d *tidbClusterDumper) Dump(logPath string, resourceWriter io.Writer) error
 type tidbClusterStatefulDumper struct {
 	kubeCli *kubernetes.Clientset
 	tc      *v1alpha1.TidbCluster
+	printer *printers.HumanReadablePrinter
 }
 
 // NewTiDBClusterStatefulDumper returns a tidbClusterStatefulDumper
-func NewTiDBClusterStatefulDumper(tc *v1alpha1.TidbCluster, kubeCli *kubernetes.Clientset) *tidbClusterStatefulDumper {
+func NewTiDBClusterStatefulDumper(tc *v1alpha1.TidbCluster, kubeCli *kubernetes.Clientset, printer *printers.HumanReadablePrinter) *tidbClusterStatefulDumper {
 	return &tidbClusterStatefulDumper{
 		tc:      tc,
 		kubeCli: kubeCli,
+		printer: printer,
 	}
 }
 
@@ -251,6 +306,7 @@ func (d *tidbClusterStatefulDumper) Dump(logPath string, resourceWriter io.Write
 		return err
 	}
 
+	sts := apps.StatefulSetList{}
 	for _, sn := range []string{
 		controller.TiDBMemberName(d.tc.Name),
 		controller.TiKVMemberName(d.tc.Name),
@@ -260,13 +316,9 @@ func (d *tidbClusterStatefulDumper) Dump(logPath string, resourceWriter io.Write
 		if err != nil {
 			return err
 		}
-		ps.SetGroupVersionKind(apps.SchemeGroupVersion.WithKind("StatefulSet"))
+		ps.SetGroupVersionKind(appv1.SchemeGroupVersion.WithKind("StatefulSet"))
 
 		if err = writeString(logFile, "#"+sn+"\n"); err != nil {
-			return err
-		}
-
-		if err = DumpObj(ps, resourceWriter); err != nil {
 			return err
 		}
 
@@ -282,6 +334,211 @@ func (d *tidbClusterStatefulDumper) Dump(logPath string, resourceWriter io.Write
 		if err = writeString(logFile, "\n"); err != nil {
 			return err
 		}
+
+		if s, err := convertToInternalObj(ps, "apps"); err != nil {
+			return err
+		} else {
+			sts.Items = append(sts.Items, *(s.(*apps.StatefulSet)))
+		}
+	}
+
+	if err = d.printer.PrintObj(&sts, resourceWriter); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// pvcDumper generates information about pvc.
+type pvcDumper struct {
+	kubeCli *kubernetes.Clientset
+	tc      *v1alpha1.TidbCluster
+	options metav1.ListOptions
+	printer *printers.HumanReadablePrinter
+}
+
+// NewPvcDumper returns a pvcDumper.
+func NewPvcDumper(kubeCli *kubernetes.Clientset, tc *v1alpha1.TidbCluster, options metav1.ListOptions, printer *printers.HumanReadablePrinter) *pvcDumper {
+	return &pvcDumper{
+		tc:      tc,
+		kubeCli: kubeCli,
+		options: options,
+		printer: printer,
+	}
+}
+
+// Dump dumps the details of pvc from a particular tidb cluster.
+func (d *pvcDumper) Dump(logPath string, resourceWriter io.Writer) error {
+	logFile, err := os.Create(filepath.Join(logPath, fmt.Sprintf("%s-%s-pvc-info.yaml", d.tc.Name, d.tc.Namespace)))
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		cmdutil.CheckErr(logFile.Close())
+	}()
+
+	if _, err := resourceWriter.Write([]byte("----------------pvc---------------\n")); err != nil {
+		return err
+	}
+
+	pvcList, err := d.kubeCli.CoreV1().PersistentVolumeClaims(d.tc.Namespace).List(d.options)
+	if err != nil {
+		return err
+	}
+
+	pvcs := api.PersistentVolumeClaimList{}
+	for _, pvc := range pvcList.Items {
+		pvc.SetGroupVersionKind(v1.SchemeGroupVersion.WithKind("PersistentVolumeClaim"))
+
+		body, err := yaml.Marshal(pvc)
+		if err != nil {
+			return err
+		}
+		if err = writeString(logFile, string(body)); err != nil {
+			return err
+		}
+
+		s, err := convertToInternalObj(&pvc, "")
+		if err != nil {
+			return err
+		}
+
+		pvcs.Items = append(pvcs.Items, *(s.(*api.PersistentVolumeClaim)))
+	}
+
+	if err = d.printer.PrintObj(&pvcs, resourceWriter); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// svcDumper generates information about service.
+type svcDumper struct {
+	kubeCli *kubernetes.Clientset
+	tc      *v1alpha1.TidbCluster
+	options metav1.ListOptions
+	printer *printers.HumanReadablePrinter
+}
+
+// NewSvcDumper returns a pvcDumper.
+func NewSvcDumper(kubeCli *kubernetes.Clientset, tc *v1alpha1.TidbCluster, options metav1.ListOptions, printer *printers.HumanReadablePrinter) *svcDumper {
+	return &svcDumper{
+		tc:      tc,
+		kubeCli: kubeCli,
+		options: options,
+		printer: printer,
+	}
+}
+
+// Dump dumps the details of service from a particular tidb cluster.
+func (d *svcDumper) Dump(logPath string, resourceWriter io.Writer) error {
+	logFile, err := os.Create(filepath.Join(logPath, fmt.Sprintf("%s-%s-svc-info.yaml", d.tc.Name, d.tc.Namespace)))
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		cmdutil.CheckErr(logFile.Close())
+	}()
+
+	if _, err := resourceWriter.Write([]byte("----------------service---------------\n")); err != nil {
+		return err
+	}
+
+	svcList, err := d.kubeCli.CoreV1().Services(d.tc.Namespace).List(d.options)
+	if err != nil {
+		return err
+	}
+
+	svcs := api.ServiceList{}
+	for _, svc := range svcList.Items {
+		svc.SetGroupVersionKind(v1.SchemeGroupVersion.WithKind("Service"))
+
+		body, err := yaml.Marshal(svc)
+		if err != nil {
+			return err
+		}
+		if err = writeString(logFile, string(body)); err != nil {
+			return err
+		}
+
+		s, err := convertToInternalObj(&svc, "")
+		if err != nil {
+			return err
+		}
+
+		svcs.Items = append(svcs.Items, *(s.(*api.Service)))
+	}
+
+	if err = d.printer.PrintObj(&svcs, resourceWriter); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// configMapDumper generates information about service.
+type configMapDumper struct {
+	kubeCli *kubernetes.Clientset
+	tc      *v1alpha1.TidbCluster
+	options metav1.ListOptions
+	printer *printers.HumanReadablePrinter
+}
+
+// NewConfigMapDumper returns a pvcDumper.
+func NewConfigMapDumper(kubeCli *kubernetes.Clientset, tc *v1alpha1.TidbCluster, options metav1.ListOptions, printer *printers.HumanReadablePrinter) *configMapDumper {
+	return &configMapDumper{
+		tc:      tc,
+		kubeCli: kubeCli,
+		options: options,
+		printer: printer,
+	}
+}
+
+// Dump dumps the details of configmap from a particular tidb cluster.
+func (d *configMapDumper) Dump(logPath string, resourceWriter io.Writer) error {
+	logFile, err := os.Create(filepath.Join(logPath, fmt.Sprintf("%s-%s-configmap-info.yaml", d.tc.Name, d.tc.Namespace)))
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		cmdutil.CheckErr(logFile.Close())
+	}()
+
+	if _, err := resourceWriter.Write([]byte("----------------configmap---------------\n")); err != nil {
+		return err
+	}
+
+	cfgList, err := d.kubeCli.CoreV1().ConfigMaps(d.tc.Namespace).List(d.options)
+	if err != nil {
+		return err
+	}
+
+	cfgs := api.ConfigMapList{}
+	for _, cfg := range cfgList.Items {
+		cfg.SetGroupVersionKind(v1.SchemeGroupVersion.WithKind("ConfigMap"))
+
+		body, err := yaml.Marshal(cfg)
+		if err != nil {
+			return err
+		}
+		if err = writeString(logFile, string(body)); err != nil {
+			return err
+		}
+
+		s, err := convertToInternalObj(&cfg, "")
+		if err != nil {
+			return err
+		}
+
+		cfgs.Items = append(cfgs.Items, *(s.(*api.ConfigMap)))
+	}
+
+	if err = d.printer.PrintObj(&cfgs, resourceWriter); err != nil {
+		return err
 	}
 
 	return nil
@@ -310,10 +567,6 @@ func NewPodDumper(kubeCli *kubernetes.Clientset, pod v1.Pod, sinceSeconds int64,
 
 // Dump dumps detail information and logs of pod from a particular pod.
 func (d *podDumper) Dump(logPath string, resourceWriter io.Writer) error {
-	if err := DumpObj(&d.pod, resourceWriter); err != nil {
-		return err
-	}
-
 	path := fmt.Sprintf("%s%cpod-infos", logPath, filepath.Separator)
 	if err := createPathIfNotExist(path); err != nil {
 		return err
@@ -411,19 +664,28 @@ func getLogStream(kubeCli *kubernetes.Clientset, pod v1.Pod, logOptions *v1.PodL
 	return kubeCli.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, logOptions).Stream()
 }
 
-// DumpObj print wide output to the file.
-func DumpObj(obj runtime.Object, writer io.Writer) error {
-	// create kubectl HumanReadablePrinter
+// NewPrinter creates a common HumanReadablePrinter.
+func NewPrinter() *printers.HumanReadablePrinter {
+	p := printers.NewHumanReadablePrinter(scheme.Codecs.UniversalDecoder(), printers.PrintOptions{
+		WithKind:      false,
+		Wide:          true,
+		WithNamespace: false,
+	})
+
+	// AddHandlers adds print handlers for default Kubernetes types dealing with internal versions.
+	printersinternal.AddHandlers(p)
+
+	return p
+	//return p.PrintObj(obj, writer)
+}
+
+// NewTiDBPrinter creates a TiDB object printer
+func NewTiDBPrinter() (printers.ResourcePrinter, error) {
 	printFlags := &readable.PrintFlags{
 		JSONYamlPrintFlags: genericclioptions.NewJSONYamlPrintFlags(),
 		OutputFormat:       "wide",
 	}
-	printer, err := printFlags.ToPrinter(false, false)
-	if err != nil {
-		return err
-	}
-
-	return printer.PrintObj(obj, writer)
+	return printFlags.ToPrinter(false, false)
 }
 
 func writeString(w io.Writer, body string) error {
@@ -440,4 +702,15 @@ func createPathIfNotExist(path string) error {
 	}
 
 	return nil
+}
+
+// convertToInternalObj will convert v1 object to internal version object.
+func convertToInternalObj(obj runtime.Object, group string) (runtime.Object, error) {
+	sch := legacyscheme.Scheme
+
+	p, err := sch.UnsafeConvertToVersion(obj, schema.GroupVersion{Group: group, Version: runtime.APIVersionInternal})
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
 }
