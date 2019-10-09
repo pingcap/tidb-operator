@@ -18,6 +18,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pingcap/tidb-operator/pkg/controller"
+
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
@@ -151,7 +153,7 @@ func newBackupSchedule() *v1alpha1.BackupSchedule {
 		},
 		Spec: v1alpha1.BackupScheduleSpec{
 			Schedule:   "1 */10 * * *",
-			MaxBackups: 10,
+			MaxBackups: controller.Int32Ptr(10),
 			BackupTemplate: v1alpha1.BackupSpec{
 				Cluster:        "demo1",
 				TidbSecretName: "demo1-tidb-secret",
