@@ -148,7 +148,7 @@ func (td *tidbDiscoveryMembers) GetClientAddresses(clusterID ClusterID) ([]strin
 func (td *tidbDiscoveryNoMembers) getNamedAddresses(clusterID ClusterID) ([]Address, error) {
 	cluster, gerr := td.refresh.GetCluster(string(clusterID))
 	if gerr != nil {
-		return []Address{}, gerr
+		return nil, gerr
 	}
 
 	currentCluster := td.clusters[string(clusterID)]
