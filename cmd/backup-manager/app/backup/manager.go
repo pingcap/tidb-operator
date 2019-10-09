@@ -57,6 +57,7 @@ func (bm *BackupManager) ProcessBackup() error {
 
 	db, err := util.OpenDB(bm.getDSN(constants.TidbMetaDB))
 	if err != nil {
+		glog.Errorf("cluster %s connect failed, err: %s", bm, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
