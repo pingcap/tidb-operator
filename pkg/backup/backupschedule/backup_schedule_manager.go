@@ -247,7 +247,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 		return
 	}
 
-	backupsList, err := bm.getBackupList(bs)
+	backupsList, err := bm.getBackupList(bs, false)
 	if err != nil {
 		glog.Errorf("backupGCByMaxReservedTime, err: %s", err)
 		return
@@ -270,7 +270,7 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedul
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
-	backupsList, err := bm.getBackupList(bs)
+	backupsList, err := bm.getBackupList(bs, true)
 	if err != nil {
 		glog.Errorf("backupGCByMaxBackups failed, err: %s", err)
 		return
@@ -289,7 +289,7 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedul
 	}
 }
 
-func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.BackupSchedule) ([]*v1alpha1.Backup, error) {
+func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.BackupSchedule, needSort bool) ([]*v1alpha1.Backup, error) {
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
@@ -303,8 +303,10 @@ func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.BackupSchedule) ([]*
 		return nil, fmt.Errorf("get backup schedule %s/%s backup list failed, selector: %s, err: %v", ns, bsName, selector, err)
 	}
 
-	// sort backups by creation time before removing extra backups
-	sort.Sort(byCreateTime(backupsList))
+	if needSort {
+		// sort backups by creation time before removing extra backups
+		sort.Sort(byCreateTime(backupsList))
+	}
 	return backupsList, nil
 }
 
