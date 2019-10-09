@@ -185,9 +185,9 @@ func run() {
 			time.Sleep(30 * time.Second)
 			oa.CheckTidbClustersAvailableOrDie([]*tests.TidbClusterConfig{cluster})
 			// rollback conf
-			cluster.PDPreStartScript = strconv.Quote("")
-			cluster.TiKVPreStartScript = strconv.Quote("")
-			cluster.TiDBPreStartScript = strconv.Quote("")
+			cluster.PDPreStartScript = strconv.Quote("# noop")
+			cluster.TiKVPreStartScript = strconv.Quote("# noop")
+			cluster.TiDBPreStartScript = strconv.Quote("# noop")
 			oa.UpgradeTidbClusterOrDie(cluster)
 			// wait upgrade complete
 			oa.CheckUpgradeCompleteOrDie(cluster)
