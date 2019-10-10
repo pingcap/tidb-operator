@@ -71,6 +71,7 @@ func (crdkinds *CrdKinds) String() string {
 	return crdkinds.KindsString
 }
 
+// Set Implement the flag.Set interface
 func (crdkinds *CrdKinds) Set(value string) error {
 	*crdkinds = DefaultCrdKinds
 	if value == "" {
