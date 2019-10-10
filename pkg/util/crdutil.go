@@ -141,7 +141,7 @@ var (
 		Priority:    1,
 		JSONPath:    ".status.timeCompleted",
 	}
-	bksAdditionalPrinterColumns [] extensionsobj.CustomResourceColumnDefinition
+	bksAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
 	bksScheduleColumn           = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Schedule",
 		Type:        "string",
