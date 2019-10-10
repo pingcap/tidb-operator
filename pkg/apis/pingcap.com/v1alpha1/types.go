@@ -80,7 +80,6 @@ type TidbCluster struct {
 // +k8s:openapi-gen=true
 // TidbClusterList is TidbCluster list
 type TidbClusterList struct {
-	// +k8s:openapi-gen=false
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
 	metav1.ListMeta `json:"metadata"`
@@ -428,6 +427,7 @@ type BackupSchedule struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// +k8s:openapi-gen=true
 // BackupScheduleList contains a list of BackupSchedule.
 type BackupScheduleList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -476,9 +476,11 @@ type Restore struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// +k8s:openapi-gen=true
 // RestoreList contains a list of Restore.
 type RestoreList struct {
 	metav1.TypeMeta `json:",inline"`
+	// +k8s:openapi-gen=false
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Restore `json:"items"`
