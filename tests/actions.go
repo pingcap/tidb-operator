@@ -526,19 +526,23 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 }
 
 func ensurePodsUnchanged(pods1, pods2 *corev1.PodList) error {
-	if reflect.DeepEqual(getUID(pods1), getUID(pods2)) {
+	pods1UIDs := getUIDs(pods1)
+	pods2UIDs := getUIDs(pods2)
+	if reflect.DeepEqual(pods1UIDs, pods2UIDs) {
 		glog.V(4).Infof("%#v", pods1)
 		glog.V(4).Infof("%#v", pods2)
+		glog.V(4).Infof("%v, %v", pods1UIDs, pods2UIDs)
 		glog.V(4).Infof("pods unchanged after operator upgraded")
 		return nil
 	}
 
 	glog.Infof("%#v", pods1)
 	glog.Infof("%#v", pods2)
+	glog.Infof("%v, %v", pods1UIDs, pods2UIDs)
 	return fmt.Errorf("some pods changed after operator upgraded")
 }
 
-func getUID(pods *corev1.PodList) []string {
+func getUIDs(pods *corev1.PodList) []string {
 	arr := make([]string, 0, len(pods.Items))
 
 	for _, pod := range pods.Items {
