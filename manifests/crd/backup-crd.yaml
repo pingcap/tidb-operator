@@ -1,0 +1,107 @@
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: backups.pingcap.com
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.storageType
+    description: The storage type of backup data
+    name: StorageType
+    type: string
+  - JSONPath: .status.backupSize
+    description: The data size of the backup
+    name: BackupSize
+    type: integer
+  - JSONPath: .status.commitTs
+    description: The commit ts of tidb cluster dump
+    name: CommitTS
+    type: string
+  - JSONPath: .status.timeStarted
+    description: The time at which the backup was started
+    name: Started
+    priority: 1
+    type: date
+  - JSONPath: .status.timeCompleted
+    description: The time at which the backup was completed
+    name: Completed
+    priority: 1
+    type: date
+  group: pingcap.com
+  names:
+    kind: Backup
+    plural: backups
+    shortNames:
+    - bk
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        spec:
+          description: BackupSpec contains the backup specification for a tidb cluster.
+          properties:
+            backupType:
+              description: Type is the backup type for tidb cluster.
+              type: string
+            ceph:
+              description: cephStorageProvider represents an ceph compatible bucket
+                for storing backups.
+              properties:
+                bucket:
+                  description: Bucket in which to store the Backup.
+                  type: string
+                endpoint:
+                  description: Endpoint is the access address of the ceph object storage.
+                  type: string
+                region:
+                  description: Region in which the ceph bucket is located.
+                  type: string
+                secretName:
+                  description: SecretName is the name of secret which stores ceph
+                    object store access key and secret key.
+                  type: string
+              required:
+              - region
+              - bucket
+              - endpoint
+              - secretName
+              type: object
+            cluster:
+              description: Cluster is the Cluster to backup.
+              type: string
+            storageClassName:
+              description: StorageClassName is the storage class for backup job's
+                PV.
+              type: string
+            storageSize:
+              description: StorageSize is the request storage size for backup job
+              type: string
+            storageType:
+              description: StorageType is the backup storage type.
+              type: string
+            tidbSecretName:
+              description: TidbSecretName is the name of secret which stores tidb
+                cluster's username and password.
+              type: string
+          required:
+          - cluster
+          - tidbSecretName
+          - backupType
+          - storageType
+          - ceph
+          - storageClassName
+          - storageSize
+          type: object
+      type: object
+  version: v1alpha1
