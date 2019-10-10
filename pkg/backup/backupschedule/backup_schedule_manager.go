@@ -272,9 +272,14 @@ func (fbsm *FakeBackupScheduleManager) SetSyncError(err error) {
 	fbsm.err = err
 }
 
-func (fbsm *FakeBackupScheduleManager) Sync(_ *v1alpha1.BackupSchedule) error {
+func (fbsm *FakeBackupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 	if fbsm.err != nil {
 		return fbsm.err
+	}
+
+	if bs.Status.LastBackupTime != nil {
+		// simulate status update
+		bs.Status.LastBackupTime = &metav1.Time{Time: bs.Status.LastBackupTime.Add(1 * time.Hour)}
 	}
 	return nil
 }
