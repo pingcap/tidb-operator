@@ -138,15 +138,24 @@ func (rpc *realPVCCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string, e
 
 var _ PVCCleanerInterface = &realPVCCleaner{}
 
-type fakePVCCleaner struct{}
-
-// NewFakePVCCleaner returns a fake PVC cleaner
-func NewFakePVCCleaner() PVCCleanerInterface {
-	return &fakePVCCleaner{}
+type FakePVCCleaner struct {
+	err error
 }
 
-func (fpc *fakePVCCleaner) Clean(_ *v1alpha1.TidbCluster) (map[string]string, error) {
+// NewFakePVCCleaner returns a fake PVC cleaner
+func NewFakePVCCleaner() *FakePVCCleaner {
+	return &FakePVCCleaner{}
+}
+
+func (fpc *FakePVCCleaner) SetPVCCleanerError(err error) {
+	fpc.err = err
+}
+
+func (fpc *FakePVCCleaner) Clean(_ *v1alpha1.TidbCluster) (map[string]string, error) {
+	if fpc.err != nil {
+		return nil, fpc.err
+	}
 	return nil, nil
 }
 
-var _ PVCCleanerInterface = &fakePVCCleaner{}
+var _ PVCCleanerInterface = &FakePVCCleaner{}

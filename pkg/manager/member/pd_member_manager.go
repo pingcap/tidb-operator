@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/listers/apps/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
@@ -631,9 +632,13 @@ func (fpmm *FakePDMemberManager) SetSyncError(err error) {
 	fpmm.err = err
 }
 
-func (fpmm *FakePDMemberManager) Sync(_ *v1alpha1.TidbCluster) error {
+func (fpmm *FakePDMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if fpmm.err != nil {
 		return fpmm.err
+	}
+	if len(tc.Status.PD.Members) != 0 {
+		// simulate status update
+		tc.Status.ClusterID = string(uuid.NewUUID())
 	}
 	return nil
 }

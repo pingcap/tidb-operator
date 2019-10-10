@@ -155,13 +155,24 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 	return skipReason, nil
 }
 
-type fakeOrphanPodsCleaner struct{}
+type FakeOrphanPodsCleaner struct {
+	err error
+}
 
 // NewFakeOrphanPodsCleaner returns a fake orphan pods cleaner
-func NewFakeOrphanPodsCleaner() OrphanPodsCleaner {
-	return &fakeOrphanPodsCleaner{}
+func NewFakeOrphanPodsCleaner() *FakeOrphanPodsCleaner {
+	return &FakeOrphanPodsCleaner{}
 }
 
-func (fopc *fakeOrphanPodsCleaner) Clean(_ *v1alpha1.TidbCluster) (map[string]string, error) {
+func (fpc *FakeOrphanPodsCleaner) SetnOrphanPodCleanerError(err error) {
+	fpc.err = err
+}
+
+func (fpc *FakeOrphanPodsCleaner) Clean(_ *v1alpha1.TidbCluster) (map[string]string, error) {
+	if fpc.err != nil {
+		return nil, fpc.err
+	}
 	return nil, nil
 }
+
+var _ OrphanPodsCleaner = &FakeOrphanPodsCleaner{}
