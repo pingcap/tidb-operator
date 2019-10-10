@@ -417,11 +417,11 @@ type BackupStatus struct {
 // +k8s:openapi-gen=true
 // BackupSchedule is a backup schedule of tidb cluster.
 type BackupSchedule struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
 	metav1.ObjectMeta `json:"metadata"`
 
-	Spec   BackupScheduleSpec   `json:"spec"`
+	Spec BackupScheduleSpec `json:"spec"`
 	// +k8s:openapi-gen=false
 	Status BackupScheduleStatus `json:"status,omitempty"`
 }
@@ -465,11 +465,11 @@ type BackupScheduleStatus struct {
 // +k8s:openapi-gen=true
 // Restore represents the restoration of backup of a tidb cluster.
 type Restore struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
 	metav1.ObjectMeta `json:"metadata"`
 
-	Spec   RestoreSpec   `json:"spec"`
+	Spec RestoreSpec `json:"spec"`
 	// +k8s:openapi-gen=false
 	Status RestoreStatus `json:"status"`
 }
