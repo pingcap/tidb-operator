@@ -97,7 +97,7 @@ check-setup:
 	@which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
 	@GO111MODULE=off retool sync
 
-check: check-setup lint tidy check-static
+check: check-setup lint tidy check-static check-crd
 
 check-static:
 	@ # Not running vet and fmt through metalinter becauase it ends up looking at vendor
@@ -110,6 +110,9 @@ check-static:
 	  --enable misspell \
 	  --enable ineffassign \
 	  $$($(PACKAGE_DIRECTORIES))
+
+check-crd:
+	./hack/verify-crdgen.sh
 
 # TODO: staticcheck is too slow currently
 staticcheck:

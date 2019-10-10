@@ -33,6 +33,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.Backup":                schema_pkg_apis_pingcapcom_v1alpha1_Backup(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.BackupList":            schema_pkg_apis_pingcapcom_v1alpha1_BackupList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.BackupSchedule":        schema_pkg_apis_pingcapcom_v1alpha1_BackupSchedule(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.BackupScheduleList":    schema_pkg_apis_pingcapcom_v1alpha1_BackupScheduleList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.BackupScheduleSpec":    schema_pkg_apis_pingcapcom_v1alpha1_BackupScheduleSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.BackupSpec":            schema_pkg_apis_pingcapcom_v1alpha1_BackupSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.CephStorageProvider":   schema_pkg_apis_pingcapcom_v1alpha1_CephStorageProvider(ref),
@@ -41,6 +42,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.PodAttributesSpec":     schema_pkg_apis_pingcapcom_v1alpha1_PodAttributesSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ResourceRequirement":   schema_pkg_apis_pingcapcom_v1alpha1_ResourceRequirement(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.Restore":               schema_pkg_apis_pingcapcom_v1alpha1_Restore(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.RestoreList":           schema_pkg_apis_pingcapcom_v1alpha1_RestoreList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.RestoreSpec":           schema_pkg_apis_pingcapcom_v1alpha1_RestoreSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.Service":               schema_pkg_apis_pingcapcom_v1alpha1_Service(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.StorageProvider":       schema_pkg_apis_pingcapcom_v1alpha1_StorageProvider(ref),
@@ -396,6 +398,53 @@ func schema_pkg_apis_pingcapcom_v1alpha1_BackupSchedule(ref common.ReferenceCall
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.BackupScheduleSpec"},
+	}
+}
+
+func schema_pkg_apis_pingcapcom_v1alpha1_BackupScheduleList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "BackupScheduleList contains a list of BackupSchedule.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.BackupSchedule"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"metadata", "items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.BackupSchedule", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
 	}
 }
 
@@ -776,6 +825,48 @@ func schema_pkg_apis_pingcapcom_v1alpha1_Restore(ref common.ReferenceCallback) c
 	}
 }
 
+func schema_pkg_apis_pingcapcom_v1alpha1_RestoreList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "RestoreList contains a list of Restore.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.Restore"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.Restore"},
+	}
+}
+
 func schema_pkg_apis_pingcapcom_v1alpha1_RestoreSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1080,6 +1171,20 @@ func schema_pkg_apis_pingcapcom_v1alpha1_TidbClusterList(ref common.ReferenceCal
 				Description: "TidbClusterList is TidbCluster list",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"items": {
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
