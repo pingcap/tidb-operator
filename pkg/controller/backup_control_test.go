@@ -18,26 +18,25 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 )
 
-func TestJobControlCreatesJobsSuccess(t *testing.T) {
+func TestBackupControlCreateBackupSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 	backup := newBackup()
-	job := newJobFromBackup(backup)
 	fakeClient := &fake.Clientset{}
-	control := NewRealJobControl(fakeClient, recorder)
-	fakeClient.AddReactor("create", "jobs", func(action core.Action) (bool, runtime.Object, error) {
+	control := NewRealBackupControl(fakeClient, recorder)
+	fakeClient.AddReactor("create", "backups", func(action core.Action) (bool, runtime.Object, error) {
 		create := action.(core.CreateAction)
 		return true, create.GetObject(), nil
 	})
-	err := control.CreateJob(backup, job)
+	_, err := control.CreateBackup(backup)
 	g.Expect(err).To(Succeed())
 
 	events := collectEvents(recorder.Events)
@@ -45,17 +44,17 @@ func TestJobControlCreatesJobsSuccess(t *testing.T) {
 	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
-func TestJobControlCreatesJobFailed(t *testing.T) {
+func TestBackupControlCreateBackupFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 	backup := newBackup()
-	job := newJobFromBackup(backup)
 	fakeClient := &fake.Clientset{}
-	control := NewRealJobControl(fakeClient, recorder)
-	fakeClient.AddReactor("create", "jobs", func(action core.Action) (bool, runtime.Object, error) {
-		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
+	control := NewRealBackupControl(fakeClient, recorder)
+	fakeClient.AddReactor("create", "backups", func(action core.Action) (bool, runtime.Object, error) {
+		create := action.(core.CreateAction)
+		return true, create.GetObject(), apierrors.NewInternalError(errors.New("API server down"))
 	})
-	err := control.CreateJob(backup, job)
+	_, err := control.CreateBackup(backup)
 	g.Expect(err).To(HaveOccurred())
 
 	events := collectEvents(recorder.Events)
@@ -63,17 +62,16 @@ func TestJobControlCreatesJobFailed(t *testing.T) {
 	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeWarning))
 }
 
-func TestJobControlDeleteJobSuccess(t *testing.T) {
+func TestBackupControlDeleteBackupSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 	backup := newBackup()
-	job := newJobFromBackup(backup)
 	fakeClient := &fake.Clientset{}
-	control := NewRealJobControl(fakeClient, recorder)
-	fakeClient.AddReactor("delete", "jobs", func(action core.Action) (bool, runtime.Object, error) {
+	control := NewRealBackupControl(fakeClient, recorder)
+	fakeClient.AddReactor("delete", "backups", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, nil
 	})
-	err := control.DeleteJob(backup, job)
+	err := control.DeleteBackup(backup)
 	g.Expect(err).To(Succeed())
 
 	events := collectEvents(recorder.Events)
@@ -81,17 +79,16 @@ func TestJobControlDeleteJobSuccess(t *testing.T) {
 	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
-func TestJobControlDeleteJobFailed(t *testing.T) {
+func TestBackupControlDeleteBackupFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 	backup := newBackup()
-	job := newJobFromBackup(backup)
 	fakeClient := &fake.Clientset{}
-	control := NewRealJobControl(fakeClient, recorder)
-	fakeClient.AddReactor("delete", "jobs", func(action core.Action) (bool, runtime.Object, error) {
+	control := NewRealBackupControl(fakeClient, recorder)
+	fakeClient.AddReactor("delete", "backups", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})
-	err := control.DeleteJob(backup, job)
+	err := control.DeleteBackup(backup)
 	g.Expect(err).To(HaveOccurred())
 
 	events := collectEvents(recorder.Events)

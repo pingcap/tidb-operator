@@ -138,6 +138,7 @@ type TiKVSpec struct {
 	Replicas         int32  `json:"replicas"`
 	Privileged       bool   `json:"privileged,omitempty"`
 	StorageClassName string `json:"storageClassName,omitempty"`
+	MaxFailoverCount int32  `json:"maxFailoverCount,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
@@ -484,7 +485,7 @@ type RestoreSpec struct {
 	BackupNamespace string `json:"backupNamespace"`
 	// SecretName is the name of the secret which stores
 	// tidb cluster's username and password.
-	SecretName string `json:"secretName"`
+	TidbSecretName string `json:"tidbSecretName"`
 	// StorageClassName is the storage class for restore job's PV.
 	StorageClassName string `json:"storageClassName"`
 	// StorageSize is the request storage size for restore job
