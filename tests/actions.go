@@ -739,9 +739,11 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete configmaps: %v, %s", err, string(res))
 	}
 
-	patchPVCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s | awk '{print $1}' | "+
+	patchPVCmd := fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
 		"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
-		info.Namespace, info.ClusterName)
+		label.ManagedByLabelKey, "tidb-operator",
+		label.NamespaceLabelKey, info.Namespace,
+		label.InstanceLabelKey, info.ClusterName)
 	glog.V(4).Info(patchPVCmd)
 	if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to patch pv: %v, %s", err, string(res))
