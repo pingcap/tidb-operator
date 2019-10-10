@@ -178,7 +178,7 @@ var _ PVControlInterface = &realPVControl{}
 type FakePVControl struct {
 	PVCLister       corelisters.PersistentVolumeClaimLister
 	PVIndexer       cache.Indexer
-	updatePVTracker requestTracker
+	updatePVTracker RequestTracker
 }
 
 // NewFakePVControl returns a FakePVControl
@@ -186,21 +186,20 @@ func NewFakePVControl(pvInformer coreinformers.PersistentVolumeInformer, pvcInfo
 	return &FakePVControl{
 		pvcInformer.Lister(),
 		pvInformer.Informer().GetIndexer(),
-		requestTracker{0, nil, 0},
+		RequestTracker{},
 	}
 }
 
 // SetUpdatePVError sets the error attributes of updatePVTracker
 func (fpc *FakePVControl) SetUpdatePVError(err error, after int) {
-	fpc.updatePVTracker.err = err
-	fpc.updatePVTracker.after = after
+	fpc.updatePVTracker.SetError(err).SetAfter(after)
 }
 
 // PatchPVReclaimPolicy patchs the reclaim policy of PV
 func (fpc *FakePVControl) PatchPVReclaimPolicy(_ *v1alpha1.TidbCluster, pv *corev1.PersistentVolume, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
-	defer fpc.updatePVTracker.inc()
-	if fpc.updatePVTracker.errorReady() {
-		defer fpc.updatePVTracker.reset()
+	defer fpc.updatePVTracker.Inc()
+	if fpc.updatePVTracker.ErrorReady() {
+		defer fpc.updatePVTracker.Reset()
 		return fpc.updatePVTracker.err
 	}
 	pv.Spec.PersistentVolumeReclaimPolicy = reclaimPolicy
@@ -210,9 +209,9 @@ func (fpc *FakePVControl) PatchPVReclaimPolicy(_ *v1alpha1.TidbCluster, pv *core
 
 // UpdateMetaInfo update the meta info of pv
 func (fpc *FakePVControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
-	defer fpc.updatePVTracker.inc()
-	if fpc.updatePVTracker.errorReady() {
-		defer fpc.updatePVTracker.reset()
+	defer fpc.updatePVTracker.Inc()
+	if fpc.updatePVTracker.ErrorReady() {
+		defer fpc.updatePVTracker.Reset()
 		return nil, fpc.updatePVTracker.err
 	}
 	ns := tc.GetNamespace()

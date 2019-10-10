@@ -257,22 +257,41 @@ func Int32Ptr(i int32) *int32 {
 	return &i
 }
 
-// requestTracker is used by unit test for mocking request error
-type requestTracker struct {
+// RequestTracker is used by unit test for mocking request error
+type RequestTracker struct {
 	requests int
 	err      error
 	after    int
 }
 
-func (rt *requestTracker) errorReady() bool {
+func (rt *RequestTracker) ErrorReady() bool {
 	return rt.err != nil && rt.requests >= rt.after
 }
 
-func (rt *requestTracker) inc() {
+func (rt *RequestTracker) Inc() {
 	rt.requests++
 }
 
-func (rt *requestTracker) reset() {
+func (rt *RequestTracker) Reset() {
 	rt.err = nil
 	rt.after = 0
+}
+
+func (rt *RequestTracker) SetError(err error) *RequestTracker {
+	rt.err = err
+	return rt
+}
+
+func (rt *RequestTracker) SetAfter(after int) *RequestTracker {
+	rt.after = after
+	return rt
+}
+
+func (rt *RequestTracker) SetRequests(requests int) *RequestTracker {
+	rt.requests = requests
+	return rt
+}
+
+func (rt *RequestTracker) GetError() error {
+	return rt.err
 }
