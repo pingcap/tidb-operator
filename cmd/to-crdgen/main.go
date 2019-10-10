@@ -44,7 +44,7 @@ func initFlags(crdkind v1alpha1.CrdKind, flagset *flag.FlagSet) *flag.FlagSet {
 func init() {
 	var command *flag.FlagSet
 	if len(os.Args) == 1 {
-		fmt.Println("usage: po-crdgen [tidbcluster | backup | restore | backupschedule [<options>]")
+		fmt.Println("usage: to-crdgen [tidbcluster | backup | restore | backupschedule [<options>]")
 		os.Exit(1)
 	}
 	switch os.Args[1] {
