@@ -441,8 +441,11 @@ type BackupScheduleList struct {
 type BackupScheduleSpec struct {
 	// Schedule specifies the cron string used for backup scheduling.
 	Schedule string `json:"schedule"`
-	// MaxBackups is to specify how many backups we want to keep.
-	MaxBackups int `json:"maxBackups"`
+	// MaxBackups is to specify how many backups we want to keep
+	// 0 is magic number to indicate un-limited backups.
+	MaxBackups *int32 `json:"maxBackups"`
+	// MaxReservedTime is to specify how long backups we want to keep.
+	MaxReservedTime *string `json:"maxReservedTime"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
 	// StorageClassName is the storage class for backup job's PV.
