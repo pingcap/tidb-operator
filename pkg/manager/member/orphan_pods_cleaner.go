@@ -169,10 +169,7 @@ func (fpc *FakeOrphanPodsCleaner) SetnOrphanPodCleanerError(err error) {
 }
 
 func (fpc *FakeOrphanPodsCleaner) Clean(_ *v1alpha1.TidbCluster) (map[string]string, error) {
-	if fpc.err != nil {
-		return nil, fpc.err
-	}
-	return nil, nil
+	return nil, fpc.err
 }
 
 var _ OrphanPodsCleaner = &FakeOrphanPodsCleaner{}

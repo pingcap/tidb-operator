@@ -152,10 +152,7 @@ func (fpc *FakePVCCleaner) SetPVCCleanerError(err error) {
 }
 
 func (fpc *FakePVCCleaner) Clean(_ *v1alpha1.TidbCluster) (map[string]string, error) {
-	if fpc.err != nil {
-		return nil, fpc.err
-	}
-	return nil, nil
+	return nil, fpc.err
 }
 
 var _ PVCCleanerInterface = &FakePVCCleaner{}
