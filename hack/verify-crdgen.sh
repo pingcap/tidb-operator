@@ -16,7 +16,8 @@
 GO_PKG="github.com/pingcap/tidb-operator"
 scriptdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 to_crdgen="${scriptdir}/../cmd/to-crdgen/main.go"
-crddir="${scriptdir}/../manifests/crd"
+crd_target="${scriptdir}/../manifests/crd.yaml"
+crd_verify_target="${scriptdir}/../manifests/crd-verify.yaml"
 
 GO111MODULE=on go get k8s.io/code-generator/cmd/openapi-gen@kubernetes-1.12.5
 
@@ -24,10 +25,10 @@ ${GOPATH}/bin/openapi-gen --go-header-file=${scriptdir}/boilerplate.go.txt \
     -i ${GO_PKG}/pkg/apis/pingcap.com/v1alpha1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/api/core/v1 \
     -p apis/pingcap.com/v1alpha1  -O openapi_generated -o ../pkg
 
-go run ${to_crdgen} tidbcluster > ${crddir}/tidbcluster-crd-verify.yaml
-go run ${to_crdgen} backup > ${crddir}/backup-crd-verify.yaml
-go run ${to_crdgen} restore > ${crddir}/restore-crd-verify.yaml
-go run ${to_crdgen} backupschedule > ${crddir}/backupschedule-crd-verify.yaml
+go run ${to_crdgen} tidbcluster > ${crd_verify_target}
+go run ${to_crdgen} backup >> ${crd_verify_target}
+go run ${to_crdgen} restore >> ${crd_verify_target}
+go run ${to_crdgen} backupschedule >> ${crd_verify_target}
 
 diff_func(){
    r="$(diff "$1" "$2")"
@@ -37,9 +38,6 @@ if [[ -n $r ]]; then
 fi
 }
 
-diff_func ${crddir}/tidbcluster-crd.yaml ${crddir}/tidbcluster-crd-verify.yaml
-diff_func ${crddir}/backup-crd.yaml ${crddir}/backup-crd-verify.yaml
-diff_func ${crddir}/restore-crd.yaml ${crddir}/restore-crd-verify.yaml
-diff_func ${crddir}/backupschedule-crd.yaml ${crddir}/backupschedule-crd-verify.yaml
+diff_func ${crd_target} ${crd_verify_target}
 
 echo crds are latest
