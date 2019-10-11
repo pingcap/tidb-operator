@@ -14,8 +14,14 @@ variable "operator_version" {
 }
 
 variable "operator_helm_values" {
+  description = "The helm values file for TiDB Operator, path is relative to current working dir"
   type = string
   default = ""
+}
+
+variable "override_values" {
+  description = "The helm values file for TiDB Cluster, path is relative to current working dir"
+  default     = ""
 }
 
 variable "bastion_ingress_cidr" {
@@ -30,7 +36,7 @@ variable "cluster_name" {
 
 variable "tidb_version" {
   description = "TiDB cluster version"
-  default     = "v3.0.1"
+  default     = "v3.0.4"
 }
 variable "tidb_cluster_chart_version" {
   description = "tidb-cluster chart version"
