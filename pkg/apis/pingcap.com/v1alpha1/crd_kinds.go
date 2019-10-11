@@ -14,9 +14,7 @@
 package v1alpha1
 
 import (
-	"fmt"
 	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
-	"strings"
 )
 
 const (
@@ -66,40 +64,40 @@ var DefaultCrdKinds = CrdKinds{
 	BackupSchedule: CrdKind{Plural: BackupScheduleName, Kind: BackupScheduleKind, ShortNames: []string{"bks"}, SpecName: SpecPath + BackupScheduleKind},
 }
 
-// Implement the flag.Value interface
-func (crdkinds *CrdKinds) String() string {
-	return crdkinds.KindsString
-}
-
-// Set Implement the flag.Set interface
-func (crdkinds *CrdKinds) Set(value string) error {
-	*crdkinds = DefaultCrdKinds
-	if value == "" {
-		value = fmt.Sprintf("%s=%s:%s,%s=%s:%s,%s=%s:%s,%s=%s:%s",
-			TiDBClusterKindKey, TiDBClusterKind, TiDBClusterName,
-			BackupKindKey, BackupKind, BackupName,
-			RestoreKindKey, RestoreKind, RestoreName,
-			BackupScheduleKindKey, BackupScheduleKind, BackupScheduleName,
-		)
-	}
-	splited := strings.Split(value, ",")
-	for _, pair := range splited {
-		sp := strings.Split(pair, "=")
-		kind := strings.Split(sp[1], ":")
-		crdKind := CrdKind{Plural: kind[1], Kind: kind[0]}
-		switch kindKey := sp[0]; kindKey {
-		case TiDBClusterKindKey:
-			(*crdkinds).TiDBCluster = crdKind
-		case BackupKindKey:
-			(*crdkinds).Backup = crdKind
-		case RestoreKindKey:
-			(*crdkinds).Restore = crdKind
-		case BackupScheduleKindKey:
-			(*crdkinds).BackupSchedule = crdKind
-		default:
-			fmt.Printf("Warning: unknown kind: %s... ignoring", kindKey)
-		}
-	}
-	(*crdkinds).KindsString = value
-	return nil
-}
+//// Implement the flag.Value interface
+//func (crdkinds *CrdKinds) String() string {
+//	return crdkinds.KindsString
+//}
+//
+//// Set Implement the flag.Set interface
+//func (crdkinds *CrdKinds) Set(value string) error {
+//	*crdkinds = DefaultCrdKinds
+//	if value == "" {
+//		value = fmt.Sprintf("%s=%s:%s,%s=%s:%s,%s=%s:%s,%s=%s:%s",
+//			TiDBClusterKindKey, TiDBClusterKind, TiDBClusterName,
+//			BackupKindKey, BackupKind, BackupName,
+//			RestoreKindKey, RestoreKind, RestoreName,
+//			BackupScheduleKindKey, BackupScheduleKind, BackupScheduleName,
+//		)
+//	}
+//	splited := strings.Split(value, ",")
+//	for _, pair := range splited {
+//		sp := strings.Split(pair, "=")
+//		kind := strings.Split(sp[1], ":")
+//		crdKind := CrdKind{Plural: kind[1], Kind: kind[0]}
+//		switch kindKey := sp[0]; kindKey {
+//		case TiDBClusterKindKey:
+//			(*crdkinds).TiDBCluster = crdKind
+//		case BackupKindKey:
+//			(*crdkinds).Backup = crdKind
+//		case RestoreKindKey:
+//			(*crdkinds).Restore = crdKind
+//		case BackupScheduleKindKey:
+//			(*crdkinds).BackupSchedule = crdKind
+//		default:
+//			fmt.Printf("Warning: unknown kind: %s... ignoring", kindKey)
+//		}
+//	}
+//	(*crdkinds).KindsString = value
+//	return nil
+//}
