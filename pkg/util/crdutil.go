@@ -214,7 +214,6 @@ func GetCrdKindFromKindName(kindName string) (v1alpha1.CrdKind, error) {
 	}
 }
 
-
 func addAdditionalPrinterColumnsForCRD(crd *extensionsobj.CustomResourceDefinition, crdKind v1alpha1.CrdKind) {
 	switch crdKind.Kind {
 	case v1alpha1.DefaultCrdKinds.TiDBCluster.Kind:
