@@ -14,7 +14,6 @@
 package util
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -91,19 +90,4 @@ func GetOrdinalFromPodName(podName string) (int32, error) {
 func GetNextOrdinalPodName(podName string, ordinal int32) string {
 	basicStr := podName[:strings.LastIndex(podName, "-")]
 	return fmt.Sprintf("%s-%d", basicStr, ordinal+1)
-}
-
-func GetCrdKindFromKindName(kindName string) (v1alpha1.CrdKind, error) {
-	switch strings.ToLower(kindName) {
-	case v1alpha1.TiDBClusterKindKey:
-		return v1alpha1.DefaultCrdKinds.TiDBCluster, nil
-	case v1alpha1.BackupKindKey:
-		return v1alpha1.DefaultCrdKinds.Backup, nil
-	case v1alpha1.RestoreKindKey:
-		return v1alpha1.DefaultCrdKinds.Restore, nil
-	case v1alpha1.BackupScheduleKindKey:
-		return v1alpha1.DefaultCrdKinds.BackupSchedule, nil
-	default:
-		return v1alpha1.CrdKind{}, errors.New("unknown CrdKind Name")
-	}
 }

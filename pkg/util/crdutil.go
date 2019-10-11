@@ -14,9 +14,11 @@
 package util
 
 import (
+	"errors"
 	crdutils "github.com/ant31/crd-validation/pkg"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	"strings"
 )
 
 var (
@@ -196,6 +198,22 @@ func NewCustomResourceDefinition(crdKind v1alpha1.CrdKind, group string, labels 
 	addAdditionalPrinterColumnsForCRD(crd, crdKind)
 	return crd
 }
+
+func GetCrdKindFromKindName(kindName string) (v1alpha1.CrdKind, error) {
+	switch strings.ToLower(kindName) {
+	case v1alpha1.TiDBClusterKindKey:
+		return v1alpha1.DefaultCrdKinds.TiDBCluster, nil
+	case v1alpha1.BackupKindKey:
+		return v1alpha1.DefaultCrdKinds.Backup, nil
+	case v1alpha1.RestoreKindKey:
+		return v1alpha1.DefaultCrdKinds.Restore, nil
+	case v1alpha1.BackupScheduleKindKey:
+		return v1alpha1.DefaultCrdKinds.BackupSchedule, nil
+	default:
+		return v1alpha1.CrdKind{}, errors.New("unknown CrdKind Name")
+	}
+}
+
 
 func addAdditionalPrinterColumnsForCRD(crd *extensionsobj.CustomResourceDefinition, crdKind v1alpha1.CrdKind) {
 	switch crdKind.Kind {

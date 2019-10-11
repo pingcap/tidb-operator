@@ -107,9 +107,14 @@ spec:
               - storageSize
               type: object
             maxBackups:
-              description: MaxBackups is to specify how many backups we want to keep.
+              description: MaxBackups is to specify how many backups we want to keep
+                0 is magic number to indicate un-limited backups.
               format: int32
               type: integer
+            maxReservedTime:
+              description: MaxReservedTime is to specify how long backups we want
+                to keep.
+              type: string
             schedule:
               description: Schedule specifies the cron string used for backup scheduling.
               type: string
@@ -123,6 +128,7 @@ spec:
           required:
           - schedule
           - maxBackups
+          - maxReservedTime
           - backupTemplate
           - storageClassName
           - storageSize

@@ -464,9 +464,16 @@ func schema_pkg_apis_pingcapcom_v1alpha1_BackupScheduleSpec(ref common.Reference
 					},
 					"maxBackups": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MaxBackups is to specify how many backups we want to keep.",
+							Description: "MaxBackups is to specify how many backups we want to keep 0 is magic number to indicate un-limited backups.",
 							Type:        []string{"integer"},
 							Format:      "int32",
+						},
+					},
+					"maxReservedTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MaxReservedTime is to specify how long backups we want to keep.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"backupTemplate": {
@@ -490,7 +497,7 @@ func schema_pkg_apis_pingcapcom_v1alpha1_BackupScheduleSpec(ref common.Reference
 						},
 					},
 				},
-				Required: []string{"schedule", "maxBackups", "backupTemplate", "storageClassName", "storageSize"},
+				Required: []string{"schedule", "maxBackups", "maxReservedTime", "backupTemplate", "storageClassName", "storageSize"},
 			},
 		},
 		Dependencies: []string{
