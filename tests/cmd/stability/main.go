@@ -28,7 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	"github.com/robfig/cron"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
 )
@@ -314,6 +314,7 @@ func run() {
 				fta.StartKubeAPIServerOrDie(vNode.IP)
 			}
 		}
+		time.Sleep(time.Minute)
 	}
 
 	// before operator upgrade
