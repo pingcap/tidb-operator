@@ -38,7 +38,7 @@ func generate(config *crdutils.Config, args []string) error {
 	}
 	crdKind, err := k8sutil.GetCrdKindFromKindName(args[0])
 	if err != nil {
-		return err
+		return errors.New(usage)
 	}
 	initConfig(crdKind, config)
 	crd := k8sutil.NewCustomResourceDefinition(
