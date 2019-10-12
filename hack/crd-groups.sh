@@ -18,6 +18,7 @@ ACTION="$1"
 shift 1
 
 GO_PKG="github.com/pingcap/tidb-operator"
+CI_GO_PATH="/home/jenkins/workspace/operator_ghpr_e2e_test_kind/go"
 scriptdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 to_crdgen="$scriptdir/../cmd/to-crdgen"
 crd_target="$scriptdir/../manifests/crd.yaml"
@@ -32,16 +33,16 @@ $GOPATH/bin/openapi-gen --go-header-file=$scriptdir/boilerplate.go.txt \
 go install $to_crdgen
 
 function generate_crd {
-	$GOPATH/bin/to-crdgen generate tidbcluster > $1
-	$GOPATH/bin/to-crdgen generate backup >> $1
-	$GOPATH/bin/to-crdgen generate restore >> $1
-	$GOPATH/bin/to-crdgen generate backupschedule >> $1
+	$1/bin/to-crdgen generate tidbcluster > $2
+	$1/bin/to-crdgen generate backup >> $2
+	$1/bin/to-crdgen generate restore >> $2
+	$1/bin/to-crdgen generate backupschedule >> $2
 }
 
 if test $ACTION == 'generate' ;then
-	generate_crd $crd_target
+	generate_crd $GOPATH $crd_target
 elif [ $ACTION == 'verify' ];then
-	generate_crd $crd_verify_target
+	generate_crd $CI_GO_PATH $crd_verify_target
 	r="$(diff "$crd_target" "$crd_verify_target")"
 	if [[ -n $r ]]; then
 		echo $1 is not latest
