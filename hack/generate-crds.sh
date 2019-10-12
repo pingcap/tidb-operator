@@ -12,7 +12,10 @@ $GOPATH/bin/openapi-gen --go-header-file=$scriptdir/boilerplate.go.txt \
 -p apis/pingcap.com/v1alpha1  -O openapi_generated -o $scriptdir/../pkg
 
 go install $to_crdgen
-$GOPATH/bin/to-crdgen tidbcluster > $crd_target
-$GOPATH/bin/to-crdgen backup >> $crd_target
-$GOPATH/bin/to-crdgen restore >> $crd_target
-$GOPATH/bin/to-crdgen backupschedule >> ${crd_target}
+$GOPATH/bin/to-crdgen generate tidbcluster > $crd_target
+$GOPATH/bin/to-crdgen generate backup >> $crd_target
+$GOPATH/bin/to-crdgen generate restore >> $crd_target
+$GOPATH/bin/to-crdgen generate backupschedule >> $crd_target
+
+cd $scriptdir/..
+go mod tidy
