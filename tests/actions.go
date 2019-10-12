@@ -32,6 +32,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ghodss/yaml"
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
@@ -516,29 +517,53 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
 	}
 
-	time.Sleep(5 * time.Minute)
-	pods2, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(listOptions)
-	if err != nil {
-		return err
+	// ensure pods unchanged when upgrading operator
+	waitFn := func() (done bool, err error) {
+		pods2, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(listOptions)
+		if err != nil {
+			glog.Error(err)
+			return false, nil
+		}
+
+		err = ensurePodsUnchanged(pods1, pods2)
+		if err != nil {
+			return true, err
+		}
+
+		return false, nil
 	}
 
-	return ensurePodsUnchanged(pods1, pods2)
+	err = wait.Poll(oa.pollInterval, 5*time.Minute, waitFn)
+	if err == wait.ErrWaitTimeout {
+		return nil
+	}
+	return err
 }
 
 func ensurePodsUnchanged(pods1, pods2 *corev1.PodList) error {
 	pods1UIDs := getUIDs(pods1)
 	pods2UIDs := getUIDs(pods2)
+	pods1Yaml, err := yaml.Marshal(pods1)
+	if err != nil {
+		return err
+	}
+	pods2Yaml, err := yaml.Marshal(pods2)
+	if err != nil {
+		return err
+	}
 	if reflect.DeepEqual(pods1UIDs, pods2UIDs) {
-		glog.V(4).Infof("%#v", pods1)
-		glog.V(4).Infof("%#v", pods2)
-		glog.V(4).Infof("%v, %v", pods1UIDs, pods2UIDs)
+		glog.V(4).Infof("%s", string(pods1Yaml))
+		glog.V(4).Infof("%s", string(pods2Yaml))
+		glog.V(4).Infof("%v", pods1UIDs)
+		glog.V(4).Infof("%v", pods2UIDs)
 		glog.V(4).Infof("pods unchanged after operator upgraded")
 		return nil
 	}
 
-	glog.Infof("%#v", pods1)
-	glog.Infof("%#v", pods2)
-	glog.Infof("%v, %v", pods1UIDs, pods2UIDs)
+	glog.Infof("%s", string(pods1Yaml))
+	glog.Infof("%s", string(pods2Yaml))
+	glog.Infof("%v", pods1UIDs)
+	glog.Infof("%v", pods2UIDs)
 	return fmt.Errorf("some pods changed after operator upgraded")
 }
 
