@@ -5,7 +5,7 @@ variable "kubeconfig_filename" {
 
 variable "tidb_cluster_chart_version" {
   description = "tidb-cluster chart version"
-  default     = "v1.0.0"
+  default     = "v1.0.1"
 }
 
 variable "cluster_name" {
@@ -15,7 +15,7 @@ variable "cluster_name" {
 
 variable "cluster_version" {
   type    = string
-  default = "v3.0.1"
+  default = "v3.0.4"
 }
 
 variable "pd_count" {

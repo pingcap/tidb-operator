@@ -2,8 +2,9 @@ import os, MySQLdb
 host = '{{ template "cluster.name" . }}-tidb'
 permit_host = {{ .Values.tidb.permitHost | default "%" | quote }}
 port = 4000
-password_dir = '/etc/tidb/password'
 conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5)
+{{- if .Values.tidb.passwordSecretName }}
+password_dir = '/etc/tidb/password'
 for file in os.listdir(password_dir):
     if file.startswith('.'):
         continue
@@ -14,7 +15,8 @@ for file in os.listdir(password_dir):
         conn.cursor().execute("set password for 'root'@'%%' = %s;", (password,))
     else:
         conn.cursor().execute("create user %s@%s identified by %s;", (user, permit_host, password,))
-{{- if .Values.tidb.initSql }}
+{{- end }}
+{{- if or .Values.tidb.initSql .Values.tidb.initSqlConfigMapName }}
 with open('/data/init.sql', 'r') as sql:
     for line in sql.readlines():
         conn.cursor().execute(line)

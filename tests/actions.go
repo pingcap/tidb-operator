@@ -788,6 +788,11 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 			return false, nil
 		}
 
+		glog.V(4).Infof("check all pd and tikv instances have not pod scheduling annotation")
+		if b, err := oa.podsScheduleAnnHaveDeleted(tc); !b && err == nil {
+			return false, nil
+		}
+
 		glog.V(4).Infof("check store labels")
 		if b, err := oa.storeLabelsIsSet(tc, info.TopologyKey); !b && err == nil {
 			return false, nil
@@ -1537,6 +1542,37 @@ func (oa *operatorActions) schedulerHAFn(tc *v1alpha1.TidbCluster) (bool, error)
 	return true, nil
 }
 
+func (oa *operatorActions) podsScheduleAnnHaveDeleted(tc *v1alpha1.TidbCluster) (bool, error) {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(
+			label.New().Instance(tcName).Labels()).String(),
+	}
+
+	pvcList, err := oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(listOptions)
+	if err != nil {
+		glog.Errorf("failed to list pvcs for tidb cluster %s/%s, err: %v", ns, tcName, err)
+		return false, nil
+	}
+
+	for _, pvc := range pvcList.Items {
+		pvcName := pvc.GetName()
+		l := label.Label(pvc.Labels)
+		if !(l.IsPD() || l.IsTiKV()) {
+			continue
+		}
+
+		if _, exist := pvc.Annotations[label.AnnPVCPodScheduling]; exist {
+			glog.Errorf("tidb cluster %s/%s pvc %s has pod scheduling annotation", ns, tcName, pvcName)
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
 func (oa *operatorActions) storeLabelsIsSet(tc *v1alpha1.TidbCluster, topologyKey string) (bool, error) {
 	pdCli := controller.GetPDClient(oa.pdControl, tc)
 	for _, store := range tc.Status.TiKV.Stores {
@@ -1714,7 +1750,13 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 	values.Set("start", fmt.Sprintf("%d", start.Unix()))
 	values.Set("end", fmt.Sprintf("%d", end.Unix()))
 	values.Set("step", "30")
-	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources/proxy/1/api/v1/query_range?%s", svcName, ns, values.Encode())
+
+	datasourceID, err := getDatasourceID(svcName, ns)
+	if err != nil {
+		return err
+	}
+
+	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources/proxy/%d/api/v1/query_range?%s", svcName, ns, datasourceID, values.Encode())
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return err
@@ -1759,6 +1801,47 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 		clusterInfo.GrafanaClient = client
 	}
 	return nil
+}
+
+func getDatasourceID(svcName, namespace string) (int, error) {
+	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources", svcName, namespace)
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	req.SetBasicAuth(grafanaUsername, grafanaPassword)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		err := resp.Body.Close()
+		glog.Warning("close response failed", err)
+	}()
+
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	datasources := []struct {
+		Id   int    `json:"id"`
+		Name string `json:"name"`
+	}{}
+
+	if err := json.Unmarshal(buf, &datasources); err != nil {
+		return 0, err
+	}
+
+	for _, ds := range datasources {
+		if ds.Name == "tidb-cluster" {
+			return ds.Id, nil
+		}
+	}
+
+	return 0, pingcapErrors.New("not found tidb-cluster datasource")
 }
 
 func GetD(ns, tcName, databaseName, password string) string {
@@ -2349,10 +2432,12 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 			sets["binlog.drainer.ignoreSchemas"] = ""
 		} else {
 			from.drainerConfig = []string{
-				"worker-count = 16",
-				"detect-interval = 10",
-				"disable-dispatch = false",
-				`ignore-schemas = ""`,
+				`detect-interval = 10`,
+				`compressor = ""`,
+				`[syncer]`,
+				`worker-count = 16`,
+				`disable-dispatch = false`,
+				`ignore-schemas = "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql"`,
 				`safe-mode = false`,
 				`txn-batch = 20`,
 				`db-type = "mysql"`,

@@ -108,24 +108,16 @@ type TidbClusterStatus struct {
 // PDSpec contains details of PD members
 type PDSpec struct {
 	ContainerSpec
-	Replicas         int32               `json:"replicas"`
-	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
-	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
-	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
-	Annotations      map[string]string   `json:"annotations,omitempty"`
-	HostNetwork      bool                `json:"hostNetwork,omitempty"`
-	StorageClassName string              `json:"storageClassName,omitempty"`
+	PodAttributesSpec
+	Replicas         int32  `json:"replicas"`
+	StorageClassName string `json:"storageClassName,omitempty"`
 }
 
 // TiDBSpec contains details of TiDB members
 type TiDBSpec struct {
 	ContainerSpec
+	PodAttributesSpec
 	Replicas         int32                 `json:"replicas"`
-	Affinity         *corev1.Affinity      `json:"affinity,omitempty"`
-	NodeSelector     map[string]string     `json:"nodeSelector,omitempty"`
-	Tolerations      []corev1.Toleration   `json:"tolerations,omitempty"`
-	Annotations      map[string]string     `json:"annotations,omitempty"`
-	HostNetwork      bool                  `json:"hostNetwork,omitempty"`
 	StorageClassName string                `json:"storageClassName,omitempty"`
 	BinlogEnabled    bool                  `json:"binlogEnabled,omitempty"`
 	MaxFailoverCount int32                 `json:"maxFailoverCount,omitempty"`
@@ -142,14 +134,11 @@ type TiDBSlowLogTailerSpec struct {
 // TiKVSpec contains details of TiKV members
 type TiKVSpec struct {
 	ContainerSpec
-	Replicas         int32               `json:"replicas"`
-	Affinity         *corev1.Affinity    `json:"affinity,omitempty"`
-	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
-	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
-	Annotations      map[string]string   `json:"annotations,omitempty"`
-	HostNetwork      bool                `json:"hostNetwork,omitempty"`
-	Privileged       bool                `json:"privileged,omitempty"`
-	StorageClassName string              `json:"storageClassName,omitempty"`
+	PodAttributesSpec
+	Replicas         int32  `json:"replicas"`
+	Privileged       bool   `json:"privileged,omitempty"`
+	StorageClassName string `json:"storageClassName,omitempty"`
+	MaxFailoverCount int32  `json:"maxFailoverCount,omitempty"`
 }
 
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
@@ -163,6 +152,17 @@ type ContainerSpec struct {
 	ImagePullPolicy corev1.PullPolicy    `json:"imagePullPolicy,omitempty"`
 	Requests        *ResourceRequirement `json:"requests,omitempty"`
 	Limits          *ResourceRequirement `json:"limits,omitempty"`
+}
+
+// PodAttributesControlSpec is a spec of some general attributes of TiKV, TiDB and PD Pods
+type PodAttributesSpec struct {
+	Affinity           *corev1.Affinity           `json:"affinity,omitempty"`
+	NodeSelector       map[string]string          `json:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration        `json:"tolerations,omitempty"`
+	Annotations        map[string]string          `json:"annotations,omitempty"`
+	HostNetwork        bool                       `json:"hostNetwork,omitempty"`
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+	PriorityClassName  string                     `json:"priorityClassName,omitempty"`
 }
 
 // Service represent service type used in TidbCluster
@@ -411,8 +411,11 @@ type BackupScheduleList struct {
 type BackupScheduleSpec struct {
 	// Schedule specifies the cron string used for backup scheduling.
 	Schedule string `json:"schedule"`
-	// MaxBackups is to specify how many backups we want to keep.
-	MaxBackups int `json:"maxBackups"`
+	// MaxBackups is to specify how many backups we want to keep
+	// 0 is magic number to indicate un-limited backups.
+	MaxBackups *int32 `json:"maxBackups"`
+	// MaxReservedTime is to specify how long backups we want to keep.
+	MaxReservedTime *string `json:"maxReservedTime"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
 	// StorageClassName is the storage class for backup job's PV.
@@ -485,7 +488,7 @@ type RestoreSpec struct {
 	BackupNamespace string `json:"backupNamespace"`
 	// SecretName is the name of the secret which stores
 	// tidb cluster's username and password.
-	SecretName string `json:"secretName"`
+	TidbSecretName string `json:"tidbSecretName"`
 	// StorageClassName is the storage class for restore job's PV.
 	StorageClassName string `json:"storageClassName"`
 	// StorageSize is the request storage size for restore job

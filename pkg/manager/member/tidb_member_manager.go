@@ -28,6 +28,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/listers/apps/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
@@ -364,7 +365,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: func() *int32 { r := tc.TiDBRealReplicas(); return &r }(),
+			Replicas: controller.Int32Ptr(tc.TiDBRealReplicas()),
 			Selector: tidbLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -372,21 +373,23 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 					Annotations: podAnnotations,
 				},
 				Spec: corev1.PodSpec{
-					SchedulerName: tc.Spec.SchedulerName,
-					Affinity:      tc.Spec.TiDB.Affinity,
-					NodeSelector:  tc.Spec.TiDB.NodeSelector,
-					HostNetwork:   tc.Spec.PD.HostNetwork,
-					DNSPolicy:     dnsPolicy,
-					Containers:    containers,
-					RestartPolicy: corev1.RestartPolicyAlways,
-					Tolerations:   tc.Spec.TiDB.Tolerations,
-					Volumes:       vols,
+					SchedulerName:     tc.Spec.SchedulerName,
+					Affinity:          tc.Spec.TiDB.Affinity,
+					NodeSelector:      tc.Spec.TiDB.NodeSelector,
+					HostNetwork:       tc.Spec.TiDB.HostNetwork,
+					DNSPolicy:         dnsPolicy,
+					Containers:        containers,
+					RestartPolicy:     corev1.RestartPolicyAlways,
+					Tolerations:       tc.Spec.TiDB.Tolerations,
+					Volumes:           vols,
+					SecurityContext:   tc.Spec.TiDB.PodSecurityContext,
+					PriorityClassName: tc.Spec.TiDB.PriorityClassName,
 				},
 			},
 			ServiceName:         controller.TiDBPeerMemberName(tcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{Partition: func() *int32 { r := tc.TiDBRealReplicas(); return &r }()},
+				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{Partition: controller.Int32Ptr(tc.TiDBRealReplicas())},
 			},
 		},
 	}
@@ -476,9 +479,13 @@ func (ftmm *FakeTiDBMemberManager) SetSyncError(err error) {
 	ftmm.err = err
 }
 
-func (ftmm *FakeTiDBMemberManager) Sync(_ *v1alpha1.TidbCluster) error {
+func (ftmm *FakeTiDBMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if ftmm.err != nil {
 		return ftmm.err
+	}
+	if len(tc.Status.TiDB.Members) != 0 {
+		// simulate status update
+		tc.Status.ClusterID = string(uuid.NewUUID())
 	}
 	return nil
 }
