@@ -112,7 +112,7 @@ check-static:
 	  $$($(PACKAGE_DIRECTORIES))
 
 check-crd:
-	./hack/verify-crdgen.sh
+	./hack/crd-groups.sh verify
 
 # TODO: staticcheck is too slow currently
 staticcheck:
