@@ -18,7 +18,7 @@ ACTION="$1"
 shift 1
 
 GO_PKG="github.com/pingcap/tidb-operator"
-CI_GO_PATH="/home/jenkins/workspace/operator_ghpr_e2e_test_kind/go"
+CI_GO_PATH="/go"
 scriptdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 to_crdgen="$scriptdir/../cmd/to-crdgen"
 crd_target="$scriptdir/../manifests/crd.yaml"
@@ -45,7 +45,7 @@ elif [ $ACTION == 'verify' ];then
 	generate_crd $CI_GO_PATH $crd_verify_target
 	r="$(diff "$crd_target" "$crd_verify_target")"
 	if [[ -n $r ]]; then
-		echo $1 is not latest
+		echo $crd_target is not latest
 		exit 1
 	fi
 	echo crds are latest
