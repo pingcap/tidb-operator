@@ -157,7 +157,7 @@ func (fa *faultTriggerActions) StopNode() (string, string, time.Time, error) {
 
 	name := getNameByIP(fa.cfg, node)
 	if name == "" {
-		return "", "", now, fmt.Errorf("failed to find %s's name in cfg:[%v]", node)
+		return "", "", now, fmt.Errorf("failed to find %s's name in cfg:[%v]", node, fa.cfg)
 	}
 
 	if err := faultCli.StopVM(&manager.VM{
