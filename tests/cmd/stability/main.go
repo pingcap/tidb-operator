@@ -28,7 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	"github.com/robfig/cron"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
 )
@@ -260,28 +260,51 @@ func run() {
 		// stop all kube-scheduler pods
 		for _, physicalNode := range cfg.APIServers {
 			for _, vNode := range physicalNode.Nodes {
-				fta.StopKubeSchedulerOrDie(vNode)
+				fta.StopKubeSchedulerOrDie(vNode.IP)
 			}
 		}
 		oa.CheckKubeSchedulerDownOrDie(ocfg, clusters)
 		for _, physicalNode := range cfg.APIServers {
 			for _, vNode := range physicalNode.Nodes {
-				fta.StartKubeSchedulerOrDie(vNode)
+				fta.StartKubeSchedulerOrDie(vNode.IP)
 			}
 		}
 
 		// stop all kube-controller-manager pods
 		for _, physicalNode := range cfg.APIServers {
 			for _, vNode := range physicalNode.Nodes {
-				fta.StopKubeControllerManagerOrDie(vNode)
+				fta.StopKubeControllerManagerOrDie(vNode.IP)
 			}
 		}
 		oa.CheckKubeControllerManagerDownOrDie(ocfg, clusters)
 		for _, physicalNode := range cfg.APIServers {
 			for _, vNode := range physicalNode.Nodes {
-				fta.StartKubeControllerManagerOrDie(vNode)
+				fta.StartKubeControllerManagerOrDie(vNode.IP)
 			}
 		}
+
+		// stop one kube-apiserver pod
+		faultApiServer := tests.SelectNode(cfg.APIServers)
+		fta.StopKubeAPIServerOrDie(faultApiServer)
+		defer fta.StartKubeAPIServerOrDie(faultApiServer)
+		time.Sleep(3 * time.Minute)
+		oa.CheckOneApiserverDownOrDie(ocfg, clusters, faultApiServer)
+		fta.StartKubeAPIServerOrDie(faultApiServer)
+
+		time.Sleep(time.Minute)
+		// stop all kube-apiserver pods
+		for _, physicalNode := range cfg.APIServers {
+			for _, vNode := range physicalNode.Nodes {
+				fta.StopKubeAPIServerOrDie(vNode.IP)
+			}
+		}
+		oa.CheckAllApiserverDownOrDie(ocfg, clusters)
+		for _, physicalNode := range cfg.APIServers {
+			for _, vNode := range physicalNode.Nodes {
+				fta.StartKubeAPIServerOrDie(vNode.IP)
+			}
+		}
+		time.Sleep(time.Minute)
 	}
 
 	// before operator upgrade
