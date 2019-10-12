@@ -18,11 +18,11 @@ func TestListVMs(t *testing.T) {
 	vms := []*manager.VM{
 		{
 			Name: "vm1",
-			IP:   "10.16.30.11",
+			Host: "10.16.30.11",
 		},
 		{
 			Name: "vm2",
-			IP:   "10.16.30.12",
+			Host: "10.16.30.12",
 		},
 	}
 
