@@ -23,10 +23,15 @@ to_crdgen="$scriptdir/../cmd/to-crdgen"
 crd_target="$scriptdir/../manifests/crd.yaml"
 crd_verify_target="$scriptdir/../manifests/crd-verify.yaml"
 
+cd $GOPATH/bin
+
+ls
 
 GO111MODULE=on go get k8s.io/code-generator/cmd/openapi-gen@kubernetes-1.12.5
 
-ls $GOPATH
+cd $GOPATH/bin
+
+ls
 
 $GOPATH/bin/openapi-gen --go-header-file=$scriptdir/boilerplate.go.txt \
 -i $GO_PKG/pkg/apis/pingcap.com/v1alpha1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/api/core/v1 \
