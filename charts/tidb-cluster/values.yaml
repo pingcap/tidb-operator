@@ -168,6 +168,14 @@ pd:
   # Specify the security context of PD Pod.
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
   podSecurityContext: {}
+    # # You can enable these kernel parameters tuning to improve TiDB performance,
+    # # when the kubelet is configured to allow unsafe sysctls
+    # - name: net.core.somaxconn
+    #   value: "32768"
+    # - name: net.ipv4.tcp_syncookies
+    #   value: "0"
+    # - name: net.ipv4.tcp_tw_recycle
+    #   value: "0"
 
   # Specify the priorityClassName for PD Pod.
   # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
@@ -208,7 +216,7 @@ tikv:
   #
   #   # Normally it should be tuned to 30%-50% of `tikv.resources.limits.memory`, for example: 32Gi -> 16GB
   #   capacity = "1GB"
-  # Note that we can't set raftstore.capacity in config because it will be overridden by the command line parameter, 
+  # Note that we can't set raftstore.capacity in config because it will be overridden by the command line parameter,
   # we can only set capacity in tikv.resources.limits.storage.
 
   replicas: 3
@@ -257,6 +265,15 @@ tikv:
   # Specify the security context of TiKV Pod.
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
   podSecurityContext: {}
+    # # You can enable these kernel parameters tuning to improve TiDB performance,
+    # # when the kubelet is configured to allow unsafe sysctls
+    # sysctls:
+    # - name: net.core.somaxconn
+    #   value: "32768"
+    # - name: net.ipv4.tcp_syncookies
+    #   value: "0"
+    # - name: net.ipv4.tcp_tw_recycle
+    #   value: "0"
 
   # Specify the priorityClassName for TiKV Pod.
   # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
@@ -335,6 +352,23 @@ tidb:
   # Specify the security context of TiDB Pod.
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
   podSecurityContext: {}
+    # # You can enable these kernel parameters tuning to improve TiDB performance,
+    # # when the kubelet is configured to allow unsafe sysctls
+    # - name: net.core.somaxconn
+    #   value: "32768"
+    # - name: net.ipv4.tcp_syncookies
+    #   value: "0"
+    # - name: net.ipv4.tcp_tw_recycle
+    #   value: "0"
+
+    # # Load balancers usually have an idle timeout (eg. AWS NLB idle timeout is 350),
+    # # the tcp_keepalive_time must be set to lower than LB idle timeout.
+    # sysctls:
+    # - name: net.ipv4.tcp_keepalive_time
+    #   value: "300"
+    # - name: net.ipv4.tcp_keepalive_intvl
+    #   value: "75"
+
 
   # Specify the priorityClassName for TiDB Pod.
   # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
