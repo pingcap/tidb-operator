@@ -90,10 +90,10 @@ type TidbClusterList struct {
 // +k8s:openapi-gen=true
 // TidbClusterSpec describes the attributes that a user creates on a tidb cluster
 type TidbClusterSpec struct {
-	SchedulerName   string              `json:"schedulerName,omitempty"`
-	PD              PDSpec              `json:"pd,omitempty"`
-	TiDB            TiDBSpec            `json:"tidb,omitempty"`
-	TiKV            TiKVSpec            `json:"tikv,omitempty"`
+	SchedulerName string   `json:"schedulerName,omitempty"`
+	PD            PDSpec   `json:"pd,omitempty"`
+	TiDB          TiDBSpec `json:"tidb,omitempty"`
+	TiKV          TiKVSpec `json:"tikv,omitempty"`
 	// +k8s:openapi-gen=false
 	TiKVPromGateway TiKVPromGatewaySpec `json:"tikvPromGateway,omitempty"`
 	// Services list non-headless services type used in TidbCluster
