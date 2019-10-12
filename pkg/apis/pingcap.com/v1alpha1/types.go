@@ -115,7 +115,9 @@ type TidbClusterStatus struct {
 // +k8s:openapi-gen=true
 // PDSpec contains details of PD members
 type PDSpec struct {
+	// +k8s:openapi-gen=false
 	ContainerSpec
+	// +k8s:openapi-gen=false
 	PodAttributesSpec
 	Replicas         int32  `json:"replicas"`
 	StorageClassName string `json:"storageClassName,omitempty"`
@@ -124,7 +126,9 @@ type PDSpec struct {
 // +k8s:openapi-gen=true
 // TiDBSpec contains details of TiDB members
 type TiDBSpec struct {
+	// +k8s:openapi-gen=false
 	ContainerSpec
+	// +k8s:openapi-gen=false
 	PodAttributesSpec
 	Replicas         int32                 `json:"replicas"`
 	StorageClassName string                `json:"storageClassName,omitempty"`
@@ -138,13 +142,16 @@ type TiDBSpec struct {
 // +k8s:openapi-gen=true
 // TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB
 type TiDBSlowLogTailerSpec struct {
+	// +k8s:openapi-gen=false
 	ContainerSpec
 }
 
 // +k8s:openapi-gen=true
 // TiKVSpec contains details of TiKV members
 type TiKVSpec struct {
+	// +k8s:openapi-gen=false
 	ContainerSpec
+	// +k8s:openapi-gen=false
 	PodAttributesSpec
 	Replicas         int32  `json:"replicas"`
 	Privileged       bool   `json:"privileged,omitempty"`

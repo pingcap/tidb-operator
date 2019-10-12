@@ -614,16 +614,6 @@ func schema_pkg_apis_pingcapcom_v1alpha1_PDSpec(ref common.ReferenceCallback) co
 				Description: "PDSpec contains details of PD members",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"ContainerSpec": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ContainerSpec"),
-						},
-					},
-					"PodAttributesSpec": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.PodAttributesSpec"),
-						},
-					},
 					"replicas": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
@@ -637,11 +627,9 @@ func schema_pkg_apis_pingcapcom_v1alpha1_PDSpec(ref common.ReferenceCallback) co
 						},
 					},
 				},
-				Required: []string{"ContainerSpec", "PodAttributesSpec", "replicas"},
+				Required: []string{"replicas"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ContainerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.PodAttributesSpec"},
 	}
 }
 
@@ -864,18 +852,8 @@ func schema_pkg_apis_pingcapcom_v1alpha1_TiDBSlowLogTailerSpec(ref common.Refere
 			SchemaProps: spec.SchemaProps{
 				Description: "TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB",
 				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"ContainerSpec": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ContainerSpec"),
-						},
-					},
-				},
-				Required: []string{"ContainerSpec"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ContainerSpec"},
 	}
 }
 
@@ -886,16 +864,6 @@ func schema_pkg_apis_pingcapcom_v1alpha1_TiDBSpec(ref common.ReferenceCallback) 
 				Description: "TiDBSpec contains details of TiDB members",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"ContainerSpec": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ContainerSpec"),
-						},
-					},
-					"PodAttributesSpec": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.PodAttributesSpec"),
-						},
-					},
 					"replicas": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
@@ -938,11 +906,11 @@ func schema_pkg_apis_pingcapcom_v1alpha1_TiDBSpec(ref common.ReferenceCallback) 
 						},
 					},
 				},
-				Required: []string{"ContainerSpec", "PodAttributesSpec", "replicas"},
+				Required: []string{"replicas"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ContainerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.PodAttributesSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.TiDBSlowLogTailerSpec"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.TiDBSlowLogTailerSpec"},
 	}
 }
 
@@ -953,16 +921,6 @@ func schema_pkg_apis_pingcapcom_v1alpha1_TiKVSpec(ref common.ReferenceCallback) 
 				Description: "TiKVSpec contains details of TiKV members",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"ContainerSpec": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ContainerSpec"),
-						},
-					},
-					"PodAttributesSpec": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.PodAttributesSpec"),
-						},
-					},
 					"replicas": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
@@ -988,11 +946,9 @@ func schema_pkg_apis_pingcapcom_v1alpha1_TiKVSpec(ref common.ReferenceCallback) 
 						},
 					},
 				},
-				Required: []string{"ContainerSpec", "PodAttributesSpec", "replicas"},
+				Required: []string{"replicas"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ContainerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.PodAttributesSpec"},
 	}
 }
 

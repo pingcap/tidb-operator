@@ -80,16 +80,12 @@ spec:
             pd:
               description: PDSpec contains details of PD members
               properties:
-                ContainerSpec: {}
-                PodAttributesSpec: {}
                 replicas:
                   format: int32
                   type: integer
                 storageClassName:
                   type: string
               required:
-              - ContainerSpec
-              - PodAttributesSpec
               - replicas
               type: object
             pvReclaimPolicy:
@@ -110,8 +106,6 @@ spec:
             tidb:
               description: TiDBSpec contains details of TiDB members
               properties:
-                ContainerSpec: {}
-                PodAttributesSpec: {}
                 binlogEnabled:
                   type: boolean
                 enableTLSClient:
@@ -127,23 +121,15 @@ spec:
                 slowLogTailer:
                   description: TiDBSlowLogTailerSpec represents an optional log tailer
                     sidecar with TiDB
-                  properties:
-                    ContainerSpec: {}
-                  required:
-                  - ContainerSpec
                   type: object
                 storageClassName:
                   type: string
               required:
-              - ContainerSpec
-              - PodAttributesSpec
               - replicas
               type: object
             tikv:
               description: TiKVSpec contains details of TiKV members
               properties:
-                ContainerSpec: {}
-                PodAttributesSpec: {}
                 maxFailoverCount:
                   format: int32
                   type: integer
@@ -155,8 +141,6 @@ spec:
                 storageClassName:
                   type: string
               required:
-              - ContainerSpec
-              - PodAttributesSpec
               - replicas
               type: object
             timezone:
