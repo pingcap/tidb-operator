@@ -169,6 +169,7 @@ type OperatorActions interface {
 	CheckEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckKubeletDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
+	CheckAllApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
 	CheckKubeProxyDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
 	CheckKubeSchedulerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
 	CheckKubeControllerManagerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
@@ -848,8 +849,10 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		}
 
 		glog.V(4).Infof("check all pd and tikv instances have not pod scheduling annotation")
-		if b, err := oa.podsScheduleAnnHaveDeleted(tc); !b && err == nil {
-			return false, nil
+		if info.OperatorTag != "v1.0.0" {
+			if b, err := oa.podsScheduleAnnHaveDeleted(tc); !b && err == nil {
+				return false, nil
+			}
 		}
 
 		glog.V(4).Infof("check store labels")
@@ -1815,7 +1818,13 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 	values.Set("start", fmt.Sprintf("%d", start.Unix()))
 	values.Set("end", fmt.Sprintf("%d", end.Unix()))
 	values.Set("step", "30")
-	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources/proxy/1/api/v1/query_range?%s", svcName, ns, values.Encode())
+
+	datasourceID, err := getDatasourceID(svcName, ns)
+	if err != nil {
+		return err
+	}
+
+	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources/proxy/%d/api/v1/query_range?%s", svcName, ns, datasourceID, values.Encode())
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return err
@@ -1862,6 +1871,47 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 	return nil
 }
 
+func getDatasourceID(svcName, namespace string) (int, error) {
+	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources", svcName, namespace)
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	req.SetBasicAuth(grafanaUsername, grafanaPassword)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		err := resp.Body.Close()
+		glog.Warning("close response failed", err)
+	}()
+
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	datasources := []struct {
+		Id   int    `json:"id"`
+		Name string `json:"name"`
+	}{}
+
+	if err := json.Unmarshal(buf, &datasources); err != nil {
+		return 0, err
+	}
+
+	for _, ds := range datasources {
+		if ds.Name == "tidb-cluster" {
+			return ds.Id, nil
+		}
+	}
+
+	return 0, pingcapErrors.New("not found tidb-cluster datasource")
+}
+
 func GetD(ns, tcName, databaseName, password string) string {
 	return fmt.Sprintf("root:%s@(%s-tidb.%s:4000)/%s?charset=utf8", password, tcName, ns, databaseName)
 }
@@ -1893,12 +1943,14 @@ func (oa *operatorActions) checkoutTag(tagName string) error {
 	cmd := fmt.Sprintf("cd %s && git stash -u && git checkout %s && "+
 		"mkdir -p %s && cp -rf charts/tidb-operator %s && "+
 		"cp -rf charts/tidb-cluster %s && cp -rf charts/tidb-backup %s &&"+
-		"cp -rf manifests %s &&"+
-		"cp -rf charts/tidb-drainer %s",
+		"cp -rf manifests %s",
 		oa.cfg.OperatorRepoDir, tagName,
 		filepath.Join(oa.cfg.ChartDir, tagName), oa.operatorChartPath(tagName),
 		oa.tidbClusterChartPath(tagName), oa.backupChartPath(tagName),
-		oa.manifestPath(tagName), oa.drainerChartPath(tagName))
+		oa.manifestPath(tagName))
+	if tagName != "v1.0.0" {
+		cmd = cmd + fmt.Sprintf(" && cp -rf charts/tidb-drainer %s", oa.drainerChartPath(tagName))
+	}
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {

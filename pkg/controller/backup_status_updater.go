@@ -104,7 +104,7 @@ var _ BackupConditionUpdaterInterface = &realBackupConditionUpdater{}
 type FakeBackupConditionUpdater struct {
 	BackupLister        listers.BackupLister
 	BackupIndexer       cache.Indexer
-	updateBackupTracker requestTracker
+	updateBackupTracker RequestTracker
 }
 
 // NewFakeBackupConditionUpdater returns a FakeBackupConditionUpdater
@@ -112,22 +112,21 @@ func NewFakeBackupConditionUpdater(backupInformer informers.BackupInformer) *Fak
 	return &FakeBackupConditionUpdater{
 		backupInformer.Lister(),
 		backupInformer.Informer().GetIndexer(),
-		requestTracker{0, nil, 0},
+		RequestTracker{},
 	}
 }
 
 // SetUpdateBackupError sets the error attributes of updateBackupTracker
 func (fbc *FakeBackupConditionUpdater) SetUpdateBackupError(err error, after int) {
-	fbc.updateBackupTracker.err = err
-	fbc.updateBackupTracker.after = after
+	fbc.updateBackupTracker.SetError(err).SetAfter(after)
 }
 
 // UpdateBackup updates the Backup
 func (fbc *FakeBackupConditionUpdater) Update(backup *v1alpha1.Backup, _ *v1alpha1.BackupCondition) error {
-	defer fbc.updateBackupTracker.inc()
-	if fbc.updateBackupTracker.errorReady() {
-		defer fbc.updateBackupTracker.reset()
-		return fbc.updateBackupTracker.err
+	defer fbc.updateBackupTracker.Inc()
+	if fbc.updateBackupTracker.ErrorReady() {
+		defer fbc.updateBackupTracker.Reset()
+		return fbc.updateBackupTracker.GetError()
 	}
 
 	return fbc.BackupIndexer.Update(backup)

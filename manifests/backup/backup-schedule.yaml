@@ -5,10 +5,11 @@ metadata:
   name: demo1-backup-schedule
   namespace: test1
 spec:
-  maxBackups: 5
+  #maxBackups: 5
+  maxReservedTime: "3h"
   storageClassName: rook-ceph-block
-  storageSize: 100Gi
-  schedule: "1 */1 * * *"
+  storageSize: 10Gi
+  schedule: "*/20 * * * *"
   backupTemplate:
     ceph:
       endpoint: http://10.233.2.161
