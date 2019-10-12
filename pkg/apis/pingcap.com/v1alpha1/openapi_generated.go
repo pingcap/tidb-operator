@@ -37,9 +37,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.BackupScheduleSpec":    schema_pkg_apis_pingcapcom_v1alpha1_BackupScheduleSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.BackupSpec":            schema_pkg_apis_pingcapcom_v1alpha1_BackupSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.CephStorageProvider":   schema_pkg_apis_pingcapcom_v1alpha1_CephStorageProvider(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ContainerSpec":         schema_pkg_apis_pingcapcom_v1alpha1_ContainerSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.PDSpec":                schema_pkg_apis_pingcapcom_v1alpha1_PDSpec(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.PodAttributesSpec":     schema_pkg_apis_pingcapcom_v1alpha1_PodAttributesSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ResourceRequirement":   schema_pkg_apis_pingcapcom_v1alpha1_ResourceRequirement(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.Restore":               schema_pkg_apis_pingcapcom_v1alpha1_Restore(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.RestoreList":           schema_pkg_apis_pingcapcom_v1alpha1_RestoreList(ref),
@@ -609,44 +607,6 @@ func schema_pkg_apis_pingcapcom_v1alpha1_CephStorageProvider(ref common.Referenc
 	}
 }
 
-func schema_pkg_apis_pingcapcom_v1alpha1_ContainerSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ContainerSpec is the container spec of a pod",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"image": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"imagePullPolicy": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"requests": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ResourceRequirement"),
-						},
-					},
-					"limits": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ResourceRequirement"),
-						},
-					},
-				},
-				Required: []string{"image"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ResourceRequirement"},
-	}
-}
-
 func schema_pkg_apis_pingcapcom_v1alpha1_PDSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -682,83 +642,6 @@ func schema_pkg_apis_pingcapcom_v1alpha1_PDSpec(ref common.ReferenceCallback) co
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ContainerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.PodAttributesSpec"},
-	}
-}
-
-func schema_pkg_apis_pingcapcom_v1alpha1_PodAttributesSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "PodAttributesControlSpec is a spec of some general attributes of TiKV, TiDB and PD Pods",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"affinity": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/api/core/v1.Affinity"),
-						},
-					},
-					"nodeSelector": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Type:   []string{"string"},
-										Format: "",
-									},
-								},
-							},
-						},
-					},
-					"tolerations": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/api/core/v1.Toleration"),
-									},
-								},
-							},
-						},
-					},
-					"annotations": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Type:   []string{"string"},
-										Format: "",
-									},
-								},
-							},
-						},
-					},
-					"hostNetwork": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"boolean"},
-							Format: "",
-						},
-					},
-					"podSecurityContext": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/api/core/v1.PodSecurityContext"),
-						},
-					},
-					"priorityClassName": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 

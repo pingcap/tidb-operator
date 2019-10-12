@@ -158,7 +158,7 @@ type TiKVPromGatewaySpec struct {
 	ContainerSpec
 }
 
-// +k8s:openapi-gen=true
+// +k8s:openapi-gen=false
 // ContainerSpec is the container spec of a pod
 type ContainerSpec struct {
 	Image           string               `json:"image"`
@@ -167,7 +167,7 @@ type ContainerSpec struct {
 	Limits          *ResourceRequirement `json:"limits,omitempty"`
 }
 
-// +k8s:openapi-gen=true
+// +k8s:openapi-gen=false
 // PodAttributesControlSpec is a spec of some general attributes of TiKV, TiDB and PD Pods
 type PodAttributesSpec struct {
 	Affinity           *corev1.Affinity           `json:"affinity,omitempty"`
