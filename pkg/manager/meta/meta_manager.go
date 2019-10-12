@@ -143,8 +143,5 @@ func (fmm *FakeMetaManager) SetSyncError(err error) {
 }
 
 func (fmm *FakeMetaManager) Sync(_ *v1alpha1.TidbCluster) error {
-	if fmm.err != nil {
-		return fmm.err
-	}
-	return nil
+	return fmm.err
 }
