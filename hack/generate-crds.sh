@@ -9,7 +9,7 @@ GO111MODULE=on go get k8s.io/code-generator/cmd/openapi-gen@kubernetes-1.12.5
 
 $GOPATH/bin/openapi-gen --go-header-file=$scriptdir/boilerplate.go.txt \
 -i $GO_PKG/pkg/apis/pingcap.com/v1alpha1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/api/core/v1 \
--p apis/pingcap.com/v1alpha1  -O openapi_generated -o ../pkg
+-p apis/pingcap.com/v1alpha1  -O openapi_generated -o $scriptdir/../pkg
 
 go install $to_crdgen
 $GOPATH/bin/to-crdgen tidbcluster > $crd_target

@@ -94,6 +94,7 @@ type TidbClusterSpec struct {
 	PD              PDSpec              `json:"pd,omitempty"`
 	TiDB            TiDBSpec            `json:"tidb,omitempty"`
 	TiKV            TiKVSpec            `json:"tikv,omitempty"`
+	// +k8s:openapi-gen=false
 	TiKVPromGateway TiKVPromGatewaySpec `json:"tikvPromGateway,omitempty"`
 	// Services list non-headless services type used in TidbCluster
 	Services        []Service                            `json:"services,omitempty"`
@@ -151,7 +152,7 @@ type TiKVSpec struct {
 	MaxFailoverCount int32  `json:"maxFailoverCount,omitempty"`
 }
 
-// +k8s:openapi-gen=true
+// +k8s:openapi-gen=false
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
 type TiKVPromGatewaySpec struct {
 	ContainerSpec

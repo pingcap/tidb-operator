@@ -48,7 +48,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.StorageProvider":       schema_pkg_apis_pingcapcom_v1alpha1_StorageProvider(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.TiDBSlowLogTailerSpec": schema_pkg_apis_pingcapcom_v1alpha1_TiDBSlowLogTailerSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.TiDBSpec":              schema_pkg_apis_pingcapcom_v1alpha1_TiDBSpec(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.TiKVPromGatewaySpec":   schema_pkg_apis_pingcapcom_v1alpha1_TiKVPromGatewaySpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.TiKVSpec":              schema_pkg_apis_pingcapcom_v1alpha1_TiKVSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.TidbCluster":           schema_pkg_apis_pingcapcom_v1alpha1_TidbCluster(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.TidbClusterList":       schema_pkg_apis_pingcapcom_v1alpha1_TidbClusterList(ref),
@@ -1064,27 +1063,6 @@ func schema_pkg_apis_pingcapcom_v1alpha1_TiDBSpec(ref common.ReferenceCallback) 
 	}
 }
 
-func schema_pkg_apis_pingcapcom_v1alpha1_TiKVPromGatewaySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TiKVPromGatewaySpec runs as a sidecar with TiKVSpec",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"ContainerSpec": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ContainerSpec"),
-						},
-					},
-				},
-				Required: []string{"ContainerSpec"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.ContainerSpec"},
-	}
-}
-
 func schema_pkg_apis_pingcapcom_v1alpha1_TiKVSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1241,11 +1219,6 @@ func schema_pkg_apis_pingcapcom_v1alpha1_TidbClusterSpec(ref common.ReferenceCal
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.TiKVSpec"),
 						},
 					},
-					"tikvPromGateway": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.TiKVPromGatewaySpec"),
-						},
-					},
 					"services": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Services list non-headless services type used in TidbCluster",
@@ -1282,7 +1255,7 @@ func schema_pkg_apis_pingcapcom_v1alpha1_TidbClusterSpec(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.PDSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.Service", "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.TiDBSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.TiKVPromGatewaySpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.TiKVSpec"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.PDSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.Service", "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.TiDBSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1.TiKVSpec"},
 	}
 }
 
