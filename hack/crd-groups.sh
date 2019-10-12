@@ -26,13 +26,13 @@ crd_verify_target="$scriptdir/../manifests/crd-verify.yaml"
 
 GO111MODULE=on go get k8s.io/code-generator/cmd/openapi-gen@kubernetes-1.12.5
 
-$GOPATH/bin/openapi-gen --go-header-file=$scriptdir/boilerplate.go.txt \
--i $GO_PKG/pkg/apis/pingcap.com/v1alpha1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/api/core/v1 \
--p apis/pingcap.com/v1alpha1  -O openapi_generated -o $scriptdir/../pkg
-
-go install $to_crdgen
-
 function generate_crd {
+    $1/bin/openapi-gen --go-header-file=$scriptdir/boilerplate.go.txt \
+    -i $GO_PKG/pkg/apis/pingcap.com/v1alpha1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/api/core/v1 \
+    -p apis/pingcap.com/v1alpha1  -O openapi_generated -o $scriptdir/../pkg
+
+    go install $to_crdgen
+
 	$1/bin/to-crdgen generate tidbcluster > $2
 	$1/bin/to-crdgen generate backup >> $2
 	$1/bin/to-crdgen generate restore >> $2
