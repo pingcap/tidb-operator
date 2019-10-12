@@ -24,7 +24,7 @@ crd_target="$scriptdir/../manifests/crd.yaml"
 crd_verify_target="$scriptdir/../manifests/crd-verify.yaml"
 
 
-GO111MODULE=off go get k8s.io/code-generator/cmd/openapi-gen
+GO111MODULE=off go install k8s.io/code-generator/cmd/openapi-gen
 
 $GOPATH/bin/openapi-gen --go-header-file=$scriptdir/boilerplate.go.txt \
 -i $GO_PKG/pkg/apis/pingcap.com/v1alpha1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/api/core/v1 \
