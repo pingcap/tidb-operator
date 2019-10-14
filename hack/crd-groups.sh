@@ -24,6 +24,8 @@ to_crdgen="$scriptdir/../cmd/to-crdgen"
 crd_target="$scriptdir/../manifests/crd.yaml"
 crd_verify_target="$scriptdir/../manifests/crd-verify.yaml"
 
+echo $GOPATH
+
 GO111MODULE=on go get k8s.io/code-generator/cmd/openapi-gen@kubernetes-1.12.5
 
 function generate_crd {
