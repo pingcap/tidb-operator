@@ -636,7 +636,7 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 		slack.NotifyAndPanic(fmt.Errorf("can't find kube-proxy in k8s cluster"))
 	}
 	if proxyPod != nil {
-		affectedPods[dnsPod.GetName()] = proxyPod
+		affectedPods[proxyPod.GetName()] = proxyPod
 	}
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(map[string]string{faultNode: faultNode}, affectedPods)
@@ -650,6 +650,17 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 		}
 		glog.V(4).Infof("tidb operator is available.")
 		err = oa.CheckTidbClustersAvailable(clusters)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("all clusters is available")
+		return nil
+	})
+}
+
+func (oa *operatorActions) CheckAllApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckTidbClustersAvailable(clusters)
 		if err != nil {
 			return err
 		}
