@@ -24,8 +24,6 @@ to_crdgen="$scriptdir/../cmd/to-crdgen"
 crd_target="$scriptdir/../manifests/crd.yaml"
 crd_verify_target="$scriptdir/../manifests/crd-verify.yaml"
 
-echo $GOPATH
-
 GO111MODULE=on go get k8s.io/code-generator/cmd/openapi-gen@kubernetes-1.12.5
 
 function generate_crd {
@@ -44,7 +42,14 @@ function generate_crd {
 if test $ACTION == 'generate' ;then
 	generate_crd $GOPATH $crd_target
 elif [ $ACTION == 'verify' ];then
-	generate_crd $CI_GO_PATH $crd_verify_target
+
+    if [[ $GOPATH == /go* ]] ;
+    then
+        generate_crd $CI_GO_PATH $crd_verify_target
+    else
+        generate_crd $GOPATH $crd_verify_target
+    fi
+
 	r="$(diff "$crd_target" "$crd_verify_target")"
 	if [[ -n $r ]]; then
 		echo $crd_target is not latest
