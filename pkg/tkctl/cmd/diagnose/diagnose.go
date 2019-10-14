@@ -220,19 +220,14 @@ func (o *diagnoseInfoOptions) Run() error {
 			return err
 		}
 
-		if p, err := convertToInternalObj(&pod, ""); err != nil {
+		p, err := convertToInternalObj(&pod, "")
+		if err != nil {
 			return err
-		} else {
-			//t :=
-			pods.Items = append(pods.Items, *(p.(*api.Pod)))
 		}
+		pods.Items = append(pods.Items, *(p.(*api.Pod)))
 	}
 
-	if err = o.printer.PrintObj(&pods, rWriter); err != nil {
-		return err
-	}
-
-	return nil
+	return o.printer.PrintObj(&pods, rWriter)
 }
 
 // tidbClusterDumper generates information about a tidbclusters object.
@@ -335,18 +330,14 @@ func (d *tidbClusterStatefulDumper) Dump(logPath string, resourceWriter io.Write
 			return err
 		}
 
-		if s, err := convertToInternalObj(ps, "apps"); err != nil {
+		s, err := convertToInternalObj(ps, "apps")
+		if err != nil {
 			return err
-		} else {
-			sts.Items = append(sts.Items, *(s.(*apps.StatefulSet)))
 		}
+		sts.Items = append(sts.Items, *(s.(*apps.StatefulSet)))
 	}
 
-	if err = d.printer.PrintObj(&sts, resourceWriter); err != nil {
-		return err
-	}
-
-	return nil
+	return d.printer.PrintObj(&sts, resourceWriter)
 }
 
 // pvcDumper generates information about pvc.
@@ -407,11 +398,7 @@ func (d *pvcDumper) Dump(logPath string, resourceWriter io.Writer) error {
 		pvcs.Items = append(pvcs.Items, *(s.(*api.PersistentVolumeClaim)))
 	}
 
-	if err = d.printer.PrintObj(&pvcs, resourceWriter); err != nil {
-		return err
-	}
-
-	return nil
+	return d.printer.PrintObj(&pvcs, resourceWriter)
 }
 
 // svcDumper generates information about service.
@@ -472,11 +459,7 @@ func (d *svcDumper) Dump(logPath string, resourceWriter io.Writer) error {
 		svcs.Items = append(svcs.Items, *(s.(*api.Service)))
 	}
 
-	if err = d.printer.PrintObj(&svcs, resourceWriter); err != nil {
-		return err
-	}
-
-	return nil
+	return d.printer.PrintObj(&svcs, resourceWriter)
 }
 
 // configMapDumper generates information about service.
@@ -537,11 +520,7 @@ func (d *configMapDumper) Dump(logPath string, resourceWriter io.Writer) error {
 		cfgs.Items = append(cfgs.Items, *(s.(*api.ConfigMap)))
 	}
 
-	if err = d.printer.PrintObj(&cfgs, resourceWriter); err != nil {
-		return err
-	}
-
-	return nil
+	return d.printer.PrintObj(&cfgs, resourceWriter)
 }
 
 // podDumper generates information about pods and the replication controllers that
