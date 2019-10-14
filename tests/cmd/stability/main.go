@@ -191,12 +191,16 @@ func run() {
 			cluster.TiKVPreStartScript = strconv.Quote("")
 			cluster.TiDBPreStartScript = strconv.Quote("")
 			oa.UpgradeTidbClusterOrDie(cluster)
+			// wait upgrade complete
+			oa.CheckUpgradeOrDie(ctx, cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
 
 			cluster.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
 				UpdateTiKVGrpcConcurrency(cfg.TiKVGrpcConcurrency).
 				UpdateTiDBTokenLimit(cfg.TiDBTokenLimit)
 			oa.UpgradeTidbClusterOrDie(cluster)
+			// wait upgrade complete
+			oa.CheckUpgradeOrDie(ctx, cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
 		}
 		oa.CleanWebHookAndServiceOrDie(ocfg)
