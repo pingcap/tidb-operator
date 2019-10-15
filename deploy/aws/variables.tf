@@ -4,12 +4,12 @@ variable "region" {
   # US: us-east-1, us-east-2, us-west-2
   # Asia Pacific: ap-south-1, ap-northeast-2, ap-southeast-1, ap-southeast-2, ap-northeast-1
   # Europe: eu-central-1, eu-west-1, eu-west-2, eu-west-3, eu-north-1
-  default = "us-west-2"
+  default = "ap-northeast-1"
 }
 
 variable "eks_name" {
   description = "Name of the EKS cluster. Also used as a prefix in names of related resources."
-  default     = "my-cluster"
+  default     = "aylei-cluster"
 }
 
 variable "eks_version" {
