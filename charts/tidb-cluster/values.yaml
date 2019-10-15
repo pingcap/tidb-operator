@@ -168,6 +168,7 @@ pd:
   # Specify the security context of PD Pod.
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
   podSecurityContext: {}
+    # sysctls:
     # # You can enable these kernel parameters tuning to improve TiDB performance,
     # # when the kubelet is configured to allow unsafe sysctls
     # - name: net.core.somaxconn
@@ -265,9 +266,9 @@ tikv:
   # Specify the security context of TiKV Pod.
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
   podSecurityContext: {}
+    # sysctls:
     # # You can enable these kernel parameters tuning to improve TiDB performance,
     # # when the kubelet is configured to allow unsafe sysctls
-    # sysctls:
     # - name: net.core.somaxconn
     #   value: "32768"
     # - name: net.ipv4.tcp_syncookies
@@ -352,6 +353,7 @@ tidb:
   # Specify the security context of TiDB Pod.
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
   podSecurityContext: {}
+    # sysctls:
     # # You can enable these kernel parameters tuning to improve TiDB performance,
     # # when the kubelet is configured to allow unsafe sysctls
     # - name: net.core.somaxconn
@@ -363,7 +365,6 @@ tidb:
 
     # # Load balancers usually have an idle timeout (eg. AWS NLB idle timeout is 350),
     # # the tcp_keepalive_time must be set to lower than LB idle timeout.
-    # sysctls:
     # - name: net.ipv4.tcp_keepalive_time
     #   value: "300"
     # - name: net.ipv4.tcp_keepalive_intvl
