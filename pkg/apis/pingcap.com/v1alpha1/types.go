@@ -14,7 +14,7 @@
 package v1alpha1
 
 import (
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -59,7 +59,6 @@ const (
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // +k8s:openapi-gen=true
 // TidbCluster is the control script's spec
 type TidbCluster struct {
@@ -76,7 +75,6 @@ type TidbCluster struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // +k8s:openapi-gen=true
 // TidbClusterList is TidbCluster list
 type TidbClusterList struct {
@@ -292,9 +290,6 @@ type TiKVFailureStore struct {
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// +k8s:openapi-gen=true
-// Backup is a backup of tidb cluster.
 type Backup struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
@@ -306,7 +301,6 @@ type Backup struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // +k8s:openapi-gen=true
 // BackupList contains a list of Backup.
 type BackupList struct {
@@ -420,7 +414,6 @@ type BackupStatus struct {
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // +k8s:openapi-gen=true
 // BackupSchedule is a backup schedule of tidb cluster.
 type BackupSchedule struct {
@@ -434,7 +427,6 @@ type BackupSchedule struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // +k8s:openapi-gen=true
 // BackupScheduleList contains a list of BackupSchedule.
 type BackupScheduleList struct {
@@ -472,7 +464,6 @@ type BackupScheduleStatus struct {
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // +k8s:openapi-gen=true
 // Restore represents the restoration of backup of a tidb cluster.
 type Restore struct {
@@ -486,7 +477,6 @@ type Restore struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // +k8s:openapi-gen=true
 // RestoreList contains a list of Restore.
 type RestoreList struct {
