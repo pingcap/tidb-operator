@@ -148,7 +148,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				set.Status.CurrentRevision = "tidb-1"
 				set.Status.UpdateRevision = "tidb-1"
 				observedGeneration := int64(1)
-				set.Status.ObservedGeneration = &observedGeneration
+				set.Status.ObservedGeneration = observedGeneration
 			})
 		} else {
 			fakeSetControl.SetStatusChange(test.statusChange)
