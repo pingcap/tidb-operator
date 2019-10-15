@@ -44,9 +44,5 @@ func generate(config *crdutils.Config, args []string) error {
 	crd := k8sutil.NewCustomResourceDefinition(
 		crdKind,
 		config.Group, config.Labels.LabelsMap, config.EnableValidation)
-	err = crdutils.MarshallCrd(crd, config.OutputFormat)
-	if err != nil {
-		return err
-	}
-	return nil
+	return crdutils.MarshallCrd(crd, config.OutputFormat)
 }
