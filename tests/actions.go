@@ -111,6 +111,8 @@ const (
 )
 
 type OperatorActions interface {
+	CleanCRDOrDie()
+	InstallCRDOrDie()
 	DeployOperator(info *OperatorConfig) error
 	DeployOperatorOrDie(info *OperatorConfig)
 	CleanOperator(info *OperatorConfig) error
@@ -168,6 +170,7 @@ type OperatorActions interface {
 	CheckEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckKubeletDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
+	CheckAllApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
 	CheckKubeProxyDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
 	CheckKubeSchedulerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
 	CheckKubeControllerManagerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
@@ -361,6 +364,36 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		arr = append(arr, fmt.Sprintf("%s=%s", k, v))
 	}
 	return strings.Join(arr, ",")
+}
+
+func (oa *operatorActions) runKubectlOrDie(args ...string) string {
+	cmd := "kubectl"
+	glog.Infof("Running '%s %s'", cmd, strings.Join(args, " "))
+	out, err := exec.Command(cmd, args...).CombinedOutput()
+	if err != nil {
+		glog.Fatalf("Failed to run '%s %s'\nCombined output: %q\nError: %v", cmd, strings.Join(args, " "), string(out), err)
+	}
+	glog.Infof("Combined output: %q", string(out))
+	return string(out)
+}
+
+func (oa *operatorActions) CleanCRDOrDie() {
+	oa.runKubectlOrDie("delete", "crds", "--all")
+}
+
+// InstallCRDOrDie install CRDs and wait for them to be established in Kubernetes.
+func (oa *operatorActions) InstallCRDOrDie() {
+	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/crd.yaml"))
+	out := oa.runKubectlOrDie([]string{"get", "crds", "--no-headers", `-ojsonpath={range .items[*]}{.metadata.name}{" "}{end}`}...)
+	waitArgs := []string{"wait", "--for=condition=Established"}
+	for _, crd := range strings.Split(out, " ") {
+		crd = strings.TrimSpace(crd)
+		if crd == "" {
+			continue
+		}
+		waitArgs = append(waitArgs, fmt.Sprintf("crds/%s", crd))
+	}
+	oa.runKubectlOrDie(waitArgs...)
 }
 
 func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
@@ -789,8 +822,10 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		}
 
 		glog.V(4).Infof("check all pd and tikv instances have not pod scheduling annotation")
-		if b, err := oa.podsScheduleAnnHaveDeleted(tc); !b && err == nil {
-			return false, nil
+		if info.OperatorTag != "v1.0.0" {
+			if b, err := oa.podsScheduleAnnHaveDeleted(tc); !b && err == nil {
+				return false, nil
+			}
 		}
 
 		glog.V(4).Infof("check store labels")
@@ -1875,12 +1910,14 @@ func (oa *operatorActions) checkoutTag(tagName string) error {
 	cmd := fmt.Sprintf("cd %s && git stash -u && git checkout %s && "+
 		"mkdir -p %s && cp -rf charts/tidb-operator %s && "+
 		"cp -rf charts/tidb-cluster %s && cp -rf charts/tidb-backup %s &&"+
-		"cp -rf manifests %s &&"+
-		"cp -rf charts/tidb-drainer %s",
+		"cp -rf manifests %s",
 		oa.cfg.OperatorRepoDir, tagName,
 		filepath.Join(oa.cfg.ChartDir, tagName), oa.operatorChartPath(tagName),
 		oa.tidbClusterChartPath(tagName), oa.backupChartPath(tagName),
-		oa.manifestPath(tagName), oa.drainerChartPath(tagName))
+		oa.manifestPath(tagName))
+	if tagName != "v1.0.0" {
+		cmd = cmd + fmt.Sprintf(" && cp -rf charts/tidb-drainer %s", oa.drainerChartPath(tagName))
+	}
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {

@@ -102,7 +102,7 @@ func NewController(
 		UpdateFunc: func(old, cur interface{}) {
 			bkc.updateBackup(cur)
 		},
-		DeleteFunc: bkc.enqueueBackup,
+		DeleteFunc: bkc.updateBackup,
 	})
 	bkc.backupLister = backupInformer.Lister()
 	bkc.backupListerSynced = backupInformer.Informer().HasSynced
