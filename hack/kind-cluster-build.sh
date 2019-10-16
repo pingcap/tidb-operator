@@ -102,7 +102,7 @@ nodes:
   extraPortMappings:
   - containerPort: 5000
     hostPort: 5000
-    listenAddress: 0.0.0.0
+    listenAddress: 127.0.0.1
     protocol: TCP
 EOF
 
@@ -143,7 +143,6 @@ spec:
       app: registry
   template:
     metadata:
-      name: registry
       labels:
         app: registry
     spec:
@@ -243,18 +242,11 @@ spec:
         operator: "Equal"
         effect: "NoSchedule"
       containers:
-        - name: nginx
-          image: nginx:1.15-alpine
-          volumeMounts:
-          - mountPath: /etc/nginx
-            name: nginx-config
-      volumes:
-      - name: nginx-config
-        configMap:
-          name: registry-proxy-config
-          items:
-            - key: nginx-conf
-              path: nginx.conf
+        - name: socat
+          image: alpine/socat:1.0.5
+          args:
+          - tcp-listen:5000,fork,reuseaddr
+          - tcp-connect:${registryNodeIP}:5000
 EOF
 kubectl apply -f ${registryFile}
 
