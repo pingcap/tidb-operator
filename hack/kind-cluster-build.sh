@@ -164,54 +164,6 @@ spec:
         hostPath:
           path: /data
 ---
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: registry-proxy-config
-data:
-  nginx-conf: |
-    user  nginx;
-    worker_processes  1;
-    error_log  /var/log/nginx/error.log warn;
-    pid        /var/run/nginx.pid;
-    events {
-        worker_connections  1024;
-    }
-    http {
-        upstream docker-registry {
-            server ${registryNodeIP}:5000;
-        }
-        map \$upstream_http_docker_distribution_api_version \$docker_distribution_api_version {
-            '' 'registry/2.0';
-        }
-        server {
-            listen 5000;
-            server_name localhost;
-            client_max_body_size 0;
-            chunked_transfer_encoding on;
-            location /v2/ {
-                if (\$http_user_agent ~ "^(docker\/1\.(3|4|5(?!\.[0-9]-dev))|Go ).*$") {
-                    return 404;
-                }
-                add_header 'Docker-Distribution-Api-Version' \$docker_distribution_api_version always;
-                proxy_pass http://docker-registry;
-                proxy_set_header Host \$http_host;
-                proxy_set_header X-Real-IP \$remote_addr;
-                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto \$scheme;
-                proxy_read_timeout 900;
-            }
-        }
-        default_type  application/octet-stream;
-        log_format  main  '\$remote_addr - \$remote_user [\$time_local] "\$request" '
-                          '\$status \$body_bytes_sent "\$http_referer" '
-                          '"\$http_user_agent" "\$http_x_forwarded_for"';
-        access_log  /var/log/nginx/access.log  main;
-        sendfile        on;
-        keepalive_timeout  65;
-    }
-
----
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
