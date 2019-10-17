@@ -5,6 +5,12 @@
 
 VERSION=1.12.5
 
+# Explicitly opt into go modules, even though we're inside a GOPATH directory
+export GO111MODULE=on
+# Ensure sort order doesn't depend on locale
+export LANG=C
+export LC_ALL=C
+
 go mod edit -require k8s.io/kubernetes@v$VERSION
 
 #

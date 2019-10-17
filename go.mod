@@ -1,3 +1,7 @@
+//
+// Run hack/pin-deps.sh to change pinned dependency versions.
+//
+
 module github.com/pingcap/tidb-operator
 
 require (

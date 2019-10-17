@@ -143,6 +143,9 @@ lint:
 
 tidy:
 	@echo "go mod tidy"
+	# Ensure sort order doesn't depend on locale
+	export LANG=C
+	export LC_ALL=C
 	go mod tidy
 	git diff -U --exit-code go.mod go.sum
 
