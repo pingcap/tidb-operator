@@ -95,15 +95,13 @@ var requiredAffinityTemp string = `{{.Kind}}:
   affinity:
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
-      - weight: {{.Weight}}
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: {{.ClusterName}}
-              app.kubernetes.io/component: {{.Kind}}
-          topologyKey: {{.TopologyKey}}
-          namespaces:
-          - {{.Namespace}}
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/instance: {{.ClusterName}}
+            app.kubernetes.io/component: {{.Kind}}
+        topologyKey: {{.TopologyKey}}
+        namespaces:
+        - {{.Namespace}}
 `
 
 var preferredAffinityTemp string = `{{.Kind}}:

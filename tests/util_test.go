@@ -58,15 +58,13 @@ tikv:
   affinity:
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
-      - weight: 50
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: cluster1
-              app.kubernetes.io/component: tikv
-          topologyKey: rack
-          namespaces:
-          - ns1
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/instance: cluster1
+            app.kubernetes.io/component: tikv
+        topologyKey: rack
+        namespaces:
+        - ns1
 tidb:
   config: |
 
