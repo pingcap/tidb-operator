@@ -24,7 +24,9 @@ to_crdgen="$scriptdir/../cmd/to-crdgen"
 crd_target="$scriptdir/../manifests/crd.yaml"
 crd_verify_target="$scriptdir/../manifests/crd-verify.yaml"
 
-GO111MODULE=on go get k8s.io/code-generator/cmd/openapi-gen@kubernetes-1.12.5
+export GO111MODULE=on
+
+go install k8s.io/code-generator/cmd/openapi-gen
 
 function generate_crd {
     $1/bin/openapi-gen --go-header-file=$scriptdir/boilerplate.go.txt \
@@ -57,6 +59,3 @@ elif [ $ACTION == 'verify' ];then
 	fi
 	echo crds are latest
 fi
-
-cd $scriptdir/..
-go mod tidy
