@@ -1,4 +1,4 @@
-// Copyright 2019 PingCAP, Inc.
+// Copyright 2019. PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,23 +11,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package manager
+package main
 
-import "errors"
+import (
+	"flag"
+	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/to-crdgen/cmd"
+	"github.com/spf13/pflag"
+	"os"
+)
 
-// VM defines the descriptive information of a virtual machine
-type VM struct {
-	Host   string   `json:"host"`
-	Port   int64    `json:"port"`
-	Name   string   `json:"name"`
-	Role   []string `json:"role"`
-	Status string   `json:"status"`
-}
+func main() {
+	flags := pflag.NewFlagSet("to-crdgen", pflag.ExitOnError)
+	flag.CommandLine.Parse([]string{})
+	pflag.CommandLine = flags
 
-func (v *VM) Verify() error {
-	if len(v.Name) == 0 {
-		return errors.New("name must be provided")
+	command := cmd.NewToCrdGenRootCmd()
+	if err := command.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
 	}
-
-	return nil
 }

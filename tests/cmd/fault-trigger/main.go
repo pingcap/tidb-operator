@@ -30,11 +30,13 @@ import (
 var (
 	port      int
 	pprofPort int
+	vmManager string
 )
 
 func init() {
 	flag.IntVar(&port, "port", 23332, "The port that the fault trigger's http service runs on (default 23332)")
 	flag.IntVar(&pprofPort, "pprof-port", 6060, "The port that the pprof's http service runs on (default 6060)")
+	flag.StringVar(&vmManager, "vm-manager", "virsh", "the vm manager, virsh/qm (default virsh)")
 
 	flag.Parse()
 }
@@ -43,7 +45,7 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	mgr := manager.NewManager()
+	mgr := manager.NewManager(vmManager)
 	server := api.NewServer(mgr, port)
 
 	go wait.Forever(func() {

@@ -41,6 +41,14 @@ func TestTidbClusterControllerEnqueueTidbCluster(t *testing.T) {
 	g.Expect(tcc.queue.Len()).To(Equal(1))
 }
 
+func TestTidbClusterControllerEnqueueTidbClusterFailed(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tcc, _, _ := newFakeTidbClusterController()
+
+	tcc.enqueueTidbCluster(struct{}{})
+	g.Expect(tcc.queue.Len()).To(Equal(0))
+}
+
 func TestTidbClusterControllerAddStatefuSet(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {

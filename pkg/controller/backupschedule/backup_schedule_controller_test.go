@@ -39,33 +39,44 @@ func TestBackupScheduleControllerEnqueueBackupSchedule(t *testing.T) {
 	g.Expect(bsc.queue.Len()).To(Equal(1))
 }
 
+func TestBackupScheduleControllerEnqueueBackupScheduleFailed(t *testing.T) {
+	g := NewGomegaWithT(t)
+	bsc, _, _ := newFakeBackupScheduleController()
+	bsc.enqueueBackupSchedule(struct{}{})
+	g.Expect(bsc.queue.Len()).To(Equal(0))
+}
+
 func TestBackupScheduleControllerSync(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                        string
 		addBsToIndexer              bool
 		errWhenUpdateBackupSchedule bool
+		invalidKeyFn                func(bs *v1alpha1.BackupSchedule) string
 		errExpectFn                 func(*GomegaWithT, error)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		bks := newBackupSchedule()
+		bs := newBackupSchedule()
 		bsc, bsIndexer, bsControl := newFakeBackupScheduleController()
 
 		if test.addBsToIndexer {
-			err := bsIndexer.Add(bks)
+			err := bsIndexer.Add(bs)
 			g.Expect(err).NotTo(HaveOccurred())
 		}
-		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(bks)
-		g.Expect(err).NotTo(HaveOccurred())
+
+		key, _ := cache.DeletionHandlingMetaNamespaceKeyFunc(bs)
+		if test.invalidKeyFn != nil {
+			key = test.invalidKeyFn(bs)
+		}
 
 		if test.errWhenUpdateBackupSchedule {
 			bsControl.SetUpdateBackupScheduleError(fmt.Errorf("update backup schedule failed"), 0)
 		}
 
-		err = bsc.sync(key)
+		err := bsc.sync(key)
 
 		if test.errExpectFn != nil {
 			test.errExpectFn(g, err)
@@ -77,14 +88,27 @@ func TestBackupScheduleControllerSync(t *testing.T) {
 			name:                        "normal",
 			addBsToIndexer:              true,
 			errWhenUpdateBackupSchedule: false,
+			invalidKeyFn:                nil,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
+			},
+		},
+		{
+			name:                        "invalid backup key",
+			addBsToIndexer:              true,
+			errWhenUpdateBackupSchedule: false,
+			invalidKeyFn: func(bs *v1alpha1.BackupSchedule) string {
+				return fmt.Sprintf("test/demo/%s", bs.GetName())
+			},
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
 			},
 		},
 		{
 			name:                        "can't found backup schedule",
 			addBsToIndexer:              false,
 			errWhenUpdateBackupSchedule: false,
+			invalidKeyFn:                nil,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
@@ -93,6 +117,7 @@ func TestBackupScheduleControllerSync(t *testing.T) {
 			name:                        "update backup schedule failed",
 			addBsToIndexer:              true,
 			errWhenUpdateBackupSchedule: true,
+			invalidKeyFn:                nil,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "update backup schedule failed")).To(Equal(true))
