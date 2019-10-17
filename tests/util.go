@@ -88,7 +88,25 @@ func GetPodsByLabels(kubeCli kubernetes.Interface, node string, lables map[strin
 	return nil, nil
 }
 
-var affinityTemp string = `{{.Kind}}:
+var requiredAffinityTemp string = `{{.Kind}}:
+  config: |
+{{range .Config}}    {{.}}
+{{end}}
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - weight: {{.Weight}}
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{.ClusterName}}
+              app.kubernetes.io/component: {{.Kind}}
+          topologyKey: {{.TopologyKey}}
+          namespaces:
+          - {{.Namespace}}
+`
+
+var preferredAffinityTemp string = `{{.Kind}}:
   config: |
 {{range .Config}}    {{.}}
 {{end}}
@@ -189,32 +207,34 @@ type BinLogInfo struct {
 	TopologyKey   string
 }
 
+func genAffinityConfig(tpl string, info *AffinityInfo) (string, error) {
+	temp, err := template.New("dt-affinity").Parse(tpl)
+	if err != nil {
+		return "", nil
+	}
+	buf := new(bytes.Buffer)
+	err = temp.Execute(buf, info)
+	if err != nil {
+		return "", nil
+	}
+	return buf.String(), nil
+}
+
 func GetSubValuesOrDie(clusterName, namespace, topologyKey string, pdConfig []string, tikvConfig []string, tidbConfig []string, pumpConfig []string, drainerConfig []string) string {
-	temp, err := template.New("dt-affinity").Parse(affinityTemp)
+	pdValues, err := genAffinityConfig(preferredAffinityTemp, &AffinityInfo{ClusterName: clusterName, Kind: "pd", Weight: 50, Namespace: namespace, TopologyKey: topologyKey, Config: pdConfig})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 
-	pdbuff := new(bytes.Buffer)
-	err = temp.Execute(pdbuff, &AffinityInfo{ClusterName: clusterName, Kind: "pd", Weight: 50, Namespace: namespace, TopologyKey: topologyKey, Config: pdConfig})
+	tikvValues, err := genAffinityConfig(requiredAffinityTemp, &AffinityInfo{ClusterName: clusterName, Kind: "tikv", Weight: 50, Namespace: namespace, TopologyKey: topologyKey, Config: tikvConfig})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
-	tikvbuff := new(bytes.Buffer)
-	err = temp.Execute(tikvbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tikv", Weight: 50, Namespace: namespace, TopologyKey: topologyKey, Config: tikvConfig})
-	if err != nil {
-		slack.NotifyAndPanic(err)
-	}
-	tidbbuff := new(bytes.Buffer)
-	err = temp.Execute(tidbbuff, &AffinityInfo{ClusterName: clusterName, Kind: "tidb", Weight: 50, Namespace: namespace, TopologyKey: topologyKey, Config: tidbConfig})
-	if err != nil {
-		slack.NotifyAndPanic(err)
-	}
-	subValues := fmt.Sprintf("%s%s%s", pdbuff.String(), tikvbuff.String(), tidbbuff.String())
 
-	//if pumpConfig == nil && drainerConfig == nil {
-	//	return subValues
-	//}
+	tidbValues, err := genAffinityConfig(preferredAffinityTemp, &AffinityInfo{ClusterName: clusterName, Kind: "tidb", Weight: 50, Namespace: namespace, TopologyKey: topologyKey, Config: tidbConfig})
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
 
 	btemp, err := template.New("binlog").Parse(binlogTemp)
 	if err != nil {
@@ -225,8 +245,8 @@ func GetSubValuesOrDie(clusterName, namespace, topologyKey string, pdConfig []st
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
-	subValues = fmt.Sprintf("%s%s", subValues, binlogbuff.String())
-	return subValues
+
+	return pdValues + tikvValues + tidbValues + binlogbuff.String()
 }
 
 func GetDrainerSubValuesOrDie(info *DrainerConfig) string {
