@@ -68,7 +68,7 @@ func OpenDB(dsn string) (*sql.DB, error) {
 	}
 	if err := db.Ping(); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("can't connect to mysql: %s, err: %v", dsn, err)
+		return nil, fmt.Errorf("cannot connect to mysql: %s, err: %v", dsn, err)
 	}
 	return db, nil
 }

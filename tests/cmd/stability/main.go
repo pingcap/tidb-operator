@@ -28,7 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	"github.com/robfig/cron"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
 )
@@ -177,7 +177,6 @@ func run() {
 			oa.CheckTidbClusterStatusOrDie(cluster)
 			oa.CheckTidbMemberAssignedNodesOrDie(cluster, assignedNodes)
 		}
-		cancel()
 
 		// configuration change
 		for _, cluster := range clusters {
@@ -191,18 +190,23 @@ func run() {
 			time.Sleep(30 * time.Second)
 			oa.CheckTidbClustersAvailableOrDie([]*tests.TidbClusterConfig{cluster})
 			// rollback conf
-			cluster.PDPreStartScript = strconv.Quote("")
-			cluster.TiKVPreStartScript = strconv.Quote("")
-			cluster.TiDBPreStartScript = strconv.Quote("")
+			cluster.PDPreStartScript = strconv.Quote("# noop")
+			cluster.TiKVPreStartScript = strconv.Quote("# noop")
+			cluster.TiDBPreStartScript = strconv.Quote("# noop")
 			oa.UpgradeTidbClusterOrDie(cluster)
+			// wait upgrade complete
+			oa.CheckUpgradeOrDie(ctx, cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
 
 			cluster.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
 				UpdateTiKVGrpcConcurrency(cfg.TiKVGrpcConcurrency).
 				UpdateTiDBTokenLimit(cfg.TiDBTokenLimit)
 			oa.UpgradeTidbClusterOrDie(cluster)
+			// wait upgrade complete
+			oa.CheckUpgradeOrDie(ctx, cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
 		}
+		cancel()
 		oa.CleanWebHookAndServiceOrDie(ocfg)
 
 		for _, cluster := range clusters {
@@ -266,28 +270,51 @@ func run() {
 		// stop all kube-scheduler pods
 		for _, physicalNode := range cfg.APIServers {
 			for _, vNode := range physicalNode.Nodes {
-				fta.StopKubeSchedulerOrDie(vNode)
+				fta.StopKubeSchedulerOrDie(vNode.IP)
 			}
 		}
 		oa.CheckKubeSchedulerDownOrDie(ocfg, clusters)
 		for _, physicalNode := range cfg.APIServers {
 			for _, vNode := range physicalNode.Nodes {
-				fta.StartKubeSchedulerOrDie(vNode)
+				fta.StartKubeSchedulerOrDie(vNode.IP)
 			}
 		}
 
 		// stop all kube-controller-manager pods
 		for _, physicalNode := range cfg.APIServers {
 			for _, vNode := range physicalNode.Nodes {
-				fta.StopKubeControllerManagerOrDie(vNode)
+				fta.StopKubeControllerManagerOrDie(vNode.IP)
 			}
 		}
 		oa.CheckKubeControllerManagerDownOrDie(ocfg, clusters)
 		for _, physicalNode := range cfg.APIServers {
 			for _, vNode := range physicalNode.Nodes {
-				fta.StartKubeControllerManagerOrDie(vNode)
+				fta.StartKubeControllerManagerOrDie(vNode.IP)
 			}
 		}
+
+		// stop one kube-apiserver pod
+		faultApiServer := tests.SelectNode(cfg.APIServers)
+		fta.StopKubeAPIServerOrDie(faultApiServer)
+		defer fta.StartKubeAPIServerOrDie(faultApiServer)
+		time.Sleep(3 * time.Minute)
+		oa.CheckOneApiserverDownOrDie(ocfg, clusters, faultApiServer)
+		fta.StartKubeAPIServerOrDie(faultApiServer)
+
+		time.Sleep(time.Minute)
+		// stop all kube-apiserver pods
+		for _, physicalNode := range cfg.APIServers {
+			for _, vNode := range physicalNode.Nodes {
+				fta.StopKubeAPIServerOrDie(vNode.IP)
+			}
+		}
+		oa.CheckAllApiserverDownOrDie(ocfg, clusters)
+		for _, physicalNode := range cfg.APIServers {
+			for _, vNode := range physicalNode.Nodes {
+				fta.StartKubeAPIServerOrDie(vNode.IP)
+			}
+		}
+		time.Sleep(time.Minute)
 	}
 
 	// before operator upgrade
@@ -301,11 +328,13 @@ func run() {
 			IsAdditional:    false,
 			IncrementalType: tests.DbTypeTiDB,
 		},
-		{
+	}
+	if ocfg.Tag != "v1.0.0" {
+		backupTargets = append(backupTargets, tests.BackupTarget{
 			TargetCluster:   fileRestoreCluster1,
 			IsAdditional:    true,
 			IncrementalType: tests.DbTypeFile,
-		},
+		})
 	}
 	caseFn(preUpgrade, onePDCluster1, backupTargets, upgradeVersions[0])
 
@@ -314,7 +343,6 @@ func run() {
 		ocfg.Image = cfg.UpgradeOperatorImage
 		ocfg.Tag = cfg.UpgradeOperatorTag
 		oa.UpgradeOperatorOrDie(ocfg)
-		time.Sleep(5 * time.Minute)
 		postUpgrade := []*tests.TidbClusterConfig{
 			cluster3,
 			cluster1,
@@ -330,11 +358,14 @@ func run() {
 				IsAdditional:    false,
 				IncrementalType: tests.DbTypeTiDB,
 			},
-			{
+		}
+
+		if ocfg.Tag != "v1.0.0" {
+			postUpgradeBackupTargets = append(postUpgradeBackupTargets, tests.BackupTarget{
 				TargetCluster:   fileRestoreCluster2,
 				IsAdditional:    true,
 				IncrementalType: tests.DbTypeFile,
-			},
+			})
 		}
 		// caseFn(postUpgrade, restoreCluster2, tidbUpgradeVersion)
 		caseFn(postUpgrade, onePDCluster2, postUpgradeBackupTargets, v)

@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/listers/apps/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/kubernetes/pkg/kubelet/apis"
@@ -348,7 +349,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: func() *int32 { r := tc.TiKVRealReplicas(); return &r }(),
+			Replicas: controller.Int32Ptr(tc.TiKVRealReplicas()),
 			Selector: tikvLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -359,7 +360,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 					SchedulerName: tc.Spec.SchedulerName,
 					Affinity:      tc.Spec.TiKV.Affinity,
 					NodeSelector:  tc.Spec.TiKV.NodeSelector,
-					HostNetwork:   tc.Spec.PD.HostNetwork,
+					HostNetwork:   tc.Spec.TiKV.HostNetwork,
 					DNSPolicy:     dnsPolicy,
 					Containers: []corev1.Container{
 						{
@@ -415,9 +416,11 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 							},
 						},
 					},
-					RestartPolicy: corev1.RestartPolicyAlways,
-					Tolerations:   tc.Spec.TiKV.Tolerations,
-					Volumes:       vols,
+					RestartPolicy:     corev1.RestartPolicyAlways,
+					Tolerations:       tc.Spec.TiKV.Tolerations,
+					Volumes:           vols,
+					SecurityContext:   tc.Spec.TiKV.PodSecurityContext,
+					PriorityClassName: tc.Spec.TiKV.PriorityClassName,
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -428,7 +431,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: func() *int32 { r := tc.TiKVRealReplicas(); return &r }(),
+					Partition: controller.Int32Ptr(tc.TiKVRealReplicas()),
 				},
 			},
 		},
@@ -675,9 +678,13 @@ func (ftmm *FakeTiKVMemberManager) SetSyncError(err error) {
 	ftmm.err = err
 }
 
-func (ftmm *FakeTiKVMemberManager) Sync(_ *v1alpha1.TidbCluster) error {
+func (ftmm *FakeTiKVMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if ftmm.err != nil {
 		return ftmm.err
+	}
+	if len(tc.Status.TiKV.Stores) != 0 {
+		// simulate status update
+		tc.Status.ClusterID = string(uuid.NewUUID())
 	}
 	return nil
 }

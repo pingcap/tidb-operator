@@ -31,10 +31,10 @@ module "tidb-operator" {
 
   region                        = var.ALICLOUD_REGION
   access_key                    = var.ALICLOUD_ACCESS_KEY
-  secret_key                 = var.ALICLOUD_SECRET_KEY
+  secret_key                    = var.ALICLOUD_SECRET_KEY
   cluster_name                  = var.cluster_name
   operator_version              = var.operator_version
-  operator_helm_values          = var.operator_helm_values
+  operator_helm_values          = var.operator_helm_values == "" ? "" : file(var.operator_helm_values)
   k8s_pod_cidr                  = var.k8s_pod_cidr
   k8s_service_cidr              = var.k8s_service_cidr
   vpc_cidr                      = var.vpc_cidr

@@ -88,8 +88,5 @@ func (frpm *FakeReclaimPolicyManager) SetSyncError(err error) {
 }
 
 func (frpm *FakeReclaimPolicyManager) Sync(_ *v1alpha1.TidbCluster) error {
-	if frpm.err != nil {
-		return frpm.err
-	}
-	return nil
+	return frpm.err
 }

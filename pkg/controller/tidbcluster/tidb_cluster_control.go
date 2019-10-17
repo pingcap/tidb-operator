@@ -149,3 +149,26 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	_, err := tcc.pvcCleaner.Clean(tc)
 	return err
 }
+
+var _ ControlInterface = &defaultTidbClusterControl{}
+
+type FakeTidbClusterControlInterface struct {
+	err error
+}
+
+func NewFakeTidbClusterControlInterface() *FakeTidbClusterControlInterface {
+	return &FakeTidbClusterControlInterface{}
+}
+
+func (ftcc *FakeTidbClusterControlInterface) SetUpdateTCError(err error) {
+	ftcc.err = err
+}
+
+func (ftcc *FakeTidbClusterControlInterface) UpdateTidbCluster(_ *v1alpha1.TidbCluster) error {
+	if ftcc.err != nil {
+		return ftcc.err
+	}
+	return nil
+}
+
+var _ ControlInterface = &FakeTidbClusterControlInterface{}

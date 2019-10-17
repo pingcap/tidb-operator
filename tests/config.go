@@ -60,8 +60,13 @@ type Config struct {
 
 // Nodes defines a series of nodes that belong to the same physical node.
 type Nodes struct {
-	PhysicalNode string   `yaml:"physical_node" json:"physical_node"`
-	Nodes        []string `yaml:"nodes" json:"nodes"`
+	PhysicalNode string `yaml:"physical_node" json:"physical_node"`
+	Nodes        []Node `yaml:"nodes" json:"nodes"`
+}
+
+type Node struct {
+	IP   string `yaml:"ip" json:"ip"`
+	Name string `yaml:"name" json:"name"`
 }
 
 // NewConfig creates a new config.
@@ -83,7 +88,7 @@ func NewConfig() (*Config, error) {
 	flag.StringVar(&cfg.configFile, "config", "", "Config file")
 	flag.StringVar(&cfg.LogDir, "log-dir", "/logDir", "log directory")
 	flag.IntVar(&cfg.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
-	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v3.0.0,v3.0.1,v3.0.2", "tidb versions")
+	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v3.0.2,v3.0.3,v3.0.4", "tidb versions")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
 	flag.StringVar(&cfg.UpgradeOperatorTag, "upgrade-operator-tag", "", "upgrade operator tag used to choose charts")
@@ -92,6 +97,7 @@ func NewConfig() (*Config, error) {
 	flag.StringVar(&cfg.OperatorRepoUrl, "operator-repo-url", "https://github.com/pingcap/tidb-operator.git", "tidb-operator repo url used")
 	flag.StringVar(&cfg.ChartDir, "chart-dir", "", "chart dir")
 	flag.StringVar(&slack.WebhookURL, "slack-webhook-url", "", "slack webhook url")
+	flag.StringVar(&slack.TestName, "test-name", "operator-test", "the stability test name")
 	flag.Parse()
 
 	operatorRepo, err := ioutil.TempDir("", "tidb-operator")
