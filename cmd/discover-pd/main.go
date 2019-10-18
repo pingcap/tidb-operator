@@ -10,7 +10,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/discovery"
 	"github.com/pingcap/tidb-operator/pkg/discovery/server"
 	"github.com/pingcap/tidb-operator/pkg/version"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
 )
 
@@ -36,6 +35,15 @@ func main() {
 		os.Exit(0)
 	}
 	version.LogVersionInfo()
+
+	// run pprof
+	go func(){
+		for true {
+			glog.Error(http.ListenAndServe(":6060", nil)) 
+			time.Sleep(5 * time.Second)
+		}
+	}()
+
 	RunDiscoveryService(port)
 }
 
@@ -46,10 +54,7 @@ func RunDiscoveryService(port int) {
 	defer logs.FlushLogs()
 
 	td := discovery.NewTiDBDiscoveryImmediate(getCluster{})
-	go wait.Forever(func() {
-		server.StartServer(td, port)
-	}, 5*time.Second)
-	glog.Fatal(http.ListenAndServe(":6060", nil))
+	glog.Fatal(server.StartServer(td, port))
 }
 
 type getCluster struct{}

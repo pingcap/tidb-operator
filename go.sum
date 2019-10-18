@@ -375,6 +375,8 @@ k8s.io/apiserver v0.0.0-20190118115647-a748535592ba h1:W82rVwBkq6uCzFdR9v/XXN3AO
 k8s.io/apiserver v0.0.0-20190118115647-a748535592ba/go.mod h1:6bqaTSOSJavUIXUtfaR9Os9JtTCm8ZqH2SUl2S60C4w=
 k8s.io/cli-runtime v0.0.0-20190118125240-caee4253d968 h1:VXLj8aMvJEo14Utv+knJDs0U+i/Atl3/cQRtzq1nbrk=
 k8s.io/cli-runtime v0.0.0-20190118125240-caee4253d968/go.mod h1:qWnH3/b8sp/l7EvlDh7ulDU3UWA4P4N1NFbEEP791tM=
+k8s.io/client-go v0.0.0-20190115164855-701b91367003 h1:gQQC0U1hM6L808TYvGGO/5vhUisGw384axV7rqFUv04=
+k8s.io/client-go v0.0.0-20190115164855-701b91367003/go.mod h1:7vJpHMYJwNQCWgzmNV+VYUl1zCObLyodBc8nIyt8L5s=
 k8s.io/client-go v2.0.0-alpha.0.0.20190115164855-701b91367003+incompatible h1:Qw/ADzXV2yX+39UUCwNcZmdNS4+sR+V2Jf9NBdZWlQg=
 k8s.io/client-go v2.0.0-alpha.0.0.20190115164855-701b91367003+incompatible/go.mod h1:7vJpHMYJwNQCWgzmNV+VYUl1zCObLyodBc8nIyt8L5s=
 k8s.io/code-generator v0.0.0-20190927075303-016f2b3d74d0 h1:rhwEVFHoBm42V0b7yN9SUdbWzfCVndLzRV8YGIi0uWY=

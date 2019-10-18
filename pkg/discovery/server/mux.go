@@ -30,7 +30,8 @@ type server struct {
 }
 
 // StartServer starts a TiDB Discovery server
-func StartServer(discover discovery.TiDBDiscovery, port int) {
+// This will block until the http server fails
+func StartServer(discover discovery.TiDBDiscovery, port int) error {
 	svr := &server{discover}
 	ws := new(restful.WebService)
 
@@ -43,7 +44,7 @@ func StartServer(discover discovery.TiDBDiscovery, port int) {
 
 	restful.Add(ws)
 	glog.Infof("starting TiDB Discovery server, listening on 0.0.0.0:%d", port)
-	glog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
 func (svr *server) deletePD(req *restful.Request, resp *restful.Response) {
@@ -51,7 +52,7 @@ func (svr *server) deletePD(req *restful.Request, resp *restful.Response) {
 func (svr *server) addresses(req *restful.Request, resp *restful.Response) {
 	clusterID := req.PathParameter("cluster-id")
 	msg := fmt.Sprintf("get addresses clusterID=%s", clusterID)
-	result, err := svr.discovery.GetClientAddresses(discovery.ClusterID(clusterID))
+	result, err := svr.discovery.GetClientAddresses(discovery.ClusterName(clusterID))
 	if err != nil {
 		respondErr(msg, resp, err)
 		return
@@ -66,7 +67,7 @@ func (svr *server) k8sDiscovery(req *restful.Request, resp *restful.Response) {
 		respondErr(msg, resp, err)
 		return
 	}
-	pdName, clusterID, url, err := discovery.ParseK8sURL(advertisePeerURL)
+	pdName, clusterID, url, err := discovery.ParseK8sAddress(advertisePeerURL)
 	if err != nil {
 		respondErr(msg, resp, err)
 		return
@@ -88,12 +89,12 @@ func (svr *server) idDiscovery(req *restful.Request, resp *restful.Response) {
 		respondErr(msg, resp, err)
 		return
 	}
-	url, err := discovery.ParseURL(advertisePeerURL)
+	url, err := discovery.ParseAddress(advertisePeerURL)
 	if err != nil {
 		respondErr(msg, resp, err)
 		return
 	}
-	result, err := svr.discovery.Discover(discovery.PDName(pdName), discovery.ClusterID(clusterID), url)
+	result, err := svr.discovery.Discover(discovery.PDName(pdName), discovery.ClusterName(clusterID), url)
 	if err != nil {
 		respondErr(msg, resp, err)
 		return

@@ -130,3 +130,7 @@ require (
 )
 
 replace github.com/renstrom/dedent => github.com/lithammer/dedent v1.1.0
+
+replace k8s.io/client-go v2.0.0-alpha.0.0.20190115164855-701b91367003+incompatible => k8s.io/client-go v0.0.0-20190115164855-701b91367003
+
+go 1.13

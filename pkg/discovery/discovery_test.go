@@ -37,7 +37,7 @@ func (tr testRefresher) GetMembers(_ string) (*pdapi.MembersInfo, error) {
 	return tr.getMembersFn()
 }
 
-func TestParseURLHostPort(t *testing.T) {
+func TestParseAddressHostPort(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcase struct {
@@ -64,7 +64,7 @@ func TestParseURLHostPort(t *testing.T) {
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
-		parsed, err := ParseURL(test.url)
+		parsed, err := ParseAddress(test.url)
 		g.Expect(err).To(BeNil())
 		g.Expect(parsed.Hostname()).To(Equal(test.host))
 		g.Expect(parsed.Port()).To(Equal(test.port))
@@ -101,7 +101,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 		}
 		os.Setenv("MY_POD_NAMESPACE", test.ns)
 
-		pdName, clusterID, parsedURL, err := ParseK8sURL(test.url)
+		pdName, clusterID, parsedURL, err := ParseK8sAddress(test.url)
 		if err != nil {
 			test.expectFn(g, td, "", err)
 			return

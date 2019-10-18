@@ -27,10 +27,11 @@ import (
 // PDName is a stable identifier of a PD process
 type PDName string
 
-// ClusterID is a stable identifier of a TIDB cluster
-// A PDName is unique when scoped to a ClusterID
-type ClusterID string
+// ClusterName is a stable identifier of a TIDB cluster
+// A PDName is unique when scoped to a ClusterName
+type ClusterName string
 
+// An Address is normally a PD node.
 type Address struct {
 	Name    string
 	Address string
@@ -38,9 +39,9 @@ type Address struct {
 
 // TiDBDiscovery helps new PD member to discover all other members in cluster bootstrap phase.
 type TiDBDiscovery interface {
-	Discover(PDName, ClusterID, url.URL) (string, error)
-	GetClientAddresses(ClusterID) ([]string, error)
-	DeleteAddress(ClusterID, PDName) error
+	Discover(PDName, ClusterName, url.URL) (string, error)
+	GetClientAddresses(ClusterName) ([]string, error)
+	DeleteAddress(ClusterName, PDName) error
 }
 
 // Cluster is the information that discovery service needs from an implementation
@@ -104,7 +105,7 @@ func NewTiDBDiscoveryImmediate(refresher ClusterRefresh) TiDBDiscovery {
 	}
 }
 
-func (td *tidbDiscovery) DeleteAddress(clusterID ClusterID, pdName PDName) error {
+func (td *tidbDiscovery) DeleteAddress(clusterID ClusterName, pdName PDName) error {
 	currentCluster := td.clusters[string(clusterID)]
 	if currentCluster == nil {
 		return nil
@@ -113,15 +114,15 @@ func (td *tidbDiscovery) DeleteAddress(clusterID ClusterID, pdName PDName) error
 	return nil
 }
 
-func (td *tidbDiscoveryNoMembers) DeleteAddress(clusterID ClusterID, pdName PDName) error {
+func (td *tidbDiscoveryNoMembers) DeleteAddress(clusterID ClusterName, pdName PDName) error {
 	return td.tidbDiscovery.DeleteAddress(clusterID, pdName)
 }
 
-func (td *tidbDiscoveryMembers) DeleteAddress(clusterID ClusterID, pdName PDName) error {
+func (td *tidbDiscoveryMembers) DeleteAddress(clusterID ClusterName, pdName PDName) error {
 	return td.tidbDiscovery.DeleteAddress(clusterID, pdName)
 }
 
-func (td *tidbDiscoveryNoMembers) GetClientAddresses(clusterID ClusterID) ([]string, error) {
+func (td *tidbDiscoveryNoMembers) GetClientAddresses(clusterID ClusterName) ([]string, error) {
 	addresses, err := td.getNamedAddresses(clusterID)
 	if err != nil {
 		return nil, err
@@ -137,7 +138,7 @@ func clientAddresses(addresses []Address) []string {
 	return addressesNoName
 }
 
-func (td *tidbDiscoveryMembers) GetClientAddresses(clusterID ClusterID) ([]string, error) {
+func (td *tidbDiscoveryMembers) GetClientAddresses(clusterID ClusterName) ([]string, error) {
 	addresses, err := td.getNamedAddresses(clusterID)
 	if err != nil {
 		return nil, err
@@ -145,7 +146,7 @@ func (td *tidbDiscoveryMembers) GetClientAddresses(clusterID ClusterID) ([]strin
 	return clientAddresses(addresses), nil
 }
 
-func (td *tidbDiscoveryNoMembers) getNamedAddresses(clusterID ClusterID) ([]Address, error) {
+func (td *tidbDiscoveryNoMembers) getNamedAddresses(clusterID ClusterName) ([]Address, error) {
 	cluster, gerr := td.refresh.GetCluster(string(clusterID))
 	if gerr != nil {
 		return nil, gerr
@@ -170,7 +171,7 @@ func (td *tidbDiscoveryNoMembers) getNamedAddresses(clusterID ClusterID) ([]Addr
 	return peersArr, nil
 }
 
-func (td *tidbDiscoveryMembers) getNamedAddresses(clusterID ClusterID) ([]Address, error) {
+func (td *tidbDiscoveryMembers) getNamedAddresses(clusterID ClusterName) ([]Address, error) {
 	// We rely on this returning an error before the first initial-cluster
 	// The caller continues to call this API
 	membersInfo, err := td.refresh.GetMembers(string(clusterID))
@@ -189,7 +190,7 @@ func (td *tidbDiscoveryMembers) getNamedAddresses(clusterID ClusterID) ([]Addres
 }
 
 // Discover starts the first PD immediately, join the rest
-func (td *tidbDiscoveryNoMembers) Discover(pdName PDName, clusterID ClusterID, pdURL url.URL) (string, error) {
+func (td *tidbDiscoveryNoMembers) Discover(pdName PDName, clusterID ClusterName, pdURL url.URL) (string, error) {
 	if err := validateEmpty(pdName, clusterID, pdURL); err != nil {
 		return "", err
 	}
@@ -238,7 +239,7 @@ func (td *tidbDiscoveryNoMembers) Discover(pdName PDName, clusterID ClusterID, p
 
 }
 
-func validateEmpty(pdName PDName, clusterID ClusterID, pdURL url.URL) error {
+func validateEmpty(pdName PDName, clusterID ClusterName, pdURL url.URL) error {
 	if pdURL.String() == "" {
 		return fmt.Errorf("url is empty")
 	}
@@ -253,7 +254,7 @@ func validateEmpty(pdName PDName, clusterID ClusterID, pdURL url.URL) error {
 
 // Discover waits for all PD to join before starting the cluster
 // this approach was probably more useful before the PD isinitialized status API was available
-func (td *tidbDiscoveryMembers) Discover(pdName PDName, clusterID ClusterID, pdURL url.URL) (string, error) {
+func (td *tidbDiscoveryMembers) Discover(pdName PDName, clusterID ClusterName, pdURL url.URL) (string, error) {
 	if err := validateEmpty(pdName, clusterID, pdURL); err != nil {
 		return "", err
 	}
@@ -295,8 +296,10 @@ func (td *tidbDiscoveryMembers) Discover(pdName PDName, clusterID ClusterID, pdU
 	return fmt.Sprintf("--join=%s", strings.Join(addresses, ",")), nil
 }
 
-// ParseURL calls url.Parse but parses according to user expecdtation when there is no protocol or leading "//" or host brackets "[]"
-func ParseURL(inputURL string) (url.URL, error) {
+// ParseAddress calls url.Parse but parses according to user expectation when there is no protocol or leading "//" or host brackets "[]"
+// So it can accept HOST:IP as input.
+// ParseAddress maintains the same url.String() representation
+func ParseAddress(inputURL string) (url.URL, error) {
 	parsedURL, err := url.Parse(inputURL)
 	if err != nil {
 		colonSplit := strings.Split(inputURL, ":")
@@ -325,9 +328,9 @@ func ParseURL(inputURL string) (url.URL, error) {
 	return *parsedURL, nil
 }
 
-// ParseK8sURL parses the url that we use in tidb-operator on K8s
-func ParseK8sURL(advertisePeerURL string) (PDName, ClusterID, url.URL, error) {
-	parsedURL, err := ParseURL(advertisePeerURL)
+// ParseK8sAddress parses the url that we use in tidb-operator on K8s
+func ParseK8sAddress(advertisePeerURL string) (PDName, ClusterName, url.URL, error) {
+	parsedURL, err := ParseAddress(advertisePeerURL)
 	if err != nil {
 		return "", "", url.URL{}, err
 	}
@@ -344,5 +347,5 @@ func ParseK8sURL(advertisePeerURL string) (PDName, ClusterID, url.URL, error) {
 		return "", "", parsedURL, fmt.Errorf("the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
 	}
 
-	return PDName(podName), ClusterID(fmt.Sprintf("%s/%s", ns, tcName)), parsedURL, nil
+	return PDName(podName), ClusterName(fmt.Sprintf("%s/%s", ns, tcName)), parsedURL, nil
 }

@@ -2,9 +2,13 @@ package main
 
 import (
 	"flag"
+	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"time"
 
+	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/discovery/k8s"
 )
 
@@ -22,9 +26,18 @@ func init() {
 
 func main() {
 	if printVersion {
-		k8s.PrintVersionInfo()
+		version.PrintVersionInfo()
 		os.Exit(0)
 	}
-	k8s.LogVersionInfo()
+
+	// run pprof
+	go func(){
+		for true {
+			glog.Error(http.ListenAndServe(":6060", nil)) 
+			time.Sleep(5 * time.Second)
+		}
+	}()
+
+	version.LogVersionInfo()
 	k8s.RunDiscoveryService(port)
 }
