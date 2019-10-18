@@ -34,7 +34,10 @@ docker-push: docker backup-docker
 docker: build
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest" images/tidb-operator
 
-build: controller-manager scheduler discovery admission-controller
+build: controller-manager scheduler discovery admission-controller apiserver initializer
+
+initializer:
+	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-initializer cmd/initializer/main.go
 
 controller-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
@@ -48,15 +51,14 @@ discovery:
 admission-controller:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-controller cmd/admission-controller/main.go
 
+apiserver:
+	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-apiserver cmd/apiserver/main.go
+
 backup-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/backup-manager/bin/tidb-backup-manager cmd/backup-manager/main.go
 
 backup-docker: backup-manager
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:latest" images/backup-manager
-
-e2e-setup:
-	# ginkgo doesn't work with retool for Go 1.11
-	@CGO_ENABLED=0 go get github.com/onsi/ginkgo@v1.6.0
 
 e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest"
@@ -72,7 +74,7 @@ e2e-docker: e2e-build
 	cp -r manifests tests/images/e2e
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" tests/images/e2e
 
-e2e-build: e2e-setup
+e2e-build:
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
 
 stability-test-build:
@@ -115,7 +117,7 @@ check-crd:
 	./hack/crd-groups.sh verify
 
 check-codegen:
-	./hack/verify-codegen.sh verify
+	./hack/verify-codegen.sh
 
 # TODO: staticcheck is too slow currently
 staticcheck:

@@ -35,3 +35,4 @@ tkc
 apiserver.local.config/
 manifests/crd-verify.yaml
 /tkctl
+/.go-version

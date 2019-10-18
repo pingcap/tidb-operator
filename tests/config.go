@@ -11,8 +11,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 
-	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
+	glog "k8s.io/klog"
 )
 
 const (

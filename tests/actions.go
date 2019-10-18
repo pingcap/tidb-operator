@@ -15,14 +15,15 @@ package tests
 
 import (
 	"context"
-	"crypto/tls"
+	v1 "k8s.io/api/apps/v1"
+
+	//"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -35,7 +36,6 @@ import (
 	"github.com/ghodss/yaml"
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -47,10 +47,8 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
-	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
+	//"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"github.com/pingcap/tidb-operator/tests/slack"
-	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
-	"k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -59,6 +57,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	glog "k8s.io/klog"
 )
 
 const (
@@ -113,6 +112,7 @@ const (
 )
 
 type OperatorActions interface {
+	CleanValidatingWebhookConfigurationOrDie()
 	CleanCRDOrDie()
 	InstallCRDOrDie()
 	DeployOperator(info *OperatorConfig) error
@@ -176,10 +176,10 @@ type OperatorActions interface {
 	CheckKubeProxyDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
 	CheckKubeSchedulerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
 	CheckKubeControllerManagerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
-	RegisterWebHookAndService(context *apimachinery.CertContext, info *OperatorConfig) error
-	RegisterWebHookAndServiceOrDie(context *apimachinery.CertContext, info *OperatorConfig)
-	CleanWebHookAndService(info *OperatorConfig) error
-	CleanWebHookAndServiceOrDie(info *OperatorConfig)
+	//RegisterWebHookAndService(context *apimachinery.CertContext, info *OperatorConfig) error
+	//RegisterWebHookAndServiceOrDie(context *apimachinery.CertContext, info *OperatorConfig)
+	//CleanWebHookAndService(info *OperatorConfig) error
+	//CleanWebHookAndServiceOrDie(info *OperatorConfig)
 	EventWorker()
 	EmitEvent(info *TidbClusterConfig, msg string)
 	BackupRestore(from, to *TidbClusterConfig) error
@@ -380,6 +380,10 @@ func (oa *operatorActions) CleanCRDOrDie() {
 	oa.runKubectlOrDie("delete", "crds", "--all")
 }
 
+func (oa *operatorActions) CleanValidatingWebhookConfigurationOrDie() {
+	oa.runKubectlOrDie("delete", "validatingwebhookconfiguration", "--all")
+}
+
 // InstallCRDOrDie install CRDs and wait for them to be established in Kubernetes.
 func (oa *operatorActions) InstallCRDOrDie() {
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/crd.yaml"))
@@ -419,42 +423,6 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
 
-	// delete statefulset update webhook and configuration
-	cmd = fmt.Sprintf("kubectl delete -f %s/webhook.yaml", oa.manifestPath(info.Tag))
-	glog.Info(cmd)
-
-	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil && !notFound(string(res)) {
-		return fmt.Errorf("failed to delete statefulset webhook and configuration : %v, %s", err, string(res))
-	}
-
-	// create cert and secret for webhook
-	cmd = fmt.Sprintf("%s/create-cert.sh --namespace %s", oa.manifestPath(info.Tag), info.Namespace)
-	glog.Info(cmd)
-
-	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to create cert: %v, %s", err, string(res))
-	}
-
-	// patch cabundle to validating admission configuration
-	cmd = fmt.Sprintf("%s/patch-ca.sh", oa.manifestPath(info.Tag))
-	glog.Info(cmd)
-
-	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to patch cabundle : %v, %s", err, string(res))
-	}
-
-	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
-	cmd = fmt.Sprintf(`sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/' %s/webhook.yaml | kubectl apply -f -`, oa.manifestPath(info.Tag))
-	glog.Info(cmd)
-
-	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to create statefulset webhook and configuration : %v, %s", err, string(res))
-	}
-
 	return nil
 }
 
@@ -467,10 +435,10 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 	glog.Infof("cleaning tidb-operator %s", info.ReleaseName)
 
-	err := oa.CleanWebHookAndService(info)
-	if err != nil {
-		return err
-	}
+	//err := oa.CleanWebHookAndService(info)
+	//if err != nil {
+	//	return err
+	//}
 
 	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
 
@@ -653,6 +621,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	if err != nil {
 		return err
 	}
+
 	pvcList, err := oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		return err
@@ -1131,16 +1100,6 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 		return ""
 	}
 
-	// set partition annotation to protect tikv pod
-	if err := oa.setPartitionAnnotation(ns, info.ClusterName, label.TiKVLabelVal, 1); err != nil {
-		return err
-	}
-
-	// set partition annotation to protect tidb pod
-	if err := oa.setPartitionAnnotation(ns, info.ClusterName, label.TiDBLabelVal, 1); err != nil {
-		return err
-	}
-
 	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
@@ -1188,18 +1147,18 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 	if err := oa.checkManualPauseComponent(info, label.TiKVLabelVal); err != nil {
 		return err
 	}
-	// remove the protect partition annotation for tikv
-	if err := oa.setPartitionAnnotation(ns, info.ClusterName, label.TiKVLabelVal, 0); err != nil {
-		return err
-	}
+	//// remove the protect partition annotation for tikv
+	//if err := oa.setPartitionAnnotation(ns, info.ClusterName, label.TiKVLabelVal, 0); err != nil {
+	//	return err
+	//}
 
 	if err := oa.checkManualPauseComponent(info, label.TiDBLabelVal); err != nil {
 		return err
 	}
-	// remove the protect partition annotation for tidb
-	if err := oa.setPartitionAnnotation(ns, info.ClusterName, label.TiDBLabelVal, 0); err != nil {
-		return err
-	}
+	//// remove the protect partition annotation for tidb
+	//if err := oa.setPartitionAnnotation(ns, info.ClusterName, label.TiDBLabelVal, 0); err != nil {
+	//	return err
+	//}
 
 	return wait.PollImmediate(1*time.Second, 6*time.Minute, func() (done bool, err error) {
 		schedulers, err := pdClient.GetEvictLeaderSchedulers()
@@ -2741,73 +2700,6 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 
 func strPtr(s string) *string { return &s }
 
-func (oa *operatorActions) RegisterWebHookAndServiceOrDie(context *apimachinery.CertContext, info *OperatorConfig) {
-	if err := oa.RegisterWebHookAndService(context, info); err != nil {
-		slack.NotifyAndPanic(err)
-	}
-}
-
-func (oa *operatorActions) RegisterWebHookAndService(context *apimachinery.CertContext, info *OperatorConfig) error {
-	client := oa.kubeCli
-	glog.Infof("Registering the webhook via the AdmissionRegistration API")
-
-	namespace := os.Getenv("NAMESPACE")
-	configName := info.WebhookConfigName
-
-	_, err := client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(&admissionV1beta1.ValidatingWebhookConfiguration{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: configName,
-		},
-		Webhooks: []admissionV1beta1.Webhook{
-			{
-				Name: "check-pod-before-delete.k8s.io",
-				Rules: []admissionV1beta1.RuleWithOperations{{
-					Operations: []admissionV1beta1.OperationType{admissionV1beta1.Delete},
-					Rule: admissionV1beta1.Rule{
-						APIGroups:   []string{""},
-						APIVersions: []string{"v1"},
-						Resources:   []string{"pods"},
-					},
-				}},
-				ClientConfig: admissionV1beta1.WebhookClientConfig{
-					Service: &admissionV1beta1.ServiceReference{
-						Namespace: namespace,
-						Name:      info.WebhookServiceName,
-						Path:      strPtr("/pods"),
-					},
-					CABundle: context.SigningCert,
-				},
-			},
-		},
-	})
-
-	if err != nil {
-		glog.Errorf("registering webhook config %s with namespace %s error %v", configName, namespace, err)
-		return err
-	}
-
-	// The webhook configuration is honored in 10s.
-	time.Sleep(10 * time.Second)
-
-	return nil
-
-}
-
-func (oa *operatorActions) CleanWebHookAndService(info *OperatorConfig) error {
-	err := oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(info.WebhookConfigName, nil)
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete webhook config %v", err)
-	}
-	return nil
-}
-
-func (oa *operatorActions) CleanWebHookAndServiceOrDie(info *OperatorConfig) {
-	err := oa.CleanWebHookAndService(info)
-	if err != nil {
-		slack.NotifyAndPanic(err)
-	}
-}
-
 type pumpStatus struct {
 	StatusMap map[string]*nodeStatus `json:"StatusMap"`
 }
@@ -2976,54 +2868,66 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 
 		switch component {
 		case label.TiDBLabelVal:
-			podName := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.Name), 1)
-			setName = controller.TiDBMemberName(info.ClusterName)
-			tidbPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
-			if err != nil {
-				glog.Infof("fail to get pod in CheckManualPauseCompoent tidb [%s/%s]", ns, podName)
-				return false, nil
+			tidbSetName := controller.TiDBMemberName(info.ClusterName)
+			if set, err = oa.kubeCli.AppsV1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{}); err != nil {
+				return false, fmt.Errorf("failed to get statefulset: [%s/%s], %v", ns, setName, err)
 			}
-
-			if tidbPod.Labels[v1.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision &&
-				tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-				if member, ok := tc.Status.TiDB.Members[tidbPod.Name]; !ok || !member.Health {
-					glog.Infof("wait for tidb pod [%s/%s] ready member health %t ok %t", ns, podName, member.Health, ok)
-				} else {
-					return true, nil
+			replicas := *set.Spec.Replicas
+			for i := replicas - 1; i >= 0; i-- {
+				podName := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.Name), i)
+				tidbPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+				if err != nil {
+					glog.Infof("fail to get pod in CheckManualPauseCompoent tidb [%s/%s]", ns, podName)
+					return false, nil
 				}
-			} else {
-				glog.Infof("tidbset is not in upgrade phase or pod is not upgrade done [%s/%s]", ns, podName)
-			}
-
-			return false, nil
-		case label.TiKVLabelVal:
-			podName := fmt.Sprintf("%s-%d", controller.TiKVMemberName(tc.Name), 1)
-			setName = controller.TiKVMemberName(info.ClusterName)
-			tikvPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
-			if err != nil {
-				glog.Infof("fail to get pod in CheckManualPauseCompoent tikv [%s/%s]", ns, podName)
-				return false, nil
-			}
-
-			if tikvPod.Labels[v1.ControllerRevisionHashLabelKey] == tc.Status.TiKV.StatefulSet.UpdateRevision &&
-				tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-				var tikvStore *v1alpha1.TiKVStore
-				for _, store := range tc.Status.TiKV.Stores {
-					if store.PodName == podName {
-						tikvStore = &store
-						break
+				if tidbPod.Labels[v1.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision &&
+					tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+					if member, ok := tc.Status.TiDB.Members[tidbPod.Name]; !ok || !member.Health {
+						glog.Infof("wait for tidb pod [%s/%s] ready member health %t ok %t", ns, podName, member.Health, ok)
+					} else {
+						glog.Infof("tidb pod[%s/%s] is ready for tc[%s]", ns, podName, tc.Name)
+						continue
 					}
-				}
-				if tikvStore == nil || tikvStore.State != v1alpha1.TiKVStateUp {
-					glog.Infof("wait for tikv pod [%s/%s] ready store state %s", ns, podName, tikvStore.State)
 				} else {
-					return true, nil
+					glog.Infof("tidbset is not in upgrade phase or pod is not upgrade done [%s/%s]", ns, podName)
 				}
-			} else {
-				glog.Infof("tikvset is not in upgrade phase or pod is not upgrade done [%s/%s]", ns, podName)
 			}
-
-			return false, nil
+			glog.Infof("all tidb pod is ready for tc[%s]", tc.Name)
+			return true, nil
+		case label.TiKVLabelVal:
+			tikvSetName := controller.TiKVMemberName(info.ClusterName)
+			if set, err = oa.kubeCli.AppsV1().StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{}); err != nil {
+				return false, fmt.Errorf("failed to get statefulset: [%s/%s], %v", ns, setName, err)
+			}
+			replicas := *set.Spec.Replicas
+			for i := replicas - 1; i >= 0; i-- {
+				podName := fmt.Sprintf("%s-%d", controller.TiKVMemberName(tc.Name), i)
+				tikvPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+				if err != nil {
+					glog.Infof("fail to get pod in CheckManualPauseCompoent tikv [%s/%s]", ns, podName)
+					return false, nil
+				}
+				if tikvPod.Labels[v1.ControllerRevisionHashLabelKey] == tc.Status.TiKV.StatefulSet.UpdateRevision &&
+					tc.Status.TiKV.Phase == v1alpha1.NormalPhase {
+					var tikvStore *v1alpha1.TiKVStore
+					for _, store := range tc.Status.TiKV.Stores {
+						if store.PodName == podName {
+							tikvStore = &store
+							break
+						}
+					}
+					if tikvStore == nil || tikvStore.State != v1alpha1.TiKVStateUp {
+						glog.Infof("wait for tikv pod [%s/%s] ready store state %s", ns, podName, tikvStore.State)
+					} else {
+						glog.Infof("tikv pod[%s/%s] is ready for tc[%s]", ns, podName, tc.Name)
+						continue
+					}
+				} else {
+					glog.Infof("tikvset is not in upgrade phase or pod is not upgrade done [%s/%s]", ns, podName)
+				}
+			}
+			glog.Infof("all tikv pod is ready for tc[%s]", tc.Name)
+			return true, nil
 		default:
 			return false, fmt.Errorf("invalid component %s", component)
 		}
@@ -3034,16 +2938,12 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 		return fmt.Errorf("fail to upgrade to annotation %s pod, err: %v", component, err)
 	}
 
-	time.Sleep(30 * time.Second)
+	//time.Sleep(30 * time.Second)
 
-	if set, err = oa.kubeCli.AppsV1().StatefulSets(ns).Get(setName, metav1.GetOptions{}); err != nil {
-		return fmt.Errorf("failed to get statefulset: [%s/%s], %v", ns, setName, err)
-	}
-
-	if *set.Spec.UpdateStrategy.RollingUpdate.Partition < 1 {
-		return fmt.Errorf("pause partition is not correct in upgrade phase [%s/%s] partition %d annotation %d",
-			ns, setName, *set.Spec.UpdateStrategy.RollingUpdate.Partition, 1)
-	}
+	//if *set.Spec.UpdateStrategy.RollingUpdate.Partition < 1 {
+	//	return fmt.Errorf("pause partition is not correct in upgrade phase [%s/%s] partition %d annotation %d",
+	//		ns, setName, *set.Spec.UpdateStrategy.RollingUpdate.Partition, 1)
+	//}
 
 	return nil
 }
@@ -3079,27 +2979,5 @@ func (oa *operatorActions) CheckUpgradeComplete(info *TidbClusterConfig) error {
 func (oa *operatorActions) CheckUpgradeCompleteOrDie(info *TidbClusterConfig) {
 	if err := oa.CheckUpgradeComplete(info); err != nil {
 		slack.NotifyAndPanic(err)
-	}
-}
-
-func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext) {
-	sCert, err := tls.X509KeyPair(context.Cert, context.Key)
-	if err != nil {
-		panic(err)
-	}
-
-	http.HandleFunc("/pods", webhook.ServePods)
-	server := &http.Server{
-		Addr: ":443",
-		TLSConfig: &tls.Config{
-			Certificates: []tls.Certificate{sCert},
-		},
-	}
-	if err := server.ListenAndServeTLS("", ""); err != nil {
-		sendErr := slack.SendErrMsg(err.Error())
-		if sendErr != nil {
-			glog.Error(sendErr)
-		}
-		panic(fmt.Sprintf("failed to start webhook server %v", err))
 	}
 }

@@ -22,15 +22,15 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	"github.com/robfig/cron"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apiserver/pkg/util/logs"
+	"k8s.io/component-base/logs"
+	glog "k8s.io/klog"
 )
 
 var cfg *tests.Config
@@ -52,7 +52,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx)
+	//go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx)
 
 	c := cron.New()
 	if err := c.AddFunc("0 0 10 * * *", func() {
@@ -164,7 +164,7 @@ func run() {
 		}
 
 		// upgrade
-		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
+		//oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
 		ctx, cancel := context.WithCancel(context.Background())
 		for _, cluster := range clusters {
 			assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(cluster)
@@ -202,7 +202,7 @@ func run() {
 			oa.CheckTidbClusterStatusOrDie(cluster)
 		}
 		cancel()
-		oa.CleanWebHookAndServiceOrDie(ocfg)
+		//oa.CleanWebHookAndServiceOrDie(ocfg)
 
 		for _, cluster := range clusters {
 			oa.CheckDisasterToleranceOrDie(cluster)

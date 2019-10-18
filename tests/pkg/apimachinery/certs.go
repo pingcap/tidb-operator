@@ -2,10 +2,13 @@ package apimachinery
 
 import (
 	"crypto/x509"
-	"github.com/golang/glog"
 	"io/ioutil"
-	"k8s.io/client-go/util/cert"
 	"os"
+
+	"k8s.io/client-go/util/cert"
+	"k8s.io/client-go/util/keyutil"
+	glog "k8s.io/klog"
+	"k8s.io/kubernetes/cmd/kubeadm/app/util/pkiutil"
 )
 
 type CertContext struct {
@@ -23,7 +26,7 @@ func SetupServerCert(namespaceName, serviceName string) (*CertContext, error) {
 		return nil, err
 	}
 	defer os.RemoveAll(certDir)
-	signingKey, err := cert.NewPrivateKey()
+	signingKey, err := pkiutil.NewPrivateKey()
 	if err != nil {
 		glog.Errorf("Failed to create CA private key %v", err)
 		return nil, err
@@ -38,17 +41,17 @@ func SetupServerCert(namespaceName, serviceName string) (*CertContext, error) {
 		glog.Errorf("Failed to create a temp file for ca cert generation %v", err)
 		return nil, err
 	}
-	if err := ioutil.WriteFile(caCertFile.Name(), cert.EncodeCertPEM(signingCert), 0644); err != nil {
+	if err := ioutil.WriteFile(caCertFile.Name(), pkiutil.EncodeCertPEM(signingCert), 0644); err != nil {
 		glog.Errorf("Failed to write CA cert %v", err)
 		return nil, err
 	}
-	key, err := cert.NewPrivateKey()
+	key, err := pkiutil.NewPrivateKey()
 	if err != nil {
 		glog.Errorf("Failed to create private key for %v", err)
 		return nil, err
 	}
-	signedCert, err := cert.NewSignedCert(
-		cert.Config{
+	signedCert, err := pkiutil.NewSignedCert(
+		&cert.Config{
 			CommonName: serviceName + "." + namespaceName + ".svc",
 			Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		},
@@ -68,17 +71,21 @@ func SetupServerCert(namespaceName, serviceName string) (*CertContext, error) {
 		glog.Errorf("Failed to create a temp file for key generation %v", err)
 		return nil, err
 	}
-	if err = ioutil.WriteFile(certFile.Name(), cert.EncodeCertPEM(signedCert), 0600); err != nil {
+	if err = ioutil.WriteFile(certFile.Name(), pkiutil.EncodeCertPEM(signedCert), 0600); err != nil {
 		glog.Errorf("Failed to write cert file %v", err)
 		return nil, err
 	}
-	if err = ioutil.WriteFile(keyFile.Name(), cert.EncodePrivateKeyPEM(key), 0644); err != nil {
+	keyPEM, err := keyutil.MarshalPrivateKeyToPEM(key)
+	if err != nil {
+		return nil, err
+	}
+	if err = ioutil.WriteFile(keyFile.Name(), keyPEM, 0644); err != nil {
 		glog.Errorf("Failed to write key file %v", err)
 		return nil, err
 	}
 	return &CertContext{
-		Cert:        cert.EncodeCertPEM(signedCert),
-		Key:         cert.EncodePrivateKeyPEM(key),
-		SigningCert: cert.EncodeCertPEM(signingCert),
+		Cert:        pkiutil.EncodeCertPEM(signedCert),
+		Key:         keyPEM,
+		SigningCert: pkiutil.EncodeCertPEM(signingCert),
 	}, nil
 }

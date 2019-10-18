@@ -20,17 +20,16 @@ import (
 	_ "net/http/pprof"
 	"sync"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests"
-	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apiserver/pkg/util/logs"
+	"k8s.io/component-base/logs"
+	glog "k8s.io/klog"
 )
 
 var cfg *tests.Config
-var certCtx *apimachinery.CertContext
+
 var upgradeVersions []string
 
 func main() {
@@ -45,13 +44,6 @@ func main() {
 	upgradeVersions = cfg.GetUpgradeTidbVersionsOrDie()
 	ns := "e2e"
 
-	var err error
-	certCtx, err = apimachinery.SetupServerCert(ns, tests.WebhookServiceName)
-	if err != nil {
-		panic(err)
-	}
-	go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx)
-
 	cli, kubeCli := client.NewCliOrDie()
 	ocfg := newOperatorConfig()
 
@@ -64,11 +56,14 @@ func main() {
 	cluster5.Resources["tikv.resources.limits.storage"] = "1G"
 
 	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, cfg, nil)
+	// Clean previous Webhook ValidatingWebhookConfiguration
+	oa.CleanValidatingWebhookConfigurationOrDie()
 	oa.CleanCRDOrDie()
 	oa.InstallCRDOrDie()
 	oa.LabelNodesOrDie()
 	oa.CleanOperatorOrDie(ocfg)
 	oa.DeployOperatorOrDie(ocfg)
+	glog.Infof("success to deploy a new tidb-Operator")
 
 	/**
 	 * This test case covers basic operators of a single cluster.
@@ -133,7 +128,6 @@ func main() {
 		oa.CheckTidbClusterStatusOrDie(cluster)
 
 		// upgrade
-		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
 		ctx, cancel := context.WithCancel(context.Background())
 		assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(cluster)
 		cluster.UpgradeAll(upgradeVersions[0])
@@ -142,8 +136,6 @@ func main() {
 		oa.CheckTidbClusterStatusOrDie(cluster)
 		oa.CheckTidbMemberAssignedNodesOrDie(cluster, assignedNodes)
 		cancel()
-
-		oa.CleanWebHookAndServiceOrDie(ocfg)
 	}
 
 	/**

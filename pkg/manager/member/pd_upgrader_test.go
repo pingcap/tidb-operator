@@ -14,7 +14,6 @@
 package member
 
 import (
-	"fmt"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -35,33 +34,21 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcase struct {
-		name              string
-		changeFn          func(*v1alpha1.TidbCluster)
-		changePods        func(pods []*corev1.Pod)
-		changeOldSet      func(set *apps.StatefulSet)
-		transferLeaderErr bool
-		errExpectFn       func(*GomegaWithT, error)
-		expectFn          func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet)
+		name         string
+		changeFn     func(*v1alpha1.TidbCluster)
+		changePods   func(pods []*corev1.Pod)
+		changeOldSet func(set *apps.StatefulSet)
+		errExpectFn  func(*GomegaWithT, error)
+		expectFn     func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet)
 	}
 
 	testFn := func(test *testcase) {
 		t.Log(test.name)
-		upgrader, pdControl, _, podInformer := newPDUpgrader()
+		upgrader, _, _, podInformer := newPDUpgrader()
 		tc := newTidbClusterForPDUpgrader()
-		pdClient := controller.NewFakePDClient(pdControl, tc)
 
 		if test.changeFn != nil {
 			test.changeFn(tc)
-		}
-
-		if test.transferLeaderErr {
-			pdClient.AddReaction(pdapi.TransferPDLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
-				return nil, fmt.Errorf("failed to transfer leader")
-			})
-		} else {
-			pdClient.AddReaction(pdapi.TransferPDLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
-				return nil, nil
-			})
 		}
 
 		pods := getPods()
@@ -79,7 +66,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		}
 		SetLastAppliedConfigAnnotation(oldSet)
 
-		newSet.Spec.UpdateStrategy.RollingUpdate.Partition = controller.Int32Ptr(3)
+		//newSet.Spec.UpdateStrategy.RollingUpdate.Partition = controller.Int32Ptr(0)
 
 		err := upgrader.Upgrade(tc, oldSet, newSet)
 		test.errExpectFn(g, err)
@@ -92,15 +79,14 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Synced = true
 			},
-			changePods:        nil,
-			changeOldSet:      nil,
-			transferLeaderErr: false,
+			changePods:   nil,
+			changeOldSet: nil,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(controller.Int32Ptr(1)))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(controller.Int32Ptr(0)))
 			},
 		},
 		{
@@ -114,7 +100,6 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 					Type: apps.OnDeleteStatefulSetStrategyType,
 				}
 			},
-			transferLeaderErr: false,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
@@ -134,7 +119,6 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 					Type: apps.RollingUpdateStatefulSetStrategyType,
 				}
 			},
-			transferLeaderErr: false,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
@@ -152,13 +136,12 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			changeOldSet: func(set *apps.StatefulSet) {
 				set.Spec.Template.Spec.Containers[0].Image = "pd-test-image:old"
 			},
-			transferLeaderErr: false,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(controller.Int32Ptr(3)))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(controller.Int32Ptr(0)))
 			},
 		},
 		{
@@ -167,46 +150,13 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 				tc.Status.PD.Synced = true
 				tc.Status.PD.StatefulSet.UpdateRevision = tc.Status.PD.StatefulSet.CurrentRevision
 			},
-			changePods:        nil,
-			transferLeaderErr: false,
+			changePods: nil,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(controller.Int32Ptr(3)))
-			},
-		},
-		{
-			name: "skip to wait all members health",
-			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.Synced = true
-				tc.Status.PD.Members[pdPodName(upgradeTcName, 2)] = v1alpha1.PDMember{Name: pdPodName(upgradeTcName, 2), Health: false}
-			},
-			changePods:        nil,
-			transferLeaderErr: false,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err.Error()).To(Equal(fmt.Sprintf("tidbcluster: [default/upgrader]'s pd upgraded pod: [%s] is not ready", pdPodName(upgradeTcName, 2))))
-			},
-			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
-				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(controller.Int32Ptr(2)))
-			},
-		},
-		{
-			name: "transfer leader",
-			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.Synced = true
-				tc.Status.PD.Leader = v1alpha1.PDMember{Name: pdPodName(upgradeTcName, 1), Health: true}
-			},
-			changePods:        nil,
-			transferLeaderErr: false,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-			},
-			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
-				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(controller.Int32Ptr(2)))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(controller.Int32Ptr(0)))
 			},
 		},
 		{
@@ -214,30 +164,13 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Synced = false
 			},
-			changePods:        nil,
-			transferLeaderErr: false,
+			changePods: nil,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).To(HaveOccurred())
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.NormalPhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(controller.Int32Ptr(3)))
-			},
-		},
-		{
-			name: "error when transfer leader",
-			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.Synced = true
-				tc.Status.PD.Leader = v1alpha1.PDMember{Name: pdPodName(upgradeTcName, 1), Health: true}
-			},
-			changePods:        nil,
-			transferLeaderErr: true,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-			},
-			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
-				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(controller.Int32Ptr(2)))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(controller.Int32Ptr(0)))
 			},
 		},
 	}
@@ -280,7 +213,7 @@ func newStatefulSetForPDUpgrader() *apps.StatefulSet {
 			},
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type:          apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{Partition: controller.Int32Ptr(2)},
+				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{Partition: controller.Int32Ptr(0)},
 			},
 		},
 		Status: apps.StatefulSetStatus{
@@ -295,9 +228,9 @@ func newStatefulSetForPDUpgrader() *apps.StatefulSet {
 }
 
 func newTidbClusterForPDUpgrader() *v1alpha1.TidbCluster {
-	podName0 := pdPodName(upgradeTcName, 0)
-	podName1 := pdPodName(upgradeTcName, 1)
-	podName2 := pdPodName(upgradeTcName, 2)
+	podName0 := PdPodName(upgradeTcName, 0)
+	podName1 := PdPodName(upgradeTcName, 1)
+	podName2 := PdPodName(upgradeTcName, 2)
 	return &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
@@ -349,7 +282,7 @@ func getPods() []*corev1.Pod {
 		{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      pdPodName(upgradeTcName, 0),
+				Name:      PdPodName(upgradeTcName, 0),
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lc,
 			},
@@ -357,7 +290,7 @@ func getPods() []*corev1.Pod {
 		{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      pdPodName(upgradeTcName, 1),
+				Name:      PdPodName(upgradeTcName, 1),
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lc,
 			},
@@ -365,7 +298,7 @@ func getPods() []*corev1.Pod {
 		{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      pdPodName(upgradeTcName, 2),
+				Name:      PdPodName(upgradeTcName, 2),
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lu,
 			},

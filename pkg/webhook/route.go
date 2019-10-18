@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package route
+package webhook
 
 import (
 	"encoding/json"
@@ -19,10 +19,10 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/webhook/statefulset"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	"k8s.io/api/admission/v1beta1"
+	glog "k8s.io/klog"
 )
 
 // admitFunc is the type we use for all of our validators
@@ -89,9 +89,14 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 	responseAdmissionReview.Response.UID = requestedAdmissionReview.Request.UID
 
 	marshalAndWrite(responseAdmissionReview, w)
+	webhookHandler.RefreshCertPEMExpirationHandler(RefreshJobConfig)
 
 }
 
 func ServeStatefulSets(w http.ResponseWriter, r *http.Request) {
 	serve(w, r, statefulset.AdmitStatefulSets)
+}
+
+func ServePods(w http.ResponseWriter, r *http.Request) {
+	serve(w, r, podAdmissionControl.AdmitPods)
 }

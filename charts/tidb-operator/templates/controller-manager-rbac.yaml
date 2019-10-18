@@ -42,7 +42,7 @@ rules:
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get", "list", "watch","update", "delete"]
-- apiGroups: ["apps"]
+- apiGroups: ["apps","extensions"]
   resources: ["statefulsets"]
   verbs: ["*"]
 - apiGroups: ["pingcap.com"]
