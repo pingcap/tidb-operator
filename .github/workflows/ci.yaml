@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  pull_request:
+    branches:
+    - master
+    - release-*
+
+jobs:
+
+  verify:
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Set up Go 1.12
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.12
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v1
+
+    - name: Basic checks
+      run: |
+        # workaround for https://github.com/actions/setup-go/issues/14
+        export GOPATH=$(go env GOPATH)
+        export PATH=$PATH:$GOPATH/bin
+        make check-setup check
+    - name: Build binaries and images
+      run: make docker e2e-docker cli
+    - name: Unit Tests
+      run: make test

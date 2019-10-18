@@ -89,7 +89,7 @@ var _ GeneralPVCControlInterface = &realGeneralPVCControl{}
 type FakeGeneralPVCControl struct {
 	PVCLister        corelisters.PersistentVolumeClaimLister
 	PVCIndexer       cache.Indexer
-	createPVCTracker requestTracker
+	createPVCTracker RequestTracker
 }
 
 // NewFakeGeneralPVCControl returns a FakeGeneralPVCControl
@@ -97,22 +97,21 @@ func NewFakeGeneralPVCControl(pvcInformer coreinformers.PersistentVolumeClaimInf
 	return &FakeGeneralPVCControl{
 		pvcInformer.Lister(),
 		pvcInformer.Informer().GetIndexer(),
-		requestTracker{0, nil, 0},
+		RequestTracker{},
 	}
 }
 
 // SetCreatePVCError sets the error attributes of createPVCTracker
 func (fjc *FakeGeneralPVCControl) SetCreatePVCError(err error, after int) {
-	fjc.createPVCTracker.err = err
-	fjc.createPVCTracker.after = after
+	fjc.createPVCTracker.SetError(err).SetAfter(after)
 }
 
 // CreatePVC adds the pvc to PVCIndexer
 func (fjc *FakeGeneralPVCControl) CreatePVC(_ runtime.Object, pvc *corev1.PersistentVolumeClaim) error {
-	defer fjc.createPVCTracker.inc()
-	if fjc.createPVCTracker.errorReady() {
-		defer fjc.createPVCTracker.reset()
-		return fjc.createPVCTracker.err
+	defer fjc.createPVCTracker.Inc()
+	if fjc.createPVCTracker.ErrorReady() {
+		defer fjc.createPVCTracker.Reset()
+		return fjc.createPVCTracker.GetError()
 	}
 
 	return fjc.PVCIndexer.Add(pvc)

@@ -13,9 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -o errexit
+set -o nounset
+set -o pipefail
+
 scriptdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-GO111MODULE=on ${scriptdir}/generate-groups.sh \
+${scriptdir}/generate-groups.sh \
   deepcopy,client,lister,informer \
   github.com/pingcap/tidb-operator/pkg/client \
   github.com/pingcap/tidb-operator/pkg/apis \

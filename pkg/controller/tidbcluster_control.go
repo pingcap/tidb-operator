@@ -121,7 +121,7 @@ func sweepHeartbeatTime(stores map[string]v1alpha1.TiKVStore) {
 type FakeTidbClusterControl struct {
 	TcLister                 listers.TidbClusterLister
 	TcIndexer                cache.Indexer
-	updateTidbClusterTracker requestTracker
+	updateTidbClusterTracker RequestTracker
 }
 
 // NewFakeTidbClusterControl returns a FakeTidbClusterControl
@@ -129,22 +129,21 @@ func NewFakeTidbClusterControl(tcInformer tcinformers.TidbClusterInformer) *Fake
 	return &FakeTidbClusterControl{
 		tcInformer.Lister(),
 		tcInformer.Informer().GetIndexer(),
-		requestTracker{0, nil, 0},
+		RequestTracker{},
 	}
 }
 
 // SetUpdateTidbClusterError sets the error attributes of updateTidbClusterTracker
 func (ssc *FakeTidbClusterControl) SetUpdateTidbClusterError(err error, after int) {
-	ssc.updateTidbClusterTracker.err = err
-	ssc.updateTidbClusterTracker.after = after
+	ssc.updateTidbClusterTracker.SetError(err).SetAfter(after)
 }
 
 // UpdateTidbCluster updates the TidbCluster
 func (ssc *FakeTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, _ *v1alpha1.TidbClusterStatus, _ *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error) {
-	defer ssc.updateTidbClusterTracker.inc()
-	if ssc.updateTidbClusterTracker.errorReady() {
-		defer ssc.updateTidbClusterTracker.reset()
-		return tc, ssc.updateTidbClusterTracker.err
+	defer ssc.updateTidbClusterTracker.Inc()
+	if ssc.updateTidbClusterTracker.ErrorReady() {
+		defer ssc.updateTidbClusterTracker.Reset()
+		return tc, ssc.updateTidbClusterTracker.GetError()
 	}
 
 	return tc, ssc.TcIndexer.Update(tc)
