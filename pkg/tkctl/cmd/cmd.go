@@ -17,6 +17,8 @@ import (
 	"flag"
 	"io"
 
+	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/diagnose"
+
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/completion"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/ctop"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/cmd/debug"
@@ -30,6 +32,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+
 	// TODO: import azure auth plugin after updating to k8s 1.13+
 	_ "k8s.io/client-go/plugin/pkg/client/auth/exec"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -77,6 +80,7 @@ func NewTkcCommand(streams genericclioptions.IOStreams) *cobra.Command {
 				use.NewCmdUse(tkcContext, streams),
 				version.NewCmdVersion(tkcContext, streams.Out),
 				upinfo.NewCmdUpInfo(tkcContext, streams),
+				diagnose.NewCmdDiagnoseInfo(tkcContext, streams),
 			},
 		},
 		{
