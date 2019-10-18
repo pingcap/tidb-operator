@@ -15,13 +15,13 @@ package readable
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/alias"
-	"k8s.io/api/core/v1"
 	apiv1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
@@ -49,6 +49,10 @@ type PodBasicColumns struct {
 
 	MemInfo string
 	CPUInfo string
+}
+
+type TikvExtraInfoColumn struct {
+	StoreId string
 }
 
 func AddHandlers(h printers.PrintHandler) {
@@ -399,4 +403,12 @@ func translateTimestampSince(timestamp metav1.Time) string {
 	}
 
 	return duration.HumanDuration(time.Since(timestamp.Time))
+}
+
+// extra Component Tikv Data
+func extraTikvDataColumn(pod *v1.Pod) *TikvExtraInfoColumn {
+	storeId := pod.Labels[label.StoreIDLabelKey]
+	return &TikvExtraInfoColumn{
+		StoreId: storeId,
+	}
 }
