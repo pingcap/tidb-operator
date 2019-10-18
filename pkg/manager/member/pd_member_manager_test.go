@@ -500,7 +500,7 @@ func TestPDMemberManagerPdStatefulSetIsUpgrading(t *testing.T) {
 			setUpdate: func(set *apps.StatefulSet) {
 				set.Status.CurrentRevision = "v1"
 				set.Status.UpdateRevision = "v2"
-				set.Status.ObservedGeneration = func() int64 { var i int64; i = 1000; return i }()
+				set.Status.ObservedGeneration = 1000
 			},
 			hasPod:          false,
 			updatePod:       nil,
