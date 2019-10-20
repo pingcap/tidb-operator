@@ -3019,19 +3019,19 @@ func (oa *operatorActions) CheckManualPauseTiDBOrDie(info *TidbClusterConfig) {
 
 func (oa *operatorActions) CheckUpgradeComplete(info *TidbClusterConfig) error {
 	ns, tcName := info.Namespace, info.ClusterName
-	if err := wait.PollImmediate(15 * time.Second, DefaultPollTimeout, func() (done bool, err error) {
+	if err := wait.PollImmediate(15*time.Second, DefaultPollTimeout, func() (done bool, err error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
 		if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
-			return false, fmt.Errorf("checkUpgradeComplete, [%s/%s] PD is still upgrading")
+			return false, fmt.Errorf("checkUpgradeComplete, [%s/%s] PD is still upgrading", ns, tcName)
 		}
 		if tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-			return false, fmt.Errorf("checkUpgradeComplete, [%s/%s] TiKV is still upgrading")
+			return false, fmt.Errorf("checkUpgradeComplete, [%s/%s] TiKV is still upgrading", ns, tcName)
 		}
 		if tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-			return false, fmt.Errorf("checkUpgradeComplete, [%s/%s] TiDB is still upgrading")
+			return false, fmt.Errorf("checkUpgradeComplete, [%s/%s] TiDB is still upgrading", ns, tcName)
 		}
 		return true, nil
 	}); err != nil {
