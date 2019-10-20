@@ -190,12 +190,12 @@ func run() {
 			time.Sleep(30 * time.Second)
 			oa.CheckTidbClustersAvailableOrDie([]*tests.TidbClusterConfig{cluster})
 			// rollback conf
-			cluster.PDPreStartScript = strconv.Quote("# noop")
-			cluster.TiKVPreStartScript = strconv.Quote("# noop")
-			cluster.TiDBPreStartScript = strconv.Quote("# noop")
+			cluster.PDPreStartScript = strconv.Quote("")
+			cluster.TiKVPreStartScript = strconv.Quote("")
+			cluster.TiDBPreStartScript = strconv.Quote("")
 			oa.UpgradeTidbClusterOrDie(cluster)
 			// wait upgrade complete
-			oa.CheckUpgradeOrDie(ctx, cluster)
+			oa.CheckUpgradeCompleteOrDie(cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
 
 			cluster.UpdatePdMaxReplicas(cfg.PDMaxReplicas).

@@ -199,6 +199,8 @@ type OperatorActions interface {
 	SetPartitionAnnotation(tcName string, nameSpace string, ordinal int) error
 	CheckManualPauseTiDB(info *TidbClusterConfig) error
 	CheckManualPauseTiDBOrDie(info *TidbClusterConfig)
+	CheckUpgradeComplete(info *TidbClusterConfig) error
+	CheckUpgradeCompleteOrDie(info *TidbClusterConfig)
 }
 
 type operatorActions struct {
@@ -3011,6 +3013,36 @@ func (oa *operatorActions) CheckManualPauseTiDBOrDie(info *TidbClusterConfig) {
 	// add annotation to pause statefulset upgrade process and check
 	err := oa.CheckManualPauseTiDB(info)
 	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+func (oa *operatorActions) CheckUpgradeComplete(info *TidbClusterConfig) error {
+	ns, tcName := info.Namespace, info.ClusterName
+	if err := wait.PollImmediate(15 * time.Second, DefaultPollTimeout, func() (done bool, err error) {
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
+			return false, fmt.Errorf("checkUpgradeComplete, [%s/%s] PD is still upgrading")
+		}
+		if tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
+			return false, fmt.Errorf("checkUpgradeComplete, [%s/%s] TiKV is still upgrading")
+		}
+		if tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+			return false, fmt.Errorf("checkUpgradeComplete, [%s/%s] TiDB is still upgrading")
+		}
+		return true, nil
+	}); err != nil {
+		glog.Errorf("failed to wait upgrade complete [%s/%s], %v", ns, tcName, err)
+		return err
+	}
+	return nil
+}
+
+func (oa *operatorActions) CheckUpgradeCompleteOrDie(info *TidbClusterConfig) {
+	if err := oa.CheckUpgradeComplete(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
