@@ -200,7 +200,7 @@ func (fpc *FakePVControl) PatchPVReclaimPolicy(_ *v1alpha1.TidbCluster, pv *core
 	defer fpc.updatePVTracker.Inc()
 	if fpc.updatePVTracker.ErrorReady() {
 		defer fpc.updatePVTracker.Reset()
-		return fpc.updatePVTracker.err
+		return fpc.updatePVTracker.GetError()
 	}
 	pv.Spec.PersistentVolumeReclaimPolicy = reclaimPolicy
 
@@ -212,7 +212,7 @@ func (fpc *FakePVControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pv *corev1.Pe
 	defer fpc.updatePVTracker.Inc()
 	if fpc.updatePVTracker.ErrorReady() {
 		defer fpc.updatePVTracker.Reset()
-		return nil, fpc.updatePVTracker.err
+		return nil, fpc.updatePVTracker.GetError()
 	}
 	ns := tc.GetNamespace()
 	pvcName := pv.Spec.ClaimRef.Name
