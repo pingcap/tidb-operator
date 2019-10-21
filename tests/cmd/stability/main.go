@@ -191,6 +191,8 @@ func run() {
 			cluster.TiKVPreStartScript = strconv.Quote("")
 			cluster.TiDBPreStartScript = strconv.Quote("")
 			oa.UpgradeTidbClusterOrDie(cluster)
+			// wait upgrade complete
+			oa.CheckUpgradeCompleteOrDie(cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
 
 			cluster.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
