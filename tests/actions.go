@@ -2814,16 +2814,20 @@ func (oa *operatorActions) CheckUpgradeComplete(info *TidbClusterConfig) error {
 	if err := wait.PollImmediate(15*time.Second, DefaultPollTimeout, func() (done bool, err error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
-			return false, err
+			glog.Errorf("checkUpgradeComplete, [%s/%s] cannot get tidbcluster, %v", ns, tcName, err)
+			return false, nil
 		}
 		if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
-			return false, fmt.Errorf("checkUpgradeComplete, [%s/%s] PD is still upgrading", ns, tcName)
+			glog.Errorf("checkUpgradeComplete, [%s/%s] PD is still upgrading", ns, tcName)
+			return false, nil
 		}
 		if tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-			return false, fmt.Errorf("checkUpgradeComplete, [%s/%s] TiKV is still upgrading", ns, tcName)
+			glog.Errorf("checkUpgradeComplete, [%s/%s] TiKV is still upgrading", ns, tcName)
+			return false, nil
 		}
 		if tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-			return false, fmt.Errorf("checkUpgradeComplete, [%s/%s] TiDB is still upgrading", ns, tcName)
+			glog.Errorf("checkUpgradeComplete, [%s/%s] TiDB is still upgrading", ns, tcName)
+			return false, nil
 		}
 		return true, nil
 	}); err != nil {
