@@ -21,7 +21,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1beta1 "k8s.io/api/apps/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -134,7 +134,7 @@ func (in *PDStatus) DeepCopyInto(out *PDStatus) {
 	*out = *in
 	if in.StatefulSet != nil {
 		in, out := &in.StatefulSet, &out.StatefulSet
-		*out = new(v1beta1.StatefulSetStatus)
+		*out = new(appsv1.StatefulSetStatus)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Members != nil {
@@ -297,7 +297,7 @@ func (in *TiDBStatus) DeepCopyInto(out *TiDBStatus) {
 	*out = *in
 	if in.StatefulSet != nil {
 		in, out := &in.StatefulSet, &out.StatefulSet
-		*out = new(v1beta1.StatefulSetStatus)
+		*out = new(appsv1.StatefulSetStatus)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Members != nil {
@@ -409,7 +409,7 @@ func (in *TiKVStatus) DeepCopyInto(out *TiKVStatus) {
 	*out = *in
 	if in.StatefulSet != nil {
 		in, out := &in.StatefulSet, &out.StatefulSet
-		*out = new(v1beta1.StatefulSetStatus)
+		*out = new(appsv1.StatefulSetStatus)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Stores != nil {

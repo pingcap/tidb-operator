@@ -21,13 +21,13 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
 	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	appsinformers "k8s.io/client-go/informers/apps/v1beta1"
+	appsinformers "k8s.io/client-go/informers/apps/v1"
 	"k8s.io/client-go/kubernetes"
-	appslisters "k8s.io/client-go/listers/apps/v1beta1"
+	appslisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
@@ -56,7 +56,7 @@ func NewRealStatefuSetControl(kubeCli kubernetes.Interface, setLister appslister
 
 // CreateStatefulSet create a StatefulSet in a TidbCluster.
 func (sc *realStatefulSetControl) CreateStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
-	_, err := sc.kubeCli.AppsV1beta1().StatefulSets(tc.Namespace).Create(set)
+	_, err := sc.kubeCli.AppsV1().StatefulSets(tc.Namespace).Create(set)
 	// sink already exists errors
 	if apierrors.IsAlreadyExists(err) {
 		return err
@@ -76,7 +76,7 @@ func (sc *realStatefulSetControl) UpdateStatefulSet(tc *v1alpha1.TidbCluster, se
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		// TODO: verify if StatefulSet identity(name, namespace, labels) matches TidbCluster
 		var updateErr error
-		updatedSS, updateErr = sc.kubeCli.AppsV1beta1().StatefulSets(ns).Update(set)
+		updatedSS, updateErr = sc.kubeCli.AppsV1().StatefulSets(ns).Update(set)
 		if updateErr == nil {
 			glog.Infof("TidbCluster: [%s/%s]'s StatefulSet: [%s/%s] updated successfully", ns, tcName, ns, setName)
 			return nil
@@ -99,7 +99,7 @@ func (sc *realStatefulSetControl) UpdateStatefulSet(tc *v1alpha1.TidbCluster, se
 
 // DeleteStatefulSet delete a StatefulSet in a TidbCluster.
 func (sc *realStatefulSetControl) DeleteStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
-	err := sc.kubeCli.AppsV1beta1().StatefulSets(tc.Namespace).Delete(set.Name, nil)
+	err := sc.kubeCli.AppsV1().StatefulSets(tc.Namespace).Delete(set.Name, nil)
 	sc.recordStatefulSetEvent("delete", tc, set, err)
 	return err
 }
