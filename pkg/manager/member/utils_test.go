@@ -17,7 +17,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -58,7 +58,7 @@ func TestStatefulSetIsUpgrading(t *testing.T) {
 		{
 			name: "CurrentRevision not equal UpdateRevision",
 			update: func(set *apps.StatefulSet) {
-				set.Status.ObservedGeneration = func() *int64 { var i int64; i = 1000; return &i }()
+				set.Status.ObservedGeneration = 1000
 				set.Status.CurrentRevision = "v1"
 				set.Status.UpdateRevision = "v2"
 			},
@@ -68,7 +68,7 @@ func TestStatefulSetIsUpgrading(t *testing.T) {
 			name: "set.Generation > *set.Status.ObservedGeneration && *set.Spec.Replicas == set.Status.Replicas",
 			update: func(set *apps.StatefulSet) {
 				set.Generation = 1001
-				set.Status.ObservedGeneration = func() *int64 { var i int64; i = 1000; return &i }()
+				set.Status.ObservedGeneration = 1000
 				set.Status.CurrentRevision = "v1"
 				set.Status.UpdateRevision = "v1"
 				set.Status.Replicas = 3
@@ -80,7 +80,7 @@ func TestStatefulSetIsUpgrading(t *testing.T) {
 			name: "replicas not equal",
 			update: func(set *apps.StatefulSet) {
 				set.Generation = 1001
-				set.Status.ObservedGeneration = func() *int64 { var i int64; i = 1000; return &i }()
+				set.Status.ObservedGeneration = 1000
 				set.Status.CurrentRevision = "v1"
 				set.Status.UpdateRevision = "v1"
 				set.Status.Replicas = 3

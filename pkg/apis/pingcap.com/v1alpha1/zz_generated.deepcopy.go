@@ -21,8 +21,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	appsv1beta1 "k8s.io/api/apps/v1beta1"
-	v1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -400,7 +400,7 @@ func (in *PDStatus) DeepCopyInto(out *PDStatus) {
 	*out = *in
 	if in.StatefulSet != nil {
 		in, out := &in.StatefulSet, &out.StatefulSet
-		*out = new(appsv1beta1.StatefulSetStatus)
+		*out = new(v1.StatefulSetStatus)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Members != nil {
@@ -436,7 +436,7 @@ func (in *PodAttributesSpec) DeepCopyInto(out *PodAttributesSpec) {
 	*out = *in
 	if in.Affinity != nil {
 		in, out := &in.Affinity, &out.Affinity
-		*out = new(v1.Affinity)
+		*out = new(corev1.Affinity)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.NodeSelector != nil {
@@ -448,7 +448,7 @@ func (in *PodAttributesSpec) DeepCopyInto(out *PodAttributesSpec) {
 	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations
-		*out = make([]v1.Toleration, len(*in))
+		*out = make([]corev1.Toleration, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -462,7 +462,7 @@ func (in *PodAttributesSpec) DeepCopyInto(out *PodAttributesSpec) {
 	}
 	if in.PodSecurityContext != nil {
 		in, out := &in.PodSecurityContext, &out.PodSecurityContext
-		*out = new(v1.PodSecurityContext)
+		*out = new(corev1.PodSecurityContext)
 		(*in).DeepCopyInto(*out)
 	}
 	return
@@ -725,7 +725,7 @@ func (in *TiDBStatus) DeepCopyInto(out *TiDBStatus) {
 	*out = *in
 	if in.StatefulSet != nil {
 		in, out := &in.StatefulSet, &out.StatefulSet
-		*out = new(appsv1beta1.StatefulSetStatus)
+		*out = new(v1.StatefulSetStatus)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Members != nil {
@@ -812,7 +812,7 @@ func (in *TiKVStatus) DeepCopyInto(out *TiKVStatus) {
 	*out = *in
 	if in.StatefulSet != nil {
 		in, out := &in.StatefulSet, &out.StatefulSet
-		*out = new(appsv1beta1.StatefulSetStatus)
+		*out = new(v1.StatefulSetStatus)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Stores != nil {
