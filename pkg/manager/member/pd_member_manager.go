@@ -24,14 +24,14 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/client-go/listers/apps/v1beta1"
+	"k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
@@ -39,7 +39,7 @@ type pdMemberManager struct {
 	pdControl    pdapi.PDControlInterface
 	setControl   controller.StatefulSetControlInterface
 	svcControl   controller.ServiceControlInterface
-	setLister    v1beta1.StatefulSetLister
+	setLister    v1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
 	podLister    corelisters.PodLister
 	epsLister    corelisters.EndpointsLister
@@ -55,7 +55,7 @@ type pdMemberManager struct {
 func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
-	setLister v1beta1.StatefulSetLister,
+	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	epsLister corelisters.EndpointsLister,

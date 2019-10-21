@@ -24,7 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	"k8s.io/api/admission/v1beta1"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -45,7 +45,7 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	namespace := ar.Request.Namespace
 	glog.V(4).Infof("admit statefulsets [%s/%s]", namespace, name)
 
-	setResource := metav1.GroupVersionResource{Group: "apps", Version: "v1beta1", Resource: "statefulsets"}
+	setResource := metav1.GroupVersionResource{Group: "apps", Version: "v1", Resource: "statefulsets"}
 	if ar.Request.Resource != setResource {
 		err := fmt.Errorf("expect resource to be %s instead of %s", setResource, ar.Request.Resource)
 		glog.Errorf("%v", err)

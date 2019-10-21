@@ -26,7 +26,7 @@ import (
 	tkctlUtil "github.com/pingcap/tidb-operator/pkg/tkctl/util"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/spf13/cobra"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -138,7 +138,7 @@ func (o *UpInfoOptions) Run() error {
 		return err
 	}
 	setName := controller.TiDBMemberName(tc.Name)
-	set, err := o.KubeCli.AppsV1beta1().StatefulSets(o.Namespace).Get(setName, metav1.GetOptions{})
+	set, err := o.KubeCli.AppsV1().StatefulSets(o.Namespace).Get(setName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
