@@ -22,13 +22,13 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/listers/apps/v1beta1"
+	"k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
@@ -42,7 +42,7 @@ type tidbMemberManager struct {
 	setControl                   controller.StatefulSetControlInterface
 	svcControl                   controller.ServiceControlInterface
 	tidbControl                  controller.TiDBControlInterface
-	setLister                    v1beta1.StatefulSetLister
+	setLister                    v1.StatefulSetLister
 	svcLister                    corelisters.ServiceLister
 	podLister                    corelisters.PodLister
 	tidbUpgrader                 Upgrader
@@ -55,7 +55,7 @@ type tidbMemberManager struct {
 func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	tidbControl controller.TiDBControlInterface,
-	setLister v1beta1.StatefulSetLister,
+	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	tidbUpgrader Upgrader,

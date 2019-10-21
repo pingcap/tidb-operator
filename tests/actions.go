@@ -48,7 +48,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
-	"k8s.io/api/apps/v1beta1"
+	"k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -903,7 +903,7 @@ func (oa *operatorActions) CheckScaleInSafely(info *TidbClusterConfig) error {
 		}
 
 		tikvSetName := controller.TiKVMemberName(info.ClusterName)
-		tikvSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(info.Namespace).Get(tikvSetName, metav1.GetOptions{})
+		tikvSet, err := oa.kubeCli.AppsV1().StatefulSets(info.Namespace).Get(tikvSetName, metav1.GetOptions{})
 		if err != nil {
 			glog.Infof("failed to get tikvSet statefulset: [%s], error: %v", tikvSetName, err)
 			return false, nil
@@ -2739,7 +2739,7 @@ func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, set
 func (oa *operatorActions) CheckManualPauseTiDB(info *TidbClusterConfig) error {
 
 	var tc *v1alpha1.TidbCluster
-	var tidbSet *v1beta1.StatefulSet
+	var tidbSet *v1.StatefulSet
 	var err error
 	ns := info.Namespace
 
@@ -2763,7 +2763,7 @@ func (oa *operatorActions) CheckManualPauseTiDB(info *TidbClusterConfig) error {
 			return false, nil
 		}
 
-		if tidbPod.Labels[v1beta1.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision &&
+		if tidbPod.Labels[v1.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision &&
 			tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
 			if member, ok := tc.Status.TiDB.Members[tidbPod.Name]; !ok || !member.Health {
 				glog.Infof("wait for tidb pod [%s/%s] ready member health %t ok %t", ns, podName, member.Health, ok)
@@ -2785,7 +2785,7 @@ func (oa *operatorActions) CheckManualPauseTiDB(info *TidbClusterConfig) error {
 	time.Sleep(30 * time.Second)
 
 	tidbSetName := controller.TiDBMemberName(info.ClusterName)
-	if tidbSet, err = oa.kubeCli.AppsV1beta1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{}); err != nil {
+	if tidbSet, err = oa.kubeCli.AppsV1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{}); err != nil {
 		return fmt.Errorf("failed to get statefulset: [%s/%s], %v", ns, tidbSetName, err)
 	}
 

@@ -26,7 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -238,7 +238,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 				set.Status.CurrentRevision = "pd-1"
 				set.Status.UpdateRevision = "pd-1"
 				observedGeneration := int64(1)
-				set.Status.ObservedGeneration = &observedGeneration
+				set.Status.ObservedGeneration = observedGeneration
 			})
 		} else {
 			fakeSetControl.SetStatusChange(test.statusChange)
@@ -328,7 +328,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.ClusterID).To(Equal("1"))
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.NormalPhase))
-				g.Expect(*tc.Status.PD.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
+				g.Expect(tc.Status.PD.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
 				g.Expect(len(tc.Status.PD.Members)).To(Equal(3))
 				g.Expect(tc.Status.PD.Members["pd1"].Health).To(Equal(true))
 				g.Expect(tc.Status.PD.Members["pd2"].Health).To(Equal(true))
@@ -500,7 +500,7 @@ func TestPDMemberManagerPdStatefulSetIsUpgrading(t *testing.T) {
 			setUpdate: func(set *apps.StatefulSet) {
 				set.Status.CurrentRevision = "v1"
 				set.Status.UpdateRevision = "v2"
-				set.Status.ObservedGeneration = func() *int64 { var i int64; i = 1000; return &i }()
+				set.Status.ObservedGeneration = 1000
 			},
 			hasPod:          false,
 			updatePod:       nil,
@@ -617,7 +617,7 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 				set.Status.CurrentRevision = "pd-1"
 				set.Status.UpdateRevision = "pd-1"
 				observedGeneration := int64(1)
-				set.Status.ObservedGeneration = &observedGeneration
+				set.Status.ObservedGeneration = observedGeneration
 			},
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
@@ -717,7 +717,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 				set.Status.CurrentRevision = "pd-1"
 				set.Status.UpdateRevision = "pd-1"
 				observedGeneration := int64(1)
-				set.Status.ObservedGeneration = &observedGeneration
+				set.Status.ObservedGeneration = observedGeneration
 			},
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
@@ -746,7 +746,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 				set.Status.CurrentRevision = "pd-1"
 				set.Status.UpdateRevision = "pd-1"
 				observedGeneration := int64(1)
-				set.Status.ObservedGeneration = &observedGeneration
+				set.Status.ObservedGeneration = observedGeneration
 			},
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
@@ -769,7 +769,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetControl, *controller.FakeServiceControl, *pdapi.FakePDControl, cache.Indexer, cache.Indexer, *controller.FakePodControl) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
+	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()

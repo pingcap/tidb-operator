@@ -24,7 +24,7 @@ data:
 # Remount disks with a UUID. Ensure the nobarrier options is set.
 # This will combine all disks with LVM.
 # If you don't want to combine disks, you can set NO_COMBINE_LOCAL_SSD=1
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: local-volume-provisioner
