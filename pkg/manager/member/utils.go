@@ -55,9 +55,6 @@ func annotationsMountVolume() (corev1.VolumeMount, corev1.Volume) {
 
 // statefulSetIsUpgrading confirms whether the statefulSet is upgrading phase
 func statefulSetIsUpgrading(set *apps.StatefulSet) bool {
-	if &(set.Status.ObservedGeneration) == nil {
-		return false
-	}
 	if set.Status.CurrentRevision != set.Status.UpdateRevision {
 		return true
 	}
