@@ -29,6 +29,7 @@ resource "aws_autoscaling_group" "workers" {
   protect_from_scale_in = false
   count                 = local.worker_group_count
   placement_group       = "" # The name of the placement group into which to launch the instances, if any.
+  suspended_processes = lookup(local.tidb_cluster_worker_groups[count.index], "suspended_processes", [])
 
   tags = concat(
     [

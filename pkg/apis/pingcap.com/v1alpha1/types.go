@@ -14,7 +14,7 @@
 package v1alpha1
 
 import (
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -60,34 +60,41 @@ const (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// +k8s:openapi-gen=true
 // TidbCluster is the control script's spec
 type TidbCluster struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// +k8s:openapi-gen=false
 	metav1.ObjectMeta `json:"metadata"`
 
 	// Spec defines the behavior of a tidb cluster
 	Spec TidbClusterSpec `json:"spec"`
 
+	// +k8s:openapi-gen=false
 	// Most recently observed status of the tidb cluster
 	Status TidbClusterStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// +k8s:openapi-gen=true
 // TidbClusterList is TidbCluster list
 type TidbClusterList struct {
 	metav1.TypeMeta `json:",inline"`
+	// +k8s:openapi-gen=false
 	metav1.ListMeta `json:"metadata"`
 
 	Items []TidbCluster `json:"items"`
 }
 
+// +k8s:openapi-gen=true
 // TidbClusterSpec describes the attributes that a user creates on a tidb cluster
 type TidbClusterSpec struct {
-	SchedulerName   string              `json:"schedulerName,omitempty"`
-	PD              PDSpec              `json:"pd,omitempty"`
-	TiDB            TiDBSpec            `json:"tidb,omitempty"`
-	TiKV            TiKVSpec            `json:"tikv,omitempty"`
+	SchedulerName string   `json:"schedulerName,omitempty"`
+	PD            PDSpec   `json:"pd,omitempty"`
+	TiDB          TiDBSpec `json:"tidb,omitempty"`
+	TiKV          TiKVSpec `json:"tikv,omitempty"`
+	// +k8s:openapi-gen=false
 	TiKVPromGateway TiKVPromGatewaySpec `json:"tikvPromGateway,omitempty"`
 	// Services list non-headless services type used in TidbCluster
 	Services        []Service                            `json:"services,omitempty"`
@@ -106,17 +113,23 @@ type TidbClusterStatus struct {
 	TiDB      TiDBStatus `json:"tidb,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 // PDSpec contains details of PD members
 type PDSpec struct {
+	// +k8s:openapi-gen=false
 	ContainerSpec
+	// +k8s:openapi-gen=false
 	PodAttributesSpec
 	Replicas         int32  `json:"replicas"`
 	StorageClassName string `json:"storageClassName,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 // TiDBSpec contains details of TiDB members
 type TiDBSpec struct {
+	// +k8s:openapi-gen=false
 	ContainerSpec
+	// +k8s:openapi-gen=false
 	PodAttributesSpec
 	Replicas         int32                 `json:"replicas"`
 	StorageClassName string                `json:"storageClassName,omitempty"`
@@ -127,14 +140,19 @@ type TiDBSpec struct {
 	EnableTLSClient  bool                  `json:"enableTLSClient,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 // TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB
 type TiDBSlowLogTailerSpec struct {
+	// +k8s:openapi-gen=false
 	ContainerSpec
 }
 
+// +k8s:openapi-gen=true
 // TiKVSpec contains details of TiKV members
 type TiKVSpec struct {
+	// +k8s:openapi-gen=false
 	ContainerSpec
+	// +k8s:openapi-gen=false
 	PodAttributesSpec
 	Replicas         int32  `json:"replicas"`
 	Privileged       bool   `json:"privileged,omitempty"`
@@ -142,11 +160,13 @@ type TiKVSpec struct {
 	MaxFailoverCount int32  `json:"maxFailoverCount,omitempty"`
 }
 
+// +k8s:openapi-gen=false
 // TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
 type TiKVPromGatewaySpec struct {
 	ContainerSpec
 }
 
+// +k8s:openapi-gen=false
 // ContainerSpec is the container spec of a pod
 type ContainerSpec struct {
 	Image           string               `json:"image"`
@@ -155,6 +175,7 @@ type ContainerSpec struct {
 	Limits          *ResourceRequirement `json:"limits,omitempty"`
 }
 
+// +k8s:openapi-gen=false
 // PodAttributesControlSpec is a spec of some general attributes of TiKV, TiDB and PD Pods
 type PodAttributesSpec struct {
 	Affinity           *corev1.Affinity           `json:"affinity,omitempty"`
@@ -166,12 +187,14 @@ type PodAttributesSpec struct {
 	PriorityClassName  string                     `json:"priorityClassName,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 // Service represent service type used in TidbCluster
 type Service struct {
 	Name string `json:"name,omitempty"`
 	Type string `json:"type,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 // ResourceRequirement is resource requirements for a pod
 type ResourceRequirement struct {
 	// CPU is how many cores a pod requires
@@ -271,25 +294,31 @@ type TiKVFailureStore struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// +k8s:openapi-gen=true
 // Backup is a backup of tidb cluster.
 type Backup struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// +k8s:openapi-gen=false
 	metav1.ObjectMeta `json:"metadata"`
 
-	Spec   BackupSpec   `json:"spec"`
+	Spec BackupSpec `json:"spec"`
+	// +k8s:openapi-gen=false
 	Status BackupStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// +k8s:openapi-gen=true
 // BackupList contains a list of Backup.
 type BackupList struct {
 	metav1.TypeMeta `json:",inline"`
+	// +k8s:openapi-gen=false
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Backup `json:"items"`
 }
 
+// +k8s:openapi-gen=true
 // BackupStorageType represents the backend storage type of backup.
 type BackupStorageType string
 
@@ -298,11 +327,13 @@ const (
 	BackupStorageTypeCeph BackupStorageType = "ceph"
 )
 
+// +k8s:openapi-gen=true
 // StorageProvider defines the configuration for storing a backup in backend storage.
 type StorageProvider struct {
 	Ceph *CephStorageProvider `json:"ceph"`
 }
 
+// +k8s:openapi-gen=true
 // cephStorageProvider represents an ceph compatible bucket for storing backups.
 type CephStorageProvider struct {
 	// Region in which the ceph bucket is located.
@@ -316,6 +347,7 @@ type CephStorageProvider struct {
 	SecretName string `json:"secretName"`
 }
 
+// +k8s:openapi-gen=true
 // BackupType represents the backup type.
 type BackupType string
 
@@ -326,6 +358,7 @@ const (
 	BackupTypeInc BackupType = "incremental"
 )
 
+// +k8s:openapi-gen=true
 // BackupSpec contains the backup specification for a tidb cluster.
 type BackupSpec struct {
 	// Cluster is the Cluster to backup.
@@ -389,17 +422,21 @@ type BackupStatus struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// +k8s:openapi-gen=true
 // BackupSchedule is a backup schedule of tidb cluster.
 type BackupSchedule struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// +k8s:openapi-gen=false
 	metav1.ObjectMeta `json:"metadata"`
 
-	Spec   BackupScheduleSpec   `json:"spec"`
+	Spec BackupScheduleSpec `json:"spec"`
+	// +k8s:openapi-gen=false
 	Status BackupScheduleStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// +k8s:openapi-gen=true
 // BackupScheduleList contains a list of BackupSchedule.
 type BackupScheduleList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -408,6 +445,7 @@ type BackupScheduleList struct {
 	Items []BackupSchedule `json:"items"`
 }
 
+// +k8s:openapi-gen=true
 // BackupScheduleSpec contains the backup schedule specification for a tidb cluster.
 type BackupScheduleSpec struct {
 	// Schedule specifies the cron string used for backup scheduling.
@@ -436,20 +474,25 @@ type BackupScheduleStatus struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// +k8s:openapi-gen=true
 // Restore represents the restoration of backup of a tidb cluster.
 type Restore struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// +k8s:openapi-gen=false
 	metav1.ObjectMeta `json:"metadata"`
 
-	Spec   RestoreSpec   `json:"spec"`
+	Spec RestoreSpec `json:"spec"`
+	// +k8s:openapi-gen=false
 	Status RestoreStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// +k8s:openapi-gen=true
 // RestoreList contains a list of Restore.
 type RestoreList struct {
 	metav1.TypeMeta `json:",inline"`
+	// +k8s:openapi-gen=false
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Restore `json:"items"`
@@ -479,6 +522,7 @@ type RestoreCondition struct {
 	Message            string                 `json:"message"`
 }
 
+// +k8s:openapi-gen=true
 // RestoreSpec contains the specification for a restore of a tidb cluster backup.
 type RestoreSpec struct {
 	// Cluster represents the tidb cluster to be restored.

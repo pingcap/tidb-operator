@@ -270,3 +270,21 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 }
 
 var _ backup.BackupManager = &backupManager{}
+
+type FakeBackupManager struct {
+	err error
+}
+
+func NewFakeBackupManager() *FakeBackupManager {
+	return &FakeBackupManager{}
+}
+
+func (fbm *FakeBackupManager) SetSyncError(err error) {
+	fbm.err = err
+}
+
+func (fbm *FakeBackupManager) Sync(_ *v1alpha1.Backup) error {
+	return fbm.err
+}
+
+var _ backup.BackupManager = &FakeBackupManager{}

@@ -18,8 +18,18 @@
 package tools
 
 import (
-	_ "github.com/dnephin/govet"
-	_ "k8s.io/code-generator"
-	_ "k8s.io/gengo"
-	_ "k8s.io/klog"
+	// Because in 1.12.x there is no go files under k8s.io/code-generator, so
+	// we need to import these commands explicitly.
+	// TODO import k8s.io/code-generator only in k8s.io 1.15+
+	_ "k8s.io/code-generator/cmd/client-gen"
+	_ "k8s.io/code-generator/cmd/conversion-gen"
+	_ "k8s.io/code-generator/cmd/deepcopy-gen"
+	_ "k8s.io/code-generator/cmd/defaulter-gen"
+	_ "k8s.io/code-generator/cmd/go-to-protobuf"
+	_ "k8s.io/code-generator/cmd/import-boss"
+	_ "k8s.io/code-generator/cmd/informer-gen"
+	_ "k8s.io/code-generator/cmd/lister-gen"
+	_ "k8s.io/code-generator/cmd/openapi-gen"
+	_ "k8s.io/code-generator/cmd/register-gen"
+	_ "k8s.io/code-generator/cmd/set-gen"
 )

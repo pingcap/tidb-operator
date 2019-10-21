@@ -195,7 +195,7 @@ func run() {
 			cluster.TiDBPreStartScript = strconv.Quote("")
 			oa.UpgradeTidbClusterOrDie(cluster)
 			// wait upgrade complete
-			oa.CheckUpgradeOrDie(ctx, cluster)
+			oa.CheckUpgradeCompleteOrDie(cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
 
 			cluster.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
@@ -343,7 +343,6 @@ func run() {
 		ocfg.Image = cfg.UpgradeOperatorImage
 		ocfg.Tag = cfg.UpgradeOperatorTag
 		oa.UpgradeOperatorOrDie(ocfg)
-		time.Sleep(5 * time.Minute)
 		postUpgrade := []*tests.TidbClusterConfig{
 			cluster3,
 			cluster1,

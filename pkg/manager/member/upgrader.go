@@ -15,7 +15,7 @@ package member
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 )
 
 // Upgrader implements the logic for upgrading the tidb cluster.
