@@ -1077,6 +1077,12 @@ func schema_pkg_apis_pingcapcom_v1alpha1_TidbClusterSpec(ref common.ReferenceCal
 							Format: "",
 						},
 					},
+					"deferPVCDelete": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
 					"timezone": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
