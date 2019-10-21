@@ -445,7 +445,7 @@ monitor:
     #  memory: 64Mi
   reloader:
     create: true
-    image: pingcap/tidb-monitor-reloader:v1.0.0
+    image: pingcap/tidb-monitor-reloader:v1.0.1
     imagePullPolicy: IfNotPresent
     service:
       type: NodePort
