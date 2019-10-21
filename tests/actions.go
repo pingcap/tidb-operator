@@ -2783,7 +2783,7 @@ func (oa *operatorActions) CheckManualPauseTiDB(info *TidbClusterConfig) error {
 	time.Sleep(30 * time.Second)
 
 	tidbSetName := controller.TiDBMemberName(info.ClusterName)
-	if tidbSet, err = oa.kubeCli.AppsV1beta1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{}); err != nil {
+	if tidbSet, err = oa.kubeCli.AppsV1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{}); err != nil {
 		return fmt.Errorf("failed to get statefulset: [%s/%s], %v", ns, tidbSetName, err)
 	}
 
