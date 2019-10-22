@@ -177,8 +177,6 @@ func run() {
 
 		// configuration change
 		for _, cluster := range clusters {
-			cluster.EnableConfigMapRollout = true
-
 			// bad conf
 			cluster.TiDBPreStartScript = strconv.Quote("exit 1")
 			cluster.TiKVPreStartScript = strconv.Quote("exit 1")
@@ -400,8 +398,9 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 			"binlog.drainer.workerCount": "1024",
 			"binlog.drainer.txnBatch":    "512",
 		},
-		Monitor:          true,
-		BlockWriteConfig: cfg.BlockWriter,
-		TopologyKey:      topologyKey,
+		Monitor:                true,
+		BlockWriteConfig:       cfg.BlockWriter,
+		TopologyKey:            topologyKey,
+		EnableConfigMapRollout: true,
 	}
 }
