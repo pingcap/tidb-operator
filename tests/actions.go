@@ -248,6 +248,7 @@ type TidbClusterConfig struct {
 	BackupName             string
 	Namespace              string
 	ClusterName            string
+	DeferPVCDelete         bool
 	OperatorTag            string
 	PDImage                string
 	TiKVImage              string
@@ -312,6 +313,7 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 
 	set := map[string]string{
 		"clusterName":             tc.ClusterName,
+		"deferPVCDelete":          strconv.FormatBool(tc.DeferPVCDelete),
 		"pd.storageClassName":     tc.StorageClassName,
 		"tikv.storageClassName":   tc.StorageClassName,
 		"tidb.storageClassName":   tc.StorageClassName,
@@ -935,6 +937,12 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		if info.EnableConfigMapRollout {
 			glog.V(4).Info("check tidb cluster configuration synced")
 			if b, err := oa.checkTidbClusterConfigUpdated(tc, info); !b && err == nil {
+				return false, nil
+			}
+		}
+		if !info.DeferPVCDelete {
+			glog.V(4).Infof("check reclaim pvs success when scale in pd or tikv")
+			if b, err := oa.checkReclaimPVSuccess(tc); !b && err == nil {
 				return false, nil
 			}
 		}
@@ -1698,6 +1706,86 @@ func (oa *operatorActions) podsScheduleAnnHaveDeleted(tc *v1alpha1.TidbCluster) 
 	}
 
 	return true, nil
+}
+
+func (oa *operatorActions) checkReclaimPVSuccess(tc *v1alpha1.TidbCluster) (bool, error) {
+	// check pv reclaim	for pd
+	if err := oa.checkComponentReclaimPVSuccess(tc, label.PDLabelVal); err != nil {
+		glog.Errorf(err.Error())
+		return false, nil
+	}
+
+	// check pv reclaim for tikv
+	if err := oa.checkComponentReclaimPVSuccess(tc, label.TiKVLabelVal); err != nil {
+		glog.Errorf(err.Error())
+		return false, nil
+	}
+	return true, nil
+}
+
+func (oa *operatorActions) checkComponentReclaimPVSuccess(tc *v1alpha1.TidbCluster, component string) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	var replica int
+	switch component {
+	case label.PDLabelVal:
+		replica = int(tc.Spec.PD.Replicas)
+	case label.TiKVLabelVal:
+		replica = int(tc.Spec.TiKV.Replicas)
+	default:
+		return fmt.Errorf("check tidb cluster %s/%s component %s is not supported", ns, tcName, component)
+	}
+
+	pvcList, err := oa.getComponentPVCList(tc, component)
+	if err != nil {
+		return err
+	}
+
+	pvList, err := oa.getComponentPVList(tc, component)
+	if err != nil {
+		return err
+	}
+
+	if len(pvcList) != replica || len(pvList) != replica {
+		return fmt.Errorf("tidb cluster %s/%s compoenent %s pv or pvc have not been reclaimed completely", ns, tcName, component)
+	}
+
+	return nil
+}
+
+func (oa *operatorActions) getComponentPVCList(tc *v1alpha1.TidbCluster, component string) ([]corev1.PersistentVolumeClaim, error) {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(
+			label.New().Instance(tcName).Component(component).Labels()).String(),
+	}
+
+	pvcList, err := oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(listOptions)
+	if err != nil {
+		err := fmt.Errorf("failed to list pvcs for tidb cluster %s/%s, component: %s, err: %v", ns, tcName, component, err)
+		return nil, err
+	}
+	return pvcList.Items, nil
+}
+
+func (oa *operatorActions) getComponentPVList(tc *v1alpha1.TidbCluster, component string) ([]corev1.PersistentVolume, error) {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(
+			label.New().Instance(tcName).Component(component).Labels()).String(),
+	}
+
+	pvList, err := oa.kubeCli.CoreV1().PersistentVolumes().List(listOptions)
+	if err != nil {
+		err := fmt.Errorf("failed to list pvs for tidb cluster %s/%s, component: %s, err: %v", ns, tcName, component, err)
+		return nil, err
+	}
+	return pvList.Items, nil
 }
 
 func (oa *operatorActions) storeLabelsIsSet(tc *v1alpha1.TidbCluster, topologyKey string) (bool, error) {
