@@ -706,6 +706,7 @@ scheduledBackup:
 
 importer:
   create: false
+  replicas: 1
   image: pingcap/tidb-lightning:v3.0.4
   imagePullPolicy: IfNotPresent
   storageClassName: local-storage
