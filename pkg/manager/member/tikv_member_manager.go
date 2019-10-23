@@ -26,13 +26,14 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/listers/apps/v1beta1"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/kubernetes/pkg/kubelet/apis"
 )
@@ -42,7 +43,7 @@ type tikvMemberManager struct {
 	setControl                   controller.StatefulSetControlInterface
 	svcControl                   controller.ServiceControlInterface
 	pdControl                    pdapi.PDControlInterface
-	setLister                    v1beta1.StatefulSetLister
+	setLister                    v1.StatefulSetLister
 	svcLister                    corelisters.ServiceLister
 	podLister                    corelisters.PodLister
 	nodeLister                   corelisters.NodeLister
@@ -57,7 +58,7 @@ type tikvMemberManager struct {
 func NewTiKVMemberManager(pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
-	setLister v1beta1.StatefulSetLister,
+	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	nodeLister corelisters.NodeLister,
@@ -336,7 +337,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 	}
 
 	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
-	if tc.Spec.PD.HostNetwork {
+	if tc.Spec.TiKV.HostNetwork {
 		dnsPolicy = corev1.DNSClusterFirstWithHostNet
 	}
 
@@ -348,7 +349,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: func() *int32 { r := tc.TiKVRealReplicas(); return &r }(),
+			Replicas: controller.Int32Ptr(tc.TiKVRealReplicas()),
 			Selector: tikvLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -415,10 +416,11 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 							},
 						},
 					},
-					RestartPolicy:   corev1.RestartPolicyAlways,
-					Tolerations:     tc.Spec.TiKV.Tolerations,
-					Volumes:         vols,
-					SecurityContext: tc.Spec.TiKV.PodSecurityContext,
+					RestartPolicy:     corev1.RestartPolicyAlways,
+					Tolerations:       tc.Spec.TiKV.Tolerations,
+					Volumes:           vols,
+					SecurityContext:   tc.Spec.TiKV.PodSecurityContext,
+					PriorityClassName: tc.Spec.TiKV.PriorityClassName,
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -429,7 +431,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: func() *int32 { r := tc.TiKVRealReplicas(); return &r }(),
+					Partition: controller.Int32Ptr(tc.TiKVRealReplicas()),
 				},
 			},
 		},
@@ -676,9 +678,13 @@ func (ftmm *FakeTiKVMemberManager) SetSyncError(err error) {
 	ftmm.err = err
 }
 
-func (ftmm *FakeTiKVMemberManager) Sync(_ *v1alpha1.TidbCluster) error {
+func (ftmm *FakeTiKVMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if ftmm.err != nil {
 		return ftmm.err
+	}
+	if len(tc.Status.TiKV.Stores) != 0 {
+		// simulate status update
+		tc.Status.ClusterID = string(uuid.NewUUID())
 	}
 	return nil
 }

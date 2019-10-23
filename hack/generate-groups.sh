@@ -14,6 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#
+# go mod cannot vendor k8s.io/code-generator root directory because it does not contain go files.
+# TODO use k8s.io/code-generator/generate-groups.sh when we upgrade Kubernetes code to 1.15+
+#
+
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -46,18 +51,13 @@ APIS_PKG="$3"
 GROUPS_WITH_VERSIONS="$4"
 shift 4
 
-GO111MODULE=on go get k8s.io/code-generator/cmd/defaulter-gen@kubernetes-1.12.5
-GO111MODULE=on go get k8s.io/code-generator/cmd/client-gen@kubernetes-1.12.5
-GO111MODULE=on go get k8s.io/code-generator/cmd/lister-gen@kubernetes-1.12.5
-GO111MODULE=on go get k8s.io/code-generator/cmd/informer-gen@kubernetes-1.12.5
-GO111MODULE=on go get k8s.io/code-generator/cmd/deepcopy-gen@kubernetes-1.12.5
+export GO111MODULE=on
 
-# (
-#   # To support running this script from anywhere, we have to first cd into this directory
-#   # so we can install the tools.
-#   cd $(dirname "${0}")
-#   go install ./cmd/{defaulter-gen,client-gen,lister-gen,informer-gen,deepcopy-gen}
-# )
+go install k8s.io/code-generator/cmd/defaulter-gen \
+    k8s.io/code-generator/cmd/client-gen \
+    k8s.io/code-generator/cmd/lister-gen \
+    k8s.io/code-generator/cmd/informer-gen \
+    k8s.io/code-generator/cmd/deepcopy-gen
 
 function codegen::join() { local IFS="$1"; shift; echo "$*"; }
 

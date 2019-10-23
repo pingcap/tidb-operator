@@ -50,7 +50,7 @@ module "tidb-operator" {
   kubeconfig_path               = local.kubeconfig
   tidb_operator_version         = var.tidb_operator_version
   maintenance_window_start_time = var.maintenance_window_start_time
-  operator_helm_values          = var.operator_helm_values
+  operator_helm_values          = var.operator_helm_values == "" ? var.operator_helm_values_file == "" ? "" : file(var.operator_helm_values_file) : var.operator_helm_values
 }
 
 module "bastion" {

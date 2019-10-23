@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sysbench-config
+data:
+  common: |
+    db-driver=mysql
+    rand-type=uniform
+    rand-seed=0
+    report-interval=10

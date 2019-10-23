@@ -134,7 +134,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	user, password, reason, err := backuputil.GetTidbUserAndPassword(backup, bm.secretLister)
+	user, password, reason, err := backuputil.GetTidbUserAndPassword(ns, name, backup.Spec.TidbSecretName, bm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -270,3 +270,21 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 }
 
 var _ backup.BackupManager = &backupManager{}
+
+type FakeBackupManager struct {
+	err error
+}
+
+func NewFakeBackupManager() *FakeBackupManager {
+	return &FakeBackupManager{}
+}
+
+func (fbm *FakeBackupManager) SetSyncError(err error) {
+	fbm.err = err
+}
+
+func (fbm *FakeBackupManager) Sync(_ *v1alpha1.Backup) error {
+	return fbm.err
+}
+
+var _ backup.BackupManager = &FakeBackupManager{}

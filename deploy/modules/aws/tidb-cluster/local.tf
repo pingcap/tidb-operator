@@ -74,6 +74,7 @@ locals {
       asg_max_size         = var.tikv_count + 2
       pre_userdata         = file("${path.module}/pre_userdata")
       # additional_userdata  = file("userdata.sh")
+      suspended_processes  = ["ReplaceUnhealthy"]
     },
     {
       name             = "${var.cluster_name}-tidb"

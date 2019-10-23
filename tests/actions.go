@@ -26,11 +26,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/ghodss/yaml"
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
@@ -48,7 +50,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
-	"k8s.io/api/apps/v1beta1"
+	"k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -111,6 +113,8 @@ const (
 )
 
 type OperatorActions interface {
+	CleanCRDOrDie()
+	InstallCRDOrDie()
 	DeployOperator(info *OperatorConfig) error
 	DeployOperatorOrDie(info *OperatorConfig)
 	CleanOperator(info *OperatorConfig) error
@@ -168,6 +172,7 @@ type OperatorActions interface {
 	CheckEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckKubeletDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
 	CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string)
+	CheckAllApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
 	CheckKubeProxyDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
 	CheckKubeSchedulerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
 	CheckKubeControllerManagerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
@@ -191,9 +196,8 @@ type OperatorActions interface {
 	GetTidbMemberAssignedNodesOrDie(info *TidbClusterConfig) map[string]string
 	CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error
 	CheckTidbMemberAssignedNodesOrDie(info *TidbClusterConfig, oldAssignedNodes map[string]string)
-	SetPartitionAnnotation(namespace string, tcName string, component string, ordinal int) error
-	CheckManualPauseTiDBOrDie(info *TidbClusterConfig)
-	CheckManualPauseTiKVOrDie(info *TidbClusterConfig)
+	CheckUpgradeComplete(info *TidbClusterConfig) error
+	CheckUpgradeCompleteOrDie(info *TidbClusterConfig)
 }
 
 type operatorActions struct {
@@ -363,6 +367,36 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	return strings.Join(arr, ",")
 }
 
+func (oa *operatorActions) runKubectlOrDie(args ...string) string {
+	cmd := "kubectl"
+	glog.Infof("Running '%s %s'", cmd, strings.Join(args, " "))
+	out, err := exec.Command(cmd, args...).CombinedOutput()
+	if err != nil {
+		glog.Fatalf("Failed to run '%s %s'\nCombined output: %q\nError: %v", cmd, strings.Join(args, " "), string(out), err)
+	}
+	glog.Infof("Combined output: %q", string(out))
+	return string(out)
+}
+
+func (oa *operatorActions) CleanCRDOrDie() {
+	oa.runKubectlOrDie("delete", "crds", "--all")
+}
+
+// InstallCRDOrDie install CRDs and wait for them to be established in Kubernetes.
+func (oa *operatorActions) InstallCRDOrDie() {
+	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/crd.yaml"))
+	out := oa.runKubectlOrDie([]string{"get", "crds", "--no-headers", `-ojsonpath={range .items[*]}{.metadata.name}{" "}{end}`}...)
+	waitArgs := []string{"wait", "--for=condition=Established"}
+	for _, crd := range strings.Split(out, " ") {
+		crd = strings.TrimSpace(crd)
+		if crd == "" {
+			continue
+		}
+		waitArgs = append(waitArgs, fmt.Sprintf("crds/%s", crd))
+	}
+	oa.runKubectlOrDie(waitArgs...)
+}
+
 func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	glog.Infof("deploying tidb-operator %s", info.ReleaseName)
 
@@ -457,6 +491,15 @@ func (oa *operatorActions) CleanOperatorOrDie(info *OperatorConfig) {
 
 func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 	glog.Infof("upgrading tidb-operator %s", info.ReleaseName)
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(
+			label.New().Labels()).String(),
+	}
+	pods1, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(listOptions)
+	if err != nil {
+		return err
+	}
 	if err := oa.checkoutTag(info.Tag); err != nil {
 		return err
 	}
@@ -469,7 +512,66 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 	if err != nil {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
 	}
-	return nil
+
+	// ensure pods unchanged when upgrading operator
+	waitFn := func() (done bool, err error) {
+		pods2, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(listOptions)
+		if err != nil {
+			glog.Error(err)
+			return false, nil
+		}
+
+		err = ensurePodsUnchanged(pods1, pods2)
+		if err != nil {
+			return true, err
+		}
+
+		return false, nil
+	}
+
+	err = wait.Poll(oa.pollInterval, 5*time.Minute, waitFn)
+	if err == wait.ErrWaitTimeout {
+		return nil
+	}
+	return err
+}
+
+func ensurePodsUnchanged(pods1, pods2 *corev1.PodList) error {
+	pods1UIDs := getUIDs(pods1)
+	pods2UIDs := getUIDs(pods2)
+	pods1Yaml, err := yaml.Marshal(pods1)
+	if err != nil {
+		return err
+	}
+	pods2Yaml, err := yaml.Marshal(pods2)
+	if err != nil {
+		return err
+	}
+	if reflect.DeepEqual(pods1UIDs, pods2UIDs) {
+		glog.V(4).Infof("%s", string(pods1Yaml))
+		glog.V(4).Infof("%s", string(pods2Yaml))
+		glog.V(4).Infof("%v", pods1UIDs)
+		glog.V(4).Infof("%v", pods2UIDs)
+		glog.V(4).Infof("pods unchanged after operator upgraded")
+		return nil
+	}
+
+	glog.Infof("%s", string(pods1Yaml))
+	glog.Infof("%s", string(pods2Yaml))
+	glog.Infof("%v", pods1UIDs)
+	glog.Infof("%v", pods2UIDs)
+	return fmt.Errorf("some pods changed after operator upgraded")
+}
+
+func getUIDs(pods *corev1.PodList) []string {
+	arr := make([]string, 0, len(pods.Items))
+
+	for _, pod := range pods.Items {
+		arr = append(arr, string(pod.UID))
+	}
+
+	sort.Strings(arr)
+	return arr
 }
 
 func (oa *operatorActions) UpgradeOperatorOrDie(info *OperatorConfig) {
@@ -570,6 +672,8 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	var beforePVNames []string
 	for _, pv := range pvList.Items {
 		beforePVNames = append(beforePVNames, pv.GetName())
+		glog.V(4).Infof("%s, %s, %v", pv.Name, pv.Spec.PersistentVolumeReclaimPolicy, pv.Labels)
+		glog.V(4).Info(pv.Spec.ClaimRef)
 	}
 	glog.V(4).Info(beforePVNames)
 
@@ -601,24 +705,34 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		afterPVCNames = append(afterPVCNames, pvc.GetName())
 	}
 	glog.V(4).Info(afterPVCNames)
-
-	pvList, err = oa.kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return err
-	}
-	var afterPVNames []string
-	for _, pv := range pvList.Items {
-		afterPVNames = append(afterPVNames, pv.GetName())
-	}
-	glog.V(4).Info(afterPVNames)
-
 	if !reflect.DeepEqual(beforePVCNames, afterPVCNames) {
 		return fmt.Errorf("pvc changed when we delete cluster: %s/%s, before: %v, after: %v",
 			ns, tcName, beforePVCNames, afterPVCNames)
 	}
-	if !reflect.DeepEqual(beforePVNames, afterPVNames) {
-		return fmt.Errorf("pv changed when we delete cluster: %s/%s, before: %v, after: %v",
-			ns, tcName, beforePVNames, afterPVNames)
+
+	waitPVFn := func() (done bool, err error) {
+		pvList, err = oa.kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{LabelSelector: selector.String()})
+		if err != nil {
+			return false, nil
+		}
+		var afterPVNames []string
+		for _, pv := range pvList.Items {
+			afterPVNames = append(afterPVNames, pv.GetName())
+		}
+		glog.V(4).Info(afterPVNames)
+
+		if !reflect.DeepEqual(beforePVNames, afterPVNames) {
+			glog.Errorf("pv changed when we delete cluster: %s/%s, before: %v, after: %v",
+				ns, tcName, beforePVNames, afterPVNames)
+			return false, nil
+		}
+
+		return true, nil
+	}
+
+	err = wait.Poll(oa.pollInterval, DefaultPollTimeout, waitPVFn)
+	if err != nil {
+		return err
 	}
 
 	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(getBackupDirPodName, &metav1.DeleteOptions{})
@@ -660,9 +774,11 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete configmaps: %v, %s", err, string(res))
 	}
 
-	patchPVCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s | awk '{print $1}' | "+
+	patchPVCmd := fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
 		"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
-		info.Namespace, info.ClusterName)
+		label.ManagedByLabelKey, "tidb-operator",
+		label.NamespaceLabelKey, info.Namespace,
+		label.InstanceLabelKey, info.ClusterName)
 	glog.V(4).Info(patchPVCmd)
 	if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to patch pv: %v, %s", err, string(res))
@@ -789,8 +905,10 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		}
 
 		glog.V(4).Infof("check all pd and tikv instances have not pod scheduling annotation")
-		if b, err := oa.podsScheduleAnnHaveDeleted(tc); !b && err == nil {
-			return false, nil
+		if info.OperatorTag != "v1.0.0" {
+			if b, err := oa.podsScheduleAnnHaveDeleted(tc); !b && err == nil {
+				return false, nil
+			}
 		}
 
 		glog.V(4).Infof("check store labels")
@@ -968,7 +1086,7 @@ func (oa *operatorActions) CheckScaledCorrectly(info *TidbClusterConfig, podUIDs
 	})
 }
 
-func (oa *operatorActions) SetPartitionAnnotation(namespace, tcName, component string, ordinal int) error {
+func (oa *operatorActions) setPartitionAnnotation(namespace, tcName, component string, ordinal int) error {
 	// add annotation to pause statefulset upgrade process
 	cmd := fmt.Sprintf("kubectl annotate tc %s -n %s tidb.pingcap.com/%s-partition=%d --overwrite",
 		tcName, namespace, component, ordinal)
@@ -1026,6 +1144,8 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 		replicas := tc.TiKVRealReplicas()
 		for i := replicas - 1; i >= 0; i-- {
 			if err := wait.PollImmediate(1*time.Second, 10*time.Minute, func() (done bool, err error) {
+				podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
+				scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
 				schedulers, err := pdClient.GetEvictLeaderSchedulers()
 				if err != nil {
 					glog.Errorf("failed to get evict leader schedulers, %v", err)
@@ -1034,13 +1154,17 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 				glog.V(4).Infof("index:%d,schedulers:%v,error:%v", i, schedulers, err)
 				if len(schedulers) > 1 {
 					glog.Errorf("there are too many evict leader schedulers: %v", schedulers)
+					for _, s := range schedulers {
+						if s == scheduler {
+							glog.Infof("found scheudler: %s", scheduler)
+							return true, nil
+						}
+					}
 					return false, nil
 				}
 				if len(schedulers) == 0 {
 					return false, nil
 				}
-				podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
-				scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
 				if schedulers[0] == scheduler {
 					glog.Infof("index: %d,the schedulers: %s = %s", i, schedulers[0], scheduler)
 					return true, nil
@@ -1070,7 +1194,11 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 		break
 	}
 
-	return nil
+	err := oa.checkManualPauseComponent(info, label.TiKVLabelVal)
+	if err != nil {
+		return err
+	}
+	return oa.checkManualPauseComponent(info, label.TiDBLabelVal)
 }
 
 func (oa *operatorActions) CheckUpgradeOrDie(ctx context.Context, info *TidbClusterConfig) {
@@ -1174,7 +1302,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	ns := tc.GetNamespace()
 	tikvSetName := controller.TiKVMemberName(tcName)
 
-	tikvSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
+	tikvSet, err := oa.kubeCli.AppsV1().StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
 	if err != nil {
 		glog.Errorf("failed to get statefulset: %s/%s, %v", ns, tikvSetName, err)
 		return false, nil
@@ -1750,7 +1878,13 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 	values.Set("start", fmt.Sprintf("%d", start.Unix()))
 	values.Set("end", fmt.Sprintf("%d", end.Unix()))
 	values.Set("step", "30")
-	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources/proxy/1/api/v1/query_range?%s", svcName, ns, values.Encode())
+
+	datasourceID, err := getDatasourceID(svcName, ns)
+	if err != nil {
+		return err
+	}
+
+	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources/proxy/%d/api/v1/query_range?%s", svcName, ns, datasourceID, values.Encode())
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return err
@@ -1797,6 +1931,47 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 	return nil
 }
 
+func getDatasourceID(svcName, namespace string) (int, error) {
+	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources", svcName, namespace)
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	req.SetBasicAuth(grafanaUsername, grafanaPassword)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		err := resp.Body.Close()
+		glog.Warning("close response failed", err)
+	}()
+
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	datasources := []struct {
+		Id   int    `json:"id"`
+		Name string `json:"name"`
+	}{}
+
+	if err := json.Unmarshal(buf, &datasources); err != nil {
+		return 0, err
+	}
+
+	for _, ds := range datasources {
+		if ds.Name == "tidb-cluster" {
+			return ds.Id, nil
+		}
+	}
+
+	return 0, pingcapErrors.New("not found tidb-cluster datasource")
+}
+
 func GetD(ns, tcName, databaseName, password string) string {
 	return fmt.Sprintf("root:%s@(%s-tidb.%s:4000)/%s?charset=utf8", password, tcName, ns, databaseName)
 }
@@ -1828,12 +2003,14 @@ func (oa *operatorActions) checkoutTag(tagName string) error {
 	cmd := fmt.Sprintf("cd %s && git stash -u && git checkout %s && "+
 		"mkdir -p %s && cp -rf charts/tidb-operator %s && "+
 		"cp -rf charts/tidb-cluster %s && cp -rf charts/tidb-backup %s &&"+
-		"cp -rf manifests %s &&"+
-		"cp -rf charts/tidb-drainer %s",
+		"cp -rf manifests %s",
 		oa.cfg.OperatorRepoDir, tagName,
 		filepath.Join(oa.cfg.ChartDir, tagName), oa.operatorChartPath(tagName),
 		oa.tidbClusterChartPath(tagName), oa.backupChartPath(tagName),
-		oa.manifestPath(tagName), oa.drainerChartPath(tagName))
+		oa.manifestPath(tagName))
+	if tagName != "v1.0.0" {
+		cmd = cmd + fmt.Sprintf(" && cp -rf charts/tidb-drainer %s", oa.drainerChartPath(tagName))
+	}
 	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -2385,10 +2562,12 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 			sets["binlog.drainer.ignoreSchemas"] = ""
 		} else {
 			from.drainerConfig = []string{
-				"worker-count = 16",
-				"detect-interval = 10",
-				"disable-dispatch = false",
-				`ignore-schemas = ""`,
+				`detect-interval = 10`,
+				`compressor = ""`,
+				`[syncer]`,
+				`worker-count = 16`,
+				`disable-dispatch = false`,
+				`ignore-schemas = "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql"`,
 				`safe-mode = false`,
 				`txn-batch = 20`,
 				`db-type = "mysql"`,
@@ -2769,14 +2948,14 @@ func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, set
 func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, component string) error {
 
 	var tc *v1alpha1.TidbCluster
-	var set *v1beta1.StatefulSet
 	var setName string
+	var set *v1.StatefulSet
 	var err error
 	ns := info.Namespace
 
 	// set partition annotation to protect tidb pod
-	if err = oa.SetPartitionAnnotation(ns, info.ClusterName, component, 1); err != nil {
-		return fmt.Errorf("failed to SetPartitionAnnotation: [%s/%s], %v", ns, info.ClusterName, err)
+	if err = oa.setPartitionAnnotation(ns, info.ClusterName, component, 1); err != nil {
+		return fmt.Errorf("failed to setPartitionAnnotation: [%s/%s], %v", ns, info.ClusterName, err)
 	}
 
 	fn := func() (bool, error) {
@@ -2796,7 +2975,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 				return false, nil
 			}
 
-			if tidbPod.Labels[v1beta1.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision &&
+			if tidbPod.Labels[v1.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision &&
 				tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
 				if member, ok := tc.Status.TiDB.Members[tidbPod.Name]; !ok || !member.Health {
 					glog.Infof("wait for tidb pod [%s/%s] ready member health %t ok %t", ns, podName, member.Health, ok)
@@ -2817,9 +2996,8 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 				return false, nil
 			}
 
-			if tikvPod.Labels[v1beta1.ControllerRevisionHashLabelKey] == tc.Status.TiKV.StatefulSet.UpdateRevision &&
+			if tikvPod.Labels[v1.ControllerRevisionHashLabelKey] == tc.Status.TiKV.StatefulSet.UpdateRevision &&
 				tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-
 				var tikvStore *v1alpha1.TiKVStore
 				for _, store := range tc.Status.TiKV.Stores {
 					if store.PodName == podName {
@@ -2849,7 +3027,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 
 	time.Sleep(30 * time.Second)
 
-	if set, err = oa.kubeCli.AppsV1beta1().StatefulSets(ns).Get(setName, metav1.GetOptions{}); err != nil {
+	if set, err = oa.kubeCli.AppsV1().StatefulSets(ns).Get(setName, metav1.GetOptions{}); err != nil {
 		return fmt.Errorf("failed to get statefulset: [%s/%s], %v", ns, setName, err)
 	}
 
@@ -2858,25 +3036,43 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 			ns, setName, *set.Spec.UpdateStrategy.RollingUpdate.Partition, 1)
 	}
 
-	if err = oa.SetPartitionAnnotation(ns, tc.Name, component, 0); err != nil {
+	if err = oa.setPartitionAnnotation(ns, tc.Name, component, 0); err != nil {
 		return fmt.Errorf("fail to set annotation for [%s/%s]", ns, setName)
 	}
 
 	return nil
 }
 
-func (oa *operatorActions) CheckManualPauseTiDBOrDie(info *TidbClusterConfig) {
-	// add annotation to pause statefulset upgrade process and check
-	err := oa.checkManualPauseComponent(info, label.TiDBLabelVal)
-	if err != nil {
-		slack.NotifyAndPanic(err)
+func (oa *operatorActions) CheckUpgradeComplete(info *TidbClusterConfig) error {
+	ns, tcName := info.Namespace, info.ClusterName
+	if err := wait.PollImmediate(15*time.Second, DefaultPollTimeout, func() (done bool, err error) {
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		if err != nil {
+			glog.Errorf("checkUpgradeComplete, [%s/%s] cannot get tidbcluster, %v", ns, tcName, err)
+			return false, nil
+		}
+		if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
+			glog.Errorf("checkUpgradeComplete, [%s/%s] PD is still upgrading", ns, tcName)
+			return false, nil
+		}
+		if tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
+			glog.Errorf("checkUpgradeComplete, [%s/%s] TiKV is still upgrading", ns, tcName)
+			return false, nil
+		}
+		if tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+			glog.Errorf("checkUpgradeComplete, [%s/%s] TiDB is still upgrading", ns, tcName)
+			return false, nil
+		}
+		return true, nil
+	}); err != nil {
+		glog.Errorf("failed to wait upgrade complete [%s/%s], %v", ns, tcName, err)
+		return err
 	}
+	return nil
 }
 
-func (oa *operatorActions) CheckManualPauseTiKVOrDie(info *TidbClusterConfig) {
-	// add annotation to pause statefulset upgrade process and check
-	err := oa.checkManualPauseComponent(info, label.TiKVLabelVal)
-	if err != nil {
+func (oa *operatorActions) CheckUpgradeCompleteOrDie(info *TidbClusterConfig) {
+	if err := oa.CheckUpgradeComplete(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
