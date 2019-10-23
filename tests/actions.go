@@ -1143,65 +1143,47 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 		return err
 	}
 
-	for {
-		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-		if err != nil {
-			glog.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
-			continue
-		}
-		pdClient := pdapi.NewDefaultPDControl().GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSCluster)
+	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 
-		replicas := tc.TiKVRealReplicas()
-		for i := replicas - 1; i >= 0; i-- {
-			if err := wait.PollImmediate(1*time.Second, 10*time.Minute, func() (done bool, err error) {
-				podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
-				scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
-				schedulers, err := pdClient.GetEvictLeaderSchedulers()
-				if err != nil {
-					glog.Errorf("failed to get evict leader schedulers, %v", err)
-					return false, nil
-				}
-				glog.V(4).Infof("index:%d,schedulers:%v,error:%v", i, schedulers, err)
-				if len(schedulers) > 1 {
-					glog.Errorf("there are too many evict leader schedulers: %v", schedulers)
-					for _, s := range schedulers {
-						if s == scheduler {
-							glog.Infof("found scheudler: %s", scheduler)
-							return true, nil
-						}
-					}
-					return false, nil
-				}
-				if len(schedulers) == 0 {
-					return false, nil
-				}
-				if schedulers[0] == scheduler {
-					glog.Infof("index: %d,the schedulers: %s = %s", i, schedulers[0], scheduler)
-					return true, nil
-				}
-				glog.Errorf("index: %d,the scheduler: %s != %s", i, schedulers[0], scheduler)
-				return false, nil
-			}); err != nil {
-				glog.Errorf("failed to check upgrade %s/%s, %v", ns, tcName, err)
-				return err
-			}
-		}
-		if err := wait.PollImmediate(1*time.Second, 6*time.Minute, func() (done bool, err error) {
+	}
+	pdClient := pdapi.NewDefaultPDControl().GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSCluster)
+
+	replicas := tc.TiKVRealReplicas()
+	for i := replicas - 1; i >= 0; i-- {
+		if err := wait.PollImmediate(1*time.Second, 10*time.Minute, func() (done bool, err error) {
+			podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
+			scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
 			schedulers, err := pdClient.GetEvictLeaderSchedulers()
 			if err != nil {
 				glog.Errorf("failed to get evict leader schedulers, %v", err)
 				return false, nil
 			}
+			glog.V(4).Infof("index:%d,schedulers:%v,error:%v", i, schedulers, err)
+			if len(schedulers) > 1 {
+				glog.Errorf("there are too many evict leader schedulers: %v", schedulers)
+				for _, s := range schedulers {
+					if s == scheduler {
+						glog.Infof("found scheudler: %s", scheduler)
+						return true, nil
+					}
+				}
+				return false, nil
+			}
 			if len(schedulers) == 0 {
+				return false, nil
+			}
+			if schedulers[0] == scheduler {
+				glog.Infof("index: %d,the schedulers: %s = %s", i, schedulers[0], scheduler)
 				return true, nil
 			}
-			glog.Errorf("schedulers: %v is not empty", schedulers)
+			glog.Errorf("index: %d,the scheduler: %s != %s", i, schedulers[0], scheduler)
 			return false, nil
 		}); err != nil {
-			glog.Errorf("failed to wait all schedulers deleted %s/%s, %v", ns, tcName, err)
+			glog.Errorf("failed to check upgrade %s/%s, %v", ns, tcName, err)
 			return err
 		}
-		break
 	}
 
 	if err := oa.checkManualPauseComponent(info, label.TiKVLabelVal); err != nil {
@@ -1216,7 +1198,22 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 		return err
 	}
 	// remove the protect partition annotation for tidb
-	return oa.setPartitionAnnotation(ns, info.ClusterName, label.TiDBLabelVal, 0)
+	if err := oa.setPartitionAnnotation(ns, info.ClusterName, label.TiDBLabelVal, 0); err != nil {
+		return err
+	}
+
+	return wait.PollImmediate(1*time.Second, 6*time.Minute, func() (done bool, err error) {
+		schedulers, err := pdClient.GetEvictLeaderSchedulers()
+		if err != nil {
+			glog.Errorf("failed to get evict leader schedulers, %v", err)
+			return false, nil
+		}
+		if len(schedulers) == 0 {
+			return true, nil
+		}
+		glog.Errorf("schedulers: %v is not empty", schedulers)
+		return false, nil
+	})
 }
 
 func (oa *operatorActions) CheckUpgradeOrDie(ctx context.Context, info *TidbClusterConfig) {
@@ -3019,7 +3016,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 					}
 				}
 				if tikvStore == nil || tikvStore.State != v1alpha1.TiKVStateUp {
-					glog.Infof("wait for tikv pod [%s/%s] ready store state %t", ns, podName, tikvStore.State)
+					glog.Infof("wait for tikv pod [%s/%s] ready store state %s", ns, podName, tikvStore.State)
 				} else {
 					return true, nil
 				}
