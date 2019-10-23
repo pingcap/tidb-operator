@@ -1093,7 +1093,7 @@ func (oa *operatorActions) setPartitionAnnotation(namespace, tcName, component s
 	glog.Infof("%s", cmd)
 	_, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
-		return err
+		return fmt.Errorf("fail to set annotation for [%s/%s], component: %s, partition: %d", namespace, tcName, component, ordinal)
 	}
 	return nil
 }
@@ -1131,6 +1131,16 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 		}
 
 		return ""
+	}
+
+	// set partition annotation to protect tikv pod
+	if err := oa.setPartitionAnnotation(ns, info.ClusterName, label.TiKVLabelVal, 1); err != nil {
+		return err
+	}
+
+	// set partition annotation to protect tidb pod
+	if err := oa.setPartitionAnnotation(ns, info.ClusterName, label.TiDBLabelVal, 1); err != nil {
+		return err
 	}
 
 	for {
@@ -1194,11 +1204,19 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 		break
 	}
 
-	err := oa.checkManualPauseComponent(info, label.TiKVLabelVal)
-	if err != nil {
+	if err := oa.checkManualPauseComponent(info, label.TiKVLabelVal); err != nil {
 		return err
 	}
-	return oa.checkManualPauseComponent(info, label.TiDBLabelVal)
+	// remove the protect partition annotation for tikv
+	if err := oa.setPartitionAnnotation(ns, info.ClusterName, label.TiKVLabelVal, 0); err != nil {
+		return err
+	}
+
+	if err := oa.checkManualPauseComponent(info, label.TiDBLabelVal); err != nil {
+		return err
+	}
+	// remove the protect partition annotation for tidb
+	return oa.setPartitionAnnotation(ns, info.ClusterName, label.TiDBLabelVal, 0)
 }
 
 func (oa *operatorActions) CheckUpgradeOrDie(ctx context.Context, info *TidbClusterConfig) {
@@ -2953,11 +2971,6 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 	var err error
 	ns := info.Namespace
 
-	// set partition annotation to protect tidb pod
-	if err = oa.setPartitionAnnotation(ns, info.ClusterName, component, 1); err != nil {
-		return fmt.Errorf("failed to setPartitionAnnotation: [%s/%s], %v", ns, info.ClusterName, err)
-	}
-
 	fn := func() (bool, error) {
 
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(info.ClusterName, metav1.GetOptions{}); err != nil {
@@ -3022,7 +3035,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 
 	// wait for the tidb statefulset is upgrade to the protect one
 	if err = wait.Poll(DefaultPollInterval, 30*time.Minute, fn); err != nil {
-		return fmt.Errorf("fail to upgrade to annotation TiDB pod : %v", err)
+		return fmt.Errorf("fail to upgrade to annotation %s pod, err: %v", component, err)
 	}
 
 	time.Sleep(30 * time.Second)
@@ -3034,10 +3047,6 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 	if *set.Spec.UpdateStrategy.RollingUpdate.Partition < 1 {
 		return fmt.Errorf("pause partition is not correct in upgrade phase [%s/%s] partition %d annotation %d",
 			ns, setName, *set.Spec.UpdateStrategy.RollingUpdate.Partition, 1)
-	}
-
-	if err = oa.setPartitionAnnotation(ns, tc.Name, component, 0); err != nil {
-		return fmt.Errorf("fail to set annotation for [%s/%s]", ns, setName)
 	}
 
 	return nil
