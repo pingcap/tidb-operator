@@ -136,6 +136,7 @@ module "tidb-cluster" {
   kubeconfig_filename        = var.kubeconfig_path
   base_values                = file("${path.module}/values/default.yaml")
   wait_on_resource           = [google_container_node_pool.tidb_pool]
+  service_ingress_key        = "ip"
 }
 
 resource "null_resource" "wait-lb-ip" {
