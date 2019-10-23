@@ -1152,7 +1152,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 
 	replicas := tc.TiKVRealReplicas()
 	for i := replicas - 1; i >= 0; i-- {
-		if err := wait.PollImmediate(1*time.Second, 10*time.Minute, func() (done bool, err error) {
+		err := wait.PollImmediate(1*time.Second, 10*time.Minute, func() (done bool, err error) {
 			podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
 			scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
 			schedulers, err := pdClient.GetEvictLeaderSchedulers()
@@ -1180,7 +1180,8 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 			}
 			glog.Errorf("index: %d,the scheduler: %s != %s", i, schedulers[0], scheduler)
 			return false, nil
-		}); err != nil {
+		})
+		if err != nil {
 			glog.Errorf("failed to check upgrade %s/%s, %v", ns, tcName, err)
 			return err
 		}
