@@ -56,6 +56,10 @@ func NewBackupScheduleManager(
 func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 	defer bm.backupGC(bs)
 
+	if bs.Spec.Pause {
+		return controller.IgnoreErrorf("backupSchedule %s/%s has been paused", bs.GetNamespace(), bs.GetName())
+	}
+
 	if err := bm.canPerformNextBackup(bs); err != nil {
 		return err
 	}
@@ -253,6 +257,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 		return
 	}
 
+	var deleteCount int
 	for _, backup := range backupsList {
 		if backup.CreationTimestamp.Add(reservedTime).After(time.Now()) {
 			continue
@@ -262,8 +267,16 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 			glog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
 			return
 		}
+		deleteCount += 1
 		glog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
 	}
+
+	if deleteCount == len(backupsList) {
+		// All backups have been deleted, so the backup related information in the backupSchedule should be reset
+		bs.Status.LastBackupTime = nil
+		bs.Status.LastBackup = ""
+	}
+
 }
 
 func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedule) {
@@ -276,6 +289,7 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedul
 		return
 	}
 
+	var deleteCount int
 	for i, backup := range backupsList {
 		if i < int(*bs.Spec.MaxBackups) {
 			continue
@@ -285,7 +299,14 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedul
 			glog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
 			return
 		}
+		deleteCount += 1
 		glog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
+	}
+
+	if deleteCount == len(backupsList) {
+		// All backups have been deleted, so the backup related information in the backupSchedule should be reset
+		bs.Status.LastBackupTime = nil
+		bs.Status.LastBackup = ""
 	}
 }
 
