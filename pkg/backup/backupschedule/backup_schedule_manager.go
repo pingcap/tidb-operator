@@ -272,7 +272,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 	}
 
 	if deleteCount == len(backupsList) {
-		// All backups have been deleted, so the backup related information in the backupSchedule should be reset
+		// All backups have been deleted, so the last backup information in the backupSchedule should be reset
 		bs.Status.LastBackupTime = nil
 		bs.Status.LastBackup = ""
 	}
@@ -304,7 +304,7 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedul
 	}
 
 	if deleteCount == len(backupsList) {
-		// All backups have been deleted, so the backup related information in the backupSchedule should be reset
+		// All backups have been deleted, so the last backup information in the backupSchedule should be reset
 		bs.Status.LastBackupTime = nil
 		bs.Status.LastBackup = ""
 	}
