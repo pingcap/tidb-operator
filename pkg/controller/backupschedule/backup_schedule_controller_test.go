@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/kubernetes/staging/src/k8s.io/client-go/util/workqueue"
+	"k8s.io/client-go/util/workqueue"
 )
 
 func TestBackupScheduleControllerEnqueueBackupSchedule(t *testing.T) {
