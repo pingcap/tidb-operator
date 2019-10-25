@@ -351,7 +351,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 	})
 
 	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
-	if tc.Spec.PD.HostNetwork {
+	if tc.Spec.TiDB.HostNetwork {
 		dnsPolicy = corev1.DNSClusterFirstWithHostNet
 	}
 
