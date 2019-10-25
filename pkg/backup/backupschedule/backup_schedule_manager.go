@@ -180,7 +180,7 @@ func getLastScheduledTime(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
 			if bs.Status.LastBackupTime == nil && bs.Status.AllBackupCleanTime != nil {
 				// Recovery backup schedule from pause status, should refresh AllBackupCleanTime to avoid unschedulable problem
 				bs.Status.AllBackupCleanTime = &metav1.Time{Time: time.Now()}
-				return nil, controller.RequeueErrorf("recovery backup schedule %s/%s from pause status, refresh AllBackupCleanTime.", bs, bsName)
+				return nil, controller.RequeueErrorf("recovery backup schedule %s/%s from pause status, refresh AllBackupCleanTime.", ns, bsName)
 			}
 			glog.Errorf("Too many missed start backup schedule time (> 100). Check the clock.")
 			return nil, nil
