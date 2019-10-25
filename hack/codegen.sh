@@ -17,10 +17,16 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-scriptdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPT_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
-${scriptdir}/generate-groups.sh \
-  deepcopy,client,lister,informer \
-  github.com/pingcap/tidb-operator/pkg/client \
-  github.com/pingcap/tidb-operator/pkg/apis \
-  "pingcap:v1alpha1"
+export GO111MODULE=on
+
+go mod vendor
+
+CODEGEN_PKG=${CODEGEN_PKG:-$(cd "${SCRIPT_ROOT}"; ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
+
+bash "${CODEGEN_PKG}"/generate-groups.sh "deepcopy,client,informer,lister" \
+    github.com/pingcap/tidb-operator/pkg/client \
+    github.com/pingcap/tidb-operator/pkg/apis \
+    pingcap:v1alpha1 \
+    --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate.go.txt

@@ -528,10 +528,10 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "node-1",
 					Labels: map[string]string{
-						"region":           "region",
-						"zone":             "zone",
-						"rack":             "rack",
-						apis.LabelHostname: "host",
+						"region":             "region",
+						"zone":               "zone",
+						"rack":               "rack",
+						corev1.LabelHostname: "host",
 					},
 				},
 			}

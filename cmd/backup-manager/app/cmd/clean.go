@@ -26,7 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/cache"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 // NewCleanCommand implements the clean command

@@ -20,7 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	kubeprinters "k8s.io/kubernetes/pkg/printers"
 )
 

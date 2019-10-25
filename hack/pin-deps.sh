@@ -3,7 +3,7 @@
 # Pin all k8s.io dependencies to a specified version.
 #
 
-VERSION=1.12.5
+VERSION=1.16.0
 
 # Explicitly opt into go modules, even though we're inside a GOPATH directory
 export GO111MODULE=on

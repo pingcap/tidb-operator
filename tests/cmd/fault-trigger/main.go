@@ -24,7 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/api"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apiserver/pkg/util/logs"
+	"k8s.io/component-base/logs"
 )
 
 var (

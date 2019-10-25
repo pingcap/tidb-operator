@@ -30,9 +30,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubernetes/pkg/apis/apps"
 	api "k8s.io/kubernetes/pkg/apis/core"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	printersinternal "k8s.io/kubernetes/pkg/printers/internalversion"
 )
 

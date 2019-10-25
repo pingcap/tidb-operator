@@ -38,7 +38,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/openstack"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
+	"k8s.io/kubectl/pkg/util/templates"
 )
 
 const (

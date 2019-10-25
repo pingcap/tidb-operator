@@ -33,9 +33,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/client-go/listers/apps/v1"
+	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/kubernetes/pkg/kubelet/apis"
 )
 
 // tikvMemberManager implements manager.Manager.
@@ -618,7 +617,7 @@ func (tkmm *tikvMemberManager) getNodeLabels(nodeName string, storeLabels []stri
 
 		// TODO after pd supports storeLabel containing slash character, these codes should be deleted
 		if storeLabel == "host" {
-			if host, found := ls[apis.LabelHostname]; found {
+			if host, found := ls[corev1.LabelHostname]; found {
 				labels[storeLabel] = host
 			}
 		}

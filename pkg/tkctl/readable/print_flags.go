@@ -18,8 +18,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/cli-runtime/pkg/genericclioptions/printers"
-	"k8s.io/kubernetes/pkg/kubectl/scheme"
+	"k8s.io/cli-runtime/pkg/printers"
 	kubeprinters "k8s.io/kubernetes/pkg/printers"
 )
 
@@ -50,12 +49,11 @@ func (p *PrintFlags) ToPrinter(withKind, withNamespace bool) (printers.ResourceP
 		return printer, nil
 	}
 	// Reuse kubectl HumanReadablePrinter
-	printer := kubeprinters.NewHumanReadablePrinter(scheme.Codecs.UniversalDecoder(),
-		kubeprinters.PrintOptions{
-			WithNamespace: withNamespace,
-			Wide:          p.OutputFormat == "wide",
-			WithKind:      withKind,
-		})
+	printer := kubeprinters.NewTablePrinter(kubeprinters.PrintOptions{
+		WithNamespace: withNamespace,
+		Wide:          p.OutputFormat == "wide",
+		WithKind:      withKind,
+	})
 	// Add custom handlers
 	AddHandlers(printer)
 	return printer, nil
