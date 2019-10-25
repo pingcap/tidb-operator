@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/backupschedule"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -136,16 +137,15 @@ func (bsc *Controller) processNextWorkItem() bool {
 	}
 	defer bsc.queue.Done(key)
 	if err := bsc.sync(key.(string)); err != nil {
-		switch err.(type) {
-		case *controller.RequeueError:
+		if perrors.Find(err, controller.IsRequeueError) != nil {
 			glog.Infof("BackupSchedule: %v, still need sync: %v, requeuing", key.(string), err)
-		case *controller.IgnoreError:
+			bsc.queue.AddRateLimited(key)
+		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
 			glog.V(4).Infof("BackupSchedule: %v, ignore err: %v, waiting for the next sync", key.(string), err)
-			break
-		default:
+		} else {
 			utilruntime.HandleError(fmt.Errorf("BackupSchedule: %v, sync failed, err: %v, requeuing", key.(string), err))
+			bsc.queue.AddRateLimited(key)
 		}
-		bsc.queue.AddRateLimited(key)
 	} else {
 		bsc.queue.Forget(key)
 	}
