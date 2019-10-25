@@ -470,6 +470,8 @@ type BackupScheduleStatus struct {
 	LastBackup string `json:"lastBackup"`
 	// LastBackupTime represents the last time the backup was successfully created.
 	LastBackupTime *metav1.Time `json:"lastBackupTime"`
+	// AllBackupCleanTime represents the time when all backup entries are cleaned up
+	AllBackupCleanTime *metav1.Time `json:"allBackupCleanTime"`
 }
 
 // +genclient
