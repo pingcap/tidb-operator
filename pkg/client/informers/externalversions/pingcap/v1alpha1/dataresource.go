@@ -21,10 +21,10 @@ package v1alpha1
 import (
 	time "time"
 
-	pingcapcomv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	pingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	versioned "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
+	v1alpha1 "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -70,7 +70,7 @@ func NewFilteredDataResourceInformer(client versioned.Interface, namespace strin
 				return client.PingcapV1alpha1().DataResources(namespace).Watch(options)
 			},
 		},
-		&pingcapcomv1alpha1.DataResource{},
+		&pingcapv1alpha1.DataResource{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,7 +81,7 @@ func (f *dataResourceInformer) defaultInformer(client versioned.Interface, resyn
 }
 
 func (f *dataResourceInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&pingcapcomv1alpha1.DataResource{}, f.defaultInformer)
+	return f.factory.InformerFor(&pingcapv1alpha1.DataResource{}, f.defaultInformer)
 }
 
 func (f *dataResourceInformer) Lister() v1alpha1.DataResourceLister {
