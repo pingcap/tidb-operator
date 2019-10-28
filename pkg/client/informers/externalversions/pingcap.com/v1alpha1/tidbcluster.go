@@ -21,10 +21,10 @@ package v1alpha1
 import (
 	time "time"
 
-	pingcapcomv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	pingcapcomv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	versioned "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
+	v1alpha1 "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
