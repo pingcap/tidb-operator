@@ -21,69 +21,69 @@ package v1alpha1
 import (
 	time "time"
 
-	pingcapcomv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	pingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	versioned "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
+	v1alpha1 "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// BackupInformer provides access to a shared informer and lister for
-// Backups.
-type BackupInformer interface {
+// BackupScheduleInformer provides access to a shared informer and lister for
+// BackupSchedules.
+type BackupScheduleInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.BackupLister
+	Lister() v1alpha1.BackupScheduleLister
 }
 
-type backupInformer struct {
+type backupScheduleInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewBackupInformer constructs a new informer for Backup type.
+// NewBackupScheduleInformer constructs a new informer for BackupSchedule type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewBackupInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredBackupInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewBackupScheduleInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredBackupScheduleInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredBackupInformer constructs a new informer for Backup type.
+// NewFilteredBackupScheduleInformer constructs a new informer for BackupSchedule type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredBackupInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredBackupScheduleInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PingcapV1alpha1().Backups(namespace).List(options)
+				return client.PingcapV1alpha1().BackupSchedules(namespace).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PingcapV1alpha1().Backups(namespace).Watch(options)
+				return client.PingcapV1alpha1().BackupSchedules(namespace).Watch(options)
 			},
 		},
-		&pingcapcomv1alpha1.Backup{},
+		&pingcapv1alpha1.BackupSchedule{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *backupInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredBackupInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *backupScheduleInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredBackupScheduleInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *backupInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&pingcapcomv1alpha1.Backup{}, f.defaultInformer)
+func (f *backupScheduleInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&pingcapv1alpha1.BackupSchedule{}, f.defaultInformer)
 }
 
-func (f *backupInformer) Lister() v1alpha1.BackupLister {
-	return v1alpha1.NewBackupLister(f.Informer().GetIndexer())
+func (f *backupScheduleInformer) Lister() v1alpha1.BackupScheduleLister {
+	return v1alpha1.NewBackupScheduleLister(f.Informer().GetIndexer())
 }
