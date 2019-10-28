@@ -190,8 +190,6 @@ type OperatorActions interface {
 	LabelNodesOrDie()
 	CheckDisasterTolerance(info *TidbClusterConfig) error
 	CheckDisasterToleranceOrDie(info *TidbClusterConfig)
-	CheckDataRegionDisasterTolerance(info *TidbClusterConfig) error
-	CheckDataRegionDisasterToleranceOrDie(info *TidbClusterConfig)
 	GetTidbMemberAssignedNodes(info *TidbClusterConfig) (map[string]string, error)
 	GetTidbMemberAssignedNodesOrDie(info *TidbClusterConfig) map[string]string
 	CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error
