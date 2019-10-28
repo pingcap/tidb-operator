@@ -20,7 +20,7 @@ package pingcap
 
 import (
 	internalinterfaces "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
+	v1alpha1 "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 )
 
 // Interface provides access to each of this group's versions.

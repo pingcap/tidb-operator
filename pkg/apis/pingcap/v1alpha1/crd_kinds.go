@@ -37,7 +37,7 @@ const (
 	BackupScheduleKind    = "BackupSchedule"
 	BackupScheduleKindKey = "backupschedule"
 
-	SpecPath = "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1."
+	SpecPath = "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1."
 )
 
 type CrdKind struct {
