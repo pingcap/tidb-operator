@@ -14,7 +14,7 @@
 package member
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	apps "k8s.io/api/apps/v1"
 )
 
