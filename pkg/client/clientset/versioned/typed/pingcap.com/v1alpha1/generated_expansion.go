@@ -22,6 +22,8 @@ type BackupExpansion interface{}
 
 type BackupScheduleExpansion interface{}
 
+type DataResourceExpansion interface{}
+
 type RestoreExpansion interface{}
 
 type TidbClusterExpansion interface{}
