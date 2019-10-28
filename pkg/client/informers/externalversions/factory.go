@@ -25,7 +25,7 @@ import (
 
 	versioned "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/internalinterfaces"
-	pingcapcom "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com"
+	pingcap "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -172,9 +172,9 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
-	Pingcap() pingcapcom.Interface
+	Pingcap() pingcap.Interface
 }
 
-func (f *sharedInformerFactory) Pingcap() pingcapcom.Interface {
-	return pingcapcom.New(f, f.namespace, f.tweakListOptions)
+func (f *sharedInformerFactory) Pingcap() pingcap.Interface {
+	return pingcap.New(f, f.namespace, f.tweakListOptions)
 }

@@ -38,7 +38,7 @@ import (
 	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
