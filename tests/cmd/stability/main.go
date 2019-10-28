@@ -166,14 +166,11 @@ func run() {
 		// upgrade
 		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
 		ctx, cancel := context.WithCancel(context.Background())
-		for idx, cluster := range clusters {
+		for _, cluster := range clusters {
 			assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(cluster)
 			cluster.UpgradeAll(upgradeVersion)
 			oa.UpgradeTidbClusterOrDie(cluster)
 			oa.CheckUpgradeOrDie(ctx, cluster)
-			if idx == 0 {
-				oa.CheckManualPauseTiDBOrDie(cluster)
-			}
 			oa.CheckTidbClusterStatusOrDie(cluster)
 			oa.CheckTidbMemberAssignedNodesOrDie(cluster, assignedNodes)
 		}
@@ -208,7 +205,7 @@ func run() {
 		oa.CleanWebHookAndServiceOrDie(ocfg)
 
 		for _, cluster := range clusters {
-			oa.CheckDataRegionDisasterToleranceOrDie(cluster)
+			oa.CheckDisasterToleranceOrDie(cluster)
 		}
 
 		// backup and restore

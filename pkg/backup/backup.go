@@ -13,7 +13,7 @@
 
 package backup
 
-import "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+import "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 
 // BackupManager implements the logic for manage backup.
 type BackupManager interface {
