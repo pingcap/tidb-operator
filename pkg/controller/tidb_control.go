@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/httputil"
 	"github.com/pingcap/tidb/config"
 )
