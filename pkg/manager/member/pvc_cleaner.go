@@ -78,8 +78,8 @@ func (rpc *realPVCCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string, e
 		return skipReason, err
 	}
 
-	if tc.Spec.DeferPVCDelete {
-		// defer PVC delete policy is enabled, can't reclaim PV, so return directly.
+	if !tc.Spec.EnablePVReclaim {
+		// disable PV reclaim, return directly.
 		return nil, nil
 	}
 

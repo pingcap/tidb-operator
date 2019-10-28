@@ -27,8 +27,9 @@ timezone: UTC
 # https://pingcap.com/docs/v3.0/tidb-in-kubernetes/reference/configuration/local-pv/#data-security
 pvReclaimPolicy: Retain
 
-# defer delete policy of PVC, default: true
-deferPVCDelete: true
+# Whether enable PV reclaim.
+# When enabling, scale in pd or tikv will trigger PV reclaim automatically
+enablePVReclaim: false
 
 # services is the service list to expose, default is ClusterIP
 # can be ClusterIP | NodePort | LoadBalancer

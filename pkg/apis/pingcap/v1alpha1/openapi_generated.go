@@ -1077,7 +1077,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							Format: "",
 						},
 					},
-					"deferPVCDelete": {
+					"enablePVReclaim": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"boolean"},
 							Format: "",
