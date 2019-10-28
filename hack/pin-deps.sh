@@ -36,7 +36,7 @@ done
 
 go mod edit ${edit_args[@]}
 # workaround for https://github.com/golang/go/issues/33008
-# go mod tidy does not always remove unncessary liens from go.sum. For now we
+# go mod tidy does not always remove unncessary lines from go.sum. For now we
 # can remove it first and populate again.
 rm go.sum
 go mod tidy
