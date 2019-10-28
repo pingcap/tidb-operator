@@ -22,7 +22,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/pd/pkg/typeutil"
-	"github.com/pingcap/pd/server"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -75,8 +74,8 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 
 		tkmm, fakeSetControl, fakeSvcControl, pdClient, _, _ := newFakeTiKVMemberManager(tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
-			return &server.Config{
-				Replication: server.ReplicationConfig{
+			return &pdapi.Config{
+				Replication: pdapi.ReplicationConfig{
 					LocationLabels: typeutil.StringSlice{"region", "zone", "rack", "host"},
 				},
 			}, nil
@@ -230,8 +229,8 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 
 		tkmm, fakeSetControl, fakeSvcControl, pdClient, _, _ := newFakeTiKVMemberManager(tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
-			return &server.Config{
-				Replication: server.ReplicationConfig{
+			return &pdapi.Config{
+				Replication: pdapi.ReplicationConfig{
 					LocationLabels: typeutil.StringSlice{"region", "zone", "rack", "host"},
 				},
 			}, nil
@@ -506,8 +505,8 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		tc := newTidbClusterForPD()
 		pmm, _, _, pdClient, podIndexer, nodeIndexer := newFakeTiKVMemberManager(tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
-			return &server.Config{
-				Replication: server.ReplicationConfig{
+			return &pdapi.Config{
+				Replication: pdapi.ReplicationConfig{
 					LocationLabels: typeutil.StringSlice{"region", "zone", "rack", "host"},
 				},
 			}, nil

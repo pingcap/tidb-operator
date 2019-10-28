@@ -337,7 +337,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 	}
 
 	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
-	if tc.Spec.PD.HostNetwork {
+	if tc.Spec.TiKV.HostNetwork {
 		dnsPolicy = corev1.DNSClusterFirstWithHostNet
 	}
 
