@@ -212,7 +212,7 @@ func (rpc *realPVCCleaner) cleanScheduleLock(tc *v1alpha1.TidbCluster) (map[stri
 
 		podName, exist := pvc.Annotations[label.AnnPodNameKey]
 		if !exist {
-			// PVC has not pod name annotation, this is an unexpected PVC, skip it
+			// PVC has no pod name annotation, this is an unexpected PVC, skip it
 			skipReason[pvcName] = skipReasonPVCCleanerPVCNotHasPodNameAnn
 			continue
 		}
