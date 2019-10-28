@@ -208,7 +208,7 @@ func run() {
 		oa.CleanWebHookAndServiceOrDie(ocfg)
 
 		for _, cluster := range clusters {
-			oa.CheckDataRegionDisasterToleranceOrDie(cluster)
+			oa.CheckDisasterToleranceOrDie(cluster)
 		}
 
 		// backup and restore
