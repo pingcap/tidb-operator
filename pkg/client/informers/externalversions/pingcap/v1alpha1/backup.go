@@ -21,69 +21,69 @@ package v1alpha1
 import (
 	time "time"
 
-	pingcapcomv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	pingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	versioned "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
+	v1alpha1 "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// TidbClusterInformer provides access to a shared informer and lister for
-// TidbClusters.
-type TidbClusterInformer interface {
+// BackupInformer provides access to a shared informer and lister for
+// Backups.
+type BackupInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.TidbClusterLister
+	Lister() v1alpha1.BackupLister
 }
 
-type tidbClusterInformer struct {
+type backupInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewTidbClusterInformer constructs a new informer for TidbCluster type.
+// NewBackupInformer constructs a new informer for Backup type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewTidbClusterInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredTidbClusterInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewBackupInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredBackupInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredTidbClusterInformer constructs a new informer for TidbCluster type.
+// NewFilteredBackupInformer constructs a new informer for Backup type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredTidbClusterInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredBackupInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PingcapV1alpha1().TidbClusters(namespace).List(options)
+				return client.PingcapV1alpha1().Backups(namespace).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PingcapV1alpha1().TidbClusters(namespace).Watch(options)
+				return client.PingcapV1alpha1().Backups(namespace).Watch(options)
 			},
 		},
-		&pingcapcomv1alpha1.TidbCluster{},
+		&pingcapv1alpha1.Backup{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *tidbClusterInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredTidbClusterInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *backupInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredBackupInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *tidbClusterInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&pingcapcomv1alpha1.TidbCluster{}, f.defaultInformer)
+func (f *backupInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&pingcapv1alpha1.Backup{}, f.defaultInformer)
 }
 
-func (f *tidbClusterInformer) Lister() v1alpha1.TidbClusterLister {
-	return v1alpha1.NewTidbClusterLister(f.Informer().GetIndexer())
+func (f *backupInformer) Lister() v1alpha1.BackupLister {
+	return v1alpha1.NewBackupLister(f.Informer().GetIndexer())
 }
