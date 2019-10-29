@@ -51,7 +51,6 @@ require (
 	github.com/pingcap/tidb v2.1.0-beta+incompatible
 	github.com/prometheus/client_golang v0.9.2
 	github.com/robfig/cron v1.1.0
-	github.com/russross/blackfriday v1.5.2+incompatible // indirect
 	github.com/sirupsen/logrus v1.4.2
 	github.com/soheilhy/cmux v0.1.4 // indirect
 	github.com/spf13/cobra v0.0.5

@@ -18,7 +18,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/cli-runtime/pkg/printers"
 	kubeprinters "k8s.io/kubernetes/pkg/printers"
 )
 
@@ -39,7 +38,7 @@ func (p *PrintFlags) AddFlags(cmd *cobra.Command) {
 	p.JSONYamlPrintFlags.AddFlags(cmd)
 }
 
-func (p *PrintFlags) ToPrinter(withKind, withNamespace bool) (printers.ResourcePrinter, error) {
+func (p *PrintFlags) ToPrinter(withKind, withNamespace bool) (kubeprinters.ResourcePrinter, error) {
 	output := strings.ToLower(p.OutputFormat)
 	if output == "json" || output == "yaml" {
 		printer, err := p.JSONYamlPrintFlags.ToPrinter(output)
@@ -48,13 +47,14 @@ func (p *PrintFlags) ToPrinter(withKind, withNamespace bool) (printers.ResourceP
 		}
 		return printer, nil
 	}
-	// Reuse kubectl HumanReadablePrinter
 	printer := kubeprinters.NewTablePrinter(kubeprinters.PrintOptions{
 		WithNamespace: withNamespace,
 		Wide:          p.OutputFormat == "wide",
 		WithKind:      withKind,
 	})
-	// Add custom handlers
-	AddHandlers(printer)
-	return printer, nil
+	tableGenerator := kubeprinters.NewTableGenerator().With(AddHandlers)
+	options := kubeprinters.GenerateOptions{
+		Wide: p.OutputFormat == "wide",
+	}
+	return NewLocalPrinter(printer, tableGenerator, options), nil
 }

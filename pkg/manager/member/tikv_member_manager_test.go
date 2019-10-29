@@ -38,7 +38,6 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/kubernetes/pkg/kubelet/apis"
 )
 
 func TestTiKVMemberManagerSyncCreate(t *testing.T) {

@@ -15,6 +15,7 @@ package readable
 
 import (
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -28,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/duration"
 	"k8s.io/kubernetes/pkg/printers"
+	kubeprinters "k8s.io/kubernetes/pkg/printers"
 	"k8s.io/kubernetes/pkg/util/node"
 )
 
@@ -108,7 +110,7 @@ func AddHandlers(h printers.PrintHandler) {
 	h.TableHandler(volumeColumns, printVolumeList)
 }
 
-func printTidbClusterList(tcs *v1alpha1.TidbClusterList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+func printTidbClusterList(tcs *v1alpha1.TidbClusterList, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
 	rows := make([]metav1beta1.TableRow, 0, len(tcs.Items))
 	for i := range tcs.Items {
 		r, err := printTidbCluster(&tcs.Items[i], options)
@@ -120,7 +122,7 @@ func printTidbClusterList(tcs *v1alpha1.TidbClusterList, options printers.PrintO
 	return rows, nil
 }
 
-func printTidbCluster(tc *v1alpha1.TidbCluster, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+func printTidbCluster(tc *v1alpha1.TidbCluster, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
 	row := metav1beta1.TableRow{
 		Object: runtime.RawExtension{Object: tc},
 	}
@@ -143,7 +145,7 @@ func printTidbCluster(tc *v1alpha1.TidbCluster, options printers.PrintOptions) (
 	return []metav1beta1.TableRow{row}, nil
 }
 
-func printPodList(podList *v1.PodList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+func printPodList(podList *v1.PodList, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
 	rows := make([]metav1beta1.TableRow, 0, len(podList.Items))
 	for i := range podList.Items {
 		r, err := printPod(&podList.Items[i], options)
@@ -155,7 +157,7 @@ func printPodList(podList *v1.PodList, options printers.PrintOptions) ([]metav1b
 	return rows, nil
 }
 
-func printPod(pod *v1.Pod, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+func printPod(pod *v1.Pod, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
 	columns := basicPodColumns(pod)
 	row := metav1beta1.TableRow{
 		Object: runtime.RawExtension{Object: pod},
@@ -176,7 +178,7 @@ func printPod(pod *v1.Pod, options printers.PrintOptions) ([]metav1beta1.TableRo
 }
 
 // add more columns for tikv info
-func printTikvList(tikvList *alias.TikvList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+func printTikvList(tikvList *alias.TikvList, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
 	podList := tikvList.PodList
 	metaTableRows, err := printPodList(podList, options)
 	if err != nil {
@@ -208,7 +210,7 @@ func printTikvList(tikvList *alias.TikvList, options printers.PrintOptions) ([]m
 	return metaTableRows, nil
 }
 
-func printVolumeList(volumeList *v1.PersistentVolumeList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+func printVolumeList(volumeList *v1.PersistentVolumeList, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
 	rows := make([]metav1beta1.TableRow, 0, len(volumeList.Items))
 	for i := range volumeList.Items {
 		r, err := printVolume(&volumeList.Items[i], options)
@@ -220,7 +222,7 @@ func printVolumeList(volumeList *v1.PersistentVolumeList, options printers.Print
 	return rows, nil
 }
 
-func printVolume(volume *v1.PersistentVolume, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+func printVolume(volume *v1.PersistentVolume, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
 	row := metav1beta1.TableRow{
 		Object: runtime.RawExtension{Object: volume},
 	}
@@ -410,5 +412,29 @@ func extraTikvDataColumn(pod *v1.Pod) *tikvExtraInfoColumn {
 	storeId := pod.Labels[label.StoreIDLabelKey]
 	return &tikvExtraInfoColumn{
 		StoreId: storeId,
+	}
+}
+
+// localPrinter prints object with local handlers.
+type localPrinter struct {
+	printer        kubeprinters.ResourcePrinter
+	tableGenerator *kubeprinters.HumanReadableGenerator
+	options        kubeprinters.GenerateOptions
+}
+
+func (l *localPrinter) PrintObj(obj runtime.Object, w io.Writer) error {
+	table, err := l.tableGenerator.GenerateTable(obj, l.options)
+	if err != nil {
+		return err
+	}
+	return l.printer.PrintObj(table, w)
+}
+
+// NewLocalPrinter creates a new local printer.
+func NewLocalPrinter(printer kubeprinters.ResourcePrinter, tableGenerator *kubeprinters.HumanReadableGenerator, options kubeprinters.GenerateOptions) kubeprinters.ResourcePrinter {
+	return &localPrinter{
+		printer:        printer,
+		tableGenerator: tableGenerator,
+		options:        options,
 	}
 }
