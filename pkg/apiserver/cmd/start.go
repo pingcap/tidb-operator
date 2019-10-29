@@ -190,7 +190,7 @@ func (o ServerOptions) Config() (*apiserver.Config, error) {
 
 	loopbackKubeConfig, kubeInformerFactory, err := o.buildLoopback()
 	if err != nil {
-		klog.Warning("attempting to instantiate loopback client but failed, %v", err)
+		klog.Warningf("attempting to instantiate loopback client but failed, %v", err)
 	} else {
 		serverConfig.LoopbackClientConfig = loopbackKubeConfig
 		serverConfig.SharedInformerFactory = kubeInformerFactory
