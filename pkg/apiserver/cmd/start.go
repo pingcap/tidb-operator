@@ -150,7 +150,6 @@ func NewServerOptions(b []*builders.APIGroupBuilder) *ServerOptions {
 		RunDelegatedAuth:   true,
 		Codec:              codec,
 	}
-	o.RecommendedOptions.SecureServing.BindPort = 443
 
 	o.RecommendedOptions.Authorization.RemoteKubeConfigFileOptional = true
 	o.RecommendedOptions.Authentication.RemoteKubeConfigFileOptional = true
@@ -191,7 +190,7 @@ func (o ServerOptions) Config() (*apiserver.Config, error) {
 
 	loopbackKubeConfig, kubeInformerFactory, err := o.buildLoopback()
 	if err != nil {
-		klog.Warning("attempting to instantiate loopback client but failed...")
+		klog.Warning("attempting to instantiate loopback client but failed, %v", err)
 	} else {
 		serverConfig.LoopbackClientConfig = loopbackKubeConfig
 		serverConfig.SharedInformerFactory = kubeInformerFactory
