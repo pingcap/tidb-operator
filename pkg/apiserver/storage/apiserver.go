@@ -16,6 +16,8 @@ package storage
 import (
 	"fmt"
 
+	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/storage/storagebackend/factory"
@@ -55,7 +57,11 @@ func (f *ApiServerRestOptionsFactory) newApiServerStorageDecorator() generic.Sto
 		getAttrsFunc storage.AttrFunc,
 		trigger storage.TriggerPublisherFunc,
 	) (storage.Interface, factory.DestroyFunc) {
-		return NewApiServerStore(f.RestConfig, f.Codec, f.StorageNamespace, objectType, newListFunc)
+		cli, err := versioned.NewForConfig(f.RestConfig)
+		if err != nil {
+			glog.Fatalf("failed to create Clientset: %v", err)
+		}
+		return NewApiServerStore(cli, f.Codec, f.StorageNamespace, objectType, newListFunc)
 	}
 }
 
