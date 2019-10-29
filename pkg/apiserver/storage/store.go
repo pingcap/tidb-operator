@@ -167,34 +167,25 @@ func (s *store) WatchList(ctx context.Context, key string, resourceVersion strin
 	return outWatcher, nil
 }
 
-// FIXME: resourceVersion should be respected
 func (s *store) Get(ctx context.Context, key string, resourceVersion string, out runtime.Object, ignoreNotFound bool) error {
 	objKey := newObjectKey(key)
-	selector, err := objKey.selector()
+	ret, err := s.client.Get(objKey.fullName(), metav1.GetOptions{ResourceVersion: resourceVersion})
 	if err != nil {
-		return err
-	}
-	ret, err := s.lister.List(selector)
-	if err != nil {
-		return err
-	}
-	if len(ret) == 0 {
-		if ignoreNotFound {
-			return runtime.SetZeroValue(out)
+		if apierrors.IsNotFound(err) {
+			if ignoreNotFound {
+				return runtime.SetZeroValue(out)
+			}
+			return storage.NewKeyNotFoundError(key, 0)
 		}
-		return storage.NewKeyNotFoundError(key, 0)
+		return err
 	}
-	if len(ret) > 1 {
-		return storage.NewInternalError("more than 1 resources found")
-	}
-	rv, err := s.versioner.ParseResourceVersion(ret[0].ResourceVersion)
+	rv, err := s.versioner.ParseResourceVersion(ret.ResourceVersion)
 	if err != nil {
 		return err
 	}
-	return decode(s.codec, s.versioner, ret[0].Data, out, int64(rv))
+	return decode(s.codec, s.versioner, ret.Data, out, int64(rv))
 }
 
-// FIXME: resourceVersion should be respected
 func (s *store) GetToList(ctx context.Context, key string, resourceVersion string, p storage.SelectionPredicate, listObj runtime.Object) error {
 	listPtr, err := meta.GetItemsPtr(listObj)
 	if err != nil {
@@ -205,27 +196,25 @@ func (s *store) GetToList(ctx context.Context, key string, resourceVersion strin
 		panic("need ptr to slice")
 	}
 	objKey := newObjectKey(key)
-	selector, err := objKey.selector()
+	ret, err := s.client.List(metav1.ListOptions{
+		LabelSelector: objKey.labelSelectorStr(),
+	})
 	if err != nil {
 		return err
 	}
-	ret, err := s.lister.List(selector)
-	if err != nil {
-		return err
-	}
-	if len(ret) > 0 {
-		rv, err := s.versioner.ParseResourceVersion(ret[0].ResourceVersion)
+	if len(ret.Items) > 0 {
+		rv, err := s.versioner.ParseResourceVersion(ret.Items[0].ResourceVersion)
 		if err != nil {
 			return err
 		}
-		if err := appendListItem(v, ret[0].Data, rv, p, s.codec, s.versioner); err != nil {
+		if err := appendListItem(v, ret.Items[0].Data, rv, p, s.codec, s.versioner); err != nil {
 			return err
 		}
 	}
-	return s.versioner.UpdateList(listObj, 0, "")
+	return s.versioner.UpdateList(listObj, 0, ret.ResourceVersion)
 }
 
-// FIXME: resourceVersion should be respected
+// TODO: optimize read with resource version by cache
 func (s *store) List(ctx context.Context, key string, resourceVersion string, pred storage.SelectionPredicate, listObj runtime.Object) error {
 	listPtr, err := meta.GetItemsPtr(listObj)
 	if err != nil {
@@ -236,17 +225,13 @@ func (s *store) List(ctx context.Context, key string, resourceVersion string, pr
 		panic("need ptr to slice")
 	}
 	objKey := newObjectKey(key)
-	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
-		MatchLabels: objKey.labelMap(),
+	ret, err := s.client.List(metav1.ListOptions{
+		LabelSelector: objKey.labelSelectorStr(),
 	})
 	if err != nil {
 		return err
 	}
-	ret, err := s.lister.List(selector)
-	if err != nil {
-		return err
-	}
-	for _, v := range ret {
+	for _, v := range ret.Items {
 		rv, err := s.versioner.ParseResourceVersion(v.ResourceVersion)
 		if err != nil {
 			return err
@@ -256,7 +241,7 @@ func (s *store) List(ctx context.Context, key string, resourceVersion string, pr
 		}
 	}
 
-	return s.versioner.UpdateList(listObj, 0, "")
+	return s.versioner.UpdateList(listObj, 0, ret.ResourceVersion)
 }
 
 func (s *store) GuaranteedUpdate(ctx context.Context,

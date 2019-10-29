@@ -438,6 +438,7 @@ func TestList(t *testing.T) {
 				t.Errorf("Expected no error when preparing predata, got %v", err)
 			}
 		}
+
 		// clear prepare actions
 		fakeCli.ClearActions()
 		result := &example.PodList{}
@@ -953,12 +954,12 @@ func TestWatchList(t *testing.T) {
 	}
 }
 
-func testSetup(t *testing.T) (storage.Interface, *fake.Clientset, context.Context) {
+func testSetup(t *testing.T) (*store, *fake.Clientset, context.Context) {
 	ns := "default"
 	fakeCli := fake.NewSimpleClientset()
 	codec := codecs.LegacyCodec(examplev1.SchemeGroupVersion)
-	store, _ := NewApiServerStore(fakeCli, codec, ns, &example.Pod{}, func() runtime.Object { return &example.PodList{} })
-	return store, fakeCli, context.Background()
+	s, _ := NewApiServerStore(fakeCli, codec, ns, &example.Pod{}, func() runtime.Object { return &example.PodList{} })
+	return s.(*store), fakeCli, context.Background()
 }
 
 func keyFunc(pod *example.Pod) string {
