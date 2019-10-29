@@ -1,6 +1,6 @@
 locals {
-  tidb_hostname = lookup(data.external.tidb_hostname.result, var.service_ingress_key, "empty")
-  monitor_hostname = lookup(data.external.monitor_hostname.result, var.service_ingress_key, "emtpy")
+  tidb_hostname    = var.create ? lookup(data.external.tidb_hostname[0].result, var.service_ingress_key, "empty") : "not_created"
+  monitor_hostname = var.create ? lookup(data.external.monitor_hostname[0].result, var.service_ingress_key, "emtpy") : "not_created"
 }
 
 output "tidb_hostname" {
@@ -12,9 +12,9 @@ output "monitor_hostname" {
 }
 
 output "tidb_endpoint" {
-  value = "${local.tidb_hostname}:${data.external.tidb_port.result["port"]}"
+  value = var.create ? "${local.tidb_hostname}:${data.external.tidb_port[0].result["port"]}" : "not_created"
 }
 
 output "monitor_endpoint" {
-  value = "${local.monitor_hostname}:${data.external.monitor_port.result["port"]}"
+  value = var.create ? "${local.monitor_hostname}:${data.external.monitor_port[0].result["port"]}" : "not_created"
 }
