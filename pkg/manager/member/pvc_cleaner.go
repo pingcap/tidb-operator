@@ -38,7 +38,9 @@ const (
 	skipReasonPVCCleanerIsNotDeferDeletePVC      = "pvc cleaner: pvc has not been marked as defer delete pvc"
 	skipReasonPVCCleanerPVCeferencedByPod        = "pvc cleaner: pvc is still referenced by a pod"
 	skipReasonPVCCleanerNotFoundPV               = "pvc cleaner: not found pv bound to pvc"
-	skipReasonPVCCleanerPVWithDeletePolicy       = "pvc cleaner: pv bound to pvc has been set to delete policy"
+	skipReasonPVCCleanerPVCHasBeenDeleted        = "pvc cleaner: pvc has been deleted"
+	skipReasonPVCCleanerPVCNotFound              = "pvc cleaner: not found pvc from apiserver"
+	skipReasonPVCCleanerPVCChanged               = "pvc cleaner: pvc changed before deletion"
 )
 
 // PVCCleaner implements the logic for cleaning the pvc related resource
@@ -112,6 +114,12 @@ func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]strin
 			continue
 		}
 
+		if pvc.DeletionTimestamp != nil {
+			// PVC has been deleted, skip it
+			skipReason[pvcName] = skipReasonPVCCleanerPVCHasBeenDeleted
+			continue
+		}
+
 		if len(pvc.Annotations[label.AnnPVCDeferDeleting]) == 0 {
 			// This pvc has not been marked as defer delete PVC, can't reclaim the PV bound to this PVC
 			skipReason[pvcName] = skipReasonPVCCleanerIsNotDeferDeletePVC
@@ -158,16 +166,26 @@ func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]strin
 			return skipReason, fmt.Errorf("cluster %s/%s get pvc %s pv %s failed, err: %v", ns, tcName, pvcName, pvName, err)
 		}
 
-		if pv.Spec.PersistentVolumeReclaimPolicy == corev1.PersistentVolumeReclaimDelete {
-			skipReason[pvcName] = skipReasonPVCCleanerPVWithDeletePolicy
+		if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
+			err := rpc.pvControl.PatchPVReclaimPolicy(tc, pv, corev1.PersistentVolumeReclaimDelete)
+			if err != nil {
+				return skipReason, fmt.Errorf("cluster %s/%s patch pv %s to %s failed, err: %v", ns, tcName, pvName, corev1.PersistentVolumeReclaimDelete, err)
+			}
+		}
+
+		apiPVC, err := rpc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				skipReason[pvcName] = skipReasonPVCCleanerPVCNotFound
+				continue
+			}
+			return skipReason, fmt.Errorf("cluster %s/%s get pvc %s failed, err: %v", ns, tcName, pvcName, err)
+		}
+
+		if apiPVC.UID != pvc.UID || apiPVC.ResourceVersion != pvc.ResourceVersion {
+			skipReason[pvcName] = skipReasonPVCCleanerPVCChanged
 			continue
 		}
-
-		err = rpc.pvControl.PatchPVReclaimPolicy(tc, pv, corev1.PersistentVolumeReclaimDelete)
-		if err != nil {
-			return skipReason, fmt.Errorf("cluster %s/%s patch pv %s to %s failed, err: %v", ns, tcName, pvName, corev1.PersistentVolumeReclaimDelete, err)
-		}
-
 		err = rpc.pvcControl.DeletePVC(tc, pvc)
 		if err != nil {
 			return skipReason, fmt.Errorf("cluster %s/%s delete pvc %s failed, err: %v", ns, tcName, pvcName, err)
