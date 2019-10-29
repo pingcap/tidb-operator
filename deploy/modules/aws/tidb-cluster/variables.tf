@@ -1,6 +1,6 @@
 variable "tidb_cluster_chart_version" {
   description = "tidb-cluster chart version"
-  default     = "v1.0.1"
+  default     = "v1.0.2"
 }
 
 variable "create_tidb_cluster_release" {
