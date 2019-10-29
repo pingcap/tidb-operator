@@ -61,15 +61,15 @@ resource "alicloud_ess_scaling_group" "workers" {
 
 # Create the cooresponding auto-scaling configurations
 resource "alicloud_ess_scaling_configuration" "workers" {
-  count             = length(local.tidb_cluster_worker_groups)
-  scaling_group_id  = element(alicloud_ess_scaling_group.workers.*.id, count.index)
-  instance_type     = local.tidb_cluster_worker_groups[count.index].instance_type
-  image_id          = var.image_id
-  security_group_id = var.ack.security_group_id
-  key_name          = var.ack.key_name
-  instance_name     = local.tidb_cluster_worker_groups[count.index].name
-  user_data         = element(data.template_file.userdata.*.rendered, count.index)
-  system_disk_category = lookup(local.tidb_cluster_worker_groups[count.index], "system_disk_category", local.group_default["system_disk_category"])
+  count                      = length(local.tidb_cluster_worker_groups)
+  scaling_group_id           = element(alicloud_ess_scaling_group.workers.*.id, count.index)
+  instance_type              = local.tidb_cluster_worker_groups[count.index].instance_type
+  image_id                   = var.image_id
+  security_group_id          = var.ack.security_group_id
+  key_name                   = var.ack.key_name
+  instance_name              = local.tidb_cluster_worker_groups[count.index].name
+  user_data                  = element(data.template_file.userdata.*.rendered, count.index)
+  system_disk_category       = lookup(local.tidb_cluster_worker_groups[count.index], "system_disk_category", local.group_default["system_disk_category"])
   system_disk_size           = lookup(local.tidb_cluster_worker_groups[count.index], "system_disk_size", local.group_default["system_disk_size"])
   internet_charge_type       = lookup(local.tidb_cluster_worker_groups[count.index], "internet_charge_type", local.group_default["internet_charge_type"])
   internet_max_bandwidth_in  = lookup(local.tidb_cluster_worker_groups[count.index], "internet_max_bandwidth_in", local.group_default["internet_max_bandwidth_in"])

@@ -10,13 +10,15 @@ locals {
 module "key-pair" {
   source = "../modules/aws/key-pair"
 
-  name = var.eks_name
-  path = "${path.cwd}/credentials/"
+  region = var.region
+  name   = var.eks_name
+  path   = "${path.cwd}/credentials/"
 }
 
 module "vpc" {
   source = "../modules/aws/vpc"
 
+  region          = var.region
   vpc_name        = var.eks_name
   create_vpc      = var.create_vpc
   private_subnets = var.private_subnets
@@ -27,6 +29,7 @@ module "vpc" {
 module "tidb-operator" {
   source = "../modules/aws/tidb-operator"
 
+  region               = var.region
   eks_name             = var.eks_name
   eks_version          = var.eks_version
   operator_version     = var.operator_version
@@ -40,6 +43,7 @@ module "tidb-operator" {
 module "bastion" {
   source = "../modules/aws/bastion"
 
+  region                   = var.region
   bastion_name             = "${var.eks_name}-bastion"
   key_name                 = module.key-pair.key_name
   public_subnets           = module.vpc.public_subnets

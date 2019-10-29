@@ -1,3 +1,7 @@
+provider "aws" {
+  region = var.region
+}
+
 module "eks" {
   source = "terraform-aws-modules/eks/aws"
 
@@ -68,23 +72,20 @@ EOS
 }
 
 data "helm_repository" "pingcap" {
-  provider = "helm.initial"
+  provider   = "helm.initial"
   depends_on = ["null_resource.setup-env"]
-  name = "pingcap"
-  url = "http://charts.pingcap.org/"
+  name       = "pingcap"
+  url        = "http://charts.pingcap.org/"
 }
 
 resource "helm_release" "tidb-operator" {
-  provider = "helm.initial"
+  provider   = "helm.initial"
   depends_on = [null_resource.setup-env, local_file.kubeconfig]
 
   repository = data.helm_repository.pingcap.name
-  chart = "tidb-operator"
-  version = var.operator_version
-  namespace = "tidb-admin"
-  name = "tidb-operator"
-  values = [var.operator_helm_values]
+  chart      = "tidb-operator"
+  version    = var.operator_version
+  namespace  = "tidb-admin"
+  name       = "tidb-operator"
+  values     = [var.operator_helm_values]
 }
-
-
-

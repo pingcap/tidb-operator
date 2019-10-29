@@ -1,17 +1,21 @@
+variable "region" {
+  description = "AWS region"
+}
+
 variable "bastion_name" {
   description = "Name of the EKS cluster. Also used as a prefix in names of related resources."
-  type = string
+  type        = string
 }
 
 variable "enable_ssh_to_workers" {
   description = "Whether enable ssh from bastion to workers, if true, the worker_security_group_id must be provided"
-  default = false
+  default     = false
 }
 
 variable "worker_security_group_id" {
   description = "The security group that bastion allowed to ssh to"
-  type = string
-  default = ""
+  type        = string
+  default     = ""
 }
 
 variable "key_name" {
