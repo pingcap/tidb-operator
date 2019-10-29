@@ -1,3 +1,57 @@
+# TiDB Operator v1.0.2 Release Notes
+
+## v1.0.2 What's New
+
+### Action Required
+
+The AWS Terraform script uses auto-scaling-group for all components (pd/tikv/tidb/monitor), when an ec2 instance fails the health check, the ec2 instance will be replaced. This is helpful for stateless applications or applications using EBS volumes to store data.
+
+But TiKV pod uses instance store to store its data. When the instance is replaced, all the data on the instance store will be lost. TiKV has to resync all data to the newly added instance. Though TiDB is a distributed database and can work when a node fails, the cost to resync data is quite big if the dataset is large. Besides, the ec2 instance may recover to a healthy status by rebooting.
+
+So we disable the auto-scaling-group's replace behavior in `v1.0.2`.
+
+Auto-scaling-group scaling process can also be suspended according to its [documentation](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-suspend-resume-processes.html) if you are using `v1.0.1` or prior versions.
+
+### Improvements
+
+- Migrating statefulsets apiVersion to `app/v1`
+- Suspend ReplaceUnhealthy process for AWS tikv auto-scaling-group
+- Add a new VM manager `qm` in stability test
+- Add `tikv.maxFailoverCount` limit to TiKV
+- Set the default `externalTrafficPolicy` to be `Local` for TiDB service in aws/gcp/aliyun
+- Add provider and module versions for aws
+
+### Bug fixes
+
+- Fix that the create_tidb_cluster_release variable in AWS terraform script does not work
+- Fix compatibility issues for ([#1012](https://github.com/pingcap/tidb-operator/pull/1012)): add `v1beta1` to statefulset apiVersions
+- Fix the issue that TiDB Loadbalancer is empty in terraform output
+- Fix a compatibility issue on TiKV maxFailoverCount
+- Fix provider versions constraint issues for GCP and Aliyun
+- Fix values file customization for tidb-operator on Aliyun
+- Fix tidb-operator crash when user modify sts upgrade strategy improperly
+- Fix drainer misconfiguration
+
+## Detailed Bug Fixes and Changes
+
+- Fix that the create_tidb_cluster_release variable in AWS terraform script does not work ([#1062](https://github.com/pingcap/tidb-operator/pull/1062))
+- Fix compatibility issues for ([#1012](https://github.com/pingcap/tidb-operator/pull/1012)): add `v1beta1` to statefulset apiVersions ([#1054](https://github.com/pingcap/tidb-operator/pull/1054))
+- Enable ConfigMapRollout by default in stability test ([#1036](https://github.com/pingcap/tidb-operator/pull/1036))
+- Fix the issue that TiDB Loadbalancer is empty in terraform output ([#1045](https://github.com/pingcap/tidb-operator/pull/1045))
+- Migrating statefulsets apiVersion to `app/v1` ([#1012](https://github.com/pingcap/tidb-operator/pull/1012))
+- Only expect upgrade complete when rollback bad configuration in stability test ([#1030](https://github.com/pingcap/tidb-operator/pull/1030))
+- Suspend ReplaceUnhealthy process for AWS tikv auto-scaling-group ([#1014](https://github.com/pingcap/tidb-operator/pull/1014))
+- Add a new VM manager `qm` in stability test ([#896](https://github.com/pingcap/tidb-operator/pull/896))
+- Fix provider versions constraint issues for GCP and Aliyun ([#959](https://github.com/pingcap/tidb-operator/pull/959))
+- Fix values file customization for tidb-operator on aliyun ([#971](https://github.com/pingcap/tidb-operator/pull/971))
+- Fix a compatibility issue on TiKV `tikv.maxFailoverCount` ([#977](https://github.com/pingcap/tidb-operator/pull/977))
+- Add `tikv.maxFailoverCount` limit to TiKV ([#965](https://github.com/pingcap/tidb-operator/pull/965))
+- Fix tidb-operator crash when user modify sts upgrade strategy improperly ([#912](https://github.com/pingcap/tidb-operator/pull/912))
+- Set the default `externalTrafficPolicy` to be `Local` for TiDB service in aws/gcp/aliyun ([#947](https://github.com/pingcap/tidb-operator/pull/947))
+- Add note about setting pv reclaim policy to retain ([#911](https://github.com/pingcap/tidb-operator/pull/911))
+- Fix drainer misconfiguration ([#939](https://github.com/pingcap/tidb-operator/pull/939))
+- Add provider and module versions for aws ([#926](https://github.com/pingcap/tidb-operator/pull/926))
+
 # TiDB Operator v1.0.1 Release Notes
 
 ## v1.0.1 What's New
