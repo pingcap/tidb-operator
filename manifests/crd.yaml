@@ -247,7 +247,6 @@ spec:
           required:
           - cluster
           - tidbSecretName
-          - backupType
           - storageType
           - ceph
           - storageClassName
@@ -433,7 +432,6 @@ spec:
               required:
               - cluster
               - tidbSecretName
-              - backupType
               - storageType
               - ceph
               - storageClassName
@@ -448,6 +446,9 @@ spec:
               description: MaxReservedTime is to specify how long backups we want
                 to keep.
               type: string
+            pause:
+              description: Pause means paused backupSchedule
+              type: boolean
             schedule:
               description: Schedule specifies the cron string used for backup scheduling.
               type: string
@@ -460,11 +461,7 @@ spec:
               type: string
           required:
           - schedule
-          - maxBackups
-          - maxReservedTime
           - backupTemplate
-          - storageClassName
-          - storageSize
           type: object
       type: object
   version: v1alpha1

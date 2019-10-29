@@ -459,6 +459,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 							Format:      "",
 						},
 					},
+					"pause": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Pause means paused backupSchedule",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"maxBackups": {
 						SchemaProps: spec.SchemaProps{
 							Description: "MaxBackups is to specify how many backups we want to keep 0 is magic number to indicate un-limited backups.",
@@ -494,7 +501,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"schedule", "maxBackups", "maxReservedTime", "backupTemplate", "storageClassName", "storageSize"},
+				Required: []string{"schedule", "backupTemplate"},
 			},
 		},
 		Dependencies: []string{
@@ -557,7 +564,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 						},
 					},
 				},
-				Required: []string{"cluster", "tidbSecretName", "backupType", "storageType", "ceph", "storageClassName", "storageSize"},
+				Required: []string{"cluster", "tidbSecretName", "storageType", "ceph", "storageClassName", "storageSize"},
 			},
 		},
 		Dependencies: []string{

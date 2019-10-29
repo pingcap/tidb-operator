@@ -200,6 +200,10 @@ func (in *BackupScheduleStatus) DeepCopyInto(out *BackupScheduleStatus) {
 		in, out := &in.LastBackupTime, &out.LastBackupTime
 		*out = (*in).DeepCopy()
 	}
+	if in.AllBackupCleanTime != nil {
+		in, out := &in.AllBackupCleanTime, &out.AllBackupCleanTime
+		*out = (*in).DeepCopy()
+	}
 	return
 }
 
