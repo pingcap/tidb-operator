@@ -36,8 +36,8 @@ const (
 	podNameIndex = 0
 )
 
-// PodBasicColumns holds common columns for all kinds of pod
-type PodBasicColumns struct {
+// podBasicColumns holds common columns for all kinds of pod
+type podBasicColumns struct {
 	Name     string
 	Ready    string
 	Reason   string
@@ -51,7 +51,7 @@ type PodBasicColumns struct {
 	CPUInfo string
 }
 
-type TikvExtraInfoColumn struct {
+type tikvExtraInfoColumn struct {
 	StoreId string
 }
 
@@ -265,7 +265,7 @@ func printVolume(volume *v1.PersistentVolume, options printers.PrintOptions) ([]
 }
 
 // basicPodColumns calculates common columns for PD/TiKV/TiDB pods
-func basicPodColumns(pod *v1.Pod) *PodBasicColumns {
+func basicPodColumns(pod *v1.Pod) *podBasicColumns {
 	restarts := 0
 	totalContainers := len(pod.Spec.Containers)
 	readyContainers := 0
@@ -384,7 +384,7 @@ func basicPodColumns(pod *v1.Pod) *PodBasicColumns {
 	memInfo := fmt.Sprintf("%s/%s", memRequestStr, memLimitStr)
 	cpuInfo := fmt.Sprintf("%s/%s", cpuRequestStr, cpuLimitStr)
 
-	return &PodBasicColumns{
+	return &podBasicColumns{
 		Name:     pod.Name,
 		Ready:    fmt.Sprintf("%d/%d", readyContainers, totalContainers),
 		Reason:   reason,
@@ -406,9 +406,9 @@ func translateTimestampSince(timestamp metav1.Time) string {
 }
 
 // extra Component Tikv Data
-func extraTikvDataColumn(pod *v1.Pod) *TikvExtraInfoColumn {
+func extraTikvDataColumn(pod *v1.Pod) *tikvExtraInfoColumn {
 	storeId := pod.Labels[label.StoreIDLabelKey]
-	return &TikvExtraInfoColumn{
+	return &tikvExtraInfoColumn{
 		StoreId: storeId,
 	}
 }
