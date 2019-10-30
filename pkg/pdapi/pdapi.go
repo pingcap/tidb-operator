@@ -29,7 +29,6 @@ import (
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/pd/pkg/typeutil"
-	"github.com/pingcap/pd/server"
 	"github.com/pingcap/tidb-operator/pkg/httputil"
 )
 
@@ -88,7 +87,7 @@ type PDClient interface {
 	// GetHealth returns the PD's health info
 	GetHealth() (*HealthInfo, error)
 	// GetConfig returns PD's config
-	GetConfig() (*server.Config, error)
+	GetConfig() (*Config, error)
 	// GetCluster returns used when syncing pod labels.
 	GetCluster() (*metapb.Cluster, error)
 	// GetMembers returns all PD members from cluster
@@ -243,13 +242,13 @@ func (pc *pdClient) GetHealth() (*HealthInfo, error) {
 	}, nil
 }
 
-func (pc *pdClient) GetConfig() (*server.Config, error) {
+func (pc *pdClient) GetConfig() (*Config, error) {
 	apiURL := fmt.Sprintf("%s/%s", pc.url, configPrefix)
 	body, err := httputil.GetBodyOK(pc.httpClient, apiURL)
 	if err != nil {
 		return nil, err
 	}
-	config := &server.Config{}
+	config := &Config{}
 	err = json.Unmarshal(body, config)
 	if err != nil {
 		return nil, err
@@ -687,13 +686,13 @@ func (pc *FakePDClient) GetHealth() (*HealthInfo, error) {
 	return result.(*HealthInfo), nil
 }
 
-func (pc *FakePDClient) GetConfig() (*server.Config, error) {
+func (pc *FakePDClient) GetConfig() (*Config, error) {
 	action := &Action{}
 	result, err := pc.fakeAPI(GetConfigActionType, action)
 	if err != nil {
 		return nil, err
 	}
-	return result.(*server.Config), nil
+	return result.(*Config), nil
 }
 
 func (pc *FakePDClient) GetCluster() (*metapb.Cluster, error) {

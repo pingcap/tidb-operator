@@ -28,6 +28,8 @@ type Interface interface {
 	Backups() BackupInformer
 	// BackupSchedules returns a BackupScheduleInformer.
 	BackupSchedules() BackupScheduleInformer
+	// DataResources returns a DataResourceInformer.
+	DataResources() DataResourceInformer
 	// Restores returns a RestoreInformer.
 	Restores() RestoreInformer
 	// TidbClusters returns a TidbClusterInformer.
@@ -53,6 +55,11 @@ func (v *version) Backups() BackupInformer {
 // BackupSchedules returns a BackupScheduleInformer.
 func (v *version) BackupSchedules() BackupScheduleInformer {
 	return &backupScheduleInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// DataResources returns a DataResourceInformer.
+func (v *version) DataResources() DataResourceInformer {
+	return &dataResourceInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Restores returns a RestoreInformer.
