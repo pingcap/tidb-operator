@@ -34,6 +34,14 @@ type BackupScheduleListerExpansion interface{}
 // BackupScheduleNamespaceLister.
 type BackupScheduleNamespaceListerExpansion interface{}
 
+// DataResourceListerExpansion allows custom methods to be added to
+// DataResourceLister.
+type DataResourceListerExpansion interface{}
+
+// DataResourceNamespaceListerExpansion allows custom methods to be added to
+// DataResourceNamespaceLister.
+type DataResourceNamespaceListerExpansion interface{}
+
 // RestoreListerExpansion allows custom methods to be added to
 // RestoreLister.
 type RestoreListerExpansion interface{}
