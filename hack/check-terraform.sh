@@ -2,6 +2,7 @@
 
 tf_version=0.12.12
 
+echo "Version info: $(terraform version)"
 if which terraform >/dev/null; then
     version=$(terraform version|head -1|awk '{print $2}')
     if [ ${version} == v${tf_version} ]; then
