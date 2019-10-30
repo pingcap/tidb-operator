@@ -166,22 +166,17 @@ func run() {
 		// upgrade
 		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
 		ctx, cancel := context.WithCancel(context.Background())
-		for idx, cluster := range clusters {
+		for _, cluster := range clusters {
 			assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(cluster)
 			cluster.UpgradeAll(upgradeVersion)
 			oa.UpgradeTidbClusterOrDie(cluster)
 			oa.CheckUpgradeOrDie(ctx, cluster)
-			if idx == 0 {
-				oa.CheckManualPauseTiDBOrDie(cluster)
-			}
 			oa.CheckTidbClusterStatusOrDie(cluster)
 			oa.CheckTidbMemberAssignedNodesOrDie(cluster, assignedNodes)
 		}
 
 		// configuration change
 		for _, cluster := range clusters {
-			cluster.EnableConfigMapRollout = true
-
 			// bad conf
 			cluster.TiDBPreStartScript = strconv.Quote("exit 1")
 			cluster.TiKVPreStartScript = strconv.Quote("exit 1")
@@ -195,7 +190,7 @@ func run() {
 			cluster.TiDBPreStartScript = strconv.Quote("")
 			oa.UpgradeTidbClusterOrDie(cluster)
 			// wait upgrade complete
-			oa.CheckUpgradeOrDie(ctx, cluster)
+			oa.CheckUpgradeCompleteOrDie(cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
 
 			cluster.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
@@ -210,7 +205,7 @@ func run() {
 		oa.CleanWebHookAndServiceOrDie(ocfg)
 
 		for _, cluster := range clusters {
-			oa.CheckDataRegionDisasterToleranceOrDie(cluster)
+			oa.CheckDisasterToleranceOrDie(cluster)
 		}
 
 		// backup and restore
@@ -343,7 +338,6 @@ func run() {
 		ocfg.Image = cfg.UpgradeOperatorImage
 		ocfg.Tag = cfg.UpgradeOperatorTag
 		oa.UpgradeOperatorOrDie(ocfg)
-		time.Sleep(5 * time.Minute)
 		postUpgrade := []*tests.TidbClusterConfig{
 			cluster3,
 			cluster1,
@@ -437,9 +431,10 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 			"binlog.drainer.workerCount": "1024",
 			"binlog.drainer.txnBatch":    "512",
 		},
-		Monitor:          true,
-		BlockWriteConfig: cfg.BlockWriter,
-		TopologyKey:      topologyKey,
-		ClusterVersion:   tidbVersion,
+		Monitor:                true,
+		BlockWriteConfig:       cfg.BlockWriter,
+		TopologyKey:            topologyKey,
+		ClusterVersion:         tidbVersion,
+		EnableConfigMapRollout: true,
 	}
 }

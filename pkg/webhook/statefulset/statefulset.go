@@ -50,20 +50,22 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	setResource := metav1.GroupVersionResource{Group: "apps", Version: apiVersion, Resource: "statefulsets"}
 	if ar.Request.Resource.Group != "apps" || ar.Request.Resource.Resource != "statefulsets" {
 		err := fmt.Errorf("expect resource to be %s instead of %s", setResource, ar.Request.Resource)
-		glog.Errorf("%v", err)
+		glog.Error(err)
 		return util.ARFail(err)
 	}
 
 	if versionCli == nil {
 		cfg, err := rest.InClusterConfig()
 		if err != nil {
-			glog.Errorf("statefulset %s/%s, get k8s cluster config failed, err: %v", namespace, name, err)
+			err := fmt.Errorf("statefulset %s/%s, get k8s cluster config failed, err: %v", namespace, name, err)
+			glog.Errorf(err.Error())
 			return util.ARFail(err)
 		}
 
 		versionCli, err = versioned.NewForConfig(cfg)
 		if err != nil {
-			glog.Errorf("statefulset %s/%s, create Clientset failed, err: %v", namespace, name, err)
+			err := fmt.Errorf("statefulset %s/%s, create Clientset failed, err: %v", namespace, name, err)
+			glog.Errorf(err.Error())
 			return util.ARFail(err)
 		}
 	}
@@ -92,7 +94,8 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	tcName := controllerRef.Name
 	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
 	if err != nil {
-		glog.Errorf("get tidbcluster %s/%s failed, statefulset %s, err %v", namespace, tcName, name, err)
+		err := fmt.Errorf("get tidbcluster %s/%s failed, statefulset %s, err %v", namespace, tcName, name, err)
+		glog.Errorf(err.Error())
 		return util.ARFail(err)
 	}
 
@@ -108,7 +111,8 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 	partition, err := strconv.ParseInt(partitionStr, 10, 32)
 	if err != nil {
-		glog.Errorf("statefulset %s/%s, convert partition str %s to int failed, err: %v", namespace, name, partitionStr, err)
+		err := fmt.Errorf("statefulset %s/%s, convert partition str %s to int failed, err: %v", namespace, name, partitionStr, err)
+		glog.Errorf(err.Error())
 		return util.ARFail(err)
 	}
 

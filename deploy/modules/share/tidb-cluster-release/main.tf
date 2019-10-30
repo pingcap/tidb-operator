@@ -1,4 +1,5 @@
 resource "null_resource" "wait-tiller-ready" {
+  count      = var.create ? 1 : 0
   depends_on = [var.kubeconfig_filename, var.wait_on_resource]
 
   provisioner "local-exec" {
@@ -22,6 +23,7 @@ data "helm_repository" "pingcap" {
 }
 
 resource "helm_release" "tidb-cluster" {
+  count = var.create ? 1 : 0
   depends_on = [null_resource.wait-tiller-ready]
 
   repository = data.helm_repository.pingcap.name
@@ -123,6 +125,7 @@ resource "helm_release" "tidb-cluster" {
 }
 
 resource "null_resource" "wait-tidb-ready" {
+  count = var.create ? 1 : 0
   depends_on = [helm_release.tidb-cluster]
 
   provisioner "local-exec" {
@@ -134,6 +137,52 @@ until kubectl get po -n ${var.cluster_name} -lapp.kubernetes.io/component=tidb |
 done
 EOS
     interpreter = var.local_exec_interpreter
+    environment = {
+      KUBECONFIG = var.kubeconfig_filename
+    }
+  }
+}
+
+resource "null_resource" "wait-lb-ip" {
+  count = var.create ? 1 : 0
+  depends_on = [
+    helm_release.tidb-cluster
+  ]
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    working_dir = path.cwd
+    command     = <<EOS
+set -euo pipefail
+
+until kubectl get svc -n ${var.cluster_name} ${var.cluster_name}-tidb -o json | jq '.status.loadBalancer.ingress[0]' | grep "${var.service_ingress_key}"; do
+  echo "Wait for TiDB internal loadbalancer IP"
+  sleep 5
+done
+EOS
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_filename
+    }
+  }
+}
+
+resource "null_resource" "wait-mlb-ip" {
+  count = var.create ? 1 : 0
+  depends_on = [
+    helm_release.tidb-cluster
+  ]
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    working_dir = path.cwd
+    command = <<EOS
+set -euo pipefail
+
+until kubectl get svc -n ${var.cluster_name} ${var.cluster_name}-grafana -o json | jq '.status.loadBalancer.ingress[0]' | grep "${var.service_ingress_key}"; do
+  echo "Wait for TiDB monitoring internal loadbalancer IP"
+  sleep 5
+done
+EOS
+
     environment = {
       KUBECONFIG = var.kubeconfig_filename
     }

@@ -24,12 +24,14 @@ to_crdgen="$scriptdir/../cmd/to-crdgen"
 crd_target="$scriptdir/../manifests/crd.yaml"
 crd_verify_target="$scriptdir/../manifests/crd-verify.yaml"
 
-GO111MODULE=on go get k8s.io/code-generator/cmd/openapi-gen@kubernetes-1.12.5
+export GO111MODULE=on
+
+go install k8s.io/code-generator/cmd/openapi-gen
 
 function generate_crd {
     $1/bin/openapi-gen --go-header-file=$scriptdir/boilerplate.go.txt \
-    -i $GO_PKG/pkg/apis/pingcap.com/v1alpha1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/api/core/v1 \
-    -p apis/pingcap.com/v1alpha1  -O openapi_generated -o $scriptdir/../pkg
+    -i $GO_PKG/pkg/apis/pingcap/v1alpha1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/api/core/v1 \
+    -p apis/pingcap/v1alpha1  -O openapi_generated -o $scriptdir/../pkg
 
     go install $to_crdgen
 
@@ -57,6 +59,3 @@ elif [ $ACTION == 'verify' ];then
 	fi
 	echo crds are latest
 fi
-
-cd $scriptdir/..
-go mod tidy

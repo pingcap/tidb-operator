@@ -1,5 +1,5 @@
 {{- if .Values.monitor.create }}
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ template "cluster.name" . }}-monitor
@@ -64,6 +64,10 @@ spec:
           value: {{ .Values.binlog.pump.create | default false | quote }}
         - name:  PROM_CONFIG_PATH
           value: /prometheus-rules
+        - name: PROM_PERSISTENT_DIR
+          value: /data
+        - name: TIDB_VERSION
+          value: {{ .Values.tidb.image }}
         - name: GF_K8S_PROMETHEUS_URL
           value: {{ .Values.monitor.initializer.config.K8S_PROMETHEUS_URL }}
         - name: GF_TIDB_PROMETHEUS_URL
@@ -132,6 +136,8 @@ spec:
         imagePullPolicy: {{ .Values.monitor.reloader.imagePullPolicy | default "IfNotPresent" }}
         command:
         - /bin/reload
+        - --root-store-path=/data
+        - --sub-store-path={{ .Values.tidb.image }}
         - --watch-path=/prometheus-rules/rules
         - --prometheus-url=http://127.0.0.1:9090
         ports:
@@ -142,6 +148,8 @@ spec:
           - name: prometheus-rules
             mountPath: /prometheus-rules
             readOnly: false
+          - name: monitor-data
+            mountPath: /data
         resources:
 {{ toYaml .Values.monitor.reloader.resources | indent 10 }}
       {{- end }}
