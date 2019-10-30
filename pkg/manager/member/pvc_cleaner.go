@@ -34,7 +34,7 @@ const (
 	skipReasonPVCCleanerPodWaitingForScheduling  = "pvc cleaner: waiting for pod scheduling"
 	skipReasonPVCCleanerPodNotFound              = "pvc cleaner: the corresponding pod of pvc has not been found"
 	skipReasonPVCCleanerPVCNotBound              = "pvc cleaner: the pvc is not bound"
-	skipReasonPVCCleanerPVCNotHasPodNameAnn      = "pvc cleaner: pvc not has pod name annotation"
+	skipReasonPVCCleanerPVCNotHasPodNameAnn      = "pvc cleaner: pvc has no pod name annotation"
 	skipReasonPVCCleanerIsNotDeferDeletePVC      = "pvc cleaner: pvc has not been marked as defer delete pvc"
 	skipReasonPVCCleanerPVCeferencedByPod        = "pvc cleaner: pvc is still referenced by a pod"
 	skipReasonPVCCleanerNotFoundPV               = "pvc cleaner: not found pv bound to pvc"
