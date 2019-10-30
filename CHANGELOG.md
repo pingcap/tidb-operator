@@ -27,7 +27,7 @@ Auto-scaling-group scaling process can also be suspended according to its [docum
 - Fix compatibility issues for ([#1012](https://github.com/pingcap/tidb-operator/pull/1012)): add `v1beta1` to statefulset apiVersions
 - Fix the issue that TiDB Loadbalancer is empty in terraform output
 - Fix a compatibility issue on TiKV maxFailoverCount
-- Fix provider versions constraint issues for GCP and Aliyun
+- Fix Terraform providers version constraint issues for GCP and Aliyun
 - Fix values file customization for tidb-operator on Aliyun
 - Fix tidb-operator crash when user modify sts upgrade strategy improperly
 - Fix drainer misconfiguration
