@@ -29,7 +29,7 @@ Auto-scaling-group scaling process can also be suspended according to its [docum
 - Fix a compatibility issue on TiKV maxFailoverCount
 - Fix Terraform providers version constraint issues for GCP and Aliyun
 - Fix values file customization for tidb-operator on Aliyun
-- Fix tidb-operator crash when user modify sts upgrade strategy improperly
+- Fix tidb-operator crash when users modify statefulset upgrade strategy improperly
 - Fix drainer misconfiguration
 
 ## Detailed Bug Fixes and Changes
