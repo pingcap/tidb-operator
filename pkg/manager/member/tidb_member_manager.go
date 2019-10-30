@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
@@ -97,7 +97,7 @@ func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newSvc := tmm.getNewTiDBHeadlessServiceForTidbCluster(tc)
+	newSvc := getNewTiDBHeadlessServiceForTidbCluster(tc)
 	oldSvcTmp, err := tmm.svcLister.Services(ns).Get(controller.TiDBPeerMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetServiceLastAppliedConfigAnnotation(newSvc)
@@ -189,7 +189,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	return nil
 }
 
-func (tmm *tidbMemberManager) getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
+func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
@@ -213,7 +213,8 @@ func (tmm *tidbMemberManager) getNewTiDBHeadlessServiceForTidbCluster(tc *v1alph
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Selector: tidbLabel,
+			Selector:                 tidbLabel,
+			PublishNotReadyAddresses: true,
 		},
 	}
 }

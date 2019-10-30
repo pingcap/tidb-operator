@@ -20,7 +20,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
@@ -122,7 +122,7 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newSvc := tkmm.getNewServiceForTidbCluster(tc, svcConfig)
+	newSvc := getNewServiceForTidbCluster(tc, svcConfig)
 	oldSvcTmp, err := tkmm.svcLister.Services(ns).Get(svcConfig.MemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetServiceLastAppliedConfigAnnotation(newSvc)
@@ -235,7 +235,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	return nil
 }
 
-func (tkmm *tikvMemberManager) getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
+func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
@@ -258,7 +258,8 @@ func (tkmm *tikvMemberManager) getNewServiceForTidbCluster(tc *v1alpha1.TidbClus
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Selector: svcLabel,
+			Selector:                 svcLabel,
+			PublishNotReadyAddresses: true,
 		},
 	}
 	if svcConfig.Headless {
