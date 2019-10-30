@@ -42,7 +42,7 @@ locals {
       min_size      = var.tidb_count
       max_size      = var.tidb_count
       node_taints   = "dedicated=${var.cluster_name}-tidb:NoSchedule"
-      node_labels   = "dedicated=${var.cluster_name}-tidb"
+      node_labels   = "dedicated=${var.cluster_name}-tidb,kubelet-customize=true"
     },
     {
       name          = "${var.cluster_name}-monitor"

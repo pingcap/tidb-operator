@@ -99,3 +99,24 @@ variable "default_worker_type" {
   description = "The instance type of kubernets default worker nodes, it is recommend to use default_worker_cpu_core_count to select flexible instance type"
   default     = ""
 }
+
+# ACTION type:
+# [UPDATE]: UPDATE kubelet with provided KUBELET_CUSTOMIZE_ARGS
+# [ROLLBACK]: ROOLBACK to latest backup version of kubelet if it exists
+# [NONE]: NONE do nothing for the kubelet
+variable "action_type" {
+  description = "The action type for kubelet customization global job to take, can be [UPDATE, ROLLBACK, NONE]"
+  default     = "UPDATE"
+}
+
+# each option in customize_args must be separated with semicolon <;>
+# e.g. --cpu-manager-policy=static;--cluster-domain=myk8s.local;--kube-reserved=cpu=100m,memory=400Mi;--system-reserved=cpu=100m,memory=300Mi
+variable "customize_args" {
+  description = "The customized args for kubelet, separated by semicolon, e.g. --cluster-domain=myk8s.local;--allowed-unsafe-sysctls=net.*"
+  default     = "--allowed-unsafe-sysctls=net.*"
+}
+
+variable "whitelist_keys" {
+  description = "The whitelist keys that allowed to customize for kubelet, separated by semicolon, e.g. --cluster-domain;--allowed-unsafe-sysctls"
+  default     = "--allowed-unsafe-sysctls"
+}

@@ -12,7 +12,6 @@ tikv:
   storageClassName: local-volume
   syncLog: true
 tidb:
-  logLevel: info
   service:
     type: LoadBalancer
     externalTrafficPolicy: Local
@@ -20,6 +19,17 @@ tidb:
     annotations:
       service.beta.kubernetes.io/alicloud-loadbalancer-address-type: intranet
       service.beta.kubernetes.io/alicloud-loadbalancer-slb-network-type: vpc
+  config: |
+    [log]
+    level = "info"
+    [performance]
+    tcp-keep-alive = true
+  podSecurityContext:
+    sysctls:
+    - name: net.ipv4.tcp_keepalive_time
+      value: "300"
+    - name: net.ipv4.tcp_keepalive_intvl
+      value: "75"
 
 monitor:
   storage: 100Gi

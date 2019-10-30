@@ -33,3 +33,13 @@ data "template_file" "local-volume-provisioner" {
     access_key_secret = var.secret_key
   }
 }
+
+data "template_file" "kubelet-customize-globaljob" {
+  template = file("${path.module}/templates/kubelet-customize-globaljob.yaml.tpl")
+
+  vars = {
+    action_type    = var.action_type
+    customize_args = var.customize_args
+    whitelist_keys = var.whitelist_keys
+  }
+}
