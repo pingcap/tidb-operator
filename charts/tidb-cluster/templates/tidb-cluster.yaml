@@ -45,8 +45,10 @@ spec:
     annotations:
 {{ toYaml .Values.pd.annotations | indent 6 }}
   {{- end }}
+  {{- if .Values.pd.podSecurityContext }}
     podSecurityContext:
 {{ toYaml .Values.pd.podSecurityContext | indent 6}}
+  {{- end }}
   tikv:
     replicas: {{ .Values.tikv.replicas }}
     image: {{ .Values.tikv.image }}
@@ -69,9 +71,11 @@ spec:
     annotations:
 {{ toYaml .Values.tikv.annotations | indent 6 }}
   {{- end }}
-    maxFailoverCount: {{ .Values.tikv.maxFailoverCount | default 3 }}
+  {{- if .Values.tikv.podSecurityContext }}
     podSecurityContext:
 {{ toYaml .Values.tikv.podSecurityContext | indent 6}}
+  {{- end }}
+    maxFailoverCount: {{ .Values.tikv.maxFailoverCount | default 3 }}
   tidb:
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}
@@ -91,8 +95,10 @@ spec:
     annotations:
 {{ toYaml .Values.tidb.annotations | indent 6 }}
   {{- end }}
+  {{- if .Values.tidb.podSecurityContext }}
     podSecurityContext:
 {{ toYaml .Values.tidb.podSecurityContext | indent 6}}
+  {{- end }}
     binlogEnabled: {{ .Values.binlog.pump.create | default false }}
     maxFailoverCount: {{ .Values.tidb.maxFailoverCount | default 3 }}
     separateSlowLog: {{ .Values.tidb.separateSlowLog | default false }}
