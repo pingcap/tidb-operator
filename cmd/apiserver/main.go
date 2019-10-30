@@ -18,13 +18,18 @@ package main
 
 import (
 	_ "github.com/go-openapi/loads"
-	_ "github.com/ugorji/go/codec"
-
 	"github.com/pingcap/tidb-operator/pkg/apiserver/cmd"
 	"github.com/pingcap/tidb-operator/pkg/version"
+	_ "github.com/ugorji/go/codec"
 	_ "k8s.io/client-go/plugin/pkg/client/auth" // Enable cloud provider auth
+	"k8s.io/kube-openapi/pkg/common"
 )
 
+var emptyOpenAPIDefinitions = func(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
+	return map[string]common.OpenAPIDefinition{}
+}
+
 func main() {
-	cmd.StartApiServer(nil, nil, "Api", version.Get().GitVersion)
+
+	cmd.StartApiServer(nil, emptyOpenAPIDefinitions, "TiDB ApiServer API", version.Get().GitVersion)
 }
