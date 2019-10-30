@@ -86,7 +86,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	backup, reason, err := rm.getBackupFromRestore(restore)
 	if err != nil {
 		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
+			Type:    v1alpha1.RestoreRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
 			Message: err.Error(),
@@ -97,7 +97,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	job, reason, err := rm.makeRestoreJob(restore, backup)
 	if err != nil {
 		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
+			Type:    v1alpha1.RestoreRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
 			Message: err.Error(),
@@ -108,7 +108,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	reason, err = rm.ensureRestorePVCExist(restore)
 	if err != nil {
 		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
+			Type:    v1alpha1.RestoreRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
 			Message: err.Error(),
@@ -119,7 +119,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	if err := rm.jobControl.CreateJob(restore, job); err != nil {
 		errMsg := fmt.Errorf("create restore %s/%s job %s failed, err: %v", ns, name, restoreJobName, err)
 		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
+			Type:    v1alpha1.RestoreRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateRestoreJobFailed",
 			Message: errMsg.Error(),
