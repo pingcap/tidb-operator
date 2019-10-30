@@ -32,4 +32,5 @@ import (
 	_ "k8s.io/code-generator/cmd/openapi-gen"
 	_ "k8s.io/code-generator/cmd/register-gen"
 	_ "k8s.io/code-generator/cmd/set-gen"
+	_ "github.com/kubernetes-incubator/apiserver-builder-alpha/cmd/apiregister-gen"
 )
