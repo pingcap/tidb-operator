@@ -64,7 +64,7 @@ func (bm *BackupManager) ProcessBackup() error {
 
 	var db *sql.DB
 	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
-		db, err := util.OpenDB(bm.getDSN(constants.TidbMetaDB))
+		db, err = util.OpenDB(bm.getDSN(constants.TidbMetaDB))
 		if err != nil {
 			glog.Warningf("can't open connection to tidb cluster %s, err: %v", bm, err)
 			return false, nil

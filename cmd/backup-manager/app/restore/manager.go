@@ -82,6 +82,7 @@ func (rm *RestoreManager) ProcessRestore() error {
 			glog.Warningf("can't connect to tidb cluster %s, err: %s", rm, err)
 			return false, nil
 		}
+		db.Close()
 		return true, nil
 	})
 
