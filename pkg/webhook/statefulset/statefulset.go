@@ -70,7 +70,8 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 	stsObjectMeta, stsPartition, err := getStsAttributes(ar.Request.OldObject.Raw, apiVersion)
 	if err != nil {
-		glog.Errorf("deseriralizer fail to decode request %v", err)
+		err = fmt.Errorf("statefulset %s/%s, decode request failed, err: %v", namespace, name, err)
+		glog.Error(err)
 		return util.ARFail(err)
 	}
 
