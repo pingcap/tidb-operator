@@ -49,8 +49,8 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	apiVersion := ar.Request.Resource.Version
 	setResource := metav1.GroupVersionResource{Group: "apps", Version: apiVersion, Resource: "statefulsets"}
 	if ar.Request.Resource.Group != "apps" || ar.Request.Resource.Resource != "statefulsets" {
-		err := fmt.Errorf("expect resource to be %s", setResource)
-		glog.Errorf("%v", err)
+		err := fmt.Errorf("expect resource to be %s instead of %s", setResource, ar.Request.Resource)
+		glog.Error(err)
 		return util.ARFail(err)
 	}
 
