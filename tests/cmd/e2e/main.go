@@ -81,7 +81,7 @@ func main() {
 		oa.CleanTidbClusterOrDie(cluster)
 
 		// support reclaim pv when scale in tikv or pd component
-		cluster1.DeferPVCDelete = false
+		cluster1.EnablePVReclaim = true
 		oa.DeployTidbClusterOrDie(cluster)
 		oa.CheckTidbClusterStatusOrDie(cluster)
 		oa.CheckDisasterToleranceOrDie(cluster)
@@ -244,7 +244,7 @@ func newTidbClusterConfig(ns, clusterName, password, tidbVersion string) *tests.
 	return &tests.TidbClusterConfig{
 		Namespace:        ns,
 		ClusterName:      clusterName,
-		DeferPVCDelete:   true,
+		EnablePVReclaim:  false,
 		OperatorTag:      cfg.OperatorTag,
 		PDImage:          fmt.Sprintf("pingcap/pd:%s", tidbVersion),
 		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tidbVersion),

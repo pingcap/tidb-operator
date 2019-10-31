@@ -243,7 +243,7 @@ type TidbClusterConfig struct {
 	BackupName             string
 	Namespace              string
 	ClusterName            string
-	DeferPVCDelete         bool
+	EnablePVReclaim        bool
 	OperatorTag            string
 	PDImage                string
 	TiKVImage              string
@@ -308,7 +308,7 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 
 	set := map[string]string{
 		"clusterName":             tc.ClusterName,
-		"deferPVCDelete":          strconv.FormatBool(tc.DeferPVCDelete),
+		"enablePVReclaim":         strconv.FormatBool(tc.EnablePVReclaim),
 		"pd.storageClassName":     tc.StorageClassName,
 		"tikv.storageClassName":   tc.StorageClassName,
 		"tidb.storageClassName":   tc.StorageClassName,
@@ -935,7 +935,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 				return false, nil
 			}
 		}
-		if !info.DeferPVCDelete {
+		if info.EnablePVReclaim {
 			glog.V(4).Infof("check reclaim pvs success when scale in pd or tikv")
 			if b, err := oa.checkReclaimPVSuccess(tc); !b && err == nil {
 				return false, nil
@@ -2048,7 +2048,9 @@ func getDatasourceID(svcName, namespace string) (int, error) {
 	}
 	defer func() {
 		err := resp.Body.Close()
-		glog.Warning("close response failed", err)
+		if err != nil {
+			glog.Warning("close response failed, err: %v", err)
+		}
 	}()
 
 	buf, err := ioutil.ReadAll(resp.Body)
