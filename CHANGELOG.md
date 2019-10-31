@@ -38,7 +38,7 @@ Auto-scaling-group scaling process can also be suspended according to its [docum
 - Fix compatibility issues for ([#1012](https://github.com/pingcap/tidb-operator/pull/1012)): add `v1beta1` to statefulset apiVersions ([#1054](https://github.com/pingcap/tidb-operator/pull/1054))
 - Enable ConfigMapRollout by default in stability test ([#1036](https://github.com/pingcap/tidb-operator/pull/1036))
 - Fix the issue that TiDB Loadbalancer is empty in terraform output ([#1045](https://github.com/pingcap/tidb-operator/pull/1045))
-- Migrating statefulsets apiVersion to `app/v1` which fixes compatiblity with k8s 1.16 and above versions ([#1012](https://github.com/pingcap/tidb-operator/pull/1012))
+- Migrate statefulsets apiVersion to `app/v1` which fixes compatibility with Kubernetes 1.16 and above versions ([#1012](https://github.com/pingcap/tidb-operator/pull/1012))
 - Only expect upgrade complete when rollback bad configuration in stability test ([#1030](https://github.com/pingcap/tidb-operator/pull/1030))
 - Suspend ReplaceUnhealthy process for AWS tikv auto-scaling-group ([#1014](https://github.com/pingcap/tidb-operator/pull/1014))
 - Add a new VM manager `qm` in stability test ([#896](https://github.com/pingcap/tidb-operator/pull/896))
