@@ -4,7 +4,7 @@
 
 ### Action Required
 
-The AWS Terraform script uses auto-scaling-group for all components (pd/tikv/tidb/monitor), when an ec2 instance fails the health check, the ec2 instance will be replaced. This is helpful for stateless applications or applications using EBS volumes to store data.
+The AWS Terraform script uses auto-scaling-group for all components (PD/TiKV/TiDB/monitor). When an ec2 instance fails the health check, the instance will be replaced. This is helpful for those applications that are stateless or use EBS volumes to store data.
 
 But TiKV pod uses instance store to store its data. When the instance is replaced, all the data on the instance store will be lost. TiKV has to resync all data to the newly added instance. Though TiDB is a distributed database and can work when a node fails, the cost to resync data is quite big if the dataset is large. Besides, the ec2 instance may recover to a healthy status by rebooting.
 
