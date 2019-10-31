@@ -22,6 +22,7 @@ Auto-scaling-group scaling process can also be suspended according to its [docum
 
 ### Bug fixes
 
+- Fix tkctl version does not work when the release name is un-wanted
 - Migrate statefulsets apiVersion to `app/v1` which fixes compatibility with Kubernetes 1.16 and above versions
 - Fix the issue that the `create_tidb_cluster_release` variable in AWS Terraform script does not work
 - Fix compatibility issues by adding `v1beta1` to statefulset apiVersions
@@ -34,6 +35,7 @@ Auto-scaling-group scaling process can also be suspended according to its [docum
 
 ## Detailed Bug Fixes and Changes
 
+- Fix tkctl version does not work when the release name is un-wanted ([#1065](https://github.com/pingcap/tidb-operator/pull/1065))
 - Fix that the `create_tidb_cluster_release` variable in AWS terraform script does not work ([#1062](https://github.com/pingcap/tidb-operator/pull/1062))
 - Fix compatibility issues for ([#1012](https://github.com/pingcap/tidb-operator/pull/1012)): add `v1beta1` to statefulset apiVersions ([#1054](https://github.com/pingcap/tidb-operator/pull/1054))
 - Enable ConfigMapRollout by default in stability test ([#1036](https://github.com/pingcap/tidb-operator/pull/1036))
