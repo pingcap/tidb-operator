@@ -14,7 +14,7 @@ Auto-scaling-group scaling process can also be suspended according to its [docum
 
 ### Improvements
 
-- Suspend ReplaceUnhealthy process for AWS tikv auto-scaling-group
+- Suspend ReplaceUnhealthy process for AWS TiKV auto-scaling-group
 - Add a new VM manager `qm` in stability test
 - Add `tikv.maxFailoverCount` limit to TiKV
 - Set the default `externalTrafficPolicy` to be `Local` for TiDB service in AWS/GCP/Aliyun
