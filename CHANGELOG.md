@@ -50,7 +50,7 @@ Auto-scaling-group scaling process can also be suspended according to its [docum
 - Set the default `externalTrafficPolicy` to be `Local` for TiDB service in AWS/GCP/Aliyun ([#947](https://github.com/pingcap/tidb-operator/pull/947))
 - Add note about setting PV reclaim policy to retain ([#911](https://github.com/pingcap/tidb-operator/pull/911))
 - Fix drainer misconfiguration ([#939](https://github.com/pingcap/tidb-operator/pull/939))
-- Add provider and module versions for aws ([#926](https://github.com/pingcap/tidb-operator/pull/926))
+- Add provider and module versions for AWS ([#926](https://github.com/pingcap/tidb-operator/pull/926))
 
 # TiDB Operator v1.0.1 Release Notes
 
