@@ -46,7 +46,7 @@ Auto-scaling-group scaling process can also be suspended according to its [docum
 - Fix values file customization for tidb-operator on aliyun ([#971](https://github.com/pingcap/tidb-operator/pull/971))
 - Fix a compatibility issue of TiKV `tikv.maxFailoverCount` ([#977](https://github.com/pingcap/tidb-operator/pull/977))
 - Add `tikv.maxFailoverCount` limit to TiKV ([#965](https://github.com/pingcap/tidb-operator/pull/965))
-- Fix tidb-operator crash when user modify sts upgrade strategy improperly ([#912](https://github.com/pingcap/tidb-operator/pull/912))
+- Fix tidb-operator crash when users modify statefulset upgrade strategy improperly ([#912](https://github.com/pingcap/tidb-operator/pull/912))
 - Set the default `externalTrafficPolicy` to be `Local` for TiDB service in aws/gcp/aliyun ([#947](https://github.com/pingcap/tidb-operator/pull/947))
 - Add note about setting pv reclaim policy to retain ([#911](https://github.com/pingcap/tidb-operator/pull/911))
 - Fix drainer misconfiguration ([#939](https://github.com/pingcap/tidb-operator/pull/939))
