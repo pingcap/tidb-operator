@@ -8,7 +8,7 @@ The AWS Terraform script uses auto-scaling-group for all components (PD/TiKV/TiD
 
 But a TiKV Pod uses instance store to store its data. When an instance is replaced, all the data on its store will be lost. TiKV has to resync all data to the newly added instance. Though TiDB is a distributed database and can work when a node fails, resyncing data can cost much if the dataset is large. Besides, the ec2 instance may be recovered to a healthy state by rebooting.
 
-So we disable the auto-scaling-group's replace behavior in `v1.0.2`.
+So we disabled the auto-scaling-group's replacing behavior in `v1.0.2`.
 
 Auto-scaling-group scaling process can also be suspended according to its [documentation](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-suspend-resume-processes.html) if you are using `v1.0.1` or prior versions.
 
