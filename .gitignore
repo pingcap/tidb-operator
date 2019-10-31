@@ -31,4 +31,6 @@ coverage.out
 vendor
 tests/e2e/e2e.test
 .orig
+apiserver.local.config/
+manifests/crd-verify.yaml
 /tkctl
