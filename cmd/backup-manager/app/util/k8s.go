@@ -14,7 +14,6 @@
 package util
 
 import (
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
@@ -23,6 +22,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/record"
+	glog "k8s.io/klog"
 )
 
 // NewEventRecorder return the specify source's recoder

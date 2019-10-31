@@ -116,7 +116,7 @@ func (c *FakeDataResources) DeleteCollection(options *v1.DeleteOptions, listOpti
 // Patch applies the patch and returns the patched dataResource.
 func (c *FakeDataResources) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.DataResource, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(dataresourcesResource, c.ns, name, data, subresources...), &v1alpha1.DataResource{})
+		Invokes(testing.NewPatchSubresourceAction(dataresourcesResource, c.ns, name, pt, data, subresources...), &v1alpha1.DataResource{})
 
 	if obj == nil {
 		return nil, err

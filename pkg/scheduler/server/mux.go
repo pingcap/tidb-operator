@@ -19,10 +19,10 @@ import (
 	"sync"
 
 	restful "github.com/emicklei/go-restful"
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/scheduler"
 	"k8s.io/client-go/kubernetes"
+	glog "k8s.io/klog"
 	schedulerapiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
 )
 

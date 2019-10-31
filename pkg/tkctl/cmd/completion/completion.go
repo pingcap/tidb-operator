@@ -18,7 +18,7 @@ import (
 	"io"
 
 	"github.com/spf13/cobra"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 const (

@@ -18,8 +18,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/cmd"
 	"github.com/spf13/pflag"
-	utilflag "k8s.io/apiserver/pkg/util/flag"
-	"k8s.io/apiserver/pkg/util/logs"
+	cliflag "k8s.io/component-base/cli/flag"
+	"k8s.io/component-base/logs"
 )
 
 func Run() error {
@@ -29,7 +29,7 @@ func Run() error {
 	// fix glog parse error
 	flag.CommandLine.Parse([]string{})
 
-	pflag.CommandLine.SetNormalizeFunc(utilflag.WordSepNormalizeFunc)
+	pflag.CommandLine.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
 	pflag.Set("logtostderr", "true")

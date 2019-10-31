@@ -57,7 +57,7 @@ go install k8s.io/code-generator/cmd/defaulter-gen \
     k8s.io/code-generator/cmd/openapi-gen \
     k8s.io/code-generator/cmd/conversion-gen \
     k8s.io/code-generator/cmd/defaulter-gen \
-    github.com/kubernetes-incubator/apiserver-builder-alpha/cmd/apiregister-gen
+    sigs.k8s.io/apiserver-builder-alpha/cmd/apiregister-gen
 
 function codegen::join() { local IFS="$1"; shift; echo "$*"; }
 

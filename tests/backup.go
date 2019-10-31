@@ -8,13 +8,13 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
 	sql_util "github.com/pingcap/tidb-operator/tests/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	glog "k8s.io/klog"
 )
 
 const (

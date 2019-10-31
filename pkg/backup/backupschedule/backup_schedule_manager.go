@@ -18,7 +18,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
@@ -29,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
+	glog "k8s.io/klog"
 )
 
 type backupScheduleManager struct {
