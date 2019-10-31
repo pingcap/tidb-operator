@@ -16,7 +16,7 @@ package storage
 import (
 	"fmt"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/registry/generic"

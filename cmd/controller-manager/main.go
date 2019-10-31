@@ -21,7 +21,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"

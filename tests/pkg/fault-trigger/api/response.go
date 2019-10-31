@@ -17,7 +17,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 	"github.com/juju/errors"
 )
 

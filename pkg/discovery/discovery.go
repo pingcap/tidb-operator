@@ -19,7 +19,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"

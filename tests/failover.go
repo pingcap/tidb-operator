@@ -9,7 +9,7 @@ import (
 
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"

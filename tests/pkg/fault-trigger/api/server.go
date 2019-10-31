@@ -16,7 +16,7 @@ import (
 	"net/http"
 
 	restful "github.com/emicklei/go-restful"
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
 )
 

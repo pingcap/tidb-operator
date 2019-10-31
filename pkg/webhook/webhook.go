@@ -16,7 +16,7 @@ package webhook
 import (
 	"net/http"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/webhook/route"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"

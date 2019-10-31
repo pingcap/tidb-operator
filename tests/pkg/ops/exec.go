@@ -19,7 +19,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	corev1 "k8s.io/api/core/v1"

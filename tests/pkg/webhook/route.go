@@ -3,7 +3,7 @@ package webhook
 import (
 	"encoding/json"
 	"errors"
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 	"io/ioutil"
 	"k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

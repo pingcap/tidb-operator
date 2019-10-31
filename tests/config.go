@@ -11,7 +11,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 	"gopkg.in/yaml.v2"
 )
 

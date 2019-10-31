@@ -8,7 +8,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
 	sql_util "github.com/pingcap/tidb-operator/tests/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/slack"

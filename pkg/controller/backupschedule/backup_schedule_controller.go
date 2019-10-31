@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/backupschedule"

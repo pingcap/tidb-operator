@@ -9,7 +9,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/tests/slack"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/client"

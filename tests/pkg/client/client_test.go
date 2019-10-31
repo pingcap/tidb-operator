@@ -3,7 +3,7 @@ package client
 import (
 	"testing"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 	fclient "github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
 )

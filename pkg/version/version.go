@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 )
 
 var (
