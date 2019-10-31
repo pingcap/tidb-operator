@@ -23,7 +23,7 @@ Auto-scaling-group scaling process can also be suspended according to its [docum
 ### Bug fixes
 
 - Migrate statefulsets apiVersion to `app/v1` which fixes compatibility with Kubernetes 1.16 and above versions
-- Fix that the `create_tidb_cluster_release` variable in AWS terraform script does not work
+- Fix the issue that the `create_tidb_cluster_release` variable in AWS Terraform script does not work
 - Fix compatibility issues for ([#1012](https://github.com/pingcap/tidb-operator/pull/1012)): add `v1beta1` to statefulset apiVersions
 - Fix the issue that TiDB Loadbalancer is empty in terraform output
 - Fix a compatibility issue on TiKV maxFailoverCount
