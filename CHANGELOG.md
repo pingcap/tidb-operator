@@ -18,7 +18,7 @@ Auto-scaling-group scaling process can also be suspended according to its [docum
 - Add a new VM manager `qm` in stability test
 - Add `tikv.maxFailoverCount` limit to TiKV
 - Set the default `externalTrafficPolicy` to be `Local` for TiDB service in AWS/GCP/Aliyun
-- Add provider and module versions for aws
+- Add provider and module versions for AWS
 
 ### Bug fixes
 
