@@ -9,7 +9,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/tests/slack"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/client"
@@ -20,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	glog "k8s.io/klog"
 )
 
 const (

@@ -38,7 +38,6 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/kubernetes/pkg/kubelet/apis"
 )
 
 func TestTiKVMemberManagerSyncCreate(t *testing.T) {
@@ -528,10 +527,10 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "node-1",
 					Labels: map[string]string{
-						"region":           "region",
-						"zone":             "zone",
-						"rack":             "rack",
-						apis.LabelHostname: "host",
+						"region":             "region",
+						"zone":               "zone",
+						"rack":               "rack",
+						corev1.LabelHostname: "host",
 					},
 				},
 			}

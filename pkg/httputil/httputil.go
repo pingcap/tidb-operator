@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 )
 
 const (

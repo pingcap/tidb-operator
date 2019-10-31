@@ -14,11 +14,11 @@ import (
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 
 	"k8s.io/kubernetes/pkg/printers"
+	printersinternal "k8s.io/kubernetes/pkg/printers/internalversion"
 
 	"github.com/ghodss/yaml"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/scheme"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
@@ -30,10 +30,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubernetes/pkg/apis/apps"
 	api "k8s.io/kubernetes/pkg/apis/core"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	printersinternal "k8s.io/kubernetes/pkg/printers/internalversion"
 )
 
 const (
@@ -66,7 +65,7 @@ type diagnoseInfoOptions struct {
 	logPath       string
 	since         time.Duration
 	byteReadLimit int64
-	printer       *printers.HumanReadablePrinter
+	printer       printers.ResourcePrinter
 	tidbPrinter   printers.ResourcePrinter
 
 	genericclioptions.IOStreams
@@ -274,11 +273,11 @@ func (d *tidbClusterDumper) Dump(logPath string, resourceWriter io.Writer) error
 type tidbClusterStatefulDumper struct {
 	kubeCli *kubernetes.Clientset
 	tc      *v1alpha1.TidbCluster
-	printer *printers.HumanReadablePrinter
+	printer printers.ResourcePrinter
 }
 
 // NewTiDBClusterStatefulDumper returns a tidbClusterStatefulDumper
-func NewTiDBClusterStatefulDumper(tc *v1alpha1.TidbCluster, kubeCli *kubernetes.Clientset, printer *printers.HumanReadablePrinter) *tidbClusterStatefulDumper {
+func NewTiDBClusterStatefulDumper(tc *v1alpha1.TidbCluster, kubeCli *kubernetes.Clientset, printer printers.ResourcePrinter) *tidbClusterStatefulDumper {
 	return &tidbClusterStatefulDumper{
 		tc:      tc,
 		kubeCli: kubeCli,
@@ -345,11 +344,11 @@ type pvcDumper struct {
 	kubeCli *kubernetes.Clientset
 	tc      *v1alpha1.TidbCluster
 	options metav1.ListOptions
-	printer *printers.HumanReadablePrinter
+	printer printers.ResourcePrinter
 }
 
 // NewPvcDumper returns a pvcDumper.
-func NewPvcDumper(kubeCli *kubernetes.Clientset, tc *v1alpha1.TidbCluster, options metav1.ListOptions, printer *printers.HumanReadablePrinter) *pvcDumper {
+func NewPvcDumper(kubeCli *kubernetes.Clientset, tc *v1alpha1.TidbCluster, options metav1.ListOptions, printer printers.ResourcePrinter) *pvcDumper {
 	return &pvcDumper{
 		tc:      tc,
 		kubeCli: kubeCli,
@@ -406,11 +405,11 @@ type svcDumper struct {
 	kubeCli *kubernetes.Clientset
 	tc      *v1alpha1.TidbCluster
 	options metav1.ListOptions
-	printer *printers.HumanReadablePrinter
+	printer printers.ResourcePrinter
 }
 
 // NewSvcDumper returns a pvcDumper.
-func NewSvcDumper(kubeCli *kubernetes.Clientset, tc *v1alpha1.TidbCluster, options metav1.ListOptions, printer *printers.HumanReadablePrinter) *svcDumper {
+func NewSvcDumper(kubeCli *kubernetes.Clientset, tc *v1alpha1.TidbCluster, options metav1.ListOptions, printer printers.ResourcePrinter) *svcDumper {
 	return &svcDumper{
 		tc:      tc,
 		kubeCli: kubeCli,
@@ -467,11 +466,11 @@ type configMapDumper struct {
 	kubeCli *kubernetes.Clientset
 	tc      *v1alpha1.TidbCluster
 	options metav1.ListOptions
-	printer *printers.HumanReadablePrinter
+	printer printers.ResourcePrinter
 }
 
 // NewConfigMapDumper returns a pvcDumper.
-func NewConfigMapDumper(kubeCli *kubernetes.Clientset, tc *v1alpha1.TidbCluster, options metav1.ListOptions, printer *printers.HumanReadablePrinter) *configMapDumper {
+func NewConfigMapDumper(kubeCli *kubernetes.Clientset, tc *v1alpha1.TidbCluster, options metav1.ListOptions, printer printers.ResourcePrinter) *configMapDumper {
 	return &configMapDumper{
 		tc:      tc,
 		kubeCli: kubeCli,
@@ -644,18 +643,17 @@ func getLogStream(kubeCli *kubernetes.Clientset, pod v1.Pod, logOptions *v1.PodL
 }
 
 // NewPrinter creates a common HumanReadablePrinter.
-func NewPrinter() *printers.HumanReadablePrinter {
-	p := printers.NewHumanReadablePrinter(scheme.Codecs.UniversalDecoder(), printers.PrintOptions{
+func NewPrinter() printers.ResourcePrinter {
+	printer := printers.NewTablePrinter(printers.PrintOptions{
 		WithKind:      false,
 		Wide:          true,
 		WithNamespace: false,
 	})
-
 	// AddHandlers adds print handlers for default Kubernetes types dealing with internal versions.
-	printersinternal.AddHandlers(p)
-
-	return p
-	//return p.PrintObj(obj, writer)
+	tableGenerator := printers.NewTableGenerator().With(printersinternal.AddHandlers)
+	return readable.NewLocalPrinter(printer, tableGenerator, printers.GenerateOptions{
+		Wide: true,
+	})
 }
 
 // NewTiDBPrinter creates a TiDB object printer

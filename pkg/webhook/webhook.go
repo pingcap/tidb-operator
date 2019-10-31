@@ -16,11 +16,11 @@ package webhook
 import (
 	"net/http"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/webhook/route"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	"k8s.io/client-go/kubernetes"
+	glog "k8s.io/klog"
 )
 
 type WebhookServer struct {
