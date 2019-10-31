@@ -393,6 +393,8 @@ const (
 	BackupClean BackupConditionType = "Clean"
 	// BackupFailed means the backup has failed.
 	BackupFailed BackupConditionType = "Failed"
+	// BackupRetryFailed means this failure can be retried
+	BackupRetryFailed BackupConditionType = "RetryFailed"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
@@ -515,6 +517,8 @@ const (
 	RestoreComplete RestoreConditionType = "Complete"
 	// RestoreFailed means the Restore has failed.
 	RestoreFailed RestoreConditionType = "Failed"
+	// RestoreRetryFailed means this failure can be retried
+	RestoreRetryFailed RestoreConditionType = "RetryFailed"
 )
 
 // RestoreCondition describes the observed state of a Restore at a certain point.
