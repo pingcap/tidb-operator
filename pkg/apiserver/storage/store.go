@@ -37,7 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apiserver/pkg/storage"
-	"k8s.io/apiserver/pkg/storage/etcd"
+	"k8s.io/apiserver/pkg/storage/etcd3"
 	"k8s.io/apiserver/pkg/storage/storagebackend/factory"
 )
 
@@ -56,7 +56,7 @@ type store struct {
 }
 
 // New returns an kubernetes configmap implementation of storage.Interface.
-func NewApiServerStore(cli versioned.Interface, codec runtime.Codec, namespace string, objType runtime.Object, newListFunc func() runtime.Object) (storage.Interface, factory.DestroyFunc) {
+func NewApiServerStore(cli versioned.Interface, codec runtime.Codec, namespace string, objType runtime.Object, newListFunc func() runtime.Object) (storage.Interface, factory.DestroyFunc, error) {
 
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, 1*time.Minute, informers.WithNamespace(namespace))
 
@@ -65,7 +65,7 @@ func NewApiServerStore(cli versioned.Interface, codec runtime.Codec, namespace s
 		lister:    inf.Lister(),
 		informer:  inf,
 		client:    cli.PingcapV1alpha1().DataResources(namespace),
-		versioner: etcd.APIObjectVersioner{},
+		versioner: etcd3.APIObjectVersioner{},
 		codec:     codec,
 
 		objType:     objType,
@@ -92,7 +92,7 @@ func NewApiServerStore(cli versioned.Interface, codec runtime.Codec, namespace s
 	destroy := func() {
 		cancel()
 	}
-	return s, destroy
+	return s, destroy, nil
 }
 
 func (s *store) Versioner() storage.Versioner {
@@ -134,7 +134,7 @@ func (s *store) Create(ctx context.Context, key string, obj, out runtime.Object,
 	return nil
 }
 
-func (s *store) Delete(ctx context.Context, key string, out runtime.Object, preconditions *storage.Preconditions) error {
+func (s *store) Delete(ctx context.Context, key string, out runtime.Object, preconditions *storage.Preconditions, validate storage.ValidateObjectFunc) error {
 	objKey := newObjectKey(key)
 	deleteOpt := &metav1.DeleteOptions{}
 	if preconditions != nil && preconditions.UID != nil {
@@ -211,7 +211,7 @@ func (s *store) GetToList(ctx context.Context, key string, resourceVersion strin
 			return err
 		}
 	}
-	return s.versioner.UpdateList(listObj, 0, ret.ResourceVersion)
+	return s.versioner.UpdateList(listObj, 0, ret.ResourceVersion, nil)
 }
 
 // TODO: optimize read with resource version by cache
@@ -241,7 +241,7 @@ func (s *store) List(ctx context.Context, key string, resourceVersion string, pr
 		}
 	}
 
-	return s.versioner.UpdateList(listObj, 0, ret.ResourceVersion)
+	return s.versioner.UpdateList(listObj, 0, ret.ResourceVersion, nil)
 }
 
 func (s *store) GuaranteedUpdate(ctx context.Context,

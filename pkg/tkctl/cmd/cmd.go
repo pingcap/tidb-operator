@@ -66,7 +66,7 @@ func NewTkcCommand(streams genericclioptions.IOStreams) *cobra.Command {
 	rootCmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 
 	// Reuse kubectl global flags to provide namespace, context and credential options
-	kubeFlags := genericclioptions.NewConfigFlags()
+	kubeFlags := genericclioptions.NewConfigFlags(true)
 	kubeFlags.AddFlags(rootCmd.PersistentFlags())
 	tkcContext := config.NewTkcContext(kubeFlags, options)
 

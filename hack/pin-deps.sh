@@ -29,7 +29,13 @@ fi
 
 edit_args=(
     -fmt
+    # TODO remove this when sigs.k8s.io/apiserver-builder-alpha is updated to use Kubernetes 1.16.0 
+    # https://github.com/kubernetes-sigs/apiserver-builder-alpha/issues/433
+    -replace sigs.k8s.io/apiserver-builder-alpha=github.com/cofyc/apiserver-builder-alpha@kubernetes-1.16.0-alpha.0
+    # workaround for https://github.com/uber-go/atomic
+    -replace github.com/uber-go/atomic=go.uber.org/atomic@v1
 )
+
 for repo in ${STAGING_REPOS[@]}; do
 	edit_args+=(-replace $repo=$repo@kubernetes-$VERSION)
 done

@@ -19,5 +19,5 @@ package tools
 
 import (
 	_ "k8s.io/code-generator"
-	_ "github.com/kubernetes-incubator/apiserver-builder-alpha/cmd/apiregister-gen"
+	_ "sigs.k8s.io/apiserver-builder-alpha/cmd/apiregister-gen"
 )

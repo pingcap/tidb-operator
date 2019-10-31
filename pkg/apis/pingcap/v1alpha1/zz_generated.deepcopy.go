@@ -379,7 +379,7 @@ func (in *DataResource) DeepCopyObject() runtime.Object {
 func (in *DataResourceList) DeepCopyInto(out *DataResourceList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]DataResource, len(*in))

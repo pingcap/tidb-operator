@@ -50,17 +50,18 @@ func (f *ApiServerRestOptionsFactory) GetRESTOptions(resource schema.GroupResour
 func (f *ApiServerRestOptionsFactory) newApiServerStorageDecorator() generic.StorageDecorator {
 	return func(
 		config *storagebackend.Config,
-		objectType runtime.Object,
 		resourcePrefix string,
 		keyFunc func(obj runtime.Object) (string, error),
+		newFunc func() runtime.Object,
 		newListFunc func() runtime.Object,
 		getAttrsFunc storage.AttrFunc,
-		trigger storage.TriggerPublisherFunc,
-	) (storage.Interface, factory.DestroyFunc) {
+		trigger storage.IndexerFuncs,
+	) (storage.Interface, factory.DestroyFunc, error) {
 		cli, err := versioned.NewForConfig(f.RestConfig)
 		if err != nil {
 			glog.Fatalf("failed to create Clientset: %v", err)
 		}
+		objectType := newFunc()
 		return NewApiServerStore(cli, f.Codec, f.StorageNamespace, objectType, newListFunc)
 	}
 }

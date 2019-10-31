@@ -424,6 +424,9 @@ type localPrinter struct {
 
 func (l *localPrinter) PrintObj(obj runtime.Object, w io.Writer) error {
 	table, err := l.tableGenerator.GenerateTable(obj, l.options)
+	if table == nil {
+		return fmt.Errorf("unknown type: %v", obj)
+	}
 	if err != nil {
 		return err
 	}

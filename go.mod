@@ -4,6 +4,8 @@
 
 module github.com/pingcap/tidb-operator
 
+go 1.12
+
 require (
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
 	github.com/Microsoft/go-winio v0.4.12 // indirect
@@ -38,7 +40,6 @@ require (
 	github.com/juju/errors v0.0.0-20180806074554-22422dad46e1
 	github.com/juju/loggo v0.0.0-20180524022052-584905176618 // indirect
 	github.com/juju/testing v0.0.0-20180920084828-472a3e8b2073 // indirect
-	github.com/kubernetes-incubator/apiserver-builder-alpha v0.0.0-20190715093516-b948d3dd40b6
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/nwaples/rardecode v1.0.0 // indirect
 	github.com/onsi/gomega v1.5.0
@@ -56,9 +57,9 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20171017195756-830351dc03c6 // indirect
-	github.com/uber-go/atomic v1.4.0 // indirect
-	github.com/uber/jaeger-client-go v2.16.0+incompatible // indirect
-	github.com/uber/jaeger-lib v2.0.0+incompatible // indirect
+	github.com/uber-go/atomic v0.0.0-00010101000000-000000000000 // indirect
+	github.com/uber/jaeger-client-go v2.19.0+incompatible // indirect
+	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	github.com/ugorji/go/codec v0.0.0-20190204201341-e444a5086c43
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
@@ -78,6 +79,8 @@ require (
 	k8s.io/kube-openapi v0.0.0-20190918143330-0270cf2f1c1d
 	k8s.io/kubectl v0.0.0
 	k8s.io/kubernetes v1.16.0
+	sigs.k8s.io/apiserver-builder-alpha v0.0.0-20191023065212-d7072df276e7
+	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191023065212-d7072df276e7
 )
 
 replace github.com/renstrom/dedent => github.com/lithammer/dedent v1.1.0
@@ -131,3 +134,7 @@ replace k8s.io/kubectl => k8s.io/kubectl v0.0.0-20190918164019-21692a0861df
 replace k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.0.0-20190918163543-cfa506e53441
 
 replace k8s.io/node-api => k8s.io/node-api v0.0.0-20190918163711-2299658ad911
+
+replace sigs.k8s.io/apiserver-builder-alpha => github.com/cofyc/apiserver-builder-alpha v0.0.0-20191031044035-9bed9d664571
+
+replace github.com/uber-go/atomic => go.uber.org/atomic v1.5.0
