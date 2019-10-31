@@ -18,7 +18,6 @@ import (
 
 	// registry mysql drive
 	_ "github.com/go-sql-driver/mysql"
-	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
@@ -26,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/cache"
+	glog "k8s.io/klog"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 

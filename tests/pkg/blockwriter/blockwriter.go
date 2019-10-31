@@ -23,9 +23,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	"k8s.io/apimachinery/pkg/util/wait"
+	glog "k8s.io/klog"
 )
 
 const (

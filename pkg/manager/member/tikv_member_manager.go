@@ -18,7 +18,6 @@ import (
 	"reflect"
 	"strings"
 
-	glog "k8s.io/klog"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -35,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	glog "k8s.io/klog"
 )
 
 // tikvMemberManager implements manager.Manager.

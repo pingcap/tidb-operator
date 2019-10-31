@@ -22,13 +22,11 @@ require (
 	github.com/elazarl/goproxy v0.0.0-20190421051319-9d40249d3c2f // indirect
 	github.com/elazarl/goproxy/ext v0.0.0-20190421051319-9d40249d3c2f // indirect
 	github.com/emicklei/go-restful v2.9.5+incompatible
-	github.com/fatih/color v1.7.0 // indirect
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-openapi/loads v0.19.4
 	github.com/go-openapi/spec v0.19.3
 	github.com/go-sql-driver/mysql v1.4.0
 	github.com/gogo/protobuf v1.3.1 // indirect
-	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/groupcache v0.0.0-20181024230925-c65c006176ff // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-cmp v0.3.1
@@ -41,7 +39,6 @@ require (
 	github.com/juju/errors v0.0.0-20180806074554-22422dad46e1
 	github.com/juju/loggo v0.0.0-20180524022052-584905176618 // indirect
 	github.com/juju/testing v0.0.0-20180920084828-472a3e8b2073 // indirect
-	github.com/mattn/go-isatty v0.0.4 // indirect
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/nwaples/rardecode v1.0.0 // indirect
 	github.com/onsi/gomega v1.5.0

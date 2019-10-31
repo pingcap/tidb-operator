@@ -35,7 +35,6 @@ import (
 	"github.com/ghodss/yaml"
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
-	glog "k8s.io/klog"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -59,6 +58,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	glog "k8s.io/klog"
 )
 
 const (

@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 
-	glog "k8s.io/klog"
 	"k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/keyutil"
+	glog "k8s.io/klog"
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/pkiutil"
 )
 

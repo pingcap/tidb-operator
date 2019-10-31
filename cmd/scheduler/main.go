@@ -20,7 +20,6 @@ import (
 	"os"
 	"time"
 
-	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/scheduler/server"
@@ -29,6 +28,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/component-base/logs"
+	glog "k8s.io/klog"
 )
 
 var (

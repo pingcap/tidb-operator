@@ -17,13 +17,13 @@ import (
 	"encoding/json"
 	"fmt"
 
-	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	glog "k8s.io/klog"
 )
 
 const (

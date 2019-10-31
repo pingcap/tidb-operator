@@ -3,9 +3,9 @@ package client
 import (
 	"testing"
 
-	glog "k8s.io/klog"
 	fclient "github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
+	glog "k8s.io/klog"
 )
 
 func TestClientConn(t *testing.T) {

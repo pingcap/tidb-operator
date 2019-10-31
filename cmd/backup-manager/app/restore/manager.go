@@ -18,7 +18,6 @@ import (
 	"path/filepath"
 	"time"
 
-	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -27,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	glog "k8s.io/klog"
 )
 
 // RestoreManager mainly used to manage backup related work

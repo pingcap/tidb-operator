@@ -7,10 +7,10 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/api"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
+	glog "k8s.io/klog"
 )
 
 // Client is a fault-trigger client

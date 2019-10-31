@@ -20,9 +20,9 @@ import (
 	"net/http"
 
 	restful "github.com/emicklei/go-restful"
-	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/discovery"
+	glog "k8s.io/klog"
 )
 
 type server struct {

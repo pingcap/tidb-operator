@@ -22,7 +22,6 @@ import (
 	"strconv"
 	"time"
 
-	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
@@ -31,6 +30,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/component-base/logs"
+	glog "k8s.io/klog"
 )
 
 var cfg *tests.Config

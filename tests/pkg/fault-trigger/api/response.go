@@ -17,8 +17,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	glog "k8s.io/klog"
 	"github.com/juju/errors"
+	glog "k8s.io/klog"
 )
 
 // Response defines a new response struct for http

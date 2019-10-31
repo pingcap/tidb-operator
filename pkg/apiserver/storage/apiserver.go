@@ -16,12 +16,12 @@ package storage
 import (
 	"fmt"
 
-	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/storage/storagebackend/factory"
 	"k8s.io/client-go/rest"
+	glog "k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/storage"

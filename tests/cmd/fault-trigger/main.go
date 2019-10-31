@@ -20,11 +20,11 @@ import (
 	_ "net/http/pprof"
 	"time"
 
-	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/api"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/component-base/logs"
+	glog "k8s.io/klog"
 )
 
 var (

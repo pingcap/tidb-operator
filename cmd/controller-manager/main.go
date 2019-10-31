@@ -21,7 +21,6 @@ import (
 	"os"
 	"time"
 
-	glog "k8s.io/klog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -39,6 +38,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/component-base/logs"
+	glog "k8s.io/klog"
 )
 
 var (
