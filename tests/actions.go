@@ -2049,7 +2049,7 @@ func getDatasourceID(svcName, namespace string) (int, error) {
 	defer func() {
 		err := resp.Body.Close()
 		if err != nil {
-			glog.Warning("close response failed, err: %v", err)
+			glog.Warningf("close response failed, err: %v", err)
 		}
 	}()
 
