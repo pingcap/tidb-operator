@@ -34,7 +34,7 @@ Auto-scaling-group scaling process can also be suspended according to its [docum
 
 ## Detailed Bug Fixes and Changes
 
-- Fix that the create_tidb_cluster_release variable in AWS terraform script does not work ([#1062](https://github.com/pingcap/tidb-operator/pull/1062))
+- Fix that the `create_tidb_cluster_release` variable in AWS terraform script does not work ([#1062](https://github.com/pingcap/tidb-operator/pull/1062))
 - Fix compatibility issues for ([#1012](https://github.com/pingcap/tidb-operator/pull/1012)): add `v1beta1` to statefulset apiVersions ([#1054](https://github.com/pingcap/tidb-operator/pull/1054))
 - Enable ConfigMapRollout by default in stability test ([#1036](https://github.com/pingcap/tidb-operator/pull/1036))
 - Fix the issue that TiDB Loadbalancer is empty in terraform output ([#1045](https://github.com/pingcap/tidb-operator/pull/1045))
