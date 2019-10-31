@@ -22,7 +22,7 @@ Auto-scaling-group scaling process can also be suspended according to its [docum
 
 ### Bug fixes
 
-- Fix tkctl version does not work when the release name is un-wanted
+- Fix the issue that tkctl version does not work when the release name is un-wanted
 - Migrate statefulsets apiVersion to `app/v1` which fixes compatibility with Kubernetes 1.16 and above versions
 - Fix the issue that the `create_tidb_cluster_release` variable in AWS Terraform script does not work
 - Fix compatibility issues by adding `v1beta1` to statefulset apiVersions
