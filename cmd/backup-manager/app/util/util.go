@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/spf13/pflag"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 var (

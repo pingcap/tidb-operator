@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/kubernetes/pkg/kubectl/util/logs"
+	"k8s.io/component-base/logs"
 )
 
 func main() {

@@ -18,7 +18,6 @@ import (
 
 	// registry mysql drive
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/restore"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
@@ -26,7 +25,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/cache"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	glog "k8s.io/klog"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 // NewRestoreCommand implements the restore command
