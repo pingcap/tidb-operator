@@ -42,7 +42,7 @@ func (ro *RestoreOpts) String() string {
 
 func (ro *RestoreOpts) getRestoreDataPath() string {
 	backupName := filepath.Base(ro.BackupPath)
-	NsClusterName := fmt.Sprintf("%s_%s", ro.Namespace, ro.TcName)
+	NsClusterName := fmt.Sprintf("%s-%s", ro.Namespace, ro.TcName)
 	return filepath.Join(constants.BackupRootPath, NsClusterName, backupName)
 }
 

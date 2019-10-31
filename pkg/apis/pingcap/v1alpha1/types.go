@@ -322,25 +322,42 @@ type BackupList struct {
 type BackupStorageType string
 
 const (
-	// BackupStorageTypeCeph represents the backend storage type is ceph.
-	BackupStorageTypeCeph BackupStorageType = "ceph"
+	// BackupStorageTypeS3 represents all storage that compatible with the Amazon S3.
+	BackupStorageTypeS3 BackupStorageType = "s3"
+)
+
+// +k8s:openapi-gen=true
+// S3StoregeProviderType represents the specific storage provider that implements the S3 interface
+type S3StoregeProviderType string
+
+const (
+	// S3StoregeProviderTypeCeph represents the S3 compliant storage provider is ceph
+	S3StoregeProviderTypeCeph S3StoregeProviderType = "ceph"
+	// S3StoregeProviderTypeAWS represents the S3 compliant storage provider is aws
+	S3StoregeProviderTypeAWS S3StoregeProviderType = "aws"
 )
 
 // +k8s:openapi-gen=true
 // StorageProvider defines the configuration for storing a backup in backend storage.
 type StorageProvider struct {
-	Ceph *CephStorageProvider `json:"ceph"`
+	S3 *S3StorageProvider `json:"s3"`
 }
 
 // +k8s:openapi-gen=true
-// cephStorageProvider represents an ceph compatible bucket for storing backups.
-type CephStorageProvider struct {
-	// Region in which the ceph bucket is located.
+// S3StorageProvider represents a S3 compliant storage for storing backups.
+type S3StorageProvider struct {
+	// Provider represents the specific storage provider that implements the S3 interface
+	Provider S3StoregeProviderType `json:"provider"`
+	// Region in which the S3 compatible bucket is located.
 	Region string `json:"region"`
 	// Bucket in which to store the Backup.
 	Bucket string `json:"bucket"`
-	// Endpoint is the access address of the ceph object storage.
+	// Endpoint of S3 compatible storage service
 	Endpoint string `json:"endpoint"`
+	// StorageClass represents the storage class
+	StorageClass string `json:"storageClass"`
+	// Acl represents access control permissions for this bucket
+	Acl string `json:"acl"`
 	// SecretName is the name of secret which stores
 	// ceph object store access key and secret key.
 	SecretName string `json:"secretName"`

@@ -50,7 +50,7 @@ func (bo *BackupOpts) getBackupFullPath() string {
 
 func (bo *BackupOpts) getBackupRelativePath() string {
 	backupName := fmt.Sprintf("backup-%s", time.Now().UTC().Format(time.RFC3339))
-	return fmt.Sprintf("%s_%s/%s", bo.Namespace, bo.TcName, backupName)
+	return fmt.Sprintf("%s-%s/%s", bo.Namespace, bo.TcName, backupName)
 }
 
 func (bo *BackupOpts) getDestBucketURI(remotePath string) string {
