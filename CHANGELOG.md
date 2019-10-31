@@ -43,7 +43,7 @@ Auto-scaling-group scaling process can also be suspended according to its [docum
 - Suspend ReplaceUnhealthy process for AWS TiKV auto-scaling-group ([#1014](https://github.com/pingcap/tidb-operator/pull/1014))
 - Add a new VM manager `qm` in stability test ([#896](https://github.com/pingcap/tidb-operator/pull/896))
 - Fix provider versions constraint issues for GCP and Aliyun ([#959](https://github.com/pingcap/tidb-operator/pull/959))
-- Fix values file customization for tidb-operator on aliyun ([#971](https://github.com/pingcap/tidb-operator/pull/971))
+- Fix values file customization for tidb-operator on Aliyun ([#971](https://github.com/pingcap/tidb-operator/pull/971))
 - Fix a compatibility issue of TiKV `tikv.maxFailoverCount` ([#977](https://github.com/pingcap/tidb-operator/pull/977))
 - Add `tikv.maxFailoverCount` limit to TiKV ([#965](https://github.com/pingcap/tidb-operator/pull/965))
 - Fix tidb-operator crash when users modify statefulset upgrade strategy improperly ([#912](https://github.com/pingcap/tidb-operator/pull/912))
