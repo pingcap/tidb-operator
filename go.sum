@@ -81,8 +81,6 @@ github.com/cockroachdb/cockroach-go v0.0.0-20181001143604-e0a95dfd547c/go.mod h1
 github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd h1:qMd81Ts1T2OTKmB4acZcyKaMtRnY5Y44NuXGX2GFJ1w=
 github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd/go.mod h1:sE/e/2PUdi/liOCUjSTXgM1o87ZssimdTWN964YiIeI=
 github.com/codegangsta/negroni v1.0.0/go.mod h1:v0y3T5G7Y1UlFfyxFn/QLRU4a2EuNau2iZY63YTKWo0=
-github.com/cofyc/apiserver-builder-alpha v0.0.0-20191031044035-9bed9d664571 h1:/0pxktifXG3b4vBSyN9tWle1T+TZdz+DDdnNEVtSAu8=
-github.com/cofyc/apiserver-builder-alpha v0.0.0-20191031044035-9bed9d664571/go.mod h1:o9i3cv2AcVEomRhnaB4Bt1LqQiJrr73KPGBl9VbFdZM=
 github.com/container-storage-interface/spec v1.1.0/go.mod h1:6URME8mwIBbpVyZV93Ce5St17xBiQJQY67NDsuohiy4=
 github.com/containerd/console v0.0.0-20170925154832-84eeaae905fa/go.mod h1:Tj/on1eG8kiEhd0+fhSDzsPAFESxzBBvdyEgyryXffw=
 github.com/containerd/containerd v1.0.2/go.mod h1:bC6axHOhabU15QhwfG7w5PipXdVtMXFTttgp+kVtyUA=
@@ -958,6 +956,8 @@ modernc.org/golex v1.0.0/go.mod h1:b/QX9oBD/LhixY6NDh+IdGv17hgB+51fET1i2kPSmvk=
 modernc.org/mathutil v1.0.0/go.mod h1:wU0vUrJsVWBZ4P6e7xtFJEhFSNsfRLJ8H458uRjg03k=
 modernc.org/strutil v1.0.0/go.mod h1:lstksw84oURvj9y3tn8lGvRxyRC1S2+g5uuIzNfIOBs=
 modernc.org/xc v1.0.0/go.mod h1:mRNCo0bvLjGhHO9WsyuKVU4q0ceiDDDoEeWDJHrNx8I=
+sigs.k8s.io/apiserver-builder-alpha v0.0.0-20191031091337-b5d9ec3241f6 h1:CV2yC2ObXdwZXjQWrx0CO2R83yaJ4cWvuejBBTaLG3g=
+sigs.k8s.io/apiserver-builder-alpha v0.0.0-20191031091337-b5d9ec3241f6/go.mod h1:p0w5ou+8SCTGiaMD9cWxOWOn0Xl84wS8AQ3a7lCll7M=
 sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191023065212-d7072df276e7 h1:LH0PqEM7cXuq/dL+cY79dfDhbGbkxqWEPyGTxoLn+Og=
 sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191023065212-d7072df276e7/go.mod h1:6HSGUt6YP9sNiX37QJkpIpn+bStgXJBRvkxCvDJhcTM=
 sigs.k8s.io/controller-tools v0.1.10/go.mod h1:6g08p9m9G/So3sBc1AOQifHfhxH/mb6Sc4z0LMI8XMw=

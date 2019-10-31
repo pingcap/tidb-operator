@@ -78,7 +78,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20190918143330-0270cf2f1c1d
 	k8s.io/kubectl v0.0.0
 	k8s.io/kubernetes v1.16.0
-	sigs.k8s.io/apiserver-builder-alpha v0.0.0-20191023065212-d7072df276e7
+	sigs.k8s.io/apiserver-builder-alpha v0.0.0-20191031091337-b5d9ec3241f6
 	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191023065212-d7072df276e7
 )
 
@@ -133,7 +133,5 @@ replace k8s.io/kubectl => k8s.io/kubectl v0.0.0-20190918164019-21692a0861df
 replace k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.0.0-20190918163543-cfa506e53441
 
 replace k8s.io/node-api => k8s.io/node-api v0.0.0-20190918163711-2299658ad911
-
-replace sigs.k8s.io/apiserver-builder-alpha => github.com/cofyc/apiserver-builder-alpha v0.0.0-20191031044035-9bed9d664571
 
 replace github.com/uber-go/atomic => go.uber.org/atomic v1.5.0
