@@ -57,7 +57,7 @@ func (wh *WebhookHandler) RefreshCertPEMExpirationHandler(config *RefreshJobConf
 	if err != nil {
 		return err
 	}
-	
+
 	certByte := secret.Data["cert.pem"]
 	cert, err := certUtil.DecodeCertPem(certByte)
 	if err != nil {
