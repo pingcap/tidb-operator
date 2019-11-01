@@ -29,7 +29,7 @@ default: build
 docker-push: docker backup-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest"
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:latest"
-	docker push "${DOCKER_REGISTRY}/pingcap/tidb-backup-initializer:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-initializer:latest"
 
 docker: build initializer-docker
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest" images/tidb-operator
