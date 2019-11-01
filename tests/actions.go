@@ -227,6 +227,7 @@ type OperatorConfig struct {
 	Namespace          string
 	ReleaseName        string
 	Image              string
+	InitializerImage   string
 	Tag                string
 	SchedulerImage     string
 	SchedulerTag       string
@@ -343,6 +344,7 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	set := map[string]string{
 		"operatorImage":                    oi.Image,
+		"initializerImage":                 oi.InitializerImage,
 		"controllerManager.autoFailover":   "true",
 		"scheduler.kubeSchedulerImageName": oi.SchedulerImage,
 		"controllerManager.logLevel":       oi.LogLevel,

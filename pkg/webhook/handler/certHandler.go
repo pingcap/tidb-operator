@@ -57,8 +57,12 @@ func (wh *WebhookHandler) RefreshCertPEMExpirationHandler(config *RefreshJobConf
 	if err != nil {
 		return err
 	}
+	
 	certByte := secret.Data["cert.pem"]
 	cert, err := certUtil.DecodeCertPem(certByte)
+	if err != nil {
+		return err
+	}
 	if certUtil.IsCertificateNeedRefresh(cert, refreshIntervalHour) {
 		job := createNewJobToRefreshCert(config, generateRefreshJobName(time.Now()))
 		_, err := wh.kubeCli.BatchV1().Jobs(config.Namespace).Create(job)
