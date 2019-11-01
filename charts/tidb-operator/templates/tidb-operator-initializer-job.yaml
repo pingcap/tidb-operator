@@ -34,9 +34,7 @@ spec:
           image: {{ .Values.operatorImage }}
           imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
           command:
-            - sleep
-            - "3600"
-#            - /usr/local/bin/tidb-initializer
+            - /usr/local/bin/tidb-initializer
           env:
             - name: NAMESPACE
               valueFrom:

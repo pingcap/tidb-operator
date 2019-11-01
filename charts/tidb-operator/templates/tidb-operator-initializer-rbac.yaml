@@ -30,7 +30,7 @@ rules:
     resources: ["validatingwebhookconfigurations"]
     verbs: ["get","create","update","delete"]
   - apiGroups: ["certificates.k8s.io"]
-    resources: ["certificatesigningrequests"]
+    resources: ["certificatesigningrequests","certificatesigningrequests/approval"]
     verbs: ["get","create","update","delete","list"]
 
 ---
