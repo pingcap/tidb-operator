@@ -32,4 +32,4 @@ jobs:
     - name: Build binaries and images
       run: make docker e2e-docker cli
     - name: Unit Tests
-      run: make test
+      run: make test GOFLAGS='-race'
