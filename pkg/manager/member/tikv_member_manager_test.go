@@ -31,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -1469,6 +1470,88 @@ func TestGetNewServiceForTidbCluster(t *testing.T) {
 			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
 				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
 			}
+		})
+	}
+}
+
+func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
+	tests := []struct {
+		name    string
+		tc      v1alpha1.TidbCluster
+		wantErr bool
+		testSts func(sts *apps.StatefulSet)
+	}{
+		{
+			name: "tikv network is not host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+			},
+			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+		},
+		{
+			name: "tikv network is host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: v1alpha1.TiKVSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							HostNetwork: true,
+						},
+					},
+				},
+			},
+			testSts: testHostNetwork(t, true, v1.DNSClusterFirstWithHostNet),
+		},
+		{
+			name: "tikv network is not host when pd is host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							HostNetwork: true,
+						},
+					},
+				},
+			},
+			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+		},
+		{
+			name: "tikv network is not host when tidb is host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							HostNetwork: true,
+						},
+					},
+				},
+			},
+			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+		},
+		// TODO add more tests
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sts, err := getNewTiKVSetForTidbCluster(&tt.tc)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("error %v, wantErr %v", err, tt.wantErr)
+			}
+			tt.testSts(sts)
 		})
 	}
 }
