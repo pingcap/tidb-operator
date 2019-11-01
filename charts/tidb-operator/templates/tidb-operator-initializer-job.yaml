@@ -23,6 +23,10 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: initializer
     spec:
+      volumes:
+        - name: create-cert
+          configMap:
+            name: tidb-operator-initializer-config
       serviceAccountName: tidb-operator-initializer-sa
       restartPolicy: OnFailure
       containers:
@@ -38,3 +42,6 @@ spec:
                   fieldPath: metadata.namespace
             - name: REFRESH_INTERVAL_HOUR
               value: "{{ .Values.admissionControllerWebhook.certRefreshIntervalHour | default 336 }}"
+          volumeMounts:
+            - mountPath: "/etc/initializer"
+              name: create-cert

@@ -1,5 +1,7 @@
 FROM alpine:3.5
 
+ARG KUBE_VERSION=1.12.10
+
 # install kubectl
 RUN apk add --update ca-certificates && \
     apk add --update -t deps curl && \
