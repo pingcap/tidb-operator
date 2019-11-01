@@ -23,8 +23,6 @@ cd $SCRIPT_ROOT
 export GO111MODULE=on
 
 go mod vendor
-# workaround for https://github.com/golang/go/issues/31248
-git checkout go.mod || true
 
 CODEGEN_PKG=${CODEGEN_PKG:-$(cd "${SCRIPT_ROOT}"; ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
 
