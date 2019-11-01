@@ -90,9 +90,9 @@ func createCertificateFile(cert *x509.Certificate, key *rsa.PrivateKey, caCert *
 	return ca_b64, priv_b64, nil
 }
 
-func DecodeCertPem(certPEM string) (*x509.Certificate, error) {
+func DecodeCertPem(certByte []byte) (*x509.Certificate, error) {
 
-	block, _ := pem.Decode([]byte(certPEM))
+	block, _ := pem.Decode(certByte)
 	if block == nil {
 		return nil, fmt.Errorf("failed to parse certificate PEM")
 	}

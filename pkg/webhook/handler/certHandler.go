@@ -53,8 +53,7 @@ func (wh *WebhookHandler) RefreshCertPEMExpirationHandler(config *RefreshJobConf
 		return err
 	}
 	certByte := secret.Data["cert.pem"]
-	certString := string(certByte[:])
-	cert, err := certUtil.DecodeCertPem(certString)
+	cert, err := certUtil.DecodeCertPem(certByte)
 	now := time.Now()
 	expireDate := cert.NotAfter
 	internal := expireDate.Sub(now)
