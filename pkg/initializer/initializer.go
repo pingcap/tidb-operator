@@ -14,19 +14,24 @@
 package initializer
 
 import (
+	"fmt"
+	certUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"k8s.io/api/admissionregistration/v1beta1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	glog "k8s.io/klog"
+	"os/exec"
 )
 
 const (
+	CSRName                     = "admission-controller-webhook-csr"
 	SecretName                  = "admission-controller-webhook-certs"
 	admissionConfigurationName  = "tidb-operator-validation-admission-cfg"
 	admissionWebhookServerName  = "admission-controller-webhook"
 	admissionWebhookServiceName = "admission-controller-webhook-svc"
+	executePath                 = "/etc/initializer/create-cert-script"
 )
 
 type Initializer struct {
@@ -40,12 +45,12 @@ func NewInitializer(kubecli kubernetes.Interface) *Initializer {
 }
 
 // Initializer should do following setups:
-//  - create or retain Secret for ca cert
+//  - create or refresh Secret and CSR for ca cert
 //  - update webhook server
 //  - update validationAdmissionConfiguration
-func (initializer *Initializer) Run(namespace string) error {
+func (initializer *Initializer) Run(namespace string, refreshIntervalHour int) error {
 
-	secret, err := initializer.applySecret(namespace)
+	secret, err := initializer.applyCertAuthority(namespace, refreshIntervalHour)
 	if err != nil {
 		glog.Errorf("failed to apply Secret,%v", err)
 		return err
@@ -70,24 +75,35 @@ func (initializer *Initializer) Run(namespace string) error {
 }
 
 // create secret if not existed for ca cert
-func (initializer *Initializer) applySecret(namespace string) (*core.Secret, error) {
+func (initializer *Initializer) applyCertAuthority(namespace string, refreshIntervalHour int) (*core.Secret, error) {
 
+	glog.Info("start to apply Cert Authority.")
+	var secret *core.Secret
 	oldSecret, err := initializer.kubeCli.CoreV1().Secrets(namespace).Get(SecretName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			newSecret, err := initializer.GenerateNewSecretForInitializer(namespace)
+			glog.Info("previous CA Authority is not existed.")
+			secret, err = initializer.generateSecretAndCSR(namespace, admissionWebhookServiceName)
 			if err != nil {
 				return nil, err
 			}
-			newSecret, err = initializer.kubeCli.CoreV1().Secrets(namespace).Create(newSecret)
-			if err != nil {
-				return nil, err
-			}
-			return newSecret, nil
+			return secret, nil
 		}
 		return nil, err
 	}
-	return oldSecret, nil
+	secret = oldSecret
+	cert, err := certUtils.DecodeCertPem(oldSecret.Data["cert.pem"])
+	if err != nil {
+		return nil, err
+	}
+	if certUtils.IsCertificateNeedRefresh(cert, refreshIntervalHour) {
+		glog.Info("previous CA Authority need refresh.")
+		secret, err = initializer.generateSecretAndCSR(namespace, admissionWebhookServiceName)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return secret, err
 }
 
 // update tidb-operator validation webhook server
@@ -118,11 +134,26 @@ func (initializer *Initializer) updateWebhookServer(namespace string, secret *co
 	}
 
 	server.Spec.Template.Annotations = map[string]string{
-		"checksum/config": Checksum(secret.Data["cert.pem"]),
+		"checksum/config": certUtils.Checksum(secret.Data["cert.pem"]),
 	}
 	_, err = initializer.kubeCli.ExtensionsV1beta1().Deployments(namespace).Update(server)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (initializer *Initializer) generateSecretAndCSR(namespace, serviceName string) (*core.Secret, error) {
+
+	output, err := exec.Command("/bin/sh", executePath, "-n", namespace, "-s", serviceName).CombinedOutput()
+	if err != nil {
+		glog.Errorf("execute ca cert failed for service[%s/%s],%v", namespace, serviceName, err)
+		return nil, err
+	}
+	glog.Infof("execute output:%s", string(output[:]))
+	secret, err := initializer.kubeCli.CoreV1().Secrets(namespace).Get(fmt.Sprintf("%s-cert", serviceName), metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return secret, nil
 }

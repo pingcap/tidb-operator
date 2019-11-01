@@ -57,9 +57,9 @@ func init() {
 		glog.Fatal("NAMESPACE environment variable not set")
 	}
 
-	refreshIntervalHourENV := os.Getenv("REFRESH_INTERNAL_HOUR")
+	refreshIntervalHourENV := os.Getenv("REFRESH_INTERVAL_HOUR")
 	if refreshIntervalHourENV == "" {
-		glog.Fatal("REFRESH_INTERNAL_HOUR environment variable not set")
+		glog.Fatal("REFRESH_INTERVAL_HOUR environment variable not set")
 	}
 
 	refreshIntervalHour, err := strconv.Atoi(refreshIntervalHourENV)

@@ -58,7 +58,7 @@ spec:
                   fieldPath: metadata.namespace
             - name: IMAGE
               value: "{{ .Values.operatorImage }}"
-            - name: REFRESH_INTERNAL_HOUR
+            - name: REFRESH_INTERVAL_HOUR
               value: "{{ .Values.admissionControllerWebhook.certRefreshIntervalHour | default 336 }}"
             - name: OWNER_VERSION
               value: "v1"
@@ -75,4 +75,4 @@ spec:
       volumes:
         - name: webhook-certs
           secret:
-            secretName: admission-controller-webhook-certs
+            secretName: admission-controller-webhook-svc-cert

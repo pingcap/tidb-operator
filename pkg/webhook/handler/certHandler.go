@@ -10,7 +10,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	glog "k8s.io/klog"
+	"strconv"
 	"time"
+)
+
+const (
+	configmapName = "tidb-operator-initializer-config"
 )
 
 type WebhookHandler struct {
@@ -54,24 +59,13 @@ func (wh *WebhookHandler) RefreshCertPEMExpirationHandler(config *RefreshJobConf
 	}
 	certByte := secret.Data["cert.pem"]
 	cert, err := certUtil.DecodeCertPem(certByte)
-	if err != nil {
-		return err
-	}
-	now := time.Now()
-	expireDate := cert.NotAfter
-	internal := expireDate.Sub(now)
-	if internal.Hours() <= float64(refreshIntervalHour) {
-
-		glog.Info("tidb-operator start to refresh ca cert")
-
-		job := createNewJobToRefreshCert(config, generateRefreshJobName(now))
+	if certUtil.IsCertificateNeedRefresh(cert, refreshIntervalHour) {
+		job := createNewJobToRefreshCert(config, generateRefreshJobName(time.Now()))
 		_, err := wh.kubeCli.BatchV1().Jobs(config.Namespace).Create(job)
-
 		if err != nil {
 			glog.Infof("create refresh Job failed,:%v", err)
 			return err
 		}
-
 	}
 	return nil
 }
@@ -82,6 +76,7 @@ func generateRefreshJobName(now time.Time) string {
 }
 
 func createNewJobToRefreshCert(config *RefreshJobConfig, name string) *batchv1.Job {
+
 	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -104,6 +99,19 @@ func createNewJobToRefreshCert(config *RefreshJobConfig, name string) *batchv1.J
 					Namespace: config.Namespace,
 				},
 				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{
+						{
+							Name: "create-cert",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: configmapName,
+									},
+									Items: []corev1.KeyToPath{{Key: "create-cert-script", Path: "create_cert"}},
+								},
+							},
+						},
+					},
 					RestartPolicy: corev1.RestartPolicyOnFailure,
 					Containers: []corev1.Container{
 						{
@@ -111,7 +119,7 @@ func createNewJobToRefreshCert(config *RefreshJobConfig, name string) *batchv1.J
 							Image:           config.Image,
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Command: []string{
-								"/usr/local/bin/tidb-initializer",
+								"/usr/local/bin/tidb-operator-initializer",
 							},
 							Env: []corev1.EnvVar{
 								{
@@ -122,6 +130,10 @@ func createNewJobToRefreshCert(config *RefreshJobConfig, name string) *batchv1.J
 											FieldPath:  "metadata.namespace",
 										},
 									},
+								},
+								{
+									Name:  "REFRESH_INTERVAL_HOUR",
+									Value: strconv.Itoa(config.RefreshInterval),
 								},
 							},
 						},
