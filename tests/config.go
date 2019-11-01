@@ -92,7 +92,6 @@ func NewConfig() (*Config, error) {
 	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v3.0.2,v3.0.3,v3.0.4", "tidb versions")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
-	flag.StringVar(&cfg.InitializerImage, "initializer-image", "pingcap/tidb-operator-initializer:latest", "initializer image")
 	flag.StringVar(&cfg.UpgradeOperatorTag, "upgrade-operator-tag", "", "upgrade operator tag used to choose charts")
 	flag.StringVar(&cfg.UpgradeOperatorImage, "upgrade-operator-image", "", "upgrade operator image")
 	flag.StringVar(&cfg.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")

@@ -224,7 +224,6 @@ func newOperatorConfig() *tests.OperatorConfig {
 		Namespace:        "pingcap",
 		ReleaseName:      "operator",
 		Image:            cfg.OperatorImage,
-		InitializerImage: cfg.InitializerImage,
 		Tag:              cfg.OperatorTag,
 		SchedulerImage:   "mirantis/hypokube",
 		SchedulerTag:     "final",

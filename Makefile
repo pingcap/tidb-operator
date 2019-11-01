@@ -31,13 +31,13 @@ docker-push: docker backup-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:latest"
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-initializer:latest"
 
-docker: build initializer-docker
+docker: build
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest" images/tidb-operator
 
 build: controller-manager scheduler discovery admission-controller apiserver initializer
 
 initializer:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator-initializer/bin/tidb-initializer cmd/initializer/main.go
+	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-initializer cmd/initializer/main.go
 
 controller-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
@@ -59,9 +59,6 @@ backup-manager:
 
 backup-docker: backup-manager
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:latest" images/backup-manager
-
-initializer-docker: initializer
-	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator-initializer:latest" images/tidb-operator-initializer
 
 e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest"

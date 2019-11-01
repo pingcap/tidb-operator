@@ -27,7 +27,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: tidb-operator
-          image: {{ .Values.initializerImage }}
+          image: {{ .Values.operatorImage }}
           imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
           command:
             - /usr/local/bin/tidb-initializer
