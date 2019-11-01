@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -28,6 +27,7 @@ import (
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	glog "k8s.io/klog"
 )
 
 // JobControlInterface manages Jobs used in backup、restore and clean

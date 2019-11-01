@@ -34,3 +34,4 @@ tests/e2e/e2e.test
 apiserver.local.config/
 manifests/crd-verify.yaml
 /tkctl
+/.go-version
