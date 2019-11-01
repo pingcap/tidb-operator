@@ -34,7 +34,10 @@ docker-push: docker backup-docker
 docker: build
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest" images/tidb-operator
 
-build: controller-manager scheduler discovery admission-controller apiserver
+build: controller-manager scheduler discovery admission-controller apiserver initializer
+
+initializer:
+	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-initializer cmd/initializer/main.go
 
 controller-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go

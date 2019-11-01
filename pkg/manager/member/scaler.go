@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/util"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -96,7 +97,7 @@ func decreaseReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
 }
 
 func ordinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int32) string {
-	return fmt.Sprintf("%s-%s-%d", memberType, setName, ordinal)
+	return util.OrdinalPVCName(memberType, setName, ordinal)
 }
 
 func ordinalPodName(memberType v1alpha1.MemberType, tcName string, ordinal int32) string {

@@ -52,7 +52,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx)
+	//go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx)
 
 	c := cron.New()
 	if err := c.AddFunc("0 0 10 * * *", func() {
@@ -164,7 +164,7 @@ func run() {
 		}
 
 		// upgrade
-		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
+		//oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
 		ctx, cancel := context.WithCancel(context.Background())
 		for _, cluster := range clusters {
 			assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(cluster)
@@ -202,7 +202,7 @@ func run() {
 			oa.CheckTidbClusterStatusOrDie(cluster)
 		}
 		cancel()
-		oa.CleanWebHookAndServiceOrDie(ocfg)
+		//oa.CleanWebHookAndServiceOrDie(ocfg)
 
 		for _, cluster := range clusters {
 			oa.CheckDisasterToleranceOrDie(cluster)

@@ -196,7 +196,7 @@ func tikvPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiKVMemberName(tcName), ordinal)
 }
 
-func pdPodName(tcName string, ordinal int32) string {
+func PdPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.PDMemberName(tcName), ordinal)
 }
 
@@ -215,8 +215,8 @@ func CombineAnnotations(a, b map[string]string) map[string]string {
 	return a
 }
 
-// needForceUpgrade check if force upgrade is necessary
-func needForceUpgrade(tc *v1alpha1.TidbCluster) bool {
+// NeedForceUpgrade check if force upgrade is necessary
+func NeedForceUpgrade(tc *v1alpha1.TidbCluster) bool {
 	// Check if annotation 'pingcap.com/force-upgrade: "true"' is set
 	if tc.Annotations != nil {
 		forceVal, ok := tc.Annotations[label.AnnForceUpgradeKey]

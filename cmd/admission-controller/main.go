@@ -14,14 +14,20 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/webhook/handler"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/webhook"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/component-base/logs"
@@ -32,6 +38,11 @@ var (
 	printVersion bool
 	certFile     string
 	keyFile      string
+	//leaseDuration    = 15 * time.Second
+	//renewDuration    = 5 * time.Second
+	//retryPeriod      = 3 * time.Second
+	//waitDuration     = 5 * time.Second
+	refreshJobConfig *handler.RefreshJobConfig
 )
 
 func init() {
@@ -40,6 +51,49 @@ func init() {
 	flag.StringVar(&certFile, "tlsCertFile", "/etc/webhook/certs/cert.pem", "File containing the x509 Certificate for HTTPS.")
 	flag.StringVar(&keyFile, "tlsKeyFile", "/etc/webhook/certs/key.pem", "File containing the x509 private key to --tlsCertFile.")
 	flag.Parse()
+
+	ns := os.Getenv("NAMESPACE")
+	if ns == "" {
+		glog.Fatal("NAMESPACE environment variable not set")
+	}
+
+	refreshIntervalHourENV := os.Getenv("REFRESH_INTERNAL_HOUR")
+	if refreshIntervalHourENV == "" {
+		glog.Fatal("REFRESH_INTERNAL_HOUR environment variable not set")
+	}
+
+	refreshIntervalHour, err := strconv.Atoi(refreshIntervalHourENV)
+	if err != nil {
+		glog.Fatal("REFRESH_INTERNAL_HOUR environment variable not digital int")
+	}
+
+	image := os.Getenv("IMAGE")
+	if image == "" {
+		glog.Fatal("IMAGE environment variable not set")
+	}
+
+	ownerUid := os.Getenv("OWNER_UID")
+	if ownerUid == "" {
+		glog.Fatal("OWNER_UID environment variable not set")
+	}
+
+	ownerKind := os.Getenv("OWNER_KIND")
+	if ownerKind == "" {
+		glog.Fatal("OWNER_KIND environment variable not set")
+	}
+
+	ownerVersion := os.Getenv("OWNER_VERSION")
+	if ownerVersion == "" {
+		glog.Fatal("OWNER_VERSION environment variable not set")
+	}
+
+	ownerName := os.Getenv("OWNER_NAME")
+	if ownerName == "" {
+		glog.Fatal("OWNER_NAME environment variable not set")
+	}
+
+	refreshJobConfig = handler.NewRefreshJobConfig(ns, image, ownerUid, ownerKind, ownerVersion, ownerName, refreshIntervalHour)
+	glog.Info("load refresh config successfully.")
 }
 
 func main() {
@@ -52,6 +106,11 @@ func main() {
 		os.Exit(0)
 	}
 	version.LogVersionInfo()
+
+	//hostName, err := os.Hostname()
+	//if err != nil {
+	//	glog.Fatalf("failed to get hostname: %v", err)
+	//}
 
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
@@ -68,7 +127,66 @@ func main() {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 
-	webhookServer := webhook.NewWebHookServer(kubeCli, cli, certFile, keyFile)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
+	for v, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
+		if !synced {
+			glog.Fatalf("error syncing informer for %v", v)
+		}
+	}
+
+	webhookServer := webhook.NewWebHookServer(kubeCli, cli, kubeInformerFactory, refreshJobConfig, certFile, keyFile)
+	controllerCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	kubeInformerFactory.Start(controllerCtx.Done())
+	for v, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
+		if !synced {
+			glog.Fatalf("error syncing informer for %v", v)
+		}
+	}
+	glog.Infof("cache of informer factories sync successfully")
+
+	if err := webhookServer.Run(); err != nil {
+		glog.Errorf("stop http server %v", err)
+	}
+
+	/*
+	* currently we only use one replica for admission-controller-webhook
+	 */
+
+	//rl := resourcelock.EndpointsLock{
+	//	EndpointsMeta: metav1.ObjectMeta{
+	//		Namespace: ns,
+	//		Name:      "admission-controller-webhook",
+	//	},
+	//	Client: kubeCli.CoreV1(),
+	//	LockConfig: resourcelock.ResourceLockConfig{
+	//		Identity:      hostName,
+	//		EventRecorder: &record.FakeRecorder{},
+	//	},
+	//}
+	//onStarted := func(ctx context.Context) {
+	//	if err := webhookServer.Run(); err != nil {
+	//		glog.Errorf("stop http server %v", err)
+	//	}
+	//}
+	//
+	//onStopped := func() {
+	//	glog.Fatalf("leader election lost")
+	//}
+
+	//go wait.Forever(func() {
+	//	leaderelection.RunOrDie(controllerCtx, leaderelection.LeaderElectionConfig{
+	//		Lock:          &rl,
+	//		LeaseDuration: leaseDuration,
+	//		RenewDeadline: renewDuration,
+	//		RetryPeriod:   retryPeriod,
+	//		Callbacks: leaderelection.LeaderCallbacks{
+	//			OnStartedLeading: onStarted,
+	//			OnStoppedLeading: onStopped,
+	//		},
+	//	})
+	//}, waitDuration)
 
 	sigs := make(chan os.Signal, 1)
 	done := make(chan bool, 1)
@@ -85,10 +203,6 @@ func main() {
 
 		done <- true
 	}()
-
-	if err := webhookServer.Run(); err != nil {
-		glog.Errorf("stop http server %v", err)
-	}
 
 	<-done
 

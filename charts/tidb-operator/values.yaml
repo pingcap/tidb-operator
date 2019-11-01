@@ -124,3 +124,13 @@ apiserver:
   #   value: tidb-operator
   #   effect: "NoSchedule"
 
+admissionControllerWebhook:
+  resources:
+    limits:
+      cpu: 250m
+      memory: 150Mi
+    requests:
+      cpu: 80m
+      memory: 50Mi
+  ## Interval Hour to Refresh CA Cert
+  certRefreshIntervalHour: 336

@@ -91,3 +91,18 @@ func GetNextOrdinalPodName(podName string, ordinal int32) string {
 	basicStr := podName[:strings.LastIndex(podName, "-")]
 	return fmt.Sprintf("%s-%d", basicStr, ordinal+1)
 }
+
+func IsPodOutOfOrdinalOrdinal(pod *corev1.Pod, expectedReplicas int32) (bool, error) {
+	ordinal, err := GetOrdinalFromPodName(pod.Name)
+	if err != nil {
+		return false, err
+	}
+	if ordinal < expectedReplicas {
+		return false, nil
+	}
+	return true, nil
+}
+
+func OrdinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%s-%d", memberType, setName, ordinal)
+}

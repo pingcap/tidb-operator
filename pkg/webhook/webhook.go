@@ -16,25 +16,32 @@ package webhook
 import (
 	"net/http"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/webhook/route"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/webhook/handler"
+	"github.com/pingcap/tidb-operator/pkg/webhook/pod"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
+	corev1 "k8s.io/api/core/v1"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/record"
 	glog "k8s.io/klog"
 )
 
+var (
+	podAdmissionControl *pod.PodAdmissionControl
+	webhookHandler      *handler.WebhookHandler
+	RefreshJobConfig    *handler.RefreshJobConfig
+)
+
 type WebhookServer struct {
-	// kubernetes client interface
-	KubeCli kubernetes.Interface
-	// operator client interface
-	Cli versioned.Interface
 	// http server
 	Server *http.Server
 }
 
-func NewWebHookServer(kubecli kubernetes.Interface, cli versioned.Interface, certFile string, keyFile string) *WebhookServer {
-
-	http.HandleFunc("/statefulsets", route.ServeStatefulSets)
+func NewWebHookServer(kubeCli kubernetes.Interface, operatorCli versioned.Interface, kubeInformerFactory kubeinformers.SharedInformerFactory, refreshJobConfig *handler.RefreshJobConfig, certFile, keyFile string) *WebhookServer {
 
 	sCert, err := util.ConfigTLS(certFile, keyFile)
 
@@ -47,10 +54,25 @@ func NewWebHookServer(kubecli kubernetes.Interface, cli versioned.Interface, cer
 		TLSConfig: sCert,
 	}
 
+	// init pdControl
+	pdControl := pdapi.NewDefaultPDControl()
+
+	// init recorder
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(glog.Infof)
+	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
+		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
+	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidbcluster"})
+
+	podAdmissionControl = pod.NewPodAdmissionControl(kubeCli, operatorCli, pdControl, kubeInformerFactory, recorder)
+	webhookHandler = handler.NewWebhookHandler(kubeCli)
+	RefreshJobConfig = refreshJobConfig
+
+	http.HandleFunc("/statefulsets", ServeStatefulSets)
+	http.HandleFunc("/pods", ServePods)
+
 	return &WebhookServer{
-		KubeCli: kubecli,
-		Cli:     cli,
-		Server:  server,
+		Server: server,
 	}
 }
 

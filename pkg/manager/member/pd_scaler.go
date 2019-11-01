@@ -15,15 +15,11 @@ package member
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
 )
 
 // TODO add e2e test specs
@@ -87,9 +83,9 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	ordinal := *oldSet.Spec.Replicas - 1
-	memberName := fmt.Sprintf("%s-pd-%d", tc.GetName(), ordinal)
-	setName := oldSet.GetName()
+	//ordinal := *oldSet.Spec.Replicas - 1
+	//memberName := fmt.Sprintf("%s-pd-%d", tc.GetName(), ordinal)
+	//setName := oldSet.GetName()
 
 	if tc.PDUpgrading() {
 		resetReplicas(newSet, oldSet)
@@ -100,37 +96,6 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		resetReplicas(newSet, oldSet)
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed,can't scale in now", ns, tcName)
 	}
-
-	err := controller.GetPDClient(psd.pdControl, tc).DeleteMember(memberName)
-	if err != nil {
-		glog.Errorf("pd scale in: failed to delete member %s, %v", memberName, err)
-		resetReplicas(newSet, oldSet)
-		return err
-	}
-	glog.Infof("pd scale in: delete member %s successfully", memberName)
-
-	pvcName := ordinalPVCName(v1alpha1.PDMemberType, setName, ordinal)
-	pvc, err := psd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
-	if err != nil {
-		resetReplicas(newSet, oldSet)
-		return err
-	}
-
-	if pvc.Annotations == nil {
-		pvc.Annotations = map[string]string{}
-	}
-	now := time.Now().Format(time.RFC3339)
-	pvc.Annotations[label.AnnPVCDeferDeleting] = now
-
-	_, err = psd.pvcControl.UpdatePVC(tc, pvc)
-	if err != nil {
-		glog.Errorf("pd scale in: failed to set pvc %s/%s annotation: %s to %s",
-			ns, pvcName, label.AnnPVCDeferDeleting, now)
-		resetReplicas(newSet, oldSet)
-		return err
-	}
-	glog.Infof("pd scale in: set pvc %s/%s annotation: %s to %s",
-		ns, pvcName, label.AnnPVCDeferDeleting, now)
 
 	decreaseReplicas(newSet, oldSet)
 	return nil
