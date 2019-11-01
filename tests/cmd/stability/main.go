@@ -37,6 +37,10 @@ var cfg *tests.Config
 var certCtx *apimachinery.CertContext
 var upgradeVersions []string
 
+func init() {
+	client.RegisterFlags()
+}
+
 func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()

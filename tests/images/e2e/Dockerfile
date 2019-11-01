@@ -19,4 +19,5 @@ ADD tidb-cluster /charts/e2e/tidb-cluster
 ADD tidb-backup /charts/e2e/tidb-backup
 ADD manifests /manifests/e2e
 
-ADD bin/e2e /usr/local/bin/e2e
+ADD bin/ginkgo /usr/local/bin/
+ADD bin/e2e.test /usr/local/bin/

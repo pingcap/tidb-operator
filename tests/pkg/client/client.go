@@ -23,7 +23,7 @@ var (
 	kubeconfigPath string
 )
 
-func init() {
+func RegisterFlags() {
 	flag.StringVar(&kubeconfigPath, "kubeconfig", "",
 		"path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterUrl, "master", "",
