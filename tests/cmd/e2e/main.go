@@ -221,12 +221,12 @@ func main() {
 
 func newOperatorConfig() *tests.OperatorConfig {
 	return &tests.OperatorConfig{
-		Namespace:        "pingcap",
-		ReleaseName:      "operator",
-		Image:            cfg.OperatorImage,
-		Tag:              cfg.OperatorTag,
-		SchedulerImage:   "mirantis/hypokube",
-		SchedulerTag:     "final",
+		Namespace:      "pingcap",
+		ReleaseName:    "operator",
+		Image:          cfg.OperatorImage,
+		Tag:            cfg.OperatorTag,
+		SchedulerImage: "mirantis/hypokube",
+		SchedulerTag:   "final",
 		SchedulerFeatures: []string{
 			"StableScheduling=true",
 		},
