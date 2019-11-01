@@ -14,6 +14,8 @@
 package webhook
 
 import (
+	"net/http"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -26,7 +28,6 @@ import (
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 	glog "k8s.io/klog"
-	"net/http"
 )
 
 var (
