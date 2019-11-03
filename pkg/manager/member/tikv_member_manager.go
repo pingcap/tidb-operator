@@ -18,7 +18,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -33,9 +32,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/client-go/listers/apps/v1"
+	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/kubernetes/pkg/kubelet/apis"
+	glog "k8s.io/klog"
 )
 
 // tikvMemberManager implements manager.Manager.
@@ -122,7 +121,7 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newSvc := tkmm.getNewServiceForTidbCluster(tc, svcConfig)
+	newSvc := getNewServiceForTidbCluster(tc, svcConfig)
 	oldSvcTmp, err := tkmm.svcLister.Services(ns).Get(svcConfig.MemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetServiceLastAppliedConfigAnnotation(newSvc)
@@ -161,7 +160,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newSet, err := tkmm.getNewSetForTidbCluster(tc)
+	newSet, err := getNewTiKVSetForTidbCluster(tc)
 	if err != nil {
 		return err
 	}
@@ -235,7 +234,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	return nil
 }
 
-func (tkmm *tikvMemberManager) getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
+func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
@@ -258,7 +257,8 @@ func (tkmm *tikvMemberManager) getNewServiceForTidbCluster(tc *v1alpha1.TidbClus
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Selector: svcLabel,
+			Selector:                 svcLabel,
+			PublishNotReadyAddresses: true,
 		},
 	}
 	if svcConfig.Headless {
@@ -269,7 +269,7 @@ func (tkmm *tikvMemberManager) getNewServiceForTidbCluster(tc *v1alpha1.TidbClus
 	return &svc
 }
 
-func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
+func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	tikvConfigMap := controller.MemberConfigMapName(tc, v1alpha1.TiKVMemberType)
@@ -326,7 +326,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 		}
 	}
 
-	tikvLabel := tkmm.labelTiKV(tc)
+	tikvLabel := labelTiKV(tc)
 	setName := controller.TiKVMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(20180), tc.Spec.TiKV.Annotations)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
@@ -424,7 +424,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				tkmm.volumeClaimTemplate(q, v1alpha1.TiKVMemberType.String(), &storageClassName),
+				volumeClaimTemplate(q, v1alpha1.TiKVMemberType.String(), &storageClassName),
 			},
 			ServiceName:         headlessSvcName,
 			PodManagementPolicy: apps.ParallelPodManagement,
@@ -439,7 +439,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 	return tikvset, nil
 }
 
-func (tkmm *tikvMemberManager) volumeClaimTemplate(q resource.Quantity, metaName string, storageClassName *string) corev1.PersistentVolumeClaim {
+func volumeClaimTemplate(q resource.Quantity, metaName string, storageClassName *string) corev1.PersistentVolumeClaim {
 	return corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: metaName},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -456,7 +456,7 @@ func (tkmm *tikvMemberManager) volumeClaimTemplate(q resource.Quantity, metaName
 	}
 }
 
-func (tkmm *tikvMemberManager) labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
+func labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
 	return label.New().Instance(instanceName).TiKV()
 }
@@ -617,7 +617,7 @@ func (tkmm *tikvMemberManager) getNodeLabels(nodeName string, storeLabels []stri
 
 		// TODO after pd supports storeLabel containing slash character, these codes should be deleted
 		if storeLabel == "host" {
-			if host, found := ls[apis.LabelHostname]; found {
+			if host, found := ls[corev1.LabelHostname]; found {
 				labels[storeLabel] = host
 			}
 		}

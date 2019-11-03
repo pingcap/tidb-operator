@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -28,9 +29,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
@@ -844,4 +847,168 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 func expectErrIsNotFound(g *GomegaWithT, err error) {
 	g.Expect(err).NotTo(BeNil())
 	g.Expect(errors.IsNotFound(err)).To(Equal(true))
+}
+
+func TestGetNewPDHeadlessServiceForTidbCluster(t *testing.T) {
+	tests := []struct {
+		name     string
+		tc       v1alpha1.TidbCluster
+		expected corev1.Service
+	}{
+		{
+			name: "basic",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+			},
+			expected: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-pd-peer",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "pd",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "None",
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "peer",
+							Port:       2380,
+							TargetPort: intstr.FromInt(2380),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "pd",
+					},
+					PublishNotReadyAddresses: true,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := getNewPDHeadlessServiceForTidbCluster(&tt.tc)
+			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
+				t.Errorf("unexpected Service (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func testHostNetwork(t *testing.T, hostNetwork bool, dnsPolicy v1.DNSPolicy) func(sts *apps.StatefulSet) {
+	return func(sts *apps.StatefulSet) {
+		if hostNetwork != sts.Spec.Template.Spec.HostNetwork {
+			t.Errorf("unexpected hostNetwork %v, want %v", sts.Spec.Template.Spec.HostNetwork, hostNetwork)
+		}
+		if dnsPolicy != sts.Spec.Template.Spec.DNSPolicy {
+			t.Errorf("unexpected dnsPolicy %v, want %v", sts.Spec.Template.Spec.DNSPolicy, dnsPolicy)
+		}
+	}
+}
+
+func TestGetNewPDSetForTidbCluster(t *testing.T) {
+	tests := []struct {
+		name    string
+		tc      v1alpha1.TidbCluster
+		wantErr bool
+		testSts func(sts *apps.StatefulSet)
+	}{
+		{
+			name: "pd network is not host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+			},
+			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+		},
+		{
+			name: "pd network is host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							HostNetwork: true,
+						},
+					},
+				},
+			},
+			testSts: testHostNetwork(t, true, v1.DNSClusterFirstWithHostNet),
+		},
+		{
+			name: "pd network is not host when tidb is host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							HostNetwork: true,
+						},
+					},
+				},
+			},
+			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+		},
+		{
+			name: "pd network is not host when tikv is host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: v1alpha1.TiKVSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							HostNetwork: true,
+						},
+					},
+				},
+			},
+			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+		},
+		// TODO add more tests
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sts, err := getNewPDSetForTidbCluster(&tt.tc)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("error %v, wantErr %v", err, tt.wantErr)
+			}
+			tt.testSts(sts)
+		})
+	}
 }

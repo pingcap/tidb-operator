@@ -19,7 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -27,6 +26,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	glog "k8s.io/klog"
 )
 
 // BackupManager mainly used to manage backup related work
@@ -52,10 +53,30 @@ func NewBackupManager(
 func (bm *BackupManager) ProcessBackup() error {
 	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.BackupName)
 	if err != nil {
-		return fmt.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.BackupName, err)
+		glog.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.BackupName, err)
+		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "GetBackupCRFailed",
+			Message: err.Error(),
+		})
 	}
 
-	db, err := util.OpenDB(bm.getDSN(constants.TidbMetaDB))
+	var db *sql.DB
+	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
+		db, err = util.OpenDB(bm.getDSN(constants.TidbMetaDB))
+		if err != nil {
+			glog.Warningf("can't open connection to tidb cluster %s, err: %v", bm, err)
+			return false, nil
+		}
+
+		if err := db.Ping(); err != nil {
+			glog.Warningf("can't connect to tidb cluster %s, err: %s", bm, err)
+			return false, nil
+		}
+		return true, nil
+	})
+
 	if err != nil {
 		glog.Errorf("cluster %s connect failed, err: %s", bm, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -65,6 +86,7 @@ func (bm *BackupManager) ProcessBackup() error {
 			Message: err.Error(),
 		})
 	}
+
 	defer db.Close()
 	return bm.performBackup(backup.DeepCopy(), db)
 }

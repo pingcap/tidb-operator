@@ -366,7 +366,7 @@ type BackupSpec struct {
 	// tidb cluster's username and password.
 	TidbSecretName string `json:"tidbSecretName"`
 	// Type is the backup type for tidb cluster.
-	Type BackupType `json:"backupType"`
+	Type BackupType `json:"backupType,omitempty"`
 	// StorageType is the backup storage type.
 	StorageType BackupStorageType `json:"storageType"`
 	// StorageProvider configures where and how backups should be stored.
@@ -392,6 +392,8 @@ const (
 	BackupClean BackupConditionType = "Clean"
 	// BackupFailed means the backup has failed.
 	BackupFailed BackupConditionType = "Failed"
+	// BackupRetryFailed means this failure can be retried
+	BackupRetryFailed BackupConditionType = "RetryFailed"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
@@ -449,17 +451,19 @@ type BackupScheduleList struct {
 type BackupScheduleSpec struct {
 	// Schedule specifies the cron string used for backup scheduling.
 	Schedule string `json:"schedule"`
+	// Pause means paused backupSchedule
+	Pause bool `json:"pause,omitempty"`
 	// MaxBackups is to specify how many backups we want to keep
 	// 0 is magic number to indicate un-limited backups.
-	MaxBackups *int32 `json:"maxBackups"`
+	MaxBackups *int32 `json:"maxBackups,omitempty"`
 	// MaxReservedTime is to specify how long backups we want to keep.
-	MaxReservedTime *string `json:"maxReservedTime"`
+	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
 	// StorageClassName is the storage class for backup job's PV.
-	StorageClassName string `json:"storageClassName"`
+	StorageClassName string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
-	StorageSize string `json:"storageSize"`
+	StorageSize string `json:"storageSize,omitempty"`
 }
 
 // BackupScheduleStatus represents the current state of a BackupSchedule.
@@ -468,6 +472,8 @@ type BackupScheduleStatus struct {
 	LastBackup string `json:"lastBackup"`
 	// LastBackupTime represents the last time the backup was successfully created.
 	LastBackupTime *metav1.Time `json:"lastBackupTime"`
+	// AllBackupCleanTime represents the time when all backup entries are cleaned up
+	AllBackupCleanTime *metav1.Time `json:"allBackupCleanTime"`
 }
 
 // +genclient
@@ -510,6 +516,8 @@ const (
 	RestoreComplete RestoreConditionType = "Complete"
 	// RestoreFailed means the Restore has failed.
 	RestoreFailed RestoreConditionType = "Failed"
+	// RestoreRetryFailed means this failure can be retried
+	RestoreRetryFailed RestoreConditionType = "RetryFailed"
 )
 
 // RestoreCondition describes the observed state of a Restore at a certain point.

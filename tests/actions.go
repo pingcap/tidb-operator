@@ -35,7 +35,6 @@ import (
 	"github.com/ghodss/yaml"
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -50,7 +49,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
-	"k8s.io/api/apps/v1"
+	v1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -59,6 +58,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	glog "k8s.io/klog"
 )
 
 const (
@@ -447,7 +447,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
-	cmd = fmt.Sprintf("kubectl apply -f %s/webhook.yaml", oa.manifestPath(info.Tag))
+	cmd = fmt.Sprintf(`sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/' %s/webhook.yaml | kubectl apply -f -`, oa.manifestPath(info.Tag))
 	glog.Info(cmd)
 
 	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -2758,7 +2758,7 @@ func (oa *operatorActions) RegisterWebHookAndService(context *apimachinery.CertC
 		ObjectMeta: metav1.ObjectMeta{
 			Name: configName,
 		},
-		Webhooks: []admissionV1beta1.Webhook{
+		Webhooks: []admissionV1beta1.ValidatingWebhook{
 			{
 				Name: "check-pod-before-delete.k8s.io",
 				Rules: []admissionV1beta1.RuleWithOperations{{

@@ -29,7 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/client-go/listers/apps/v1"
+	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
@@ -97,7 +97,7 @@ func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newSvc := tmm.getNewTiDBHeadlessServiceForTidbCluster(tc)
+	newSvc := getNewTiDBHeadlessServiceForTidbCluster(tc)
 	oldSvcTmp, err := tmm.svcLister.Services(ns).Get(controller.TiDBPeerMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetServiceLastAppliedConfigAnnotation(newSvc)
@@ -134,7 +134,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newTiDBSet := tmm.getNewTiDBSetForTidbCluster(tc)
+	newTiDBSet := getNewTiDBSetForTidbCluster(tc)
 	oldTiDBSetTemp, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetLastAppliedConfigAnnotation(newTiDBSet)
@@ -189,7 +189,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	return nil
 }
 
-func (tmm *tidbMemberManager) getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
+func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
@@ -213,12 +213,13 @@ func (tmm *tidbMemberManager) getNewTiDBHeadlessServiceForTidbCluster(tc *v1alph
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Selector: tidbLabel,
+			Selector:                 tidbLabel,
+			PublishNotReadyAddresses: true,
 		},
 	}
 }
 
-func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
+func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]

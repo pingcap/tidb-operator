@@ -31,3 +31,8 @@ vendor
 tests/e2e/e2e.test
 .orig
 tkc
+
+apiserver.local.config/
+manifests/crd-verify.yaml
+/tkctl
+/.go-version
