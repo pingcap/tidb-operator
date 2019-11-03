@@ -1091,7 +1091,7 @@ func (oa *operatorActions) setPartitionAnnotation(namespace, tcName, component s
 	glog.Infof("%s", cmd)
 	_, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("fail to set annotation for [%s/%s], component: %s, partition: %d", namespace, tcName, component, ordinal)
+		return fmt.Errorf("fail to set annotation for [%s/%s], component: %s, partition: %d, err: %v", namespace, tcName, component, ordinal, err)
 	}
 	return nil
 }
