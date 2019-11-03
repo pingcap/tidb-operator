@@ -182,7 +182,7 @@ func TestDelete(t *testing.T) {
 		if test.errOnAction != nil {
 			fakeCli.PrependReactor("delete", storageResource, test.errOnAction)
 		}
-		err := store.Delete(ctx, keyFunc(test.obj), out, test.precondition)
+		err := store.Delete(ctx, keyFunc(test.obj), out, test.precondition, nil)
 		// record actions
 		actions := fakeCli.Actions()
 
@@ -771,7 +771,7 @@ func TestWatch(t *testing.T) {
 				}
 
 				// delete
-				if err := store.Delete(ctx, keyFunc(preData[0]), out, nil); err != nil {
+				if err := store.Delete(ctx, keyFunc(preData[0]), out, nil, nil); err != nil {
 					t.Errorf("Expected no error when preparing watch case, %v", err)
 				}
 
@@ -870,7 +870,7 @@ func TestWatchList(t *testing.T) {
 			mutations: func(store storage.Interface, ctx context.Context) {
 				out := &example.Pod{}
 				// delete
-				if err := store.Delete(ctx, keyFunc(preData[0]), out, nil); err != nil {
+				if err := store.Delete(ctx, keyFunc(preData[0]), out, nil, nil); err != nil {
 					t.Errorf("Expected no error when preparing watch case, %v", err)
 				}
 
@@ -932,12 +932,12 @@ func TestWatchList(t *testing.T) {
 				}
 
 				// delete pod that does not match label selector
-				if err := store.Delete(ctx, keyFunc(preData[1]), out, nil); err != nil {
+				if err := store.Delete(ctx, keyFunc(preData[1]), out, nil, nil); err != nil {
 					t.Errorf("Expected no error when preparing watch case, %v", err)
 				}
 
 				// delete pod that match label selector
-				if err := store.Delete(ctx, keyFunc(preData[0]), out, nil); err != nil {
+				if err := store.Delete(ctx, keyFunc(preData[0]), out, nil, nil); err != nil {
 					t.Errorf("Expected no error when preparing watch case, %v", err)
 				}
 			},
@@ -958,7 +958,7 @@ func testSetup(t *testing.T) (*store, *fake.Clientset, context.Context) {
 	ns := "default"
 	fakeCli := fake.NewSimpleClientset()
 	codec := codecs.LegacyCodec(examplev1.SchemeGroupVersion)
-	s, _ := NewApiServerStore(fakeCli, codec, ns, &example.Pod{}, func() runtime.Object { return &example.PodList{} })
+	s, _, _ := NewApiServerStore(fakeCli, codec, ns, &example.Pod{}, func() runtime.Object { return &example.PodList{} })
 	return s.(*store), fakeCli, context.Background()
 }
 

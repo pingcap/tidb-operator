@@ -29,17 +29,16 @@ import (
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	genericfilters "k8s.io/apiserver/pkg/server/filters"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
-	"k8s.io/apiserver/pkg/util/feature"
-	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/component-base/logs"
 	"k8s.io/klog"
 	openapi "k8s.io/kube-openapi/pkg/common"
 
-	"github.com/kubernetes-incubator/apiserver-builder-alpha/pkg/apiserver"
-	"github.com/kubernetes-incubator/apiserver-builder-alpha/pkg/builders"
+	"sigs.k8s.io/apiserver-builder-alpha/pkg/apiserver"
+	"sigs.k8s.io/apiserver-builder-alpha/pkg/builders"
 )
 
 var GetOpenApiDefinition openapi.GetOpenAPIDefinitions
@@ -119,7 +118,6 @@ func NewCommandStartServer(builders []*builders.APIGroupBuilder, stopCh <-chan s
 		"kubeconfig path used to build the client of kubernetes, use in-cluster config is not specified")
 	o.RecommendedOptions.AddFlags(flags)
 	o.InsecureServingOptions.AddFlags(flags)
-	feature.DefaultFeatureGate.AddFlag(flags)
 
 	klogFlags := flag.NewFlagSet("klog", flag.ExitOnError)
 	klog.InitFlags(klogFlags)
@@ -145,7 +143,7 @@ func NewServerOptions(b []*builders.APIGroupBuilder) *ServerOptions {
 
 	codec := builders.Codecs.LegacyCodec(versions...)
 	o := &ServerOptions{
-		RecommendedOptions: genericoptions.NewRecommendedOptions("", codec),
+		RecommendedOptions: genericoptions.NewRecommendedOptions("", codec, nil),
 		APIBuilders:        b,
 		RunDelegatedAuth:   true,
 		Codec:              codec,
@@ -181,7 +179,9 @@ func (o ServerOptions) Config() (*apiserver.Config, error) {
 		func(cfg *genericapiserver.Config) error {
 			return o.RecommendedOptions.SecureServing.ApplyTo(&cfg.SecureServing, &cfg.LoopbackClientConfig)
 		},
-		o.RecommendedOptions.Audit.ApplyTo,
+		func(cfg *genericapiserver.Config) error {
+			return o.RecommendedOptions.Audit.ApplyTo(cfg, nil, nil, nil, nil)
+		},
 		o.RecommendedOptions.Features.ApplyTo,
 	)
 	if err != nil {
@@ -286,7 +286,7 @@ func (o *ServerOptions) RunServer(stopCh <-chan struct{}, title, version string)
 	if aggregatedAPIServerConfig.InsecureServingInfo != nil {
 		handler := s.GenericAPIServer.UnprotectedHandler()
 		handler = genericapifilters.WithAudit(handler, genericConfig.AuditBackend, genericConfig.AuditPolicyChecker, genericConfig.LongRunningFunc)
-		handler = genericapifilters.WithAuthentication(handler, server.InsecureSuperuser{}, nil)
+		handler = genericapifilters.WithAuthentication(handler, server.InsecureSuperuser{}, nil, nil)
 		handler = genericfilters.WithCORS(handler, genericConfig.CorsAllowedOriginList, nil, nil, nil, "true")
 		handler = genericfilters.WithTimeoutForNonLongRunningRequests(handler, genericConfig.LongRunningFunc, genericConfig.RequestTimeout)
 		handler = genericfilters.WithMaxInFlightLimit(handler, genericConfig.MaxRequestsInFlight, genericConfig.MaxMutatingRequestsInFlight, genericConfig.LongRunningFunc)
