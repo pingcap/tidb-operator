@@ -84,7 +84,6 @@ func (rpc *realPVCCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string, e
 		// disable PV reclaim, return directly.
 		return nil, nil
 	}
-
 	return rpc.reclaimPV(tc)
 }
 
@@ -171,6 +170,7 @@ func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]strin
 			if err != nil {
 				return skipReason, fmt.Errorf("cluster %s/%s patch pv %s to %s failed, err: %v", ns, tcName, pvName, corev1.PersistentVolumeReclaimDelete, err)
 			}
+			glog.Infof("cluster %s/%s patch pv %s to policy %s success", ns, tcName, pvName, corev1.PersistentVolumeReclaimDelete)
 		}
 
 		apiPVC, err := rpc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
@@ -186,10 +186,11 @@ func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]strin
 			skipReason[pvcName] = skipReasonPVCCleanerPVCChanged
 			continue
 		}
-		err = rpc.pvcControl.DeletePVC(tc, pvc)
-		if err != nil {
+
+		if err := rpc.pvcControl.DeletePVC(tc, pvc); err != nil {
 			return skipReason, fmt.Errorf("cluster %s/%s delete pvc %s failed, err: %v", ns, tcName, pvcName, err)
 		}
+		glog.Infof("cluster %s/%s reclaim pv %s success, pvc %s", ns, tcName, pvName, pvcName)
 	}
 	return skipReason, nil
 }
