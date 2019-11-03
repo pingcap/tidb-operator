@@ -5,7 +5,8 @@ metadata:
   name: demo1-backup
   namespace: test1
 spec:
-  ceph:
+  s3:
+    provider: ceph
     endpoint: http://10.233.2.161
     secretName: ceph-secret
   storageType: ceph

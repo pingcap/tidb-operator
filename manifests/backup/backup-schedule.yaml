@@ -11,7 +11,8 @@ spec:
   storageSize: 10Gi
   schedule: "*/20 * * * *"
   backupTemplate:
-    ceph:
+    s3:
+      provider: ceph
       endpoint: http://10.233.2.161
       secretName: ceph-secret
     storageType: ceph
