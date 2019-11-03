@@ -19,13 +19,13 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
+	glog "k8s.io/klog"
 )
 
 // ExecOptions passed to ExecWithOptions

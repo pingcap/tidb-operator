@@ -49,8 +49,11 @@ spec:
 {{ toYaml .Values.pd.annotations | indent 6 }}
   {{- end }}
     hostNetwork: {{ .Values.pd.hostNetwork }}
+
+  {{- if .Values.pd.podSecurityContext }}
     podSecurityContext:
 {{ toYaml .Values.pd.podSecurityContext | indent 6}}
+  {{- end }}
   {{- if .Values.pd.priorityClassName }}
     priorityClassName: {{ .Values.pd.priorityClassName }}
   {{- end }}
@@ -77,8 +80,10 @@ spec:
 {{ toYaml .Values.tikv.annotations | indent 6 }}
   {{- end }}
     hostNetwork: {{ .Values.tikv.hostNetwork }}
+  {{- if .Values.tikv.podSecurityContext }}
     podSecurityContext:
 {{ toYaml .Values.tikv.podSecurityContext | indent 6}}
+  {{- end }}
   {{- if .Values.tikv.priorityClassName }}
     priorityClassName: {{ .Values.tikv.priorityClassName }}
   {{- end }}
@@ -103,8 +108,10 @@ spec:
 {{ toYaml .Values.tidb.annotations | indent 6 }}
   {{- end }}
     hostNetwork: {{ .Values.tidb.hostNetwork }}
+  {{- if .Values.tidb.podSecurityContext }}
     podSecurityContext:
 {{ toYaml .Values.tidb.podSecurityContext | indent 6}}
+  {{- end }}
   {{- if .Values.tidb.priorityClassName }}
     priorityClassName: {{ .Values.tidb.priorityClassName }}
   {{- end }}

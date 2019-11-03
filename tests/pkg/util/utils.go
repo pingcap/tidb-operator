@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 )
 
 const (

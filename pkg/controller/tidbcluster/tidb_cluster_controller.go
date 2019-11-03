@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/glog"
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -40,6 +39,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
+	glog "k8s.io/klog"
 )
 
 // controllerKind contains the schema.GroupVersionKind for this controller type.

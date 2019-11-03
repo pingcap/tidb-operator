@@ -14,13 +14,13 @@
 package list
 
 import (
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	glog "k8s.io/klog"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	kubeprinters "k8s.io/kubernetes/pkg/printers"
 )
 
