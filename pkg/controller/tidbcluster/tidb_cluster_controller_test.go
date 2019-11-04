@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -327,7 +328,7 @@ func newStatefuSet(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(tc, controllerKind),
+				*metav1.NewControllerRef(tc, controller.ControllerKind),
 			},
 			ResourceVersion: "1",
 		},

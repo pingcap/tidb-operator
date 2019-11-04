@@ -14,7 +14,10 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"os"
 	"os/signal"
 	"syscall"
@@ -22,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/webhook"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/component-base/logs"
@@ -32,6 +36,10 @@ var (
 	printVersion bool
 	certFile     string
 	keyFile      string
+	//leaseDuration    = 15 * time.Second
+	//renewDuration    = 5 * time.Second
+	//retryPeriod      = 3 * time.Second
+	//waitDuration     = 5 * time.Second
 )
 
 func init() {
@@ -53,6 +61,11 @@ func main() {
 	}
 	version.LogVersionInfo()
 
+	//hostName, err := os.Hostname()
+	//if err != nil {
+	//	glog.Fatalf("failed to get hostname: %v", err)
+	//}
+
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		glog.Fatalf("failed to get config: %v", err)
@@ -68,7 +81,66 @@ func main() {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 
-	webhookServer := webhook.NewWebHookServer(kubeCli, cli, certFile, keyFile)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
+	for v, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
+		if !synced {
+			glog.Fatalf("error syncing informer for %v", v)
+		}
+	}
+
+	webhookServer := webhook.NewWebHookServer(kubeCli, cli, kubeInformerFactory, certFile, keyFile)
+	controllerCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	kubeInformerFactory.Start(controllerCtx.Done())
+	for v, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
+		if !synced {
+			glog.Fatalf("error syncing informer for %v", v)
+		}
+	}
+	glog.Infof("cache of informer factories sync successfully")
+
+	if err := webhookServer.Run(); err != nil {
+		glog.Errorf("stop http server %v", err)
+	}
+
+	/*
+	* currently we only use one replica for admission-controller-webhook
+	 */
+
+	//rl := resourcelock.EndpointsLock{
+	//	EndpointsMeta: metav1.ObjectMeta{
+	//		Namespace: ns,
+	//		Name:      "admission-controller-webhook",
+	//	},
+	//	Client: kubeCli.CoreV1(),
+	//	LockConfig: resourcelock.ResourceLockConfig{
+	//		Identity:      hostName,
+	//		EventRecorder: &record.FakeRecorder{},
+	//	},
+	//}
+	//onStarted := func(ctx context.Context) {
+	//	if err := webhookServer.Run(); err != nil {
+	//		glog.Errorf("stop http server %v", err)
+	//	}
+	//}
+	//
+	//onStopped := func() {
+	//	glog.Fatalf("leader election lost")
+	//}
+
+	//go wait.Forever(func() {
+	//	leaderelection.RunOrDie(controllerCtx, leaderelection.LeaderElectionConfig{
+	//		Lock:          &rl,
+	//		LeaseDuration: leaseDuration,
+	//		RenewDeadline: renewDuration,
+	//		RetryPeriod:   retryPeriod,
+	//		Callbacks: leaderelection.LeaderCallbacks{
+	//			OnStartedLeading: onStarted,
+	//			OnStoppedLeading: onStopped,
+	//		},
+	//	})
+	//}, waitDuration)
 
 	sigs := make(chan os.Signal, 1)
 	done := make(chan bool, 1)
@@ -85,10 +157,6 @@ func main() {
 
 		done <- true
 	}()
-
-	if err := webhookServer.Run(); err != nil {
-		glog.Errorf("stop http server %v", err)
-	}
 
 	<-done
 

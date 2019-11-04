@@ -73,7 +73,7 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	for i := tc.Status.PD.StatefulSet.Replicas - 1; i >= 0; i-- {
-		podName := pdPodName(tcName, i)
+		podName := PdPodName(tcName, i)
 		pod, err := pu.podLister.Pods(ns).Get(podName)
 		if err != nil {
 			return err
@@ -100,14 +100,14 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	upgradePodName := pdPodName(tcName, ordinal)
+	upgradePodName := PdPodName(tcName, ordinal)
 	if tc.Status.PD.Leader.Name == upgradePodName && tc.Status.PD.StatefulSet.Replicas > 1 {
 		lastOrdinal := tc.Status.PD.StatefulSet.Replicas - 1
 		var targetName string
 		if ordinal == lastOrdinal {
-			targetName = pdPodName(tcName, 0)
+			targetName = PdPodName(tcName, 0)
 		} else {
-			targetName = pdPodName(tcName, lastOrdinal)
+			targetName = PdPodName(tcName, lastOrdinal)
 		}
 		err := pu.transferPDLeaderTo(tc, targetName)
 		if err != nil {

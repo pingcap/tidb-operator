@@ -202,7 +202,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	}
 
 	if !tc.Status.PD.Synced {
-		force := needForceUpgrade(tc)
+		force := NeedForceUpgrade(tc)
 		if force {
 			tc.Status.PD.Phase = v1alpha1.UpgradePhase
 			setUpgradePartition(newPDSet, 0)
