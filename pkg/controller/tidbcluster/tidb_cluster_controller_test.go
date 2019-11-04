@@ -20,6 +20,7 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -327,7 +328,7 @@ func newStatefuSet(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(tc, controllerKind),
+				*metav1.NewControllerRef(tc, controller.ControllerKind),
 			},
 			ResourceVersion: "1",
 		},
