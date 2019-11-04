@@ -116,7 +116,7 @@ for x in $(seq 600); do
     sleep 1
 done
 if [[ ${serverCert} == '' ]]; then
-    echo "ERROR: After approving csr ${csrName}, the signed certificate did not appear on the resource. Giving up after 10 attempts." >&2
+    echo "ERROR: After csr ${csrName} approved, the signed certificate does not appear in the resource. Give up after 10 minutes of attempts." >&2
     exit 1
 fi
 
