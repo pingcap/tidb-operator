@@ -2612,7 +2612,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	err = wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to create pod %s", getBackupDirPodName)
+		return nil, fmt.Errorf("failed to create pod %s, err: %v", getBackupDirPodName, err)
 	}
 
 	cmd := fmt.Sprintf("kubectl exec %s -n %s ls /data", getBackupDirPodName, info.Namespace)
