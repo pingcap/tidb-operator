@@ -59,6 +59,6 @@ resource "helm_release" "tidb-operator" {
 
   set {
     name = "scheduler.kubeSchedulerImageName"
-    value = "gcr.akscn.io/google_containers/hyperkube"
+    value = "registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler-amd64"
   }
 }

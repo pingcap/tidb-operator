@@ -43,6 +43,7 @@ require (
 	github.com/golangplus/fmt v0.0.0-20150411045040-2a5d6d7d2995 // indirect
 	github.com/golangplus/testing v0.0.0-20180327235837-af21d9c3145e // indirect
 	github.com/google/btree v0.0.0-20180124185431-e89373fe6b4a // indirect
+	github.com/google/go-cmp v0.3.1
 	github.com/googleapis/gnostic v0.2.0 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect

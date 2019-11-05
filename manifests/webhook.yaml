@@ -105,5 +105,5 @@ webhooks:
     rules:
       - operations: [ "UPDATE" ]
         apiGroups: [ "apps", "" ]
-        apiVersions: ["v1beta1"]
+        apiVersions: ["v1"]
         resources: ["statefulsets"]

@@ -3,7 +3,7 @@ package generate
 import (
 	"errors"
 	crdutils "github.com/ant31/crd-validation/pkg"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	k8sutil "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/spf13/cobra"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"

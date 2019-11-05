@@ -139,3 +139,47 @@ EOS
     }
   }
 }
+
+resource "null_resource" "wait-lb-ip" {
+  depends_on = [
+    helm_release.tidb-cluster
+  ]
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    working_dir = path.cwd
+    command     = <<EOS
+set -euo pipefail
+
+until kubectl get svc -n ${var.cluster_name} ${var.cluster_name}-tidb -o json | jq '.status.loadBalancer.ingress[0]' | grep "${var.service_ingress_key}"; do
+  echo "Wait for TiDB internal loadbalancer IP"
+  sleep 5
+done
+EOS
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_filename
+    }
+  }
+}
+
+resource "null_resource" "wait-mlb-ip" {
+  depends_on = [
+    helm_release.tidb-cluster
+  ]
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    working_dir = path.cwd
+    command     = <<EOS
+set -euo pipefail
+
+until kubectl get svc -n ${var.cluster_name} ${var.cluster_name}-grafana -o json | jq '.status.loadBalancer.ingress[0]' | grep "${var.service_ingress_key}"; do
+  echo "Wait for TiDB monitoring internal loadbalancer IP"
+  sleep 5
+done
+EOS
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_filename
+    }
+  }
+}

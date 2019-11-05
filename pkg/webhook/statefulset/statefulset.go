@@ -24,7 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	"k8s.io/api/admission/v1beta1"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -45,23 +45,25 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	namespace := ar.Request.Namespace
 	glog.V(4).Infof("admit statefulsets [%s/%s]", namespace, name)
 
-	setResource := metav1.GroupVersionResource{Group: "apps", Version: "v1beta1", Resource: "statefulsets"}
+	setResource := metav1.GroupVersionResource{Group: "apps", Version: "v1", Resource: "statefulsets"}
 	if ar.Request.Resource != setResource {
 		err := fmt.Errorf("expect resource to be %s instead of %s", setResource, ar.Request.Resource)
-		glog.Errorf("%v", err)
+		glog.Errorf(err.Error())
 		return util.ARFail(err)
 	}
 
 	if versionCli == nil {
 		cfg, err := rest.InClusterConfig()
 		if err != nil {
-			glog.Errorf("statefulset %s/%s, get k8s cluster config failed, err: %v", namespace, name, err)
+			err := fmt.Errorf("statefulset %s/%s, get k8s cluster config failed, err: %v", namespace, name, err)
+			glog.Errorf(err.Error())
 			return util.ARFail(err)
 		}
 
 		versionCli, err = versioned.NewForConfig(cfg)
 		if err != nil {
-			glog.Errorf("statefulset %s/%s, create Clientset failed, err: %v", namespace, name, err)
+			err := fmt.Errorf("statefulset %s/%s, create Clientset failed, err: %v", namespace, name, err)
+			glog.Errorf(err.Error())
 			return util.ARFail(err)
 		}
 	}
@@ -69,7 +71,8 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	raw := ar.Request.OldObject.Raw
 	set := apps.StatefulSet{}
 	if _, _, err := deserializer.Decode(raw, nil, &set); err != nil {
-		glog.Errorf("statefulset %s/%s, decode request failed, err: %v", namespace, name, err)
+		err := fmt.Errorf("statefulset %s/%s, decode request failed, err: %v", namespace, name, err)
+		glog.Errorf(err.Error())
 		return util.ARFail(err)
 	}
 
@@ -91,7 +94,8 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	tcName := controllerRef.Name
 	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
 	if err != nil {
-		glog.Errorf("get tidbcluster %s/%s failed, statefulset %s, err %v", namespace, tcName, name, err)
+		err := fmt.Errorf("get tidbcluster %s/%s failed, statefulset %s, err %v", namespace, tcName, name, err)
+		glog.Errorf(err.Error())
 		return util.ARFail(err)
 	}
 
@@ -107,7 +111,8 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 	partition, err := strconv.ParseInt(partitionStr, 10, 32)
 	if err != nil {
-		glog.Errorf("statefulset %s/%s, convert partition str %s to int failed, err: %v", namespace, name, partitionStr, err)
+		err := fmt.Errorf("statefulset %s/%s, convert partition str %s to int failed, err: %v", namespace, name, partitionStr, err)
+		glog.Errorf(err.Error())
 		return util.ARFail(err)
 	}
 

@@ -5,6 +5,9 @@
 
 VERSION=1.12.5
 
+# Explicitly opt into go modules, even though we're inside a GOPATH directory
+export GO111MODULE=on
+
 go mod edit -require k8s.io/kubernetes@v$VERSION
 
 #
@@ -24,10 +27,16 @@ else
     STAGING_REPOS=($(curl -sS https://raw.githubusercontent.com/kubernetes/kubernetes/v${VERSION}/staging/README.md | sed -n 's|.*\[`\(k8s.io/[^`]*\)`\].*|\1|p'))
 fi
 
-edit_args=()
+edit_args=(
+    -fmt
+)
 for repo in ${STAGING_REPOS[@]}; do
 	edit_args+=(-replace $repo=$repo@kubernetes-$VERSION)
 done
 
 go mod edit ${edit_args[@]}
+# workaround for https://github.com/golang/go/issues/33008
+# go mod tidy does not always remove unncessary lines from go.sum. For now we
+# can remove it first and populate again.
+rm go.sum
 go mod tidy

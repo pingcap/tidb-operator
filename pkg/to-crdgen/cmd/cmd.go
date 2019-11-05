@@ -2,7 +2,7 @@ package cmd
 
 import (
 	crdutils "github.com/ant31/crd-validation/pkg"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/to-crdgen/cmd/generate"
 	"github.com/spf13/cobra"
 	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"

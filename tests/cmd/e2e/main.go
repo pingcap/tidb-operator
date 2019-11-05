@@ -139,7 +139,6 @@ func main() {
 		cluster.UpgradeAll(upgradeVersions[0])
 		oa.UpgradeTidbClusterOrDie(cluster)
 		oa.CheckUpgradeOrDie(ctx, cluster)
-		oa.CheckManualPauseTiDBOrDie(cluster)
 		oa.CheckTidbClusterStatusOrDie(cluster)
 		oa.CheckTidbMemberAssignedNodesOrDie(cluster, assignedNodes)
 		cancel()
@@ -157,6 +156,9 @@ func main() {
 		oa.DeployTidbClusterOrDie(clusterB)
 		oa.CheckTidbClusterStatusOrDie(clusterA)
 		oa.CheckTidbClusterStatusOrDie(clusterB)
+		oa.CheckDisasterToleranceOrDie(clusterA)
+		oa.CheckDisasterToleranceOrDie(clusterB)
+
 		go oa.BeginInsertDataToOrDie(clusterA)
 
 		// backup and restore
@@ -187,26 +189,21 @@ func main() {
 		defer wg.Done()
 		testBasic(&wg, cluster1)
 		testHostNetwork(&wg, cluster1)
-		oa.CheckDataRegionDisasterToleranceOrDie(cluster1)
 		oa.CleanTidbClusterOrDie(cluster1)
 	}()
 	go func() {
 		defer wg.Done()
 		testBasic(&wg, cluster5)
-		oa.CheckDataRegionDisasterToleranceOrDie(cluster5)
 		oa.CleanTidbClusterOrDie(cluster5)
 	}()
 	go func() {
 		defer wg.Done()
 		testUpgrade(&wg, cluster2)
-		oa.CheckDataRegionDisasterToleranceOrDie(cluster2)
 		oa.CleanTidbClusterOrDie(cluster2)
 	}()
 	go func() {
 		defer wg.Done()
 		testBackupAndRestore(&wg, cluster3, cluster4)
-		oa.CheckDataRegionDisasterToleranceOrDie(cluster3)
-		oa.CheckDataRegionDisasterToleranceOrDie(cluster4)
 		oa.CleanTidbClusterOrDie(cluster3)
 		oa.CleanTidbClusterOrDie(cluster4)
 	}()

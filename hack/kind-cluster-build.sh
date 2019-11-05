@@ -133,7 +133,7 @@ registryNodeIP=$(kubectl get nodes ${registryNode} -o template --template='{{ran
 registryFile=${workDir}/registry.yaml
 
 cat <<EOF >${registryFile}
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: registry
@@ -164,7 +164,7 @@ spec:
         hostPath:
           path: /data
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: registry-proxy
