@@ -100,7 +100,6 @@ const (
 	DefaultPollTimeout          time.Duration = 10 * time.Minute
 	DefaultPollInterval         time.Duration = 1 * time.Minute
 	BackupAndRestorePollTimeOut time.Duration = 60 * time.Minute
-	getBackupDirPodName                       = "get-backup-dir"
 	grafanaUsername                           = "admin"
 	grafanaPassword                           = "admin"
 	operartorChartName                        = "tidb-operator"
@@ -278,7 +277,7 @@ func (tc *TidbClusterConfig) String() string {
 }
 
 func (tc *TidbClusterConfig) GenerateBackupDirPodName() string {
-	return fmt.Sprintf("%s-%s", tc.ClusterName, getBackupDirPodName)
+	return fmt.Sprintf("%s-get-backup-dir", tc.ClusterName)
 }
 
 func (tc *TidbClusterConfig) BackupHelmSetString(m map[string]string) string {
