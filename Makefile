@@ -18,7 +18,9 @@ GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
 GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO     := $(GOENV) go build
 
-PACKAGE_LIST := go list ./... | grep -vE "pkg/client" | grep -vE "zz_generated"
+# Workaround https://github.com/kubernetes-sigs/apiserver-builder-alpha/issues/435
+# TODO: check the generated code under the test api
+PACKAGE_LIST := go list ./... | grep -vE "pkg/client" | grep -vE "zz_generated" | grep -vE "apiserver/client" | grep -vE "tests/pkg/apiserver/apis"
 PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
 FILES := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go")
 FAIL_ON_STDOUT := awk '{ print } END { if (NR > 0) { exit 1 } }'
@@ -56,10 +58,14 @@ backup-manager:
 backup-docker: backup-manager
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:latest" images/backup-manager
 
-e2e-docker-push: e2e-docker
+e2e-setup:
+	# ginkgo doesn't work with retool for Go 1.11
+	# @CGO_ENABLED=0 go get github.com/onsi/ginkgo@v1.6.0
+
+e2e-docker-push: e2e-docker test-apiserver-dokcer-push
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest"
 
-e2e-docker: e2e-build
+e2e-docker: e2e-build test-apiesrver-docker
 	[ -d tests/images/e2e/tidb-operator ] && rm -r tests/images/e2e/tidb-operator || true
 	[ -d tests/images/e2e/tidb-cluster ] && rm -r tests/images/e2e/tidb-cluster || true
 	[ -d tests/images/e2e/tidb-backup ] && rm -r tests/images/e2e/tidb-backup || true
@@ -70,8 +76,17 @@ e2e-docker: e2e-build
 	cp -r manifests tests/images/e2e
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" tests/images/e2e
 
-e2e-build:
+e2e-build: e2e-setup test-apiserver-build
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
+
+test-apiserver-dokcer-push: test-apiesrver-docker
+	docker push "${DOCKER_REGISTRY}/pingcap/test-apiserver:latest"
+
+test-apiesrver-docker: test-apiserver-build
+	docker build -t "${DOCKER_REGISTRY}/pingcap/test-apiserver:latest" tests/images/test-apiserver
+
+test-apiserver-build:
+	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/test-apiserver/bin/tidb-apiserver tests/cmd/apiserver/main.go
 
 stability-test-build:
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test tests/cmd/stability/*.go

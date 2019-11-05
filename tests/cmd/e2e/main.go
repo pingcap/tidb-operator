@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/pingcap/tidb-operator/tests"
+	"github.com/pingcap/tidb-operator/tests/apiserver"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
@@ -53,6 +54,7 @@ func main() {
 	}
 	go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx)
 
+	restConfig := client.GetConfigOrDie()
 	cli, kubeCli := client.NewCliOrDie()
 	ocfg := newOperatorConfig()
 
@@ -198,8 +200,20 @@ func main() {
 		oa.CheckTidbClusterStatusOrDie(cluster)
 	}
 
+	/**
+	 * This test case covers the aggregated apiserver framework
+	 */
+	testAggregatedApiserver := func() {
+		aaCtx := apiserver.NewE2eContext("aa", restConfig, cfg.TestApiserverImage)
+		aaCtx.Do()
+	}
+
 	var wg sync.WaitGroup
-	wg.Add(4)
+	wg.Add(5)
+	go func() {
+		defer wg.Done()
+		testAggregatedApiserver()
+	}()
 	go func() {
 		defer wg.Done()
 		testBasic(&wg, cluster1)

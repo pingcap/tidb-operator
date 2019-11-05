@@ -102,7 +102,6 @@ const (
 	DefaultPollTimeout          time.Duration = 10 * time.Minute
 	DefaultPollInterval         time.Duration = 1 * time.Minute
 	BackupAndRestorePollTimeOut time.Duration = 60 * time.Minute
-	getBackupDirPodName                       = "get-backup-dir"
 	grafanaUsername                           = "admin"
 	grafanaPassword                           = "admin"
 	operartorChartName                        = "tidb-operator"
@@ -237,6 +236,10 @@ type OperatorConfig struct {
 	Context            *apimachinery.CertContext
 	ImagePullPolicy    corev1.PullPolicy
 	TestMode           bool
+	ApiServerImage     string
+	ApiServerCert      string
+	ApiServerKey       string
+	ApiServerCaBundle  string
 }
 
 type TidbClusterConfig struct {
@@ -280,6 +283,10 @@ type TidbClusterConfig struct {
 
 func (tc *TidbClusterConfig) String() string {
 	return fmt.Sprintf("%s/%s", tc.Namespace, tc.ClusterName)
+}
+
+func (tc *TidbClusterConfig) GenerateBackupDirPodName() string {
+	return fmt.Sprintf("%s-get-backup-dir", tc.ClusterName)
 }
 
 func (tc *TidbClusterConfig) BackupHelmSetString(m map[string]string) string {
@@ -383,6 +390,7 @@ func (oa *operatorActions) CleanCRDOrDie() {
 // InstallCRDOrDie install CRDs and wait for them to be established in Kubernetes.
 func (oa *operatorActions) InstallCRDOrDie() {
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/crd.yaml"))
+	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
 	out := oa.runKubectlOrDie([]string{"get", "crds", "--no-headers", `-ojsonpath={range .items[*]}{.metadata.name}{" "}{end}`}...)
 	waitArgs := []string{"wait", "--for=condition=Established"}
 	for _, crd := range strings.Split(out, " ") {
@@ -733,7 +741,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return err
 	}
 
-	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(getBackupDirPodName, &metav1.DeleteOptions{})
+	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(info.GenerateBackupDirPodName(), &metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete dir pod %v", err)
 	}
@@ -2457,15 +2465,16 @@ func getParentUIDFromJob(j batchv1.Job) (types.UID, bool) {
 
 func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, error) {
 	scheduledPvcName := fmt.Sprintf("%s-scheduled-backup", info.ClusterName)
+	backupDirPodName := info.GenerateBackupDirPodName()
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      getBackupDirPodName,
+			Name:      backupDirPodName,
 			Namespace: info.Namespace,
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:    getBackupDirPodName,
+					Name:    backupDirPodName,
 					Image:   "pingcap/tidb-cloud-backup:20190610",
 					Command: []string{"sleep", "3000"},
 					VolumeMounts: []corev1.VolumeMount{
@@ -2490,7 +2499,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	}
 
 	fn := func() (bool, error) {
-		_, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(getBackupDirPodName, metav1.GetOptions{})
+		_, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(backupDirPodName, metav1.GetOptions{})
 		if !errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -2500,7 +2509,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	err := wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to delete pod %s", getBackupDirPodName)
+		return nil, fmt.Errorf("failed to delete pod %s, err: %v", backupDirPodName, err)
 	}
 
 	_, err = oa.kubeCli.CoreV1().Pods(info.Namespace).Create(pod)
@@ -2510,7 +2519,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	}
 
 	fn = func() (bool, error) {
-		pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(getBackupDirPodName, metav1.GetOptions{})
+		pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(backupDirPodName, metav1.GetOptions{})
 		if err == nil && pod.Status.Phase == corev1.PodRunning {
 			return true, nil
 		} else if err != nil && !errors.IsNotFound(err) {
@@ -2522,10 +2531,10 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	err = wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to create pod %s", getBackupDirPodName)
+		return nil, fmt.Errorf("failed to create pod %s, err: %v", backupDirPodName, err)
 	}
 
-	cmd := fmt.Sprintf("kubectl exec %s -n %s ls /data", getBackupDirPodName, info.Namespace)
+	cmd := fmt.Sprintf("kubectl exec %s -n %s ls /data", backupDirPodName, info.Namespace)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		glog.Errorf("cluster:[%s/%s] exec :%s failed,error:%v,result:%s", info.Namespace, info.ClusterName, cmd, err, string(res))
