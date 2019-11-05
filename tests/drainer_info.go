@@ -18,7 +18,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 )
 
 type DbType string

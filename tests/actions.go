@@ -35,7 +35,6 @@ import (
 	"github.com/ghodss/yaml"
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/golang/glog"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -50,7 +49,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
-	"k8s.io/api/apps/v1"
+	v1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -59,6 +58,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	glog "k8s.io/klog"
 )
 
 const (
@@ -102,7 +102,6 @@ const (
 	DefaultPollTimeout          time.Duration = 10 * time.Minute
 	DefaultPollInterval         time.Duration = 1 * time.Minute
 	BackupAndRestorePollTimeOut time.Duration = 60 * time.Minute
-	getBackupDirPodName                       = "get-backup-dir"
 	grafanaUsername                           = "admin"
 	grafanaPassword                           = "admin"
 	operartorChartName                        = "tidb-operator"
@@ -282,6 +281,10 @@ func (tc *TidbClusterConfig) String() string {
 	return fmt.Sprintf("%s/%s", tc.Namespace, tc.ClusterName)
 }
 
+func (tc *TidbClusterConfig) GenerateBackupDirPodName() string {
+	return fmt.Sprintf("%s-get-backup-dir", tc.ClusterName)
+}
+
 func (tc *TidbClusterConfig) BackupHelmSetString(m map[string]string) string {
 
 	set := map[string]string{
@@ -447,7 +450,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
-	cmd = fmt.Sprintf("kubectl apply -f %s/webhook.yaml", oa.manifestPath(info.Tag))
+	cmd = fmt.Sprintf(`sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/' %s/webhook.yaml | kubectl apply -f -`, oa.manifestPath(info.Tag))
 	glog.Info(cmd)
 
 	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -733,7 +736,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return err
 	}
 
-	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(getBackupDirPodName, &metav1.DeleteOptions{})
+	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(info.GenerateBackupDirPodName(), &metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete dir pod %v", err)
 	}
@@ -2457,15 +2460,16 @@ func getParentUIDFromJob(j batchv1.Job) (types.UID, bool) {
 
 func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, error) {
 	scheduledPvcName := fmt.Sprintf("%s-scheduled-backup", info.ClusterName)
+	backupDirPodName := info.GenerateBackupDirPodName()
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      getBackupDirPodName,
+			Name:      backupDirPodName,
 			Namespace: info.Namespace,
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:    getBackupDirPodName,
+					Name:    backupDirPodName,
 					Image:   "pingcap/tidb-cloud-backup:20190610",
 					Command: []string{"sleep", "3000"},
 					VolumeMounts: []corev1.VolumeMount{
@@ -2490,7 +2494,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	}
 
 	fn := func() (bool, error) {
-		_, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(getBackupDirPodName, metav1.GetOptions{})
+		_, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(backupDirPodName, metav1.GetOptions{})
 		if !errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -2500,7 +2504,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	err := wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to delete pod %s", getBackupDirPodName)
+		return nil, fmt.Errorf("failed to delete pod %s, err: %v", backupDirPodName, err)
 	}
 
 	_, err = oa.kubeCli.CoreV1().Pods(info.Namespace).Create(pod)
@@ -2510,7 +2514,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	}
 
 	fn = func() (bool, error) {
-		pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(getBackupDirPodName, metav1.GetOptions{})
+		pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(backupDirPodName, metav1.GetOptions{})
 		if err == nil && pod.Status.Phase == corev1.PodRunning {
 			return true, nil
 		} else if err != nil && !errors.IsNotFound(err) {
@@ -2522,10 +2526,10 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	err = wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to create pod %s", getBackupDirPodName)
+		return nil, fmt.Errorf("failed to create pod %s, err: %v", backupDirPodName, err)
 	}
 
-	cmd := fmt.Sprintf("kubectl exec %s -n %s ls /data", getBackupDirPodName, info.Namespace)
+	cmd := fmt.Sprintf("kubectl exec %s -n %s ls /data", backupDirPodName, info.Namespace)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		glog.Errorf("cluster:[%s/%s] exec :%s failed,error:%v,result:%s", info.Namespace, info.ClusterName, cmd, err, string(res))
@@ -2758,7 +2762,7 @@ func (oa *operatorActions) RegisterWebHookAndService(context *apimachinery.CertC
 		ObjectMeta: metav1.ObjectMeta{
 			Name: configName,
 		},
-		Webhooks: []admissionV1beta1.Webhook{
+		Webhooks: []admissionV1beta1.ValidatingWebhook{
 			{
 				Name: "check-pod-before-delete.k8s.io",
 				Rules: []admissionV1beta1.RuleWithOperations{{

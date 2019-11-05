@@ -58,6 +58,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&BackupScheduleList{},
 		&Restore{},
 		&RestoreList{},
+		&DataResource{},
+		&DataResourceList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)

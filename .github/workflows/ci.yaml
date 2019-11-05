@@ -19,14 +19,17 @@ jobs:
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+        path: go/src/github.com/pingcap/tidb-operator
 
     - name: Basic checks
       run: |
         # workaround for https://github.com/actions/setup-go/issues/14
-        export GOPATH=$(go env GOPATH)
+        export GOPATH=/home/runner/work/tidb-operator/go
         export PATH=$PATH:$GOPATH/bin
         make check-setup check
     - name: Build binaries and images
       run: make docker e2e-docker cli
     - name: Unit Tests
-      run: make test
+      run: make test GOFLAGS='-race'

@@ -18,10 +18,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	glog "k8s.io/klog"
 )
 
 // ResourceRequirement creates ResourceRequirements for MemberSpec

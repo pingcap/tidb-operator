@@ -22,15 +22,15 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	"github.com/robfig/cron"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apiserver/pkg/util/logs"
+	"k8s.io/component-base/logs"
+	glog "k8s.io/klog"
 )
 
 var cfg *tests.Config

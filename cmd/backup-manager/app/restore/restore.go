@@ -82,6 +82,10 @@ func (ro *RestoreOpts) loadTidbClusterData(restorePath string) error {
 	return nil
 }
 
+func (ro *RestoreOpts) getDSN(db string) string {
+	return fmt.Sprintf("%s:%s@(%s:4000)/%s?charset=utf8", ro.User, ro.Password, ro.TidbSvc, db)
+}
+
 // unarchiveBackupData unarchive backup data to dest dir
 func unarchiveBackupData(backupFile, destDir string) (string, error) {
 	var unarchiveBackupPath string

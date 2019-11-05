@@ -94,7 +94,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	job, reason, err := bm.makeBackupJob(backup)
 	if err != nil {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
+			Type:    v1alpha1.BackupRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
 			Message: err.Error(),
@@ -105,7 +105,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	reason, err = bm.ensureBackupPVCExist(backup)
 	if err != nil {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
+			Type:    v1alpha1.BackupRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
 			Message: err.Error(),
@@ -116,7 +116,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	if err := bm.jobControl.CreateJob(backup, job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
+			Type:    v1alpha1.BackupRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateBackupJobFailed",
 			Message: errMsg.Error(),

@@ -17,12 +17,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dustin/go-humanize"
-	"github.com/golang/glog"
+	humanize "github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	glog "k8s.io/klog"
 )
 
 var (
@@ -78,6 +78,26 @@ func RequeueErrorf(format string, a ...interface{}) error {
 // IsRequeueError returns whether err is a RequeueError
 func IsRequeueError(err error) bool {
 	_, ok := err.(*RequeueError)
+	return ok
+}
+
+// IgnoreError is used to ignore this item, this error type should't be considered as a real error, no need to requeue
+type IgnoreError struct {
+	s string
+}
+
+func (re *IgnoreError) Error() string {
+	return re.s
+}
+
+// IgnoreErrorf returns a IgnoreError
+func IgnoreErrorf(format string, a ...interface{}) error {
+	return &IgnoreError{fmt.Sprintf(format, a...)}
+}
+
+// IsIgnoreError returns whether err is a IgnoreError
+func IsIgnoreError(err error) bool {
+	_, ok := err.(*IgnoreError)
 	return ok
 }
 

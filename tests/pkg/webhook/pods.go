@@ -11,12 +11,12 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"k8s.io/api/admission/v1beta1"
+	glog "k8s.io/klog"
 )
 
 // only allow pods to be delete when it is not ddlowner of tidb, not leader of pd and not

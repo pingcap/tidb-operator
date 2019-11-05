@@ -20,13 +20,14 @@ import (
 	_ "net/http/pprof"
 	"sync"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apiserver/pkg/util/logs"
+	utilversion "k8s.io/apimachinery/pkg/util/version"
+	"k8s.io/component-base/logs"
+	glog "k8s.io/klog"
 )
 
 var cfg *tests.Config
@@ -172,6 +173,20 @@ func main() {
 	 * Note that only one cluster can run in host network mode at the same time.
 	 */
 	testHostNetwork := func(wg *sync.WaitGroup, cluster *tests.TidbClusterConfig) {
+		serverVersion, err := kubeCli.Discovery().ServerVersion()
+		if err != nil {
+			panic(err)
+		}
+		sv := utilversion.MustParseSemantic(serverVersion.GitVersion)
+		glog.Infof("ServerVersion: %v", serverVersion.String())
+		if sv.LessThan(utilversion.MustParseSemantic("v1.13.11")) || // < v1.13.11
+			(sv.AtLeast(utilversion.MustParseSemantic("v1.14.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.14.7"))) || // >= v1.14.0 but < v1.14.7
+			(sv.AtLeast(utilversion.MustParseSemantic("v1.15.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.15.4"))) { // >= v1.15.0 but < v1.15.4
+			// https://github.com/pingcap/tidb-operator/issues/1042#issuecomment-547742565
+			glog.Infof("Skipping HostNetwork test. Kubernetes %v has a bug that StatefulSet may apply revision incorrectly, HostNetwork cannot work well in this cluster", serverVersion)
+			return
+		}
+
 		// switch to host network
 		cluster.RunInHost(true)
 		oa.UpgradeTidbClusterOrDie(cluster)

@@ -10,7 +10,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/discovery/server"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apiserver/pkg/util/logs"
+	"k8s.io/component-base/logs"
 	"k8s.io/client-go/rest"
 )
 

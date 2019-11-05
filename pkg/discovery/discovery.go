@@ -20,8 +20,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	glog "k8s.io/klog"
 )
 
 // PDName is a stable identifier of a PD process

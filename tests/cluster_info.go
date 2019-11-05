@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 )
 
 func (tc *TidbClusterConfig) set(name string, value string) (string, bool) {

@@ -17,7 +17,6 @@ GOOS := $(if $(GOOS),$(GOOS),linux)
 GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
 GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO     := $(GOENV) go build
-GOTEST := CGO_ENABLED=0 go test -v -cover
 
 PACKAGE_LIST := go list ./... | grep -vE "pkg/client" | grep -vE "zz_generated"
 PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
@@ -34,7 +33,7 @@ docker-push: docker backup-docker
 docker: build
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest" images/tidb-operator
 
-build: controller-manager scheduler discovery admission-controller
+build: controller-manager scheduler discovery admission-controller apiserver
 
 controller-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
@@ -51,15 +50,14 @@ discover-pd:
 admission-controller:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-controller cmd/admission-controller/main.go
 
+apiserver:
+	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-apiserver cmd/apiserver/main.go
+
 backup-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/backup-manager/bin/tidb-backup-manager cmd/backup-manager/main.go
 
 backup-docker: backup-manager
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:latest" images/backup-manager
-
-e2e-setup:
-	# ginkgo doesn't work with retool for Go 1.11
-	@CGO_ENABLED=0 go get github.com/onsi/ginkgo@v1.6.0
 
 e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest"
@@ -75,7 +73,7 @@ e2e-docker: e2e-build
 	cp -r manifests tests/images/e2e
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" tests/images/e2e
 
-e2e-build: e2e-setup
+e2e-build:
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
 
 stability-test-build:
@@ -90,14 +88,27 @@ stability-test-push: stability-test-docker
 fault-trigger:
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/fault-trigger/bin/fault-trigger tests/cmd/fault-trigger/*.go
 
+# ARGS:
+#
+# GOFLAGS: Extra flags to pass to 'go' when building, e.g.
+# 		`-v` for verbose logging.
+# 		`-race` for race detector.
+# GO_COVER: Whether to run tests with code coverage. Set to 'y' to enable coverage collection.
+#
+ifeq ($(GO_COVER),y)
 test:
 	@echo "Run unit tests"
-	@$(GOTEST) ./pkg/... -coverpkg=$$($(TEST_COVER_PACKAGES)) -coverprofile=coverage.txt -covermode=atomic && echo "\nUnit tests run successfully!"
+	@go test -cover ./pkg/... -coverpkg=$$($(TEST_COVER_PACKAGES)) -coverprofile=coverage.txt -covermode=atomic && echo "\nUnit tests run successfully!"
+else
+test:
+	@echo "Run unit tests"
+	@go test ./pkg/... && echo "\nUnit tests run successfully!"
+endif
 
 check-all: lint check-static check-shadow check-gosec staticcheck errcheck
 
 check-setup:
-	@which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
+	@which retool >/dev/null 2>&1 || GO111MODULE=off go get github.com/twitchtv/retool
 	@GO111MODULE=off retool sync
 
 check: check-setup lint tidy check-static check-crd check-codegen
@@ -118,7 +129,7 @@ check-crd:
 	./hack/crd-groups.sh verify
 
 check-codegen:
-	./hack/verify-codegen.sh verify
+	./hack/verify-codegen.sh
 
 # TODO: staticcheck is too slow currently
 staticcheck:

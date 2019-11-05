@@ -3,7 +3,7 @@
 # Pin all k8s.io dependencies to a specified version.
 #
 
-VERSION=1.12.5
+VERSION=1.16.0
 
 # Explicitly opt into go modules, even though we're inside a GOPATH directory
 export GO111MODULE=on
@@ -29,7 +29,10 @@ fi
 
 edit_args=(
     -fmt
+    # workaround for https://github.com/uber-go/atomic
+    -replace github.com/uber-go/atomic=go.uber.org/atomic@v1.5.0
 )
+
 for repo in ${STAGING_REPOS[@]}; do
 	edit_args+=(-replace $repo=$repo@kubernetes-$VERSION)
 done

@@ -7,9 +7,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/discovery/k8s"
+	glog "k8s.io/klog"
 )
 
 var (

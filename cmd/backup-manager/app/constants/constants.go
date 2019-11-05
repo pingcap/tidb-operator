@@ -19,6 +19,12 @@ const (
 	// ResyncDuration is the informer's resync duration
 	ResyncDuration = 10 * time.Second
 
+	// PollInterval is the interval to check if the tidb cluster is ready
+	PollInterval = 5 * time.Second
+
+	// CheckTimeout is the maximum time to wait for the tidb cluster ready
+	CheckTimeout = 30 * time.Minute
+
 	// BackupRootPath is the root path to backup data
 	BackupRootPath = "/backup"
 
