@@ -42,9 +42,6 @@ import (
 	glog "k8s.io/klog"
 )
 
-// controllerKind contains the schema.GroupVersionKind for this controller type.
-var controllerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbCluster")
-
 // Controller controls tidbclusters.
 type Controller struct {
 	// kubernetes client interface
@@ -373,7 +370,7 @@ func (tcc *Controller) resolveTidbClusterFromSet(namespace string, set *apps.Sta
 
 	// We can't look up by UID, so look up by Name and then verify UID.
 	// Don't even try to look up by Name if it's the wrong Kind.
-	if controllerRef.Kind != controllerKind.Kind {
+	if controllerRef.Kind != controller.ControllerKind.Kind {
 		return nil
 	}
 	tc, err := tcc.tcLister.TidbClusters(namespace).Get(controllerRef.Name)
