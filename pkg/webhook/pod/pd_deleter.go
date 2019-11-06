@@ -30,7 +30,7 @@ func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulS
 	name := pod.Name
 	namespace := pod.Namespace
 	tcName := tc.Name
-	ordinal, err := operatorUtils.GetOrdinalFromPodName(pod.Name)
+	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
 	if err != nil {
 		return util.ARFail(err)
 	}
