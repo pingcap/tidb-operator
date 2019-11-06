@@ -349,15 +349,15 @@ type S3StorageProvider struct {
 	// Provider represents the specific storage provider that implements the S3 interface
 	Provider S3StorageProviderType `json:"provider"`
 	// Region in which the S3 compatible bucket is located.
-	Region string `json:"region"`
+	Region string `json:"region,omitempty"`
 	// Bucket in which to store the Backup.
-	Bucket string `json:"bucket"`
+	Bucket string `json:"bucket,omitempty"`
 	// Endpoint of S3 compatible storage service
-	Endpoint string `json:"endpoint"`
+	Endpoint string `json:"endpoint,omitempty"`
 	// StorageClass represents the storage class
-	StorageClass string `json:"storageClass"`
+	StorageClass string `json:"storageClass,omitempty"`
 	// Acl represents access control permissions for this bucket
-	Acl string `json:"acl"`
+	Acl string `json:"acl,omitempty"`
 	// SecretName is the name of secret which stores
 	// ceph object store access key and secret key.
 	SecretName string `json:"secretName"`

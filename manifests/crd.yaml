@@ -237,11 +237,6 @@ spec:
                   type: string
               required:
               - provider
-              - region
-              - bucket
-              - endpoint
-              - storageClass
-              - acl
               - secretName
               type: object
             storageClassName:
@@ -434,11 +429,6 @@ spec:
                       type: string
                   required:
                   - provider
-                  - region
-                  - bucket
-                  - endpoint
-                  - storageClass
-                  - acl
                   - secretName
                   type: object
                 storageClassName:
