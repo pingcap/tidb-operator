@@ -1119,6 +1119,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							Format: "",
 						},
 					},
+					"enablePVReclaim": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
 					"timezone": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},

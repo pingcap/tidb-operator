@@ -99,6 +99,7 @@ type TidbClusterSpec struct {
 	// Services list non-headless services type used in TidbCluster
 	Services        []Service                            `json:"services,omitempty"`
 	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
+	EnablePVReclaim bool                                 `json:"enablePVReclaim,omitempty"`
 	Timezone        string                               `json:"timezone,omitempty"`
 	// Enable TLS connection between TiDB server compoments
 	EnableTLSCluster bool `json:"enableTLSCluster,omitempty"`

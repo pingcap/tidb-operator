@@ -19,6 +19,7 @@ metadata:
     {{- end }}
 spec:
   pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
+  enablePVReclaim: {{ .Values.enablePVReclaim }}
   timezone: {{ .Values.timezone | default "UTC" }}
   enableTLSCluster: {{ .Values.enableTLSCluster | default false }}
   enableTLSClient: {{ .Values.enableTLSClient | default false }}
