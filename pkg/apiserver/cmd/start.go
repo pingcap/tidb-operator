@@ -136,12 +136,12 @@ func NewCommandStartServer(builders []*builders.APIGroupBuilder, stopCh <-chan s
 
 // NewServerOptions create a ServerOptions
 func NewServerOptions(b []*builders.APIGroupBuilder) *ServerOptions {
-	versions := []schema.GroupVersion{}
+	internalVersions := []schema.GroupVersion{}
 	for _, b := range b {
-		versions = append(versions, b.GetLegacyCodec()...)
+		internalVersions = append(internalVersions, b.UnVersioned.GroupVersion)
 	}
 
-	codec := builders.Codecs.LegacyCodec(versions...)
+	codec := builders.Codecs.LegacyCodec(internalVersions...)
 	o := &ServerOptions{
 		RecommendedOptions: genericoptions.NewRecommendedOptions("", codec, nil),
 		APIBuilders:        b,

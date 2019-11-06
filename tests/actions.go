@@ -236,6 +236,10 @@ type OperatorConfig struct {
 	Context            *apimachinery.CertContext
 	ImagePullPolicy    corev1.PullPolicy
 	TestMode           bool
+	ApiServerImage     string
+	ApiServerCert      string
+	ApiServerKey       string
+	ApiServerCaBundle  string
 }
 
 type TidbClusterConfig struct {
@@ -388,6 +392,7 @@ func (oa *operatorActions) CleanCRDOrDie() {
 // InstallCRDOrDie install CRDs and wait for them to be established in Kubernetes.
 func (oa *operatorActions) InstallCRDOrDie() {
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/crd.yaml"))
+	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
 	out := oa.runKubectlOrDie([]string{"get", "crds", "--no-headers", `-ojsonpath={range .items[*]}{.metadata.name}{" "}{end}`}...)
 	waitArgs := []string{"wait", "--for=condition=Established"}
 	for _, crd := range strings.Split(out, " ") {
