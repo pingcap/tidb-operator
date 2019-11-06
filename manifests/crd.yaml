@@ -74,6 +74,8 @@ spec:
           description: TidbClusterSpec describes the attributes that a user creates
             on a tidb cluster
           properties:
+            enablePVReclaim:
+              type: boolean
             enableTLSCluster:
               description: Enable TLS connection between TiDB server compoments
               type: boolean
