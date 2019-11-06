@@ -224,20 +224,20 @@ func (td *tidbDiscoveryNoMembers) Discover(pdName PDName, clusterID ClusterName,
 			return "", err
 		}
 		return fmt.Sprintf("--join=%s", strings.Join(addressesNoName, ",")), nil
-	} else {
-		addresses, err := td.getNamedAddresses(clusterID)
-		if err != nil {
-			return "", err
-		}
-		initialClusterArgs := make([]string, len(addresses))
-		for i, address := range addresses {
-			initialClusterArgs[i] = fmt.Sprintf("%s=%s", address.Name, address.Address)
-		}
-
-		return "--initial-cluster=" + strings.Join(initialClusterArgs, ","), nil
 	}
 
+	addresses, err := td.getNamedAddresses(clusterID)
+	if err != nil {
+		return "", err
+	}
+	initialClusterArgs := make([]string, len(addresses))
+	for i, address := range addresses {
+		initialClusterArgs[i] = fmt.Sprintf("%s=%s", address.Name, address.Address)
+	}
+
+	return "--initial-cluster=" + strings.Join(initialClusterArgs, ","), nil
 }
+
 
 func validateEmpty(pdName PDName, clusterID ClusterName, pdURL url.URL) error {
 	if pdURL.String() == "" {
