@@ -92,7 +92,6 @@ func main() {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 
-
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
 
 	rl := resourcelock.EndpointsLock{
@@ -118,7 +117,6 @@ func main() {
 		}
 	}
 	glog.Infof("cache of informer factories sync successfully")
-
 
 	onStarted := func(ctx context.Context) {
 		if err := webhookServer.Run(); err != nil {
