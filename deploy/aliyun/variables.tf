@@ -9,14 +9,14 @@ variable "bastion_cpu_core_count" {
 }
 
 variable "operator_version" {
-  type = string
+  type    = string
   default = "v1.0.2"
 }
 
 variable "operator_helm_values" {
   description = "The helm values file for TiDB Operator, path is relative to current working dir"
-  type = string
-  default = ""
+  type        = string
+  default     = ""
 }
 
 variable "override_values" {
@@ -85,7 +85,7 @@ variable "default_worker_core_count" {
 
 variable "vpc_id" {
   description = "VPC id"
-  default = ""
+  default     = ""
 }
 
 variable "group_id" {

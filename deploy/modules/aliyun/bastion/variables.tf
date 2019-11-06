@@ -31,10 +31,10 @@ variable "vswitch_id" {
 
 variable "worker_security_group_id" {
   description = "The security group id of worker nodes, must be provided if enable_ssh_to_worker set to true"
-  default = ""
+  default     = ""
 }
 
 variable "enable_ssh_to_worker" {
   description = "Whether enable ssh connection from bastion to ACK workers"
-  default = false
+  default     = false
 }
