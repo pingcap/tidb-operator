@@ -22,7 +22,7 @@ import (
 	"k8s.io/api/admission/v1beta1"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) *v1beta1.AdmissionResponse {
@@ -47,7 +47,7 @@ func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulS
 
 	isUpgrading := IsStatefulSetUpgrading(ownerStatefulSet)
 
-	glog.Infof("receive delete pd pod[%s/%s] of tc[%s/%s],isMember=%v,isOutOfOrdinal=%v,isUpgrading=%v", namespace, name, namespace, tcName, isMember, isOutOfOrdinal, isUpgrading)
+	klog.Infof("receive delete pd pod[%s/%s] of tc[%s/%s],isMember=%v,isOutOfOrdinal=%v,isUpgrading=%v", namespace, name, namespace, tcName, isMember, isOutOfOrdinal, isUpgrading)
 
 	// each pd instance must be member deleted from tc-cluster before deleting its pod.
 	if !isMember {
@@ -60,11 +60,11 @@ func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulS
 		if isOutOfOrdinal {
 			err = addDeferDeletingToPVC(pc, tc, ownerStatefulSet.Name, namespace, ordinal)
 			if err != nil {
-				glog.Infof("tc[%s/%s]'s pod[%s/%s] failed to update pvc,%v", namespace, tcName, namespace, name, err)
+				klog.Infof("tc[%s/%s]'s pod[%s/%s] failed to update pvc,%v", namespace, tcName, namespace, name, err)
 				return util.ARFail(err)
 			}
 		}
-		glog.Infof("pd pod[%s/%s] is not member of tc[%s/%s],admit to delete", namespace, name, namespace, tcName)
+		klog.Infof("pd pod[%s/%s] is not member of tc[%s/%s],admit to delete", namespace, name, namespace, tcName)
 		return util.ARSuccess()
 	}
 
@@ -73,14 +73,14 @@ func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulS
 		if err != nil {
 			return util.ARFail(err)
 		}
-		glog.Infof("tc[%s/%s]'s pd[%s/%s] is being deleted from pd-cluster,refuse to delete it.", namespace, tcName, namespace, name)
+		klog.Infof("tc[%s/%s]'s pd[%s/%s] is being deleted from pd-cluster,refuse to delete it.", namespace, tcName, namespace, name)
 		return &v1beta1.AdmissionResponse{
 			Allowed: false,
 		}
 	}
 
 	if isUpgrading {
-		glog.Infof("receive delete pd pod[%s/%s] of tc[%s/%s] is upgrading,make sure former pd upgraded status was health", namespace, name, namespace, tcName)
+		klog.Infof("receive delete pd pod[%s/%s] of tc[%s/%s] is upgrading,make sure former pd upgraded status was health", namespace, name, namespace, tcName)
 		err = checkFormerPDPodStatus(pc.kubeCli, pdClient, tc, namespace, ordinal, *ownerStatefulSet.Spec.Replicas)
 		if err != nil {
 			return util.ARFail(err)
@@ -89,11 +89,11 @@ func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulS
 
 	leader, err := pdClient.GetPDLeader()
 	if err != nil {
-		glog.Errorf("tc[%s/%s] fail to get pd leader %v,refuse to delete pod[%s/%s]", namespace, tc.Name, err, namespace, name)
+		klog.Errorf("tc[%s/%s] fail to get pd leader %v,refuse to delete pod[%s/%s]", namespace, tc.Name, err, namespace, name)
 		return util.ARFail(err)
 	}
 
-	glog.Infof("tc[%s/%s]'s pd leader is pod[%s/%s] during deleting pod[%s/%s]", namespace, tc.Name, namespace, leader.Name, namespace, name)
+	klog.Infof("tc[%s/%s]'s pd leader is pod[%s/%s] during deleting pod[%s/%s]", namespace, tc.Name, namespace, leader.Name, namespace, name)
 	if leader.Name == name {
 		lastOrdinal := tc.Status.PD.StatefulSet.Replicas - 1
 		var targetName string
@@ -104,15 +104,15 @@ func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulS
 		}
 		err = pdClient.TransferPDLeader(targetName)
 		if err != nil {
-			glog.Errorf("tc[%s/%s] failed to transfer pd leader to pod[%s/%s],%v", namespace, tc.Name, namespace, name, err)
+			klog.Errorf("tc[%s/%s] failed to transfer pd leader to pod[%s/%s],%v", namespace, tc.Name, namespace, name, err)
 			return util.ARFail(err)
 		}
-		glog.Infof("tc[%s/%s] start to transfer pd leader to pod[%s/%s],refuse to delete pod[%s/%s]", namespace, tc.Name, namespace, targetName, namespace, name)
+		klog.Infof("tc[%s/%s] start to transfer pd leader to pod[%s/%s],refuse to delete pod[%s/%s]", namespace, tc.Name, namespace, targetName, namespace, name)
 		return &v1beta1.AdmissionResponse{
 			Allowed: false,
 		}
 	}
 
-	glog.Infof("pod[%s/%s] is not pd-leader,admit to delete", namespace, name)
+	klog.Infof("pod[%s/%s] is not pd-leader,admit to delete", namespace, name)
 	return util.ARSuccess()
 }

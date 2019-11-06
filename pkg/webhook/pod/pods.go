@@ -28,7 +28,7 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 type PodAdmissionControl struct {
@@ -59,13 +59,13 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 	name := ar.Request.Name
 	namespace := ar.Request.Namespace
 	operation := ar.Request.Operation
-	glog.Infof("receive admission to %s pod[%s/%s]", operation, namespace, name)
+	klog.Infof("receive admission to %s pod[%s/%s]", operation, namespace, name)
 
 	switch operation {
 	case v1beta1.Delete:
 		return pc.admitDeletePods(name, namespace)
 	default:
-		glog.Infof("Admit to %s pod[%s/%s]", operation, namespace, name)
+		klog.Infof("Admit to %s pod[%s/%s]", operation, namespace, name)
 		return util.ARSuccess()
 	}
 }
@@ -79,19 +79,19 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.
 
 	pod, err := pc.kubeCli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
-		glog.Infof("failed to find pod[%s/%s] during delete it,admit to delete", namespace, name)
+		klog.Infof("failed to find pod[%s/%s] during delete it,admit to delete", namespace, name)
 		return util.ARSuccess()
 	}
 
 	l := label.Label(pod.Labels)
 	if !(l.IsPD() || l.IsTiKV() || l.IsTiDB()) {
-		glog.Infof("pod[%s/%s] is not TiDB component,admit to delete", namespace, name)
+		klog.Infof("pod[%s/%s] is not TiDB component,admit to delete", namespace, name)
 		return util.ARSuccess()
 	}
 
 	tcName, exist := pod.Labels[label.InstanceLabelKey]
 	if !exist {
-		glog.Errorf("pod[%s/%s] has no label: %s", namespace, name, label.InstanceLabelKey)
+		klog.Errorf("pod[%s/%s] has no label: %s", namespace, name, label.InstanceLabelKey)
 		return util.ARFail(fmt.Errorf("pod[%s/%s] has no label: %s", namespace, name, label.InstanceLabelKey))
 	}
 
@@ -99,10 +99,10 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			glog.Infof("tc[%s/%s] had been deleted,admit to delete pod[%s/%s]", namespace, tcName, namespace, name)
+			klog.Infof("tc[%s/%s] had been deleted,admit to delete pod[%s/%s]", namespace, tcName, namespace, name)
 			return util.ARSuccess()
 		}
-		glog.Errorf("failed get tc[%s/%s],refuse to delete pod[%s/%s]", namespace, tcName, namespace, name)
+		klog.Errorf("failed get tc[%s/%s],refuse to delete pod[%s/%s]", namespace, tcName, namespace, name)
 		return util.ARFail(err)
 	}
 
@@ -110,21 +110,33 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.
 		return util.ARSuccess()
 	}
 
-	ownerStatefulSetName := pod.OwnerReferences[0].Name
+	var ownerStatefulSetName string
+	for _, ownerReference := range pod.OwnerReferences {
+		if ownerReference.Kind == "StatefulSet" {
+			ownerStatefulSetName = ownerReference.Name
+			break
+		}
+	}
+
+	if len(ownerStatefulSetName) == 0 {
+		klog.Infof("pod[%s/%s] is not owned by StatefulSet,admit to delete it", namespace, name)
+		return util.ARSuccess()
+	}
+
 	ownerStatefulSet, err := pc.kubeCli.AppsV1().StatefulSets(namespace).Get(ownerStatefulSetName, metav1.GetOptions{})
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			glog.Infof("statefulset[%s/%s] had been deleted,admit to delete pod[%s/%s]", namespace, ownerStatefulSetName, namespace, name)
+			klog.Infof("statefulset[%s/%s] had been deleted,admit to delete pod[%s/%s]", namespace, ownerStatefulSetName, namespace, name)
 			return util.ARSuccess()
 		}
-		glog.Errorf("failed to get statefulset[%s/%s],refuse to delete pod[%s/%s]", namespace, ownerStatefulSetName, namespace, name)
+		klog.Errorf("failed to get statefulset[%s/%s],refuse to delete pod[%s/%s]", namespace, ownerStatefulSetName, namespace, name)
 		return util.ARFail(fmt.Errorf("failed to get statefulset[%s/%s],refuse to delete pod[%s/%s]", namespace, ownerStatefulSetName, namespace, name))
 	}
 
 	// Force Upgraded,Admit to Upgrade
 	if memberUtils.NeedForceUpgrade(tc) {
-		glog.Infof("tc[%s/%s] is force upgraded, admit to delete pod[%s/%s]", namespace, tcName, namespace, name)
+		klog.Infof("tc[%s/%s] is force upgraded, admit to delete pod[%s/%s]", namespace, tcName, namespace, name)
 		return util.ARSuccess()
 	}
 
@@ -135,7 +147,7 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.
 
 	// If there was only one replica for this statefulset,admit to delete it.
 	if *ownerStatefulSet.Spec.Replicas == 1 && ordinal == 0 {
-		glog.Infof("tc[%s/%s]'s pd only have one pod[%s/%s],admit to delete it.", namespace, tcName, namespace, name)
+		klog.Infof("tc[%s/%s]'s pd only have one pod[%s/%s],admit to delete it.", namespace, tcName, namespace, name)
 		return util.ARSuccess()
 	}
 
@@ -144,6 +156,6 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.
 		return pc.admitDeletePdPods(pod, ownerStatefulSet, tc, pdClient)
 	}
 
-	glog.Infof("[%s/%s] is admit to be deleted", namespace, name)
+	klog.Infof("[%s/%s] is admit to be deleted", namespace, name)
 	return util.ARSuccess()
 }
