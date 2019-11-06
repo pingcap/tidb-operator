@@ -590,6 +590,47 @@ func TestList(t *testing.T) {
 	}
 }
 
+func TestListShouldReturnFullList(t *testing.T) {
+	g := NewGomegaWithT(t)
+	store, _, ctx := testSetup(t)
+
+	pred := predictionFunc(labels.Everything(), fields.Everything())
+	pred.Limit = 5
+	testFunc := func() {
+		result := &example.PodList{}
+		err := store.List(ctx, listKeyFunc("default"), "", pred, result)
+		g.Expect(err).ShouldNot(HaveOccurred(), "list resources")
+		g.Expect(result.ListMeta.Continue).Should(BeEmpty(), "Expected full list returned")
+		g.Expect(result.ListMeta.RemainingItemCount).Should(BeNil(), "Expected full list returned and no items remaining")
+	}
+
+	// empty list
+	testFunc()
+
+	// list size do not exceed limit
+	out := &example.Pod{}
+	in := &example.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "foo",
+		},
+	}
+	err := store.Create(ctx, keyFunc(in), in, out, 0)
+	g.Expect(err).ShouldNot(HaveOccurred(), "create a new resource")
+	testFunc()
+
+	// list size exceed limit
+	for i := 0; i < 10; i++ {
+		in := &example.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: fmt.Sprintf("foo-%d", i),
+			},
+		}
+		err := store.Create(ctx, keyFunc(in), in, out, 0)
+		g.Expect(err).ShouldNot(HaveOccurred(), "create a new resource")
+	}
+	testFunc()
+}
+
 // TODO: conflict case and suggestion case
 func TestGuaranteedUpdate(t *testing.T) {
 	g := NewGomegaWithT(t)

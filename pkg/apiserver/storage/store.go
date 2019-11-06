@@ -18,27 +18,23 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/klog"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	clientv1alpha1 "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/typed/pingcap/v1alpha1"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	informerv1alpha1 "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listerv1alpha1 "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/etcd3"
 	"k8s.io/apiserver/pkg/storage/storagebackend/factory"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // store implements a ConfigMap backed storage.Interface
@@ -58,12 +54,12 @@ type store struct {
 // New returns an kubernetes configmap implementation of storage.Interface.
 func NewApiServerStore(cli versioned.Interface, codec runtime.Codec, namespace string, objType runtime.Object, newListFunc func() runtime.Object) (storage.Interface, factory.DestroyFunc, error) {
 
-	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, 1*time.Minute, informers.WithNamespace(namespace))
+	// informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, 1*time.Minute, informers.WithNamespace(namespace))
 
-	inf := informerFactory.Pingcap().V1alpha1().DataResources()
+	// inf := informerFactory.Pingcap().V1alpha1().DataResources()
 	s := &store{
-		lister:    inf.Lister(),
-		informer:  inf,
+		// lister:    inf.Lister(),
+		// informer:  inf,
 		client:    cli.PingcapV1alpha1().DataResources(namespace),
 		versioner: etcd3.APIObjectVersioner{},
 		codec:     codec,
@@ -82,15 +78,15 @@ func NewApiServerStore(cli versioned.Interface, codec runtime.Codec, namespace s
 	//	UpdateFunc: s.updateEvent,
 	//	DeleteFunc: s.deleteEvent,
 	//})
-	ctx, cancel := context.WithCancel(context.Background())
-	informerFactory.Start(ctx.Done())
-	for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
-		if !synced {
-			glog.Fatalf("error syncing informer for %v", v)
-		}
-	}
+	//ctx, cancel := context.WithCancel(context.Background())
+	//informerFactory.Start(ctx.Done())
+	//for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
+	//	if !synced {
+	//		klog.Fatalf("error syncing informer for %v", v)
+	//	}
+	//}
 	destroy := func() {
-		cancel()
+		// cancel()
 	}
 	return s, destroy, nil
 }
@@ -155,6 +151,7 @@ func (s *store) WatchList(ctx context.Context, key string, resourceVersion strin
 	// Client based watching hold a connection to apiserver for each watch request
 	// TODO: replace with a sharedInformer based watching strategy
 	objKey := newObjectKey(key)
+	klog.V(4).Infof("Start watching, rv: %s", resourceVersion)
 	w, err := s.client.Watch(metav1.ListOptions{
 		LabelSelector:   objKey.labelSelectorStr(),
 		ResourceVersion: resourceVersion,
@@ -215,6 +212,7 @@ func (s *store) GetToList(ctx context.Context, key string, resourceVersion strin
 }
 
 // TODO: optimize read with resource version by cache
+// TODO: support pagination to optimize in large scale
 func (s *store) List(ctx context.Context, key string, resourceVersion string, pred storage.SelectionPredicate, listObj runtime.Object) error {
 	listPtr, err := meta.GetItemsPtr(listObj)
 	if err != nil {
@@ -240,8 +238,11 @@ func (s *store) List(ctx context.Context, key string, resourceVersion string, pr
 			return err
 		}
 	}
-
-	return s.versioner.UpdateList(listObj, 0, ret.ResourceVersion, nil)
+	rv, err := s.versioner.ParseResourceVersion(ret.ResourceVersion)
+	if err != nil {
+		return err
+	}
+	return s.versioner.UpdateList(listObj, rv, "", nil)
 }
 
 func (s *store) GuaranteedUpdate(ctx context.Context,
@@ -301,11 +302,6 @@ func (s *store) GuaranteedUpdate(ctx context.Context,
 		// ttl is not supported and ignored
 		ret, _, err := tryUpdate(origState.obj, *origState.meta)
 		if err != nil {
-			if apierrors.IsConflict(err) {
-				shouldRefresh = true
-				// Retry
-				continue
-			}
 			return err
 		}
 
@@ -314,6 +310,9 @@ func (s *store) GuaranteedUpdate(ctx context.Context,
 			return err
 		}
 		toUpdate := origState.resource.DeepCopy()
+		if metaobj, ok := ret.(metav1.Object); ok {
+			toUpdate.ResourceVersion = metaobj.GetResourceVersion()
+		}
 		toUpdate.Data = data
 		updateResp, err := s.client.Update(toUpdate)
 		if err != nil {
@@ -404,10 +403,17 @@ func newWatcherWrapperWithPrediction(s *store, w watch.Interface, pred storage.S
 }
 
 func (w *watcherWrapperWithPrediction) run() {
-	ch := w.watcher.ResultChan()
+	watchChan := w.watcher.ResultChan()
+	defer w.watcher.Stop()
+	defer close(w.resultChan)
 	for {
 		select {
-		case event := <-ch:
+		case event, ok := <-watchChan:
+			klog.V(4).Infof("Receive event: %v, channel is open: %v", event, ok)
+			if !ok {
+				// watchChan closed, interrupt client watching
+				return
+			}
 			if event.Type == watch.Error {
 				// TODO: need more investigation to determine whether or not to send this error out
 				klog.Errorf("Error when watching resources, %v", event.Object)
@@ -415,7 +421,7 @@ func (w *watcherWrapperWithPrediction) run() {
 			}
 			dr, ok := event.Object.(*v1alpha1.DataResource)
 			if !ok {
-				klog.Errorf("Encounters unknown object when watching, %v", event.Object)
+				klog.Errorf("Encounters unknown object when watching, %v", event)
 				continue
 			}
 			rv, err := w.versioner.ParseResourceVersion(dr.ResourceVersion)
@@ -442,7 +448,6 @@ func (w *watcherWrapperWithPrediction) run() {
 				}
 			}
 		case <-w.stopCh:
-			close(w.resultChan)
 			return
 		}
 	}
