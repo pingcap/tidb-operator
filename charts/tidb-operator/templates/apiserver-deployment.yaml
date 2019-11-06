@@ -28,7 +28,7 @@ spec:
     {{- end }}
       containers:
       - name: tidb-operator
-        image: {{ .Values.operatorImage }}
+        image: {{ .Values.apiserver.image | default .Values.operatorImage }}
         imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
         resources:
 {{ toYaml .Values.apiserver.resources | indent 12 }}

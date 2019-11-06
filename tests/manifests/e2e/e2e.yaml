@@ -48,6 +48,7 @@ spec:
     - /usr/local/bin/e2e
     - --operator-tag=e2e
     - --operator-image=pingcap/tidb-operator:latest
+    - --test-apiserver-image=pingcap/test-apiserver:latest
     - --tidb-versions=v3.0.2,v3.0.3,v3.0.4
     - --chart-dir=/charts
     volumeMounts:
