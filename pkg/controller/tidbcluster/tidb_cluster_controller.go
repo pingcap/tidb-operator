@@ -170,9 +170,12 @@ func NewController(
 				kubeCli,
 			),
 			mm.NewRealPVCCleaner(
+				kubeCli,
 				podInformer.Lister(),
 				pvcControl,
 				pvcInformer.Lister(),
+				pvInformer.Lister(),
+				pvControl,
 			),
 			recorder,
 		),

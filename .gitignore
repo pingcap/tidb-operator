@@ -10,6 +10,7 @@ tests/images/e2e/tidb-cluster/
 tests/images/e2e/tidb-backup/
 tests/images/e2e/tidb-operator/
 tests/images/e2e/manifests/
+manifests/crd-verify.yaml
 *.tar
 tmp/
 data/
@@ -30,8 +31,6 @@ coverage.out
 vendor
 tests/e2e/e2e.test
 .orig
-tkc
-
 apiserver.local.config/
 manifests/crd-verify.yaml
 /tkctl

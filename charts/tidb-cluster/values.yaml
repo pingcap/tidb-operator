@@ -22,10 +22,14 @@ schedulerName: tidb-scheduler
 # timezone is the default system timzone for TiDB
 timezone: UTC
 
-# reclaim policy of a PV, default: Retain.
+# reclaim policy of PV, default: Retain.
 # you must set it to Retain to ensure data safety in production environment.
 # https://pingcap.com/docs/v3.0/tidb-in-kubernetes/reference/configuration/local-pv/#data-security
 pvReclaimPolicy: Retain
+
+# Whether enable PV reclaim.
+# When enabling, scale in pd or tikv will trigger PV reclaim automatically
+enablePVReclaim: false
 
 # services is the service list to expose, default is ClusterIP
 # can be ClusterIP | NodePort | LoadBalancer

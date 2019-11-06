@@ -248,9 +248,10 @@ func newBackup() *v1alpha1.Backup {
 		Spec: v1alpha1.BackupSpec{
 			Cluster:        "demo1",
 			TidbSecretName: "demo1-tidb-secret",
-			StorageType:    v1alpha1.BackupStorageTypeCeph,
+			StorageType:    v1alpha1.BackupStorageTypeS3,
 			StorageProvider: v1alpha1.StorageProvider{
-				Ceph: &v1alpha1.CephStorageProvider{
+				S3: &v1alpha1.S3StorageProvider{
+					Provider:   v1alpha1.S3StorageProviderTypeCeph,
 					Endpoint:   "http://10.0.0.1",
 					SecretName: "demo",
 				},
