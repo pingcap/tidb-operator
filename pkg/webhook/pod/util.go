@@ -15,6 +15,8 @@ package pod
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	pdutil "github.com/pingcap/tidb-operator/pkg/manager/member"
@@ -25,7 +27,6 @@ import (
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"time"
 )
 
 func IsPodInPdMembers(tc *v1alpha1.TidbCluster, pod *core.Pod, pdClient pdapi.PDClient) (bool, error) {
@@ -63,10 +64,7 @@ func addDeferDeletingToPVC(podAC *PodAdmissionControl, tc *v1alpha1.TidbCluster,
 	now := time.Now().Format(time.RFC3339)
 	pvc.Annotations[label.AnnPVCDeferDeleting] = now
 	_, err = podAC.pvcControl.UpdatePVC(tc, pvc)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // check whether the former upgraded pd pods were healthy in PD cluster during PD upgrading.
@@ -99,4 +97,20 @@ func checkFormerPDPodStatus(kubeCli kubernetes.Interface, pdClient pdapi.PDClien
 		}
 	}
 	return nil
+}
+
+// check whether this pod have PD DeferDeleting Annotations
+func IsPodWithPDDeferDeletingAnnotations(pod *core.Pod) bool {
+	_, existed := pod.Annotations[label.AnnPDDeferDeleting]
+	return existed
+}
+
+func addDeferDeletingToPDPod(podAC *PodAdmissionControl, pod *core.Pod) error {
+	if pod.Annotations == nil {
+		pod.Annotations = map[string]string{}
+	}
+	now := time.Now().Format(time.RFC3339)
+	pod.Annotations[label.AnnPDDeferDeleting] = now
+	_, err := podAC.kubeCli.CoreV1().Pods(pod.Namespace).Update(pod)
+	return err
 }

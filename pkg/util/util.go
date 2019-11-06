@@ -92,15 +92,15 @@ func GetNextOrdinalPodName(podName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", basicStr, ordinal+1)
 }
 
-func IsPodOutOfOrdinal(pod *corev1.Pod, expectedReplicas int32) (bool, error) {
+func IsPodOrdinalNotExceedReplicas(pod *corev1.Pod, specReplicas int32) (bool, error) {
 	ordinal, err := GetOrdinalFromPodName(pod.Name)
 	if err != nil {
 		return false, err
 	}
-	if ordinal < expectedReplicas {
-		return false, nil
+	if ordinal < specReplicas {
+		return true, nil
 	}
-	return true, nil
+	return false, nil
 }
 
 func OrdinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int32) string {

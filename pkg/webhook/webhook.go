@@ -35,7 +35,7 @@ var (
 
 type WebhookServer struct {
 	// http server
-	Server *http.Server
+	server *http.Server
 }
 
 func NewWebHookServer(kubeCli kubernetes.Interface, operatorCli versioned.Interface, kubeInformerFactory kubeinformers.SharedInformerFactory, certFile, keyFile string) *WebhookServer {
@@ -67,14 +67,14 @@ func NewWebHookServer(kubeCli kubernetes.Interface, operatorCli versioned.Interf
 	http.HandleFunc("/pods", ServePods)
 
 	return &WebhookServer{
-		Server: server,
+		server: server,
 	}
 }
 
 func (ws *WebhookServer) Run() error {
-	return ws.Server.ListenAndServeTLS("", "")
+	return ws.server.ListenAndServeTLS("", "")
 }
 
 func (ws *WebhookServer) Shutdown() error {
-	return ws.Server.Shutdown(nil)
+	return ws.server.Shutdown(nil)
 }

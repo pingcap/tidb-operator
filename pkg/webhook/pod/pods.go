@@ -15,6 +15,7 @@ package pod
 
 import (
 	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -27,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
@@ -40,17 +42,23 @@ type PodAdmissionControl struct {
 	pvcControl controller.PVCControlInterface
 	// pd Control
 	pdControl pdapi.PDControlInterface
+	// pod Lister
+	podLister corelisters.PodLister
 }
 
 func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder) *PodAdmissionControl {
+
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	PVCControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
+
+	podInformer := kubeInformerFactory.Core().V1().Pods()
 
 	return &PodAdmissionControl{
 		kubeCli:     kubeCli,
 		operatorCli: operatorCli,
 		pvcControl:  PVCControl,
 		pdControl:   PdControl,
+		podLister:   podInformer.Lister(),
 	}
 }
 
@@ -77,7 +85,7 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 //// otherwise we will check it decided by component type.
 func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.AdmissionResponse {
 
-	pod, err := pc.kubeCli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	pod, err := pc.podLister.Pods(namespace).Get(name)
 	if err != nil {
 		klog.Infof("failed to find pod[%s/%s] during delete it,admit to delete", namespace, name)
 		return util.ARSuccess()

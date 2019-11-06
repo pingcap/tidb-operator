@@ -73,6 +73,8 @@ const (
 	AnnTiKVPartition string = "tidb.pingcap.com/tikv-partition"
 	// AnnForceUpgradeKey is tc annotation key to indicate whether force upgrade should be done
 	AnnForceUpgradeKey = "tidb.pingcap.com/force-upgrade"
+	// AnnPDDeferDeleting is pd pod annotation key  in pod for defer for deleting pod
+	AnnPDDeferDeleting = "tidb.pingcap.com/pd-defer-deleting"
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"

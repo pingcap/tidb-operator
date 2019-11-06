@@ -15,6 +15,8 @@ package pod
 
 import (
 	"fmt"
+	"testing"
+
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -27,7 +29,6 @@ import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
 
 var (
@@ -43,6 +44,7 @@ func TestPDDeleterDelete(t *testing.T) {
 	type testcase struct {
 		name                   string
 		isMember               bool
+		isDeferDeleting        bool
 		isOutOfOrdinal         bool
 		isStatefulSetUpgrading bool
 		isLeader               bool
@@ -63,7 +65,7 @@ func TestPDDeleterDelete(t *testing.T) {
 		tc := newTidbClusterForPodAdmissionControl()
 		pvc := newPVCForDeletePod()
 
-		podAdmissionControl, fakePVCControl, pvcIndexer := newPodAdmissionControl()
+		podAdmissionControl, fakePVCControl, pvcIndexer, _ := newPodAdmissionControl()
 		pdControl := pdapi.NewFakePDControl()
 		fakePDClient := controller.NewFakePDClient(pdControl, tc)
 
@@ -101,6 +103,12 @@ func TestPDDeleterDelete(t *testing.T) {
 				}
 				return membersInfo, nil
 			})
+		}
+
+		if test.isDeferDeleting {
+			deletePod.Annotations = map[string]string{
+				label.AnnPDDeferDeleting: "123",
+			}
 		}
 
 		if test.isOutOfOrdinal {
@@ -149,6 +157,7 @@ func TestPDDeleterDelete(t *testing.T) {
 		{
 			name:                   "first normal upgraded",
 			isMember:               true,
+			isDeferDeleting:        false,
 			isOutOfOrdinal:         false,
 			isStatefulSetUpgrading: true,
 			isLeader:               false,
@@ -160,6 +169,7 @@ func TestPDDeleterDelete(t *testing.T) {
 		{
 			name:                   "final normal upgraded",
 			isMember:               false,
+			isDeferDeleting:        true,
 			isOutOfOrdinal:         false,
 			isStatefulSetUpgrading: true,
 			isLeader:               false,
@@ -169,8 +179,21 @@ func TestPDDeleterDelete(t *testing.T) {
 			},
 		},
 		{
+			name:                   "nonMember pd pod without deferDeleting Annotation",
+			isMember:               false,
+			isDeferDeleting:        false,
+			isOutOfOrdinal:         false,
+			isStatefulSetUpgrading: true,
+			isLeader:               false,
+			UpdatePVCErr:           false,
+			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+				g.Expect(response.Allowed, false)
+			},
+		},
+		{
 			name:                   "leader Upgraded",
 			isMember:               true,
+			isDeferDeleting:        false,
 			isOutOfOrdinal:         false,
 			isStatefulSetUpgrading: true,
 			isLeader:               true,
@@ -182,6 +205,7 @@ func TestPDDeleterDelete(t *testing.T) {
 		{
 			name:                   "normal scale in",
 			isMember:               true,
+			isDeferDeleting:        false,
 			isOutOfOrdinal:         true,
 			isStatefulSetUpgrading: false,
 			isLeader:               false,
@@ -192,6 +216,7 @@ func TestPDDeleterDelete(t *testing.T) {
 		{
 			name:                   "final scale in",
 			isMember:               false,
+			isDeferDeleting:        true,
 			isOutOfOrdinal:         true,
 			isStatefulSetUpgrading: false,
 			isLeader:               false,
@@ -203,6 +228,7 @@ func TestPDDeleterDelete(t *testing.T) {
 		{
 			name:                   "final scale in,update pvc error",
 			isMember:               false,
+			isDeferDeleting:        true,
 			isOutOfOrdinal:         true,
 			isStatefulSetUpgrading: false,
 			isLeader:               false,

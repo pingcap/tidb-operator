@@ -16,15 +16,16 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/version"
@@ -105,10 +106,6 @@ func main() {
 	}
 	glog.Infof("cache of informer factories sync successfully")
 
-	if err := webhookServer.Run(); err != nil {
-		glog.Errorf("stop http server %v", err)
-	}
-
 	rl := resourcelock.EndpointsLock{
 		EndpointsMeta: metav1.ObjectMeta{
 			Namespace: ns,
@@ -120,9 +117,10 @@ func main() {
 			EventRecorder: &record.FakeRecorder{},
 		},
 	}
+
 	onStarted := func(ctx context.Context) {
 		if err := webhookServer.Run(); err != nil {
-			glog.Errorf("stop http server %v", err)
+			glog.Fatalf("stop http server %v", err)
 		}
 	}
 

@@ -14,6 +14,8 @@
 package pod
 
 import (
+	"testing"
+
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	operatorClifake "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
@@ -27,7 +29,6 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
-	"testing"
 )
 
 const (
@@ -52,7 +53,7 @@ func TestAdmitPod(t *testing.T) {
 	testFn := func(test *testcase) {
 		t.Log(test.name)
 
-		podAdmissionControl, _, _ := newPodAdmissionControl()
+		podAdmissionControl, _, _, podIndexer := newPodAdmissionControl()
 		ar := newAdmissionReview()
 		pod := newNormalPod()
 		if test.isDelete {
@@ -72,6 +73,7 @@ func TestAdmitPod(t *testing.T) {
 				label.ComponentLabelKey: label.TiKVLabelVal,
 			}
 		}
+		podIndexer.Add(pod)
 
 		resp := podAdmissionControl.AdmitPods(*ar)
 		test.expectFn(g, resp)
@@ -125,20 +127,22 @@ func newAdmissionReview() *v1beta1.AdmissionReview {
 	return &ar
 }
 
-func newPodAdmissionControl() (*PodAdmissionControl, *controller.FakePVCControl, cache.Indexer) {
+func newPodAdmissionControl() (*PodAdmissionControl, *controller.FakePVCControl, cache.Indexer, cache.Indexer) {
 	kubeCli := kubefake.NewSimpleClientset()
 	operatorCli := operatorClifake.NewSimpleClientset()
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
 	pdControl := pdapi.NewFakePDControl()
+	podInformer := kubeInformerFactory.Core().V1().Pods()
 
 	return &PodAdmissionControl{
 		kubeCli:     kubeCli,
 		operatorCli: operatorCli,
 		pvcControl:  pvcControl,
 		pdControl:   pdControl,
-	}, pvcControl, pvcInformer.Informer().GetIndexer()
+		podLister:   podInformer.Lister(),
+	}, pvcControl, pvcInformer.Informer().GetIndexer(), podInformer.Informer().GetIndexer()
 }
 
 func newTidbClusterForPodAdmissionControl() *v1alpha1.TidbCluster {

@@ -59,12 +59,7 @@ func NewRealPVCControl(
 }
 
 func (rpc *realPVCControl) GetPVC(name, namespace string) (*corev1.PersistentVolumeClaim, error) {
-	glog.Infof("start to find pvc[%s/%s]", namespace, name)
-	pvc, err := rpc.pvcLister.PersistentVolumeClaims(namespace).Get(name)
-	if err != nil {
-		return nil, err
-	}
-	return pvc, nil
+	return rpc.pvcLister.PersistentVolumeClaims(namespace).Get(name)
 }
 
 func (rpc *realPVCControl) DeletePVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) error {
