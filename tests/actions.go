@@ -102,7 +102,6 @@ const (
 	DefaultPollTimeout          time.Duration = 10 * time.Minute
 	DefaultPollInterval         time.Duration = 1 * time.Minute
 	BackupAndRestorePollTimeOut time.Duration = 60 * time.Minute
-	getBackupDirPodName                       = "get-backup-dir"
 	grafanaUsername                           = "admin"
 	grafanaPassword                           = "admin"
 	operartorChartName                        = "tidb-operator"
@@ -243,6 +242,7 @@ type TidbClusterConfig struct {
 	BackupName             string
 	Namespace              string
 	ClusterName            string
+	EnablePVReclaim        bool
 	OperatorTag            string
 	PDImage                string
 	TiKVImage              string
@@ -282,6 +282,10 @@ func (tc *TidbClusterConfig) String() string {
 	return fmt.Sprintf("%s/%s", tc.Namespace, tc.ClusterName)
 }
 
+func (tc *TidbClusterConfig) GenerateBackupDirPodName() string {
+	return fmt.Sprintf("%s-get-backup-dir", tc.ClusterName)
+}
+
 func (tc *TidbClusterConfig) BackupHelmSetString(m map[string]string) string {
 
 	set := map[string]string{
@@ -307,6 +311,7 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 
 	set := map[string]string{
 		"clusterName":             tc.ClusterName,
+		"enablePVReclaim":         strconv.FormatBool(tc.EnablePVReclaim),
 		"pd.storageClassName":     tc.StorageClassName,
 		"tikv.storageClassName":   tc.StorageClassName,
 		"tidb.storageClassName":   tc.StorageClassName,
@@ -733,7 +738,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return err
 	}
 
-	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(getBackupDirPodName, &metav1.DeleteOptions{})
+	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(info.GenerateBackupDirPodName(), &metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete dir pod %v", err)
 	}
@@ -930,6 +935,12 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		if info.EnableConfigMapRollout {
 			glog.V(4).Info("check tidb cluster configuration synced")
 			if b, err := oa.checkTidbClusterConfigUpdated(tc, info); !b && err == nil {
+				return false, nil
+			}
+		}
+		if info.EnablePVReclaim {
+			glog.V(4).Infof("check reclaim pvs success when scale in pd or tikv")
+			if b, err := oa.checkReclaimPVSuccess(tc); !b && err == nil {
 				return false, nil
 			}
 		}
@@ -1715,6 +1726,86 @@ func (oa *operatorActions) podsScheduleAnnHaveDeleted(tc *v1alpha1.TidbCluster) 
 	return true, nil
 }
 
+func (oa *operatorActions) checkReclaimPVSuccess(tc *v1alpha1.TidbCluster) (bool, error) {
+	// check pv reclaim	for pd
+	if err := oa.checkComponentReclaimPVSuccess(tc, label.PDLabelVal); err != nil {
+		glog.Errorf(err.Error())
+		return false, nil
+	}
+
+	// check pv reclaim for tikv
+	if err := oa.checkComponentReclaimPVSuccess(tc, label.TiKVLabelVal); err != nil {
+		glog.Errorf(err.Error())
+		return false, nil
+	}
+	return true, nil
+}
+
+func (oa *operatorActions) checkComponentReclaimPVSuccess(tc *v1alpha1.TidbCluster, component string) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	var replica int
+	switch component {
+	case label.PDLabelVal:
+		replica = int(tc.Spec.PD.Replicas)
+	case label.TiKVLabelVal:
+		replica = int(tc.Spec.TiKV.Replicas)
+	default:
+		return fmt.Errorf("check tidb cluster %s/%s component %s is not supported", ns, tcName, component)
+	}
+
+	pvcList, err := oa.getComponentPVCList(tc, component)
+	if err != nil {
+		return err
+	}
+
+	pvList, err := oa.getComponentPVList(tc, component)
+	if err != nil {
+		return err
+	}
+
+	if len(pvcList) != replica || len(pvList) != replica {
+		return fmt.Errorf("tidb cluster %s/%s compoenent %s pv or pvc have not been reclaimed completely", ns, tcName, component)
+	}
+
+	return nil
+}
+
+func (oa *operatorActions) getComponentPVCList(tc *v1alpha1.TidbCluster, component string) ([]corev1.PersistentVolumeClaim, error) {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(
+			label.New().Instance(tcName).Component(component).Labels()).String(),
+	}
+
+	pvcList, err := oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(listOptions)
+	if err != nil {
+		err := fmt.Errorf("failed to list pvcs for tidb cluster %s/%s, component: %s, err: %v", ns, tcName, component, err)
+		return nil, err
+	}
+	return pvcList.Items, nil
+}
+
+func (oa *operatorActions) getComponentPVList(tc *v1alpha1.TidbCluster, component string) ([]corev1.PersistentVolume, error) {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(
+			label.New().Instance(tcName).Component(component).Labels()).String(),
+	}
+
+	pvList, err := oa.kubeCli.CoreV1().PersistentVolumes().List(listOptions)
+	if err != nil {
+		err := fmt.Errorf("failed to list pvs for tidb cluster %s/%s, component: %s, err: %v", ns, tcName, component, err)
+		return nil, err
+	}
+	return pvList.Items, nil
+}
+
 func (oa *operatorActions) storeLabelsIsSet(tc *v1alpha1.TidbCluster, topologyKey string) (bool, error) {
 	pdCli := controller.GetPDClient(oa.pdControl, tc)
 	for _, store := range tc.Status.TiKV.Stores {
@@ -1960,7 +2051,9 @@ func getDatasourceID(svcName, namespace string) (int, error) {
 	}
 	defer func() {
 		err := resp.Body.Close()
-		glog.Warning("close response failed", err)
+		if err != nil {
+			glog.Warningf("close response failed, err: %v", err)
+		}
 	}()
 
 	buf, err := ioutil.ReadAll(resp.Body)
@@ -2457,15 +2550,16 @@ func getParentUIDFromJob(j batchv1.Job) (types.UID, bool) {
 
 func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, error) {
 	scheduledPvcName := fmt.Sprintf("%s-scheduled-backup", info.ClusterName)
+	backupDirPodName := info.GenerateBackupDirPodName()
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      getBackupDirPodName,
+			Name:      backupDirPodName,
 			Namespace: info.Namespace,
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:    getBackupDirPodName,
+					Name:    backupDirPodName,
 					Image:   "pingcap/tidb-cloud-backup:20190610",
 					Command: []string{"sleep", "3000"},
 					VolumeMounts: []corev1.VolumeMount{
@@ -2490,7 +2584,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	}
 
 	fn := func() (bool, error) {
-		_, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(getBackupDirPodName, metav1.GetOptions{})
+		_, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(backupDirPodName, metav1.GetOptions{})
 		if !errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -2500,7 +2594,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	err := wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to delete pod %s", getBackupDirPodName)
+		return nil, fmt.Errorf("failed to delete pod %s, err: %v", backupDirPodName, err)
 	}
 
 	_, err = oa.kubeCli.CoreV1().Pods(info.Namespace).Create(pod)
@@ -2510,7 +2604,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	}
 
 	fn = func() (bool, error) {
-		pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(getBackupDirPodName, metav1.GetOptions{})
+		pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(backupDirPodName, metav1.GetOptions{})
 		if err == nil && pod.Status.Phase == corev1.PodRunning {
 			return true, nil
 		} else if err != nil && !errors.IsNotFound(err) {
@@ -2522,10 +2616,10 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	err = wait.Poll(oa.pollInterval, DefaultPollTimeout, fn)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to create pod %s", getBackupDirPodName)
+		return nil, fmt.Errorf("failed to create pod %s, err: %v", backupDirPodName, err)
 	}
 
-	cmd := fmt.Sprintf("kubectl exec %s -n %s ls /data", getBackupDirPodName, info.Namespace)
+	cmd := fmt.Sprintf("kubectl exec %s -n %s ls /data", backupDirPodName, info.Namespace)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		glog.Errorf("cluster:[%s/%s] exec :%s failed,error:%v,result:%s", info.Namespace, info.ClusterName, cmd, err, string(res))

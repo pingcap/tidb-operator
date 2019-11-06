@@ -99,6 +99,7 @@ type TidbClusterSpec struct {
 	// Services list non-headless services type used in TidbCluster
 	Services        []Service                            `json:"services,omitempty"`
 	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
+	EnablePVReclaim bool                                 `json:"enablePVReclaim,omitempty"`
 	Timezone        string                               `json:"timezone,omitempty"`
 	// Enable TLS connection between TiDB server compoments
 	EnableTLSCluster bool `json:"enableTLSCluster,omitempty"`
@@ -322,25 +323,42 @@ type BackupList struct {
 type BackupStorageType string
 
 const (
-	// BackupStorageTypeCeph represents the backend storage type is ceph.
-	BackupStorageTypeCeph BackupStorageType = "ceph"
+	// BackupStorageTypeS3 represents all storage that compatible with the Amazon S3.
+	BackupStorageTypeS3 BackupStorageType = "s3"
+)
+
+// +k8s:openapi-gen=true
+// S3StorageProviderType represents the specific storage provider that implements the S3 interface
+type S3StorageProviderType string
+
+const (
+	// S3StorageProviderTypeCeph represents the S3 compliant storage provider is ceph
+	S3StorageProviderTypeCeph S3StorageProviderType = "ceph"
+	// S3StorageProviderTypeAWS represents the S3 compliant storage provider is aws
+	S3StorageProviderTypeAWS S3StorageProviderType = "aws"
 )
 
 // +k8s:openapi-gen=true
 // StorageProvider defines the configuration for storing a backup in backend storage.
 type StorageProvider struct {
-	Ceph *CephStorageProvider `json:"ceph"`
+	S3 *S3StorageProvider `json:"s3"`
 }
 
 // +k8s:openapi-gen=true
-// cephStorageProvider represents an ceph compatible bucket for storing backups.
-type CephStorageProvider struct {
-	// Region in which the ceph bucket is located.
-	Region string `json:"region"`
+// S3StorageProvider represents a S3 compliant storage for storing backups.
+type S3StorageProvider struct {
+	// Provider represents the specific storage provider that implements the S3 interface
+	Provider S3StorageProviderType `json:"provider"`
+	// Region in which the S3 compatible bucket is located.
+	Region string `json:"region,omitempty"`
 	// Bucket in which to store the Backup.
-	Bucket string `json:"bucket"`
-	// Endpoint is the access address of the ceph object storage.
-	Endpoint string `json:"endpoint"`
+	Bucket string `json:"bucket,omitempty"`
+	// Endpoint of S3 compatible storage service
+	Endpoint string `json:"endpoint,omitempty"`
+	// StorageClass represents the storage class
+	StorageClass string `json:"storageClass,omitempty"`
+	// Acl represents access control permissions for this bucket
+	Acl string `json:"acl,omitempty"`
 	// SecretName is the name of secret which stores
 	// ceph object store access key and secret key.
 	SecretName string `json:"secretName"`

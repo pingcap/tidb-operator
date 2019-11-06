@@ -36,23 +36,55 @@ func CheckAllKeysExistInSecret(secret *corev1.Secret, keys ...string) (string, b
 	return strings.Join(notExistKeys, ","), len(notExistKeys) == 0
 }
 
-// GenerateCephCertEnvVar generate the env info in order to access ceph
-func GenerateCephCertEnvVar(secret *corev1.Secret, endpoint string) ([]corev1.EnvVar, error) {
+// GenerateS3CertEnvVar generate the env info in order to access S3 compliant storage
+func GenerateS3CertEnvVar(secret *corev1.Secret, s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, error) {
 	var envVars []corev1.EnvVar
 
-	if !strings.Contains(endpoint, "://") {
-		// convert xxx.xxx.xxx.xxx:port to http://xxx.xxx.xxx.xxx:port
-		// the endpoint must start with http://
-		endpoint = fmt.Sprintf("http://%s", endpoint)
+	switch s3.Provider {
+	case v1alpha1.S3StorageProviderTypeCeph:
+		if !strings.Contains(s3.Endpoint, "://") {
+			// convert xxx.xxx.xxx.xxx:port to http://xxx.xxx.xxx.xxx:port
+			// the endpoint must start with http://
+			s3.Endpoint = fmt.Sprintf("http://%s", s3.Endpoint)
+			break
+		}
+		if !strings.HasPrefix(s3.Endpoint, "http://") {
+			return envVars, fmt.Errorf("cenph endpoint URI %s must start with http://", s3.Endpoint)
+		}
+	case v1alpha1.S3StorageProviderTypeAWS:
+		// TODO: Check the storage class, if it is not a legal storage class, use the default storage class instead
+		if len(s3.StorageClass) == 0 {
+			// The optional storage class reference https://rclone.org/s3
+			s3.StorageClass = "STANDARD_IA"
+		}
+		if len(s3.Acl) == 0 {
+			// The optional acl reference https://rclone.org/s3/
+			s3.Acl = "private"
+		}
+	default:
+		return envVars, fmt.Errorf("unknow s3 compliant storage type %s", s3.Provider)
 	}
 
-	if !strings.HasPrefix(endpoint, "http://") {
-		return envVars, fmt.Errorf("cenph endpoint URI %s must start with http:// scheme", endpoint)
-	}
 	envVars = []corev1.EnvVar{
 		{
+			Name:  "S3_PROVIDER",
+			Value: string(s3.Provider),
+		},
+		{
 			Name:  "S3_ENDPOINT",
-			Value: endpoint,
+			Value: s3.Endpoint,
+		},
+		{
+			Name:  "AWS_REGION",
+			Value: s3.Region,
+		},
+		{
+			Name:  "AWS_ACL",
+			Value: s3.Acl,
+		},
+		{
+			Name:  "AWS_STORAGE_CLASS",
+			Value: s3.StorageClass,
 		},
 		{
 			Name:  "AWS_ACCESS_KEY_ID",
@@ -74,23 +106,23 @@ func GenerateStorageCertEnv(backup *v1alpha1.Backup, secretLister corelisters.Se
 	var certEnv []corev1.EnvVar
 
 	switch backup.Spec.StorageType {
-	case v1alpha1.BackupStorageTypeCeph:
-		cephSecretName := backup.Spec.Ceph.SecretName
-		secret, err := secretLister.Secrets(ns).Get(cephSecretName)
+	case v1alpha1.BackupStorageTypeS3:
+		s3SecretName := backup.Spec.S3.SecretName
+		secret, err := secretLister.Secrets(ns).Get(s3SecretName)
 		if err != nil {
-			err := fmt.Errorf("backup %s/%s get ceph secret %s failed, err: %v", ns, name, cephSecretName, err)
-			return certEnv, "GetCephSecretFailed", err
+			err := fmt.Errorf("backup %s/%s get s3 secret %s failed, err: %v", ns, name, s3SecretName, err)
+			return certEnv, "GetS3SecretFailed", err
 		}
 
 		keyStr, exist := CheckAllKeysExistInSecret(secret, constants.S3AccessKey, constants.S3SecretKey)
 		if !exist {
-			err := fmt.Errorf("backup %s/%s, The secret %s missing some keys %s", ns, name, cephSecretName, keyStr)
+			err := fmt.Errorf("backup %s/%s, The s3 secret %s missing some keys %s", ns, name, s3SecretName, keyStr)
 			return certEnv, "KeyNotExist", err
 		}
 
-		certEnv, err = GenerateCephCertEnvVar(secret, backup.Spec.Ceph.Endpoint)
+		certEnv, err = GenerateS3CertEnvVar(secret, backup.Spec.S3.DeepCopy())
 		if err != nil {
-			return certEnv, "InvalidCephEndpoint", err
+			return certEnv, "InvalidS3Endpoint", err
 		}
 	default:
 		err := fmt.Errorf("backup %s/%s don't support storage type %s", ns, name, backup.Spec.StorageType)
