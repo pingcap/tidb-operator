@@ -327,14 +327,14 @@ const (
 )
 
 // +k8s:openapi-gen=true
-// S3StoregeProviderType represents the specific storage provider that implements the S3 interface
-type S3StoregeProviderType string
+// S3StorageProviderType represents the specific storage provider that implements the S3 interface
+type S3StorageProviderType string
 
 const (
 	// S3StoregeProviderTypeCeph represents the S3 compliant storage provider is ceph
-	S3StoregeProviderTypeCeph S3StoregeProviderType = "ceph"
+	S3StoregeProviderTypeCeph S3StorageProviderType = "ceph"
 	// S3StoregeProviderTypeAWS represents the S3 compliant storage provider is aws
-	S3StoregeProviderTypeAWS S3StoregeProviderType = "aws"
+	S3StoregeProviderTypeAWS S3StorageProviderType = "aws"
 )
 
 // +k8s:openapi-gen=true
@@ -347,7 +347,7 @@ type StorageProvider struct {
 // S3StorageProvider represents a S3 compliant storage for storing backups.
 type S3StorageProvider struct {
 	// Provider represents the specific storage provider that implements the S3 interface
-	Provider S3StoregeProviderType `json:"provider"`
+	Provider S3StorageProviderType `json:"provider"`
 	// Region in which the S3 compatible bucket is located.
 	Region string `json:"region"`
 	// Bucket in which to store the Backup.
