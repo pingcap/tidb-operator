@@ -113,20 +113,19 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(IsDeferDeleting, isInOr
 		klog.Infof("pd pod[%s/%s] is not member of tc[%s/%s],admit to delete", namespace, name, namespace, tcName)
 		return util.ARSuccess()
 
-	} else {
-		err := pdClient.DeleteMember(name)
-		if err != nil {
-			return util.ARFail(err)
-		}
-		err = addDeferDeletingToPDPod(pc, pod)
-		if err != nil {
-			return util.ARFail(err)
-		}
+	}
+	err := pdClient.DeleteMember(name)
+	if err != nil {
+		return util.ARFail(err)
+	}
+	err = addDeferDeletingToPDPod(pc, pod)
+	if err != nil {
+		return util.ARFail(err)
+	}
 
-		// make sure this pd pod won't be a member of pd cluster any more
-		return &v1beta1.AdmissionResponse{
-			Allowed: false,
-		}
+	// make sure this pd pod won't be a member of pd cluster any more
+	return &v1beta1.AdmissionResponse{
+		Allowed: false,
 	}
 }
 
