@@ -177,10 +177,6 @@ pd:
     # # when the kubelet is configured to allow unsafe sysctls
     # - name: net.core.somaxconn
     #   value: "32768"
-    # - name: net.ipv4.tcp_syncookies
-    #   value: "0"
-    # - name: net.ipv4.tcp_tw_recycle
-    #   value: "0"
 
   # Specify the priorityClassName for PD Pod.
   # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
@@ -275,10 +271,6 @@ tikv:
     # # when the kubelet is configured to allow unsafe sysctls
     # - name: net.core.somaxconn
     #   value: "32768"
-    # - name: net.ipv4.tcp_syncookies
-    #   value: "0"
-    # - name: net.ipv4.tcp_tw_recycle
-    #   value: "0"
 
   # Specify the priorityClassName for TiKV Pod.
   # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
@@ -362,10 +354,6 @@ tidb:
     # # when the kubelet is configured to allow unsafe sysctls
     # - name: net.core.somaxconn
     #   value: "32768"
-    # - name: net.ipv4.tcp_syncookies
-    #   value: "0"
-    # - name: net.ipv4.tcp_tw_recycle
-    #   value: "0"
 
     # # Load balancers usually have an idle timeout (eg. AWS NLB idle timeout is 350),
     # # the tcp_keepalive_time must be set to lower than LB idle timeout.
