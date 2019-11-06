@@ -331,10 +331,10 @@ const (
 type S3StorageProviderType string
 
 const (
-	// S3StoregeProviderTypeCeph represents the S3 compliant storage provider is ceph
-	S3StoregeProviderTypeCeph S3StorageProviderType = "ceph"
-	// S3StoregeProviderTypeAWS represents the S3 compliant storage provider is aws
-	S3StoregeProviderTypeAWS S3StorageProviderType = "aws"
+	// S3StorageProviderTypeCeph represents the S3 compliant storage provider is ceph
+	S3StorageProviderTypeCeph S3StorageProviderType = "ceph"
+	// S3StorageProviderTypeAWS represents the S3 compliant storage provider is aws
+	S3StorageProviderTypeAWS S3StorageProviderType = "aws"
 )
 
 // +k8s:openapi-gen=true

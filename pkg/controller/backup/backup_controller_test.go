@@ -251,7 +251,7 @@ func newBackup() *v1alpha1.Backup {
 			StorageType:    v1alpha1.BackupStorageTypeS3,
 			StorageProvider: v1alpha1.StorageProvider{
 				S3: &v1alpha1.S3StorageProvider{
-					Provider:   v1alpha1.S3StoregeProviderTypeCeph,
+					Provider:   v1alpha1.S3StorageProviderTypeCeph,
 					Endpoint:   "http://10.0.0.1",
 					SecretName: "demo",
 				},

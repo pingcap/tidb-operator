@@ -41,7 +41,7 @@ func GenerateS3CertEnvVar(secret *corev1.Secret, s3 *v1alpha1.S3StorageProvider)
 	var envVars []corev1.EnvVar
 
 	switch s3.Provider {
-	case v1alpha1.S3StoregeProviderTypeCeph:
+	case v1alpha1.S3StorageProviderTypeCeph:
 		if !strings.Contains(s3.Endpoint, "://") {
 			// convert xxx.xxx.xxx.xxx:port to http://xxx.xxx.xxx.xxx:port
 			// the endpoint must start with http://
@@ -51,7 +51,7 @@ func GenerateS3CertEnvVar(secret *corev1.Secret, s3 *v1alpha1.S3StorageProvider)
 		if !strings.HasPrefix(s3.Endpoint, "http://") {
 			return envVars, fmt.Errorf("cenph endpoint URI %s must start with http://", s3.Endpoint)
 		}
-	case v1alpha1.S3StoregeProviderTypeAWS:
+	case v1alpha1.S3StorageProviderTypeAWS:
 		// TODO: Check the storage class, if it is not a legal storage class, use the default storage class instead
 		if len(s3.StorageClass) == 0 {
 			// The optional storage class reference https://rclone.org/s3
