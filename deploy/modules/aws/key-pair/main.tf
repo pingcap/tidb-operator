@@ -1,3 +1,7 @@
+provider "aws" {
+  region = var.region
+}
+
 locals {
   public_key_filename  = "${var.path}/${var.name}.pub"
   private_key_filename = "${var.path}/${var.name}.pem"
@@ -40,4 +44,3 @@ resource "null_resource" "chmod" {
     command = "chmod 600 ${local.private_key_filename}"
   }
 }
-

@@ -7,8 +7,8 @@ data "template_file" "kubeconfig_filename" {
 }
 
 provider "helm" {
-  alias = "initial"
-  insecure = true
+  alias          = "initial"
+  insecure       = true
   install_tiller = false
   kubernetes {
     config_path = data.template_file.kubeconfig_filename.rendered
@@ -23,7 +23,7 @@ resource "null_resource" "setup-env" {
     working_dir = path.cwd
     # Note for the patch command: ACK has a toleration issue with the pre-deployed flexvolume daemonset, we have to patch
     # it manually and the resource namespace & name are hard-coded by convention
-    command     = <<EOS
+    command = <<EOS
 kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.operator_version}/manifests/crd.yaml
 kubectl apply -f ${path.module}/manifest/alicloud-disk-storageclass.yaml
 echo '${data.template_file.local-volume-provisioner.rendered}' | kubectl apply -f -
@@ -40,25 +40,25 @@ EOS
 }
 
 data "helm_repository" "pingcap" {
-  provider = "helm.initial"
+  provider   = "helm.initial"
   depends_on = ["null_resource.setup-env"]
-  name = "pingcap"
-  url = "http://charts.pingcap.org/"
+  name       = "pingcap"
+  url        = "http://charts.pingcap.org/"
 }
 
 resource "helm_release" "tidb-operator" {
-  provider = "helm.initial"
+  provider   = "helm.initial"
   depends_on = ["null_resource.setup-env"]
 
   repository = data.helm_repository.pingcap.name
-  chart = "tidb-operator"
-  version = var.operator_version
-  namespace = "tidb-admin"
-  name = "tidb-operator"
-  values = [var.operator_helm_values]
+  chart      = "tidb-operator"
+  version    = var.operator_version
+  namespace  = "tidb-admin"
+  name       = "tidb-operator"
+  values     = [var.operator_helm_values]
 
   set {
-    name = "scheduler.kubeSchedulerImageName"
+    name  = "scheduler.kubeSchedulerImageName"
     value = "registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler-amd64"
   }
 }

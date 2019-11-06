@@ -44,6 +44,7 @@ module "default-cluster" {
   source  = "../modules/aws/tidb-cluster"
   eks     = local.eks
   subnets = local.subnets
+  region  = var.region
 
   cluster_name          = var.default_cluster_name
   cluster_version       = var.default_cluster_version
@@ -57,4 +58,3 @@ module "default-cluster" {
   monitor_instance_type = var.default_cluster_monitor_instance_type
   override_values       = file("default-cluster.yaml")
 }
-
