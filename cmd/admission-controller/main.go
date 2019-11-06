@@ -92,7 +92,20 @@ func main() {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 
+
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
+
+	rl := resourcelock.EndpointsLock{
+		EndpointsMeta: metav1.ObjectMeta{
+			Namespace: ns,
+			Name:      "admission-controller",
+		},
+		Client: kubeCli.CoreV1(),
+		LockConfig: resourcelock.ResourceLockConfig{
+			Identity:      hostName,
+			EventRecorder: &record.FakeRecorder{},
+		},
+	}
 
 	webhookServer := webhook.NewWebHookServer(kubeCli, cli, kubeInformerFactory, certFile, keyFile)
 	controllerCtx, cancel := context.WithCancel(context.Background())
@@ -106,17 +119,6 @@ func main() {
 	}
 	glog.Infof("cache of informer factories sync successfully")
 
-	rl := resourcelock.EndpointsLock{
-		EndpointsMeta: metav1.ObjectMeta{
-			Namespace: ns,
-			Name:      "admission-controller-webhook",
-		},
-		Client: kubeCli.CoreV1(),
-		LockConfig: resourcelock.ResourceLockConfig{
-			Identity:      hostName,
-			EventRecorder: &record.FakeRecorder{},
-		},
-	}
 
 	onStarted := func(ctx context.Context) {
 		if err := webhookServer.Run(); err != nil {
