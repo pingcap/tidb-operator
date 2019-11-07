@@ -27,9 +27,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	"k8s.io/api/admission/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
@@ -48,6 +48,8 @@ type PodAdmissionControl struct {
 	podLister corelisters.PodLister
 	// tc Lister
 	tcLister listers.TidbClusterLister
+	// sts Lister
+	stsLister appslisters.StatefulSetLister
 }
 
 func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder) *PodAdmissionControl {
@@ -56,15 +58,17 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 	PVCControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
 	tcLister := informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
 
-	podInformer := kubeInformerFactory.Core().V1().Pods()
+	podLister := kubeInformerFactory.Core().V1().Pods().Lister()
+	stsLister := kubeInformerFactory.Apps().V1().StatefulSets().Lister()
 
 	return &PodAdmissionControl{
 		kubeCli:     kubeCli,
 		operatorCli: operatorCli,
 		pvcControl:  PVCControl,
 		pdControl:   PdControl,
-		podLister:   podInformer.Lister(),
+		podLister:   podLister,
 		tcLister:    tcLister,
+		stsLister:   stsLister,
 	}
 }
 
@@ -136,7 +140,7 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.
 		return util.ARSuccess()
 	}
 
-	ownerStatefulSet, err := pc.kubeCli.AppsV1().StatefulSets(namespace).Get(ownerStatefulSetName, metav1.GetOptions{})
+	ownerStatefulSet, err := pc.stsLister.StatefulSets(namespace).Get(ownerStatefulSetName)
 
 	if err != nil {
 		if errors.IsNotFound(err) {

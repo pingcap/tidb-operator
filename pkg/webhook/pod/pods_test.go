@@ -54,7 +54,7 @@ func TestAdmitPod(t *testing.T) {
 	testFn := func(test *testcase) {
 		t.Log(test.name)
 
-		podAdmissionControl, _, _, podIndexer, _ := newPodAdmissionControl()
+		podAdmissionControl, _, _, podIndexer, _, _ := newPodAdmissionControl()
 		ar := newAdmissionReview()
 		pod := newNormalPod()
 		if test.isDelete {
@@ -128,7 +128,7 @@ func newAdmissionReview() *v1beta1.AdmissionReview {
 	return &ar
 }
 
-func newPodAdmissionControl() (*PodAdmissionControl, *controller.FakePVCControl, cache.Indexer, cache.Indexer, cache.Indexer) {
+func newPodAdmissionControl() (*PodAdmissionControl, *controller.FakePVCControl, cache.Indexer, cache.Indexer, cache.Indexer, cache.Indexer) {
 	kubeCli := kubefake.NewSimpleClientset()
 	operatorCli := operatorClifake.NewSimpleClientset()
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
@@ -137,15 +137,21 @@ func newPodAdmissionControl() (*PodAdmissionControl, *controller.FakePVCControl,
 	pdControl := pdapi.NewFakePDControl()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	informer := informers.NewSharedInformerFactory(operatorCli, 0)
+	stsInformer := kubeInformerFactory.Apps().V1().StatefulSets()
 
 	return &PodAdmissionControl{
-		kubeCli:     kubeCli,
-		operatorCli: operatorCli,
-		pvcControl:  pvcControl,
-		pdControl:   pdControl,
-		podLister:   podInformer.Lister(),
-		tcLister:    informer.Pingcap().V1alpha1().TidbClusters().Lister(),
-	}, pvcControl, pvcInformer.Informer().GetIndexer(), podInformer.Informer().GetIndexer(), informer.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer()
+			kubeCli:     kubeCli,
+			operatorCli: operatorCli,
+			pvcControl:  pvcControl,
+			pdControl:   pdControl,
+			podLister:   podInformer.Lister(),
+			tcLister:    informer.Pingcap().V1alpha1().TidbClusters().Lister(),
+			stsLister:   stsInformer.Lister(),
+		}, pvcControl,
+		pvcInformer.Informer().GetIndexer(),
+		podInformer.Informer().GetIndexer(),
+		informer.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer(),
+		stsInformer.Informer().GetIndexer()
 }
 
 func newTidbClusterForPodAdmissionControl() *v1alpha1.TidbCluster {
