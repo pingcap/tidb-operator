@@ -78,7 +78,7 @@ func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulS
 	}
 
 	if isLeader {
-		return pc.admitDeletePDLeader(pod, tc, pdClient, ordinal)
+		return pc.transferPDLeader(pod, tc, pdClient, ordinal)
 	}
 
 	klog.Infof("pod[%s/%s] is not pd-leader,admit to delete", namespace, name)
@@ -138,7 +138,7 @@ func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(pod *corev1.Pod, t
 	}
 
 	if isPdLeader {
-		return pc.admitDeletePDLeader(pod, tc, pdClient, ordinal)
+		return pc.transferPDLeader(pod, tc, pdClient, ordinal)
 	}
 
 	err = pdClient.DeleteMember(name)
@@ -158,7 +158,7 @@ func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(pod *corev1.Pod, t
 }
 
 // this pod is a pd leader, we should transfer pd leader to other pd pod before it gets deleted before.
-func (pc *PodAdmissionControl) admitDeletePDLeader(pod *corev1.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, ordinal int32) *v1beta1.AdmissionResponse {
+func (pc *PodAdmissionControl) transferPDLeader(pod *corev1.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, ordinal int32) *v1beta1.AdmissionResponse {
 
 	name := pod.Name
 	namespace := pod.Namespace
