@@ -291,6 +291,9 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 			}
 		}
 	}
+	// Init container is only used for the case where allowed-unsafe-sysctls
+	// cannot be enabled for kubelet, so clean the sysctl in statefulset
+	// SecurityContext if init container is enabled
 	podSecurityContext := tc.Spec.TiDB.PodSecurityContext.DeepCopy()
 	if len(initContainers) > 0 {
 		podSecurityContext.Sysctls = []corev1.Sysctl{}
