@@ -18,6 +18,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/webhook/pod"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
@@ -38,7 +39,7 @@ type WebhookServer struct {
 	server *http.Server
 }
 
-func NewWebHookServer(kubeCli kubernetes.Interface, operatorCli versioned.Interface, kubeInformerFactory kubeinformers.SharedInformerFactory, certFile, keyFile string) *WebhookServer {
+func NewWebHookServer(kubeCli kubernetes.Interface, operatorCli versioned.Interface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, certFile, keyFile string) *WebhookServer {
 
 	sCert, err := util.ConfigTLS(certFile, keyFile)
 
@@ -61,7 +62,7 @@ func NewWebHookServer(kubeCli kubernetes.Interface, operatorCli versioned.Interf
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidbcluster"})
 
-	podAdmissionControl = pod.NewPodAdmissionControl(kubeCli, operatorCli, pdControl, kubeInformerFactory, recorder)
+	podAdmissionControl = pod.NewPodAdmissionControl(kubeCli, operatorCli, pdControl, informerFactory, kubeInformerFactory, recorder)
 
 	http.HandleFunc("/statefulsets", ServeStatefulSets)
 	http.HandleFunc("/pods", ServePods)

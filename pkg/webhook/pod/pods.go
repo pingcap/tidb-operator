@@ -17,6 +17,8 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
@@ -44,12 +46,15 @@ type PodAdmissionControl struct {
 	pdControl pdapi.PDControlInterface
 	// pod Lister
 	podLister corelisters.PodLister
+	// tc Lister
+	tcLister listers.TidbClusterLister
 }
 
-func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder) *PodAdmissionControl {
+func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder) *PodAdmissionControl {
 
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	PVCControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
+	tcLister := informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
 
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 
@@ -59,6 +64,7 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 		pvcControl:  PVCControl,
 		pdControl:   PdControl,
 		podLister:   podInformer.Lister(),
+		tcLister:    tcLister,
 	}
 }
 
@@ -103,8 +109,7 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.
 		return util.ARFail(fmt.Errorf("pod[%s/%s] has no label: %s", namespace, name, label.InstanceLabelKey))
 	}
 
-	tc, err := pc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
-
+	tc, err := pc.tcLister.TidbClusters(namespace).Get(tcName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.Infof("tc[%s/%s] had been deleted,admit to delete pod[%s/%s]", namespace, tcName, namespace, name)

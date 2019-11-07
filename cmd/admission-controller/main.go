@@ -16,7 +16,12 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/webhook"
@@ -26,9 +31,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/component-base/logs"
 	glog "k8s.io/klog"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 var (
@@ -75,14 +77,22 @@ func main() {
 	if err != nil {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
-
+	informerFactory := informers.NewSharedInformerFactory(cli, controller.ResyncDuration)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
 
-	webhookServer := webhook.NewWebHookServer(kubeCli, cli, kubeInformerFactory, certFile, keyFile)
+	webhookServer := webhook.NewWebHookServer(kubeCli, cli, informerFactory, kubeInformerFactory, certFile, keyFile)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	informerFactory.Start(controllerCtx.Done())
 	kubeInformerFactory.Start(controllerCtx.Done())
+
+	// Wait for all started informers' cache were synced.
+	for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
+		if !synced {
+			glog.Fatalf("error syncing informer for %v", v)
+		}
+	}
 	for v, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
 		if !synced {
 			glog.Fatalf("error syncing informer for %v", v)
