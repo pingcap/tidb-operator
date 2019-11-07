@@ -57,7 +57,7 @@ func main() {
 		os.Exit(0)
 	}
 	version.LogVersionInfo()
-	
+
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		glog.Fatalf("failed to get config: %v", err)
