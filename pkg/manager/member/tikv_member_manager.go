@@ -315,6 +315,39 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 		})
 	}
 
+	sysctls := "sysctl -w"
+	var initContainers []corev1.Container
+	if tc.Spec.TiKV.Annotations != nil {
+		init, ok := tc.Spec.TiKV.Annotations[label.AnnSysctlInit]
+		if ok && (init == label.AnnSysctlInitVal) {
+			if tc.Spec.TiKV.PodSecurityContext != nil && len(tc.Spec.TiKV.PodSecurityContext.Sysctls) > 0 {
+				for _, sysctl := range tc.Spec.TiKV.PodSecurityContext.Sysctls {
+					sysctls = sysctls + fmt.Sprintf(" %s=%s", sysctl.Name, sysctl.Value)
+				}
+				privileged := true
+				initContainers = append(initContainers, corev1.Container{
+					Name:  "init",
+					Image: controller.GetUtilImage(tc),
+					Command: []string{
+						"sh",
+						"-c",
+						sysctls,
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: &privileged,
+					},
+				})
+			}
+		}
+	}
+	// Init container is only used for the case where allowed-unsafe-sysctls
+	// cannot be enabled for kubelet, so clean the sysctl in statefulset
+	// SecurityContext if init container is enabled
+	podSecurityContext := tc.Spec.TiKV.PodSecurityContext.DeepCopy()
+	if len(initContainers) > 0 {
+		podSecurityContext.Sysctls = []corev1.Sysctl{}
+	}
+
 	var q resource.Quantity
 	var err error
 
@@ -419,8 +452,9 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 					RestartPolicy:     corev1.RestartPolicyAlways,
 					Tolerations:       tc.Spec.TiKV.Tolerations,
 					Volumes:           vols,
-					SecurityContext:   tc.Spec.TiKV.PodSecurityContext,
+					SecurityContext:   podSecurityContext,
 					PriorityClassName: tc.Spec.TiKV.PriorityClassName,
+					InitContainers:    initContainers,
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
