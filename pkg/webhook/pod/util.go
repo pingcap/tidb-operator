@@ -114,3 +114,11 @@ func addDeferDeletingToPDPod(podAC *PodAdmissionControl, pod *core.Pod) error {
 	_, err := podAC.kubeCli.CoreV1().Pods(pod.Namespace).Update(pod)
 	return err
 }
+
+func isPDLeader(pdClient pdapi.PDClient, pod *core.Pod) (bool, error) {
+	leader, err := pdClient.GetPDLeader()
+	if err != nil {
+		return false, err
+	}
+	return leader.Name == pod.Name, nil
+}
