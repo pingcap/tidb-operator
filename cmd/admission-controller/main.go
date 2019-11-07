@@ -57,12 +57,7 @@ func main() {
 		os.Exit(0)
 	}
 	version.LogVersionInfo()
-
-	ns := os.Getenv("NAMESPACE")
-	if len(ns) == 0 {
-		glog.Fatalf("env NAMESPACE is not set")
-	}
-
+	
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		glog.Fatalf("failed to get config: %v", err)
