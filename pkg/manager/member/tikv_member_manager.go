@@ -327,7 +327,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 				privileged := true
 				initContainers = append(initContainers, corev1.Container{
 					Name:  "init",
-					Image: controller.GetSlowLogTailerImage(tc),
+					Image: controller.GetUtilImage(tc),
 					Command: []string{
 						"sh",
 						"-c",
