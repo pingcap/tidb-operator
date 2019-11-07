@@ -1,3 +1,7 @@
+provider "aws" {
+  region = var.region
+}
+
 resource "aws_security_group" "accept_ssh_from_local" {
   name        = var.bastion_name
   description = "Allow SSH access for bastion instance"
@@ -17,13 +21,13 @@ resource "aws_security_group" "accept_ssh_from_local" {
 }
 
 resource "aws_security_group_rule" "enable_ssh_to_workers" {
-  count = var.enable_ssh_to_workers ? 1 : 0
-  security_group_id = var.worker_security_group_id
+  count                    = var.enable_ssh_to_workers ? 1 : 0
+  security_group_id        = var.worker_security_group_id
   source_security_group_id = aws_security_group.accept_ssh_from_local.id
-  from_port = 22
-  to_port = 22
-  protocol = "tcp"
-  type = "ingress"
+  from_port                = 22
+  to_port                  = 22
+  protocol                 = "tcp"
+  type                     = "ingress"
 }
 
 module "ec2" {
@@ -39,5 +43,5 @@ module "ec2" {
   monitoring                  = false
   user_data                   = file("${path.module}/bastion-userdata")
   vpc_security_group_ids      = [aws_security_group.accept_ssh_from_local.id]
-  subnet_ids = var.public_subnets
+  subnet_ids                  = var.public_subnets
 }

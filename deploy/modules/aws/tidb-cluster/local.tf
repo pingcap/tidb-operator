@@ -74,7 +74,7 @@ locals {
       asg_max_size         = var.tikv_count + 2
       pre_userdata         = file("${path.module}/pre_userdata")
       # additional_userdata  = file("userdata.sh")
-      suspended_processes  = ["ReplaceUnhealthy"]
+      suspended_processes = ["ReplaceUnhealthy"]
     },
     {
       name             = "${var.cluster_name}-tidb"
@@ -107,8 +107,8 @@ locals {
           lookup(var.group_kubelet_extra_args, "monitor", var.kubelet_extra_args)
         ]
       )
-      asg_desired_capacity  = 1
-      asg_max_size          = 3
+      asg_desired_capacity = 1
+      asg_max_size         = 3
     }
   ]
 

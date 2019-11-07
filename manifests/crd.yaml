@@ -74,6 +74,8 @@ spec:
           description: TidbClusterSpec describes the attributes that a user creates
             on a tidb cluster
           properties:
+            enablePVReclaim:
+              type: boolean
             enableTLSCluster:
               description: Enable TLS connection between TiDB server compoments
               type: boolean
@@ -204,32 +206,41 @@ spec:
             backupType:
               description: Type is the backup type for tidb cluster.
               type: string
-            ceph:
-              description: cephStorageProvider represents an ceph compatible bucket
-                for storing backups.
+            cluster:
+              description: Cluster is the Cluster to backup.
+              type: string
+            s3:
+              description: S3StorageProvider represents a S3 compliant storage for
+                storing backups.
               properties:
+                acl:
+                  description: Acl represents access control permissions for this
+                    bucket
+                  type: string
                 bucket:
                   description: Bucket in which to store the Backup.
                   type: string
                 endpoint:
-                  description: Endpoint is the access address of the ceph object storage.
+                  description: Endpoint of S3 compatible storage service
+                  type: string
+                provider:
+                  description: Provider represents the specific storage provider that
+                    implements the S3 interface
                   type: string
                 region:
-                  description: Region in which the ceph bucket is located.
+                  description: Region in which the S3 compatible bucket is located.
                   type: string
                 secretName:
                   description: SecretName is the name of secret which stores ceph
                     object store access key and secret key.
                   type: string
+                storageClass:
+                  description: StorageClass represents the storage class
+                  type: string
               required:
-              - region
-              - bucket
-              - endpoint
+              - provider
               - secretName
               type: object
-            cluster:
-              description: Cluster is the Cluster to backup.
-              type: string
             storageClassName:
               description: StorageClassName is the storage class for backup job's
                 PV.
@@ -248,7 +259,7 @@ spec:
           - cluster
           - tidbSecretName
           - storageType
-          - ceph
+          - s3
           - storageClassName
           - storageSize
           type: object
@@ -387,33 +398,41 @@ spec:
                 backupType:
                   description: Type is the backup type for tidb cluster.
                   type: string
-                ceph:
-                  description: cephStorageProvider represents an ceph compatible bucket
+                cluster:
+                  description: Cluster is the Cluster to backup.
+                  type: string
+                s3:
+                  description: S3StorageProvider represents a S3 compliant storage
                     for storing backups.
                   properties:
+                    acl:
+                      description: Acl represents access control permissions for this
+                        bucket
+                      type: string
                     bucket:
                       description: Bucket in which to store the Backup.
                       type: string
                     endpoint:
-                      description: Endpoint is the access address of the ceph object
-                        storage.
+                      description: Endpoint of S3 compatible storage service
+                      type: string
+                    provider:
+                      description: Provider represents the specific storage provider
+                        that implements the S3 interface
                       type: string
                     region:
-                      description: Region in which the ceph bucket is located.
+                      description: Region in which the S3 compatible bucket is located.
                       type: string
                     secretName:
                       description: SecretName is the name of secret which stores ceph
                         object store access key and secret key.
                       type: string
+                    storageClass:
+                      description: StorageClass represents the storage class
+                      type: string
                   required:
-                  - region
-                  - bucket
-                  - endpoint
+                  - provider
                   - secretName
                   type: object
-                cluster:
-                  description: Cluster is the Cluster to backup.
-                  type: string
                 storageClassName:
                   description: StorageClassName is the storage class for backup job's
                     PV.
@@ -433,7 +452,7 @@ spec:
               - cluster
               - tidbSecretName
               - storageType
-              - ceph
+              - s3
               - storageClassName
               - storageSize
               type: object
