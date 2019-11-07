@@ -25,8 +25,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 func IsPodInPdMembers(tc *v1alpha1.TidbCluster, pod *core.Pod, pdClient pdapi.PDClient) (bool, error) {
@@ -69,7 +68,7 @@ func addDeferDeletingToPVC(podAC *PodAdmissionControl, tc *v1alpha1.TidbCluster,
 
 // check whether the former upgraded pd pods were healthy in PD cluster during PD upgrading.
 // If not,then return an error
-func checkFormerPDPodStatus(kubeCli kubernetes.Interface, pdClient pdapi.PDClient, tc *v1alpha1.TidbCluster, namespace string, ordinal int32, replicas int32) error {
+func checkFormerPDPodStatus(podLister corelisters.PodLister, pdClient pdapi.PDClient, tc *v1alpha1.TidbCluster, namespace string, ordinal int32, replicas int32) error {
 	healthInfo, err := pdClient.GetHealth()
 	if err != nil {
 		return err
@@ -82,7 +81,7 @@ func checkFormerPDPodStatus(kubeCli kubernetes.Interface, pdClient pdapi.PDClien
 	tcName := tc.Name
 	for i := replicas - 1; i > ordinal; i-- {
 		podName := pdutil.PdPodName(tcName, i)
-		pod, err := kubeCli.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+		pod, err := podLister.Pods(namespace).Get(podName)
 		if err != nil {
 			return err
 		}

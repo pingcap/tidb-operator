@@ -68,10 +68,10 @@ func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulS
 	}
 
 	// If there is an pd pod deleting operation during upgrading, we should
-	// check the pd pod which had been upgraded before were all health
+	// check the pd pods which have been upgraded before were all health
 	if isUpgrading {
 		klog.Infof("receive delete pd pod[%s/%s] of tc[%s/%s] is upgrading, make sure former pd upgraded status was health", namespace, name, namespace, tcName)
-		err = checkFormerPDPodStatus(pc.kubeCli, pdClient, tc, namespace, ordinal, *ownerStatefulSet.Spec.Replicas)
+		err = checkFormerPDPodStatus(pc.podLister, pdClient, tc, namespace, ordinal, *ownerStatefulSet.Spec.Replicas)
 		if err != nil {
 			return util.ARFail(err)
 		}
