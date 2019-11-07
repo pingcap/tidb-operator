@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	"k8s.io/api/admission/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	appslisters "k8s.io/client-go/listers/apps/v1"
@@ -95,7 +96,9 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 //// otherwise we will check it decided by component type.
 func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.AdmissionResponse {
 
-	pod, err := pc.podLister.Pods(namespace).Get(name)
+	// We would update pod annotations if they were deleted member by admission controller,
+	// so we shall find this pod from apiServer considering getting latest pod info.
+	pod, err := pc.kubeCli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		klog.Infof("failed to find pod[%s/%s] during delete it,admit to delete", namespace, name)
 		return util.ARSuccess()
