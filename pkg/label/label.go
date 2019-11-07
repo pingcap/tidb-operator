@@ -75,9 +75,13 @@ const (
 	AnnForceUpgradeKey = "tidb.pingcap.com/force-upgrade"
 	// AnnPDDeferDeleting is pd pod annotation key  in pod for defer for deleting pod
 	AnnPDDeferDeleting = "tidb.pingcap.com/pd-defer-deleting"
+	// AnnSysctlInit is pod annotation key to indicate whether configuring sysctls with init container
+	AnnSysctlInit = "tidb.pingcap.com/sysctl-init"
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"
+	// AnnSysctlInitVal is pod annotation value to indicate whether configuring sysctls with init container
+	AnnSysctlInitVal = "true"
 
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
