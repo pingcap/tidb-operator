@@ -7,15 +7,12 @@ metadata:
     app: admission-webhook
 rules:
   - apiGroups: [""]
-    resources: ["endpoints"]
-    verbs: ["create", "get", "list", "watch", "update"]
-  - apiGroups: [""]
     resources: ["persistentvolumeclaims"]
     verbs: ["get", "list", "watch", "create", "update", "delete"]
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list", "watch","update"]
-  - apiGroups: ["apps","extensions"]
+  - apiGroups: ["apps"]
     resources: ["statefulsets"]
     verbs: ["get"]
   - apiGroups: ["pingcap.com"]
