@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package route
+package webhook
 
 import (
 	"encoding/json"
@@ -94,4 +94,8 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 
 func ServeStatefulSets(w http.ResponseWriter, r *http.Request) {
 	serve(w, r, statefulset.AdmitStatefulSets)
+}
+
+func ServePods(w http.ResponseWriter, r *http.Request) {
+	serve(w, r, podAdmissionControl.AdmitPods)
 }
