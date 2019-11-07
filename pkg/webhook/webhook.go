@@ -72,6 +72,7 @@ func NewWebHookServer(kubeCli kubernetes.Interface, operatorCli versioned.Interf
 }
 
 func (ws *WebhookServer) Run() error {
+	glog.Info("webhook sever start running")
 	return ws.server.ListenAndServeTLS("", "")
 }
 

@@ -16,36 +16,25 @@ package main
 import (
 	"context"
 	"flag"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	"k8s.io/client-go/tools/record"
-
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/webhook"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/component-base/logs"
 	glog "k8s.io/klog"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 var (
-	printVersion  bool
-	certFile      string
-	keyFile       string
-	leaseDuration = 15 * time.Second
-	renewDuration = 5 * time.Second
-	retryPeriod   = 3 * time.Second
-	waitDuration  = 5 * time.Second
+	printVersion bool
+	certFile     string
+	keyFile      string
 )
 
 func init() {
@@ -66,11 +55,6 @@ func main() {
 		os.Exit(0)
 	}
 	version.LogVersionInfo()
-
-	hostName, err := os.Hostname()
-	if err != nil {
-		glog.Fatalf("failed to get hostname: %v", err)
-	}
 
 	ns := os.Getenv("NAMESPACE")
 	if len(ns) == 0 {
@@ -94,18 +78,6 @@ func main() {
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
 
-	rl := resourcelock.EndpointsLock{
-		EndpointsMeta: metav1.ObjectMeta{
-			Namespace: ns,
-			Name:      "admission-controller",
-		},
-		Client: kubeCli.CoreV1(),
-		LockConfig: resourcelock.ResourceLockConfig{
-			Identity:      hostName,
-			EventRecorder: &record.FakeRecorder{},
-		},
-	}
-
 	webhookServer := webhook.NewWebHookServer(kubeCli, cli, kubeInformerFactory, certFile, keyFile)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -118,28 +90,9 @@ func main() {
 	}
 	glog.Infof("cache of informer factories sync successfully")
 
-	onStarted := func(ctx context.Context) {
-		if err := webhookServer.Run(); err != nil {
-			glog.Fatalf("stop http server %v", err)
-		}
+	if err := webhookServer.Run(); err != nil {
+		glog.Fatalf("stop http server %v", err)
 	}
-
-	onStopped := func() {
-		glog.Fatalf("leader election lost")
-	}
-
-	go wait.Forever(func() {
-		leaderelection.RunOrDie(controllerCtx, leaderelection.LeaderElectionConfig{
-			Lock:          &rl,
-			LeaseDuration: leaseDuration,
-			RenewDeadline: renewDuration,
-			RetryPeriod:   retryPeriod,
-			Callbacks: leaderelection.LeaderCallbacks{
-				OnStartedLeading: onStarted,
-				OnStoppedLeading: onStopped,
-			},
-		})
-	}, waitDuration)
 
 	sigs := make(chan os.Signal, 1)
 	done := make(chan bool, 1)
