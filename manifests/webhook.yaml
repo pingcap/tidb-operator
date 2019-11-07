@@ -6,12 +6,21 @@ metadata:
   labels:
     app: admission-webhook
 rules:
-- apiGroups: ["apps"]
-  resources: ["statefulsets"]
-  verbs: ["get"]
-- apiGroups: ["pingcap.com"]
-  resources: ["tidbclusters"]
-  verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch","update"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create","patch","update"]
+  - apiGroups: ["apps"]
+    resources: ["statefulsets"]
+    verbs: ["get"]
+  - apiGroups: ["pingcap.com"]
+    resources:  ["tidbclusters"]
+    verbs: ["*"]
 ---
 apiVersion: v1
 kind: ServiceAccount
