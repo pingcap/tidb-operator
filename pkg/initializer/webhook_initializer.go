@@ -47,6 +47,10 @@ func (initializer *Initializer) webhookResourceIntializer(podName, namespace str
 	if err != nil {
 		return err
 	}
+	_, err = initializer.kubeCli.CoreV1().Secrets(namespace).Update(secret)
+	if err != nil {
+		return err
+	}
 
 	err = initializer.updateWebhookServer(namespace, secret)
 	if err != nil {
