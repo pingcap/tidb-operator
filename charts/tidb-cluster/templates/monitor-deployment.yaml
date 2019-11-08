@@ -80,6 +80,8 @@ spec:
           readOnly: false
         - name: monitor-data
           mountPath: /data
+        resources:
+{{ toYaml .Values.monitor.initializer.resources | indent 10 }}
       containers:
       - name: prometheus
         image: {{ .Values.monitor.prometheus.image }}
@@ -129,6 +131,8 @@ spec:
           - name: prometheus-rules
             mountPath: /prometheus-rules
             readOnly: false
+        resources:
+{{ toYaml .Values.monitor.reloader.resources | indent 10 }}
       {{- end }}
       {{- if .Values.monitor.grafana.create }}
       - name: grafana
