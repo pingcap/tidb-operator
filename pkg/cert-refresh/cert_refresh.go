@@ -182,8 +182,15 @@ func newInitializerJob(namespace, component string, config *RefreshConfig) *batc
 									Name: "NAMESPACE",
 									ValueFrom: &core.EnvVarSource{
 										FieldRef: &core.ObjectFieldSelector{
-											APIVersion: "v1",
 											FieldPath:  "metadata.namespace",
+										},
+									},
+								},
+								{
+									Name: "POD_NAME",
+									ValueFrom: &core.EnvVarSource{
+										FieldRef: &core.ObjectFieldSelector{
+											FieldPath:  "metadata.name",
 										},
 									},
 								},
