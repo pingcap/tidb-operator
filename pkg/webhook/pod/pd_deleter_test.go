@@ -65,7 +65,7 @@ func TestPDDeleterDelete(t *testing.T) {
 		tc := newTidbClusterForPodAdmissionControl()
 		pvc := newPVCForDeletePod()
 
-		podAdmissionControl, fakePVCControl, pvcIndexer, _, _ := newPodAdmissionControl()
+		podAdmissionControl, fakePVCControl, pvcIndexer, _, _, _ := newPodAdmissionControl()
 		pdControl := pdapi.NewFakePDControl()
 		fakePDClient := controller.NewFakePDClient(pdControl, tc)
 

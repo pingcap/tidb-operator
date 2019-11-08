@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
@@ -48,6 +49,8 @@ type PodAdmissionControl struct {
 	podLister corelisters.PodLister
 	// tc Lister
 	tcLister listers.TidbClusterLister
+	// sts Lister
+	stsLister appslisters.StatefulSetLister
 }
 
 func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder) *PodAdmissionControl {
@@ -56,15 +59,17 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 	PVCControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
 	tcLister := informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
 
-	podInformer := kubeInformerFactory.Core().V1().Pods()
+	podLister := kubeInformerFactory.Core().V1().Pods().Lister()
+	stsLister := kubeInformerFactory.Apps().V1().StatefulSets().Lister()
 
 	return &PodAdmissionControl{
 		kubeCli:     kubeCli,
 		operatorCli: operatorCli,
 		pvcControl:  PVCControl,
 		pdControl:   PdControl,
-		podLister:   podInformer.Lister(),
+		podLister:   podLister,
 		tcLister:    tcLister,
+		stsLister:   stsLister,
 	}
 }
 
@@ -91,7 +96,9 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 //// otherwise we will check it decided by component type.
 func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.AdmissionResponse {
 
-	pod, err := pc.podLister.Pods(namespace).Get(name)
+	// We would update pod annotations if they were deleted member by admission controller,
+	// so we shall find this pod from apiServer considering getting latest pod info.
+	pod, err := pc.kubeCli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		klog.Infof("failed to find pod[%s/%s] during delete it,admit to delete", namespace, name)
 		return util.ARSuccess()
@@ -136,7 +143,7 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.
 		return util.ARSuccess()
 	}
 
-	ownerStatefulSet, err := pc.kubeCli.AppsV1().StatefulSets(namespace).Get(ownerStatefulSetName, metav1.GetOptions{})
+	ownerStatefulSet, err := pc.stsLister.StatefulSets(namespace).Get(ownerStatefulSetName)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
