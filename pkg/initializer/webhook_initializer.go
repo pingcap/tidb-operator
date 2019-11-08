@@ -14,6 +14,7 @@
 package initializer
 
 import (
+	"fmt"
 	certUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"k8s.io/api/admissionregistration/v1beta1"
 	core "k8s.io/api/core/v1"
@@ -25,7 +26,7 @@ import (
 //  - create or refresh Secret and CSR for ca cert
 //  - update webhook server
 //  - update validationAdmissionConfiguration
-func (initializer *Initializer) webhookResourceIntializer(namespace string, days int) error {
+func (initializer *Initializer) webhookResourceIntializer(podName, namespace string, days int) error {
 
 	if !WebhookEnabled {
 		return nil
@@ -39,6 +40,10 @@ func (initializer *Initializer) webhookResourceIntializer(namespace string, days
 	klog.Infof("success to apply CA cert for service[%s/%s]", namespace, AdmissionWebhookName)
 
 	secret, err := initializer.kubeCli.CoreV1().Secrets(namespace).Get(SecretNameForServiceCert(AdmissionWebhookName), metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	err = initializer.setSecretOwnerReferences(podName, namespace, secret)
 	if err != nil {
 		return err
 	}
@@ -66,6 +71,7 @@ func (initializer *Initializer) updateValidationAdmissionConfiguration(secret *c
 	if err != nil {
 		return err
 	}
+
 	f := v1beta1.Fail
 	for id, webhook := range conf.Webhooks {
 		webhook.ClientConfig.CABundle = secret.Data["cert.pem"]
@@ -99,4 +105,26 @@ func (initializer *Initializer) updateWebhookServer(namespace string, secret *co
 		return err
 	}
 	return nil
+}
+
+func (initializer *Initializer) setSecretOwnerReferences(podName, namespace string, secret *core.Secret) error {
+	pod, err := initializer.kubeCli.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	secret.OwnerReferences = []metav1.OwnerReference{}
+	for _, reference := range pod.OwnerReferences {
+		if reference.Kind == "Job" {
+			secret.OwnerReferences = []metav1.OwnerReference{
+				{
+					APIVersion: reference.APIVersion,
+					Name:       reference.Name,
+					Kind:       reference.Kind,
+					UID:        reference.UID,
+				},
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("pod[%s/%s] has no OwnerReferences", namespace, podName)
 }

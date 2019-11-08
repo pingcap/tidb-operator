@@ -28,6 +28,7 @@ var (
 	printVersion     bool
 	namespace        string
 	component        string
+	podName          string
 	verifyPeriodDays int
 )
 
@@ -42,6 +43,11 @@ func init() {
 	namespace = os.Getenv("NAMESPACE")
 	if len(namespace) == 0 {
 		klog.Fatalf("ENV NAMESPACE not set")
+	}
+
+	podName = os.Getenv("POD_NAME")
+	if len(podName) == 0 {
+		klog.Fatalf("ENV POD_NAME not set")
 	}
 
 }
@@ -69,7 +75,7 @@ func main() {
 
 	init := initializer.NewInitializer(kubeCli)
 
-	err = init.Run(namespace, component, verifyPeriodDays)
+	err = init.Run(podName, namespace, component, verifyPeriodDays)
 	if err != nil {
 		klog.Fatalf("failed to init resources for %s: %v", component, err)
 	}

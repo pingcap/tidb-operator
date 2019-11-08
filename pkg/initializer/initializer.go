@@ -39,13 +39,13 @@ func NewInitializer(kubeCli kubernetes.Interface) *Initializer {
 }
 
 // Initializer generate resources for each component
-func (initializer *Initializer) Run(namespace string, component string, days int) error {
+func (initializer *Initializer) Run(podName, namespace string, component string, days int) error {
 	switch component {
 	case AdmissionWebhookName:
-		return initializer.webhookResourceIntializer(namespace, days)
+		return initializer.webhookResourceIntializer(podName, namespace, days)
 	case allComponent:
 		//init all component resources,currently there is only one component
-		return initializer.Run(namespace, AdmissionWebhookName, days)
+		return initializer.Run(podName, namespace, AdmissionWebhookName, days)
 	default:
 		return fmt.Errorf("unknown initialize component")
 	}
