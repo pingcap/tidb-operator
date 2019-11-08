@@ -75,6 +75,8 @@ const (
 	AnnForceUpgradeKey = "tidb.pingcap.com/force-upgrade"
 	// AnnPDDeferDeleting is pd pod annotation key  in pod for defer for deleting pod
 	AnnPDDeferDeleting = "tidb.pingcap.com/pd-defer-deleting"
+	// CertServiceKey is the key for service cert
+	CertServiceKey string = "tidb.pingcap.com/cert-service"
 	// AnnSysctlInit is pod annotation key to indicate whether configuring sysctls with init container
 	AnnSysctlInit = "tidb.pingcap.com/sysctl-init"
 
