@@ -594,6 +594,14 @@ scheduledBackup:
   # You can create the secret by:
   # kubectl create secret generic s3-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
   # secretName: s3-backup-secret
+  
+  resources:
+    limits: {}
+    #   cpu: 8000m
+    #   memory: 8Gi
+    requests: {}
+    #   cpu: 4000m
+    #   memory: 4Gi
 
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"
