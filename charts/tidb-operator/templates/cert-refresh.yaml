@@ -1,0 +1,45 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: cert-refresh
+labels:
+  app.kubernetes.io/name: {{ template "chart.name" . }}
+  app.kubernetes.io/managed-by: {{ .Release.Service }}
+  app.kubernetes.io/instance: {{ .Release.Name }}
+  app.kubernetes.io/component: cert-refresh
+  helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  schedule: "{{ .Values.cert.refresh.schedule }}"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: {{ template "chart.name" . }}
+            app.kubernetes.io/instance: {{ .Release.Name }}
+            app.kubernetes.io/component: cert-refresh
+        spec:
+          serviceaccount: cert-refresh-sa
+          containers:
+            - name: cert-refresh
+              image: {{ .Values.operatorImage }}
+              imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+              command:
+                - /usr/local/bin/cert-refresh
+                - -verifyPeriodDays={{ .Values.cert.verifyPeriodDays | default "365" }}
+                - -intervalDays={{ .Values.cert.refresh.IntervalDays | default "7" }}
+              env:
+                - name: NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: IMAGE
+                  value: {{ .Values.operatorImage }}
+          restartPolicy: OnFailure
