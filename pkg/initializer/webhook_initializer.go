@@ -16,7 +16,8 @@ package initializer
 import (
 	"fmt"
 	certUtils "github.com/pingcap/tidb-operator/pkg/util"
-	"k8s.io/api/admissionregistration/v1beta1"
+	admissionregistration "k8s.io/api/admissionregistration/v1beta1"
+	certificates "k8s.io/api/certificates/v1beta1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
@@ -43,11 +44,24 @@ func (initializer *Initializer) webhookResourceIntializer(podName, namespace str
 	if err != nil {
 		return err
 	}
-	err = initializer.setSecretOwnerReferences(podName, namespace, secret)
+
+	csrName := fmt.Sprintf("%s.%s-csr", AdmissionWebhookName, namespace)
+
+	csr, err := initializer.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Get(csrName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
+
+	err = initializer.setOwnerReferences(podName, namespace, secret, csr)
+	if err != nil {
+		return err
+	}
+
 	_, err = initializer.kubeCli.CoreV1().Secrets(namespace).Update(secret)
+	if err != nil {
+		return err
+	}
+	_, err = initializer.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Update(csr)
 	if err != nil {
 		return err
 	}
@@ -76,7 +90,7 @@ func (initializer *Initializer) updateValidationAdmissionConfiguration(secret *c
 		return err
 	}
 
-	f := v1beta1.Fail
+	f := admissionregistration.Fail
 	for id, webhook := range conf.Webhooks {
 		webhook.ClientConfig.CABundle = secret.Data["cert.pem"]
 		webhook.FailurePolicy = &f
@@ -111,7 +125,7 @@ func (initializer *Initializer) updateWebhookServer(namespace string, secret *co
 	return nil
 }
 
-func (initializer *Initializer) setSecretOwnerReferences(podName, namespace string, secret *core.Secret) error {
+func (initializer *Initializer) setOwnerReferences(podName, namespace string, secret *core.Secret, csr *certificates.CertificateSigningRequest) error {
 	pod, err := initializer.kubeCli.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -120,6 +134,14 @@ func (initializer *Initializer) setSecretOwnerReferences(podName, namespace stri
 	for _, reference := range pod.OwnerReferences {
 		if reference.Kind == "Job" {
 			secret.OwnerReferences = []metav1.OwnerReference{
+				{
+					APIVersion: reference.APIVersion,
+					Name:       reference.Name,
+					Kind:       reference.Kind,
+					UID:        reference.UID,
+				},
+			}
+			csr.OwnerReferences = []metav1.OwnerReference{
 				{
 					APIVersion: reference.APIVersion,
 					Name:       reference.Name,
