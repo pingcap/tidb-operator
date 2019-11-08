@@ -4,8 +4,24 @@ timezone: UTC
 pd:
   storageClassName: pd-ssd
 tikv:
+  annotations:
+    tidb.pingcap.com/sysctl-init: "true"
+  podSecurityContext:
+    sysctls:
+    - name: net.core.somaxconn
+      value: "32768"
   storageClassName: local-storage
 tidb:
+  annotations:
+    tidb.pingcap.com/sysctl-init: "true"
+  podSecurityContext:
+    sysctls:
+    - name: net.core.somaxconn
+      value: "32768"
+    - name: net.ipv4.tcp_keepalive_intvl
+      value: "75"
+    - name: net.ipv4.tcp_keepalive_time
+      value: "300"
   service:
     type: LoadBalancer
     externalTrafficPolicy: Local

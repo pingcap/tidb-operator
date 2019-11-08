@@ -266,6 +266,39 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 		})
 	}
 
+	sysctls := "sysctl -w"
+	var initContainers []corev1.Container
+	if tc.Spec.TiDB.Annotations != nil {
+		init, ok := tc.Spec.TiDB.Annotations[label.AnnSysctlInit]
+		if ok && (init == label.AnnSysctlInitVal) {
+			if tc.Spec.TiDB.PodSecurityContext != nil && len(tc.Spec.TiDB.PodSecurityContext.Sysctls) > 0 {
+				for _, sysctl := range tc.Spec.TiDB.PodSecurityContext.Sysctls {
+					sysctls = sysctls + fmt.Sprintf(" %s=%s", sysctl.Name, sysctl.Value)
+				}
+				privileged := true
+				initContainers = append(initContainers, corev1.Container{
+					Name:  "init",
+					Image: controller.GetUtilImage(tc),
+					Command: []string{
+						"sh",
+						"-c",
+						sysctls,
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: &privileged,
+					},
+				})
+			}
+		}
+	}
+	// Init container is only used for the case where allowed-unsafe-sysctls
+	// cannot be enabled for kubelet, so clean the sysctl in statefulset
+	// SecurityContext if init container is enabled
+	podSecurityContext := tc.Spec.TiDB.PodSecurityContext.DeepCopy()
+	if len(initContainers) > 0 {
+		podSecurityContext.Sysctls = []corev1.Sysctl{}
+	}
+
 	var containers []corev1.Container
 	if tc.Spec.TiDB.SeparateSlowLog {
 		// mount a shared volume and tail the slow log to STDOUT using a sidecar.
@@ -383,8 +416,9 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 					RestartPolicy:     corev1.RestartPolicyAlways,
 					Tolerations:       tc.Spec.TiDB.Tolerations,
 					Volumes:           vols,
-					SecurityContext:   tc.Spec.TiDB.PodSecurityContext,
+					SecurityContext:   podSecurityContext,
 					PriorityClassName: tc.Spec.TiDB.PriorityClassName,
+					InitContainers:    initContainers,
 				},
 			},
 			ServiceName:         controller.TiDBPeerMemberName(tcName),

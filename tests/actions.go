@@ -1105,9 +1105,9 @@ func (oa *operatorActions) setPartitionAnnotation(namespace, tcName, component s
 	cmd := fmt.Sprintf("kubectl annotate tc %s -n %s tidb.pingcap.com/%s-partition=%d --overwrite",
 		tcName, namespace, component, ordinal)
 	glog.Infof("%s", cmd)
-	_, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	output, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("fail to set annotation for [%s/%s], component: %s, partition: %d", namespace, tcName, component, ordinal)
+		return fmt.Errorf("fail to set annotation for [%s/%s], component: %s, partition: %d, err: %v, output: %s", namespace, tcName, component, ordinal, err, string(output))
 	}
 	return nil
 }
