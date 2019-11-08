@@ -8,6 +8,9 @@ clusterScoped: true
 rbac:
   create: true
 
+# timezone is the default system timzone
+timezone: UTC
+
 # operatorImage is TiDB Operator image
 operatorImage: pingcap/tidb-operator:v1.0.1
 imagePullPolicy: IfNotPresent

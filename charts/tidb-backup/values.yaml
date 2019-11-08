@@ -5,6 +5,9 @@
 # clusterName is the TiDB cluster name that should backup from or restore to.
 clusterName: demo
 
+# timezone is the default system timzone
+timezone: UTC
+
 mode: backup # backup | restore | scheduled-restore
 
 # name is the backup dir name and pvc name for ad-hoc backup and restore
