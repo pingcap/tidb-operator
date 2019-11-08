@@ -50,7 +50,13 @@ admission-controller:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-controller cmd/admission-controller/main.go
 
 apiserver:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-apiserver cmd/apiserver/main.go
+	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-apiserver cmd/apiserver
+
+initializer:
+	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-initializer cmd/initializer/main.go
+
+cert-refresh:
+	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/cert-refresh cmd/cert-refresh/main.go
 
 backup-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/backup-manager/bin/tidb-backup-manager cmd/backup-manager/main.go
