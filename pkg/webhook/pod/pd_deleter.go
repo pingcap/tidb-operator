@@ -49,7 +49,12 @@ func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulS
 
 	IsDeferDeleting := IsPodWithPDDeferDeletingAnnotations(pod)
 
-	klog.Infof("receive delete pd pod[%s/%s] of tc[%s/%s],isMember=%v,isInOrdinal=%v,isUpgrading=%v,IsDeferDeleting=%v", namespace, name, namespace, tcName, isMember, isInOrdinal, isUpgrading, IsDeferDeleting)
+	isLeader, err := isPDLeader(pdClient, pod)
+	if err != nil {
+		return util.ARFail(err)
+	}
+
+	klog.Infof("receive delete pd pod[%s/%s] of tc[%s/%s],isMember=%v,isInOrdinal=%v,isUpgrading=%v,isDeferDeleting=%v,isLeader=%v", namespace, name, namespace, tcName, isMember, isInOrdinal, isUpgrading, IsDeferDeleting, isLeader)
 
 	// NotMember represents this pod is deleted from pd cluster or haven't register to pd cluster yet.
 	// We should ensure this pd pod wouldn't be pd member any more.
@@ -59,28 +64,21 @@ func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulS
 
 	// NotInOrdinal represents this is an scale-in operation, we need to delete this member in pd cluster
 	if !isInOrdinal {
-		return pc.admitDeleteExceedReplicasPDPod(pod, tcName, pdClient)
+		return pc.admitDeleteExceedReplicasPDPod(pod, tc, pdClient, isLeader)
 	}
 
 	// If there is an pd pod deleting operation during upgrading, we should
-	// check the pd pod which had been upgraded before were all health
+	// check the pd pods which have been upgraded before were all health
 	if isUpgrading {
 		klog.Infof("receive delete pd pod[%s/%s] of tc[%s/%s] is upgrading, make sure former pd upgraded status was health", namespace, name, namespace, tcName)
-		err = checkFormerPDPodStatus(pc.kubeCli, pdClient, tc, namespace, ordinal, *ownerStatefulSet.Spec.Replicas)
+		err = checkFormerPDPodStatus(pc.podLister, pdClient, tc, namespace, ordinal, *ownerStatefulSet.Spec.Replicas)
 		if err != nil {
 			return util.ARFail(err)
 		}
 	}
 
-	leader, err := pdClient.GetPDLeader()
-	if err != nil {
-		klog.Errorf("tc[%s/%s] fail to get pd leader %v,refuse to delete pod[%s/%s]", namespace, tc.Name, err, namespace, name)
-		return util.ARFail(err)
-	}
-
-	klog.Infof("tc[%s/%s]'s pd leader is pod[%s/%s] during deleting pod[%s/%s]", namespace, tc.Name, namespace, leader.Name, namespace, name)
-	if leader.Name == name {
-		return pc.admitDeletePDLeader(pod, tc, pdClient, ordinal)
+	if isLeader {
+		return pc.transferPDLeader(pod, tc, pdClient, ordinal)
 	}
 
 	klog.Infof("pod[%s/%s] is not pd-leader,admit to delete", namespace, name)
@@ -129,12 +127,21 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(IsDeferDeleting, isInOr
 	}
 }
 
-func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(pod *corev1.Pod, tcName string, pdClient pdapi.PDClient) *v1beta1.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(pod *corev1.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, isPdLeader bool) *v1beta1.AdmissionResponse {
 
 	name := pod.Name
 	namespace := pod.Namespace
+	tcName := tc.Name
+	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+	if err != nil {
+		return util.ARFail(err)
+	}
 
-	err := pdClient.DeleteMember(name)
+	if isPdLeader {
+		return pc.transferPDLeader(pod, tc, pdClient, ordinal)
+	}
+
+	err = pdClient.DeleteMember(name)
 	if err != nil {
 		return util.ARFail(err)
 	}
@@ -151,7 +158,7 @@ func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(pod *corev1.Pod, t
 }
 
 // this pod is a pd leader, we should transfer pd leader to other pd pod before it gets deleted before.
-func (pc *PodAdmissionControl) admitDeletePDLeader(pod *corev1.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, ordinal int32) *v1beta1.AdmissionResponse {
+func (pc *PodAdmissionControl) transferPDLeader(pod *corev1.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, ordinal int32) *v1beta1.AdmissionResponse {
 
 	name := pod.Name
 	namespace := pod.Namespace

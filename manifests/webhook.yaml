@@ -17,7 +17,7 @@ rules:
     verbs: ["create","patch","update"]
   - apiGroups: ["apps"]
     resources: ["statefulsets"]
-    verbs: ["get"]
+    verbs: ["get","list"]
   - apiGroups: ["pingcap.com"]
     resources:  ["tidbclusters"]
     verbs: ["*"]
