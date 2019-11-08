@@ -124,3 +124,11 @@ apiserver:
   #   value: tidb-operator
   #   effect: "NoSchedule"
 
+cert:
+  # initializer and cert-refresh would generate ca cert for verifyPeriodDays days
+  verifyPeriodDays: "365"
+  refresh:
+    # cert-refresh check cert whether expired by schedule
+    schedule: "0 1 * * *"
+    # cert-refresh would refresh ca certs if it would be expired after refreshIntervalDays at most
+    IntervalDays: "7"
