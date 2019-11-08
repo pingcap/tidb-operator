@@ -40,6 +40,10 @@ spec:
         env:
         - name: BACKUP_NAME
           value: {{ .Values.scheduledBackupName | default .Values.name | quote }}
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
       {{- if .Values.gcp }}
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: /gcp/credentials.json
