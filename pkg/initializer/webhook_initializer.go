@@ -15,19 +15,23 @@ package initializer
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/annotation"
 	certUtils "github.com/pingcap/tidb-operator/pkg/util"
-	admissionregistration "k8s.io/api/admissionregistration/v1beta1"
 	certificates "k8s.io/api/certificates/v1beta1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
 
+const (
+	CaCertKey = "cert.pem"
+)
+
 // Webhook Initializer should do following setups:
 //  - create or refresh Secret and CSR for ca cert
 //  - update webhook server
 //  - update validationAdmissionConfiguration
-func (initializer *Initializer) webhookResourceIntializer(podName, namespace string, days int) error {
+func (initializer *Initializer) webhookResourceInitializer(podName, namespace string, days int) error {
 
 	if !WebhookEnabled {
 		return nil
@@ -90,10 +94,8 @@ func (initializer *Initializer) updateValidationAdmissionConfiguration(secret *c
 		return err
 	}
 
-	f := admissionregistration.Fail
 	for id, webhook := range conf.Webhooks {
-		webhook.ClientConfig.CABundle = secret.Data["cert.pem"]
-		webhook.FailurePolicy = &f
+		webhook.ClientConfig.CABundle = secret.Data[CaCertKey]
 		conf.Webhooks[id] = webhook
 	}
 	_, err = initializer.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Update(conf)
@@ -112,10 +114,10 @@ func (initializer *Initializer) updateWebhookServer(namespace string, secret *co
 	}
 	if server.Spec.Template.Annotations == nil {
 		server.Spec.Template.Annotations = map[string]string{
-			"checksum/cert": certUtils.Checksum(secret.Data["cert.pem"]),
+			"checksum/cert": certUtils.Checksum(secret.Data[CaCertKey]),
 		}
 	} else {
-		server.Spec.Template.Annotations["checksum/cert"] = certUtils.Checksum(secret.Data["cert.pem"])
+		server.Spec.Template.Annotations[annotation.CACertChecksumKey] = certUtils.Checksum(secret.Data[CaCertKey])
 	}
 
 	_, err = initializer.kubeCli.ExtensionsV1beta1().Deployments(namespace).Update(server)

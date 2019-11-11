@@ -42,7 +42,7 @@ func NewInitializer(kubeCli kubernetes.Interface) *Initializer {
 func (initializer *Initializer) Run(podName, namespace string, component string, days int) error {
 	switch component {
 	case AdmissionWebhookName:
-		return initializer.webhookResourceIntializer(podName, namespace, days)
+		return initializer.webhookResourceInitializer(podName, namespace, days)
 	case allComponent:
 		//init all component resources,currently there is only one component
 		return initializer.Run(podName, namespace, AdmissionWebhookName, days)
