@@ -25,5 +25,5 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 
 {{- define "initializer-configmap.data" -}}
 create-cert-script: |-
-{{ tuple "scripts/_create_cert.sh.tpl" . | include "helm-toolkit.utils.template" | indent 2 }}
+{{ tuple "scripts/_create_cert.sh" . | include "helm-toolkit.utils.template" | indent 2 }}
 {{- end -}}
