@@ -3,17 +3,17 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  {{ if eq $length 2 }}
-  name: tidb-operator-initializer-{{ $a._1 }}
-  {{ else }}
-  name: tidb-operator-initializer-{{ $a._2 }}
-  {{ end }}
-labels:
-  app.kubernetes.io/name: {{ template "chart.name" . }}
-  app.kubernetes.io/managed-by: {{ .Release.Service }}
-  app.kubernetes.io/instance: {{ .Release.Name }}
-  app.kubernetes.io/component: initializer
-  helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+  name: tidb-operator-initializer
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: initializer
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+  annotations:
+    "helm.sh/hook": "pre-rollback, pre-upgrade, pre-install"
+    "helm.sh/hook-delete-policy": "before-hook-creation"
+    "helm.sh/hook-weight": "99"
 spec:
   backoffLimit: 1000
   template:
@@ -34,9 +34,9 @@ spec:
           image: {{ .Values.operatorImage }}
           imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
           command:
-            - /usr/local/bin/tidb-initializer
+            - /usr/local/bin/tidb-operator-initializer
             - -component=all
-            - -verifyPeriodDays={{ .Values.cert.verifyPeriodDays | default "365" }}
+            - -verify-period-days={{ .Values.cert.verifyPeriodDays | default "365" }}
           env:
             - name: NAMESPACE
               valueFrom:

@@ -15,7 +15,6 @@ package cert_refresh
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/initializer"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	certUtil "github.com/pingcap/tidb-operator/pkg/util"
 	batch "k8s.io/api/batch/v1"
@@ -26,17 +25,20 @@ import (
 	"time"
 )
 
-type RefreshManager struct {
-	kubecli kubernetes.Interface
+type RefreshConfig struct {
+	Image                string
+	OwnerVersion         string
+	OwnerKind            string
+	OwnerName            string
+	OwnerUid             string
+	RefreshIntervalDays  int
+	WebhookAdmissionName string
+	VerifyPeriodDays     int
 }
 
-type RefreshConfig struct {
-	Image               string
-	OwnerVersion        string
-	OwnerKind           string
-	OwnerName           string
-	OwnerUid            string
-	RefreshIntervalDays int
+type RefreshManager struct {
+	kubecli kubernetes.Interface
+	config  *RefreshConfig
 }
 
 const (
@@ -44,28 +46,25 @@ const (
 	serviceAccount = "tidb-operator-initializer-sa"
 )
 
-var (
-	Days int
-)
-
-func NewRefreshManager(kubecli kubernetes.Interface) *RefreshManager {
+func NewRefreshManager(kubecli kubernetes.Interface, config *RefreshConfig) *RefreshManager {
 	return &RefreshManager{
 		kubecli: kubecli,
+		config:  config,
 	}
 }
 
 // RefreshManager list all the secrets created by Initializer and check whether it need refresh ca cert
-func (rm *RefreshManager) Run(podName, namespace string, config *RefreshConfig) error {
-	list, err := rm.checkCertsNeedRefresh(namespace, config.RefreshIntervalDays)
+func (rm *RefreshManager) Run(podName, namespace string) error {
+	list, err := rm.checkCertsNeedRefresh(namespace, rm.config.RefreshIntervalDays)
 	if err != nil {
 		return err
 	}
-	err = rm.setConfigOwnerReferences(podName, namespace, config)
+	err = rm.setConfigOwnerReferences(podName, namespace)
 	if err != nil {
 		return err
 	}
 	for _, component := range list {
-		job := newInitializerJob(namespace, component, config)
+		job := newInitializerJob(namespace, component, rm.config)
 		_, err := rm.kubecli.BatchV1().Jobs(namespace).Create(job)
 		if err != nil {
 			return err
@@ -74,17 +73,17 @@ func (rm *RefreshManager) Run(podName, namespace string, config *RefreshConfig) 
 	return nil
 }
 
-func (rm *RefreshManager) setConfigOwnerReferences(podName, namespace string, config *RefreshConfig) error {
+func (rm *RefreshManager) setConfigOwnerReferences(podName, namespace string) error {
 	pod, err := rm.kubecli.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	for _, reference := range pod.OwnerReferences {
 		if reference.Kind == "Job" {
-			config.OwnerName = reference.Name
-			config.OwnerVersion = reference.APIVersion
-			config.OwnerKind = reference.Kind
-			config.OwnerUid = string(reference.UID)
+			rm.config.OwnerName = reference.Name
+			rm.config.OwnerVersion = reference.APIVersion
+			rm.config.OwnerKind = reference.Kind
+			rm.config.OwnerUid = string(reference.UID)
 			return nil
 		}
 	}
@@ -175,7 +174,7 @@ func newInitializerJob(namespace, component string, config *RefreshConfig) *batc
 							Command: []string{
 								"/usr/local/bin/tidb-initializer",
 								fmt.Sprintf("-component=%s", component),
-								fmt.Sprintf("-verifyPeriodDays=%d", Days),
+								fmt.Sprintf("-verifyPeriodDays=%d", config.VerifyPeriodDays),
 							},
 							Env: []core.EnvVar{
 								{
@@ -208,7 +207,7 @@ func newInitializerJob(namespace, component string, config *RefreshConfig) *batc
 		},
 	}
 	switch component {
-	case initializer.AdmissionWebhookName:
+	case config.WebhookAdmissionName:
 		job.Spec.Template.Spec.Containers[0].Command = append(job.Spec.Template.Spec.Containers[0].Command, "-webhookEnabled=true")
 	}
 	return job

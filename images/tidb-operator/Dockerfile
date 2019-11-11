@@ -17,5 +17,5 @@ ADD bin/tidb-discovery /usr/local/bin/tidb-discovery
 ADD bin/tidb-admission-controller /usr/local/bin/tidb-admission-controller
 ADD bin/tidb-controller-manager /usr/local/bin/tidb-controller-manager
 ADD bin/tidb-apiserver /usr/local/bin/tidb-apiserver
-ADD bin/tidb-initializer /usr/local/bin/tidb-initializer
+ADD bin/tidb-operator-initializer /usr/local/bin/tidb-operator-initializer
 ADD bin/cert-refresh /usr/local/bin/cert-refresh

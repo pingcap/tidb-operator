@@ -33,23 +33,24 @@ const (
 //  - update validationAdmissionConfiguration
 func (initializer *Initializer) webhookResourceInitializer(podName, namespace string, days int) error {
 
-	if !WebhookEnabled {
+	admissionWebhookName := initializer.config.AdmissionWebhookName
+	if !initializer.config.WebhookEnabled {
 		return nil
 	}
 	klog.Info("initializer start to generate resources for webhook")
 
-	err := GenerateSecretAndCSR(AdmissionWebhookName, namespace, days)
+	err := GenerateSecretAndCSR(admissionWebhookName, namespace, days)
 	if err != nil {
 		return err
 	}
-	klog.Infof("success to apply CA cert for service[%s/%s]", namespace, AdmissionWebhookName)
+	klog.Infof("success to apply CA cert for service[%s/%s]", namespace, admissionWebhookName)
 
-	secret, err := initializer.kubeCli.CoreV1().Secrets(namespace).Get(SecretNameForServiceCert(AdmissionWebhookName), metav1.GetOptions{})
+	secret, err := initializer.kubeCli.CoreV1().Secrets(namespace).Get(SecretNameForServiceCert(admissionWebhookName), metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-	csrName := fmt.Sprintf("%s.%s-csr", AdmissionWebhookName, namespace)
+	csrName := fmt.Sprintf("%s.%s-csr", admissionWebhookName, namespace)
 
 	csr, err := initializer.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Get(csrName, metav1.GetOptions{})
 	if err != nil {
@@ -72,24 +73,25 @@ func (initializer *Initializer) webhookResourceInitializer(podName, namespace st
 
 	err = initializer.updateWebhookServer(namespace, secret)
 	if err != nil {
-		klog.Errorf("failed to update webhook server[%s/%s],%v", namespace, AdmissionWebhookName, err)
+		klog.Errorf("failed to update webhook server[%s/%s],%v", namespace, admissionWebhookName, err)
 		return err
 	}
-	klog.Infof("success to update webhook server[%s/%s]", namespace, AdmissionWebhookName)
+	klog.Infof("success to update webhook server[%s/%s]", namespace, admissionWebhookName)
 
 	err = initializer.updateValidationAdmissionConfiguration(secret)
 	if err != nil {
-		klog.Errorf("failed to update validation admission config[%s/%s],%v", namespace, VACNameForService(namespace, AdmissionWebhookName), err)
+		klog.Errorf("failed to update validation admission config[%s/%s],%v", namespace, VACNameForService(namespace, admissionWebhookName), err)
 		return err
 	}
-	klog.Infof("success to update validation admission config[%s/%s]", VACNameForService(namespace, AdmissionWebhookName), err)
+	klog.Infof("success to update validation admission config[%s/%s]", VACNameForService(namespace, admissionWebhookName), err)
 	return nil
 }
 
 // update tidb-operator validation webhook server
 func (initializer *Initializer) updateValidationAdmissionConfiguration(secret *core.Secret) error {
 
-	conf, err := initializer.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(AdmissionWebhookName, metav1.GetOptions{})
+	admissionWebhookName := initializer.config.AdmissionWebhookName
+	conf, err := initializer.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(admissionWebhookName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -108,7 +110,8 @@ func (initializer *Initializer) updateValidationAdmissionConfiguration(secret *c
 // update Webhook server to make sure the latest secret would be used.
 func (initializer *Initializer) updateWebhookServer(namespace string, secret *core.Secret) error {
 
-	server, err := initializer.kubeCli.ExtensionsV1beta1().Deployments(namespace).Get(AdmissionWebhookName, metav1.GetOptions{})
+	admissionWebhookName := initializer.config.AdmissionWebhookName
+	server, err := initializer.kubeCli.ExtensionsV1beta1().Deployments(namespace).Get(admissionWebhookName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

@@ -18,34 +18,46 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type Initializer struct {
-	kubeCli kubernetes.Interface
+type InitializerConfig struct {
+	AdmissionWebhookName string
+	WebhookEnabled       bool
 }
 
-var (
-	WebhookEnabled bool
-)
+type Initializer struct {
+	kubeCli kubernetes.Interface
+	config  *InitializerConfig
+}
 
 const (
-	executePath          = "/etc/initializer/create-cert-script"
-	allComponent         = "all"
-	AdmissionWebhookName = "admission-webhook"
+	executePath  = "/etc/initializer/create-cert-script"
+	allComponent = "all"
 )
 
-func NewInitializer(kubeCli kubernetes.Interface) *Initializer {
+func NewInitializer(kubeCli kubernetes.Interface, config *InitializerConfig) *Initializer {
 	return &Initializer{
 		kubeCli: kubeCli,
+		config:  config,
 	}
 }
 
 // Initializer generate resources for each component
-func (initializer *Initializer) Run(podName, namespace string, component string, days int) error {
+func (initializer *Initializer) Run(podName, namespace string, components []string, days int) error {
+	for _, component := range components {
+		err := initializer.run(podName, namespace, component, days)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (initializer *Initializer) run(podName, namespace, component string, days int) error {
 	switch component {
-	case AdmissionWebhookName:
+	case initializer.config.AdmissionWebhookName:
 		return initializer.webhookResourceInitializer(podName, namespace, days)
 	case allComponent:
 		//init all component resources,currently there is only one component
-		return initializer.Run(podName, namespace, AdmissionWebhookName, days)
+		return initializer.run(podName, namespace, initializer.config.AdmissionWebhookName, days)
 	default:
 		return fmt.Errorf("unknown initialize component")
 	}
