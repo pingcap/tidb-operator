@@ -45,6 +45,11 @@ spec:
             readOnly: true
           {{- end }}
         {{- end }}
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
         resources:
 {{ toYaml .Values.tidb.initializer.resources | indent 10 }}
       {{- if or .Values.tidb.passwordSecretName .Values.tidb.initSql .Values.tidb.initSqlConfigMapName }}
