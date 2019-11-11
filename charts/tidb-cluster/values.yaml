@@ -32,7 +32,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.0.1
+  image: pingcap/tidb-operator:v1.0.2
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -307,6 +307,15 @@ tidb:
         cpu: 20m
         memory: 5Mi
 
+  initializer:
+    resources: {}
+    # limits:
+    #  cpu: 100m
+    #  memory: 100Mi
+    # requests:
+    #  cpu: 100m
+    #  memory: 100Mi
+
   # tidb plugin configuration
   plugin:
     # enable plugin or not
@@ -334,12 +343,26 @@ monitor:
   initializer:
     image: pingcap/tidb-monitor-initializer:v3.0.1
     imagePullPolicy: IfNotPresent
+    resources: {}
+    # limits:
+    #  cpu: 50m
+    #  memory: 64Mi
+    # requests:
+    #  cpu: 50m
+    #  memory: 64Mi
   reloader:
     create: true
     image: pingcap/tidb-monitor-reloader:v1.0.0
     imagePullPolicy: IfNotPresent
     service:
       type: NodePort
+    resources:
+      # limits:
+      #  cpu: 50m
+      #  memory: 64Mi
+      # requests:
+      #  cpu: 50m
+      #  memory: 64Mi
   grafana:
     create: true
     image: grafana/grafana:6.0.1
@@ -415,6 +438,13 @@ binlog:
     gc: 7
     # number of seconds between heartbeat ticks (in 2 seconds)
     heartbeatInterval: 2
+    resources:
+      limits: {}
+      #   cpu: 8000m
+      #   memory: 8Gi
+      requests: {}
+      #   cpu: 4000m
+      #   memory: 4Gi
 
     # Please refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/pump/pump.toml for the default
     # pump configurations (change to the tags of your pump version),
@@ -477,6 +507,13 @@ binlog:
       # zookeeperAddrs: "127.0.0.1:2181"
       # kafkaAddrs: "127.0.0.1:9092"
       # kafkaVersion: "0.8.2.0"
+    resources:
+      limits: {}
+      #   cpu: 8000m
+      #   memory: 8Gi
+      requests: {}
+      #   cpu: 4000m
+      #   memory: 4Gi
 
     # Please refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml for the default
     # drainer configurations (change to the tags of your drainer version),
@@ -557,6 +594,14 @@ scheduledBackup:
   # You can create the secret by:
   # kubectl create secret generic s3-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
   # secretName: s3-backup-secret
+  
+  resources:
+    limits: {}
+    #   cpu: 8000m
+    #   memory: 8Gi
+    requests: {}
+    #   cpu: 4000m
+    #   memory: 4Gi
 
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"

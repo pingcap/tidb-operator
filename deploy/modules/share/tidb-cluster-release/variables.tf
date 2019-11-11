@@ -1,11 +1,16 @@
 variable "kubeconfig_filename" {
   description = "The kubeconfig filename, path should be relative to current working dir"
-  default = ""
+  default     = ""
 }
 
 variable "tidb_cluster_chart_version" {
   description = "tidb-cluster chart version"
-  default     = "v1.0.1"
+  default     = "v1.0.2"
+}
+
+variable "create" {
+  description = "whether creating tidb-cluster helm release"
+  default     = true
 }
 
 variable "cluster_name" {
@@ -34,7 +39,7 @@ variable "tidb_count" {
 }
 
 variable "base_values" {
-  type = string
+  type    = string
   default = ""
 }
 
@@ -56,5 +61,5 @@ variable "local_exec_interpreter" {
 
 variable "wait_on_resource" {
   description = "An optional resource to pass in to wait on before running"
-  default = []
+  default     = []
 }

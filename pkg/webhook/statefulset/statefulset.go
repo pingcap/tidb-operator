@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	"k8s.io/api/admission/v1beta1"
 	apps "k8s.io/api/apps/v1"
+	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -45,10 +46,11 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	namespace := ar.Request.Namespace
 	glog.Infof("admit statefulsets [%s/%s]", name, namespace)
 
-	setResource := metav1.GroupVersionResource{Group: "apps", Version: "v1", Resource: "statefulsets"}
-	if ar.Request.Resource != setResource {
-		err := fmt.Errorf("expect resource to be %s", setResource)
-		glog.Errorf("%v", err)
+	apiVersion := ar.Request.Resource.Version
+	setResource := metav1.GroupVersionResource{Group: "apps", Version: apiVersion, Resource: "statefulsets"}
+	if ar.Request.Resource.Group != "apps" || ar.Request.Resource.Resource != "statefulsets" {
+		err := fmt.Errorf("expect resource to be %s instead of %s", setResource, ar.Request.Resource)
+		glog.Error(err)
 		return util.ARFail(err)
 	}
 
@@ -66,20 +68,20 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		}
 	}
 
-	raw := ar.Request.OldObject.Raw
-	set := apps.StatefulSet{}
-	if _, _, err := deserializer.Decode(raw, nil, &set); err != nil {
-		glog.Errorf("deseriralizer fail to decode request %v", err)
-		return util.ARFail(err)
-	}
-
-	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(set.Labels[label.InstanceLabelKey], metav1.GetOptions{})
+	stsObjectMeta, stsPartition, err := getStsAttributes(ar.Request.OldObject.Raw, apiVersion)
 	if err != nil {
-		glog.Errorf("fail to fetch tidbcluster info namespace %s clustername(instance) %s err %v", namespace, set.Labels[label.InstanceLabelKey], err)
+		err = fmt.Errorf("statefulset %s/%s, decode request failed, err: %v", namespace, name, err)
+		glog.Error(err)
 		return util.ARFail(err)
 	}
 
-	if set.Labels[label.ComponentLabelKey] == label.TiDBLabelVal {
+	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(stsObjectMeta.Labels[label.InstanceLabelKey], metav1.GetOptions{})
+	if err != nil {
+		glog.Errorf("fail to fetch tidbcluster info namespace %s clustername(instance) %s err %v", namespace, stsObjectMeta.Labels[label.InstanceLabelKey], err)
+		return util.ARFail(err)
+	}
+
+	if stsObjectMeta.Labels[label.ComponentLabelKey] == label.TiDBLabelVal {
 		protect, ok := tc.Annotations[label.AnnTiDBPartition]
 
 		if ok {
@@ -89,7 +91,7 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 				return util.ARFail(err)
 			}
 
-			if (*set.Spec.UpdateStrategy.RollingUpdate.Partition) <= int32(partition) && tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+			if *stsPartition <= int32(partition) && tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
 				glog.Infof("set has been protect by annotations name %s namespace %s", name, namespace)
 				return util.ARFail(errors.New("protect by annotation"))
 			}
@@ -97,4 +99,20 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	}
 
 	return util.ARSuccess()
+}
+
+func getStsAttributes(data []byte, apiVersion string) (*metav1.ObjectMeta, *int32, error) {
+	if apiVersion == "v1" {
+		set := apps.StatefulSet{}
+		if _, _, err := deserializer.Decode(data, nil, &set); err != nil {
+			return nil, nil, err
+		}
+		return &(set.ObjectMeta), set.Spec.UpdateStrategy.RollingUpdate.Partition, nil
+	}
+
+	set := appsv1beta1.StatefulSet{}
+	if _, _, err := deserializer.Decode(data, nil, &set); err != nil {
+		return nil, nil, err
+	}
+	return &(set.ObjectMeta), set.Spec.UpdateStrategy.RollingUpdate.Partition, nil
 }

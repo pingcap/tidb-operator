@@ -60,6 +60,8 @@ spec:
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
       {{- end }}
+        resources:
+{{ toYaml .Values.binlog.pump.resources | indent 10 }}
       volumes:
       - name: config
         configMap:

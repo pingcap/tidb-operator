@@ -42,6 +42,8 @@ spec:
           mountPath: /data
           readOnly: true
         {{- end }}
+        resources:
+{{ toYaml .Values.tidb.initializer.resources | indent 10 }}
       volumes:
       - name: password
         secret:
