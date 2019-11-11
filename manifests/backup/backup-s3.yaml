@@ -2,7 +2,7 @@
 apiVersion: pingcap.com/v1alpha1
 kind: Backup
 metadata:
-  name: demo1-backup
+  name: demo1-backup-s3
   namespace: test1
 spec:
   s3:

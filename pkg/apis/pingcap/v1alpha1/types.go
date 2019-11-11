@@ -325,6 +325,9 @@ type BackupStorageType string
 const (
 	// BackupStorageTypeS3 represents all storage that compatible with the Amazon S3.
 	BackupStorageTypeS3 BackupStorageType = "s3"
+
+	// BackupStorageTypeGcs represents the google cloud storage
+	BackupStorageTypeGcs BackupStorageType = "gcs"
 )
 
 // +k8s:openapi-gen=true
@@ -341,7 +344,8 @@ const (
 // +k8s:openapi-gen=true
 // StorageProvider defines the configuration for storing a backup in backend storage.
 type StorageProvider struct {
-	S3 *S3StorageProvider `json:"s3"`
+	S3  *S3StorageProvider  `json:"s3"`
+	Gcs *GcsStorageProvider `json:"gcs"`
 }
 
 // +k8s:openapi-gen=true
@@ -360,7 +364,27 @@ type S3StorageProvider struct {
 	// Acl represents access control permissions for this bucket
 	Acl string `json:"acl,omitempty"`
 	// SecretName is the name of secret which stores
-	// ceph object store access key and secret key.
+	// S3 compliant storage access key and secret key.
+	SecretName string `json:"secretName"`
+}
+
+// +k8s:openapi-gen=true
+// GcsStorageProvider represents the google cloud storage for storing backups.
+type GcsStorageProvider struct {
+	// ProjectNumber represents the project that organizes all your Google Cloud Platform resources
+	ProjectNumber string `json:"projectNumber"`
+	// Location in which the gcs bucket is located.
+	Location string `json:"location,omitempty"`
+	// Bucket in which to store the Backup.
+	Bucket string `json:"bucket,omitempty"`
+	// StorageClass represents the storage class
+	StorageClass string `json:"storageClass,omitempty"`
+	// ObjectAcl represents the access control list for new objects
+	ObjectAcl string `json:"object_acl,omitempty"`
+	// BucketAcl represents the access control list for new buckets
+	BucketAcl string `json:"bucket_acl,omitempty"`
+	// SecretName is the name of secret which stores the
+	// gcs service account credentials JSON .
 	SecretName string `json:"secretName"`
 }
 

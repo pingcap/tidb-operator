@@ -2,7 +2,7 @@
 apiVersion: pingcap.com/v1alpha1
 kind: BackupSchedule
 metadata:
-  name: demo1-backup-schedule
+  name: demo1-backup-schedule-s3
   namespace: test1
 spec:
   #maxBackups: 5
