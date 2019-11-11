@@ -55,6 +55,11 @@ spec:
           mountPath: /data
         - name: config
           mountPath: /etc/drainer
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
         resources:
 {{ toYaml .Values.binlog.drainer.resources | indent 10 }}
       volumes:
