@@ -55,8 +55,12 @@ func main() {
 	}
 	go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx)
 
-	restConfig := client.GetConfigOrDie()
-	cli, kubeCli := client.NewCliOrDie()
+	restConfig, err := client.GetConfig()
+	if err != nil {
+		panic(err)
+	}
+	cli, kubeCli, asCli := client.NewCliOrDie()
+
 	ocfg := newOperatorConfig()
 
 	cluster1 := newTidbClusterConfig(ns, "cluster1", "", "")
@@ -71,7 +75,7 @@ func main() {
 	cluster5 := newTidbClusterConfig(ns, "cluster5", "", "v2.1.16") // for v2.1.x series
 	cluster5.Resources["tikv.resources.limits.storage"] = "1G"
 
-	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, cfg, nil)
+	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, cfg, nil)
 	oa.CleanCRDOrDie()
 	oa.InstallCRDOrDie()
 	oa.LabelNodesOrDie()
@@ -258,15 +262,17 @@ func newOperatorConfig() *tests.OperatorConfig {
 		Tag:            cfg.OperatorTag,
 		SchedulerImage: "mirantis/hypokube",
 		SchedulerTag:   "final",
-		SchedulerFeatures: []string{
+		Features: []string{
 			"StableScheduling=true",
+			"AdvancedStatefulSet=true",
 		},
-		LogLevel:           "2",
-		WebhookServiceName: "webhook-service",
-		WebhookSecretName:  "webhook-secret",
-		WebhookConfigName:  "webhook-config",
-		ImagePullPolicy:    v1.PullIfNotPresent,
-		TestMode:           true,
+		LogLevel:            "4",
+		WebhookServiceName:  "webhook-service",
+		WebhookSecretName:   "webhook-secret",
+		WebhookConfigName:   "webhook-config",
+		ImagePullPolicy:     v1.PullIfNotPresent,
+		TestMode:            true,
+		AdvancedStatefulSet: true,
 	}
 }
 

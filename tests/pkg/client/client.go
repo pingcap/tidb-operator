@@ -10,6 +10,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/slack"
 
 	"github.com/juju/errors"
+	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/typed/pingcap/v1alpha1"
 	"k8s.io/client-go/kubernetes"
@@ -30,7 +31,7 @@ func init() {
 			"Only required if out-of-cluster.")
 }
 
-func NewCliOrDie() (versioned.Interface, kubernetes.Interface) {
+func NewCliOrDie() (versioned.Interface, kubernetes.Interface, asclientset.Interface) {
 	cfg, err := GetConfig()
 	if err != nil {
 		slack.NotifyAndPanic(err)
@@ -117,7 +118,7 @@ func LoadConfig() (*rest.Config, error) {
 	return cfg, errors.Trace(err)
 }
 
-func buildClientsOrDie(cfg *rest.Config) (versioned.Interface, kubernetes.Interface) {
+func buildClientsOrDie(cfg *rest.Config) (versioned.Interface, kubernetes.Interface, asclientset.Interface) {
 	cfg.Timeout = 30 * time.Second
 	cli, err := versioned.NewForConfig(cfg)
 	if err != nil {
@@ -129,5 +130,10 @@ func buildClientsOrDie(cfg *rest.Config) (versioned.Interface, kubernetes.Interf
 		slack.NotifyAndPanic(err)
 	}
 
-	return cli, kubeCli
+	asCli, err := asclientset.NewForConfig(cfg)
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+
+	return cli, kubeCli, asCli
 }

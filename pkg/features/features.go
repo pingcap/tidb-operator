@@ -25,7 +25,8 @@ import (
 var (
 	allFeatures     = sets.NewString(StableScheduling)
 	defaultFeatures = map[string]bool{
-		StableScheduling: true,
+		StableScheduling:    true,
+		AdvancedStatefulSet: false,
 	}
 	// DefaultFeatureGate is a shared global FeatureGate.
 	DefaultFeatureGate FeatureGate = NewFeatureGate()
@@ -34,6 +35,9 @@ var (
 const (
 	// StableScheduling controls stable scheduling of TiDB members.
 	StableScheduling string = "StableScheduling"
+
+	// AdvancedStatefulSet controls whether to use AdvancedStatefulSet to manage pods
+	AdvancedStatefulSet string = "AdvancedStatefulSet"
 )
 
 type FeatureGate interface {

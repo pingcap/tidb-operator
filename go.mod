@@ -45,6 +45,7 @@ require (
 	github.com/onsi/gomega v1.5.0
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
+	github.com/pingcap/advanced-statefulset v0.1.0
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/kvproto v0.0.0-20190516013202-4cf58ad90b6c
 	github.com/pingcap/log v0.0.0-20190715063458-479153f07ebd
