@@ -15,7 +15,7 @@ package initializer
 
 import (
 	"fmt"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 	"os/exec"
 	"strconv"
 )
@@ -32,7 +32,7 @@ func GenerateSecretAndCSR(serviceName, namespace string, days int) error {
 
 	_, err := exec.Command("/bin/sh", executePath, "-n", namespace, "-s", serviceName, "-d", strconv.Itoa(days)).CombinedOutput()
 	if err != nil {
-		glog.Errorf("execute ca cert failed for service[%s/%s],%v", namespace, serviceName, err)
+		klog.Errorf("execute ca cert failed for service[%s/%s],%v", namespace, serviceName, err)
 		return err
 	}
 	return nil
