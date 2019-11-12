@@ -33,6 +33,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupScheduleList":    schema_pkg_apis_pingcap_v1alpha1_BackupScheduleList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupScheduleSpec":    schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupSpec":            schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider":    schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSpec":                schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ResourceRequirement":   schema_pkg_apis_pingcap_v1alpha1_ResourceRequirement(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Restore":               schema_pkg_apis_pingcap_v1alpha1_Restore(ref),
@@ -563,6 +564,11 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"),
 						},
 					},
+					"gcs": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider"),
+						},
+					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StorageClassName is the storage class for backup job's PV.",
@@ -578,11 +584,74 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 						},
 					},
 				},
-				Required: []string{"cluster", "tidbSecretName", "storageType", "s3", "storageClassName", "storageSize"},
+				Required: []string{"cluster", "tidbSecretName", "storageType", "storageClassName", "storageSize"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "GcsStorageProvider represents the google cloud storage for storing backups.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"projectId": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ProjectId represents the project that organizes all your Google Cloud Platform resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"location": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Location in which the gcs bucket is located.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"bucket": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Bucket in which to store the Backup.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"storageClass": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StorageClass represents the storage class",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"object_acl": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ObjectAcl represents the access control list for new objects",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"bucket_acl": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BucketAcl represents the access control list for new buckets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"secretName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SecretName is the name of secret which stores the gcs service account credentials JSON .",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"projectId", "secretName"},
+			},
+		},
 	}
 }
 
@@ -830,7 +899,7 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 					},
 					"secretName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "SecretName is the name of secret which stores ceph object store access key and secret key.",
+							Description: "SecretName is the name of secret which stores S3 compliant storage access key and secret key.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -879,12 +948,16 @@ func schema_pkg_apis_pingcap_v1alpha1_StorageProvider(ref common.ReferenceCallba
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"),
 						},
 					},
+					"gcs": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider"),
+						},
+					},
 				},
-				Required: []string{"s3"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"},
 	}
 }
 

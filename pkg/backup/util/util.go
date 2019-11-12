@@ -37,7 +37,7 @@ func CheckAllKeysExistInSecret(secret *corev1.Secret, keys ...string) (string, b
 }
 
 // GenerateS3CertEnvVar generate the env info in order to access S3 compliant storage
-func GenerateS3CertEnvVar(secret *corev1.Secret, s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, error) {
+func GenerateS3CertEnvVar(secret *corev1.Secret, s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, string, error) {
 	var envVars []corev1.EnvVar
 
 	switch s3.Provider {
@@ -49,7 +49,7 @@ func GenerateS3CertEnvVar(secret *corev1.Secret, s3 *v1alpha1.S3StorageProvider)
 			break
 		}
 		if !strings.HasPrefix(s3.Endpoint, "http://") {
-			return envVars, fmt.Errorf("cenph endpoint URI %s must start with http://", s3.Endpoint)
+			return envVars, "InvalidS3Endpoint", fmt.Errorf("cenph endpoint URI %s must start with http://", s3.Endpoint)
 		}
 	case v1alpha1.S3StorageProviderTypeAWS:
 		// TODO: Check the storage class, if it is not a legal storage class, use the default storage class instead
@@ -62,7 +62,7 @@ func GenerateS3CertEnvVar(secret *corev1.Secret, s3 *v1alpha1.S3StorageProvider)
 			s3.Acl = "private"
 		}
 	default:
-		return envVars, fmt.Errorf("unknow s3 compliant storage type %s", s3.Provider)
+		return envVars, "UnsupportS3StorageType", fmt.Errorf("unknow s3 compliant storage type %s", s3.Provider)
 	}
 
 	envVars = []corev1.EnvVar{
@@ -95,7 +95,41 @@ func GenerateS3CertEnvVar(secret *corev1.Secret, s3 *v1alpha1.S3StorageProvider)
 			Value: string(secret.Data[constants.S3SecretKey]),
 		},
 	}
-	return envVars, nil
+	return envVars, "", nil
+}
+
+// GenerateGcsCertEnvVar generate the env info in order to access google cloud storage
+func GenerateGcsCertEnvVar(secret *corev1.Secret, gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, string, error) {
+	if len(gcs.ProjectId) == 0 {
+		return nil, "ProjectIdIsEmpty", fmt.Errorf("the project id is not set")
+	}
+	envVars := []corev1.EnvVar{
+		{
+			Name:  "GCS_PROJECT_ID",
+			Value: gcs.ProjectId,
+		},
+		{
+			Name:  "GCS_OBJECT_ACL",
+			Value: gcs.ObjectAcl,
+		},
+		{
+			Name:  "GCS_BUCKET_ACL",
+			Value: gcs.BucketAcl,
+		},
+		{
+			Name:  "GCS_LOCATION",
+			Value: gcs.Location,
+		},
+		{
+			Name:  "GCS_STORAGE_CLASS",
+			Value: gcs.StorageClass,
+		},
+		{
+			Name:  "GCS_SERVICE_ACCOUNT_JSON_KEY",
+			Value: string(secret.Data[constants.GcsCredentialsKey]),
+		},
+	}
+	return envVars, "", nil
 }
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
@@ -104,6 +138,7 @@ func GenerateStorageCertEnv(backup *v1alpha1.Backup, secretLister corelisters.Se
 	name := backup.GetName()
 
 	var certEnv []corev1.EnvVar
+	var reason string
 
 	switch backup.Spec.StorageType {
 	case v1alpha1.BackupStorageTypeS3:
@@ -117,18 +152,37 @@ func GenerateStorageCertEnv(backup *v1alpha1.Backup, secretLister corelisters.Se
 		keyStr, exist := CheckAllKeysExistInSecret(secret, constants.S3AccessKey, constants.S3SecretKey)
 		if !exist {
 			err := fmt.Errorf("backup %s/%s, The s3 secret %s missing some keys %s", ns, name, s3SecretName, keyStr)
-			return certEnv, "KeyNotExist", err
+			return certEnv, "s3KeyNotExist", err
 		}
 
-		certEnv, err = GenerateS3CertEnvVar(secret, backup.Spec.S3.DeepCopy())
+		certEnv, reason, err = GenerateS3CertEnvVar(secret, backup.Spec.S3.DeepCopy())
 		if err != nil {
-			return certEnv, "InvalidS3Endpoint", err
+			return certEnv, reason, err
+		}
+	case v1alpha1.BackupStorageTypeGcs:
+		gcsSecretName := backup.Spec.Gcs.SecretName
+		secret, err := secretLister.Secrets(ns).Get(gcsSecretName)
+		if err != nil {
+			err := fmt.Errorf("backup %s/%s get gcs secret %s failed, err: %v", ns, name, gcsSecretName, err)
+			return certEnv, "GetGcsSecretFailed", err
+		}
+
+		keyStr, exist := CheckAllKeysExistInSecret(secret, constants.GcsCredentialsKey)
+		if !exist {
+			err := fmt.Errorf("backup %s/%s, The gcs secret %s missing some keys %s", ns, name, gcsSecretName, keyStr)
+			return certEnv, "gcsKeyNotExist", err
+		}
+
+		certEnv, reason, err = GenerateGcsCertEnvVar(secret, backup.Spec.Gcs)
+
+		if err != nil {
+			return certEnv, reason, err
 		}
 	default:
 		err := fmt.Errorf("backup %s/%s don't support storage type %s", ns, name, backup.Spec.StorageType)
 		return certEnv, "NotSupportStorageType", err
 	}
-	return certEnv, "", nil
+	return certEnv, reason, nil
 }
 
 // GetTidbUserAndPassword get the tidb user and password from specific secret
