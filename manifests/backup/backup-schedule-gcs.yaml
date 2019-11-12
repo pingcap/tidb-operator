@@ -1,0 +1,21 @@
+---
+apiVersion: pingcap.com/v1alpha1
+kind: BackupSchedule
+metadata:
+  name: demo1-backup-schedule-gcs
+  namespace: test1
+spec:
+  #maxBackups: 5
+  #pause: true
+  maxReservedTime: "3h"
+  storageClassName: local-storage
+  storageSize: 10Gi
+  schedule: "*/2 * * * *"
+  backupTemplate:
+    gcs:
+      #location: us-east-1
+      secretName: gcs-secret
+      projectId: <your-project-id>
+    storageType: gcs
+    cluster: demo1
+    tidbSecretName: backup-demo1-tidb-secret

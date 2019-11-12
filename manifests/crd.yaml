@@ -209,6 +209,39 @@ spec:
             cluster:
               description: Cluster is the Cluster to backup.
               type: string
+            gcs:
+              description: GcsStorageProvider represents the google cloud storage
+                for storing backups.
+              properties:
+                bucket:
+                  description: Bucket in which to store the Backup.
+                  type: string
+                bucket_acl:
+                  description: BucketAcl represents the access control list for new
+                    buckets
+                  type: string
+                location:
+                  description: Location in which the gcs bucket is located.
+                  type: string
+                object_acl:
+                  description: ObjectAcl represents the access control list for new
+                    objects
+                  type: string
+                projectId:
+                  description: ProjectId represents the project that organizes all
+                    your Google Cloud Platform resources
+                  type: string
+                secretName:
+                  description: SecretName is the name of secret which stores the gcs
+                    service account credentials JSON .
+                  type: string
+                storageClass:
+                  description: StorageClass represents the storage class
+                  type: string
+              required:
+              - projectId
+              - secretName
+              type: object
             s3:
               description: S3StorageProvider represents a S3 compliant storage for
                 storing backups.
@@ -231,8 +264,8 @@ spec:
                   description: Region in which the S3 compatible bucket is located.
                   type: string
                 secretName:
-                  description: SecretName is the name of secret which stores ceph
-                    object store access key and secret key.
+                  description: SecretName is the name of secret which stores S3 compliant
+                    storage access key and secret key.
                   type: string
                 storageClass:
                   description: StorageClass represents the storage class
@@ -259,7 +292,6 @@ spec:
           - cluster
           - tidbSecretName
           - storageType
-          - s3
           - storageClassName
           - storageSize
           type: object
@@ -401,6 +433,39 @@ spec:
                 cluster:
                   description: Cluster is the Cluster to backup.
                   type: string
+                gcs:
+                  description: GcsStorageProvider represents the google cloud storage
+                    for storing backups.
+                  properties:
+                    bucket:
+                      description: Bucket in which to store the Backup.
+                      type: string
+                    bucket_acl:
+                      description: BucketAcl represents the access control list for
+                        new buckets
+                      type: string
+                    location:
+                      description: Location in which the gcs bucket is located.
+                      type: string
+                    object_acl:
+                      description: ObjectAcl represents the access control list for
+                        new objects
+                      type: string
+                    projectId:
+                      description: ProjectId represents the project that organizes
+                        all your Google Cloud Platform resources
+                      type: string
+                    secretName:
+                      description: SecretName is the name of secret which stores the
+                        gcs service account credentials JSON .
+                      type: string
+                    storageClass:
+                      description: StorageClass represents the storage class
+                      type: string
+                  required:
+                  - projectId
+                  - secretName
+                  type: object
                 s3:
                   description: S3StorageProvider represents a S3 compliant storage
                     for storing backups.
@@ -423,8 +488,8 @@ spec:
                       description: Region in which the S3 compatible bucket is located.
                       type: string
                     secretName:
-                      description: SecretName is the name of secret which stores ceph
-                        object store access key and secret key.
+                      description: SecretName is the name of secret which stores S3
+                        compliant storage access key and secret key.
                       type: string
                     storageClass:
                       description: StorageClass represents the storage class
@@ -452,7 +517,6 @@ spec:
               - cluster
               - tidbSecretName
               - storageType
-              - s3
               - storageClassName
               - storageSize
               type: object
