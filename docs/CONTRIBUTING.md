@@ -3,7 +3,7 @@
 ## Go
 TiDB Operator is written in [Go](https://golang.org). If you don't have a Go development environment, [set one up](https://golang.org/doc/code.html).
 
-The version of Go should be 1.9 or later.
+The version of Go should be 1.13 or later.
 
 After Go is installed, you need to define `GOPATH` and modify `PATH` modified to access your Go binaries.
 
@@ -116,24 +116,24 @@ First you should build a local Kubernetes environment for e2e tests, so we provi
 
     Follow [this guide](./local-dind-tutorial.md) to spin up a local DinD Kubernetes cluster.
 
-* Use kind to build Kubernetes cluster 
+* Use kind to build Kubernetes cluster
 
     Please ensure you have install [kind](https://kind.sigs.k8s.io/) and it's version == v0.4.0
-    
-    Use the following command to create a local kind Kubernetes environment.  
-    
+
+    Use the following command to create a local kind Kubernetes environment.
+
     ```sh
     $ ./hack/kind-cluster-build.sh
     ```
-    
+
     If you have customization requirements, please refer the help info:
-    
+
     ```
     $ ./hack/kind-cluster-build.sh --help
     ```
-    
+
     Setting `KUBECONFIG` environment variable before using the Kubernetes cluster:
-    
+
     ```
     export KUBECONFIG=$(kind get kubeconfig-path --name=<clusterName>)
     ```
@@ -151,7 +151,7 @@ After Docker images are pushed to the inner Docker registry, run e2e tests:
 $ kubectl apply -f tests/manifests/e2e/e2e.yaml
 ```
 
-You can get the e2e test report from the log of testing pod: 
+You can get the e2e test report from the log of testing pod:
 
 ```sh
 $ kubectl -n=tidb-operator-e2e logs -f tidb-operator-e2e
