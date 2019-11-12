@@ -26,7 +26,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 				def WORKSPACE = pwd()
 				dir("${PROJECT_DIR}"){
 					stage('build tidb-operator binary'){
-						checkout changelog: false, poll: false, scm: [$class: 'GitSCM', branches: [[name: '${BUILD_BRANCH}']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '${CREDENTIALS_ID}', refspec: '+refs/pull/*:refs/remotes/origin/pr/*', url: "${BUILD_URL}"]]]
+						checkout changelog: false, poll: false, scm: [$class: 'GitSCM', branches: [[name: "${BUILD_BRANCH}"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: "${CREDENTIALS_ID}", refspec: '+refs/pull/*:refs/remotes/origin/pr/*', url: "${BUILD_URL}"]]]
 						//git credentialsId: "k8s", url: "${BUILD_URL}", branch: "${ghprbActualCommit}"
 						GITHASH = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
 						sh """
