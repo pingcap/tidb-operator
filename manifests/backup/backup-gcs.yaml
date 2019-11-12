@@ -6,7 +6,7 @@ metadata:
   namespace: test1
 spec:
   gcs:
-    projectNumber: smooth-tendril-207212
+    projectNumber: your-project-id
     secretName: gcs-secret
   storageType: gcs
   cluster: demo1

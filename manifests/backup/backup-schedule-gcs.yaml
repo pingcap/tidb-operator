@@ -15,7 +15,7 @@ spec:
     gcs:
       #region: us-east-1
       secretName: gcs-secret
-      projectNumber: smooth-tendril-207212
+      projectNumber: your-project-id
     storageType: gcs
     cluster: demo1
     tidbSecretName: backup-demo1-tidb-secret
