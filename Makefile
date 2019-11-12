@@ -16,7 +16,7 @@ export GO111MODULE := on
 GOOS := $(if $(GOOS),$(GOOS),linux)
 GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
 GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
-GO     := $(GOENV) go build
+GO     := $(GOENV) go build -trimpath
 
 # Workaround https://github.com/kubernetes-sigs/apiserver-builder-alpha/issues/435
 # TODO: check the generated code under the test api
