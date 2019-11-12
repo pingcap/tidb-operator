@@ -6,10 +6,7 @@
 
 This release adds the `timezone` support for [all charts](https://github.com/pingcap/tidb-operator/tree/master/charts).
 
-For the `tidb-cluster` chart, we already have the `timezone` option (default `UTC`). If the user does not change it to a different value(for example: `Asia/Shanghai`), all pods will not be recreated.
-If the user changes it to other value(for example: `Aisa/Shanghai`), all the related pods (add a `TZ` env) will be recreated(rolling update).
-
-For other charts, there is no `timezone` option in their `values.yaml` files. We add the `timezone` option in this PR. Whether you use the old `values.yaml` or the new `values.yaml`, the related pods (add a `TZ` env) will not be recreated (rolling update).
+For existing tidb clusters. If the `timezone` in `tidb-cluster/values.yaml` has been customized to other timezones instead of the default `UTC`, then upgrading tidb-operator will trigger a rolling update for the related pods.
 
 The related pods include `pump`, `drainer`, `dicovery`, `monitor`, `scheduled backup`, `tidb-initializer`, and `tikv-importer`.
 
