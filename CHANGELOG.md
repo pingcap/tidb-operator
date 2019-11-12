@@ -11,7 +11,7 @@ If the user changes it to other value(for example: `Aisa/Shanghai`), all the rel
 
 For other charts, there is no `timezone` option in their `values.yaml` files. We add the `timezone` option in this PR. Whether you use the old `values.yaml` or the new `values.yaml`, the related pods (add a `TZ` env) will not be recreated (rolling update).
 
-The related pods include `pump`, `drainer`, `dicovery`, `monitor`, `scheduled backup`, `tidb-initializer`, `tikv-importer`.
+The related pods include `pump`, `drainer`, `dicovery`, `monitor`, `scheduled backup`, `tidb-initializer`, and `tikv-importer`.
 
 The time zone for all images maintained by `tidb-operator` should be `UTC`. If you use your own images, you need to make sure that the corresponding time zones are `UTC`.
 
