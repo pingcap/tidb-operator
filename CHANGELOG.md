@@ -1,3 +1,30 @@
+# TiDB Operator v1.0.3 Release Notes
+
+## v1.0.3 What's New
+
+### Action Required
+
+This release adds `timezone` support for [all charts](https://github.com/pingcap/tidb-operator/tree/master/charts).
+
+For the `tidb-cluster` chart, we already have the `timezone` option(default `UTC`). If the user does not change it to a different value(for example: `Aisa/Shanghai`), all pods will not be recreated.
+If the user changes it to other value(for example: `Aisa/Shanghai`), all the related pods (add a `TZ` env) will be recreated(rolling update).
+
+For other charts, we don't have a `timezone` option in their `values.yaml`. We add the `timezone` option in this PR. Whether the user uses the old `values.yaml` or the new `values.yaml`, all the related pods (add a `TZ` env) will not be recreated(rolling update).
+
+The related pods include `pump`, `drainer`, `dicovery`, `monitor`, `scheduled backup`, `tidb-initializer`, `tikv-importer`.
+
+All images' time zone maintained by `tidb-operator` are `UTC`. You need to make sure that the time zone inside your images are `UTC` if you use your own images.
+
+### Improvements
+
+- Add `timezone` support for all containers of tidb cluster
+- Support configuring resources requests and limits for all containers of tidb cluster
+
+## Detailed Bug Fixes and Changes
+
+- Add `timezone` support for all containers of tidb cluster ([#1122](https://github.com/pingcap/tidb-operator/pull/1122))
+- Support configuring resources requests and limits for all containers of tidb cluster ([#853](https://github.com/pingcap/tidb-operator/pull/853))
+
 # TiDB Operator v1.0.2 Release Notes
 
 ## v1.0.2 What's New
