@@ -6,10 +6,10 @@ metadata:
   namespace: test1
 spec:
   gcs:
-    projectNumber: your-project-id
+    projectId: <your-project-id>
     secretName: gcs-secret
   storageType: gcs
   cluster: demo1
   tidbSecretName: backup-demo1-tidb-secret
-  storageClassName: rook-ceph-block
+  storageClassName: local-storage
   storageSize: 1Gi

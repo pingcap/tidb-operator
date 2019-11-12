@@ -103,7 +103,7 @@ func GenerateGcsCertEnvVar(secret *corev1.Secret, gcs *v1alpha1.GcsStorageProvid
 	envVars := []corev1.EnvVar{
 		{
 			Name:  "GCS_PROJECT_ID",
-			Value: gcs.ProjectNumber,
+			Value: gcs.ProjectId,
 		},
 		{
 			Name:  "GCS_OBJECT_ACL",

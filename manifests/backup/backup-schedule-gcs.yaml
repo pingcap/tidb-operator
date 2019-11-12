@@ -8,14 +8,14 @@ spec:
   #maxBackups: 5
   #pause: true
   maxReservedTime: "3h"
-  storageClassName: rook-ceph-block
+  storageClassName: local-storage
   storageSize: 10Gi
   schedule: "*/2 * * * *"
   backupTemplate:
     gcs:
-      #region: us-east-1
+      #location: us-east-1
       secretName: gcs-secret
-      projectNumber: your-project-id
+      projectId: <your-project-id>
     storageType: gcs
     cluster: demo1
     tidbSecretName: backup-demo1-tidb-secret

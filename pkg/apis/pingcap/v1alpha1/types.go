@@ -371,8 +371,8 @@ type S3StorageProvider struct {
 // +k8s:openapi-gen=true
 // GcsStorageProvider represents the google cloud storage for storing backups.
 type GcsStorageProvider struct {
-	// ProjectNumber represents the project that organizes all your Google Cloud Platform resources
-	ProjectNumber string `json:"projectNumber"`
+	// ProjectId represents the project that organizes all your Google Cloud Platform resources
+	ProjectId string `json:"projectId"`
 	// Location in which the gcs bucket is located.
 	Location string `json:"location,omitempty"`
 	// Bucket in which to store the Backup.

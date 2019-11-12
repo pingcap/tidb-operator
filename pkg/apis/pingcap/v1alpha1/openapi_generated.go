@@ -599,9 +599,9 @@ func schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref common.ReferenceCal
 				Description: "GcsStorageProvider represents the google cloud storage for storing backups.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"projectNumber": {
+					"projectId": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ProjectNumber represents the project that organizes all your Google Cloud Platform resources",
+							Description: "ProjectId represents the project that organizes all your Google Cloud Platform resources",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -649,7 +649,7 @@ func schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"projectNumber", "secretName"},
+				Required: []string{"projectId", "secretName"},
 			},
 		},
 	}

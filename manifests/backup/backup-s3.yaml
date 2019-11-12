@@ -12,5 +12,5 @@ spec:
   storageType: s3
   cluster: demo1
   tidbSecretName: backup-demo1-tidb-secret
-  storageClassName: rook-ceph-block
+  storageClassName: local-storage
   storageSize: 1Gi
