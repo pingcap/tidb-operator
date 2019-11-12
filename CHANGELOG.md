@@ -22,7 +22,7 @@ All images' time zone maintained by `tidb-operator` are `UTC`. You need to make 
 
 ## Detailed Bug Fixes and Changes
 
-- Add `timezone` support for all containers of tidb cluster ([#1122](https://github.com/pingcap/tidb-operator/pull/1122))
+- Add the `timezone` support for all containers of the TiDB cluster ([#1122](https://github.com/pingcap/tidb-operator/pull/1122))
 - Support configuring resources requests and limits for all containers of tidb cluster ([#853](https://github.com/pingcap/tidb-operator/pull/853))
 
 # TiDB Operator v1.0.2 Release Notes
