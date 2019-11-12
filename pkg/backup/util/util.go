@@ -123,7 +123,7 @@ func GenerateGcsCertEnvVar(secret *corev1.Secret, gcs *v1alpha1.GcsStorageProvid
 		},
 		{
 			Name:  "GCS_SERVICE_ACCOUNT_JSON_KEY",
-			Value: string(secret.Data[constants.GcscredentialsKey]),
+			Value: string(secret.Data[constants.GcsCredentialsKey]),
 		},
 	}
 	return envVars, "", nil
@@ -164,7 +164,7 @@ func GenerateStorageCertEnv(backup *v1alpha1.Backup, secretLister corelisters.Se
 			return certEnv, "GetGcsSecretFailed", err
 		}
 
-		keyStr, exist := CheckAllKeysExistInSecret(secret, constants.GcscredentialsKey)
+		keyStr, exist := CheckAllKeysExistInSecret(secret, constants.GcsCredentialsKey)
 		if !exist {
 			err := fmt.Errorf("backup %s/%s, The gcs secret %s missing some keys %s", ns, name, gcsSecretName, keyStr)
 			return certEnv, "gcsKeyNotExist", err

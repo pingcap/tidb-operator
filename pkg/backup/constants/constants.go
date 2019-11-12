@@ -41,6 +41,6 @@ const (
 	// S3SecretKey represents the S3 compatible secret access key in related secret
 	S3SecretKey = "secret_key"
 
-	// GcscredentialsKey represents the gcs service account credentials json key in related secret
-	GcscredentialsKey = "credentials"
+	// GcsCredentialsKey represents the gcs service account credentials json key in related secret
+	GcsCredentialsKey = "credentials"
 )
