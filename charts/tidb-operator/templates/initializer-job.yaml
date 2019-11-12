@@ -23,10 +23,6 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: initializer
     spec:
-      volumes:
-        - name: create-cert
-          configMap:
-            name: tidb-operator-initializer-config
       serviceAccountName: tidb-operator-initializer-sa
       restartPolicy: OnFailure
       containers:
@@ -36,7 +32,8 @@ spec:
           command:
             - /usr/local/bin/tidb-operator-initializer
             - -component=all
-            - -verify-period-days={{ .Values.cert.verifyPeriodDays | default "365" }}
+            - -timeout={{ .Values.cert.timeout | default "10" }}
+            - -webhook-enabled=true
           env:
             - name: NAMESPACE
               valueFrom:
@@ -46,6 +43,3 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-          volumeMounts:
-            - mountPath: "/etc/initializer"
-              name: create-cert

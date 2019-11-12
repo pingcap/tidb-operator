@@ -16,7 +16,8 @@ package initializer
 import (
 	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/annotation"
-	certUtils "github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/initializer/util"
+	certUtil "github.com/pingcap/tidb-operator/pkg/util"
 	certificates "k8s.io/api/certificates/v1beta1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,98 +32,44 @@ const (
 //  - create or refresh Secret and CSR for ca cert
 //  - update webhook server
 //  - update validationAdmissionConfiguration
-func (initializer *Initializer) webhookResourceInitializer(podName, namespace string, days int) error {
+func (initializer *Initializer) webhookResourceInitializer(namespace string) error {
 
-	admissionWebhookName := initializer.config.AdmissionWebhookName
 	if !initializer.config.WebhookEnabled {
 		return nil
 	}
+	admissionWebhookName := initializer.config.AdmissionWebhookName
+	ownerPodName := initializer.config.OwnerPodName
+	timeout := initializer.config.Timeout
+
 	klog.Info("initializer start to generate resources for webhook")
 
-	err := GenerateSecretAndCSR(admissionWebhookName, namespace, days)
-	if err != nil {
-		return err
-	}
-	klog.Infof("success to apply CA cert for service[%s/%s]", namespace, admissionWebhookName)
-
-	secret, err := initializer.kubeCli.CoreV1().Secrets(namespace).Get(SecretNameForServiceCert(admissionWebhookName), metav1.GetOptions{})
+	secret, _, err := util.GenerateCertSecretAndCSRForService(admissionWebhookName, namespace, ownerPodName, initializer.kubeCli, timeout)
 	if err != nil {
 		return err
 	}
 
-	csrName := fmt.Sprintf("%s.%s-csr", admissionWebhookName, namespace)
-
-	csr, err := initializer.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Get(csrName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	err = initializer.setOwnerReferences(podName, namespace, secret, csr)
-	if err != nil {
-		return err
-	}
-
-	_, err = initializer.kubeCli.CoreV1().Secrets(namespace).Update(secret)
-	if err != nil {
-		return err
-	}
-	_, err = initializer.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Update(csr)
-	if err != nil {
-		return err
-	}
-
-	err = initializer.updateWebhookServer(namespace, secret)
+	err = initializer.updateWebhookServer(admissionWebhookName, namespace, secret)
 	if err != nil {
 		klog.Errorf("failed to update webhook server[%s/%s],%v", namespace, admissionWebhookName, err)
 		return err
 	}
 	klog.Infof("success to update webhook server[%s/%s]", namespace, admissionWebhookName)
 
-	err = initializer.updateValidationAdmissionConfiguration(secret)
-	if err != nil {
-		klog.Errorf("failed to update validation admission config[%s/%s],%v", namespace, VACNameForService(namespace, admissionWebhookName), err)
-		return err
-	}
-	klog.Infof("success to update validation admission config[%s/%s]", VACNameForService(namespace, admissionWebhookName), err)
-	return nil
-}
-
-// update tidb-operator validation webhook server
-func (initializer *Initializer) updateValidationAdmissionConfiguration(secret *core.Secret) error {
-
-	admissionWebhookName := initializer.config.AdmissionWebhookName
-	conf, err := initializer.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(admissionWebhookName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	for id, webhook := range conf.Webhooks {
-		webhook.ClientConfig.CABundle = secret.Data[CaCertKey]
-		conf.Webhooks[id] = webhook
-	}
-	_, err = initializer.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Update(conf)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
 // update Webhook server to make sure the latest secret would be used.
-func (initializer *Initializer) updateWebhookServer(namespace string, secret *core.Secret) error {
+func (initializer *Initializer) updateWebhookServer(serviceName, namespace string, secret *core.Secret) error {
 
-	admissionWebhookName := initializer.config.AdmissionWebhookName
-	server, err := initializer.kubeCli.ExtensionsV1beta1().Deployments(namespace).Get(admissionWebhookName, metav1.GetOptions{})
+	server, err := initializer.kubeCli.ExtensionsV1beta1().Deployments(namespace).Get(serviceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	if server.Spec.Template.Annotations == nil {
-		server.Spec.Template.Annotations = map[string]string{
-			"checksum/cert": certUtils.Checksum(secret.Data[CaCertKey]),
-		}
-	} else {
-		server.Spec.Template.Annotations[annotation.CACertChecksumKey] = certUtils.Checksum(secret.Data[CaCertKey])
+		server.Spec.Template.Annotations = map[string]string{}
 	}
 
+	server.Spec.Template.Annotations[annotation.CACertChecksumKey] = certUtil.Checksum(secret.Data[CaCertKey])
 	_, err = initializer.kubeCli.ExtensionsV1beta1().Deployments(namespace).Update(server)
 	if err != nil {
 		return err

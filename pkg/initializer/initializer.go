@@ -16,11 +16,14 @@ package initializer
 import (
 	"fmt"
 	"k8s.io/client-go/kubernetes"
+	"time"
 )
 
 type InitializerConfig struct {
 	AdmissionWebhookName string
 	WebhookEnabled       bool
+	Timeout              time.Duration
+	OwnerPodName         string
 }
 
 type Initializer struct {
@@ -29,7 +32,6 @@ type Initializer struct {
 }
 
 const (
-	executePath  = "/etc/initializer/create-cert-script"
 	allComponent = "all"
 )
 
@@ -41,9 +43,9 @@ func NewInitializer(kubeCli kubernetes.Interface, config *InitializerConfig) *In
 }
 
 // Initializer generate resources for each component
-func (initializer *Initializer) Run(podName, namespace string, components []string, days int) error {
+func (initializer *Initializer) Run(namespace string, components []string) error {
 	for _, component := range components {
-		err := initializer.run(podName, namespace, component, days)
+		err := initializer.run(namespace, component)
 		if err != nil {
 			return err
 		}
@@ -51,13 +53,13 @@ func (initializer *Initializer) Run(podName, namespace string, components []stri
 	return nil
 }
 
-func (initializer *Initializer) run(podName, namespace, component string, days int) error {
+func (initializer *Initializer) run(namespace, component string) error {
 	switch component {
 	case initializer.config.AdmissionWebhookName:
-		return initializer.webhookResourceInitializer(podName, namespace, days)
+		return initializer.webhookResourceInitializer(namespace)
 	case allComponent:
 		//init all component resources,currently there is only one component
-		return initializer.run(podName, namespace, initializer.config.AdmissionWebhookName, days)
+		return initializer.run(namespace, initializer.config.AdmissionWebhookName)
 	default:
 		return fmt.Errorf("unknown initialize component")
 	}

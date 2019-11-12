@@ -29,8 +29,8 @@ spec:
               imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
               command:
                 - /usr/local/bin/cert-refresh
-                - -verify-period-days={{ .Values.cert.verifyPeriodDays | default "365" }}
-                - -interval-days={{ .Values.cert.refresh.intervalDays | default "7" }}
+                - -timeout={{ .Values.cert.timeout | default "10" }}
+                - -refresh-interval-days={{ .Values.cert.refresh.intervalDays | default "7" }}
               env:
                 - name: NAMESPACE
                   valueFrom:

@@ -33,7 +33,7 @@ type RefreshConfig struct {
 	OwnerUid             string
 	RefreshIntervalDays  int
 	WebhookAdmissionName string
-	VerifyPeriodDays     int
+	Timeout              int
 }
 
 type RefreshManager struct {
@@ -95,7 +95,7 @@ func (rm *RefreshManager) setConfigOwnerReferences(podName, namespace string) er
 func (rm *RefreshManager) checkCertsNeedRefresh(namespace string, refreshIntervalDays int) (refreshList []string, err error) {
 	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			label.ComponentLabelKey: "initializer",
+			label.ComponentLabelKey: "tidb-operator-initializer",
 		},
 	})
 	if err != nil {
@@ -153,28 +153,16 @@ func newInitializerJob(namespace, component string, config *RefreshConfig) *batc
 				},
 				Spec: core.PodSpec{
 					ServiceAccountName: serviceAccount,
-					Volumes: []core.Volume{
-						{
-							Name: "create-cert",
-							VolumeSource: core.VolumeSource{
-								ConfigMap: &core.ConfigMapVolumeSource{
-									LocalObjectReference: core.LocalObjectReference{
-										Name: configMapName,
-									},
-								},
-							},
-						},
-					},
-					RestartPolicy: core.RestartPolicyOnFailure,
+					RestartPolicy:      core.RestartPolicyOnFailure,
 					Containers: []core.Container{
 						{
 							Name:            "refresh-cert-job",
 							Image:           config.Image,
 							ImagePullPolicy: core.PullIfNotPresent,
 							Command: []string{
-								"/usr/local/bin/tidb-initializer",
+								"/usr/local/bin/tidb-operator-initializer",
 								fmt.Sprintf("-component=%s", component),
-								fmt.Sprintf("-verifyPeriodDays=%d", config.VerifyPeriodDays),
+								fmt.Sprintf("-timeout=%d", config.Timeout),
 							},
 							Env: []core.EnvVar{
 								{
@@ -194,12 +182,6 @@ func newInitializerJob(namespace, component string, config *RefreshConfig) *batc
 									},
 								},
 							},
-							VolumeMounts: []core.VolumeMount{
-								{
-									Name:      "create-cert",
-									MountPath: "/etc/initializer",
-								},
-							},
 						},
 					},
 				},
@@ -208,7 +190,7 @@ func newInitializerJob(namespace, component string, config *RefreshConfig) *batc
 	}
 	switch component {
 	case config.WebhookAdmissionName:
-		job.Spec.Template.Spec.Containers[0].Command = append(job.Spec.Template.Spec.Containers[0].Command, "-webhookEnabled=true")
+		job.Spec.Template.Spec.Containers[0].Command = append(job.Spec.Template.Spec.Containers[0].Command, "-webhook-enabled=true")
 	}
 	return job
 }
