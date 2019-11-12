@@ -2,7 +2,7 @@
 apiVersion: pingcap.com/v1alpha1
 kind: Backup
 metadata:
-  name: demo1-backup
+  name: demo1-backup-s3
   namespace: test1
 spec:
   s3:
@@ -12,5 +12,5 @@ spec:
   storageType: s3
   cluster: demo1
   tidbSecretName: backup-demo1-tidb-secret
-  storageClassName: rook-ceph-block
+  storageClassName: local-storage
   storageSize: 1Gi
