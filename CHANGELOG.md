@@ -17,7 +17,7 @@ All images' time zone maintained by `tidb-operator` are `UTC`. You need to make 
 
 ### Improvements
 
-- Add `timezone` support for all containers of tidb cluster
+- Add the `timezone` support for all containers of the TiDB cluster
 - Support configuring resource requests and limits for all containers of the TiDB cluster
 
 ## Detailed Bug Fixes and Changes
