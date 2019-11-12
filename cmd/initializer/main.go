@@ -27,12 +27,12 @@ import (
 )
 
 var (
-	printVersion     bool
-	namespace        string
-	componentList    string
-	podName          string
-	config           *initializer.InitializerConfig
-	timeout          int
+	printVersion  bool
+	namespace     string
+	componentList string
+	podName       string
+	config        *initializer.InitializerConfig
+	timeout       int
 )
 
 func init() {
