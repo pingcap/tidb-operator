@@ -13,14 +13,14 @@ region = ${AWS_REGION}
 acl = ${AWS_ACL}
 endpoint = ${S3_ENDPOINT}
 storage_class = ${AWS_STORAGE_CLASS}
-[gs]
+[gcs]
 type = google cloud storage
 project_number = ${GCS_PROJECT_ID}
 service_account_file = /tmp/google-credentials.json
 object_acl = ${GCS_OBJECT_ACL}
 bucket_acl = ${GCS_BUCKET_ACL}
 location =  ${GCS_LOCATION}
-storage_class = ${GCS_STORAGE_CLASS:-"MULTI_REGIONAL"}
+storage_class = ${GCS_STORAGE_CLASS:-"COLDLINE"}
 [azure]
 type = azureblob
 account = ${AZUREBLOB_ACCOUNT}
