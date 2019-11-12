@@ -56,7 +56,7 @@ func createApprovedCSR(serviceName, namespace string, ownerRefs []metav1.OwnerRe
 	}
 	klog.Infof("success to create csr[%s]", csrName)
 
-	csr, err = approveCSR(createdCSR, kubeCli, timeout)
+	_, err = approveCSR(createdCSR, kubeCli, timeout)
 	if err != nil {
 		return nil, err
 	}
