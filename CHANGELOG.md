@@ -13,7 +13,7 @@ For other charts, we don't have a `timezone` option in their `values.yaml`. We a
 
 The related pods include `pump`, `drainer`, `dicovery`, `monitor`, `scheduled backup`, `tidb-initializer`, `tikv-importer`.
 
-All images' time zone maintained by `tidb-operator` are `UTC`. You need to make sure that the time zone inside your images are `UTC` if you use your own images.
+The time zone for all images maintained by `tidb-operator` should be `UTC`. If you use your own images, you need to make sure that the corresponding time zones are `UTC`.
 
 ### Improvements
 
