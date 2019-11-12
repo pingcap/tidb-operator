@@ -128,8 +128,8 @@ apiserver:
   #   effect: "NoSchedule"
 
 cert:
-  # initializer and cert-refresh would generate ca cert for verifyPeriodDays days
-  verifyPeriodDays: "365"
+  # Initializer would wait timeout seconds in each waiting step
+  timeout: "10"
   refresh:
     # cert-refresh check cert whether expired by schedule
     schedule: "0 1 * * *"
