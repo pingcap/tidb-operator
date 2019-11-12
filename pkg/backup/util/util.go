@@ -135,6 +135,7 @@ func GenerateStorageCertEnv(backup *v1alpha1.Backup, secretLister corelisters.Se
 	name := backup.GetName()
 
 	var certEnv []corev1.EnvVar
+	var reason string
 
 	switch backup.Spec.StorageType {
 	case v1alpha1.BackupStorageTypeS3:
@@ -151,7 +152,7 @@ func GenerateStorageCertEnv(backup *v1alpha1.Backup, secretLister corelisters.Se
 			return certEnv, "s3KeyNotExist", err
 		}
 
-		certEnv, reason, err := GenerateS3CertEnvVar(secret, backup.Spec.S3.DeepCopy())
+		certEnv, reason, err = GenerateS3CertEnvVar(secret, backup.Spec.S3.DeepCopy())
 		if err != nil {
 			return certEnv, reason, err
 		}
@@ -169,7 +170,8 @@ func GenerateStorageCertEnv(backup *v1alpha1.Backup, secretLister corelisters.Se
 			return certEnv, "gcsKeyNotExist", err
 		}
 
-		certEnv, reason, err := GenerateGcsCertEnvVar(secret, backup.Spec.Gcs.DeepCopy())
+		certEnv, reason, err = GenerateGcsCertEnvVar(secret, backup.Spec.Gcs)
+
 		if err != nil {
 			return certEnv, reason, err
 		}
@@ -177,7 +179,7 @@ func GenerateStorageCertEnv(backup *v1alpha1.Backup, secretLister corelisters.Se
 		err := fmt.Errorf("backup %s/%s don't support storage type %s", ns, name, backup.Spec.StorageType)
 		return certEnv, "NotSupportStorageType", err
 	}
-	return certEnv, "", nil
+	return certEnv, reason, nil
 }
 
 // GetTidbUserAndPassword get the tidb user and password from specific secret

@@ -13,7 +13,7 @@ region = ${AWS_REGION}
 acl = ${AWS_ACL}
 endpoint = ${S3_ENDPOINT}
 storage_class = ${AWS_STORAGE_CLASS}
-[gs]
+[gcs]
 type = google cloud storage
 project_number = ${GCS_PROJECT_ID}
 service_account_file = /tmp/google-credentials.json
