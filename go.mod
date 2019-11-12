@@ -103,6 +103,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
 	golang.org/x/tools v0.0.0-20190405180640-052fc3cfdbc2 // indirect
+	gonum.org/v1/netlib v0.0.0-20190331212654-76723241ea4e // indirect
 	google.golang.org/genproto v0.0.0-20180731170733-daca94659cb5 // indirect
 	google.golang.org/grpc v1.12.0 // indirect
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
@@ -119,9 +120,8 @@ require (
 	k8s.io/apimachinery v0.0.0-20181128191346-49ce2735e507
 	k8s.io/apiserver v0.0.0-20190118115647-a748535592ba
 	k8s.io/cli-runtime v0.0.0-20190118125240-caee4253d968
-	k8s.io/client-go v2.0.0-alpha.0.0.20190115164855-701b91367003+incompatible
-	k8s.io/code-generator v0.0.0-20190612125529-c522cb6c26aa
-	k8s.io/gengo v0.0.0-20190327210449-e17681d19d3a // indirect; indirec
+	k8s.io/client-go v0.0.0-20190115164855-701b91367003
+	k8s.io/gengo v0.0.0-20180702041517-fdcf9f9480fd // indirect; indirec
 	k8s.io/klog v0.3.1
 	k8s.io/kube-openapi v0.0.0-20190320154901-5e45bb682580 // indirect
 	k8s.io/kubernetes v1.12.5
