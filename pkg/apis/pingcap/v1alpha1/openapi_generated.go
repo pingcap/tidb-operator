@@ -584,7 +584,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 						},
 					},
 				},
-				Required: []string{"cluster", "tidbSecretName", "storageType", "s3", "gcs", "storageClassName", "storageSize"},
+				Required: []string{"cluster", "tidbSecretName", "storageType", "storageClassName", "storageSize"},
 			},
 		},
 		Dependencies: []string{
@@ -954,7 +954,6 @@ func schema_pkg_apis_pingcap_v1alpha1_StorageProvider(ref common.ReferenceCallba
 						},
 					},
 				},
-				Required: []string{"s3", "gcs"},
 			},
 		},
 		Dependencies: []string{

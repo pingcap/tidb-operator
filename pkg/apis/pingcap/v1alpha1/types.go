@@ -344,8 +344,8 @@ const (
 // +k8s:openapi-gen=true
 // StorageProvider defines the configuration for storing a backup in backend storage.
 type StorageProvider struct {
-	S3  *S3StorageProvider  `json:"s3"`
-	Gcs *GcsStorageProvider `json:"gcs"`
+	S3  *S3StorageProvider  `json:"s3,omitempty"`
+	Gcs *GcsStorageProvider `json:"gcs,omitempty"`
 }
 
 // +k8s:openapi-gen=true

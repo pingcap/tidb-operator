@@ -100,6 +100,9 @@ func GenerateS3CertEnvVar(secret *corev1.Secret, s3 *v1alpha1.S3StorageProvider)
 
 // GenerateGcsCertEnvVar generate the env info in order to access google cloud storage
 func GenerateGcsCertEnvVar(secret *corev1.Secret, gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, string, error) {
+	if len(gcs.ProjectId) == 0 {
+		return nil, "ProjectIdIsEmpty", fmt.Errorf("the project id is not set")
+	}
 	envVars := []corev1.EnvVar{
 		{
 			Name:  "GCS_PROJECT_ID",

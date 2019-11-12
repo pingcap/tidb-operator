@@ -292,8 +292,6 @@ spec:
           - cluster
           - tidbSecretName
           - storageType
-          - s3
-          - gcs
           - storageClassName
           - storageSize
           type: object
@@ -519,8 +517,6 @@ spec:
               - cluster
               - tidbSecretName
               - storageType
-              - s3
-              - gcs
               - storageClassName
               - storageSize
               type: object
