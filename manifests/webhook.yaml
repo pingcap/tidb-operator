@@ -2,7 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: admission-controller-cr
-  namespace: tidb-admin
+  namespace: ${NAMESPACE}
   labels:
     app: admission-webhook
 rules:
@@ -26,7 +26,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: admission-controller-sa
-  namespace: tidb-admin
+  namespace: ${NAMESPACE}
   labels:
     app: admission-controller
 ---
@@ -34,13 +34,13 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: admission-controller-crb
-  namespace: tidb-admin
+  namespace: ${NAMESPACE}
   labels:
     app: admission-controller
 subjects:
-- kind: ServiceAccount
-  name: admission-controller-sa
-  namespace: tidb-admin
+  - kind: ServiceAccount
+    name: admission-controller-sa
+    namespace: ${NAMESPACE}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -50,13 +50,13 @@ apiVersion: v1
 kind: Service
 metadata:
   name: admission-controller-svc
-  namespace: tidb-admin
+  namespace: ${NAMESPACE}
   labels:
     app: admission-controller
 spec:
   ports:
-  - port: 443
-    targetPort: 443
+    - port: 443
+      targetPort: 443
   selector:
     app: admission-controller
 ---
@@ -64,7 +64,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: admission-controller
-  namespace: tidb-admin
+  namespace: ${NAMESPACE}
   labels:
     app: admission-controller
 spec:
@@ -108,7 +108,7 @@ webhooks:
     clientConfig:
       service:
         name: admission-controller-svc
-        namespace: tidb-admin
+        namespace: ${NAMESPACE}
         path: "/statefulsets"
       caBundle: ${CA_BUNDLE}
     rules:
