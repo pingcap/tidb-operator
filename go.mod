@@ -131,3 +131,5 @@ require (
 )
 
 replace github.com/renstrom/dedent => github.com/lithammer/dedent v1.1.0
+
+go 1.13
