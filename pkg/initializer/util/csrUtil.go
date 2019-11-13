@@ -49,7 +49,7 @@ func createApprovedCSR(serviceName, namespace string, ownerRefs []metav1.OwnerRe
 		return nil, err
 	}
 
-	csr := generateCSR(serviceName, namespace, ownerRefs, requestPem)
+	csr := generateCSR(csrName, ownerRefs, requestPem)
 	createdCSR, err := kubeCli.CertificatesV1beta1().CertificateSigningRequests().Create(csr)
 	if err != nil {
 		return nil, err
@@ -87,10 +87,10 @@ func approveCSR(csr *certificates.CertificateSigningRequest, kubeCli kubernetes.
 	return approvedCSR, nil
 }
 
-func generateCSR(service, namespace string, ownerRefs []metav1.OwnerReference, requestPem []byte) *certificates.CertificateSigningRequest {
+func generateCSR(csrName string, ownerRefs []metav1.OwnerReference, requestPem []byte) *certificates.CertificateSigningRequest {
 	csr := &certificates.CertificateSigningRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            fmt.Sprintf("%s.%s", service, namespace),
+			Name:            csrName,
 			OwnerReferences: ownerRefs,
 		},
 		Spec: certificates.CertificateSigningRequestSpec{
@@ -133,7 +133,10 @@ func waitUntilCsrExist(csrName string, kubeCli kubernetes.Interface, timeout tim
 	return wait.PollImmediate(1*time.Second, timeout, func() (done bool, err error) {
 		_, err = kubeCli.CertificatesV1beta1().CertificateSigningRequests().Get(csrName, metav1.GetOptions{})
 		if err != nil {
-			return false, nil
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
 		}
 		return true, nil
 	})
