@@ -19,6 +19,7 @@ The time zone for all images maintained by `tidb-operator` should be `UTC`. If y
 
 ## Detailed Bug Fixes and Changes
 
+- Upgrade default TiDB version to `v3.0.5` ([#1132](https://github.com/pingcap/tidb-operator/pull/1132))
 - Add the `timezone` support for all containers of the TiDB cluster ([#1122](https://github.com/pingcap/tidb-operator/pull/1122))
 - Support configuring resource requests and limits for all containers of the TiDB cluster ([#853](https://github.com/pingcap/tidb-operator/pull/853))
 
