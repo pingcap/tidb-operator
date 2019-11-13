@@ -48,7 +48,7 @@ func main() {
 	ns := "e2e"
 
 	var err error
-	certCtx, err = apimachinery.SetupServerCert(ns, tests.WebhookServiceName)
+	certCtx, err = apimachinery.SetupServerCert("tidb-operator-e2e", tests.WebhookServiceName)
 	if err != nil {
 		panic(err)
 	}

@@ -2852,6 +2852,7 @@ func (oa *operatorActions) RegisterWebHookAndService(context *apimachinery.CertC
 
 	namespace := os.Getenv("NAMESPACE")
 	configName := info.WebhookConfigName
+	failurePolicy := admissionV1beta1.Fail
 
 	_, err := client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(&admissionV1beta1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
@@ -2859,7 +2860,8 @@ func (oa *operatorActions) RegisterWebHookAndService(context *apimachinery.CertC
 		},
 		Webhooks: []admissionV1beta1.ValidatingWebhook{
 			{
-				Name: "check-pod-before-delete.k8s.io",
+				Name:          "check-pod-before-delete.k8s.io",
+				FailurePolicy: &failurePolicy,
 				Rules: []admissionV1beta1.RuleWithOperations{{
 					Operations: []admissionV1beta1.OperationType{admissionV1beta1.Delete},
 					Rule: admissionV1beta1.Rule{
