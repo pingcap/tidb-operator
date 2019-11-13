@@ -7,8 +7,8 @@ metadata:
     app: webhook-service
 spec:
   ports:
-  - port: 443
-    targetPort: 443
+    - port: 443
+      targetPort: 443
   selector:
     app: webhook
 ---
@@ -17,9 +17,9 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: tidb-operator-e2e
 subjects:
-- kind: ServiceAccount
-  namespace: tidb-operator-e2e
-  name: tidb-operator-e2e
+  - kind: ServiceAccount
+    namespace: tidb-operator-e2e
+    name: tidb-operator-e2e
 roleRef:
   kind: ClusterRole
   name: cluster-admin
@@ -41,28 +41,28 @@ metadata:
 spec:
   serviceAccount: tidb-operator-e2e
   containers:
-  - name: tidb-operator-e2e
-    image: localhost:5000/pingcap/tidb-operator-e2e:latest
-    imagePullPolicy: Always
-    command:
-    - /usr/local/bin/e2e
-    - --operator-tag=e2e
-    - --operator-image=localhost:5000/pingcap/tidb-operator:latest
-    - --test-apiserver-image=localhost:5000/pingcap/test-apiserver:latest
-    - --tidb-versions=v3.0.2,v3.0.3,v3.0.4
-    - --chart-dir=/charts
-    - -v=4
-    volumeMounts:
-    - mountPath: /logDir
-      name: logdir
-    env:
-    - name: NAMESPACE
-      valueFrom:
-        fieldRef:
-          fieldPath: metadata.namespace
+    - name: tidb-operator-e2e
+      image: localhost:5000/pingcap/tidb-operator-e2e:latest
+      imagePullPolicy: Always
+      command:
+        - /usr/local/bin/e2e
+        - --operator-tag=e2e
+        - --operator-image=localhost:5000/pingcap/tidb-operator:latest
+        - --test-apiserver-image=localhost:5000/pingcap/test-apiserver:latest
+        - --tidb-versions=v3.0.2,v3.0.3,v3.0.4,v3.0.5
+        - --chart-dir=/charts
+        - -v=4
+      volumeMounts:
+        - mountPath: /logDir
+          name: logdir
+      env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
   volumes:
-  - name: logdir
-    hostPath:
-      path: /var/log
-      type: Directory
+    - name: logdir
+      hostPath:
+        path: /var/log
+        type: Directory
   restartPolicy: Never
