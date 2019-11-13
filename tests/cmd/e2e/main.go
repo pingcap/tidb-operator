@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
+	"golang.org/x/mod/semver"
 	v1 "k8s.io/api/core/v1"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/component-base/logs"
@@ -62,7 +63,9 @@ func main() {
 	cluster2 := newTidbClusterConfig(ns, "cluster2", "admin", "")
 	cluster2.Resources["pd.replicas"] = "1"
 	// TLS only works with PD >= v3.0.5
-	//cluster2.Resources["enableTLSCluster"] = "true"
+	if semver.Compare(cfg.GetTiDBVersionOrDie(), "v3.0.5") >= 0 {
+		cluster2.Resources["enableTLSCluster"] = "true"
+	}
 	cluster3 := newTidbClusterConfig(ns, "cluster3", "admin", "")
 	cluster4 := newTidbClusterConfig(ns, "cluster4", "admin", "")
 	cluster5 := newTidbClusterConfig(ns, "cluster5", "", "v2.1.16") // for v2.1.x series
