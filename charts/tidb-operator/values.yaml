@@ -127,3 +127,8 @@ apiserver:
   #   value: tidb-operator
   #   effect: "NoSchedule"
 
+cert-manager:
+  ## cert-manager currently is not prod-ready, we strongly suggest not to enable it for now
+  ## If you want to enable cert-manager, you should install CRD first by
+  ## kubectl apply --validate=false -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.11/deploy/manifests/00-crds.yaml
+  enabled: false

@@ -1,0 +1,4 @@
+# requirements.yaml
+dependencies:
+  - name: cert-manager
+    condition: cert-manager.enabled
