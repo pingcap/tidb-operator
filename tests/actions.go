@@ -110,6 +110,8 @@ const (
 )
 
 type OperatorActions interface {
+	CleanCRDOrDie()
+	InstallCRDOrDie()
 	DeployOperator(info *OperatorConfig) error
 	DeployOperatorOrDie(info *OperatorConfig)
 	CleanOperator(info *OperatorConfig) error
@@ -356,6 +358,36 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		arr = append(arr, fmt.Sprintf("%s=%s", k, v))
 	}
 	return strings.Join(arr, ",")
+}
+
+func (oa *operatorActions) runKubectlOrDie(args ...string) string {
+	cmd := "kubectl"
+	glog.Infof("Running '%s %s'", cmd, strings.Join(args, " "))
+	out, err := exec.Command(cmd, args...).CombinedOutput()
+	if err != nil {
+		glog.Fatalf("Failed to run '%s %s'\nCombined output: %q\nError: %v", cmd, strings.Join(args, " "), string(out), err)
+	}
+	glog.Infof("Combined output: %q", string(out))
+	return string(out)
+}
+
+func (oa *operatorActions) CleanCRDOrDie() {
+	oa.runKubectlOrDie("delete", "crds", "--all")
+}
+
+// InstallCRDOrDie install CRDs and wait for them to be established in Kubernetes.
+func (oa *operatorActions) InstallCRDOrDie() {
+	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/crd.yaml"))
+	out := oa.runKubectlOrDie([]string{"get", "crds", "--no-headers", `-ojsonpath={range .items[*]}{.metadata.name}{" "}{end}`}...)
+	waitArgs := []string{"wait", "--for=condition=Established"}
+	for _, crd := range strings.Split(out, " ") {
+		crd = strings.TrimSpace(crd)
+		if crd == "" {
+			continue
+		}
+		waitArgs = append(waitArgs, fmt.Sprintf("crds/%s", crd))
+	}
+	oa.runKubectlOrDie(waitArgs...)
 }
 
 func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
