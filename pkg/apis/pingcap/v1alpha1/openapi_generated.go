@@ -1206,7 +1206,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 					},
 					"enableTLSCluster": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Enable TLS connection between TiDB server compoments",
+							Description: "Enable TLS connection between TiDB server components",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
