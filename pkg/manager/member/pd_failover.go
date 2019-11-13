@@ -18,8 +18,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -27,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	glog "k8s.io/klog"
 )
 
 // TODO add maxFailoverCount

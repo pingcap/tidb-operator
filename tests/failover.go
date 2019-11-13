@@ -9,9 +9,8 @@ import (
 
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/golang/glog"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
@@ -22,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	glog "k8s.io/klog"
 )
 
 func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error {
@@ -636,7 +636,7 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 		slack.NotifyAndPanic(fmt.Errorf("can't find kube-proxy in k8s cluster"))
 	}
 	if proxyPod != nil {
-		affectedPods[dnsPod.GetName()] = proxyPod
+		affectedPods[proxyPod.GetName()] = proxyPod
 	}
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(map[string]string{faultNode: faultNode}, affectedPods)
@@ -650,6 +650,17 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 		}
 		glog.V(4).Infof("tidb operator is available.")
 		err = oa.CheckTidbClustersAvailable(clusters)
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("all clusters is available")
+		return nil
+	})
+}
+
+func (oa *operatorActions) CheckAllApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckTidbClustersAvailable(clusters)
 		if err != nil {
 			return err
 		}

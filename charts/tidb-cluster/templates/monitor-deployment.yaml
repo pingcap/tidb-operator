@@ -1,5 +1,5 @@
 {{- if .Values.monitor.create }}
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ template "cluster.name" . }}-monitor
@@ -56,12 +56,28 @@ spec:
         env:
         - name: GF_PROVISIONING_PATH
           value: /grafana-dashboard-definitions/tidb
+        - name: GF_DATASOURCE_PATH
+          value: /etc/grafana/provisioning/datasources
         - name: TIDB_CLUSTER_NAME
           value: {{ template "cluster.name" . }}
         - name: TIDB_ENABLE_BINLOG
           value: {{ .Values.binlog.pump.create | default false | quote }}
         - name:  PROM_CONFIG_PATH
           value: /prometheus-rules
+        - name: PROM_PERSISTENT_DIR
+          value: /data
+        - name: TIDB_VERSION
+          value: {{ .Values.tidb.image }}
+        - name: GF_K8S_PROMETHEUS_URL
+          value: {{ .Values.monitor.initializer.config.K8S_PROMETHEUS_URL }}
+        - name: GF_TIDB_PROMETHEUS_URL
+          value: http://127.0.0.1:9090
+        - name: TIDB_CLUSTER_NAMESPACE
+          value: {{ .Release.Namespace }}
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
         command:
         - /bin/sh
         - -c
@@ -80,6 +96,9 @@ spec:
           readOnly: false
         - name: monitor-data
           mountPath: /data
+        - name: datasource
+          mountPath: /etc/grafana/provisioning/datasources
+          readOnly: false
         resources:
 {{ toYaml .Values.monitor.initializer.resources | indent 10 }}
       containers:
@@ -126,6 +145,8 @@ spec:
         imagePullPolicy: {{ .Values.monitor.reloader.imagePullPolicy | default "IfNotPresent" }}
         command:
         - /bin/reload
+        - --root-store-path=/data
+        - --sub-store-path={{ .Values.tidb.image }}
         - --watch-path=/prometheus-rules/rules
         - --prometheus-url=http://127.0.0.1:9090
         ports:
@@ -136,8 +157,15 @@ spec:
           - name: prometheus-rules
             mountPath: /prometheus-rules
             readOnly: false
+          - name: monitor-data
+            mountPath: /data
         resources:
 {{ toYaml .Values.monitor.reloader.resources | indent 10 }}
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
       {{- end }}
       {{- if .Values.monitor.grafana.create }}
       - name: grafana
@@ -200,11 +228,7 @@ spec:
           - key: prometheus-config
             path: prometheus.yml
       {{- if .Values.monitor.grafana.create }}
-      - configMap:
-          name: {{ template "cluster.name" . }}-monitor
-          items:
-          - key: datasource-config
-            path: datasource.yaml
+      - emptyDir: {}
         name: datasource
       - configMap:
           name: {{ template "cluster.name" . }}-monitor
@@ -212,11 +236,11 @@ spec:
           - key: dashboard-config
             path: dashboards.yaml
         name: dashboards-provisioning
+      {{- end }}
       - emptyDir: {}
         name: prometheus-rules
       - emptyDir: {}
         name: grafana-dashboard
-      {{- end }}
       {{- if .Values.enableTLSCluster }}
       - name: tls-pd-client
         secret:

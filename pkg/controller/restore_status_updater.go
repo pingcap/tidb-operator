@@ -17,12 +17,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
@@ -104,7 +104,7 @@ var _ RestoreConditionUpdaterInterface = &realRestoreConditionUpdater{}
 type FakeRestoreConditionUpdater struct {
 	RestoreLister        listers.RestoreLister
 	RestoreIndexer       cache.Indexer
-	updateRestoreTracker requestTracker
+	updateRestoreTracker RequestTracker
 }
 
 // NewFakeRestoreConditionUpdater returns a FakeRestoreConditionUpdater
@@ -112,22 +112,21 @@ func NewFakeRestoreConditionUpdater(restoreInformer informers.RestoreInformer) *
 	return &FakeRestoreConditionUpdater{
 		restoreInformer.Lister(),
 		restoreInformer.Informer().GetIndexer(),
-		requestTracker{0, nil, 0},
+		RequestTracker{},
 	}
 }
 
 // SetUpdateRestoreError sets the error attributes of updateRestoreTracker
 func (frc *FakeRestoreConditionUpdater) SetUpdateRestoreError(err error, after int) {
-	frc.updateRestoreTracker.err = err
-	frc.updateRestoreTracker.after = after
+	frc.updateRestoreTracker.SetError(err).SetAfter(after)
 }
 
 // UpdateRestore updates the Restore
 func (frc *FakeRestoreConditionUpdater) Update(restore *v1alpha1.Restore, _ *v1alpha1.RestoreCondition) error {
-	defer frc.updateRestoreTracker.inc()
-	if frc.updateRestoreTracker.errorReady() {
-		defer frc.updateRestoreTracker.reset()
-		return frc.updateRestoreTracker.err
+	defer frc.updateRestoreTracker.Inc()
+	if frc.updateRestoreTracker.ErrorReady() {
+		defer frc.updateRestoreTracker.Reset()
+		return frc.updateRestoreTracker.GetError()
 	}
 
 	return frc.RestoreIndexer.Update(restore)

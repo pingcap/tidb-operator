@@ -25,7 +25,7 @@ data:
 # This will combine all disks with mdadm or LVM.
 # If you don't want to combine disks, you can set NO_COMBINE_LOCAL_SSD=1
 # mdadm is preferred over LVM, to use LVM set USE_LVM=1
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: local-volume-provisioner

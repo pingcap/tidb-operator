@@ -9,13 +9,19 @@ variable "bastion_cpu_core_count" {
 }
 
 variable "operator_version" {
-  type = string
-  default = "v1.0.1"
+  type    = string
+  default = "v1.0.2"
 }
 
 variable "operator_helm_values" {
-  type = string
-  default = ""
+  description = "The helm values file for TiDB Operator, path is relative to current working dir"
+  type        = string
+  default     = ""
+}
+
+variable "override_values" {
+  description = "The helm values file for TiDB Cluster, path is relative to current working dir"
+  default     = ""
 }
 
 variable "bastion_ingress_cidr" {
@@ -30,11 +36,11 @@ variable "cluster_name" {
 
 variable "tidb_version" {
   description = "TiDB cluster version"
-  default     = "v3.0.1"
+  default     = "v3.0.4"
 }
 variable "tidb_cluster_chart_version" {
   description = "tidb-cluster chart version"
-  default     = "v1.0.1"
+  default     = "v1.0.2"
 }
 
 variable "pd_count" {
@@ -79,7 +85,7 @@ variable "default_worker_core_count" {
 
 variable "vpc_id" {
   description = "VPC id"
-  default = ""
+  default     = ""
 }
 
 variable "group_id" {

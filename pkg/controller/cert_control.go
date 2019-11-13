@@ -105,7 +105,7 @@ func (rcc *realCertControl) Create(certOpts *TiDBClusterCertOptions) error {
 		FieldSelector:  fields.OneTermEqualSelector("metadata.name", csrName).String(),
 	}
 
-	csrCh, err := rcc.kubeCli.Certificates().CertificateSigningRequests().Watch(watchReq)
+	csrCh, err := rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Watch(watchReq)
 	if err != nil {
 		glog.Errorf("error watch CSR for [%s/%s]: %s", certOpts.Namespace, certOpts.Instance, csrName)
 		return err
@@ -139,7 +139,7 @@ func (rcc *realCertControl) Create(certOpts *TiDBClusterCertOptions) error {
 				if err == nil {
 					// cleanup the approved csr
 					delOpts := &types.DeleteOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
-					return rcc.kubeCli.Certificates().CertificateSigningRequests().Delete(csrName, delOpts)
+					return rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Delete(csrName, delOpts)
 				}
 				return err
 			}
@@ -180,7 +180,7 @@ func (rcc *realCertControl) sendCSR(ns string, instance string, rawCSR []byte, c
 	if csr != nil {
 		glog.Infof("found exist CSR %s/%s created by tidb-operator, overwriting", ns, csrName)
 		delOpts := &types.DeleteOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
-		err := rcc.kubeCli.Certificates().CertificateSigningRequests().Delete(csrName, delOpts)
+		err := rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Delete(csrName, delOpts)
 		if err != nil {
 			return nil, fmt.Errorf("failed to delete exist old CSR for [%s/%s]: %s, error: %v", ns, instance, csrName, err)
 		}

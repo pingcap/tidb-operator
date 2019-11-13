@@ -16,12 +16,12 @@ package member
 import (
 	"fmt"
 
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	glog "k8s.io/klog"
 )
 
 type pdUpgrader struct {
@@ -61,9 +61,19 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 		return nil
 	}
 
+	if oldSet.Spec.UpdateStrategy.Type == apps.OnDeleteStatefulSetStrategyType || oldSet.Spec.UpdateStrategy.RollingUpdate == nil {
+		// Manually bypass tidb-operator to modify statefulset directly, such as modify pd statefulset's RollingUpdate straregy to OnDelete strategy,
+		// or set RollingUpdate to nil, skip tidb-operator's rolling update logic in order to speed up the upgrade in the test environment occasionally.
+		// If we encounter this situation, we will let the native statefulset controller do the upgrade completely, which may be unsafe for upgrading pd.
+		// Therefore, in the production environment, we should try to avoid modifying the pd statefulset update strategy directly.
+		newSet.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
+		glog.Warningf("tidbcluster: [%s/%s] pd statefulset %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
+		return nil
+	}
+
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	for i := tc.Status.PD.StatefulSet.Replicas - 1; i >= 0; i-- {
-		podName := pdPodName(tcName, i)
+		podName := PdPodName(tcName, i)
 		pod, err := pu.podLister.Pods(ns).Get(podName)
 		if err != nil {
 			return err
@@ -90,14 +100,14 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	upgradePodName := pdPodName(tcName, ordinal)
+	upgradePodName := PdPodName(tcName, ordinal)
 	if tc.Status.PD.Leader.Name == upgradePodName && tc.Status.PD.StatefulSet.Replicas > 1 {
 		lastOrdinal := tc.Status.PD.StatefulSet.Replicas - 1
 		var targetName string
 		if ordinal == lastOrdinal {
-			targetName = pdPodName(tcName, 0)
+			targetName = PdPodName(tcName, 0)
 		} else {
-			targetName = pdPodName(tcName, lastOrdinal)
+			targetName = PdPodName(tcName, lastOrdinal)
 		}
 		err := pu.transferPDLeaderTo(tc, targetName)
 		if err != nil {

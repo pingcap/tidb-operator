@@ -7,7 +7,7 @@
 - [**Blog**](https://www.pingcap.com/blog/)
 - [**For support, please contact PingCAP**](http://bit.ly/contact_us_via_github)
 
-[![Build Status](https://internal.pingcap.net/idc-jenkins/job/build_tidb_operator_master/badge/icon)](https://internal.pingcap.net/idc-jenkins/job/build_tidb_operator_master)
+[![Build Status](https://internal.pingcap.net/idc-jenkins/job/build_tidb_operator_master_kind/badge/icon)](https://internal.pingcap.net/idc-jenkins/job/build_tidb_operator_master_kind)
 [![codecov](https://codecov.io/gh/pingcap/tidb-operator/branch/master/graph/badge.svg)](https://codecov.io/gh/pingcap/tidb-operator)
 
 TiDB Operator manages [TiDB](https://github.com/pingcap/tidb) clusters on [Kubernetes](https://kubernetes.io) and automates tasks related to operating a TiDB cluster. It makes TiDB a truly cloud-native database.
@@ -52,7 +52,7 @@ Read the [Quick Start Guide](https://pingcap.com/docs/v3.0/tidb-in-kubernetes/ti
 ## Documentation
 
 - [English](https://pingcap.com/docs/v3.0/tidb-in-kubernetes/tidb-operator-overview/)
-- [简体中文](https://pingcap.com/docs-cn/v3.0/reference/tidb-operator-overview/)
+- [简体中文](https://pingcap.com/docs-cn/v3.0/tidb-in-kubernetes/tidb-operator-overview/)
 
 ## Contributing
 

@@ -43,9 +43,9 @@ spec:
     matchExpressions:
       - {key: app.kubernetes.io/name, operator: In, values: [tidb-operator, tidb-cluster, tidb-mp]}
   componentKinds:
-    - group: apps/v1beta2
+    - group: apps/v1
       kind: Deployment
-    - group: apps/v1beta2
+    - group: apps/v1
       kind: StatefulSet
     - group: batch/v1
       kind: Job

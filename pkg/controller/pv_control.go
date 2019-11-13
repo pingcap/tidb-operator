@@ -17,8 +17,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -30,6 +29,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
+	glog "k8s.io/klog"
 )
 
 // PVControlInterface manages PVs used in TidbCluster
@@ -178,7 +178,7 @@ var _ PVControlInterface = &realPVControl{}
 type FakePVControl struct {
 	PVCLister       corelisters.PersistentVolumeClaimLister
 	PVIndexer       cache.Indexer
-	updatePVTracker requestTracker
+	updatePVTracker RequestTracker
 }
 
 // NewFakePVControl returns a FakePVControl
@@ -186,22 +186,21 @@ func NewFakePVControl(pvInformer coreinformers.PersistentVolumeInformer, pvcInfo
 	return &FakePVControl{
 		pvcInformer.Lister(),
 		pvInformer.Informer().GetIndexer(),
-		requestTracker{0, nil, 0},
+		RequestTracker{},
 	}
 }
 
 // SetUpdatePVError sets the error attributes of updatePVTracker
 func (fpc *FakePVControl) SetUpdatePVError(err error, after int) {
-	fpc.updatePVTracker.err = err
-	fpc.updatePVTracker.after = after
+	fpc.updatePVTracker.SetError(err).SetAfter(after)
 }
 
 // PatchPVReclaimPolicy patchs the reclaim policy of PV
 func (fpc *FakePVControl) PatchPVReclaimPolicy(_ *v1alpha1.TidbCluster, pv *corev1.PersistentVolume, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
-	defer fpc.updatePVTracker.inc()
-	if fpc.updatePVTracker.errorReady() {
-		defer fpc.updatePVTracker.reset()
-		return fpc.updatePVTracker.err
+	defer fpc.updatePVTracker.Inc()
+	if fpc.updatePVTracker.ErrorReady() {
+		defer fpc.updatePVTracker.Reset()
+		return fpc.updatePVTracker.GetError()
 	}
 	pv.Spec.PersistentVolumeReclaimPolicy = reclaimPolicy
 
@@ -210,10 +209,10 @@ func (fpc *FakePVControl) PatchPVReclaimPolicy(_ *v1alpha1.TidbCluster, pv *core
 
 // UpdateMetaInfo update the meta info of pv
 func (fpc *FakePVControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
-	defer fpc.updatePVTracker.inc()
-	if fpc.updatePVTracker.errorReady() {
-		defer fpc.updatePVTracker.reset()
-		return nil, fpc.updatePVTracker.err
+	defer fpc.updatePVTracker.Inc()
+	if fpc.updatePVTracker.ErrorReady() {
+		defer fpc.updatePVTracker.Reset()
+		return nil, fpc.updatePVTracker.GetError()
 	}
 	ns := tc.GetNamespace()
 	pvcName := pv.Spec.ClaimRef.Name

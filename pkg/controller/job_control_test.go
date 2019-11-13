@@ -75,6 +75,7 @@ func TestJobControlDeleteJobSuccess(t *testing.T) {
 	})
 	err := control.DeleteJob(backup, job)
 	g.Expect(err).To(Succeed())
+
 	events := collectEvents(recorder.Events)
 	g.Expect(events).To(HaveLen(1))
 	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
@@ -91,7 +92,6 @@ func TestJobControlDeleteJobFailed(t *testing.T) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})
 	err := control.DeleteJob(backup, job)
-
 	g.Expect(err).To(HaveOccurred())
 
 	events := collectEvents(recorder.Events)

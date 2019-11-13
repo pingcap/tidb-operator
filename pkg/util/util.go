@@ -18,10 +18,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	glog "k8s.io/klog"
 )
 
 // ResourceRequirement creates ResourceRequirements for MemberSpec
@@ -90,4 +90,19 @@ func GetOrdinalFromPodName(podName string) (int32, error) {
 func GetNextOrdinalPodName(podName string, ordinal int32) string {
 	basicStr := podName[:strings.LastIndex(podName, "-")]
 	return fmt.Sprintf("%s-%d", basicStr, ordinal+1)
+}
+
+func IsPodOrdinalNotExceedReplicas(pod *corev1.Pod, specReplicas int32) (bool, error) {
+	ordinal, err := GetOrdinalFromPodName(pod.Name)
+	if err != nil {
+		return false, err
+	}
+	if ordinal < specReplicas {
+		return true, nil
+	}
+	return false, nil
+}
+
+func OrdinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%s-%d", memberType, setName, ordinal)
 }

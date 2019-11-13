@@ -49,7 +49,7 @@ resource "alicloud_security_group_rule" "cluster_worker_ingress" {
 
 # Create a managed Kubernetes cluster
 resource "alicloud_cs_managed_kubernetes" "k8s" {
-  name       = var.cluster_name
+  name = var.cluster_name
 
   // split and join: workaround for terraform's limitation of conditional list choice, similarly hereinafter
   vswitch_ids = [
@@ -60,14 +60,14 @@ resource "alicloud_cs_managed_kubernetes" "k8s" {
       ),
       0,
   )]
-  key_name             = alicloud_key_pair.default[0].key_name
-  pod_cidr             = var.k8s_pod_cidr
-  service_cidr         = var.k8s_service_cidr
-  new_nat_gateway      = var.create_nat_gateway
-  cluster_network_type = var.cluster_network_type
-  slb_internet_enabled = var.public_apiserver
-  kube_config          = var.kubeconfig_file != "" ? var.kubeconfig_file : format("%s/kubeconfig", path.cwd)
-  worker_numbers = [var.default_worker_count]
+  key_name              = alicloud_key_pair.default[0].key_name
+  pod_cidr              = var.k8s_pod_cidr
+  service_cidr          = var.k8s_service_cidr
+  new_nat_gateway       = var.create_nat_gateway
+  cluster_network_type  = var.cluster_network_type
+  slb_internet_enabled  = var.public_apiserver
+  kube_config           = var.kubeconfig_file != "" ? var.kubeconfig_file : format("%s/kubeconfig", path.cwd)
+  worker_numbers        = [var.default_worker_count]
   worker_instance_types = [var.default_worker_type != "" ? var.default_worker_type : data.alicloud_instance_types.default.instance_types[0].id]
 
   # These varialbes are 'ForceNew' that will cause kubernetes cluster re-creation

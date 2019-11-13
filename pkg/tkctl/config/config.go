@@ -20,12 +20,12 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	glog "k8s.io/klog"
 
 	restclient "k8s.io/client-go/rest"
 )

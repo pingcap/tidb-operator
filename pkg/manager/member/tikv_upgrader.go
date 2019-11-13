@@ -18,13 +18,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	glog "k8s.io/klog"
 )
 
 const (
@@ -73,6 +73,16 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	if tc.Status.TiKV.StatefulSet.UpdateRevision == tc.Status.TiKV.StatefulSet.CurrentRevision {
+		return nil
+	}
+
+	if oldSet.Spec.UpdateStrategy.Type == apps.OnDeleteStatefulSetStrategyType || oldSet.Spec.UpdateStrategy.RollingUpdate == nil {
+		// Manually bypass tidb-operator to modify statefulset directly, such as modify tikv statefulset's RollingUpdate strategy to OnDelete strategy,
+		// or set RollingUpdate to nil, skip tidb-operator's rolling update logic in order to speed up the upgrade in the test environment occasionally.
+		// If we encounter this situation, we will let the native statefulset controller do the upgrade completely, which may be unsafe for upgrading tikv.
+		// Therefore, in the production environment, we should try to avoid modifying the tikv statefulset update strategy directly.
+		newSet.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
+		glog.Warningf("tidbcluster: [%s/%s] tikv statefulset %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
 		return nil
 	}
 

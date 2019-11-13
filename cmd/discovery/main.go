@@ -7,14 +7,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/discovery/server"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/component-base/logs"
+	glog "k8s.io/klog"
 )
 
 var (

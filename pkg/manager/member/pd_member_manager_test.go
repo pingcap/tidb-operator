@@ -18,19 +18,22 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
@@ -238,7 +241,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 				set.Status.CurrentRevision = "pd-1"
 				set.Status.UpdateRevision = "pd-1"
 				observedGeneration := int64(1)
-				set.Status.ObservedGeneration = &observedGeneration
+				set.Status.ObservedGeneration = observedGeneration
 			})
 		} else {
 			fakeSetControl.SetStatusChange(test.statusChange)
@@ -328,7 +331,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.ClusterID).To(Equal("1"))
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.NormalPhase))
-				g.Expect(*tc.Status.PD.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
+				g.Expect(tc.Status.PD.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
 				g.Expect(len(tc.Status.PD.Members)).To(Equal(3))
 				g.Expect(tc.Status.PD.Members["pd1"].Health).To(Equal(true))
 				g.Expect(tc.Status.PD.Members["pd2"].Health).To(Equal(true))
@@ -500,7 +503,7 @@ func TestPDMemberManagerPdStatefulSetIsUpgrading(t *testing.T) {
 			setUpdate: func(set *apps.StatefulSet) {
 				set.Status.CurrentRevision = "v1"
 				set.Status.UpdateRevision = "v2"
-				set.Status.ObservedGeneration = func() *int64 { var i int64; i = 1000; return &i }()
+				set.Status.ObservedGeneration = 1000
 			},
 			hasPod:          false,
 			updatePod:       nil,
@@ -617,7 +620,7 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 				set.Status.CurrentRevision = "pd-1"
 				set.Status.UpdateRevision = "pd-1"
 				observedGeneration := int64(1)
-				set.Status.ObservedGeneration = &observedGeneration
+				set.Status.ObservedGeneration = observedGeneration
 			},
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
@@ -717,7 +720,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 				set.Status.CurrentRevision = "pd-1"
 				set.Status.UpdateRevision = "pd-1"
 				observedGeneration := int64(1)
-				set.Status.ObservedGeneration = &observedGeneration
+				set.Status.ObservedGeneration = observedGeneration
 			},
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
@@ -746,7 +749,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 				set.Status.CurrentRevision = "pd-1"
 				set.Status.UpdateRevision = "pd-1"
 				observedGeneration := int64(1)
-				set.Status.ObservedGeneration = &observedGeneration
+				set.Status.ObservedGeneration = observedGeneration
 			},
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
@@ -769,7 +772,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetControl, *controller.FakeServiceControl, *pdapi.FakePDControl, cache.Indexer, cache.Indexer, *controller.FakePodControl) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
+	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
@@ -849,4 +852,168 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 func expectErrIsNotFound(g *GomegaWithT, err error) {
 	g.Expect(err).NotTo(BeNil())
 	g.Expect(errors.IsNotFound(err)).To(Equal(true))
+}
+
+func TestGetNewPDHeadlessServiceForTidbCluster(t *testing.T) {
+	tests := []struct {
+		name     string
+		tc       v1alpha1.TidbCluster
+		expected corev1.Service
+	}{
+		{
+			name: "basic",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+			},
+			expected: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-pd-peer",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "pd",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "None",
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "peer",
+							Port:       2380,
+							TargetPort: intstr.FromInt(2380),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "pd",
+					},
+					PublishNotReadyAddresses: true,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := getNewPDHeadlessServiceForTidbCluster(&tt.tc)
+			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
+				t.Errorf("unexpected Service (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func testHostNetwork(t *testing.T, hostNetwork bool, dnsPolicy v1.DNSPolicy) func(sts *apps.StatefulSet) {
+	return func(sts *apps.StatefulSet) {
+		if hostNetwork != sts.Spec.Template.Spec.HostNetwork {
+			t.Errorf("unexpected hostNetwork %v, want %v", sts.Spec.Template.Spec.HostNetwork, hostNetwork)
+		}
+		if dnsPolicy != sts.Spec.Template.Spec.DNSPolicy {
+			t.Errorf("unexpected dnsPolicy %v, want %v", sts.Spec.Template.Spec.DNSPolicy, dnsPolicy)
+		}
+	}
+}
+
+func TestGetNewPDSetForTidbCluster(t *testing.T) {
+	tests := []struct {
+		name    string
+		tc      v1alpha1.TidbCluster
+		wantErr bool
+		testSts func(sts *apps.StatefulSet)
+	}{
+		{
+			name: "pd network is not host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+			},
+			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+		},
+		{
+			name: "pd network is host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							HostNetwork: true,
+						},
+					},
+				},
+			},
+			testSts: testHostNetwork(t, true, v1.DNSClusterFirstWithHostNet),
+		},
+		{
+			name: "pd network is not host when tidb is host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							HostNetwork: true,
+						},
+					},
+				},
+			},
+			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+		},
+		{
+			name: "pd network is not host when tikv is host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: v1alpha1.TiKVSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							HostNetwork: true,
+						},
+					},
+				},
+			},
+			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+		},
+		// TODO add more tests
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sts, err := getNewPDSetForTidbCluster(&tt.tc)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("error %v, wantErr %v", err, tt.wantErr)
+			}
+			tt.testSts(sts)
+		})
+	}
 }

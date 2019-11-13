@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/spf13/pflag"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 var (
@@ -68,7 +68,7 @@ func OpenDB(dsn string) (*sql.DB, error) {
 	}
 	if err := db.Ping(); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("can't connect to mysql: %s, err: %v", dsn, err)
+		return nil, fmt.Errorf("cannot connect to mysql: %s, err: %v", dsn, err)
 	}
 	return db, nil
 }

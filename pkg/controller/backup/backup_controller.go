@@ -17,13 +17,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/glog"
 	perrors "github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/backup"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -35,6 +34,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
+	glog "k8s.io/klog"
 )
 
 // Controller controls backup.
@@ -102,7 +102,7 @@ func NewController(
 		UpdateFunc: func(old, cur interface{}) {
 			bkc.updateBackup(cur)
 		},
-		DeleteFunc: bkc.enqueueBackup,
+		DeleteFunc: bkc.updateBackup,
 	})
 	bkc.backupLister = backupInformer.Lister()
 	bkc.backupListerSynced = backupInformer.Informer().HasSynced

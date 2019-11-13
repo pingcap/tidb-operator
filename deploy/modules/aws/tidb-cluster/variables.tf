@@ -1,11 +1,15 @@
+variable "region" {
+  description = "AWS region"
+}
+
 variable "tidb_cluster_chart_version" {
   description = "tidb-cluster chart version"
-  default     = "v1.0.1"
+  default     = "v1.0.2"
 }
 
 variable "create_tidb_cluster_release" {
   description = "Whether create tidb-cluster release in the node pools automatically"
-  default = true
+  default     = true
 }
 
 variable "cluster_name" {
@@ -15,7 +19,7 @@ variable "cluster_name" {
 
 variable "cluster_version" {
   type    = string
-  default = "v3.0.1"
+  default = "v3.0.4"
 }
 
 variable "ssh_key_name" {
@@ -59,8 +63,8 @@ variable "monitor_instance_type" {
 
 variable "override_values" {
   description = "The helm values of TiDB cluster, it is recommended to use the 'file()' function call to read the content from a local file, e.g. 'file(\"my-cluster.yaml\")'"
-  type    = string
-  default = ""
+  type        = string
+  default     = ""
 }
 
 variable "eks" {
@@ -156,5 +160,5 @@ variable "kubelet_extra_args" {
 variable "group_kubelet_extra_args" {
   description = "If provided, override the kubelet_extra_args for a specific node group which matches the key of map (e.g. tidb, tikv, pd, monitor)"
   type        = map(string)
-  default = {}
+  default     = {}
 }

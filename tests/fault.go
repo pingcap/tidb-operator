@@ -9,7 +9,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/tests/slack"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/client"
@@ -20,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	glog "k8s.io/klog"
 )
 
 const (
@@ -85,7 +85,7 @@ func (fa *faultTriggerActions) CheckAndRecoverEnv() error {
 	glog.Infof("ensure all nodes are running")
 	for _, physicalNode := range fa.cfg.Nodes {
 		for _, vNode := range physicalNode.Nodes {
-			err := fa.StartNode(physicalNode.PhysicalNode, vNode)
+			err := fa.StartNode(physicalNode.PhysicalNode, vNode.IP)
 			if err != nil {
 				return err
 			}
@@ -108,15 +108,15 @@ func (fa *faultTriggerActions) CheckAndRecoverEnv() error {
 	glog.Infof("ensure all static pods are running")
 	for _, physicalNode := range fa.cfg.APIServers {
 		for _, vNode := range physicalNode.Nodes {
-			err := fa.StartKubeAPIServer(vNode)
+			err := fa.StartKubeAPIServer(vNode.IP)
 			if err != nil {
 				return err
 			}
-			err = fa.StartKubeControllerManager(vNode)
+			err = fa.StartKubeControllerManager(vNode.IP)
 			if err != nil {
 				return err
 			}
-			err = fa.StartKubeScheduler(vNode)
+			err = fa.StartKubeScheduler(vNode.IP)
 			if err != nil {
 				return err
 			}
@@ -155,8 +155,13 @@ func (fa *faultTriggerActions) StopNode() (string, string, time.Time, error) {
 		Addr: fa.genFaultTriggerAddr(physicalNode),
 	})
 
+	name := getNameByIP(fa.cfg, node)
+	if name == "" {
+		return "", "", now, fmt.Errorf("failed to find %s's name in cfg:[%v]", node, fa.cfg)
+	}
+
 	if err := faultCli.StopVM(&manager.VM{
-		IP: node,
+		Name: name,
 	}); err != nil {
 		glog.Errorf("failed to stop node %s on physical node: %s: %v", node, physicalNode, err)
 		return "", "", now, err
@@ -187,14 +192,16 @@ func (fa *faultTriggerActions) StartNode(physicalNode string, node string) error
 		return err
 	}
 
+	name := getNameByIP(fa.cfg, node)
+
 	for _, vm := range vms {
-		if vm.IP == node && vm.Status == "running" {
+		if vm.Name == name && vm.Status == "running" {
 			return nil
 		}
 	}
 
 	if err := faultCli.StartVM(&manager.VM{
-		IP: node,
+		Name: name,
 	}); err != nil {
 		glog.Errorf("failed to start node %s on physical node %s: %v", node, physicalNode, err)
 		return err
@@ -322,7 +329,7 @@ func (fa *faultTriggerActions) StartKubeProxyOrDie() {
 func (fa *faultTriggerActions) StopETCD(nodes ...string) error {
 	if len(nodes) == 0 {
 		for _, ns := range fa.cfg.ETCDs {
-			nodes = append(nodes, ns.Nodes...)
+			nodes = append(nodes, getIps(ns.Nodes)...)
 		}
 	}
 
@@ -346,7 +353,7 @@ func (fa *faultTriggerActions) StopETCDOrDie(nodes ...string) {
 func (fa *faultTriggerActions) StopKubelet(nodes ...string) error {
 	if len(nodes) == 0 {
 		for _, ns := range fa.cfg.Nodes {
-			nodes = append(nodes, ns.Nodes...)
+			nodes = append(nodes, getIps(ns.Nodes)...)
 		}
 	}
 
@@ -370,7 +377,7 @@ func (fa *faultTriggerActions) StopKubeletOrDie(nodes ...string) {
 func (fa *faultTriggerActions) StartKubelet(nodes ...string) error {
 	if len(nodes) == 0 {
 		for _, ns := range fa.cfg.Nodes {
-			nodes = append(nodes, ns.Nodes...)
+			nodes = append(nodes, getIps(ns.Nodes)...)
 		}
 	}
 
@@ -394,7 +401,7 @@ func (fa *faultTriggerActions) StartKubeletOrDie(nodes ...string) {
 func (fa *faultTriggerActions) StartETCD(nodes ...string) error {
 	if len(nodes) == 0 {
 		for _, ns := range fa.cfg.ETCDs {
-			nodes = append(nodes, ns.Nodes...)
+			nodes = append(nodes, getIps(ns.Nodes)...)
 		}
 	}
 
@@ -599,7 +606,7 @@ func getPhysicalNode(faultNode string, cfg *Config) string {
 	var physicalNode string
 	for _, nodes := range cfg.Nodes {
 		for _, node := range nodes.Nodes {
-			if node == faultNode {
+			if node.IP == faultNode {
 				physicalNode = nodes.PhysicalNode
 			}
 		}
@@ -611,7 +618,26 @@ func getPhysicalNode(faultNode string, cfg *Config) string {
 func getAllK8sNodes(cfg *Config) []string {
 	var allNodes []string
 	for _, nodes := range cfg.Nodes {
-		allNodes = append(allNodes, nodes.Nodes...)
+		allNodes = append(allNodes, getIps(nodes.Nodes)...)
 	}
 	return allNodes
+}
+
+func getNameByIP(cfg *Config, ip string) string {
+	for _, nodes := range cfg.Nodes {
+		for _, node := range nodes.Nodes {
+			if node.IP == ip {
+				return node.Name
+			}
+		}
+	}
+	return ""
+}
+
+func getIps(nodes []Node) []string {
+	var ips []string
+	for _, node := range nodes {
+		ips = append(ips, node.IP)
+	}
+	return ips
 }

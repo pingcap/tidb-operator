@@ -20,7 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -154,6 +154,52 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 			},
 			expectFn: func(t *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				t.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(3))
+				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
+			},
+		},
+		{
+			name: "max failover count but maxFailoverCount = 0",
+			update: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiDB.MaxFailoverCount = 0
+				tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{
+					"failover-tidb-0": {
+						Name:   "failover-tidb-0",
+						Health: false,
+					},
+					"failover-tidb-1": {
+						Name:   "failover-tidb-1",
+						Health: false,
+					},
+					"failover-tidb-2": {
+						Name:   "failover-tidb-2",
+						Health: false,
+					},
+					"failover-tidb-3": {
+						Name:   "failover-tidb-3",
+						Health: false,
+					},
+					"failover-tidb-4": {
+						Name:   "failover-tidb-4",
+						Health: false,
+					},
+				}
+				tc.Status.TiDB.FailureMembers = map[string]v1alpha1.TiDBFailureMember{
+					"failover-tidb-0": {
+						PodName: "failover-tidb-0",
+					},
+					"failover-tidb-1": {
+						PodName: "failover-tidb-1",
+					},
+					"failover-tidb-2": {
+						PodName: "failover-tidb-2",
+					},
+				}
+			},
+			errExpectFn: func(t *GomegaWithT, err error) {
+				t.Expect(err).NotTo(HaveOccurred())
+			},
+			expectFn: func(t *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				t.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(4))
 				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
 			},
 		},

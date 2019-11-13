@@ -16,11 +16,11 @@ package restore
 import (
 	"fmt"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	batchv1 "k8s.io/api/batch/v1"
@@ -86,7 +86,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	backup, reason, err := rm.getBackupFromRestore(restore)
 	if err != nil {
 		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
+			Type:    v1alpha1.RestoreRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
 			Message: err.Error(),
@@ -97,7 +97,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	job, reason, err := rm.makeRestoreJob(restore, backup)
 	if err != nil {
 		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
+			Type:    v1alpha1.RestoreRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
 			Message: err.Error(),
@@ -108,7 +108,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	reason, err = rm.ensureRestorePVCExist(restore)
 	if err != nil {
 		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
+			Type:    v1alpha1.RestoreRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
 			Message: err.Error(),
@@ -119,7 +119,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	if err := rm.jobControl.CreateJob(restore, job); err != nil {
 		errMsg := fmt.Errorf("create restore %s/%s job %s failed, err: %v", ns, name, restoreJobName, err)
 		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
+			Type:    v1alpha1.RestoreRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateRestoreJobFailed",
 			Message: errMsg.Error(),
@@ -155,7 +155,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore, backup *v1al
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
-	user, password, reason, err := backuputil.GetTidbUserAndPassword(backup, rm.secretLister)
+	user, password, reason, err := backuputil.GetTidbUserAndPassword(ns, name, restore.Spec.TidbSecretName, rm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}

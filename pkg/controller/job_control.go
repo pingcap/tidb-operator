@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -28,6 +27,7 @@ import (
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	glog "k8s.io/klog"
 )
 
 // JobControlInterface manages Jobs used in backup、restore and clean
@@ -112,8 +112,8 @@ var _ JobControlInterface = &realJobControl{}
 type FakeJobControl struct {
 	JobLister        batchlisters.JobLister
 	JobIndexer       cache.Indexer
-	createJobTracker requestTracker
-	deleteJobTracker requestTracker
+	createJobTracker RequestTracker
+	deleteJobTracker RequestTracker
 }
 
 // NewFakeJobControl returns a FakeJobControl
@@ -121,29 +121,27 @@ func NewFakeJobControl(jobInformer batchinformers.JobInformer) *FakeJobControl {
 	return &FakeJobControl{
 		jobInformer.Lister(),
 		jobInformer.Informer().GetIndexer(),
-		requestTracker{0, nil, 0},
-		requestTracker{0, nil, 0},
+		RequestTracker{},
+		RequestTracker{},
 	}
 }
 
 // SetCreateJobError sets the error attributes of createJobTracker
 func (fjc *FakeJobControl) SetCreateJobError(err error, after int) {
-	fjc.createJobTracker.err = err
-	fjc.createJobTracker.after = after
+	fjc.createJobTracker.SetError(err).SetAfter(after)
 }
 
 // SetDeleteJobError sets the error attributes of deleteJobTracker
 func (fjc *FakeJobControl) SetDeleteJobError(err error, after int) {
-	fjc.deleteJobTracker.err = err
-	fjc.deleteJobTracker.after = after
+	fjc.deleteJobTracker.SetError(err).SetAfter(after)
 }
 
 // CreateJob adds the job to JobIndexer
 func (fjc *FakeJobControl) CreateJob(_ runtime.Object, job *batchv1.Job) error {
-	defer fjc.createJobTracker.inc()
-	if fjc.createJobTracker.errorReady() {
-		defer fjc.createJobTracker.reset()
-		return fjc.createJobTracker.err
+	defer fjc.createJobTracker.Inc()
+	if fjc.createJobTracker.ErrorReady() {
+		defer fjc.createJobTracker.Reset()
+		return fjc.createJobTracker.GetError()
 	}
 
 	return fjc.JobIndexer.Add(job)
@@ -151,10 +149,10 @@ func (fjc *FakeJobControl) CreateJob(_ runtime.Object, job *batchv1.Job) error {
 
 // DeleteJob deletes the job
 func (fjc *FakeJobControl) DeleteJob(_ runtime.Object, _ *batchv1.Job) error {
-	defer fjc.deleteJobTracker.inc()
-	if fjc.deleteJobTracker.errorReady() {
-		defer fjc.deleteJobTracker.reset()
-		return fjc.deleteJobTracker.err
+	defer fjc.deleteJobTracker.Inc()
+	if fjc.deleteJobTracker.ErrorReady() {
+		defer fjc.deleteJobTracker.Reset()
+		return fjc.deleteJobTracker.GetError()
 	}
 	return nil
 }

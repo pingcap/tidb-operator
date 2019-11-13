@@ -18,16 +18,17 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	"k8s.io/api/admission/v1beta1"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
+	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
+	glog "k8s.io/klog"
 )
 
 var (
@@ -45,42 +46,45 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	namespace := ar.Request.Namespace
 	glog.V(4).Infof("admit statefulsets [%s/%s]", namespace, name)
 
-	setResource := metav1.GroupVersionResource{Group: "apps", Version: "v1beta1", Resource: "statefulsets"}
-	if ar.Request.Resource != setResource {
+	apiVersion := ar.Request.Resource.Version
+	setResource := metav1.GroupVersionResource{Group: "apps", Version: apiVersion, Resource: "statefulsets"}
+	if ar.Request.Resource.Group != "apps" || ar.Request.Resource.Resource != "statefulsets" {
 		err := fmt.Errorf("expect resource to be %s instead of %s", setResource, ar.Request.Resource)
-		glog.Errorf("%v", err)
+		glog.Error(err)
 		return util.ARFail(err)
 	}
 
 	if versionCli == nil {
 		cfg, err := rest.InClusterConfig()
 		if err != nil {
-			glog.Errorf("statefulset %s/%s, get k8s cluster config failed, err: %v", namespace, name, err)
+			err := fmt.Errorf("statefulset %s/%s, get k8s cluster config failed, err: %v", namespace, name, err)
+			glog.Errorf(err.Error())
 			return util.ARFail(err)
 		}
 
 		versionCli, err = versioned.NewForConfig(cfg)
 		if err != nil {
-			glog.Errorf("statefulset %s/%s, create Clientset failed, err: %v", namespace, name, err)
+			err := fmt.Errorf("statefulset %s/%s, create Clientset failed, err: %v", namespace, name, err)
+			glog.Errorf(err.Error())
 			return util.ARFail(err)
 		}
 	}
 
-	raw := ar.Request.OldObject.Raw
-	set := apps.StatefulSet{}
-	if _, _, err := deserializer.Decode(raw, nil, &set); err != nil {
-		glog.Errorf("statefulset %s/%s, decode request failed, err: %v", namespace, name, err)
+	stsObjectMeta, stsPartition, err := getStsAttributes(ar.Request.OldObject.Raw, apiVersion)
+	if err != nil {
+		err = fmt.Errorf("statefulset %s/%s, decode request failed, err: %v", namespace, name, err)
+		glog.Error(err)
 		return util.ARFail(err)
 	}
 
-	l := label.Label(set.Labels)
+	l := label.Label(stsObjectMeta.Labels)
 
 	if !(l.IsTiDB() || l.IsTiKV()) {
 		// If it is not statefulset of tikv and tidb, return quickly.
 		return util.ARSuccess()
 	}
 
-	controllerRef := metav1.GetControllerOf(&set)
+	controllerRef := metav1.GetControllerOf(stsObjectMeta)
 	if controllerRef == nil || controllerRef.Kind != controller.ControllerKind.Kind {
 		// In this case, we can't tell if this statefulset is controlled by tidb-operator,
 		// so we don't block this statefulset upgrade, return directly.
@@ -91,7 +95,8 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	tcName := controllerRef.Name
 	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
 	if err != nil {
-		glog.Errorf("get tidbcluster %s/%s failed, statefulset %s, err %v", namespace, tcName, name, err)
+		err := fmt.Errorf("get tidbcluster %s/%s failed, statefulset %s, err %v", namespace, tcName, name, err)
+		glog.Errorf(err.Error())
 		return util.ARFail(err)
 	}
 
@@ -107,15 +112,32 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 	partition, err := strconv.ParseInt(partitionStr, 10, 32)
 	if err != nil {
-		glog.Errorf("statefulset %s/%s, convert partition str %s to int failed, err: %v", namespace, name, partitionStr, err)
+		err := fmt.Errorf("statefulset %s/%s, convert partition str %s to int failed, err: %v", namespace, name, partitionStr, err)
+		glog.Errorf(err.Error())
 		return util.ARFail(err)
 	}
 
-	setPartition := *set.Spec.UpdateStrategy.RollingUpdate.Partition
+	setPartition := *(stsPartition)
 	if setPartition > 0 && setPartition <= int32(partition) {
 		glog.V(4).Infof("statefulset %s/%s has been protect by partition %s annotations", namespace, name, partitionStr)
 		return util.ARFail(errors.New("protect by partition annotation"))
 	}
 	glog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, setPartition, partition)
 	return util.ARSuccess()
+}
+
+func getStsAttributes(data []byte, apiVersion string) (*metav1.ObjectMeta, *int32, error) {
+	if apiVersion == "v1" {
+		set := apps.StatefulSet{}
+		if _, _, err := deserializer.Decode(data, nil, &set); err != nil {
+			return nil, nil, err
+		}
+		return &(set.ObjectMeta), set.Spec.UpdateStrategy.RollingUpdate.Partition, nil
+	}
+
+	set := appsv1beta1.StatefulSet{}
+	if _, _, err := deserializer.Decode(data, nil, &set); err != nil {
+		return nil, nil, err
+	}
+	return &(set.ObjectMeta), set.Spec.UpdateStrategy.RollingUpdate.Partition, nil
 }

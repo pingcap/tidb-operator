@@ -8,25 +8,51 @@ data:
     block_writer:
       concurrency: 12
     nodes:
-      - physical_node: 172.16.4.38
+      - physical_node: 172.16.5.11
         nodes:
-          - 172.16.4.177
-          - 172.16.4.178
-          - 172.16.4.179
-      - physical_node: 172.16.4.37
+        - ip: 172.16.4.247
+          name: 105
+      - physical_node: 172.16.5.26
         nodes:
-          - 172.16.4.180
-          - 172.16.4.181
-          - 172.16.4.182
+        - ip: 172.16.4.133
+          name: 200
+      - physical_node: 172.16.5.27
+        nodes:
+        - ip: 172.16.4.121
+          name: 203
+      - physical_node: 172.16.5.28
+        nodes:
+        - ip: 172.16.4.139
+          name: 204
+      - physical_node: 172.16.5.29
+        nodes:
+        - ip: 172.16.5.147
+          name: 137
+        - ip: 172.16.5.148
+          name: 138
     etcds:
-      - physical_node: 172.16.4.37
+      - physical_node: 172.16.5.11
         nodes:
-          - 172.16.4.180
-          - 172.16.4.181
-          - 172.16.4.182
+        - ip: 172.16.4.247
+          name: 105
+      - physical_node: 172.16.5.26
+        nodes:
+        - ip: 172.16.4.133
+          name: 200
+      - physical_node: 172.16.5.27
+        nodes:
+        - ip: 172.16.4.121
+          name: 203
     apiservers:
-      - physical_node: 172.16.4.37
+      - physical_node: 172.16.5.11
         nodes:
-          - 172.16.4.180
-          - 172.16.4.181
-          - 172.16.4.182
+        - ip: 172.16.4.247
+          name: 105
+      - physical_node: 172.16.5.26
+        nodes:
+        - ip: 172.16.4.133
+          name: 200
+      - physical_node: 172.16.5.27
+        nodes:
+        - ip: 172.16.4.121
+          name: 203

@@ -17,18 +17,798 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
 )
 
-func TestPVCCleanerClean(t *testing.T) {
+func TestPVCCleanerReclaimPV(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tc := newTidbClusterForPD()
+	type testcase struct {
+		name            string
+		pods            []*corev1.Pod
+		apiPods         []*corev1.Pod
+		pvcs            []*corev1.PersistentVolumeClaim
+		apiPvcs         []*corev1.PersistentVolumeClaim
+		pvs             []*corev1.PersistentVolume
+		getPodFailed    bool
+		patchPVFailed   bool
+		getPVCFailed    bool
+		deletePVCFailed bool
+		expectFn        func(*GomegaWithT, map[string]string, *realPVCCleaner, error)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		pcc, fakeCli, podIndexer, pvcIndexer, pvcControl, pvIndexer, pvControl := newFakePVCCleaner()
+		if test.pods != nil {
+			for _, pod := range test.pods {
+				podIndexer.Add(pod)
+			}
+		}
+		if test.apiPods != nil {
+			for _, apiPod := range test.apiPods {
+				fakeCli.CoreV1().Pods(apiPod.GetNamespace()).Create(apiPod)
+			}
+		}
+		if test.pvcs != nil {
+			for _, pvc := range test.pvcs {
+				pvcIndexer.Add(pvc)
+			}
+		}
+		if test.apiPvcs != nil {
+			for _, apiPvc := range test.apiPvcs {
+				fakeCli.CoreV1().PersistentVolumeClaims(apiPvc.GetNamespace()).Create(apiPvc)
+			}
+		}
+		if test.pvs != nil {
+			for _, pv := range test.pvs {
+				pvIndexer.Add(pv)
+			}
+		}
+		if test.getPodFailed {
+			fakeCli.PrependReactor("get", "pods", func(action core.Action) (bool, runtime.Object, error) {
+				return true, nil, fmt.Errorf("API server down")
+			})
+		}
+		if test.patchPVFailed {
+			pvControl.SetUpdatePVError(fmt.Errorf("patch pv failed"), 0)
+		}
+		if test.getPVCFailed {
+			fakeCli.PrependReactor("get", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
+				return true, nil, fmt.Errorf("API server down")
+			})
+		}
+		if test.deletePVCFailed {
+			pvcControl.SetDeletePVCError(fmt.Errorf("delete pvc failed"), 0)
+		}
+
+		skipReason, err := pcc.reclaimPV(tc)
+		test.expectFn(g, skipReason, pcc, err)
+	}
+	tests := []testcase{
+		{
+			name:            "no pvcs",
+			pods:            nil,
+			apiPods:         nil,
+			pvcs:            nil,
+			apiPvcs:         nil,
+			pvs:             nil,
+			getPodFailed:    false,
+			patchPVFailed:   false,
+			getPVCFailed:    false,
+			deletePVCFailed: false,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(0))
+			},
+		},
+		{
+			name:    "not pd or tikv pvcs",
+			pods:    nil,
+			apiPods: nil,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: metav1.NamespaceDefault,
+						Name:      "tidb-test-tidb-0",
+						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).TiDB().Labels(),
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			apiPvcs:         nil,
+			pvs:             nil,
+			getPodFailed:    false,
+			patchPVFailed:   false,
+			getPVCFailed:    false,
+			deletePVCFailed: false,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["tidb-test-tidb-0"]).To(Equal(skipReasonPVCCleanerIsNotPDOrTiKV))
+			},
+		},
+		{
+			name:    "pvc is not bound",
+			pods:    nil,
+			apiPods: nil,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: metav1.NamespaceDefault,
+						Name:      "tidb-test-tidb-0",
+						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimPending,
+					},
+				},
+			},
+			apiPvcs:         nil,
+			pvs:             nil,
+			getPodFailed:    false,
+			patchPVFailed:   false,
+			getPVCFailed:    false,
+			deletePVCFailed: false,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["tidb-test-tidb-0"]).To(Equal(skipReasonPVCCleanerPVCNotBound))
+			},
+		},
+		{
+			name:    "pvc has been deleted",
+			pods:    nil,
+			apiPods: nil,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:         metav1.NamespaceDefault,
+						Name:              "tidb-test-tidb-0",
+						DeletionTimestamp: &metav1.Time{Time: time.Now()},
+						Labels:            label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			apiPvcs:         nil,
+			pvs:             nil,
+			getPodFailed:    false,
+			patchPVFailed:   false,
+			deletePVCFailed: false,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["tidb-test-tidb-0"]).To(Equal(skipReasonPVCCleanerPVCHasBeenDeleted))
+			},
+		},
+		{
+			name:    "pvc is not defer delete pvc",
+			pods:    nil,
+			apiPods: nil,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: metav1.NamespaceDefault,
+						Name:      "pd-test-pd-0",
+						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			pvs:             nil,
+			getPodFailed:    false,
+			patchPVFailed:   false,
+			getPVCFailed:    false,
+			deletePVCFailed: false,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["pd-test-pd-0"]).To(Equal(skipReasonPVCCleanerIsNotDeferDeletePVC))
+			},
+		},
+		{
+			name:    "pvc not has pod name annotation",
+			pods:    nil,
+			apiPods: nil,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: metav1.NamespaceDefault,
+						Name:      "pd-test-pd-0",
+						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
+						},
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			apiPvcs:         nil,
+			pvs:             nil,
+			getPodFailed:    false,
+			patchPVFailed:   false,
+			getPVCFailed:    false,
+			deletePVCFailed: false,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["pd-test-pd-0"]).To(Equal(skipReasonPVCCleanerPVCNotHasPodNameAnn))
+			},
+		},
+		{
+			name: "pvc is still referenced by pod,",
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-pd-0",
+						Namespace: metav1.NamespaceDefault,
+						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+					},
+				},
+			},
+			apiPods: nil,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: metav1.NamespaceDefault,
+						Name:      "pd-test-pd-0",
+						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
+							label.AnnPodNameKey:       "test-pd-0",
+						},
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			apiPvcs:         nil,
+			pvs:             nil,
+			getPodFailed:    false,
+			patchPVFailed:   false,
+			getPVCFailed:    false,
+			deletePVCFailed: false,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["pd-test-pd-0"]).To(Equal(skipReasonPVCCleanerPVCeferencedByPod))
+			},
+		},
+		{
+			name: "not found pod that referenced pvc from local cache, but found this pod from apiserver",
+			pods: nil,
+			apiPods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-pd-0",
+						Namespace: metav1.NamespaceDefault,
+						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+					},
+				},
+			},
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: metav1.NamespaceDefault,
+						Name:      "pd-test-pd-0",
+						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
+							label.AnnPodNameKey:       "test-pd-0",
+						},
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			apiPvcs:         nil,
+			pvs:             nil,
+			getPodFailed:    false,
+			patchPVFailed:   false,
+			getPVCFailed:    false,
+			deletePVCFailed: false,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["pd-test-pd-0"]).To(Equal(skipReasonPVCCleanerPVCeferencedByPod))
+			},
+		},
+		{
+			name: "get pod from apiserver failed",
+			pods: nil,
+			apiPods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-pd-0",
+						Namespace: metav1.NamespaceDefault,
+						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+					},
+				},
+			},
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: metav1.NamespaceDefault,
+						Name:      "pd-test-pd-0",
+						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
+							label.AnnPodNameKey:       "test-pd-0",
+						},
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			apiPvcs:         nil,
+			pvs:             nil,
+			getPodFailed:    true,
+			patchPVFailed:   false,
+			getPVCFailed:    false,
+			deletePVCFailed: false,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(0))
+				g.Expect(strings.Contains(err.Error(), "API server down")).To(BeTrue())
+			},
+		},
+		{
+			name:    "not found pv bound to pvc",
+			pods:    nil,
+			apiPods: nil,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: metav1.NamespaceDefault,
+						Name:      "pd-test-pd-0",
+						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
+							label.AnnPodNameKey:       "test-pd-0",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pd-local-pv-0",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			apiPvcs:         nil,
+			pvs:             nil,
+			getPodFailed:    false,
+			patchPVFailed:   false,
+			getPVCFailed:    false,
+			deletePVCFailed: false,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["pd-test-pd-0"]).To(Equal(skipReasonPVCCleanerNotFoundPV))
+			},
+		},
+		{
+			name:    "patch pv reclaim policy to delete policy failed",
+			pods:    nil,
+			apiPods: nil,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: metav1.NamespaceDefault,
+						Name:      "pd-test-pd-0",
+						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
+							label.AnnPodNameKey:       "test-pd-0",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pd-local-pv-0",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			apiPvcs: nil,
+			pvs: []*corev1.PersistentVolume{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolume", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pd-local-pv-0",
+						Namespace: metav1.NamespaceAll,
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
+					},
+				},
+			},
+			getPodFailed:    false,
+			patchPVFailed:   true,
+			getPVCFailed:    false,
+			deletePVCFailed: false,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(0))
+				g.Expect(strings.Contains(err.Error(), "patch pv failed")).To(BeTrue())
+			},
+		},
+		{
+			name:    "found pvc from local cache, but not found this pvc from apiserver",
+			pods:    nil,
+			apiPods: nil,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: metav1.NamespaceDefault,
+						Name:      "pd-test-pd-0",
+						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
+							label.AnnPodNameKey:       "test-pd-0",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pd-local-pv-0",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			apiPvcs: nil,
+			pvs: []*corev1.PersistentVolume{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolume", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pd-local-pv-0",
+						Namespace: metav1.NamespaceAll,
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
+					},
+				},
+			},
+			getPodFailed:    false,
+			patchPVFailed:   false,
+			getPVCFailed:    false,
+			deletePVCFailed: false,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["pd-test-pd-0"]).To(Equal(skipReasonPVCCleanerPVCNotFound))
+			},
+		},
+		{
+			name:    "get pvc from apiserver failed",
+			pods:    nil,
+			apiPods: nil,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:       metav1.NamespaceDefault,
+						Name:            "pd-test-pd-0",
+						UID:             types.UID("pd-test"),
+						ResourceVersion: "1",
+						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
+							label.AnnPodNameKey:       "test-pd-0",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pd-local-pv-0",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			apiPvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:       metav1.NamespaceDefault,
+						Name:            "pd-test-pd-0",
+						UID:             types.UID("pd-test"),
+						ResourceVersion: "1",
+						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
+							label.AnnPodNameKey:       "test-pd-0",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pd-local-pv-0",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			pvs: []*corev1.PersistentVolume{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolume", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pd-local-pv-0",
+						Namespace: metav1.NamespaceAll,
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
+					},
+				},
+			},
+			getPodFailed:    false,
+			patchPVFailed:   false,
+			getPVCFailed:    true,
+			deletePVCFailed: false,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(0))
+				g.Expect(strings.Contains(err.Error(), "API server down")).To(BeTrue())
+			},
+		},
+		{
+			name:    "pvc has been changed",
+			pods:    nil,
+			apiPods: nil,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:       metav1.NamespaceDefault,
+						Name:            "pd-test-pd-0",
+						UID:             types.UID("pd-test"),
+						ResourceVersion: "1",
+						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
+							label.AnnPodNameKey:       "test-pd-0",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pd-local-pv-0",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			apiPvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:       metav1.NamespaceDefault,
+						Name:            "pd-test-pd-0",
+						UID:             types.UID("pd-test"),
+						ResourceVersion: "2",
+						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
+							label.AnnPodNameKey:       "test-pd-0",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pd-local-pv-0",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			pvs: []*corev1.PersistentVolume{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolume", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pd-local-pv-0",
+						Namespace: metav1.NamespaceAll,
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
+					},
+				},
+			},
+			getPodFailed:    false,
+			patchPVFailed:   false,
+			getPVCFailed:    false,
+			deletePVCFailed: false,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["pd-test-pd-0"]).To(Equal(skipReasonPVCCleanerPVCChanged))
+			},
+		},
+		{
+			name:    "delete pvc failed",
+			pods:    nil,
+			apiPods: nil,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:       metav1.NamespaceDefault,
+						Name:            "pd-test-pd-0",
+						UID:             types.UID("pd-test"),
+						ResourceVersion: "1",
+						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
+							label.AnnPodNameKey:       "test-pd-0",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pd-local-pv-0",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			apiPvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:       metav1.NamespaceDefault,
+						Name:            "pd-test-pd-0",
+						UID:             types.UID("pd-test"),
+						ResourceVersion: "1",
+						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
+							label.AnnPodNameKey:       "test-pd-0",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pd-local-pv-0",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			pvs: []*corev1.PersistentVolume{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolume", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pd-local-pv-0",
+						Namespace: metav1.NamespaceAll,
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
+					},
+				},
+			},
+			getPodFailed:    false,
+			patchPVFailed:   false,
+			deletePVCFailed: true,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, pcc *realPVCCleaner, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(0))
+				pv, pvGetErr := pcc.pvLister.Get("pd-local-pv-0")
+				g.Expect(pvGetErr).NotTo(HaveOccurred())
+				g.Expect(pv.Spec.PersistentVolumeReclaimPolicy).To(Equal(corev1.PersistentVolumeReclaimDelete))
+				g.Expect(strings.Contains(err.Error(), "delete pvc failed")).To(BeTrue())
+			},
+		},
+		{
+			name:    "the defer delete pvc has been remove and reclaim pv success",
+			pods:    nil,
+			apiPods: nil,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:       metav1.NamespaceDefault,
+						Name:            "pd-test-pd-0",
+						UID:             types.UID("pd-test"),
+						ResourceVersion: "1",
+						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
+							label.AnnPodNameKey:       "test-pd-0",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pd-local-pv-0",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			apiPvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:       metav1.NamespaceDefault,
+						Name:            "pd-test-pd-0",
+						UID:             types.UID("pd-test"),
+						ResourceVersion: "1",
+						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Annotations: map[string]string{
+							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
+							label.AnnPodNameKey:       "test-pd-0",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pd-local-pv-0",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			pvs: []*corev1.PersistentVolume{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolume", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pd-local-pv-0",
+						Namespace: metav1.NamespaceAll,
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
+					},
+				},
+			},
+			getPodFailed:    false,
+			patchPVFailed:   false,
+			deletePVCFailed: false,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, pcc *realPVCCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(0))
+				pv, pvGetErr := pcc.pvLister.Get("pd-local-pv-0")
+				g.Expect(pvGetErr).NotTo(HaveOccurred())
+				_, pvcGetErr := pcc.pvcLister.PersistentVolumeClaims(metav1.NamespaceAll).Get("pd-test-pd-0")
+				g.Expect(errors.IsNotFound(pvcGetErr)).To(BeTrue())
+				g.Expect(pv.Spec.PersistentVolumeReclaimPolicy).To(Equal(corev1.PersistentVolumeReclaimDelete))
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
+func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	tc := newTidbClusterForPD()
@@ -42,7 +822,7 @@ func TestPVCCleanerClean(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		pcc, podIndexer, pvcIndexer, pvcControl := newFakePVCCleaner()
+		pcc, _, podIndexer, pvcIndexer, pvcControl, _, _ := newFakePVCCleaner()
 		if test.pods != nil {
 			for _, pod := range test.pods {
 				podIndexer.Add(pod)
@@ -57,7 +837,7 @@ func TestPVCCleanerClean(t *testing.T) {
 			pvcControl.SetUpdatePVCError(fmt.Errorf("update PVC failed"), 0)
 		}
 
-		skipReason, err := pcc.Clean(tc)
+		skipReason, err := pcc.cleanScheduleLock(tc)
 		test.expectFn(g, skipReason, pcc, err)
 	}
 	tests := []testcase{
@@ -160,7 +940,7 @@ func TestPVCCleanerClean(t *testing.T) {
 			},
 		},
 		{
-			name: "pvc's meta info has not to be synced",
+			name: "pvc not has pod name annotation",
 			pods: nil,
 			pvcs: []*corev1.PersistentVolumeClaim{
 				{
@@ -178,7 +958,7 @@ func TestPVCCleanerClean(t *testing.T) {
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(1))
-				g.Expect(skipReason["pd-test-pd-0"]).To(Equal(skipReasonPVCCleanerWaitingForPVCSync))
+				g.Expect(skipReason["pd-test-pd-0"]).To(Equal(skipReasonPVCCleanerPVCNotHasPodNameAnn))
 			},
 		},
 		{
@@ -347,13 +1127,22 @@ func TestPVCCleanerClean(t *testing.T) {
 	}
 }
 
-func newFakePVCCleaner() (*realPVCCleaner, cache.Indexer, cache.Indexer, *controller.FakePVCControl) {
+func newFakePVCCleaner() (*realPVCCleaner, *kubefake.Clientset, cache.Indexer, cache.Indexer, *controller.FakePVCControl, cache.Indexer, *controller.FakePVControl) {
 	kubeCli := kubefake.NewSimpleClientset()
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
+	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
+	pvControl := controller.NewFakePVControl(pvInformer, pvcInformer)
 
-	return &realPVCCleaner{podInformer.Lister(), pvcControl, pvcInformer.Lister()},
-		podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), pvcControl
+	rpc := &realPVCCleaner{
+		kubeCli,
+		podInformer.Lister(),
+		pvcControl,
+		pvcInformer.Lister(),
+		pvInformer.Lister(),
+		pvControl,
+	}
+	return rpc, kubeCli, podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), pvcControl, pvInformer.Informer().GetIndexer(), pvControl
 }

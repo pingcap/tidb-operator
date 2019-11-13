@@ -19,7 +19,7 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -54,7 +54,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 
 		oldSet := newStatefulSetForPDScale()
 		newSet := oldSet.DeepCopy()
-		newSet.Spec.Replicas = int32Pointer(7)
+		newSet.Spec.Replicas = controller.Int32Ptr(7)
 
 		scaler, _, pvcIndexer, _, pvcControl := newFakeTiKVScaler()
 
@@ -171,7 +171,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 
 		oldSet := newStatefulSetForPDScale()
 		newSet := oldSet.DeepCopy()
-		newSet.Spec.Replicas = int32Pointer(3)
+		newSet.Spec.Replicas = controller.Int32Ptr(3)
 
 		pod := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},

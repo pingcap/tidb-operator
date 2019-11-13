@@ -18,7 +18,7 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -34,6 +34,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 		tc := newTidbClusterForPD()
+		tc.Spec.TiKV.MaxFailoverCount = 3
 		test.update(tc)
 		tikvFailover := newFakeTiKVFailover()
 
@@ -136,6 +137,163 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(1))
+			},
+		},
+		{
+			name: "not exceed max failover count",
+			update: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+					"3": {
+						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-3",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+					},
+					"10": {
+						State:              v1alpha1.TiKVStateUp,
+						PodName:            "tikv-10",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+					},
+					"11": {
+						State:              v1alpha1.TiKVStateUp,
+						PodName:            "tikv-11",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
+					},
+				}
+				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{
+					"1": {
+						PodName: "tikv-1",
+						StoreID: "1",
+					},
+					"2": {
+						PodName: "tikv-2",
+						StoreID: "2",
+					},
+				}
+			},
+			err: false,
+			expectFn: func(tc *v1alpha1.TidbCluster) {
+				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(3))
+			},
+		},
+		{
+			name: "exceed max failover count1",
+			update: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+					"3": {
+						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-3",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+					},
+					"10": {
+						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-10",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+					},
+					"11": {
+						State:              v1alpha1.TiKVStateUp,
+						PodName:            "tikv-11",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
+					},
+				}
+				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{
+					"1": {
+						PodName: "tikv-1",
+						StoreID: "1",
+					},
+					"2": {
+						PodName: "tikv-2",
+						StoreID: "2",
+					},
+				}
+			},
+			err: false,
+			expectFn: func(tc *v1alpha1.TidbCluster) {
+				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(3))
+			},
+		},
+		{
+			name: "exceed max failover count2",
+			update: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+					"12": {
+						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-12",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+					},
+					"13": {
+						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-13",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
+					},
+					"14": {
+						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-14",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+					},
+				}
+				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{
+					"1": {
+						PodName: "tikv-1",
+						StoreID: "1",
+					},
+					"2": {
+						PodName: "tikv-2",
+						StoreID: "2",
+					},
+					"3": {
+						PodName: "tikv-3",
+						StoreID: "3",
+					},
+				}
+			},
+			err: false,
+			expectFn: func(tc *v1alpha1.TidbCluster) {
+				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(3))
+			},
+		},
+		{
+			name: "exceed max failover count2 but maxFailoverCount = 0",
+			update: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiKV.MaxFailoverCount = 0
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+					"12": {
+						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-12",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+					},
+					"13": {
+						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-13",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
+					},
+					"14": {
+						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-14",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+					},
+				}
+				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{
+					"1": {
+						PodName: "tikv-1",
+						StoreID: "1",
+					},
+					"2": {
+						PodName: "tikv-2",
+						StoreID: "2",
+					},
+					"3": {
+						PodName: "tikv-3",
+						StoreID: "3",
+					},
+				}
+			},
+			err: false,
+			expectFn: func(tc *v1alpha1.TidbCluster) {
+				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(6))
 			},
 		},
 	}

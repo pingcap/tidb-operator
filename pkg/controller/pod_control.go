@@ -18,8 +18,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
@@ -31,6 +30,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
+	glog "k8s.io/klog"
 )
 
 // PodControlInterface manages Pods used in TidbCluster
@@ -236,79 +236,74 @@ var (
 // FakePodControl is a fake PodControlInterface
 type FakePodControl struct {
 	PodIndexer        cache.Indexer
-	updatePodTracker  requestTracker
-	deletePodTracker  requestTracker
-	getClusterTracker requestTracker
-	getMemberTracker  requestTracker
-	getStoreTracker   requestTracker
+	updatePodTracker  RequestTracker
+	deletePodTracker  RequestTracker
+	getClusterTracker RequestTracker
+	getMemberTracker  RequestTracker
+	getStoreTracker   RequestTracker
 }
 
 // NewFakePodControl returns a FakePodControl
 func NewFakePodControl(podInformer coreinformers.PodInformer) *FakePodControl {
 	return &FakePodControl{
 		podInformer.Informer().GetIndexer(),
-		requestTracker{0, nil, 0},
-		requestTracker{0, nil, 0},
-		requestTracker{0, nil, 0},
-		requestTracker{0, nil, 0},
-		requestTracker{0, nil, 0},
+		RequestTracker{},
+		RequestTracker{},
+		RequestTracker{},
+		RequestTracker{},
+		RequestTracker{},
 	}
 }
 
 // SetUpdatePodError sets the error attributes of updatePodTracker
 func (fpc *FakePodControl) SetUpdatePodError(err error, after int) {
-	fpc.updatePodTracker.err = err
-	fpc.updatePodTracker.after = after
+	fpc.updatePodTracker.SetError(err).SetAfter(after)
 }
 
 // SetDeletePodError sets the error attributes of deletePodTracker
 func (fpc *FakePodControl) SetDeletePodError(err error, after int) {
-	fpc.deletePodTracker.err = err
-	fpc.deletePodTracker.after = after
+	fpc.deletePodTracker.SetError(err).SetAfter(after)
 }
 
 // SetGetClusterError sets the error attributes of getClusterTracker
 func (fpc *FakePodControl) SetGetClusterError(err error, after int) {
-	fpc.getClusterTracker.err = err
-	fpc.getClusterTracker.after = after
+	fpc.getStoreTracker.SetError(err).SetAfter(after)
 }
 
 // SetGetMemberError sets the error attributes of getMemberTracker
 func (fpc *FakePodControl) SetGetMemberError(err error, after int) {
-	fpc.getMemberTracker.err = err
-	fpc.getMemberTracker.after = after
+	fpc.getStoreTracker.SetError(err).SetAfter(after)
 }
 
 // SetGetStoreError sets the error attributes of getStoreTracker
 func (fpc *FakePodControl) SetGetStoreError(err error, after int) {
-	fpc.getStoreTracker.err = err
-	fpc.getStoreTracker.after = after
+	fpc.getStoreTracker.SetError(err).SetAfter(after)
 }
 
 // UpdateMetaInfo update the meta info of Pod
 func (fpc *FakePodControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pod *corev1.Pod) (*corev1.Pod, error) {
-	defer fpc.updatePodTracker.inc()
-	if fpc.updatePodTracker.errorReady() {
-		defer fpc.updatePodTracker.reset()
-		return nil, fpc.updatePodTracker.err
+	defer fpc.updatePodTracker.Inc()
+	if fpc.updatePodTracker.ErrorReady() {
+		defer fpc.updatePodTracker.Reset()
+		return nil, fpc.updatePodTracker.GetError()
 	}
 
-	defer fpc.getClusterTracker.inc()
-	if fpc.getClusterTracker.errorReady() {
-		defer fpc.getClusterTracker.reset()
-		return nil, fpc.getClusterTracker.err
+	defer fpc.getClusterTracker.Inc()
+	if fpc.getClusterTracker.ErrorReady() {
+		defer fpc.getClusterTracker.Reset()
+		return nil, fpc.getClusterTracker.GetError()
 	}
 
-	defer fpc.getMemberTracker.inc()
-	if fpc.getMemberTracker.errorReady() {
-		defer fpc.getMemberTracker.reset()
-		return nil, fpc.getMemberTracker.err
+	defer fpc.getMemberTracker.Inc()
+	if fpc.getMemberTracker.ErrorReady() {
+		defer fpc.getMemberTracker.Reset()
+		return nil, fpc.getMemberTracker.GetError()
 	}
 
-	defer fpc.getStoreTracker.inc()
-	if fpc.getStoreTracker.errorReady() {
-		defer fpc.getStoreTracker.reset()
-		return nil, fpc.getStoreTracker.err
+	defer fpc.getStoreTracker.Inc()
+	if fpc.getStoreTracker.ErrorReady() {
+		defer fpc.getStoreTracker.Reset()
+		return nil, fpc.getStoreTracker.GetError()
 	}
 
 	setIfNotEmpty(pod.Labels, label.NameLabelKey, TestName)
@@ -322,20 +317,20 @@ func (fpc *FakePodControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pod *corev1.P
 }
 
 func (fpc *FakePodControl) DeletePod(_ *v1alpha1.TidbCluster, pod *corev1.Pod) error {
-	defer fpc.deletePodTracker.inc()
-	if fpc.deletePodTracker.errorReady() {
-		defer fpc.deletePodTracker.reset()
-		return fpc.deletePodTracker.err
+	defer fpc.deletePodTracker.Inc()
+	if fpc.deletePodTracker.ErrorReady() {
+		defer fpc.deletePodTracker.Reset()
+		return fpc.deletePodTracker.GetError()
 	}
 
 	return fpc.PodIndexer.Delete(pod)
 }
 
 func (fpc *FakePodControl) UpdatePod(_ *v1alpha1.TidbCluster, pod *corev1.Pod) (*corev1.Pod, error) {
-	defer fpc.updatePodTracker.inc()
-	if fpc.updatePodTracker.errorReady() {
-		defer fpc.updatePodTracker.reset()
-		return nil, fpc.updatePodTracker.err
+	defer fpc.updatePodTracker.Inc()
+	if fpc.updatePodTracker.ErrorReady() {
+		defer fpc.updatePodTracker.Reset()
+		return nil, fpc.updatePodTracker.GetError()
 	}
 
 	return pod, fpc.PodIndexer.Update(pod)

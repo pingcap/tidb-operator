@@ -16,8 +16,8 @@ import (
 	"net/http"
 
 	restful "github.com/emicklei/go-restful"
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
+	glog "k8s.io/klog"
 )
 
 // Server is a web service to control fault trigger
@@ -232,7 +232,7 @@ func (s *Server) getVM(name string) (*manager.VM, error) {
 	}
 
 	for _, vm := range vms {
-		if name == vm.Name || name == vm.IP {
+		if name == vm.Name {
 			return vm, nil
 		}
 	}

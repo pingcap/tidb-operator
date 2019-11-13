@@ -21,12 +21,12 @@ variable "cluster_network_type" {
 }
 
 variable "operator_version" {
-  type = string
-  default = "v1.0.1"
+  type    = string
+  default = "v1.0.2"
 }
 
 variable "operator_helm_values" {
-  type = string
+  type    = string
   default = ""
 }
 

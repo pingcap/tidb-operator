@@ -17,8 +17,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -28,6 +27,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
+	glog "k8s.io/klog"
 )
 
 // TODO add unit tests
@@ -37,6 +37,7 @@ type PVCControlInterface interface {
 	UpdateMetaInfo(*v1alpha1.TidbCluster, *corev1.PersistentVolumeClaim, *corev1.Pod) (*corev1.PersistentVolumeClaim, error)
 	UpdatePVC(*v1alpha1.TidbCluster, *corev1.PersistentVolumeClaim) (*corev1.PersistentVolumeClaim, error)
 	DeletePVC(*v1alpha1.TidbCluster, *corev1.PersistentVolumeClaim) error
+	GetPVC(name, namespace string) (*corev1.PersistentVolumeClaim, error)
 }
 
 type realPVCControl struct {
@@ -55,6 +56,10 @@ func NewRealPVCControl(
 		recorder:  recorder,
 		pvcLister: pvcLister,
 	}
+}
+
+func (rpc *realPVCControl) GetPVC(name, namespace string) (*corev1.PersistentVolumeClaim, error) {
+	return rpc.pvcLister.PersistentVolumeClaims(namespace).Get(name)
 }
 
 func (rpc *realPVCControl) DeletePVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) error {
@@ -180,37 +185,35 @@ var _ PVCControlInterface = &realPVCControl{}
 // FakePVCControl is a fake PVCControlInterface
 type FakePVCControl struct {
 	PVCIndexer       cache.Indexer
-	updatePVCTracker requestTracker
-	deletePVCTracker requestTracker
+	updatePVCTracker RequestTracker
+	deletePVCTracker RequestTracker
 }
 
 // NewFakePVCControl returns a FakePVCControl
 func NewFakePVCControl(pvcInformer coreinformers.PersistentVolumeClaimInformer) *FakePVCControl {
 	return &FakePVCControl{
 		pvcInformer.Informer().GetIndexer(),
-		requestTracker{0, nil, 0},
-		requestTracker{0, nil, 0},
+		RequestTracker{},
+		RequestTracker{},
 	}
 }
 
 // SetUpdatePVCError sets the error attributes of updatePVCTracker
 func (fpc *FakePVCControl) SetUpdatePVCError(err error, after int) {
-	fpc.updatePVCTracker.err = err
-	fpc.updatePVCTracker.after = after
+	fpc.updatePVCTracker.SetError(err).SetAfter(after)
 }
 
 // SetDeletePVCError sets the error attributes of deletePVCTracker
 func (fpc *FakePVCControl) SetDeletePVCError(err error, after int) {
-	fpc.deletePVCTracker.err = err
-	fpc.deletePVCTracker.after = after
+	fpc.deletePVCTracker.SetError(err).SetAfter(after)
 }
 
 // DeletePVC deletes the pvc
 func (fpc *FakePVCControl) DeletePVC(_ *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) error {
-	defer fpc.deletePVCTracker.inc()
-	if fpc.deletePVCTracker.errorReady() {
-		defer fpc.deletePVCTracker.reset()
-		return fpc.deletePVCTracker.err
+	defer fpc.deletePVCTracker.Inc()
+	if fpc.deletePVCTracker.ErrorReady() {
+		defer fpc.deletePVCTracker.Reset()
+		return fpc.deletePVCTracker.GetError()
 	}
 
 	return fpc.PVCIndexer.Delete(pvc)
@@ -218,10 +221,10 @@ func (fpc *FakePVCControl) DeletePVC(_ *v1alpha1.TidbCluster, pvc *corev1.Persis
 
 // UpdatePVC updates the annotation, labels and spec of pvc
 func (fpc *FakePVCControl) UpdatePVC(_ *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolumeClaim, error) {
-	defer fpc.updatePVCTracker.inc()
-	if fpc.updatePVCTracker.errorReady() {
-		defer fpc.updatePVCTracker.reset()
-		return nil, fpc.updatePVCTracker.err
+	defer fpc.updatePVCTracker.Inc()
+	if fpc.updatePVCTracker.ErrorReady() {
+		defer fpc.updatePVCTracker.Reset()
+		return nil, fpc.updatePVCTracker.GetError()
 	}
 
 	return pvc, fpc.PVCIndexer.Update(pvc)
@@ -229,10 +232,10 @@ func (fpc *FakePVCControl) UpdatePVC(_ *v1alpha1.TidbCluster, pvc *corev1.Persis
 
 // UpdateMetaInfo updates the meta info of pvc
 func (fpc *FakePVCControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) (*corev1.PersistentVolumeClaim, error) {
-	defer fpc.updatePVCTracker.inc()
-	if fpc.updatePVCTracker.errorReady() {
-		defer fpc.updatePVCTracker.reset()
-		return nil, fpc.updatePVCTracker.err
+	defer fpc.updatePVCTracker.Inc()
+	if fpc.updatePVCTracker.ErrorReady() {
+		defer fpc.updatePVCTracker.Reset()
+		return nil, fpc.updatePVCTracker.GetError()
 	}
 	if pvc.Labels == nil {
 		pvc.Labels = make(map[string]string)
@@ -245,6 +248,19 @@ func (fpc *FakePVCControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pvc *corev1.P
 	setIfNotEmpty(pvc.Labels, label.StoreIDLabelKey, pod.Labels[label.StoreIDLabelKey])
 	setIfNotEmpty(pvc.Annotations, label.AnnPodNameKey, pod.GetName())
 	return nil, fpc.PVCIndexer.Update(pvc)
+}
+
+func (fpc *FakePVCControl) GetPVC(name, namespace string) (*corev1.PersistentVolumeClaim, error) {
+	defer fpc.updatePVCTracker.Inc()
+	obj, existed, err := fpc.PVCIndexer.GetByKey(fmt.Sprintf("%s/%s", namespace, name))
+	if err != nil {
+		return nil, err
+	}
+	if !existed {
+		return nil, fmt.Errorf("pvc[%s/%s] not existed", namespace, name)
+	}
+	a := obj.(*corev1.PersistentVolumeClaim)
+	return a, nil
 }
 
 var _ PVCControlInterface = &FakePVCControl{}

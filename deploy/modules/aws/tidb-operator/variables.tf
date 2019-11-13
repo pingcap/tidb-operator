@@ -1,3 +1,7 @@
+variable "region" {
+  description = "AWS region"
+}
+
 variable "eks_name" {
   description = "Name of the EKS cluster. Also used as a prefix in names of related resources."
   type        = string
@@ -12,7 +16,7 @@ variable "eks_version" {
 variable "operator_version" {
   description = "TiDB Operator version"
   type        = string
-  default     = "v1.0.1"
+  default     = "v1.0.2"
 }
 
 variable "operator_helm_values" {
@@ -50,4 +54,3 @@ variable "default_worker_group_instance_count" {
 variable "ssh_key_name" {
   type = string
 }
-

@@ -16,8 +16,7 @@ package backup
 import (
 	"fmt"
 
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -27,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	glog "k8s.io/klog"
 )
 
 // BackupCleaner implements the logic for cleaning backup
@@ -83,7 +83,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	job, reason, err := bc.makeCleanJob(backup)
 	if err != nil {
 		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
+			Type:    v1alpha1.BackupRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
 			Message: err.Error(),
@@ -94,7 +94,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	if err := bc.jobControl.CreateJob(backup, job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, cleanJobName, err)
 		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
+			Type:    v1alpha1.BackupRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateCleanJobFailed",
 			Message: errMsg.Error(),

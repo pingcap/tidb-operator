@@ -17,13 +17,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/glog"
 	perrors "github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/backupschedule"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -35,6 +34,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
+	glog "k8s.io/klog"
 )
 
 // Controller controls restore.
@@ -139,10 +139,13 @@ func (bsc *Controller) processNextWorkItem() bool {
 	if err := bsc.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			glog.Infof("BackupSchedule: %v, still need sync: %v, requeuing", key.(string), err)
+			bsc.queue.AddRateLimited(key)
+		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
+			glog.V(4).Infof("BackupSchedule: %v, ignore err: %v, waiting for the next sync", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("BackupSchedule: %v, sync failed, err: %v, requeuing", key.(string), err))
+			bsc.queue.AddRateLimited(key)
 		}
-		bsc.queue.AddRateLimited(key)
 	} else {
 		bsc.queue.Forget(key)
 	}
@@ -172,8 +175,8 @@ func (bsc *Controller) sync(key string) error {
 	return bsc.syncBackupSchedule(bs.DeepCopy())
 }
 
-func (bsc *Controller) syncBackupSchedule(tc *v1alpha1.BackupSchedule) error {
-	return bsc.control.UpdateBackupSchedule(tc)
+func (bsc *Controller) syncBackupSchedule(bs *v1alpha1.BackupSchedule) error {
+	return bsc.control.UpdateBackupSchedule(bs)
 }
 
 // enqueueBackupSchedule enqueues the given restore in the work queue.

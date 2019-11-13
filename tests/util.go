@@ -50,7 +50,7 @@ func SelectNode(nodes []Nodes) string {
 	index := rand.Intn(len(nodes))
 	vmNodes := nodes[index].Nodes
 	index2 := rand.Intn(len(vmNodes))
-	return vmNodes[index2]
+	return vmNodes[index2].IP
 }
 
 func GetKubeApiserverPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, error) {

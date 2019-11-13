@@ -19,17 +19,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -148,7 +151,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				set.Status.CurrentRevision = "tidb-1"
 				set.Status.UpdateRevision = "tidb-1"
 				observedGeneration := int64(1)
-				set.Status.ObservedGeneration = &observedGeneration
+				set.Status.ObservedGeneration = observedGeneration
 			})
 		} else {
 			fakeSetControl.SetStatusChange(test.statusChange)
@@ -285,7 +288,7 @@ func TestTiDBMemberManagerTiDBStatefulSetIsUpgrading(t *testing.T) {
 			setUpdate: func(set *apps.StatefulSet) {
 				set.Status.CurrentRevision = "v1"
 				set.Status.UpdateRevision = "v2"
-				set.Status.ObservedGeneration = func() *int64 { var i int64; i = 1000; return &i }()
+				set.Status.ObservedGeneration = 1000
 			},
 			hasPod:          false,
 			updatePod:       nil,
@@ -524,7 +527,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSetControl, cache.Indexer, *controller.FakeTiDBControl) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
+	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
@@ -578,5 +581,418 @@ func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
 				Replicas: 3,
 			},
 		},
+	}
+}
+
+func TestGetNewTiDBHeadlessServiceForTidbCluster(t *testing.T) {
+	tests := []struct {
+		name     string
+		tc       v1alpha1.TidbCluster
+		expected corev1.Service
+	}{
+		{
+			name: "basic",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+			},
+			expected: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-tidb-peer",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "tidb",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "None",
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "status",
+							Port:       10080,
+							TargetPort: intstr.FromInt(10080),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "tidb",
+					},
+					PublishNotReadyAddresses: true,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := getNewTiDBHeadlessServiceForTidbCluster(&tt.tc)
+			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
+				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
+	tests := []struct {
+		name    string
+		tc      v1alpha1.TidbCluster
+		wantErr bool
+		testSts func(sts *apps.StatefulSet)
+	}{
+		{
+			name: "tidb network is not host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+			},
+			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+		},
+		{
+			name: "tidb network is host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							HostNetwork: true,
+						},
+					},
+				},
+			},
+			testSts: testHostNetwork(t, true, v1.DNSClusterFirstWithHostNet),
+		},
+		{
+			name: "tidb network is not host when pd is host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							HostNetwork: true,
+						},
+					},
+				},
+			},
+			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+		},
+		{
+			name: "tidb network is not host when tikv is host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: v1alpha1.TiKVSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							HostNetwork: true,
+						},
+					},
+				},
+			},
+			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+		},
+		// TODO add more tests
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sts := getNewTiDBSetForTidbCluster(&tt.tc)
+			tt.testSts(sts)
+		})
+	}
+}
+
+func TestTiDBInitContainers(t *testing.T) {
+	privileged := true
+	asRoot := false
+	tests := []struct {
+		name             string
+		tc               v1alpha1.TidbCluster
+		expectedInit     []corev1.Container
+		expectedSecurity *corev1.PodSecurityContext
+	}{
+		{
+			name: "no init container",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asRoot,
+								Sysctls: []corev1.Sysctl{
+									{
+										Name:  "net.core.somaxconn",
+										Value: "32768",
+									},
+									{
+										Name:  "net.ipv4.tcp_syncookies",
+										Value: "0",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_time",
+										Value: "300",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_intvl",
+										Value: "75",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedInit: nil,
+			expectedSecurity: &corev1.PodSecurityContext{
+				RunAsNonRoot: &asRoot,
+				Sysctls: []corev1.Sysctl{
+					{
+						Name:  "net.core.somaxconn",
+						Value: "32768",
+					},
+					{
+						Name:  "net.ipv4.tcp_syncookies",
+						Value: "0",
+					},
+					{
+						Name:  "net.ipv4.tcp_keepalive_time",
+						Value: "300",
+					},
+					{
+						Name:  "net.ipv4.tcp_keepalive_intvl",
+						Value: "75",
+					},
+				},
+			},
+		},
+		{
+			name: "sysctl with init container",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "true",
+							},
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asRoot,
+								Sysctls: []corev1.Sysctl{
+									{
+										Name:  "net.core.somaxconn",
+										Value: "32768",
+									},
+									{
+										Name:  "net.ipv4.tcp_syncookies",
+										Value: "0",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_time",
+										Value: "300",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_intvl",
+										Value: "75",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedInit: []corev1.Container{
+				{
+					Name:  "init",
+					Image: "busybox:1.26.2",
+					Command: []string{
+						"sh",
+						"-c",
+						"sysctl -w net.core.somaxconn=32768 net.ipv4.tcp_syncookies=0 net.ipv4.tcp_keepalive_time=300 net.ipv4.tcp_keepalive_intvl=75",
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: &privileged,
+					},
+				},
+			},
+			expectedSecurity: &corev1.PodSecurityContext{
+				RunAsNonRoot: &asRoot,
+				Sysctls:      []corev1.Sysctl{},
+			},
+		},
+		{
+			name: "sysctl with init container",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "true",
+							},
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asRoot,
+							},
+						},
+					},
+				},
+			},
+			expectedInit: nil,
+			expectedSecurity: &corev1.PodSecurityContext{
+				RunAsNonRoot: &asRoot,
+			},
+		},
+		{
+			name: "sysctl with init container",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "true",
+							},
+							PodSecurityContext: nil,
+						},
+					},
+				},
+			},
+			expectedInit:     nil,
+			expectedSecurity: nil,
+		},
+		{
+			name: "sysctl without init container due to invalid annotation",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "false",
+							},
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asRoot,
+								Sysctls: []corev1.Sysctl{
+									{
+										Name:  "net.core.somaxconn",
+										Value: "32768",
+									},
+									{
+										Name:  "net.ipv4.tcp_syncookies",
+										Value: "0",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_time",
+										Value: "300",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_intvl",
+										Value: "75",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedInit: nil,
+			expectedSecurity: &corev1.PodSecurityContext{
+				RunAsNonRoot: &asRoot,
+				Sysctls: []corev1.Sysctl{
+					{
+						Name:  "net.core.somaxconn",
+						Value: "32768",
+					},
+					{
+						Name:  "net.ipv4.tcp_syncookies",
+						Value: "0",
+					},
+					{
+						Name:  "net.ipv4.tcp_keepalive_time",
+						Value: "300",
+					},
+					{
+						Name:  "net.ipv4.tcp_keepalive_intvl",
+						Value: "75",
+					},
+				},
+			},
+		},
+		{
+			name: "no init container no securityContext",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+			},
+			expectedInit:     nil,
+			expectedSecurity: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sts := getNewTiDBSetForTidbCluster(&tt.tc)
+			if diff := cmp.Diff(tt.expectedInit, sts.Spec.Template.Spec.InitContainers); diff != "" {
+				t.Errorf("unexpected InitContainers in Statefulset (-want, +got): %s", diff)
+			}
+			if tt.expectedSecurity == nil {
+				if sts.Spec.Template.Spec.SecurityContext != nil {
+					t.Errorf("unexpected SecurityContext in Statefulset (want nil, got %#v)", *sts.Spec.Template.Spec.SecurityContext)
+				}
+			} else if sts.Spec.Template.Spec.SecurityContext == nil {
+				t.Errorf("unexpected SecurityContext in Statefulset (want %#v, got nil)", *tt.expectedSecurity)
+			} else if diff := cmp.Diff(*(tt.expectedSecurity), *(sts.Spec.Template.Spec.SecurityContext)); diff != "" {
+				t.Errorf("unexpected SecurityContext in Statefulset (-want, +got): %s", diff)
+			}
+		})
 	}
 }

@@ -14,18 +14,23 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/webhook"
-	"k8s.io/apiserver/pkg/util/logs"
+	"k8s.io/apimachinery/pkg/util/wait"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/component-base/logs"
+	glog "k8s.io/klog"
 )
 
 var (
@@ -67,8 +72,32 @@ func main() {
 	if err != nil {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
+	informerFactory := informers.NewSharedInformerFactory(cli, controller.ResyncDuration)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
 
-	webhookServer := webhook.NewWebHookServer(kubeCli, cli, certFile, keyFile)
+	webhookServer := webhook.NewWebHookServer(kubeCli, cli, informerFactory, kubeInformerFactory, certFile, keyFile)
+	controllerCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	informerFactory.Start(controllerCtx.Done())
+	kubeInformerFactory.Start(controllerCtx.Done())
+
+	// Wait for all started informers' cache were synced.
+	for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
+		if !synced {
+			glog.Fatalf("error syncing informer for %v", v)
+		}
+	}
+	for v, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
+		if !synced {
+			glog.Fatalf("error syncing informer for %v", v)
+		}
+	}
+	glog.Infof("cache of informer factories sync successfully")
+
+	if err := webhookServer.Run(); err != nil {
+		glog.Fatalf("stop http server %v", err)
+	}
 
 	sigs := make(chan os.Signal, 1)
 	done := make(chan bool, 1)
@@ -85,10 +114,6 @@ func main() {
 
 		done <- true
 	}()
-
-	if err := webhookServer.Run(); err != nil {
-		glog.Errorf("stop http server %v", err)
-	}
 
 	<-done
 

@@ -17,9 +17,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pingcap/tidb-operator/pkg/label"
+
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	apps "k8s.io/api/apps/v1beta1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	apps "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -125,10 +127,29 @@ func TestTiKVCapacity(t *testing.T) {
 		{
 			name: "100GiB",
 			limit: &v1alpha1.ResourceRequirement{
-				Storage: "100Gi",
+				Storage: "100GiB",
 			},
 			expectFn: func(g *GomegaWithT, s string) {
-				g.Expect(s).To(Equal("100GB"))
+				// GiB is an invalid suffix
+				g.Expect(s).To(Equal("0"))
+			},
+		},
+		{
+			name: "1G",
+			limit: &v1alpha1.ResourceRequirement{
+				Storage: "1G",
+			},
+			expectFn: func(g *GomegaWithT, s string) {
+				g.Expect(s).To(Equal("953MB"))
+			},
+		},
+		{
+			name: "1.5G",
+			limit: &v1alpha1.ResourceRequirement{
+				Storage: "1.5G",
+			},
+			expectFn: func(g *GomegaWithT, s string) {
+				g.Expect(s).To(Equal("1430MB"))
 			},
 		},
 	}
@@ -358,6 +379,9 @@ func newBackup() *v1alpha1.Backup {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-backup",
 			Namespace: metav1.NamespaceDefault,
+			Labels: map[string]string{
+				label.BackupScheduleLabelKey: "test-schedule",
+			},
 		},
 	}
 	return backup

@@ -16,12 +16,13 @@ package backup
 import (
 	"fmt"
 
-	"github.com/pingcap/tidb-operator/pkg/controller"
-
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/pkg/util/slice"
 )
 
@@ -103,3 +104,37 @@ func needToAddFinalizer(backup *v1alpha1.Backup) bool {
 func isDeletionCandidate(backup *v1alpha1.Backup) bool {
 	return backup.DeletionTimestamp != nil && slice.ContainsString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
 }
+
+var _ ControlInterface = &defaultBackupControl{}
+
+// FakeBackupControl is a fake BackupControlInterface
+type FakeBackupControl struct {
+	backupIndexer       cache.Indexer
+	updateBackupTracker controller.RequestTracker
+}
+
+// NewFakeBackupControl returns a FakeBackupControl
+func NewFakeBackupControl(backupInformer informers.BackupInformer) *FakeBackupControl {
+	return &FakeBackupControl{
+		backupInformer.Informer().GetIndexer(),
+		controller.RequestTracker{},
+	}
+}
+
+// SetUpdateBackupError sets the error attributes of updateBackupTracker
+func (fbc *FakeBackupControl) SetUpdateBackupError(err error, after int) {
+	fbc.updateBackupTracker.SetError(err).SetAfter(after)
+}
+
+// CreateBackup adds the backup to BackupIndexer
+func (fbc *FakeBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
+	defer fbc.updateBackupTracker.Inc()
+	if fbc.updateBackupTracker.ErrorReady() {
+		defer fbc.updateBackupTracker.Reset()
+		return fbc.updateBackupTracker.GetError()
+	}
+
+	return fbc.backupIndexer.Add(backup)
+}
+
+var _ ControlInterface = &FakeBackupControl{}

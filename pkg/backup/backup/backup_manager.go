@@ -16,7 +16,7 @@ package backup
 import (
 	"fmt"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
@@ -94,7 +94,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	job, reason, err := bm.makeBackupJob(backup)
 	if err != nil {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
+			Type:    v1alpha1.BackupRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
 			Message: err.Error(),
@@ -105,7 +105,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	reason, err = bm.ensureBackupPVCExist(backup)
 	if err != nil {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
+			Type:    v1alpha1.BackupRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
 			Message: err.Error(),
@@ -116,7 +116,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	if err := bm.jobControl.CreateJob(backup, job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
+			Type:    v1alpha1.BackupRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateBackupJobFailed",
 			Message: errMsg.Error(),
@@ -134,7 +134,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	user, password, reason, err := backuputil.GetTidbUserAndPassword(backup, bm.secretLister)
+	user, password, reason, err := backuputil.GetTidbUserAndPassword(ns, name, backup.Spec.TidbSecretName, bm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -270,3 +270,21 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 }
 
 var _ backup.BackupManager = &backupManager{}
+
+type FakeBackupManager struct {
+	err error
+}
+
+func NewFakeBackupManager() *FakeBackupManager {
+	return &FakeBackupManager{}
+}
+
+func (fbm *FakeBackupManager) SetSyncError(err error) {
+	fbm.err = err
+}
+
+func (fbm *FakeBackupManager) Sync(_ *v1alpha1.Backup) error {
+	return fbm.err
+}
+
+var _ backup.BackupManager = &FakeBackupManager{}

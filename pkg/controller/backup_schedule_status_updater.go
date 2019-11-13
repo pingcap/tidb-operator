@@ -17,12 +17,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap.com/v1alpha1"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -107,9 +107,9 @@ var _ BackupScheduleStatusUpdaterInterface = &realBackupScheduleStatusUpdater{}
 
 // FakeBackupScheduleStatusUpdater is a fake BackupScheduleStatusUpdaterInterface
 type FakeBackupScheduleStatusUpdater struct {
-	BsLister                    listers.BackupScheduleLister
-	BsIndexer                   cache.Indexer
-	updateBackupScheduleTracker requestTracker
+	BsLister        listers.BackupScheduleLister
+	BsIndexer       cache.Indexer
+	updateBsTracker RequestTracker
 }
 
 // NewFakeBackupScheduleStatusUpdater returns a FakeBackupScheduleStatusUpdater
@@ -117,22 +117,23 @@ func NewFakeBackupScheduleStatusUpdater(bsInformer informers.BackupScheduleInfor
 	return &FakeBackupScheduleStatusUpdater{
 		bsInformer.Lister(),
 		bsInformer.Informer().GetIndexer(),
-		requestTracker{0, nil, 0},
+		RequestTracker{},
 	}
 }
 
 // SetUpdateBackupError sets the error attributes of updateBackupScheduleTracker
 func (fbs *FakeBackupScheduleStatusUpdater) SetUpdateBackupScheduleError(err error, after int) {
-	fbs.updateBackupScheduleTracker.err = err
-	fbs.updateBackupScheduleTracker.after = after
+	fbs.updateBsTracker.err = err
+	fbs.updateBsTracker.after = after
+	fbs.updateBsTracker.SetError(err).SetAfter(after)
 }
 
 // UpdateBackupSchedule updates the BackupSchedule
 func (fbs *FakeBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(bs *v1alpha1.BackupSchedule, _ *v1alpha1.BackupScheduleStatus, _ *v1alpha1.BackupScheduleStatus) error {
-	defer fbs.updateBackupScheduleTracker.inc()
-	if fbs.updateBackupScheduleTracker.errorReady() {
-		defer fbs.updateBackupScheduleTracker.reset()
-		return fbs.updateBackupScheduleTracker.err
+	defer fbs.updateBsTracker.Inc()
+	if fbs.updateBsTracker.ErrorReady() {
+		defer fbs.updateBsTracker.Reset()
+		return fbs.updateBsTracker.GetError()
 	}
 
 	return fbs.BsIndexer.Update(bs)

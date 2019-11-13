@@ -53,8 +53,6 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 					sh """
 					export GOPATH=${WORKSPACE}/go:$GOPATH
 					export PATH=${env.PATH}:${WORKSPACE}/go/bin
-					make check
-					make test
 					make
 					make e2e-build
 					"""

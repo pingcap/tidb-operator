@@ -17,21 +17,22 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/listers/apps/v1beta1"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	glog "k8s.io/klog"
 )
 
 type pdMemberManager struct {
@@ -40,7 +41,7 @@ type pdMemberManager struct {
 	svcControl   controller.ServiceControlInterface
 	podControl   controller.PodControlInterface
 	certControl  controller.CertControlInterface
-	setLister    v1beta1.StatefulSetLister
+	setLister    v1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
 	podLister    corelisters.PodLister
 	epsLister    corelisters.EndpointsLister
@@ -57,7 +58,7 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	svcControl controller.ServiceControlInterface,
 	podControl controller.PodControlInterface,
 	certControl controller.CertControlInterface,
-	setLister v1beta1.StatefulSetLister,
+	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	epsLister corelisters.EndpointsLister,
@@ -141,7 +142,7 @@ func (pmm *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1alpha1.Tid
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newSvc := pmm.getNewPDHeadlessServiceForTidbCluster(tc)
+	newSvc := getNewPDHeadlessServiceForTidbCluster(tc)
 	oldSvc, err := pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetServiceLastAppliedConfigAnnotation(newSvc)
@@ -176,7 +177,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newPDSet, err := pmm.getNewPDSetForTidbCluster(tc)
+	newPDSet, err := getNewPDSetForTidbCluster(tc)
 	if err != nil {
 		return err
 	}
@@ -214,7 +215,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	}
 
 	if !tc.Status.PD.Synced {
-		force := needForceUpgrade(tc)
+		force := NeedForceUpgrade(tc)
 		if force {
 			tc.Status.PD.Phase = v1alpha1.UpgradePhase
 			setUpgradePartition(newPDSet, 0)
@@ -433,7 +434,7 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 	}
 }
 
-func (pmm *pdMemberManager) getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
+func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
 	svcName := controller.PDPeerMemberName(tcName)
@@ -457,7 +458,8 @@ func (pmm *pdMemberManager) getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.T
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Selector: pdLabel,
+			Selector:                 pdLabel,
+			PublishNotReadyAddresses: true,
 		},
 	}
 }
@@ -489,7 +491,7 @@ func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *
 	return false, nil
 }
 
-func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
+func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
 	ns := tc.Namespace
 	tcName := tc.Name
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
@@ -577,7 +579,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: func() *int32 { r := tc.Spec.PD.Replicas + int32(failureReplicas); return &r }(),
+			Replicas: controller.Int32Ptr(tc.Spec.PD.Replicas + int32(failureReplicas)),
 			Selector: pdLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -676,7 +678,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: func() *int32 { r := tc.Spec.PD.Replicas + int32(failureReplicas); return &r }(),
+					Partition: controller.Int32Ptr(tc.Spec.PD.Replicas + int32(failureReplicas)),
 				}},
 		},
 	}
@@ -696,9 +698,13 @@ func (fpmm *FakePDMemberManager) SetSyncError(err error) {
 	fpmm.err = err
 }
 
-func (fpmm *FakePDMemberManager) Sync(_ *v1alpha1.TidbCluster) error {
+func (fpmm *FakePDMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if fpmm.err != nil {
 		return fpmm.err
+	}
+	if len(tc.Status.PD.Members) != 0 {
+		// simulate status update
+		tc.Status.ClusterID = string(uuid.NewUUID())
 	}
 	return nil
 }

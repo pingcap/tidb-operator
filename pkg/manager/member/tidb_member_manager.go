@@ -17,18 +17,19 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/listers/apps/v1beta1"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
@@ -43,7 +44,7 @@ type tidbMemberManager struct {
 	svcControl                   controller.ServiceControlInterface
 	tidbControl                  controller.TiDBControlInterface
 	certControl                  controller.CertControlInterface
-	setLister                    v1beta1.StatefulSetLister
+	setLister                    v1.StatefulSetLister
 	svcLister                    corelisters.ServiceLister
 	podLister                    corelisters.PodLister
 	tidbUpgrader                 Upgrader
@@ -57,7 +58,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	tidbControl controller.TiDBControlInterface,
 	certControl controller.CertControlInterface,
-	setLister v1beta1.StatefulSetLister,
+	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	tidbUpgrader Upgrader,
@@ -99,7 +100,7 @@ func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newSvc := tmm.getNewTiDBHeadlessServiceForTidbCluster(tc)
+	newSvc := getNewTiDBHeadlessServiceForTidbCluster(tc)
 	oldSvcTmp, err := tmm.svcLister.Services(ns).Get(controller.TiDBPeerMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetServiceLastAppliedConfigAnnotation(newSvc)
@@ -136,7 +137,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newTiDBSet := tmm.getNewTiDBSetForTidbCluster(tc)
+	newTiDBSet := getNewTiDBSetForTidbCluster(tc)
 	oldTiDBSetTemp, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = SetLastAppliedConfigAnnotation(newTiDBSet)
@@ -296,7 +297,7 @@ func (tmm *tidbMemberManager) syncTiDBClientCerts(tc *v1alpha1.TidbCluster) erro
 	return tmm.certControl.Create(certOpts)
 }
 
-func (tmm *tidbMemberManager) getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
+func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
@@ -320,12 +321,13 @@ func (tmm *tidbMemberManager) getNewTiDBHeadlessServiceForTidbCluster(tc *v1alph
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Selector: tidbLabel,
+			Selector:                 tidbLabel,
+			PublishNotReadyAddresses: true,
 		},
 	}
 }
 
-func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
+func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
@@ -384,6 +386,39 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 				},
 			},
 		})
+	}
+
+	sysctls := "sysctl -w"
+	var initContainers []corev1.Container
+	if tc.Spec.TiDB.Annotations != nil {
+		init, ok := tc.Spec.TiDB.Annotations[label.AnnSysctlInit]
+		if ok && (init == label.AnnSysctlInitVal) {
+			if tc.Spec.TiDB.PodSecurityContext != nil && len(tc.Spec.TiDB.PodSecurityContext.Sysctls) > 0 {
+				for _, sysctl := range tc.Spec.TiDB.PodSecurityContext.Sysctls {
+					sysctls = sysctls + fmt.Sprintf(" %s=%s", sysctl.Name, sysctl.Value)
+				}
+				privileged := true
+				initContainers = append(initContainers, corev1.Container{
+					Name:  "init",
+					Image: controller.GetUtilImage(tc),
+					Command: []string{
+						"sh",
+						"-c",
+						sysctls,
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: &privileged,
+					},
+				})
+			}
+		}
+	}
+	// Init container is only used for the case where allowed-unsafe-sysctls
+	// cannot be enabled for kubelet, so clean the sysctl in statefulset
+	// SecurityContext if init container is enabled
+	podSecurityContext := tc.Spec.TiDB.PodSecurityContext.DeepCopy()
+	if len(initContainers) > 0 {
+		podSecurityContext.Sysctls = []corev1.Sysctl{}
 	}
 
 	var containers []corev1.Container
@@ -472,7 +507,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 	})
 
 	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
-	if tc.Spec.PD.HostNetwork {
+	if tc.Spec.TiDB.HostNetwork {
 		dnsPolicy = corev1.DNSClusterFirstWithHostNet
 	}
 
@@ -486,7 +521,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: func() *int32 { r := tc.TiDBRealReplicas(); return &r }(),
+			Replicas: controller.Int32Ptr(tc.TiDBRealReplicas()),
 			Selector: tidbLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -503,14 +538,15 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 					RestartPolicy:     corev1.RestartPolicyAlways,
 					Tolerations:       tc.Spec.TiDB.Tolerations,
 					Volumes:           vols,
-					SecurityContext:   tc.Spec.TiDB.PodSecurityContext,
+					SecurityContext:   podSecurityContext,
 					PriorityClassName: tc.Spec.TiDB.PriorityClassName,
+					InitContainers:    initContainers,
 				},
 			},
 			ServiceName:         controller.TiDBPeerMemberName(tcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{Partition: func() *int32 { r := tc.TiDBRealReplicas(); return &r }()},
+				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{Partition: controller.Int32Ptr(tc.TiDBRealReplicas())},
 			},
 		},
 	}
@@ -600,9 +636,13 @@ func (ftmm *FakeTiDBMemberManager) SetSyncError(err error) {
 	ftmm.err = err
 }
 
-func (ftmm *FakeTiDBMemberManager) Sync(_ *v1alpha1.TidbCluster) error {
+func (ftmm *FakeTiDBMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if ftmm.err != nil {
 		return ftmm.err
+	}
+	if len(tc.Status.TiDB.Members) != 0 {
+		// simulate status update
+		tc.Status.ClusterID = string(uuid.NewUUID())
 	}
 	return nil
 }

@@ -7,7 +7,7 @@ metadata:
 spec:
   cluster: demo2
   backup: demo1-backup-schedule-2019-08-12t10-32-00
-  secretName: demo2-tidb-secret
+  tidbSecretName: restore-demo2-tidb-secret
   backupNamespace: test1
   storageClassName: rook-ceph-block
-  storageSize: 10Gi
+  storageSize: 1Gi

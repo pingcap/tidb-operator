@@ -22,7 +22,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
-	appslisters "k8s.io/client-go/listers/apps/v1beta1"
+	appslisters "k8s.io/client-go/listers/apps/v1"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"

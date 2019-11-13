@@ -14,12 +14,12 @@
 package meta
 
 import (
-	"testing"
-
 	"fmt"
+	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
@@ -34,12 +34,14 @@ import (
 func TestReclaimPolicyManagerSync(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name             string
-		pvcHasLabels     bool
-		pvcHasVolumeName bool
-		updateErr        bool
-		err              bool
-		changed          bool
+		name              string
+		pvcHasLabels      bool
+		pvcHasVolumeName  bool
+		updateErr         bool
+		err               bool
+		changed           bool
+		enablePVRecalim   bool
+		hasDeferDeleteAnn bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -53,6 +55,10 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 		}
 		if !test.pvcHasVolumeName {
 			pvc1.Spec.VolumeName = ""
+		}
+		tc.Spec.EnablePVReclaim = test.enablePVRecalim
+		if test.hasDeferDeleteAnn {
+			pvc1.Annotations = map[string]string{label.AnnPVCDeferDeleting: time.Now().String()}
 		}
 
 		rpm, fakePVControl, pvcIndexer, pvIndexer := newFakeReclaimPolicyManager()
@@ -86,36 +92,54 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 
 	tests := []testcase{
 		{
-			name:             "normal",
-			pvcHasLabels:     true,
-			pvcHasVolumeName: true,
-			updateErr:        false,
-			err:              false,
-			changed:          true,
+			name:              "normal",
+			pvcHasLabels:      true,
+			pvcHasVolumeName:  true,
+			updateErr:         false,
+			err:               false,
+			changed:           true,
+			enablePVRecalim:   false,
+			hasDeferDeleteAnn: false,
 		},
 		{
-			name:             "pvc don't have labels",
-			pvcHasLabels:     false,
-			pvcHasVolumeName: true,
-			updateErr:        false,
-			err:              false,
-			changed:          false,
+			name:              "pvc don't have labels",
+			pvcHasLabels:      false,
+			pvcHasVolumeName:  true,
+			updateErr:         false,
+			err:               false,
+			changed:           false,
+			enablePVRecalim:   false,
+			hasDeferDeleteAnn: false,
 		},
 		{
-			name:             "pvc don't have volumeName",
-			pvcHasLabels:     false,
-			pvcHasVolumeName: false,
-			updateErr:        false,
-			err:              false,
-			changed:          false,
+			name:              "pvc don't have volumeName",
+			pvcHasLabels:      true,
+			pvcHasVolumeName:  false,
+			updateErr:         false,
+			err:               false,
+			changed:           false,
+			enablePVRecalim:   false,
+			hasDeferDeleteAnn: false,
 		},
 		{
-			name:             "update failed",
-			pvcHasLabels:     true,
-			pvcHasVolumeName: true,
-			updateErr:        true,
-			err:              true,
-			changed:          false,
+			name:              "enable pv reclaim and pvc has defer delete annotation",
+			pvcHasLabels:      true,
+			pvcHasVolumeName:  true,
+			updateErr:         false,
+			err:               false,
+			changed:           false,
+			enablePVRecalim:   true,
+			hasDeferDeleteAnn: true,
+		},
+		{
+			name:              "patch pv failed",
+			pvcHasLabels:      true,
+			pvcHasVolumeName:  true,
+			updateErr:         true,
+			err:               true,
+			changed:           false,
+			enablePVRecalim:   false,
+			hasDeferDeleteAnn: false,
 		},
 	}
 

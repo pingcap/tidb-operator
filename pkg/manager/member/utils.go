@@ -17,13 +17,13 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	glog "k8s.io/klog"
 )
 
 const (
@@ -55,13 +55,10 @@ func annotationsMountVolume() (corev1.VolumeMount, corev1.Volume) {
 
 // statefulSetIsUpgrading confirms whether the statefulSet is upgrading phase
 func statefulSetIsUpgrading(set *apps.StatefulSet) bool {
-	if set.Status.ObservedGeneration == nil {
-		return false
-	}
 	if set.Status.CurrentRevision != set.Status.UpdateRevision {
 		return true
 	}
-	if set.Generation > *set.Status.ObservedGeneration && *set.Spec.Replicas == set.Status.Replicas {
+	if set.Generation > set.Status.ObservedGeneration && *set.Spec.Replicas == set.Status.Replicas {
 		return true
 	}
 	return false
@@ -199,7 +196,7 @@ func tikvPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiKVMemberName(tcName), ordinal)
 }
 
-func pdPodName(tcName string, ordinal int32) string {
+func PdPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.PDMemberName(tcName), ordinal)
 }
 
@@ -218,8 +215,8 @@ func CombineAnnotations(a, b map[string]string) map[string]string {
 	return a
 }
 
-// needForceUpgrade check if force upgrade is necessary
-func needForceUpgrade(tc *v1alpha1.TidbCluster) bool {
+// NeedForceUpgrade check if force upgrade is necessary
+func NeedForceUpgrade(tc *v1alpha1.TidbCluster) bool {
 	// Check if annotation 'pingcap.com/force-upgrade: "true"' is set
 	if tc.Annotations != nil {
 		forceVal, ok := tc.Annotations[label.AnnForceUpgradeKey]

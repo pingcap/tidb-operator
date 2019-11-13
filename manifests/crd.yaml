@@ -1,232 +1,550 @@
+---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  # name must match the spec fields below, and be in the form: <plural>.<group>
+  creationTimestamp: null
   name: tidbclusters.pingcap.com
 spec:
-  # group name to use for REST API: /apis/<group>/<version>
+  additionalPrinterColumns:
+  - JSONPath: .spec.pd.image
+    description: The image for PD cluster
+    name: PD
+    type: string
+  - JSONPath: .spec.pd.requests.storage
+    description: The storage size specified for PD node
+    name: Storage
+    type: string
+  - JSONPath: .spec.pd.replicas
+    description: The desired replicas number of PD cluster
+    name: Ready
+    type: integer
+  - JSONPath: .spec.pd.replicas
+    description: The desired replicas number of PD cluster
+    name: Desire
+    type: integer
+  - JSONPath: .spec.tikv.image
+    description: The image for TiKV cluster
+    name: TiKV
+    type: string
+  - JSONPath: .spec.tikv.requests.storage
+    description: The storage size specified for TiKV node
+    name: Storage
+    type: string
+  - JSONPath: .status.tikv.statefulSet.readyReplicas
+    description: The ready replicas number of TiKV cluster
+    name: Ready
+    type: integer
+  - JSONPath: .spec.tikv.replicas
+    description: The desired replicas number of TiKV cluster
+    name: Desire
+    type: integer
+  - JSONPath: .spec.tidb.image
+    description: The image for TiDB cluster
+    name: TiDB
+    type: string
+  - JSONPath: .status.tidb.statefulSet.readyReplicas
+    description: The ready replicas number of TiDB cluster
+    name: Ready
+    type: integer
+  - JSONPath: .spec.tidb.replicas
+    description: The desired replicas number of TiDB cluster
+    name: Desire
+    type: integer
   group: pingcap.com
-  # list of versions supported by this CustomResourceDefinition
-  version: v1alpha1
-  # either Namespaced or Cluster
-  scope: Namespaced
   names:
-    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
-    plural: tidbclusters
-    # singular name to be used as an alias on the CLI and for display
-    singular: tidbcluster
-    # kind is normally the CamelCased singular type. Your resource manifests use this.
     kind: TidbCluster
-    # shortNames allow shorter string to match your resource on the CLI
+    plural: tidbclusters
     shortNames:
     - tc
-  additionalPrinterColumns:
-  - name: PD
-    type: string
-    description: The image for PD cluster
-    JSONPath: .spec.pd.image
-  - name: Storage
-    type: string
-    description: The storage size specified for PD node
-    JSONPath: .spec.pd.requests.storage
-  - name: Ready
-    type: integer
-    description: The ready replicas number of PD cluster
-    JSONPath: .status.pd.statefulSet.readyReplicas
-  - name: Desire
-    type: integer
-    description: The desired replicas number of PD cluster
-    JSONPath: .spec.pd.replicas
-  - name: TiKV
-    type: string
-    description: The image for TiKV cluster
-    JSONPath: .spec.tikv.image
-  - name: Storage
-    type: string
-    description: The storage size specified for TiKV node
-    JSONPath: .spec.tikv.requests.storage
-  - name: Ready
-    type: integer
-    description: The ready replicas number of TiKV cluster
-    JSONPath: .status.tikv.statefulSet.readyReplicas
-  - name: Desire
-    type: integer
-    description: The desired replicas number of TiKV cluster
-    JSONPath: .spec.tikv.replicas
-  - name: TiDB
-    type: string
-    description: The image for TiDB cluster
-    JSONPath: .spec.tidb.image
-  - name: Ready
-    type: integer
-    description: The ready replicas number of TiDB cluster
-    JSONPath: .status.tidb.statefulSet.readyReplicas
-  - name: Desire
-    type: integer
-    description: The desired replicas number of TiDB cluster
-    JSONPath: .spec.tidb.replicas
+  scope: Namespaced
   validation:
-   # openAPIV3Schema is the schema for validating custom objects.
     openAPIV3Schema:
       properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
         spec:
+          description: TidbClusterSpec describes the attributes that a user creates
+            on a tidb cluster
           properties:
+            enablePVReclaim:
+              type: boolean
+            enableTLSCluster:
+              description: Enable TLS connection between TiDB server compoments
+              type: boolean
             pd:
+              description: PDSpec contains details of PD members
               properties:
-                limits:
-                  properties:
-                    cpu:
-                      type: string
-                requests:
-                  properties:
-                    cpu:
-                      type: string
-            tikv:
-              properties:
-                limits:
-                  properties:
-                    cpu:
-                      type: string
-                requests:
-                  properties:
-                    cpu:
-                      type: string
+                replicas:
+                  format: int32
+                  type: integer
+                storageClassName:
+                  type: string
+              required:
+              - replicas
+              type: object
+            pvReclaimPolicy:
+              type: string
+            schedulerName:
+              type: string
+            services:
+              description: Services list non-headless services type used in TidbCluster
+              items:
+                description: Service represent service type used in TidbCluster
+                properties:
+                  name:
+                    type: string
+                  type:
+                    type: string
+                type: object
+              type: array
             tidb:
+              description: TiDBSpec contains details of TiDB members
               properties:
-                limits:
-                  properties:
-                    cpu:
-                      type: string
-                requests:
-                  properties:
-                    cpu:
-                      type: string
-
+                binlogEnabled:
+                  type: boolean
+                enableTLSClient:
+                  type: boolean
+                maxFailoverCount:
+                  format: int32
+                  type: integer
+                replicas:
+                  format: int32
+                  type: integer
+                separateSlowLog:
+                  type: boolean
+                slowLogTailer:
+                  description: TiDBSlowLogTailerSpec represents an optional log tailer
+                    sidecar with TiDB
+                  type: object
+                storageClassName:
+                  type: string
+              required:
+              - replicas
+              type: object
+            tikv:
+              description: TiKVSpec contains details of TiKV members
+              properties:
+                maxFailoverCount:
+                  format: int32
+                  type: integer
+                privileged:
+                  type: boolean
+                replicas:
+                  format: int32
+                  type: integer
+                storageClassName:
+                  type: string
+              required:
+              - replicas
+              type: object
+            timezone:
+              type: string
+          type: object
+      type: object
+  version: v1alpha1
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  # name must match the spec fields below, and be in the form: <plural>.<group>
+  creationTimestamp: null
   name: backups.pingcap.com
 spec:
-  # group name to use for REST API: /apis/<group>/<version>
+  additionalPrinterColumns:
+  - JSONPath: .spec.storageType
+    description: The storage type of backup data
+    name: StorageType
+    type: string
+  - JSONPath: .status.backupSize
+    description: The data size of the backup
+    name: BackupSize
+    type: integer
+  - JSONPath: .status.commitTs
+    description: The commit ts of tidb cluster dump
+    name: CommitTS
+    type: string
+  - JSONPath: .status.timeStarted
+    description: The time at which the backup was started
+    name: Started
+    priority: 1
+    type: date
+  - JSONPath: .status.timeCompleted
+    description: The time at which the backup was completed
+    name: Completed
+    priority: 1
+    type: date
   group: pingcap.com
-  # list of versions supported by this CustomResourceDefinition
-  version: v1alpha1
-  # either Namespaced or Cluster
-  scope: Namespaced
   names:
-    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
-    plural: backups
-    # singular name to be used as an alias on the CLI and for display
-    singular: backup
-    # kind is normally the CamelCased singular type. Your resource manifests use this.
     kind: Backup
-    # shortNames allow shorter string to match your resource on the CLI
+    plural: backups
     shortNames:
     - bk
-  additionalPrinterColumns:
-  - name: StorageType
-    type: string
-    description: The storage type of backup data
-    JSONPath: .spec.storageType
-  - name: BackupSize
-    type: integer
-    description: The data size of the backup
-    JSONPath: .status.backupSize
-  - name: CommitTS
-    type: string
-    description: The commit ts of tidb cluster dump
-    JSONPath: .status.commitTs
-  - name: Started
-    type: date
-    description: The time at which the backup was started
-    priority: 1
-    JSONPath: .status.timeStarted
-  - name: Completed
-    type: date
-    description: The time at which the backup was completed
-    priority: 1
-    JSONPath: .status.timeCompleted
-
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        spec:
+          description: BackupSpec contains the backup specification for a tidb cluster.
+          properties:
+            backupType:
+              description: Type is the backup type for tidb cluster.
+              type: string
+            cluster:
+              description: Cluster is the Cluster to backup.
+              type: string
+            gcs:
+              description: GcsStorageProvider represents the google cloud storage
+                for storing backups.
+              properties:
+                bucket:
+                  description: Bucket in which to store the Backup.
+                  type: string
+                bucket_acl:
+                  description: BucketAcl represents the access control list for new
+                    buckets
+                  type: string
+                location:
+                  description: Location in which the gcs bucket is located.
+                  type: string
+                object_acl:
+                  description: ObjectAcl represents the access control list for new
+                    objects
+                  type: string
+                projectId:
+                  description: ProjectId represents the project that organizes all
+                    your Google Cloud Platform resources
+                  type: string
+                secretName:
+                  description: SecretName is the name of secret which stores the gcs
+                    service account credentials JSON .
+                  type: string
+                storageClass:
+                  description: StorageClass represents the storage class
+                  type: string
+              required:
+              - projectId
+              - secretName
+              type: object
+            s3:
+              description: S3StorageProvider represents a S3 compliant storage for
+                storing backups.
+              properties:
+                acl:
+                  description: Acl represents access control permissions for this
+                    bucket
+                  type: string
+                bucket:
+                  description: Bucket in which to store the Backup.
+                  type: string
+                endpoint:
+                  description: Endpoint of S3 compatible storage service
+                  type: string
+                provider:
+                  description: Provider represents the specific storage provider that
+                    implements the S3 interface
+                  type: string
+                region:
+                  description: Region in which the S3 compatible bucket is located.
+                  type: string
+                secretName:
+                  description: SecretName is the name of secret which stores S3 compliant
+                    storage access key and secret key.
+                  type: string
+                storageClass:
+                  description: StorageClass represents the storage class
+                  type: string
+              required:
+              - provider
+              - secretName
+              type: object
+            storageClassName:
+              description: StorageClassName is the storage class for backup job's
+                PV.
+              type: string
+            storageSize:
+              description: StorageSize is the request storage size for backup job
+              type: string
+            storageType:
+              description: StorageType is the backup storage type.
+              type: string
+            tidbSecretName:
+              description: TidbSecretName is the name of secret which stores tidb
+                cluster's username and password.
+              type: string
+          required:
+          - cluster
+          - tidbSecretName
+          - storageType
+          - storageClassName
+          - storageSize
+          type: object
+      type: object
+  version: v1alpha1
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  # name must match the spec fields below, and be in the form: <plural>.<group>
+  creationTimestamp: null
   name: restores.pingcap.com
 spec:
-  # group name to use for REST API: /apis/<group>/<version>
+  additionalPrinterColumns:
+  - JSONPath: .spec.backup
+    description: The backup that used to restore
+    name: Backup
+    type: string
+  - JSONPath: .status.timeStarted
+    description: The time at which the backup was started
+    name: Started
+    priority: 1
+    type: date
+  - JSONPath: .status.timeCompleted
+    description: The time at which the restore was completed
+    name: Completed
+    priority: 1
+    type: date
   group: pingcap.com
-  # list of versions supported by this CustomResourceDefinition
-  version: v1alpha1
-  # either Namespaced or Cluster
-  scope: Namespaced
   names:
-    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
-    plural: restores
-    # singular name to be used as an alias on the CLI and for display
-    singular: restore
-    # kind is normally the CamelCased singular type. Your resource manifests use this.
     kind: Restore
-    # shortNames allow shorter string to match your resource on the CLI
+    plural: restores
     shortNames:
     - rt
-  additionalPrinterColumns:
-  - name: Backup
-    type: string
-    description: The backup that used to restore
-    JSONPath: .spec.backup
-  - name: Started
-    type: date
-    description: The time at which the backup was started
-    priority: 1
-    JSONPath: .status.timeStarted
-  - name: Completed
-    type: date
-    description: The time at which the restore was completed
-    priority: 1
-    JSONPath: .status.timeCompleted
-
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        spec:
+          description: RestoreSpec contains the specification for a restore of a tidb
+            cluster backup.
+          properties:
+            backup:
+              description: Backup represents the backup object to be restored.
+              type: string
+            backupNamespace:
+              description: Namespace is the namespace of the backup.
+              type: string
+            cluster:
+              description: Cluster represents the tidb cluster to be restored.
+              type: string
+            storageClassName:
+              description: StorageClassName is the storage class for restore job's
+                PV.
+              type: string
+            storageSize:
+              description: StorageSize is the request storage size for restore job
+              type: string
+            tidbSecretName:
+              description: SecretName is the name of the secret which stores tidb
+                cluster's username and password.
+              type: string
+          required:
+          - cluster
+          - backup
+          - backupNamespace
+          - tidbSecretName
+          - storageClassName
+          - storageSize
+          type: object
+      type: object
+  version: v1alpha1
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  # name must match the spec fields below, and be in the form: <plural>.<group>
+  creationTimestamp: null
   name: backupschedules.pingcap.com
 spec:
-  # group name to use for REST API: /apis/<group>/<version>
+  additionalPrinterColumns:
+  - JSONPath: .spec.schedule
+    description: The cron format string used for backup scheduling.
+    name: Schedule
+    type: string
+  - JSONPath: .spec.maxBackups
+    description: The max number of backups we want to keep.
+    name: MaxBackups
+    type: integer
+  - JSONPath: .status.lastBackup
+    description: The last backup CR name
+    name: LastBackup
+    priority: 1
+    type: string
+  - JSONPath: .status.lastBackupTime
+    description: The last time the backup was successfully created
+    name: LastBackupTime
+    priority: 1
+    type: date
   group: pingcap.com
-  # list of versions supported by this CustomResourceDefinition
-  version: v1alpha1
-  # either Namespaced or Cluster
-  scope: Namespaced
   names:
-    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
-    plural: backupschedules
-    # singular name to be used as an alias on the CLI and for display
-    singular: backupschedule
-    # kind is normally the CamelCased singular type. Your resource manifests use this.
     kind: BackupSchedule
-    # shortNames allow shorter string to match your resource on the CLI
+    plural: backupschedules
     shortNames:
     - bks
-  additionalPrinterColumns:
-  - name: Schedule
-    type: string
-    description: The cron format string used for backup scheduling.
-    JSONPath: .spec.schedule
-  - name: MaxBackups
-    type: integer
-    description: The max number of backups we want to keep.
-    JSONPath: .spec.maxBackups
-  - name: LastBackup
-    type: string
-    description: The last backup CR name
-    priority: 1
-    JSONPath: .status.lastBackup
-  - name: LastBackupTime
-    type: date
-    description: The last time the backup was successfully created
-    priority: 1
-    JSONPath: .status.lastBackupTime
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        spec:
+          description: BackupScheduleSpec contains the backup schedule specification
+            for a tidb cluster.
+          properties:
+            backupTemplate:
+              description: BackupSpec contains the backup specification for a tidb
+                cluster.
+              properties:
+                backupType:
+                  description: Type is the backup type for tidb cluster.
+                  type: string
+                cluster:
+                  description: Cluster is the Cluster to backup.
+                  type: string
+                gcs:
+                  description: GcsStorageProvider represents the google cloud storage
+                    for storing backups.
+                  properties:
+                    bucket:
+                      description: Bucket in which to store the Backup.
+                      type: string
+                    bucket_acl:
+                      description: BucketAcl represents the access control list for
+                        new buckets
+                      type: string
+                    location:
+                      description: Location in which the gcs bucket is located.
+                      type: string
+                    object_acl:
+                      description: ObjectAcl represents the access control list for
+                        new objects
+                      type: string
+                    projectId:
+                      description: ProjectId represents the project that organizes
+                        all your Google Cloud Platform resources
+                      type: string
+                    secretName:
+                      description: SecretName is the name of secret which stores the
+                        gcs service account credentials JSON .
+                      type: string
+                    storageClass:
+                      description: StorageClass represents the storage class
+                      type: string
+                  required:
+                  - projectId
+                  - secretName
+                  type: object
+                s3:
+                  description: S3StorageProvider represents a S3 compliant storage
+                    for storing backups.
+                  properties:
+                    acl:
+                      description: Acl represents access control permissions for this
+                        bucket
+                      type: string
+                    bucket:
+                      description: Bucket in which to store the Backup.
+                      type: string
+                    endpoint:
+                      description: Endpoint of S3 compatible storage service
+                      type: string
+                    provider:
+                      description: Provider represents the specific storage provider
+                        that implements the S3 interface
+                      type: string
+                    region:
+                      description: Region in which the S3 compatible bucket is located.
+                      type: string
+                    secretName:
+                      description: SecretName is the name of secret which stores S3
+                        compliant storage access key and secret key.
+                      type: string
+                    storageClass:
+                      description: StorageClass represents the storage class
+                      type: string
+                  required:
+                  - provider
+                  - secretName
+                  type: object
+                storageClassName:
+                  description: StorageClassName is the storage class for backup job's
+                    PV.
+                  type: string
+                storageSize:
+                  description: StorageSize is the request storage size for backup
+                    job
+                  type: string
+                storageType:
+                  description: StorageType is the backup storage type.
+                  type: string
+                tidbSecretName:
+                  description: TidbSecretName is the name of secret which stores tidb
+                    cluster's username and password.
+                  type: string
+              required:
+              - cluster
+              - tidbSecretName
+              - storageType
+              - storageClassName
+              - storageSize
+              type: object
+            maxBackups:
+              description: MaxBackups is to specify how many backups we want to keep
+                0 is magic number to indicate un-limited backups.
+              format: int32
+              type: integer
+            maxReservedTime:
+              description: MaxReservedTime is to specify how long backups we want
+                to keep.
+              type: string
+            pause:
+              description: Pause means paused backupSchedule
+              type: boolean
+            schedule:
+              description: Schedule specifies the cron string used for backup scheduling.
+              type: string
+            storageClassName:
+              description: StorageClassName is the storage class for backup job's
+                PV.
+              type: string
+            storageSize:
+              description: StorageSize is the request storage size for backup job
+              type: string
+          required:
+          - schedule
+          - backupTemplate
+          type: object
+      type: object
+  version: v1alpha1

@@ -19,25 +19,26 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/pd/pkg/typeutil"
-	"github.com/pingcap/pd/server"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/kubernetes/pkg/kubelet/apis"
 )
 
 func TestTiKVMemberManagerSyncCreate(t *testing.T) {
@@ -75,8 +76,8 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 
 		tkmm, fakeSetControl, fakeSvcControl, pdClient, _, _ := newFakeTiKVMemberManager(tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
-			return &server.Config{
-				Replication: server.ReplicationConfig{
+			return &pdapi.Config{
+				Replication: pdapi.ReplicationConfig{
 					LocationLabels: typeutil.StringSlice{"region", "zone", "rack", "host"},
 				},
 			}, nil
@@ -230,8 +231,8 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 
 		tkmm, fakeSetControl, fakeSvcControl, pdClient, _, _ := newFakeTiKVMemberManager(tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
-			return &server.Config{
-				Replication: server.ReplicationConfig{
+			return &pdapi.Config{
+				Replication: pdapi.ReplicationConfig{
 					LocationLabels: typeutil.StringSlice{"region", "zone", "rack", "host"},
 				},
 			}, nil
@@ -258,7 +259,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 				set.Status.CurrentRevision = "pd-1"
 				set.Status.UpdateRevision = "pd-1"
 				observedGeneration := int64(1)
-				set.Status.ObservedGeneration = &observedGeneration
+				set.Status.ObservedGeneration = observedGeneration
 			})
 		} else {
 			fakeSetControl.SetStatusChange(test.statusChange)
@@ -325,7 +326,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(4))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(*tc.Status.TiKV.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
+				g.Expect(tc.Status.TiKV.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
 				g.Expect(tc.Status.TiKV.Stores).To(Equal(map[string]v1alpha1.TiKVStore{}))
 				g.Expect(tc.Status.TiKV.TombstoneStores).To(Equal(map[string]v1alpha1.TiKVStore{}))
 			},
@@ -447,7 +448,7 @@ func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 			setUpdate: func(set *apps.StatefulSet) {
 				set.Status.CurrentRevision = "v1"
 				set.Status.UpdateRevision = "v2"
-				set.Status.ObservedGeneration = func() *int64 { var i int64; i = 1000; return &i }()
+				set.Status.ObservedGeneration = 1000
 			},
 			hasPod:          false,
 			updatePod:       nil,
@@ -506,8 +507,8 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		tc := newTidbClusterForPD()
 		pmm, _, _, pdClient, podIndexer, nodeIndexer := newFakeTiKVMemberManager(tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
-			return &server.Config{
-				Replication: server.ReplicationConfig{
+			return &pdapi.Config{
+				Replication: pdapi.ReplicationConfig{
 					LocationLabels: typeutil.StringSlice{"region", "zone", "rack", "host"},
 				},
 			}, nil
@@ -527,10 +528,10 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "node-1",
 					Labels: map[string]string{
-						"region":           "region",
-						"zone":             "zone",
-						"rack":             "rack",
-						apis.LabelHostname: "host",
+						"region":             "region",
+						"zone":               "zone",
+						"rack":               "rack",
+						corev1.LabelHostname: "host",
 					},
 				},
 			}
@@ -1368,7 +1369,7 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	kubeCli := kubefake.NewSimpleClientset()
 	pdControl := pdapi.NewFakePDControl(kubeCli)
 	pdClient := controller.NewFakePDClient(pdControl, tc)
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1beta1().StatefulSets()
+	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
@@ -1392,4 +1393,432 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	}
 	tmm.tikvStatefulSetIsUpgradingFn = tikvStatefulSetIsUpgrading
 	return tmm, setControl, svcControl, pdClient, podInformer.Informer().GetIndexer(), nodeInformer.Informer().GetIndexer()
+}
+
+func TestGetNewServiceForTidbCluster(t *testing.T) {
+	tests := []struct {
+		name      string
+		tc        v1alpha1.TidbCluster
+		svcConfig SvcConfig
+		expected  corev1.Service
+	}{
+		{
+			name: "basic",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+			},
+			svcConfig: SvcConfig{
+				Name:       "peer",
+				Port:       20160,
+				Headless:   true,
+				SvcLabel:   func(l label.Label) label.Label { return l.TiKV() },
+				MemberName: controller.TiKVPeerMemberName,
+			},
+			expected: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-tikv-peer",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "tikv",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "None",
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "peer",
+							Port:       20160,
+							TargetPort: intstr.FromInt(20160),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "tikv",
+					},
+					PublishNotReadyAddresses: true,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := getNewServiceForTidbCluster(&tt.tc, tt.svcConfig)
+			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
+				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
+	tests := []struct {
+		name    string
+		tc      v1alpha1.TidbCluster
+		wantErr bool
+		testSts func(sts *apps.StatefulSet)
+	}{
+		{
+			name: "tikv network is not host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+			},
+			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+		},
+		{
+			name: "tikv network is host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: v1alpha1.TiKVSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							HostNetwork: true,
+						},
+					},
+				},
+			},
+			testSts: testHostNetwork(t, true, v1.DNSClusterFirstWithHostNet),
+		},
+		{
+			name: "tikv network is not host when pd is host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							HostNetwork: true,
+						},
+					},
+				},
+			},
+			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+		},
+		{
+			name: "tikv network is not host when tidb is host",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							HostNetwork: true,
+						},
+					},
+				},
+			},
+			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+		},
+		// TODO add more tests
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sts, err := getNewTiKVSetForTidbCluster(&tt.tc)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("error %v, wantErr %v", err, tt.wantErr)
+			}
+			tt.testSts(sts)
+		})
+	}
+}
+
+func TestTiKVInitContainers(t *testing.T) {
+	privileged := true
+	asRoot := false
+	tests := []struct {
+		name             string
+		tc               v1alpha1.TidbCluster
+		wantErr          bool
+		expectedInit     []corev1.Container
+		expectedSecurity *corev1.PodSecurityContext
+	}{
+		{
+			name: "no init container",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: v1alpha1.TiKVSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asRoot,
+								Sysctls: []corev1.Sysctl{
+									{
+										Name:  "net.core.somaxconn",
+										Value: "32768",
+									},
+									{
+										Name:  "net.ipv4.tcp_syncookies",
+										Value: "0",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_time",
+										Value: "300",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_intvl",
+										Value: "75",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedInit: nil,
+			expectedSecurity: &corev1.PodSecurityContext{
+				RunAsNonRoot: &asRoot,
+				Sysctls: []corev1.Sysctl{
+					{
+						Name:  "net.core.somaxconn",
+						Value: "32768",
+					},
+					{
+						Name:  "net.ipv4.tcp_syncookies",
+						Value: "0",
+					},
+					{
+						Name:  "net.ipv4.tcp_keepalive_time",
+						Value: "300",
+					},
+					{
+						Name:  "net.ipv4.tcp_keepalive_intvl",
+						Value: "75",
+					},
+				},
+			},
+		},
+		{
+			name: "sysctl with init container",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: v1alpha1.TiKVSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "true",
+							},
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asRoot,
+								Sysctls: []corev1.Sysctl{
+									{
+										Name:  "net.core.somaxconn",
+										Value: "32768",
+									},
+									{
+										Name:  "net.ipv4.tcp_syncookies",
+										Value: "0",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_time",
+										Value: "300",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_intvl",
+										Value: "75",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedInit: []corev1.Container{
+				{
+					Name:  "init",
+					Image: "busybox:1.26.2",
+					Command: []string{
+						"sh",
+						"-c",
+						"sysctl -w net.core.somaxconn=32768 net.ipv4.tcp_syncookies=0 net.ipv4.tcp_keepalive_time=300 net.ipv4.tcp_keepalive_intvl=75",
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: &privileged,
+					},
+				},
+			},
+			expectedSecurity: &corev1.PodSecurityContext{
+				RunAsNonRoot: &asRoot,
+				Sysctls:      []corev1.Sysctl{},
+			},
+		},
+		{
+			name: "sysctl with init container",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: v1alpha1.TiKVSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "true",
+							},
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asRoot,
+							},
+						},
+					},
+				},
+			},
+			expectedInit: nil,
+			expectedSecurity: &corev1.PodSecurityContext{
+				RunAsNonRoot: &asRoot,
+			},
+		},
+		{
+			name: "sysctl with init container",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: v1alpha1.TiKVSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "true",
+							},
+							PodSecurityContext: nil,
+						},
+					},
+				},
+			},
+			expectedInit:     nil,
+			expectedSecurity: nil,
+		},
+		{
+			name: "sysctl without init container due to invalid annotation",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: v1alpha1.TiKVSpec{
+						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "false",
+							},
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asRoot,
+								Sysctls: []corev1.Sysctl{
+									{
+										Name:  "net.core.somaxconn",
+										Value: "32768",
+									},
+									{
+										Name:  "net.ipv4.tcp_syncookies",
+										Value: "0",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_time",
+										Value: "300",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_intvl",
+										Value: "75",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedInit: nil,
+			expectedSecurity: &corev1.PodSecurityContext{
+				RunAsNonRoot: &asRoot,
+				Sysctls: []corev1.Sysctl{
+					{
+						Name:  "net.core.somaxconn",
+						Value: "32768",
+					},
+					{
+						Name:  "net.ipv4.tcp_syncookies",
+						Value: "0",
+					},
+					{
+						Name:  "net.ipv4.tcp_keepalive_time",
+						Value: "300",
+					},
+					{
+						Name:  "net.ipv4.tcp_keepalive_intvl",
+						Value: "75",
+					},
+				},
+			},
+		},
+		{
+			name: "no init container no securityContext",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+			},
+			expectedInit:     nil,
+			expectedSecurity: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sts, err := getNewTiKVSetForTidbCluster(&tt.tc)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("error %v, wantErr %v", err, tt.wantErr)
+			}
+			if diff := cmp.Diff(tt.expectedInit, sts.Spec.Template.Spec.InitContainers); diff != "" {
+				t.Errorf("unexpected InitContainers in Statefulset (-want, +got): %s", diff)
+			}
+			if tt.expectedSecurity == nil {
+				if sts.Spec.Template.Spec.SecurityContext != nil {
+					t.Errorf("unexpected SecurityContext in Statefulset (want nil, got %#v)", *sts.Spec.Template.Spec.SecurityContext)
+				}
+			} else if sts.Spec.Template.Spec.SecurityContext == nil {
+				t.Errorf("unexpected SecurityContext in Statefulset (want %#v, got nil)", *tt.expectedSecurity)
+			} else if diff := cmp.Diff(*(tt.expectedSecurity), *(sts.Spec.Template.Spec.SecurityContext)); diff != "" {
+				t.Errorf("unexpected SecurityContext in Statefulset (-want, +got): %s", diff)
+			}
+		})
+	}
 }

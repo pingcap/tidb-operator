@@ -14,8 +14,7 @@
 package member
 
 import (
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	v1 "k8s.io/api/core/v1"
@@ -23,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	glog "k8s.io/klog"
 )
 
 const (
@@ -155,13 +155,21 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 	return skipReason, nil
 }
 
-type fakeOrphanPodsCleaner struct{}
+type FakeOrphanPodsCleaner struct {
+	err error
+}
 
 // NewFakeOrphanPodsCleaner returns a fake orphan pods cleaner
-func NewFakeOrphanPodsCleaner() OrphanPodsCleaner {
-	return &fakeOrphanPodsCleaner{}
+func NewFakeOrphanPodsCleaner() *FakeOrphanPodsCleaner {
+	return &FakeOrphanPodsCleaner{}
 }
 
-func (fopc *fakeOrphanPodsCleaner) Clean(_ *v1alpha1.TidbCluster) (map[string]string, error) {
-	return nil, nil
+func (fpc *FakeOrphanPodsCleaner) SetnOrphanPodCleanerError(err error) {
+	fpc.err = err
 }
+
+func (fpc *FakeOrphanPodsCleaner) Clean(_ *v1alpha1.TidbCluster) (map[string]string, error) {
+	return nil, fpc.err
+}
+
+var _ OrphanPodsCleaner = &FakeOrphanPodsCleaner{}

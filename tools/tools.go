@@ -18,8 +18,11 @@
 package tools
 
 import (
-	_ "github.com/dnephin/govet"
 	_ "k8s.io/code-generator"
-	_ "k8s.io/gengo"
-	_ "k8s.io/klog"
+	_ "sigs.k8s.io/apiserver-builder-alpha/cmd/apiregister-gen"
+
+	// workaround for https://github.com/pingcap/tidb-operator/issues/1095
+	// TODO remove this if we 1) avoid the issue in a better way or 2) go both
+	// in local development and ci have the bug fixed
+	_ "github.com/fatih/color"
 )

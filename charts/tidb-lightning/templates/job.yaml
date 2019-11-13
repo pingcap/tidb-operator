@@ -37,6 +37,11 @@ spec:
           mountPath: /etc/rclone
         - name: data
           mountPath: /data
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{ end -}}
       {{ end -}}
       restartPolicy: Never      # if lightning fails, manual intervention is required so no restart
       containers:
@@ -52,8 +57,12 @@ spec:
         resources:
 {{ toYaml .Values.resources | indent 10 }}
         {{- end }}
-        {{- if .Values.failFast }}
         env:
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
+        {{- if .Values.failFast }}
         - name: FAIL_FAST
           value: "true"
         {{- end }}

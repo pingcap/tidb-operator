@@ -7,10 +7,10 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/api"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
+	glog "k8s.io/klog"
 )
 
 // Client is a fault-trigger client
@@ -158,9 +158,6 @@ func (c *client) StartVM(vm *manager.VM) error {
 	}
 
 	vmName := vm.Name
-	if len(vmName) == 0 {
-		vmName = vm.IP
-	}
 
 	url := util.GenURL(fmt.Sprintf("%s%s/vm/%s/start", c.cfg.Addr, api.APIPrefix, vmName))
 	if _, err := c.post(url, nil); err != nil {
@@ -177,9 +174,6 @@ func (c *client) StopVM(vm *manager.VM) error {
 	}
 
 	vmName := vm.Name
-	if len(vmName) == 0 {
-		vmName = vm.IP
-	}
 
 	url := util.GenURL(fmt.Sprintf("%s%s/vm/%s/stop", c.cfg.Addr, api.APIPrefix, vmName))
 	if _, err := c.post(url, nil); err != nil {

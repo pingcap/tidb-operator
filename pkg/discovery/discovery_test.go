@@ -21,7 +21,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/pdpb"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"

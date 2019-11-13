@@ -24,7 +24,7 @@ provider "helm" {
 #
 #  # NOTE: cluster_name cannot be changed after creation
 #  cluster_name                  = "demo-cluster"
-#  cluster_version               = "v3.0.1"
+#  cluster_version               = "v3.0.4"
 #  ssh_key_name                  = module.key-pair.key_name
 #  pd_count                      = 1
 #  pd_instance_type              = "t2.xlarge"
@@ -44,6 +44,7 @@ module "default-cluster" {
   source  = "../modules/aws/tidb-cluster"
   eks     = local.eks
   subnets = local.subnets
+  region  = var.region
 
   cluster_name          = var.default_cluster_name
   cluster_version       = var.default_cluster_version
@@ -57,4 +58,3 @@ module "default-cluster" {
   monitor_instance_type = var.default_cluster_monitor_instance_type
   override_values       = file("default-cluster.yaml")
 }
-

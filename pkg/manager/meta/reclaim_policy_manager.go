@@ -14,7 +14,7 @@
 package meta
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
@@ -55,6 +55,10 @@ func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
 		if pvc.Spec.VolumeName == "" {
 			continue
 		}
+		if tc.Spec.EnablePVReclaim && len(pvc.Annotations[label.AnnPVCDeferDeleting]) != 0 {
+			// If the pv reclaim function is turned on, and when pv is the candidate pv to be reclaimed, skip patch this pv.
+			continue
+		}
 		pv, err := rpm.pvLister.Get(pvc.Spec.VolumeName)
 		if err != nil {
 			return err
@@ -88,8 +92,5 @@ func (frpm *FakeReclaimPolicyManager) SetSyncError(err error) {
 }
 
 func (frpm *FakeReclaimPolicyManager) Sync(_ *v1alpha1.TidbCluster) error {
-	if frpm.err != nil {
-		return frpm.err
-	}
-	return nil
+	return frpm.err
 }

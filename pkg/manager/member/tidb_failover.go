@@ -16,9 +16,9 @@ package member
 import (
 	"time"
 
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	glog "k8s.io/klog"
 )
 
 type tidbFailover struct {
@@ -45,8 +45,8 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-	if len(tc.Status.TiDB.FailureMembers) >= int(tc.Spec.TiDB.MaxFailoverCount) {
-		glog.Errorf("the failure members count reached the limit:%d", tc.Spec.TiDB.MaxFailoverCount)
+	if tc.Spec.TiDB.MaxFailoverCount > 0 && len(tc.Status.TiDB.FailureMembers) >= int(tc.Spec.TiDB.MaxFailoverCount) {
+		glog.Warningf("the failure members count reached the limit:%d", tc.Spec.TiDB.MaxFailoverCount)
 		return nil
 	}
 	for _, tidbMember := range tc.Status.TiDB.Members {

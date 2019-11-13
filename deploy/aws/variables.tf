@@ -19,11 +19,11 @@ variable "eks_version" {
 
 variable "operator_version" {
   description = "TiDB operator version"
-  default     = "v1.0.1"
+  default     = "v1.0.2"
 }
 
 variable "operator_values" {
-  description = "The helm values of TiDB Operator, it is recommended to use the 'file()' function call to read the content from a local file, e.g. 'file(\"my-cluster.yaml\")'"
+  description = "The helm values file for TiDB Operator, path is relative to current working dir"
   default     = ""
 }
 
@@ -80,7 +80,7 @@ variable "bastion_instance_type" {
 
 # For aws tutorials compatiablity
 variable "default_cluster_version" {
-  default = "v3.0.1"
+  default = "v3.0.4"
 }
 
 variable "default_cluster_pd_count" {

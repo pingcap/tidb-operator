@@ -18,13 +18,15 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/golang/glog"
-
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	glog "k8s.io/klog"
 )
 
 // RestoreManager mainly used to manage backup related work
@@ -50,10 +52,17 @@ func NewRestoreManager(
 func (rm *RestoreManager) ProcessRestore() error {
 	restore, err := rm.restoreLister.Restores(rm.Namespace).Get(rm.RestoreName)
 	if err != nil {
-		return fmt.Errorf("can't find cluster %s restore %s CRD object, err: %v", rm, rm.RestoreName, err)
+		glog.Errorf("can't find cluster %s restore %s CRD object, err: %v", rm, rm.RestoreName, err)
+		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestoreFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "GetRestoreCRFailed",
+			Message: err.Error(),
+		})
 	}
 
 	if rm.BackupPath == "" {
+		glog.Errorf("backup %s path is empty", rm.BackupName)
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
@@ -61,6 +70,32 @@ func (rm *RestoreManager) ProcessRestore() error {
 			Message: fmt.Sprintf("backup %s path is empty", rm.BackupName),
 		})
 	}
+
+	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
+		db, err := util.OpenDB(rm.getDSN(constants.TidbMetaDB))
+		if err != nil {
+			glog.Warningf("can't open connection to tidb cluster %s, err: %v", rm, err)
+			return false, nil
+		}
+
+		if err := db.Ping(); err != nil {
+			glog.Warningf("can't connect to tidb cluster %s, err: %s", rm, err)
+			return false, nil
+		}
+		db.Close()
+		return true, nil
+	})
+
+	if err != nil {
+		glog.Errorf("cluster %s connect failed, err: %s", rm, err)
+		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestoreFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "ConnectTidbFailed",
+			Message: err.Error(),
+		})
+	}
+
 	return rm.performRestore(restore.DeepCopy())
 }
 
@@ -77,6 +112,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 
 	restoreDataPath := rm.getRestoreDataPath()
 	if err := rm.downloadBackupData(restoreDataPath); err != nil {
+		glog.Errorf("download cluster %s backup %s data failed, err: %s", rm, rm.BackupPath, err)
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
@@ -89,6 +125,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 	restoreDataDir := filepath.Dir(restoreDataPath)
 	unarchiveDataPath, err := unarchiveBackupData(restoreDataPath, restoreDataDir)
 	if err != nil {
+		glog.Errorf("unarchive cluster %s backup %s data failed, err: %s", rm, restoreDataPath, err)
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
@@ -100,6 +137,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 
 	err = rm.loadTidbClusterData(unarchiveDataPath)
 	if err != nil {
+		glog.Errorf("restore cluster %s from backup %s failed, err: %s", rm, rm.BackupPath, err)
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,

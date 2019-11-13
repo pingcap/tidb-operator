@@ -7,10 +7,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 )
 
 var (
+	TestName     string
 	Channel      string
 	WebhookURL   string
 	SuccessCount int
@@ -94,7 +95,7 @@ func SendErrMsg(msg string) error {
 		Color: "fatal",
 	}
 	payload := Payload{
-		Username:    "operator-test",
+		Username:    TestName,
 		Channel:     Channel,
 		Text:        msg,
 		IconEmoji:   ":ghost:",
@@ -113,7 +114,7 @@ func SendGoodMsg(msg string) error {
 		Color: "good",
 	}
 	payload := Payload{
-		Username:    "operator-test",
+		Username:    TestName,
 		Channel:     Channel,
 		Text:        msg,
 		IconEmoji:   ":sun_with_face:",
@@ -133,7 +134,7 @@ func SendWarnMsg(msg string) error {
 		Color: "warning",
 	}
 	payload := Payload{
-		Username:    "operator-test",
+		Username:    TestName,
 		Channel:     Channel,
 		Text:        msg,
 		IconEmoji:   ":imp:",

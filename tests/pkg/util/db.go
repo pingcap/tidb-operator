@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 )
 
 // OpenDB opens db

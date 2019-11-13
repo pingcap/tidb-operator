@@ -16,7 +16,7 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
       app.kubernetes.io/component: importer
   serviceName: {{ template "cluster.name" . }}-importer
-  replicas: {{ .Values.importer.replicas }}
+  replicas: 1
   template:
     metadata:
       annotations:
@@ -58,6 +58,10 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: status.podIP
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
         volumeMounts:
         - name: data
           mountPath: /var/lib/tikv-importer

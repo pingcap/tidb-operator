@@ -6,29 +6,21 @@ cat <<EOF > /tmp/rclone.conf
 [s3]
 type = s3
 env_auth = false
-provider = ${S3_PROVIDER:-"AWS"}
+provider =  ${S3_PROVIDER}
 access_key_id = ${AWS_ACCESS_KEY_ID}
 secret_access_key = ${AWS_SECRET_ACCESS_KEY:-$AWS_SECRET_KEY}
-region = ${AWS_REGION:-"us-east-1"}
-endpoint = ${S3_ENDPOINT}
+region = ${AWS_REGION}
 acl = ${AWS_ACL}
-storage_class = ${AWS_STORAGE_CLASS}
-[ceph]
-type = s3
-env_auth = false
-provider = ${S3_PROVIDER:-"Ceph"}
-access_key_id = ${AWS_ACCESS_KEY_ID}
-secret_access_key = ${AWS_SECRET_ACCESS_KEY:-$AWS_SECRET_KEY}
-region = :default-placement
 endpoint = ${S3_ENDPOINT}
-[gs]
+storage_class = ${AWS_STORAGE_CLASS}
+[gcs]
 type = google cloud storage
 project_number = ${GCS_PROJECT_ID}
 service_account_file = /tmp/google-credentials.json
 object_acl = ${GCS_OBJECT_ACL}
 bucket_acl = ${GCS_BUCKET_ACL}
 location =  ${GCS_LOCATION}
-storage_class = ${GCS_STORAGE_CLASS:-"MULTI_REGIONAL"}
+storage_class = ${GCS_STORAGE_CLASS:-"COLDLINE"}
 [azure]
 type = azureblob
 account = ${AZUREBLOB_ACCOUNT}

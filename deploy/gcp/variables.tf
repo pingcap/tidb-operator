@@ -24,11 +24,11 @@ variable "node_locations" {
 
 variable "tidb_version" {
   description = "TiDB version"
-  default     = "v3.0.1"
+  default     = "v3.0.4"
 }
 
 variable "tidb_operator_version" {
-  default = "v1.0.1"
+  default = "v1.0.2"
 }
 
 variable "tidb_operator_chart_version" {
@@ -39,6 +39,11 @@ variable "tidb_operator_chart_version" {
 variable "operator_helm_values" {
   description = "Operator helm values"
   type        = string
+  default     = ""
+}
+
+variable "operator_helm_values_file" {
+  description = "The helm values file for TiDB Operator, path is relative to current working dir"
   default     = ""
 }
 
@@ -127,5 +132,9 @@ variable "maintenance_window_start_time" {
 
 variable "override_values" {
   description = "YAML formatted values that will be passed in to the tidb-cluster helm release"
+  default     = ""
+}
+variable "override_values_file" {
+  description = "The helm values file for TiDB Cluster, path is relative to current working dir"
   default     = ""
 }

@@ -14,7 +14,7 @@
 package tidbcluster
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
@@ -149,3 +149,26 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	_, err := tcc.pvcCleaner.Clean(tc)
 	return err
 }
+
+var _ ControlInterface = &defaultTidbClusterControl{}
+
+type FakeTidbClusterControlInterface struct {
+	err error
+}
+
+func NewFakeTidbClusterControlInterface() *FakeTidbClusterControlInterface {
+	return &FakeTidbClusterControlInterface{}
+}
+
+func (ftcc *FakeTidbClusterControlInterface) SetUpdateTCError(err error) {
+	ftcc.err = err
+}
+
+func (ftcc *FakeTidbClusterControlInterface) UpdateTidbCluster(_ *v1alpha1.TidbCluster) error {
+	if ftcc.err != nil {
+		return ftcc.err
+	}
+	return nil
+}
+
+var _ ControlInterface = &FakeTidbClusterControlInterface{}

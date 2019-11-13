@@ -22,8 +22,14 @@ schedulerName: tidb-scheduler
 # timezone is the default system timzone for TiDB
 timezone: UTC
 
-# default reclaim policy of a PV
+# reclaim policy of PV, default: Retain.
+# you must set it to Retain to ensure data safety in production environment.
+# https://pingcap.com/docs/v3.0/tidb-in-kubernetes/reference/configuration/local-pv/#data-security
 pvReclaimPolicy: Retain
+
+# Whether enable PV reclaim.
+# When enabling, scale in pd or tikv will trigger PV reclaim automatically
+enablePVReclaim: false
 
 # services is the service list to expose, default is ClusterIP
 # can be ClusterIP | NodePort | LoadBalancer
@@ -32,7 +38,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.0.1
+  image: pingcap/tidb-operator:v1.0.2
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -68,7 +74,7 @@ pd:
     location-labels = ["region", "zone", "rack", "host"]
 
   replicas: 3
-  image: pingcap/pd:v3.0.1
+  image: pingcap/pd:v3.0.4
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -166,6 +172,11 @@ pd:
   # Specify the security context of PD Pod.
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
   podSecurityContext: {}
+    # sysctls:
+    # # You can enable these kernel parameters tuning to improve TiDB performance,
+    # # when the kubelet is configured to allow unsafe sysctls
+    # - name: net.core.somaxconn
+    #   value: "32768"
 
   # Specify the priorityClassName for PD Pod.
   # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
@@ -206,11 +217,11 @@ tikv:
   #
   #   # Normally it should be tuned to 30%-50% of `tikv.resources.limits.memory`, for example: 32Gi -> 16GB
   #   capacity = "1GB"
-  # Note that we can't set raftstore.capacity in config because it will be overridden by the command line parameter, 
+  # Note that we can't set raftstore.capacity in config because it will be overridden by the command line parameter,
   # we can only set capacity in tikv.resources.limits.storage.
 
   replicas: 3
-  image: pingcap/tikv:v3.0.1
+  image: pingcap/tikv:v3.0.4
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -255,10 +266,19 @@ tikv:
   # Specify the security context of TiKV Pod.
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
   podSecurityContext: {}
+    # sysctls:
+    # # You can enable these kernel parameters tuning to improve TiDB performance,
+    # # when the kubelet is configured to allow unsafe sysctls
+    # - name: net.core.somaxconn
+    #   value: "32768"
 
   # Specify the priorityClassName for TiKV Pod.
   # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
   priorityClassName: ""
+  # When a TiKV node fails, its status turns to `Disconnected`. After 30 minutes, it turns to `Down`.
+  # After waiting for 5 minutes, TiDB Operator creates a new TiKV node if this TiKV node is still down.
+  # maxFailoverCount is used to configure the maximum number of TiKV nodes that TiDB Operator can create when failover occurs.
+  maxFailoverCount: 3
 
 tidb:
   # Please refer to https://github.com/pingcap/tidb/blob/master/config/config.toml.example for the default
@@ -291,7 +311,7 @@ tidb:
   # initSqlConfigMapName: tidb-initsql
   # initSql: |-
   #   create database app;
-  image: pingcap/tidb:v3.0.1
+  image: pingcap/tidb:v3.0.4
   # Image pull policy.
   imagePullPolicy: IfNotPresent
 
@@ -329,6 +349,19 @@ tidb:
   # Specify the security context of TiDB Pod.
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
   podSecurityContext: {}
+    # sysctls:
+    # # You can enable these kernel parameters tuning to improve TiDB performance,
+    # # when the kubelet is configured to allow unsafe sysctls
+    # - name: net.core.somaxconn
+    #   value: "32768"
+
+    # # Load balancers usually have an idle timeout (eg. AWS NLB idle timeout is 350),
+    # # the tcp_keepalive_time must be set to lower than LB idle timeout.
+    # - name: net.ipv4.tcp_keepalive_time
+    #   value: "300"
+    # - name: net.ipv4.tcp_keepalive_intvl
+    #   value: "75"
+
 
   # Specify the priorityClassName for TiDB Pod.
   # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
@@ -391,8 +424,10 @@ monitor:
   storageClassName: local-storage
   storage: 10Gi
   initializer:
-    image: pingcap/tidb-monitor-initializer:v3.0.1
+    image: pingcap/tidb-monitor-initializer:v3.0.4
     imagePullPolicy: IfNotPresent
+    config:
+      K8S_PROMETHEUS_URL: http://prometheus-k8s.monitoring.svc:9090
     resources: {}
     # limits:
     #  cpu: 50m
@@ -402,7 +437,7 @@ monitor:
     #  memory: 64Mi
   reloader:
     create: true
-    image: pingcap/tidb-monitor-reloader:v1.0.0
+    image: pingcap/tidb-monitor-reloader:v1.0.1
     imagePullPolicy: IfNotPresent
     service:
       type: NodePort
@@ -467,7 +502,7 @@ binlog:
   pump:
     create: false
     replicas: 1
-    image: pingcap/tidb-binlog:v3.0.1
+    image: pingcap/tidb-binlog:v3.0.4
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -509,7 +544,7 @@ binlog:
 
   drainer:
     create: false
-    image: pingcap/tidb-binlog:v3.0.1
+    image: pingcap/tidb-binlog:v3.0.4
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -663,7 +698,7 @@ scheduledBackup:
 
 importer:
   create: false
-  image: pingcap/tidb-lightning:v3.0.1
+  image: pingcap/tidb-lightning:v3.0.4
   imagePullPolicy: IfNotPresent
   storageClassName: local-storage
   storage: 200Gi

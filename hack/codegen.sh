@@ -13,10 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-scriptdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+set -o errexit
+set -o nounset
+set -o pipefail
 
-GO111MODULE=on ${scriptdir}/generate-groups.sh \
-  deepcopy,client,lister,informer \
-  github.com/pingcap/tidb-operator/pkg/client \
-  github.com/pingcap/tidb-operator/pkg/apis \
-  "pingcap.com:v1alpha1"
+SCRIPT_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
+cd $SCRIPT_ROOT
+
+export GO111MODULE=on
+
+go mod vendor
+
+CODEGEN_PKG=${CODEGEN_PKG:-$(ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
+
+GO111MODULE=off bash "${CODEGEN_PKG}"/generate-groups.sh "deepcopy,client,informer,lister" \
+    github.com/pingcap/tidb-operator/pkg/client \
+    github.com/pingcap/tidb-operator/pkg/apis \
+    pingcap:v1alpha1 \
+    --go-header-file ./hack/boilerplate.go.txt

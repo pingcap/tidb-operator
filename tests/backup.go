@@ -8,20 +8,20 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
 	sql_util "github.com/pingcap/tidb-operator/tests/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	glog "k8s.io/klog"
 )
 
 const (
 	DrainerReplicas int32 = 1
 	// TODO: better way to do incremental restore from pb files
 	RunReparoCommandTemplate = `kubectl exec -n={{ .Namespace }} {{ .PodName }} -- sh -c \
-"while [ \$(grep -r 'commitTS' /data.drainer/savepoint| awk '{print (\$3)}') -lt {{ .StopTSO }} ]; do echo 'wait end tso reached' && sleep 60; done; \
+"while [ \$(grep -r 'commitTS' /data/savepoint| awk '{print (\$3)}') -lt {{ .StopTSO }} ]; do echo 'wait end tso reached' && sleep 60; done; \
 printf '{{ .ReparoConfig }}' > reparo.toml && \
 ./reparo -config reparo.toml > /data/reparo.log" `
 )
@@ -145,11 +145,14 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 	if err != nil {
 		return err
 	}
-	glog.Infof("waiting 1 minute to insert into more records")
-	time.Sleep(1 * time.Minute)
+	glog.Infof("waiting 30 seconds to insert into more records")
+	time.Sleep(30 * time.Second)
 
 	glog.Infof("cluster[%s] stop insert data", source.ClusterName)
 	oa.StopInsertDataTo(source)
+
+	glog.Infof("wait on-going inserts to be drained for 60 seconds")
+	time.Sleep(60 * time.Second)
 
 	stopWriteTS, err := sql_util.ShowMasterCommitTS(getDSN(source.Namespace, source.ClusterName, "test", source.Password))
 	if err != nil {

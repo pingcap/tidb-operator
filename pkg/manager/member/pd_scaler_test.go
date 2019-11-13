@@ -19,11 +19,11 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,7 +58,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 
 		oldSet := newStatefulSetForPDScale()
 		newSet := oldSet.DeepCopy()
-		newSet.Spec.Replicas = int32Pointer(7)
+		newSet.Spec.Replicas = controller.Int32Ptr(7)
 
 		scaler, _, pvcIndexer, pvcControl := newFakePDScaler()
 
@@ -252,7 +252,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 
 		oldSet := newStatefulSetForPDScale()
 		newSet := oldSet.DeepCopy()
-		newSet.Spec.Replicas = int32Pointer(3)
+		newSet.Spec.Replicas = controller.Int32Ptr(3)
 
 		scaler, pdControl, pvcIndexer, pvcControl := newFakePDScaler()
 
@@ -374,7 +374,7 @@ func newStatefulSetForPDScale() *apps.StatefulSet {
 			Namespace: metav1.NamespaceDefault,
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: int32Pointer(5),
+			Replicas: controller.Int32Ptr(5),
 		},
 	}
 	return set
@@ -387,11 +387,6 @@ func newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType)
 			Namespace: metav1.NamespaceDefault,
 		},
 	}
-}
-
-func int32Pointer(num int) *int32 {
-	i := int32(num)
-	return &i
 }
 
 func normalPDMember(tc *v1alpha1.TidbCluster) {

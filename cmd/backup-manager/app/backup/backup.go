@@ -23,10 +23,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/mholt/archiver"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	glog "k8s.io/klog"
 )
 
 // BackupOpts contains the input arguments to the backup command
@@ -50,7 +50,7 @@ func (bo *BackupOpts) getBackupFullPath() string {
 
 func (bo *BackupOpts) getBackupRelativePath() string {
 	backupName := fmt.Sprintf("backup-%s", time.Now().UTC().Format(time.RFC3339))
-	return fmt.Sprintf("%s_%s/%s", bo.Namespace, bo.TcName, backupName)
+	return fmt.Sprintf("%s-%s/%s", bo.Namespace, bo.TcName, backupName)
 }
 
 func (bo *BackupOpts) getDestBucketURI(remotePath string) string {
@@ -92,15 +92,13 @@ func (bo *BackupOpts) dumpTidbClusterData() (string, error) {
 		"--long-query-guard=3600",
 		"--tidb-force-priority=LOW_PRIORITY",
 		"--verbose=3",
-		fmt.Sprintf("--regex '^(?!(mysql%s.))'", "\\"),
+		"--regex",
+		"^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA))",
 	}
 
-	dumper := exec.Command("/mydumper", args...)
-	if err := dumper.Start(); err != nil {
-		return bfPath, fmt.Errorf("cluster %s, start mydumper command %v failed, err: %v", bo, args, err)
-	}
-	if err := dumper.Wait(); err != nil {
-		return bfPath, fmt.Errorf("cluster %s, execute mydumper command %v failed, err: %v", bo, args, err)
+	output, err := exec.Command("/mydumper", args...).CombinedOutput()
+	if err != nil {
+		return bfPath, fmt.Errorf("cluster %s, execute mydumper command %v failed, output: %s, err: %v", bo, args, string(output), err)
 	}
 	return bfPath, nil
 }
@@ -109,19 +107,16 @@ func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
 	destBucket := util.NormalizeBucketURI(bucketURI)
 	tmpDestBucket := fmt.Sprintf("%s.tmp", destBucket)
 	// TODO: We may need to use exec.CommandContext to control timeouts.
-	rcCopy := exec.Command("rclone", constants.RcloneConfigArg, "copyto", source, tmpDestBucket)
-	if err := rcCopy.Start(); err != nil {
-		return fmt.Errorf("cluster %s, start rclone copyto command for upload backup data %s failed, err: %v", bo, bucketURI, err)
-	}
-	if err := rcCopy.Wait(); err != nil {
-		return fmt.Errorf("cluster %s, execute rclone copyto command for upload backup data %s failed, err: %v", bo, bucketURI, err)
+	output, err := exec.Command("rclone", constants.RcloneConfigArg, "copyto", source, tmpDestBucket).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("cluster %s, execute rclone copyto command for upload backup data %s failed, output: %s, err: %v", bo, bucketURI, string(output), err)
 	}
 
-	glog.Infof("upload cluster %s backup data %s successfully, now move it to permanent URL", bo, bucketURI)
+	glog.Infof("upload cluster %s backup data to %s successfully, now move it to permanent URL %s", bo, tmpDestBucket, destBucket)
 
 	// the backup was a success
 	// remove .tmp extension
-	output, err := exec.Command("rclone", constants.RcloneConfigArg, "moveto", tmpDestBucket, destBucket).CombinedOutput()
+	output, err = exec.Command("rclone", constants.RcloneConfigArg, "moveto", tmpDestBucket, destBucket).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute rclone moveto command failed, output: %s, err: %v", bo, string(output), err)
 	}
@@ -130,12 +125,9 @@ func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
 
 func (bo *BackupOpts) cleanRemoteBackupData(bucket string) error {
 	destBucket := util.NormalizeBucketURI(bucket)
-	rcDelete := exec.Command("rclone", constants.RcloneConfigArg, "deletefile", destBucket)
-	if err := rcDelete.Start(); err != nil {
-		return fmt.Errorf("cluster %s, start rclone deletefile command failed, err: %v", bo, err)
-	}
-	if err := rcDelete.Wait(); err != nil {
-		return fmt.Errorf("cluster %s, execute rclone deletefile command failed, err: %v", bo, err)
+	output, err := exec.Command("rclone", constants.RcloneConfigArg, "deletefile", destBucket).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("cluster %s, execute rclone deletefile command failed, output: %s, err: %v", bo, string(output), err)
 	}
 
 	glog.Infof("cluster %s backup %s was deleted successfully", bo, bucket)
