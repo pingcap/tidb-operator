@@ -382,7 +382,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-server-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: controller.TiDBMemberName(tcName),
+					SecretName: fmt.Sprintf("%s-%s", controller.TiDBMemberName(tcName), "server"),
 				},
 			},
 		})
