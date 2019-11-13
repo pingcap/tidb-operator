@@ -4,7 +4,9 @@
 
 ### Action Required
 
-This release adds the `timezone` support for [all charts](https://github.com/pingcap/tidb-operator/tree/master/charts).
+ACTION REQUIRED: This release upgrades default TiDB version to `v3.0.5` which fixed a serious [bug](https://github.com/pingcap/tidb/pull/12597) in TiDB. So if you are using TiDB `v3.0.4` or prior versions, you **must** upgrade to `v3.0.5`.
+
+ACTION REQUIRED: This release adds the `timezone` support for [all charts](https://github.com/pingcap/tidb-operator/tree/master/charts).
 
 For existing TiDB clusters. If the `timezone` in `tidb-cluster/values.yaml` has been customized to other timezones instead of the default `UTC`, then upgrading tidb-operator will trigger a rolling update for the related pods.
 
