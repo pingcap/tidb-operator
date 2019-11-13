@@ -13,6 +13,18 @@ def replace_wh(file, operatorImage) {
 	writeFile file: file, text: "${DST_WH_FILE_CONTENT}"
 }
 
+def getChangeLogText() {
+	def changeLogText = ""
+	for (int i = 0; i < currentBuild.changeSets.size(); i++) {
+		for (int j = 0; j < currentBuild.changeSets[i].items.length; j++) {
+			def commitId = "${currentBuild.changeSets[i].items[j].commitId}"
+			def commitMsg = "${currentBuild.changeSets[i].items[j].msg}"
+			changeLogText += "\n" + "`${commitId.take(7)}` ${commitMsg}"
+		}
+	}
+	return changeLogText
+}
+
 def call(BUILD_BRANCH, CREDENTIALS_ID) {
 
 	def GITHASH
@@ -97,7 +109,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 									prId=`cat \$lockfile`
 									if [ "${ghprbPullId}" == "\$prId" ]; then
 										clusterName=\$cluster
-										echo "####### this PR get env:\$cluster ########"
+										echo "####### branch ${ghprbPullId}/${BUILD_BRANCH} get env:\$cluster ########"
 										echo "####### if you want to debug,please exec the command: export KUBECONFIG=`/root/go/bin/kind get kubeconfig-path --name=\$cluster ` in jenkins slave node ########"
 										break 2
 									fi
@@ -110,7 +122,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 										touch \$lockfile
 										echo ${ghprbPullId} > \$lockfile
 										clusterName=\$cluster
-										echo "####### this PR get env:\$cluster #######"
+										echo "####### branch ${ghprbPullId}/${BUILD_BRANCH} get env:\$cluster #######"
 										echo "####### if you want to debug,please exec the command: export KUBECONFIG=`/root/go/bin/kind get kubeconfig-path --name=\$cluster ` in jenkins slave node ########"
 										break 2
 								else
@@ -198,25 +210,51 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 						"""
 						}
 					}
+
+					if (${BUILD_BRANCH} == "master") {
+						stage('upload tidb-operator binary and charts'){
+							//upload binary and charts
+							sh """
+							cp ~/bin/config.cfg ./
+							tar -zcvf tidb-operator.tar.gz images/tidb-operator charts
+							filemgr-linux64 --action mput --bucket pingcap-dev --nobar --key builds/pingcap/operator/${GITHASH}/centos7/tidb-operator.tar.gz --file tidb-operator.tar.gz
+							"""
+							//update refs
+							writeFile file: 'sha1', text: "${GITHASH}"
+							sh """
+							filemgr-linux64 --action mput --bucket pingcap-dev --nobar --key refs/pingcap/operator/${BUILD_BRANCH}/centos7/sha1 --file sha1
+							rm -f sha1 tidb-operator.tar.gz config.cfg
+							"""
+						}
+					}
 			}
 		}
 		currentBuild.result = "SUCCESS"
 	}
 
 	stage('Summary') {
+		def CHANGELOG = getChangeLogText()
 		def duration = ((System.currentTimeMillis() - currentBuild.startTimeInMillis) / 1000 / 60).setScale(2, BigDecimal.ROUND_HALF_UP)
 		def slackmsg = "[#${ghprbPullId}: ${ghprbPullTitle}]" + "\n" +
 		"${ghprbPullLink}" + "\n" +
 		"${ghprbPullDescription}" + "\n" +
 		"Integration Common Test Result: `${currentBuild.result}`" + "\n" +
 		"Elapsed Time: `${duration} mins` " + "\n" +
+		"${CHANGELOG}" + "\n" +
 		"${env.RUN_DISPLAY_URL}"
 
 		if (currentBuild.result != "SUCCESS") {
 			slackSend channel: '#cloud_jenkins', color: 'danger', teamDomain: 'pingcap', tokenCredentialId: 'slack-pingcap-token', message: "${slackmsg}"
-		} else {
-			slackSend channel: '#cloud_jenkins', color: 'good', teamDomain: 'pingcap', tokenCredentialId: 'slack-pingcap-token', message: "${slackmsg}"
+			return
 		}
+
+		if ( ${BUILD_BRANCH} == "master" ){
+			slackmsg = "${slackmsg}" + "\n" +
+			"Binary Download URL:" + "\n" +
+			"${UCLOUD_OSS_URL}/builds/pingcap/operator/${GITHASH}/centos7/tidb-operator.tar.gz"
+		}
+
+		slackSend channel: '#cloud_jenkins', color: 'good', teamDomain: 'pingcap', tokenCredentialId: 'slack-pingcap-token', message: "${slackmsg}"
 	}
 }
 return this
