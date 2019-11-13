@@ -211,7 +211,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 						}
 					}
 
-					if (${BUILD_BRANCH} == "master") {
+					if ( BUILD_BRANCH == "master") {
 						stage('upload tidb-operator binary and charts'){
 							//upload binary and charts
 							sh """
@@ -248,7 +248,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 			return
 		}
 
-		if ( ${BUILD_BRANCH} == "master" ){
+		if ( BUILD_BRANCH == "master" ){
 			slackmsg = "${slackmsg}" + "\n" +
 			"Binary Download URL:" + "\n" +
 			"${UCLOUD_OSS_URL}/builds/pingcap/operator/${GITHASH}/centos7/tidb-operator.tar.gz"
