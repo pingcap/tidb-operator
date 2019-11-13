@@ -62,6 +62,10 @@ spec:
           value: {{ .Values.binlog.pump.create | default false | quote }}
         - name:  PROM_CONFIG_PATH
           value: /prometheus-rules
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
         command:
         - /bin/sh
         - -c
@@ -80,6 +84,8 @@ spec:
           readOnly: false
         - name: monitor-data
           mountPath: /data
+        resources:
+{{ toYaml .Values.monitor.initializer.resources | indent 10 }}
       containers:
       - name: prometheus
         image: {{ .Values.monitor.prometheus.image }}
@@ -129,6 +135,13 @@ spec:
           - name: prometheus-rules
             mountPath: /prometheus-rules
             readOnly: false
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
+        resources:
+{{ toYaml .Values.monitor.reloader.resources | indent 10 }}
       {{- end }}
       {{- if .Values.monitor.grafana.create }}
       - name: grafana

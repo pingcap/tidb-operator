@@ -38,6 +38,11 @@ spec:
         {{- if .Values.scheduler.features }}
           - -features={{ join "," .Values.scheduler.features }}
         {{- end }}
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
       - name: kube-scheduler
         image: {{ required "scheduler.kubeSchedulerImageName is required" .Values.scheduler.kubeSchedulerImageName }}:{{ .Values.scheduler.kubeSchedulerImageTag | default (split "-" .Capabilities.KubeVersion.GitVersion)._0 }}
         imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
@@ -53,3 +58,8 @@ spec:
         - --v={{ .Values.scheduler.logLevel }}
         - --policy-configmap={{ .Values.scheduler.schedulerName }}-policy
         - --policy-configmap-namespace={{ .Release.Namespace }}
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}

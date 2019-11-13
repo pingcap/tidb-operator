@@ -51,6 +51,8 @@ spec:
               mountPath: "/gcp"
               readOnly: true
           {{- end }}
+            resources:
+{{ toYaml .Values.scheduledBackup.resources | indent 14 }}
             env:
             - name: POD_NAME
               valueFrom:
@@ -60,6 +62,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+          {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+            - name: TZ
+              value: {{ .Values.timezone | default "UTC" }}
+          {{- end }}
           {{- if .Values.scheduledBackup.gcp }}
             - name: GOOGLE_APPLICATION_CREDENTIALS
               value: /gcp/credentials.json

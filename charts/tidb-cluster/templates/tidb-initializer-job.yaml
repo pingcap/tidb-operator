@@ -29,6 +29,11 @@ spec:
         - |
 {{ tuple "scripts/_initialize_tidb_users.py.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
         volumeMounts:
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
         - name: password
           mountPath: /etc/tidb/password
           readOnly: true
@@ -37,6 +42,8 @@ spec:
           mountPath: /data
           readOnly: true
         {{- end }}
+        resources:
+{{ toYaml .Values.tidb.initializer.resources | indent 10 }}
       volumes:
       - name: password
         secret:
