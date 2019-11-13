@@ -12,7 +12,7 @@ variable "GCP_PROJECT" {
 
 variable "tidb_version" {
   description = "TiDB version"
-  default     = "v3.0.1"
+  default     = "v3.0.5"
 }
 
 variable "tidb_operator_version" {

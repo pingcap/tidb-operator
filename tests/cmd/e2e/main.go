@@ -67,6 +67,8 @@ func main() {
 	}
 
 	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, cfg, nil)
+	oa.CleanCRDOrDie()
+	oa.InstallCRDOrDie()
 	oa.LabelNodesOrDie()
 	oa.CleanOperatorOrDie(ocfg)
 	oa.DeployOperatorOrDie(ocfg)

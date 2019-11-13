@@ -284,7 +284,7 @@ The `monitor` section in new `values.yaml`:
 monitor:
   create: true
    initializer:
-     image: pingcap/tidb-monitor-initializer:v3.0.1
+     image: pingcap/tidb-monitor-initializer:v3.0.5
      imagePullPolicy: IfNotPresent
    reloader:
      create: true
