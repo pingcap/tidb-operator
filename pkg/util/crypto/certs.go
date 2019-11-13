@@ -24,7 +24,7 @@ import (
 	"io/ioutil"
 	"net"
 
-	"github.com/golang/glog"
+	glog "k8s.io/klog"
 )
 
 const (

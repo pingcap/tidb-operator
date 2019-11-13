@@ -19,13 +19,13 @@ import (
 	"encoding/pem"
 	"fmt"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	corev1 "k8s.io/api/core/v1"
 	types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	glog "k8s.io/klog"
 )
 
 // SecretControlInterface manages certificates used by TiDB clusters

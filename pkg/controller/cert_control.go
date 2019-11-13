@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	capi "k8s.io/api/certificates/v1beta1"
@@ -27,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 	certlisters "k8s.io/client-go/listers/certificates/v1beta1"
+	glog "k8s.io/klog"
 )
 
 // TiDBClusterCertOptions contains information needed to create new certificates
