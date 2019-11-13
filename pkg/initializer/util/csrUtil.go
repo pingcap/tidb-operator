@@ -148,7 +148,7 @@ func waitUntilCsrApproved(csrName string, kubeCli kubernetes.Interface, timeout 
 		if err != nil {
 			return false, err
 		}
-		if len(csr.Status.Certificate) > 0 {
+		if csr.Status.Certificate != nil && csr.Status.Conditions[len(csr.Status.Conditions)-1].Type == certificates.CertificateApproved {
 			return true, nil
 		}
 		return false, nil
