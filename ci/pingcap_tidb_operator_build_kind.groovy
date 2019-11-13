@@ -141,19 +141,19 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 						echo "pushing tidb-operator image ${IMAGE_TAG} via \$tidbOperatorImage"
 						docker tag ${IMAGE_TAG} \$tidbOperatorImage
 						docker push \$tidbOperatorImage
-						docker rmi ${IMAGE_TAG}
-						docker rmi \$tidbOperatorImage
+						docker rmi -f ${IMAGE_TAG}
+						docker rmi -f \$tidbOperatorImage
 						echo "pushing tidb-operator e2e image ${E2E_IMAGE} via \$tidbOperatorE2EImage"
 						docker tag ${E2E_IMAGE} \$tidbOperatorE2EImage
 						docker push \$tidbOperatorE2EImage
-						docker rmi ${E2E_IMAGE}
-						docker rmi \$tidbOperatorE2EImage
+						docker rmi -f ${E2E_IMAGE}
+						docker rmi -f \$tidbOperatorE2EImage
 						echo "pushing apiserver e2e image ${APISERVER_IMAGE} via \$tidbOperatorApiServerImage"
 						if [ -f tests/images/test-apiserver/bin/tidb-apiserver ]; then
 							docker tag ${APISERVER_IMAGE} \$tidbOperatorApiServerImage
 							docker push \$tidbOperatorApiServerImage
-							docker rmi ${APISERVER_IMAGE}
-							docker rmi \$tidbOperatorApiServerImage
+							docker rmi -f ${APISERVER_IMAGE}
+							docker rmi -f \$tidbOperatorApiServerImage
 						fi
 						export KUBECONFIG=`/root/go/bin/kind get kubeconfig-path --name="\$clusterName"`
 						elapseTime=0
