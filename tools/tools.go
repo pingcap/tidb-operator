@@ -20,6 +20,5 @@ package tools
 import (
 	_ "github.com/dnephin/govet"
 	_ "k8s.io/code-generator"
-	_ "k8s.io/gengo"
 	_ "k8s.io/klog"
 )
