@@ -34,7 +34,7 @@ variable "gke_version" {
 variable "tidb_operator_version" {
   description = "TiDB Operator version"
   type        = string
-  default     = "v1.0.2"
+  default     = "v1.0.3"
 }
 
 variable "operator_helm_values" {
