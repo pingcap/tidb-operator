@@ -27,6 +27,10 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- default .Release.Name .Values.clusterName }}
 {{- end -}}
 
+{{- define "cluster.scheme" -}}
+{{ if .Values.enableTLSCluster }}https{{ else }}http{{ end }}
+{{- end -}}
+
 {{/*
 Encapsulate PD configmap data for consistent digest calculation
 */}}

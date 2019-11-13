@@ -54,6 +54,8 @@ scrape_configs:
       action: replace
       target_label: kubernetes_pod_ip
     {{- if .Values.enableTLSCluster }}
+    # This is a workaround of https://github.com/tikv/tikv/issues/5340 and should
+    # be removed after TiKV fix this issue
     - source_labels: [__meta_kubernetes_pod_name]
       action: drop
       regex: .*\-tikv\-\d*$
@@ -65,6 +67,8 @@ scrape_configs:
       action: replace
       target_label: cluster
   {{- if .Values.enableTLSCluster }}
+  # This is a workaround of https://github.com/tikv/tikv/issues/5340 and should
+  # be removed after TiKV fix this issue
   - job_name: 'tidb-cluster-tikv'
     scrape_interval: 15s
     honor_labels: true
