@@ -15,6 +15,7 @@ package pod
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -52,6 +53,10 @@ type PodAdmissionControl struct {
 	// sts Lister
 	stsLister appslisters.StatefulSetLister
 }
+
+var (
+	RessyncDuration time.Duration
+)
 
 func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder) *PodAdmissionControl {
 
@@ -174,6 +179,9 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.
 	if l.IsPD() {
 		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster)
 		return pc.admitDeletePdPods(pod, ownerStatefulSet, tc, pdClient)
+	} else if l.IsTiKV() {
+		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster)
+		return pc.admitDeleteTiKVPods(pod, ownerStatefulSet, tc, pdClient)
 	}
 
 	klog.Infof("[%s/%s] is admit to be deleted", namespace, name)

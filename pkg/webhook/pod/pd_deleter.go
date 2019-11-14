@@ -102,7 +102,7 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(IsDeferDeleting, isInOr
 		// it would be existed an pd-3 instance with its deferDeleting label Annotations PVC.
 		// And the pvc can be deleted during upgrading if we use create pod webhook in future.
 		if !isInOrdinal {
-			err := addDeferDeletingToPVC(pc, tc, ownerStatefulSet.Name, namespace, ordinal)
+			err := addDeferDeletingToPVC(v1alpha1.PDMemberType, pc, tc, ownerStatefulSet.Name, namespace, ordinal)
 			if err != nil {
 				klog.Infof("tc[%s/%s]'s pod[%s/%s] failed to update pvc,%v", namespace, tcName, namespace, name, err)
 				return util.ARFail(err)

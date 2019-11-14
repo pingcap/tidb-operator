@@ -92,7 +92,7 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 		if store == nil {
 			continue
 		}
-		podName := tikvPodName(tcName, i)
+		podName := TikvPodName(tcName, i)
 		pod, err := tku.podLister.Pods(ns).Get(podName)
 		if err != nil {
 			return err
@@ -123,7 +123,7 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	upgradePodName := tikvPodName(tcName, ordinal)
+	upgradePodName := TikvPodName(tcName, ordinal)
 	upgradePod, err := tku.podLister.Pods(ns).Get(upgradePodName)
 	if err != nil {
 		return err
@@ -220,7 +220,7 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 }
 
 func (tku *tikvUpgrader) getStoreByOrdinal(tc *v1alpha1.TidbCluster, ordinal int32) *v1alpha1.TiKVStore {
-	podName := tikvPodName(tc.GetName(), ordinal)
+	podName := TikvPodName(tc.GetName(), ordinal)
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
 			return &store
