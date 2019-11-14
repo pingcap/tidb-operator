@@ -36,3 +36,6 @@ manifests/crd-verify.yaml
 /tkctl
 /.go-version
 kubeconfig
+
+# local output directory
+/output/
