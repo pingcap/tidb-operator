@@ -179,7 +179,7 @@ type OperatorActions interface {
 	RegisterWebHookAndServiceOrDie(context *apimachinery.CertContext, info *OperatorConfig)
 	CleanWebHookAndService(info *OperatorConfig) error
 	CleanWebHookAndServiceOrDie(info *OperatorConfig)
-	EventWorker()
+	RunEventWorker()
 	EmitEvent(info *TidbClusterConfig, msg string)
 	BackupRestore(from, to *TidbClusterConfig) error
 	BackupRestoreOrDie(from, to *TidbClusterConfig)
@@ -198,14 +198,15 @@ type OperatorActions interface {
 }
 
 type operatorActions struct {
-	cli           versioned.Interface
-	kubeCli       kubernetes.Interface
-	pdControl     pdapi.PDControlInterface
-	tidbControl   controller.TiDBControlInterface
-	pollInterval  time.Duration
-	cfg           *Config
-	clusterEvents map[string]*clusterEvent
-	lock          sync.Mutex
+	cli                versioned.Interface
+	kubeCli            kubernetes.Interface
+	pdControl          pdapi.PDControlInterface
+	tidbControl        controller.TiDBControlInterface
+	pollInterval       time.Duration
+	cfg                *Config
+	clusterEvents      map[string]*clusterEvent
+	lock               sync.Mutex
+	eventWorkerRunning bool
 }
 
 type clusterEvent struct {
@@ -2984,6 +2985,10 @@ func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
 	oa.lock.Lock()
 	defer oa.lock.Unlock()
 
+	if !oa.eventWorkerRunning {
+		return
+	}
+
 	if len(oa.clusterEvents) == 0 {
 		return
 	}
@@ -3011,7 +3016,15 @@ func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
 	time.Sleep(10 * time.Second)
 }
 
-func (oa *operatorActions) EventWorker() {
+func (oa *operatorActions) RunEventWorker() {
+	oa.lock.Lock()
+	oa.eventWorkerRunning = true
+	oa.lock.Unlock()
+	glog.Infof("Event worker started")
+	wait.Forever(oa.eventWorker, 10*time.Second)
+}
+
+func (oa *operatorActions) eventWorker() {
 	oa.lock.Lock()
 	defer oa.lock.Unlock()
 
