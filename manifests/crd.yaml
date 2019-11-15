@@ -14,7 +14,7 @@ spec:
     description: The storage size specified for PD node
     name: Storage
     type: string
-  - JSONPath: .spec.pd.replicas
+  - JSONPath: .status.pd.statefulSet.readyReplicas
     description: The desired replicas number of PD cluster
     name: Ready
     type: integer
