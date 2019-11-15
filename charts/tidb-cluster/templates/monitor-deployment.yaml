@@ -134,6 +134,11 @@ spec:
           - name: prometheus-rules
             mountPath: /prometheus-rules
             readOnly: false
+          {{- if .Values.enableTLSCluster }}
+          - name: tls-pd-client
+            mountPath: /var/lib/pd-client-tls
+            readOnly: true
+          {{- end }}
       {{- if .Values.monitor.grafana.create }}
       - name: reloader
         image: {{ .Values.monitor.reloader.image }}
@@ -236,6 +241,12 @@ spec:
         name: prometheus-rules
       - emptyDir: {}
         name: grafana-dashboard
+      {{- if .Values.enableTLSCluster }}
+      - name: tls-pd-client
+        secret:
+          defaultMode: 420
+          secretName: {{ .Release.Name }}-pd-client
+      {{- end }}
     {{- if .Values.monitor.tolerations }}
       tolerations:
 {{ toYaml .Values.monitor.tolerations | indent 6 }}

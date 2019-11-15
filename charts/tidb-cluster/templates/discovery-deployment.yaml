@@ -49,14 +49,3 @@ spec:
           - name: TZ
             value: {{ .Values.timezone | default "UTC" }}
         {{- end }}
-{{- if .Values.enableTLSCluster }}
-        volumeMounts:
-        - mountPath: /var/lib/tls
-          name: tls
-          readOnly: true
-      volumes:
-      - name: tls
-        secret:
-          defaultMode: 420
-          secretName: client-tls
-{{- end -}}

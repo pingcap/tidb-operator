@@ -23,6 +23,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/httputil"
+	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	"github.com/pingcap/tidb/config"
 )
 
@@ -61,7 +62,7 @@ func NewDefaultTiDBControl() TiDBControlInterface {
 
 func (tdc *defaultTiDBControl) useTLSHTTPClient(enableTLS bool) error {
 	if enableTLS {
-		rootCAs, err := httputil.ReadCACerts()
+		rootCAs, err := certutil.ReadCACerts()
 		if err != nil {
 			return err
 		}

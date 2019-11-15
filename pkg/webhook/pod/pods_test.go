@@ -134,7 +134,7 @@ func newPodAdmissionControl() (*PodAdmissionControl, *controller.FakePVCControl,
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
-	pdControl := pdapi.NewFakePDControl()
+	pdControl := pdapi.NewFakePDControl(kubeCli)
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	informer := informers.NewSharedInformerFactory(operatorCli, 0)
 	stsInformer := kubeInformerFactory.Apps().V1().StatefulSets()

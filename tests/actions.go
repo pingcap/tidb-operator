@@ -82,7 +82,7 @@ func NewOperatorActions(cli versioned.Interface,
 	oa := &operatorActions{
 		cli:          cli,
 		kubeCli:      kubeCli,
-		pdControl:    pdapi.NewDefaultPDControl(),
+		pdControl:    pdapi.NewDefaultPDControl(kubeCli),
 		tidbControl:  controller.NewDefaultTiDBControl(),
 		pollInterval: pollInterval,
 		cfg:          cfg,
@@ -1059,7 +1059,7 @@ func (oa *operatorActions) CheckScaleInSafely(info *TidbClusterConfig) error {
 			return false, nil
 		}
 
-		pdClient := controller.GetPDClient(pdapi.NewDefaultPDControl(), tc)
+		pdClient := controller.GetPDClient(pdapi.NewDefaultPDControl(oa.kubeCli), tc)
 		stores, err := pdClient.GetStores()
 		if err != nil {
 			glog.Infof("pdClient.GetStores failed,error: %v", err)
@@ -1163,7 +1163,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 		return fmt.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 
 	}
-	pdClient := pdapi.NewDefaultPDControl().GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSCluster)
+	pdClient := pdapi.NewDefaultPDControl(oa.kubeCli).GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSCluster)
 
 	replicas := tc.TiKVRealReplicas()
 	for i := replicas - 1; i >= 0; i-- {
