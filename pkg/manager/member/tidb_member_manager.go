@@ -237,7 +237,7 @@ func (tmm *tidbMemberManager) syncTiDBClusterCerts(tc *v1alpha1.TidbCluster) err
 		Suffix:     "tidb",
 	}
 
-	return tmm.certControl.Create(tc, certOpts)
+	return tmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 // syncTiDBServerCerts creates the cert pair for TiDB if not exist, the cert
@@ -266,7 +266,7 @@ func (tmm *tidbMemberManager) syncTiDBServerCerts(tc *v1alpha1.TidbCluster) erro
 		Suffix:     suffix,
 	}
 
-	return tmm.certControl.Create(tc, certOpts)
+	return tmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 // syncTiDBClientCerts creates the cert pair for TiDB if not exist, the cert
@@ -294,7 +294,7 @@ func (tmm *tidbMemberManager) syncTiDBClientCerts(tc *v1alpha1.TidbCluster) erro
 		Suffix:     suffix,
 	}
 
-	return tmm.certControl.Create(tc, certOpts)
+	return tmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {

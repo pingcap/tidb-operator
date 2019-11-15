@@ -19,7 +19,6 @@ import (
 	"encoding/pem"
 	"fmt"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	corev1 "k8s.io/api/core/v1"
@@ -32,7 +31,7 @@ import (
 
 // SecretControlInterface manages certificates used by TiDB clusters
 type SecretControlInterface interface {
-	Create(tc *v1alpha1.TidbCluster, certOpts *TiDBClusterCertOptions, cert []byte, key []byte) error
+	Create(or metav1.OwnerReference, certOpts *TiDBClusterCertOptions, cert []byte, key []byte) error
 	Load(ns string, secretName string) ([]byte, []byte, error)
 	Check(ns string, secretName string) bool
 }
@@ -53,7 +52,7 @@ func NewRealSecretControl(
 	}
 }
 
-func (rsc *realSecretControl) Create(tc *v1alpha1.TidbCluster, certOpts *TiDBClusterCertOptions, cert []byte, key []byte) error {
+func (rsc *realSecretControl) Create(or metav1.OwnerReference, certOpts *TiDBClusterCertOptions, cert []byte, key []byte) error {
 	secretName := fmt.Sprintf("%s-%s", certOpts.Instance, certOpts.Suffix)
 
 	secretLabel := label.New().Instance(certOpts.Instance).
@@ -63,7 +62,7 @@ func (rsc *realSecretControl) Create(tc *v1alpha1.TidbCluster, certOpts *TiDBClu
 		ObjectMeta: types.ObjectMeta{
 			Name:            secretName,
 			Labels:          secretLabel,
-			OwnerReferences: []metav1.OwnerReference{GetOwnerRef(tc)},
+			OwnerReferences: []metav1.OwnerReference{or},
 		},
 		Data: map[string][]byte{
 			"cert": cert,

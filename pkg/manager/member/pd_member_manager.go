@@ -272,7 +272,7 @@ func (pmm *pdMemberManager) syncPDClientCerts(tc *v1alpha1.TidbCluster) error {
 		Suffix:     "pd-client",
 	}
 
-	return pmm.certControl.Create(tc, certOpts)
+	return pmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 func (pmm *pdMemberManager) syncPDServerCerts(tc *v1alpha1.TidbCluster) error {
@@ -302,7 +302,7 @@ func (pmm *pdMemberManager) syncPDServerCerts(tc *v1alpha1.TidbCluster) error {
 		Suffix:     "pd",
 	}
 
-	return pmm.certControl.Create(tc, certOpts)
+	return pmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 func (pmm *pdMemberManager) updateStatefulSet(tc *v1alpha1.TidbCluster, newPDSet, oldPDSet *apps.StatefulSet) error {
