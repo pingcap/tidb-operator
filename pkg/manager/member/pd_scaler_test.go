@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"github.com/pingcap/kvproto/pkg/pdpb"
 	"testing"
 	"time"
 
@@ -240,6 +241,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 		statusSyncFailed bool
 		err              bool
 		changed          bool
+		isLeader         bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -263,6 +265,13 @@ func TestPDScalerScaleIn(t *testing.T) {
 
 		pdClient := controller.NewFakePDClient(pdControl, tc)
 
+		pdClient.AddReaction(pdapi.GetPDLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
+			leader := pdpb.Member{
+				Name: fmt.Sprintf("%s-pd-%d", tc.GetName(), 0),
+			}
+			return &leader, nil
+		})
+
 		if test.deleteMemberErr {
 			pdClient.AddReaction(pdapi.DeleteMemberActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("error")
@@ -270,6 +279,18 @@ func TestPDScalerScaleIn(t *testing.T) {
 		}
 		if test.pvcUpdateErr {
 			pvcControl.SetUpdatePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+
+		if test.isLeader {
+			pdClient.AddReaction(pdapi.GetPDLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
+				leader := pdpb.Member{
+					Name: fmt.Sprintf("%s-pd-%d", tc.GetName(), 4),
+				}
+				return &leader, nil
+			})
+			pdClient.AddReaction(pdapi.TransferPDLeaderActionType, func(action *pdapi.Action) (i interface{}, e error) {
+				return nil, nil
+			})
 		}
 
 		tc.Status.PD.Synced = !test.statusSyncFailed
@@ -297,6 +318,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 			statusSyncFailed: false,
 			err:              false,
 			changed:          true,
+			isLeader:         false,
 		},
 		{
 			name:             "pd is upgrading",
@@ -307,6 +329,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 			statusSyncFailed: false,
 			err:              false,
 			changed:          false,
+			isLeader:         false,
 		},
 		{
 			name:             "error when delete member",
@@ -317,6 +340,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 			statusSyncFailed: false,
 			err:              true,
 			changed:          false,
+			isLeader:         false,
 		},
 		{
 			name:             "cache don't have pvc",
@@ -327,6 +351,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 			statusSyncFailed: false,
 			err:              true,
 			changed:          false,
+			isLeader:         false,
 		},
 		{
 			name:             "error when update pvc",
@@ -337,6 +362,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 			statusSyncFailed: false,
 			err:              true,
 			changed:          false,
+			isLeader:         false,
 		},
 		{
 			name:             "pd status sync failed",
@@ -347,6 +373,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 			statusSyncFailed: true,
 			err:              true,
 			changed:          false,
+			isLeader:         false,
 		},
 	}
 
