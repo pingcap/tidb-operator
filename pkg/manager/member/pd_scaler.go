@@ -115,9 +115,9 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 			if err != nil {
 				return err
 			}
+			resetReplicas(newSet, oldSet)
+			return nil
 		}
-		resetReplicas(newSet, oldSet)
-		return nil
 	}
 
 	err := pdClient.DeleteMember(memberName)
