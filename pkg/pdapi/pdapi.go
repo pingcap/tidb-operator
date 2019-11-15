@@ -246,6 +246,7 @@ func (pc *pdClient) GetHealth() (*HealthInfo, error) {
 	apiURL = fmt.Sprintf("%s/%s", pc.url, healthPrefix)
 	body, err = httputil.GetBodyOK(pc.httpClient, apiURL)
 	if err != nil {
+		// compatible with older versions
 		apiURL = fmt.Sprintf("%s/%s", pc.url, healthPrefixOld)
 		body, err = httputil.GetBodyOK(pc.httpClient, apiURL)
 		if err != nil {
