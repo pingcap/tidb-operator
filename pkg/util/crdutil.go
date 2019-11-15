@@ -15,10 +15,11 @@ package util
 
 import (
 	"errors"
+	"strings"
+
 	crdutils "github.com/ant31/crd-validation/pkg"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
-	"strings"
 )
 
 var (
@@ -39,7 +40,7 @@ var (
 		Name:        "Ready",
 		Type:        "integer",
 		Description: "The desired replicas number of PD cluster",
-		JSONPath:    ".spec.pd.replicas",
+		JSONPath:    ".status.pd.statefulSet.readyReplicas",
 	}
 	tidbClusterPDDesireColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Desire",
