@@ -19,9 +19,11 @@ import (
 	"encoding/pem"
 	"fmt"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -30,7 +32,7 @@ import (
 
 // SecretControlInterface manages certificates used by TiDB clusters
 type SecretControlInterface interface {
-	Create(certOpts *TiDBClusterCertOptions, cert []byte, key []byte) error
+	Create(tc *v1alpha1.TidbCluster, certOpts *TiDBClusterCertOptions, cert []byte, key []byte) error
 	Load(ns string, secretName string) ([]byte, []byte, error)
 	Check(ns string, secretName string) bool
 }
@@ -51,25 +53,23 @@ func NewRealSecretControl(
 	}
 }
 
-func (rsc *realSecretControl) Create(certOpts *TiDBClusterCertOptions, cert []byte, key []byte) error {
+func (rsc *realSecretControl) Create(tc *v1alpha1.TidbCluster, certOpts *TiDBClusterCertOptions, cert []byte, key []byte) error {
 	secretName := fmt.Sprintf("%s-%s", certOpts.Instance, certOpts.Suffix)
+
+	secretLabel := label.New().Instance(certOpts.Instance).
+		Component(certOpts.Component).Labels()
 
 	secret := &corev1.Secret{
 		ObjectMeta: types.ObjectMeta{
-			Name:   secretName,
-			Labels: make(map[string]string),
+			Name:            secretName,
+			Labels:          secretLabel,
+			OwnerReferences: []metav1.OwnerReference{GetOwnerRef(tc)},
 		},
 		Data: map[string][]byte{
 			"cert": cert,
 			"key":  key,
 		},
 	}
-
-	labelTemp := label.New()
-	secret.Labels[label.NamespaceLabelKey] = certOpts.Namespace
-	secret.Labels[label.ManagedByLabelKey] = labelTemp[label.ManagedByLabelKey]
-	secret.Labels[label.InstanceLabelKey] = certOpts.Instance
-	secret.Labels[label.ComponentLabelKey] = certOpts.Component
 
 	_, err := rsc.kubeCli.CoreV1().Secrets(certOpts.Namespace).Create(secret)
 	if err == nil {
