@@ -116,7 +116,7 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 				return err
 			}
 			resetReplicas(newSet, oldSet)
-			return nil
+			return controller.RequeueErrorf("tc[%s/%s]'s pd pod[%s/%s] is transferring pd leader,can't scale-in now", ns, tcName, ns, memberName)
 		}
 	}
 
