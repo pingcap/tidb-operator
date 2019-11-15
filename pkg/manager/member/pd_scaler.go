@@ -108,11 +108,13 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	if ordinal > 0 {
 		leader, err := pdClient.GetPDLeader()
 		if err != nil {
+			resetReplicas(newSet, oldSet)
 			return err
 		}
 		if leader.Name == memberName {
 			err = pdClient.TransferPDLeader(fmt.Sprintf("%s-pd-%d", tc.GetName(), 0))
 			if err != nil {
+				resetReplicas(newSet, oldSet)
 				return err
 			}
 			resetReplicas(newSet, oldSet)
