@@ -4,7 +4,6 @@ confidence = 0.8
 errorCode = 1
 warningCode = 0
 
-[rule.blank-imports]
 [rule.context-as-argument]
 [rule.dot-imports]
 [rule.error-return]
@@ -20,6 +19,8 @@ warningCode = 0
 [rule.modifies-parameter]
 
 # Add these once issues are fixed
+[rule.blank-imports]
+  severity = "warning"
 [rule.var-naming]
   severity = "warning"
 [rule.confusing-naming]
