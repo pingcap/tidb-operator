@@ -351,10 +351,10 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			errWhenUpdateStatefulSet:   false,
 			errWhenUpdatePDService:     false,
 			errWhenUpdatePDPeerService: false,
-			err:                        true,
-			expectPDServiceFn:          nil,
-			expectPDPeerServiceFn:      nil,
-			expectStatefulSetFn:        nil,
+			err:                   true,
+			expectPDServiceFn:     nil,
+			expectPDPeerServiceFn: nil,
+			expectStatefulSetFn:   nil,
 		},
 		{
 			name: "error when update pd service",
@@ -371,10 +371,10 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			errWhenUpdateStatefulSet:   false,
 			errWhenUpdatePDService:     true,
 			errWhenUpdatePDPeerService: false,
-			err:                        true,
-			expectPDServiceFn:          nil,
-			expectPDPeerServiceFn:      nil,
-			expectStatefulSetFn:        nil,
+			err:                   true,
+			expectPDServiceFn:     nil,
+			expectPDPeerServiceFn: nil,
+			expectStatefulSetFn:   nil,
 		},
 		{
 			name: "error when update statefulset",
@@ -389,9 +389,9 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			errWhenUpdateStatefulSet:   true,
 			errWhenUpdatePDService:     false,
 			errWhenUpdatePDPeerService: false,
-			err:                        true,
-			expectPDServiceFn:          nil,
-			expectPDPeerServiceFn:      nil,
+			err:                   true,
+			expectPDServiceFn:     nil,
+			expectPDPeerServiceFn: nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
@@ -821,6 +821,7 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 			UID:       types.UID("test"),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
+			Timezone: "Asia/Shanghai",
 			PD: v1alpha1.PDSpec{
 				ContainerSpec: v1alpha1.ContainerSpec{
 					Image: "pd-test-image",

@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -481,7 +482,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 								},
 								{
 									Name:  "TZ",
-									Value: tc.Spec.Timezone,
+									Value: filepath.Join("/usr/share/zoneinfo", tc.Spec.Timezone),
 								},
 							},
 						},
