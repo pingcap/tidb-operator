@@ -116,6 +116,7 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 				return err
 			}
 		}
+		resetReplicas(newSet, oldSet)
 		return nil
 	}
 
