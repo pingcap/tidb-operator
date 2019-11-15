@@ -532,8 +532,12 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
+	csrInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Certificates().V1beta1().CertificateSigningRequests()
+	secretInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Secrets()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
+	secControl := controller.NewFakeSecretControl(kubeCli, secretInformer.Lister())
+	certControl := controller.NewFakeCertControl(kubeCli, csrInformer.Lister(), secControl)
 	tidbUpgrader := NewFakeTiDBUpgrader()
 	tidbFailover := NewFakeTiDBFailover()
 	tidbControl := controller.NewFakeTiDBControl()
@@ -542,6 +546,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		setControl,
 		svcControl,
 		tidbControl,
+		certControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
 		podInformer.Lister(),

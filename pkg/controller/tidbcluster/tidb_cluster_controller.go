@@ -88,15 +88,19 @@ func NewController(
 	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
+	csrInformer := kubeInformerFactory.Certificates().V1beta1().CertificateSigningRequests()
+	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 
 	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
-	pdControl := pdapi.NewDefaultPDControl()
+	pdControl := pdapi.NewDefaultPDControl(kubeCli)
 	tidbControl := controller.NewDefaultTiDBControl()
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
+	secControl := controller.NewRealSecretControl(kubeCli, secretInformer.Lister())
+	certControl := controller.NewRealCertControl(kubeCli, csrInformer.Lister(), secControl)
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
 	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister())
@@ -115,11 +119,12 @@ func NewController(
 				pdControl,
 				setControl,
 				svcControl,
+				podControl,
+				certControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
 				epsInformer.Lister(),
-				podControl,
 				pvcInformer.Lister(),
 				pdScaler,
 				pdUpgrader,
@@ -130,6 +135,7 @@ func NewController(
 				pdControl,
 				setControl,
 				svcControl,
+				certControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
@@ -143,6 +149,7 @@ func NewController(
 				setControl,
 				svcControl,
 				tidbControl,
+				certControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),

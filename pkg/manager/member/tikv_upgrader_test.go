@@ -534,7 +534,7 @@ func newTiKVUpgrader() (Upgrader, *pdapi.FakePDControl, *controller.FakePodContr
 	kubeCli := kubefake.NewSimpleClientset()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	podControl := controller.NewFakePodControl(podInformer)
-	pdControl := pdapi.NewFakePDControl()
+	pdControl := pdapi.NewFakePDControl(kubeCli)
 	return &tikvUpgrader{
 		pdControl:  pdControl,
 		podControl: podControl,

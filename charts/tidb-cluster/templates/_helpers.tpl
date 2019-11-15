@@ -27,6 +27,10 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- default .Release.Name .Values.clusterName }}
 {{- end -}}
 
+{{- define "cluster.scheme" -}}
+{{ if .Values.enableTLSCluster }}https{{ else }}http{{ end }}
+{{- end -}}
+
 {{/*
 Encapsulate PD configmap data for consistent digest calculation
 */}}
@@ -40,8 +44,8 @@ config-file: |-
     {{- if .Values.enableTLSCluster }}
   [security]
   cacert-path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  cert-path = "/var/lib/pd-tls/pd.crt"
-  key-path = "/var/lib/pd-tls/pd.key"
+  cert-path = "/var/lib/pd-tls/cert"
+  key-path = "/var/lib/pd-tls/key"
     {{- end -}}
 
 {{- end -}}
@@ -63,8 +67,8 @@ config-file: |-
     {{- if .Values.enableTLSCluster }}
   [security]
   ca-path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  cert-path = "/var/lib/tikv-tls/tikv.crt"
-  key-path = "/var/lib/tikv-tls/tikv.key"
+  cert-path = "/var/lib/tikv-tls/cert"
+  key-path = "/var/lib/tikv-tls/key"
     {{- end -}}
 
 {{- end -}}
@@ -92,13 +96,13 @@ config-file: |-
     {{- end -}}
     {{- if .Values.enableTLSCluster }}
   cluster-ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  cluster-ssl-cert = "/var/lib/tidb-tls/tidb.crt"
-  cluster-ssl-key = "/var/lib/tidb-tls/tidb.key"
+  cluster-ssl-cert = "/var/lib/tidb-tls/cert"
+  cluster-ssl-key = "/var/lib/tidb-tls/key"
     {{- end -}}
     {{- if .Values.tidb.enableTLSClient }}
   ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  ssl-cert = "/var/lib/tidb-tls/tidb.crt"
-  ssl-key = "/var/lib/tidb-tls/tidb.key"
+  ssl-cert = "/var/lib/tidb-server-tls/cert"
+  ssl-key = "/var/lib/tidb-server-tls/key"
     {{- end -}}
 
 {{- end -}}

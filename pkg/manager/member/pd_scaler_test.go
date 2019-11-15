@@ -360,7 +360,7 @@ func newFakePDScaler() (*pdScaler, *pdapi.FakePDControl, cache.Indexer, *control
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pdControl := pdapi.NewFakePDControl()
+	pdControl := pdapi.NewFakePDControl(kubeCli)
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
 
 	return &pdScaler{generalScaler{pdControl, pvcInformer.Lister(), pvcControl}},

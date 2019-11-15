@@ -778,10 +778,14 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
 	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
+	csrInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Certificates().V1beta1().CertificateSigningRequests()
+	secretInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Secrets()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
 	podControl := controller.NewFakePodControl(podInformer)
-	pdControl := pdapi.NewFakePDControl()
+	pdControl := pdapi.NewFakePDControl(kubeCli)
+	secControl := controller.NewFakeSecretControl(kubeCli, secretInformer.Lister())
+	certControl := controller.NewFakeCertControl(kubeCli, csrInformer.Lister(), secControl)
 	pdScaler := NewFakePDScaler()
 	autoFailover := true
 	pdFailover := NewFakePDFailover()
@@ -791,11 +795,12 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 		pdControl,
 		setControl,
 		svcControl,
+		podControl,
+		certControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
 		podInformer.Lister(),
 		epsInformer.Lister(),
-		podControl,
 		pvcInformer.Lister(),
 		pdScaler,
 		pdUpgrader,

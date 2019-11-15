@@ -63,6 +63,7 @@ require (
 	github.com/ugorji/go/codec v0.0.0-20190204201341-e444a5086c43
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
+	golang.org/x/mod v0.0.0-20190513183733-4bf6d317e70e
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect

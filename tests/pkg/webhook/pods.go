@@ -53,7 +53,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		return &reviewResponse
 	}
 
-	pdClient := pdapi.NewDefaultPDControl().GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSCluster)
+	pdClient := pdapi.NewDefaultPDControl(kubeCli).GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSCluster)
 	tidbController := controller.NewDefaultTiDBControl()
 
 	// if pod is already deleting, return Allowed

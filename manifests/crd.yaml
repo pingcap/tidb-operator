@@ -77,7 +77,7 @@ spec:
             enablePVReclaim:
               type: boolean
             enableTLSCluster:
-              description: Enable TLS connection between TiDB server compoments
+              description: Enable TLS connection between TiDB server components
               type: boolean
             pd:
               description: PDSpec contains details of PD members
