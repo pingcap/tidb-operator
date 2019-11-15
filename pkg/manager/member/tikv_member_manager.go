@@ -412,7 +412,10 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 		dnsPolicy = corev1.DNSClusterFirstWithHostNet
 	}
 	tz := tc.Spec.Timezone
-	if tz != "UTC" && tz != "" {
+	if tz == "" {
+		tz = "UTC"
+	}
+	if tz != "UTC" {
 		tz = filepath.Join("/usr/share/zoneinfo", tc.Spec.Timezone)
 	}
 
