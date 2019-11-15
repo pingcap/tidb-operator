@@ -101,7 +101,24 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed,can't scale in now", ns, tcName)
 	}
 
-	err := controller.GetPDClient(psd.pdControl, tc).DeleteMember(memberName)
+	pdClient := controller.GetPDClient(psd.pdControl, tc)
+	// If the pd pod was pd leader during scale-in, we would transfer pd leader to pd-0 directly
+	// If the pd statefulSet would be scale-in to zero and the pd-0 was going to be deleted,
+	// we would directly deleted the pd-0 without pd leader transferring
+	if ordinal > 0 {
+		leader, err := pdClient.GetPDLeader()
+		if err != nil {
+			return err
+		}
+		if leader.Name == memberName {
+			err = pdClient.TransferPDLeader(fmt.Sprintf("%s-pd-%d", tc.GetName(), 0))
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	err := pdClient.DeleteMember(memberName)
 	if err != nil {
 		glog.Errorf("pd scale in: failed to delete member %s, %v", memberName, err)
 		resetReplicas(newSet, oldSet)
