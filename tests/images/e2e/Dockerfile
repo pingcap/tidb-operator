@@ -17,7 +17,7 @@ RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VER
 ADD tidb-operator /charts/e2e/tidb-operator
 ADD tidb-cluster /charts/e2e/tidb-cluster
 ADD tidb-backup /charts/e2e/tidb-backup
-ADD tkctl /usr/local/bin/
+ADD bin/tkctl /usr/local/bin/
 ADD manifests /manifests/e2e
 
 ADD bin/e2e /usr/local/bin/e2e
