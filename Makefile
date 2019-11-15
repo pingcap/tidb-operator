@@ -72,7 +72,10 @@ e2e-docker: e2e-build test-apiesrver-docker
 	cp -r manifests tests/images/e2e
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" tests/images/e2e
 
-e2e-build: test-apiserver-build
+e2e-cli:
+	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/tkctl cmd/tkctl/main.go
+
+e2e-build: test-apiserver-build e2e-cli
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
 
 test-apiserver-dokcer-push: test-apiesrver-docker

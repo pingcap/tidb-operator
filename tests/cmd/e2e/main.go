@@ -126,6 +126,20 @@ func main() {
 	}
 
 	/**
+	 * This test case covers tkctl commands:
+	 * use
+	 * list
+	 */
+	testTkctl := func(wg *sync.WaitGroup, cluster *tests.TidbClusterConfig) {
+		oa.CleanTidbClusterOrDie(cluster)
+
+		// support reclaim pv when scale in tikv or pd component
+		cluster1.EnablePVReclaim = true
+		oa.DeployTidbClusterOrDie(cluster)
+		oa.CheckTidbClusterStatusOrDie(cluster)
+		oa.CheckTkctlOrDie(cluster)
+	}
+	/**
 	 * This test case covers upgrading TiDB version.
 	 */
 	testUpgrade := func(wg *sync.WaitGroup, cluster *tests.TidbClusterConfig) {
@@ -213,7 +227,7 @@ func main() {
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(5)
+	wg.Add(6)
 	go func() {
 		defer wg.Done()
 		testAggregatedApiserver()
@@ -222,6 +236,11 @@ func main() {
 		defer wg.Done()
 		testBasic(&wg, cluster1)
 		testHostNetwork(&wg, cluster1)
+		oa.CleanTidbClusterOrDie(cluster1)
+	}()
+	go func() {
+		defer wg.Done()
+		testTkctl(&wg, cluster1)
 		oa.CleanTidbClusterOrDie(cluster1)
 	}()
 	go func() {

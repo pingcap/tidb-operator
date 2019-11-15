@@ -138,6 +138,7 @@ type OperatorActions interface {
 	CheckUpgrade(ctx context.Context, info *TidbClusterConfig) error
 	UpgradeTidbCluster(info *TidbClusterConfig) error
 	UpgradeTidbClusterOrDie(info *TidbClusterConfig)
+	CheckTkctlOrDie(info *TidbClusterConfig)
 	DeployAdHocBackup(info *TidbClusterConfig) error
 	CheckAdHocBackup(info *TidbClusterConfig) (string, error)
 	DeployScheduledBackup(info *TidbClusterConfig) error
