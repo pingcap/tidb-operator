@@ -411,6 +411,10 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 	if tc.Spec.TiKV.HostNetwork {
 		dnsPolicy = corev1.DNSClusterFirstWithHostNet
 	}
+	tz := tc.Spec.Timezone
+	if tz != "UTC" {
+		tz = filepath.Join("/usr/share/zoneinfo", tc.Spec.Timezone)
+	}
 
 	tikvset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -482,7 +486,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 								},
 								{
 									Name:  "TZ",
-									Value: filepath.Join("/usr/share/zoneinfo", tc.Spec.Timezone),
+									Value: tz,
 								},
 							},
 						},

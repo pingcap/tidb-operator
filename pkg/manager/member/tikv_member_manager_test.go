@@ -70,10 +70,10 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 
 		ns := tc.Namespace
 		tcName := tc.Name
-		oldSpec := tc.Spec
 		if test.prepare != nil {
 			test.prepare(tc)
 		}
+		oldSpec := tc.Spec
 
 		tkmm, fakeSetControl, fakeSvcControl, pdClient, _, _ := newFakeTiKVMemberManager(tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
@@ -139,6 +139,28 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 		{
 			name:                         "normal",
 			prepare:                      nil,
+			errWhenCreateStatefulSet:     false,
+			errWhenCreateTiKVPeerService: false,
+			err:                false,
+			tikvPeerSvcCreated: true,
+			setCreated:         true,
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				envs := set.Spec.Template.Spec.Containers[0].Env
+				for _, env := range envs {
+					if env.Name == "TZ" {
+						g.Expect(env.Value).To(Equal("UTC"))
+					}
+				}
+			},
+			pdStores:        &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			tombstoneStores: &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+		},
+		{
+			name: "custom timezone",
+			prepare: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.Timezone = "Asia/Shanghai"
+			},
 			errWhenCreateStatefulSet:     false,
 			errWhenCreateTiKVPeerService: false,
 			err:                false,

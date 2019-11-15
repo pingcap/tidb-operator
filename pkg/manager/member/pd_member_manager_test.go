@@ -821,7 +821,7 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 			UID:       types.UID("test"),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			Timezone: "Asia/Shanghai",
+			Timezone: "UTC",
 			PD: v1alpha1.PDSpec{
 				ContainerSpec: v1alpha1.ContainerSpec{
 					Image: "pd-test-image",
