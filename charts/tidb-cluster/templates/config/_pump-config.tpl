@@ -17,7 +17,7 @@ data-dir = "/data"
 heartbeat-interval = {{ .Values.binlog.pump.heartbeatInterval | default 2 }}
 
 # a comma separated list of PD endpoints
-pd-urls = "http://{{ template "cluster.name" . }}-pd:2379"
+pd-urls = "{{ template "cluster.scheme" . }}://{{ template "cluster.name" . }}-pd:2379"
 
 #[security]
 # Path of file that contains list of trusted SSL CAs for connection with cluster components.

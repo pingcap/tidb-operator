@@ -251,7 +251,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 func newPDUpgrader() (Upgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
 	kubeCli := kubefake.NewSimpleClientset()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	pdControl := pdapi.NewFakePDControl()
+	pdControl := pdapi.NewFakePDControl(kubeCli)
 	podControl := controller.NewFakePodControl(podInformer)
 	return &pdUpgrader{
 			pdControl:  pdControl,

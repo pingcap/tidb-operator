@@ -1,6 +1,7 @@
 set -euo pipefail
+
 /pump \
--pd-urls=http://{{ template "cluster.name" . }}-pd:2379 \
+-pd-urls={{ template "cluster.scheme" . }}://{{ template "cluster.name" . }}-pd:2379 \
 -L={{ .Values.binlog.pump.logLevel | default "info" }} \
 -advertise-addr=`echo ${HOSTNAME}`.{{ template "cluster.name" . }}-pump:8250 \
 -config=/etc/pump/pump.toml \

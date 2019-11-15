@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
 func TestDiscoveryDiscovery(t *testing.T) {
@@ -41,7 +42,8 @@ func TestDiscoveryDiscovery(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		fakePDControl := pdapi.NewFakePDControl()
+		kubeCli := kubefake.NewSimpleClientset()
+		fakePDControl := pdapi.NewFakePDControl(kubeCli)
 		pdClient := pdapi.NewFakePDClient()
 		tc, err := test.tcFn()
 		if err == nil {
