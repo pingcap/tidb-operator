@@ -143,7 +143,9 @@ type PDClient interface {
 }
 
 var (
-	healthPrefix           = "pd/health"
+	healthPrefix = "pd/api/v1/health"
+	// compatible with older versions
+	healthPrefixOld        = "pd/health"
 	membersPrefix          = "pd/api/v1/members"
 	storesPrefix           = "pd/api/v1/stores"
 	storePrefix            = "pd/api/v1/store"
@@ -236,10 +238,19 @@ type schedulerInfo struct {
 }
 
 func (pc *pdClient) GetHealth() (*HealthInfo, error) {
-	apiURL := fmt.Sprintf("%s/%s", pc.url, healthPrefix)
-	body, err := httputil.GetBodyOK(pc.httpClient, apiURL)
+	var (
+		apiURL string
+		body   []byte
+		err    error
+	)
+	apiURL = fmt.Sprintf("%s/%s", pc.url, healthPrefix)
+	body, err = httputil.GetBodyOK(pc.httpClient, apiURL)
 	if err != nil {
-		return nil, err
+		apiURL = fmt.Sprintf("%s/%s", pc.url, healthPrefixOld)
+		body, err = httputil.GetBodyOK(pc.httpClient, apiURL)
+		if err != nil {
+			return nil, err
+		}
 	}
 	healths := []MemberHealth{}
 	err = json.Unmarshal(body, &healths)
