@@ -1,0 +1,89 @@
+{{- if .Values.importer.create }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ template "cluster.name" . }}-importer
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: importer
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "chart.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: importer
+  serviceName: {{ template "cluster.name" . }}-importer
+  replicas: {{ .Values.importer.replicas }}
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "9091"
+      labels:
+        app.kubernetes.io/name: {{ template "chart.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: importer
+    spec:
+    {{- if .Values.importer.affinity }}
+      affinity:
+{{ toYaml .Values.importer.affinity | indent 6 }}
+    {{- end }}
+    {{- if .Values.importer.tolerations }}
+      tolerations:
+{{ toYaml .Values.importer.tolerations | indent 6 }}
+    {{- end }}
+      containers:
+      - name: importer
+        image: {{ .Values.importer.image }}
+        imagePullPolicy: {{ .Values.importer.imagePullPolicy | default "IfNotPresent"}}
+        command:
+        - /tikv-importer
+        # tikv-importer does not support domain name: https://github.com/tikv/importer/issues/16
+        # - --addr=${MY_POD_NAME}.tikv-importer:8287
+        - --addr=$(MY_POD_IP):8287
+        - --config=/etc/tikv-importer/tikv-importer.toml
+        - --import-dir=/var/lib/tikv-importer
+        env:
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/tikv-importer
+        - name: config
+          mountPath: /etc/tikv-importer
+        {{- if .Values.importer.resources }}
+        resources:
+{{ toYaml .Values.importer.resources | indent 10 }}
+        {{- end }}
+      - name: pushgateway
+        image: {{ .Values.importer.pushgatewayImage }}
+        imagePullPolicy: {{ .Values.importer.pushgatewayImagePullPolicy | default "IfNotPresent" }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ template "cluster.name" . }}-importer-{{ template "importer-configmap.data-digest" . }}
+          items:
+          - key: config-file
+            path: tikv-importer.toml
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: {{ .Values.importer.storageClassName }}
+      resources:
+        requests:
+          storage: {{ .Values.importer.storage }}
+{{- end }}
