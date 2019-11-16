@@ -82,8 +82,8 @@ require (
 	k8s.io/kubectl v0.0.0
 	k8s.io/kubernetes v1.16.0
 	k8s.io/utils v0.0.0-20190801114015-581e00157fb1
-	sigs.k8s.io/apiserver-builder-alpha v0.0.0-20191031091337-b5d9ec3241f6
-	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191023065212-d7072df276e7
+	sigs.k8s.io/apiserver-builder-alpha v0.0.0-20191113095113-4493943d2568
+	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191113095113-4493943d2568
 )
 
 replace github.com/renstrom/dedent => github.com/lithammer/dedent v1.1.0
