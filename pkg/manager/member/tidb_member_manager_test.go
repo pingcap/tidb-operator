@@ -26,6 +26,7 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -261,7 +262,7 @@ func TestTiDBMemberManagerTiDBStatefulSetIsUpgrading(t *testing.T) {
 		if test.hasPod {
 			pod := &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        ordinalPodName(v1alpha1.TiDBMemberType, tc.GetName(), 0),
+					Name:        ordinalPodName(util.TiDBMemberType, tc.GetName(), 0),
 					Namespace:   metav1.NamespaceDefault,
 					Annotations: map[string]string{},
 					Labels:      label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).TiDB().Labels(),
@@ -572,7 +573,7 @@ func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
 		Spec: v1alpha1.TidbClusterSpec{
 			TiDB: v1alpha1.TiDBSpec{
 				ContainerSpec: v1alpha1.ContainerSpec{
-					Image: v1alpha1.TiDBMemberType.String(),
+					Image: util.TiDBMemberType.String(),
 					Requests: &v1alpha1.ResourceRequirement{
 						CPU:    "1",
 						Memory: "2Gi",

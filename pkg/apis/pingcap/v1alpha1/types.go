@@ -31,22 +31,6 @@ const (
 	TiKVStateTombstone string = "Tombstone"
 )
 
-// MemberType represents member type
-type MemberType string
-
-const (
-	// PDMemberType is pd container type
-	PDMemberType MemberType = "pd"
-	// TiDBMemberType is tidb container type
-	TiDBMemberType MemberType = "tidb"
-	// TiKVMemberType is tikv container type
-	TiKVMemberType MemberType = "tikv"
-	// SlowLogTailerMemberType is tidb log tailer container type
-	SlowLogTailerMemberType MemberType = "slowlog"
-	// UnknownMemberType is unknown container type
-	UnknownMemberType MemberType = "unknown"
-)
-
 // MemberPhase is the current state of member
 type MemberPhase string
 
@@ -103,6 +87,8 @@ type TidbClusterSpec struct {
 	Timezone        string                               `json:"timezone,omitempty"`
 	// Enable TLS connection between TiDB server components
 	EnableTLSCluster bool `json:"enableTLSCluster,omitempty"`
+
+	ClusterVersion string `json:"clusterVersion,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -122,6 +108,10 @@ type PDSpec struct {
 	PodAttributesSpec
 	Replicas         int32  `json:"replicas"`
 	StorageClassName string `json:"storageClassName,omitempty"`
+
+	// +k8s:openapi-gen=false
+	// Configuration of PD.
+	Config map[string]interface{} `json:"config,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -138,6 +128,10 @@ type TiDBSpec struct {
 	SeparateSlowLog  bool                  `json:"separateSlowLog,omitempty"`
 	SlowLogTailer    TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
 	EnableTLSClient  bool                  `json:"enableTLSClient,omitempty"`
+
+	// +k8s:openapi-gen=false
+	// Configuration of TiDB.
+	Config map[string]interface{} `json:"config,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -158,6 +152,10 @@ type TiKVSpec struct {
 	Privileged       bool   `json:"privileged,omitempty"`
 	StorageClassName string `json:"storageClassName,omitempty"`
 	MaxFailoverCount int32  `json:"maxFailoverCount,omitempty"`
+
+	// +k8s:openapi-gen=false
+	// Configuration of TiKV.
+	Config map[string]interface{} `json:"config,omitempty"`
 }
 
 // +k8s:openapi-gen=false

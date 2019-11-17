@@ -11,11 +11,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +k8s:openapi-gen=true
-// +k8s:deepcopy-gen=package,register
-// +k8s:conversion-gen=github.com/pingcap/tidb-operator/pkg/apiserver/apis/tidb
-// +k8s:defaulter-gen=TypeMeta
+package util
 
-// Package v1alpha1 the v1alpha1 version of the tidb.pingcap.com api group.
-// +groupName=tidb.pingcap.com
-package v1alpha1 // import "github.com/pingcap/tidb-operator/pkg/apiserver/apis/tidb/v1alpha1"
+// MemberType represents member type
+type MemberType string
+
+const (
+	// PDMemberType is pd container type
+	PDMemberType MemberType = "pd"
+	// TiDBMemberType is tidb container type
+	TiDBMemberType MemberType = "tidb"
+	// TiKVMemberType is tikv container type
+	TiKVMemberType MemberType = "tikv"
+	// SlowLogTailerMemberType is tidb log tailer container type
+	SlowLogTailerMemberType MemberType = "slowlog"
+	// UnknownMemberType is unknown container type
+	UnknownMemberType MemberType = "unknown"
+)

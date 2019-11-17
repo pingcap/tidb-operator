@@ -103,6 +103,6 @@ func IsPodOrdinalNotExceedReplicas(pod *corev1.Pod, specReplicas int32) (bool, e
 	return false, nil
 }
 
-func OrdinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int32) string {
+func OrdinalPVCName(memberType MemberType, setName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%s-%d", memberType, setName, ordinal)
 }

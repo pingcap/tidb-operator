@@ -52,7 +52,7 @@ func IsStatefulSetUpgrading(set *v1.StatefulSet) bool {
 // we add annotations to this pvc and delete it when we scale out the pd replicas
 // for the new pd pod need new pvc
 func addDeferDeletingToPVC(podAC *PodAdmissionControl, tc *v1alpha1.TidbCluster, setName, namespace string, ordinal int32) error {
-	pvcName := operatorUtils.OrdinalPVCName(v1alpha1.PDMemberType, setName, ordinal)
+	pvcName := operatorUtils.OrdinalPVCName(operatorUtils.PDMemberType, setName, ordinal)
 	pvc, err := podAC.pvcControl.GetPVC(pvcName, namespace)
 	if err != nil {
 		return err

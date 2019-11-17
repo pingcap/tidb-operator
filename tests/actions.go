@@ -33,6 +33,8 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
+	util2 "github.com/pingcap/tidb-operator/pkg/util"
+
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
 	pingcapErrors "github.com/pingcap/errors"
@@ -1254,9 +1256,9 @@ func getMemberContainer(kubeCli kubernetes.Interface, namespace string, memberNa
 	}
 
 	for _, container := range pod.Spec.Containers {
-		if container.Name == v1alpha1.PDMemberType.String() ||
-			container.Name == v1alpha1.TiKVMemberType.String() ||
-			container.Name == v1alpha1.TiDBMemberType.String() {
+		if container.Name == util2.PDMemberType.String() ||
+			container.Name == util2.TiKVMemberType.String() ||
+			container.Name == util2.TiDBMemberType.String() {
 			return &container, true
 		}
 	}

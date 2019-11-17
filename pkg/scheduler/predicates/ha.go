@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -363,7 +364,7 @@ func getTCNameFromPod(pod *apiv1.Pod, component string) string {
 }
 
 func getReplicasFrom(tc *v1alpha1.TidbCluster, component string) int32 {
-	if component == v1alpha1.PDMemberType.String() {
+	if component == util.PDMemberType.String() {
 		return tc.Spec.PD.Replicas
 	}
 

@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -47,7 +48,7 @@ type generalScaler struct {
 }
 
 func (gs *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,
-	setName string, memberType v1alpha1.MemberType, ordinal int32) (map[int32]string, error) {
+	setName string, memberType util.MemberType, ordinal int32) (map[int32]string, error) {
 	ns := tc.GetNamespace()
 	// for unit test
 	skipReason := map[int32]string{}
@@ -95,10 +96,10 @@ func decreaseReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
 		newSet.GetNamespace(), newSet.GetName(), newSet.Spec.Replicas)
 }
 
-func ordinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int32) string {
+func ordinalPVCName(memberType util.MemberType, setName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%s-%d", memberType, setName, ordinal)
 }
 
-func ordinalPodName(memberType v1alpha1.MemberType, tcName string, ordinal int32) string {
+func ordinalPodName(memberType util.MemberType, tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%s-%d", tcName, memberType, ordinal)
 }

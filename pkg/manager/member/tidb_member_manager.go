@@ -331,7 +331,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
-	tidbConfigMap := controller.MemberConfigMapName(tc, v1alpha1.TiDBMemberType)
+	tidbConfigMap := controller.MemberConfigMapName(tc, util.TiDBMemberType)
 
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
@@ -432,7 +432,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 		})
 		volMounts = append(volMounts, corev1.VolumeMount{Name: slowQueryLogVolumeName, MountPath: slowQueryLogDir})
 		containers = append(containers, corev1.Container{
-			Name:            v1alpha1.SlowLogTailerMemberType.String(),
+			Name:            util.SlowLogTailerMemberType.String(),
 			Image:           controller.GetSlowLogTailerImage(tc),
 			ImagePullPolicy: tc.Spec.TiDB.SlowLogTailer.ImagePullPolicy,
 			Resources:       util.ResourceRequirement(tc.Spec.TiDB.SlowLogTailer.ContainerSpec),
@@ -475,7 +475,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 		scheme = corev1.URISchemeHTTPS
 	}
 	containers = append(containers, corev1.Container{
-		Name:            v1alpha1.TiDBMemberType.String(),
+		Name:            util.TiDBMemberType.String(),
 		Image:           tc.Spec.TiDB.Image,
 		Command:         []string{"/bin/sh", "/usr/local/bin/tidb_start_script.sh"},
 		ImagePullPolicy: tc.Spec.TiDB.ImagePullPolicy,

@@ -19,7 +19,6 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/pdpb"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	pdUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
@@ -270,7 +269,7 @@ func newOwnerStatefulSetForPDPodAdmissionControl() *apps.StatefulSet {
 func newPVCForDeletePod() *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      operatorUtils.OrdinalPVCName(v1alpha1.PDMemberType, pdStsName, deletePDPodOrdinal),
+			Name:      operatorUtils.OrdinalPVCName(operatorUtils.PDMemberType, pdStsName, deletePDPodOrdinal),
 			Namespace: namespace,
 		},
 	}

@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
@@ -108,7 +109,7 @@ func (pmm *metaManager) resolvePVCFromPod(pod *corev1.Pod) (*corev1.PersistentVo
 	var pvcName string
 	for _, vol := range pod.Spec.Volumes {
 		switch vol.Name {
-		case v1alpha1.PDMemberType.String(), v1alpha1.TiKVMemberType.String():
+		case util.PDMemberType.String(), util.TiKVMemberType.String():
 			if vol.PersistentVolumeClaim != nil {
 				pvcName = vol.PersistentVolumeClaim.ClaimName
 				break

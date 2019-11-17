@@ -19,9 +19,9 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
@@ -32,7 +32,7 @@ import (
 func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 	type testcase struct {
 		name         string
-		memberType   v1alpha1.MemberType
+		memberType   util.MemberType
 		ordinal      int32
 		pvc          *corev1.PersistentVolumeClaim
 		deleteFailed bool
@@ -58,11 +58,11 @@ func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 	tests := []testcase{
 		{
 			name:       "normal",
-			memberType: v1alpha1.PDMemberType,
+			memberType: util.PDMemberType,
 			ordinal:    3,
 			pvc: &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 3),
+					Name:      ordinalPVCName(util.PDMemberType, setName, 3),
 					Namespace: corev1.NamespaceDefault,
 					Annotations: map[string]string{
 						label.AnnPVCDeferDeleting: "deleting-3",
@@ -77,7 +77,7 @@ func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 		},
 		{
 			name:         "pvc is not found",
-			memberType:   v1alpha1.PDMemberType,
+			memberType:   util.PDMemberType,
 			ordinal:      3,
 			pvc:          nil,
 			deleteFailed: false,
@@ -89,11 +89,11 @@ func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 		},
 		{
 			name:       "pvc annotations is nil",
-			memberType: v1alpha1.PDMemberType,
+			memberType: util.PDMemberType,
 			ordinal:    3,
 			pvc: &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 3),
+					Name:      ordinalPVCName(util.PDMemberType, setName, 3),
 					Namespace: corev1.NamespaceDefault,
 				},
 			},
@@ -106,11 +106,11 @@ func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 		},
 		{
 			name:       "pvc annotations defer deleting is empty",
-			memberType: v1alpha1.PDMemberType,
+			memberType: util.PDMemberType,
 			ordinal:    3,
 			pvc: &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        ordinalPVCName(v1alpha1.PDMemberType, setName, 3),
+					Name:        ordinalPVCName(util.PDMemberType, setName, 3),
 					Namespace:   corev1.NamespaceDefault,
 					Annotations: map[string]string{},
 				},
@@ -124,11 +124,11 @@ func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 		},
 		{
 			name:       "pvc delete failed",
-			memberType: v1alpha1.PDMemberType,
+			memberType: util.PDMemberType,
 			ordinal:    3,
 			pvc: &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      ordinalPVCName(v1alpha1.PDMemberType, setName, 3),
+					Name:      ordinalPVCName(util.PDMemberType, setName, 3),
 					Namespace: corev1.NamespaceDefault,
 					Annotations: map[string]string{
 						label.AnnPVCDeferDeleting: "deleting-3",

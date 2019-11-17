@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	glog "k8s.io/klog"
@@ -47,7 +48,7 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 		return nil
 	}
 
-	_, err := psd.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.PDMemberType, *oldSet.Spec.Replicas)
+	_, err := psd.deleteDeferDeletingPVC(tc, oldSet.GetName(), util.PDMemberType, *oldSet.Spec.Replicas)
 	if err != nil {
 		resetReplicas(newSet, oldSet)
 		return err
@@ -67,7 +68,7 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 	healthCount := 0
 	totalCount := *oldSet.Spec.Replicas
 	for ; i < totalCount; i++ {
-		podName := ordinalPodName(v1alpha1.PDMemberType, tcName, i)
+		podName := ordinalPodName(util.PDMemberType, tcName, i)
 		if member, ok := tc.Status.PD.Members[podName]; ok && member.Health {
 			healthCount++
 		}
@@ -130,7 +131,7 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	}
 	glog.Infof("pd scale in: delete member %s successfully", memberName)
 
-	pvcName := ordinalPVCName(v1alpha1.PDMemberType, setName, ordinal)
+	pvcName := ordinalPVCName(util.PDMemberType, setName, ordinal)
 	pvc, err := psd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil {
 		resetReplicas(newSet, oldSet)

@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	glog "k8s.io/klog"
@@ -47,7 +48,7 @@ func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 		return nil
 	}
 
-	_, err := tsd.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiKVMemberType, *oldSet.Spec.Replicas)
+	_, err := tsd.deleteDeferDeletingPVC(tc, oldSet.GetName(), util.TiKVMemberType, *oldSet.Spec.Replicas)
 	if err != nil {
 		resetReplicas(newSet, oldSet)
 		return err
@@ -73,7 +74,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	}
 
 	// We need remove member from cluster before reducing statefulset replicas
-	podName := ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
+	podName := ordinalPodName(util.TiKVMemberType, tcName, ordinal)
 	pod, err := tsd.podLister.Pods(ns).Get(podName)
 	if err != nil {
 		resetReplicas(newSet, oldSet)
@@ -111,7 +112,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			// TODO: double check if store is really not in Up/Offline/Down state
 			glog.Infof("TiKV %s/%s store %d becomes tombstone", ns, podName, id)
 
-			pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
+			pvcName := ordinalPVCName(util.TiKVMemberType, setName, ordinal)
 			pvc, err := tsd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 			if err != nil {
 				resetReplicas(newSet, oldSet)
@@ -144,7 +145,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	// 2. This can happen when TiKV pod has not been successfully registered in the cluster, such as always pending.
 	//    In this situation we should delete this TiKV pod immediately to avoid blocking the subsequent operations.
 	if !podutil.IsPodReady(pod) {
-		pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
+		pvcName := ordinalPVCName(util.TiKVMemberType, setName, ordinal)
 		pvc, err := tsd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 		if err != nil {
 			resetReplicas(newSet, oldSet)

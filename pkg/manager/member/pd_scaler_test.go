@@ -15,9 +15,11 @@ package member
 
 import (
 	"fmt"
-	"github.com/pingcap/kvproto/pkg/pdpb"
 	"testing"
 	"time"
+
+	"github.com/pingcap/kvproto/pkg/pdpb"
+	"github.com/pingcap/tidb-operator/pkg/util"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -63,8 +65,8 @@ func TestPDScalerScaleOut(t *testing.T) {
 
 		scaler, _, pvcIndexer, pvcControl := newFakePDScaler()
 
-		pvc := newPVCForStatefulSet(oldSet, v1alpha1.PDMemberType)
-		pvc.Name = ordinalPVCName(v1alpha1.PDMemberType, oldSet.GetName(), *oldSet.Spec.Replicas)
+		pvc := newPVCForStatefulSet(oldSet, util.PDMemberType)
+		pvc.Name = ordinalPVCName(util.PDMemberType, oldSet.GetName(), *oldSet.Spec.Replicas)
 		if !test.annoIsNil {
 			pvc.Annotations = map[string]string{}
 		}
@@ -161,7 +163,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 			name: "failover now",
 			update: func(tc *v1alpha1.TidbCluster) {
 				normalPDMember(tc)
-				podName := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0)
+				podName := ordinalPodName(util.PDMemberType, tc.GetName(), 0)
 				tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{
 					podName: {PodName: podName},
 				}
@@ -197,7 +199,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 			update: func(tc *v1alpha1.TidbCluster) {
 				normalPDMember(tc)
 				tcName := tc.GetName()
-				podName := ordinalPodName(v1alpha1.PDMemberType, tcName, 1)
+				podName := ordinalPodName(util.PDMemberType, tcName, 1)
 				member1 := tc.Status.PD.Members[podName]
 				member1.Health = false
 				tc.Status.PD.Members[podName] = member1
@@ -259,7 +261,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 		scaler, pdControl, pvcIndexer, pvcControl := newFakePDScaler()
 
 		if test.hasPVC {
-			pvc := newPVCForStatefulSet(oldSet, v1alpha1.PDMemberType)
+			pvc := newPVCForStatefulSet(oldSet, util.PDMemberType)
 			pvcIndexer.Add(pvc)
 		}
 
@@ -407,7 +409,7 @@ func newStatefulSetForPDScale() *apps.StatefulSet {
 	return set
 }
 
-func newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType) *corev1.PersistentVolumeClaim {
+func newPVCForStatefulSet(set *apps.StatefulSet, memberType util.MemberType) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ordinalPVCName(memberType, set.GetName(), *set.Spec.Replicas-1),
@@ -419,10 +421,10 @@ func newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType)
 func normalPDMember(tc *v1alpha1.TidbCluster) {
 	tcName := tc.GetName()
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
-		ordinalPodName(v1alpha1.PDMemberType, tcName, 0): {Health: true},
-		ordinalPodName(v1alpha1.PDMemberType, tcName, 1): {Health: true},
-		ordinalPodName(v1alpha1.PDMemberType, tcName, 2): {Health: true},
-		ordinalPodName(v1alpha1.PDMemberType, tcName, 3): {Health: true},
-		ordinalPodName(v1alpha1.PDMemberType, tcName, 4): {Health: true},
+		ordinalPodName(util.PDMemberType, tcName, 0): {Health: true},
+		ordinalPodName(util.PDMemberType, tcName, 1): {Health: true},
+		ordinalPodName(util.PDMemberType, tcName, 2): {Health: true},
+		ordinalPodName(util.PDMemberType, tcName, 3): {Health: true},
+		ordinalPodName(util.PDMemberType, tcName, 4): {Health: true},
 	}
 }

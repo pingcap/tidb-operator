@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -406,7 +407,7 @@ func newPod(tc *v1alpha1.TidbCluster) *corev1.Pod {
 				label.InstanceLabelKey:  tc.GetName(),
 			},
 		},
-		Spec: newPodSpec(v1alpha1.PDMemberType.String(), "pvc-1"),
+		Spec: newPodSpec(util.PDMemberType.String(), "pvc-1"),
 	}
 }
 

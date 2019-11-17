@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,8 +59,8 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 
 		scaler, _, pvcIndexer, _, pvcControl := newFakeTiKVScaler()
 
-		pvc := newPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType)
-		pvc.Name = ordinalPVCName(v1alpha1.TiKVMemberType, oldSet.GetName(), *oldSet.Spec.Replicas)
+		pvc := newPVCForStatefulSet(oldSet, util.TiKVMemberType)
+		pvc.Name = ordinalPVCName(util.TiKVMemberType, oldSet.GetName(), *oldSet.Spec.Replicas)
 		if !test.annoIsNil {
 			pvc.Annotations = map[string]string{}
 		}
@@ -194,7 +195,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		scaler, pdControl, pvcIndexer, podIndexer, pvcControl := newFakeTiKVScaler()
 
 		if test.hasPVC {
-			pvc := newPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType)
+			pvc := newPVCForStatefulSet(oldSet, util.TiKVMemberType)
 			pvcIndexer.Add(pvc)
 		}
 
@@ -444,7 +445,7 @@ func normalStoreFun(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
 		"1": {
 			ID:      "1",
-			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 4),
+			PodName: ordinalPodName(util.TiKVMemberType, tc.GetName(), 4),
 			State:   v1alpha1.TiKVStateUp,
 		},
 	}
@@ -454,7 +455,7 @@ func tombstoneStoreFun(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiKV.TombstoneStores = map[string]v1alpha1.TiKVStore{
 		"1": {
 			ID:      "1",
-			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 4),
+			PodName: ordinalPodName(util.TiKVMemberType, tc.GetName(), 4),
 			State:   v1alpha1.TiKVStateTombstone,
 		},
 	}

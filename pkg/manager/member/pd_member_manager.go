@@ -420,7 +420,7 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: corev1.ServiceSpec{
-			Type: controller.GetServiceType(tc.Spec.Services, v1alpha1.PDMemberType.String()),
+			Type: controller.GetServiceType(tc.Spec.Services, util.PDMemberType.String()),
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "client",
@@ -495,14 +495,14 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, err
 	ns := tc.Namespace
 	tcName := tc.Name
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
-	pdConfigMap := controller.MemberConfigMapName(tc, v1alpha1.PDMemberType)
+	pdConfigMap := controller.MemberConfigMapName(tc, util.PDMemberType)
 
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
 		annMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/pd"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
-		{Name: v1alpha1.PDMemberType.String(), MountPath: "/var/lib/pd"},
+		{Name: util.PDMemberType.String(), MountPath: "/var/lib/pd"},
 	}
 	if tc.Spec.EnableTLSCluster {
 		volMounts = append(volMounts, corev1.VolumeMount{
@@ -594,7 +594,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, err
 					DNSPolicy:     dnsPolicy,
 					Containers: []corev1.Container{
 						{
-							Name:            v1alpha1.PDMemberType.String(),
+							Name:            util.PDMemberType.String(),
 							Image:           tc.Spec.PD.Image,
 							Command:         []string{"/bin/sh", "/usr/local/bin/pd_start_script.sh"},
 							ImagePullPolicy: tc.Spec.PD.ImagePullPolicy,
@@ -658,7 +658,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, err
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: v1alpha1.PDMemberType.String(),
+						Name: util.PDMemberType.String(),
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
 						AccessModes: []corev1.PersistentVolumeAccessMode{

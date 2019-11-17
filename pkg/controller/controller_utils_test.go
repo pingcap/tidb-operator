@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -214,7 +215,7 @@ func TestMemberConfigMapName(t *testing.T) {
 		name        string
 		annotations map[string]string
 		tcName      string
-		member      v1alpha1.MemberType
+		member      util.MemberType
 		expectFn    func(*GomegaWithT, string)
 	}
 	testFn := func(test *testcase, t *testing.T) {
@@ -229,7 +230,7 @@ func TestMemberConfigMapName(t *testing.T) {
 			name:        "backward compatible when no annotations set",
 			annotations: map[string]string{},
 			tcName:      "cluster-name",
-			member:      v1alpha1.TiKVMemberType,
+			member:      util.TiKVMemberType,
 			expectFn: func(g *GomegaWithT, s string) {
 				g.Expect(s).To(Equal("cluster-name-tikv"))
 			},
@@ -240,7 +241,7 @@ func TestMemberConfigMapName(t *testing.T) {
 				"pingcap.com/tikv.cluster-name-tikv.sha": "uuuuuuuu",
 			},
 			tcName: "cluster-name",
-			member: v1alpha1.TiKVMemberType,
+			member: util.TiKVMemberType,
 			expectFn: func(g *GomegaWithT, s string) {
 				g.Expect(s).To(Equal("cluster-name-tikv-uuuuuuuu"))
 			},
@@ -249,7 +250,7 @@ func TestMemberConfigMapName(t *testing.T) {
 			name:        "nil annotations",
 			annotations: nil,
 			tcName:      "cluster-name",
-			member:      v1alpha1.TiKVMemberType,
+			member:      util.TiKVMemberType,
 			expectFn: func(g *GomegaWithT, s string) {
 				g.Expect(s).To(Equal("cluster-name-tikv"))
 			},
@@ -260,7 +261,7 @@ func TestMemberConfigMapName(t *testing.T) {
 				"pingcap.com/tikv.cluster-name-tikv.sha": "",
 			},
 			tcName: "cluster-name",
-			member: v1alpha1.TiKVMemberType,
+			member: util.TiKVMemberType,
 			expectFn: func(g *GomegaWithT, s string) {
 				g.Expect(s).To(Equal("cluster-name-tikv"))
 			},
@@ -271,7 +272,7 @@ func TestMemberConfigMapName(t *testing.T) {
 				"pingcap.com/pd.cluster-name-tikv.sha": "",
 			},
 			tcName: "cluster-name",
-			member: v1alpha1.TiKVMemberType,
+			member: util.TiKVMemberType,
 			expectFn: func(g *GomegaWithT, s string) {
 				g.Expect(s).To(Equal("cluster-name-tikv"))
 			},

@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -66,14 +67,14 @@ func TestPDFailoverFailover(t *testing.T) {
 		})
 
 		if test.hasPVC {
-			pvc := newPVCForPDFailover(tc, v1alpha1.PDMemberType, 1)
+			pvc := newPVCForPDFailover(tc, util.PDMemberType, 1)
 			if test.pvcWithDeletionTimestamp {
 				pvc.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 			}
 			pvcIndexer.Add(pvc)
 		}
 		if test.hasPod {
-			pod := newPodForPDFailover(tc, v1alpha1.PDMemberType, 1)
+			pod := newPodForPDFailover(tc, util.PDMemberType, 1)
 			if test.podWithDeletionTimestamp {
 				pod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 			}
@@ -156,7 +157,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(1))
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+				pd1Name := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
@@ -166,7 +167,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			name: "has one not ready member, but not exceed deadline",
 			update: func(tc *v1alpha1.TidbCluster) {
 				oneNotReadyMember(tc)
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+				pd1Name := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
 				pd1 := tc.Status.PD.Members[pd1Name]
 				pd1.LastTransitionTime = metav1.Time{Time: time.Now().Add(-2 * time.Minute)}
 				tc.Status.PD.Members[pd1Name] = pd1
@@ -188,7 +189,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			name: "has one not ready member, and exceed deadline, lastTransitionTime is zero",
 			update: func(tc *v1alpha1.TidbCluster) {
 				oneNotReadyMember(tc)
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+				pd1Name := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
 				pd1 := tc.Status.PD.Members[pd1Name]
 				pd1.LastTransitionTime = metav1.Time{}
 				tc.Status.PD.Members[pd1Name] = pd1
@@ -262,7 +263,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			errExpectFn:              errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+				pd1Name := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
@@ -272,7 +273,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			name: "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete pod success, but memberID is wrong",
 			update: func(tc *v1alpha1.TidbCluster) {
 				oneNotReadyMemberAndAFailureMember(tc)
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+				pd1Name := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
 				pd1 := tc.Status.PD.FailureMembers[pd1Name]
 				pd1.MemberID = "wrong-id"
 				tc.Status.PD.FailureMembers[pd1Name] = pd1
@@ -290,7 +291,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			},
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+				pd1Name := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
@@ -312,7 +313,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			},
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+				pd1Name := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
@@ -334,7 +335,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			},
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+				pd1Name := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
@@ -356,7 +357,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			},
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+				pd1Name := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
@@ -375,8 +376,8 @@ func TestPDFailoverFailover(t *testing.T) {
 			errExpectFn:              errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster, pf *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-				pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.GetName()), 1)
+				pd1Name := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
+				pvcName := ordinalPVCName(util.PDMemberType, controller.PDMemberName(tc.GetName()), 1)
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
@@ -401,8 +402,8 @@ func TestPDFailoverFailover(t *testing.T) {
 			errExpectFn:              errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster, pf *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				pd1Name := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-				pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.GetName()), 1)
+				pd1Name := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
+				pvcName := ordinalPVCName(util.PDMemberType, controller.PDMemberName(tc.GetName()), 1)
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
@@ -548,9 +549,9 @@ func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, *pdapi.Fake
 }
 
 func oneFailureMember(tc *v1alpha1.TidbCluster) {
-	pd0 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0)
-	pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
+	pd0 := ordinalPodName(util.PDMemberType, tc.GetName(), 0)
+	pd1 := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
+	pd2 := ordinalPodName(util.PDMemberType, tc.GetName(), 2)
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
 		pd0: {Name: pd0, ID: "0", Health: true},
 		pd2: {Name: pd2, ID: "2", Health: true},
@@ -561,9 +562,9 @@ func oneFailureMember(tc *v1alpha1.TidbCluster) {
 }
 
 func twoFailureMembers(tc *v1alpha1.TidbCluster) {
-	pd0 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0)
-	pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
+	pd0 := ordinalPodName(util.PDMemberType, tc.GetName(), 0)
+	pd1 := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
+	pd2 := ordinalPodName(util.PDMemberType, tc.GetName(), 2)
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
 		pd2: {Name: pd2, ID: "2", Health: true},
 	}
@@ -574,9 +575,9 @@ func twoFailureMembers(tc *v1alpha1.TidbCluster) {
 }
 
 func oneNotReadyMember(tc *v1alpha1.TidbCluster) {
-	pd0 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0)
-	pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
+	pd0 := ordinalPodName(util.PDMemberType, tc.GetName(), 0)
+	pd1 := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
+	pd2 := ordinalPodName(util.PDMemberType, tc.GetName(), 2)
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
 		pd0: {Name: pd0, ID: "0", Health: true},
 		pd1: {Name: pd1, ID: "12891273174085095651", Health: false, LastTransitionTime: metav1.Time{Time: time.Now().Add(-10 * time.Minute)}},
@@ -585,9 +586,9 @@ func oneNotReadyMember(tc *v1alpha1.TidbCluster) {
 }
 
 func oneNotReadyMemberAndAFailureMember(tc *v1alpha1.TidbCluster) {
-	pd0 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0)
-	pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
+	pd0 := ordinalPodName(util.PDMemberType, tc.GetName(), 0)
+	pd1 := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
+	pd2 := ordinalPodName(util.PDMemberType, tc.GetName(), 2)
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
 		pd0: {Name: pd0, ID: "0", Health: true},
 		pd1: {Name: pd1, ID: "12891273174085095651", Health: false, LastTransitionTime: metav1.Time{Time: time.Now().Add(-10 * time.Minute)}},
@@ -599,9 +600,9 @@ func oneNotReadyMemberAndAFailureMember(tc *v1alpha1.TidbCluster) {
 }
 
 func allMembersReady(tc *v1alpha1.TidbCluster) {
-	pd0 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0)
-	pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
+	pd0 := ordinalPodName(util.PDMemberType, tc.GetName(), 0)
+	pd1 := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
+	pd2 := ordinalPodName(util.PDMemberType, tc.GetName(), 2)
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
 		pd0: {Name: pd0, ID: "0", Health: true},
 		pd1: {Name: pd1, ID: "12891273174085095651", Health: true},
@@ -610,9 +611,9 @@ func allMembersReady(tc *v1alpha1.TidbCluster) {
 }
 
 func twoMembersNotReady(tc *v1alpha1.TidbCluster) {
-	pd0 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0)
-	pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
+	pd0 := ordinalPodName(util.PDMemberType, tc.GetName(), 0)
+	pd1 := ordinalPodName(util.PDMemberType, tc.GetName(), 1)
+	pd2 := ordinalPodName(util.PDMemberType, tc.GetName(), 2)
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
 		pd0: {Name: pd0, ID: "0", Health: false},
 		pd1: {Name: pd1, ID: "12891273174085095651", Health: false},
@@ -628,7 +629,7 @@ func errExpectNotNil(g *GomegaWithT, err error) {
 	g.Expect(err).To(HaveOccurred())
 }
 
-func newPVCForPDFailover(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, ordinal int32) *corev1.PersistentVolumeClaim {
+func newPVCForPDFailover(tc *v1alpha1.TidbCluster, memberType util.MemberType, ordinal int32) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ordinalPVCName(memberType, controller.PDMemberName(tc.GetName()), ordinal),
@@ -641,7 +642,7 @@ func newPVCForPDFailover(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberTyp
 	}
 }
 
-func newPodForPDFailover(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, ordinal int32) *corev1.Pod {
+func newPodForPDFailover(tc *v1alpha1.TidbCluster, memberType util.MemberType, ordinal int32) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ordinalPodName(memberType, tc.GetName(), ordinal),

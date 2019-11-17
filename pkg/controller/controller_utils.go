@@ -17,8 +17,9 @@ import (
 	"fmt"
 	"time"
 
-	humanize "github.com/dustin/go-humanize"
+	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -256,7 +257,7 @@ func AnnProm(port int32) map[string]string {
 }
 
 // MemberConfigMapName returns the default ConfigMap name of the specified member type
-func MemberConfigMapName(tc *v1alpha1.TidbCluster, member v1alpha1.MemberType) string {
+func MemberConfigMapName(tc *v1alpha1.TidbCluster, member util.MemberType) string {
 	nameKey := fmt.Sprintf("%s-%s", tc.Name, member)
 	return nameKey + getConfigMapSuffix(tc, member.String(), nameKey)
 }
