@@ -11,7 +11,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package tidb is the internal version of the tidb.pingcap.com api group.
-// +k8s:deepcopy-gen=package,register
-// +groupName=tidb.pingcap.com
-package tidb // import "github.com/pingcap/tidb-operator/pkg/apiserver/apis/tidb"
+package json
+
+// JsonObject is a wrapper of go interface{} that makes deepcopy-gen happy
+type JsonObject interface {
+	DeepCopyJsonObject() JsonObject
+}
+
+type jsonObject struct {
+	o interface{}
+}
+
+func (c *jsonObject) DeepCopyJsonObject() JsonObject {
+	o := &jsonObject{}
+	*o = *c
+	return o
+}

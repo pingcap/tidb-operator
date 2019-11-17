@@ -12,5 +12,5 @@
 // limitations under the License.
 
 // Package apis hosts all apis of aa
-// +domain=pingcap.com
+// +domain=com
 package apis

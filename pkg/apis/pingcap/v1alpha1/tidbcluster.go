@@ -13,10 +13,6 @@
 
 package v1alpha1
 
-func (mt util.MemberType) String() string {
-	return string(mt)
-}
-
 func (tc *TidbCluster) PDUpgrading() bool {
 	return tc.Status.PD.Phase == UpgradePhase
 }

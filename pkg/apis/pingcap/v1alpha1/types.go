@@ -14,6 +14,7 @@
 package v1alpha1
 
 import (
+	"github.com/pingcap/tidb-operator/pkg/util/json"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,6 +40,17 @@ const (
 	NormalPhase MemberPhase = "Normal"
 	// UpgradePhase represents the upgrade state of TiDB cluster.
 	UpgradePhase MemberPhase = "Upgrade"
+)
+
+// PVCDeletePolicy defines how to handle orphan PVC left by scale-in of statefulset
+type PVCDeletePolicy string
+
+const (
+	// DeletePolicyDefer retains the PVC during scale-in, and delete the PVC when
+	// a new Pod with the same ordinal is created during scale-out
+	DeletePolicyDefer PVCDeletePolicy = "Normal"
+	// DeletePolicyImmediate delete the PVC once the bounding Pod is deleted successfully
+	DeletePolicyImmediate PVCDeletePolicy = "Upgrade"
 )
 
 // +genclient
@@ -88,7 +100,16 @@ type TidbClusterSpec struct {
 	// Enable TLS connection between TiDB server components
 	EnableTLSCluster bool `json:"enableTLSCluster,omitempty"`
 
-	ClusterVersion string `json:"clusterVersion,omitempty"`
+	// For storage, since v1alpha2
+	Version           string              `json:"version,omitempty"`
+	ImagePullPolicy   corev1.PullPolicy   `json:"imagePullPolicy,omitempty"`
+	HostNetwork       *bool               `json:"hostNetwork,omitempty"`
+	Affinity          *corev1.Affinity    `json:"affinity,omitempty"`
+	PriorityClassName string              `json:"priorityClassName,omitempty"`
+	NodeSelector      map[string]string   `json:"nodeSelector,omitempty"`
+	Annotations       map[string]string   `json:"annotations,omitempty"`
+	Tolerations       []corev1.Toleration `json:"tolerations,omitempty"`
+	PVCDeletePolicy   PVCDeletePolicy     `json:"pvcDeletePolicy,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -109,9 +130,9 @@ type PDSpec struct {
 	Replicas         int32  `json:"replicas"`
 	StorageClassName string `json:"storageClassName,omitempty"`
 
+	// For storage, since v1alpha2
 	// +k8s:openapi-gen=false
-	// Configuration of PD.
-	Config map[string]interface{} `json:"config,omitempty"`
+	Config map[string]json.JsonObject `json:"config,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -129,9 +150,11 @@ type TiDBSpec struct {
 	SlowLogTailer    TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
 	EnableTLSClient  bool                  `json:"enableTLSClient,omitempty"`
 
+	// For storage, since v1alpha2
 	// +k8s:openapi-gen=false
-	// Configuration of TiDB.
-	Config map[string]interface{} `json:"config,omitempty"`
+	Plugins []string `json:"plugins,omitempty"`
+	// +k8s:openapi-gen=false
+	Config map[string]json.JsonObject `json:"config,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -154,8 +177,16 @@ type TiKVSpec struct {
 	MaxFailoverCount int32  `json:"maxFailoverCount,omitempty"`
 
 	// +k8s:openapi-gen=false
-	// Configuration of TiKV.
-	Config map[string]interface{} `json:"config,omitempty"`
+	// For storage, since v1alpha2
+	Config map[string]json.JsonObject `json:"config,omitempty"`
+}
+
+// PumpSpec contains details of Pump members
+// For storage, since v1alpha2
+type PumpSpec struct {
+	ContainerSpec
+	PodAttributesSpec
+	Config map[string]json.JsonObject `json:"config,omitempty"`
 }
 
 // +k8s:openapi-gen=false
@@ -171,6 +202,9 @@ type ContainerSpec struct {
 	ImagePullPolicy corev1.PullPolicy    `json:"imagePullPolicy,omitempty"`
 	Requests        *ResourceRequirement `json:"requests,omitempty"`
 	Limits          *ResourceRequirement `json:"limits,omitempty"`
+
+	// Used to distinguish whether imagePullPolicy is explicitly set, since v1alpha2
+	ImagePullPolicyIsNil bool `json:"imagePullPolicyIsNil,omitempty"`
 }
 
 // +k8s:openapi-gen=false
@@ -183,6 +217,9 @@ type PodAttributesSpec struct {
 	HostNetwork        bool                       `json:"hostNetwork,omitempty"`
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 	PriorityClassName  string                     `json:"priorityClassName,omitempty"`
+
+	// For storage, since v1alpha2
+	Version string `json:"version,omitempty"`
 }
 
 // +k8s:openapi-gen=true

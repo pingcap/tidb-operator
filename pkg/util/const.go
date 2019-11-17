@@ -28,3 +28,7 @@ const (
 	// UnknownMemberType is unknown container type
 	UnknownMemberType MemberType = "unknown"
 )
+
+func (mt MemberType) String() string {
+	return string(mt)
+}

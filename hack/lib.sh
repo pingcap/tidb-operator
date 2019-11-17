@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [ -z "$ROOT" ]; then
     echo "error: ROOT should be initialized"
