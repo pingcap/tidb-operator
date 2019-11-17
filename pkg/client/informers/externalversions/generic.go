@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	v1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	v1alpha2 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha2"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -60,6 +61,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Pingcap().V1alpha1().Restores().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("tidbclusters"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Pingcap().V1alpha1().TidbClusters().Informer()}, nil
+
+		// Group=pingcap.com, Version=v1alpha2
+	case v1alpha2.SchemeGroupVersion.WithResource("tidbclusters"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Pingcap().V1alpha2().TidbClusters().Informer()}, nil
 
 	}
 

@@ -19,6 +19,8 @@ import (
 	clientset "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	pingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/typed/pingcap/v1alpha1"
 	fakepingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/typed/pingcap/v1alpha1/fake"
+	pingcapv1alpha2 "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/typed/pingcap/v1alpha2"
+	fakepingcapv1alpha2 "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/typed/pingcap/v1alpha2/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -76,4 +78,9 @@ var _ clientset.Interface = &Clientset{}
 // PingcapV1alpha1 retrieves the PingcapV1alpha1Client
 func (c *Clientset) PingcapV1alpha1() pingcapv1alpha1.PingcapV1alpha1Interface {
 	return &fakepingcapv1alpha1.FakePingcapV1alpha1{Fake: &c.Fake}
+}
+
+// PingcapV1alpha2 retrieves the PingcapV1alpha2Client
+func (c *Clientset) PingcapV1alpha2() pingcapv1alpha2.PingcapV1alpha2Interface {
+	return &fakepingcapv1alpha2.FakePingcapV1alpha2{Fake: &c.Fake}
 }
