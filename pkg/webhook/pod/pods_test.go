@@ -22,6 +22,7 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -37,6 +38,7 @@ const (
 	upgradeInstanceName = "upgrader"
 	namespace           = "namespace"
 	pdReplicas          = int32(3)
+	tikvReplicas        = int32(3)
 )
 
 func TestAdmitPod(t *testing.T) {
@@ -173,6 +175,36 @@ func newTidbClusterForPodAdmissionControl() *v1alpha1.TidbCluster {
 				},
 				Replicas:         pdReplicas,
 				StorageClassName: "my-storage-class",
+			},
+			TiKV: v1alpha1.TiKVSpec{
+				ContainerSpec: v1alpha1.ContainerSpec{
+					Image: "tikv-test-image",
+				},
+				Replicas:         tikvReplicas,
+				StorageClassName: "my-storage-class",
+			},
+		},
+		Status: v1alpha1.TidbClusterStatus{
+			TiKV: v1alpha1.TiKVStatus{
+				Synced: true,
+				Phase:  v1alpha1.NormalPhase,
+				Stores: map[string]v1alpha1.TiKVStore{
+					"0": {
+						PodName:     memberUtils.TikvPodName(tcName, 0),
+						LeaderCount: 1,
+						State:       v1alpha1.TiKVStateUp,
+					},
+					"1": {
+						PodName:     memberUtils.TikvPodName(tcName, 1),
+						LeaderCount: 1,
+						State:       v1alpha1.TiKVStateUp,
+					},
+					"2": {
+						PodName:     memberUtils.TikvPodName(tcName, 2),
+						LeaderCount: 1,
+						State:       v1alpha1.TiKVStateUp,
+					},
+				},
 			},
 		},
 	}
