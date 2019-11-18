@@ -31,7 +31,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		return toAdmissionResponse(err)
 	}
 
-	versionCli, kubeCli := client.NewCliOrDie()
+	versionCli, kubeCli, _ := client.NewCliOrDie()
 
 	name := ar.Request.Name
 	namespace := ar.Request.Namespace
