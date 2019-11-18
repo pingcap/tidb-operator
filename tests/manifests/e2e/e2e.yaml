@@ -51,6 +51,7 @@ spec:
     - --test-apiserver-image=localhost:5000/pingcap/test-apiserver:latest
     - --tidb-versions=v3.0.2,v3.0.3,v3.0.4
     - --chart-dir=/charts
+    - -v=4
     volumeMounts:
     - mountPath: /logDir
       name: logdir
