@@ -14,6 +14,11 @@ if [ -z "$KUBECONFIG" ]; then
     exit 1
 fi
 
+echo "TIDB_OPERATOR_IMAGE: $TIDB_OPERATOR_IMAGE"
+echo "E2E_IMAGE: $E2E_IMAGE"
+echo "TEST_APISERVER_IMAGE: $TEST_APISERVER_IMAGE"
+echo "KUBECONFIG: $KUBECONFIG"
+
 NS=tidb-operator-e2e
 
 # TODO find a better way

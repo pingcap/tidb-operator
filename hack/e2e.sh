@@ -59,12 +59,10 @@ else
     DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make e2e-docker-push
 fi
 
-export TIDB_OPERATOR_IMAGE=${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}
-export E2E_IMAGE=${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:${IMAGE_TAG}
-export TEST_APISERVER_IMAGE=${DOCKER_REGISTRY}/test-apiserver:${IMAGE_TAG}
-
-echo "TIDB_OPERATOR_IMAGE: $TIDB_OPERATOR_IMAGE"
-echo "E2E_IMAGE: $E2E_IMAGE"
-echo "TEST_APISERVER_IMAGE: $TEST_APISERVER_IMAGE"
+# in kind cluster, we must use local registry
+# TODO: find a better way
+export TIDB_OPERATOR_IMAGE=localhost:5000/pingcap/tidb-operator:${IMAGE_TAG}
+export E2E_IMAGE=localhost:5000/pingcap/tidb-operator-e2e:${IMAGE_TAG}
+export TEST_APISERVER_IMAGE=localhost:5000/test-apiserver:${IMAGE_TAG}
 
 hack/run-e2e.sh "$@"

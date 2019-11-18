@@ -87,7 +87,7 @@ endif
 	sed -i -e "s#image: .*#image: ${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}#g" tests/images/e2e/manifests/webhook.yaml
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:${IMAGE_TAG}" tests/images/e2e
 
-e2e-build:
+e2e-build: test-apiserver-build
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
 
 test-apiserver-dokcer-push: test-apiesrver-docker
