@@ -152,7 +152,7 @@ func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node st
 		glog.Infof("pending failover,failed to get tidbcluster:[%s], error: %v", info.FullName(), err)
 		if strings.Contains(err.Error(), "Client.Timeout exceeded while awaiting headers") {
 			glog.Info("create new client")
-			newCli, _ := client.NewCliOrDie()
+			newCli, _, _ := client.NewCliOrDie()
 			oa.cli = newCli
 		}
 		return false, nil

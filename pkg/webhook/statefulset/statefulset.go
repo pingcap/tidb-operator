@@ -18,8 +18,10 @@ import (
 	"fmt"
 	"strconv"
 
+	asappsv1alpha1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	"k8s.io/api/admission/v1beta1"
@@ -44,15 +46,19 @@ func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 	name := ar.Request.Name
 	namespace := ar.Request.Namespace
-	glog.V(4).Infof("admit statefulsets [%s/%s]", namespace, name)
 
+	expectedGroup := "apps"
+	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+		expectedGroup = asappsv1alpha1.GroupName
+	}
 	apiVersion := ar.Request.Resource.Version
-	setResource := metav1.GroupVersionResource{Group: "apps", Version: apiVersion, Resource: "statefulsets"}
-	if ar.Request.Resource.Group != "apps" || ar.Request.Resource.Resource != "statefulsets" {
+	setResource := metav1.GroupVersionResource{Group: expectedGroup, Version: apiVersion, Resource: "statefulsets"}
+	if ar.Request.Resource.Group != setResource.Group || ar.Request.Resource.Resource != setResource.Resource {
 		err := fmt.Errorf("expect resource to be %s instead of %s", setResource, ar.Request.Resource)
 		glog.Error(err)
 		return util.ARFail(err)
 	}
+	glog.V(4).Infof("admit %s [%s/%s]", setResource, namespace, name)
 
 	if versionCli == nil {
 		cfg, err := rest.InClusterConfig()

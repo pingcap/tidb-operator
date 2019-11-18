@@ -47,8 +47,8 @@ spec:
     command:
     - /usr/local/bin/e2e
     - --operator-tag=e2e
-    - --operator-image=pingcap/tidb-operator:latest
-    - --test-apiserver-image=pingcap/test-apiserver:latest
+    - --operator-image=localhost:5000/pingcap/tidb-operator:latest
+    - --test-apiserver-image=localhost:5000/pingcap/test-apiserver:latest
     - --tidb-versions=v3.0.2,v3.0.3,v3.0.4
     - --chart-dir=/charts
     - -v=4
