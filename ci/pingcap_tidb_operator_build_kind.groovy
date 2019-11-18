@@ -1,3 +1,7 @@
+//
+// vim: noet
+//
+
 def getChangeLogText() {
 	def changeLogText = ""
 	for (int i = 0; i < currentBuild.changeSets.size(); i++) {
@@ -33,12 +37,15 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 							sudo yum install -y mercurial
 						fi
 						hg --version
+						make check-setup
+						make check
+						make test
 						make
 						make e2e-build
 						"""
 					}
 				}
-				stash excludes: "${PROJECT_DIR}/vendor/**", includes: "${PROJECT_DIR}/**", name: "tidb-operator"
+				stash excludes: "${PROJECT_DIR}/vendor/**,${PROJECT_DIR}/deploy/**", includes: "${PROJECT_DIR}/**", name: "tidb-operator"
 			}
 		}
 

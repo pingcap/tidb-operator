@@ -31,15 +31,15 @@ docker-push: docker backup-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}"
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:${IMAGE_TAG}"
 
+ifeq ($(NO_BUILD),y)
+docker:
+	@echo "NO_BUILD=y, skip build for $@"
+else
 docker: build
+endif
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}" images/tidb-operator
 
-ifeq ($(NO_BUILD),y)
-build:
-	@echo "NO_BUILD=y, skip building binaries"
-else
-build: controller-manager scheduler discovery admission-controller apiserver
-endif
+build: controller-manager scheduler discovery admission-controller apiserver backup-manager
 
 controller-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
@@ -59,13 +59,23 @@ apiserver:
 backup-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/backup-manager/bin/tidb-backup-manager cmd/backup-manager/main.go
 
+ifeq ($(NO_BUILD),y)
+backup-docker:
+	@echo "NO_BUILD=y, skip build for $@"
+else
 backup-docker: backup-manager
+endif
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:${IMAGE_TAG}" images/backup-manager
 
 e2e-docker-push: e2e-docker test-apiserver-dokcer-push
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:${IMAGE_TAG}"
 
-e2e-docker: e2e-build test-apiesrver-docker
+ifeq ($(NO_BUILD),y)
+e2e-docker:
+	@echo "NO_BUILD=y, skip build for $@"
+else
+e2e-docker: e2e-build
+endif
 	[ -d tests/images/e2e/tidb-operator ] && rm -r tests/images/e2e/tidb-operator || true
 	[ -d tests/images/e2e/tidb-cluster ] && rm -r tests/images/e2e/tidb-cluster || true
 	[ -d tests/images/e2e/tidb-backup ] && rm -r tests/images/e2e/tidb-backup || true
@@ -77,13 +87,18 @@ e2e-docker: e2e-build test-apiesrver-docker
 	sed -i -e "s#image: .*#image: ${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}#g" tests/images/e2e/manifests/webhook.yaml
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:${IMAGE_TAG}" tests/images/e2e
 
-e2e-build: test-apiserver-build
+e2e-build:
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
 
 test-apiserver-dokcer-push: test-apiesrver-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/test-apiserver:${IMAGE_TAG}"
 
+ifeq ($(NO_BUILD),y)
+test-apiesrver-docker:
+	@echo "NO_BUILD=y, skip build for $@"
+else
 test-apiesrver-docker: test-apiserver-build
+endif
 	docker build -t "${DOCKER_REGISTRY}/pingcap/test-apiserver:${IMAGE_TAG}" tests/images/test-apiserver
 
 test-apiserver-build:
