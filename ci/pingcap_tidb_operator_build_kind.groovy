@@ -1,5 +1,5 @@
 //
-// vim: noet
+// E2E Jenkins file.
 //
 
 def getChangeLogText() {
@@ -152,3 +152,5 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 	}
 }
 return this
+
+// vim: noet
