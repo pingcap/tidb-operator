@@ -113,7 +113,7 @@ func run() {
 	oa.CheckK8sAvailableOrDie(nil, nil)
 	oa.LabelNodesOrDie()
 
-	go wait.Forever(oa.EventWorker, 10*time.Second)
+	go oa.RunEventWorker()
 
 	oa.CleanOperatorOrDie(ocfg)
 	oa.DeployOperatorOrDie(ocfg)

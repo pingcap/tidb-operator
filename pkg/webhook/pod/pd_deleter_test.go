@@ -29,6 +29,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
 var (
@@ -64,9 +65,10 @@ func TestPDDeleterDelete(t *testing.T) {
 		ownerStatefulSet := newOwnerStatefulSetForPDPodAdmissionControl()
 		tc := newTidbClusterForPodAdmissionControl()
 		pvc := newPVCForDeletePod()
+		kubeCli := kubefake.NewSimpleClientset()
 
 		podAdmissionControl, fakePVCControl, pvcIndexer, _, _, _ := newPodAdmissionControl()
-		pdControl := pdapi.NewFakePDControl()
+		pdControl := pdapi.NewFakePDControl(kubeCli)
 		fakePDClient := controller.NewFakePDClient(pdControl, tc)
 
 		if test.isMember {

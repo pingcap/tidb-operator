@@ -43,7 +43,7 @@ func GetBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 	}
 	defer DeferClose(res.Body)
 	if res.StatusCode >= 400 {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL %s", res.StatusCode, apiURL))
+		errMsg := fmt.Errorf("Error response %v URL %s", res.StatusCode, apiURL)
 		return nil, errMsg
 	}
 	body, err := ioutil.ReadAll(res.Body)

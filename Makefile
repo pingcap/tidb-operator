@@ -18,9 +18,7 @@ GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
 GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO     := $(GOENV) go build -trimpath
 
-# Workaround https://github.com/kubernetes-sigs/apiserver-builder-alpha/issues/435
-# TODO: check the generated code under the test api
-PACKAGE_LIST := go list ./... | grep -vE "pkg/client" | grep -vE "zz_generated" | grep -vE "apiserver/client" | grep -vE "tests/pkg/apiserver/apis"
+PACKAGE_LIST := go list ./... | grep -vE "client/(clientset|informers|listers)"
 PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
 FILES := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go")
 FAIL_ON_STDOUT := awk '{ print } END { if (NR > 0) { exit 1 } }'

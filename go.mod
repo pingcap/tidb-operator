@@ -63,6 +63,7 @@ require (
 	github.com/ugorji/go/codec v0.0.0-20190204201341-e444a5086c43
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
+	golang.org/x/mod v0.0.0-20190513183733-4bf6d317e70e
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
@@ -81,8 +82,8 @@ require (
 	k8s.io/kubectl v0.0.0
 	k8s.io/kubernetes v1.16.0
 	k8s.io/utils v0.0.0-20190801114015-581e00157fb1
-	sigs.k8s.io/apiserver-builder-alpha v0.0.0-20191031091337-b5d9ec3241f6
-	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191023065212-d7072df276e7
+	sigs.k8s.io/apiserver-builder-alpha v0.0.0-20191113095113-4493943d2568
+	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191113095113-4493943d2568
 )
 
 replace github.com/renstrom/dedent => github.com/lithammer/dedent v1.1.0
