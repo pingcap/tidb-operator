@@ -55,9 +55,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 
 			dir("${PROJECT_DIR}"){
 				stage('start run operator e2e test'){
-					def operator_yaml = "tests/manifests/e2e/e2e.yaml"
 					ansiColor('xterm') {
-					def ns = "tidb-operator-e2e"
 					sh """#/usr/bin/env bash
 					echo "BASH VERSION: \$BASH_VERSION"
 					declare -A clusters

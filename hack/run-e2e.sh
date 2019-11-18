@@ -4,6 +4,9 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
+cd $ROOT
+
 TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:latest}
 E2E_IMAGE=${E2E_IMAGE:-localhost:5000/pingcap/tidb-operator-e2e:latest}
 TEST_APISERVER_IMAGE=${TEST_APISERVER_IMAGE:-localhost:5000/pingcap/test-apiserver:latest}
@@ -21,6 +24,8 @@ echo "KUBECONFIG: $KUBECONFIG"
 
 NS=tidb-operator-e2e
 
+# clear all validatingwebhookconfigurations first otherwise it may deny pods deletion requests
+kubectl delete validatingwebhookconfiguration --all
 kubectl delete -f tests/manifests/e2e/e2e.yaml --ignore-not-found
 kubectl wait --for=delete -n ${NS} pod/tidb-operator-e2e || true
 # Create sa first and wait for the controller to create the secret for this sa
@@ -33,9 +38,9 @@ s#=pingcap/tidb-operator:latest#=${TIDB_OPERATOR_IMAGE}#g
 s#=pingcap/test-apiserver:latest#=${TEST_APISERVER_IMAGE}#g
 " tests/manifests/e2e/e2e.yaml | kubectl -n ${NS} apply -f -
 kubectl -n ${NS} wait --for=condition=Ready pod/tidb-operator-e2e
-# print e2e logs and retry on non-fatal errors (watching/following logs, etc)
+# print e2e logs and retry on non-fatal errors.
 while true; do
-    kubectl -n ${NS} logs -f tidb-operator-e2e --ignore-errors=true
+    kubectl -n ${NS} logs -f tidb-operator-e2e
     phase=$(kubectl -n ${NS} get pods tidb-operator-e2e -ojsonpath='{.status.phase}')
     if [[ "$phase" == "Succeeded" ]]; then
         echo "info: e2e succeeded"
