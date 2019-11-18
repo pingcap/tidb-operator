@@ -38,9 +38,14 @@ s#=pingcap/tidb-operator:latest#=${TIDB_OPERATOR_IMAGE}#g
 s#=pingcap/test-apiserver:latest#=${TEST_APISERVER_IMAGE}#g
 " tests/manifests/e2e/e2e.yaml | kubectl -n ${NS} apply -f -
 kubectl -n ${NS} wait --for=condition=Ready pod/tidb-operator-e2e
-# print e2e logs and retry on non-fatal errors.
+# print e2e logs
+execType=0
 while true; do
-    kubectl -n ${NS} logs -f tidb-operator-e2e
+    if [[ $execType -eq 0 ]]; then
+        kubectl -n ${NS} logs -f tidb-operator-e2e || true
+    else
+        kubectl -n ${NS} logs --tail 1 -f tidb-operator-e2e || true
+    fi
     phase=$(kubectl -n ${NS} get pods tidb-operator-e2e -ojsonpath='{.status.phase}')
     if [[ "$phase" == "Succeeded" ]]; then
         echo "info: e2e succeeded"
@@ -48,7 +53,7 @@ while true; do
     elif [[ "$phase" == "Failed" ]]; then
         echo "error: e2e failed, phase: $phase"
         exit 1
-    else
-        continue
     fi
+    # if we failed on "kubectl logs -f", try to print one line each time
+    execType=1
 done
