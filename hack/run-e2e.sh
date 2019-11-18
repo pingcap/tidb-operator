@@ -39,3 +39,11 @@ kubectl -n ${NS} create sa tidb-operator-e2e
 kubectl -n ${NS} apply -f $tmpfile
 kubectl -n ${NS} wait --for=condition=Ready pod/tidb-operator-e2e
 kubectl -n ${NS} logs -f tidb-operator-e2e
+echo "info: checking e2e result"
+phrase=$(kubectl -n ${NS} get pods tidb-operator-e2e -ojsonpath='{.status.phase}')
+if [[ "$phrase" == "Succeeded" ]]; then
+    echo "info: e2e succeeded"
+else
+    echo "error: e2e failed, phrase: $phrase"
+    exit 1
+fi

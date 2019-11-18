@@ -63,6 +63,6 @@ fi
 # TODO: find a better way
 export TIDB_OPERATOR_IMAGE=localhost:5000/pingcap/tidb-operator:${IMAGE_TAG}
 export E2E_IMAGE=localhost:5000/pingcap/tidb-operator-e2e:${IMAGE_TAG}
-export TEST_APISERVER_IMAGE=localhost:5000/test-apiserver:${IMAGE_TAG}
+export TEST_APISERVER_IMAGE=localhost:5000/pingcap/test-apiserver:${IMAGE_TAG}
 
 hack/run-e2e.sh "$@"
