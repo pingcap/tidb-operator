@@ -14,7 +14,7 @@ spec:
     description: The storage size specified for PD node
     name: Storage
     type: string
-  - JSONPath: .spec.pd.replicas
+  - JSONPath: .status.pd.statefulSet.readyReplicas
     description: The desired replicas number of PD cluster
     name: Ready
     type: integer
@@ -77,7 +77,7 @@ spec:
             enablePVReclaim:
               type: boolean
             enableTLSCluster:
-              description: Enable TLS connection between TiDB server compoments
+              description: Enable TLS connection between TiDB server components
               type: boolean
             pd:
               description: PDSpec contains details of PD members

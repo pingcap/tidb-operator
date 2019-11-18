@@ -84,15 +84,17 @@ func (gs *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,
 func resetReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
 	*newSet.Spec.Replicas = *oldSet.Spec.Replicas
 }
+
 func increaseReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
 	*newSet.Spec.Replicas = *oldSet.Spec.Replicas + 1
 	glog.Infof("pd scale out: increase pd statefulset: %s/%s replicas to %d",
-		newSet.GetNamespace(), newSet.GetName(), newSet.Spec.Replicas)
+		newSet.GetNamespace(), newSet.GetName(), *newSet.Spec.Replicas)
 }
+
 func decreaseReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
 	*newSet.Spec.Replicas = *oldSet.Spec.Replicas - 1
 	glog.Infof("pd scale in: decrease pd statefulset: %s/%s replicas to %d",
-		newSet.GetNamespace(), newSet.GetName(), newSet.Spec.Replicas)
+		newSet.GetNamespace(), newSet.GetName(), *newSet.Spec.Replicas)
 }
 
 func ordinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int32) string {

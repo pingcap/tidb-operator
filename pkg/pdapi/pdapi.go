@@ -30,6 +30,9 @@ import (
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/pd/pkg/typeutil"
 	"github.com/pingcap/tidb-operator/pkg/httputil"
+	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
+	types "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -48,12 +51,13 @@ type PDControlInterface interface {
 // defaultPDControl is the default implementation of PDControlInterface.
 type defaultPDControl struct {
 	mutex     sync.Mutex
+	kubeCli   kubernetes.Interface
 	pdClients map[string]PDClient
 }
 
 // NewDefaultPDControl returns a defaultPDControl instance
-func NewDefaultPDControl() PDControlInterface {
-	return &defaultPDControl{pdClients: map[string]PDClient{}}
+func NewDefaultPDControl(kubeCli kubernetes.Interface) PDControlInterface {
+	return &defaultPDControl{kubeCli: kubeCli, pdClients: map[string]PDClient{}}
 }
 
 // GetPDClient provides a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
@@ -61,13 +65,31 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
 
+	var tlsConfig *tls.Config
 	scheme := "http"
 	if tlsEnabled {
 		scheme = "https"
+		secretName := fmt.Sprintf("%s-pd-client", tcName)
+		secret, err := pdc.kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
+		if err != nil {
+			glog.Errorf("unable to load certificates from secret %s/%s, PDClient may not work: %v", namespace, secretName, err)
+			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
+		}
+
+		rootCAs, tlsCert, err := certutil.LoadCerts(secret.Data["cert"], secret.Data["key"])
+		if err != nil {
+			glog.Errorf("unable to load certificates for %s discovery, PDClient may not work: %v", namespace, err)
+			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
+		}
+		tlsConfig = &tls.Config{
+			RootCAs:      rootCAs,
+			Certificates: []tls.Certificate{tlsCert},
+		}
 	}
+
 	key := pdClientKey(scheme, namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
-		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), timeout, tlsEnabled)
+		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), timeout, tlsConfig)
 	}
 	return pdc.pdClients[key]
 }
@@ -139,26 +161,13 @@ type pdClient struct {
 }
 
 // NewPDClient returns a new PDClient
-func NewPDClient(url string, timeout time.Duration, tlsEnabled bool) PDClient {
-	httpClient := &http.Client{Timeout: timeout}
-	if tlsEnabled {
-		rootCAs, cert, err := httputil.ReadCerts()
-		if err != nil {
-			glog.Errorf("fail to load certs, fallback to plain connection, err: %s", err)
-		} else {
-			config := &tls.Config{
-				RootCAs:      rootCAs,
-				Certificates: []tls.Certificate{cert},
-			}
-			httpClient = &http.Client{
-				Timeout:   timeout,
-				Transport: &http.Transport{TLSClientConfig: config},
-			}
-		}
-	}
+func NewPDClient(url string, timeout time.Duration, tlsConfig *tls.Config) PDClient {
 	return &pdClient{
-		url:        url,
-		httpClient: httpClient,
+		url: url,
+		httpClient: &http.Client{
+			Timeout:   timeout,
+			Transport: &http.Transport{TLSClientConfig: tlsConfig},
+		},
 	}
 }
 
@@ -434,7 +443,7 @@ func (pc *pdClient) SetStoreLabels(storeID uint64, labels map[string]string) (bo
 	if err != nil {
 		return false, err
 	}
-	res, err := http.Post(apiURL, "application/json", bytes.NewBuffer(data))
+	res, err := pc.httpClient.Post(apiURL, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		return false, err
 	}
@@ -453,7 +462,7 @@ func (pc *pdClient) BeginEvictLeader(storeID uint64) error {
 	if err != nil {
 		return err
 	}
-	res, err := http.Post(apiURL, "application/json", bytes.NewBuffer(data))
+	res, err := pc.httpClient.Post(apiURL, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}
@@ -606,9 +615,9 @@ type FakePDControl struct {
 	defaultPDControl
 }
 
-func NewFakePDControl() *FakePDControl {
+func NewFakePDControl(kubeCli kubernetes.Interface) *FakePDControl {
 	return &FakePDControl{
-		defaultPDControl{pdClients: map[string]PDClient{}},
+		defaultPDControl{kubeCli: kubeCli, pdClients: map[string]PDClient{}},
 	}
 }
 

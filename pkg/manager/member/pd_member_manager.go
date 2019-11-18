@@ -39,11 +39,12 @@ type pdMemberManager struct {
 	pdControl    pdapi.PDControlInterface
 	setControl   controller.StatefulSetControlInterface
 	svcControl   controller.ServiceControlInterface
+	podControl   controller.PodControlInterface
+	certControl  controller.CertControlInterface
 	setLister    v1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
 	podLister    corelisters.PodLister
 	epsLister    corelisters.EndpointsLister
-	podControl   controller.PodControlInterface
 	pvcLister    corelisters.PersistentVolumeClaimLister
 	pdScaler     Scaler
 	pdUpgrader   Upgrader
@@ -55,11 +56,12 @@ type pdMemberManager struct {
 func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
+	podControl controller.PodControlInterface,
+	certControl controller.CertControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	epsLister corelisters.EndpointsLister,
-	podControl controller.PodControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pdScaler Scaler,
 	pdUpgrader Upgrader,
@@ -69,11 +71,12 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 		pdControl,
 		setControl,
 		svcControl,
+		podControl,
+		certControl,
 		setLister,
 		svcLister,
 		podLister,
 		epsLister,
-		podControl,
 		pvcLister,
 		pdScaler,
 		pdUpgrader,
@@ -188,6 +191,16 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		if err != nil {
 			return err
 		}
+		if tc.Spec.EnableTLSCluster {
+			err := pmm.syncPDServerCerts(tc)
+			if err != nil {
+				return err
+			}
+			err = pmm.syncPDClientCerts(tc)
+			if err != nil {
+				return err
+			}
+		}
 		if err := pmm.setControl.CreateStatefulSet(tc, newPDSet); err != nil {
 			return err
 		}
@@ -240,6 +253,58 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 
 	return pmm.updateStatefulSet(tc, newPDSet, oldPDSet)
 }
+
+func (pmm *pdMemberManager) syncPDClientCerts(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	commonName := fmt.Sprintf("%s-pd-client", tcName)
+
+	hostList := []string{
+		commonName,
+	}
+
+	certOpts := &controller.TiDBClusterCertOptions{
+		Namespace:  ns,
+		Instance:   tcName,
+		CommonName: commonName,
+		HostList:   hostList,
+		Component:  "pd",
+		Suffix:     "pd-client",
+	}
+
+	return pmm.certControl.Create(certOpts)
+}
+
+func (pmm *pdMemberManager) syncPDServerCerts(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	svcName := controller.PDMemberName(tcName)
+	peerName := controller.PDPeerMemberName(tcName)
+
+	if pmm.certControl.CheckSecret(ns, svcName) {
+		return nil
+	}
+
+	hostList := []string{
+		svcName,
+		peerName,
+		fmt.Sprintf("%s.%s", svcName, ns),
+		fmt.Sprintf("%s.%s", peerName, ns),
+		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
+	}
+
+	certOpts := &controller.TiDBClusterCertOptions{
+		Namespace:  ns,
+		Instance:   tcName,
+		CommonName: svcName,
+		HostList:   hostList,
+		Component:  "pd",
+		Suffix:     "pd",
+	}
+
+	return pmm.certControl.Create(certOpts)
+}
+
 func (pmm *pdMemberManager) updateStatefulSet(tc *v1alpha1.TidbCluster, newPDSet, oldPDSet *apps.StatefulSet) error {
 	if !statefulSetEqual(*newPDSet, *oldPDSet) {
 		set := *oldPDSet

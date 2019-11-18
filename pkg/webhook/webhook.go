@@ -59,7 +59,7 @@ func NewWebHookServer(kubeCli kubernetes.Interface, operatorCli versioned.Interf
 	}
 
 	// init pdControl
-	pdControl := pdapi.NewDefaultPDControl()
+	pdControl := pdapi.NewDefaultPDControl(kubeCli)
 
 	// init recorder
 	eventBroadcaster := record.NewBroadcaster()
