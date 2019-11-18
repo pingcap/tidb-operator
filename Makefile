@@ -18,6 +18,7 @@ GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
 GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO     := $(GOENV) go build -trimpath
 
+IMAGE_TAG ?= latest
 PACKAGE_LIST := go list ./... | grep -vE "client/(clientset|informers|listers)"
 PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
 FILES := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go")
@@ -27,13 +28,18 @@ TEST_COVER_PACKAGES:=go list ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/t
 default: build
 
 docker-push: docker backup-docker
-	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest"
-	docker push "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:${IMAGE_TAG}"
 
 docker: build
-	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest" images/tidb-operator
+	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}" images/tidb-operator
 
+ifeq ($(NO_BUILD),y)
+build:
+	@echo "NO_BUILD=y, skip building binaries"
+else
 build: controller-manager scheduler discovery admission-controller apiserver
+endif
 
 controller-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
@@ -54,10 +60,10 @@ backup-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/backup-manager/bin/tidb-backup-manager cmd/backup-manager/main.go
 
 backup-docker: backup-manager
-	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:latest" images/backup-manager
+	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:${IMAGE_TAG}" images/backup-manager
 
 e2e-docker-push: e2e-docker test-apiserver-dokcer-push
-	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:${IMAGE_TAG}"
 
 e2e-docker: e2e-build test-apiesrver-docker
 	[ -d tests/images/e2e/tidb-operator ] && rm -r tests/images/e2e/tidb-operator || true
@@ -68,28 +74,32 @@ e2e-docker: e2e-build test-apiesrver-docker
 	cp -r charts/tidb-cluster tests/images/e2e
 	cp -r charts/tidb-backup tests/images/e2e
 	cp -r manifests tests/images/e2e
-	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" tests/images/e2e
+	sed -i -e "s#image: .*#image: ${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}#g" tests/images/e2e/manifests/webhook.yaml
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:${IMAGE_TAG}" tests/images/e2e
 
 e2e-build: test-apiserver-build
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
 
 test-apiserver-dokcer-push: test-apiesrver-docker
-	docker push "${DOCKER_REGISTRY}/pingcap/test-apiserver:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/test-apiserver:${IMAGE_TAG}"
 
 test-apiesrver-docker: test-apiserver-build
-	docker build -t "${DOCKER_REGISTRY}/pingcap/test-apiserver:latest" tests/images/test-apiserver
+	docker build -t "${DOCKER_REGISTRY}/pingcap/test-apiserver:${IMAGE_TAG}" tests/images/test-apiserver
 
 test-apiserver-build:
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/test-apiserver/bin/tidb-apiserver tests/cmd/apiserver/main.go
+
+e2e:
+	./hack/e2e.sh
 
 stability-test-build:
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test tests/cmd/stability/*.go
 
 stability-test-docker: stability-test-build
-	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest" tests/images/stability-test
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:${IMAGE_TAG}" tests/images/stability-test
 
 stability-test-push: stability-test-docker
-	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:${IMAGE_TAG}"
 
 fault-trigger:
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/fault-trigger/bin/fault-trigger tests/cmd/fault-trigger/*.go
@@ -190,4 +200,4 @@ debug-build-docker: debug-build
 debug-build:
 	$(GO) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
 
-.PHONY: check check-setup check-all build e2e-build debug-build cli
+.PHONY: check check-setup check-all build e2e-build debug-build cli e2e
