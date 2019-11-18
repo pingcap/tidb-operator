@@ -21,22 +21,17 @@ echo "KUBECONFIG: $KUBECONFIG"
 
 NS=tidb-operator-e2e
 
-# copy and modify to avoid local changes
-# TODO find a better way
-tmpfile=$(mktemp)
-trap "rm $tmpfile" EXIT
-sed "s#image: localhost:5000/pingcap/tidb-operator-e2e:latest#image: $E2E_IMAGE#g
-s#=pingcap/tidb-operator:latest#=${TIDB_OPERATOR_IMAGE}#g
-s#=pingcap/test-apiserver:latest#=${TEST_APISERVER_IMAGE}#g
-" tests/manifests/e2e/e2e.yaml > $tmpfile
-
 kubectl delete -f tests/manifests/e2e/e2e.yaml --ignore-not-found
 kubectl wait --for=delete -n ${NS} pod/tidb-operator-e2e || true
 # Create sa first and wait for the controller to create the secret for this sa
 # This avoids `No API token found for service account " tidb-operator-e2e"`
 # TODO better way to work around this issue
 kubectl -n ${NS} create sa tidb-operator-e2e
-kubectl -n ${NS} apply -f $tmpfile
+# copy and modify to avoid local changes
+sed "s#image: localhost:5000/pingcap/tidb-operator-e2e:latest#image: $E2E_IMAGE#g
+s#=pingcap/tidb-operator:latest#=${TIDB_OPERATOR_IMAGE}#g
+s#=pingcap/test-apiserver:latest#=${TEST_APISERVER_IMAGE}#g
+" tests/manifests/e2e/e2e.yaml | kubectl -n ${NS} apply -f -
 kubectl -n ${NS} wait --for=condition=Ready pod/tidb-operator-e2e
 kubectl -n ${NS} logs -f tidb-operator-e2e
 echo "info: checking e2e result"
