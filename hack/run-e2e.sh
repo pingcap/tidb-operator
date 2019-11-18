@@ -34,8 +34,8 @@ kubectl wait --for=delete -n ${NS} pod/tidb-operator-e2e || true
 kubectl -n ${NS} create sa tidb-operator-e2e
 # copy and modify to avoid local changes
 sed "s#image: localhost:5000/pingcap/tidb-operator-e2e:latest#image: $E2E_IMAGE#g
-s#=pingcap/tidb-operator:latest#=${TIDB_OPERATOR_IMAGE}#g
-s#=pingcap/test-apiserver:latest#=${TEST_APISERVER_IMAGE}#g
+s#--operator-image=.*#--operator-image=${TIDB_OPERATOR_IMAGE}#g
+s#--test-apiserver-image=.*#--test-apiserver-image=${TEST_APISERVER_IMAGE}#g
 " tests/manifests/e2e/e2e.yaml | kubectl -n ${NS} apply -f -
 kubectl -n ${NS} wait --for=condition=Ready pod/tidb-operator-e2e
 # print e2e logs
