@@ -53,6 +53,10 @@ type PodAdmissionControl struct {
 	stsLister appslisters.StatefulSetLister
 }
 
+const (
+	stsControllerServiceAccounts = "system:serviceaccount:kube-system:statefulset-controller"
+)
+
 func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder) *PodAdmissionControl {
 
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
@@ -78,7 +82,10 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 	name := ar.Request.Name
 	namespace := ar.Request.Namespace
 	operation := ar.Request.Operation
-	klog.Infof("receive admission to %s pod[%s/%s]", operation, namespace, name)
+	if stsControllerServiceAccounts != ar.Request.UserInfo.Username {
+		klog.Infof("Request was not sent by stsController,Admit to %s pod[%s/%s]", operation, namespace, name)
+		return util.ARSuccess()
+	}
 
 	switch operation {
 	case v1beta1.Delete:
