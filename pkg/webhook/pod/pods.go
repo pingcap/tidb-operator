@@ -51,13 +51,15 @@ type PodAdmissionControl struct {
 	tcLister listers.TidbClusterLister
 	// sts Lister
 	stsLister appslisters.StatefulSetLister
+	// the list of the service account from the request which should be checked by webhook
+	serviceAccounts []string
 }
 
 const (
 	stsControllerServiceAccounts = "system:serviceaccount:kube-system:statefulset-controller"
 )
 
-func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder) *PodAdmissionControl {
+func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder, extraServiceAccounts []string) *PodAdmissionControl {
 
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	PVCControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
@@ -65,15 +67,17 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 
 	podLister := kubeInformerFactory.Core().V1().Pods().Lister()
 	stsLister := kubeInformerFactory.Apps().V1().StatefulSets().Lister()
+	extraServiceAccounts = append(extraServiceAccounts, stsControllerServiceAccounts)
 
 	return &PodAdmissionControl{
-		kubeCli:     kubeCli,
-		operatorCli: operatorCli,
-		pvcControl:  PVCControl,
-		pdControl:   PdControl,
-		podLister:   podLister,
-		tcLister:    tcLister,
-		stsLister:   stsLister,
+		kubeCli:         kubeCli,
+		operatorCli:     operatorCli,
+		pvcControl:      PVCControl,
+		pdControl:       PdControl,
+		podLister:       podLister,
+		tcLister:        tcLister,
+		stsLister:       stsLister,
+		serviceAccounts: extraServiceAccounts,
 	}
 }
 
@@ -82,8 +86,19 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 	name := ar.Request.Name
 	namespace := ar.Request.Namespace
 	operation := ar.Request.Operation
-	if stsControllerServiceAccounts != ar.Request.UserInfo.Username {
-		klog.Infof("Request was not sent by stsController,Admit to %s pod[%s/%s]", operation, namespace, name)
+	serviceAccount := ar.Request.UserInfo.Username
+	klog.Infof("receive %s pod[%s/%s] by sa[%s]", operation, namespace, name, serviceAccount)
+
+	isUnknownServiceAccounts := true
+	for _, sa := range pc.serviceAccounts {
+		if sa == serviceAccount {
+			isUnknownServiceAccounts = false
+			break
+		}
+	}
+
+	if isUnknownServiceAccounts {
+		klog.Infof("Request was not sent by Knowing Controlled ServiceAccounts,Admit to %s pod[%s/%s]", operation, namespace, name)
 		return util.ARSuccess()
 	}
 
