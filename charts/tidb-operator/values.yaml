@@ -175,3 +175,21 @@ advancedStatefulset:
   #   operator: Equal
   #   value: tidb-operator
   #   effect: "NoSchedule"
+
+admissionWebhook:
+  enabled: true
+  ## only support patch / selfProvider / certManager
+  certProvider: "patch"
+  ## `patch` would create a job before `helm install` and the job would create secret for webhook cert
+  patch:
+    image:
+      repository: jettech/kube-webhook-certgen
+      tag: v1.2.0
+  ## `selfProvider` need user to provide their own ca/cert/key for webhook
+  selfProvider:
+    ca: ""
+    key: ""
+    cert: ""
+  ## `certManager` would create an self-signed Issuer and a Certificate for webhookk cert managed by cert-manager
+  certManager:
+

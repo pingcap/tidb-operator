@@ -1,0 +1,8 @@
+{{- if and (eq .Values.admissionWebhook.enabled true) (eq .Values.admissionWebhook.certProvider "certManager") }}
+apiVersion: cert-manager.io/v1alpha2
+kind: ClusterIssuer
+metadata:
+  name: tidb-selfsigning-issuer
+spec:
+  selfSigned: {}
+{{- end }}

@@ -1,0 +1,52 @@
+{{- if and (eq .Values.admissionWebhook.enabled true) (eq .Values.admissionWebhook.certProvider "patch") }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name:  tidb-admission-webhook-sa
+  namespace: {{ $.Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade,post-install,post-upgrade,pre-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  labels:
+    app: {{ template "chart.name" . }}-admission
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name:  tidb-admission-webhook-role
+  namespace: {{ $.Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade,post-install,post-upgrade,pre-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  labels:
+    app: {{ template "chart.name" . }}-admission
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - create
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name:  {{ template "chart.name" . }}-rb
+  namespace: {{ $.Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade,post-install,post-upgrade,pre-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  labels:
+    app: {{ template "chart.name" . }}-admission
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tidb-admission-webhook-role
+subjects:
+  - kind: ServiceAccount
+    name: tidb-admission-webhook-sa
+    namespace: {{ $.Release.Namespace }}
+---
+{{- end }}
