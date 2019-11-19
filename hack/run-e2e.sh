@@ -32,6 +32,14 @@ kubectl wait --for=delete -n ${NS} pod/tidb-operator-e2e || true
 # This avoids `No API token found for service account " tidb-operator-e2e"`
 # TODO better way to work around this issue
 kubectl -n ${NS} create sa tidb-operator-e2e
+while true; do
+    secret=$(kubectl -n ${NS} get sa tidb-operator-e2e -ojsonpath='{.secrets[0].name}' || true)
+    if [[ -n "$secret"  ]]; then
+        echo "info: secret '$secret' created for service account ${NS}/tidb-operator-e2e"
+        break
+    fi
+    sleep 1
+done
 # copy and modify to avoid local changes
 sed "s#image: localhost:5000/pingcap/tidb-operator-e2e:latest#image: $E2E_IMAGE#g
 s#--operator-image=.*#--operator-image=${TIDB_OPERATOR_IMAGE}#g
