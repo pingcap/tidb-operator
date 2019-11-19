@@ -52,7 +52,7 @@ type PodAdmissionControl struct {
 	// sts Lister
 	stsLister appslisters.StatefulSetLister
 	// the list of the service account from the request which should be checked by webhook
-	serviceAccounts []string
+	serviceAccounts map[string]interface{}
 }
 
 const (
@@ -67,7 +67,11 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 
 	podLister := kubeInformerFactory.Core().V1().Pods().Lister()
 	stsLister := kubeInformerFactory.Apps().V1().StatefulSets().Lister()
-	extraServiceAccounts = append(extraServiceAccounts, stsControllerServiceAccounts)
+	serviceaccounts := map[string]interface{}{}
+	for _, sa := range extraServiceAccounts {
+		serviceaccounts[sa] = nil
+	}
+	serviceaccounts[stsControllerServiceAccounts] = nil
 
 	return &PodAdmissionControl{
 		kubeCli:         kubeCli,
@@ -77,7 +81,7 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 		podLister:       podLister,
 		tcLister:        tcLister,
 		stsLister:       stsLister,
-		serviceAccounts: extraServiceAccounts,
+		serviceAccounts: serviceaccounts,
 	}
 }
 
@@ -89,15 +93,8 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 	serviceAccount := ar.Request.UserInfo.Username
 	klog.Infof("receive %s pod[%s/%s] by sa[%s]", operation, namespace, name, serviceAccount)
 
-	skippableSA := true
-	for _, sa := range pc.serviceAccounts {
-		if sa == serviceAccount {
-			skippableSA = false
-			break
-		}
-	}
-
-	if skippableSA {
+	_, existed := pc.serviceAccounts[serviceAccount]
+	if !existed {
 		klog.Infof("Request was not sent by known controlled ServiceAccounts, admit to %s pod [%s/%s]", operation, namespace, name)
 		return util.ARSuccess()
 	}
@@ -109,6 +106,7 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 		klog.Infof("Admit to %s pod[%s/%s]", operation, namespace, name)
 		return util.ARSuccess()
 	}
+
 }
 
 // Webhook server receive request to delete pod
