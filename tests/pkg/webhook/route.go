@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"net/http"
+
 	"k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	glog "k8s.io/klog"
-	"net/http"
 )
 
 // toAdmissionResponse is a helper function to create an AdmissionResponse
@@ -76,6 +77,6 @@ returnData:
 	}
 }
 
-func ServePods(w http.ResponseWriter, r *http.Request) {
-	serve(w, r, admitPods)
+func (wh *webhook) ServePods(w http.ResponseWriter, r *http.Request) {
+	serve(w, r, wh.admitPods)
 }

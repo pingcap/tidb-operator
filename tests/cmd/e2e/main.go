@@ -34,7 +34,6 @@ import (
 )
 
 var cfg *tests.Config
-var certCtx *apimachinery.CertContext
 var upgradeVersions []string
 
 func main() {
@@ -48,13 +47,6 @@ func main() {
 	cfg.ManifestDir = "/manifests"
 	upgradeVersions = cfg.GetUpgradeTidbVersionsOrDie()
 	ns := "e2e"
-
-	var err error
-	certCtx, err = apimachinery.SetupServerCert("tidb-operator-e2e", tests.WebhookServiceName)
-	if err != nil {
-		panic(err)
-	}
-	go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx)
 
 	restConfig, err := client.GetConfig()
 	if err != nil {
@@ -151,6 +143,11 @@ func main() {
 		oa.CheckTidbClusterStatusOrDie(cluster)
 
 		// upgrade
+		certCtx, err := apimachinery.SetupServerCert("tidb-operator-e2e", tests.WebhookServiceName)
+		if err != nil {
+			panic(err)
+		}
+		go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx, fmt.Sprintf("%s/%s", cluster.Namespace, cluster.ClusterName))
 		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
 		ctx, cancel := context.WithCancel(context.Background())
 		assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(cluster)
