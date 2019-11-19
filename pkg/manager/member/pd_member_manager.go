@@ -551,9 +551,10 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 							},
 						},
 					},
-					RestartPolicy: corev1.RestartPolicyAlways,
-					Tolerations:   tc.Spec.PD.Tolerations,
-					Volumes:       vols,
+					RestartPolicy:   corev1.RestartPolicyAlways,
+					Tolerations:     tc.Spec.PD.Tolerations,
+					Volumes:         vols,
+					SecurityContext: tc.Spec.PD.PodSecurityContext,
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{

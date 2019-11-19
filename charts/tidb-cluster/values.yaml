@@ -154,6 +154,10 @@ pd:
   #   effect: "NoSchedule"
   annotations: {}
 
+  # Specify the security context of PD Pod.
+  # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+  podSecurityContext: {}
+
 tikv:
   # Please refer to https://github.com/tikv/tikv/blob/master/etc/config-template.toml for the default
   # tikv configurations (change to the tags of your tikv version),
@@ -234,6 +238,10 @@ tikv:
   # maxFailoverCount is used to configure the maximum number of TiKV nodes that TiDB Operator can create when failover occurs.
   maxFailoverCount: 3
 
+  # Specify the security context of TiKV Pod.
+  # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+  podSecurityContext: {}
+
 tidb:
   # Please refer to https://github.com/pingcap/tidb/blob/master/config/config.toml.example for the default
   # tidb configurations(change to the tags of your tidb version),
@@ -290,6 +298,11 @@ tidb:
   #   value: tidb
   #   effect: "NoSchedule"
   annotations: {}
+
+  # Specify the security context of TiDB Pod.
+  # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+  podSecurityContext: {}
+
   maxFailoverCount: 3
   service:
     type: NodePort
