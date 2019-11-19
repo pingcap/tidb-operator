@@ -98,7 +98,7 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 	}
 
 	if skippableSA {
-		klog.Infof("Request was not sent by Knowing Controlled ServiceAccounts,Admit to %s pod[%s/%s]", operation, namespace, name)
+		klog.Infof("Request was not sent by known controlled ServiceAccounts, admit to %s pod [%s/%s]", operation, namespace, name)
 		return util.ARSuccess()
 	}
 
