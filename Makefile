@@ -84,7 +84,6 @@ endif
 	cp -r charts/tidb-cluster tests/images/e2e
 	cp -r charts/tidb-backup tests/images/e2e
 	cp -r manifests tests/images/e2e
-	sed -i -e "s#image: .*#image: ${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}#g" tests/images/e2e/manifests/webhook.yaml
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:${IMAGE_TAG}" tests/images/e2e
 
 e2e-build: test-apiserver-build
