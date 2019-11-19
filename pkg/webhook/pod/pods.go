@@ -92,12 +92,12 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 	skippableSA := true
 	for _, sa := range pc.serviceAccounts {
 		if sa == serviceAccount {
-			isUnknownServiceAccounts = false
+			skippableSA = false
 			break
 		}
 	}
 
-	if isUnknownServiceAccounts {
+	if skippableSA {
 		klog.Infof("Request was not sent by Knowing Controlled ServiceAccounts,Admit to %s pod[%s/%s]", operation, namespace, name)
 		return util.ARSuccess()
 	}
