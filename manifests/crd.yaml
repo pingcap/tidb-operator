@@ -716,6 +716,8 @@ spec:
                 replicas:
                   format: int32
                   type: integer
+                storageClassName:
+                  type: string
               required:
               - replicas
               type: object
@@ -748,6 +750,12 @@ spec:
                 maxFailoverCount:
                   format: int32
                   type: integer
+                plugins:
+                  description: Plugins is a list of plugins that are loaded by TiDB
+                    server, empty means plugin disabled
+                  items:
+                    type: string
+                  type: array
                 separateSlowLog:
                   type: boolean
                 service:

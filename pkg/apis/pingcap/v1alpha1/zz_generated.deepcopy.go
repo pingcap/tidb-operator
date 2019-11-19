@@ -912,6 +912,11 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 	in.Resources.DeepCopyInto(&out.Resources)
 	in.Service.DeepCopyInto(&out.Service)
 	in.SlowLogTailer.DeepCopyInto(&out.SlowLogTailer)
+	if in.Plugins != nil {
+		in, out := &in.Plugins, &out.Plugins
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Config != nil {
 		in, out := &in.Config, &out.Config
 		*out = make(map[string]json.JsonObject, len(*in))

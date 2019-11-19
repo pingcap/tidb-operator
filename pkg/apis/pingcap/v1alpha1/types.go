@@ -212,6 +212,9 @@ type TiDBSpec struct {
 	SlowLogTailer    TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
 	EnableTLSClient  bool                  `json:"enableTLSClient,omitempty"`
 
+	// Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled
+	Plugins []string `json:"plugins,omitempty"`
+
 	// +k8s:openapi-gen=false
 	// TODO: add schema
 	Config map[string]json.JsonObject `json:"config,omitempty"`
@@ -225,7 +228,8 @@ type PumpSpec struct {
 	// +k8s:openapi-gen=false
 	Resources
 
-	Replicas int32 `json:"replicas"`
+	StorageClassName string `json:"storageClassName,omitempty"`
+	Replicas         int32  `json:"replicas"`
 
 	// +k8s:openapi-gen=false
 	// TODO: add schema
