@@ -15,6 +15,7 @@ package pod
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -52,7 +53,7 @@ type PodAdmissionControl struct {
 	// sts Lister
 	stsLister appslisters.StatefulSetLister
 	// the list of the service account from the request which should be checked by webhook
-	serviceAccounts map[string]interface{}
+	serviceAccounts sets.String
 }
 
 const (
@@ -67,12 +68,10 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 
 	podLister := kubeInformerFactory.Core().V1().Pods().Lister()
 	stsLister := kubeInformerFactory.Apps().V1().StatefulSets().Lister()
-	serviceaccounts := map[string]interface{}{}
+	serviceAccounts := sets.NewString(stsControllerServiceAccounts)
 	for _, sa := range extraServiceAccounts {
-		serviceaccounts[sa] = nil
+		serviceAccounts.Insert(sa)
 	}
-	serviceaccounts[stsControllerServiceAccounts] = nil
-
 	return &PodAdmissionControl{
 		kubeCli:         kubeCli,
 		operatorCli:     operatorCli,
@@ -81,7 +80,7 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 		podLister:       podLister,
 		tcLister:        tcLister,
 		stsLister:       stsLister,
-		serviceAccounts: serviceaccounts,
+		serviceAccounts: serviceAccounts,
 	}
 }
 
@@ -93,8 +92,7 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 	serviceAccount := ar.Request.UserInfo.Username
 	klog.Infof("receive %s pod[%s/%s] by sa[%s]", operation, namespace, name, serviceAccount)
 
-	_, existed := pc.serviceAccounts[serviceAccount]
-	if !existed {
+	if !pc.serviceAccounts.Has(serviceAccount) {
 		klog.Infof("Request was not sent by known controlled ServiceAccounts, admit to %s pod [%s/%s]", operation, namespace, name)
 		return util.ARSuccess()
 	}
