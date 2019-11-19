@@ -57,7 +57,23 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 				stage('start run operator e2e test'){
 					ansiColor('xterm') {
 					sh """#/usr/bin/env bash
+					echo "info: setup go"
+					export PATH=\$PATH:/usr/local/go/bin
+					echo "==== Start Build Environment ===="
 					echo "BASH VERSION: \$BASH_VERSION"
+					echo "PATH: \$PATH"
+					echo "PROJECT_DIR: ${PROJECT_DIR}"
+					if ! command -v go &>/dev/null; then
+						echo "error: go is required"
+						exit 1
+					fi
+					go version
+					if ! command -v docker &>/dev/null; then
+						echo "error: docker is required"
+						exit 1
+					fi
+					docker version
+					echo "==== End Build Environment ===="
 					declare -A clusters
 					clusters['kind']='127.0.0.1:5000'
 					clusters['kind2']='127.0.0.2:5000'
