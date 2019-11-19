@@ -554,7 +554,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, err
 	}
 	pdLabel := label.New().Instance(instanceName).PD()
 	setName := controller.PDMemberName(tcName)
-	podAnnotations := CombineAnnotations(controller.AnnProm(2379), tc.Spec.PD.Annotations)
+	podAnnotations := CombineAnnotations(controller.AnnProm(2379), tc.BasePDSpec().Annotations())
 	storageClassName := tc.Spec.PD.StorageClassName
 	if storageClassName == "" {
 		storageClassName = controller.DefaultStorageClassName
@@ -567,7 +567,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, err
 	}
 
 	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
-	if tc.Spec.PD.HostNetwork {
+	if tc.BasePDSpec().HostNetwork() {
 		dnsPolicy = corev1.DNSClusterFirstWithHostNet
 	}
 
@@ -587,17 +587,17 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, err
 					Annotations: podAnnotations,
 				},
 				Spec: corev1.PodSpec{
-					SchedulerName: tc.Spec.SchedulerName,
-					Affinity:      tc.Spec.PD.Affinity,
-					NodeSelector:  tc.Spec.PD.NodeSelector,
-					HostNetwork:   tc.Spec.PD.HostNetwork,
+					SchedulerName: tc.BasePDSpec().SchedulerName(),
+					Affinity:      tc.BasePDSpec().Affinity(),
+					NodeSelector:  tc.BasePDSpec().NodeSelector(),
+					HostNetwork:   tc.BasePDSpec().HostNetwork(),
 					DNSPolicy:     dnsPolicy,
 					Containers: []corev1.Container{
 						{
 							Name:            v1alpha1.PDMemberType.String(),
-							Image:           tc.Spec.PD.Image,
+							Image:           tc.BasePDSpec().Image(),
 							Command:         []string{"/bin/sh", "/usr/local/bin/pd_start_script.sh"},
-							ImagePullPolicy: tc.Spec.PD.ImagePullPolicy,
+							ImagePullPolicy: tc.BasePDSpec().ImagePullPolicy(),
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "server",
@@ -611,7 +611,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, err
 								},
 							},
 							VolumeMounts: volMounts,
-							Resources:    util.ResourceRequirement(tc.Spec.PD.ContainerSpec),
+							Resources:    util.ResourceRequirement(tc.Spec.PD.Resources),
 							Env: []corev1.EnvVar{
 								{
 									Name: "NAMESPACE",
@@ -649,10 +649,10 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, err
 						},
 					},
 					RestartPolicy:     corev1.RestartPolicyAlways,
-					Tolerations:       tc.Spec.PD.Tolerations,
+					Tolerations:       tc.BasePDSpec().Tolerations(),
 					Volumes:           vols,
-					SecurityContext:   tc.Spec.PD.PodSecurityContext,
-					PriorityClassName: tc.Spec.PD.PriorityClassName,
+					SecurityContext:   tc.BasePDSpec().PodSecurityContext(),
+					PriorityClassName: tc.BasePDSpec().PriorityClassName(),
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{

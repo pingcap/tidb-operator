@@ -1314,9 +1314,9 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 			ns, pdSetName, pdSet.Status.ReadyReplicas, pdSet.Status.Replicas)
 		return false, nil
 	}
-	if c, ok := getMemberContainer(oa.kubeCli, ns, pdSetName); !ok || tc.Spec.PD.Image != c.Image {
+	if c, ok := getMemberContainer(oa.kubeCli, ns, pdSetName); !ok || tc.BasePDSpec().Image() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
-			ns, pdSetName, c.Image, tc.Spec.PD.Image)
+			ns, pdSetName, c.Image, tc.BasePDSpec().Image())
 		return false, nil
 	}
 
@@ -1379,9 +1379,9 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 			ns, tikvSetName, tikvSet.Status.ReadyReplicas, tikvSet.Status.Replicas)
 		return false, nil
 	}
-	if c, ok := getMemberContainer(oa.kubeCli, ns, tikvSetName); !ok || tc.Spec.TiKV.Image != c.Image {
+	if c, ok := getMemberContainer(oa.kubeCli, ns, tikvSetName); !ok || tc.BaseTiKVSpec().Image() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
-			ns, tikvSetName, c.Image, tc.Spec.TiKV.Image)
+			ns, tikvSetName, c.Image, tc.BaseTiKVSpec().Image())
 		return false, nil
 	}
 
@@ -1439,9 +1439,9 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if c, ok := getMemberContainer(oa.kubeCli, ns, tidbSetName); !ok || tc.Spec.TiDB.Image != c.Image {
+	if c, ok := getMemberContainer(oa.kubeCli, ns, tidbSetName); !ok || tc.BaseTiDBSpec().Image() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
-			ns, tidbSetName, c.Image, tc.Spec.TiDB.Image)
+			ns, tidbSetName, c.Image, tc.BaseTiDBSpec().Image())
 		return false, nil
 	}
 

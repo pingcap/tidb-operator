@@ -26,7 +26,7 @@ import (
 
 // ResourceRequirement creates ResourceRequirements for MemberSpec
 // Optionally pass in a default value
-func ResourceRequirement(spec v1alpha1.ContainerSpec, defaultRequests ...corev1.ResourceRequirements) corev1.ResourceRequirements {
+func ResourceRequirement(spec v1alpha1.Resources, defaultRequests ...corev1.ResourceRequirements) corev1.ResourceRequirements {
 	rr := corev1.ResourceRequirements{}
 	if len(defaultRequests) > 0 {
 		defaultRequest := defaultRequests[0]

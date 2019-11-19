@@ -164,6 +164,312 @@ func TestTiKVIsAvailable(t *testing.T) {
 	}
 }
 
+func TestComponentAccessor(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name      string
+		cluster   *TidbClusterSpec
+		component *ComponentSpec
+		expectFn  func(*GomegaWithT, ComponentAccessor)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		accessor := &componentAccessorImpl{test.cluster, test.component}
+		test.expectFn(g, accessor)
+	}
+	affinity := &corev1.Affinity{
+		PodAffinity: &corev1.PodAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+				TopologyKey: "rack",
+			}},
+		},
+	}
+	toleration1 := corev1.Toleration{
+		Key: "k1",
+	}
+	toleration2 := corev1.Toleration{
+		Key: "k2",
+	}
+	tests := []testcase{
+		{
+			name: "use cluster-level defaults",
+			cluster: &TidbClusterSpec{
+				ImagePullPolicy:   corev1.PullNever,
+				HostNetwork:       true,
+				Affinity:          affinity,
+				PriorityClassName: "test",
+				SchedulerName:     "test",
+			},
+			component: &ComponentSpec{},
+			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
+				g.Expect(a.ImagePullPolicy()).Should(Equal(corev1.PullNever))
+				g.Expect(a.HostNetwork()).Should(Equal(true))
+				g.Expect(a.Affinity()).Should(Equal(affinity))
+				g.Expect(a.PriorityClassName()).Should(Equal("test"))
+				g.Expect(a.SchedulerName()).Should(Equal("test"))
+			},
+		},
+		{
+			name: "override at component-level",
+			cluster: &TidbClusterSpec{
+				ImagePullPolicy:   corev1.PullNever,
+				HostNetwork:       true,
+				Affinity:          nil,
+				PriorityClassName: "test",
+				SchedulerName:     "test",
+			},
+			component: &ComponentSpec{
+				ImagePullPolicy:   func() *corev1.PullPolicy { a := corev1.PullAlways; return &a }(),
+				HostNetwork:       func() *bool { a := false; return &a }(),
+				Affinity:          affinity,
+				PriorityClassName: "override",
+				SchedulerName:     "override",
+			},
+			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
+				g.Expect(a.ImagePullPolicy()).Should(Equal(corev1.PullAlways))
+				g.Expect(a.HostNetwork()).Should(Equal(false))
+				g.Expect(a.Affinity()).Should(Equal(affinity))
+				g.Expect(a.PriorityClassName()).Should(Equal("override"))
+				g.Expect(a.SchedulerName()).Should(Equal("override"))
+			},
+		},
+		{
+			name: "baseImage and cluster version",
+			cluster: &TidbClusterSpec{
+				Version: "v1.1.0",
+			},
+			component: &ComponentSpec{
+				BaseImage: "pingcap/tidb",
+			},
+			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
+				g.Expect(a.Image()).Should(Equal("pingcap/tidb:v1.1.0"))
+			},
+		},
+		{
+			name: "baseImage and component-level version override",
+			cluster: &TidbClusterSpec{
+				Version: "v1.1.0",
+			},
+			component: &ComponentSpec{
+				BaseImage: "pingcap/tidb",
+				Version:   "v1.2.0",
+			},
+			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
+				g.Expect(a.Image()).Should(Equal("pingcap/tidb:v1.2.0"))
+			},
+		},
+		{
+			name: "backward compatibility of .spec.<component>.image",
+			cluster: &TidbClusterSpec{
+				Version: "v1.1.0",
+			},
+			component: &ComponentSpec{
+				Image: "pingcap/tidb:v1.0.0",
+			},
+			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
+				g.Expect(a.Image()).Should(Equal("pingcap/tidb:v1.0.0"))
+			},
+		},
+		{
+			name: "baseImage shadows the deprecated image field",
+			cluster: &TidbClusterSpec{
+				Version: "v1.1.0",
+			},
+			component: &ComponentSpec{
+				BaseImage: "pingcap/tidb",
+				Image:     "pingcap/tidb:v1.0.0",
+			},
+			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
+				g.Expect(a.Image()).Should(Equal("pingcap/tidb:v1.1.0"))
+			},
+		},
+		{
+			name: "node selector merge",
+			cluster: &TidbClusterSpec{
+				NodeSelector: map[string]string{
+					"k1": "v1",
+				},
+			},
+			component: &ComponentSpec{
+				NodeSelector: map[string]string{
+					"k1": "v2",
+					"k3": "v3",
+				},
+			},
+			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
+				g.Expect(a.NodeSelector()).Should(Equal(map[string]string{
+					"k1": "v2",
+					"k3": "v3",
+				}))
+			},
+		},
+		{
+			name: "annotations merge",
+			cluster: &TidbClusterSpec{
+				Annotations: map[string]string{
+					"k1": "v1",
+				},
+			},
+			component: &ComponentSpec{
+				Annotations: map[string]string{
+					"k1": "v2",
+					"k3": "v3",
+				},
+			},
+			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
+				g.Expect(a.Annotations()).Should(Equal(map[string]string{
+					"k1": "v2",
+					"k3": "v3",
+				}))
+			},
+		},
+		{
+			name: "annotations merge",
+			cluster: &TidbClusterSpec{
+				Annotations: map[string]string{
+					"k1": "v1",
+				},
+			},
+			component: &ComponentSpec{
+				Annotations: map[string]string{
+					"k1": "v2",
+					"k3": "v3",
+				},
+			},
+			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
+				g.Expect(a.Annotations()).Should(Equal(map[string]string{
+					"k1": "v2",
+					"k3": "v3",
+				}))
+			},
+		},
+		{
+			name: "tolerations merge",
+			cluster: &TidbClusterSpec{
+				Tolerations: []corev1.Toleration{toleration1},
+			},
+			component: &ComponentSpec{
+				Tolerations: []corev1.Toleration{toleration2},
+			},
+			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
+				g.Expect(a.Tolerations()).Should(ConsistOf(toleration1, toleration2))
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
+func TestHelperImage(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name     string
+		update   func(*TidbCluster)
+		expectFn func(*GomegaWithT, string)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		tc := newTidbCluster()
+		test.update(tc)
+		test.expectFn(g, tc.HelperImage())
+	}
+	tests := []testcase{
+		{
+			name:   "helper image has defaults",
+			update: func(tc *TidbCluster) {},
+			expectFn: func(g *GomegaWithT, s string) {
+				g.Expect(s).ShouldNot(BeEmpty())
+			},
+		},
+		{
+			name: "helper image use .spec.helper.image first",
+			update: func(tc *TidbCluster) {
+				tc.Spec.Helper.Image = "helper1"
+				tc.Spec.TiDB.SlowLogTailer.Image = "helper2"
+			},
+			expectFn: func(g *GomegaWithT, s string) {
+				g.Expect(s).Should(Equal("helper1"))
+			},
+		},
+		{
+			name: "pick .spec.tidb.slowLogTailer.image as helper for backward compatibility",
+			update: func(tc *TidbCluster) {
+				tc.Spec.Helper.Image = ""
+				tc.Spec.TiDB.SlowLogTailer.Image = "helper2"
+			},
+			expectFn: func(g *GomegaWithT, s string) {
+				g.Expect(s).Should(Equal("helper2"))
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
+func TestHelperImagePullPolicy(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name     string
+		update   func(*TidbCluster)
+		expectFn func(*GomegaWithT, corev1.PullPolicy)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		tc := newTidbCluster()
+		test.update(tc)
+		test.expectFn(g, tc.HelperImagePullPolicy())
+	}
+	tests := []testcase{
+		{
+			name: "use .spec.helper.imagePullPolicy first",
+			update: func(tc *TidbCluster) {
+				tc.Spec.Helper.ImagePullPolicy = func() *corev1.PullPolicy { a := corev1.PullAlways; return &a }()
+				tc.Spec.TiDB.SlowLogTailer.ImagePullPolicy = func() *corev1.PullPolicy { a := corev1.PullIfNotPresent; return &a }()
+				tc.Spec.ImagePullPolicy = corev1.PullNever
+			},
+			expectFn: func(g *GomegaWithT, p corev1.PullPolicy) {
+				g.Expect(p).Should(Equal(corev1.PullAlways))
+			},
+		},
+		{
+			name: "pick .spec.tidb.slowLogTailer.imagePullPolicy when .spec.helper.imagePullPolicy is nil",
+			update: func(tc *TidbCluster) {
+				tc.Spec.Helper.ImagePullPolicy = nil
+				tc.Spec.TiDB.SlowLogTailer.ImagePullPolicy = func() *corev1.PullPolicy { a := corev1.PullIfNotPresent; return &a }()
+				tc.Spec.ImagePullPolicy = corev1.PullNever
+			},
+			expectFn: func(g *GomegaWithT, p corev1.PullPolicy) {
+				g.Expect(p).Should(Equal(corev1.PullIfNotPresent))
+			},
+		},
+		{
+			name: "pick cluster one if both .spec.tidb.slowLogTailer.imagePullPolicy and .spec.helper.imagePullPolicy are nil",
+			update: func(tc *TidbCluster) {
+				tc.Spec.Helper.ImagePullPolicy = nil
+				tc.Spec.TiDB.SlowLogTailer.ImagePullPolicy = nil
+				tc.Spec.ImagePullPolicy = corev1.PullNever
+			},
+			expectFn: func(g *GomegaWithT, p corev1.PullPolicy) {
+				g.Expect(p).Should(Equal(corev1.PullNever))
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
 func newTidbCluster() *TidbCluster {
 	return &TidbCluster{
 		TypeMeta: metav1.TypeMeta{

@@ -354,17 +354,18 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container
-	if tc.Spec.TiKV.Annotations != nil {
-		init, ok := tc.Spec.TiKV.Annotations[label.AnnSysctlInit]
+	if tc.BaseTiKVSpec().Annotations() != nil {
+		init, ok := tc.BaseTiKVSpec().Annotations()[label.AnnSysctlInit]
 		if ok && (init == label.AnnSysctlInitVal) {
-			if tc.Spec.TiKV.PodSecurityContext != nil && len(tc.Spec.TiKV.PodSecurityContext.Sysctls) > 0 {
-				for _, sysctl := range tc.Spec.TiKV.PodSecurityContext.Sysctls {
+			if tc.BaseTiKVSpec().PodSecurityContext() != nil && len(tc.BaseTiKVSpec().PodSecurityContext().Sysctls) > 0 {
+				for _, sysctl := range tc.BaseTiKVSpec().PodSecurityContext().Sysctls {
 					sysctls = sysctls + fmt.Sprintf(" %s=%s", sysctl.Name, sysctl.Value)
 				}
 				privileged := true
 				initContainers = append(initContainers, corev1.Container{
-					Name:  "init",
-					Image: controller.GetUtilImage(tc),
+					Name:            "init",
+					Image:           tc.HelperImage(),
+					ImagePullPolicy: tc.HelperImagePullPolicy(),
 					Command: []string{
 						"sh",
 						"-c",
@@ -380,7 +381,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 	// Init container is only used for the case where allowed-unsafe-sysctls
 	// cannot be enabled for kubelet, so clean the sysctl in statefulset
 	// SecurityContext if init container is enabled
-	podSecurityContext := tc.Spec.TiKV.PodSecurityContext.DeepCopy()
+	podSecurityContext := tc.BaseTiKVSpec().PodSecurityContext().DeepCopy()
 	if len(initContainers) > 0 {
 		podSecurityContext.Sysctls = []corev1.Sysctl{}
 	}
@@ -398,7 +399,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 
 	tikvLabel := labelTiKV(tc)
 	setName := controller.TiKVMemberName(tcName)
-	podAnnotations := CombineAnnotations(controller.AnnProm(20180), tc.Spec.TiKV.Annotations)
+	podAnnotations := CombineAnnotations(controller.AnnProm(20180), tc.BaseTiKVSpec().Annotations())
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
 	storageClassName := tc.Spec.TiKV.StorageClassName
@@ -407,7 +408,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 	}
 
 	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
-	if tc.Spec.TiKV.HostNetwork {
+	if tc.BaseTiKVSpec().HostNetwork() {
 		dnsPolicy = corev1.DNSClusterFirstWithHostNet
 	}
 
@@ -427,17 +428,17 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 					Annotations: podAnnotations,
 				},
 				Spec: corev1.PodSpec{
-					SchedulerName: tc.Spec.SchedulerName,
-					Affinity:      tc.Spec.TiKV.Affinity,
-					NodeSelector:  tc.Spec.TiKV.NodeSelector,
-					HostNetwork:   tc.Spec.TiKV.HostNetwork,
+					SchedulerName: tc.BaseTiKVSpec().SchedulerName(),
+					Affinity:      tc.BaseTiKVSpec().Affinity(),
+					NodeSelector:  tc.BaseTiKVSpec().NodeSelector(),
+					HostNetwork:   tc.BaseTiKVSpec().HostNetwork(),
 					DNSPolicy:     dnsPolicy,
 					Containers: []corev1.Container{
 						{
 							Name:            v1alpha1.TiKVMemberType.String(),
-							Image:           tc.Spec.TiKV.Image,
+							Image:           tc.BaseTiKVSpec().Image(),
 							Command:         []string{"/bin/sh", "/usr/local/bin/tikv_start_script.sh"},
-							ImagePullPolicy: tc.Spec.TiKV.ImagePullPolicy,
+							ImagePullPolicy: tc.BaseTiKVSpec().ImagePullPolicy(),
 							SecurityContext: &corev1.SecurityContext{
 								Privileged: &tc.Spec.TiKV.Privileged,
 							},
@@ -449,7 +450,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 								},
 							},
 							VolumeMounts: volMounts,
-							Resources:    util.ResourceRequirement(tc.Spec.TiKV.ContainerSpec),
+							Resources:    util.ResourceRequirement(tc.Spec.TiKV.Resources),
 							Env: []corev1.EnvVar{
 								{
 									Name: "NAMESPACE",
@@ -487,10 +488,10 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 						},
 					},
 					RestartPolicy:     corev1.RestartPolicyAlways,
-					Tolerations:       tc.Spec.TiKV.Tolerations,
+					Tolerations:       tc.BaseTiKVSpec().Tolerations(),
 					Volumes:           vols,
 					SecurityContext:   podSecurityContext,
-					PriorityClassName: tc.Spec.TiKV.PriorityClassName,
+					PriorityClassName: tc.BaseTiKVSpec().PriorityClassName(),
 					InitContainers:    initContainers,
 				},
 			},
