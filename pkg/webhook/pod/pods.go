@@ -52,7 +52,7 @@ type PodAdmissionControl struct {
 	tcLister listers.TidbClusterLister
 	// sts Lister
 	stsLister appslisters.StatefulSetLister
-	// the list of the service account from the request which should be checked by webhook
+	// the map of the service account from the request which should be checked by webhook
 	serviceAccounts sets.String
 }
 
