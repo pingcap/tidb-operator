@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
+	"strconv"
 	"sync"
 
 	"github.com/pingcap/tidb-operator/tests"
@@ -309,7 +310,7 @@ func newTidbClusterConfig(ns, clusterName, password, tidbVersion string) *tests.
 			"tidb.resources.limits.memory":   "4Gi",
 			"tidb.resources.requests.cpu":    "200m",
 			"tidb.resources.requests.memory": "200Mi",
-			"tidb.initSql":                   "create database e2e;",
+			"tidb.initSql":                   strconv.Quote("create database e2e;"),
 			"discovery.image":                cfg.OperatorImage,
 		},
 		Args:    map[string]string{},
