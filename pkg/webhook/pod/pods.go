@@ -89,7 +89,7 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 	serviceAccount := ar.Request.UserInfo.Username
 	klog.Infof("receive %s pod[%s/%s] by sa[%s]", operation, namespace, name, serviceAccount)
 
-	isUnknownServiceAccounts := true
+	skippableSA := true
 	for _, sa := range pc.serviceAccounts {
 		if sa == serviceAccount {
 			isUnknownServiceAccounts = false
