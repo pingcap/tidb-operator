@@ -97,6 +97,7 @@ func main() {
 		oa.DeployTidbClusterOrDie(cluster)
 		oa.CheckTidbClusterStatusOrDie(cluster)
 		oa.CheckDisasterToleranceOrDie(cluster)
+		oa.CheckInitSQLOrDie(cluster)
 
 		// scale
 		cluster.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
@@ -308,6 +309,7 @@ func newTidbClusterConfig(ns, clusterName, password, tidbVersion string) *tests.
 			"tidb.resources.limits.memory":   "4Gi",
 			"tidb.resources.requests.cpu":    "200m",
 			"tidb.resources.requests.memory": "200Mi",
+			"tidb.initSql":                   "create database e2e;",
 			"discovery.image":                cfg.OperatorImage,
 		},
 		Args:    map[string]string{},
