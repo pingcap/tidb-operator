@@ -49,6 +49,9 @@ spec:
           {{- if .Values.testMode }}
           - -test-mode={{ .Values.testMode }}
           {{- end}}
+          {{- if .Values.features }}
+          - -features={{ join "," .Values.features }}
+          {{- end }}
         env:
           - name: NAMESPACE
             valueFrom:
