@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
+	"strconv"
 	"sync"
 
 	"github.com/pingcap/tidb-operator/tests"
@@ -33,7 +34,6 @@ import (
 )
 
 var cfg *tests.Config
-var certCtx *apimachinery.CertContext
 var upgradeVersions []string
 
 func main() {
@@ -48,15 +48,12 @@ func main() {
 	upgradeVersions = cfg.GetUpgradeTidbVersionsOrDie()
 	ns := "e2e"
 
-	var err error
-	certCtx, err = apimachinery.SetupServerCert("tidb-operator-e2e", tests.WebhookServiceName)
+	restConfig, err := client.GetConfig()
 	if err != nil {
 		panic(err)
 	}
-	go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx)
+	cli, kubeCli, asCli := client.NewCliOrDie()
 
-	restConfig := client.GetConfigOrDie()
-	cli, kubeCli := client.NewCliOrDie()
 	ocfg := newOperatorConfig()
 
 	cluster1 := newTidbClusterConfig(ns, "cluster1", "", "")
@@ -71,7 +68,7 @@ func main() {
 	cluster5 := newTidbClusterConfig(ns, "cluster5", "", "v2.1.16") // for v2.1.x series
 	cluster5.Resources["tikv.resources.limits.storage"] = "1G"
 
-	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, cfg, nil)
+	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, cfg, nil)
 	oa.CleanCRDOrDie()
 	oa.InstallCRDOrDie()
 	oa.LabelNodesOrDie()
@@ -93,6 +90,7 @@ func main() {
 		oa.DeployTidbClusterOrDie(cluster)
 		oa.CheckTidbClusterStatusOrDie(cluster)
 		oa.CheckDisasterToleranceOrDie(cluster)
+		oa.CheckInitSQLOrDie(cluster)
 
 		// scale
 		cluster.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
@@ -145,6 +143,11 @@ func main() {
 		oa.CheckTidbClusterStatusOrDie(cluster)
 
 		// upgrade
+		certCtx, err := apimachinery.SetupServerCert("tidb-operator-e2e", tests.WebhookServiceName)
+		if err != nil {
+			panic(err)
+		}
+		go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx, fmt.Sprintf("%s/%s", cluster.Namespace, cluster.ClusterName))
 		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
 		ctx, cancel := context.WithCancel(context.Background())
 		assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(cluster)
@@ -258,15 +261,17 @@ func newOperatorConfig() *tests.OperatorConfig {
 		Tag:            cfg.OperatorTag,
 		SchedulerImage: "mirantis/hypokube",
 		SchedulerTag:   "final",
-		SchedulerFeatures: []string{
+		Features: []string{
 			"StableScheduling=true",
+			"AdvancedStatefulSet=true",
 		},
-		LogLevel:           "2",
-		WebhookServiceName: "webhook-service",
-		WebhookSecretName:  "webhook-secret",
-		WebhookConfigName:  "webhook-config",
-		ImagePullPolicy:    v1.PullIfNotPresent,
-		TestMode:           true,
+		LogLevel:            "4",
+		WebhookServiceName:  "webhook-service",
+		WebhookSecretName:   "webhook-secret",
+		WebhookConfigName:   "webhook-config",
+		ImagePullPolicy:     v1.PullIfNotPresent,
+		TestMode:            true,
+		AdvancedStatefulSet: true,
 	}
 }
 
@@ -302,6 +307,7 @@ func newTidbClusterConfig(ns, clusterName, password, tidbVersion string) *tests.
 			"tidb.resources.limits.memory":   "4Gi",
 			"tidb.resources.requests.cpu":    "200m",
 			"tidb.resources.requests.memory": "200Mi",
+			"tidb.initSql":                   strconv.Quote("create database e2e;"),
 			"discovery.image":                cfg.OperatorImage,
 		},
 		Args:    map[string]string{},

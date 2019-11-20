@@ -67,7 +67,7 @@ func main() {
 }
 
 func run() {
-	cli, kubeCli := client.NewCliOrDie()
+	cli, kubeCli, asCli := client.NewCliOrDie()
 
 	ocfg := newOperatorConfig()
 
@@ -109,7 +109,7 @@ func run() {
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, cfg)
 	fta.CheckAndRecoverEnvOrDie()
 
-	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, cfg, allClusters)
+	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, cfg, allClusters)
 	oa.CheckK8sAvailableOrDie(nil, nil)
 	oa.LabelNodesOrDie()
 
@@ -381,7 +381,7 @@ func newOperatorConfig() *tests.OperatorConfig {
 		Image:          cfg.OperatorImage,
 		Tag:            cfg.OperatorTag,
 		SchedulerImage: "gcr.io/google-containers/hyperkube",
-		SchedulerFeatures: []string{
+		Features: []string{
 			"StableScheduling=true",
 		},
 		LogLevel:           "2",

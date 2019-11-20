@@ -45,6 +45,7 @@ require (
 	github.com/onsi/gomega v1.5.0
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
+	github.com/pingcap/advanced-statefulset v0.1.0
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/kvproto v0.0.0-20190516013202-4cf58ad90b6c
 	github.com/pingcap/log v0.0.0-20190715063458-479153f07ebd
@@ -82,8 +83,8 @@ require (
 	k8s.io/kubectl v0.0.0
 	k8s.io/kubernetes v1.16.0
 	k8s.io/utils v0.0.0-20190801114015-581e00157fb1
-	sigs.k8s.io/apiserver-builder-alpha v0.0.0-20191031091337-b5d9ec3241f6
-	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191023065212-d7072df276e7
+	sigs.k8s.io/apiserver-builder-alpha v0.0.0-20191113095113-4493943d2568
+	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191113095113-4493943d2568
 )
 
 replace github.com/renstrom/dedent => github.com/lithammer/dedent v1.1.0

@@ -20,9 +20,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1/helper"
+	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/webhook"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -34,9 +37,10 @@ import (
 )
 
 var (
-	printVersion bool
-	certFile     string
-	keyFile      string
+	printVersion         bool
+	certFile             string
+	keyFile              string
+	extraServiceAccounts string
 )
 
 func init() {
@@ -44,6 +48,8 @@ func init() {
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.StringVar(&certFile, "tlsCertFile", "/etc/webhook/certs/cert.pem", "File containing the x509 Certificate for HTTPS.")
 	flag.StringVar(&keyFile, "tlsKeyFile", "/etc/webhook/certs/key.pem", "File containing the x509 private key to --tlsCertFile.")
+	flag.StringVar(&extraServiceAccounts, "extraServiceAccounts", "", "comma-separated, extra Service Accounts the Webhook should control. The full pattern for each common service account is system:serviceaccount:<namespace>:<serviceaccount-name>")
+	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 	flag.Parse()
 }
 
@@ -68,14 +74,28 @@ func main() {
 		glog.Fatalf("failed to create Clientset: %v", err)
 	}
 
-	kubeCli, err := kubernetes.NewForConfig(cfg)
+	glog.Infof("extraServiceAccounts = %s", extraServiceAccounts)
+
+	var kubeCli kubernetes.Interface
+	kubeCli, err = kubernetes.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
+	asCli, err := asclientset.NewForConfig(cfg)
+	if err != nil {
+		glog.Fatalf("failed to get advanced-statefulset Clientset: %v", err)
+	}
+
+	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+		// If AdvancedStatefulSet is enabled, we hijack the Kubernetes client to use
+		// AdvancedStatefulSet.
+		kubeCli = helper.NewHijackClient(kubeCli, asCli)
+	}
+
 	informerFactory := informers.NewSharedInformerFactory(cli, controller.ResyncDuration)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
 
-	webhookServer := webhook.NewWebHookServer(kubeCli, cli, informerFactory, kubeInformerFactory, certFile, keyFile)
+	webhookServer := webhook.NewWebHookServer(kubeCli, cli, informerFactory, kubeInformerFactory, certFile, keyFile, extraServiceAccounts)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

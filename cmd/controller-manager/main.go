@@ -21,6 +21,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1/helper"
+	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -28,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
 	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -68,6 +71,7 @@ func init() {
 	flag.DurationVar(&controller.ResyncDuration, "resync-duration", time.Duration(30*time.Second), "Resync time of informer")
 	flag.BoolVar(&controller.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
 	flag.StringVar(&controller.TidbBackupManagerImage, "tidb-backup-manager-image", "pingcap/tidb-backup-manager:latest", "The image of backup manager tool")
+	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 
 	flag.Parse()
 }
@@ -101,9 +105,20 @@ func main() {
 	if err != nil {
 		glog.Fatalf("failed to create Clientset: %v", err)
 	}
-	kubeCli, err := kubernetes.NewForConfig(cfg)
+	var kubeCli kubernetes.Interface
+	kubeCli, err = kubernetes.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
+	}
+	asCli, err := asclientset.NewForConfig(cfg)
+	if err != nil {
+		glog.Fatalf("failed to get advanced-statefulset Clientset: %v", err)
+	}
+
+	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+		// If AdvancedStatefulSet is enabled, we hijack the Kubernetes client to use
+		// AdvancedStatefulSet.
+		kubeCli = helper.NewHijackClient(kubeCli, asCli)
 	}
 
 	var informerFactory informers.SharedInformerFactory
