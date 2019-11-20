@@ -237,7 +237,7 @@ func (tmm *tidbMemberManager) syncTiDBClusterCerts(tc *v1alpha1.TidbCluster) err
 		Suffix:     "tidb",
 	}
 
-	return tmm.certControl.Create(certOpts)
+	return tmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 // syncTiDBServerCerts creates the cert pair for TiDB if not exist, the cert
@@ -266,7 +266,7 @@ func (tmm *tidbMemberManager) syncTiDBServerCerts(tc *v1alpha1.TidbCluster) erro
 		Suffix:     suffix,
 	}
 
-	return tmm.certControl.Create(certOpts)
+	return tmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 // syncTiDBClientCerts creates the cert pair for TiDB if not exist, the cert
@@ -294,7 +294,7 @@ func (tmm *tidbMemberManager) syncTiDBClientCerts(tc *v1alpha1.TidbCluster) erro
 		Suffix:     suffix,
 	}
 
-	return tmm.certControl.Create(certOpts)
+	return tmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
@@ -521,7 +521,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: controller.Int32Ptr(tc.TiDBRealReplicas()),
+			Replicas: controller.Int32Ptr(tc.TiDBStsDesiredReplicas()),
 			Selector: tidbLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -546,7 +546,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 			ServiceName:         controller.TiDBPeerMemberName(tcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{Partition: controller.Int32Ptr(tc.TiDBRealReplicas())},
+				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{Partition: controller.Int32Ptr(tc.TiDBStsDesiredReplicas())},
 			},
 		},
 	}
