@@ -35,8 +35,8 @@ spec:
           - /usr/local/bin/tidb-scheduler
           - -v={{ .Values.scheduler.logLevel }}
           - -port=10262
-        {{- if .Values.scheduler.features }}
-          - -features={{ join "," .Values.scheduler.features }}
+        {{- if .Values.features }}
+          - -features={{ join "," .Values.features }}
         {{- end }}
       {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
         env:

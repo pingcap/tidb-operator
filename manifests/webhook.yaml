@@ -21,6 +21,12 @@ rules:
   - apiGroups: ["pingcap.com"]
     resources:  ["tidbclusters"]
     verbs: ["*"]
+  - apiGroups:
+    - apps.pingcap.com
+    resources:
+    - statefulsets
+    verbs:
+    - '*'
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -86,7 +92,10 @@ spec:
             - /usr/local/bin/tidb-admission-controller
             - -tlsCertFile=/etc/webhook/certs/cert.pem
             - -tlsKeyFile=/etc/webhook/certs/key.pem
-            - -v=2
+            - -v=4
+            # TODO webhook is not bundled with tidb-operator yet and tested in
+            # e2e only, make it configurable in helm chart
+            - -features=AdvancedStatefulSet=true
           volumeMounts:
             - name: webhook-certs
               mountPath: /etc/webhook/certs
@@ -115,4 +124,8 @@ webhooks:
       - operations: [ "UPDATE" ]
         apiGroups: [ "apps", "" ]
         apiVersions: ["v1beta1", "v1"]
+        resources: ["statefulsets"]
+      - operations: [ "UPDATE" ]
+        apiGroups: [ "apps.pingcap.com"]
+        apiVersions: ["v1alpha1"]
         resources: ["statefulsets"]

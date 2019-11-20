@@ -15,13 +15,14 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
+
 	"k8s.io/api/admission/v1beta1"
 	glog "k8s.io/klog"
 )
 
 // only allow pods to be delete when it is not ddlowner of tidb, not leader of pd and not
 // master of tikv.
-func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
+func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	glog.V(4).Infof("admitting pods")
 
 	podResource := metav1.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
@@ -31,7 +32,7 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		return toAdmissionResponse(err)
 	}
 
-	versionCli, kubeCli := client.NewCliOrDie()
+	versionCli, kubeCli, _ := client.NewCliOrDie()
 
 	name := ar.Request.Name
 	namespace := ar.Request.Namespace
@@ -50,6 +51,13 @@ func admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(pod.Labels[label.InstanceLabelKey], metav1.GetOptions{})
 	if err != nil {
 		glog.Infof("fail to fetch tidbcluster info namespace %s clustername(instance) %s err %v", namespace, pod.Labels[label.InstanceLabelKey], err)
+		return &reviewResponse
+	}
+
+	tcKey := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
+	if !wh.tidbClusters.Has(tcKey) {
+		glog.V(4).Infof("%q is not in tidb clusters %v, skip", tcKey, wh.tidbClusters.List())
+		reviewResponse.Allowed = true
 		return &reviewResponse
 	}
 

@@ -32,9 +32,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ghodss/yaml"
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
+
+	"github.com/ghodss/yaml"
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1/helper"
+	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -58,6 +61,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	glog "k8s.io/klog"
 )
 
@@ -76,6 +80,7 @@ const (
 
 func NewOperatorActions(cli versioned.Interface,
 	kubeCli kubernetes.Interface,
+	asCli asclientset.Interface,
 	pollInterval time.Duration,
 	cfg *Config,
 	clusters []*TidbClusterConfig) OperatorActions {
@@ -83,6 +88,8 @@ func NewOperatorActions(cli versioned.Interface,
 		cli:          cli,
 		kubeCli:      kubeCli,
 		pdControl:    pdapi.NewDefaultPDControl(kubeCli),
+		asCli:        asCli,
+		tcStsGetter:  helper.NewHijackClient(kubeCli, asCli).AppsV1(),
 		tidbControl:  controller.NewDefaultTiDBControl(),
 		pollInterval: pollInterval,
 		cfg:          cfg,
@@ -195,11 +202,15 @@ type OperatorActions interface {
 	CheckTidbMemberAssignedNodesOrDie(info *TidbClusterConfig, oldAssignedNodes map[string]string)
 	CheckUpgradeComplete(info *TidbClusterConfig) error
 	CheckUpgradeCompleteOrDie(info *TidbClusterConfig)
+	CheckInitSQL(info *TidbClusterConfig) error
+	CheckInitSQLOrDie(info *TidbClusterConfig)
 }
 
 type operatorActions struct {
 	cli                versioned.Interface
 	kubeCli            kubernetes.Interface
+	asCli              asclientset.Interface
+	tcStsGetter        typedappsv1.StatefulSetsGetter
 	pdControl          pdapi.PDControlInterface
 	tidbControl        controller.TiDBControlInterface
 	pollInterval       time.Duration
@@ -223,24 +234,25 @@ type event struct {
 var _ = OperatorActions(&operatorActions{})
 
 type OperatorConfig struct {
-	Namespace          string
-	ReleaseName        string
-	Image              string
-	Tag                string
-	SchedulerImage     string
-	SchedulerTag       string
-	SchedulerFeatures  []string
-	LogLevel           string
-	WebhookServiceName string
-	WebhookSecretName  string
-	WebhookConfigName  string
-	Context            *apimachinery.CertContext
-	ImagePullPolicy    corev1.PullPolicy
-	TestMode           bool
-	ApiServerImage     string
-	ApiServerCert      string
-	ApiServerKey       string
-	ApiServerCaBundle  string
+	Namespace           string
+	ReleaseName         string
+	Image               string
+	Tag                 string
+	SchedulerImage      string
+	SchedulerTag        string
+	Features            []string
+	LogLevel            string
+	WebhookServiceName  string
+	WebhookSecretName   string
+	WebhookConfigName   string
+	Context             *apimachinery.CertContext
+	ImagePullPolicy     corev1.PullPolicy
+	TestMode            bool
+	ApiServerImage      string
+	ApiServerCert       string
+	ApiServerKey        string
+	ApiServerCaBundle   string
+	AdvancedStatefulSet bool
 }
 
 type TidbClusterConfig struct {
@@ -364,8 +376,11 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
 	}
-	if len(oi.SchedulerFeatures) > 0 {
-		set["scheduler.features"] = fmt.Sprintf("{%s}", strings.Join(oi.SchedulerFeatures, ","))
+	if len(oi.Features) > 0 {
+		set["features"] = fmt.Sprintf("{%s}", strings.Join(oi.Features, ","))
+	}
+	if oi.AdvancedStatefulSet {
+		set["advancedStatefulset.create"] = "true"
 	}
 
 	arr := make([]string, 0, len(set))
@@ -394,6 +409,7 @@ func (oa *operatorActions) CleanCRDOrDie() {
 func (oa *operatorActions) InstallCRDOrDie() {
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/crd.yaml"))
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
+	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
 	out := oa.runKubectlOrDie([]string{"get", "crds", "--no-headers", `-ojsonpath={range .items[*]}{.metadata.name}{" "}{end}`}...)
 	waitArgs := []string{"wait", "--for=condition=Established"}
 	for _, crd := range strings.Split(out, " ") {
@@ -458,7 +474,11 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
-	cmd = fmt.Sprintf(`sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/' %s/webhook.yaml | kubectl apply -f -`, oa.manifestPath(info.Tag))
+	cmd = fmt.Sprintf(`
+sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/
+s#image:.*#image: %s#g
+' %s/webhook.yaml | kubectl apply -f -
+`, info.Image, oa.manifestPath(info.Tag))
 	glog.Info(cmd)
 
 	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -783,7 +803,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete configmaps: %v, %s", err, string(res))
 	}
 
-	patchPVCmd := fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
+	patchPVCmd := fmt.Sprintf("kubectl get pv --no-headers -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
 		"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
 		label.ManagedByLabelKey, "tidb-operator",
 		label.NamespaceLabelKey, info.Namespace,
@@ -1053,7 +1073,7 @@ func (oa *operatorActions) CheckScaleInSafely(info *TidbClusterConfig) error {
 		}
 
 		tikvSetName := controller.TiKVMemberName(info.ClusterName)
-		tikvSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(info.Namespace).Get(tikvSetName, metav1.GetOptions{})
+		tikvSet, err := oa.tcStsGetter.StatefulSets(info.Namespace).Get(tikvSetName, metav1.GetOptions{})
 		if err != nil {
 			glog.Infof("failed to get tikvSet statefulset: [%s], error: %v", tikvSetName, err)
 			return false, nil
@@ -1268,7 +1288,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 	ns := tc.GetNamespace()
 	pdSetName := controller.PDMemberName(tcName)
 
-	pdSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(ns).Get(pdSetName, metav1.GetOptions{})
+	pdSet, err := oa.tcStsGetter.StatefulSets(ns).Get(pdSetName, metav1.GetOptions{})
 	if err != nil {
 		glog.Errorf("failed to get statefulset: %s/%s, %v", ns, pdSetName, err)
 		return false, nil
@@ -1333,7 +1353,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	ns := tc.GetNamespace()
 	tikvSetName := controller.TiKVMemberName(tcName)
 
-	tikvSet, err := oa.kubeCli.AppsV1().StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
+	tikvSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
 	if err != nil {
 		glog.Errorf("failed to get statefulset: %s/%s, %v", ns, tikvSetName, err)
 		return false, nil
@@ -1392,7 +1412,7 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	ns := tc.GetNamespace()
 	tidbSetName := controller.TiDBMemberName(tcName)
 
-	tidbSet, err := oa.kubeCli.AppsV1beta1().StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
+	tidbSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
 		glog.Errorf("failed to get statefulset: %s/%s, %v", ns, tidbSetName, err)
 		return false, nil
@@ -3150,7 +3170,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 
 	time.Sleep(30 * time.Second)
 
-	if set, err = oa.kubeCli.AppsV1().StatefulSets(ns).Get(setName, metav1.GetOptions{}); err != nil {
+	if set, err = oa.tcStsGetter.StatefulSets(ns).Get(setName, metav1.GetOptions{}); err != nil {
 		return fmt.Errorf("failed to get statefulset: [%s/%s], %v", ns, setName, err)
 	}
 
@@ -3196,13 +3216,37 @@ func (oa *operatorActions) CheckUpgradeCompleteOrDie(info *TidbClusterConfig) {
 	}
 }
 
-func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext) {
+func (oa *operatorActions) CheckInitSQL(info *TidbClusterConfig) error {
+	ns, tcName := info.Namespace, info.ClusterName
+	if err := wait.PollImmediate(10*time.Second, DefaultPollTimeout, func() (done bool, err error) {
+		infoDb, err := sql.Open("mysql", getDSN(ns, tcName, "e2e", info.Password))
+		if err != nil {
+			return false, nil
+		}
+		infoDb.Close()
+
+		return true, nil
+	}); err != nil {
+		glog.Errorf("failed to check init sql complete [%s/%s], %v", ns, tcName, err)
+		return err
+	}
+	return nil
+}
+
+func (oa *operatorActions) CheckInitSQLOrDie(info *TidbClusterConfig) {
+	if err := oa.CheckInitSQL(info); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext, tidbClusters ...string) {
 	sCert, err := tls.X509KeyPair(context.Cert, context.Key)
 	if err != nil {
 		panic(err)
 	}
 
-	http.HandleFunc("/pods", webhook.ServePods)
+	wh := webhook.NewWebhook(tidbClusters)
+	http.HandleFunc("/pods", wh.ServePods)
 	server := &http.Server{
 		Addr: ":443",
 		TLSConfig: &tls.Config{
