@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/listers/apps/v1"
+	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/kubernetes/pkg/kubelet/apis"
 )
@@ -320,9 +320,44 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 		storageClassName = controller.DefaultStorageClassName
 	}
 
+	env := []corev1.EnvVar{
+		{
+			Name: "NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
+		{
+			Name:  "CLUSTER_NAME",
+			Value: tcName,
+		},
+		{
+			Name:  "HEADLESS_SERVICE_NAME",
+			Value: headlessSvcName,
+		},
+		{
+			Name:  "CAPACITY",
+			Value: capacity,
+		},
+		{
+			Name:  "TZ",
+			Value: tc.Spec.Timezone,
+		},
+	}
+
 	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
 	if tc.Spec.TiKV.HostNetwork {
 		dnsPolicy = corev1.DNSClusterFirstWithHostNet
+		env = append(env, corev1.EnvVar{
+			Name: "POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		})
 	}
 
 	tikvset := &apps.StatefulSet{
@@ -344,7 +379,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 					SchedulerName: tc.Spec.SchedulerName,
 					Affinity:      tc.Spec.TiKV.Affinity,
 					NodeSelector:  tc.Spec.TiKV.NodeSelector,
-					HostNetwork:   tc.Spec.PD.HostNetwork,
+					HostNetwork:   tc.Spec.TiKV.HostNetwork,
 					DNSPolicy:     dnsPolicy,
 					Containers: []corev1.Container{
 						{
@@ -364,40 +399,7 @@ func (tkmm *tikvMemberManager) getNewSetForTidbCluster(tc *v1alpha1.TidbCluster)
 							},
 							VolumeMounts: volMounts,
 							Resources:    util.ResourceRequirement(tc.Spec.TiKV.ContainerSpec),
-							Env: []corev1.EnvVar{
-								{
-									Name: "NAMESPACE",
-									ValueFrom: &corev1.EnvVarSource{
-										FieldRef: &corev1.ObjectFieldSelector{
-											FieldPath: "metadata.namespace",
-										},
-									},
-								},
-								{
-									Name: "POD_NAME",
-									ValueFrom: &corev1.EnvVarSource{
-										FieldRef: &corev1.ObjectFieldSelector{
-											FieldPath: "metadata.name",
-										},
-									},
-								},
-								{
-									Name:  "CLUSTER_NAME",
-									Value: tcName,
-								},
-								{
-									Name:  "HEADLESS_SERVICE_NAME",
-									Value: headlessSvcName,
-								},
-								{
-									Name:  "CAPACITY",
-									Value: capacity,
-								},
-								{
-									Name:  "TZ",
-									Value: tc.Spec.Timezone,
-								},
-							},
+							Env:          env,
 						},
 					},
 					RestartPolicy:   corev1.RestartPolicyAlways,

@@ -484,9 +484,44 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 		}
 	}
 
+	env := []corev1.EnvVar{
+		{
+			Name: "NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
+		{
+			Name:  "PEER_SERVICE_NAME",
+			Value: controller.PDPeerMemberName(tcName),
+		},
+		{
+			Name:  "SERVICE_NAME",
+			Value: controller.PDMemberName(tcName),
+		},
+		{
+			Name:  "SET_NAME",
+			Value: setName,
+		},
+		{
+			Name:  "TZ",
+			Value: tc.Spec.Timezone,
+		},
+	}
+
 	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
 	if tc.Spec.PD.HostNetwork {
 		dnsPolicy = corev1.DNSClusterFirstWithHostNet
+		env = append(env, corev1.EnvVar{
+			Name: "POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		})
 	}
 
 	pdSet := &apps.StatefulSet{
@@ -530,40 +565,7 @@ func (pmm *pdMemberManager) getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) 
 							},
 							VolumeMounts: volMounts,
 							Resources:    util.ResourceRequirement(tc.Spec.PD.ContainerSpec),
-							Env: []corev1.EnvVar{
-								{
-									Name: "NAMESPACE",
-									ValueFrom: &corev1.EnvVarSource{
-										FieldRef: &corev1.ObjectFieldSelector{
-											FieldPath: "metadata.namespace",
-										},
-									},
-								},
-								{
-									Name: "POD_NAME",
-									ValueFrom: &corev1.EnvVarSource{
-										FieldRef: &corev1.ObjectFieldSelector{
-											FieldPath: "metadata.name",
-										},
-									},
-								},
-								{
-									Name:  "PEER_SERVICE_NAME",
-									Value: controller.PDPeerMemberName(tcName),
-								},
-								{
-									Name:  "SERVICE_NAME",
-									Value: controller.PDMemberName(tcName),
-								},
-								{
-									Name:  "SET_NAME",
-									Value: setName,
-								},
-								{
-									Name:  "TZ",
-									Value: tc.Spec.Timezone,
-								},
-							},
+							Env:          env,
 						},
 					},
 					RestartPolicy:   corev1.RestartPolicyAlways,
