@@ -500,7 +500,11 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 	*out = *in
 	in.ComponentSpec.DeepCopyInto(&out.ComponentSpec)
 	in.Resources.DeepCopyInto(&out.Resources)
-	in.Service.DeepCopyInto(&out.Service)
+	if in.Service != nil {
+		in, out := &in.Service, &out.Service
+		*out = new(ServiceSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Config != nil {
 		in, out := &in.Config, &out.Config
 		*out = make(map[string]json.JsonObject, len(*in))
@@ -910,7 +914,11 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 	*out = *in
 	in.ComponentSpec.DeepCopyInto(&out.ComponentSpec)
 	in.Resources.DeepCopyInto(&out.Resources)
-	in.Service.DeepCopyInto(&out.Service)
+	if in.Service != nil {
+		in, out := &in.Service, &out.Service
+		*out = new(TiDBServiceSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	in.SlowLogTailer.DeepCopyInto(&out.SlowLogTailer)
 	if in.Plugins != nil {
 		in, out := &in.Plugins, &out.Plugins
@@ -998,7 +1006,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 	*out = *in
 	in.ComponentSpec.DeepCopyInto(&out.ComponentSpec)
 	in.Resources.DeepCopyInto(&out.Resources)
-	in.Service.DeepCopyInto(&out.Service)
+	if in.Service != nil {
+		in, out := &in.Service, &out.Service
+		*out = new(ServiceSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Config != nil {
 		in, out := &in.Config, &out.Config
 		*out = make(map[string]json.JsonObject, len(*in))

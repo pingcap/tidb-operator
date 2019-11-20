@@ -363,9 +363,8 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 				}
 				privileged := true
 				initContainers = append(initContainers, corev1.Container{
-					Name:            "init",
-					Image:           tc.HelperImage(),
-					ImagePullPolicy: tc.HelperImagePullPolicy(),
+					Name:  "init",
+					Image: tc.HelperImage(),
 					Command: []string{
 						"sh",
 						"-c",

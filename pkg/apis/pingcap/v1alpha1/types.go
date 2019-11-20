@@ -167,9 +167,9 @@ type PDSpec struct {
 	// +k8s:openapi-gen=false
 	Resources
 	// +k8s:openapi-gen=false
-	Replicas         int32       `json:"replicas"`
-	Service          ServiceSpec `json:"service,omitempty"`
-	StorageClassName string      `json:"storageClassName,omitempty"`
+	Replicas         int32        `json:"replicas"`
+	Service          *ServiceSpec `json:"service,omitempty"`
+	StorageClassName string       `json:"storageClassName,omitempty"`
 
 	// +k8s:openapi-gen=false
 	// TODO: add schema
@@ -184,11 +184,11 @@ type TiKVSpec struct {
 	// +k8s:openapi-gen=false
 	Resources
 	// +k8s:openapi-gen=false
-	Replicas         int32       `json:"replicas"`
-	Service          ServiceSpec `json:"service,omitempty"`
-	Privileged       bool        `json:"privileged,omitempty"`
-	StorageClassName string      `json:"storageClassName,omitempty"`
-	MaxFailoverCount int32       `json:"maxFailoverCount,omitempty"`
+	Replicas         int32        `json:"replicas"`
+	Service          *ServiceSpec `json:"service,omitempty"`
+	Privileged       bool         `json:"privileged,omitempty"`
+	StorageClassName string       `json:"storageClassName,omitempty"`
+	MaxFailoverCount int32        `json:"maxFailoverCount,omitempty"`
 
 	// +k8s:openapi-gen=false
 	// TODO: add schema
@@ -204,7 +204,7 @@ type TiDBSpec struct {
 	Resources
 	// +k8s:openapi-gen=false
 	Replicas         int32                 `json:"replicas"`
-	Service          TiDBServiceSpec       `json:"service,omitempty"`
+	Service          *TiDBServiceSpec      `json:"service,omitempty"`
 	StorageClassName string                `json:"storageClassName,omitempty"`
 	BinlogEnabled    bool                  `json:"binlogEnabled,omitempty"`
 	MaxFailoverCount int32                 `json:"maxFailoverCount,omitempty"`
@@ -314,7 +314,7 @@ type ComponentSpec struct {
 // +k8s:openapi-gen=true
 type ServiceSpec struct {
 	// Type of the real kubernetes service, e.g. ClusterIP
-	Type string `json:"type,omitempty"`
+	Type corev1.ServiceType `json:"type,omitempty"`
 
 	// Additional annotations of the kubernetes service object
 	Annotations map[string]string `json:"annotations,omitempty"`
