@@ -138,26 +138,11 @@ First you should build a local Kubernetes environment for e2e tests, so we provi
     export KUBECONFIG=$(kind get kubeconfig-path --name=<clusterName>)
     ```
 
-Then you can build and push Docker images to the inner Docker registry. The inner Docker registry is available as `localhost:5000` both on the host machine and inside the Kubernetes cluster.
+Then you run e2e with the following command. Note that images will be pushed to a local registry running inside the Kubernetes cluster.
 
 ```sh
-$ make docker-push
-$ make e2e-docker-push
+$ make e2e
 ```
-
-After Docker images are pushed to the inner Docker registry, run e2e tests:
-
-```sh
-$ kubectl apply -f tests/manifests/e2e/e2e.yaml
-```
-
-You can get the e2e test report from the log of testing pod:
-
-```sh
-$ kubectl -n=tidb-operator-e2e logs -f tidb-operator-e2e
-```
-
-To re-run e2e tests, delete the testing pod and apply it again.
 
 ### Step 5: Keep your branch in sync
 

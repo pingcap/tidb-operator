@@ -472,7 +472,11 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
-	cmd = fmt.Sprintf(`sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/' %s/webhook.yaml | kubectl apply -f -`, oa.manifestPath(info.Tag))
+	cmd = fmt.Sprintf(`
+sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/
+s#image:.*#image: %s#g
+' %s/webhook.yaml | kubectl apply -f -
+`, info.Image, oa.manifestPath(info.Tag))
 	glog.Info(cmd)
 
 	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -797,7 +801,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete configmaps: %v, %s", err, string(res))
 	}
 
-	patchPVCmd := fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
+	patchPVCmd := fmt.Sprintf("kubectl get pv --no-headers -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
 		"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
 		label.ManagedByLabelKey, "tidb-operator",
 		label.NamespaceLabelKey, info.Namespace,
