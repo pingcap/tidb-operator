@@ -45,7 +45,7 @@ while true; do
     sleep 1
 done
 # copy and modify to avoid local changes
-sed "s#image: localhost:5000/pingcap/tidb-operator-e2e:latest#image: $E2E_IMAGE#g
+sed "s#image: .*#image: $E2E_IMAGE#g
 s#--operator-image=.*#--operator-image=${TIDB_OPERATOR_IMAGE}#g
 s#--test-apiserver-image=.*#--test-apiserver-image=${TEST_APISERVER_IMAGE}#g
 " tests/manifests/e2e/e2e.yaml | $KUBECTL_BIN -n ${NS} apply -f -
