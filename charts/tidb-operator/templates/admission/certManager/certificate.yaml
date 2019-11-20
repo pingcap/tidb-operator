@@ -4,6 +4,12 @@ kind: Certificate
 metadata:
   name: tidb-admission-webhook-crt
   namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component:  admission-cert-create
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   secretName: tidb-admission-webhook-certs
   commonName: tidb-admission-webhook

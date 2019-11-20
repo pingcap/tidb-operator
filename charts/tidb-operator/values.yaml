@@ -177,7 +177,7 @@ advancedStatefulset:
   #   effect: "NoSchedule"
 
 admissionWebhook:
-  enabled: true
+  enabled: false
   ## only support patch / selfProvider / certManager
   certProvider: "patch"
   ## `patch` would create a job before `helm install` and the job would create secret for webhook cert
@@ -190,6 +190,6 @@ admissionWebhook:
     ca: ""
     key: ""
     cert: ""
-  ## `certManager` would create an self-signed Issuer and a Certificate for webhookk cert managed by cert-manager
+  ## `certManager` would create an self-signed Issuer and a Certificate for webhook cert managed by cert-manager
   certManager:
 
