@@ -1,6 +1,9 @@
 package pod
 
 import (
+	"strconv"
+	"time"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
@@ -9,9 +12,6 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/klog"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	"strconv"
-	"time"
 )
 
 const (
@@ -53,7 +53,7 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(pod *core.Pod, ownerStatefulS
 	case v1alpha1.TiKVStateTombstone:
 		return pc.admitDeleteTombStoneTiKVPod(isInOrdinal, pod, ownerStatefulSet, tc, pdClient)
 	case v1alpha1.TiKVStateOffline:
-		return pc.admitDeleteOfflineTiKVPod(isInOrdinal, isUpgrading, pod, tc)
+		return pc.admitDeleteOfflineTiKVPod()
 	case v1alpha1.TiKVStateDown:
 		return pc.admitDeleteDownTiKVPod(isInOrdinal, pod, ownerStatefulSet, tc, pdClient)
 	case v1alpha1.TiKVStateUp:
@@ -75,26 +75,6 @@ func (pc *PodAdmissionControl) admitDeleteNonStoreTiKVPod(isInOrdinal bool, pod 
 		return util.ARFail(err)
 	}
 	setName := ownerStatefulSet.Name
-
-	if podutil.IsPodReady(pod) {
-		klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] is Ready and nonStore,admit to delete it", namespace, tcName, namespace, name)
-		return util.ARSuccess()
-	}
-
-	safeTimeDeadline := pod.CreationTimestamp.Add(5 * RessyncDuration)
-	if time.Now().Before(safeTimeDeadline) {
-		// Wait for 5 resync periods to ensure that the following situation does not occur:
-		//
-		// The tikv pod starts for a while, but has not synced its status, and then the pod becomes not ready.
-		// Here we wait for 5 resync periods to ensure that the status of this tikv pod has been synced.
-		// After this period of time, if there is still no information about this tikv in TidbCluster status,
-		// then we can be sure that this tikv has never been added to the tidb cluster.
-		// So we can scale in this tikv pod safely.
-		klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] is not Ready and nonStore,still need to be check,failed to delete it", namespace, tcName, namespace, name)
-		return &v1beta1.AdmissionResponse{
-			Allowed: false,
-		}
-	}
 
 	if !isInOrdinal {
 		err = addDeferDeletingToPVC(v1alpha1.TiKVMemberType, pc, tc, setName, namespace, ordinal)
@@ -128,26 +108,10 @@ func (pc *PodAdmissionControl) admitDeleteTombStoneTiKVPod(isInOrdinal bool, pod
 	return util.ARSuccess()
 }
 
-func (pc *PodAdmissionControl) admitDeleteOfflineTiKVPod(isInOrdinal, isUpgrading bool, pod *core.Pod, tc *v1alpha1.TidbCluster) *v1beta1.AdmissionResponse {
-
-	name := pod.Name
-	namespace := pod.Namespace
-	tcName := tc.Name
-
-	if !isInOrdinal {
-		klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] is offline and during scale-in,failed to delete it", namespace, tcName, namespace, name)
-		return &v1beta1.AdmissionResponse{
-			Allowed: false,
-		}
+func (pc *PodAdmissionControl) admitDeleteOfflineTiKVPod() *v1beta1.AdmissionResponse {
+	return &v1beta1.AdmissionResponse{
+		Allowed: false,
 	}
-
-	if isUpgrading {
-		klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] is offline and during upgrading,failed to delete it", namespace, tcName, namespace, name)
-		return &v1beta1.AdmissionResponse{
-			Allowed: true,
-		}
-	}
-	return util.ARSuccess()
 }
 
 func (pc *PodAdmissionControl) admitDeleteDownTiKVPod(isInOrdinal bool, pod *core.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) *v1beta1.AdmissionResponse {
@@ -157,18 +121,17 @@ func (pc *PodAdmissionControl) admitDeleteDownTiKVPod(isInOrdinal bool, pod *cor
 	tcName := tc.Name
 	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
 	if err != nil {
+		klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 		return util.ARFail(err)
 	}
 	setName := ownerStatefulSet.Name
-
 	if !isInOrdinal {
-		err := addDeferDeletingToPVC(v1alpha1.TiKVMemberType, pc, tc, setName, namespace, ordinal)
+		err = addDeferDeletingToPVC(v1alpha1.TiKVMemberType, pc, tc, setName, namespace, ordinal)
 		if err != nil {
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
 		}
 	}
-
 	return util.ARSuccess()
 }
 
@@ -223,15 +186,9 @@ func (pc *PodAdmissionControl) admitDeleteUPTiKVPodDuringUpgrading(ordinal int32
 		return util.ARFail(err)
 	}
 
-	err = checkFormerTiKVPodStatus(pc.podLister, tc, ordinal, *ownerStatefulSet.Spec.Replicas)
-	if err != nil {
-		klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
-		return util.ARFail(err)
-	}
-
 	_, evicting := pod.Annotations[EvictLeaderBeginTime]
 	if !evicting {
-		err := pc.beginEvictLeader(tc, storeId, pod, pdClient)
+		err := beginEvictLeader(pc.kubeCli, tc, storeId, pod, pdClient)
 		if err != nil {
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
@@ -243,47 +200,5 @@ func (pc *PodAdmissionControl) admitDeleteUPTiKVPodDuringUpgrading(ordinal int32
 			Allowed: false,
 		}
 	}
-	err = pc.endEvictLeader(tc, ordinal, store, pdClient)
-	if err != nil {
-		klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
-		return util.ARFail(err)
-	}
-
 	return util.ARSuccess()
-}
-
-func (pc *PodAdmissionControl) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *core.Pod, pdClient pdapi.PDClient) error {
-
-	name := pod.Name
-	namespace := pod.Namespace
-
-	err := pdClient.BeginEvictLeader(storeID)
-	if err != nil {
-		klog.Errorf("tikv upgrader: failed to begin evict leader: %d, %s/%s, %v",
-			storeID, namespace, name, err)
-		return err
-	}
-
-	klog.Infof("tikv upgrader: begin evict leader: %d, %s/%s successfully", storeID, namespace, name)
-	err = addEvictLeaderAnnotation(pc, pod)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (pc *PodAdmissionControl) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32, store v1alpha1.TiKVStore, pdClient pdapi.PDClient) error {
-
-	storeID, err := strconv.ParseUint(store.ID, 10, 64)
-	if err != nil {
-		return err
-	}
-
-	err = pdClient.EndEvictLeader(storeID)
-	if err != nil {
-		klog.Errorf("tikv upgrader: failed to end evict leader storeID: %d ordinal: %d, %v", storeID, ordinal, err)
-		return err
-	}
-	klog.Infof("tikv upgrader: end evict leader storeID: %d ordinal: %d successfully", storeID, ordinal)
-	return nil
 }

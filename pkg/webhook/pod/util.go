@@ -15,7 +15,6 @@ package pod
 
 import (
 	"fmt"
-	"k8s.io/klog"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -121,85 +120,4 @@ func isPDLeader(pdClient pdapi.PDClient, pod *core.Pod) (bool, error) {
 		return false, err
 	}
 	return leader.Name == pod.Name, nil
-}
-
-func checkFormerTiKVPodStatus(podLister corelisters.PodLister, tc *v1alpha1.TidbCluster, ordinal int32, replicas int32) error {
-
-	tcName := tc.Name
-	namespace := tc.Namespace
-
-	for i := replicas - 1; i > ordinal; i-- {
-		podName := memberUtil.TikvPodName(tcName, ordinal)
-		pod, err := podLister.Pods(namespace).Get(podName)
-		if err != nil {
-			return err
-		}
-		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
-		if !exist {
-			return fmt.Errorf("tidbcluster: [%s/%s]'s pd pod: [%s] has no label: %s", namespace, tcName, podName, apps.ControllerRevisionHashLabelKey)
-		}
-
-		if revision != tc.Status.TiKV.StatefulSet.UpdateRevision {
-			return fmt.Errorf("tc[%s/%s]'s tikv pod[%s/%s] is not upgraded yet", namespace, tcName, namespace, podName)
-		}
-
-		store, err := getStoreByOrdinal(podName, tc)
-		if err != nil {
-			return err
-		}
-		if store.State != v1alpha1.TiKVStateUp {
-			return fmt.Errorf("tc[%s/%s]'s tikv pod[%s/%s] state is not up", namespace, tcName, namespace, podName)
-		}
-	}
-	return nil
-}
-
-func getStoreByOrdinal(podName string, tc *v1alpha1.TidbCluster) (*v1alpha1.TiKVStore, error) {
-
-	tcName := tc.Name
-	namespace := tc.Namespace
-
-	for _, store := range tc.Status.TiKV.Stores {
-		if store.PodName == podName {
-			return &store, nil
-		}
-	}
-	return nil, fmt.Errorf("tc[%s/%s]'s tikv pod[%s/%s] failed to find store", namespace, tcName, namespace, podName)
-}
-
-func addEvictLeaderAnnotation(podAC *PodAdmissionControl, pod *core.Pod) error {
-
-	name := pod.Name
-	namespace := pod.Namespace
-
-	if pod.Annotations == nil {
-		pod.Annotations = map[string]string{}
-	}
-	now := time.Now().Format(time.RFC3339)
-	pod.Annotations[EvictLeaderBeginTime] = now
-	_, err := podAC.kubeCli.CoreV1().Pods(namespace).Update(pod)
-	if err != nil {
-		return err
-	}
-	klog.Infof("tikv upgrader: set pod %s/%s annotation %s to %s successfully",
-		namespace, name, EvictLeaderBeginTime, now)
-
-	return nil
-}
-
-func isTiKVReadyToUpgrade(upgradePod *core.Pod, store v1alpha1.TiKVStore) bool {
-	if store.LeaderCount == 0 {
-		return true
-	}
-	if evictLeaderBeginTimeStr, evicting := upgradePod.Annotations[EvictLeaderBeginTime]; evicting {
-		evictLeaderBeginTime, err := time.Parse(time.RFC3339, evictLeaderBeginTimeStr)
-		if err != nil {
-			klog.Errorf("parse annotation:[%s] to time failed.", EvictLeaderBeginTime)
-			return false
-		}
-		if time.Now().After(evictLeaderBeginTime.Add(EvictLeaderTimeout)) {
-			return true
-		}
-	}
-	return false
 }

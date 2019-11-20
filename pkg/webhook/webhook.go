@@ -15,7 +15,6 @@ package webhook
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -40,12 +39,7 @@ type WebhookServer struct {
 	server *http.Server
 }
 
-type WebhookServerConfig struct {
-	// resync Duration
-	ResyncDuration time.Duration
-}
-
-func NewWebHookServer(kubeCli kubernetes.Interface, operatorCli versioned.Interface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, certFile, keyFile string, config *WebhookServerConfig) *WebhookServer {
+func NewWebHookServer(kubeCli kubernetes.Interface, operatorCli versioned.Interface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, certFile, keyFile string) *WebhookServer {
 
 	sCert, err := util.ConfigTLS(certFile, keyFile)
 
@@ -69,8 +63,6 @@ func NewWebHookServer(kubeCli kubernetes.Interface, operatorCli versioned.Interf
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidbcluster"})
 
 	podAdmissionControl = pod.NewPodAdmissionControl(kubeCli, operatorCli, pdControl, informerFactory, kubeInformerFactory, recorder)
-
-	pod.RessyncDuration = config.ResyncDuration
 
 	http.HandleFunc("/statefulsets", ServeStatefulSets)
 	http.HandleFunc("/pods", ServePods)

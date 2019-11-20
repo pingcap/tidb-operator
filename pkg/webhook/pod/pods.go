@@ -15,7 +15,6 @@ package pod
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -26,7 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
-	"k8s.io/api/admission/v1beta1"
+	admission "k8s.io/api/admission/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
@@ -54,10 +53,6 @@ type PodAdmissionControl struct {
 	stsLister appslisters.StatefulSetLister
 }
 
-var (
-	RessyncDuration time.Duration
-)
-
 func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder) *PodAdmissionControl {
 
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
@@ -78,7 +73,7 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 	}
 }
 
-func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
+func (pc *PodAdmissionControl) AdmitPods(ar admission.AdmissionReview) *admission.AdmissionResponse {
 
 	name := ar.Request.Name
 	namespace := ar.Request.Namespace
@@ -86,7 +81,7 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 	klog.Infof("receive admission to %s pod[%s/%s]", operation, namespace, name)
 
 	switch operation {
-	case v1beta1.Delete:
+	case admission.Delete:
 		return pc.admitDeletePods(name, namespace)
 	default:
 		klog.Infof("Admit to %s pod[%s/%s]", operation, namespace, name)
@@ -99,7 +94,7 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 // Otherwise, we check tidbcluster and statefulset which own this pod whether they were existed.
 // If either of them were deleted,we would let this request pass,
 //// otherwise we will check it decided by component type.
-func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admission.AdmissionResponse {
 
 	// We would update pod annotations if they were deleted member by admission controller,
 	// so we shall find this pod from apiServer considering getting latest pod info.

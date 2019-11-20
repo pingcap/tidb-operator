@@ -19,7 +19,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
@@ -38,10 +37,9 @@ import (
 )
 
 var (
-	printVersion   bool
-	certFile       string
-	keyFile        string
-	resyncDuration time.Duration
+	printVersion bool
+	certFile     string
+	keyFile      string
 )
 
 func init() {
@@ -49,7 +47,6 @@ func init() {
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.StringVar(&certFile, "tlsCertFile", "/etc/webhook/certs/cert.pem", "File containing the x509 Certificate for HTTPS.")
 	flag.StringVar(&keyFile, "tlsKeyFile", "/etc/webhook/certs/key.pem", "File containing the x509 private key to --tlsCertFile.")
-	flag.DurationVar(&resyncDuration, "resync-duration", time.Duration(30*time.Second), "Resync time of informer")
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 
 	flag.Parse()
@@ -82,9 +79,6 @@ func main() {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 
-	config := &webhook.WebhookServerConfig{
-		ResyncDuration: resyncDuration,
-	}
 	asCli, err := asclientset.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("failed to get advanced-statefulset Clientset: %v", err)
@@ -99,7 +93,7 @@ func main() {
 	informerFactory := informers.NewSharedInformerFactory(cli, controller.ResyncDuration)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
 
-	webhookServer := webhook.NewWebHookServer(kubeCli, cli, informerFactory, kubeInformerFactory, certFile, keyFile, config)
+	webhookServer := webhook.NewWebHookServer(kubeCli, cli, informerFactory, kubeInformerFactory, certFile, keyFile)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
