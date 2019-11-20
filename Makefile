@@ -17,6 +17,7 @@ GOENV  := GO15VENDOREXPERIMENT="1" GO111MODULE=on CGO_ENABLED=0 GOOS=$(GOOS) GOA
 GO     := $(GOENV) go build -trimpath
 GOTEST := CGO_ENABLED=0 GO111MODULE=on go test -v -cover
 
+IMAGE_TAG ?= latest
 PACKAGE_LIST := go list ./... | grep -vE "pkg/client" | grep -vE "zz_generated"
 PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
 FILES := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go")
@@ -28,8 +29,13 @@ default: build
 docker-push: docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest"
 
+ifeq ($(NO_BUILD),y)
+docker:
+	@echo "NO_BUILD=y, skip build for $@"
+else
 docker: build
-	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest" images/tidb-operator
+endif
+	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}" images/tidb-operator
 
 build: controller-manager scheduler discovery admission-controller
 
@@ -52,7 +58,12 @@ e2e-setup:
 e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest"
 
+ifeq ($(NO_BUILD),y)
+e2e-docker:
+	@echo "NO_BUILD=y, skip build for $@"
+else
 e2e-docker: e2e-build
+endif
 	[ -d tests/images/e2e/tidb-operator ] && rm -r tests/images/e2e/tidb-operator || true
 	[ -d tests/images/e2e/tidb-cluster ] && rm -r tests/images/e2e/tidb-cluster || true
 	[ -d tests/images/e2e/tidb-backup ] && rm -r tests/images/e2e/tidb-backup || true
@@ -61,19 +72,22 @@ e2e-docker: e2e-build
 	cp -r charts/tidb-cluster tests/images/e2e
 	cp -r charts/tidb-backup tests/images/e2e
 	cp -r manifests tests/images/e2e
-	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" tests/images/e2e
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:${IMAGE_TAG}" tests/images/e2e
 
 e2e-build: e2e-setup
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
+
+e2e:
+	./hack/e2e.sh
 
 stability-test-build:
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test tests/cmd/stability/*.go
 
 stability-test-docker: stability-test-build
-	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest" tests/images/stability-test
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:${IMAGE_TAG}" tests/images/stability-test
 
 stability-test-push: stability-test-docker
-	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:${IMAGE_TAG}"
 
 fault-trigger:
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/fault-trigger/bin/fault-trigger tests/cmd/fault-trigger/*.go
@@ -151,4 +165,4 @@ debug-build-docker: debug-build
 debug-build:
 	$(GO) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
 
-.PHONY: check check-setup check-all build e2e-build debug-build cli
+.PHONY: check check-setup check-all build e2e-build debug-build cli e2e

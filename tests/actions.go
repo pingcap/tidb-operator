@@ -445,7 +445,11 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
-	cmd = fmt.Sprintf(`sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/' %s/webhook.yaml | kubectl apply -f -`, oa.manifestPath(info.Tag))
+	cmd = fmt.Sprintf(`
+sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/
+s#image:.*#image: %s#g
+' %s/webhook.yaml | kubectl apply -f -
+`, info.Image, oa.manifestPath(info.Tag))
 	glog.Info(cmd)
 
 	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
