@@ -82,7 +82,7 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	if !inQuorum {
 		return fmt.Errorf("TidbCluster: %s/%s's pd cluster is not health: %d/%d, "+
 			"replicas: %d, failureCount: %d, can't failover",
-			ns, tcName, healthCount, tc.PDRealReplicas(), tc.Spec.PD.Replicas, len(tc.Status.PD.FailureMembers))
+			ns, tcName, healthCount, tc.PDStsDesiredReplicas(), tc.Spec.PD.Replicas, len(tc.Status.PD.FailureMembers))
 	}
 
 	notDeletedCount := 0
