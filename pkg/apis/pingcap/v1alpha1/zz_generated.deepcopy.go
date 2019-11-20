@@ -1162,7 +1162,11 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 	in.PD.DeepCopyInto(&out.PD)
 	in.TiDB.DeepCopyInto(&out.TiDB)
 	in.TiKV.DeepCopyInto(&out.TiKV)
-	in.Pump.DeepCopyInto(&out.Pump)
+	if in.Pump != nil {
+		in, out := &in.Pump, &out.Pump
+		*out = new(PumpSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	in.Helper.DeepCopyInto(&out.Helper)
 	if in.Services != nil {
 		in, out := &in.Services, &out.Services

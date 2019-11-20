@@ -700,6 +700,9 @@ spec:
                       description: Additional annotations of the kubernetes service
                         object
                       type: object
+                    loadBalancerIP:
+                      description: LoadBalancerIP is the loadBalancerIP of service
+                      type: string
                     type:
                       description: Type of the real kubernetes service, e.g. ClusterIP
                       type: string
@@ -766,6 +769,9 @@ spec:
                           description: Additional annotations of the kubernetes service
                             object
                           type: object
+                        loadBalancerIP:
+                          description: LoadBalancerIP is the loadBalancerIP of service
+                          type: string
                         type:
                           description: Type of the real kubernetes service, e.g. ClusterIP
                           type: string
@@ -773,6 +779,9 @@ spec:
                     exposeStatus:
                       description: Whether expose the status port
                       type: boolean
+                    externalTrafficPolicy:
+                      description: ExternalTrafficPolicy of the service
+                      type: string
                   required:
                   - ServiceSpec
                   type: object
@@ -840,6 +849,9 @@ spec:
                       description: Additional annotations of the kubernetes service
                         object
                       type: object
+                    loadBalancerIP:
+                      description: LoadBalancerIP is the loadBalancerIP of service
+                      type: string
                     type:
                       description: Type of the real kubernetes service, e.g. ClusterIP
                       type: string

@@ -102,7 +102,7 @@ type TidbClusterSpec struct {
 	TiKV TiKVSpec `json:"tikv,omitempty"`
 
 	// Pump cluster spec
-	Pump PumpSpec `json:"pump,omitempty"`
+	Pump *PumpSpec `json:"pump,omitempty"`
 
 	// Helper spec
 	Helper HelperSpec `json:"helper,omitempty"`
@@ -303,7 +303,7 @@ type ComponentSpec struct {
 	// Annotations of the component. Merged into the cluster-level annotations if non-empty
 	Annotations map[string]string `json:"annotations,omitempty"`
 
-	// Tolerations of the component. Merged into the cluster-level tolerations if non-empty
+	// Tolerations of the component. Override the cluster-level tolerations if non-empty
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
 	// PodSecurityContext of the component
@@ -318,11 +318,17 @@ type ServiceSpec struct {
 
 	// Additional annotations of the kubernetes service object
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// LoadBalancerIP is the loadBalancerIP of service
+	LoadBalancerIP string `json:"loadBalancerIP,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 type TiDBServiceSpec struct {
 	ServiceSpec
+
+	// ExternalTrafficPolicy of the service
+	ExternalTrafficPolicy corev1.ServiceExternalTrafficPolicyType `json:"externalTrafficPolicy,omitempty"`
 
 	// Whether expose the status port
 	ExposeStatus bool `json:"exposeStatus,omitempty"`

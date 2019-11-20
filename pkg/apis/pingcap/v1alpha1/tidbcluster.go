@@ -128,31 +128,42 @@ func (a *componentAccessorImpl) Annotations() map[string]string {
 }
 
 func (a *componentAccessorImpl) Tolerations() []corev1.Toleration {
-	tols := a.ClusterSpec.Tolerations
-	tols = append(tols, a.ComponentSpec.Tolerations...)
+	tols := a.ComponentSpec.Tolerations
+	if len(tols) == 0 {
+		tols = a.ClusterSpec.Tolerations
+	}
 	return tols
 }
 
+// BaseTiDBSpec returns the base spec of TiDB servers
 func (tc *TidbCluster) BaseTiDBSpec() ComponentAccessor {
 	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiDB.ComponentSpec}
 }
 
+// BaseTiKVSpec returns the base spec of TiKV servers
 func (tc *TidbCluster) BaseTiKVSpec() ComponentAccessor {
 	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiKV.ComponentSpec}
 }
 
+// BasePDSpec returns the base spec of PD servers
 func (tc *TidbCluster) BasePDSpec() ComponentAccessor {
 	return &componentAccessorImpl{&tc.Spec, &tc.Spec.PD.ComponentSpec}
 }
 
-func (tc *TidbCluster) BasePumpSpec() ComponentAccessor {
-	return &componentAccessorImpl{&tc.Spec, &tc.Spec.Pump.ComponentSpec}
+// BasePumpSpec returns two results:
+// 1. the base pump spec, if exists.
+// 2. whether the base pump spec exists.
+func (tc *TidbCluster) BasePumpSpec() (ComponentAccessor, bool) {
+	if tc.Spec.Pump == nil {
+		return nil, false
+	}
+	return &componentAccessorImpl{&tc.Spec, &tc.Spec.Pump.ComponentSpec}, true
 }
 
 func (tc *TidbCluster) HelperImage() string {
 	image := tc.Spec.Helper.Image
 	if image == "" {
-		// for backward compatiability
+		// for backward compatibility
 		image = tc.Spec.TiDB.SlowLogTailer.Image
 	}
 	if image == "" {
@@ -164,7 +175,7 @@ func (tc *TidbCluster) HelperImage() string {
 func (tc *TidbCluster) HelperImagePullPolicy() corev1.PullPolicy {
 	pp := tc.Spec.Helper.ImagePullPolicy
 	if pp == nil {
-		// for backward compatiability
+		// for backward compatibility
 		pp = tc.Spec.TiDB.SlowLogTailer.ImagePullPolicy
 	}
 	if pp == nil {

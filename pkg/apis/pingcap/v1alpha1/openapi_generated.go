@@ -692,7 +692,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 					},
 					"tolerations": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Tolerations of the component. Merged into the cluster-level tolerations if non-empty",
+							Description: "Tolerations of the component. Override the cluster-level tolerations if non-empty",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -1168,6 +1168,13 @@ func schema_pkg_apis_pingcap_v1alpha1_ServiceSpec(ref common.ReferenceCallback) 
 							},
 						},
 					},
+					"loadBalancerIP": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LoadBalancerIP is the loadBalancerIP of service",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -1208,6 +1215,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBServiceSpec(ref common.ReferenceCallba
 					"ServiceSpec": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec"),
+						},
+					},
+					"externalTrafficPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ExternalTrafficPolicy of the service",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"exposeStatus": {
