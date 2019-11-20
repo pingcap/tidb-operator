@@ -64,8 +64,7 @@ pd:
       storage: 1Gi
   # nodeSelector is used for scheduling pod,
   # if nodeSelectorRequired is true, all the following labels must be matched
-  nodeSelector:
-    {}
+  nodeSelector: {}
     # kind: pd
     # # zone is comma separated availability zone list
     # zone: cn-bj1-01,cn-bj1-02
@@ -103,8 +102,7 @@ tikv:
       # cpu: 12000m
       # memory: 24Gi
       storage: 10Gi
-  nodeSelector:
-    {}
+  nodeSelector: {}
     # kind: tikv
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
@@ -146,8 +144,7 @@ tidb:
     requests: {}
     #   cpu: 12000m
     #   memory: 12Gi
-  nodeSelector:
-    {}
+  nodeSelector: {}
     # kind: tidb
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
@@ -162,7 +159,7 @@ tidb:
     type: NodePort
     exposeStatus: true
     # annotations:
-    # cloud.google.com/load-balancer-type: Internal
+      # cloud.google.com/load-balancer-type: Internal
 
 # mysqlClient is used to set password for TiDB
 # it must has Python MySQL client installed
@@ -213,8 +210,7 @@ monitor:
       type: NodePort
     reserveDays: 12
     # alertmanagerURL: ""
-  nodeSelector:
-    {}
+  nodeSelector: {}
     # kind: monitor
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
@@ -252,16 +248,14 @@ fullbackup:
   user: backup
   password: "Password here ..."
   # backup to gcp
-  gcp:
-    {}
+  gcp: {}
     # base64 format of the service account json file data
     # https://cloud.google.com/docs/authentication/production#obtaining_and_providing_service_account_credentials_manually
     # and then: cat credentials.json | base64 | tr -d '\n'
     # credentialsData: ""
     # bucket: ""
   # backup to ceph object storage
-  ceph:
-    {}
+  ceph: {}
     # endpoint: ""
     # bucket: ""
 
@@ -314,8 +308,7 @@ binlog:
     # downstream storage, equal to --dest-db-type
     # valid values are "mysql", "pb", "kafka"
     destDBType: pb
-    mysql:
-      {}
+    mysql: {}
       # host: "127.0.0.1"
       # user: "root"
       # password: ""
@@ -323,8 +316,7 @@ binlog:
       # # Time and size limits for flash batch write
       # timeLimit: "30s"
       # sizeLimit: "100000"
-    kafka:
-      {}
+    kafka: {}
       # only need config one of zookeeper-addrs and kafka-addrs, will get kafka address if zookeeper-addrs is configed.
       # zookeeperAddrs: "127.0.0.1:2181"
       # kafkaAddrs: "127.0.0.1:9092"
