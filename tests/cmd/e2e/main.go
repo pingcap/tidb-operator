@@ -115,16 +115,6 @@ func main() {
 			UpdateTiDBTokenLimit(cfg.TiDBTokenLimit)
 		oa.UpgradeTidbClusterOrDie(cluster1)
 		oa.CheckTidbClusterStatusOrDie(cluster1)
-
-		// switch to host network
-		cluster1.RunInHost(true)
-		oa.UpgradeTidbClusterOrDie(cluster1)
-		oa.CheckTidbClusterStatusOrDie(cluster1)
-
-		// switch to pod network
-		cluster1.RunInHost(false)
-		oa.UpgradeTidbClusterOrDie(cluster1)
-		oa.CheckTidbClusterStatusOrDie(cluster1)
 	}
 	fn2 := func(wg *sync.WaitGroup) {
 		defer wg.Done()
