@@ -85,7 +85,7 @@ func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster) map[string]bo
 		return result
 	}
 
-	for i := 0; i < int(tc.TiDBRealReplicas()); i++ {
+	for i := 0; i < int(tc.TiDBActualReplicas()); i++ {
 		hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), i)
 		url := fmt.Sprintf("%s://%s.%s.%s:10080/status", scheme, hostName, TiDBPeerMemberName(tcName), ns)
 		_, err := tdc.getBodyOK(url)

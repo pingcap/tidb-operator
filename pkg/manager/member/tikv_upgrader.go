@@ -87,7 +87,7 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-	for i := tc.Status.TiKV.StatefulSet.Replicas - 1; i >= 0; i-- {
+	for i := tc.TiKVActualReplicas() - 1; i >= 0; i-- {
 		store := tku.getStoreByOrdinal(tc, i)
 		if store == nil {
 			continue

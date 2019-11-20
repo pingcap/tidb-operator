@@ -30,11 +30,11 @@ func (tc *TidbCluster) TiDBUpgrading() bool {
 }
 
 func (tc *TidbCluster) PDAllPodsStarted() bool {
-	return tc.PDRealReplicas() == tc.Status.PD.StatefulSet.Replicas
+	return tc.PDDesiredReplicas() == tc.PDActualReplicas()
 }
 
 func (tc *TidbCluster) PDAllMembersReady() bool {
-	if int(tc.PDRealReplicas()) != len(tc.Status.PD.Members) {
+	if int(tc.PDDesiredReplicas()) != len(tc.Status.PD.Members) {
 		return false
 	}
 
@@ -59,16 +59,24 @@ func (tc *TidbCluster) PDAutoFailovering() bool {
 	return false
 }
 
-func (tc *TidbCluster) PDRealReplicas() int32 {
+func (tc *TidbCluster) PDDesiredReplicas() int32 {
 	return tc.Spec.PD.Replicas + int32(len(tc.Status.PD.FailureMembers))
 }
 
+func (tc *TidbCluster) PDActualReplicas() int32 {
+	stsStatus := tc.Status.PD.StatefulSet
+	if stsStatus == nil {
+		return 0
+	}
+	return stsStatus.Replicas
+}
+
 func (tc *TidbCluster) TiKVAllPodsStarted() bool {
-	return tc.TiKVRealReplicas() == tc.Status.TiKV.StatefulSet.Replicas
+	return tc.TiKVDesirdReplicas() == tc.TiKVActualReplicas()
 }
 
 func (tc *TidbCluster) TiKVAllStoresReady() bool {
-	if int(tc.TiKVRealReplicas()) != len(tc.Status.TiKV.Stores) {
+	if int(tc.TiKVDesirdReplicas()) != len(tc.Status.TiKV.Stores) {
 		return false
 	}
 
@@ -81,16 +89,24 @@ func (tc *TidbCluster) TiKVAllStoresReady() bool {
 	return true
 }
 
-func (tc *TidbCluster) TiKVRealReplicas() int32 {
+func (tc *TidbCluster) TiKVDesirdReplicas() int32 {
 	return tc.Spec.TiKV.Replicas + int32(len(tc.Status.TiKV.FailureStores))
 }
 
+func (tc *TidbCluster) TiKVActualReplicas() int32 {
+	stsStatus := tc.Status.TiKV.StatefulSet
+	if stsStatus == nil {
+		return 0
+	}
+	return stsStatus.Replicas
+}
+
 func (tc *TidbCluster) TiDBAllPodsStarted() bool {
-	return tc.TiDBRealReplicas() == tc.Status.TiDB.StatefulSet.Replicas
+	return tc.TiDBDesiredReplicas() == tc.TiDBActualReplicas()
 }
 
 func (tc *TidbCluster) TiDBAllMembersReady() bool {
-	if int(tc.TiDBRealReplicas()) != len(tc.Status.TiDB.Members) {
+	if int(tc.TiDBDesiredReplicas()) != len(tc.Status.TiDB.Members) {
 		return false
 	}
 
@@ -103,8 +119,16 @@ func (tc *TidbCluster) TiDBAllMembersReady() bool {
 	return true
 }
 
-func (tc *TidbCluster) TiDBRealReplicas() int32 {
+func (tc *TidbCluster) TiDBDesiredReplicas() int32 {
 	return tc.Spec.TiDB.Replicas + int32(len(tc.Status.TiDB.FailureMembers))
+}
+
+func (tc *TidbCluster) TiDBActualReplicas() int32 {
+	stsStatus := tc.Status.TiDB.StatefulSet
+	if stsStatus == nil {
+		return 0
+	}
+	return stsStatus.Replicas
 }
 
 func (tc *TidbCluster) PDIsAvailable() bool {
