@@ -268,7 +268,7 @@ func (tkmm *tikvMemberManager) syncTiKVServerCerts(tc *v1alpha1.TidbCluster) err
 		Suffix:     "tikv",
 	}
 
-	return tkmm.certControl.Create(certOpts)
+	return tkmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
