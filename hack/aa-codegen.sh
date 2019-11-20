@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2019 PingCAP, Inc.
 #
@@ -26,4 +26,3 @@ ${scriptdir}/generate-internal-groups.sh \
   github.com/pingcap/tidb-operator/pkg/apiserver/apis \
   "tidb.pingcap.com:v1alpha1" \
   --go-header-file=${scriptdir}/boilerplate.go.txt
-
