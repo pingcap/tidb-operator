@@ -24,7 +24,7 @@ provider "helm" {
 #
 #  # NOTE: cluster_name cannot be changed after creation
 #  cluster_name                  = "demo-cluster"
-#  cluster_version               = "v3.0.1"
+#  cluster_version               = "v3.0.5"
 #  ssh_key_name                  = module.key-pair.key_name
 #  pd_count                      = 1
 #  pd_instance_type              = "t2.xlarge"

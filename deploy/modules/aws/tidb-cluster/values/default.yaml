@@ -15,6 +15,17 @@ tidb:
       service.beta.kubernetes.io/aws-load-balancer-type: nlb
       service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: 'true'
   separateSlowLog: true
+  config: |
+    [log]
+    level = "info"
+    [performance]
+    tcp-keep-alive = true
+  podSecurityContext:
+    sysctls:
+    - name: net.ipv4.tcp_keepalive_time
+      value: "300"
+    - name: net.ipv4.tcp_keepalive_intvl
+      value: "75"
 monitor:
   storage: 100Gi
   storageClassName: ebs-gp2

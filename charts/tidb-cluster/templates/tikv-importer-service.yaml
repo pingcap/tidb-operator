@@ -1,0 +1,21 @@
+{{- if .Values.importer.create }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "cluster.name" . }}-importer
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: importer
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  clusterIP: None
+  ports:
+  - name: importer
+    port: 8287
+  selector:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: importer
+{{- end }}
