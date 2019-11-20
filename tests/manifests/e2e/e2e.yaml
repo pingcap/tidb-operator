@@ -42,7 +42,7 @@ spec:
   serviceAccount: tidb-operator-e2e
   containers:
   - name: tidb-operator-e2e
-    image: 127.0.0.1:5000/pingcap/tidb-operator-e2e:latest
+    image: localhost:5000/pingcap/tidb-operator-e2e:latest
     imagePullPolicy: Always
     command:
     - /usr/local/bin/e2e

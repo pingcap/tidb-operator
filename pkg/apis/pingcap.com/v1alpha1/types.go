@@ -90,9 +90,9 @@ type TidbClusterSpec struct {
 	TiKV            TiKVSpec            `json:"tikv,omitempty"`
 	TiKVPromGateway TiKVPromGatewaySpec `json:"tikvPromGateway,omitempty"`
 	// Services list non-headless services type used in TidbCluster
-	Services         []Service                            `json:"services,omitempty"`
-	PVReclaimPolicy  corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
-	Timezone         string                               `json:"timezone,omitempty"`
+	Services        []Service                            `json:"services,omitempty"`
+	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
+	Timezone        string                               `json:"timezone,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
