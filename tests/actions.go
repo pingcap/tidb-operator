@@ -191,6 +191,8 @@ type OperatorActions interface {
 	CheckManualPauseTiDBOrDie(info *TidbClusterConfig)
 	CheckUpgradeComplete(info *TidbClusterConfig) error
 	CheckUpgradeCompleteOrDie(info *TidbClusterConfig)
+	CheckInitSQL(info *TidbClusterConfig) error
+	CheckInitSQLOrDie(info *TidbClusterConfig)
 }
 
 type operatorActions struct {
@@ -2875,6 +2877,29 @@ func (oa *operatorActions) CheckUpgradeComplete(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) CheckUpgradeCompleteOrDie(info *TidbClusterConfig) {
 	if err := oa.CheckUpgradeComplete(info); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+func (oa *operatorActions) CheckInitSQL(info *TidbClusterConfig) error {
+	ns, tcName := info.Namespace, info.ClusterName
+	if err := wait.PollImmediate(10*time.Second, DefaultPollTimeout, func() (done bool, err error) {
+		infoDb, err := sql.Open("mysql", getDSN(ns, tcName, "e2e", info.Password))
+		if err != nil {
+			return false, nil
+		}
+		infoDb.Close()
+
+		return true, nil
+	}); err != nil {
+		glog.Errorf("failed to check init sql complete [%s/%s], %v", ns, tcName, err)
+		return err
+	}
+	return nil
+}
+
+func (oa *operatorActions) CheckInitSQLOrDie(info *TidbClusterConfig) {
+	if err := oa.CheckInitSQL(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
