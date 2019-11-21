@@ -49,7 +49,7 @@ spec:
     - --operator-tag=e2e
     - --operator-image=localhost:5000/pingcap/tidb-operator:latest
     - --test-apiserver-image=localhost:5000/pingcap/test-apiserver:latest
-    - --tidb-versions=v3.0.2,v3.0.3,v3.0.4
+    - --tidb-versions=v3.0.2,v3.0.3,v3.0.4,v3.0.5
     - --chart-dir=/charts
     - -v=4
     volumeMounts:

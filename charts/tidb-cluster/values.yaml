@@ -74,7 +74,7 @@ pd:
     location-labels = ["region", "zone", "rack", "host"]
 
   replicas: 3
-  image: pingcap/pd:v3.0.4
+  image: pingcap/pd:v3.0.5
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -221,7 +221,7 @@ tikv:
   # we can only set capacity in tikv.resources.limits.storage.
 
   replicas: 3
-  image: pingcap/tikv:v3.0.4
+  image: pingcap/tikv:v3.0.5
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -311,7 +311,7 @@ tidb:
   # initSqlConfigMapName: tidb-initsql
   # initSql: |-
   #   create database app;
-  image: pingcap/tidb:v3.0.4
+  image: pingcap/tidb:v3.0.5
   # Image pull policy.
   imagePullPolicy: IfNotPresent
 
@@ -322,7 +322,6 @@ tidb:
     requests: {}
     #   cpu: 12000m
     #   memory: 12Gi
-
 
   ## affinity defines tikv scheduling rules,affinity default settings is empty.
   ## please read the affinity document before set your scheduling rule:
@@ -354,14 +353,12 @@ tidb:
     # # when the kubelet is configured to allow unsafe sysctls
     # - name: net.core.somaxconn
     #   value: "32768"
-
     # # Load balancers usually have an idle timeout (eg. AWS NLB idle timeout is 350),
     # # the tcp_keepalive_time must be set to lower than LB idle timeout.
     # - name: net.ipv4.tcp_keepalive_time
     #   value: "300"
     # - name: net.ipv4.tcp_keepalive_intvl
     #   value: "75"
-
 
   # Specify the priorityClassName for TiDB Pod.
   # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
@@ -424,7 +421,7 @@ monitor:
   storageClassName: local-storage
   storage: 10Gi
   initializer:
-    image: pingcap/tidb-monitor-initializer:v3.0.4
+    image: pingcap/tidb-monitor-initializer:v3.0.5
     imagePullPolicy: IfNotPresent
     config:
       K8S_PROMETHEUS_URL: http://prometheus-k8s.monitoring.svc:9090
@@ -502,7 +499,7 @@ binlog:
   pump:
     create: false
     replicas: 1
-    image: pingcap/tidb-binlog:v3.0.4
+    image: pingcap/tidb-binlog:v3.0.5
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -544,7 +541,7 @@ binlog:
 
   drainer:
     create: false
-    image: pingcap/tidb-binlog:v3.0.4
+    image: pingcap/tidb-binlog:v3.0.5
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -698,7 +695,7 @@ scheduledBackup:
 
 importer:
   create: false
-  image: pingcap/tidb-lightning:v3.0.4
+  image: pingcap/tidb-lightning:v3.0.5
   imagePullPolicy: IfNotPresent
   storageClassName: local-storage
   storage: 200Gi
