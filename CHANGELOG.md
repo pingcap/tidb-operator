@@ -8,7 +8,7 @@ There is no action required if you are upgrading from [v1.0.3](#tidb-operator-v1
 
 ### Highlights
 
-[#1202](https://github.com/pingcap/tidb-operator/pull/1202) introduced `HostNetwork` support, which offers better performance comparing to the Pod network. Check out our [benchmark report](https://pingcap.com/docs/dev/benchmark/sysbench-in-k8s/#pod-network-vs-host-network) for details.
+[#1202](https://github.com/pingcap/tidb-operator/pull/1202) introduced `HostNetwork` support, which offers better performance compared to the Pod network. Check out our [benchmark report](https://pingcap.com/docs/dev/benchmark/sysbench-in-k8s/#pod-network-vs-host-network) for details.
 
 > **Note:**
 >
