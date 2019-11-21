@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is used to checkout a tidb-operator PR branch in a forked repo.
 if [[ -z ${1:-} ]]; then

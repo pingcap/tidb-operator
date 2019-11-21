@@ -1185,7 +1185,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 	}
 	pdClient := pdapi.NewDefaultPDControl(oa.kubeCli).GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSCluster)
 
-	replicas := tc.TiKVRealReplicas()
+	replicas := tc.TiKVStsDesiredReplicas()
 	for i := replicas - 1; i >= 0; i-- {
 		err := wait.PollImmediate(1*time.Second, 10*time.Minute, func() (done bool, err error) {
 			podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
