@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Pin all k8s.io dependencies to a specified version.
 #
