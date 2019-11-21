@@ -50,6 +50,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		ns = f.Namespace.Name
 		c = f.ClientSet
 		config, err := framework.LoadConfig()
+		framework.ExpectNoError(err, "failed to load config")
 		cli, err := versioned.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
 		asCli, err := asclientset.NewForConfig(config)

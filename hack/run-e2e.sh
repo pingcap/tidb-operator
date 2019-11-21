@@ -10,7 +10,6 @@ cd $ROOT
 source $ROOT/hack/lib.sh
 
 hack::ensure_kubectl
-hack::ensure_helm
 
 TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:latest}
 E2E_IMAGE=${E2E_IMAGE:-localhost:5000/pingcap/tidb-operator-e2e:latest}
@@ -48,11 +47,13 @@ NS=tidb-operator-e2e
 
 # TODO move these clean logic into e2e code
 echo "info: clear helm releases"
-$HELM_BIN ls --all --short | xargs -n 1 -r $HELM_BIN delete --purge
+$KUBECTL_BIN -n kube-system delete cm -l OWNER=TILLER
 
-echo "info: clear resources"
 # clear all validatingwebhookconfigurations first otherwise it may deny pods deletion requests
+echo "info: clear validatingwebhookconfiguration"
 $KUBECTL_BIN delete validatingwebhookconfiguration --all
+
+echo "info: clear namespace ${NS}"
 $KUBECTL_BIN delete ns ${NS} --ignore-not-found
 $KUBECTL_BIN wait --for=delete -n ${NS} pod/tidb-operator-e2e || true
 $KUBECTL_BIN delete clusterrolebinding tidb-operator-e2e --ignore-not-found
@@ -80,20 +81,20 @@ $KUBECTL_BIN -n ${NS} apply -f tests/manifests/e2e/e2e.yaml
 echo "info: start to run e2e pod"
 e2e_args=(
     /usr/local/bin/ginkgo
-	${ginkgo_args[@]:-}
+    ${ginkgo_args[@]:-}
     /usr/local/bin/e2e.test
-	--
-	--provider=skeleton 
+    --
+    --provider=skeleton 
     --delete-namespace-on-failure=false
     # tidb-operator e2e flags
-	# TODO make these configurable via environments
-	--operator-tag=e2e
-	--operator-image=${TIDB_OPERATOR_IMAGE}
-	--test-apiserver-image=${TEST_APISERVER_IMAGE}
-	--tidb-versions=v3.0.2,v3.0.3,v3.0.4,v3.0.5
-	--chart-dir=/charts
-	-v=4
-	${@:-}
+    # TODO make these configurable via environments
+    --operator-tag=e2e
+    --operator-image=${TIDB_OPERATOR_IMAGE}
+    --test-apiserver-image=${TEST_APISERVER_IMAGE}
+    --tidb-versions=v3.0.2,v3.0.3,v3.0.4,v3.0.5
+    --chart-dir=/charts
+    -v=4
+    ${@:-}
 )
 # We don't attach into the container because the connection may lost.
 # Instead we print logs and check the result repeatedly after the pod is Ready.
@@ -108,9 +109,9 @@ echo "info: wait for e2e pod to be ready"
 ret=0
 $KUBECTL_BIN -n ${NS} wait --for=condition=Ready pod/tidb-operator-e2e || ret=$?
 if [ $ret -ne 0 ]; then
-	echo "error: failed to wait for the e2e pod to be ready, printing its logs"
+    echo "error: failed to wait for the e2e pod to be ready, printing its logs"
     $KUBECTL_BIN -n ${NS} logs tidb-operator-e2e
-	exit 1
+    exit 1
 fi
 
 echo "info: start to print e2e logs and check the result"

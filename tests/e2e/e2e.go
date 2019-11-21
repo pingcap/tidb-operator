@@ -136,6 +136,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	framework.Logf("%s", e2econfig.TestConfig.MustPrettyPrintJSON())
 	// Get clients
 	config, err := framework.LoadConfig()
+	framework.ExpectNoError(err, "failed to load config")
 	cli, err := versioned.NewForConfig(config)
 	framework.ExpectNoError(err, "failed to create clientset")
 	kubeCli, err := kubernetes.NewForConfig(config)
