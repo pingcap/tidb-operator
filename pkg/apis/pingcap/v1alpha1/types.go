@@ -204,7 +204,6 @@ type TiDBSpec struct {
 	Resources
 	Replicas         int32            `json:"replicas"`
 	Service          *TiDBServiceSpec `json:"service,omitempty"`
-	StorageClassName string           `json:"storageClassName,omitempty"`
 	BinlogEnabled    bool             `json:"binlogEnabled,omitempty"`
 	MaxFailoverCount int32            `json:"maxFailoverCount,omitempty"`
 	SeparateSlowLog  bool             `json:"separateSlowLog,omitempty"`
@@ -295,7 +294,7 @@ type ComponentSpec struct {
 	// PriorityClassName of the component. Override the cluster-level one if present
 	PriorityClassName string `json:"priorityClassName,omitempty"`
 
-	// SchedulerName of the component. Override the cluster-level one s present
+	// SchedulerName of the component. Override the cluster-level one if present
 	SchedulerName string `json:"schedulerName,omitempty"`
 
 	// NodeSelector of the component. Merged into the cluster-level nodeSelector if non-empty

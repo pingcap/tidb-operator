@@ -655,7 +655,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 					},
 					"schedulerName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "SchedulerName of the component. Override the cluster-level one s present",
+							Description: "SchedulerName of the component. Override the cluster-level one if present",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -1283,12 +1283,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 					"service": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBServiceSpec"),
-						},
-					},
-					"storageClassName": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
 						},
 					},
 					"binlogEnabled": {

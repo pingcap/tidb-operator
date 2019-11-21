@@ -788,8 +788,6 @@ spec:
                   required:
                   - ServiceSpec
                   type: object
-                storageClassName:
-                  type: string
               required:
               - replicas
               type: object
