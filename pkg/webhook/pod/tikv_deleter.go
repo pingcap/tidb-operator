@@ -164,7 +164,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(isInOrdinal, isUpgrading boo
 	}
 
 	if isUpgrading {
-		err = checkFormerTiKVPodStatus(pc.podLister, tc, ordinal, *ownerStatefulSet.Spec.Replicas)
+		err = checkFormerTiKVPodStatus(pc.podLister, tc, ordinal, *ownerStatefulSet.Spec.Replicas, pdClient)
 		if err != nil {
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
@@ -188,10 +188,13 @@ func (pc *PodAdmissionControl) admitDeleteUPTiKVPodDuringUpgrading(ordinal int32
 
 	_, evicting := pod.Annotations[EvictLeaderBeginTime]
 	if !evicting {
-		err := beginEvictLeader(pc.kubeCli, tc, storeId, pod, pdClient)
+		err := beginEvictLeader(pc.kubeCli, storeId, pod, pdClient)
 		if err != nil {
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
+		}
+		return &v1beta1.AdmissionResponse{
+			Allowed: false,
 		}
 	}
 

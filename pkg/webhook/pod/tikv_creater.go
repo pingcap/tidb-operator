@@ -1,0 +1,64 @@
+package pod
+
+import (
+	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/webhook/util"
+	admission "k8s.io/api/admission/v1beta1"
+	core "k8s.io/api/core/v1"
+	"k8s.io/klog"
+	"strings"
+)
+
+func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) *admission.AdmissionResponse {
+
+	name := pod.Name
+	namespace := pod.Namespace
+	tcName := tc.Name
+
+	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+	if err != nil {
+		return util.ARFail(err)
+	}
+
+	if tc.Status.TiKV.StatefulSet.CurrentReplicas < 1 && ordinal == 0 {
+		klog.Infof("tc[%s/%s]'s tikv initialize,admit to create pod[%s/%s]", namespace, tcName, namespace, name)
+		return util.ARSuccess()
+	}
+
+	stores, err := pdClient.GetStores()
+	if err != nil {
+		klog.Infof("failed to create pod[%s/%s],%v", namespace, name, err)
+		return util.ARFail(err)
+	}
+	evictLeaderSchedulers, err := pdClient.GetEvictLeaderSchedulers()
+	if err != nil {
+		klog.Infof("failed to create pod[%s/%s],%v", namespace, name, err)
+		return util.ARFail(err)
+	}
+
+	// if the pod which is going to be created already have a store and was in evictLeaderSchedulers,
+	// we should end this evict leader
+	for _, store := range stores.Stores {
+		ip := strings.Split(store.Store.GetAddress(), ":")[0]
+		podName := strings.Split(ip, ".")[0]
+		if podName == name {
+			for _, s := range evictLeaderSchedulers {
+				id := strings.Split(s, "-")[3]
+				if id == fmt.Sprintf("%d", store.Store.Id) {
+					err := endEvictLeader(store, pdClient)
+					if err != nil {
+						klog.Infof("failed to create pod[%s/%s],%v", namespace, name, err)
+						return util.ARFail(err)
+					}
+					break
+				}
+			}
+			break
+		}
+	}
+
+	return util.ARSuccess()
+}

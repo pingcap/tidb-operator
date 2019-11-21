@@ -14,7 +14,9 @@
 package pod
 
 import (
+	"encoding/json"
 	"fmt"
+	core "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -78,11 +80,12 @@ func (pc *PodAdmissionControl) AdmitPods(ar admission.AdmissionReview) *admissio
 	name := ar.Request.Name
 	namespace := ar.Request.Namespace
 	operation := ar.Request.Operation
-	klog.Infof("receive admission to %s pod[%s/%s]", operation, namespace, name)
 
 	switch operation {
 	case admission.Delete:
 		return pc.admitDeletePods(name, namespace)
+	case admission.Create:
+		return pc.AdmitCreatePods(ar)
 	default:
 		klog.Infof("Admit to %s pod[%s/%s]", operation, namespace, name)
 		return util.ARSuccess()
@@ -93,8 +96,10 @@ func (pc *PodAdmissionControl) AdmitPods(ar admission.AdmissionReview) *admissio
 // if this pod wasn't member of tidbcluster, just let the request pass.
 // Otherwise, we check tidbcluster and statefulset which own this pod whether they were existed.
 // If either of them were deleted,we would let this request pass,
-//// otherwise we will check it decided by component type.
+// otherwise we will check it decided by component type.
 func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admission.AdmissionResponse {
+
+	klog.Infof("receive admission to %s pod[%s/%s]", "delete", namespace, name)
 
 	// We would update pod annotations if they were deleted member by admission controller,
 	// so we shall find this pod from apiServer considering getting latest pod info.
@@ -180,5 +185,46 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 	}
 
 	klog.Infof("[%s/%s] is admit to be deleted", namespace, name)
+	return util.ARSuccess()
+}
+
+// Webhook server receive request to create pod
+// if this pod wasn't member of tidbcluster, just let the request pass.
+// Currently we only check with tikv pod
+func (pc *PodAdmissionControl) AdmitCreatePods(ar admission.AdmissionReview) *admission.AdmissionResponse {
+	var pod core.Pod
+	if err := json.Unmarshal(ar.Request.Object.Raw, &pod); err != nil {
+		klog.Errorf("Could not unmarshal raw object: %v", err)
+		return util.ARFail(err)
+	}
+
+	name := pod.Name
+	namespace := pod.Namespace
+
+	klog.Infof("receive admission to %s pod[%s/%s]", "create", namespace, name)
+
+	l := label.Label(pod.Labels)
+	if !(l.IsPD() || l.IsTiKV() || l.IsTiDB()) {
+		klog.Infof("pod[%s/%s] is not TiDB component,admit to delete", namespace, name)
+		return util.ARSuccess()
+	}
+
+	tcName, exist := pod.Labels[label.InstanceLabelKey]
+	if !exist {
+		klog.Errorf("pod[%s/%s] has no label: %s", namespace, name, label.InstanceLabelKey)
+		return util.ARFail(fmt.Errorf("pod[%s/%s] has no label: %s", namespace, name, label.InstanceLabelKey))
+	}
+
+	tc, err := pc.tcLister.TidbClusters(namespace).Get(tcName)
+	if err != nil {
+		klog.Errorf("failed get tc[%s/%s],refuse to delete pod[%s/%s]", namespace, tcName, namespace, name)
+		return util.ARFail(err)
+	}
+
+	if l.IsTiKV() {
+		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster)
+		return pc.admitCreateTiKVPod(&pod, tc, pdClient)
+	}
+
 	return util.ARSuccess()
 }
