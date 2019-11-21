@@ -27,38 +27,21 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 				def WORKSPACE = pwd()
 				dir("${PROJECT_DIR}"){
 					stage('build tidb-operator binary'){
-						if( BUILD_BRANCH ==~ /[a-z0-9]{40}/ ){
-							// checkout pull request
-							checkout changelog: false,
-							poll: false,
-							scm: [
-								$class: 'GitSCM',
-								branches: [[name: "${BUILD_BRANCH}"]],
-								doGenerateSubmoduleConfigurations: false,
-								extensions: [],
-								submoduleCfg: [],
-								userRemoteConfigs: [[
-									credentialsId: "${CREDENTIALS_ID}",
-									refspec: '+refs/pull/*:refs/remotes/origin/pr/*',
-									url: "${BUILD_URL}",
-								]]
-							]
-						} else {
-							// checkout branch, such as: master、release-1.0、release-1.1
-							checkout changelog: false,
-							poll: false,
-							scm: [
-								$class: 'GitSCM',
-								branches: [[name: "${BUILD_BRANCH}"]],
-								doGenerateSubmoduleConfigurations: false,
-								extensions: [],
-								submoduleCfg: [],
-								userRemoteConfigs: [[
-									credentialsId: "${CREDENTIALS_ID}",
-									url: "${BUILD_URL}",
-								]]
-							]
-						}
+						checkout changelog: false,
+						poll: false,
+						scm: [
+							$class: 'GitSCM',
+							branches: [[name: "${BUILD_BRANCH}"]],
+							doGenerateSubmoduleConfigurations: false,
+							extensions: [],
+							submoduleCfg: [],
+							userRemoteConfigs: [[
+								credentialsId: "${CREDENTIALS_ID}",
+								refspec: '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/heads/*',
+								url: "${BUILD_URL}",
+							]]
+						]
+
 						GITHASH = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
 						withCredentials([string(credentialsId: "${CODECOV_CREDENTIALS_ID}", variable: 'codecovToken')]) {
 							sh """
