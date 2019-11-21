@@ -10,6 +10,7 @@ cd $ROOT
 source $ROOT/hack/lib.sh
 
 hack::ensure_kubectl
+hack::ensure_helm
 
 TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:latest}
 E2E_IMAGE=${E2E_IMAGE:-localhost:5000/pingcap/tidb-operator-e2e:latest}
@@ -47,7 +48,7 @@ NS=tidb-operator-e2e
 
 # TODO move these clean logic into e2e code
 echo "info: clear helm releases"
-$KUBECTL_BIN -n kube-system delete cm -l OWNER=TILLER
+$HELM_BIN ls --all --short | xargs -n 1 -r $HELM_BIN delete --purge
 
 # clear all validatingwebhookconfigurations first otherwise it may deny pods deletion requests
 echo "info: clear validatingwebhookconfiguration"
@@ -85,6 +86,7 @@ e2e_args=(
     /usr/local/bin/e2e.test
     --
     --provider=skeleton 
+    --clean-start=true
     --delete-namespace-on-failure=false
     # tidb-operator e2e flags
     # TODO make these configurable via environments

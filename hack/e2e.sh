@@ -60,6 +60,10 @@ while getopts "h?" opt; do
     esac
 done
 
+if [ "${1:-}" == "--" ]; then
+    shift
+fi
+
 DOCKER_REGISTRY=${DOCKER_REGISTRY:-localhost:5000}
 IMAGE_TAG=${IMAGE_TAG:-latest}
 SKIP_BUILD=${SKIP_BUILD:-}

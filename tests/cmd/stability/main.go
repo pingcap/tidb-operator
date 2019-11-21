@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
+	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	"github.com/robfig/cron"
 	v1 "k8s.io/api/core/v1"
@@ -47,6 +48,7 @@ func main() {
 	go func() {
 		glog.Info(http.ListenAndServe(":6060", nil))
 	}()
+	metrics.StartServer()
 	cfg = tests.ParseConfigOrDie()
 	upgradeVersions = cfg.GetUpgradeTidbVersionsOrDie()
 	ns := os.Getenv("NAMESPACE")

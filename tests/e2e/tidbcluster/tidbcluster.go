@@ -191,7 +191,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.StopInsertDataTo(&clusterA)
 	})
 
-	ginkgo.It("test aggregated apiserver", func() {
+	ginkgo.It("Test aggregated apiserver", func() {
+		ginkgo.By(fmt.Sprintf("Starting to test apiserver, test apiserver image: %s", cfg.TestApiserverImage))
+		framework.Logf("config: %v", config)
 		aaCtx := apiserver.NewE2eContext("aa", config, cfg.TestApiserverImage)
 		aaCtx.Do()
 	})
