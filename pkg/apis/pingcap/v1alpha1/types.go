@@ -202,15 +202,15 @@ type TiDBSpec struct {
 	ComponentSpec
 	// +k8s:openapi-gen=false
 	Resources
+	Replicas         int32            `json:"replicas"`
+	Service          *TiDBServiceSpec `json:"service,omitempty"`
+	StorageClassName string           `json:"storageClassName,omitempty"`
+	BinlogEnabled    bool             `json:"binlogEnabled,omitempty"`
+	MaxFailoverCount int32            `json:"maxFailoverCount,omitempty"`
+	SeparateSlowLog  bool             `json:"separateSlowLog,omitempty"`
 	// +k8s:openapi-gen=false
-	Replicas         int32                 `json:"replicas"`
-	Service          *TiDBServiceSpec      `json:"service,omitempty"`
-	StorageClassName string                `json:"storageClassName,omitempty"`
-	BinlogEnabled    bool                  `json:"binlogEnabled,omitempty"`
-	MaxFailoverCount int32                 `json:"maxFailoverCount,omitempty"`
-	SeparateSlowLog  bool                  `json:"separateSlowLog,omitempty"`
-	SlowLogTailer    TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
-	EnableTLSClient  bool                  `json:"enableTLSClient,omitempty"`
+	SlowLogTailer   TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
+	EnableTLSClient bool                  `json:"enableTLSClient,omitempty"`
 
 	// Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled
 	Plugins []string `json:"plugins,omitempty"`
@@ -249,6 +249,7 @@ type HelperSpec struct {
 // +k8s:openapi-gen=true
 // TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB
 type TiDBSlowLogTailerSpec struct {
+	// +k8s:openapi-gen=false
 	Resources
 
 	// Image used for slowlog tailer

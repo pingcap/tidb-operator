@@ -759,6 +759,9 @@ spec:
                   items:
                     type: string
                   type: array
+                replicas:
+                  format: int32
+                  type: integer
                 separateSlowLog:
                   type: boolean
                 service:
@@ -785,55 +788,10 @@ spec:
                   required:
                   - ServiceSpec
                   type: object
-                slowLogTailer:
-                  description: TiDBSlowLogTailerSpec represents an optional log tailer
-                    sidecar with TiDB
-                  properties:
-                    Resources:
-                      properties:
-                        limits:
-                          description: ResourceRequirement is resource requirements
-                            for a pod
-                          properties:
-                            cpu:
-                              description: CPU is how many cores a pod requires
-                              type: string
-                            memory:
-                              description: Memory is how much memory a pod requires
-                              type: string
-                            storage:
-                              description: Storage is storage size a pod requires
-                              type: string
-                          type: object
-                        requests:
-                          description: ResourceRequirement is resource requirements
-                            for a pod
-                          properties:
-                            cpu:
-                              description: CPU is how many cores a pod requires
-                              type: string
-                            memory:
-                              description: Memory is how much memory a pod requires
-                              type: string
-                            storage:
-                              description: Storage is storage size a pod requires
-                              type: string
-                          type: object
-                      type: object
-                    image:
-                      description: Image used for slowlog tailer Deprecated, use TidbCluster.HelperImage
-                        instead
-                      type: string
-                    imagePullPolicy:
-                      description: ImagePullPolicy of the component. Override the
-                        cluster-level imagePullPolicy if present Deprecated, use TidbCluster.HelperImagePullPolicy
-                        instead
-                      type: string
-                  required:
-                  - Resources
-                  type: object
                 storageClassName:
                   type: string
+              required:
+              - replicas
               type: object
             tikv:
               description: TiKVSpec contains details of TiKV members
