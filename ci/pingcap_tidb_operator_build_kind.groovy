@@ -40,7 +40,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 							hg --version
 							make check-setup
 							make check
-							if [ ${BUILD_BRANCH} != "master" ]
+							if [ ${BUILD_BRANCH} == "master" ]
 							then
 								make test GO_COVER=y
 								curl -s https://codecov.io/bash | bash -s - -t ${codecovToken} || echo'Codecov did not collect coverage reports'
