@@ -59,7 +59,6 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 								]]
 							]
 						}
-						//git credentialsId: "k8s", url: "${BUILD_URL}", branch: "${ghprbActualCommit}"
 						GITHASH = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
 						withCredentials([string(credentialsId: "${CODECOV_CREDENTIALS_ID}", variable: 'codecovToken')]) {
 							sh """
