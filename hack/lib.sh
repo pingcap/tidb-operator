@@ -13,6 +13,8 @@ TERRAFORM_BIN=${OUTPUT_BIN}/terraform
 TERRAFORM_VERSION=0.12.12
 KUBECTL_VERSION=1.12.10
 KUBECTL_BIN=$OUTPUT_BIN/kubectl
+HELM_BIN=$OUTPUT_BIN/helm
+HELM_VERSION=2.12.2
 
 test -d "$OUTPUT_BIN" || mkdir -p "$OUTPUT_BIN"
 
@@ -61,4 +63,21 @@ function hack::ensure_kubectl() {
     curl -Lo $tmpfile https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/${OS}/${ARCH}/kubectl
     mv $tmpfile $KUBECTL_BIN
     chmod +x $KUBECTL_BIN
+}
+
+function hack::verify_helm() {
+    if test -x "$HELM_BIN"; then
+        local v=$($HELM_BIN version --short --client | grep -o -P '\d+\.\d+\.\d+')
+        [[ "$v" == "$HELM_VERSION" ]]
+        return
+    fi
+    return 1
+}
+
+function hack::ensure_helm() {
+    if hack::verify_helm; then
+        return 0
+    fi
+    local HELM_URL=http://storage.googleapis.com/kubernetes-helm/helm-v${HELM_VERSION}-${OS}-${ARCH}.tar.gz
+    curl -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
 }

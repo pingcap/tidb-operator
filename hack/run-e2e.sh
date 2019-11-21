@@ -10,6 +10,7 @@ cd $ROOT
 source $ROOT/hack/lib.sh
 
 hack::ensure_kubectl
+hack::ensure_helm
 
 TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:latest}
 E2E_IMAGE=${E2E_IMAGE:-localhost:5000/pingcap/tidb-operator-e2e:latest}
@@ -45,7 +46,11 @@ fi
 
 NS=tidb-operator-e2e
 
-echo "info: cleaning resources"
+# TODO move these clean logic into e2e code
+echo "info: clear helm releases"
+$HELM_BIN ls --all --short | xargs -n 1 -r $HELM_BIN delete --purge
+
+echo "info: clear resources"
 # clear all validatingwebhookconfigurations first otherwise it may deny pods deletion requests
 $KUBECTL_BIN delete validatingwebhookconfiguration --all
 $KUBECTL_BIN delete ns ${NS} --ignore-not-found
