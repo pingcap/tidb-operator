@@ -131,32 +131,14 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 		return util.ARFail(err)
 	}
 
-	if len(pod.OwnerReferences) == 0 {
-		return util.ARSuccess()
-	}
-
-	var ownerStatefulSetName string
-	for _, ownerReference := range pod.OwnerReferences {
-		if ownerReference.Kind == "StatefulSet" {
-			ownerStatefulSetName = ownerReference.Name
-			break
-		}
-	}
-
-	if len(ownerStatefulSetName) == 0 {
-		klog.Infof("pod[%s/%s] is not owned by StatefulSet,admit to delete it", namespace, name)
-		return util.ARSuccess()
-	}
-
-	ownerStatefulSet, err := pc.stsLister.StatefulSets(namespace).Get(ownerStatefulSetName)
-
+	ownerStatefulSet, err := getOwnerStatefulSetForTiDBComponent(pod, pc.stsLister)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			klog.Infof("statefulset[%s/%s] had been deleted,admit to delete pod[%s/%s]", namespace, ownerStatefulSetName, namespace, name)
+		if errors.IsNotFound(err) || err.Error() == fmt.Sprintf(FAIL_TO_FIND_TIDB_COMPONENT_OWNER_STATEFULSET, namespace, name) {
+			klog.Infof("owner statefulset for pod[%s/%s] is deleted,admit to delete pod", namespace, name)
 			return util.ARSuccess()
 		}
-		klog.Errorf("failed to get statefulset[%s/%s],refuse to delete pod[%s/%s]", namespace, ownerStatefulSetName, namespace, name)
-		return util.ARFail(fmt.Errorf("failed to get statefulset[%s/%s],refuse to delete pod[%s/%s]", namespace, ownerStatefulSetName, namespace, name))
+		klog.Infof("failed to get owner statefulset for pod[%s/%s],refuse to delete pod", namespace, name)
+		return util.ARFail(fmt.Errorf("failed to get owner statefulset for pod[%s/%s],refuse to delete pod", namespace, name))
 	}
 
 	// Force Upgraded,Admit to Upgrade
@@ -192,8 +174,8 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 // if this pod wasn't member of tidbcluster, just let the request pass.
 // Currently we only check with tikv pod
 func (pc *PodAdmissionControl) AdmitCreatePods(ar admission.AdmissionReview) *admission.AdmissionResponse {
-	var pod core.Pod
-	if err := json.Unmarshal(ar.Request.Object.Raw, &pod); err != nil {
+	pod := &core.Pod{}
+	if err := json.Unmarshal(ar.Request.Object.Raw, pod); err != nil {
 		klog.Errorf("Could not unmarshal raw object: %v", err)
 		return util.ARFail(err)
 	}
@@ -205,7 +187,7 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar admission.AdmissionReview) *ad
 
 	l := label.Label(pod.Labels)
 	if !(l.IsPD() || l.IsTiKV() || l.IsTiDB()) {
-		klog.Infof("pod[%s/%s] is not TiDB component,admit to delete", namespace, name)
+		klog.Infof("pod[%s/%s] is not TiDB component,admit to create", namespace, name)
 		return util.ARSuccess()
 	}
 
@@ -217,13 +199,28 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar admission.AdmissionReview) *ad
 
 	tc, err := pc.tcLister.TidbClusters(namespace).Get(tcName)
 	if err != nil {
-		klog.Errorf("failed get tc[%s/%s],refuse to delete pod[%s/%s]", namespace, tcName, namespace, name)
+		klog.Errorf("failed get tc[%s/%s],refuse to create pod[%s/%s]", namespace, tcName, namespace, name)
 		return util.ARFail(err)
+	}
+
+	ownerStatefulSet, err := getOwnerStatefulSetForTiDBComponent(pod, pc.stsLister)
+	if err != nil {
+		klog.Errorf("failed to get owner statefulset,refuse to create pod[%s/%s]", namespace, name)
+		return util.ARFail(err)
+	}
+
+	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+	if err != nil {
+		return util.ARFail(err)
+	}
+
+	if ownerStatefulSet.Status.CurrentReplicas < 1 && ownerStatefulSet.Status.UpdatedReplicas < 1 && ordinal == 0 {
+		return util.ARSuccess()
 	}
 
 	if l.IsTiKV() {
 		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster)
-		return pc.admitCreateTiKVPod(&pod, tc, pdClient)
+		return pc.admitCreateTiKVPod(pod, tc, pdClient)
 	}
 
 	return util.ARSuccess()

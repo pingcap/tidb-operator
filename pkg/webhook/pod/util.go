@@ -25,7 +25,12 @@ import (
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
+	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+)
+
+const (
+	FAIL_TO_FIND_TIDB_COMPONENT_OWNER_STATEFULSET = "failed to find owner statefulset for pod[%s/%s]"
 )
 
 func IsPodInPdMembers(tc *v1alpha1.TidbCluster, pod *core.Pod, pdClient pdapi.PDClient) (bool, error) {
@@ -120,4 +125,22 @@ func isPDLeader(pdClient pdapi.PDClient, pod *core.Pod) (bool, error) {
 		return false, err
 	}
 	return leader.Name == pod.Name, nil
+}
+
+// getOwnerStatefulSetForTiDBComponent would find pd/tikv/tidb's owner statefulset,
+// if not exist, then return error
+func getOwnerStatefulSetForTiDBComponent(pod *core.Pod, stsLister appslisters.StatefulSetLister) (*apps.StatefulSet, error) {
+	name := pod.Name
+	namespace := pod.Namespace
+	var ownerStatefulSetName string
+	for _, ownerReference := range pod.OwnerReferences {
+		if ownerReference.Kind == "StatefulSet" {
+			ownerStatefulSetName = ownerReference.Name
+			break
+		}
+	}
+	if len(ownerStatefulSetName) == 0 {
+		return nil, fmt.Errorf(FAIL_TO_FIND_TIDB_COMPONENT_OWNER_STATEFULSET, namespace, name)
+	}
+	return stsLister.StatefulSets(namespace).Get(ownerStatefulSetName)
 }

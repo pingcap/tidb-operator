@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
 	core "k8s.io/api/core/v1"
@@ -16,17 +15,6 @@ func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.Ti
 
 	name := pod.Name
 	namespace := pod.Namespace
-	tcName := tc.Name
-
-	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
-	if err != nil {
-		return util.ARFail(err)
-	}
-
-	if tc.Status.TiKV.StatefulSet.CurrentReplicas < 1 && ordinal == 0 {
-		klog.Infof("tc[%s/%s]'s tikv initialize,admit to create pod[%s/%s]", namespace, tcName, namespace, name)
-		return util.ARSuccess()
-	}
 
 	stores, err := pdClient.GetStores()
 	if err != nil {

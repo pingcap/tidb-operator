@@ -198,7 +198,12 @@ func (pc *PodAdmissionControl) admitDeleteUPTiKVPodDuringUpgrading(ordinal int32
 		}
 	}
 
-	if !isTiKVReadyToUpgrade(pod, store) {
+	storeInfo, err := getStoreByPod(pod, tc, pdClient)
+	if err != nil {
+		klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
+	}
+
+	if !isTiKVReadyToUpgrade(pod, storeInfo) {
 		return &v1beta1.AdmissionResponse{
 			Allowed: false,
 		}

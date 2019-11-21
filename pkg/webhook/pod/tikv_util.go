@@ -70,11 +70,13 @@ func addEvictLeaderAnnotation(kubeCli kubernetes.Interface, pod *core.Pod) error
 	return nil
 }
 
-func isTiKVReadyToUpgrade(upgradePod *core.Pod, store v1alpha1.TiKVStore) bool {
-	if store.LeaderCount == 0 {
-		klog.Infof("pod[%s/%s] is finished to evict leader,with store[%s]", upgradePod.Namespace, upgradePod.Name, store.ID)
+func isTiKVReadyToUpgrade(upgradePod *core.Pod, store *pdapi.StoreInfo) bool {
+
+	if store.Status.LeaderCount == 0 {
+		klog.Infof("pod[%s/%s] is no region leader in store[%d]", upgradePod.Namespace, upgradePod.Name, store.Store.Id)
 		return true
 	}
+
 	if evictLeaderBeginTimeStr, evicting := upgradePod.Annotations[EvictLeaderBeginTime]; evicting {
 		evictLeaderBeginTime, err := time.Parse(time.RFC3339, evictLeaderBeginTimeStr)
 		if err != nil {
