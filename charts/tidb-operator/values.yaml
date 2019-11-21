@@ -183,14 +183,9 @@ admissionWebhook:
   ## `autoGenerator` would create a job before `operator chart install` and the job would create secret for webhook cert
   ## and autoClean the secret after the `operator chart` was deleted
   autoGenerator:
-    certgen:
-      image:
-        repository: jettech/kube-webhook-certgen
-        tag: v1.2.0
-    kubectl:
-      image:
-        repository: bitnami/kubectl
-        tag: 1.15.3
+    image:
+      repository: jettech/kube-webhook-certgen
+      tag: v1.2.0
   ## `selfProvider` need user to provide their own ca/cert/key for webhook
   selfProvider:
     ca: ""
