@@ -35,7 +35,7 @@ Another new Helm chart `tidb-drainer` brings multiple drainers support for TiDB 
 
 - Add e2e scripts and simplify e2e jenkins file ([#1174](https://github.com/pingcap/tidb-operator/pull/1174))
 - Fix the pump/drainer data dir to avoid data loss caused by bad configuration([#1183](https://github.com/pingcap/tidb-operator/pull/1183))
-- Add e2e to init sql ([#1199](https://github.com/pingcap/tidb-operator/pull/1199))
+- Add init sql case to e2e ([#1199](https://github.com/pingcap/tidb-operator/pull/1199))
 - Keep the instance label of drainer same with the TiDB cluster in favor of monitoring ([#1170](https://github.com/pingcap/tidb-operator/pull/1170))
 - Set podSecuriyContext to nil by default in favor of backward compatiability ([#1184](https://github.com/pingcap/tidb-operator/pull/1184))
 
