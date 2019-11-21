@@ -975,14 +975,14 @@ spec:
                 bucket:
                   description: Bucket in which to store the Backup.
                   type: string
-                bucket_acl:
+                bucketAcl:
                   description: BucketAcl represents the access control list for new
                     buckets
                   type: string
                 location:
                   description: Location in which the gcs bucket is located.
                   type: string
-                object_acl:
+                objectAcl:
                   description: ObjectAcl represents the access control list for new
                     objects
                   type: string
@@ -1199,14 +1199,14 @@ spec:
                     bucket:
                       description: Bucket in which to store the Backup.
                       type: string
-                    bucket_acl:
+                    bucketAcl:
                       description: BucketAcl represents the access control list for
                         new buckets
                       type: string
                     location:
                       description: Location in which the gcs bucket is located.
                       type: string
-                    object_acl:
+                    objectAcl:
                       description: ObjectAcl represents the access control list for
                         new objects
                       type: string

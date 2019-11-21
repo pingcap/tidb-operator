@@ -528,9 +528,9 @@ type GcsStorageProvider struct {
 	// StorageClass represents the storage class
 	StorageClass string `json:"storageClass,omitempty"`
 	// ObjectAcl represents the access control list for new objects
-	ObjectAcl string `json:"object_acl,omitempty"`
+	ObjectAcl string `json:"objectAcl,omitempty"`
 	// BucketAcl represents the access control list for new buckets
-	BucketAcl string `json:"bucket_acl,omitempty"`
+	BucketAcl string `json:"bucketAcl,omitempty"`
 	// SecretName is the name of secret which stores the
 	// gcs service account credentials JSON .
 	SecretName string `json:"secretName"`
