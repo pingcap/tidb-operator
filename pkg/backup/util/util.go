@@ -61,8 +61,6 @@ func GenerateS3CertEnvVar(secret *corev1.Secret, s3 *v1alpha1.S3StorageProvider)
 			// The optional acl reference https://rclone.org/s3/
 			s3.Acl = "private"
 		}
-	default:
-		return envVars, "UnsupportS3StorageType", fmt.Errorf("unknow s3 compliant storage type %s", s3.Provider)
 	}
 
 	envVars = []corev1.EnvVar{
