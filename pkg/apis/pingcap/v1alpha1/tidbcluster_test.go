@@ -354,7 +354,7 @@ func TestComponentAccessor(t *testing.T) {
 				Tolerations: []corev1.Toleration{toleration2},
 			},
 			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
-				g.Expect(a.Tolerations()).Should(ConsistOf(toleration1, toleration2))
+				g.Expect(a.Tolerations()).Should(ConsistOf(toleration2))
 			},
 		},
 	}
