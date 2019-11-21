@@ -202,6 +202,8 @@ type OperatorActions interface {
 	CheckTidbMemberAssignedNodesOrDie(info *TidbClusterConfig, oldAssignedNodes map[string]string)
 	CheckUpgradeComplete(info *TidbClusterConfig) error
 	CheckUpgradeCompleteOrDie(info *TidbClusterConfig)
+	CheckInitSQL(info *TidbClusterConfig) error
+	CheckInitSQLOrDie(info *TidbClusterConfig)
 }
 
 type operatorActions struct {
@@ -472,7 +474,11 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
-	cmd = fmt.Sprintf(`sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/' %s/webhook.yaml | kubectl apply -f -`, oa.manifestPath(info.Tag))
+	cmd = fmt.Sprintf(`
+sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/
+s#image:.*#image: %s#g
+' %s/webhook.yaml | kubectl apply -f -
+`, info.Image, oa.manifestPath(info.Tag))
 	glog.Info(cmd)
 
 	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -797,7 +803,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete configmaps: %v, %s", err, string(res))
 	}
 
-	patchPVCmd := fmt.Sprintf("kubectl get pv -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
+	patchPVCmd := fmt.Sprintf("kubectl get pv --no-headers -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
 		"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
 		label.ManagedByLabelKey, "tidb-operator",
 		label.NamespaceLabelKey, info.Namespace,
@@ -1179,7 +1185,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 	}
 	pdClient := pdapi.NewDefaultPDControl(oa.kubeCli).GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSCluster)
 
-	replicas := tc.TiKVRealReplicas()
+	replicas := tc.TiKVStsDesiredReplicas()
 	for i := replicas - 1; i >= 0; i-- {
 		err := wait.PollImmediate(1*time.Second, 10*time.Minute, func() (done bool, err error) {
 			podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
@@ -3210,13 +3216,37 @@ func (oa *operatorActions) CheckUpgradeCompleteOrDie(info *TidbClusterConfig) {
 	}
 }
 
-func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext) {
+func (oa *operatorActions) CheckInitSQL(info *TidbClusterConfig) error {
+	ns, tcName := info.Namespace, info.ClusterName
+	if err := wait.PollImmediate(10*time.Second, DefaultPollTimeout, func() (done bool, err error) {
+		infoDb, err := sql.Open("mysql", getDSN(ns, tcName, "e2e", info.Password))
+		if err != nil {
+			return false, nil
+		}
+		infoDb.Close()
+
+		return true, nil
+	}); err != nil {
+		glog.Errorf("failed to check init sql complete [%s/%s], %v", ns, tcName, err)
+		return err
+	}
+	return nil
+}
+
+func (oa *operatorActions) CheckInitSQLOrDie(info *TidbClusterConfig) {
+	if err := oa.CheckInitSQL(info); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext, tidbClusters ...string) {
 	sCert, err := tls.X509KeyPair(context.Cert, context.Key)
 	if err != nil {
 		panic(err)
 	}
 
-	http.HandleFunc("/pods", webhook.ServePods)
+	wh := webhook.NewWebhook(tidbClusters)
+	http.HandleFunc("/pods", wh.ServePods)
 	server := &http.Server{
 		Addr: ":443",
 		TLSConfig: &tls.Config{

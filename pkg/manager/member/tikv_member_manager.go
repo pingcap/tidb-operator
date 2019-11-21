@@ -268,7 +268,7 @@ func (tkmm *tikvMemberManager) syncTiKVServerCerts(tc *v1alpha1.TidbCluster) err
 		Suffix:     "tikv",
 	}
 
-	return tkmm.certControl.Create(certOpts)
+	return tkmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
@@ -419,7 +419,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: controller.Int32Ptr(tc.TiKVRealReplicas()),
+			Replicas: controller.Int32Ptr(tc.TiKVStsDesiredReplicas()),
 			Selector: tikvLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -502,7 +502,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: controller.Int32Ptr(tc.TiKVRealReplicas()),
+					Partition: controller.Int32Ptr(tc.TiKVStsDesiredReplicas()),
 				},
 			},
 		},

@@ -22,6 +22,7 @@ import (
 	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	capi "k8s.io/api/certificates/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
@@ -42,7 +43,7 @@ type TiDBClusterCertOptions struct {
 
 // CertControlInterface manages certificates used by TiDB clusters
 type CertControlInterface interface {
-	Create(certOpts *TiDBClusterCertOptions) error
+	Create(or metav1.OwnerReference, certOpts *TiDBClusterCertOptions) error
 	CheckSecret(ns string, secretName string) bool
 	//RevokeCert() error
 	//RenewCert() error
@@ -67,7 +68,7 @@ func NewRealCertControl(
 	}
 }
 
-func (rcc *realCertControl) Create(certOpts *TiDBClusterCertOptions) error {
+func (rcc *realCertControl) Create(or metav1.OwnerReference, certOpts *TiDBClusterCertOptions) error {
 	var csrName string
 	if certOpts.Suffix == "" {
 		csrName = certOpts.Instance
@@ -87,7 +88,7 @@ func (rcc *realCertControl) Create(certOpts *TiDBClusterCertOptions) error {
 	}
 
 	// sign certificate
-	csr, err := rcc.sendCSR(certOpts.Namespace, certOpts.Instance, rawCSR, csrName)
+	csr, err := rcc.sendCSR(or, certOpts.Namespace, certOpts.Instance, rawCSR, csrName)
 	if err != nil {
 		return err
 	}
@@ -135,7 +136,7 @@ func (rcc *realCertControl) Create(certOpts *TiDBClusterCertOptions) error {
 				glog.Infof("signed certificate for [%s/%s]: %s", certOpts.Namespace, certOpts.Instance, csrName)
 
 				// save signed certificate and key to secret
-				err = rcc.secControl.Create(certOpts, updatedCSR.Status.Certificate, key)
+				err = rcc.secControl.Create(or, certOpts, updatedCSR.Status.Certificate, key)
 				if err == nil {
 					// cleanup the approved csr
 					delOpts := &types.DeleteOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
@@ -168,7 +169,7 @@ func (rcc *realCertControl) getCSR(ns string, instance string, csrName string) (
 	return nil, fmt.Errorf("CSR %s/%s already exist, but not created by tidb-operator, skip it", ns, csrName)
 }
 
-func (rcc *realCertControl) sendCSR(ns string, instance string, rawCSR []byte, csrName string) (*capi.CertificateSigningRequest, error) {
+func (rcc *realCertControl) sendCSR(or metav1.OwnerReference, ns, instance string, rawCSR []byte, csrName string) (*capi.CertificateSigningRequest, error) {
 	var csr *capi.CertificateSigningRequest
 
 	// check for exist CSR, overwrite if it was created by operator, otherwise block the process
@@ -185,14 +186,16 @@ func (rcc *realCertControl) sendCSR(ns string, instance string, rawCSR []byte, c
 			return nil, fmt.Errorf("failed to delete exist old CSR for [%s/%s]: %s, error: %v", ns, instance, csrName, err)
 		}
 		glog.Infof("exist old CSR deleted for [%s/%s]: %s", ns, instance, csrName)
-		return rcc.sendCSR(ns, instance, rawCSR, csrName)
+		return rcc.sendCSR(or, ns, instance, rawCSR, csrName)
 	}
 
+	csrLabels := label.New().Instance(instance).Labels()
 	csr = &capi.CertificateSigningRequest{
 		TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"},
 		ObjectMeta: types.ObjectMeta{
-			Name:   csrName,
-			Labels: make(map[string]string),
+			Name:            csrName,
+			Labels:          csrLabels,
+			OwnerReferences: []metav1.OwnerReference{or},
 		},
 		Spec: capi.CertificateSigningRequestSpec{
 			Request: pem.EncodeToMemory(&pem.Block{
@@ -206,11 +209,6 @@ func (rcc *realCertControl) sendCSR(ns string, instance string, rawCSR []byte, c
 			},
 		},
 	}
-
-	labelTemp := label.New()
-	csr.Labels[label.NamespaceLabelKey] = ns
-	csr.Labels[label.ManagedByLabelKey] = labelTemp[label.ManagedByLabelKey]
-	csr.Labels[label.InstanceLabelKey] = instance
 
 	resp, err := rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Create(csr)
 	if err != nil {
