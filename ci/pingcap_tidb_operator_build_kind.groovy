@@ -14,7 +14,7 @@ def getChangeLogText() {
 	return changeLogText
 }
 
-def call(BUILD_BRANCH, CREDENTIALS_ID) {
+def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 
 	def GITHASH
 	def UCLOUD_OSS_URL = "http://pingcap-dev.hk.ufileos.com"
@@ -27,22 +27,43 @@ def call(BUILD_BRANCH, CREDENTIALS_ID) {
 				def WORKSPACE = pwd()
 				dir("${PROJECT_DIR}"){
 					stage('build tidb-operator binary'){
-						checkout changelog: false, poll: false, scm: [$class: 'GitSCM', branches: [[name: "${BUILD_BRANCH}"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: "${CREDENTIALS_ID}", refspec: '+refs/pull/*:refs/remotes/origin/pr/*', url: "${BUILD_URL}"]]]
-						//git credentialsId: "k8s", url: "${BUILD_URL}", branch: "${ghprbActualCommit}"
+						checkout changelog: false,
+						poll: false,
+						scm: [
+							$class: 'GitSCM',
+							branches: [[name: "${BUILD_BRANCH}"]],
+							doGenerateSubmoduleConfigurations: false,
+							extensions: [],
+							submoduleCfg: [],
+							userRemoteConfigs: [[
+								credentialsId: "${CREDENTIALS_ID}",
+								refspec: '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/heads/*',
+								url: "${BUILD_URL}",
+							]]
+						]
+
 						GITHASH = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
-						sh """
-						export GOPATH=${WORKSPACE}/go
-						export PATH=${WORKSPACE}/go/bin:\$PATH
-						if ! hash hg 2>/dev/null; then
-							sudo yum install -y mercurial
-						fi
-						hg --version
-						make check-setup
-						make check
-						make test
-						make
-						make e2e-build
-						"""
+						withCredentials([string(credentialsId: "${CODECOV_CREDENTIALS_ID}", variable: 'codecovToken')]) {
+							sh """
+							export GOPATH=${WORKSPACE}/go
+							export PATH=${WORKSPACE}/go/bin:\$PATH
+							if ! hash hg 2>/dev/null; then
+								sudo yum install -y mercurial
+							fi
+							hg --version
+							make check-setup
+							make check
+							if [ ${BUILD_BRANCH} == "master" ]
+							then
+								make test GO_COVER=y
+								curl -s https://codecov.io/bash | bash -s - -t ${codecovToken} || echo'Codecov did not collect coverage reports'
+							else
+								make test
+							fi
+							make
+							make e2e-build
+							"""
+						}
 					}
 				}
 				stash excludes: "${PROJECT_DIR}/vendor/**,${PROJECT_DIR}/deploy/**", includes: "${PROJECT_DIR}/**", name: "tidb-operator"
