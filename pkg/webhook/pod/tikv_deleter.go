@@ -1,7 +1,7 @@
 package pod
 
 import (
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -28,11 +28,17 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(pod *core.Pod, ownerStatefulS
 	tcName := tc.Name
 
 	isStoreExist := false
-	var store v1alpha1.TiKVStore
-	for _, info := range tc.Status.TiKV.Stores {
-		if name == info.PodName {
+	storesInfo, err := pdClient.GetStores()
+	if err != nil {
+		return util.ARFail(err)
+	}
+	var storeInfo *pdapi.StoreInfo
+	for _, info := range storesInfo.Stores {
+		ip := strings.Split(info.Store.GetAddress(), ":")[0]
+		podName := strings.Split(ip, ".")[0]
+		if name == podName {
 			isStoreExist = true
-			store = info
+			storeInfo = info
 			break
 		}
 	}
@@ -45,11 +51,15 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(pod *core.Pod, ownerStatefulS
 
 	isUpgrading := IsStatefulSetUpgrading(ownerStatefulSet)
 
-	if !isStoreExist {
+	if storeInfo == nil || !isStoreExist {
 		return pc.admitDeleteNonStoreTiKVPod(isInOrdinal, pod, ownerStatefulSet, tc, pdClient)
 	}
 
-	switch store.State {
+	if storeInfo.Store == nil {
+		return util.ARFail(err)
+	}
+
+	switch storeInfo.Store.StateName {
 	case v1alpha1.TiKVStateTombstone:
 		return pc.admitDeleteTombStoneTiKVPod(isInOrdinal, pod, ownerStatefulSet, tc, pdClient)
 	case v1alpha1.TiKVStateOffline:
@@ -57,7 +67,7 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(pod *core.Pod, ownerStatefulS
 	case v1alpha1.TiKVStateDown:
 		return pc.admitDeleteDownTiKVPod(isInOrdinal, pod, ownerStatefulSet, tc, pdClient)
 	case v1alpha1.TiKVStateUp:
-		return pc.admitDeleteUpTiKVPod(isInOrdinal, isUpgrading, pod, ownerStatefulSet, tc, pdClient, store)
+		return pc.admitDeleteUpTiKVPod(isInOrdinal, isUpgrading, pod, ownerStatefulSet, tc, pdClient, storeInfo, storesInfo)
 	}
 
 	return &v1beta1.AdmissionResponse{
@@ -135,7 +145,7 @@ func (pc *PodAdmissionControl) admitDeleteDownTiKVPod(isInOrdinal bool, pod *cor
 	return util.ARSuccess()
 }
 
-func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(isInOrdinal, isUpgrading bool, pod *core.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, store v1alpha1.TiKVStore) *v1beta1.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(isInOrdinal, isUpgrading bool, pod *core.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, store *pdapi.StoreInfo, storesInfo *pdapi.StoresInfo) *v1beta1.AdmissionResponse {
 
 	name := pod.Name
 	namespace := pod.Namespace
@@ -148,12 +158,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(isInOrdinal, isUpgrading boo
 	}
 
 	if !isInOrdinal {
-		id, err := strconv.ParseUint(store.ID, 10, 64)
-		if err != nil {
-			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
-			return util.ARFail(err)
-		}
-		err = pdClient.DeleteStore(id)
+		err = pdClient.DeleteStore(store.Store.Id)
 		if err != nil {
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
@@ -164,7 +169,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(isInOrdinal, isUpgrading boo
 	}
 
 	if isUpgrading {
-		err = checkFormerTiKVPodStatus(pc.podLister, tc, ordinal, *ownerStatefulSet.Spec.Replicas, pdClient)
+		err = checkFormerTiKVPodStatus(pc.podLister, tc, ordinal, *ownerStatefulSet.Spec.Replicas, storesInfo)
 		if err != nil {
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
@@ -175,20 +180,15 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(isInOrdinal, isUpgrading boo
 	return util.ARSuccess()
 }
 
-func (pc *PodAdmissionControl) admitDeleteUPTiKVPodDuringUpgrading(ordinal int32, pod *core.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, store v1alpha1.TiKVStore) *v1beta1.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeleteUPTiKVPodDuringUpgrading(ordinal int32, pod *core.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, store *pdapi.StoreInfo) *v1beta1.AdmissionResponse {
 
 	name := pod.Name
 	namespace := pod.Namespace
 	tcName := tc.Name
-	storeId, err := strconv.ParseUint(store.ID, 10, 64)
-	if err != nil {
-		klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
-		return util.ARFail(err)
-	}
 
 	_, evicting := pod.Annotations[EvictLeaderBeginTime]
 	if !evicting {
-		err := beginEvictLeader(pc.kubeCli, storeId, pod, pdClient)
+		err := beginEvictLeader(pc.kubeCli, store.Store.Id, pod, pdClient)
 		if err != nil {
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
@@ -198,15 +198,11 @@ func (pc *PodAdmissionControl) admitDeleteUPTiKVPodDuringUpgrading(ordinal int32
 		}
 	}
 
-	storeInfo, err := getStoreByPod(pod, tc, pdClient)
-	if err != nil {
-		klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
-	}
-
-	if !isTiKVReadyToUpgrade(pod, storeInfo) {
+	if !isTiKVReadyToUpgrade(pod, store) {
 		return &v1beta1.AdmissionResponse{
 			Allowed: false,
 		}
 	}
+
 	return util.ARSuccess()
 }

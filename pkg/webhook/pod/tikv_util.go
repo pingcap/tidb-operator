@@ -18,7 +18,7 @@ import (
 
 // checkFormerTiKVPodStatus would check all the former tikv pods whether their store state were UP during Upgrading
 // check need both  check former pod is ready ,store up, and no evict leader
-func checkFormerTiKVPodStatus(podLister corelisters.PodLister, tc *v1alpha1.TidbCluster, ordinal int32, replicas int32, pdClient pdapi.PDClient) error {
+func checkFormerTiKVPodStatus(podLister corelisters.PodLister, tc *v1alpha1.TidbCluster, ordinal int32, replicas int32, storesInfo *pdapi.StoresInfo) error {
 
 	tcName := tc.Name
 	namespace := tc.Namespace
@@ -38,7 +38,7 @@ func checkFormerTiKVPodStatus(podLister corelisters.PodLister, tc *v1alpha1.Tidb
 			return fmt.Errorf("tc[%s/%s]'s tikv pod[%s/%s] is not upgraded yet", namespace, tcName, namespace, podName)
 		}
 
-		storeInfo, err := getStoreByPod(pod, tc, pdClient)
+		storeInfo, err := getStoreByPod(pod, tc, storesInfo)
 		if err != nil {
 			return err
 		}
@@ -121,16 +121,11 @@ func endEvictLeader(storeInfo *pdapi.StoreInfo, pdClient pdapi.PDClient) error {
 	return nil
 }
 
-func getStoreByPod(pod *core.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) (*pdapi.StoreInfo, error) {
+func getStoreByPod(pod *core.Pod, tc *v1alpha1.TidbCluster, storesInfo *pdapi.StoresInfo) (*pdapi.StoreInfo, error) {
 
 	name := pod.Name
 	namespace := pod.Namespace
 	tcName := tc.Name
-
-	storesInfo, err := pdClient.GetStores()
-	if err != nil {
-		return nil, err
-	}
 
 	for _, store := range storesInfo.Stores {
 		ip := strings.Split(store.Store.GetAddress(), ":")[0]

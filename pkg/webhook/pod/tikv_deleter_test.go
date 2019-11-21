@@ -3,6 +3,7 @@ package pod
 import (
 	"fmt"
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -18,9 +19,7 @@ import (
 )
 
 var (
-	deleteTiKVPodOrdinal = int32(2)
-	tiKVStsName          = tcName + "-tikv"
-	deletetiKVPodName    = memberUtils.TikvPodName(tcName, deleteTiKVPodOrdinal)
+	tiKVStsName = tcName + "-tikv"
 )
 
 func TestTiKVDeleterDelete(t *testing.T) {
@@ -29,6 +28,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 
 	type testcase struct {
 		name           string
+		isStoreExist   bool
 		isOutOfOrdinal bool
 		isUpgrading    bool
 		storeState     string
@@ -40,26 +40,29 @@ func TestTiKVDeleterDelete(t *testing.T) {
 
 		t.Log(test.name)
 
-		deleteTiKVPod := newTiKVPodForTiKVPodAdmissionControl()
-		ownerStatefulSet := newOwnerStatefulSetForTiKVPodAdmissionControl()
+		pod_0 := newTiKVPod(0)
+		deleteTiKVPod := newTiKVPod(1)
+		pod_2 := newTiKVPod(2)
+		pvc_0 := newPVCForTikv(0)
+		pvc_1 := newPVCForTikv(1)
+		pvc_2 := newPVCForTikv(2)
+
+		ownerStatefulSet := newOwnerStatefulsetForTikv()
 		tc := newTidbClusterForPodAdmissionControl()
-		pvc := newPVCForDeleteTiKVPod()
 		kubeCli := kubefake.NewSimpleClientset()
 
-		podAdmissionControl, fakePVCControl, pvcIndexer, _, _, _ := newPodAdmissionControl()
+		podAdmissionControl, fakePVCControl, pvcIndexer, podIndexer, _, _ := newPodAdmissionControl()
 		pdControl := pdapi.NewFakePDControl(kubeCli)
 		fakePDClient := controller.NewFakePDClient(pdControl, tc)
 
-		if test.isOutOfOrdinal {
-			deleteTiKVPod.Name = memberUtils.TikvPodName(tcName, 3)
-			tc.Status.TiKV.Stores["3"] = v1alpha1.TiKVStore{
-				PodName:     memberUtils.TikvPodName(tcName, 3),
-				LeaderCount: 1,
-				State:       v1alpha1.TiKVStateUp,
-			}
-			pvcIndexer.Add(pvc)
-		}
+		podIndexer.Add(pod_0)
+		podIndexer.Add(deleteTiKVPod)
+		podIndexer.Add(pod_2)
+		pvcIndexer.Add(pvc_0)
+		pvcIndexer.Add(pvc_1)
+		pvcIndexer.Add(pvc_2)
 
+		storesInfo := newTiKVStoresInfo()
 		if test.isUpgrading {
 			ownerStatefulSet.Status.CurrentRevision = "1"
 			ownerStatefulSet.Status.UpdateRevision = "2"
@@ -70,13 +73,91 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			fakePVCControl.SetUpdatePVCError(fmt.Errorf("update pvc error"), 0)
 		}
 
-		ordinal, _ := operatorUtils.GetOrdinalFromPodName(deleteTiKVPod.Name)
-		ordinalStr := fmt.Sprintf("%d", ordinal)
-		tc.Status.TiKV.Stores[ordinalStr] = v1alpha1.TiKVStore{
-			PodName:     memberUtils.TikvPodName(tcName, ordinal),
-			LeaderCount: 1,
-			State:       test.storeState,
+		if test.isOutOfOrdinal {
+			pod_3 := newTiKVPod(3)
+			pvc_3 := newPVCForTikv(3)
+			podIndexer.Add(pod_3)
+			pvcIndexer.Add(pvc_3)
+			if test.isStoreExist {
+				tc.Status.TiKV.Stores["3"] = v1alpha1.TiKVStore{
+					PodName:     memberUtils.TikvPodName(tcName, 3),
+					LeaderCount: 1,
+					State:       v1alpha1.TiKVStateUp,
+				}
+
+				storesInfo.Count = 4
+				storesInfo.Stores = append(storesInfo.Stores, &pdapi.StoreInfo{
+					Store: &pdapi.MetaStore{
+						StateName: v1alpha1.TiKVStateUp,
+						Store: &metapb.Store{
+							Id:      3,
+							Address: fmt.Sprintf("%s-tikv-%d.%s-tikv-peer.%s.svc:20160", tcName, 3, tcName, namespace),
+						},
+					},
+					Status: &pdapi.StoreStatus{
+						LeaderCount: 1,
+					},
+				})
+			}
 		}
+
+		if !test.isOutOfOrdinal && !test.isStoreExist {
+			tc.Status.TiKV = v1alpha1.TiKVStatus{
+				Synced: true,
+				Phase:  v1alpha1.NormalPhase,
+				Stores: map[string]v1alpha1.TiKVStore{
+					"0": {
+						PodName:     memberUtils.TikvPodName(tcName, 0),
+						LeaderCount: 1,
+						State:       v1alpha1.TiKVStateUp,
+					},
+					"2": {
+						PodName:     memberUtils.TikvPodName(tcName, 2),
+						LeaderCount: 1,
+						State:       v1alpha1.TiKVStateUp,
+					},
+				},
+			}
+			storesInfo = &pdapi.StoresInfo{
+				Count: 2,
+				Stores: []*pdapi.StoreInfo{
+					{
+						Store: &pdapi.MetaStore{
+							StateName: v1alpha1.TiKVStateUp,
+							Store: &metapb.Store{
+								Id:      0,
+								Address: fmt.Sprintf("%s-tikv-%d.%s-tikv-peer.%s.svc:20160", tcName, 0, tcName, namespace),
+							},
+						},
+						Status: &pdapi.StoreStatus{
+							LeaderCount: 1,
+						},
+					},
+					{
+						Store: &pdapi.MetaStore{
+							StateName: v1alpha1.TiKVStateUp,
+							Store: &metapb.Store{
+								Id:      2,
+								Address: fmt.Sprintf("%s-tikv-%d.%s-tikv-peer.%s.svc:20160", tcName, 2, tcName, namespace),
+							},
+						},
+						Status: &pdapi.StoreStatus{
+							LeaderCount: 1,
+						},
+					},
+				},
+			}
+		}
+
+		fakePDClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (i interface{}, e error) {
+			return storesInfo, nil
+		})
+		fakePDClient.AddReaction(pdapi.DeleteStoreActionType, func(action *pdapi.Action) (i interface{}, e error) {
+			return nil, nil
+		})
+		fakePDClient.AddReaction(pdapi.BeginEvictLeaderActionType, func(action *pdapi.Action) (i interface{}, e error) {
+			return nil, nil
+		})
 
 		response := podAdmissionControl.admitDeleteTiKVPods(deleteTiKVPod, ownerStatefulSet, tc, fakePDClient)
 		test.expectFn(g, response)
@@ -84,9 +165,39 @@ func TestTiKVDeleterDelete(t *testing.T) {
 
 	tests := []testcase{
 		{
+			name:           "no store,no exceed",
+			isOutOfOrdinal: false,
+			isUpgrading:    false,
+			storeState:     "",
+			UpdatePVCErr:   false,
+			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+				g.Expect(response.Allowed, true)
+			},
+		},
+		{
+			name:           "no store,out of ordinal",
+			isOutOfOrdinal: false,
+			isUpgrading:    false,
+			storeState:     "",
+			UpdatePVCErr:   false,
+			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+				g.Expect(response.Allowed, true)
+			},
+		},
+		{
 			name:           "first normal upgraded",
 			isOutOfOrdinal: false,
 			isUpgrading:    true,
+			storeState:     v1alpha1.TiKVStateUp,
+			UpdatePVCErr:   false,
+			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+				g.Expect(response.Allowed, false)
+			},
+		},
+		{
+			name:           "first normal scale-in",
+			isOutOfOrdinal: true,
+			isUpgrading:    false,
 			storeState:     v1alpha1.TiKVStateUp,
 			UpdatePVCErr:   false,
 			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
@@ -100,20 +211,20 @@ func TestTiKVDeleterDelete(t *testing.T) {
 	}
 }
 
-func newTiKVPodForTiKVPodAdmissionControl() *core.Pod {
+func newTiKVPod(ordinal int32) *core.Pod {
 
 	pod := core.Pod{}
-	pod.Name = deletetiKVPodName
 	pod.Labels = map[string]string{
 		label.ComponentLabelKey: label.TiKVLabelVal,
 	}
+	pod.Name = memberUtils.TikvPodName(tcName, ordinal)
 	pod.Namespace = namespace
 	return &pod
 }
 
-func newOwnerStatefulSetForTiKVPodAdmissionControl() *apps.StatefulSet {
+func newOwnerStatefulsetForTikv() *apps.StatefulSet {
 	sts := apps.StatefulSet{}
-	sts.Spec.Replicas = func() *int32 { a := int32(deleteTiKVPodOrdinal); return &a }()
+	sts.Spec.Replicas = func() *int32 { a := int32(3); return &a }()
 	sts.Name = tiKVStsName
 	sts.Namespace = namespace
 	sts.Status.CurrentRevision = "1"
@@ -121,11 +232,57 @@ func newOwnerStatefulSetForTiKVPodAdmissionControl() *apps.StatefulSet {
 	return &sts
 }
 
-func newPVCForDeleteTiKVPod() *core.PersistentVolumeClaim {
+func newPVCForTikv(ordinal int32) *core.PersistentVolumeClaim {
 	return &core.PersistentVolumeClaim{
 		ObjectMeta: meta.ObjectMeta{
-			Name:      operatorUtils.OrdinalPVCName(v1alpha1.TiKVMemberType, tiKVStsName, deleteTiKVPodOrdinal),
+			Name:      operatorUtils.OrdinalPVCName(v1alpha1.TiKVMemberType, tiKVStsName, ordinal),
 			Namespace: namespace,
 		},
 	}
+}
+
+func newTiKVStoresInfo() *pdapi.StoresInfo {
+	storesInfo := pdapi.StoresInfo{
+		Count: 3,
+		Stores: []*pdapi.StoreInfo{
+			{
+				Store: &pdapi.MetaStore{
+					StateName: v1alpha1.TiKVStateUp,
+					Store: &metapb.Store{
+						Id:      0,
+						Address: fmt.Sprintf("%s-tikv-%d.%s-tikv-peer.%s.svc:20160", tcName, 0, tcName, namespace),
+					},
+				},
+				Status: &pdapi.StoreStatus{
+					LeaderCount: 1,
+				},
+			},
+			{
+				Store: &pdapi.MetaStore{
+					StateName: v1alpha1.TiKVStateUp,
+					Store: &metapb.Store{
+						Id:      1,
+						Address: fmt.Sprintf("%s-tikv-%d.%s-tikv-peer.%s.svc:20160", tcName, 1, tcName, namespace),
+					},
+				},
+				Status: &pdapi.StoreStatus{
+					LeaderCount: 1,
+				},
+			},
+			{
+				Store: &pdapi.MetaStore{
+					StateName: v1alpha1.TiKVStateUp,
+					Store: &metapb.Store{
+						Id:      2,
+						Address: fmt.Sprintf("%s-tikv-%d.%s-tikv-peer.%s.svc:20160", tcName, 2, tcName, namespace),
+					},
+				},
+				Status: &pdapi.StoreStatus{
+					LeaderCount: 1,
+				},
+			},
+		},
+	}
+
+	return &storesInfo
 }
