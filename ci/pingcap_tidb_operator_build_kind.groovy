@@ -28,11 +28,11 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 				dir("${PROJECT_DIR}"){
 					stage('build tidb-operator binary'){
 						if( BUILD_BRANCH ==~ /[a-z0-9]{40}/ ){
-						// checkout pull request
-						checkout changelog: false, poll: false, scm: [$class: 'GitSCM', branches: [[name: "${BUILD_BRANCH}"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: "${CREDENTIALS_ID}", refspec: '+refs/pull/*:refs/remotes/origin/pr/*', url: "${BUILD_URL}"]]]
+							// checkout pull request
+							checkout changelog: false, poll: false, scm: [$class: 'GitSCM', branches: [[name: "${BUILD_BRANCH}"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: "${CREDENTIALS_ID}", refspec: '+refs/pull/*:refs/remotes/origin/pr/*', url: "${BUILD_URL}"]]]
 						} else {
-						// checkout branch, such as: master、release-1.0、release-1.1
-						checkout changelog: false, poll: false, scm: [$class: 'GitSCM', branches: [[name: "${BUILD_BRANCH}"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: "${CREDENTIALS_ID}", url: "${BUILD_URL}"]]]
+							// checkout branch, such as: master、release-1.0、release-1.1
+							checkout changelog: false, poll: false, scm: [$class: 'GitSCM', branches: [[name: "${BUILD_BRANCH}"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: "${CREDENTIALS_ID}", url: "${BUILD_URL}"]]]
 						}
 						//git credentialsId: "k8s", url: "${BUILD_URL}", branch: "${ghprbActualCommit}"
 						GITHASH = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
