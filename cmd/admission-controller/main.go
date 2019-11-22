@@ -50,7 +50,6 @@ func init() {
 	flag.StringVar(&keyFile, "tlsKeyFile", "/etc/webhook/certs/key.pem", "File containing the x509 private key to --tlsCertFile.")
 	flag.StringVar(&extraServiceAccounts, "extraServiceAccounts", "", "comma-separated, extra Service Accounts the Webhook should control. The full pattern for each common service account is system:serviceaccount:<namespace>:<serviceaccount-name>")
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
-
 	flag.Parse()
 }
 
@@ -82,7 +81,6 @@ func main() {
 	if err != nil {
 		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
-
 	asCli, err := asclientset.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("failed to get advanced-statefulset Clientset: %v", err)
