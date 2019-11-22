@@ -37,7 +37,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 							submoduleCfg: [],
 							userRemoteConfigs: [[
 								credentialsId: "${CREDENTIALS_ID}",
-								refspec: '+refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pr/* +refs/tags/*:refs/remotes/origin/tags/*',
+								refspec: '+refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pr/*',
 								url: "${BUILD_URL}",
 							]]
 						]
