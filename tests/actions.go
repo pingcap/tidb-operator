@@ -1844,7 +1844,7 @@ func (oa *operatorActions) getComponentPVList(tc *v1alpha1.TidbCluster, componen
 
 	listOptions := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(
-			label.New().Instance(tcName).Component(component).Labels()).String(),
+			label.New().Instance(tcName).Component(component).Namespace(ns).Labels()).String(),
 	}
 
 	pvList, err := oa.kubeCli.CoreV1().PersistentVolumes().List(listOptions)
