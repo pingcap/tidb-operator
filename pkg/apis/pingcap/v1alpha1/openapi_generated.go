@@ -627,14 +627,14 @@ func schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref common.ReferenceCal
 							Format:      "",
 						},
 					},
-					"object_acl": {
+					"objectAcl": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ObjectAcl represents the access control list for new objects",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
-					"bucket_acl": {
+					"bucketAcl": {
 						SchemaProps: spec.SchemaProps{
 							Description: "BucketAcl represents the access control list for new buckets",
 							Type:        []string{"string"},

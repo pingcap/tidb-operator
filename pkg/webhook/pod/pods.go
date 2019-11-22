@@ -16,7 +16,9 @@ package pod
 import (
 	"encoding/json"
 	"fmt"
+
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -53,9 +55,15 @@ type PodAdmissionControl struct {
 	tcLister listers.TidbClusterLister
 	// sts Lister
 	stsLister appslisters.StatefulSetLister
+	// the map of the service account from the request which should be checked by webhook
+	serviceAccounts sets.String
 }
 
-func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder) *PodAdmissionControl {
+const (
+	stsControllerServiceAccounts = "system:serviceaccount:kube-system:statefulset-controller"
+)
+
+func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder, extraServiceAccounts []string) *PodAdmissionControl {
 
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	PVCControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
@@ -63,15 +71,19 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 
 	podLister := kubeInformerFactory.Core().V1().Pods().Lister()
 	stsLister := kubeInformerFactory.Apps().V1().StatefulSets().Lister()
-
+	serviceAccounts := sets.NewString(stsControllerServiceAccounts)
+	for _, sa := range extraServiceAccounts {
+		serviceAccounts.Insert(sa)
+	}
 	return &PodAdmissionControl{
-		kubeCli:     kubeCli,
-		operatorCli: operatorCli,
-		pvcControl:  PVCControl,
-		pdControl:   PdControl,
-		podLister:   podLister,
-		tcLister:    tcLister,
-		stsLister:   stsLister,
+		kubeCli:         kubeCli,
+		operatorCli:     operatorCli,
+		pvcControl:      PVCControl,
+		pdControl:       PdControl,
+		podLister:       podLister,
+		tcLister:        tcLister,
+		stsLister:       stsLister,
+		serviceAccounts: serviceAccounts,
 	}
 }
 
@@ -80,6 +92,13 @@ func (pc *PodAdmissionControl) AdmitPods(ar admission.AdmissionReview) *admissio
 	name := ar.Request.Name
 	namespace := ar.Request.Namespace
 	operation := ar.Request.Operation
+	serviceAccount := ar.Request.UserInfo.Username
+	klog.Infof("receive %s pod[%s/%s] by sa[%s]", operation, namespace, name, serviceAccount)
+
+	if !pc.serviceAccounts.Has(serviceAccount) {
+		klog.Infof("Request was not sent by known controlled ServiceAccounts, admit to %s pod [%s/%s]", operation, namespace, name)
+		return util.ARSuccess()
+	}
 
 	switch operation {
 	case admission.Delete:
@@ -90,6 +109,7 @@ func (pc *PodAdmissionControl) AdmitPods(ar admission.AdmissionReview) *admissio
 		klog.Infof("Admit to %s pod[%s/%s]", operation, namespace, name)
 		return util.ARSuccess()
 	}
+
 }
 
 // Webhook server receive request to delete pod
