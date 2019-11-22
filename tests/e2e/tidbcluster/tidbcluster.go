@@ -198,6 +198,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		ginkgo.By(fmt.Sprintf("Starting to test apiserver, test apiserver image: %s", cfg.TestApiserverImage))
 		framework.Logf("config: %v", config)
 		aaCtx := apiserver.NewE2eContext(ns, config, cfg.TestApiserverImage)
+		defer aaCtx.Clean()
+		aaCtx.Setup()
 		aaCtx.Do()
 	})
 

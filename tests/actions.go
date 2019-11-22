@@ -2708,7 +2708,8 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	isv1 := from.OperatorTag == "v1.0.0"
 
 	sets := map[string]string{
-		"binlog.pump.create": "true",
+		"binlog.pump.create":  "true",
+		"binlog.pump.storage": "1Gi",
 	}
 
 	if withDrainer {
