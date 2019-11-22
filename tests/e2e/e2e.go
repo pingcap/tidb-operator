@@ -17,11 +17,11 @@ package e2e
 
 import (
 	"fmt"
-	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
@@ -35,6 +35,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtimeutils "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
@@ -126,11 +127,7 @@ func setupSuite() {
 
 var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	setupSuite()
-	// golang profiling endpoint
-	go func() {
-		klog.Info(http.ListenAndServe(":6060", nil))
-	}()
-	ginkgo.By("golang profiling endpoint started")
+	// override with hard-coded value
 	e2econfig.TestConfig.ManifestDir = "/manifests"
 	framework.Logf("====== e2e configuration ======")
 	framework.Logf("%s", e2econfig.TestConfig.MustPrettyPrintJSON())
@@ -144,6 +141,32 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	asCli, err := asclientset.NewForConfig(config)
 	framework.ExpectNoError(err, "failed to create clientset")
 	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, e2econfig.TestConfig, nil)
+	ginkgo.By("Recycle all local PVs")
+	pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
+	framework.ExpectNoError(err, "failed to list pvList")
+	for _, pv := range pvList.Items {
+		if pv.Spec.PersistentVolumeReclaimPolicy == v1.PersistentVolumeReclaimDelete {
+			continue
+		}
+		ginkgo.By(fmt.Sprintf("Update reclaim policy of PV %s to %s", pv.Name, v1.PersistentVolumeReclaimDelete))
+		pv.Spec.PersistentVolumeReclaimPolicy = v1.PersistentVolumeReclaimDelete
+		_, err = kubeCli.CoreV1().PersistentVolumes().Update(&pv)
+		framework.ExpectNoError(err, fmt.Sprintf("failed to update pv %s", pv.Name))
+	}
+	ginkgo.By("Wait for all PVs to be available")
+	err = wait.Poll(time.Second, time.Minute, func() (bool, error) {
+		pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
+		if err != nil {
+			return false, err
+		}
+		for _, pv := range pvList.Items {
+			if pv.Status.Phase != v1.VolumeAvailable {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
+	framework.ExpectNoError(err, "failed to wait for all PVs to be available")
 	ginkgo.By("Installing CRDs")
 	oa.CleanCRDOrDie()
 	oa.InstallCRDOrDie()

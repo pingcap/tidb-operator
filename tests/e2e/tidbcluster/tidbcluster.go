@@ -40,6 +40,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	var ns string
 	var c clientset.Interface
+	var cli versioned.Interface
+	var asCli asclientset.Interface
 	var oa tests.OperatorActions
 	var cfg *tests.Config
 	var config *restclient.Config
@@ -48,11 +50,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
 		c = f.ClientSet
-		config, err := framework.LoadConfig()
+		var err error
+		config, err = framework.LoadConfig()
 		framework.ExpectNoError(err, "failed to load config")
-		cli, err := versioned.NewForConfig(config)
+		cli, err = versioned.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
-		asCli, err := asclientset.NewForConfig(config)
+		asCli, err = asclientset.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
 		oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, e2econfig.TestConfig, nil)
 		cfg = e2econfig.TestConfig
@@ -194,7 +197,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	ginkgo.It("Test aggregated apiserver", func() {
 		ginkgo.By(fmt.Sprintf("Starting to test apiserver, test apiserver image: %s", cfg.TestApiserverImage))
 		framework.Logf("config: %v", config)
-		aaCtx := apiserver.NewE2eContext("aa", config, cfg.TestApiserverImage)
+		aaCtx := apiserver.NewE2eContext(ns, config, cfg.TestApiserverImage)
 		aaCtx.Do()
 	})
 
