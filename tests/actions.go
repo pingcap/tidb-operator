@@ -1173,7 +1173,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 		return false, nil
 	}
 
-	if tc.Spec.TiKV.Image != c.Image {
+	if tc.Spec.PD.Image != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
 			ns, pdSetName, c.Image, tc.Spec.PD.Image)
 		return false, nil
