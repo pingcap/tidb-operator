@@ -10,7 +10,7 @@ import (
 	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
-	"k8s.io/api/admission/v1beta1"
+	admission "k8s.io/api/admission/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,7 +33,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 		isUpgrading    bool
 		storeState     string
 		UpdatePVCErr   bool
-		expectFn       func(g *GomegaWithT, response *v1beta1.AdmissionResponse)
+		expectFn       func(g *GomegaWithT, response *admission.AdmissionResponse)
 	}
 
 	testFn := func(test *testcase) {
@@ -170,7 +170,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			isUpgrading:    false,
 			storeState:     "",
 			UpdatePVCErr:   false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
 			},
 		},
@@ -180,7 +180,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			isUpgrading:    false,
 			storeState:     "",
 			UpdatePVCErr:   false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
 			},
 		},
@@ -190,7 +190,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			isUpgrading:    true,
 			storeState:     v1alpha1.TiKVStateUp,
 			UpdatePVCErr:   false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
 			},
 		},
@@ -200,7 +200,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			isUpgrading:    false,
 			storeState:     v1alpha1.TiKVStateUp,
 			UpdatePVCErr:   false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
 			},
 		},

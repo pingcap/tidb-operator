@@ -24,9 +24,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
-	"k8s.io/api/admission/v1beta1"
+	admission "k8s.io/api/admission/v1"
 	apps "k8s.io/api/apps/v1"
-	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -42,7 +41,7 @@ func init() {
 	deserializer = util.GetCodec()
 }
 
-func AdmitStatefulSets(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
+func AdmitStatefulSets(ar admission.AdmissionReview) *admission.AdmissionResponse {
 
 	name := ar.Request.Name
 	namespace := ar.Request.Namespace
@@ -141,7 +140,7 @@ func getStsAttributes(data []byte, apiVersion string) (*metav1.ObjectMeta, *int3
 		return &(set.ObjectMeta), set.Spec.UpdateStrategy.RollingUpdate.Partition, nil
 	}
 
-	set := appsv1beta1.StatefulSet{}
+	set := apps.StatefulSet{}
 	if _, _, err := deserializer.Decode(data, nil, &set); err != nil {
 		return nil, nil, err
 	}
