@@ -44,7 +44,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	var cfg *tests.Config
 	var config *restclient.Config
 	var ocfg *tests.OperatorConfig
-	var tidbVersionFirst string
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -58,17 +57,18 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, e2econfig.TestConfig, nil)
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
-		tidbVersionFirst = cfg.GetTiDBVersionOrDie()
 	})
 
 	ginkgo.Context("Basic: Deploying, Scaling, Update Configuration", func() {
 		clusters := map[string]string{}
-		clusters[tidbVersionFirst] = "cluster1"
+		clusters["v3.0.5"] = "cluster1"
 		clusters["v2.1.16"] = "cluster5" // for v2.1.x series
 
 		for version, name := range clusters {
-			ginkgo.It(fmt.Sprintf("[TiDB Version: %s]", version), func() {
-				cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, name, "", version)
+			localVersion := version
+			localName := name
+			ginkgo.It(fmt.Sprintf("[TiDB Version: %s] %s", localVersion, localName), func() {
+				cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, localName, "", localVersion)
 				if name == "cluster5" {
 					// verify v2.1.x configuration compatibility
 					// https://github.com/pingcap/tidb-operator/pull/950

@@ -31,6 +31,7 @@ GINKGO_PARALLEL=${GINKGO_PARALLEL:-n} # set to 'y' to run tests in parallel
 # If 'y', Ginkgo's reporter will not print out in color when tests are run
 # in parallel
 GINKGO_NO_COLOR=${GINKGO_NO_COLOR:-n}
+GINKGO_STREAM=${GINKGO_STREAM:-y}
 
 ginkgo_args=()
 
@@ -44,11 +45,18 @@ if [[ "${GINKGO_NO_COLOR}" == "y" ]]; then
     ginkgo_args+=("--noColor")
 fi
 
+if [[ "${GINKGO_STREAM}" == "y" ]]; then
+    ginkgo_args+=("--stream")
+fi
+
 NS=tidb-operator-e2e
 
 # TODO move these clean logic into e2e code
 echo "info: clear helm releases"
 $HELM_BIN ls --all --short | xargs -n 1 -r $HELM_BIN delete --purge
+
+echo "info: clear non-kubernetes apiservices"
+$KUBECTL_BIN delete apiservices -l kube-aggregator.kubernetes.io/automanaged!=onstart
 
 # clear all validatingwebhookconfigurations first otherwise it may deny pods deletion requests
 echo "info: clear validatingwebhookconfiguration"
