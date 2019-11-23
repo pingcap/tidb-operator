@@ -207,6 +207,7 @@ type TiDBSpec struct {
 	BinlogEnabled    bool             `json:"binlogEnabled,omitempty"`
 	MaxFailoverCount int32            `json:"maxFailoverCount,omitempty"`
 	SeparateSlowLog  bool             `json:"separateSlowLog,omitempty"`
+	StorageClassName string           `json:"storageClassName,omitempty"`
 	// +k8s:openapi-gen=false
 	SlowLogTailer   TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
 	EnableTLSClient bool                  `json:"enableTLSClient,omitempty"`
