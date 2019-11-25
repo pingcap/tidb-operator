@@ -78,6 +78,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			pvc_3 := newPVCForTikv(3)
 			podIndexer.Add(pod_3)
 			pvcIndexer.Add(pvc_3)
+			deleteTiKVPod = pod_3
 			if test.isStoreExist {
 				tc.Status.TiKV.Stores["3"] = v1alpha1.TiKVStore{
 					PodName:     memberUtils.TikvPodName(tcName, 3),
@@ -166,6 +167,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 	tests := []testcase{
 		{
 			name:           "no store,no exceed",
+			isStoreExist:   false,
 			isOutOfOrdinal: false,
 			isUpgrading:    false,
 			storeState:     "",
@@ -176,7 +178,8 @@ func TestTiKVDeleterDelete(t *testing.T) {
 		},
 		{
 			name:           "no store,out of ordinal",
-			isOutOfOrdinal: false,
+			isStoreExist:   false,
+			isOutOfOrdinal: true,
 			isUpgrading:    false,
 			storeState:     "",
 			UpdatePVCErr:   false,
@@ -185,7 +188,20 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			},
 		},
 		{
+			name:           "no store,out of ordinal",
+			isStoreExist:   false,
+			isOutOfOrdinal: true,
+			isUpgrading:    false,
+			storeState:     "",
+			UpdatePVCErr:   true,
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
+				g.Expect(response.Allowed, true)
+				g.Expect(response.Result.Message, "update pvc error")
+			},
+		},
+		{
 			name:           "first normal upgraded",
+			isStoreExist:   true,
 			isOutOfOrdinal: false,
 			isUpgrading:    true,
 			storeState:     v1alpha1.TiKVStateUp,
@@ -196,12 +212,24 @@ func TestTiKVDeleterDelete(t *testing.T) {
 		},
 		{
 			name:           "first normal scale-in",
+			isStoreExist:   true,
 			isOutOfOrdinal: true,
 			isUpgrading:    false,
 			storeState:     v1alpha1.TiKVStateUp,
 			UpdatePVCErr:   false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
+			},
+		},
+		{
+			name:           "tombstone Upgrading",
+			isStoreExist:   true,
+			isOutOfOrdinal: false,
+			isUpgrading:    true,
+			storeState:     v1alpha1.TiKVStateTombstone,
+			UpdatePVCErr:   false,
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
+				g.Expect(response.Allowed, true)
 			},
 		},
 	}

@@ -174,13 +174,13 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(isInOrdinal, isUpgrading boo
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
 		}
-		return pc.admitDeleteUPTiKVPodDuringUpgrading(ordinal, pod, ownerStatefulSet, tc, pdClient, store)
+		return pc.admitDeleteUpTiKVPodDuringUpgrading(ordinal, pod, ownerStatefulSet, tc, pdClient, store)
 	}
 
 	return util.ARSuccess()
 }
 
-func (pc *PodAdmissionControl) admitDeleteUPTiKVPodDuringUpgrading(ordinal int32, pod *core.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, store *pdapi.StoreInfo) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(ordinal int32, pod *core.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, store *pdapi.StoreInfo) *admission.AdmissionResponse {
 
 	name := pod.Name
 	namespace := pod.Namespace
