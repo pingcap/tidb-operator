@@ -16,7 +16,8 @@ export GO111MODULE := on
 GOOS := $(if $(GOOS),$(GOOS),linux)
 GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
 GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
-GO     := $(GOENV) go build -trimpath
+GO     := $(GOENV) go
+GO_BUILD := $(GO) build -trimpath
 
 IMAGE_TAG ?= latest
 PACKAGE_LIST := go list ./... | grep -vE "client/(clientset|informers|listers)"
@@ -42,22 +43,22 @@ endif
 build: controller-manager scheduler discovery admission-controller apiserver backup-manager
 
 controller-manager:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
 
 scheduler:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-scheduler cmd/scheduler/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-scheduler cmd/scheduler/main.go
 
 discovery:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery cmd/discovery/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery cmd/discovery/main.go
 
 admission-controller:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-controller cmd/admission-controller/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-controller cmd/admission-controller/main.go
 
 apiserver:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-apiserver cmd/apiserver/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-apiserver cmd/apiserver/main.go
 
 backup-manager:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/backup-manager/bin/tidb-backup-manager cmd/backup-manager/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/backup-manager/bin/tidb-backup-manager cmd/backup-manager/main.go
 
 ifeq ($(NO_BUILD),y)
 backup-docker:
@@ -87,7 +88,8 @@ endif
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:${IMAGE_TAG}" tests/images/e2e
 
 e2e-build: test-apiserver-build
-	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/ginkgo github.com/onsi/ginkgo/ginkgo
+	$(GO) test -c -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e.test ./tests/e2e
 
 test-apiserver-dokcer-push: test-apiesrver-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/test-apiserver:${IMAGE_TAG}"
@@ -101,13 +103,13 @@ endif
 	docker build -t "${DOCKER_REGISTRY}/pingcap/test-apiserver:${IMAGE_TAG}" tests/images/test-apiserver
 
 test-apiserver-build:
-	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/test-apiserver/bin/tidb-apiserver tests/cmd/apiserver/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/test-apiserver/bin/tidb-apiserver tests/cmd/apiserver/main.go
 
 e2e:
 	./hack/e2e.sh
 
 stability-test-build:
-	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test tests/cmd/stability/*.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test tests/cmd/stability/*.go
 
 stability-test-docker: stability-test-build
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:${IMAGE_TAG}" tests/images/stability-test
@@ -116,7 +118,7 @@ stability-test-push: stability-test-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:${IMAGE_TAG}"
 
 fault-trigger:
-	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/fault-trigger/bin/fault-trigger tests/cmd/fault-trigger/*.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/fault-trigger/bin/fault-trigger tests/cmd/fault-trigger/*.go
 
 # ARGS:
 #
@@ -199,7 +201,7 @@ check-gosec:
 	CGO_ENABLED=0 retool do gosec $$($(PACKAGE_DIRECTORIES))
 
 cli:
-	$(GO) -ldflags '$(LDFLAGS)' -o tkctl cmd/tkctl/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tkctl cmd/tkctl/main.go
 
 debug-docker-push: debug-build-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/debug-launcher:latest"
@@ -212,6 +214,6 @@ debug-build-docker: debug-build
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-debug:latest" misc/images/tidb-debug
 
 debug-build:
-	$(GO) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
 
 .PHONY: check check-setup check-all build e2e-build debug-build cli e2e

@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -71,9 +72,9 @@ type Node struct {
 	Name string `yaml:"name" json:"name"`
 }
 
-// NewConfig creates a new config.
-func NewConfig() (*Config, error) {
-	cfg := &Config{
+// NewDefaultConfig creates a default configuration.
+func NewDefaultConfig() *Config {
+	return &Config{
 		AdditionalDrainerVersion: "v3.0.2",
 
 		PDMaxReplicas:       5,
@@ -87,6 +88,11 @@ func NewConfig() (*Config, error) {
 			RawSize:     defaultRawSize,
 		},
 	}
+}
+
+// NewConfig creates a new config.
+func NewConfig() (*Config, error) {
+	cfg := NewDefaultConfig()
 	flag.StringVar(&cfg.configFile, "config", "", "Config file")
 	flag.StringVar(&cfg.LogDir, "log-dir", "/logDir", "log directory")
 	flag.IntVar(&cfg.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
@@ -212,4 +218,20 @@ func (c *Config) CleanTempDirs() error {
 		}
 	}
 	return nil
+}
+
+func (c *Config) PrettyPrintJSON() (string, error) {
+	b, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func (c *Config) MustPrettyPrintJSON() string {
+	s, err := c.PrettyPrintJSON()
+	if err != nil {
+		panic(err)
+	}
+	return s
 }
