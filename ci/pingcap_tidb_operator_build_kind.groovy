@@ -134,8 +134,8 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 					done
 					trap " echo '############ end of e2e test running on the cluster: \$clusterName ############'; rm -f /k8s-locks/\$clusterName " INT TERM EXIT
 
-                    export KUBECONFIG=`/root/go/bin/kind get kubeconfig-path --name="\$clusterName"`
-                    DOCKER_REGISTRY=\${clusters[\$clusterName]} IMAGE_TAG=${GITHASH} SKIP_BUILD=y make e2e
+					export KUBECONFIG=`/root/go/bin/kind get kubeconfig-path --name="\$clusterName"`
+					DOCKER_REGISTRY=\${clusters[\$clusterName]} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 make e2e
 					"""
 					}
 				}

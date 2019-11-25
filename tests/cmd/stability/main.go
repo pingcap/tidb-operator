@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
+	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	"github.com/robfig/cron"
 	v1 "k8s.io/api/core/v1"
@@ -37,12 +38,17 @@ var cfg *tests.Config
 var certCtx *apimachinery.CertContext
 var upgradeVersions []string
 
+func init() {
+	client.RegisterFlags()
+}
+
 func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 	go func() {
 		glog.Info(http.ListenAndServe(":6060", nil))
 	}()
+	metrics.StartServer()
 	cfg = tests.ParseConfigOrDie()
 	upgradeVersions = cfg.GetUpgradeTidbVersionsOrDie()
 	ns := os.Getenv("NAMESPACE")

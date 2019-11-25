@@ -1814,8 +1814,12 @@ func (oa *operatorActions) checkComponentReclaimPVSuccess(tc *v1alpha1.TidbClust
 		return err
 	}
 
-	if len(pvcList) != replica || len(pvList) != replica {
-		return fmt.Errorf("tidb cluster %s/%s compoenent %s pv or pvc have not been reclaimed completely", ns, tcName, component)
+	if len(pvcList) != replica {
+		return fmt.Errorf("tidb cluster %s/%s component %s pvc has not been reclaimed completely, expected: %d, got %d", ns, tcName, component, replica, len(pvcList))
+	}
+
+	if len(pvList) != replica {
+		return fmt.Errorf("tidb cluster %s/%s component %s pv has not been reclaimed completely, expected: %d, got %d", ns, tcName, component, replica, len(pvList))
 	}
 
 	return nil
@@ -2704,7 +2708,8 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	isv1 := from.OperatorTag == "v1.0.0"
 
 	sets := map[string]string{
-		"binlog.pump.create": "true",
+		"binlog.pump.create":  "true",
+		"binlog.pump.storage": "1Gi",
 	}
 
 	if withDrainer {
