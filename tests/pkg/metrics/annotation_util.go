@@ -130,7 +130,7 @@ func (cli *Client) getAnnotationPath() string {
 	return u.String()
 }
 
-func init() {
+func StartServer() {
 	counterMetric = initErrorMetric()
 	prometheus.MustRegister(counterMetric)
 	mux := http.NewServeMux()
