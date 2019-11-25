@@ -73,7 +73,7 @@ func addEvictLeaderAnnotation(kubeCli kubernetes.Interface, pod *core.Pod) error
 func isTiKVReadyToUpgrade(upgradePod *core.Pod, store *pdapi.StoreInfo) bool {
 
 	if store.Status.LeaderCount == 0 {
-		klog.Infof("pod[%s/%s] is no region leader in store[%d]", upgradePod.Namespace, upgradePod.Name, store.Store.Id)
+		klog.Infof("pod[%s/%s] has no region leader in store[%d]", upgradePod.Namespace, upgradePod.Name, store.Store.Id)
 		return true
 	}
 
