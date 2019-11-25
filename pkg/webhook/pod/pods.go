@@ -223,21 +223,6 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar admission.AdmissionReview) *ad
 		return util.ARFail(err)
 	}
 
-	ownerStatefulSet, err := getOwnerStatefulSetForTiDBComponent(pod, pc.stsLister)
-	if err != nil {
-		klog.Errorf("failed to get owner statefulset,refuse to create pod[%s/%s]", namespace, name)
-		return util.ARFail(err)
-	}
-
-	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
-	if err != nil {
-		return util.ARFail(err)
-	}
-
-	if ownerStatefulSet.Status.CurrentReplicas < 1 && ownerStatefulSet.Status.UpdatedReplicas < 1 && ordinal == 0 {
-		return util.ARSuccess()
-	}
-
 	if l.IsTiKV() {
 		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster)
 		return pc.admitCreateTiKVPod(pod, tc, pdClient)
