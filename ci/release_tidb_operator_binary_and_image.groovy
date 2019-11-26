@@ -12,6 +12,8 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 					ACCESS_KEY = QN_access_key
 					SECRET_KEY = Qiniu_secret_key
 				}
+
+				sh "chown -R jenkins:jenkins ./"
 				deleteDir()
 
 				dir("${WORKSPACE}/operator"){
