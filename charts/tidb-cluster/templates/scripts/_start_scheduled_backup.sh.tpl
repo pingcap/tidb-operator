@@ -2,9 +2,7 @@ set -euo pipefail
 
 host=$(getent hosts {{ template "cluster.name" . }}-tidb | head | awk '{print $1}')
 
-timestamp=$(echo ${POD_NAME}|awk -F- '{print $(NF-1)}')
-## use UTC time zone to resolve timestamp, avoiding different parsing results due to different default time zones
-backupName=scheduled-backup-`date -u -d @${timestamp}  "+%Y%m%d-%H%M%S"`
+backupName=scheduled-backup-`date "+%Y%m%d-%H%M%S"`
 backupPath=/data/${backupName}
 
 echo "making dir ${backupPath}"
