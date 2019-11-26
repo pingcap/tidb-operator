@@ -100,9 +100,10 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 
 		for(String chartItem : CHART_ITEMS.split(' ')){
 			slackmsg = "${slackmsg}" + "\n" +
-			"${chartItem} charts index Download URL: http://charts.pingcap.org/index.yaml" + "\n" +
 			"${chartItem} charts Download URL: http://charts.pingcap.org/${chartItem}-${RELEASE_TAG}.tgz"
 		}
+		slackmsg = "${slackmsg}" + "\n" +
+		"charts index Download URL: http://charts.pingcap.org/index.yaml"
 
 		slackSend channel: '#cloud_jenkins', color: 'good', teamDomain: 'pingcap', tokenCredentialId: 'slack-pingcap-token', message: "${slackmsg}"
 	}
