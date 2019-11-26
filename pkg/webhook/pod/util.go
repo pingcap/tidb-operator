@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	FailToFindTidbComponentOwnerStatefulset = "failed to find owner statefulset for pod[%s/%s]"
+	failToFindTidbComponentOwnerStatefulset = "failed to find owner statefulset for pod[%s/%s]"
 )
 
 func IsPodInPdMembers(tc *v1alpha1.TidbCluster, pod *core.Pod, pdClient pdapi.PDClient) (bool, error) {
@@ -140,7 +140,7 @@ func getOwnerStatefulSetForTiDBComponent(pod *core.Pod, stsLister appslisters.St
 		}
 	}
 	if len(ownerStatefulSetName) == 0 {
-		return nil, fmt.Errorf(FailToFindTidbComponentOwnerStatefulset, namespace, name)
+		return nil, fmt.Errorf(failToFindTidbComponentOwnerStatefulset, namespace, name)
 	}
 	return stsLister.StatefulSets(namespace).Get(ownerStatefulSetName)
 }

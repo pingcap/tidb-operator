@@ -153,7 +153,7 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 
 	ownerStatefulSet, err := getOwnerStatefulSetForTiDBComponent(pod, pc.stsLister)
 	if err != nil {
-		if errors.IsNotFound(err) || err.Error() == fmt.Sprintf(FailToFindTidbComponentOwnerStatefulset, namespace, name) {
+		if errors.IsNotFound(err) || err.Error() == fmt.Sprintf(failToFindTidbComponentOwnerStatefulset, namespace, name) {
 			klog.Infof("owner statefulset for pod[%s/%s] is deleted,admit to delete pod", namespace, name)
 			return util.ARSuccess()
 		}
