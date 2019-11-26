@@ -390,17 +390,17 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container
-	if tc.Spec.TiDB.Annotations != nil {
-		init, ok := tc.Spec.TiDB.Annotations[label.AnnSysctlInit]
+	if tc.BaseTiDBSpec() != nil {
+		init, ok := tc.BaseTiDBSpec().Annotations()[label.AnnSysctlInit]
 		if ok && (init == label.AnnSysctlInitVal) {
-			if tc.Spec.TiDB.PodSecurityContext != nil && len(tc.Spec.TiDB.PodSecurityContext.Sysctls) > 0 {
-				for _, sysctl := range tc.Spec.TiDB.PodSecurityContext.Sysctls {
+			if tc.BaseTiDBSpec().PodSecurityContext() != nil && len(tc.BaseTiDBSpec().PodSecurityContext().Sysctls) > 0 {
+				for _, sysctl := range tc.BaseTiDBSpec().PodSecurityContext().Sysctls {
 					sysctls = sysctls + fmt.Sprintf(" %s=%s", sysctl.Name, sysctl.Value)
 				}
 				privileged := true
 				initContainers = append(initContainers, corev1.Container{
 					Name:  "init",
-					Image: controller.GetUtilImage(tc),
+					Image: tc.HelperImage(),
 					Command: []string{
 						"sh",
 						"-c",
@@ -416,7 +416,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 	// Init container is only used for the case where allowed-unsafe-sysctls
 	// cannot be enabled for kubelet, so clean the sysctl in statefulset
 	// SecurityContext if init container is enabled
-	podSecurityContext := tc.Spec.TiDB.PodSecurityContext.DeepCopy()
+	podSecurityContext := tc.BaseTiDBSpec().PodSecurityContext().DeepCopy()
 	if len(initContainers) > 0 {
 		podSecurityContext.Sysctls = []corev1.Sysctl{}
 	}
@@ -433,9 +433,9 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 		volMounts = append(volMounts, corev1.VolumeMount{Name: slowQueryLogVolumeName, MountPath: slowQueryLogDir})
 		containers = append(containers, corev1.Container{
 			Name:            v1alpha1.SlowLogTailerMemberType.String(),
-			Image:           controller.GetSlowLogTailerImage(tc),
-			ImagePullPolicy: tc.Spec.TiDB.SlowLogTailer.ImagePullPolicy,
-			Resources:       util.ResourceRequirement(tc.Spec.TiDB.SlowLogTailer.ContainerSpec),
+			Image:           tc.HelperImage(),
+			ImagePullPolicy: tc.HelperImagePullPolicy(),
+			Resources:       util.ResourceRequirement(tc.Spec.TiDB.SlowLogTailer.Resources),
 			VolumeMounts: []corev1.VolumeMount{
 				{Name: slowQueryLogVolumeName, MountPath: slowQueryLogDir},
 			},
@@ -476,9 +476,9 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 	}
 	containers = append(containers, corev1.Container{
 		Name:            v1alpha1.TiDBMemberType.String(),
-		Image:           tc.Spec.TiDB.Image,
+		Image:           tc.BaseTiDBSpec().Image(),
 		Command:         []string{"/bin/sh", "/usr/local/bin/tidb_start_script.sh"},
-		ImagePullPolicy: tc.Spec.TiDB.ImagePullPolicy,
+		ImagePullPolicy: tc.BaseTiDBSpec().ImagePullPolicy(),
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "server",
@@ -492,7 +492,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 			},
 		},
 		VolumeMounts: volMounts,
-		Resources:    util.ResourceRequirement(tc.Spec.TiDB.ContainerSpec),
+		Resources:    util.ResourceRequirement(tc.Spec.TiDB.Resources),
 		Env:          envs,
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
@@ -507,12 +507,12 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 	})
 
 	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
-	if tc.Spec.TiDB.HostNetwork {
+	if tc.BaseTiDBSpec().HostNetwork() {
 		dnsPolicy = corev1.DNSClusterFirstWithHostNet
 	}
 
 	tidbLabel := label.New().Instance(instanceName).TiDB()
-	podAnnotations := CombineAnnotations(controller.AnnProm(10080), tc.Spec.TiDB.Annotations)
+	podAnnotations := CombineAnnotations(controller.AnnProm(10080), tc.BaseTiDBSpec().Annotations())
 	tidbSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            controller.TiDBMemberName(tcName),
@@ -529,17 +529,17 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 					Annotations: podAnnotations,
 				},
 				Spec: corev1.PodSpec{
-					SchedulerName:     tc.Spec.SchedulerName,
-					Affinity:          tc.Spec.TiDB.Affinity,
-					NodeSelector:      tc.Spec.TiDB.NodeSelector,
-					HostNetwork:       tc.Spec.TiDB.HostNetwork,
+					SchedulerName:     tc.BaseTiDBSpec().SchedulerName(),
+					Affinity:          tc.BaseTiDBSpec().Affinity(),
+					NodeSelector:      tc.BaseTiDBSpec().NodeSelector(),
+					HostNetwork:       tc.BaseTiDBSpec().HostNetwork(),
 					DNSPolicy:         dnsPolicy,
 					Containers:        containers,
 					RestartPolicy:     corev1.RestartPolicyAlways,
-					Tolerations:       tc.Spec.TiDB.Tolerations,
+					Tolerations:       tc.BaseTiDBSpec().Tolerations(),
 					Volumes:           vols,
 					SecurityContext:   podSecurityContext,
-					PriorityClassName: tc.Spec.TiDB.PriorityClassName,
+					PriorityClassName: tc.BaseTiDBSpec().PriorityClassName(),
 					InitContainers:    initContainers,
 				},
 			},

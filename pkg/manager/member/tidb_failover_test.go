@@ -397,7 +397,7 @@ func newTidbClusterForTiDBFailover() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			TiDB: v1alpha1.TiDBSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tidb-test-image",
 				},
 				Replicas:         2,
