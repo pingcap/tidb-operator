@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
+	"strconv"
 	"sync"
 
 	"github.com/golang/glog"
@@ -67,6 +68,8 @@ func main() {
 	}
 
 	oa := tests.NewOperatorActions(cli, kubeCli, tests.DefaultPollInterval, cfg, nil)
+	oa.CleanCRDOrDie()
+	oa.InstallCRDOrDie()
 	oa.LabelNodesOrDie()
 	oa.CleanOperatorOrDie(ocfg)
 	oa.DeployOperatorOrDie(ocfg)
@@ -77,6 +80,7 @@ func main() {
 		oa.DeployTidbClusterOrDie(cluster1)
 		oa.CheckTidbClusterStatusOrDie(cluster1)
 		oa.CheckDisasterToleranceOrDie(cluster1)
+		oa.CheckInitSQLOrDie(cluster1)
 
 		// scale
 		cluster1.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
@@ -217,6 +221,7 @@ func newTidbClusterConfig(ns, clusterName, password string) *tests.TidbClusterCo
 			"tidb.resources.limits.memory":   "4Gi",
 			"tidb.resources.requests.cpu":    "200m",
 			"tidb.resources.requests.memory": "200Mi",
+			"tidb.initSql":                   strconv.Quote("create database e2e;"),
 			"discovery.image":                cfg.OperatorImage,
 		},
 		Args:    map[string]string{},

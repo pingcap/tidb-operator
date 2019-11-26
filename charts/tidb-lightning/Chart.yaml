@@ -1,0 +1,11 @@
+apiVersion: v1
+description: A Helm chart for TiDB Lightning
+name: tidb-lightning
+version: dev
+home: https://github.com/pingcap/tidb-lightning
+sources:
+  - https://github.com/pingcap/tidb-operator
+keywords:
+  - newsql
+  - database
+  - backup

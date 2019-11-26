@@ -32,7 +32,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.0.2
+  image: pingcap/tidb-operator:v1.0.3
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -51,7 +51,7 @@ enableConfigMapRollout: true
 
 pd:
   # Please refer to https://github.com/pingcap/pd/blob/master/conf/config.toml for the default
-  # pd configurations (change to the tags of your pd version), 
+  # pd configurations (change to the tags of your pd version),
   # just follow the format in the file and configure in the 'config' section
   # as below if you want to customize any configuration.
   # Please refer to https://pingcap.com/docs-cn/v3.0/reference/configuration/pd-server/configuration-file/
@@ -61,9 +61,9 @@ pd:
     level = "info"
     [replication]
     location-labels = ["region", "zone", "rack", "host"]
-  
+
   replicas: 3
-  image: pingcap/pd:v3.0.1
+  image: pingcap/pd:v3.0.5
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -154,6 +154,14 @@ pd:
   #   effect: "NoSchedule"
   annotations: {}
 
+  # Specify the security context of PD Pod.
+  # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+  podSecurityContext: {}
+
+  # Use the host's network namespace if enabled.
+  # Default to false.
+  hostNetwork: false
+
 tikv:
   # Please refer to https://github.com/tikv/tikv/blob/master/etc/config-template.toml for the default
   # tikv configurations (change to the tags of your tikv version),
@@ -191,7 +199,7 @@ tikv:
   #   capacity = "1GB"
 
   replicas: 3
-  image: pingcap/tikv:v3.0.1
+  image: pingcap/tikv:v3.0.5
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -234,6 +242,14 @@ tikv:
   # maxFailoverCount is used to configure the maximum number of TiKV nodes that TiDB Operator can create when failover occurs.
   maxFailoverCount: 3
 
+  # Specify the security context of TiKV Pod.
+  # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+  podSecurityContext: {}
+
+  # Use the host's network namespace if enabled.
+  # Default to false.
+  hostNetwork: false
+
 tidb:
   # Please refer to https://github.com/pingcap/tidb/blob/master/config/config.toml.example for the default
   # tidb configurations(change to the tags of your tidb version),
@@ -260,7 +276,7 @@ tidb:
   # initSql is the SQL statements executed after the TiDB cluster is bootstrapped.
   # initSql: |-
   #   create database app;
-  image: pingcap/tidb:v3.0.1
+  image: pingcap/tidb:v3.0.5
   # Image pull policy.
   imagePullPolicy: IfNotPresent
 
@@ -290,6 +306,15 @@ tidb:
   #   value: tidb
   #   effect: "NoSchedule"
   annotations: {}
+
+  # Specify the security context of TiDB Pod.
+  # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+  podSecurityContext: {}
+
+  # Use the host's network namespace if enabled.
+  # Default to false.
+  hostNetwork: false
+
   maxFailoverCount: 3
   service:
     type: NodePort
@@ -341,7 +366,7 @@ monitor:
   storageClassName: local-storage
   storage: 10Gi
   initializer:
-    image: pingcap/tidb-monitor-initializer:v3.0.1
+    image: pingcap/tidb-monitor-initializer:v3.0.5
     imagePullPolicy: IfNotPresent
     resources: {}
     # limits:
@@ -417,7 +442,7 @@ binlog:
   pump:
     create: false
     replicas: 1
-    image: pingcap/tidb-binlog:v3.0.1
+    image: pingcap/tidb-binlog:v3.0.5
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -459,7 +484,7 @@ binlog:
 
   drainer:
     create: false
-    image: pingcap/tidb-binlog:v3.0.1
+    image: pingcap/tidb-binlog:v3.0.5
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -602,6 +627,30 @@ scheduledBackup:
     requests: {}
     #   cpu: 4000m
     #   memory: 4Gi
+
+importer:
+  create: false
+  image: pingcap/tidb-lightning:v3.0.1
+  imagePullPolicy: IfNotPresent
+  storageClassName: local-storage
+  storage: 200Gi
+  resources: {}
+    # limits:
+    #   cpu: 16000m
+    #   memory: 8Gi
+    # requests:
+    #   cpu: 16000m
+    #   memory: 8Gi
+  affinity: {}
+  tolerations: []
+  pushgatewayImage: prom/pushgateway:v0.3.1
+  pushgatewayImagePullPolicy: IfNotPresent
+  config: |
+    log-level = "info"
+    [metrics]
+    job = "tikv-importer"
+    interval = "15s"
+    address = "localhost:9091"
 
 metaInstance: "{{ $labels.instance }}"
 metaType: "{{ $labels.type }}"

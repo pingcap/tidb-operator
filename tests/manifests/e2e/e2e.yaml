@@ -42,14 +42,15 @@ spec:
   serviceAccount: tidb-operator-e2e
   containers:
   - name: tidb-operator-e2e
-    image: 127.0.0.1:5000/pingcap/tidb-operator-e2e:latest
+    image: localhost:5000/pingcap/tidb-operator-e2e:latest
     imagePullPolicy: Always
     command:
     - /usr/local/bin/e2e
     - --operator-tag=e2e
     - --operator-image=pingcap/tidb-operator:latest
-    - --tidb-versions=v3.0.0-beta.1,v3.0.1
+    - --tidb-versions=v3.0.2,v3.0.3,v3.0.4,v3.0.5
     - --chart-dir=/charts
+    - -v=4
     volumeMounts:
     - mountPath: /logDir
       name: logdir

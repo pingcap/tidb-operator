@@ -12,7 +12,7 @@ data "aws_ami" "eks_worker" {
 
 data "template_file" "userdata" {
   template = file("${path.module}/templates/userdata.sh.tpl")
-  count    = local.worker_group_count
+  count    = length(local.tidb_cluster_worker_groups)
 
   vars = {
     cluster_name        = var.eks.cluster_id

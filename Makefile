@@ -6,17 +6,18 @@ DOCKER_REGISTRY := $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY),localhost:5000)
 
 GOVER_MAJOR := $(shell go version | sed -E -e "s/.*go([0-9]+)[.]([0-9]+).*/\1/")
 GOVER_MINOR := $(shell go version | sed -E -e "s/.*go([0-9]+)[.]([0-9]+).*/\2/")
-GO111 := $(shell [ $(GOVER_MAJOR) -gt 1 ] || [ $(GOVER_MAJOR) -eq 1 ] && [ $(GOVER_MINOR) -ge 11 ]; echo $$?)
-ifeq ($(GO111), 1)
-$(error Please upgrade your Go compiler to 1.11 or higher version)
+GO113 := $(shell [ $(GOVER_MAJOR) -gt 1 ] || [ $(GOVER_MAJOR) -eq 1 ] && [ $(GOVER_MINOR) -ge 13 ]; echo $$?)
+ifeq ($(GO113), 1)
+$(error Please upgrade your Go compiler to 1.13 or higher version)
 endif
 
 GOOS := $(if $(GOOS),$(GOOS),linux)
 GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
 GOENV  := GO15VENDOREXPERIMENT="1" GO111MODULE=on CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
-GO     := $(GOENV) go build
+GO     := $(GOENV) go build -trimpath
 GOTEST := CGO_ENABLED=0 GO111MODULE=on go test -v -cover
 
+IMAGE_TAG ?= latest
 PACKAGE_LIST := go list ./... | grep -vE "pkg/client" | grep -vE "zz_generated"
 PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
 FILES := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go")
@@ -26,10 +27,15 @@ TEST_COVER_PACKAGES:=go list ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/t
 default: build
 
 docker-push: docker
-	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}"
 
+ifeq ($(NO_BUILD),y)
+docker:
+	@echo "NO_BUILD=y, skip build for $@"
+else
 docker: build
-	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest" images/tidb-operator
+endif
+	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}" images/tidb-operator
 
 build: controller-manager scheduler discovery admission-controller
 
@@ -50,9 +56,14 @@ e2e-setup:
 	@GO111MODULE=on CGO_ENABLED=0 go get github.com/onsi/ginkgo@v1.6.0
 
 e2e-docker-push: e2e-docker
-	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:${IMAGE_TAG}"
 
+ifeq ($(NO_BUILD),y)
+e2e-docker:
+	@echo "NO_BUILD=y, skip build for $@"
+else
 e2e-docker: e2e-build
+endif
 	[ -d tests/images/e2e/tidb-operator ] && rm -r tests/images/e2e/tidb-operator || true
 	[ -d tests/images/e2e/tidb-cluster ] && rm -r tests/images/e2e/tidb-cluster || true
 	[ -d tests/images/e2e/tidb-backup ] && rm -r tests/images/e2e/tidb-backup || true
@@ -61,19 +72,22 @@ e2e-docker: e2e-build
 	cp -r charts/tidb-cluster tests/images/e2e
 	cp -r charts/tidb-backup tests/images/e2e
 	cp -r manifests tests/images/e2e
-	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" tests/images/e2e
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:${IMAGE_TAG}" tests/images/e2e
 
 e2e-build: e2e-setup
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
+
+e2e:
+	./hack/e2e.sh
 
 stability-test-build:
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test tests/cmd/stability/*.go
 
 stability-test-docker: stability-test-build
-	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest" tests/images/stability-test
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:${IMAGE_TAG}" tests/images/stability-test
 
 stability-test-push: stability-test-docker
-	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:${IMAGE_TAG}"
 
 fault-trigger:
 	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/fault-trigger/bin/fault-trigger tests/cmd/fault-trigger/*.go
@@ -139,16 +153,16 @@ cli:
 	$(GO) -ldflags '$(LDFLAGS)' -o tkctl cmd/tkctl/main.go
 
 debug-docker-push: debug-build-docker
-	docker push "${DOCKER_REGISTRY}/pingcap/debug-launcher:latest"
-	docker push "${DOCKER_REGISTRY}/pingcap/tidb-control:latest"
-	docker push "${DOCKER_REGISTRY}/pingcap/tidb-debug:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/debug-launcher:${IMAGE_TAG}"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-control:${IMAGE_TAG}"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-debug:${IMAGE_TAG}"
 
 debug-build-docker: debug-build
-	docker build -t "${DOCKER_REGISTRY}/pingcap/debug-launcher:latest" misc/images/debug-launcher
-	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-control:latest" misc/images/tidb-control
-	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-debug:latest" misc/images/tidb-debug
+	docker build -t "${DOCKER_REGISTRY}/pingcap/debug-launcher:${IMAGE_TAG}" misc/images/debug-launcher
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-control:${IMAGE_TAG}" misc/images/tidb-control
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-debug:${IMAGE_TAG}" misc/images/tidb-debug
 
 debug-build:
 	$(GO) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
 
-.PHONY: check check-setup check-all build e2e-build debug-build cli
+.PHONY: check check-setup check-all build e2e-build debug-build cli e2e
