@@ -10,6 +10,7 @@ cd $ROOT
 source $ROOT/hack/lib.sh
 
 hack::ensure_kubectl
+hack::ensure_helm
 
 TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:latest}
 E2E_IMAGE=${E2E_IMAGE:-localhost:5000/pingcap/tidb-operator-e2e:latest}
@@ -26,12 +27,50 @@ echo "E2E_IMAGE: $E2E_IMAGE"
 echo "TEST_APISERVER_IMAGE: $TEST_APISERVER_IMAGE"
 echo "KUBECONFIG: $KUBECONFIG"
 
+GINKGO_PARALLEL=${GINKGO_PARALLEL:-n} # set to 'y' to run tests in parallel
+# If 'y', Ginkgo's reporter will not print out in color when tests are run
+# in parallel
+GINKGO_NO_COLOR=${GINKGO_NO_COLOR:-n}
+GINKGO_STREAM=${GINKGO_STREAM:-y}
+
+ginkgo_args=()
+
+if [[ -n "${GINKGO_NODES:-}" ]]; then
+    ginkgo_args+=("--nodes=${GINKGO_NODES}")
+elif [[ ${GINKGO_PARALLEL} =~ ^[yY]$ ]]; then
+    ginkgo_args+=("-p")
+fi
+
+if [[ "${GINKGO_NO_COLOR}" == "y" ]]; then
+    ginkgo_args+=("--noColor")
+fi
+
+if [[ "${GINKGO_STREAM}" == "y" ]]; then
+    ginkgo_args+=("--stream")
+fi
+
 NS=tidb-operator-e2e
 
+# TODO move these clean logic into e2e code
+echo "info: clear helm releases"
+$HELM_BIN ls --all --short | xargs -n 1 -r $HELM_BIN delete --purge
+
+echo "info: clear non-kubernetes apiservices"
+$KUBECTL_BIN delete apiservices -l kube-aggregator.kubernetes.io/automanaged!=onstart
+
 # clear all validatingwebhookconfigurations first otherwise it may deny pods deletion requests
+echo "info: clear validatingwebhookconfiguration"
 $KUBECTL_BIN delete validatingwebhookconfiguration --all
-$KUBECTL_BIN delete -f tests/manifests/e2e/e2e.yaml --ignore-not-found
+
+echo "info: clear namespace ${NS}"
+$KUBECTL_BIN delete ns ${NS} --ignore-not-found
 $KUBECTL_BIN wait --for=delete -n ${NS} pod/tidb-operator-e2e || true
+$KUBECTL_BIN delete clusterrolebinding tidb-operator-e2e --ignore-not-found
+
+echo "info: creating namespace $NS"
+$KUBECTL_BIN create ns ${NS}
+
+echo "info: creating service account $NS/tidb-operator-e2e"
 # Create sa first and wait for the controller to create the secret for this sa
 # This avoids `No API token found for service account " tidb-operator-e2e"`
 # TODO better way to work around this issue
@@ -44,13 +83,48 @@ while true; do
     fi
     sleep 1
 done
-# copy and modify to avoid local changes
-sed "s#image: localhost:5000/pingcap/tidb-operator-e2e:latest#image: $E2E_IMAGE#g
-s#--operator-image=.*#--operator-image=${TIDB_OPERATOR_IMAGE}#g
-s#--test-apiserver-image=.*#--test-apiserver-image=${TEST_APISERVER_IMAGE}#g
-" tests/manifests/e2e/e2e.yaml | $KUBECTL_BIN -n ${NS} apply -f -
-$KUBECTL_BIN -n ${NS} wait --for=condition=Ready pod/tidb-operator-e2e
-# print e2e logs and check the result
+
+echo "info: creating webhook service and clusterrolebinding etc"
+$KUBECTL_BIN -n ${NS} apply -f tests/manifests/e2e/e2e.yaml
+
+echo "info: start to run e2e pod"
+e2e_args=(
+    /usr/local/bin/ginkgo
+    ${ginkgo_args[@]:-}
+    /usr/local/bin/e2e.test
+    --
+    --provider=skeleton 
+    --clean-start=true
+    --delete-namespace-on-failure=false
+    # tidb-operator e2e flags
+    # TODO make these configurable via environments
+    --operator-tag=e2e
+    --operator-image=${TIDB_OPERATOR_IMAGE}
+    --test-apiserver-image=${TEST_APISERVER_IMAGE}
+    --tidb-versions=v3.0.2,v3.0.3,v3.0.4,v3.0.5
+    --chart-dir=/charts
+    -v=4
+    ${@:-}
+)
+# We don't attach into the container because the connection may lost.
+# Instead we print logs and check the result repeatedly after the pod is Ready.
+$KUBECTL_BIN -n ${NS} run tidb-operator-e2e --generator=run-pod/v1 --image $E2E_IMAGE \
+    --env NAMESPACE=$NS \
+    --labels app=webhook \
+    --serviceaccount=tidb-operator-e2e \
+    --image-pull-policy=Always \
+    --restart=Never \
+    --command -- ${e2e_args[@]}
+echo "info: wait for e2e pod to be ready"
+ret=0
+$KUBECTL_BIN -n ${NS} wait --for=condition=Ready pod/tidb-operator-e2e || ret=$?
+if [ $ret -ne 0 ]; then
+    echo "error: failed to wait for the e2e pod to be ready, printing its logs"
+    $KUBECTL_BIN -n ${NS} logs tidb-operator-e2e
+    exit 1
+fi
+
+echo "info: start to print e2e logs and check the result"
 execType=0
 while true; do
     if [[ $execType -eq 0 ]]; then

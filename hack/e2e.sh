@@ -20,10 +20,33 @@ Usage: hack/e2e.sh [-h] -- [extra test args]
 
 Environments:
 
-	DOCKER_REGISTRY		image docker registry
-	IMAGE_TAG			image tag
-	SKIP_BUILD 			skip building binaries
-	SKIP_IMAGE_BUILD	skip build and push images
+    DOCKER_REGISTRY     image docker registry
+    IMAGE_TAG           image tag
+    SKIP_BUILD          skip building binaries
+    SKIP_IMAGE_BUILD    skip build and push images
+    GINKGO_NODES        ginkgo nodes to run specs, defaults: 1
+    GINKGO_PARALLEL     if set to `y`, will run specs in parallel, the number of nodes will be the number of cpus
+    GINKGO_NO_COLOR     if set to `y`, suppress color output in default reporter
+
+Examples:
+
+
+0) view help
+
+    ./hack/e2e.sh -h
+
+1) run all specs
+
+    ./hack/e2e.sh
+    GINKGO_NODES=8 ./hack/e2e.sh # in parallel
+
+2) limit specs to run
+
+    ./hack/e2e.sh -- --ginkgo.focus='Basic'
+    ./hack/e2e.sh -- --ginkgo.focus='Backup\sand\srestore'
+
+    See https://onsi.github.io/ginkgo/ for more ginkgo options.
+
 EOF
 
 }
@@ -36,6 +59,10 @@ while getopts "h?" opt; do
         ;;  
     esac
 done
+
+if [ "${1:-}" == "--" ]; then
+    shift
+fi
 
 DOCKER_REGISTRY=${DOCKER_REGISTRY:-localhost:5000}
 IMAGE_TAG=${IMAGE_TAG:-latest}
