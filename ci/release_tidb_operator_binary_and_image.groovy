@@ -42,7 +42,7 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 						do
 							chartPrefixName=\$chartItem-${RELEASE_TAG}
 							echo "======= release \$chartItem chart ======"
-							sed -i "s/version:.*/version: ${RELEASE_TAG}/g" charts/\$chart/Chart.yaml
+							sed -i "s/version:.*/version: ${RELEASE_TAG}/g" charts/\$chartItem/Chart.yaml
 							tar -zcf \${chartPrefixName}.tgz -C charts \$chartItem
 							sha256sum \${chartPrefixName}.tgz > \${chartPrefixName}.sha256
 							./upload.py \${chartPrefixName}.tgz \${chartPrefixName}.tgz
