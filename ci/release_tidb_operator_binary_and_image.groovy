@@ -21,10 +21,17 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 						GITHASH = sh(returnStdout: true, script: "curl ${UCLOUD_OSS_URL}/refs/pingcap/operator/${BUILD_BRANCH}/centos7/sha1").trim()
 						sh "curl ${UCLOUD_OSS_URL}/builds/pingcap/operator/${GITHASH}/centos7/tidb-operator.tar.gz | tar xz"
 					}
-					stage('Push tidb-operator Docker Image'){
+					stage('Push TiDB Operator Docker Image'){
 						withDockerServer([uri: "${env.DOCKER_HOST}"]) {
 							docker.build("uhub.service.ucloud.cn/pingcap/tidb-operator:${RELEASE_TAG}", "images/tidb-operator").push()
 							docker.build("pingcap/tidb-operator:${RELEASE_TAG}", "images/tidb-operator").push()
+						}
+					}
+
+					stage('Push Backup Manager Docker Image'){
+						withDockerServer([uri: "${env.DOCKER_HOST}"]) {
+							docker.build("uhub.service.ucloud.cn/pingcap/backup-manager:${RELEASE_TAG}", "images/backup-manager").push()
+							docker.build("pingcap/backup-manager:${RELEASE_TAG}", "images/backup-manager").push()
 						}
 					}
 
@@ -86,7 +93,10 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 
 		slackmsg = "${slackmsg}" + "\n" +
 		"tidb-operator Docker Image: `pingcap/tidb-operator:${RELEASE_TAG}`" + "\n" +
-		"tidb-operator Docker Image: `uhub.ucloud.cn/pingcap/tidb-operator:${RELEASE_TAG}`"
+		"tidb-operator Docker Image: `uhub.ucloud.cn/pingcap/tidb-operator:${RELEASE_TAG}`" + "\n" +
+		"backup-manager Docker Image: `pingcap/backup-manager:${RELEASE_TAG}`" + "\n" +
+		"backup-manager Docker Image: `uhub.ucloud.cn/pingcap/backup-manager:${RELEASE_TAG}`"
+
 
 		for(String chartItem : CHART_ITEMS.split(' ')){
 			slackmsg = "${slackmsg}" + "\n" +
