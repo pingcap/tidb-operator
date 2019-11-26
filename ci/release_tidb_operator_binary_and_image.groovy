@@ -9,8 +9,8 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 			container("delivery") {
 				def WORKSPACE = pwd()
 				withCredentials([string(credentialsId: "${env.QN_ACCESS_KET_ID}", variable: 'QN_access_key'), string(credentialsId: "${env.QN_SECRET_KEY_ID}", variable: 'Qiniu_secret_key')]) {
-					ACCESS_KEY=QN_access_key
-					SECRET_KEY=Qiniu_secret_key
+					ACCESS_KEY = QN_access_key
+					SECRET_KEY = Qiniu_secret_key
 				}
 				deleteDir()
 
