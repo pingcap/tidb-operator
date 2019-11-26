@@ -201,21 +201,6 @@ func TiKVCapacity(limits *v1alpha1.ResourceRequirement) string {
 	return fmt.Sprintf("%dMB", i/humanize.MiByte)
 }
 
-// Reuse the SlowLogTailer image for TiDB
-func GetUtilImage(cluster *v1alpha1.TidbCluster) string {
-	if img := cluster.Spec.TiDB.SlowLogTailer.Image; img != "" {
-		return img
-	}
-	return defaultTiDBLogTailerImage
-}
-
-func GetSlowLogTailerImage(cluster *v1alpha1.TidbCluster) string {
-	if img := cluster.Spec.TiDB.SlowLogTailer.Image; img != "" {
-		return img
-	}
-	return defaultTiDBLogTailerImage
-}
-
 // PDMemberName returns pd member name
 func PDMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-pd", clusterName)

@@ -14,6 +14,7 @@
 package v1alpha1
 
 import (
+	"github.com/pingcap/tidb-operator/pkg/util/json"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -90,19 +91,64 @@ type TidbClusterList struct {
 // +k8s:openapi-gen=true
 // TidbClusterSpec describes the attributes that a user creates on a tidb cluster
 type TidbClusterSpec struct {
-	SchedulerName string   `json:"schedulerName,omitempty"`
-	PD            PDSpec   `json:"pd,omitempty"`
-	TiDB          TiDBSpec `json:"tidb,omitempty"`
-	TiKV          TiKVSpec `json:"tikv,omitempty"`
-	// +k8s:openapi-gen=false
-	TiKVPromGateway TiKVPromGatewaySpec `json:"tikvPromGateway,omitempty"`
+
+	// PD cluster spec
+	PD PDSpec `json:"pd,omitempty"`
+
+	// TiDB cluster spec
+	TiDB TiDBSpec `json:"tidb,omitempty"`
+
+	// TiKV cluster spec
+	TiKV TiKVSpec `json:"tikv,omitempty"`
+
+	// Pump cluster spec
+	Pump *PumpSpec `json:"pump,omitempty"`
+
+	// Helper spec
+	Helper HelperSpec `json:"helper,omitempty"`
+
 	// Services list non-headless services type used in TidbCluster
-	Services        []Service                            `json:"services,omitempty"`
+	// Deprecated
+	Services []Service `json:"services,omitempty"`
+
+	// TiDB cluster version
+	Version string `json:"version,omitempty"`
+
+	// SchedulerName of TiDB cluster Pods
+	SchedulerName string `json:"schedulerName,omitempty"`
+
+	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
 	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
-	EnablePVReclaim bool                                 `json:"enablePVReclaim,omitempty"`
-	Timezone        string                               `json:"timezone,omitempty"`
+
+	// Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
+	EnablePVReclaim bool `json:"enablePVReclaim,omitempty"`
+
 	// Enable TLS connection between TiDB server components
 	EnableTLSCluster bool `json:"enableTLSCluster,omitempty"`
+
+	// Time zone of TiDB cluster Pods
+	Timezone string `json:"timezone,omitempty"`
+
+	// ImagePullPolicy of TiDB cluster Pods
+	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
+	// Whether Hostnetwork is enabled for TiDB cluster Pods
+	HostNetwork bool `json:"hostNetwork,omitempty"`
+
+	// Affinity of TiDB cluster Pods
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+
+	// PriorityClassName of TiDB cluster Pods
+	PriorityClassName string `json:"priorityClassName,omitempty"`
+
+	// Base node selectors of TiDB cluster Pods, components may add or override selectors upon this respectively
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// Base annotations of TiDB cluster Pods, components may add or override selectors upon this respectively
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Base tolerations of TiDB cluster Pods, components may add more tolreations upon this respectively
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -117,77 +163,180 @@ type TidbClusterStatus struct {
 // PDSpec contains details of PD members
 type PDSpec struct {
 	// +k8s:openapi-gen=false
-	ContainerSpec
+	ComponentSpec
 	// +k8s:openapi-gen=false
-	PodAttributesSpec
-	Replicas         int32  `json:"replicas"`
-	StorageClassName string `json:"storageClassName,omitempty"`
-}
+	Resources
+	// +k8s:openapi-gen=false
+	Replicas         int32        `json:"replicas"`
+	Service          *ServiceSpec `json:"service,omitempty"`
+	StorageClassName string       `json:"storageClassName,omitempty"`
 
-// +k8s:openapi-gen=true
-// TiDBSpec contains details of TiDB members
-type TiDBSpec struct {
 	// +k8s:openapi-gen=false
-	ContainerSpec
-	// +k8s:openapi-gen=false
-	PodAttributesSpec
-	Replicas         int32                 `json:"replicas"`
-	StorageClassName string                `json:"storageClassName,omitempty"`
-	BinlogEnabled    bool                  `json:"binlogEnabled,omitempty"`
-	MaxFailoverCount int32                 `json:"maxFailoverCount,omitempty"`
-	SeparateSlowLog  bool                  `json:"separateSlowLog,omitempty"`
-	SlowLogTailer    TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
-	EnableTLSClient  bool                  `json:"enableTLSClient,omitempty"`
-}
-
-// +k8s:openapi-gen=true
-// TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB
-type TiDBSlowLogTailerSpec struct {
-	// +k8s:openapi-gen=false
-	ContainerSpec
+	// TODO: add schema
+	Config map[string]json.JsonObject `json:"config,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 // TiKVSpec contains details of TiKV members
 type TiKVSpec struct {
 	// +k8s:openapi-gen=false
-	ContainerSpec
+	ComponentSpec
 	// +k8s:openapi-gen=false
-	PodAttributesSpec
-	Replicas         int32  `json:"replicas"`
-	Privileged       bool   `json:"privileged,omitempty"`
-	StorageClassName string `json:"storageClassName,omitempty"`
-	MaxFailoverCount int32  `json:"maxFailoverCount,omitempty"`
-}
+	Resources
+	// +k8s:openapi-gen=false
+	Replicas         int32        `json:"replicas"`
+	Service          *ServiceSpec `json:"service,omitempty"`
+	Privileged       bool         `json:"privileged,omitempty"`
+	StorageClassName string       `json:"storageClassName,omitempty"`
+	MaxFailoverCount int32        `json:"maxFailoverCount,omitempty"`
 
-// +k8s:openapi-gen=false
-// TiKVPromGatewaySpec runs as a sidecar with TiKVSpec
-type TiKVPromGatewaySpec struct {
-	ContainerSpec
-}
-
-// +k8s:openapi-gen=false
-// ContainerSpec is the container spec of a pod
-type ContainerSpec struct {
-	Image           string               `json:"image"`
-	ImagePullPolicy corev1.PullPolicy    `json:"imagePullPolicy,omitempty"`
-	Requests        *ResourceRequirement `json:"requests,omitempty"`
-	Limits          *ResourceRequirement `json:"limits,omitempty"`
-}
-
-// +k8s:openapi-gen=false
-// PodAttributesControlSpec is a spec of some general attributes of TiKV, TiDB and PD Pods
-type PodAttributesSpec struct {
-	Affinity           *corev1.Affinity           `json:"affinity,omitempty"`
-	NodeSelector       map[string]string          `json:"nodeSelector,omitempty"`
-	Tolerations        []corev1.Toleration        `json:"tolerations,omitempty"`
-	Annotations        map[string]string          `json:"annotations,omitempty"`
-	HostNetwork        bool                       `json:"hostNetwork,omitempty"`
-	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
-	PriorityClassName  string                     `json:"priorityClassName,omitempty"`
+	// +k8s:openapi-gen=false
+	// TODO: add schema
+	Config map[string]json.JsonObject `json:"config,omitempty"`
 }
 
 // +k8s:openapi-gen=true
+// TiDBSpec contains details of TiDB members
+type TiDBSpec struct {
+	// +k8s:openapi-gen=false
+	ComponentSpec
+	// +k8s:openapi-gen=false
+	Resources
+	Replicas         int32            `json:"replicas"`
+	Service          *TiDBServiceSpec `json:"service,omitempty"`
+	BinlogEnabled    bool             `json:"binlogEnabled,omitempty"`
+	MaxFailoverCount int32            `json:"maxFailoverCount,omitempty"`
+	SeparateSlowLog  bool             `json:"separateSlowLog,omitempty"`
+	StorageClassName string           `json:"storageClassName,omitempty"`
+	// +k8s:openapi-gen=false
+	SlowLogTailer   TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
+	EnableTLSClient bool                  `json:"enableTLSClient,omitempty"`
+
+	// Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled
+	Plugins []string `json:"plugins,omitempty"`
+
+	// +k8s:openapi-gen=false
+	// TODO: add schema
+	Config map[string]json.JsonObject `json:"config,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// PumpSpec contains details of Pump members
+type PumpSpec struct {
+	// +k8s:openapi-gen=false
+	ComponentSpec
+	// +k8s:openapi-gen=false
+	Resources
+
+	StorageClassName string `json:"storageClassName,omitempty"`
+	Replicas         int32  `json:"replicas"`
+
+	// +k8s:openapi-gen=false
+	// TODO: add schema
+	Config map[string]json.JsonObject `json:"config,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// HelperSpec contains details of helper component
+type HelperSpec struct {
+	// Image used to tail slow log and set kernel parameters if necessary, must have `tail` and `sysctl` installed
+	Image string `json:"image,omitempty"`
+
+	// ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
+	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB
+type TiDBSlowLogTailerSpec struct {
+	// +k8s:openapi-gen=false
+	Resources
+
+	// Image used for slowlog tailer
+	// Deprecated, use TidbCluster.HelperImage instead
+	Image string `json:"image,omitempty"`
+
+	// ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
+	// Deprecated, use TidbCluster.HelperImagePullPolicy instead
+	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type Resources struct {
+	// Resource requests of the component
+	Requests *ResourceRequirement `json:"requests,omitempty"`
+
+	// Resource limits of the component
+	Limits *ResourceRequirement `json:"limits,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties
+type ComponentSpec struct {
+	// Image of the component, override baseImage and version if present
+	// Deprecated
+	Image string `json:"image,omitempty"`
+
+	// Base image of the component, e.g. pingcap/tidb, image tag is now allowed during validation
+	BaseImage string `json:"baseImage,omitempty"`
+
+	// Version of the component. Override the cluster-level version if non-empty
+	Version string `json:"version,omitempty"`
+
+	// ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
+	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
+	// Whether Hostnetwork of the component is enabled. Override the cluster-level setting if present
+	HostNetwork *bool `json:"hostNetwork,omitempty"`
+
+	// Affinity of the component. Override the cluster-level one if present
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+
+	// PriorityClassName of the component. Override the cluster-level one if present
+	PriorityClassName string `json:"priorityClassName,omitempty"`
+
+	// SchedulerName of the component. Override the cluster-level one if present
+	SchedulerName string `json:"schedulerName,omitempty"`
+
+	// NodeSelector of the component. Merged into the cluster-level nodeSelector if non-empty
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// Annotations of the component. Merged into the cluster-level annotations if non-empty
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Tolerations of the component. Override the cluster-level tolerations if non-empty
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// PodSecurityContext of the component
+	// TODO: make this configurable at cluster level
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type ServiceSpec struct {
+	// Type of the real kubernetes service, e.g. ClusterIP
+	Type corev1.ServiceType `json:"type,omitempty"`
+
+	// Additional annotations of the kubernetes service object
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// LoadBalancerIP is the loadBalancerIP of service
+	LoadBalancerIP string `json:"loadBalancerIP,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type TiDBServiceSpec struct {
+	ServiceSpec
+
+	// ExternalTrafficPolicy of the service
+	ExternalTrafficPolicy corev1.ServiceExternalTrafficPolicyType `json:"externalTrafficPolicy,omitempty"`
+
+	// Whether expose the status port
+	ExposeStatus bool `json:"exposeStatus,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// Deprecated
 // Service represent service type used in TidbCluster
 type Service struct {
 	Name string `json:"name,omitempty"`

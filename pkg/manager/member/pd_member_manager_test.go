@@ -822,8 +822,10 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: v1alpha1.PDSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "pd-test-image",
+				},
+				Resources: v1alpha1.Resources{
 					Requests: &v1alpha1.ResourceRequirement{
 						CPU:     "1",
 						Memory:  "2Gi",
@@ -834,8 +836,10 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 				StorageClassName: "my-storage-class",
 			},
 			TiKV: v1alpha1.TiKVSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tikv-test-image",
+				},
+				Resources: v1alpha1.Resources{
 					Requests: &v1alpha1.ResourceRequirement{
 						CPU:     "1",
 						Memory:  "2Gi",
@@ -937,6 +941,7 @@ func testHostNetwork(t *testing.T, hostNetwork bool, dnsPolicy v1.DNSPolicy) fun
 }
 
 func TestGetNewPDSetForTidbCluster(t *testing.T) {
+	enable := true
 	tests := []struct {
 		name    string
 		tc      v1alpha1.TidbCluster
@@ -962,8 +967,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: v1alpha1.PDSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
-							HostNetwork: true,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							HostNetwork: &enable,
 						},
 					},
 				},
@@ -979,8 +984,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
-							HostNetwork: true,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							HostNetwork: &enable,
 						},
 					},
 				},
@@ -996,8 +1001,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: v1alpha1.TiKVSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
-							HostNetwork: true,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							HostNetwork: &enable,
 						},
 					},
 				},

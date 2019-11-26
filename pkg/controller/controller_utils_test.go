@@ -159,15 +159,6 @@ func TestTiKVCapacity(t *testing.T) {
 	}
 }
 
-func TestGetSlowLogTailerImage(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	tc := &v1alpha1.TidbCluster{}
-	g.Expect(GetSlowLogTailerImage(tc)).To(Equal(defaultTiDBLogTailerImage))
-	tc.Spec.TiDB.SlowLogTailer.Image = "image-1"
-	g.Expect(GetSlowLogTailerImage(tc)).To(Equal("image-1"))
-}
-
 func TestPDMemberName(t *testing.T) {
 	g := NewGomegaWithT(t)
 	g.Expect(PDMemberName("demo")).To(Equal("demo-pd"))
