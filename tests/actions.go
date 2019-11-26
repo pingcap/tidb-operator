@@ -1165,7 +1165,15 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 			ns, pdSetName, pdSet.Status.ReadyReplicas, pdSet.Status.Replicas)
 		return false, nil
 	}
-	if c, ok := getMemberContainer(oa.kubeCli, ns, pdSetName); !ok || tc.Spec.PD.Image != c.Image {
+
+	c, found := getMemberContainer(oa.kubeCli, ns, pdSetName)
+	if !found {
+		glog.Infof("statefulset: %s/%s not found containers[name=pd] or pod %s-0",
+			ns, pdSetName, pdSetName)
+		return false, nil
+	}
+
+	if tc.Spec.PD.Image != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
 			ns, pdSetName, c.Image, tc.Spec.PD.Image)
 		return false, nil
@@ -1230,7 +1238,15 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 			ns, tikvSetName, tikvSet.Status.ReadyReplicas, tikvSet.Status.Replicas)
 		return false, nil
 	}
-	if c, ok := getMemberContainer(oa.kubeCli, ns, tikvSetName); !ok || tc.Spec.TiKV.Image != c.Image {
+
+	c, found := getMemberContainer(oa.kubeCli, ns, tikvSetName)
+	if !found {
+		glog.Infof("statefulset: %s/%s not found containers[name=tikv] or pod %s-0",
+			ns, tikvSetName, tikvSetName)
+		return false, nil
+	}
+
+	if tc.Spec.TiKV.Image != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
 			ns, tikvSetName, c.Image, tc.Spec.TiKV.Image)
 		return false, nil
@@ -1290,7 +1306,14 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if c, ok := getMemberContainer(oa.kubeCli, ns, tidbSetName); !ok || tc.Spec.TiDB.Image != c.Image {
+	c, found := getMemberContainer(oa.kubeCli, ns, tidbSetName)
+	if !found {
+		glog.Infof("statefulset: %s/%s not found containers[name=tidb] or pod %s-0",
+			ns, tidbSetName, tidbSetName)
+		return false, nil
+	}
+
+	if tc.Spec.TiDB.Image != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
 			ns, tidbSetName, c.Image, tc.Spec.TiDB.Image)
 		return false, nil
