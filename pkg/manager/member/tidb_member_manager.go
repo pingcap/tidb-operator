@@ -342,6 +342,7 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 	if !equal || !annoEqual {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		err = SetServiceLastAppliedConfigAnnotation(&svc)
 		if err != nil {
 			return err
