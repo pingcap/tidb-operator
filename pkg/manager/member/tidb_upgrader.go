@@ -21,11 +21,6 @@ import (
 	glog "k8s.io/klog"
 )
 
-const (
-	// MaxResignDDLOwnerCount is the max regign DDL owner count
-	MaxResignDDLOwnerCount = 3
-)
-
 type tidbUpgrader struct {
 	podLister   corelisters.PodLister
 	tidbControl controller.TiDBControlInterface
@@ -96,20 +91,6 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 }
 
 func (tdu *tidbUpgrader) upgradeTiDBPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
-	tcName := tc.GetName()
-	if tc.Spec.TiDB.Replicas > 1 {
-		if member, exist := tc.Status.TiDB.Members[tidbPodName(tcName, ordinal)]; exist && member.Health {
-			hasResign, err := tdu.tidbControl.ResignDDLOwner(tc, ordinal)
-			if (!hasResign || err != nil) && tc.Status.TiDB.ResignDDLOwnerRetryCount < MaxResignDDLOwnerCount {
-				glog.Errorf("tidb upgrader: failed to resign ddl owner to %s, %v", member.Name, err)
-				tc.Status.TiDB.ResignDDLOwnerRetryCount++
-				return err
-			}
-			glog.Infof("tidb upgrader: resign ddl owner to %s successfully", member.Name)
-		}
-	}
-
-	tc.Status.TiDB.ResignDDLOwnerRetryCount = 0
 	setUpgradePartition(newSet, ordinal)
 	return nil
 }
