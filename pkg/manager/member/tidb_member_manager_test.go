@@ -571,8 +571,10 @@ func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			TiDB: v1alpha1.TiDBSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: v1alpha1.TiDBMemberType.String(),
+				},
+				Resources: v1alpha1.Resources{
 					Requests: &v1alpha1.ResourceRequirement{
 						CPU:    "1",
 						Memory: "2Gi",
@@ -656,6 +658,7 @@ func TestGetNewTiDBHeadlessServiceForTidbCluster(t *testing.T) {
 }
 
 func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
+	enable := true
 	tests := []struct {
 		name    string
 		tc      v1alpha1.TidbCluster
@@ -681,8 +684,8 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
-							HostNetwork: true,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							HostNetwork: &enable,
 						},
 					},
 				},
@@ -698,8 +701,8 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: v1alpha1.PDSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
-							HostNetwork: true,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							HostNetwork: &enable,
 						},
 					},
 				},
@@ -715,8 +718,8 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: v1alpha1.TiKVSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
-							HostNetwork: true,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							HostNetwork: &enable,
 						},
 					},
 				},
@@ -752,7 +755,7 @@ func TestTiDBInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
 							PodSecurityContext: &corev1.PodSecurityContext{
 								RunAsNonRoot: &asRoot,
 								Sysctls: []corev1.Sysctl{
@@ -810,7 +813,7 @@ func TestTiDBInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -867,7 +870,7 @@ func TestTiDBInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -892,7 +895,7 @@ func TestTiDBInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -913,7 +916,7 @@ func TestTiDBInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "false",
 							},
