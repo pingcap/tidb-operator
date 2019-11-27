@@ -144,7 +144,7 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 	tcName, exist := pod.Labels[label.InstanceLabelKey]
 	if !exist {
 		klog.Errorf("pod[%s/%s] has no label: %s", namespace, name, label.InstanceLabelKey)
-		return util.ARFail(fmt.Errorf("pod[%s/%s] has no label: %s", namespace, name, label.InstanceLabelKey))
+		return util.ARSuccess()
 	}
 
 	tc, err := pc.tcLister.TidbClusters(namespace).Get(tcName)
