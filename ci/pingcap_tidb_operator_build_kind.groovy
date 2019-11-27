@@ -2,6 +2,92 @@
 // E2E Jenkins file.
 //
 
+import groovy.transform.Field
+
+@Field
+def podYAML = '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: main
+    image: gcr.io/k8s-testimages/kubekins-e2e:v20191108-9467d02-master
+    command:
+    - runner.sh
+    - sleep
+    - 99d
+    # we need privileged mode in order to do docker in docker
+    securityContext:
+      privileged: true
+    env:
+    - name: DOCKER_IN_DOCKER_ENABLED
+      value: "true"
+    resources:
+      requests:
+        memory: "16000Mi"
+        cpu: 8000m
+    # kind needs /lib/modules and cgroups from the host
+    volumeMounts:
+    - mountPath: /lib/modules
+      name: modules
+      readOnly: true
+    - mountPath: /sys/fs/cgroup
+      name: cgroup
+    # dind expects /var/lib/docker to be volume
+    - name: docker-root
+      mountPath: /var/lib/docker
+    # legacy docker path for cr.io/k8s-testimages/kubekins-e2e
+    - name: docker-graph
+      mountPath: /docker-graph
+  volumes:
+  - name: modules
+    hostPath:
+      path: /lib/modules
+      type: Directory
+  - name: cgroup
+    hostPath:
+      path: /sys/fs/cgroup
+      type: Directory
+  - name: docker-root
+    emptyDir: {}
+  - name: docker-graph
+    emptyDir: {}
+'''
+
+def build(SHELL_CODE) {
+	podTemplate(yaml: podYAML) {
+		node(POD_LABEL) {
+			container('main') {
+				def WORKSPACE = pwd()
+				dir("${WORKSPACE}/go/src/github.com/pingcap/tidb-operator") {
+					unstash 'tidb-operator'
+					stage("Debug Info") {
+						println "debug command: kubectl -n jenkins-ci exec -ti ${NODE_NAME} bash"
+					}
+					stage('Run') {
+						ansiColor('xterm') {
+							sh """
+							echo "====== shell env ======"
+							echo "pwd: \$(pwd)"
+							env
+							echo "====== go env ======"
+							go env
+							echo "====== docker version ======"
+							docker version
+							"""
+							sh """
+							export GOPATH=${WORKSPACE}/go
+							${SHELL_CODE} || true
+							sleep 99d
+							"""
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 def getChangeLogText() {
 	def changeLogText = ""
 	for (int i = 0; i < currentBuild.changeSets.size(); i++) {
@@ -15,6 +101,7 @@ def getChangeLogText() {
 }
 
 def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
+	timeout(120) {
 
 	def GITHASH
 	def CODECOV_TOKEN
@@ -56,95 +143,35 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 							sudo yum install -y mercurial
 						fi
 						hg --version
-						make check-setup
-						make check
-						if [ ${BUILD_BRANCH} == "master" ]
-						then
-							make test GO_COVER=y
-							curl -s https://codecov.io/bash | bash -s - -t ${CODECOV_TOKEN} || echo'Codecov did not collect coverage reports'
-						else
-							make test
-						fi
+						#make check-setup
+						#make check
+						#if [ ${BUILD_BRANCH} == "master" ]
+						#then
+						#	make test GO_COVER=y
+						#	curl -s https://codecov.io/bash | bash -s - -t ${CODECOV_TOKEN} || echo 'Codecov did not collect coverage reports'
+						#else
+						#	make test
+						#fi
 						make
 						make e2e-build
 						"""
 						}
 					}
+					stash excludes: "vendor/**,deploy/**", name: "tidb-operator"
 				}
-				stash excludes: "${PROJECT_DIR}/vendor/**,${PROJECT_DIR}/deploy/**", includes: "${PROJECT_DIR}/**", name: "tidb-operator"
 			}
 		}
 
+		stage("E2E - v1.12.10") {
+			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 make e2e")
+		}
+
+		// we requires ~/bin/config.cfg, filemgr-linux64 utilities on k8s-kind node
+		// TODO make it possible to run on any node
 		node('k8s-kind') {
-			deleteDir()
-			unstash 'tidb-operator'
-
 			dir("${PROJECT_DIR}"){
-				stage('start run operator e2e test'){
-					ansiColor('xterm') {
-					sh """#/usr/bin/env bash
-					echo "info: setup go"
-					export PATH=\$PATH:/usr/local/go/bin
-					echo "==== Start Build Environment ===="
-					echo "BASH VERSION: \$BASH_VERSION"
-					echo "PATH: \$PATH"
-					echo "PROJECT_DIR: ${PROJECT_DIR}"
-					if ! command -v go &>/dev/null; then
-						echo "error: go is required"
-						exit 1
-					fi
-					go version
-					if ! command -v docker &>/dev/null; then
-						echo "error: docker is required"
-						exit 1
-					fi
-					docker version
-					echo "==== End Build Environment ===="
-					declare -A clusters
-					clusters['kind']='127.0.0.1:5000'
-					clusters['kind2']='127.0.0.2:5000'
-					clusters['kind3']='127.0.0.3:5000'
-					clusters['kind4']='127.0.0.4:5000'
-					while true
-					do
-						for cluster in \${!clusters[*]}; do
-							lockfile=/k8s-locks/\$cluster
-							if [ -e \$lockfile ]; then
-								prId=`cat \$lockfile`
-								if [ "${ghprbPullId}" == "\$prId" ]; then
-									clusterName=\$cluster
-									echo "####### branch ${ghprbPullId}/${BUILD_BRANCH} get env:\$cluster ########"
-									echo "####### if you want to debug,please exec the command: export KUBECONFIG=`/root/go/bin/kind get kubeconfig-path --name=\$cluster ` in jenkins slave node ########"
-										break 2
-								fi
-							fi
-						done
-
-						for cluster in \$(shuf -e \${!clusters[*]}); do
-							lockfile=/k8s-locks/\$cluster
-							if [ ! -e \$lockfile ]; then
-									touch \$lockfile
-									echo ${ghprbPullId} > \$lockfile
-									clusterName=\$cluster
-									echo "####### branch ${ghprbPullId}/${BUILD_BRANCH} get env:\$cluster #######"
-									echo "####### if you want to debug,please exec the command: export KUBECONFIG=`/root/go/bin/kind get kubeconfig-path --name=\$cluster ` in jenkins slave node ########"
-									break 2
-							else
-									prId=`cat \$lockfile`
-									echo "env:\$cluster have be used by PR: \$prId"
-							fi
-						done
-						echo "sleep 30 second and then retry"
-						sleep 30
-					done
-					trap " echo '############ end of e2e test running on the cluster: \$clusterName ############'; rm -f /k8s-locks/\$clusterName " INT TERM EXIT
-
-					export KUBECONFIG=`/root/go/bin/kind get kubeconfig-path --name="\$clusterName"`
-					DOCKER_REGISTRY=\${clusters[\$clusterName]} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 make e2e
-					"""
-					}
-				}
-
+				deleteDir()
+				unstash 'tidb-operator'
 				if ( !(BUILD_BRANCH ==~ /[a-z0-9]{40}/) ) {
 					stage('upload tidb-operator binary and charts'){
 						//upload binary and charts
@@ -163,6 +190,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 				}
 			}
 		}
+
 		currentBuild.result = "SUCCESS"
 	}
 
@@ -190,7 +218,10 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 
 		slackSend channel: '#cloud_jenkins', color: 'good', teamDomain: 'pingcap', tokenCredentialId: 'slack-pingcap-token', message: "${slackmsg}"
 	}
+
+	}
 }
+
 return this
 
 // vim: noet

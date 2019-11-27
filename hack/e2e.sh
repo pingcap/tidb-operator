@@ -26,10 +26,10 @@ Environments:
     IMAGE_TAG           image tag
     SKIP_BUILD          skip building binaries
     SKIP_IMAGE_BUILD    skip build and push images
-    SKIP_UP                skip starting the cluster
-    SKIP_DOWN            skip shutting down the cluster
+    SKIP_UP             skip starting the cluster
+    SKIP_DOWN           skip shutting down the cluster
     KUBE_VERSION        the version of Kubernetes to test against
-    KIND_DATA_HOSTPATH    (for kind) the host path of data directory for kind cluster, defaults: none
+    KIND_DATA_HOSTPATH  (for kind) the host path of data directory for kind cluster, defaults: none
     GINKGO_NODES        ginkgo nodes to run specs, defaults: 1
     GINKGO_PARALLEL     if set to `y`, will run specs in parallel, the number of nodes will be the number of cpus
     GINKGO_NO_COLOR     if set to `y`, suppress color output in default reporter
