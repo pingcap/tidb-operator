@@ -192,7 +192,7 @@ func imagePullFailed(pod *corev1.Pod) bool {
 	return false
 }
 
-func tikvPodName(tcName string, ordinal int32) string {
+func TikvPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiKVMemberName(tcName), ordinal)
 }
 
