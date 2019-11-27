@@ -77,13 +77,9 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(pod *core.Pod, ownerStatefulS
 
 	isUpgrading := IsStatefulSetUpgrading(ownerStatefulSet)
 
-	if storeInfo == nil {
+	if storeInfo == nil || storeInfo.Store == nil {
 		klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] can't be found store", namespace, tcName, namespace, name)
 		return pc.admitDeleteUselessTiKVPod(isInOrdinal, pod, ownerStatefulSet, tc, pdClient)
-	}
-
-	if storeInfo.Store == nil {
-		return util.ARFail(err)
 	}
 
 	switch storeInfo.Store.StateName {
