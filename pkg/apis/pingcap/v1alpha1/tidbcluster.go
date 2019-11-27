@@ -13,6 +13,177 @@
 
 package v1alpha1
 
+import (
+	"fmt"
+
+	corev1 "k8s.io/api/core/v1"
+)
+
+const (
+	// defaultHelperImage is default image of helper
+	defaultHelperImage = "busybox:1.26.2"
+)
+
+// ComponentAccessor is the interface to access component details, which respects the cluster-level properties
+// and component-level overrides
+type ComponentAccessor interface {
+	Image() string
+	ImagePullPolicy() corev1.PullPolicy
+	HostNetwork() bool
+	Affinity() *corev1.Affinity
+	PriorityClassName() string
+	NodeSelector() map[string]string
+	Annotations() map[string]string
+	Tolerations() []corev1.Toleration
+	PodSecurityContext() *corev1.PodSecurityContext
+	SchedulerName() string
+}
+
+type componentAccessorImpl struct {
+	// Cluster is the TidbCluster Spec
+	ClusterSpec *TidbClusterSpec
+
+	// Cluster is the Component Spec
+	ComponentSpec *ComponentSpec
+}
+
+func (a *componentAccessorImpl) Image() string {
+	image := a.ComponentSpec.Image
+	baseImage := a.ComponentSpec.BaseImage
+	// base image takes higher priority
+	if baseImage != "" {
+		version := a.ComponentSpec.Version
+		if version == "" {
+			version = a.ClusterSpec.Version
+		}
+		image = fmt.Sprintf("%s:%s", baseImage, version)
+	}
+	return image
+}
+
+func (a *componentAccessorImpl) PodSecurityContext() *corev1.PodSecurityContext {
+	return a.ComponentSpec.PodSecurityContext
+}
+
+func (a *componentAccessorImpl) ImagePullPolicy() corev1.PullPolicy {
+	pp := a.ComponentSpec.ImagePullPolicy
+	if pp == nil {
+		pp = &a.ClusterSpec.ImagePullPolicy
+	}
+	return *pp
+}
+
+func (a *componentAccessorImpl) HostNetwork() bool {
+	hostNetwork := a.ComponentSpec.HostNetwork
+	if hostNetwork == nil {
+		hostNetwork = &a.ClusterSpec.HostNetwork
+	}
+	return *hostNetwork
+}
+
+func (a *componentAccessorImpl) Affinity() *corev1.Affinity {
+	affi := a.ComponentSpec.Affinity
+	if affi == nil {
+		affi = a.ClusterSpec.Affinity
+	}
+	return affi
+}
+
+func (a *componentAccessorImpl) PriorityClassName() string {
+	pcn := a.ComponentSpec.PriorityClassName
+	if pcn == "" {
+		pcn = a.ClusterSpec.PriorityClassName
+	}
+	return pcn
+}
+
+func (a *componentAccessorImpl) SchedulerName() string {
+	pcn := a.ComponentSpec.SchedulerName
+	if pcn == "" {
+		pcn = a.ClusterSpec.SchedulerName
+	}
+	return pcn
+}
+
+func (a *componentAccessorImpl) NodeSelector() map[string]string {
+	sel := map[string]string{}
+	for k, v := range a.ClusterSpec.NodeSelector {
+		sel[k] = v
+	}
+	for k, v := range a.ComponentSpec.NodeSelector {
+		sel[k] = v
+	}
+	return sel
+}
+
+func (a *componentAccessorImpl) Annotations() map[string]string {
+	anno := map[string]string{}
+	for k, v := range a.ClusterSpec.Annotations {
+		anno[k] = v
+	}
+	for k, v := range a.ComponentSpec.Annotations {
+		anno[k] = v
+	}
+	return anno
+}
+
+func (a *componentAccessorImpl) Tolerations() []corev1.Toleration {
+	tols := a.ComponentSpec.Tolerations
+	if len(tols) == 0 {
+		tols = a.ClusterSpec.Tolerations
+	}
+	return tols
+}
+
+// BaseTiDBSpec returns the base spec of TiDB servers
+func (tc *TidbCluster) BaseTiDBSpec() ComponentAccessor {
+	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiDB.ComponentSpec}
+}
+
+// BaseTiKVSpec returns the base spec of TiKV servers
+func (tc *TidbCluster) BaseTiKVSpec() ComponentAccessor {
+	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiKV.ComponentSpec}
+}
+
+// BasePDSpec returns the base spec of PD servers
+func (tc *TidbCluster) BasePDSpec() ComponentAccessor {
+	return &componentAccessorImpl{&tc.Spec, &tc.Spec.PD.ComponentSpec}
+}
+
+// BasePumpSpec returns two results:
+// 1. the base pump spec, if exists.
+// 2. whether the base pump spec exists.
+func (tc *TidbCluster) BasePumpSpec() (ComponentAccessor, bool) {
+	if tc.Spec.Pump == nil {
+		return nil, false
+	}
+	return &componentAccessorImpl{&tc.Spec, &tc.Spec.Pump.ComponentSpec}, true
+}
+
+func (tc *TidbCluster) HelperImage() string {
+	image := tc.Spec.Helper.Image
+	if image == "" {
+		// for backward compatibility
+		image = tc.Spec.TiDB.SlowLogTailer.Image
+	}
+	if image == "" {
+		image = defaultHelperImage
+	}
+	return image
+}
+
+func (tc *TidbCluster) HelperImagePullPolicy() corev1.PullPolicy {
+	pp := tc.Spec.Helper.ImagePullPolicy
+	if pp == nil {
+		// for backward compatibility
+		pp = tc.Spec.TiDB.SlowLogTailer.ImagePullPolicy
+	}
+	if pp == nil {
+		pp = &tc.Spec.ImagePullPolicy
+	}
+	return *pp
+}
+
 func (mt MemberType) String() string {
 	return string(mt)
 }

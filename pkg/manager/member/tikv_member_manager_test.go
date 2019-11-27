@@ -1475,6 +1475,7 @@ func TestGetNewServiceForTidbCluster(t *testing.T) {
 }
 
 func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
+	enable := true
 	tests := []struct {
 		name    string
 		tc      v1alpha1.TidbCluster
@@ -1500,8 +1501,8 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: v1alpha1.TiKVSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
-							HostNetwork: true,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							HostNetwork: &enable,
 						},
 					},
 				},
@@ -1517,8 +1518,8 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: v1alpha1.PDSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
-							HostNetwork: true,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							HostNetwork: &enable,
 						},
 					},
 				},
@@ -1534,8 +1535,8 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
-							HostNetwork: true,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							HostNetwork: &enable,
 						},
 					},
 				},
@@ -1575,7 +1576,7 @@ func TestTiKVInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: v1alpha1.TiKVSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
 							PodSecurityContext: &corev1.PodSecurityContext{
 								RunAsNonRoot: &asRoot,
 								Sysctls: []corev1.Sysctl{
@@ -1633,7 +1634,7 @@ func TestTiKVInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: v1alpha1.TiKVSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -1690,7 +1691,7 @@ func TestTiKVInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: v1alpha1.TiKVSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -1715,7 +1716,7 @@ func TestTiKVInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: v1alpha1.TiKVSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -1736,7 +1737,7 @@ func TestTiKVInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: v1alpha1.TiKVSpec{
-						PodAttributesSpec: v1alpha1.PodAttributesSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "false",
 							},

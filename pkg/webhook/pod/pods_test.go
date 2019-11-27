@@ -170,7 +170,7 @@ func newTidbClusterForPodAdmissionControl() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: v1alpha1.PDSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "pd-test-image",
 				},
 				Replicas:         pdReplicas,

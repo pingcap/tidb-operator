@@ -26,7 +26,7 @@ func TestResourceRequirement(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name            string
-		spec            v1alpha1.ContainerSpec
+		spec            v1alpha1.Resources
 		defaultRequests []corev1.ResourceRequirements
 		expectFn        func(*GomegaWithT, corev1.ResourceRequirements)
 	}
@@ -37,7 +37,7 @@ func TestResourceRequirement(t *testing.T) {
 	tests := []testcase{
 		{
 			name: "don't have spec, has one defaultRequests",
-			spec: v1alpha1.ContainerSpec{},
+			spec: v1alpha1.Resources{},
 			defaultRequests: []corev1.ResourceRequirements{
 				{
 					Requests: corev1.ResourceList{
@@ -65,7 +65,7 @@ func TestResourceRequirement(t *testing.T) {
 		},
 		{
 			name: "don't have spec, has two defaultRequests",
-			spec: v1alpha1.ContainerSpec{},
+			spec: v1alpha1.Resources{},
 			defaultRequests: []corev1.ResourceRequirements{
 				{
 					Requests: corev1.ResourceList{
@@ -103,7 +103,7 @@ func TestResourceRequirement(t *testing.T) {
 		},
 		{
 			name: "spec cover defaultRequests",
-			spec: v1alpha1.ContainerSpec{
+			spec: v1alpha1.Resources{
 				Requests: &v1alpha1.ResourceRequirement{
 					Memory: "200Gi",
 					CPU:    "200m",
@@ -140,7 +140,7 @@ func TestResourceRequirement(t *testing.T) {
 		},
 		{
 			name: "spec is not correct",
-			spec: v1alpha1.ContainerSpec{
+			spec: v1alpha1.Resources{
 				Requests: &v1alpha1.ResourceRequirement{
 					Memory: "200xi",
 					CPU:    "200x",
@@ -177,7 +177,7 @@ func TestResourceRequirement(t *testing.T) {
 		},
 		{
 			name: "Request don't have CPU",
-			spec: v1alpha1.ContainerSpec{
+			spec: v1alpha1.Resources{
 				Requests: &v1alpha1.ResourceRequirement{
 					Memory: "100Gi",
 				},
@@ -192,7 +192,7 @@ func TestResourceRequirement(t *testing.T) {
 		},
 		{
 			name: "Request don't have CPU, default has",
-			spec: v1alpha1.ContainerSpec{
+			spec: v1alpha1.Resources{
 				Requests: &v1alpha1.ResourceRequirement{
 					Memory: "100Gi",
 				},
@@ -211,7 +211,7 @@ func TestResourceRequirement(t *testing.T) {
 		},
 		{
 			name: "Request don't have memory",
-			spec: v1alpha1.ContainerSpec{
+			spec: v1alpha1.Resources{
 				Requests: &v1alpha1.ResourceRequirement{
 					CPU: "100m",
 				},
@@ -226,7 +226,7 @@ func TestResourceRequirement(t *testing.T) {
 		},
 		{
 			name: "Request don't have memory, default has",
-			spec: v1alpha1.ContainerSpec{
+			spec: v1alpha1.Resources{
 				Requests: &v1alpha1.ResourceRequirement{
 					CPU: "100m",
 				},
@@ -246,7 +246,7 @@ func TestResourceRequirement(t *testing.T) {
 
 		{
 			name: "Limits don't have CPU",
-			spec: v1alpha1.ContainerSpec{
+			spec: v1alpha1.Resources{
 				Limits: &v1alpha1.ResourceRequirement{
 					Memory: "100Gi",
 				},
@@ -261,7 +261,7 @@ func TestResourceRequirement(t *testing.T) {
 		},
 		{
 			name: "Limits don't have CPU, default has",
-			spec: v1alpha1.ContainerSpec{
+			spec: v1alpha1.Resources{
 				Limits: &v1alpha1.ResourceRequirement{
 					Memory: "100Gi",
 				},
@@ -280,7 +280,7 @@ func TestResourceRequirement(t *testing.T) {
 		},
 		{
 			name: "Limits don't have memory",
-			spec: v1alpha1.ContainerSpec{
+			spec: v1alpha1.Resources{
 				Limits: &v1alpha1.ResourceRequirement{
 					CPU: "100m",
 				},
@@ -295,7 +295,7 @@ func TestResourceRequirement(t *testing.T) {
 		},
 		{
 			name: "Limits don't have memory, default has",
-			spec: v1alpha1.ContainerSpec{
+			spec: v1alpha1.Resources{
 				Limits: &v1alpha1.ResourceRequirement{
 					CPU: "100m",
 				},
