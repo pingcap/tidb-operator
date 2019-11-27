@@ -93,7 +93,11 @@ func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 
 	// Sync Tidb StatefulSet
-	return tmm.syncTiDBStatefulSetForTidbCluster(tc)
+	if err := tmm.syncTiDBStatefulSetForTidbCluster(tc); err != nil {
+		return err
+	}
+
+	return tmm.syncTiDBService(tc)
 }
 
 func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
