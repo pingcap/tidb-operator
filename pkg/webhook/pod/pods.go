@@ -232,7 +232,11 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar admission.AdmissionReview) *ad
 
 	tc, err := pc.tcLister.TidbClusters(namespace).Get(tcName)
 	if err != nil {
-		return util.ARSuccess()
+		if errors.IsNotFound(err) {
+			return util.ARSuccess()
+		}
+		klog.Errorf("failed get tc[%s/%s],refuse to create pod[%s/%s],%v", namespace, tcName, namespace, name, err)
+		return util.ARFail(err)
 	}
 
 	if l.IsTiKV() {
