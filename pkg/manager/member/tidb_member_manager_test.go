@@ -65,7 +65,7 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			test.prepare(tc)
 		}
 
-		tmm, fakeSetControl, _, _ := newFakeTiDBMemberManager()
+		tmm, fakeSetControl, _, _, _ := newFakeTiDBMemberManager()
 
 		if test.errWhenCreateStatefulSet {
 			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
@@ -143,7 +143,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
 
-		tmm, fakeSetControl, _, _ := newFakeTiDBMemberManager()
+		tmm, fakeSetControl, _, _, _ := newFakeTiDBMemberManager()
 
 		if test.statusChange == nil {
 			fakeSetControl.SetStatusChange(func(set *apps.StatefulSet) {
@@ -242,7 +242,7 @@ func TestTiDBMemberManagerTiDBStatefulSetIsUpgrading(t *testing.T) {
 		expectUpgrading bool
 	}
 	testFn := func(test *testcase, t *testing.T) {
-		pmm, _, podIndexer, _ := newFakeTiDBMemberManager()
+		pmm, _, podIndexer, _, _ := newFakeTiDBMemberManager()
 		tc := newTidbClusterForTiDB()
 		tc.Status.TiDB.StatefulSet = &apps.StatefulSetStatus{
 			UpdateRevision: "v3",
@@ -355,7 +355,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		if test.updateTC != nil {
 			test.updateTC(tc)
 		}
-		pmm, _, _, tidbControl := newFakeTiDBMemberManager()
+		pmm, _, _, tidbControl, _ := newFakeTiDBMemberManager()
 
 		if test.upgradingFn != nil {
 			pmm.tidbStatefulSetIsUpgradingFn = test.upgradingFn
@@ -524,7 +524,190 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 }
 
-func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSetControl, cache.Indexer, *controller.FakeTiDBControl) {
+func TestTiDBMemberManagerSyncTidbService(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name            string
+		prepare         func(*v1alpha1.TidbCluster, *fakeIndexers)
+		errOnCreate     bool
+		errOnUpdate     bool
+		expectFn        func(*GomegaWithT, error, *corev1.Service)
+		expectSvcAbsent bool
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		tc := newTidbClusterForTiDB()
+		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
+		}
+		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
+
+		tmm, _, _, _, indexers := newFakeTiDBMemberManager()
+		if test.prepare != nil {
+			test.prepare(tc, indexers)
+		}
+
+		if test.errOnCreate {
+			tmm.svcControl.(*controller.FakeServiceControl).SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+		if test.errOnUpdate {
+			tmm.svcControl.(*controller.FakeServiceControl).SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+
+		syncErr := tmm.syncTiDBService(tc)
+		svc, err := tmm.svcLister.Services(tc.Namespace).Get(controller.TiDBMemberName(tc.Name))
+		if test.expectSvcAbsent {
+			g.Expect(err).To(WithTransform(errors.IsNotFound, BeTrue()))
+		} else {
+			g.Expect(err).NotTo(HaveOccurred())
+			test.expectFn(g, syncErr, svc)
+		}
+	}
+	tests := []*testcase{
+		{
+			name: "Create service",
+			prepare: func(tc *v1alpha1.TidbCluster, _ *fakeIndexers) {
+				tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{
+					ServiceSpec: v1alpha1.ServiceSpec{
+						Type: corev1.ServiceTypeClusterIP,
+					},
+				}
+			},
+			expectFn: func(g *GomegaWithT, err error, svc *corev1.Service) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(svc).NotTo(BeNil())
+			},
+		},
+		{
+			name: "Update service",
+			prepare: func(tc *v1alpha1.TidbCluster, indexers *fakeIndexers) {
+				tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{
+					ServiceSpec: v1alpha1.ServiceSpec{
+						Type: corev1.ServiceTypeClusterIP,
+						Annotations: map[string]string{
+							"lb-type": "new-lb",
+						},
+					},
+				}
+				_ = indexers.svc.Add(&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+						Name:            controller.TiDBMemberName(tc.Name),
+						Namespace:       corev1.NamespaceDefault,
+						Annotations: map[string]string{
+							"lb-type": "old-lb",
+							"k":       "v",
+						},
+					},
+				})
+			},
+			expectFn: func(g *GomegaWithT, err error, svc *corev1.Service) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(svc.Annotations).To(HaveKeyWithValue("lb-type", "new-lb"), "Expected updating service will reconcile annotations")
+				g.Expect(svc.Annotations).To(HaveKeyWithValue("k", "v"), "Expected updating service will not affect additional annotations")
+			},
+		},
+		{
+			name:            "Do not create TiDB service when the spec is absent",
+			expectSvcAbsent: true,
+			expectFn: func(g *GomegaWithT, err error, svc *corev1.Service) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+		},
+		{
+			name: "Do not update TiDB service when the spec is absent",
+			prepare: func(tc *v1alpha1.TidbCluster, indexers *fakeIndexers) {
+				_ = indexers.svc.Add(&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      controller.TiDBMemberName(tc.Name),
+						Namespace: corev1.NamespaceDefault,
+						Labels: map[string]string{
+							"helm.sh/chart": "tidb-cluster",
+						},
+					},
+				})
+			},
+			expectFn: func(g *GomegaWithT, err error, svc *corev1.Service) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(svc.Labels).To(HaveKeyWithValue("helm.sh/chart", "tidb-cluster"))
+			},
+		},
+		{
+			name: "Create service error",
+			prepare: func(tc *v1alpha1.TidbCluster, _ *fakeIndexers) {
+				tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{
+					ServiceSpec: v1alpha1.ServiceSpec{
+						Type: corev1.ServiceTypeClusterIP,
+					},
+				}
+			},
+			errOnCreate:     true,
+			expectSvcAbsent: true,
+		},
+		{
+			name: "Update service error",
+			prepare: func(tc *v1alpha1.TidbCluster, indexers *fakeIndexers) {
+				tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{
+					ServiceSpec: v1alpha1.ServiceSpec{
+						Type: corev1.ServiceTypeClusterIP,
+					},
+				}
+				_ = indexers.svc.Add(&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: corev1.NamespaceDefault,
+						Name:      controller.TiDBMemberName(tc.Name),
+					},
+				})
+			},
+			errOnUpdate: true,
+			expectFn: func(g *GomegaWithT, err error, svc *corev1.Service) {
+				g.Expect(err).To(HaveOccurred())
+			},
+		},
+		{
+			name: "Adopt orphaned service",
+			prepare: func(tc *v1alpha1.TidbCluster, indexers *fakeIndexers) {
+				tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{
+					ServiceSpec: v1alpha1.ServiceSpec{
+						Type: corev1.ServiceTypeClusterIP,
+					},
+				}
+				_ = indexers.svc.Add(&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      controller.TiDBMemberName(tc.Name),
+						Namespace: corev1.NamespaceDefault,
+						Labels: map[string]string{
+							"helm.sh/chart": "tidb-cluster",
+						},
+					},
+				})
+			},
+			expectFn: func(g *GomegaWithT, err error, svc *corev1.Service) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(svc.Labels).NotTo(HaveKey("helm.sh/chart"), "Expected labels to be overridden when adopting orphaned service")
+				g.Expect(metav1.GetControllerOf(svc)).NotTo(BeNil(), "Expected adopted service is controlled by TidbCluster")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testFn(tt, t)
+		})
+	}
+}
+
+type fakeIndexers struct {
+	pod    cache.Indexer
+	tc     cache.Indexer
+	svc    cache.Indexer
+	eps    cache.Indexer
+	csr    cache.Indexer
+	secret cache.Indexer
+	set    cache.Indexer
+}
+
+func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSetControl, cache.Indexer, *controller.FakeTiDBControl, *fakeIndexers) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
@@ -555,7 +738,16 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		tidbFailover,
 		tidbStatefulSetIsUpgrading,
 	}
-	return tmm, setControl, podInformer.Informer().GetIndexer(), tidbControl
+	indexers := &fakeIndexers{
+		pod:    podInformer.Informer().GetIndexer(),
+		tc:     tcInformer.Informer().GetIndexer(),
+		svc:    svcInformer.Informer().GetIndexer(),
+		eps:    epsInformer.Informer().GetIndexer(),
+		csr:    csrInformer.Informer().GetIndexer(),
+		secret: secretInformer.Informer().GetIndexer(),
+		set:    setInformer.Informer().GetIndexer(),
+	}
+	return tmm, setControl, podInformer.Informer().GetIndexer(), tidbControl, indexers
 }
 
 func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
@@ -995,6 +1187,237 @@ func TestTiDBInitContainers(t *testing.T) {
 				t.Errorf("unexpected SecurityContext in Statefulset (want %#v, got nil)", *tt.expectedSecurity)
 			} else if diff := cmp.Diff(*(tt.expectedSecurity), *(sts.Spec.Template.Spec.SecurityContext)); diff != "" {
 				t.Errorf("unexpected SecurityContext in Statefulset (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestGetNewTiDBService(t *testing.T) {
+	g := NewGomegaWithT(t)
+	testCases := []struct {
+		name     string
+		tc       v1alpha1.TidbCluster
+		expected *corev1.Service
+	}{
+		{
+			name: "TiDB service spec is nil",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "TiDB service with no status exposed",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						Service: &v1alpha1.TiDBServiceSpec{
+							ExposeStatus: false,
+						},
+					},
+				},
+			},
+			expected: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-tidb",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "tidb",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "mysql-client",
+							Port:       4000,
+							TargetPort: intstr.FromInt(4000),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "tidb",
+					},
+				},
+			},
+		},
+		{
+			name: "TiDB service with status exposed",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						Service: &v1alpha1.TiDBServiceSpec{
+							ExposeStatus: true,
+						},
+					},
+				},
+			},
+			expected: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-tidb",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "tidb",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "mysql-client",
+							Port:       4000,
+							TargetPort: intstr.FromInt(4000),
+							Protocol:   corev1.ProtocolTCP,
+						},
+						{
+							Name:       "status",
+							Port:       10080,
+							TargetPort: intstr.FromInt(10080),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "tidb",
+					},
+				},
+			},
+		},
+		{
+			name: "TiDB service in typical public cloud",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						Service: &v1alpha1.TiDBServiceSpec{
+							ServiceSpec: v1alpha1.ServiceSpec{
+								Type: corev1.ServiceTypeLoadBalancer,
+								Annotations: map[string]string{
+									"lb-type": "testlb",
+								},
+							},
+							ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
+							ExposeStatus:          true,
+						},
+					},
+				},
+			},
+			expected: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-tidb",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "tidb",
+					},
+					Annotations: map[string]string{
+						"lb-type": "testlb",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                  corev1.ServiceTypeLoadBalancer,
+					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "mysql-client",
+							Port:       4000,
+							TargetPort: intstr.FromInt(4000),
+							Protocol:   corev1.ProtocolTCP,
+						},
+						{
+							Name:       "status",
+							Port:       10080,
+							TargetPort: intstr.FromInt(10080),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "tidb",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := getNewTiDBServiceOrNil(&tt.tc)
+			if tt.expected == nil {
+				g.Expect(svc).To(BeNil())
+				return
+			}
+			if diff := cmp.Diff(*tt.expected, *svc); diff != "" {
+				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
 			}
 		})
 	}
