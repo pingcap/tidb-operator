@@ -694,21 +694,13 @@ spec:
             pd:
               description: PDSpec contains details of PD members
               properties:
-                service:
-                  properties:
-                    annotations:
-                      description: Additional annotations of the kubernetes service
-                        object
-                      type: object
-                    loadBalancerIP:
-                      description: LoadBalancerIP is the loadBalancerIP of service
-                      type: string
-                    type:
-                      description: Type of the real kubernetes service, e.g. ClusterIP
-                      type: string
-                  type: object
+                replicas:
+                  format: int32
+                  type: integer
                 storageClassName:
                   type: string
+              required:
+              - replicas
               type: object
             priorityClassName:
               description: PriorityClassName of TiDB cluster Pods
@@ -764,30 +756,6 @@ spec:
                   type: integer
                 separateSlowLog:
                   type: boolean
-                service:
-                  properties:
-                    ServiceSpec:
-                      properties:
-                        annotations:
-                          description: Additional annotations of the kubernetes service
-                            object
-                          type: object
-                        loadBalancerIP:
-                          description: LoadBalancerIP is the loadBalancerIP of service
-                          type: string
-                        type:
-                          description: Type of the real kubernetes service, e.g. ClusterIP
-                          type: string
-                      type: object
-                    exposeStatus:
-                      description: Whether expose the status port
-                      type: boolean
-                    externalTrafficPolicy:
-                      description: ExternalTrafficPolicy of the service
-                      type: string
-                  required:
-                  - ServiceSpec
-                  type: object
                 storageClassName:
                   type: string
               required:
@@ -801,21 +769,13 @@ spec:
                   type: integer
                 privileged:
                   type: boolean
-                service:
-                  properties:
-                    annotations:
-                      description: Additional annotations of the kubernetes service
-                        object
-                      type: object
-                    loadBalancerIP:
-                      description: LoadBalancerIP is the loadBalancerIP of service
-                      type: string
-                    type:
-                      description: Type of the real kubernetes service, e.g. ClusterIP
-                      type: string
-                  type: object
+                replicas:
+                  format: int32
+                  type: integer
                 storageClassName:
                   type: string
+              required:
+              - replicas
               type: object
             timezone:
               description: Time zone of TiDB cluster Pods

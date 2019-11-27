@@ -324,24 +324,14 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 	}
 	oldSvc := oldSvcTmp.DeepCopy()
 
-	// Adopt orphaned service by simply overriding
-	if metav1.GetControllerOf(oldSvc) == nil {
-		err = SetServiceLastAppliedConfigAnnotation(newSvc)
-		if err != nil {
-			return err
-		}
-		// clusterIP should be stable
-		newSvc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		_, err = tmm.svcControl.UpdateService(tc, newSvc)
-		return err
-	}
-
 	equal, err := serviceEqual(newSvc, oldSvc)
 	if err != nil {
 		return err
 	}
 	annoEqual := isSubMapOf(newSvc.Annotations, oldSvc.Annotations)
-	if !equal || !annoEqual {
+	isOrphan := metav1.GetControllerOf(oldSvc) == nil
+
+	if !equal || !annoEqual || isOrphan {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
 		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
@@ -349,9 +339,14 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 		if err != nil {
 			return err
 		}
-		// apply change of annotations
+		// apply change of annotations if any
 		for k, v := range newSvc.Annotations {
 			svc.Annotations[k] = v
+		}
+		// also override labels when adopt orphan
+		if isOrphan {
+			svc.OwnerReferences = newSvc.OwnerReferences
+			svc.Labels = newSvc.Labels
 		}
 		_, err = tmm.svcControl.UpdateService(tc, &svc)
 		return err

@@ -99,6 +99,11 @@ func TestIsSubMapOf(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	g.Expect(isSubMapOf(
+		nil,
+		map[string]string{
+			"k1": "v1",
+		})).To(BeTrue())
+	g.Expect(isSubMapOf(
 		map[string]string{
 			"k1": "v1",
 		},

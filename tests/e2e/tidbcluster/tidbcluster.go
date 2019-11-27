@@ -23,7 +23,6 @@ import (
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
-	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -34,6 +33,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -233,7 +233,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		ginkgo.By(fmt.Sprintf("Adopt orphaned service created by helm"))
 		tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{}
-		tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+		_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 		framework.ExpectNoError(err, "Expected update TiDB cluster")
 
 		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
@@ -250,24 +250,33 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				e2elog.Logf("tidb service has not been adopted by TidbCluster yet")
 				return false, nil
 			}
-			framework.ExpectEqual(owner, controller.GetOwnerRef(tc), "Expected owner is TidbCluster")
+			framework.ExpectEqual(metav1.IsControlledBy(svc, tc), true, "Expected owner is TidbCluster")
 			framework.ExpectEqual(svc.Spec.ClusterIP, oldSvc.Spec.ClusterIP, "ClusterIP should be stable across adopting and updating")
 			return true, nil
 		})
 		framework.ExpectNoError(err)
 
 		ginkgo.By(fmt.Sprintf("Sync TiDB service properties"))
+
 		svcType := corev1.ServiceTypeNodePort
 		trafficPolicy := corev1.ServiceExternalTrafficPolicyTypeLocal
-		tc.Spec.TiDB.Service.Type = svcType
-		tc.Spec.TiDB.Service.ExternalTrafficPolicy = trafficPolicy
-		tc.Spec.TiDB.Service.Annotations = map[string]string{
-			"test": "test",
-		}
-		tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
-		framework.ExpectNoError(err, "Expected update TiDB cluster")
 
 		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "Expected get TiDB cluster")
+			tc.Spec.TiDB.Service.Type = svcType
+			tc.Spec.TiDB.Service.ExternalTrafficPolicy = trafficPolicy
+			tc.Spec.TiDB.Service.Annotations = map[string]string{
+				"test": "test",
+			}
+			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+			if err != nil && !errors.IsConflict(err) {
+				return false, err
+			}
+			if errors.IsConflict(err) {
+				e2elog.Logf("conflicts when updating tidbcluster, retry...")
+				return false, nil
+			}
 			svc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
 			if err != nil {
 				if errors.IsNotFound(err) {
