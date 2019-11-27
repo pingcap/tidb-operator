@@ -19,13 +19,13 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
-	"k8s.io/api/admission/v1beta1"
+	admission "k8s.io/api/admission/v1"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 )
 
-func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) *v1beta1.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) *admission.AdmissionResponse {
 
 	name := pod.Name
 	namespace := pod.Namespace
@@ -87,7 +87,7 @@ func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulS
 
 // this pod is not a member of pd cluster currently, it could be deleted from pd cluster already or haven't registered in pd cluster
 // we need to check whether this pd pod has been ensured wouldn't be a member in pd cluster
-func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(IsDeferDeleting, isInOrdinal bool, pod *corev1.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, ordinal int32) *v1beta1.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(IsDeferDeleting, isInOrdinal bool, pod *corev1.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, ordinal int32) *admission.AdmissionResponse {
 
 	name := pod.Name
 	namespace := pod.Namespace
@@ -102,7 +102,7 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(IsDeferDeleting, isInOr
 		// it would be existed an pd-3 instance with its deferDeleting label Annotations PVC.
 		// And the pvc can be deleted during upgrading if we use create pod webhook in future.
 		if !isInOrdinal {
-			err := addDeferDeletingToPVC(pc, tc, ownerStatefulSet.Name, namespace, ordinal)
+			err := addDeferDeletingToPVC(v1alpha1.PDMemberType, pc, tc, ownerStatefulSet.Name, namespace, ordinal)
 			if err != nil {
 				klog.Infof("tc[%s/%s]'s pod[%s/%s] failed to update pvc,%v", namespace, tcName, namespace, name, err)
 				return util.ARFail(err)
@@ -122,12 +122,12 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(IsDeferDeleting, isInOr
 	}
 
 	// make sure this pd pod won't be a member of pd cluster any more
-	return &v1beta1.AdmissionResponse{
+	return &admission.AdmissionResponse{
 		Allowed: false,
 	}
 }
 
-func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(pod *corev1.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, isPdLeader bool) *v1beta1.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(pod *corev1.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, isPdLeader bool) *admission.AdmissionResponse {
 
 	name := pod.Name
 	namespace := pod.Namespace
@@ -152,13 +152,13 @@ func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(pod *corev1.Pod, t
 	}
 
 	klog.Infof("tc[%s/%s]'s pd[%s/%s] is being deleted from pd-cluster,refuse to delete it.", namespace, tcName, namespace, name)
-	return &v1beta1.AdmissionResponse{
+	return &admission.AdmissionResponse{
 		Allowed: false,
 	}
 }
 
 // this pod is a pd leader, we should transfer pd leader to other pd pod before it gets deleted before.
-func (pc *PodAdmissionControl) transferPDLeader(pod *corev1.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, ordinal int32) *v1beta1.AdmissionResponse {
+func (pc *PodAdmissionControl) transferPDLeader(pod *corev1.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, ordinal int32) *admission.AdmissionResponse {
 
 	name := pod.Name
 	namespace := pod.Namespace
@@ -176,7 +176,7 @@ func (pc *PodAdmissionControl) transferPDLeader(pod *corev1.Pod, tc *v1alpha1.Ti
 		return util.ARFail(err)
 	}
 	klog.Infof("tc[%s/%s] start to transfer pd leader to pod[%s/%s],refuse to delete pod[%s/%s]", namespace, tc.Name, namespace, targetName, namespace, name)
-	return &v1beta1.AdmissionResponse{
+	return &admission.AdmissionResponse{
 		Allowed: false,
 	}
 }

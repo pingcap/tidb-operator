@@ -22,8 +22,9 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	"k8s.io/api/admission/v1beta1"
+	admission "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,6 +38,7 @@ const (
 	upgradeInstanceName = "upgrader"
 	namespace           = "namespace"
 	pdReplicas          = int32(3)
+	tikvReplicas        = int32(3)
 )
 
 func TestAdmitPod(t *testing.T) {
@@ -48,7 +50,7 @@ func TestAdmitPod(t *testing.T) {
 		isPD     bool
 		isTiKV   bool
 		isTiDB   bool
-		expectFn func(g *GomegaWithT, response *v1beta1.AdmissionResponse)
+		expectFn func(g *GomegaWithT, response *admission.AdmissionResponse)
 	}
 
 	testFn := func(test *testcase) {
@@ -58,7 +60,7 @@ func TestAdmitPod(t *testing.T) {
 		ar := newAdmissionReview()
 		pod := newNormalPod()
 		if test.isDelete {
-			ar.Request.Operation = v1beta1.Delete
+			ar.Request.Operation = admission.Delete
 		}
 
 		if test.isPD {
@@ -87,7 +89,7 @@ func TestAdmitPod(t *testing.T) {
 			isPD:     false,
 			isTiKV:   false,
 			isTiDB:   false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
 			},
 		},
@@ -97,7 +99,7 @@ func TestAdmitPod(t *testing.T) {
 			isPD:     false,
 			isTiKV:   false,
 			isTiDB:   false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
 			},
 		},
@@ -107,7 +109,7 @@ func TestAdmitPod(t *testing.T) {
 			isPD:     false,
 			isTiKV:   true,
 			isTiDB:   false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
 			},
 		},
@@ -118,12 +120,12 @@ func TestAdmitPod(t *testing.T) {
 	}
 }
 
-func newAdmissionReview() *v1beta1.AdmissionReview {
-	ar := v1beta1.AdmissionReview{}
-	request := v1beta1.AdmissionRequest{}
+func newAdmissionReview() *admission.AdmissionReview {
+	ar := admission.AdmissionReview{}
+	request := admission.AdmissionRequest{}
 	request.Name = "pod"
 	request.Namespace = namespace
-	request.Operation = v1beta1.Update
+	request.Operation = admission.Update
 	ar.Request = &request
 	return &ar
 }
@@ -173,6 +175,36 @@ func newTidbClusterForPodAdmissionControl() *v1alpha1.TidbCluster {
 				},
 				Replicas:         pdReplicas,
 				StorageClassName: "my-storage-class",
+			},
+			TiKV: v1alpha1.TiKVSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Image: "tikv-test-image",
+				},
+				Replicas:         tikvReplicas,
+				StorageClassName: "my-storage-class",
+			},
+		},
+		Status: v1alpha1.TidbClusterStatus{
+			TiKV: v1alpha1.TiKVStatus{
+				Synced: true,
+				Phase:  v1alpha1.NormalPhase,
+				Stores: map[string]v1alpha1.TiKVStore{
+					"0": {
+						PodName:     memberUtils.TikvPodName(tcName, 0),
+						LeaderCount: 1,
+						State:       v1alpha1.TiKVStateUp,
+					},
+					"1": {
+						PodName:     memberUtils.TikvPodName(tcName, 1),
+						LeaderCount: 1,
+						State:       v1alpha1.TiKVStateUp,
+					},
+					"2": {
+						PodName:     memberUtils.TikvPodName(tcName, 2),
+						LeaderCount: 1,
+						State:       v1alpha1.TiKVStateUp,
+					},
+				},
 			},
 		},
 	}

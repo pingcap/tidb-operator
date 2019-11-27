@@ -14,7 +14,11 @@
 package pod
 
 import (
+	"encoding/json"
 	"fmt"
+	"time"
+
+	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -26,7 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
-	"k8s.io/api/admission/v1beta1"
+	admission "k8s.io/api/admission/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
@@ -60,7 +64,7 @@ const (
 	stsControllerServiceAccounts = "system:serviceaccount:kube-system:statefulset-controller"
 )
 
-func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder, extraServiceAccounts []string) *PodAdmissionControl {
+func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder, extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration) *PodAdmissionControl {
 
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	PVCControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
@@ -72,6 +76,7 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 	for _, sa := range extraServiceAccounts {
 		serviceAccounts.Insert(sa)
 	}
+	EvictLeaderTimeout = evictRegionLeaderTimeout
 	return &PodAdmissionControl{
 		kubeCli:         kubeCli,
 		operatorCli:     operatorCli,
@@ -84,7 +89,7 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 	}
 }
 
-func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
+func (pc *PodAdmissionControl) AdmitPods(ar admission.AdmissionReview) *admission.AdmissionResponse {
 
 	name := ar.Request.Name
 	namespace := ar.Request.Namespace
@@ -98,8 +103,10 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 	}
 
 	switch operation {
-	case v1beta1.Delete:
+	case admission.Delete:
 		return pc.admitDeletePods(name, namespace)
+	case admission.Create:
+		return pc.AdmitCreatePods(ar)
 	default:
 		klog.Infof("Admit to %s pod[%s/%s]", operation, namespace, name)
 		return util.ARSuccess()
@@ -111,8 +118,10 @@ func (pc *PodAdmissionControl) AdmitPods(ar v1beta1.AdmissionReview) *v1beta1.Ad
 // if this pod wasn't member of tidbcluster, just let the request pass.
 // Otherwise, we check tidbcluster and statefulset which own this pod whether they were existed.
 // If either of them were deleted,we would let this request pass,
-//// otherwise we will check it decided by component type.
-func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.AdmissionResponse {
+// otherwise we will check it decided by component type.
+func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admission.AdmissionResponse {
+
+	klog.Infof("receive admission to %s pod[%s/%s]", "delete", namespace, name)
 
 	// We would update pod annotations if they were deleted member by admission controller,
 	// so we shall find this pod from apiServer considering getting latest pod info.
@@ -123,6 +132,12 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.
 	}
 
 	l := label.Label(pod.Labels)
+
+	if !l.IsManagedByTiDBOperator() {
+		klog.Infof("pod[%s/%s] is not managed by TiDB-Operator,admit to create", namespace, name)
+		return util.ARSuccess()
+	}
+
 	if !(l.IsPD() || l.IsTiKV() || l.IsTiDB()) {
 		klog.Infof("pod[%s/%s] is not TiDB component,admit to delete", namespace, name)
 		return util.ARSuccess()
@@ -131,7 +146,7 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.
 	tcName, exist := pod.Labels[label.InstanceLabelKey]
 	if !exist {
 		klog.Errorf("pod[%s/%s] has no label: %s", namespace, name, label.InstanceLabelKey)
-		return util.ARFail(fmt.Errorf("pod[%s/%s] has no label: %s", namespace, name, label.InstanceLabelKey))
+		return util.ARSuccess()
 	}
 
 	tc, err := pc.tcLister.TidbClusters(namespace).Get(tcName)
@@ -144,32 +159,14 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.
 		return util.ARFail(err)
 	}
 
-	if len(pod.OwnerReferences) == 0 {
-		return util.ARSuccess()
-	}
-
-	var ownerStatefulSetName string
-	for _, ownerReference := range pod.OwnerReferences {
-		if ownerReference.Kind == "StatefulSet" {
-			ownerStatefulSetName = ownerReference.Name
-			break
-		}
-	}
-
-	if len(ownerStatefulSetName) == 0 {
-		klog.Infof("pod[%s/%s] is not owned by StatefulSet,admit to delete it", namespace, name)
-		return util.ARSuccess()
-	}
-
-	ownerStatefulSet, err := pc.stsLister.StatefulSets(namespace).Get(ownerStatefulSetName)
-
+	ownerStatefulSet, err := getOwnerStatefulSetForTiDBComponent(pod, pc.stsLister)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			klog.Infof("statefulset[%s/%s] had been deleted,admit to delete pod[%s/%s]", namespace, ownerStatefulSetName, namespace, name)
+		if errors.IsNotFound(err) || err.Error() == fmt.Sprintf(failToFindTidbComponentOwnerStatefulset, namespace, name) {
+			klog.Infof("owner statefulset for pod[%s/%s] is deleted,admit to delete pod", namespace, name)
 			return util.ARSuccess()
 		}
-		klog.Errorf("failed to get statefulset[%s/%s],refuse to delete pod[%s/%s]", namespace, ownerStatefulSetName, namespace, name)
-		return util.ARFail(fmt.Errorf("failed to get statefulset[%s/%s],refuse to delete pod[%s/%s]", namespace, ownerStatefulSetName, namespace, name))
+		klog.Infof("failed to get owner statefulset for pod[%s/%s],refuse to delete pod", namespace, name)
+		return util.ARFail(fmt.Errorf("failed to get owner statefulset for pod[%s/%s],refuse to delete pod", namespace, name))
 	}
 
 	// Force Upgraded,Admit to Upgrade
@@ -192,8 +189,60 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *v1beta1.
 	if l.IsPD() {
 		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster)
 		return pc.admitDeletePdPods(pod, ownerStatefulSet, tc, pdClient)
+	} else if l.IsTiKV() {
+		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster)
+		return pc.admitDeleteTiKVPods(pod, ownerStatefulSet, tc, pdClient)
 	}
 
 	klog.Infof("[%s/%s] is admit to be deleted", namespace, name)
+	return util.ARSuccess()
+}
+
+// Webhook server receive request to create pod
+// if this pod wasn't member of tidbcluster, just let the request pass.
+// Currently we only check with tikv pod
+func (pc *PodAdmissionControl) AdmitCreatePods(ar admission.AdmissionReview) *admission.AdmissionResponse {
+	pod := &core.Pod{}
+	if err := json.Unmarshal(ar.Request.Object.Raw, pod); err != nil {
+		klog.Errorf("Could not unmarshal raw object: %v", err)
+		return util.ARFail(err)
+	}
+
+	name := pod.Name
+	namespace := pod.Namespace
+
+	klog.Infof("receive admission to %s pod[%s/%s]", "create", namespace, name)
+
+	l := label.Label(pod.Labels)
+
+	if !l.IsManagedByTiDBOperator() {
+		klog.Infof("pod[%s/%s] is not managed by TiDB-Operator,admit to create", namespace, name)
+		return util.ARSuccess()
+	}
+
+	if !(l.IsPD() || l.IsTiKV() || l.IsTiDB()) {
+		klog.Infof("pod[%s/%s] is not TiDB component,admit to create", namespace, name)
+		return util.ARSuccess()
+	}
+
+	tcName, exist := pod.Labels[label.InstanceLabelKey]
+	if !exist {
+		return util.ARSuccess()
+	}
+
+	tc, err := pc.tcLister.TidbClusters(namespace).Get(tcName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return util.ARSuccess()
+		}
+		klog.Errorf("failed get tc[%s/%s],refuse to create pod[%s/%s],%v", namespace, tcName, namespace, name, err)
+		return util.ARFail(err)
+	}
+
+	if l.IsTiKV() {
+		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster)
+		return pc.admitCreateTiKVPod(pod, tc, pdClient)
+	}
+
 	return util.ARSuccess()
 }
