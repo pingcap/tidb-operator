@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
@@ -37,10 +38,11 @@ import (
 )
 
 var (
-	printVersion         bool
-	certFile             string
-	keyFile              string
-	extraServiceAccounts string
+	printVersion             bool
+	certFile                 string
+	keyFile                  string
+	extraServiceAccounts     string
+	evictRegionLeaderTimeout time.Duration
 )
 
 func init() {
@@ -49,6 +51,7 @@ func init() {
 	flag.StringVar(&certFile, "tlsCertFile", "/etc/webhook/certs/cert.pem", "File containing the x509 Certificate for HTTPS.")
 	flag.StringVar(&keyFile, "tlsKeyFile", "/etc/webhook/certs/key.pem", "File containing the x509 private key to --tlsCertFile.")
 	flag.StringVar(&extraServiceAccounts, "extraServiceAccounts", "", "comma-separated, extra Service Accounts the Webhook should control. The full pattern for each common service account is system:serviceaccount:<namespace>:<serviceaccount-name>")
+	flag.DurationVar(&evictRegionLeaderTimeout, "evictRegionLeaderTimeout", 3*time.Minute, "TiKV evict region leader timeout period, default 3 min")
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 	flag.Parse()
 }
@@ -95,7 +98,7 @@ func main() {
 	informerFactory := informers.NewSharedInformerFactory(cli, controller.ResyncDuration)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
 
-	webhookServer := webhook.NewWebHookServer(kubeCli, cli, informerFactory, kubeInformerFactory, certFile, keyFile, extraServiceAccounts)
+	webhookServer := webhook.NewWebHookServer(kubeCli, cli, informerFactory, kubeInformerFactory, certFile, keyFile, extraServiceAccounts, evictRegionLeaderTimeout)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

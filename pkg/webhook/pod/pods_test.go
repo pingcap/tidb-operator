@@ -177,7 +177,7 @@ func newTidbClusterForPodAdmissionControl() *v1alpha1.TidbCluster {
 				StorageClassName: "my-storage-class",
 			},
 			TiKV: v1alpha1.TiKVSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tikv-test-image",
 				},
 				Replicas:         tikvReplicas,

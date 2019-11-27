@@ -14,11 +14,8 @@
 package pod
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/label"
-	"strings"
-	"time"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
@@ -26,13 +23,18 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/klog"
+	"strings"
+	"time"
 )
 
 const (
 	// EvictLeaderBeginTime is the key of evict Leader begin time
 	EvictLeaderBeginTime = label.AnnEvictLeaderBeginTime
+)
+
+var (
 	// EvictLeaderTimeout is the timeout limit of evict leader
-	EvictLeaderTimeout = 3 * time.Minute
+	EvictLeaderTimeout time.Duration
 )
 
 func (pc *PodAdmissionControl) admitDeleteTiKVPods(pod *core.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) *admission.AdmissionResponse {
@@ -83,7 +85,7 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(pod *core.Pod, ownerStatefulS
 	case v1alpha1.TiKVStateUp:
 		return pc.admitDeleteUpTiKVPod(isInOrdinal, isUpgrading, pod, ownerStatefulSet, tc, pdClient, storeInfo, storesInfo)
 	default:
-		klog.Infof("unknown store state[%s] for tikv pod[%/%s]", storeInfo.Store.StateName, namespace, name)
+		klog.Infof("unknown store state[%s] for tikv pod[%s/%s]", storeInfo.Store.StateName, namespace, name)
 	}
 
 	return &admission.AdmissionResponse{

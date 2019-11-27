@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	tikvNotBootstrapped = `TiKV cluster not bootstrapped, please start TiKV first"\n`
+	tikvNotBootstrapped = `TiKV cluster not bootstrapped, please start TiKV first"`
 )
 
 func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) *admission.AdmissionResponse {
@@ -37,7 +37,7 @@ func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.Ti
 
 	stores, err := pdClient.GetStores()
 	if err != nil {
-		if strings.HasSuffix(err.Error(), tikvNotBootstrapped) {
+		if strings.HasSuffix(err.Error(), tikvNotBootstrapped+"\n") {
 			return util.ARSuccess()
 		}
 		klog.Infof("Failed to get stores during pod [%s/%s] creation, error: %v", namespace, name, err)
@@ -45,7 +45,7 @@ func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.Ti
 	}
 	evictLeaderSchedulers, err := pdClient.GetEvictLeaderSchedulers()
 	if err != nil {
-		if strings.HasSuffix(err.Error(), tikvNotBootstrapped) {
+		if strings.HasSuffix(err.Error(), tikvNotBootstrapped+"\n") {
 			return util.ARSuccess()
 		}
 		klog.Infof("failed to create pod[%s/%s],%v", namespace, name, err)
