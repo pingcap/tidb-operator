@@ -689,6 +689,30 @@ func TestTiDBMemberManagerSyncTidbService(t *testing.T) {
 				g.Expect(metav1.GetControllerOf(svc)).NotTo(BeNil(), "Expected adopted service is controlled by TidbCluster")
 			},
 		},
+		{
+			name: "Update service should not change ClusterIP",
+			prepare: func(tc *v1alpha1.TidbCluster, indexers *fakeIndexers) {
+				tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{
+					ServiceSpec: v1alpha1.ServiceSpec{
+						Type: corev1.ServiceTypeClusterIP,
+					},
+				}
+				_ = indexers.svc.Add(&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+						Name:            controller.TiDBMemberName(tc.Name),
+						Namespace:       corev1.NamespaceDefault,
+					},
+					Spec: corev1.ServiceSpec{
+						ClusterIP: "8.8.8.8",
+					},
+				})
+			},
+			expectFn: func(g *GomegaWithT, err error, svc *corev1.Service) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(svc.Spec.ClusterIP).To(Equal("8.8.8.8"))
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -223,11 +223,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		ns := cluster.Namespace
 		tcName := cluster.ClusterName
 
-		svc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
+		oldSvc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected TiDB service created by helm chart")
 		tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected TiDB cluster created by helm chart")
-		if isNil, err := gomega.BeNil().Match(metav1.GetControllerOf(svc)); !isNil {
+		if isNil, err := gomega.BeNil().Match(metav1.GetControllerOf(oldSvc)); !isNil {
 			e2elog.Failf("Expected TiDB service created by helm chart is orphaned: %v", err)
 		}
 
@@ -251,6 +251,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				return false, nil
 			}
 			framework.ExpectEqual(owner, controller.GetOwnerRef(tc), "Expected owner is TidbCluster")
+			framework.ExpectEqual(svc.Spec.ClusterIP, oldSvc.Spec.ClusterIP, "ClusterIP should be stable across adopting and updating")
 			return true, nil
 		})
 		framework.ExpectNoError(err)
