@@ -77,6 +77,8 @@ const (
 	AnnPDDeferDeleting = "tidb.pingcap.com/pd-defer-deleting"
 	// AnnSysctlInit is pod annotation key to indicate whether configuring sysctls with init container
 	AnnSysctlInit = "tidb.pingcap.com/sysctl-init"
+	// AnnEvictLeaderBeginTime is pod annotation key to indicate the begin time for evicting region leader
+	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"
@@ -96,6 +98,8 @@ const (
 	RestoreJobLabelVal string = "restore"
 	// BackupJobLabelVal is backup job label value
 	BackupJobLabelVal string = "backup"
+	// TiDBOperator is ManagedByLabelKey label value
+	TiDBOperator string = "tidb-operator"
 )
 
 // Label is the label field in metadata
@@ -249,4 +253,8 @@ func (l Label) String() string {
 	}
 
 	return strings.Join(arr, ",")
+}
+
+func (l Label) IsManagedByTiDBOperator() bool {
+	return l[ManagedByLabelKey] == TiDBOperator
 }

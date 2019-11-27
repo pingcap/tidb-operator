@@ -15,6 +15,7 @@ package pod
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -26,7 +27,7 @@ import (
 )
 
 const (
-	tikvNotBootstrapped = "\"TiKV cluster not bootstrapped, please start TiKV first\"\n"
+	tikvNotBootstrapped = `TiKV cluster not bootstrapped, please start TiKV first"\n`
 )
 
 func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) *admission.AdmissionResponse {
@@ -51,22 +52,30 @@ func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.Ti
 		return util.ARFail(err)
 	}
 
+	if stores.Count < 1 {
+		return util.ARSuccess()
+	}
+
+	if len(evictLeaderSchedulers) < 1 {
+		return util.ARSuccess()
+	}
+
+	schedulerIds := sets.String{}
+	for _, s := range evictLeaderSchedulers {
+		id := strings.Split(s, "-")[3]
+		schedulerIds.Insert(id)
+	}
+
 	// if the pod which is going to be created already have a store and was in evictLeaderSchedulers,
 	// we should end this evict leader
 	for _, store := range stores.Stores {
 		ip := strings.Split(store.Store.GetAddress(), ":")[0]
 		podName := strings.Split(ip, ".")[0]
-		if podName == name {
-			for _, s := range evictLeaderSchedulers {
-				id := strings.Split(s, "-")[3]
-				if id == fmt.Sprintf("%d", store.Store.Id) {
-					err := endEvictLeader(store, pdClient)
-					if err != nil {
-						klog.Infof("failed to create pod[%s/%s],%v", namespace, name, err)
-						return util.ARFail(err)
-					}
-					break
-				}
+		if podName == name && schedulerIds.Has(fmt.Sprintf("%d", store.Store.Id)) {
+			err := endEvictLeader(store, pdClient)
+			if err != nil {
+				klog.Infof("failed to create pod[%s/%s],%v", namespace, name, err)
+				return util.ARFail(err)
 			}
 			break
 		}

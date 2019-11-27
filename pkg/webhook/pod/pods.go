@@ -130,6 +130,12 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 	}
 
 	l := label.Label(pod.Labels)
+
+	if !l.IsManagedByTiDBOperator() {
+		klog.Infof("pod[%s/%s] is not managed by TiDB-Operator,admit to create", namespace, name)
+		return util.ARSuccess()
+	}
+
 	if !(l.IsPD() || l.IsTiKV() || l.IsTiDB()) {
 		klog.Infof("pod[%s/%s] is not TiDB component,admit to delete", namespace, name)
 		return util.ARSuccess()
@@ -206,6 +212,12 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar admission.AdmissionReview) *ad
 	klog.Infof("receive admission to %s pod[%s/%s]", "create", namespace, name)
 
 	l := label.Label(pod.Labels)
+
+	if !l.IsManagedByTiDBOperator() {
+		klog.Infof("pod[%s/%s] is not managed by TiDB-Operator,admit to create", namespace, name)
+		return util.ARSuccess()
+	}
+
 	if !(l.IsPD() || l.IsTiKV() || l.IsTiDB()) {
 		klog.Infof("pod[%s/%s] is not TiDB component,admit to create", namespace, name)
 		return util.ARSuccess()
