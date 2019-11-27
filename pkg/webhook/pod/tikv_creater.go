@@ -15,8 +15,9 @@ package pod
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
