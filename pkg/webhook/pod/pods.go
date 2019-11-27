@@ -227,14 +227,12 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar admission.AdmissionReview) *ad
 
 	tcName, exist := pod.Labels[label.InstanceLabelKey]
 	if !exist {
-		klog.Errorf("pod[%s/%s] has no label: %s", namespace, name, label.InstanceLabelKey)
-		return util.ARFail(fmt.Errorf("pod[%s/%s] has no label: %s", namespace, name, label.InstanceLabelKey))
+		return util.ARSuccess()
 	}
 
 	tc, err := pc.tcLister.TidbClusters(namespace).Get(tcName)
 	if err != nil {
-		klog.Errorf("failed get tc[%s/%s],refuse to create pod[%s/%s]", namespace, tcName, namespace, name)
-		return util.ARFail(err)
+		return util.ARSuccess()
 	}
 
 	if l.IsTiKV() {
