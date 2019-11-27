@@ -16,6 +16,7 @@ TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:
 E2E_IMAGE=${E2E_IMAGE:-localhost:5000/pingcap/tidb-operator-e2e:latest}
 TEST_APISERVER_IMAGE=${TEST_APISERVER_IMAGE:-localhost:5000/pingcap/test-apiserver:latest}
 KUBECONFIG=${KUBECONFIG:-}
+KUBECONTEXT=${KUBECONTEXT:-}
 
 if [ -z "$KUBECONFIG" ]; then
     echo "error: KUBECONFIG is required"
@@ -51,32 +52,37 @@ fi
 
 NS=tidb-operator-e2e
 
+kubectl_args=()
+if [[ -n "$KUBECONTEXT" ]]; then
+    kubectl_args+=(--context "$KUBECONTEXT")
+fi
+
 # TODO move these clean logic into e2e code
 echo "info: clear helm releases"
 $HELM_BIN ls --all --short | xargs -n 1 -r $HELM_BIN delete --purge
 
 echo "info: clear non-kubernetes apiservices"
-$KUBECTL_BIN delete apiservices -l kube-aggregator.kubernetes.io/automanaged!=onstart
+$KUBECTL_BIN ${kubectl_args[@]:-} delete apiservices -l kube-aggregator.kubernetes.io/automanaged!=onstart
 
 # clear all validatingwebhookconfigurations first otherwise it may deny pods deletion requests
 echo "info: clear validatingwebhookconfiguration"
-$KUBECTL_BIN delete validatingwebhookconfiguration --all
+$KUBECTL_BIN ${kubectl_args[@]:-} delete validatingwebhookconfiguration --all
 
 echo "info: clear namespace ${NS}"
-$KUBECTL_BIN delete ns ${NS} --ignore-not-found
-$KUBECTL_BIN wait --for=delete -n ${NS} pod/tidb-operator-e2e || true
-$KUBECTL_BIN delete clusterrolebinding tidb-operator-e2e --ignore-not-found
+$KUBECTL_BIN ${kubectl_args[@]:-} delete ns ${NS} --ignore-not-found
+$KUBECTL_BIN ${kubectl_args[@]:-} wait --for=delete -n ${NS} pod/tidb-operator-e2e || true
+$KUBECTL_BIN ${kubectl_args[@]:-} delete clusterrolebinding tidb-operator-e2e --ignore-not-found
 
 echo "info: creating namespace $NS"
-$KUBECTL_BIN create ns ${NS}
+$KUBECTL_BIN ${kubectl_args[@]:-} create ns ${NS}
 
 echo "info: creating service account $NS/tidb-operator-e2e"
 # Create sa first and wait for the controller to create the secret for this sa
 # This avoids `No API token found for service account " tidb-operator-e2e"`
 # TODO better way to work around this issue
-$KUBECTL_BIN -n ${NS} create sa tidb-operator-e2e
+$KUBECTL_BIN ${kubectl_args[@]:-} -n ${NS} create sa tidb-operator-e2e
 while true; do
-    secret=$($KUBECTL_BIN -n ${NS} get sa tidb-operator-e2e -ojsonpath='{.secrets[0].name}' || true)
+    secret=$($KUBECTL_BIN ${kubectl_args[@]:-} -n ${NS} get sa tidb-operator-e2e -ojsonpath='{.secrets[0].name}' || true)
     if [[ -n "$secret"  ]]; then
         echo "info: secret '$secret' created for service account ${NS}/tidb-operator-e2e"
         break
@@ -85,7 +91,7 @@ while true; do
 done
 
 echo "info: creating webhook service and clusterrolebinding etc"
-$KUBECTL_BIN -n ${NS} apply -f tests/manifests/e2e/e2e.yaml
+$KUBECTL_BIN ${kubectl_args[@]:-} -n ${NS} apply -f tests/manifests/e2e/e2e.yaml
 
 echo "info: start to run e2e pod"
 e2e_args=(
@@ -108,7 +114,7 @@ e2e_args=(
 )
 # We don't attach into the container because the connection may lost.
 # Instead we print logs and check the result repeatedly after the pod is Ready.
-$KUBECTL_BIN -n ${NS} run tidb-operator-e2e --generator=run-pod/v1 --image $E2E_IMAGE \
+$KUBECTL_BIN ${kubectl_args[@]:-} -n ${NS} run tidb-operator-e2e --generator=run-pod/v1 --image $E2E_IMAGE \
     --env NAMESPACE=$NS \
     --labels app=webhook \
     --serviceaccount=tidb-operator-e2e \
@@ -117,10 +123,10 @@ $KUBECTL_BIN -n ${NS} run tidb-operator-e2e --generator=run-pod/v1 --image $E2E_
     --command -- ${e2e_args[@]}
 echo "info: wait for e2e pod to be ready"
 ret=0
-$KUBECTL_BIN -n ${NS} wait --for=condition=Ready pod/tidb-operator-e2e || ret=$?
+$KUBECTL_BIN ${kubectl_args[@]:-} -n ${NS} wait --for=condition=Ready pod/tidb-operator-e2e || ret=$?
 if [ $ret -ne 0 ]; then
     echo "error: failed to wait for the e2e pod to be ready, printing its logs"
-    $KUBECTL_BIN -n ${NS} logs tidb-operator-e2e
+    $KUBECTL_BIN ${kubectl_args[@]:-} -n ${NS} logs tidb-operator-e2e
     exit 1
 fi
 
@@ -128,11 +134,11 @@ echo "info: start to print e2e logs and check the result"
 execType=0
 while true; do
     if [[ $execType -eq 0 ]]; then
-        $KUBECTL_BIN -n ${NS} logs -f tidb-operator-e2e || true
+        $KUBECTL_BIN ${kubectl_args[@]:-} -n ${NS} logs -f tidb-operator-e2e || true
     else
-        $KUBECTL_BIN -n ${NS} logs --tail 1 -f tidb-operator-e2e || true
+        $KUBECTL_BIN ${kubectl_args[@]:-} -n ${NS} logs --tail 1 -f tidb-operator-e2e || true
     fi
-    phase=$($KUBECTL_BIN -n ${NS} get pods tidb-operator-e2e -ojsonpath='{.status.phase}')
+    phase=$($KUBECTL_BIN ${kubectl_args[@]:-} -n ${NS} get pods tidb-operator-e2e -ojsonpath='{.status.phase}')
     if [[ "$phase" == "Succeeded" ]]; then
         echo "info: e2e succeeded"
         exit 0
@@ -140,7 +146,7 @@ while true; do
         echo "error: e2e failed, phase: $phase"
         exit 1
     fi
-    # if we failed on "$KUBECTL_BIN logs -f", try to print one line each time
+    # if we failed on "$KUBECTL_BIN ${kubectl_args[@]:-} logs -f", try to print one line each time
     # TODO find a better way to print logs starting from the last place
     execType=1
 done

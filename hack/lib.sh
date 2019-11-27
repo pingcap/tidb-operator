@@ -15,6 +15,8 @@ KUBECTL_VERSION=1.12.10
 KUBECTL_BIN=$OUTPUT_BIN/kubectl
 HELM_BIN=$OUTPUT_BIN/helm
 HELM_VERSION=2.9.1
+KIND_VERSION=0.6.0
+KIND_BIN=$OUTPUT_BIN/kind
 
 test -d "$OUTPUT_BIN" || mkdir -p "$OUTPUT_BIN"
 
@@ -80,4 +82,24 @@ function hack::ensure_helm() {
     fi
     local HELM_URL=http://storage.googleapis.com/kubernetes-helm/helm-v${HELM_VERSION}-${OS}-${ARCH}.tar.gz
     curl -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
+}
+
+function hack::verify_kind() {
+    if test -x "$KIND_BIN"; then
+        [[ "$($KIND_BIN --version 2>&1 | cut -d ' ' -f 3)" == "$KIND_VERSION" ]]
+        return
+    fi
+    return 1
+}
+
+function hack::ensure_kind() {
+    if hack::verify_kind; then
+        return 0
+    fi
+    echo "Installing kind v$KIND_VERSION..."
+    tmpfile=$(mktemp)
+    trap "test -f $tmpfile && rm $tmpfile" RETURN
+    curl -Lo $tmpfile https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-$(uname)-amd64
+    mv $tmpfile $KIND_BIN
+    chmod +x $KIND_BIN
 }
