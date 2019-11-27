@@ -14,6 +14,7 @@
 package pod
 
 import (
+	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -23,6 +24,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/klog"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -30,6 +32,8 @@ import (
 const (
 	// EvictLeaderBeginTime is the key of evict Leader begin time
 	EvictLeaderBeginTime = label.AnnEvictLeaderBeginTime
+
+	tikvStoreNotFoundPattern = `"invalid store ID %d, not found"`
 )
 
 var (
@@ -42,20 +46,25 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(pod *core.Pod, ownerStatefulS
 	name := pod.Name
 	namespace := pod.Namespace
 	tcName := tc.Name
-
-	isStoreExist := false
 	storesInfo, err := pdClient.GetStores()
 	if err != nil {
 		return util.ARFail(err)
 	}
+
 	var storeInfo *pdapi.StoreInfo
-	for _, info := range storesInfo.Stores {
-		ip := strings.Split(info.Store.GetAddress(), ":")[0]
-		podName := strings.Split(ip, ".")[0]
-		if name == podName {
-			isStoreExist = true
-			storeInfo = info
-			break
+
+	storeId, existed := pod.Labels[label.StoreIDLabelKey]
+	if existed {
+		storeIdInt, err := strconv.Atoi(storeId)
+		if err != nil {
+			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
+			return util.ARFail(err)
+		}
+		// find storeInfo by storeId, if error was not found, deal with it by admitDeleteUselessTiKVPod func
+		storeInfo, err = pdClient.GetStore(uint64(storeIdInt))
+		if err != nil && !strings.HasSuffix(err.Error(), fmt.Sprintf(tikvStoreNotFoundPattern+"\n", storeIdInt)) {
+			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
+			return util.ARFail(err)
 		}
 	}
 
@@ -67,7 +76,8 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(pod *core.Pod, ownerStatefulS
 
 	isUpgrading := IsStatefulSetUpgrading(ownerStatefulSet)
 
-	if storeInfo == nil || !isStoreExist {
+	if storeInfo == nil {
+		klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] can't be found store", namespace, tcName, namespace, name)
 		return pc.admitDeleteUselessTiKVPod(isInOrdinal, pod, ownerStatefulSet, tc, pdClient)
 	}
 

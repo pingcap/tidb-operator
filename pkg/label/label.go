@@ -255,6 +255,7 @@ func (l Label) String() string {
 	return strings.Join(arr, ",")
 }
 
+// IsManagedByTiDBOperator returns whether label is a Managed by tidb-operator
 func (l Label) IsManagedByTiDBOperator() bool {
 	return l[ManagedByLabelKey] == TiDBOperator
 }
