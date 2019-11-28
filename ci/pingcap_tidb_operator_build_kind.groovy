@@ -110,11 +110,11 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 	def PROJECT_DIR = "go/src/github.com/pingcap/tidb-operator"
 
 	catchError {
-		node('build_go1130_memvolume'){
+		node('build_go1130_memvolume') {
 			container("golang") {
 				def WORKSPACE = pwd()
-				dir("${PROJECT_DIR}"){
-					stage('build tidb-operator binary'){
+				dir("${PROJECT_DIR}") {
+					stage('Checkout') {
 						checkout changelog: false,
 						poll: false,
 						scm: [
@@ -134,29 +134,40 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 						withCredentials([string(credentialsId: "${CODECOV_CREDENTIALS_ID}", variable: 'codecovToken')]) {
 							CODECOV_TOKEN = codecovToken
 						}
+					}
 
+					stage("Check") {
 						ansiColor('xterm') {
-						sh """
-						export GOPATH=${WORKSPACE}/go
-						export PATH=${WORKSPACE}/go/bin:\$PATH
-						if ! hash hg 2>/dev/null; then
-							sudo yum install -y mercurial
-						fi
-						hg --version
-						make check-setup
-						make check
-						if [ ${BUILD_BRANCH} == "master" ]
-						then
-							make test GO_COVER=y
-							curl -s https://codecov.io/bash | bash -s - -t ${CODECOV_TOKEN} || echo 'Codecov did not collect coverage reports'
-						else
-							make test
-						fi
-						make
-						make e2e-build
-						"""
+							sh """
+							export GOPATH=${WORKSPACE}/go
+							export PATH=${WORKSPACE}/go/bin:\$PATH
+							# hq is required to clone git repos from https://bitbucket.org 
+							if ! hash hg 2>/dev/null; then
+								sudo yum install -y mercurial
+							fi
+							hg --version
+							make check-setup
+							make check
+							"""
 						}
 					}
+
+					stage("Build and Test") {
+						ansiColor('xterm') {
+							sh """
+							make
+							make e2e-build
+							if [ ${BUILD_BRANCH} == "master" ]
+							then
+								make test GO_COVER=y
+								curl -s https://codecov.io/bash | bash -s - -t ${CODECOV_TOKEN} || echo 'Codecov did not collect coverage reports'
+							else
+								make test
+							fi
+							"""
+						}
+					}
+
 					stash excludes: "vendor/**,deploy/**", name: "tidb-operator"
 				}
 			}

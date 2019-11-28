@@ -74,8 +74,7 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		ReleaseName:    "operator",
 		Image:          cfg.OperatorImage,
 		Tag:            cfg.OperatorTag,
-		SchedulerImage: "mirantis/hypokube",
-		SchedulerTag:   "final",
+		SchedulerImage: "k8s.gcr.io/kube-scheduler",
 		Features: []string{
 			"StableScheduling=true",
 			"AdvancedStatefulSet=true",
