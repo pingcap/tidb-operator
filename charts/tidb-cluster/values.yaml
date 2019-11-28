@@ -341,6 +341,10 @@ tidb:
   #              operator: In
   #              values:
   #                - "tidb-operator"
+  #            - key: "app.kubernetes.io/instance"
+  #              operator: In
+  #              values:
+  #                - <release-name>
   #        topologyKey: kubernetes.io/hostname
 
   ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
@@ -542,7 +546,12 @@ binlog:
     #                operator: In
     #                values:
     #                  - "tidb-operator"
+    #              - key: "app.kubernetes.io/instance"
+    #                operator: In
+    #                values:
+    #                  - <release-name>
     #          topologyKey: kubernetes.io/hostname
+
     # tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
     # refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
     tolerations: []
