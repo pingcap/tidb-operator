@@ -62,23 +62,23 @@ def build(SHELL_CODE) {
 				dir("${WORKSPACE}/go/src/github.com/pingcap/tidb-operator") {
 					unstash 'tidb-operator'
 					stage("Debug Info") {
+						println "debug host: 172.16.5.5"
 						println "debug command: kubectl -n jenkins-ci exec -ti ${NODE_NAME} bash"
+						sh """
+						echo "====== shell env ======"
+						echo "pwd: \$(pwd)"
+						env
+						echo "====== go env ======"
+						go env
+						echo "====== docker version ======"
+						docker version
+						"""
 					}
 					stage('Run') {
 						ansiColor('xterm') {
 							sh """
-							echo "====== shell env ======"
-							echo "pwd: \$(pwd)"
-							env
-							echo "====== go env ======"
-							go env
-							echo "====== docker version ======"
-							docker version
-							"""
-							sh """
 							export GOPATH=${WORKSPACE}/go
-							${SHELL_CODE} || true
-							sleep 99d
+							${SHELL_CODE}
 							"""
 						}
 					}
@@ -143,15 +143,15 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 							sudo yum install -y mercurial
 						fi
 						hg --version
-						#make check-setup
-						#make check
-						#if [ ${BUILD_BRANCH} == "master" ]
-						#then
-						#	make test GO_COVER=y
-						#	curl -s https://codecov.io/bash | bash -s - -t ${CODECOV_TOKEN} || echo 'Codecov did not collect coverage reports'
-						#else
-						#	make test
-						#fi
+						make check-setup
+						make check
+						if [ ${BUILD_BRANCH} == "master" ]
+						then
+							make test GO_COVER=y
+							curl -s https://codecov.io/bash | bash -s - -t ${CODECOV_TOKEN} || echo 'Codecov did not collect coverage reports'
+						else
+							make test
+						fi
 						make
 						make e2e-build
 						"""
@@ -162,9 +162,15 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 			}
 		}
 
-		stage("E2E - v1.12.10") {
+        def builds = [:]
+        builds["E2E v1.12.10"] = {
 			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 make e2e")
-		}
+        }
+        builds["E2E v1.16.3"] = {
+			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.16.3 make e2e")
+        }
+        builds.failFast = false
+        parallel builds
 
 		// we requires ~/bin/config.cfg, filemgr-linux64 utilities on k8s-kind node
 		// TODO make it possible to run on any node
