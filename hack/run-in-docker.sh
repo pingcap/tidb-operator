@@ -37,6 +37,7 @@ fi
 
 docker_args=(
     -it --rm
+    --name tidb-operator-dev
 )
 
 # required by dind
@@ -55,8 +56,8 @@ docker_args+=(
 )
 
 docker run ${docker_args[@]} \
-    -v $ROOT:/go/src/github.com/pingcap/advanced-statefulset \
-    -w /go/src/github.com/pingcap/advanced-statefulset \
+    -v $ROOT:/go/src/github.com/pingcap/tidb-operator \
+    -w /go/src/github.com/pingcap/tidb-operator \
     --entrypoint /usr/local/bin/runner.sh \
     gcr.io/k8s-testimages/kubekins-e2e:v20191108-9467d02-master \
     "${args[@]}"

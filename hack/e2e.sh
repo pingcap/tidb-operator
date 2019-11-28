@@ -234,8 +234,9 @@ function e2e::__wait_for_ds() {
 
 function e2e::setup_local_pvs() {
     echo "info: preparing disks"
-    for n in $(kind get nodes --name=$CLUSTER); do
+    for n in $($KIND_BIN get nodes --name=$CLUSTER); do
         docker exec -i $n bash <<'EOF'
+test -d /mnt/disks || mkdir -p /mnt/disks
 df -h /mnt/disks
 if mountpoint /mnt/disks &>/dev/null; then
     echo "info: /mnt/disks is a mountpoint"
