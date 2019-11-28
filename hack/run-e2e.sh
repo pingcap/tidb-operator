@@ -118,7 +118,7 @@ $KUBECTL_BIN ${kubectl_args[@]:-} -n ${NS} run tidb-operator-e2e --generator=run
     --env NAMESPACE=$NS \
     --labels app=webhook \
     --serviceaccount=tidb-operator-e2e \
-    --image-pull-policy=Always \
+    --image-pull-policy=IfNotPresent \
     --restart=Never \
     --command -- ${e2e_args[@]}
 echo "info: wait for e2e pod to be ready"

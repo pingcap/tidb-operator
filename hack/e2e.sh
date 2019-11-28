@@ -98,6 +98,15 @@ echo "SKIP_DOWN: $SKIP_DOWN"
 echo "KIND_DATA_HOSTPATH: $KIND_DATA_HOSTPATH"
 echo "KUBE_VERSION: $KUBE_VERSION"
 
+# https://github.com/kubernetes-sigs/kind/releases/tag/v0.6.0
+declare -A kind_node_images
+kind_node_images["v1.11.10"]="kindest/node:v1.11.10@sha256:44e1023d3a42281c69c255958e09264b5ac787c20a7b95caf2d23f8d8f3746f2"
+kind_node_images["v1.12.10"]="kindest/node:v1.12.10@sha256:e93e70143f22856bd652f03da880bfc70902b736750f0a68e5e66d70de236e40"
+kind_node_images["v1.13.12"]="kindest/node:v1.13.12@sha256:ad1dd06aca2b85601f882ba1df4fdc03d5a57b304652d0e81476580310ba6289"
+kind_node_images["v1.14.9"]="kindest/node:v1.14.9@sha256:00fb7d424076ed07c157eedaa3dd36bc478384c6d7635c5755746f151359320f"
+kind_node_images["v1.15.6"]="kindest/node:v1.15.6@sha256:1c8ceac6e6b48ea74cecae732e6ef108bc7864d8eca8d211d6efb58d6566c40a"
+kind_node_images["v1.16.3"]="kindest/node:v1.16.3@sha256:bced4bc71380b59873ea3917afe9fb35b00e174d22f50c7cab9188eac2b0fb88"
+
 function e2e::image_build() {
     if [ -n "$SKIP_BUILD" ]; then
         echo "info: skip building images"
@@ -107,18 +116,21 @@ function e2e::image_build() {
         echo "info: skip building and pushing images"
         return
     fi
-    DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make docker-push
-    DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make e2e-docker-push
+    DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make docker
+    DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make e2e-docker
+    DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make test-apiesrver-docker
 }
 
-# https://github.com/kubernetes-sigs/kind/releases/tag/v0.6.0
-declare -A kind_node_images
-kind_node_images["v1.11.10"]="kindest/node:v1.11.10@sha256:44e1023d3a42281c69c255958e09264b5ac787c20a7b95caf2d23f8d8f3746f2"
-kind_node_images["v1.12.10"]="kindest/node:v1.12.10@sha256:e93e70143f22856bd652f03da880bfc70902b736750f0a68e5e66d70de236e40"
-kind_node_images["v1.13.12"]="kindest/node:v1.13.12@sha256:ad1dd06aca2b85601f882ba1df4fdc03d5a57b304652d0e81476580310ba6289"
-kind_node_images["v1.14.9"]="kindest/node:v1.14.9@sha256:00fb7d424076ed07c157eedaa3dd36bc478384c6d7635c5755746f151359320f"
-kind_node_images["v1.15.6"]="kindest/node:v1.15.6@sha256:1c8ceac6e6b48ea74cecae732e6ef108bc7864d8eca8d211d6efb58d6566c40a"
-kind_node_images["v1.16.3"]="kindest/node:v1.16.3@sha256:bced4bc71380b59873ea3917afe9fb35b00e174d22f50c7cab9188eac2b0fb88"
+function e2e::image_load() {
+    local names=(
+        pingcap/tidb-operator
+        pingcap/tidb-operator-e2e
+        pingcap/test-apiserver
+    )
+    for n in ${names[@]}; do
+        $KIND_BIN load docker-image --name $CLUSTER $DOCKER_REGISTRY/$n:$IMAGE_TAG
+    done
+}
 
 function e2e::cluster_exists() {
     local name="$1"
@@ -137,24 +149,14 @@ function e2e::up() {
     echo "info: starting a new cluster"
     tmpfile=$(mktemp)
     trap "test -f $tmpfile && rm $tmpfile" RETURN
-    # we add http://localhost:5000 as local registry
     cat <<EOF > $tmpfile
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
-containerdConfigPatches:
-- |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5000"]
-    endpoint = ["http://localhost:5000"]
 EOF
     # control-plane
     cat <<EOF >> $tmpfile
 nodes:
 - role: control-plane
-  extraPortMappings:
-  - containerPort: 5000
-    hostPort: 5000
-    listenAddress: 127.0.0.1
-    protocol: TCP
 EOF
     if [[ "$KIND_DATA_HOSTPATH" != "none" ]]; then
         if [ ! -d "$KIND_DATA_HOSTPATH" ]; then
@@ -210,86 +212,6 @@ EOF
     # make it able to schedule pods on control-plane, then less resources we required
     echo "info: remove 'node-role.kubernetes.io/master' taint from $CLUSTER-control-plane"
     kubectl taint nodes $CLUSTER-control-plane node-role.kubernetes.io/master-
-}
-
-function e2e::setup_registry() {
-    tmpfile=$(mktemp)
-    trap "test -f $tmpfile && rm $tmpfile" RETURN
-    local registryNode=${CLUSTER}-control-plane
-    local registryNodeIP=$($KUBECTL_BIN --context $KUBECONTEXT get nodes ${registryNode} -o template --template='{{range.status.addresses}}{{if eq .type "InternalIP"}}{{.address}}{{end}}{{end}}')
-    cat <<EOF >${tmpfile}
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: registry
-spec:
-  selector:
-    matchLabels:
-      app: registry
-  template:
-    metadata:
-      labels:
-        app: registry
-    spec:
-      hostNetwork: true
-      nodeSelector:
-        kubernetes.io/hostname: ${registryNode}
-      tolerations:
-      - key: node-role.kubernetes.io/master
-        operator: "Equal"
-        effect: "NoSchedule"
-      containers:
-      - name: registry
-        image: registry:2
-        volumeMounts:
-        - name: data
-          mountPath: /data
-      volumes:
-      - name: data
-        hostPath:
-          path: /data
----
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: registry-proxy
-  labels:
-    app: registry-proxy
-spec:
-  selector:
-    matchLabels:
-      app: registry-proxy
-  template:
-    metadata:
-      labels:
-        app: registry-proxy
-    spec:
-      hostNetwork: true
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: kubernetes.io/hostname
-                operator: NotIn
-                values:
-                  - ${registryNode}
-      tolerations:
-      - key: node-role.kubernetes.io/master
-        operator: "Equal"
-        effect: "NoSchedule"
-      containers:
-        - name: socat
-          image: alpine/socat:1.0.5
-          args:
-          - tcp-listen:5000,fork,reuseaddr
-          - tcp-connect:${registryNodeIP}:5000
-EOF
-    $KUBECTL_BIN --context $KUBECONTEXT apply -f ${tmpfile}
-    echo "info: wait for daemonsets to be ready"
-    for name in registry registry-proxy; do
-        e2e::__wait_for_ds default $name
-    done
 }
 
 function e2e::__wait_for_ds() {
@@ -356,15 +278,15 @@ function e2e::down() {
 
 trap "e2e::down" EXIT
 e2e::up
-e2e::setup_registry
 e2e::setup_local_pvs
 e2e::setup_helm_server
 e2e::image_build
+e2e::image_load
 
 export KUBECONFIG
 export KUBECONTEXT
-export TIDB_OPERATOR_IMAGE=localhost:5000/pingcap/tidb-operator:${IMAGE_TAG}
-export E2E_IMAGE=localhost:5000/pingcap/tidb-operator-e2e:${IMAGE_TAG}
-export TEST_APISERVER_IMAGE=localhost:5000/pingcap/test-apiserver:${IMAGE_TAG}
+export TIDB_OPERATOR_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}
+export E2E_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator-e2e:${IMAGE_TAG}
+export TEST_APISERVER_IMAGE=$DOCKER_REGISTRY/pingcap/test-apiserver:${IMAGE_TAG}
 
 hack/run-e2e.sh "$@"
