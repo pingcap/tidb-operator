@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	apps "k8s.io/api/apps/v1"
+
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -87,6 +90,18 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 		stsLister:       stsLister,
 		serviceAccounts: serviceAccounts,
 	}
+}
+
+// admitPayload used to simply the param to make each function more easier
+type admitPayload struct {
+	// the pod for admission request object
+	pod *core.Pod
+	// the ownerStatefulSet for target tidb component pod
+	ownerStatefulSet *apps.StatefulSet
+	// the owner tc for target tidb component pod
+	tc *v1alpha1.TidbCluster
+	// the pdClient for target tc
+	pdClient pdapi.PDClient
 }
 
 func (pc *PodAdmissionControl) AdmitPods(ar admission.AdmissionReview) *admission.AdmissionResponse {
@@ -186,12 +201,20 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 		return util.ARSuccess()
 	}
 
+	payload := &admitPayload{
+		pod:              pod,
+		tc:               tc,
+		ownerStatefulSet: ownerStatefulSet,
+	}
+
 	if l.IsPD() {
 		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster)
-		return pc.admitDeletePdPods(pod, ownerStatefulSet, tc, pdClient)
+		payload.pdClient = pdClient
+		return pc.admitDeletePdPods(payload)
 	} else if l.IsTiKV() {
 		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster)
-		return pc.admitDeleteTiKVPods(pod, ownerStatefulSet, tc, pdClient)
+		payload.pdClient = pdClient
+		return pc.admitDeleteTiKVPods(payload)
 	}
 
 	klog.Infof("[%s/%s] is admit to be deleted", namespace, name)
@@ -237,6 +260,11 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar admission.AdmissionReview) *ad
 		}
 		klog.Errorf("failed get tc[%s/%s],refuse to create pod[%s/%s],%v", namespace, tcName, namespace, name, err)
 		return util.ARFail(err)
+	}
+
+	if memberUtils.NeedForceUpgrade(tc) {
+		klog.Infof("tc[%s/%s] is force upgraded, admit to create pod[%s/%s]", namespace, tcName, namespace, name)
+		return util.ARSuccess()
 	}
 
 	if l.IsTiKV() {

@@ -25,8 +25,6 @@ import (
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1"
-	apps "k8s.io/api/apps/v1"
-	core "k8s.io/api/core/v1"
 	"k8s.io/klog"
 )
 
@@ -42,11 +40,17 @@ var (
 	EvictLeaderTimeout time.Duration
 )
 
-func (pc *PodAdmissionControl) admitDeleteTiKVPods(pod *core.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admission.AdmissionResponse {
+
+	pod := payload.pod
+	ownerStatefulSet := payload.ownerStatefulSet
+	tc := payload.tc
+	pdClient := payload.pdClient
 
 	name := pod.Name
 	namespace := pod.Namespace
 	tcName := tc.Name
+
 	storesInfo, err := pdClient.GetStores()
 	if err != nil {
 		return util.ARFail(err)
@@ -79,18 +83,18 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(pod *core.Pod, ownerStatefulS
 
 	if storeInfo == nil || storeInfo.Store == nil {
 		klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] can't be found store", namespace, tcName, namespace, name)
-		return pc.admitDeleteUselessTiKVPod(isInOrdinal, pod, ownerStatefulSet, tc, pdClient)
+		return pc.admitDeleteUselessTiKVPod(isInOrdinal, payload)
 	}
 
 	switch storeInfo.Store.StateName {
 	case v1alpha1.TiKVStateTombstone:
-		return pc.admitDeleteUselessTiKVPod(isInOrdinal, pod, ownerStatefulSet, tc, pdClient)
+		return pc.admitDeleteUselessTiKVPod(isInOrdinal, payload)
 	case v1alpha1.TiKVStateOffline:
 		return pc.admitDeleteOfflineTiKVPod()
 	case v1alpha1.TiKVStateDown:
-		return pc.admitDeleteUselessTiKVPod(isInOrdinal, pod, ownerStatefulSet, tc, pdClient)
+		return pc.admitDeleteUselessTiKVPod(isInOrdinal, payload)
 	case v1alpha1.TiKVStateUp:
-		return pc.admitDeleteUpTiKVPod(isInOrdinal, isUpgrading, pod, ownerStatefulSet, tc, pdClient, storeInfo, storesInfo)
+		return pc.admitDeleteUpTiKVPod(isInOrdinal, isUpgrading, payload, storeInfo, storesInfo)
 	default:
 		klog.Infof("unknown store state[%s] for tikv pod[%s/%s]", storeInfo.Store.StateName, namespace, name)
 	}
@@ -100,7 +104,11 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(pod *core.Pod, ownerStatefulS
 	}
 }
 
-func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(isInOrdinal bool, pod *core.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(isInOrdinal bool, payload *admitPayload) *admission.AdmissionResponse {
+
+	pod := payload.pod
+	tc := payload.tc
+	ownerStatefulSet := payload.ownerStatefulSet
 
 	name := pod.Name
 	namespace := pod.Namespace
@@ -128,7 +136,12 @@ func (pc *PodAdmissionControl) admitDeleteOfflineTiKVPod() *admission.AdmissionR
 	}
 }
 
-func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(isInOrdinal, isUpgrading bool, pod *core.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, store *pdapi.StoreInfo, storesInfo *pdapi.StoresInfo) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(isInOrdinal, isUpgrading bool, payload *admitPayload, store *pdapi.StoreInfo, storesInfo *pdapi.StoresInfo) *admission.AdmissionResponse {
+
+	pod := payload.pod
+	tc := payload.tc
+	pdClient := payload.pdClient
+	ownerStatefulSet := payload.ownerStatefulSet
 
 	name := pod.Name
 	namespace := pod.Namespace
@@ -157,13 +170,17 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(isInOrdinal, isUpgrading boo
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
 		}
-		return pc.admitDeleteUpTiKVPodDuringUpgrading(ordinal, pod, ownerStatefulSet, tc, pdClient, store)
+		return pc.admitDeleteUpTiKVPodDuringUpgrading(ordinal, payload, store)
 	}
 
 	return util.ARSuccess()
 }
 
-func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(ordinal int32, pod *core.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, store *pdapi.StoreInfo) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(ordinal int32, payload *admitPayload, store *pdapi.StoreInfo) *admission.AdmissionResponse {
+
+	pod := payload.pod
+	tc := payload.tc
+	pdClient := payload.pdClient
 
 	name := pod.Name
 	namespace := pod.Namespace
