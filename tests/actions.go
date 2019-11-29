@@ -3276,13 +3276,13 @@ func (oa *operatorActions) CheckInitSQLOrDie(info *TidbClusterConfig) {
 	}
 }
 
-func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext, tidbClusters ...string) {
+func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext, namespaces ...string) {
 	sCert, err := tls.X509KeyPair(context.Cert, context.Key)
 	if err != nil {
 		panic(err)
 	}
 
-	wh := webhook.NewWebhook(tidbClusters)
+	wh := webhook.NewWebhook(namespaces)
 	http.HandleFunc("/pods", wh.ServePods)
 	server := &http.Server{
 		Addr: ":443",

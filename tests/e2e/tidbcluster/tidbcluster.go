@@ -165,7 +165,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		if err != nil {
 			panic(err)
 		}
-		go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx, fmt.Sprintf("%s/%s", cluster.Namespace, cluster.ClusterName))
+		go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx, ns)
 		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
 		ctx, cancel := context.WithCancel(context.Background())
 		assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(&cluster)

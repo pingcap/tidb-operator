@@ -33,6 +33,7 @@ cd $ROOT
 SKIP_CLEANUP=${SKIP_CLEANUP:-} # if set, skip cleaning up on exit (possible to reuse docker graphs next time)
 DOCKER_LIB_VOLUME=${DOCKER_LIB_VOLUME:-tidb-operator-docker-lib}
 DOCKER_GRAPH_VOLUME=${DOCKER_GRAPH_VOLUME:-tidb-operator-docker-graph}
+NAME=${NAME:-tidb-operator-dev}
 
 args=(bash)
 if [ $# -gt 0 ]; then
@@ -41,7 +42,7 @@ fi
 
 docker_args=(
     -it --rm
-    --name tidb-operator-dev
+    --name $NAME
 )
 
 # required by dind
@@ -69,6 +70,18 @@ function cleanup() {
     echo "info: cleaning up volume $DOCKER_GRAPH_VOLUME"
     docker volume rm $DOCKER_GRAPH_VOLUME || true
 }
+
+ret=0
+sts=$(docker inspect ${NAME} -f '{{.State.Status}}' 2>/dev/null) || ret=$?
+if [ $ret -eq 0 ]; then
+    if [[ "$sts" == "running" ]]; then
+        echo "info: found a running container named '${NAME}', trying to exec into it" 
+        exec docker exec -it ${NAME} bash
+    else
+        echo "info: found a non-running ($sts) container named '${NAME}', removing it first" 
+        docker rm ${NAME}
+    fi
+fi
 
 trap 'cleanup' EXIT
 
