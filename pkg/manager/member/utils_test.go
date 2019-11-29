@@ -94,3 +94,41 @@ func TestStatefulSetIsUpgrading(t *testing.T) {
 		testFn(test, t)
 	}
 }
+
+func TestIsSubMapOf(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	g.Expect(isSubMapOf(
+		nil,
+		map[string]string{
+			"k1": "v1",
+		})).To(BeTrue())
+	g.Expect(isSubMapOf(
+		map[string]string{
+			"k1": "v1",
+		},
+		map[string]string{
+			"k1": "v1",
+		})).To(BeTrue())
+	g.Expect(isSubMapOf(
+		map[string]string{
+			"k1": "v1",
+		},
+		map[string]string{
+			"k1": "v1",
+			"k2": "v2",
+		})).To(BeTrue())
+	g.Expect(isSubMapOf(
+		map[string]string{},
+		map[string]string{
+			"k1": "v1",
+		})).To(BeTrue())
+	g.Expect(isSubMapOf(
+		map[string]string{
+			"k1": "v1",
+			"k2": "v2",
+		},
+		map[string]string{
+			"k1": "v1",
+		})).To(BeFalse())
+}
