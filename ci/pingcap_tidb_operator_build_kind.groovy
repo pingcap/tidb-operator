@@ -24,7 +24,7 @@ spec:
       value: "true"
     resources:
       requests:
-        memory: "16000Mi"
+        memory: "8000Mi"
         cpu: 8000m
     # kind needs /lib/modules and cgroups from the host
     volumeMounts:
