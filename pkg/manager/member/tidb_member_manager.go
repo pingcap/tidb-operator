@@ -93,7 +93,11 @@ func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 
 	// Sync Tidb StatefulSet
-	return tmm.syncTiDBStatefulSetForTidbCluster(tc)
+	if err := tmm.syncTiDBStatefulSetForTidbCluster(tc); err != nil {
+		return err
+	}
+
+	return tmm.syncTiDBService(tc)
 }
 
 func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
@@ -122,7 +126,7 @@ func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1
 	if !equal {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
-		err = SetServiceLastAppliedConfigAnnotation(newSvc)
+		err = SetServiceLastAppliedConfigAnnotation(&svc)
 		if err != nil {
 			return err
 		}
@@ -295,6 +299,108 @@ func (tmm *tidbMemberManager) syncTiDBClientCerts(tc *v1alpha1.TidbCluster) erro
 	}
 
 	return tmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
+}
+
+func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
+
+	newSvc := getNewTiDBServiceOrNil(tc)
+	// TODO: delete tidb service if user remove the service spec deliberately
+	if newSvc == nil {
+		return nil
+	}
+
+	ns := newSvc.Namespace
+
+	oldSvcTmp, err := tmm.svcLister.Services(ns).Get(newSvc.Name)
+	if errors.IsNotFound(err) {
+		err = SetServiceLastAppliedConfigAnnotation(newSvc)
+		if err != nil {
+			return err
+		}
+		return tmm.svcControl.CreateService(tc, newSvc)
+	}
+	if err != nil {
+		return err
+	}
+	oldSvc := oldSvcTmp.DeepCopy()
+
+	equal, err := serviceEqual(newSvc, oldSvc)
+	if err != nil {
+		return err
+	}
+	annoEqual := isSubMapOf(newSvc.Annotations, oldSvc.Annotations)
+	isOrphan := metav1.GetControllerOf(oldSvc) == nil
+
+	if !equal || !annoEqual || isOrphan {
+		svc := *oldSvc
+		svc.Spec = newSvc.Spec
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+		err = SetServiceLastAppliedConfigAnnotation(&svc)
+		if err != nil {
+			return err
+		}
+		// apply change of annotations if any
+		for k, v := range newSvc.Annotations {
+			svc.Annotations[k] = v
+		}
+		// also override labels when adopt orphan
+		if isOrphan {
+			svc.OwnerReferences = newSvc.OwnerReferences
+			svc.Labels = newSvc.Labels
+		}
+		_, err = tmm.svcControl.UpdateService(tc, &svc)
+		return err
+	}
+
+	return nil
+}
+
+func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
+
+	svcSpec := tc.Spec.TiDB.Service
+	if svcSpec == nil {
+		return nil
+	}
+
+	ns := tc.Namespace
+	tcName := tc.Name
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	tidbLabels := label.New().Instance(instanceName).TiDB().Labels()
+	svcName := controller.TiDBMemberName(tcName)
+
+	ports := []corev1.ServicePort{
+		{
+			Name:       "mysql-client",
+			Port:       4000,
+			TargetPort: intstr.FromInt(4000),
+			Protocol:   corev1.ProtocolTCP,
+		},
+	}
+	if svcSpec.ExposeStatus {
+		ports = append(ports, corev1.ServicePort{
+			Name:       "status",
+			Port:       10080,
+			TargetPort: intstr.FromInt(10080),
+			Protocol:   corev1.ProtocolTCP,
+		})
+	}
+
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            svcName,
+			Namespace:       ns,
+			Labels:          tidbLabels,
+			Annotations:     svcSpec.Annotations,
+			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+		},
+		Spec: corev1.ServiceSpec{
+			Type:                  svcSpec.Type,
+			Ports:                 ports,
+			ExternalTrafficPolicy: svcSpec.ExternalTrafficPolicy,
+			LoadBalancerIP:        svcSpec.LoadBalancerIP,
+			Selector:              tidbLabels,
+		},
+	}
 }
 
 func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
