@@ -14,13 +14,13 @@
 # limitations under the License.
 
 #
-# Isolated docker environment for development.
+# Isolated container environment for development.
 #
 # Examples:
 #
-#   ./hack/run-in-docker.sh # start an interactive shell
-#   ./hack/run-in-docker.sh make test
-#   ./hack/run-in-docker.sh ./hack/e2e.sh -- --ginkgo.focus='aggregated'
+#   ./hack/run-in-container.sh # start an interactive shell
+#   ./hack/run-in-container.sh make test
+#   ./hack/run-in-container.sh ./hack/e2e.sh -- --ginkgo.focus='aggregated'
 #
 
 set -o errexit
@@ -29,6 +29,10 @@ set -o pipefail
 
 ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 cd $ROOT
+
+SKIP_CLEANUP=${SKIP_CLEANUP:-} # if set, skip cleaning up on exit (possible to reuse docker graphs next time)
+DOCKER_LIB_VOLUME=${DOCKER_LIB_VOLUME:-tidb-operator-docker-lib}
+DOCKER_GRAPH_VOLUME=${DOCKER_GRAPH_VOLUME:-tidb-operator-docker-graph}
 
 args=(bash)
 if [ $# -gt 0 ]; then
@@ -45,8 +49,8 @@ docker_args+=(
     --privileged
     -e DOCKER_IN_DOCKER_ENABLED=true
     # Docker in Docker expects it to be a volume
-    --tmpfs /var/lib/docker
-    --tmpfs /docker-graph # legacy path for cr.io/k8s-testimages/kubekins-e2e
+    -v $DOCKER_LIB_VOLUME:/var/lib/docker
+    -v $DOCKER_GRAPH_VOLUME:/docker-graph # legacy path for cr.io/k8s-testimages/kubekins-e2e
 )
 
 # required by kind
@@ -54,6 +58,19 @@ docker_args+=(
     -v /lib/modules:/lib/modules
     -v /sys/fs/cgroup:/sys/fs/cgroup
 )
+
+function cleanup() {
+    if [ -n "$SKIP_CLEANUP" ]; then
+        echo "info: skip cleaning up local volumes ($DOCKER_LIB_VOLUME, $DOCKER_GRAPH_VOLUME)"
+        return
+    fi
+    echo "info: cleaning up volume $DOCKER_LIB_VOLUME"
+    docker volume rm $DOCKER_LIB_VOLUME || true
+    echo "info: cleaning up volume $DOCKER_GRAPH_VOLUME"
+    docker volume rm $DOCKER_GRAPH_VOLUME || true
+}
+
+trap 'cleanup' EXIT
 
 docker run ${docker_args[@]} \
     -v $ROOT:/go/src/github.com/pingcap/tidb-operator \
