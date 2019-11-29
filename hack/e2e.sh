@@ -29,6 +29,7 @@ Environments:
     SKIP_UP             skip starting the cluster
     SKIP_DOWN           skip shutting down the cluster
     KUBE_VERSION        the version of Kubernetes to test against
+    KUBE_WORKERS        the number of worker nodes (excludes master nodes), defaults: 3
     KIND_DATA_HOSTPATH  (for kind) the host path of data directory for kind cluster, defaults: none
     GINKGO_NODES        ginkgo nodes to run specs, defaults: 1
     GINKGO_PARALLEL     if set to `y`, will run specs in parallel, the number of nodes will be the number of cpus
@@ -85,6 +86,7 @@ SKIP_UP=${SKIP_UP:-}
 SKIP_DOWN=${SKIP_DOWN:-}
 KIND_DATA_HOSTPATH=${KIND_DATA_HOSTPATH:-none}
 KUBE_VERSION=${KUBE_VERSION:-v1.12.10}
+KUBE_WORKERS=${KUBE_WORKERS:-3}
 
 echo "DOCKER_REGISTRY: $DOCKER_REGISTRY"
 echo "IMAGE_TAG: $IMAGE_TAG"
@@ -173,7 +175,7 @@ EOF
 EOF
     fi
     # workers
-    for ((i=1; i <=3; i++)) {
+    for ((i = 1; i <= $KUBE_WORKERS; i++)) {
         cat <<EOF >> $tmpfile
 - role: worker
 EOF
@@ -221,7 +223,7 @@ function e2e::__wait_for_ds() {
     local name="$2"
     local retries="${3:-120}"
     echo "info: waiting for pods of daemonset $ns/$name are ready (retries: $retries, interval: 1s)"
-    for ((i=0; i < retries; i++)) {
+    for ((i = 0; i < retries; i++)) {
         read a b <<<$($KUBECTL_BIN --context $KUBECONTEXT -n $ns get ds/$name -ojsonpath='{.status.desiredNumberScheduled} {.status.numberReady}{"\n"}')
         if [[ "$a" -gt 0 && "$a" -eq "$b" ]]; then
             echo "info: all pods of daemonset $ns/$name are ready (desired: $a, ready: $b)"
@@ -246,7 +248,7 @@ else
     echo "info: /mnt/disks is not a mountpoint, creating local volumes on the rootfs"
 fi
 cd /mnt/disks
-for ((i=1; i <= 32; i++)) {
+for ((i = 1; i <= 32; i++)) {
     if [ ! -d vol$i ]; then
         mkdir vol$i
     fi

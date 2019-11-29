@@ -101,7 +101,7 @@ def getChangeLogText() {
 }
 
 def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
-	timeout(120) {
+	timeout (time: 2, unit: 'HOURS') {
 
 	def GITHASH
 	def CODECOV_TOKEN
