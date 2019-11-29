@@ -166,8 +166,8 @@ type PDSpec struct {
 	ComponentSpec
 	// +k8s:openapi-gen=false
 	Resources
+	Replicas int32 `json:"replicas"`
 	// +k8s:openapi-gen=false
-	Replicas         int32        `json:"replicas"`
 	Service          *ServiceSpec `json:"service,omitempty"`
 	StorageClassName string       `json:"storageClassName,omitempty"`
 
@@ -183,8 +183,8 @@ type TiKVSpec struct {
 	ComponentSpec
 	// +k8s:openapi-gen=false
 	Resources
+	Replicas int32 `json:"replicas"`
 	// +k8s:openapi-gen=false
-	Replicas         int32        `json:"replicas"`
 	Service          *ServiceSpec `json:"service,omitempty"`
 	Privileged       bool         `json:"privileged,omitempty"`
 	StorageClassName string       `json:"storageClassName,omitempty"`
@@ -202,7 +202,8 @@ type TiDBSpec struct {
 	ComponentSpec
 	// +k8s:openapi-gen=false
 	Resources
-	Replicas         int32            `json:"replicas"`
+	Replicas int32 `json:"replicas"`
+	// +k8s:openapi-gen=false
 	Service          *TiDBServiceSpec `json:"service,omitempty"`
 	BinlogEnabled    bool             `json:"binlogEnabled,omitempty"`
 	MaxFailoverCount int32            `json:"maxFailoverCount,omitempty"`
@@ -326,6 +327,7 @@ type ServiceSpec struct {
 
 // +k8s:openapi-gen=true
 type TiDBServiceSpec struct {
+	// +k8s:openapi-gen=false
 	ServiceSpec
 
 	// ExternalTrafficPolicy of the service
