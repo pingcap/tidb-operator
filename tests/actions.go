@@ -420,6 +420,14 @@ func (oa *operatorActions) InstallCRDOrDie() {
 		waitArgs = append(waitArgs, fmt.Sprintf("crds/%s", crd))
 	}
 	oa.runKubectlOrDie(waitArgs...)
+	// workaround for https://github.com/kubernetes/kubernetes/issues/65517
+	glog.Infof("force sync kubectl cache")
+	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
+	_, err := exec.Command(cmdArgs[0], cmdArgs[1:]...).CombinedOutput()
+	if err != nil {
+		glog.Fatalf("Failed to run '%s': %v", strings.Join(cmdArgs, " "), err)
+	}
+	oa.runKubectlOrDie("api-resources")
 }
 
 func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
