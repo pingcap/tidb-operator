@@ -141,11 +141,6 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 							sh """
 							export GOPATH=${WORKSPACE}/go
 							export PATH=${WORKSPACE}/go/bin:\$PATH
-							# hq is required to clone git repos from https://bitbucket.org 
-							if ! hash hg 2>/dev/null; then
-								sudo yum install -y mercurial
-							fi
-							hg --version
 							make check-setup
 							make check
 							"""
