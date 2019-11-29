@@ -173,7 +173,7 @@ EOF
 EOF
     fi
     # workers
-    for ((i=1; i <=2; i++)) {
+    for ((i=1; i <=3; i++)) {
         cat <<EOF >> $tmpfile
 - role: worker
 EOF
@@ -210,8 +210,10 @@ EOF
     fi
     $KIND_BIN create cluster --config $KUBECONFIG --name $CLUSTER --image $image --config $tmpfile -v 4
     # make it able to schedule pods on control-plane, then less resources we required
-    echo "info: remove 'node-role.kubernetes.io/master' taint from $CLUSTER-control-plane"
-    kubectl taint nodes $CLUSTER-control-plane node-role.kubernetes.io/master-
+    # This is disabled because when hostNetwork is used, pd requires 2379/2780
+    # which may conflict with etcd on control-plane.
+    #echo "info: remove 'node-role.kubernetes.io/master' taint from $CLUSTER-control-plane"
+    #kubectl taint nodes $CLUSTER-control-plane node-role.kubernetes.io/master-
 }
 
 function e2e::__wait_for_ds() {
