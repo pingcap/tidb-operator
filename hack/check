@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export CGO_ENABLED=0
+
+find=find
+
+if [ "$(uname)" == "Darwin" ]; then
+	if ! command -v gfind ; then
+		echo "please install GNU Find"
+		echo ""
+		echo "    brew install findutils"
+		exit 1
+	fi
+	find=gfind
+fi
+
+pushd "$(dirname "$0")/.." >/dev/null
+PKGS="$($find "pkg" -type f -name '*.go' -printf 'github.com/pingcap/tidb-operator/%h\n' | sort -u)"
+# echo checking packages: $PKGS
+pushd tools
+make bin/revive
+make bin/golangci-lint
+popd
+
+NO_LINT=${NO_LINT:-""}
+if [[ -z $NO_LINT ]] ; then
+  echo "linting"
+  ./tools/bin/revive -formatter friendly -config revive.toml ${PKGS}
+fi
+
+echo "checking"
+pushd pkg
+for d in * ; do
+  pushd "$d"
+# golangci has a bug when given file arguments
+  ../../tools/bin/golangci-lint run --disable unparam
+  popd >/dev/null
+done 
+popd
