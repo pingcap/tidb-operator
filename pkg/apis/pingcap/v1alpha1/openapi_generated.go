@@ -814,9 +814,10 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 				Description: "PDSpec contains details of PD members",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"service": {
+					"replicas": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec"),
+							Type:   []string{"integer"},
+							Format: "int32",
 						},
 					},
 					"storageClassName": {
@@ -826,10 +827,9 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 						},
 					},
 				},
+				Required: []string{"replicas"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec"},
 	}
 }
 
@@ -1212,11 +1212,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBServiceSpec(ref common.ReferenceCallba
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"ServiceSpec": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec"),
-						},
-					},
 					"externalTrafficPolicy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ExternalTrafficPolicy of the service",
@@ -1232,11 +1227,8 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBServiceSpec(ref common.ReferenceCallba
 						},
 					},
 				},
-				Required: []string{"ServiceSpec"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec"},
 	}
 }
 
@@ -1278,11 +1270,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
 							Format: "int32",
-						},
-					},
-					"service": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBServiceSpec"),
 						},
 					},
 					"binlogEnabled": {
@@ -1333,8 +1320,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 				Required: []string{"replicas"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBServiceSpec"},
 	}
 }
 
@@ -1345,9 +1330,10 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 				Description: "TiKVSpec contains details of TiKV members",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"service": {
+					"replicas": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec"),
+							Type:   []string{"integer"},
+							Format: "int32",
 						},
 					},
 					"privileged": {
@@ -1369,10 +1355,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 						},
 					},
 				},
+				Required: []string{"replicas"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec"},
 	}
 }
 
