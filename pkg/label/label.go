@@ -91,6 +91,8 @@ const (
 	TiDBLabelVal string = "tidb"
 	// TiKVLabelVal is TiKV label value
 	TiKVLabelVal string = "tikv"
+	// PumpLabelVal is Pump label value
+	PumpLabelVal string = "pump"
 
 	// CleanJobLabelVal is clean job label value
 	CleanJobLabelVal string = "clean"
@@ -199,6 +201,12 @@ func (l Label) Restore(val string) Label {
 // PD assigns pd to component key in label
 func (l Label) PD() Label {
 	l.Component(PDLabelVal)
+	return l
+}
+
+// Pump assigns pump to component key in label
+func (l Label) Pump() Label {
+	l.Component(PumpLabelVal)
 	return l
 }
 

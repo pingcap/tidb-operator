@@ -14,7 +14,7 @@
 package v1alpha1
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/util/json"
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,6 +56,17 @@ const (
 	NormalPhase MemberPhase = "Normal"
 	// UpgradePhase represents the upgrade state of TiDB cluster.
 	UpgradePhase MemberPhase = "Upgrade"
+)
+
+// ConfigUpdateStrategy represents the strategy to update configuration
+type ConfigUpdateStrategy string
+
+const (
+	// ConfigUpdateStrategyInPlace update the configmap without changing the name
+	ConfigUpdateStrategyInPlace ConfigUpdateStrategy = "InPlace"
+	// ConfigUpdateStrategyRollingUpdate generate different configmap on configuration update and
+	// try to rolling-update the pod controller (e.g. statefulset) to apply updates.
+	ConfigUpdateStrategyRollingUpdate ConfigUpdateStrategy = "RollingUpdate"
 )
 
 // +genclient
@@ -173,7 +184,7 @@ type PDSpec struct {
 
 	// +k8s:openapi-gen=false
 	// TODO: add schema
-	Config map[string]json.JsonObject `json:"config,omitempty"`
+	config.GenericConfig `json:",inline"`
 }
 
 // +k8s:openapi-gen=true
@@ -192,7 +203,7 @@ type TiKVSpec struct {
 
 	// +k8s:openapi-gen=false
 	// TODO: add schema
-	Config map[string]json.JsonObject `json:"config,omitempty"`
+	config.GenericConfig `json:",inline"`
 }
 
 // +k8s:openapi-gen=true
@@ -218,7 +229,7 @@ type TiDBSpec struct {
 
 	// +k8s:openapi-gen=false
 	// TODO: add schema
-	Config map[string]json.JsonObject `json:"config,omitempty"`
+	config.GenericConfig `json:",inline"`
 }
 
 // +k8s:openapi-gen=true
@@ -232,9 +243,19 @@ type PumpSpec struct {
 	StorageClassName string `json:"storageClassName,omitempty"`
 	Replicas         int32  `json:"replicas"`
 
+	// ConfigUpdateStrategy determines how to apply the configuration change,
+	// change this field without actually changing the configuration will not trigger rolling-update
+	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
 	// +k8s:openapi-gen=false
 	// TODO: add schema
-	Config map[string]json.JsonObject `json:"config,omitempty"`
+	config.GenericConfig `json:",inline"`
+
+	// +k8s:openapi-gen=false
+	// For backward compatibility with helm chart
+	SetTimeZone *bool `json:"setTimeZone,omitempty"`
+	// +k8s:openapi-gen=false
+	// For backward compatibility with helm chart
+	LogLevel string `json:"logLevel,omitempty"`
 }
 
 // +k8s:openapi-gen=true

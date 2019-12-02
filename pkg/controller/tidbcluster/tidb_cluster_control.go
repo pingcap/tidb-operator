@@ -42,6 +42,7 @@ func NewDefaultTidbClusterControl(
 	metaManager manager.Manager,
 	orphanPodsCleaner member.OrphanPodsCleaner,
 	pvcCleaner member.PVCCleanerInterface,
+	pumpMemberManager manager.Manager,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		tcControl,
@@ -52,6 +53,7 @@ func NewDefaultTidbClusterControl(
 		metaManager,
 		orphanPodsCleaner,
 		pvcCleaner,
+		pumpMemberManager,
 		recorder,
 	}
 }
@@ -65,6 +67,7 @@ type defaultTidbClusterControl struct {
 	metaManager          manager.Manager
 	orphanPodsCleaner    member.OrphanPodsCleaner
 	pvcCleaner           member.PVCCleanerInterface
+	pumpMemberManager    manager.Manager
 	recorder             record.EventRecorder
 }
 
@@ -146,8 +149,12 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	}
 
 	// cleaning the pod scheduling annotation for pd and tikv
-	_, err := tcc.pvcCleaner.Clean(tc)
-	return err
+	if _, err := tcc.pvcCleaner.Clean(tc); err != nil {
+		return err
+	}
+
+	// syncing the pump cluster
+	return tcc.pumpMemberManager.Sync(tc)
 }
 
 var _ ControlInterface = &defaultTidbClusterControl{}

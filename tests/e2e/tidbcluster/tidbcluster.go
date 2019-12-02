@@ -27,6 +27,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/apiserver"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
@@ -301,9 +303,136 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				e2elog.Logf("tidb service is not synced, %v", err)
 				return false, nil
 			}
+
 			return true, nil
 		})
+
 		framework.ExpectNoError(err)
+	})
+
+	// Basic IT for managed in TidbCluster CR
+	// TODO: deploy pump through CR in backup and restore IT
+	ginkgo.It("Pump: Test managing Pump in TidbCluster CRD", func() {
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump-it", "admin", "")
+		cluster.Resources["pd.replicas"] = "1"
+		cluster.Resources["tikv.replicas"] = "1"
+		cluster.Resources["tidb.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&cluster)
+		oa.CheckTidbClusterStatusOrDie(&cluster)
+
+		ginkgo.By("Test adopting pump statefulset created by helm could avoid rolling-update.")
+		err := oa.DeployAndCheckPump(&cluster)
+		framework.ExpectNoError(err, "Expected pump deployed")
+
+		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get tidbcluster")
+
+		pullPolicy := corev1.PullIfNotPresent
+		tc.Spec.Pump = &v1alpha1.PumpSpec{
+			ComponentSpec: v1alpha1.ComponentSpec{
+				BaseImage:       "pingcap/tidb-binlog",
+				Version:         cluster.ClusterVersion,
+				ImagePullPolicy: &pullPolicy,
+				Affinity: &corev1.Affinity{
+					PodAntiAffinity: &corev1.PodAntiAffinity{
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+							{
+								PodAffinityTerm: corev1.PodAffinityTerm{
+									Namespaces:  []string{cluster.Namespace},
+									TopologyKey: "rack",
+								},
+								Weight: 50,
+							},
+						},
+					},
+				},
+				Tolerations: []corev1.Toleration{
+					{
+						Effect:   corev1.TaintEffectNoSchedule,
+						Key:      "node-role",
+						Operator: corev1.TolerationOpEqual,
+						Value:    "tidb",
+					},
+				},
+				SchedulerName: "default-scheduler",
+			},
+			LogLevel:             "info",
+			Replicas:             1,
+			ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
+			StorageClassName:     "local-storage",
+			Resources: v1alpha1.Resources{
+				Requests: &v1alpha1.ResourceRequirement{
+					Storage: "1Gi",
+				},
+			},
+			GenericConfig: tcconfig.New(map[string]interface{}{
+				"addr":               "0.0.0.0:8250",
+				"gc":                 7,
+				"data-dir":           "/data",
+				"heartbeat-interval": 2,
+			}),
+		}
+
+		oldPumpSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name), metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get pump statefulset")
+
+		oldRev := oldPumpSet.Status.CurrentRevision
+		framework.ExpectEqual(oldPumpSet.Status.UpdateRevision, oldRev, "Expected pump is not upgrading")
+
+		tcUpdated, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+		framework.ExpectNoError(err, "Expected update tc")
+
+		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+			pumpSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name), metav1.GetOptions{})
+			if errors.IsNotFound(err) {
+				return false, err
+			}
+			if err != nil {
+				e2elog.Logf("error get pump statefulset: %v", err)
+				return false, nil
+			}
+			if !metav1.IsControlledBy(pumpSet, tcUpdated) {
+				e2elog.Logf("expect pump staetfulset adopted by tidbcluster, still waiting...")
+				return false, nil
+			}
+			// The desired state encoded in CRD should be exactly same with the one created by helm chart
+			framework.ExpectEqual(pumpSet.Status.CurrentRevision, oldRev, "Expected no rolling-update when adopting pump statefulset")
+			framework.ExpectEqual(pumpSet.Status.UpdateRevision, oldRev, "Expected no rolling-update when adopting pump statefulset")
+
+			usingName := member.FindPumpConfig(tc.Name, pumpSet.Spec.Template.Spec.Volumes)
+			if usingName == "" {
+				e2elog.Fail("cannot find configmap that used by pump statefulset")
+			}
+			pumpConfigMap, err := c.CoreV1().ConfigMaps(tc.Namespace).Get(usingName, metav1.GetOptions{})
+			if errors.IsNotFound(err) {
+				return false, err
+			}
+			if err != nil {
+				e2elog.Logf("error get pump configmap: %v", err)
+				return false, nil
+			}
+			if !metav1.IsControlledBy(pumpConfigMap, tcUpdated) {
+				e2elog.Logf("expect pump configmap adopted by tidbcluster, still waiting...")
+				return false, nil
+			}
+
+			pumpPeerSvc, err := c.CoreV1().Services(tc.Namespace).Get(controller.PumpPeerMemberName(tc.Name), metav1.GetOptions{})
+			if errors.IsNotFound(err) {
+				return false, err
+			}
+			if err != nil {
+				e2elog.Logf("error get pump peer service: %v", err)
+				return false, nil
+			}
+			if !metav1.IsControlledBy(pumpPeerSvc, tcUpdated) {
+				e2elog.Logf("expect pump peer service adopted by tidbcluster, still waiting...")
+				return false, nil
+			}
+			return true, nil
+		})
+
+		framework.ExpectNoError(err)
+		// TODO: Add pump configmap rolling-update case
 	})
 })
 
@@ -320,6 +449,7 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVers
 		PDImage:          fmt.Sprintf("pingcap/pd:%s", tidbVersion),
 		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
 		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
+		PumpImage:        fmt.Sprintf("pingcap/tidb-binlog:%s", tidbVersion),
 		StorageClassName: "local-storage",
 		Password:         password,
 		UserName:         "root",
