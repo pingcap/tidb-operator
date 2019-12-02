@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/apiserver"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
@@ -121,18 +122,20 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	 * Note that only one cluster can run in host network mode at the same time.
 	 */
 	ginkgo.It("Switching back and forth between pod network and host network", func() {
-		// TODO do not skip this if AdvancedStatefulSet feature is enabled
-		serverVersion, err := c.Discovery().ServerVersion()
-		if err != nil {
-			panic(err)
-		}
-		sv := utilversion.MustParseSemantic(serverVersion.GitVersion)
-		klog.Infof("ServerVersion: %v", serverVersion.String())
-		if sv.LessThan(utilversion.MustParseSemantic("v1.13.11")) || // < v1.13.11
-			(sv.AtLeast(utilversion.MustParseSemantic("v1.14.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.14.7"))) || // >= v1.14.0 but < v1.14.7
-			(sv.AtLeast(utilversion.MustParseSemantic("v1.15.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.15.4"))) { // >= v1.15.0 but < v1.15.4
-			// https://github.com/pingcap/tidb-operator/issues/1042#issuecomment-547742565
-			framework.Skipf("Skipping HostNetwork test. Kubernetes %v has a bug that StatefulSet may apply revision incorrectly, HostNetwork cannot work well in this cluster", serverVersion)
+		if !ocfg.Enabled(features.AdvancedStatefulSet) {
+			serverVersion, err := c.Discovery().ServerVersion()
+			framework.ExpectNoError(err, "failed to fetch Kubernetes version")
+			sv := utilversion.MustParseSemantic(serverVersion.GitVersion)
+			klog.Infof("ServerVersion: %v", serverVersion.String())
+			if sv.LessThan(utilversion.MustParseSemantic("v1.13.11")) || // < v1.13.11
+				(sv.AtLeast(utilversion.MustParseSemantic("v1.14.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.14.7"))) || // >= v1.14.0 but < v1.14.7
+				(sv.AtLeast(utilversion.MustParseSemantic("v1.15.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.15.4"))) { // >= v1.15.0 but < v1.15.4
+				// https://github.com/pingcap/tidb-operator/issues/1042#issuecomment-547742565
+				framework.Skipf("Skipping HostNetwork test. Kubernetes %v has a bug that StatefulSet may apply revision incorrectly, HostNetwork cannot work well in this cluster", serverVersion)
+			}
+			ginkgo.By(fmt.Sprintf("Testing HostNetwork feature with Kubernetes %v", serverVersion))
+		} else {
+			ginkgo.By("Testing HostNetwork feature with Advanced StatefulSet")
 		}
 
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "host-network", "", "")
@@ -141,12 +144,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		cluster.Resources["tikv.replicas"] = "1"
 		oa.DeployTidbClusterOrDie(&cluster)
 
-		// switch to host network
+		ginkgo.By("switch to host network")
 		cluster.RunInHost(true)
 		oa.UpgradeTidbClusterOrDie(&cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
 
-		// switch to pod network
+		ginkgo.By("switch back to pod network")
 		cluster.RunInHost(false)
 		oa.UpgradeTidbClusterOrDie(&cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
@@ -171,9 +174,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		// upgrade
 		upgradeVersions := cfg.GetUpgradeTidbVersionsOrDie()
 		certCtx, err := apimachinery.SetupServerCert("tidb-operator-e2e", tests.WebhookServiceName)
-		if err != nil {
-			panic(err)
-		}
+		framework.ExpectNoError(err, fmt.Sprintf("unable to setup certs for webservice %s", tests.WebhookServiceName))
 		go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx, ns)
 		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
 		ctx, cancel := context.WithCancel(context.Background())
