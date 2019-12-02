@@ -205,15 +205,12 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 		pod:              pod,
 		tc:               tc,
 		ownerStatefulSet: ownerStatefulSet,
+		pdClient:         pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster),
 	}
 
 	if l.IsPD() {
-		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster)
-		payload.pdClient = pdClient
 		return pc.admitDeletePdPods(payload)
 	} else if l.IsTiKV() {
-		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster)
-		payload.pdClient = pdClient
 		return pc.admitDeleteTiKVPods(payload)
 	}
 
@@ -273,4 +270,23 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar admission.AdmissionReview) *ad
 	}
 
 	return util.ARSuccess()
+}
+
+func fetchInfoFromPayload(payload *admitPayload) (pod *core.Pod, ownerStatefulSet *apps.StatefulSet, ordinal int32, podName, namespace, tcName string, isInOrdinal, isUpgrading, IsDeferDeleting bool, pdClient pdapi.PDClient, err error) {
+
+	pod = payload.pod
+	podName = pod.Name
+	namespace = pod.Namespace
+	tcName = payload.tc.Name
+	ownerStatefulSet = payload.ownerStatefulSet
+	pdClient = payload.pdClient
+
+	isInOrdinal, err = operatorUtils.IsPodOrdinalNotExceedReplicas(pod, *ownerStatefulSet.Spec.Replicas)
+	if err != nil {
+		return nil, nil, 0, "", "", "", false, false, false, nil, err
+	}
+	isUpgrading = IsStatefulSetUpgrading(ownerStatefulSet)
+	ordinal, err = operatorUtils.GetOrdinalFromPodName(podName)
+	IsDeferDeleting = IsPodWithPDDeferDeletingAnnotations(pod)
+	return
 }
