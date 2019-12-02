@@ -14,7 +14,11 @@ TERRAFORM_VERSION=0.12.12
 KUBECTL_VERSION=1.12.10
 KUBECTL_BIN=$OUTPUT_BIN/kubectl
 HELM_BIN=$OUTPUT_BIN/helm
-HELM_VERSION=2.16.1
+#
+# Don't ugprade to 2.15.x/2.16.x until this issue
+# (https://github.com/helm/helm/issues/6361) has been fixed.
+#
+HELM_VERSION=2.14.3
 KIND_VERSION=0.6.0
 KIND_BIN=$OUTPUT_BIN/kind
 
@@ -102,4 +106,9 @@ function hack::ensure_kind() {
     curl -Lo $tmpfile https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-$(uname)-amd64
     mv $tmpfile $KIND_BIN
     chmod +x $KIND_BIN
+}
+
+# hack::version_ge "$v1" "$v2" checks whether "v1" is greater or equal to "v2"
+function hack::version_ge() {
+    [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" = "$2" ]
 }
