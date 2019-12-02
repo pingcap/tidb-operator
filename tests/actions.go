@@ -43,6 +43,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
@@ -234,25 +235,24 @@ type event struct {
 var _ = OperatorActions(&operatorActions{})
 
 type OperatorConfig struct {
-	Namespace           string
-	ReleaseName         string
-	Image               string
-	Tag                 string
-	SchedulerImage      string
-	SchedulerTag        string
-	Features            []string
-	LogLevel            string
-	WebhookServiceName  string
-	WebhookSecretName   string
-	WebhookConfigName   string
-	Context             *apimachinery.CertContext
-	ImagePullPolicy     corev1.PullPolicy
-	TestMode            bool
-	ApiServerImage      string
-	ApiServerCert       string
-	ApiServerKey        string
-	ApiServerCaBundle   string
-	AdvancedStatefulSet bool
+	Namespace          string
+	ReleaseName        string
+	Image              string
+	Tag                string
+	SchedulerImage     string
+	SchedulerTag       string
+	Features           []string
+	LogLevel           string
+	WebhookServiceName string
+	WebhookSecretName  string
+	WebhookConfigName  string
+	Context            *apimachinery.CertContext
+	ImagePullPolicy    corev1.PullPolicy
+	TestMode           bool
+	ApiServerImage     string
+	ApiServerCert      string
+	ApiServerKey       string
+	ApiServerCaBundle  string
 }
 
 type TidbClusterConfig struct {
@@ -379,7 +379,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	if len(oi.Features) > 0 {
 		set["features"] = fmt.Sprintf("{%s}", strings.Join(oi.Features, ","))
 	}
-	if oi.AdvancedStatefulSet {
+	if oi.Enabled(features.AdvancedStatefulSet) {
 		set["advancedStatefulset.create"] = "true"
 	}
 
@@ -388,6 +388,16 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		arr = append(arr, fmt.Sprintf("%s=%s", k, v))
 	}
 	return strings.Join(arr, ",")
+}
+
+func (oi *OperatorConfig) Enabled(feature string) bool {
+	k := fmt.Sprintf("%s=true", feature)
+	for _, v := range oi.Features {
+		if v == k {
+			return true
+		}
+	}
+	return false
 }
 
 func (oa *operatorActions) runKubectlOrDie(args ...string) string {

@@ -79,12 +79,11 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 			"StableScheduling=true",
 			"AdvancedStatefulSet=true",
 		},
-		LogLevel:            "4",
-		WebhookServiceName:  "webhook-service",
-		WebhookSecretName:   "webhook-secret",
-		WebhookConfigName:   "webhook-config",
-		ImagePullPolicy:     v1.PullIfNotPresent,
-		TestMode:            true,
-		AdvancedStatefulSet: true,
+		LogLevel:           "4",
+		WebhookServiceName: "webhook-service",
+		WebhookSecretName:  "webhook-secret",
+		WebhookConfigName:  "webhook-config",
+		ImagePullPolicy:    v1.PullIfNotPresent,
+		TestMode:           true,
 	}
 }
