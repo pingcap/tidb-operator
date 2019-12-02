@@ -420,6 +420,14 @@ func (oa *operatorActions) InstallCRDOrDie() {
 		waitArgs = append(waitArgs, fmt.Sprintf("crds/%s", crd))
 	}
 	oa.runKubectlOrDie(waitArgs...)
+	// workaround for https://github.com/kubernetes/kubernetes/issues/65517
+	glog.Infof("force sync kubectl cache")
+	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
+	_, err := exec.Command(cmdArgs[0], cmdArgs[1:]...).CombinedOutput()
+	if err != nil {
+		glog.Fatalf("Failed to run '%s': %v", strings.Join(cmdArgs, " "), err)
+	}
+	oa.runKubectlOrDie("api-resources")
 }
 
 func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
@@ -476,6 +484,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
 	cmd = fmt.Sprintf(`
 sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/
+s#imagePullPolicy:.*#imagePullPolicy: IfNotPresent#g
 s#image:.*#image: %s#g
 ' %s/webhook.yaml | kubectl apply -f -
 `, info.Image, oa.manifestPath(info.Tag))
@@ -3267,13 +3276,13 @@ func (oa *operatorActions) CheckInitSQLOrDie(info *TidbClusterConfig) {
 	}
 }
 
-func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext, tidbClusters ...string) {
+func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext, namespaces ...string) {
 	sCert, err := tls.X509KeyPair(context.Cert, context.Key)
 	if err != nil {
 		panic(err)
 	}
 
-	wh := webhook.NewWebhook(tidbClusters)
+	wh := webhook.NewWebhook(namespaces)
 	http.HandleFunc("/pods", wh.ServePods)
 	server := &http.Server{
 		Addr: ":443",
