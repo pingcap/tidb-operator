@@ -11,11 +11,11 @@ type Interface interface {
 }
 
 type webhook struct {
-	tidbClusters sets.String
+	namespaces sets.String
 }
 
-func NewWebhook(tidbClusters []string) Interface {
+func NewWebhook(namespaces []string) Interface {
 	return &webhook{
-		tidbClusters: sets.NewString(tidbClusters...),
+		namespaces: sets.NewString(namespaces...),
 	}
 }

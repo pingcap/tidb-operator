@@ -135,7 +135,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.Skipf("Skipping HostNetwork test. Kubernetes %v has a bug that StatefulSet may apply revision incorrectly, HostNetwork cannot work well in this cluster", serverVersion)
 		}
 
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster1", "", "")
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "host-network", "", "")
+		cluster.Resources["pd.replicas"] = "1"
+		cluster.Resources["tidb.replicas"] = "1"
+		cluster.Resources["tikv.replicas"] = "1"
 		oa.DeployTidbClusterOrDie(&cluster)
 
 		// switch to host network
@@ -171,7 +174,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		if err != nil {
 			panic(err)
 		}
-		go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx, fmt.Sprintf("%s/%s", cluster.Namespace, cluster.ClusterName))
+		go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx, ns)
 		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
 		ctx, cancel := context.WithCancel(context.Background())
 		assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(&cluster)

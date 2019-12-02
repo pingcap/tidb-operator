@@ -9,6 +9,7 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: scheduler
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+{{- if .Values.clusterScoped }}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -21,7 +22,6 @@ metadata:
     app.kubernetes.io/component: scheduler
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 rules:
-{{- if .Values.clusterScoped }}
 - apiGroups: [""]
   resources: ["pods", "services", "configmaps", "replicationcontrollers", "persistentvolumeclaims", "endpoints"]
   verbs: ["get", "list", "watch"]
@@ -46,7 +46,6 @@ rules:
 - apiGroups: ["storage.k8s.io"]
   resources: ["storageclasses"]
   verbs: ["get", "list", "watch"]
-{{- end }}
 - apiGroups: [""]
   resources: ["nodes"]
   verbs: ["get", "list", "watch"]
@@ -59,6 +58,15 @@ rules:
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
   verbs: ["get", "list", "update"]
+# followng permissions are required if CSINodeInfo/AttachVolumeLimit features are enabled
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - csinodes
+  verbs:
+  - get
+  - list
+  - watch
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -78,6 +86,7 @@ roleRef:
   kind: ClusterRole
   name: {{ .Release.Name }}:{{ .Values.scheduler.schedulerName }}
   apiGroup: rbac.authorization.k8s.io
+{{- end }}
 {{- if (not .Values.clusterScoped) }}
 ---
 kind: Role
@@ -121,6 +130,15 @@ rules:
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
   verbs: ["get", "list", "update"]
+# followng permissions are required if CSINodeInfo/AttachVolumeLimit features are enabled
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - csinodes
+  verbs:
+  - get
+  - list
+  - watch
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
