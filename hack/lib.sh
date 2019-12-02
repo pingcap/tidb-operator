@@ -18,7 +18,7 @@ HELM_BIN=$OUTPUT_BIN/helm
 # Don't ugprade to 2.15.x/2.16.x until this issue
 # (https://github.com/helm/helm/issues/6361) has been fixed.
 #
-HELM_VERSION=2.14.3
+HELM_VERSION=2.9.1
 KIND_VERSION=0.6.0
 KIND_BIN=$OUTPUT_BIN/kind
 
