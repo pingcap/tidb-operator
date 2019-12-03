@@ -16,6 +16,7 @@ package pod
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	pdutil "github.com/pingcap/tidb-operator/pkg/manager/member"
+	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1"
 	"k8s.io/klog"
@@ -23,17 +24,17 @@ import (
 
 func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admission.AdmissionResponse {
 
-	pod, ownerStatefulSet, ordinal, name, namespace, tcName, isInOrdinal, isUpgrading, IsDeferDeleting, pdClient, err := fetchInfoFromPayload(payload)
+	ordinal, name, namespace, tcName, isInOrdinal, isUpgrading, IsDeferDeleting, err := fetchInfoFromPayload(payload)
 	if err != nil {
 		return util.ARFail(err)
 	}
 
-	isMember, err := IsPodInPdMembers(payload.tc, pod, pdClient)
+	isMember, err := IsPodInPdMembers(payload.tc, payload.pod, payload.pdClient)
 	if err != nil {
 		return util.ARFail(err)
 	}
 
-	isLeader, err := isPDLeader(pdClient, pod)
+	isLeader, err := isPDLeader(payload.pdClient, payload.pod)
 	if err != nil {
 		return util.ARFail(err)
 	}
@@ -55,7 +56,7 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 	// check the pd pods which have been upgraded before were all health
 	if isUpgrading {
 		klog.Infof("receive delete pd pod[%s/%s] of tc[%s/%s] is upgrading, make sure former pd upgraded status was health", namespace, name, namespace, tcName)
-		err = checkFormerPDPodStatus(pc.podLister, pdClient, payload.tc, namespace, ordinal, *ownerStatefulSet.Spec.Replicas)
+		err = checkFormerPDPodStatus(pc.podLister, payload.pdClient, payload.tc, namespace, ordinal, *payload.ownerStatefulSet.Spec.Replicas)
 		if err != nil {
 			return util.ARFail(err)
 		}
@@ -73,7 +74,7 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 // we need to check whether this pd pod has been ensured wouldn't be a member in pd cluster
 func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) *admission.AdmissionResponse {
 
-	pod, ownerStatefulSet, ordinal, name, namespace, tcName, isInOrdinal, _, IsDeferDeleting, pdClient, err := fetchInfoFromPayload(payload)
+	ordinal, name, namespace, tcName, isInOrdinal, _, IsDeferDeleting, err := fetchInfoFromPayload(payload)
 	if err != nil {
 		return util.ARFail(err)
 	}
@@ -87,7 +88,8 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 		// it would be existed an pd-3 instance with its deferDeleting label Annotations PVC.
 		// And the pvc can be deleted during upgrading if we use create pod webhook in future.
 		if !isInOrdinal {
-			err := addDeferDeletingToPVC(v1alpha1.PDMemberType, pc, payload.tc, ownerStatefulSet.Name, namespace, ordinal)
+			pvcName := operatorUtils.OrdinalPVCName(v1alpha1.TiKVMemberType, payload.ownerStatefulSet.Name, ordinal)
+			err = addDeferDeletingToPVC(pvcName, payload.pod.Namespace, pc.pvcControl, payload.tc)
 			if err != nil {
 				klog.Infof("tc[%s/%s]'s pod[%s/%s] failed to update pvc,%v", namespace, tcName, namespace, name, err)
 				return util.ARFail(err)
@@ -97,11 +99,11 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 		return util.ARSuccess()
 
 	}
-	err = pdClient.DeleteMember(name)
+	err = payload.pdClient.DeleteMember(name)
 	if err != nil {
 		return util.ARFail(err)
 	}
-	err = addDeferDeletingToPDPod(pc, pod)
+	err = addDeferDeletingToPDPod(pc, payload.pod)
 	if err != nil {
 		return util.ARFail(err)
 	}
@@ -114,7 +116,7 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 
 func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(payload *admitPayload, isPdLeader bool) *admission.AdmissionResponse {
 
-	pod, _, _, name, namespace, tcName, _, _, _, pdClient, err := fetchInfoFromPayload(payload)
+	_, name, namespace, tcName, _, _, _, err := fetchInfoFromPayload(payload)
 	if err != nil {
 		return util.ARFail(err)
 	}
@@ -123,12 +125,12 @@ func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(payload *admitPayl
 		return pc.transferPDLeader(payload)
 	}
 
-	err = pdClient.DeleteMember(name)
+	err = payload.pdClient.DeleteMember(name)
 	if err != nil {
 		return util.ARFail(err)
 	}
 	// we should add deferDeleting Annotation when we delete member successfully.
-	err = addDeferDeletingToPDPod(pc, pod)
+	err = addDeferDeletingToPDPod(pc, payload.pod)
 	if err != nil {
 		return util.ARFail(err)
 	}
@@ -142,7 +144,7 @@ func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(payload *admitPayl
 // this pod is a pd leader, we should transfer pd leader to other pd pod before it gets deleted before.
 func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admission.AdmissionResponse {
 
-	_, _, ordinal, name, namespace, tcName, _, _, _, pdClient, err := fetchInfoFromPayload(payload)
+	ordinal, name, namespace, tcName, _, _, _, err := fetchInfoFromPayload(payload)
 	if err != nil {
 		return util.ARFail(err)
 	}
@@ -155,7 +157,7 @@ func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admissio
 		targetName = pdutil.PdPodName(tcName, lastOrdinal)
 	}
 
-	err = pdClient.TransferPDLeader(targetName)
+	err = payload.pdClient.TransferPDLeader(targetName)
 	if err != nil {
 		klog.Errorf("tc[%s/%s] failed to transfer pd leader to pod[%s/%s],%v", namespace, tcName, namespace, name, err)
 		return util.ARFail(err)

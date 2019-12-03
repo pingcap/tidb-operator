@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1"
 	"k8s.io/klog"
@@ -96,13 +97,14 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admis
 
 func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) *admission.AdmissionResponse {
 
-	_, _, ordinal, name, namespace, tcName, isInOrdinal, _, _, _, err := fetchInfoFromPayload(payload)
+	ordinal, name, namespace, tcName, isInOrdinal, _, _, err := fetchInfoFromPayload(payload)
 	if err != nil {
 		return util.ARFail(err)
 	}
 
 	if !isInOrdinal {
-		err = addDeferDeletingToPVC(v1alpha1.TiKVMemberType, pc, payload.tc, payload.ownerStatefulSet.Name, namespace, ordinal)
+		pvcName := operatorUtils.OrdinalPVCName(v1alpha1.TiKVMemberType, payload.ownerStatefulSet.Name, ordinal)
+		err = addDeferDeletingToPVC(pvcName, payload.pod.Namespace, pc.pvcControl, payload.tc)
 		if err != nil {
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
@@ -120,13 +122,13 @@ func (pc *PodAdmissionControl) admitDeleteOfflineTiKVPod() *admission.AdmissionR
 
 func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store *pdapi.StoreInfo, storesInfo *pdapi.StoresInfo) *admission.AdmissionResponse {
 
-	_, ownerStatefulSet, ordinal, name, namespace, tcName, isInOrdinal, isUpgrading, _, pdClient, err := fetchInfoFromPayload(payload)
+	ordinal, name, namespace, tcName, isInOrdinal, isUpgrading, _, err := fetchInfoFromPayload(payload)
 	if err != nil {
 		return util.ARFail(err)
 	}
 
 	if !isInOrdinal {
-		err = pdClient.DeleteStore(store.Store.Id)
+		err = payload.pdClient.DeleteStore(store.Store.Id)
 		if err != nil {
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
@@ -137,7 +139,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 	}
 
 	if isUpgrading {
-		err = checkFormerTiKVPodStatus(pc.podLister, payload.tc, ordinal, *ownerStatefulSet.Spec.Replicas, storesInfo)
+		err = checkFormerTiKVPodStatus(pc.podLister, payload.tc, ordinal, *payload.ownerStatefulSet.Spec.Replicas, storesInfo)
 		if err != nil {
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
@@ -150,14 +152,14 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 
 func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admitPayload, store *pdapi.StoreInfo) *admission.AdmissionResponse {
 
-	pod, _, _, name, namespace, tcName, _, _, _, pdClient, err := fetchInfoFromPayload(payload)
+	_, name, namespace, tcName, _, _, _, err := fetchInfoFromPayload(payload)
 	if err != nil {
 		return util.ARFail(err)
 	}
 
-	_, evicting := pod.Annotations[EvictLeaderBeginTime]
+	_, evicting := payload.pod.Annotations[EvictLeaderBeginTime]
 	if !evicting {
-		err := beginEvictLeader(pc.kubeCli, store.Store.Id, pod, pdClient)
+		err := beginEvictLeader(pc.kubeCli, store.Store.Id, payload.pod, payload.pdClient)
 		if err != nil {
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
@@ -167,7 +169,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 		}
 	}
 
-	if !isTiKVReadyToUpgrade(pod, store) {
+	if !isTiKVReadyToUpgrade(payload.pod, store) {
 		return &admission.AdmissionResponse{
 			Allowed: false,
 		}

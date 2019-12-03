@@ -15,13 +15,13 @@ package pod
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	memberUtil "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -56,9 +56,8 @@ func IsStatefulSetUpgrading(set *v1.StatefulSet) bool {
 // pd pod who would be deleted by statefulset controller
 // we add annotations to this pvc and delete it when we scale out the pd replicas
 // for the new pd pod need new pvc
-func addDeferDeletingToPVC(memberType v1alpha1.MemberType, podAC *PodAdmissionControl, tc *v1alpha1.TidbCluster, setName, namespace string, ordinal int32) error {
-	pvcName := operatorUtils.OrdinalPVCName(memberType, setName, ordinal)
-	pvc, err := podAC.pvcControl.GetPVC(pvcName, namespace)
+func addDeferDeletingToPVC(pvcName, namespace string, pvcControl controller.PVCControlInterface, tc *v1alpha1.TidbCluster) error {
+	pvc, err := pvcControl.GetPVC(pvcName, namespace)
 	if err != nil {
 		return err
 	}
@@ -67,7 +66,7 @@ func addDeferDeletingToPVC(memberType v1alpha1.MemberType, podAC *PodAdmissionCo
 	}
 	now := time.Now().Format(time.RFC3339)
 	pvc.Annotations[label.AnnPVCDeferDeleting] = now
-	_, err = podAC.pvcControl.UpdatePVC(tc, pvc)
+	_, err = pvcControl.UpdatePVC(tc, pvc)
 	return err
 }
 
