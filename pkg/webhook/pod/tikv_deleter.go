@@ -97,10 +97,14 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admis
 
 func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) *admission.AdmissionResponse {
 
-	ordinal, name, namespace, tcName, isInOrdinal, _, _, err := fetchInfoFromPayload(payload)
+	name := payload.pod.Name
+	namespace := payload.pod.Namespace
+	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, *payload.ownerStatefulSet.Spec.Replicas)
 	if err != nil {
 		return util.ARFail(err)
 	}
+	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+	tcName := payload.tc.Name
 
 	if !isInOrdinal {
 		pvcName := operatorUtils.OrdinalPVCName(v1alpha1.TiKVMemberType, payload.ownerStatefulSet.Name, ordinal)
@@ -122,10 +126,16 @@ func (pc *PodAdmissionControl) admitDeleteOfflineTiKVPod() *admission.AdmissionR
 
 func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store *pdapi.StoreInfo, storesInfo *pdapi.StoresInfo) *admission.AdmissionResponse {
 
-	ordinal, name, namespace, tcName, isInOrdinal, isUpgrading, _, err := fetchInfoFromPayload(payload)
+	name := payload.pod.Name
+	namespace := payload.pod.Namespace
+	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, *payload.ownerStatefulSet.Spec.Replicas)
 	if err != nil {
 		return util.ARFail(err)
 	}
+	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+	tcName := payload.tc.Name
+	isUpgrading := IsStatefulSetUpgrading(payload.ownerStatefulSet)
+
 
 	if !isInOrdinal {
 		err = payload.pdClient.DeleteStore(store.Store.Id)
@@ -152,10 +162,9 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 
 func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admitPayload, store *pdapi.StoreInfo) *admission.AdmissionResponse {
 
-	_, name, namespace, tcName, _, _, _, err := fetchInfoFromPayload(payload)
-	if err != nil {
-		return util.ARFail(err)
-	}
+	name := payload.pod.Name
+	namespace := payload.pod.Namespace
+	tcName := payload.tc.Name
 
 	_, evicting := payload.pod.Annotations[EvictLeaderBeginTime]
 	if !evicting {

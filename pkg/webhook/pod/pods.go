@@ -271,21 +271,3 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar admission.AdmissionReview) *ad
 
 	return util.ARSuccess()
 }
-
-func fetchInfoFromPayload(payload *admitPayload) (ordinal int32, podName, namespace, tcName string, isInOrdinal, isUpgrading, IsDeferDeleting bool, err error) {
-
-	pod := payload.pod
-	podName = pod.Name
-	namespace = pod.Namespace
-	tcName = payload.tc.Name
-	ownerStatefulSet := payload.ownerStatefulSet
-
-	isInOrdinal, err = operatorUtils.IsPodOrdinalNotExceedReplicas(pod, *ownerStatefulSet.Spec.Replicas)
-	if err != nil {
-		return 0, "", "", "", false, false, false, err
-	}
-	isUpgrading = IsStatefulSetUpgrading(ownerStatefulSet)
-	ordinal, err = operatorUtils.GetOrdinalFromPodName(podName)
-	IsDeferDeleting = IsPodWithPDDeferDeletingAnnotations(pod)
-	return
-}

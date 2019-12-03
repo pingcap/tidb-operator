@@ -24,10 +24,16 @@ import (
 
 func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admission.AdmissionResponse {
 
-	ordinal, name, namespace, tcName, isInOrdinal, isUpgrading, IsDeferDeleting, err := fetchInfoFromPayload(payload)
+	name := payload.pod.Name
+	namespace := payload.pod.Namespace
+	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, *payload.ownerStatefulSet.Spec.Replicas)
 	if err != nil {
 		return util.ARFail(err)
 	}
+	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+	tcName := payload.tc.Name
+	isUpgrading := IsStatefulSetUpgrading(payload.ownerStatefulSet)
+	IsDeferDeleting := IsPodWithPDDeferDeletingAnnotations(payload.pod)
 
 	isMember, err := IsPodInPdMembers(payload.tc, payload.pod, payload.pdClient)
 	if err != nil {
@@ -74,10 +80,15 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 // we need to check whether this pd pod has been ensured wouldn't be a member in pd cluster
 func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) *admission.AdmissionResponse {
 
-	ordinal, name, namespace, tcName, isInOrdinal, _, IsDeferDeleting, err := fetchInfoFromPayload(payload)
+	name := payload.pod.Name
+	namespace := payload.pod.Namespace
+	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, *payload.ownerStatefulSet.Spec.Replicas)
 	if err != nil {
 		return util.ARFail(err)
 	}
+	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+	tcName := payload.tc.Name
+	IsDeferDeleting := IsPodWithPDDeferDeletingAnnotations(payload.pod)
 
 	// check whether this pod has been ensured wouldn't be a member in pd cluster
 	if IsDeferDeleting {
@@ -116,16 +127,15 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 
 func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(payload *admitPayload, isPdLeader bool) *admission.AdmissionResponse {
 
-	_, name, namespace, tcName, _, _, _, err := fetchInfoFromPayload(payload)
-	if err != nil {
-		return util.ARFail(err)
-	}
+	name := payload.pod.Name
+	namespace := payload.pod.Namespace
+	tcName := payload.tc.Name
 
 	if isPdLeader {
 		return pc.transferPDLeader(payload)
 	}
 
-	err = payload.pdClient.DeleteMember(name)
+	err := payload.pdClient.DeleteMember(name)
 	if err != nil {
 		return util.ARFail(err)
 	}
@@ -144,11 +154,10 @@ func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(payload *admitPayl
 // this pod is a pd leader, we should transfer pd leader to other pd pod before it gets deleted before.
 func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admission.AdmissionResponse {
 
-	ordinal, name, namespace, tcName, _, _, _, err := fetchInfoFromPayload(payload)
-	if err != nil {
-		return util.ARFail(err)
-	}
-
+	name := payload.pod.Name
+	namespace := payload.pod.Namespace
+	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+	tcName := payload.tc.Name
 	lastOrdinal := payload.tc.Status.PD.StatefulSet.Replicas - 1
 	var targetName string
 	if ordinal == lastOrdinal {
