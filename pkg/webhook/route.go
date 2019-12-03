@@ -21,12 +21,12 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/webhook/statefulset"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
-	admission "k8s.io/api/admission/v1"
+	admission "k8s.io/api/admission/v1beta1"
 	glog "k8s.io/klog"
 )
 
 // admitFunc is the type we use for all of our validators
-type admitFunc func(admission.AdmissionReview) *admission.AdmissionResponse
+type admitFunc func(request *admission.AdmissionRequest) *admission.AdmissionResponse
 
 // marshal responseAdmissionReview and send back
 func marshalAndWrite(response admission.AdmissionReview, w http.ResponseWriter) {
@@ -82,7 +82,7 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 		responseAdmissionReview.Response = util.ARFail(err)
 	} else {
 		// pass to admitFunc
-		responseAdmissionReview.Response = admit(requestedAdmissionReview)
+		responseAdmissionReview.Response = admit(requestedAdmissionReview.Request)
 	}
 
 	// Return the same UID

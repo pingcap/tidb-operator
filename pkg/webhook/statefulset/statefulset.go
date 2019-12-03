@@ -16,6 +16,8 @@ package statefulset
 import (
 	"errors"
 	"fmt"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
 	"strconv"
 
 	asappsv1alpha1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1"
@@ -24,16 +26,13 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
-	admission "k8s.io/api/admission/v1"
+	admission "k8s.io/api/admission/v1beta1"
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/rest"
-	glog "k8s.io/klog"
 )
 
 var (
-	versionCli   versioned.Interface
 	deserializer runtime.Decoder
 )
 
@@ -41,44 +40,31 @@ func init() {
 	deserializer = util.GetCodec()
 }
 
-func AdmitStatefulSets(ar admission.AdmissionReview) *admission.AdmissionResponse {
+type StatefulSetAdmissionControl struct {
+	// kubernetes client interface
+	kubeCli kubernetes.Interface
+	// operator client interface
+	operatorCli versioned.Interface
+}
 
-	name := ar.Request.Name
-	namespace := ar.Request.Namespace
+func (sc *StatefulSetAdmissionControl) AdmitStatefulSets(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+
+	name := ar.Name
+	namespace := ar.Namespace
 
 	expectedGroup := "apps"
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		expectedGroup = asappsv1alpha1.GroupName
 	}
-	apiVersion := ar.Request.Resource.Version
+	apiVersion := ar.Resource.Version
 	setResource := metav1.GroupVersionResource{Group: expectedGroup, Version: apiVersion, Resource: "statefulsets"}
-	if ar.Request.Resource.Group != setResource.Group || ar.Request.Resource.Resource != setResource.Resource {
-		err := fmt.Errorf("expect resource to be %s instead of %s", setResource, ar.Request.Resource)
-		glog.Error(err)
-		return util.ARFail(err)
-	}
-	glog.V(4).Infof("admit %s [%s/%s]", setResource, namespace, name)
 
-	if versionCli == nil {
-		cfg, err := rest.InClusterConfig()
-		if err != nil {
-			err := fmt.Errorf("statefulset %s/%s, get k8s cluster config failed, err: %v", namespace, name, err)
-			glog.Errorf(err.Error())
-			return util.ARFail(err)
-		}
+	klog.Infof("admit %s [%s/%s]", setResource, namespace, name)
 
-		versionCli, err = versioned.NewForConfig(cfg)
-		if err != nil {
-			err := fmt.Errorf("statefulset %s/%s, create Clientset failed, err: %v", namespace, name, err)
-			glog.Errorf(err.Error())
-			return util.ARFail(err)
-		}
-	}
-
-	stsObjectMeta, stsPartition, err := getStsAttributes(ar.Request.OldObject.Raw, apiVersion)
+	stsObjectMeta, stsPartition, err := getStsAttributes(ar.OldObject.Raw, apiVersion)
 	if err != nil {
 		err = fmt.Errorf("statefulset %s/%s, decode request failed, err: %v", namespace, name, err)
-		glog.Error(err)
+		klog.Error(err)
 		return util.ARFail(err)
 	}
 
@@ -93,15 +79,15 @@ func AdmitStatefulSets(ar admission.AdmissionReview) *admission.AdmissionRespons
 	if controllerRef == nil || controllerRef.Kind != controller.ControllerKind.Kind {
 		// In this case, we can't tell if this statefulset is controlled by tidb-operator,
 		// so we don't block this statefulset upgrade, return directly.
-		glog.Warningf("statefulset %s/%s has tidb or tikv component label but doesn't have owner reference or the owner reference is not TidbCluster", namespace, name)
+		klog.Warningf("statefulset %s/%s has tidb or tikv component label but doesn't have owner reference or the owner reference is not TidbCluster", namespace, name)
 		return util.ARSuccess()
 	}
 
 	tcName := controllerRef.Name
-	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
+	tc, err := sc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
 	if err != nil {
 		err := fmt.Errorf("get tidbcluster %s/%s failed, statefulset %s, err %v", namespace, tcName, name, err)
-		glog.Errorf(err.Error())
+		klog.Errorf(err.Error())
 		return util.ARFail(err)
 	}
 
@@ -118,16 +104,16 @@ func AdmitStatefulSets(ar admission.AdmissionReview) *admission.AdmissionRespons
 	partition, err := strconv.ParseInt(partitionStr, 10, 32)
 	if err != nil {
 		err := fmt.Errorf("statefulset %s/%s, convert partition str %s to int failed, err: %v", namespace, name, partitionStr, err)
-		glog.Errorf(err.Error())
+		klog.Errorf(err.Error())
 		return util.ARFail(err)
 	}
 
 	setPartition := *(stsPartition)
 	if setPartition > 0 && setPartition <= int32(partition) {
-		glog.V(4).Infof("statefulset %s/%s has been protect by partition %s annotations", namespace, name, partitionStr)
+		klog.Infof("statefulset %s/%s has been protect by partition %s annotations", namespace, name, partitionStr)
 		return util.ARFail(errors.New("protect by partition annotation"))
 	}
-	glog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, setPartition, partition)
+	klog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, setPartition, partition)
 	return util.ARSuccess()
 }
 

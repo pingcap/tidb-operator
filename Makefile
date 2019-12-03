@@ -54,6 +54,9 @@ discovery:
 admission-controller:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-controller cmd/admission-controller/main.go
 
+aggragated-webhook:
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/aggragated-webhook cmd/aggragated-webhook/main.go
+
 apiserver:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-apiserver cmd/apiserver/main.go
 
