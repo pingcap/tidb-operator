@@ -16,6 +16,7 @@ package pod
 import (
 	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"k8s.io/client-go/kubernetes"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -56,17 +57,13 @@ func IsStatefulSetUpgrading(set *v1.StatefulSet) bool {
 // pd pod who would be deleted by statefulset controller
 // we add annotations to this pvc and delete it when we scale out the pd replicas
 // for the new pd pod need new pvc
-func addDeferDeletingToPVC(pvcName, namespace string, pvcControl controller.PVCControlInterface, tc *v1alpha1.TidbCluster) error {
-	pvc, err := pvcControl.GetPVC(pvcName, namespace)
-	if err != nil {
-		return err
-	}
+func addDeferDeletingToPVC(pvc *core.PersistentVolumeClaim, pvcControl controller.PVCControlInterface, tc *v1alpha1.TidbCluster) error {
 	if pvc.Annotations == nil {
 		pvc.Annotations = map[string]string{}
 	}
 	now := time.Now().Format(time.RFC3339)
 	pvc.Annotations[label.AnnPVCDeferDeleting] = now
-	_, err = pvcControl.UpdatePVC(tc, pvc)
+	_, err := pvcControl.UpdatePVC(tc, pvc)
 	return err
 }
 
@@ -108,13 +105,13 @@ func IsPodWithPDDeferDeletingAnnotations(pod *core.Pod) bool {
 	return existed
 }
 
-func addDeferDeletingToPDPod(podAC *PodAdmissionControl, pod *core.Pod) error {
+func addDeferDeletingToPDPod(kubeCli kubernetes.Interface, pod *core.Pod) error {
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
 	now := time.Now().Format(time.RFC3339)
 	pod.Annotations[label.AnnPDDeferDeleting] = now
-	_, err := podAC.kubeCli.CoreV1().Pods(pod.Namespace).Update(pod)
+	_, err := kubeCli.CoreV1().Pods(pod.Namespace).Update(pod)
 	return err
 }
 

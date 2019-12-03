@@ -100,7 +100,11 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 		// And the pvc can be deleted during upgrading if we use create pod webhook in future.
 		if !isInOrdinal {
 			pvcName := operatorUtils.OrdinalPVCName(v1alpha1.TiKVMemberType, payload.ownerStatefulSet.Name, ordinal)
-			err = addDeferDeletingToPVC(pvcName, payload.pod.Namespace, pc.pvcControl, payload.tc)
+			pvc, err := pc.pvcControl.GetPVC(pvcName, namespace)
+			if err != nil {
+				return util.ARFail(err)
+			}
+			err = addDeferDeletingToPVC(pvc, pc.pvcControl, payload.tc)
 			if err != nil {
 				klog.Infof("tc[%s/%s]'s pod[%s/%s] failed to update pvc,%v", namespace, tcName, namespace, name, err)
 				return util.ARFail(err)
@@ -114,7 +118,7 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 	if err != nil {
 		return util.ARFail(err)
 	}
-	err = addDeferDeletingToPDPod(pc, payload.pod)
+	err = addDeferDeletingToPDPod(pc.kubeCli, payload.pod)
 	if err != nil {
 		return util.ARFail(err)
 	}
@@ -140,7 +144,7 @@ func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(payload *admitPayl
 		return util.ARFail(err)
 	}
 	// we should add deferDeleting Annotation when we delete member successfully.
-	err = addDeferDeletingToPDPod(pc, payload.pod)
+	err = addDeferDeletingToPDPod(pc.kubeCli, payload.pod)
 	if err != nil {
 		return util.ARFail(err)
 	}
