@@ -65,7 +65,7 @@ func statefulSetIsUpgrading(set *apps.StatefulSet) bool {
 	return false
 }
 
-// SetLastAppliedAnnotation set last applied config to Statefulset's annotation
+// SetStatefulSetLastAppliedConfigAnnotation set last applied config to Statefulset's annotation
 func SetStatefulSetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
 	setApply, err := encode(set.Spec)
 	if err != nil {
