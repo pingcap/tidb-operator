@@ -18,21 +18,31 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"strconv"
+	"time"
 
 	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/apiserver"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"golang.org/x/mod/semver"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
+	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
@@ -112,29 +122,34 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	 * Note that only one cluster can run in host network mode at the same time.
 	 */
 	ginkgo.It("Switching back and forth between pod network and host network", func() {
-		// TODO do not skip this if AdvancedStatefulSet feature is enabled
-		serverVersion, err := c.Discovery().ServerVersion()
-		if err != nil {
-			panic(err)
-		}
-		sv := utilversion.MustParseSemantic(serverVersion.GitVersion)
-		klog.Infof("ServerVersion: %v", serverVersion.String())
-		if sv.LessThan(utilversion.MustParseSemantic("v1.13.11")) || // < v1.13.11
-			(sv.AtLeast(utilversion.MustParseSemantic("v1.14.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.14.7"))) || // >= v1.14.0 but < v1.14.7
-			(sv.AtLeast(utilversion.MustParseSemantic("v1.15.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.15.4"))) { // >= v1.15.0 but < v1.15.4
-			// https://github.com/pingcap/tidb-operator/issues/1042#issuecomment-547742565
-			framework.Skipf("Skipping HostNetwork test. Kubernetes %v has a bug that StatefulSet may apply revision incorrectly, HostNetwork cannot work well in this cluster", serverVersion)
+		if !ocfg.Enabled(features.AdvancedStatefulSet) {
+			serverVersion, err := c.Discovery().ServerVersion()
+			framework.ExpectNoError(err, "failed to fetch Kubernetes version")
+			sv := utilversion.MustParseSemantic(serverVersion.GitVersion)
+			klog.Infof("ServerVersion: %v", serverVersion.String())
+			if sv.LessThan(utilversion.MustParseSemantic("v1.13.11")) || // < v1.13.11
+				(sv.AtLeast(utilversion.MustParseSemantic("v1.14.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.14.7"))) || // >= v1.14.0 but < v1.14.7
+				(sv.AtLeast(utilversion.MustParseSemantic("v1.15.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.15.4"))) { // >= v1.15.0 but < v1.15.4
+				// https://github.com/pingcap/tidb-operator/issues/1042#issuecomment-547742565
+				framework.Skipf("Skipping HostNetwork test. Kubernetes %v has a bug that StatefulSet may apply revision incorrectly, HostNetwork cannot work well in this cluster", serverVersion)
+			}
+			ginkgo.By(fmt.Sprintf("Testing HostNetwork feature with Kubernetes %v", serverVersion))
+		} else {
+			ginkgo.By("Testing HostNetwork feature with Advanced StatefulSet")
 		}
 
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster1", "", "")
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "host-network", "", "")
+		cluster.Resources["pd.replicas"] = "1"
+		cluster.Resources["tidb.replicas"] = "1"
+		cluster.Resources["tikv.replicas"] = "1"
 		oa.DeployTidbClusterOrDie(&cluster)
 
-		// switch to host network
+		ginkgo.By("switch to host network")
 		cluster.RunInHost(true)
 		oa.UpgradeTidbClusterOrDie(&cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
 
-		// switch to pod network
+		ginkgo.By("switch back to pod network")
 		cluster.RunInHost(false)
 		oa.UpgradeTidbClusterOrDie(&cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
@@ -159,10 +174,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		// upgrade
 		upgradeVersions := cfg.GetUpgradeTidbVersionsOrDie()
 		certCtx, err := apimachinery.SetupServerCert("tidb-operator-e2e", tests.WebhookServiceName)
-		if err != nil {
-			panic(err)
-		}
-		go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx, fmt.Sprintf("%s/%s", cluster.Namespace, cluster.ClusterName))
+		framework.ExpectNoError(err, fmt.Sprintf("unable to setup certs for webservice %s", tests.WebhookServiceName))
+		go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx, ns)
 		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
 		ctx, cancel := context.WithCancel(context.Background())
 		assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(&cluster)
@@ -203,6 +216,95 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		aaCtx.Do()
 	})
 
+	ginkgo.It("Service: Sync TiDB service", func() {
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "service-it", "admin", "")
+		cluster.Resources["pd.replicas"] = "1"
+		cluster.Resources["tidb.replicas"] = "1"
+		cluster.Resources["tikv.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&cluster)
+		oa.CheckTidbClusterStatusOrDie(&cluster)
+
+		ns := cluster.Namespace
+		tcName := cluster.ClusterName
+
+		oldSvc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected TiDB service created by helm chart")
+		tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected TiDB cluster created by helm chart")
+		if isNil, err := gomega.BeNil().Match(metav1.GetControllerOf(oldSvc)); !isNil {
+			e2elog.Failf("Expected TiDB service created by helm chart is orphaned: %v", err)
+		}
+
+		ginkgo.By(fmt.Sprintf("Adopt orphaned service created by helm"))
+		tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{}
+		_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+		framework.ExpectNoError(err, "Expected update TiDB cluster")
+
+		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+			svc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
+			if err != nil {
+				if errors.IsNotFound(err) {
+					return false, err
+				}
+				e2elog.Logf("error get TiDB service: %v", err)
+				return false, nil
+			}
+			owner := metav1.GetControllerOf(svc)
+			if owner == nil {
+				e2elog.Logf("tidb service has not been adopted by TidbCluster yet")
+				return false, nil
+			}
+			framework.ExpectEqual(metav1.IsControlledBy(svc, tc), true, "Expected owner is TidbCluster")
+			framework.ExpectEqual(svc.Spec.ClusterIP, oldSvc.Spec.ClusterIP, "ClusterIP should be stable across adopting and updating")
+			return true, nil
+		})
+		framework.ExpectNoError(err)
+
+		ginkgo.By(fmt.Sprintf("Sync TiDB service properties"))
+
+		svcType := corev1.ServiceTypeNodePort
+		trafficPolicy := corev1.ServiceExternalTrafficPolicyTypeLocal
+
+		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "Expected get TiDB cluster")
+			tc.Spec.TiDB.Service.Type = svcType
+			tc.Spec.TiDB.Service.ExternalTrafficPolicy = trafficPolicy
+			tc.Spec.TiDB.Service.Annotations = map[string]string{
+				"test": "test",
+			}
+			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+			if err != nil && !errors.IsConflict(err) {
+				return false, err
+			}
+			if errors.IsConflict(err) {
+				e2elog.Logf("conflicts when updating tidbcluster, retry...")
+				return false, nil
+			}
+			svc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
+			if err != nil {
+				if errors.IsNotFound(err) {
+					return false, err
+				}
+				e2elog.Logf("error get TiDB service: %v", err)
+				return false, nil
+			}
+			if isEqual, err := gomega.Equal(svcType).Match(svc.Spec.Type); !isEqual {
+				e2elog.Logf("tidb service is not synced, %v", err)
+				return false, nil
+			}
+			if isEqual, err := gomega.Equal(trafficPolicy).Match(svc.Spec.ExternalTrafficPolicy); !isEqual {
+				e2elog.Logf("tidb service is not synced, %v", err)
+				return false, nil
+			}
+			if haveKV, err := gomega.HaveKeyWithValue("test", "test").Match(svc.Annotations); !haveKV {
+				e2elog.Logf("tidb service is not synced, %v", err)
+				return false, nil
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err)
+	})
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {

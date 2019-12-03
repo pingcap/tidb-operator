@@ -43,6 +43,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
@@ -234,25 +235,24 @@ type event struct {
 var _ = OperatorActions(&operatorActions{})
 
 type OperatorConfig struct {
-	Namespace           string
-	ReleaseName         string
-	Image               string
-	Tag                 string
-	SchedulerImage      string
-	SchedulerTag        string
-	Features            []string
-	LogLevel            string
-	WebhookServiceName  string
-	WebhookSecretName   string
-	WebhookConfigName   string
-	Context             *apimachinery.CertContext
-	ImagePullPolicy     corev1.PullPolicy
-	TestMode            bool
-	ApiServerImage      string
-	ApiServerCert       string
-	ApiServerKey        string
-	ApiServerCaBundle   string
-	AdvancedStatefulSet bool
+	Namespace          string
+	ReleaseName        string
+	Image              string
+	Tag                string
+	SchedulerImage     string
+	SchedulerTag       string
+	Features           []string
+	LogLevel           string
+	WebhookServiceName string
+	WebhookSecretName  string
+	WebhookConfigName  string
+	Context            *apimachinery.CertContext
+	ImagePullPolicy    corev1.PullPolicy
+	TestMode           bool
+	ApiServerImage     string
+	ApiServerCert      string
+	ApiServerKey       string
+	ApiServerCaBundle  string
 }
 
 type TidbClusterConfig struct {
@@ -379,7 +379,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	if len(oi.Features) > 0 {
 		set["features"] = fmt.Sprintf("{%s}", strings.Join(oi.Features, ","))
 	}
-	if oi.AdvancedStatefulSet {
+	if oi.Enabled(features.AdvancedStatefulSet) {
 		set["advancedStatefulset.create"] = "true"
 	}
 
@@ -388,6 +388,16 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		arr = append(arr, fmt.Sprintf("%s=%s", k, v))
 	}
 	return strings.Join(arr, ",")
+}
+
+func (oi *OperatorConfig) Enabled(feature string) bool {
+	k := fmt.Sprintf("%s=true", feature)
+	for _, v := range oi.Features {
+		if v == k {
+			return true
+		}
+	}
+	return false
 }
 
 func (oa *operatorActions) runKubectlOrDie(args ...string) string {
@@ -420,6 +430,14 @@ func (oa *operatorActions) InstallCRDOrDie() {
 		waitArgs = append(waitArgs, fmt.Sprintf("crds/%s", crd))
 	}
 	oa.runKubectlOrDie(waitArgs...)
+	// workaround for https://github.com/kubernetes/kubernetes/issues/65517
+	glog.Infof("force sync kubectl cache")
+	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
+	_, err := exec.Command(cmdArgs[0], cmdArgs[1:]...).CombinedOutput()
+	if err != nil {
+		glog.Fatalf("Failed to run '%s': %v", strings.Join(cmdArgs, " "), err)
+	}
+	oa.runKubectlOrDie("api-resources")
 }
 
 func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
@@ -476,6 +494,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
 	cmd = fmt.Sprintf(`
 sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/
+s#imagePullPolicy:.*#imagePullPolicy: IfNotPresent#g
 s#image:.*#image: %s#g
 ' %s/webhook.yaml | kubectl apply -f -
 `, info.Image, oa.manifestPath(info.Tag))
@@ -3267,13 +3286,13 @@ func (oa *operatorActions) CheckInitSQLOrDie(info *TidbClusterConfig) {
 	}
 }
 
-func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext, tidbClusters ...string) {
+func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext, namespaces ...string) {
 	sCert, err := tls.X509KeyPair(context.Cert, context.Key)
 	if err != nil {
 		panic(err)
 	}
 
-	wh := webhook.NewWebhook(tidbClusters)
+	wh := webhook.NewWebhook(namespaces)
 	http.HandleFunc("/pods", wh.ServePods)
 	server := &http.Server{
 		Addr: ":443",
