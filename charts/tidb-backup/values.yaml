@@ -25,7 +25,7 @@ name: fullbackup-{{ date "200601021504" .Release.Time }}
 # scheduledBackupName: scheduled-backup-20190822-041004
 
 image:
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
   # https://github.com/pingcap/tidb-cloud-backup
   backup: pingcap/tidb-cloud-backup:20190828
 

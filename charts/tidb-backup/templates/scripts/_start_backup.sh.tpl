@@ -66,8 +66,8 @@ bucket_policy_only = true
 $creds
 EOF
 
-  cd "${backup_base_dir}"
-  tar -cf - "${backup_name}" | pigz -p 16 \
+cd "${backup_base_dir}"
+tar -cf - "${backup_name}" | pigz -p 16 \
   | rclone --config /tmp/rclone.conf rcat gcp:${bucket}/${backup_name}/${backup_name}.tgz
 {{- end }}
 
