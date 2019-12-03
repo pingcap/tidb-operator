@@ -196,7 +196,7 @@ func GenerateStorageCertEnv(ns string, storageType v1alpha1.BackupStorageType, p
 			return certEnv, reason, err
 		}
 	default:
-		err := fmt.Errorf("don't support storage type %s", storageType)
+		err := fmt.Errorf("unsupported storage type %s", storageType)
 		return certEnv, "NotSupportStorageType", err
 	}
 	return certEnv, reason, nil
@@ -249,7 +249,7 @@ func GetBackupBucketName(backup *v1alpha1.Backup) (string, string, error) {
 		}
 		bucketName = backup.Spec.Gcs.Bucket
 	default:
-		return bucketName, "NotSupportStorageType", fmt.Errorf("backup %s/%s don't support storage type %s", ns, name, backup.Spec.StorageType)
+		return bucketName, "UnsupportedStorageType", fmt.Errorf("backup %s/%s doesn't support storage type %s", ns, name, backup.Spec.StorageType)
 	}
 	return bucketName, "", nil
 }
