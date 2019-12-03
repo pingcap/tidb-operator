@@ -31,6 +31,9 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 		return util.ARFail(err)
 	}
 	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+	if err != nil {
+		return util.ARFail(err)
+	}
 	tcName := payload.tc.Name
 	isUpgrading := IsStatefulSetUpgrading(payload.ownerStatefulSet)
 	IsDeferDeleting := IsPodWithPDDeferDeletingAnnotations(payload.pod)
@@ -87,6 +90,9 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 		return util.ARFail(err)
 	}
 	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+	if err != nil {
+		return util.ARFail(err)
+	}
 	tcName := payload.tc.Name
 	IsDeferDeleting := IsPodWithPDDeferDeletingAnnotations(payload.pod)
 
@@ -161,6 +167,9 @@ func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admissio
 	name := payload.pod.Name
 	namespace := payload.pod.Namespace
 	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+	if err != nil {
+		return util.ARFail(err)
+	}
 	tcName := payload.tc.Name
 	lastOrdinal := payload.tc.Status.PD.StatefulSet.Replicas - 1
 	var targetName string

@@ -104,6 +104,9 @@ func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) 
 		return util.ARFail(err)
 	}
 	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+	if err != nil {
+		return util.ARFail(err)
+	}
 	tcName := payload.tc.Name
 
 	if !isInOrdinal {
@@ -137,6 +140,9 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 		return util.ARFail(err)
 	}
 	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+	if err != nil {
+		return util.ARFail(err)
+	}
 	tcName := payload.tc.Name
 	isUpgrading := IsStatefulSetUpgrading(payload.ownerStatefulSet)
 
