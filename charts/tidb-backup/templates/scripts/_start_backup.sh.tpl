@@ -56,7 +56,7 @@ set -x
 bucket={{ .Values.gcp.bucket }}
 creds=${GOOGLE_APPLICATION_CREDENTIALS:-""}
 if ! [[ -z $creds ]] ; then
-creds = "service_account_file = ${creds}"
+creds="service_account_file = ${creds}"
 fi
 
 cat <<EOF > /tmp/rclone.conf
