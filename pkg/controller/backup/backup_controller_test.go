@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
@@ -246,13 +248,18 @@ func newBackup() *v1alpha1.Backup {
 			UID:       types.UID("test-bk"),
 		},
 		Spec: v1alpha1.BackupSpec{
-			Cluster:        "demo1",
-			TidbSecretName: "demo1-tidb-secret",
-			StorageType:    v1alpha1.BackupStorageTypeS3,
+			From: v1alpha1.TiDBAccessConfig{
+				Host:       "10.1.1.2",
+				Port:       constants.DefaultTidbPort,
+				User:       constants.DefaultTidbUser,
+				SecretName: "demo1-tidb-secret",
+			},
+			StorageType: v1alpha1.BackupStorageTypeS3,
 			StorageProvider: v1alpha1.StorageProvider{
 				S3: &v1alpha1.S3StorageProvider{
 					Provider:   v1alpha1.S3StorageProviderTypeCeph,
 					Endpoint:   "http://10.0.0.1",
+					Bucket:     "test1-demo1",
 					SecretName: "demo",
 				},
 			},

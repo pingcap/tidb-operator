@@ -112,7 +112,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(backup, bc.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageType, backup.Spec.StorageProvider, bc.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -120,11 +120,10 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 	args := []string{
 		"clean",
 		fmt.Sprintf("--namespace=%s", ns),
-		fmt.Sprintf("--tidbcluster=%s", backup.Spec.Cluster),
 		fmt.Sprintf("--backupName=%s", name),
 	}
 
-	backupLabel := label.NewBackup().Instance(backup.Spec.Cluster).CleanJob().Backup(name)
+	backupLabel := label.NewBackup().Instance(backup.Spec.From.GetTidbEndpoint()).CleanJob().Backup(name)
 
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{

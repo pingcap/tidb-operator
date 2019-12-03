@@ -43,7 +43,6 @@ func NewCleanCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&bo.Namespace, "namespace", "n", "", "Tidb cluster's namespace")
-	cmd.Flags().StringVarP(&bo.TcName, "tidbcluster", "t", "", "Tidb cluster name")
 	cmd.Flags().StringVarP(&bo.BackupName, "backupName", "b", "", "Backup CRD object name")
 	return cmd
 }
@@ -67,7 +66,7 @@ func runClean(backupOpts backup.BackupOpts, kubecfg string) error {
 	// waiting for the shared informer's store has synced.
 	cache.WaitForCacheSync(ctx.Done(), backupInformer.Informer().HasSynced)
 
-	glog.Infof("start to clean backup %s", backupOpts)
+	glog.Infof("start to clean backup %s", backupOpts.String())
 	bm := backup.NewBackupManager(backupInformer.Lister(), statusUpdater, backupOpts)
 	return bm.ProcessCleanBackup()
 }

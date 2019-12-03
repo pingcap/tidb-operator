@@ -14,6 +14,7 @@
 package util
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -37,7 +38,7 @@ func CheckAllKeysExistInSecret(secret *corev1.Secret, keys ...string) (string, b
 }
 
 // GenerateS3CertEnvVar generate the env info in order to access S3 compliant storage
-func GenerateS3CertEnvVar(secret *corev1.Secret, s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, string, error) {
+func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, string, error) {
 	var envVars []corev1.EnvVar
 
 	switch s3.Provider {
@@ -85,19 +86,29 @@ func GenerateS3CertEnvVar(secret *corev1.Secret, s3 *v1alpha1.S3StorageProvider)
 			Value: s3.StorageClass,
 		},
 		{
-			Name:  "AWS_ACCESS_KEY_ID",
-			Value: string(secret.Data[constants.S3AccessKey]),
+			Name: "AWS_ACCESS_KEY_ID",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
+					Key:                  constants.S3AccessKey,
+				},
+			},
 		},
 		{
-			Name:  "AWS_SECRET_ACCESS_KEY",
-			Value: string(secret.Data[constants.S3SecretKey]),
+			Name: "AWS_SECRET_ACCESS_KEY",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
+					Key:                  constants.S3SecretKey,
+				},
+			},
 		},
 	}
 	return envVars, "", nil
 }
 
 // GenerateGcsCertEnvVar generate the env info in order to access google cloud storage
-func GenerateGcsCertEnvVar(secret *corev1.Secret, gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, string, error) {
+func GenerateGcsCertEnvVar(gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, string, error) {
 	if len(gcs.ProjectId) == 0 {
 		return nil, "ProjectIdIsEmpty", fmt.Errorf("the project id is not set")
 	}
@@ -123,83 +134,122 @@ func GenerateGcsCertEnvVar(secret *corev1.Secret, gcs *v1alpha1.GcsStorageProvid
 			Value: gcs.StorageClass,
 		},
 		{
-			Name:  "GCS_SERVICE_ACCOUNT_JSON_KEY",
-			Value: string(secret.Data[constants.GcsCredentialsKey]),
+			Name: "GCS_SERVICE_ACCOUNT_JSON_KEY",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: gcs.SecretName},
+					Key:                  constants.GcsCredentialsKey,
+				},
+			},
 		},
 	}
 	return envVars, "", nil
 }
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
-func GenerateStorageCertEnv(backup *v1alpha1.Backup, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
-	ns := backup.GetNamespace()
-	name := backup.GetName()
-
+func GenerateStorageCertEnv(ns string, storageType v1alpha1.BackupStorageType, provider v1alpha1.StorageProvider, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var reason string
 
-	switch backup.Spec.StorageType {
+	switch storageType {
 	case v1alpha1.BackupStorageTypeS3:
-		s3SecretName := backup.Spec.S3.SecretName
+		if provider.S3 == nil {
+			return certEnv, "S3ConfigIsEmpty", errors.New("s3 config is empty")
+		}
+		s3SecretName := provider.S3.SecretName
 		secret, err := secretLister.Secrets(ns).Get(s3SecretName)
 		if err != nil {
-			err := fmt.Errorf("backup %s/%s get s3 secret %s failed, err: %v", ns, name, s3SecretName, err)
+			err := fmt.Errorf("get s3 secret %s/%s failed, err: %v", ns, s3SecretName, err)
 			return certEnv, "GetS3SecretFailed", err
 		}
 
 		keyStr, exist := CheckAllKeysExistInSecret(secret, constants.S3AccessKey, constants.S3SecretKey)
 		if !exist {
-			err := fmt.Errorf("backup %s/%s, The s3 secret %s missing some keys %s", ns, name, s3SecretName, keyStr)
+			err := fmt.Errorf("s3 secret %s/%s missing some keys %s", ns, s3SecretName, keyStr)
 			return certEnv, "s3KeyNotExist", err
 		}
 
-		certEnv, reason, err = GenerateS3CertEnvVar(secret, backup.Spec.S3.DeepCopy())
+		certEnv, reason, err = GenerateS3CertEnvVar(provider.S3.DeepCopy())
 		if err != nil {
 			return certEnv, reason, err
 		}
 	case v1alpha1.BackupStorageTypeGcs:
-		gcsSecretName := backup.Spec.Gcs.SecretName
+		if provider.Gcs == nil {
+			return certEnv, "GcsConfigIsEmpty", errors.New("gcs config is empty")
+		}
+		gcsSecretName := provider.Gcs.SecretName
 		secret, err := secretLister.Secrets(ns).Get(gcsSecretName)
 		if err != nil {
-			err := fmt.Errorf("backup %s/%s get gcs secret %s failed, err: %v", ns, name, gcsSecretName, err)
+			err := fmt.Errorf("get gcs secret %s/%s failed, err: %v", ns, gcsSecretName, err)
 			return certEnv, "GetGcsSecretFailed", err
 		}
 
 		keyStr, exist := CheckAllKeysExistInSecret(secret, constants.GcsCredentialsKey)
 		if !exist {
-			err := fmt.Errorf("backup %s/%s, The gcs secret %s missing some keys %s", ns, name, gcsSecretName, keyStr)
+			err := fmt.Errorf("the gcs secret %s/%s missing some keys %s", ns, gcsSecretName, keyStr)
 			return certEnv, "gcsKeyNotExist", err
 		}
 
-		certEnv, reason, err = GenerateGcsCertEnvVar(secret, backup.Spec.Gcs)
+		certEnv, reason, err = GenerateGcsCertEnvVar(provider.Gcs)
 
 		if err != nil {
 			return certEnv, reason, err
 		}
 	default:
-		err := fmt.Errorf("backup %s/%s don't support storage type %s", ns, name, backup.Spec.StorageType)
+		err := fmt.Errorf("don't support storage type %s", storageType)
 		return certEnv, "NotSupportStorageType", err
 	}
 	return certEnv, reason, nil
 }
 
-// GetTidbUserAndPassword get the tidb user and password from specific secret
-func GetTidbUserAndPassword(ns, name, tidbSecretName string, secretLister corelisters.SecretLister) (user, password, reason string, err error) {
+// GenerateTidbPasswordEnv generate the password EnvVar
+func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
+	var certEnv []corev1.EnvVar
 	secret, err := secretLister.Secrets(ns).Get(tidbSecretName)
 	if err != nil {
 		err = fmt.Errorf("backup %s/%s get tidb secret %s failed, err: %v", ns, name, tidbSecretName, err)
-		reason = "GetTidbSecretFailed"
-		return
+		return certEnv, "GetTidbSecretFailed", err
 	}
 
-	keyStr, exist := CheckAllKeysExistInSecret(secret, constants.TidbUserKey, constants.TidbPasswordKey)
+	keyStr, exist := CheckAllKeysExistInSecret(secret, constants.TidbPasswordKey)
 	if !exist {
-		err = fmt.Errorf("backup %s/%s, tidb secret %s missing some keys %s", ns, name, tidbSecretName, keyStr)
-		reason = "KeyNotExist"
-		return
+		err = fmt.Errorf("backup %s/%s, tidb secret %s missing password key %s", ns, name, tidbSecretName, keyStr)
+		return certEnv, "KeyNotExist", err
 	}
 
-	user = string(secret.Data[constants.TidbUserKey])
-	password = string(secret.Data[constants.TidbPasswordKey])
-	return
+	certEnv = []corev1.EnvVar{
+		{
+			Name: fmt.Sprintf("%s_%s", constants.BackupManagerEnvVarPrefix, strings.ToUpper(constants.TidbPasswordKey)),
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: tidbSecretName},
+					Key:                  constants.TidbPasswordKey,
+				},
+			},
+		},
+	}
+	return certEnv, "", nil
+}
+
+// GetBackupBucketName return the bucket name for remote storage
+func GetBackupBucketName(backup *v1alpha1.Backup) (string, string, error) {
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+	var bucketName string
+
+	switch backup.Spec.StorageType {
+	case v1alpha1.BackupStorageTypeS3:
+		if backup.Spec.S3 == nil {
+			return bucketName, "S3ConfigIsEmpty", fmt.Errorf("backup %s/%s s3 config is empty", ns, name)
+		}
+		bucketName = backup.Spec.S3.Bucket
+	case v1alpha1.BackupStorageTypeGcs:
+		if backup.Spec.Gcs == nil {
+			return bucketName, "GcsConfigIsEmpty", fmt.Errorf("backup %s/%s gcs config is empty", ns, name)
+		}
+		bucketName = backup.Spec.Gcs.Bucket
+	default:
+		return bucketName, "NotSupportStorageType", fmt.Errorf("backup %s/%s don't support storage type %s", ns, name, backup.Spec.StorageType)
+	}
+	return bucketName, "", nil
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
@@ -42,13 +43,15 @@ func NewBackupCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&bo.Namespace, "namespace", "n", "", "Tidb cluster's namespace")
-	cmd.Flags().StringVarP(&bo.TcName, "tidbcluster", "t", "", "Tidb cluster name")
-	cmd.Flags().StringVarP(&bo.TidbSvc, "tidbservice", "s", "", "Tidb cluster access service address")
-	cmd.Flags().StringVarP(&bo.Password, "password", "p", "", "Password to use when connecting to tidb cluster")
+	cmd.Flags().StringVarP(&bo.Namespace, "namespace", "n", "", "Backup CR's namespace")
+	cmd.Flags().StringVarP(&bo.Host, "host", "h", "", "Tidb cluster access address")
+	cmd.Flags().Int32VarP(&bo.Port, "port", "P", bkconstants.DefaultTidbPort, "Port number to use for connecting tidb cluster")
+	cmd.Flags().StringVarP(&bo.Bucket, "bucket", "k", "", "Bucket in which to store the backup data")
+	cmd.Flags().StringVarP(&bo.Password, bkconstants.TidbPasswordKey, "p", "", "Password to use when connecting to tidb cluster")
 	cmd.Flags().StringVarP(&bo.User, "user", "u", "", "User for login tidb cluster")
-	cmd.Flags().StringVarP(&bo.StorageType, "storageType", "S", "", "Backend storage type")
+	cmd.Flags().StringVarP(&bo.StorageType, "storageType", "s", "", "Backend storage type")
 	cmd.Flags().StringVarP(&bo.BackupName, "backupName", "b", "", "Backup CRD object name")
+	util.SetFlagsFromEnv(cmd.Flags(), bkconstants.BackupManagerEnvVarPrefix)
 	return cmd
 }
 
@@ -70,7 +73,7 @@ func runBackup(backupOpts backup.BackupOpts, kubecfg string) error {
 	// waiting for the shared informer's store has synced.
 	cache.WaitForCacheSync(ctx.Done(), backupInformer.Informer().HasSynced)
 
-	glog.Infof("start to process backup %s", backupOpts)
+	glog.Infof("start to process backup %s", backupOpts.String())
 	bm := backup.NewBackupManager(backupInformer.Lister(), statusUpdater, backupOpts)
 	return bm.ProcessBackup()
 }
