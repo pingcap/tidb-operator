@@ -3,15 +3,12 @@ package webhook
 import (
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/pingcap/tidb-operator/tests/slack"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
@@ -40,6 +37,12 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 	reviewResponse := v1beta1.AdmissionResponse{}
 	reviewResponse.Allowed = false
 
+	if !wh.namespaces.Has(namespace) {
+		glog.V(4).Infof("%q is not in our namespaces %v, skip", namespace, wh.namespaces.List())
+		reviewResponse.Allowed = true
+		return &reviewResponse
+	}
+
 	pod, err := kubeCli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		glog.Infof("api server send wrong pod info namespace %s name %s err %v", namespace, name, err)
@@ -54,15 +57,7 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 		return &reviewResponse
 	}
 
-	tcKey := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
-	if !wh.tidbClusters.Has(tcKey) {
-		glog.V(4).Infof("%q is not in tidb clusters %v, skip", tcKey, wh.tidbClusters.List())
-		reviewResponse.Allowed = true
-		return &reviewResponse
-	}
-
 	pdClient := pdapi.NewDefaultPDControl(kubeCli).GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSCluster)
-	tidbController := controller.NewDefaultTiDBControl()
 
 	// if pod is already deleting, return Allowed
 	if pod.DeletionTimestamp != nil {
@@ -71,33 +66,7 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 		return &reviewResponse
 	}
 
-	if pod.Labels[label.ComponentLabelKey] == "tidb" {
-		ordinal, err := strconv.ParseInt(strings.Split(name, "-")[len(strings.Split(name, "-"))-1], 10, 32)
-		if err != nil {
-			glog.Errorf("fail to convert string to int while deleting TiDB err %v", err)
-			return &reviewResponse
-		}
-
-		info, err := tidbController.GetInfo(tc, int32(ordinal))
-		if err != nil {
-			glog.Errorf("fail to get tidb info error:%v", err)
-			return &reviewResponse
-		}
-
-		if info.IsOwner && tc.Status.TiDB.StatefulSet.Replicas > 1 {
-			time.Sleep(10 * time.Second)
-			err := fmt.Errorf("tidb is ddl owner, can't be deleted namespace %s name %s", namespace, name)
-			glog.Error(err)
-			sendErr := slack.SendErrMsg(err.Error())
-			if sendErr != nil {
-				glog.Error(sendErr)
-			}
-			// TODO use context instead
-			os.Exit(3)
-		}
-		glog.Infof("savely delete pod namespace %s name %s isowner %t", namespace, name, info.IsOwner)
-
-	} else if pod.Labels[label.ComponentLabelKey] == "pd" {
+	if pod.Labels[label.ComponentLabelKey] == "pd" {
 
 		leader, err := pdClient.GetPDLeader()
 		if err != nil {

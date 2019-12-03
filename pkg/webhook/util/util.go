@@ -16,14 +16,14 @@ package util
 import (
 	"crypto/tls"
 
-	"k8s.io/api/admission/v1beta1"
+	admission "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ARFail is a helper function to create an AdmissionResponse
 // with an embedded error
-func ARFail(err error) *v1beta1.AdmissionResponse {
-	return &v1beta1.AdmissionResponse{
+func ARFail(err error) *admission.AdmissionResponse {
+	return &admission.AdmissionResponse{
 		Allowed: false,
 		Result: &metav1.Status{
 			Message: err.Error(),
@@ -33,8 +33,8 @@ func ARFail(err error) *v1beta1.AdmissionResponse {
 }
 
 // ARSuccess return allow to action
-func ARSuccess() *v1beta1.AdmissionResponse {
-	return &v1beta1.AdmissionResponse{
+func ARSuccess() *admission.AdmissionResponse {
+	return &admission.AdmissionResponse{
 		Allowed: true,
 	}
 }

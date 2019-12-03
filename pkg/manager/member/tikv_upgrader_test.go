@@ -172,7 +172,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
-					if pod.GetName() == tikvPodName(upgradeTcName, 2) {
+					if pod.GetName() == TikvPodName(upgradeTcName, 2) {
 						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Add(-1 * time.Minute).Format(time.RFC3339)}
 					}
 				}
@@ -209,7 +209,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
-					if pod.GetName() == tikvPodName(upgradeTcName, 1) {
+					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
 						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Add(-1 * time.Minute).Format(time.RFC3339)}
 					}
 				}
@@ -335,7 +335,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
-				_, exist := pods[tikvPodName(upgradeTcName, 1)].Annotations[EvictLeaderBeginTime]
+				_, exist := pods[TikvPodName(upgradeTcName, 1)].Annotations[EvictLeaderBeginTime]
 				g.Expect(exist).To(BeTrue())
 			},
 		},
@@ -356,7 +356,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
-					if pod.GetName() == tikvPodName(upgradeTcName, 1) {
+					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
 						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
@@ -397,7 +397,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
-				_, exist := pods[tikvPodName(upgradeTcName, 1)].Annotations[EvictLeaderBeginTime]
+				_, exist := pods[TikvPodName(upgradeTcName, 1)].Annotations[EvictLeaderBeginTime]
 				g.Expect(exist).To(BeFalse())
 			},
 		},
@@ -418,7 +418,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
-					if pod.GetName() == tikvPodName(upgradeTcName, 1) {
+					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
 						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Add(-5 * time.Minute).Format(time.RFC3339)}
 					}
 				}
@@ -450,7 +450,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
-					if pod.GetName() == tikvPodName(upgradeTcName, 1) {
+					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
 						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
@@ -508,7 +508,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
-					if pod.GetName() == tikvPodName(upgradeTcName, 2) {
+					if pod.GetName() == TikvPodName(upgradeTcName, 2) {
 						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
@@ -596,14 +596,14 @@ func newTidbClusterForTiKVUpgrader() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: v1alpha1.PDSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "pd-test-image",
 				},
 				Replicas:         3,
 				StorageClassName: "my-storage-class",
 			},
 			TiKV: v1alpha1.TiKVSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tikv-test-image",
 				},
 				Replicas:         3,
@@ -624,19 +624,19 @@ func newTidbClusterForTiKVUpgrader() *v1alpha1.TidbCluster {
 				Stores: map[string]v1alpha1.TiKVStore{
 					"1": {
 						ID:          "1",
-						PodName:     tikvPodName(upgradeTcName, 0),
+						PodName:     TikvPodName(upgradeTcName, 0),
 						LeaderCount: 10,
 						State:       "Up",
 					},
 					"2": {
 						ID:          "2",
-						PodName:     tikvPodName(upgradeTcName, 1),
+						PodName:     TikvPodName(upgradeTcName, 1),
 						LeaderCount: 10,
 						State:       "Up",
 					},
 					"3": {
 						ID:          "3",
-						PodName:     tikvPodName(upgradeTcName, 2),
+						PodName:     TikvPodName(upgradeTcName, 2),
 						LeaderCount: 10,
 						State:       "Up",
 					},
@@ -659,7 +659,7 @@ func getTiKVPods(set *apps.StatefulSet) []*corev1.Pod {
 		pods = append(pods, &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      tikvPodName(upgradeTcName, int32(i)),
+				Name:      TikvPodName(upgradeTcName, int32(i)),
 				Namespace: corev1.NamespaceDefault,
 				Labels:    l,
 			},

@@ -176,6 +176,19 @@ func serviceEqual(new, old *corev1.Service) (bool, error) {
 	return false, nil
 }
 
+// isSubMap returns whether the first map is a sub map of the second map
+func isSubMapOf(first map[string]string, second map[string]string) bool {
+	for k, v := range first {
+		if second == nil {
+			return false
+		}
+		if second[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
 // setUpgradePartition set statefulSet's rolling update partition
 func setUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
 	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &upgradeOrdinal}
@@ -192,7 +205,7 @@ func imagePullFailed(pod *corev1.Pod) bool {
 	return false
 }
 
-func tikvPodName(tcName string, ordinal int32) string {
+func TikvPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiKVMemberName(tcName), ordinal)
 }
 
