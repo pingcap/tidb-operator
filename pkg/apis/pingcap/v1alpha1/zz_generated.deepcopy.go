@@ -18,7 +18,6 @@
 package v1alpha1
 
 import (
-	json "github.com/pingcap/tidb-operator/pkg/util/json"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -505,17 +504,7 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 		*out = new(ServiceSpec)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = make(map[string]json.JsonObject, len(*in))
-		for key, val := range *in {
-			if val == nil {
-				(*out)[key] = nil
-			} else {
-				(*out)[key] = val.DeepCopyJsonObject()
-			}
-		}
-	}
+	in.GenericConfig.DeepCopyInto(&out.GenericConfig)
 	return
 }
 
@@ -570,16 +559,11 @@ func (in *PumpSpec) DeepCopyInto(out *PumpSpec) {
 	*out = *in
 	in.ComponentSpec.DeepCopyInto(&out.ComponentSpec)
 	in.Resources.DeepCopyInto(&out.Resources)
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = make(map[string]json.JsonObject, len(*in))
-		for key, val := range *in {
-			if val == nil {
-				(*out)[key] = nil
-			} else {
-				(*out)[key] = val.DeepCopyJsonObject()
-			}
-		}
+	in.GenericConfig.DeepCopyInto(&out.GenericConfig)
+	if in.SetTimeZone != nil {
+		in, out := &in.SetTimeZone, &out.SetTimeZone
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
@@ -925,17 +909,7 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = make(map[string]json.JsonObject, len(*in))
-		for key, val := range *in {
-			if val == nil {
-				(*out)[key] = nil
-			} else {
-				(*out)[key] = val.DeepCopyJsonObject()
-			}
-		}
-	}
+	in.GenericConfig.DeepCopyInto(&out.GenericConfig)
 	return
 }
 
@@ -1011,17 +985,7 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		*out = new(ServiceSpec)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = make(map[string]json.JsonObject, len(*in))
-		for key, val := range *in {
-			if val == nil {
-				(*out)[key] = nil
-			} else {
-				(*out)[key] = val.DeepCopyJsonObject()
-			}
-		}
-	}
+	in.GenericConfig.DeepCopyInto(&out.GenericConfig)
 	return
 }
 
