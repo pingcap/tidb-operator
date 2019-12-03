@@ -2506,7 +2506,7 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 		return err
 	}
 
-	glog.Infof("scheduled-backup delploy [%s]", cmd)
+	glog.Infof("scheduled-backup deploy [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v, %s", err, string(res))
@@ -2527,6 +2527,7 @@ func (oa *operatorActions) disableScheduledBackup(info *TidbClusterConfig) error
 		return err
 	}
 
+	glog.Infof("scheduled-backup disable [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to disable scheduler backup job: %v, %s", err, string(res))

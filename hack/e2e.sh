@@ -221,7 +221,7 @@ EOF
 function e2e::__wait_for_ds() {
     local ns="$1"
     local name="$2"
-    local retries="${3:-120}"
+    local retries="${3:-300}"
     echo "info: waiting for pods of daemonset $ns/$name are ready (retries: $retries, interval: 1s)"
     for ((i = 0; i < retries; i++)) {
         read a b <<<$($KUBECTL_BIN --context $KUBECONTEXT -n $ns get ds/$name -ojsonpath='{.status.desiredNumberScheduled} {.status.numberReady}{"\n"}')
@@ -233,6 +233,24 @@ function e2e::__wait_for_ds() {
         sleep 1
     }
     echo "info: timed out waiting for pods of daemonset $ns/$name are ready"
+    return 1
+}
+
+function e2e::__wait_for_deploy() {
+    local ns="$1"
+    local name="$2"
+    local retries="${3:-300}"
+    echo "info: waiting for pods of deployment $ns/$name are ready (retries: $retries, interval: 1s)"
+    for ((i = 0; i < retries; i++)) {
+        read a b <<<$($KUBECTL_BIN --context $KUBECONTEXT -n $ns get deploy/$name -ojsonpath='{.spec.replicas} {.status.readyReplicas}{"\n"}')
+        if [[ "$a" -gt 0 && "$a" -eq "$b" ]]; then
+            echo "info: all pods of deployment $ns/$name are ready (desired: $a, ready: $b)"
+            return 0
+        fi
+        echo "info: pods of deployment $ns/$name (desired: $a, ready: $b)"
+        sleep 1
+    }
+    echo "info: timed out waiting for pods of deployment $ns/$name are ready"
     return 1
 }
 
@@ -259,13 +277,24 @@ for ((i = 1; i <= 32; i++)) {
 EOF
     done
     echo "info: installing local-volume-provisioner"
-    $KUBECTL_BIN apply -f ${ROOT}/manifests/local-dind/local-volume-provisioner.yaml
+    $KUBECTL_BIN --context $KUBECONTEXT apply -f ${ROOT}/manifests/local-dind/local-volume-provisioner.yaml
     e2e::__wait_for_ds kube-system local-volume-provisioner
 }
 
 function e2e::setup_helm_server() {
-    $KUBECTL_BIN apply -f ${ROOT}/manifests/tiller-rbac.yaml
-    $HELM_BIN init --service-account=tiller --wait
+    $KUBECTL_BIN --context $KUBECONTEXT apply -f ${ROOT}/manifests/tiller-rbac.yaml
+    if hack::version_ge $KUBE_VERSION "v1.16.0"; then
+        # workaround for https://github.com/helm/helm/issues/6374
+        # TODO remove this when we can upgrade to helm 2.15+, see https://github.com/helm/helm/pull/6462
+        $HELM_BIN init --service-account tiller --output yaml \
+            | sed 's@apiVersion: extensions/v1beta1@apiVersion: apps/v1@' \
+            | sed 's@  replicas: 1@  replicas: 1\n  selector: {"matchLabels": {"app": "helm", "name": "tiller"}}@' \
+            | $KUBECTL_BIN --context $KUBECONTEXT apply -f -
+        echo "info: wait for tiller to be ready"
+        e2e::__wait_for_deploy kube-system tiller-deploy
+    else
+        $HELM_BIN init --service-account=tiller --wait
+    fi
     $HELM_BIN version
 }
 
