@@ -16,6 +16,7 @@ package member
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -64,8 +65,8 @@ func statefulSetIsUpgrading(set *apps.StatefulSet) bool {
 	return false
 }
 
-// SetLastAppliedConfigAnnotation set last applied config info to Statefulset's annotation
-func SetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
+// SetStatefulSetLastAppliedConfigAnnotation set last applied config to Statefulset's annotation
+func SetStatefulSetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
 	setApply, err := encode(set.Spec)
 	if err != nil {
 		return err
@@ -74,6 +75,15 @@ func SetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
 		set.Annotations = map[string]string{}
 	}
 	set.Annotations[LastAppliedConfigAnnotation] = setApply
+	return nil
+}
+
+// SetLastAppliedConfigAnnotation set last applied config info to Statefulset's annotation and the podTemplate's annotation
+func SetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
+
+	if err := SetStatefulSetLastAppliedConfigAnnotation(set); err != nil {
+		return err
+	}
 
 	templateApply, err := encode(set.Spec.Template.Spec)
 	if err != nil {
@@ -86,7 +96,7 @@ func SetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
 	return nil
 }
 
-// GetLastAppliedConfig get last applied config info from Statefulset's annotation
+// GetLastAppliedConfig get last applied config info from Statefulset's annotation and the podTemplate's annotation
 func GetLastAppliedConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1.PodSpec, error) {
 	specAppliedConfig, ok := set.Annotations[LastAppliedConfigAnnotation]
 	if !ok {
@@ -238,4 +248,15 @@ func NeedForceUpgrade(tc *v1alpha1.TidbCluster) bool {
 		}
 	}
 	return false
+}
+
+// FindPumpConfig returns the configmap name that holds pump config in a list of volumes, empty indicates not found
+func FindPumpConfig(tcName string, vols []corev1.Volume) string {
+	for _, vol := range vols {
+		if vol.ConfigMap != nil &&
+			strings.HasPrefix(vol.ConfigMap.LocalObjectReference.Name, controller.PumpMemberName(tcName)) {
+			return vol.ConfigMap.LocalObjectReference.Name
+		}
+	}
+	return ""
 }
