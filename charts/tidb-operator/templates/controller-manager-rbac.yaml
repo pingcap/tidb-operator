@@ -28,7 +28,7 @@ rules:
   - events
   verbs: ["*"]
 - apiGroups: [""]
-  resources: ["endpoints"]
+  resources: ["endpoints","configmaps"]
   verbs: ["create", "get", "list", "watch", "update"]
 - apiGroups: ["batch"]
   resources: ["jobs"]

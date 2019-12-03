@@ -189,6 +189,16 @@ func TestTiDBPeerMemberName(t *testing.T) {
 	g.Expect(TiDBPeerMemberName("demo")).To(Equal("demo-tidb-peer"))
 }
 
+func TestPumpMemberName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(PumpMemberName("demo")).To(Equal("demo-pump"))
+}
+
+func TestPumpPeerMemberName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(PumpPeerMemberName("demo")).To(Equal("demo-pump"))
+}
+
 func TestAnnProm(t *testing.T) {
 	g := NewGomegaWithT(t)
 
