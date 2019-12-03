@@ -143,7 +143,7 @@ check-setup:
 	@which retool >/dev/null 2>&1 || GO111MODULE=off go get github.com/twitchtv/retool
 	@GO111MODULE=off retool sync
 
-check: check-setup lint tidy check-static check-crd check-codegen check-terraform
+check: check-setup lint tidy check-static check-codegen check-terraform
 
 check-static:
 	@ # Not running vet and fmt through metalinter becauase it ends up looking at vendor
@@ -156,9 +156,6 @@ check-static:
 	  --enable misspell \
 	  --enable ineffassign \
 	  $$($(PACKAGE_DIRECTORIES))
-
-check-crd:
-	./hack/crd-groups.sh verify
 
 check-codegen:
 	./hack/verify-codegen.sh
