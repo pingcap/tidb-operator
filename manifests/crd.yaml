@@ -708,6 +708,11 @@ spec:
             pump:
               description: PumpSpec contains details of Pump members
               properties:
+                configUpdateStrategy:
+                  description: ConfigUpdateStrategy determines how to apply the configuration
+                    change, change this field without actually changing the configuration
+                    will not trigger rolling-update
+                  type: string
                 replicas:
                   format: int32
                   type: integer

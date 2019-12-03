@@ -231,6 +231,17 @@ func TiDBPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tidb-peer", clusterName)
 }
 
+// PumpMemberName returns pump member name
+func PumpMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-pump", clusterName)
+}
+
+// For backward compatibility, pump peer member name do not has -peer suffix
+// PumpPeerMemberName returns pump peer service name
+func PumpPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-pump", clusterName)
+}
+
 // AnnProm adds annotations for prometheus scraping metrics
 func AnnProm(port int32) map[string]string {
 	return map[string]string{
@@ -238,6 +249,22 @@ func AnnProm(port int32) map[string]string {
 		"prometheus.io/path":   "/metrics",
 		"prometheus.io/port":   fmt.Sprintf("%d", port),
 	}
+}
+
+func ParseStorageRequest(req *v1alpha1.ResourceRequirement) (*corev1.ResourceRequirements, error) {
+	if req == nil {
+		return nil, fmt.Errorf("storage request is nil")
+	}
+	size := req.Storage
+	q, err := resource.ParseQuantity(size)
+	if err != nil {
+		return nil, fmt.Errorf("cant' parse storage size: %s", size)
+	}
+	return &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceStorage: q,
+		},
+	}, nil
 }
 
 // MemberConfigMapName returns the default ConfigMap name of the specified member type
