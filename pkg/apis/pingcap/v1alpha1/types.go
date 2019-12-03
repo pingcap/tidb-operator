@@ -253,9 +253,6 @@ type PumpSpec struct {
 	// +k8s:openapi-gen=false
 	// For backward compatibility with helm chart
 	SetTimeZone *bool `json:"setTimeZone,omitempty"`
-	// +k8s:openapi-gen=false
-	// For backward compatibility with helm chart
-	LogLevel string `json:"logLevel,omitempty"`
 }
 
 // +k8s:openapi-gen=true

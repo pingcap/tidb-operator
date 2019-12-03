@@ -36,6 +36,10 @@ import (
 	"k8s.io/klog"
 )
 
+const (
+	defaultPumpLogLevel = "info"
+)
+
 // pumpStartScriptTpl is the template string of pump start script
 // Note: changing this will cause a rolling-update of pump cluster
 var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`set -euo pipefail
@@ -440,19 +444,35 @@ func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	if tc.Spec.EnableTLSCluster {
 		scheme = "https"
 	}
-	logLevel := tc.Spec.Pump.LogLevel
-	if logLevel == "" {
-		logLevel = "info"
-	}
 	err := pumpStartScriptTpl.Execute(buff, struct {
 		Scheme      string
 		ClusterName string
 		LogLevel    string
-	}{scheme, tc.Name, logLevel})
+	}{scheme, tc.Name, getPumpLogLevel(tc)})
 	if err != nil {
 		return "", err
 	}
 	return buff.String(), nil
+}
+
+func getPumpLogLevel(tc *v1alpha1.TidbCluster) string {
+
+	config := tc.Spec.Pump.Config
+	if config == nil {
+		return defaultPumpLogLevel
+	}
+
+	raw, ok := config["log-level"]
+	if !ok {
+		return defaultPumpLogLevel
+	}
+
+	logLevel, ok := raw.(string)
+	if !ok {
+		return defaultPumpLogLevel
+	}
+
+	return logLevel
 }
 
 type FakePumpMemberManager struct {

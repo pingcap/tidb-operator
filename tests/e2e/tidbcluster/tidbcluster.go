@@ -356,7 +356,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				},
 				SchedulerName: "default-scheduler",
 			},
-			LogLevel:             "info",
 			Replicas:             1,
 			ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
 			StorageClassName:     "local-storage",
