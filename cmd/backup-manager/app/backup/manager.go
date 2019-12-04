@@ -62,6 +62,10 @@ func (bm *BackupManager) ProcessBackup() error {
 		})
 	}
 
+	if backup.Spec.BR != nil {
+		return bm.performBRBackup(backup.DeepCopy())
+	}
+
 	var db *sql.DB
 	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
 		db, err = util.OpenDB(bm.getDSN(constants.TidbMetaDB))
@@ -89,6 +93,71 @@ func (bm *BackupManager) ProcessBackup() error {
 
 	defer db.Close()
 	return bm.performBackup(backup.DeepCopy(), db)
+}
+
+func (bm *BackupManager) performBRBackup(backup *v1alpha1.Backup) error {
+	started := time.Now()
+
+	err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupRunning,
+		Status: corev1.ConditionTrue,
+	})
+	if err != nil {
+		return err
+	}
+
+	backupFullPath, err := bm.brBackupData(backup)
+	if err != nil {
+		glog.Errorf("backup cluster %s data to %s failed, err: %s", bm, bm.StorageType, err)
+		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "BackupDataToRemoteFailed",
+			Message: err.Error(),
+		})
+	}
+	glog.Infof("backup cluster %s data to %s success", bm, backupFullPath)
+
+	// Note: The size get from remote may be incorrect because the blobs
+	// are eventually consistent.
+	size, err := getBRBackupSize(backupFullPath, backup)
+	if err != nil {
+		glog.Errorf("Get size for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
+		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "GetBackupSizeFailed",
+			Message: err.Error(),
+		})
+	}
+	glog.Infof("Get size %d for backup files in %s of cluster %s success", size, backupFullPath, bm)
+
+	// BR does not provide CommitTS yet
+	// https://github.com/pingcap/br/issues/76
+	// commitTs, err := getBRCommitTsFromMetadata(backupFullPath)
+	// if err != nil {
+	// 	glog.Errorf("get cluster %s commitTs failed, err: %s", bm, err)
+	// 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	// 		Type:    v1alpha1.BackupFailed,
+	// 		Status:  corev1.ConditionTrue,
+	// 		Reason:  "GetCommitTsFailed",
+	// 		Message: err.Error(),
+	// 	})
+	// }
+	// glog.Infof("get cluster %s commitTs %s success", bm, commitTs)
+
+	finish := time.Now()
+
+	backup.Status.BackupPath = backupFullPath
+	backup.Status.TimeStarted = metav1.Time{Time: started}
+	backup.Status.TimeCompleted = metav1.Time{Time: finish}
+	backup.Status.BackupSize = size
+	backup.Status.CommitTs = ""
+
+	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupComplete,
+		Status: corev1.ConditionTrue,
+	})
 }
 
 func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
@@ -260,7 +329,13 @@ func (bm *BackupManager) performCleanBackup(backup *v1alpha1.Backup) error {
 		})
 	}
 
-	err := bm.cleanRemoteBackupData(backup.Status.BackupPath)
+	var err error
+	if backup.Spec.BR != nil {
+		err = bm.cleanBRRemoteBackupData(backup)
+	} else {
+		err = bm.cleanRemoteBackupData(backup.Status.BackupPath)
+	}
+
 	if err != nil {
 		glog.Errorf("clean cluster %s backup %s failed, err: %s", bm, backup.Status.BackupPath, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{

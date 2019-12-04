@@ -173,6 +173,9 @@ func (bkc *Controller) sync(key string) error {
 		return err
 	}
 
+	if !validBackup(backup) {
+		return nil
+	}
 	return bkc.syncBackup(backup.DeepCopy())
 }
 
@@ -214,4 +217,37 @@ func (bkc *Controller) enqueueBackup(obj interface{}) {
 		return
 	}
 	bkc.queue.Add(key)
+}
+
+func validBackup(backup *v1alpha1.Backup) bool {
+	ns := backup.Namespace
+	name := backup.Name
+	if backup.Spec.BR == nil {
+		if backup.Spec.Cluster == "" {
+			glog.Infof("Missing Cluster config in spec of %s/%s", ns, name)
+			return false
+		}
+		if backup.Spec.TidbSecretName == "" {
+			glog.Infof("Missing TidbSecretName config in spec of %s/%s", ns, name)
+			return false
+		}
+		if backup.Spec.StorageClassName == "" {
+			glog.Infof("Missing StorageClassName config in spec of %s/%s", ns, name)
+			return false
+		}
+		if backup.Spec.StorageSize == "" {
+			glog.Infof("Missing StorageSize config in spec of %s/%s", ns, name)
+			return false
+		}
+	} else {
+		if backup.Spec.BR.PDAddress == "" {
+			glog.Infof("PD address should be configured for BR in spec of %s/%s", ns, name)
+			return false
+		}
+		if backup.Spec.S3 != nil && (backup.Spec.S3.Bucket == "" || backup.Spec.S3.Prefix == "") {
+			glog.Infof("Bucket and Prefix should be configured for BR in spec of %s/%s", ns, name)
+			return false
+		}
+	}
+	return true
 }

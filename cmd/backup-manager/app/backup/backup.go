@@ -14,8 +14,10 @@
 package backup
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os/exec"
 	"path/filepath"
@@ -26,6 +28,7 @@ import (
 	"github.com/mholt/archiver"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	glog "k8s.io/klog"
 )
 
@@ -124,6 +127,51 @@ func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
 	return nil
 }
 
+func (bo *BackupOpts) brBackupData(backup *v1alpha1.Backup) (string, error) {
+	args, path, err := constructBROptions(backup)
+	if err != nil {
+		return "", err
+	}
+	fullArgs := []string{
+		"backup",
+		fmt.Sprintf("%s", backup.Spec.Type),
+	}
+	fullArgs = append(fullArgs, args...)
+	output, err := exec.Command("br", fullArgs...).CombinedOutput()
+	if err != nil {
+		return path, fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, args, string(output), err)
+	}
+	glog.Infof("backup data for cluster %s successfully, output: %s", bo, string(output))
+	return path, nil
+}
+
+// cleanBRRemoteBackupData clean the backup data from remote
+func (bo *BackupOpts) cleanBRRemoteBackupData(backup *v1alpha1.Backup) error {
+	s, err := util.NewRemoteStorage(backup)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+	ctx := context.Background()
+	iter := s.List(nil)
+	for {
+		obj, err := iter.Next(ctx)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		glog.Infof("Prepare to delete %s for cluster %s", obj.Key, bo)
+		err = s.Delete(context.Background(), obj.Key)
+		if err != nil {
+			return err
+		}
+		glog.Infof("Delete %s for cluster %s successfully", obj.Key, bo)
+	}
+	return nil
+}
+
 func (bo *BackupOpts) cleanRemoteBackupData(bucket string) error {
 	destBucket := util.NormalizeBucketURI(bucket)
 	output, err := exec.Command("rclone", constants.RcloneConfigArg, "deletefile", destBucket).CombinedOutput()
@@ -210,4 +258,49 @@ func archiveBackupData(backupDir, destFile string) error {
 		return fmt.Errorf("archive backup data %s to %s failed, err: %v", backupDir, destFile, err)
 	}
 	return nil
+}
+
+// constructBROptions constructs options for BR and also return the remote path
+func constructBROptions(backup *v1alpha1.Backup) ([]string, string, error) {
+	args, path, err := util.ConstructBRGlobalOptions(backup)
+	if err != nil {
+		return args, path, err
+	}
+	config := backup.Spec.BR
+	if config.Concurrency != nil {
+		args = append(args, fmt.Sprintf("--concurrency=%d", *config.Concurrency))
+	}
+	if config.RateLimit != nil {
+		args = append(args, fmt.Sprintf("--ratelimit=%d", *config.RateLimit))
+	}
+	if config.TimeAgo != "" {
+		args = append(args, fmt.Sprintf("--timeago=%s", config.TimeAgo))
+	}
+	if config.Checksum != nil {
+		args = append(args, fmt.Sprintf("--checksum=%t", *config.Checksum))
+	}
+	return args, path, nil
+}
+
+// getBRBackupSize get the backup data size from remote
+func getBRBackupSize(backupPath string, backup *v1alpha1.Backup) (int64, error) {
+	var size int64
+	s, err := util.NewRemoteStorage(backup)
+	if err != nil {
+		return size, err
+	}
+	defer s.Close()
+	ctx := context.Background()
+	iter := s.List(nil)
+	for {
+		obj, err := iter.Next(ctx)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return size, err
+		}
+		size += obj.Size
+	}
+	return size, nil
 }

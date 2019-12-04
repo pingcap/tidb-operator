@@ -539,6 +539,8 @@ type S3StorageProvider struct {
 	// SecretName is the name of secret which stores
 	// S3 compliant storage access key and secret key.
 	SecretName string `json:"secretName"`
+	// Prefix for the keys.
+	Prefix string `json:"prefix,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -573,6 +575,10 @@ const (
 	BackupTypeFull BackupType = "full"
 	// BackupTypeInc represents the incremental backup of tidb cluster.
 	BackupTypeInc BackupType = "incremental"
+	// BackupTypeDB represents the backup of one DB for the tidb cluster.
+	BackupTypeDB BackupType = "db"
+	// BackupTypeTable represents the backup of one table for the tidb cluster.
+	BackupTypeTable BackupType = "table"
 )
 
 // +k8s:openapi-gen=true
@@ -598,9 +604,38 @@ type BackupSpec struct {
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
 	// StorageClassName is the storage class for backup job's PV.
-	StorageClassName string `json:"storageClassName"`
+	StorageClassName string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
-	StorageSize string `json:"storageSize"`
+	StorageSize string `json:"storageSize,omitempty"`
+	// BRConfig is the configs for BR
+	BR *BRConfig `json:"br,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// BRConfig contains config for BR
+type BRConfig struct {
+	// PDAddress is the PD address of the tidb cluster
+	PDAddress string `json:"pd"`
+	// CA is the CA certificate path for TLS connection
+	CA string `json:"ca,omitempty"`
+	// Cert is the certificate path for TLS connection
+	Cert string `json:"cert,omitempty"`
+	// Key is the private key path for TLS connection
+	Key string `json:"key,omitempty"`
+	// LogFile is the log file path. If not set, logs will output to stdout
+	LogFile string `json:"log-file,omitempty"`
+	// LogLevel is the log level, default to "info"
+	LogLevel string `json:"log-level,omitempty"`
+	// StatusAddr is the HTTP listening address for the status report service. Set to empty string to disable
+	StatusAddr string `json:"status-addr,omitempty"`
+	// Concurrency is the size of thread pool on each node that execute the backup task
+	Concurrency *uint32 `json:"concurrency,omitempty"`
+	// RateLimit is the rate limit of the backup task, MB/s per node
+	RateLimit *uint `json:"ratelimit,omitempty"`
+	// TimeAgo is the history version of the backup task, e.g. 1m, 1h
+	TimeAgo string `json:"timeago,omitempty"`
+	// Checksum specifies whether to run checksum after backup
+	Checksum *bool `json:"checksum,omitempty"`
 }
 
 // BackupConditionType represents a valid condition of a Backup.
