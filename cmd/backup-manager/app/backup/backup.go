@@ -127,10 +127,10 @@ func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
 	return nil
 }
 
-func (bo *BackupOpts) brBackupData(backup *v1alpha1.Backup) (string, error) {
+func (bo *BackupOpts) brBackupData(backup *v1alpha1.Backup) (string, string, error) {
 	args, path, err := constructBROptions(backup)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	fullArgs := []string{
 		"backup",
@@ -139,10 +139,10 @@ func (bo *BackupOpts) brBackupData(backup *v1alpha1.Backup) (string, error) {
 	fullArgs = append(fullArgs, args...)
 	output, err := exec.Command("br", fullArgs...).CombinedOutput()
 	if err != nil {
-		return path, fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, args, string(output), err)
+		return path, "", fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, args, string(output), err)
 	}
-	glog.Infof("backup data for cluster %s successfully, output: %s", bo, string(output))
-	return path, nil
+	glog.Infof("Backup data for cluster %s successfully, output: %s", bo, string(output))
+	return path, string(output), nil
 }
 
 // cleanBRRemoteBackupData clean the backup data from remote
@@ -258,6 +258,33 @@ func archiveBackupData(backupDir, destFile string) error {
 		return fmt.Errorf("archive backup data %s to %s failed, err: %v", backupDir, destFile, err)
 	}
 	return nil
+}
+
+// getBRCommitTs get backup position from the log output of BR
+// It really depends on the format in BR log,
+// currently, it's in the format of [BackupTS=412992336769581057]
+func getBRCommitTs(out string) (string, error) {
+	var commitTs string
+	for _, lineStr := range strings.Split(out, "\n") {
+		if !strings.Contains(lineStr, "BackupTS=") {
+			continue
+		}
+		lineStrSlice := strings.Split(lineStr, " ")
+		for _, s := range lineStrSlice {
+			if !strings.Contains(s, "BackupTS=") {
+				continue
+			}
+			kv := strings.Split(s, "=")
+			if len(kv) != 2 {
+				return commitTs, fmt.Errorf("get pos from %s failed", lineStr)
+			}
+			cs := strings.TrimSpace(kv[1])
+			commitTs = strings.TrimSuffix(cs, "]")
+			break
+		}
+
+	}
+	return commitTs, nil
 }
 
 // constructBROptions constructs options for BR and also return the remote path
