@@ -173,7 +173,14 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			return nil, nil
 		})
 
-		response := podAdmissionControl.admitDeleteTiKVPods(deleteTiKVPod, ownerStatefulSet, tc, fakePDClient)
+		payload := &admitPayload{
+			pod:              deleteTiKVPod,
+			ownerStatefulSet: ownerStatefulSet,
+			tc:               tc,
+			pdClient:         fakePDClient,
+		}
+
+		response := podAdmissionControl.admitDeleteTiKVPods(payload)
 		test.expectFn(g, response)
 	}
 
