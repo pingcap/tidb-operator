@@ -47,7 +47,7 @@ function hack::ensure_terraform() {
 
 function hack::verify_kubectl() {
     if test -x "$KUBECTL_BIN"; then
-        [[ "$($KUBECTL_BIN version --client --short | grep -o -P '\d+\.\d+\.\d+')" == "$KUBECTL_VERSION" ]]
+        [[ "$($KUBECTL_BIN version --client --short | grep -o -E '[0-9]+\.[0-9]+\.[0-9]+')" == "$KUBECTL_VERSION" ]]
         return
     fi
     return 1
@@ -67,7 +67,7 @@ function hack::ensure_kubectl() {
 
 function hack::verify_helm() {
     if test -x "$HELM_BIN"; then
-        local v=$($HELM_BIN version --short --client | grep -o -P '\d+\.\d+\.\d+')
+        local v=$($HELM_BIN version --short --client | grep -o -E '[0-9]+\.[0-9]+\.[0-9]+')
         [[ "$v" == "$HELM_VERSION" ]]
         return
     fi
