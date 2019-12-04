@@ -95,7 +95,7 @@ spec:
             - -v=4
             # TODO webhook is not bundled with tidb-operator yet and tested in
             # e2e only, make it configurable in helm chart
-            - -features=AdvancedStatefulSet=true
+            # - -features=AdvancedStatefulSet=true
           volumeMounts:
             - name: webhook-certs
               mountPath: /etc/webhook/certs
