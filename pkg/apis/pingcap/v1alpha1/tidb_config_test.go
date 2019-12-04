@@ -29,8 +29,8 @@ func TestTiDBConfig(t *testing.T) {
 	c := &TiDBConfig{
 		Host: "0.0.0.0",
 		Performance: &Performance{
-			MaxProcs:  &procs,
-			CrossJoin: true,
+			MaxProcs:            &procs,
+			CrossJoin:           true,
 			FeedbackProbability: &probability,
 		},
 	}
