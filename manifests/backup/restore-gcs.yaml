@@ -5,7 +5,7 @@ metadata:
   name: demo2-restore
   namespace: test2
 spec:
-  from:
+  to:
     host: 10.0.0.2
     port: 4000
     user: root
