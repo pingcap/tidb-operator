@@ -622,10 +622,6 @@ type BRConfig struct {
 	Cert string `json:"cert,omitempty"`
 	// Key is the private key path for TLS connection
 	Key string `json:"key,omitempty"`
-	// LogFile is the log file path. If not set, logs will output to stdout
-	LogFile string `json:"log-file,omitempty"`
-	// LogLevel is the log level, default to "info"
-	LogLevel string `json:"log-level,omitempty"`
 	// StatusAddr is the HTTP listening address for the status report service. Set to empty string to disable
 	StatusAddr string `json:"status-addr,omitempty"`
 	// Concurrency is the size of thread pool on each node that execute the backup task

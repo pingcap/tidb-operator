@@ -106,7 +106,7 @@ func (bm *BackupManager) performBRBackup(backup *v1alpha1.Backup) error {
 		return err
 	}
 
-	backupFullPath, err := bm.brBackupData(backup)
+	backupFullPath, out, err := bm.brBackupData(backup)
 	if err != nil {
 		glog.Errorf("backup cluster %s data to %s failed, err: %s", bm, bm.StorageType, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -132,19 +132,17 @@ func (bm *BackupManager) performBRBackup(backup *v1alpha1.Backup) error {
 	}
 	glog.Infof("Get size %d for backup files in %s of cluster %s success", size, backupFullPath, bm)
 
-	// BR does not provide CommitTS yet
-	// https://github.com/pingcap/br/issues/76
-	// commitTs, err := getBRCommitTsFromMetadata(backupFullPath)
-	// if err != nil {
-	// 	glog.Errorf("get cluster %s commitTs failed, err: %s", bm, err)
-	// 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-	// 		Type:    v1alpha1.BackupFailed,
-	// 		Status:  corev1.ConditionTrue,
-	// 		Reason:  "GetCommitTsFailed",
-	// 		Message: err.Error(),
-	// 	})
-	// }
-	// glog.Infof("get cluster %s commitTs %s success", bm, commitTs)
+	commitTs, err := getBRCommitTs(out)
+	if err != nil {
+		glog.Errorf("get cluster %s commitTs failed, err: %s", bm, err)
+		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "GetCommitTsFailed",
+			Message: err.Error(),
+		})
+	}
+	glog.Infof("get cluster %s commitTs %s success", bm, commitTs)
 
 	finish := time.Now()
 
@@ -152,7 +150,7 @@ func (bm *BackupManager) performBRBackup(backup *v1alpha1.Backup) error {
 	backup.Status.TimeStarted = metav1.Time{Time: started}
 	backup.Status.TimeCompleted = metav1.Time{Time: finish}
 	backup.Status.BackupSize = size
-	backup.Status.CommitTs = ""
+	backup.Status.CommitTs = commitTs
 
 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupComplete,
