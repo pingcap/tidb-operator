@@ -477,7 +477,7 @@ binlog:
     # affinity for pump pod assignment, default: empty
     # ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
     affinity: {}
-      ## The following setting is recommended to make each pump instance be distributed deployed in each node
+    ## The following setting is recommended to make each pump instance be distributed deployed in each node
     ## Each node is recommended at most have one pump instance deployed.
     #  podAntiAffinity:
     #    preferredDuringSchedulingIgnoredDuringExecution:
