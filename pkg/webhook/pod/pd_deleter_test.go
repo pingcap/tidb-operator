@@ -25,7 +25,7 @@ import (
 	pdUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
-	"k8s.io/api/admission/v1beta1"
+	admission "k8s.io/api/admission/v1"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,7 +50,7 @@ func TestPDDeleterDelete(t *testing.T) {
 		isStatefulSetUpgrading bool
 		isLeader               bool
 		UpdatePVCErr           bool
-		expectFn               func(g *GomegaWithT, response *v1beta1.AdmissionResponse)
+		expectFn               func(g *GomegaWithT, response *admission.AdmissionResponse)
 	}
 
 	testFn := func(test *testcase) {
@@ -150,7 +150,14 @@ func TestPDDeleterDelete(t *testing.T) {
 			})
 		}
 
-		response := podAdmissionControl.admitDeletePdPods(deletePod, ownerStatefulSet, tc, fakePDClient)
+		payload := &admitPayload{
+			pod:              deletePod,
+			ownerStatefulSet: ownerStatefulSet,
+			tc:               tc,
+			pdClient:         fakePDClient,
+		}
+
+		response := podAdmissionControl.admitDeletePdPods(payload)
 
 		test.expectFn(g, response)
 	}
@@ -164,7 +171,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			isStatefulSetUpgrading: true,
 			isLeader:               false,
 			UpdatePVCErr:           false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
 			},
 		},
@@ -176,7 +183,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			isStatefulSetUpgrading: true,
 			isLeader:               false,
 			UpdatePVCErr:           false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
 			},
 		},
@@ -188,7 +195,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			isStatefulSetUpgrading: true,
 			isLeader:               false,
 			UpdatePVCErr:           false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
 			},
 		},
@@ -200,7 +207,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			isStatefulSetUpgrading: true,
 			isLeader:               true,
 			UpdatePVCErr:           false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
 			},
 		},
@@ -211,7 +218,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			isOutOfOrdinal:         true,
 			isStatefulSetUpgrading: false,
 			isLeader:               false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
 			},
 		},
@@ -223,7 +230,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			isStatefulSetUpgrading: false,
 			isLeader:               false,
 			UpdatePVCErr:           false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
 			},
 		},
@@ -235,7 +242,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			isStatefulSetUpgrading: false,
 			isLeader:               false,
 			UpdatePVCErr:           true,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
 				g.Expect(response.Result.Message, "update pvc error")
 			},

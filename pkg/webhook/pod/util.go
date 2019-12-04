@@ -15,17 +15,23 @@ package pod
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"k8s.io/client-go/kubernetes"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	pdutil "github.com/pingcap/tidb-operator/pkg/manager/member"
+	memberUtil "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
+	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+)
+
+const (
+	failToFindTidbComponentOwnerStatefulset = "failed to find owner statefulset for pod[%s/%s]"
 )
 
 func IsPodInPdMembers(tc *v1alpha1.TidbCluster, pod *core.Pod, pdClient pdapi.PDClient) (bool, error) {
@@ -51,18 +57,13 @@ func IsStatefulSetUpgrading(set *v1.StatefulSet) bool {
 // pd pod who would be deleted by statefulset controller
 // we add annotations to this pvc and delete it when we scale out the pd replicas
 // for the new pd pod need new pvc
-func addDeferDeletingToPVC(podAC *PodAdmissionControl, tc *v1alpha1.TidbCluster, setName, namespace string, ordinal int32) error {
-	pvcName := operatorUtils.OrdinalPVCName(v1alpha1.PDMemberType, setName, ordinal)
-	pvc, err := podAC.pvcControl.GetPVC(pvcName, namespace)
-	if err != nil {
-		return err
-	}
+func addDeferDeletingToPVC(pvc *core.PersistentVolumeClaim, pvcControl controller.PVCControlInterface, tc *v1alpha1.TidbCluster) error {
 	if pvc.Annotations == nil {
 		pvc.Annotations = map[string]string{}
 	}
 	now := time.Now().Format(time.RFC3339)
 	pvc.Annotations[label.AnnPVCDeferDeleting] = now
-	_, err = podAC.pvcControl.UpdatePVC(tc, pvc)
+	_, err := pvcControl.UpdatePVC(tc, pvc)
 	return err
 }
 
@@ -80,7 +81,7 @@ func checkFormerPDPodStatus(podLister corelisters.PodLister, pdClient pdapi.PDCl
 
 	tcName := tc.Name
 	for i := replicas - 1; i > ordinal; i-- {
-		podName := pdutil.PdPodName(tcName, i)
+		podName := memberUtil.PdPodName(tcName, i)
 		pod, err := podLister.Pods(namespace).Get(podName)
 		if err != nil {
 			return err
@@ -104,13 +105,13 @@ func IsPodWithPDDeferDeletingAnnotations(pod *core.Pod) bool {
 	return existed
 }
 
-func addDeferDeletingToPDPod(podAC *PodAdmissionControl, pod *core.Pod) error {
+func addDeferDeletingToPDPod(kubeCli kubernetes.Interface, pod *core.Pod) error {
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
 	now := time.Now().Format(time.RFC3339)
 	pod.Annotations[label.AnnPDDeferDeleting] = now
-	_, err := podAC.kubeCli.CoreV1().Pods(pod.Namespace).Update(pod)
+	_, err := kubeCli.CoreV1().Pods(pod.Namespace).Update(pod)
 	return err
 }
 
@@ -120,4 +121,22 @@ func isPDLeader(pdClient pdapi.PDClient, pod *core.Pod) (bool, error) {
 		return false, err
 	}
 	return leader.Name == pod.Name, nil
+}
+
+// getOwnerStatefulSetForTiDBComponent would find pd/tikv/tidb's owner statefulset,
+// if not exist, then return error
+func getOwnerStatefulSetForTiDBComponent(pod *core.Pod, stsLister appslisters.StatefulSetLister) (*apps.StatefulSet, error) {
+	name := pod.Name
+	namespace := pod.Namespace
+	var ownerStatefulSetName string
+	for _, ownerReference := range pod.OwnerReferences {
+		if ownerReference.Kind == "StatefulSet" {
+			ownerStatefulSetName = ownerReference.Name
+			break
+		}
+	}
+	if len(ownerStatefulSetName) == 0 {
+		return nil, fmt.Errorf(failToFindTidbComponentOwnerStatefulset, namespace, name)
+	}
+	return stsLister.StatefulSets(namespace).Get(ownerStatefulSetName)
 }

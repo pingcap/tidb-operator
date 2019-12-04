@@ -21,15 +21,15 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/webhook/statefulset"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
-	"k8s.io/api/admission/v1beta1"
+	admission "k8s.io/api/admission/v1"
 	glog "k8s.io/klog"
 )
 
 // admitFunc is the type we use for all of our validators
-type admitFunc func(v1beta1.AdmissionReview) *v1beta1.AdmissionResponse
+type admitFunc func(admission.AdmissionReview) *admission.AdmissionResponse
 
 // marshal responseAdmissionReview and send back
-func marshalAndWrite(response v1beta1.AdmissionReview, w http.ResponseWriter) {
+func marshalAndWrite(response admission.AdmissionReview, w http.ResponseWriter) {
 
 	respBytes, err := json.Marshal(response)
 	if err != nil {
@@ -46,8 +46,8 @@ func marshalAndWrite(response v1beta1.AdmissionReview, w http.ResponseWriter) {
 func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 	var body []byte
 	var contentType string
-	responseAdmissionReview := v1beta1.AdmissionReview{}
-	requestedAdmissionReview := v1beta1.AdmissionReview{}
+	responseAdmissionReview := admission.AdmissionReview{}
+	requestedAdmissionReview := admission.AdmissionReview{}
 	deserializer := util.GetCodec()
 
 	// The AdmissionReview that will be returned

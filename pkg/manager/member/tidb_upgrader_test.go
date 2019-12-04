@@ -14,7 +14,6 @@
 package member
 
 import (
-	"fmt"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -37,7 +36,6 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 		name                    string
 		changeFn                func(*v1alpha1.TidbCluster)
 		getLastAppliedConfigErr bool
-		resignDDLOwnerError     bool
 		errorExpect             bool
 		changeOldSet            func(set *apps.StatefulSet)
 		expectFn                func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet)
@@ -45,13 +43,7 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
-		upgrader, tidbControl, podInformer := newTiDBUpgrader()
-		if test.resignDDLOwnerError {
-			tidbControl.SetResignDDLOwnerError(fmt.Errorf("resign DDL owner failed"))
-			tidbControl.NotDDLOwner(false)
-		} else {
-			tidbControl.NotDDLOwner(true)
-		}
+		upgrader, _, podInformer := newTiDBUpgrader()
 		tc := newTidbClusterForTiDBUpgrader()
 		if test.changeFn != nil {
 			test.changeFn(tc)
@@ -192,37 +184,6 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(controller.Int32Ptr(1)))
 			},
 		},
-		{
-			name: "resign DDL owner error",
-			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.Phase = v1alpha1.NormalPhase
-				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-			},
-			getLastAppliedConfigErr: false,
-			resignDDLOwnerError:     true,
-			errorExpect:             true,
-			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
-				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(controller.Int32Ptr(1)))
-				g.Expect(tc.Status.TiDB.ResignDDLOwnerRetryCount).To(Equal(int32(1)))
-			},
-		},
-		{
-			name: "resign DDL owner error count larger than MaxResignDDLOwnerCount",
-			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.Phase = v1alpha1.NormalPhase
-				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-				tc.Status.TiDB.ResignDDLOwnerRetryCount = 4
-			},
-			getLastAppliedConfigErr: false,
-			resignDDLOwnerError:     true,
-			errorExpect:             false,
-			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
-				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(controller.Int32Ptr(0)))
-				g.Expect(tc.Status.TiDB.ResignDDLOwnerRetryCount).To(Equal(int32(0)))
-			},
-		},
 	}
 
 	for _, test := range tests {
@@ -286,21 +247,21 @@ func newTidbClusterForTiDBUpgrader() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: v1alpha1.PDSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "pd-test-image",
 				},
 				Replicas:         3,
 				StorageClassName: "my-storage-class",
 			},
 			TiKV: v1alpha1.TiKVSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tikv-test-image",
 				},
 				Replicas:         3,
 				StorageClassName: "my-storage-class",
 			},
 			TiDB: v1alpha1.TiDBSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tidb-test-image",
 				},
 				Replicas:         2,

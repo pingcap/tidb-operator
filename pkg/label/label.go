@@ -77,6 +77,8 @@ const (
 	AnnPDDeferDeleting = "tidb.pingcap.com/pd-defer-deleting"
 	// AnnSysctlInit is pod annotation key to indicate whether configuring sysctls with init container
 	AnnSysctlInit = "tidb.pingcap.com/sysctl-init"
+	// AnnEvictLeaderBeginTime is pod annotation key to indicate the begin time for evicting region leader
+	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"
@@ -89,6 +91,8 @@ const (
 	TiDBLabelVal string = "tidb"
 	// TiKVLabelVal is TiKV label value
 	TiKVLabelVal string = "tikv"
+	// PumpLabelVal is Pump label value
+	PumpLabelVal string = "pump"
 
 	// CleanJobLabelVal is clean job label value
 	CleanJobLabelVal string = "clean"
@@ -96,6 +100,8 @@ const (
 	RestoreJobLabelVal string = "restore"
 	// BackupJobLabelVal is backup job label value
 	BackupJobLabelVal string = "backup"
+	// TiDBOperator is ManagedByLabelKey label value
+	TiDBOperator string = "tidb-operator"
 )
 
 // Label is the label field in metadata
@@ -198,6 +204,12 @@ func (l Label) PD() Label {
 	return l
 }
 
+// Pump assigns pump to component key in label
+func (l Label) Pump() Label {
+	l.Component(PumpLabelVal)
+	return l
+}
+
 // IsPD returns whether label is a PD
 func (l Label) IsPD() bool {
 	return l[ComponentLabelKey] == PDLabelVal
@@ -249,4 +261,9 @@ func (l Label) String() string {
 	}
 
 	return strings.Join(arr, ",")
+}
+
+// IsManagedByTiDBOperator returns whether label is a Managed by tidb-operator
+func (l Label) IsManagedByTiDBOperator() bool {
+	return l[ManagedByLabelKey] == TiDBOperator
 }

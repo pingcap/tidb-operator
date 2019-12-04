@@ -159,15 +159,6 @@ func TestTiKVCapacity(t *testing.T) {
 	}
 }
 
-func TestGetSlowLogTailerImage(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	tc := &v1alpha1.TidbCluster{}
-	g.Expect(GetSlowLogTailerImage(tc)).To(Equal(defaultTiDBLogTailerImage))
-	tc.Spec.TiDB.SlowLogTailer.Image = "image-1"
-	g.Expect(GetSlowLogTailerImage(tc)).To(Equal("image-1"))
-}
-
 func TestPDMemberName(t *testing.T) {
 	g := NewGomegaWithT(t)
 	g.Expect(PDMemberName("demo")).To(Equal("demo-pd"))
@@ -196,6 +187,16 @@ func TestTiDBMemberName(t *testing.T) {
 func TestTiDBPeerMemberName(t *testing.T) {
 	g := NewGomegaWithT(t)
 	g.Expect(TiDBPeerMemberName("demo")).To(Equal("demo-tidb-peer"))
+}
+
+func TestPumpMemberName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(PumpMemberName("demo")).To(Equal("demo-pump"))
+}
+
+func TestPumpPeerMemberName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(PumpPeerMemberName("demo")).To(Equal("demo-pump"))
 }
 
 func TestAnnProm(t *testing.T) {

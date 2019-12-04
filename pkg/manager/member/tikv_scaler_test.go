@@ -176,7 +176,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		pod := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:              tikvPodName(tc.GetName(), 4),
+				Name:              TikvPodName(tc.GetName(), 4),
 				Namespace:         corev1.NamespaceDefault,
 				CreationTimestamp: metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
 			},
