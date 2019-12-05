@@ -83,7 +83,7 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 
 			rootCAs, tlsCert, err := certutil.LoadCerts(secret.Data["cert"], secret.Data["key"])
 			if err != nil {
-				glog.Errorf("unable to load certificates from secret %s/%s, PDClient may not work: %v", namespace, err)
+				glog.Errorf("unable to load certificates from secret %s/%s, PDClient may not work: %v", namespace, secretName, err)
 				return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
 			}
 			tlsConfig = &tls.Config{
