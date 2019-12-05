@@ -69,26 +69,28 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 	scheme := "http"
 	if tlsEnabled {
 		scheme = "https"
-		secretName := fmt.Sprintf("%s-pd-client", tcName)
-		secret, err := pdc.kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
-		if err != nil {
-			glog.Errorf("unable to load certificates from secret %s/%s, PDClient may not work: %v", namespace, secretName, err)
-			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
-		}
-
-		rootCAs, tlsCert, err := certutil.LoadCerts(secret.Data["cert"], secret.Data["key"])
-		if err != nil {
-			glog.Errorf("unable to load certificates for %s discovery, PDClient may not work: %v", namespace, err)
-			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
-		}
-		tlsConfig = &tls.Config{
-			RootCAs:      rootCAs,
-			Certificates: []tls.Certificate{tlsCert},
-		}
 	}
 
 	key := pdClientKey(scheme, namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
+		if tlsEnabled {
+			secretName := fmt.Sprintf("%s-pd-client", tcName)
+			secret, err := pdc.kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
+			if err != nil {
+				glog.Errorf("unable to load certificates from secret %s/%s, PDClient may not work: %v", namespace, secretName, err)
+				return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
+			}
+
+			rootCAs, tlsCert, err := certutil.LoadCerts(secret.Data["cert"], secret.Data["key"])
+			if err != nil {
+				glog.Errorf("unable to load certificates for %s discovery, PDClient may not work: %v", namespace, err)
+				return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
+			}
+			tlsConfig = &tls.Config{
+				RootCAs:      rootCAs,
+				Certificates: []tls.Certificate{tlsCert},
+			}
+		}
 		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), timeout, tlsConfig)
 	}
 	return pdc.pdClients[key]
