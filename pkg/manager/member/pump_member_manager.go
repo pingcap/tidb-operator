@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -64,6 +65,7 @@ type pumpMemberManager struct {
 	setLister  v1.StatefulSetLister
 	svcLister  corelisters.ServiceLister
 	cmLister   corelisters.ConfigMapLister
+	podLister  corelisters.PodLister
 }
 
 // NewPumpMemberManager returns a controller to reconcile pump clusters
@@ -73,7 +75,8 @@ func NewPumpMemberManager(
 	cmControl controller.ConfigMapControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
-	cmLister corelisters.ConfigMapLister) manager.Manager {
+	cmLister corelisters.ConfigMapLister,
+	podLister corelisters.PodLister) manager.Manager {
 	return &pumpMemberManager{
 		setControl,
 		svcControl,
@@ -81,6 +84,7 @@ func NewPumpMemberManager(
 		setLister,
 		svcLister,
 		cmLister,
+		podLister,
 	}
 }
 
@@ -91,13 +95,14 @@ func (pmm *pumpMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if err := pmm.syncHeadlessService(tc); err != nil {
 		return err
 	}
-	return pmm.syncStatefulSet(tc)
+	return pmm.syncPumpStatefulSetForTidbCluster(tc)
 }
 
-// syncStatefulSet syncs the pump statefulset
-// TODO: sync statefulset status of pump to tidbcluster
-func (pmm *pumpMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
-
+//syncPumpStatefulSetForTidbCluster sync statefulset status of pump to tidbcluster
+func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbCluster) error {
+	/* 	ns := tc.GetNamespace()
+	   	tcName := tc.GetName()
+	*/
 	oldPumpSetTemp, err := pmm.setLister.StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name))
 	if err != nil && !errors.IsNotFound(err) {
 		return err
@@ -140,6 +145,28 @@ func (pmm *pumpMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		_, err = pmm.setControl.UpdateStatefulSet(tc, &set)
 		return err
 	}
+	return nil
+}
+
+// syncStatefulSet syncs the pump statefulset
+func (pmm *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+
+	tc.Status.Pump.StatefulSet = &set.Status
+
+	upgrading, err := pmm.pumpStatefulSetIsUpgrading(set, tc)
+	if err != nil {
+		return err
+	}
+	if upgrading {
+		tc.Status.Pump.Phase = v1alpha1.UpgradePhase
+	} else {
+		tc.Status.Pump.Phase = v1alpha1.NormalPhase
+	}
+
+	pumpStatus := map[string]v1alpha1.PumpMember{}
+
+	tc.Status.Pump.Members = pumpStatus
+
 	return nil
 }
 
@@ -473,6 +500,33 @@ func getPumpLogLevel(tc *v1alpha1.TidbCluster) string {
 	}
 
 	return logLevel
+}
+
+func (pmm *pumpMemberManager) pumpStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
+	if statefulSetIsUpgrading(set) {
+		return true, nil
+	}
+	selector, err := label.New().
+		Instance(tc.GetLabels()[label.InstanceLabelKey]).
+		Pump().
+		Selector()
+	if err != nil {
+		return false, err
+	}
+	pumpPods, err := pmm.podLister.Pods(tc.GetNamespace()).List(selector)
+	if err != nil {
+		return false, err
+	}
+	for _, pod := range pumpPods {
+		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+		if !exist {
+			return false, nil
+		}
+		if revisionHash != tc.Status.Pump.StatefulSet.UpdateRevision {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 type FakePumpMemberManager struct {

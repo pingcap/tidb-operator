@@ -168,6 +168,7 @@ type TidbClusterStatus struct {
 	PD        PDStatus   `json:"pd,omitempty"`
 	TiKV      TiKVStatus `json:"tikv,omitempty"`
 	TiDB      TiDBStatus `json:"tidb,omitempty"`
+	Pump      PumpStatus `josn:"tidb,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -458,6 +459,18 @@ type TiKVFailureStore struct {
 	PodName   string      `json:"podName,omitempty"`
 	StoreID   string      `json:"storeID,omitempty"`
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
+}
+
+// PumpStatus is Pump status
+type PumpStatus struct {
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	Members     map[string]PumpMember   `json:"members,omitempty"`
+}
+
+// PumpMember is Pump member
+type PumpMember struct {
+	Name string `json:"name"`
 }
 
 // +genclient
