@@ -2,7 +2,11 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
+  {{- if .Values.jobName }}
+  name: {{ tpl .Values.jobName . }}
+  {{- else }}
   name: {{ .Values.clusterName }}-{{ tpl .Values.name . }}
+  {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -22,6 +26,9 @@ spec:
 {{ toYaml .Values.extraLabels | indent 8 }}
     {{- end }}
     spec:
+      {{- if .Values.serviceAccount }}
+      serviceAccount: {{ .Values.serviceAccount }}
+      {{- end }}
       containers:
       - name: backup
         image: {{ .Values.image.backup }}
@@ -38,7 +45,7 @@ spec:
         volumeMounts:
         - name: data
           mountPath: "/data"
-      {{- if .Values.gcp }}
+      {{- if .Values.gcp.secretName }}
         - name: gcp-credentials
           mountPath: "/gcp"
           readOnly: true
@@ -50,11 +57,11 @@ spec:
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
       {{- end }}
-      {{- if .Values.gcp }}
+      {{- if .Values.gcp.secretName }}
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: /gcp/credentials.json
       {{- end }}
-      {{- if or .Values.ceph .Values.s3 }}
+      {{- if or .Values.ceph.secretName .Values.s3.secretName }}
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:
@@ -81,7 +88,7 @@ spec:
       - name: data
         persistentVolumeClaim:
           claimName: {{ tpl .Values.name . }}
-    {{- if .Values.gcp }}
+    {{- if .Values.gcp.secretName }}
       - name: gcp-credentials
         secret:
           secretName: {{ .Values.gcp.secretName }}

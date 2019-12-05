@@ -77,7 +77,8 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		SchedulerImage: "k8s.gcr.io/kube-scheduler",
 		Features: []string{
 			"StableScheduling=true",
-			"AdvancedStatefulSet=true",
+			// TODO: isolate oprator for specs #1257
+			"AdvancedStatefulSet=false",
 		},
 		LogLevel:           "4",
 		WebhookServiceName: "webhook-service",

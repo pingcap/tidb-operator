@@ -16,40 +16,34 @@ package pod
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	pdutil "github.com/pingcap/tidb-operator/pkg/manager/member"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1"
-	apps "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 )
 
-func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admission.AdmissionResponse {
 
-	name := pod.Name
-	namespace := pod.Namespace
-	tcName := tc.Name
+	name := payload.pod.Name
+	namespace := payload.pod.Namespace
+	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, *payload.ownerStatefulSet.Spec.Replicas)
+	if err != nil {
+		return util.ARFail(err)
+	}
 	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
 	if err != nil {
 		return util.ARFail(err)
 	}
+	tcName := payload.tc.Name
+	isUpgrading := IsStatefulSetUpgrading(payload.ownerStatefulSet)
+	IsDeferDeleting := IsPodWithPDDeferDeletingAnnotations(payload.pod)
 
-	isMember, err := IsPodInPdMembers(tc, pod, pdClient)
+	isMember, err := IsPodInPdMembers(payload.tc, payload.pod, payload.pdClient)
 	if err != nil {
 		return util.ARFail(err)
 	}
 
-	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(pod, *ownerStatefulSet.Spec.Replicas)
-	if err != nil {
-		return util.ARFail(err)
-	}
-
-	isUpgrading := IsStatefulSetUpgrading(ownerStatefulSet)
-
-	IsDeferDeleting := IsPodWithPDDeferDeletingAnnotations(pod)
-
-	isLeader, err := isPDLeader(pdClient, pod)
+	isLeader, err := isPDLeader(payload.pdClient, payload.pod)
 	if err != nil {
 		return util.ARFail(err)
 	}
@@ -59,26 +53,26 @@ func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulS
 	// NotMember represents this pod is deleted from pd cluster or haven't register to pd cluster yet.
 	// We should ensure this pd pod wouldn't be pd member any more.
 	if !isMember {
-		return pc.admitDeleteNonPDMemberPod(IsDeferDeleting, isInOrdinal, pod, ownerStatefulSet, tc, pdClient, ordinal)
+		return pc.admitDeleteNonPDMemberPod(payload)
 	}
 
 	// NotInOrdinal represents this is an scale-in operation, we need to delete this member in pd cluster
 	if !isInOrdinal {
-		return pc.admitDeleteExceedReplicasPDPod(pod, tc, pdClient, isLeader)
+		return pc.admitDeleteExceedReplicasPDPod(payload, isLeader)
 	}
 
 	// If there is an pd pod deleting operation during upgrading, we should
 	// check the pd pods which have been upgraded before were all health
 	if isUpgrading {
 		klog.Infof("receive delete pd pod[%s/%s] of tc[%s/%s] is upgrading, make sure former pd upgraded status was health", namespace, name, namespace, tcName)
-		err = checkFormerPDPodStatus(pc.podLister, pdClient, tc, namespace, ordinal, *ownerStatefulSet.Spec.Replicas)
+		err = checkFormerPDPodStatus(pc.podLister, payload.pdClient, payload.tc, namespace, ordinal, *payload.ownerStatefulSet.Spec.Replicas)
 		if err != nil {
 			return util.ARFail(err)
 		}
 	}
 
 	if isLeader {
-		return pc.transferPDLeader(pod, tc, pdClient, ordinal)
+		return pc.transferPDLeader(payload)
 	}
 
 	klog.Infof("pod[%s/%s] is not pd-leader,admit to delete", namespace, name)
@@ -87,11 +81,20 @@ func (pc *PodAdmissionControl) admitDeletePdPods(pod *corev1.Pod, ownerStatefulS
 
 // this pod is not a member of pd cluster currently, it could be deleted from pd cluster already or haven't registered in pd cluster
 // we need to check whether this pd pod has been ensured wouldn't be a member in pd cluster
-func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(IsDeferDeleting, isInOrdinal bool, pod *corev1.Pod, ownerStatefulSet *apps.StatefulSet, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, ordinal int32) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) *admission.AdmissionResponse {
 
-	name := pod.Name
-	namespace := pod.Namespace
-	tcName := tc.Name
+	name := payload.pod.Name
+	namespace := payload.pod.Namespace
+	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, *payload.ownerStatefulSet.Spec.Replicas)
+	if err != nil {
+		return util.ARFail(err)
+	}
+	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+	if err != nil {
+		return util.ARFail(err)
+	}
+	tcName := payload.tc.Name
+	IsDeferDeleting := IsPodWithPDDeferDeletingAnnotations(payload.pod)
 
 	// check whether this pod has been ensured wouldn't be a member in pd cluster
 	if IsDeferDeleting {
@@ -102,7 +105,12 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(IsDeferDeleting, isInOr
 		// it would be existed an pd-3 instance with its deferDeleting label Annotations PVC.
 		// And the pvc can be deleted during upgrading if we use create pod webhook in future.
 		if !isInOrdinal {
-			err := addDeferDeletingToPVC(v1alpha1.PDMemberType, pc, tc, ownerStatefulSet.Name, namespace, ordinal)
+			pvcName := operatorUtils.OrdinalPVCName(v1alpha1.TiKVMemberType, payload.ownerStatefulSet.Name, ordinal)
+			pvc, err := pc.pvcControl.GetPVC(pvcName, namespace)
+			if err != nil {
+				return util.ARFail(err)
+			}
+			err = addDeferDeletingToPVC(pvc, pc.pvcControl, payload.tc)
 			if err != nil {
 				klog.Infof("tc[%s/%s]'s pod[%s/%s] failed to update pvc,%v", namespace, tcName, namespace, name, err)
 				return util.ARFail(err)
@@ -112,11 +120,11 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(IsDeferDeleting, isInOr
 		return util.ARSuccess()
 
 	}
-	err := pdClient.DeleteMember(name)
+	err = payload.pdClient.DeleteMember(name)
 	if err != nil {
 		return util.ARFail(err)
 	}
-	err = addDeferDeletingToPDPod(pc, pod)
+	err = addDeferDeletingToPDPod(pc.kubeCli, payload.pod)
 	if err != nil {
 		return util.ARFail(err)
 	}
@@ -127,26 +135,22 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(IsDeferDeleting, isInOr
 	}
 }
 
-func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(pod *corev1.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, isPdLeader bool) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(payload *admitPayload, isPdLeader bool) *admission.AdmissionResponse {
 
-	name := pod.Name
-	namespace := pod.Namespace
-	tcName := tc.Name
-	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
-	if err != nil {
-		return util.ARFail(err)
-	}
+	name := payload.pod.Name
+	namespace := payload.pod.Namespace
+	tcName := payload.tc.Name
 
 	if isPdLeader {
-		return pc.transferPDLeader(pod, tc, pdClient, ordinal)
+		return pc.transferPDLeader(payload)
 	}
 
-	err = pdClient.DeleteMember(name)
+	err := payload.pdClient.DeleteMember(name)
 	if err != nil {
 		return util.ARFail(err)
 	}
 	// we should add deferDeleting Annotation when we delete member successfully.
-	err = addDeferDeletingToPDPod(pc, pod)
+	err = addDeferDeletingToPDPod(pc.kubeCli, payload.pod)
 	if err != nil {
 		return util.ARFail(err)
 	}
@@ -158,24 +162,29 @@ func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(pod *corev1.Pod, t
 }
 
 // this pod is a pd leader, we should transfer pd leader to other pd pod before it gets deleted before.
-func (pc *PodAdmissionControl) transferPDLeader(pod *corev1.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, ordinal int32) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admission.AdmissionResponse {
 
-	name := pod.Name
-	namespace := pod.Namespace
-
-	lastOrdinal := tc.Status.PD.StatefulSet.Replicas - 1
-	var targetName string
-	if ordinal == lastOrdinal {
-		targetName = pdutil.PdPodName(tc.Name, 0)
-	} else {
-		targetName = pdutil.PdPodName(tc.Name, lastOrdinal)
-	}
-	err := pdClient.TransferPDLeader(targetName)
+	name := payload.pod.Name
+	namespace := payload.pod.Namespace
+	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
 	if err != nil {
-		klog.Errorf("tc[%s/%s] failed to transfer pd leader to pod[%s/%s],%v", namespace, tc.Name, namespace, name, err)
 		return util.ARFail(err)
 	}
-	klog.Infof("tc[%s/%s] start to transfer pd leader to pod[%s/%s],refuse to delete pod[%s/%s]", namespace, tc.Name, namespace, targetName, namespace, name)
+	tcName := payload.tc.Name
+	lastOrdinal := payload.tc.Status.PD.StatefulSet.Replicas - 1
+	var targetName string
+	if ordinal == lastOrdinal {
+		targetName = pdutil.PdPodName(tcName, 0)
+	} else {
+		targetName = pdutil.PdPodName(tcName, lastOrdinal)
+	}
+
+	err = payload.pdClient.TransferPDLeader(targetName)
+	if err != nil {
+		klog.Errorf("tc[%s/%s] failed to transfer pd leader to pod[%s/%s],%v", namespace, tcName, namespace, name, err)
+		return util.ARFail(err)
+	}
+	klog.Infof("tc[%s/%s] start to transfer pd leader to pod[%s/%s],refuse to delete pod[%s/%s]", namespace, tcName, namespace, targetName, namespace, name)
 	return &admission.AdmissionResponse{
 		Allowed: false,
 	}

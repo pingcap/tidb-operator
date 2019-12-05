@@ -36,7 +36,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/ghodss/yaml"
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -85,12 +84,14 @@ func NewOperatorActions(cli versioned.Interface,
 	pollInterval time.Duration,
 	cfg *Config,
 	clusters []*TidbClusterConfig) OperatorActions {
+
 	oa := &operatorActions{
-		cli:          cli,
-		kubeCli:      kubeCli,
-		pdControl:    pdapi.NewDefaultPDControl(kubeCli),
-		asCli:        asCli,
-		tcStsGetter:  helper.NewHijackClient(kubeCli, asCli).AppsV1(),
+		cli:         cli,
+		kubeCli:     kubeCli,
+		pdControl:   pdapi.NewDefaultPDControl(kubeCli),
+		asCli:       asCli,
+		tcStsGetter: kubeCli.AppsV1(),
+		// tcStsGetter:  helper.NewHijackClient(kubeCli, asCli).AppsV1(),
 		tidbControl:  controller.NewDefaultTiDBControl(),
 		pollInterval: pollInterval,
 		cfg:          cfg,
@@ -205,6 +206,7 @@ type OperatorActions interface {
 	CheckUpgradeCompleteOrDie(info *TidbClusterConfig)
 	CheckInitSQL(info *TidbClusterConfig) error
 	CheckInitSQLOrDie(info *TidbClusterConfig)
+	DeployAndCheckPump(tc *TidbClusterConfig) error
 }
 
 type operatorActions struct {
@@ -264,6 +266,7 @@ type TidbClusterConfig struct {
 	PDImage                string
 	TiKVImage              string
 	TiDBImage              string
+	PumpImage              string
 	StorageClassName       string
 	Password               string
 	RecordCount            string
@@ -336,6 +339,7 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 		"pd.image":                tc.PDImage,
 		"tikv.image":              tc.TiKVImage,
 		"tidb.image":              tc.TiDBImage,
+		"binlog.pump.image":       tc.PumpImage,
 		"tidb.passwordSecretName": tc.InitSecretName,
 		"monitor.create":          strconv.FormatBool(tc.Monitor),
 		"enableConfigMapRollout":  strconv.FormatBool(tc.EnableConfigMapRollout),
