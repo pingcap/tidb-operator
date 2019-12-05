@@ -16,7 +16,6 @@ package statefulset
 import (
 	"errors"
 	"fmt"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	"strconv"
 
@@ -41,17 +40,20 @@ func init() {
 }
 
 type StatefulSetAdmissionControl struct {
-	// kubernetes client interface
-	kubeCli kubernetes.Interface
 	// operator client interface
 	operatorCli versioned.Interface
+}
+
+func NewStatefulSetAdmissionControl(operatorCli versioned.Interface) *StatefulSetAdmissionControl {
+	return &StatefulSetAdmissionControl{
+		operatorCli: operatorCli,
+	}
 }
 
 func (sc *StatefulSetAdmissionControl) AdmitStatefulSets(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
 
 	name := ar.Name
 	namespace := ar.Namespace
-
 	expectedGroup := "apps"
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		expectedGroup = asappsv1alpha1.GroupName

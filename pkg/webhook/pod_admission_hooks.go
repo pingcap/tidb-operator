@@ -1,7 +1,21 @@
+// Copyright 2019 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package webhook
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/webhook/util"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1/helper"
@@ -10,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/webhook/pod"
+	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -26,6 +41,14 @@ import (
 	event "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
+type PodAdmissionHook struct {
+	lock                     sync.RWMutex
+	initialized              bool
+	podAC                    *pod.PodAdmissionControl
+	ExtraServiceAccounts     string
+	EvictRegionLeaderTimeout time.Duration
+}
+
 func (a *PodAdmissionHook) ValidatingResource() (plural schema.GroupVersionResource, singular string) {
 	return schema.GroupVersionResource{
 			Group:    "admission.tidb.pingcap.com",
@@ -41,7 +64,7 @@ func (a *PodAdmissionHook) Validate(ar *admission.AdmissionRequest) *admission.A
 			Allowed: false,
 		}
 	}
-	if ar.Kind.Kind != "Pod" {
+	if "Pod" != ar.Kind.Kind || "" != ar.Kind.Group {
 		klog.Infof("success to %v %s[%s/%s]", ar.Operation, ar.Kind.Kind, ar.Name, ar.Namespace)
 		return util.ARSuccess()
 	}
@@ -55,17 +78,17 @@ func (a *PodAdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) 
 
 	cli, err := versioned.NewForConfig(cfg)
 	if err != nil {
-		klog.Fatalf("failed to create Clientset: %v", err)
+		return err
 	}
 
 	var kubeCli kubernetes.Interface
 	kubeCli, err = kubernetes.NewForConfig(cfg)
 	if err != nil {
-		klog.Fatalf("failed to get kubernetes Clientset: %v", err)
+		return err
 	}
 	asCli, err := asclientset.NewForConfig(cfg)
 	if err != nil {
-		klog.Fatalf("failed to get advanced-statefulset Clientset: %v", err)
+		return err
 	}
 
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
@@ -87,23 +110,23 @@ func (a *PodAdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) 
 		Interface: event.New(kubeCli.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, core.EventSource{Component: "tidbcluster"})
 
-	pc := pod.NewPodAdmissionControl(kubeCli, cli, pdControl, informerFactory, kubeInformerFactory, recorder, []string{}, 3*time.Minute)
+	pc := pod.NewPodAdmissionControl(kubeCli, cli, pdControl, informerFactory, kubeInformerFactory, recorder, strings.Split(a.ExtraServiceAccounts, ","), a.EvictRegionLeaderTimeout)
 	a.podAC = pc
 	informerFactory.Start(stopCh)
 	kubeInformerFactory.Start(stopCh)
 
 	// Wait for all started informers' cache were synced.
-	for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
+	for _, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
 		if !synced {
-			klog.Fatalf("error syncing informer for %v", v)
+			return err
 		}
 	}
-	for v, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
+	for _, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
 		if !synced {
-			klog.Fatalf("error syncing informer for %v", v)
+			return err
 		}
 	}
 	a.initialized = true
-	klog.Info("webhook initialized successfully")
+	klog.Info("pod admission webhook initialized successfully")
 	return nil
 }
