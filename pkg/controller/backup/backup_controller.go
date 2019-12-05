@@ -224,28 +224,28 @@ func validBackup(backup *v1alpha1.Backup) bool {
 	name := backup.Name
 	if backup.Spec.BR == nil {
 		if backup.Spec.Cluster == "" {
-			glog.Infof("Missing Cluster config in spec of %s/%s", ns, name)
+			glog.Errorf("Missing Cluster config in spec of %s/%s", ns, name)
 			return false
 		}
 		if backup.Spec.TidbSecretName == "" {
-			glog.Infof("Missing TidbSecretName config in spec of %s/%s", ns, name)
+			glog.Errorf("Missing TidbSecretName config in spec of %s/%s", ns, name)
 			return false
 		}
 		if backup.Spec.StorageClassName == "" {
-			glog.Infof("Missing StorageClassName config in spec of %s/%s", ns, name)
+			glog.Errorf("Missing StorageClassName config in spec of %s/%s", ns, name)
 			return false
 		}
 		if backup.Spec.StorageSize == "" {
-			glog.Infof("Missing StorageSize config in spec of %s/%s", ns, name)
+			glog.Errorf("Missing StorageSize config in spec of %s/%s", ns, name)
 			return false
 		}
 	} else {
 		if backup.Spec.BR.PDAddress == "" {
-			glog.Infof("PD address should be configured for BR in spec of %s/%s", ns, name)
+			glog.Errorf("PD address should be configured for BR in spec of %s/%s", ns, name)
 			return false
 		}
 		if backup.Spec.S3 != nil && (backup.Spec.S3.Bucket == "" || backup.Spec.S3.Prefix == "") {
-			glog.Infof("Bucket and Prefix should be configured for BR in spec of %s/%s", ns, name)
+			glog.Errorf("Bucket and Prefix should be configured for BR in spec of %s/%s", ns, name)
 			return false
 		}
 	}
