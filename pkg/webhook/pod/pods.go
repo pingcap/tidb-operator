@@ -104,12 +104,12 @@ type admitPayload struct {
 	pdClient pdapi.PDClient
 }
 
-func (pc *PodAdmissionControl) AdmitPods(ar admission.AdmissionReview) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) AdmitPods(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
 
-	name := ar.Request.Name
-	namespace := ar.Request.Namespace
-	operation := ar.Request.Operation
-	serviceAccount := ar.Request.UserInfo.Username
+	name := ar.Name
+	namespace := ar.Namespace
+	operation := ar.Operation
+	serviceAccount := ar.UserInfo.Username
 	klog.Infof("receive %s pod[%s/%s] by sa[%s]", operation, namespace, name, serviceAccount)
 
 	if !pc.serviceAccounts.Has(serviceAccount) {
@@ -221,9 +221,9 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 // Webhook server receive request to create pod
 // if this pod wasn't member of tidbcluster, just let the request pass.
 // Currently we only check with tikv pod
-func (pc *PodAdmissionControl) AdmitCreatePods(ar admission.AdmissionReview) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) AdmitCreatePods(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
 	pod := &core.Pod{}
-	if err := json.Unmarshal(ar.Request.Object.Raw, pod); err != nil {
+	if err := json.Unmarshal(ar.Object.Raw, pod); err != nil {
 		klog.Errorf("Could not unmarshal raw object: %v", err)
 		return util.ARFail(err)
 	}
