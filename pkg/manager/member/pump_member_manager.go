@@ -100,9 +100,7 @@ func (pmm *pumpMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 //syncPumpStatefulSetForTidbCluster sync statefulset status of pump to tidbcluster
 func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbCluster) error {
-	/* 	ns := tc.GetNamespace()
-	   	tcName := tc.GetName()
-	*/
+
 	oldPumpSetTemp, err := pmm.setLister.StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name))
 	if err != nil && !errors.IsNotFound(err) {
 		return err
@@ -148,7 +146,6 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	return nil
 }
 
-// syncStatefulSet syncs the pump statefulset
 func (pmm *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 
 	tc.Status.Pump.StatefulSet = &set.Status

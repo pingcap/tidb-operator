@@ -446,7 +446,6 @@ func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFak
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
 	cmControl := controller.NewFakeConfigMapControl(cmInformer)
-
 	pmm := &pumpMemberManager{
 		setControl,
 		svcControl,
