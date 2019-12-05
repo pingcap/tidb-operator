@@ -90,6 +90,7 @@ func NewController(
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 	csrInformer := kubeInformerFactory.Certificates().V1beta1().CertificateSigningRequests()
 	secretInformer := kubeInformerFactory.Core().V1().Secrets()
+	cmInformer := kubeInformerFactory.Core().V1().ConfigMaps()
 
 	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
 	pdControl := pdapi.NewDefaultPDControl(kubeCli)
@@ -101,6 +102,7 @@ func NewController(
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
 	secControl := controller.NewRealSecretControl(kubeCli, secretInformer.Lister())
 	certControl := controller.NewRealCertControl(kubeCli, csrInformer.Lister(), secControl)
+	cmControl := controller.NewRealConfigMapControl(kubeCli, cmInformer.Lister(), recorder)
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
 	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister())
@@ -183,6 +185,14 @@ func NewController(
 				pvcInformer.Lister(),
 				pvInformer.Lister(),
 				pvControl,
+			),
+			mm.NewPumpMemberManager(
+				setControl,
+				svcControl,
+				cmControl,
+				setInformer.Lister(),
+				svcInformer.Lister(),
+				cmInformer.Lister(),
 			),
 			recorder,
 		),

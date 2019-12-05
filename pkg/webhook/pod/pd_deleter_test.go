@@ -150,7 +150,14 @@ func TestPDDeleterDelete(t *testing.T) {
 			})
 		}
 
-		response := podAdmissionControl.admitDeletePdPods(deletePod, ownerStatefulSet, tc, fakePDClient)
+		payload := &admitPayload{
+			pod:              deletePod,
+			ownerStatefulSet: ownerStatefulSet,
+			tc:               tc,
+			pdClient:         fakePDClient,
+		}
+
+		response := podAdmissionControl.admitDeletePdPods(payload)
 
 		test.expectFn(g, response)
 	}

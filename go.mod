@@ -7,6 +7,7 @@ module github.com/pingcap/tidb-operator
 go 1.13
 
 require (
+	github.com/BurntSushi/toml v0.3.1
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
@@ -41,6 +42,7 @@ require (
 	github.com/juju/loggo v0.0.0-20180524022052-584905176618 // indirect
 	github.com/juju/testing v0.0.0-20180920084828-472a3e8b2073 // indirect
 	github.com/mholt/archiver v3.1.1+incompatible
+	github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
 	github.com/nwaples/rardecode v1.0.0 // indirect
 	github.com/onsi/ginkgo v1.10.3
 	github.com/onsi/gomega v1.5.0

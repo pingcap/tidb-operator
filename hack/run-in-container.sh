@@ -19,7 +19,8 @@
 # Examples:
 #
 #   ./hack/run-in-container.sh # start an interactive shell
-#   ./hack/run-in-container.sh make test
+#   CLEANUP=y ./hack/run-in-container.sh # clean local volumes
+#   ./hack/run-in-container.sh make test # exec into the container (start if not running) and run commands
 #   ./hack/run-in-container.sh ./hack/e2e.sh -- --ginkgo.focus='aggregated'
 #
 
@@ -30,9 +31,10 @@ set -o pipefail
 ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 cd $ROOT
 
-SKIP_CLEANUP=${SKIP_CLEANUP:-} # if set, skip cleaning up on exit (possible to reuse docker graphs next time)
+CLEANUP=${CLEANUP:-} # if set, cleaning up local volumes
 DOCKER_LIB_VOLUME=${DOCKER_LIB_VOLUME:-tidb-operator-docker-lib}
 DOCKER_GRAPH_VOLUME=${DOCKER_GRAPH_VOLUME:-tidb-operator-docker-graph}
+DOCKER_GO_VOLUME=${DOCKER_GO_VOLUME:-tidb-operator-go}
 NAME=${NAME:-tidb-operator-dev}
 
 args=(bash)
@@ -51,7 +53,11 @@ docker_args+=(
     -e DOCKER_IN_DOCKER_ENABLED=true
     # Docker in Docker expects it to be a volume
     -v $DOCKER_LIB_VOLUME:/var/lib/docker
-    -v $DOCKER_GRAPH_VOLUME:/docker-graph # legacy path for cr.io/k8s-testimages/kubekins-e2e
+    -v $DOCKER_GRAPH_VOLUME:/docker-graph # legacy path for gcr.io/k8s-testimages/kubekins-e2e
+    # golang cache
+    -v $DOCKER_GO_VOLUME:/go
+    # golang xdg cache directory
+    -e XDG_CACHE_HOME=/go/cache
 )
 
 # required by kind
@@ -61,29 +67,33 @@ docker_args+=(
 )
 
 function cleanup() {
-    if [ -n "$SKIP_CLEANUP" ]; then
-        echo "info: skip cleaning up local volumes ($DOCKER_LIB_VOLUME, $DOCKER_GRAPH_VOLUME)"
-        return
-    fi
-    echo "info: cleaning up volume $DOCKER_LIB_VOLUME"
-    docker volume rm $DOCKER_LIB_VOLUME || true
-    echo "info: cleaning up volume $DOCKER_GRAPH_VOLUME"
-    docker volume rm $DOCKER_GRAPH_VOLUME || true
+    local volumes=(
+        $DOCKER_LIB_VOLUME
+        $DOCKER_GRAPH_VOLUME
+        $DOCKER_GO_VOLUME
+    )
+    for v in "${volumes[@]}"; do
+        echo "info: cleaning up volume $v"
+        docker volume rm $v || true
+    done
 }
+
+if [ -n "$CLEANUP" ]; then
+    cleanup
+    exit
+fi
 
 ret=0
 sts=$(docker inspect ${NAME} -f '{{.State.Status}}' 2>/dev/null) || ret=$?
 if [ $ret -eq 0 ]; then
     if [[ "$sts" == "running" ]]; then
-        echo "info: found a running container named '${NAME}', trying to exec into it" 
-        exec docker exec -it ${NAME} bash
+        echo "info: found a running container named '${NAME}', trying to exec into it" >&2
+        exec docker exec -it ${NAME} "${args[@]}"
     else
-        echo "info: found a non-running ($sts) container named '${NAME}', removing it first" 
+        echo "info: found a non-running ($sts) container named '${NAME}', removing it first" >&2
         docker rm ${NAME}
     fi
 fi
-
-trap 'cleanup' EXIT
 
 docker run ${docker_args[@]} \
     -v $ROOT:/go/src/github.com/pingcap/tidb-operator \

@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	apps "k8s.io/api/apps/v1"
+
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -89,12 +92,24 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 	}
 }
 
-func (pc *PodAdmissionControl) AdmitPods(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+// admitPayload used to simply the param to make each function more easier
+type admitPayload struct {
+	// the pod for admission request object
+	pod *core.Pod
+	// the ownerStatefulSet for target tidb component pod
+	ownerStatefulSet *apps.StatefulSet
+	// the owner tc for target tidb component pod
+	tc *v1alpha1.TidbCluster
+	// the pdClient for target tc
+	pdClient pdapi.PDClient
+}
 
-	name := ar.Name
-	namespace := ar.Namespace
-	operation := ar.Operation
-	serviceAccount := ar.UserInfo.Username
+func (pc *PodAdmissionControl) AdmitPods(ar admission.AdmissionReview) *admission.AdmissionResponse {
+
+	name := ar.Request.Name
+	namespace := ar.Request.Namespace
+	operation := ar.Request.Operation
+	serviceAccount := ar.Request.UserInfo.Username
 	klog.Infof("receive %s pod[%s/%s] by sa[%s]", operation, namespace, name, serviceAccount)
 
 	if !pc.serviceAccounts.Has(serviceAccount) {
@@ -106,7 +121,7 @@ func (pc *PodAdmissionControl) AdmitPods(ar *admission.AdmissionRequest) *admiss
 	case admission.Delete:
 		return pc.admitDeletePods(name, namespace)
 	case admission.Create:
-		return pc.admitCreatePods(ar)
+		return pc.AdmitCreatePods(ar)
 	default:
 		klog.Infof("Admit to %s pod[%s/%s]", operation, namespace, name)
 		return util.ARSuccess()
@@ -186,12 +201,17 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 		return util.ARSuccess()
 	}
 
+	payload := &admitPayload{
+		pod:              pod,
+		tc:               tc,
+		ownerStatefulSet: ownerStatefulSet,
+		pdClient:         pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster),
+	}
+
 	if l.IsPD() {
-		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster)
-		return pc.admitDeletePdPods(pod, ownerStatefulSet, tc, pdClient)
+		return pc.admitDeletePdPods(payload)
 	} else if l.IsTiKV() {
-		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.EnableTLSCluster)
-		return pc.admitDeleteTiKVPods(pod, ownerStatefulSet, tc, pdClient)
+		return pc.admitDeleteTiKVPods(payload)
 	}
 
 	klog.Infof("[%s/%s] is admit to be deleted", namespace, name)
@@ -201,9 +221,9 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 // Webhook server receive request to create pod
 // if this pod wasn't member of tidbcluster, just let the request pass.
 // Currently we only check with tikv pod
-func (pc *PodAdmissionControl) admitCreatePods(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) AdmitCreatePods(ar admission.AdmissionReview) *admission.AdmissionResponse {
 	pod := &core.Pod{}
-	if err := json.Unmarshal(ar.Object.Raw, pod); err != nil {
+	if err := json.Unmarshal(ar.Request.Object.Raw, pod); err != nil {
 		klog.Errorf("Could not unmarshal raw object: %v", err)
 		return util.ARFail(err)
 	}
@@ -237,6 +257,11 @@ func (pc *PodAdmissionControl) admitCreatePods(ar *admission.AdmissionRequest) *
 		}
 		klog.Errorf("failed get tc[%s/%s],refuse to create pod[%s/%s],%v", namespace, tcName, namespace, name, err)
 		return util.ARFail(err)
+	}
+
+	if memberUtils.NeedForceUpgrade(tc) {
+		klog.Infof("tc[%s/%s] is force upgraded, admit to create pod[%s/%s]", namespace, tcName, namespace, name)
+		return util.ARSuccess()
 	}
 
 	if l.IsTiKV() {
