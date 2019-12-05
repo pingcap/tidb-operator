@@ -15,6 +15,7 @@ package controller
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -29,6 +30,178 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
+func TestConfigMapControlApplyConfigMaps(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testCase struct {
+		name             string
+		getOld           func() *corev1.ConfigMap
+		getNew           func() *corev1.ConfigMap
+		errOnCreate      bool
+		errOnUpdate      bool
+		conflictOnUpdate bool
+		expectFn         func(*GomegaWithT, *corev1.ConfigMap, *fake.Clientset, error)
+	}
+	testFn := func(tt *testCase) {
+		t.Log(tt.name)
+
+		recorder := record.NewFakeRecorder(10)
+		tc := newTidbCluster()
+		fakeClient := &fake.Clientset{}
+		indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+		oldCm := tt.getOld()
+		if oldCm != nil {
+			err := indexer.Add(oldCm)
+			g.Expect(err).To(Succeed())
+			_, err = fakeClient.CoreV1().ConfigMaps("default").Create(oldCm)
+			g.Expect(err).To(Succeed())
+			fakeClient.ClearActions()
+		}
+
+		cmLister := corelisters.NewConfigMapLister(indexer)
+		control := NewRealConfigMapControl(fakeClient, cmLister, recorder)
+		newCm := tt.getNew()
+		if tt.errOnCreate {
+			fakeClient.AddReactor("create", "configmaps", func(action core.Action) (bool, runtime.Object, error) {
+				return true, nil, fmt.Errorf("API server down")
+			})
+		}
+		if tt.errOnUpdate {
+			fakeClient.AddReactor("update", "configmaps", func(action core.Action) (bool, runtime.Object, error) {
+				return true, nil, fmt.Errorf("API server down")
+			})
+		}
+		if tt.conflictOnUpdate {
+			fakeClient.AddReactor("update", "configmaps", func(action core.Action) (bool, runtime.Object, error) {
+				return true, nil, apierrors.NewConflict(action.GetResource().GroupResource(), newCm.Name, errors.New("conflict"))
+			})
+		}
+		fakeClient.AddReactor("create", "configmaps", func(action core.Action) (bool, runtime.Object, error) {
+			if oldCm != nil {
+				return true, nil, apierrors.NewAlreadyExists(action.GetResource().GroupResource(), oldCm.Name)
+			}
+			create := action.(core.CreateAction)
+			return true, create.GetObject(), nil
+		})
+		applied, err := control.ApplyConfigMap(tc, newCm)
+
+		tt.expectFn(g, applied, fakeClient, err)
+	}
+	cases := []*testCase{
+		{
+			name:        "apply on absent",
+			getOld:      func() *corev1.ConfigMap { return nil },
+			getNew:      func() *corev1.ConfigMap { return newConfigMap() },
+			errOnCreate: false,
+			errOnUpdate: false,
+			expectFn: func(g *GomegaWithT, cm *corev1.ConfigMap, fakeCli *fake.Clientset, err error) {
+				g.Expect(err).To(Succeed())
+				g.Expect(fakeCli.Actions()[0].GetVerb()).To(Equal("create"))
+			},
+		},
+		{
+			name: "apply on existing",
+			getOld: func() *corev1.ConfigMap {
+				cm := newConfigMap()
+				cm.Data["file"] = "test"
+				return cm
+			},
+			getNew: func() *corev1.ConfigMap {
+				cm := newConfigMap()
+				cm.Data["file"] = "test2"
+				return cm
+			},
+			errOnCreate: false,
+			errOnUpdate: false,
+			expectFn: func(g *GomegaWithT, cm *corev1.ConfigMap, fakeCli *fake.Clientset, err error) {
+				g.Expect(err).To(Succeed())
+				g.Expect(fakeCli.Actions()[0].GetVerb()).To(Equal("create"))
+				g.Expect(fakeCli.Actions()[1].GetVerb()).To(Equal("update"))
+			},
+		},
+		{
+			name: "apply on existing no change",
+			getOld: func() *corev1.ConfigMap {
+				cm := newConfigMap()
+				cm.Data["file"] = "test"
+				return cm
+			},
+			getNew: func() *corev1.ConfigMap {
+				cm := newConfigMap()
+				cm.Data["file"] = "test"
+				return cm
+			},
+			errOnCreate: false,
+			errOnUpdate: false,
+			expectFn: func(g *GomegaWithT, cm *corev1.ConfigMap, fakeCli *fake.Clientset, err error) {
+				g.Expect(err).To(Succeed())
+				g.Expect(fakeCli.Actions()[0].GetVerb()).To(Equal("create"))
+				g.Expect(fakeCli.Actions()).To(HaveLen(1))
+			},
+		},
+		{
+			name: "apply on existing conflict",
+			getOld: func() *corev1.ConfigMap {
+				cm := newConfigMap()
+				cm.Data["file"] = "test"
+				return cm
+			},
+			getNew: func() *corev1.ConfigMap {
+				cm := newConfigMap()
+				cm.Data["file"] = "test1"
+				return cm
+			},
+			errOnCreate:      false,
+			errOnUpdate:      false,
+			conflictOnUpdate: true,
+			expectFn: func(g *GomegaWithT, cm *corev1.ConfigMap, fakeCli *fake.Clientset, err error) {
+				g.Expect(err).To(WithTransform(IsRequeueError, BeTrue()))
+				g.Expect(fakeCli.Actions()[0].GetVerb()).To(Equal("create"))
+				g.Expect(fakeCli.Actions()[1].GetVerb()).To(Equal("update"))
+			},
+		},
+		{
+			name: "update error during apply",
+			getOld: func() *corev1.ConfigMap {
+				cm := newConfigMap()
+				cm.Data["file"] = "test"
+				return cm
+			},
+			getNew: func() *corev1.ConfigMap {
+				cm := newConfigMap()
+				cm.Data["file"] = "test1"
+				return cm
+			},
+			errOnCreate: false,
+			errOnUpdate: true,
+			expectFn: func(g *GomegaWithT, cm *corev1.ConfigMap, fakeCli *fake.Clientset, err error) {
+				g.Expect(err).To(WithTransform(IsRequeueError, BeTrue()))
+				g.Expect(fakeCli.Actions()[0].GetVerb()).To(Equal("create"))
+				g.Expect(fakeCli.Actions()[1].GetVerb()).To(Equal("update"))
+			},
+		},
+		{
+			name:   "create error during apply",
+			getOld: func() *corev1.ConfigMap { return nil },
+			getNew: func() *corev1.ConfigMap {
+				cm := newConfigMap()
+				cm.Data["file"] = "test1"
+				return cm
+			},
+			errOnCreate: true,
+			errOnUpdate: false,
+			expectFn: func(g *GomegaWithT, cm *corev1.ConfigMap, fakeCli *fake.Clientset, err error) {
+				g.Expect(err).To(WithTransform(IsRequeueError, BeTrue()))
+				g.Expect(fakeCli.Actions()[0].GetVerb()).To(Equal("create"))
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		testFn(tt)
+	}
+}
+
 func TestConfigMapControlCreatesConfigMaps(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
@@ -40,7 +213,7 @@ func TestConfigMapControlCreatesConfigMaps(t *testing.T) {
 		create := action.(core.CreateAction)
 		return true, create.GetObject(), nil
 	})
-	err := control.CreateConfigMap(tc, cm)
+	_, err := control.CreateConfigMap(tc, cm)
 	g.Expect(err).To(Succeed())
 
 	events := collectEvents(recorder.Events)
@@ -58,7 +231,7 @@ func TestConfigMapControlCreatesConfigMapFailed(t *testing.T) {
 	fakeClient.AddReactor("create", "configmaps", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})
-	err := control.CreateConfigMap(tc, cm)
+	_, err := control.CreateConfigMap(tc, cm)
 	g.Expect(err).To(HaveOccurred())
 
 	events := collectEvents(recorder.Events)
@@ -157,7 +330,8 @@ func TestConfigMapControlDeleteConfigMapFailed(t *testing.T) {
 func newConfigMap() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "test",
+			Name:      "test",
+			Namespace: "default",
 		},
 		Data: map[string]string{},
 	}

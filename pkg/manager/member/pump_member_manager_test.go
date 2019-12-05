@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -401,7 +402,9 @@ func TestSyncConfigUpdate(t *testing.T) {
 				g.Expect(r.listCm).To(Succeed())
 				g.Expect(r.cms).To(HaveLen(2))
 				g.Expect(r.getSet).To(Succeed())
-				using := FindPumpConfig("test", r.set.Spec.Template.Spec.Volumes)
+				using := FindConfigMapVolume(&r.set.Spec.Template.Spec, func(name string) bool {
+					return strings.HasPrefix(name, controller.PumpMemberName("test"))
+				})
 				g.Expect(using).NotTo(BeEmpty())
 				var usingCm *corev1.ConfigMap
 				for _, cm := range r.cms {

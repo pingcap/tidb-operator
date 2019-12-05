@@ -18,6 +18,7 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/onsi/ginkgo"
@@ -398,7 +399,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectEqual(pumpSet.Status.CurrentRevision, oldRev, "Expected no rolling-update when adopting pump statefulset")
 			framework.ExpectEqual(pumpSet.Status.UpdateRevision, oldRev, "Expected no rolling-update when adopting pump statefulset")
 
-			usingName := member.FindPumpConfig(tc.Name, pumpSet.Spec.Template.Spec.Volumes)
+			usingName := member.FindConfigMapVolume(&pumpSet.Spec.Template.Spec, func(name string) bool {
+				return strings.HasPrefix(name, controller.PumpMemberName(tc.Name))
+			})
 			if usingName == "" {
 				e2elog.Fail("cannot find configmap that used by pump statefulset")
 			}
@@ -432,6 +435,57 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		framework.ExpectNoError(err)
 		// TODO: Add pump configmap rolling-update case
+	})
+
+	ginkgo.It("Migrate from helm to CRD", func() {
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", "")
+		cluster.Resources["pd.replicas"] = "1"
+		cluster.Resources["tikv.replicas"] = "1"
+		cluster.Resources["tidb.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&cluster)
+		oa.CheckTidbClusterStatusOrDie(&cluster)
+
+		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get tidbcluster")
+
+		// TODO: modify other cases to manage TiDB configmap in CRD by default
+		ginkgo.By("Test managing TiDB configmap in TidbCluster CRD")
+		tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
+		tc.Spec.TiDB.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
+
+		_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+		framework.ExpectNoError(err, "Expected update tidbcluster")
+
+		tidbSetName := controller.TiDBMemberName(tc.Name)
+		oldTiDBSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(tidbSetName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get TiDB statefulset")
+
+		oldRev := oldTiDBSet.Status.CurrentRevision
+		framework.ExpectEqual(oldTiDBSet.Status.UpdateRevision, oldRev, "Expected tidb is not upgrading")
+		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+			tidbSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(tidbSetName, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			usingName := member.FindConfigMapVolume(&tidbSet.Spec.Template.Spec, func(name string) bool {
+				return strings.HasPrefix(name, controller.TiDBMemberName(tc.Name))
+			})
+			if usingName == "" {
+				e2elog.Fail("cannot find configmap that used by TiDB statefulset")
+			}
+			tidbCm, err := c.CoreV1().ConfigMaps(tc.Namespace).Get(usingName, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			if !metav1.IsControlledBy(tidbCm, tc) {
+				e2elog.Logf("expect tidb configmap adopted by tidbcluster, still waiting...")
+				return false, nil
+			}
+			framework.ExpectEqual(tidbSet.Status.CurrentRevision, oldRev, "Expected no rolling-update when manage config in-place")
+			framework.ExpectEqual(tidbSet.Status.UpdateRevision, oldRev, "Expected no rolling-update when manage config in-place")
+			return true, nil
+		})
+		framework.ExpectNoError(err)
 	})
 })
 

@@ -1095,6 +1095,8 @@ spec:
                           type: boolean
                       type: object
                   type: object
+                configUpdateStrategy:
+                  type: string
                 enableTLSClient:
                   type: boolean
                 maxFailoverCount:
