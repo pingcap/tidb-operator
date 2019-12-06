@@ -438,7 +438,7 @@ mysqlClient:
 # You may need to modify this when you want to use a customized one or image
 # from your local registry.
 busybox:
-  image: busybox:1.26.2
+  image: busybox:1.31.1
   imagePullPolicy: IfNotPresent
 
 monitor:
