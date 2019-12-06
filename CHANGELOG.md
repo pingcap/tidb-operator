@@ -15,7 +15,7 @@ There is no action required if you are upgrading from [v1.0.4](#tidb-operator-v1
 ### Compatibility
 
 - Fix `tidb-scheduler` RBAC permission in Kubernetes v1.16 ([#1282](https://github.com/pingcap/tidb-operator/pull/1282))
-- Don't set `DNSPolicy` if `hostNetwork` is not enabled to keep backward compatibility ([#1287](https://github.com/pingcap/tidb-operator/pull/1287))
+- Do not set `DNSPolicy` if `hostNetwork` is disabled to keep backward compatibility ([#1287](https://github.com/pingcap/tidb-operator/pull/1287))
 
 ### E2E
 
