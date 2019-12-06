@@ -66,7 +66,7 @@ function hack::ensure_kubectl() {
     echo "Installing kubectl v$KUBECTL_VERSION..."
     tmpfile=$(mktemp)
     trap "test -f $tmpfile && rm $tmpfile" RETURN
-    curl -Lo $tmpfile https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/${OS}/${ARCH}/kubectl
+    curl --retry 10 -L -o $tmpfile https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/${OS}/${ARCH}/kubectl
     mv $tmpfile $KUBECTL_BIN
     chmod +x $KUBECTL_BIN
 }
@@ -85,7 +85,7 @@ function hack::ensure_helm() {
         return 0
     fi
     local HELM_URL=http://storage.googleapis.com/kubernetes-helm/helm-v${HELM_VERSION}-${OS}-${ARCH}.tar.gz
-    curl -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
+    curl --retry 10 -L -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
 }
 
 function hack::verify_kind() {
@@ -103,7 +103,7 @@ function hack::ensure_kind() {
     echo "Installing kind v$KIND_VERSION..."
     tmpfile=$(mktemp)
     trap "test -f $tmpfile && rm $tmpfile" RETURN
-    curl -Lo $tmpfile https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-$(uname)-amd64
+    curl --retry 10 -L -o $tmpfile https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-$(uname)-amd64
     mv $tmpfile $KIND_BIN
     chmod +x $KIND_BIN
 }
