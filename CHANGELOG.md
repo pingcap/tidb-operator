@@ -10,7 +10,7 @@ There is no action required if you are upgrading from [v1.0.4](#tidb-operator-v1
 
 ### TiDB Binlog
 
-- It is recommended that TiDB and Pump be deployed on the same Node through the `affinity` feature, and Pump is dispersed on different Nodes through the `anti-affinity` feature. At most, only one Pump instance is required on each Node. We added a guide in the chart. ([#1251](https://github.com/pingcap/tidb-operator/pull/1251))
+- It is recommended that TiDB and Pump be deployed on the same node through the `affinity` feature and Pump be dispersed on different nodes through the `anti-affinity` feature. At most only one Pump instance is allowed on each node. We added a guide to the chart. ([#1251](https://github.com/pingcap/tidb-operator/pull/1251))
 
 ### Compatibility
 
