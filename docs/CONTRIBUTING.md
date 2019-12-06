@@ -110,11 +110,7 @@ $ make test
 
 #### Run e2e tests
 
-First you should build a local Kubernetes environment for e2e tests, so we provide the following two ways to build Kubernetes cluster: dind and kind. Both of them are available, but we recommend using kind, because it is easier to use and more stable
-
-* Use dind to build Kubernetes cluster
-
-    Follow [this guide](./local-dind-tutorial.md) to spin up a local DinD Kubernetes cluster.
+First you should build a local Kubernetes environment for e2e tests.
 
 * Use kind to build Kubernetes cluster
 
