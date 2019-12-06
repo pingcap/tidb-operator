@@ -19,6 +19,31 @@ spec:
         app.kubernetes.io/component: tidb-initializer
     spec:
       restartPolicy: OnFailure
+      initContainers:
+      # Before proceeding to initialize TiDB, we wait for the TiDB host:port is
+      # open. This avoids unnecessary pod restarts which may result in a very long
+      # restart delay (10s, 20s, .., 5 mins).
+      # https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
+      - name: wait
+        image: {{ .Values.busybox.image }}
+        imagePullPolicy: {{ .Values.busybox.imagePullPolicy | default "IfNotPresent" }}
+        command:
+        - sh
+        - -c
+        - |
+          trap exit TERM
+          host={{ template "cluster.name" . }}-tidb
+          port=4000
+          while true; do
+            nc -zv -w 3 $host $port
+            if [ $? -eq 0 ]; then
+              break
+            else
+              echo "info: failed to connect to $host:$port, sleep 1 second then retry"
+              sleep 1
+            fi
+          done
+          echo "info: successfully connected to $host:$port, able to initialize TiDB now"
       containers:
       - name: mysql-client
         image: {{ .Values.mysqlClient.image }}
