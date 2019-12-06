@@ -37,6 +37,7 @@ type ComponentAccessor interface {
 	Tolerations() []corev1.Toleration
 	PodSecurityContext() *corev1.PodSecurityContext
 	SchedulerName() string
+	DnsPolicy() corev1.DNSPolicy
 }
 
 type componentAccessorImpl struct {
@@ -133,6 +134,14 @@ func (a *componentAccessorImpl) Tolerations() []corev1.Toleration {
 		tols = a.ClusterSpec.Tolerations
 	}
 	return tols
+}
+
+func (a *componentAccessorImpl) DnsPolicy() corev1.DNSPolicy {
+	dnsPolicy := corev1.DNSClusterFirst // same as kubernetes default
+	if a.HostNetwork() {
+		dnsPolicy = corev1.DNSClusterFirstWithHostNet
+	}
+	return dnsPolicy
 }
 
 // BaseTiDBSpec returns the base spec of TiDB servers

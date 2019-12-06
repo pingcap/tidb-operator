@@ -20,7 +20,7 @@ spec:
     spec:
       restartPolicy: OnFailure
       initContainers:
-      # Before procedding to initialize TiDB, we wait for the TiDB host:port is
+      # Before proceeding to initialize TiDB, we wait for the TiDB host:port is
       # open. This avoids unnecessary pod restarts which may result in a very long
       # restart delay (10s, 20s, .., 5 mins).
       # https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
