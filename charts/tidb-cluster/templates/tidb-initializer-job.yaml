@@ -19,6 +19,26 @@ spec:
         app.kubernetes.io/component: tidb-initializer
     spec:
       restartPolicy: OnFailure
+      initContainers:
+      - name: wait
+        image: {{ .Values.busybox.image }}
+        imagePullPolicy: {{ .Values.busybox.imagePullPolicy | default "IfNotPresent" }}
+        command:
+        - sh
+        - -c
+        - |
+          trap exit TERM
+          host={{ template "cluster.name" . }}-tidb
+          port=4000
+          while true; do
+            nc -zv -w 3 $host $port
+            if [ $? -eq 0 ]; then
+              break
+            else
+              echo "info: failed to connect to $host:$port, sleep 1 second then retry"
+              sleep 1
+            fi
+          done
       containers:
       - name: mysql-client
         image: {{ .Values.mysqlClient.image }}
