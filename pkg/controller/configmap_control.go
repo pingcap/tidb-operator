@@ -120,18 +120,6 @@ func (cc *realConfigMapControl) recordConfigMapEvent(verb string, owner runtime.
 	}
 }
 
-// mergeConfigMap merge the desired configmap to current one
-func mergeConfigMap(current runtime.Object, desired runtime.Object) error {
-	cmC := current.(*corev1.ConfigMap)
-	cmD := desired.(*corev1.ConfigMap)
-	cmC.Data = cmD.Data
-	cmC.Labels = cmD.Labels
-	for k, v := range cmD.Annotations {
-		cmC.Annotations[k] = v
-	}
-	return nil
-}
-
 var _ ConfigMapControlInterface = &realConfigMapControl{}
 
 // NewFakeConfigMapControl returns a FakeConfigMapControl
