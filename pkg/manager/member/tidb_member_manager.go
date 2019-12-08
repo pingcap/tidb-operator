@@ -719,9 +719,22 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 	})
 
-	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
+	podSpec := corev1.PodSpec{
+		SchedulerName:     tc.BaseTiDBSpec().SchedulerName(),
+		Affinity:          tc.BaseTiDBSpec().Affinity(),
+		NodeSelector:      tc.BaseTiDBSpec().NodeSelector(),
+		HostNetwork:       tc.BaseTiDBSpec().HostNetwork(),
+		Containers:        containers,
+		RestartPolicy:     corev1.RestartPolicyAlways,
+		Tolerations:       tc.BaseTiDBSpec().Tolerations(),
+		Volumes:           vols,
+		SecurityContext:   podSecurityContext,
+		PriorityClassName: tc.BaseTiDBSpec().PriorityClassName(),
+		InitContainers:    initContainers,
+	}
+
 	if tc.BaseTiDBSpec().HostNetwork() {
-		dnsPolicy = corev1.DNSClusterFirstWithHostNet
+		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 	}
 
 	tidbLabel := label.New().Instance(instanceName).TiDB()
@@ -741,20 +754,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 					Labels:      tidbLabel.Labels(),
 					Annotations: podAnnotations,
 				},
-				Spec: corev1.PodSpec{
-					SchedulerName:     tc.BaseTiDBSpec().SchedulerName(),
-					Affinity:          tc.BaseTiDBSpec().Affinity(),
-					NodeSelector:      tc.BaseTiDBSpec().NodeSelector(),
-					HostNetwork:       tc.BaseTiDBSpec().HostNetwork(),
-					DNSPolicy:         dnsPolicy,
-					Containers:        containers,
-					RestartPolicy:     corev1.RestartPolicyAlways,
-					Tolerations:       tc.BaseTiDBSpec().Tolerations(),
-					Volumes:           vols,
-					SecurityContext:   podSecurityContext,
-					PriorityClassName: tc.BaseTiDBSpec().PriorityClassName(),
-					InitContainers:    initContainers,
-				},
+				Spec: podSpec,
 			},
 			ServiceName:         controller.TiDBPeerMemberName(tcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
