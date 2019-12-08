@@ -1490,7 +1490,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 			},
-			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+			testSts: testHostNetwork(t, false, ""),
 		},
 		{
 			name: "tikv network is host",
@@ -1524,7 +1524,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 					},
 				},
 			},
-			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+			testSts: testHostNetwork(t, false, ""),
 		},
 		{
 			name: "tikv network is not host when tidb is host",
@@ -1541,7 +1541,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 					},
 				},
 			},
-			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+			testSts: testHostNetwork(t, false, ""),
 		},
 		// TODO add more tests
 	}
