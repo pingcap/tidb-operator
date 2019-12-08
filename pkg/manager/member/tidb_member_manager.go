@@ -44,7 +44,7 @@ type tidbMemberManager struct {
 	setControl                   controller.StatefulSetControlInterface
 	svcControl                   controller.ServiceControlInterface
 	tidbControl                  controller.TiDBControlInterface
-	cmControl                    controller.ConfigMapControlInterface
+	typedControl                 controller.TypedControlInterface
 	certControl                  controller.CertControlInterface
 	setLister                    v1.StatefulSetLister
 	svcLister                    corelisters.ServiceLister
@@ -61,7 +61,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	tidbControl controller.TiDBControlInterface,
 	certControl controller.CertControlInterface,
-	cmControl controller.ConfigMapControlInterface,
+	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
@@ -73,7 +73,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 		setControl:                   setControl,
 		svcControl:                   svcControl,
 		tidbControl:                  tidbControl,
-		cmControl:                    cmControl,
+		typedControl:                 typedControl,
 		certControl:                  certControl,
 		setLister:                    setLister,
 		svcLister:                    svcLister,
@@ -389,7 +389,7 @@ func (tmm *tidbMemberManager) syncTiDBConfigMap(tc *v1alpha1.TidbCluster, set *a
 		}
 	}
 
-	return tmm.cmControl.ApplyConfigMap(tc, newCm)
+	return tmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
 func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {

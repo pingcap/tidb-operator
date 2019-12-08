@@ -40,6 +40,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	glog "k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Controller controls tidbclusters.
@@ -67,6 +68,7 @@ type Controller struct {
 func NewController(
 	kubeCli kubernetes.Interface,
 	cli versioned.Interface,
+	genericCli client.Client,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	autoFailover bool,
@@ -102,7 +104,7 @@ func NewController(
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
 	secControl := controller.NewRealSecretControl(kubeCli, secretInformer.Lister())
 	certControl := controller.NewRealCertControl(kubeCli, csrInformer.Lister(), secControl)
-	cmControl := controller.NewRealConfigMapControl(kubeCli, cmInformer.Lister(), recorder)
+	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
 	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister())
@@ -152,7 +154,7 @@ func NewController(
 				svcControl,
 				tidbControl,
 				certControl,
-				cmControl,
+				typedControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
@@ -191,7 +193,7 @@ func NewController(
 			mm.NewPumpMemberManager(
 				setControl,
 				svcControl,
-				cmControl,
+				typedControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				cmInformer.Lister(),

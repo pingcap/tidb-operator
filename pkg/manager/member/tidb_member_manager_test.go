@@ -746,7 +746,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
 	secControl := controller.NewFakeSecretControl(kubeCli, secretInformer.Lister())
 	certControl := controller.NewFakeCertControl(kubeCli, csrInformer.Lister(), secControl)
-	cmControl := controller.NewFakeConfigMapControl(cmInformer)
+	genericControl := controller.NewFakeGenericControl()
 	tidbUpgrader := NewFakeTiDBUpgrader()
 	tidbFailover := NewFakeTiDBFailover()
 	tidbControl := controller.NewFakeTiDBControl()
@@ -755,7 +755,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		setControl,
 		svcControl,
 		tidbControl,
-		cmControl,
+		controller.NewTypedControl(genericControl),
 		certControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),

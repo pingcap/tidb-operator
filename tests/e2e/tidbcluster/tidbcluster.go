@@ -437,7 +437,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		// TODO: Add pump configmap rolling-update case
 	})
 
-	ginkgo.It("Migrate from helm to CRD", func() {
+	ginkgo.It("API: Migrate from helm to CRD", func() {
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", "")
 		cluster.Resources["pd.replicas"] = "1"
 		cluster.Resources["tikv.replicas"] = "1"

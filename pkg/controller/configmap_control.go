@@ -28,13 +28,11 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ConfigMapControlInterface manages configmaps used by TiDB clusters
 type ConfigMapControlInterface interface {
-	// ApplyConfigMap create the ConfigMap or perform a merge patch if the ConfigMap already exists,
-	// a requeue error will be returned if there's any conflicts on write
-	ApplyConfigMap(runtime.Object, *corev1.ConfigMap) (*corev1.ConfigMap, error)
 	// CreateConfigMap create the given ConfigMap
 	CreateConfigMap(runtime.Object, *corev1.ConfigMap) (*corev1.ConfigMap, error)
 	// UpdateConfigMap continuously tries to update ConfigMap to the given state
@@ -44,6 +42,7 @@ type ConfigMapControlInterface interface {
 }
 
 type realConfigMapControl struct {
+	client   client.Client
 	kubeCli  kubernetes.Interface
 	cmLister corelisters.ConfigMapLister
 	recorder record.EventRecorder
@@ -60,29 +59,6 @@ func NewRealConfigMapControl(
 		cmLister: cmLister,
 		recorder: recorder,
 	}
-}
-
-func (cc *realConfigMapControl) ApplyConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-
-	applied, err := ApplyHelper(cm, &Applier{
-		Merge: mergeConfigMap,
-		Get: func(ns, name string) (object runtime.Object, e error) {
-			return cc.cmLister.ConfigMaps(ns).Get(name)
-		},
-		Create: func(obj runtime.Object) (runtime.Object, error) {
-			return cc.CreateConfigMap(owner, obj.(*corev1.ConfigMap))
-		},
-		Update: func(obj runtime.Object) (runtime.Object, error) {
-			// the state we accord to made the update decision may have been changed, so we do not retry on
-			// update conflicts and wait for next round of reconcile
-			cm := obj.(*corev1.ConfigMap)
-			return cc.kubeCli.CoreV1().ConfigMaps(cm.GetNamespace()).Update(cm)
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	return applied.(*corev1.ConfigMap), nil
 }
 
 func (cc *realConfigMapControl) CreateConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
@@ -202,21 +178,6 @@ func (cc *FakeConfigMapControl) CreateConfigMap(_ runtime.Object, cm *corev1.Con
 	}
 
 	err := cc.CmIndexer.Add(cm)
-	if err != nil {
-		return nil, err
-	}
-	return cm, nil
-}
-
-func (cc *FakeConfigMapControl) ApplyConfigMap(_ runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	_, exists, err := cc.CmIndexer.Get(cm)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return cc.UpdateConfigMap(nil, cm)
-	}
-	_, err = cc.CreateConfigMap(nil, cm)
 	if err != nil {
 		return nil, err
 	}

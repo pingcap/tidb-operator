@@ -36,26 +36,26 @@ const (
 )
 
 type pumpMemberManager struct {
-	setControl controller.StatefulSetControlInterface
-	svcControl controller.ServiceControlInterface
-	cmControl  controller.ConfigMapControlInterface
-	setLister  v1.StatefulSetLister
-	svcLister  corelisters.ServiceLister
-	cmLister   corelisters.ConfigMapLister
+	setControl   controller.StatefulSetControlInterface
+	svcControl   controller.ServiceControlInterface
+	typedControl controller.TypedControlInterface
+	setLister    v1.StatefulSetLister
+	svcLister    corelisters.ServiceLister
+	cmLister     corelisters.ConfigMapLister
 }
 
 // NewPumpMemberManager returns a controller to reconcile pump clusters
 func NewPumpMemberManager(
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
-	cmControl controller.ConfigMapControlInterface,
+	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	cmLister corelisters.ConfigMapLister) manager.Manager {
 	return &pumpMemberManager{
 		setControl,
 		svcControl,
-		cmControl,
+		typedControl,
 		setLister,
 		svcLister,
 		cmLister,
@@ -179,11 +179,7 @@ func (pmm *pumpMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *appsv
 		}
 	}
 
-	applied, err := pmm.cmControl.ApplyConfigMap(tc, newCm)
-	if err != nil {
-		return nil, err
-	}
-	return applied, nil
+	return pmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
 func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {

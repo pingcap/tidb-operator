@@ -32,7 +32,6 @@ require (
 	github.com/golang/groupcache v0.0.0-20181024230925-c65c006176ff // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-cmp v0.3.1
-	github.com/googleapis/gnostic v0.2.0 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.1-0.20190118093823-f849b5445de4 // indirect
@@ -68,8 +67,7 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	golang.org/x/mod v0.0.0-20190513183733-4bf6d317e70e
-	golang.org/x/sync v0.0.0-20190423024810-112230192c58
-	gopkg.in/inf.v0 v0.9.1 // indirect
+	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/yaml.v2 v2.2.4
 	k8s.io/api v0.0.0
@@ -88,6 +86,7 @@ require (
 	k8s.io/utils v0.0.0-20190801114015-581e00157fb1
 	sigs.k8s.io/apiserver-builder-alpha v0.0.0-20191113095113-4493943d2568
 	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191113095113-4493943d2568
+	sigs.k8s.io/controller-runtime v0.4.0
 )
 
 replace github.com/renstrom/dedent => github.com/lithammer/dedent v1.1.0

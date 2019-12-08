@@ -20,8 +20,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -341,102 +339,16 @@ func (rt *RequestTracker) GetError() error {
 	return rt.err
 }
 
-// MergeFn knows how to merge a desired object into the current object
-type MergeFn func(current, desired runtime.Object) error
+// MergeConfigMap is a MergeFn for generic configmap.
+// parameter types are set to runtime.Object to match the signature of MergeFn
+func MergeConfigMap(existing, desired runtime.Object) error {
+	existingCm := existing.(*corev1.ConfigMap)
+	desiredCm := desired.(*corev1.ConfigMap)
 
-// GetFn knows how to get the current object
-type GetFn func(ns, name string) (runtime.Object, error)
-
-// CreateFn knows how to create the object
-type CreateFn func(obj runtime.Object) (runtime.Object, error)
-
-// UpdateFn knows how to update the object
-type UpdateFn func(obj runtime.Object) (runtime.Object, error)
-
-type Applier struct {
-	Merge  MergeFn
-	Get    GetFn
-	Create CreateFn
-	Update UpdateFn
-}
-
-// ApplyHelper is a template method for applying the desired spec of object to apiserver
-func ApplyHelper(desired runtime.Object, c *Applier) (runtime.Object, error) {
-
-	meta, ok := desired.(metav1.Object)
-	if !ok {
-		return nil, fmt.Errorf("given object is not a metav1.Object")
-	}
-	kind := desired.GetObjectKind().GroupVersionKind().Kind
-	ns := meta.GetNamespace()
-	name := meta.GetName()
-
-	// 1. try to create and see if there is any conflicts
-	created, err := c.Create(desired)
-	if errors.IsAlreadyExists(err) {
-
-		// 2. if there is an existing one, get it and patch on it
-		currentTemp, err := c.Get(ns, name)
-		if err != nil {
-			return nil, RequeueErrorf("error getting %s %s/%s during apply: %v", kind, ns, name, err)
-		}
-		current := currentTemp.DeepCopyObject()
-		// 3. if caller wants to become the controller of the object, try adopting
-		controller := metav1.GetControllerOf(meta)
-		currentMeta, ok := current.(metav1.Object)
-		if !ok {
-			// it is a bug of the caller to return a runtime.Object which is no a metav1.Object in 'Get' call
-			return nil, fmt.Errorf("the existing object is not a metav1.Object")
-		}
-		if controller != nil {
-			err := TryAdoptObject(kind, currentMeta, *controller)
-			if err != nil {
-				return nil, err
-			}
-		}
-		// 4. merge other changes in the desired object to current one
-		err = c.Merge(current, desired)
-		if err != nil {
-			return nil, err
-		}
-		// 5. check if current one is mutated after merge to determine whether should we call update
-		if !apiequality.Semantic.DeepEqual(currentTemp, current) {
-			updated, err := c.Update(current)
-			if err != nil {
-				return nil, RequeueErrorf("error updating %s %s/%s during apply: %v", kind, ns, name, err)
-			}
-			return updated, nil
-		}
-
-		// no changes to apply, return current one
-		return current, nil
-	}
-
-	// object do not exist, check the creation result
-	if err != nil {
-		return nil, RequeueErrorf("error creating %s %s/%s during apply: %v", kind, ns, name, err)
-	}
-	return created, nil
-}
-
-// TryAdoptObject tries to adopt the object in stand of a controller
-func TryAdoptObject(kind string, obj metav1.Object, controller metav1.OwnerReference) error {
-	oldController := metav1.GetControllerOf(obj)
-
-	// object has no controller, adopt it (non-controller owners are trivial)
-	if oldController == nil {
-		ownerRefs := obj.GetOwnerReferences()
-		if ownerRefs == nil {
-			ownerRefs = []metav1.OwnerReference{}
-		}
-		ownerRefs = append(ownerRefs, controller)
-		obj.SetOwnerReferences(ownerRefs)
-		return nil
-	}
-
-	if oldController.UID != controller.UID {
-		// object is actively controlled by other controllers, this is an exception we are unable to handle here
-		return fmt.Errorf("error adopt %s/%s, object has is controlled by other controllers", kind, obj.GetName())
+	existingCm.Data = desiredCm.Data
+	existingCm.Labels = desiredCm.Labels
+	for k, v := range desiredCm.Annotations {
+		existingCm.Annotations[k] = v
 	}
 	return nil
 }
