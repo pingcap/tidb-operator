@@ -469,7 +469,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	// create cert and secret for webhook
-	cmd = fmt.Sprintf("%s/e2e/patch-ns.sh -n %s", oa.manifestPath(info.Tag), info.Namespace)
+	cmd = fmt.Sprintf("%s/patch-ns.sh -n %s", oa.manifestPath(info.Tag), info.Namespace)
 	glog.Info(cmd)
 
 	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -482,7 +482,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/
 	s#imagePullPolicy:.*#imagePullPolicy: IfNotPresent#g
 	s#image:.*#image: %s#g
-	' %s/e2e/webhook.yaml | kubectl apply -f -
+	' %s/webhook.yaml | kubectl apply -f -
 	`, info.Image, oa.manifestPath(info.Tag))
 	glog.Info(cmd)
 
