@@ -55,6 +55,7 @@ var (
 	renewDuration      = 5 * time.Second
 	retryPeriod        = 3 * time.Second
 	waitDuration       = 5 * time.Second
+	webhookEnabled     bool
 )
 
 func init() {
@@ -71,6 +72,7 @@ func init() {
 	flag.DurationVar(&controller.ResyncDuration, "resync-duration", time.Duration(30*time.Second), "Resync time of informer")
 	flag.BoolVar(&controller.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
 	flag.StringVar(&controller.TidbBackupManagerImage, "tidb-backup-manager-image", "pingcap/tidb-backup-manager:latest", "The image of backup manager tool")
+	flag.BoolVar(&webhookEnabled, "webhook-enabled", false, "Whether webhook enabled")
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 
 	flag.Parse()
@@ -150,7 +152,7 @@ func main() {
 		},
 	}
 
-	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
+	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod, webhookEnabled)
 	backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)

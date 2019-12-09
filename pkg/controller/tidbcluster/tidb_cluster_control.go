@@ -43,6 +43,8 @@ func NewDefaultTidbClusterControl(
 	orphanPodsCleaner member.OrphanPodsCleaner,
 	pvcCleaner member.PVCCleanerInterface,
 	pumpMemberManager manager.Manager,
+	restarter member.Restarter,
+	webhookEnabled bool,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		tcControl,
@@ -51,9 +53,11 @@ func NewDefaultTidbClusterControl(
 		tidbMemberManager,
 		reclaimPolicyManager,
 		metaManager,
+		restarter,
 		orphanPodsCleaner,
 		pvcCleaner,
 		pumpMemberManager,
+		webhookEnabled,
 		recorder,
 	}
 }
@@ -65,9 +69,11 @@ type defaultTidbClusterControl struct {
 	tidbMemberManager    manager.Manager
 	reclaimPolicyManager manager.Manager
 	metaManager          manager.Manager
+	restarter            member.Restarter
 	orphanPodsCleaner    member.OrphanPodsCleaner
 	pvcCleaner           member.PVCCleanerInterface
 	pumpMemberManager    manager.Manager
+	webhookEnabled       bool
 	recorder             record.EventRecorder
 }
 
@@ -151,6 +157,13 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	// cleaning the pod scheduling annotation for pd and tikv
 	if _, err := tcc.pvcCleaner.Clean(tc); err != nil {
 		return err
+	}
+
+	if tcc.webhookEnabled {
+		pod, err := tcc.restarter.Pop(tc, v1alpha1.PDMemberType)
+		if err != nil {
+
+		}
 	}
 
 	// syncing the pump cluster

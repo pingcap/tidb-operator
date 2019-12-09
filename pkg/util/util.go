@@ -106,3 +106,7 @@ func IsPodOrdinalNotExceedReplicas(pod *corev1.Pod, specReplicas int32) (bool, e
 func OrdinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%s-%d", memberType, setName, ordinal)
 }
+
+func GetStatefulSetName(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) string {
+	return fmt.Sprintf("%s-%s", tc.Name, memberType.String())
+}
