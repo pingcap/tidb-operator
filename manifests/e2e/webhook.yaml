@@ -1,0 +1,184 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: aggragated-webhook-cr
+  namespace: ${NAMESPACE}
+  labels:
+    app: aggragated-webhook
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch","update"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create","patch","update"]
+  - apiGroups: ["apps"]
+    resources: ["statefulsets"]
+    verbs: ["get","list"]
+  - apiGroups: ["pingcap.com"]
+    resources:  ["tidbclusters"]
+    verbs: ["*"]
+  - apiGroups:
+      - apps.pingcap.com
+    resources:
+      - statefulsets
+    verbs:
+      - '*'
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aggragated-webhook-sa
+  namespace: ${NAMESPACE}
+  labels:
+    app: aggragated-webhook
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: aggragated-webhook-crb
+  namespace: ${NAMESPACE}
+  labels:
+    app: aggragated-webhook
+subjects:
+  - kind: ServiceAccount
+    name: aggragated-webhook-sa
+    namespace: ${NAMESPACE}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: aggragated-webhook-cr
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tidb:system:api-server-auth
+rules:
+  - apiGroups:
+      - "admission.tidb.pingcap.com"
+    resources:
+      - admissionreviews
+    verbs:
+      - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tidb:system:extension-apiserver-authentication-reader
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - kind: ServiceAccount
+    name: aggragated-webhook-sa
+    namespace: ${NAMESPACE}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tidb:system:auth-delegator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: tidb-operator-webhook
+    namespace: ${NAMESPACE}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tidb:system:api-server-auth
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tidb:system:api-server-auth
+subjects:
+  - kind: User
+    name: kube-apiserver
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aggragated-webhook
+  namespace: ${NAMESPACE}
+  labels:
+    app: aggragated-webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aggragated-webhook
+  template:
+    metadata:
+      labels:
+        app: aggragated-webhook
+    spec:
+      serviceAccountName: aggragated-webhook-sa
+      containers:
+        - name: aggragated-webhook
+          image: pingcap/tidb-operator:latest
+          imagePullPolicy: Always
+          command:
+            - /usr/local/bin/tidb-aggragated-webhook
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tidb-aggragated-webhook
+  namespace: ${NAMESPACE}
+  labels:
+    app: aggragated-webhook
+spec:
+  ports:
+    - name: https-webhook # optional
+      port: 443
+  selector:
+    app: aggragated-webhook
+---
+apiVersion: apiregistration.k8s.io/v1beta1
+kind: APIService
+metadata:
+  name: v1alpha1.admission.tidb.pingcap.com
+spec:
+  insecureSkipTLSVerify: true
+  group: admission.tidb.pingcap.com
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  service:
+    name: tidb-aggragated-webhook
+    namespace: ${NAMESPACE}
+  version: v1alpha1
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validation-admission-contorller-cfg
+  labels:
+    app: admission-controller
+webhooks:
+  - name: statefulset-admission-controller.pingcap.net
+    failurePolicy: Fail
+    clientConfig:
+      service:
+        name: kubernetes
+        namespace: default
+        path: "/apis/admission.tidb.pingcap.com/v1alpha1/statefulsetadmissionreviews"
+      caBundle: null
+    rules:
+      - operations: [ "UPDATE" ]
+        apiGroups: [ "apps", "" ]
+        apiVersions: ["v1beta1", "v1"]
+        resources: ["statefulsets"]
+      - operations: [ "UPDATE" ]
+        apiGroups: [ "apps.pingcap.com"]
+        apiVersions: ["v1alpha1"]
+        resources: ["statefulsets"]
+---

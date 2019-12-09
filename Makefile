@@ -52,7 +52,7 @@ discovery:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery cmd/discovery/main.go
 
 aggragated-webhook:
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/aggragated-webhook cmd/aggragated-webhook/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-aggragated-webhook cmd/aggragated-webhook/main.go
 
 apiserver:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-apiserver cmd/apiserver/main.go
