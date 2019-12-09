@@ -254,7 +254,6 @@ func newBackup() *v1alpha1.Backup {
 				User:       constants.DefaultTidbUser,
 				SecretName: "demo1-tidb-secret",
 			},
-			StorageType: v1alpha1.BackupStorageTypeS3,
 			StorageProvider: v1alpha1.StorageProvider{
 				S3: &v1alpha1.S3StorageProvider{
 					Provider:   v1alpha1.S3StorageProviderTypeCeph,

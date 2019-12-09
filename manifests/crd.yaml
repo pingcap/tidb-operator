@@ -1581,6 +1581,10 @@ spec:
                   description: ObjectAcl represents the access control list for new
                     objects
                   type: string
+                path:
+                  description: 'Path is the full path where the backup is saved. The
+                    format of the path must be: "<bucket-name>/<path-to-backup-file>"'
+                  type: string
                 projectId:
                   description: ProjectId represents the project that organizes all
                     your Google Cloud Platform resources
@@ -1610,6 +1614,10 @@ spec:
                 endpoint:
                   description: Endpoint of S3 compatible storage service
                   type: string
+                path:
+                  description: 'Path is the full path where the backup is saved. The
+                    format of the path must be: "<bucket-name>/<path-to-backup-file>"'
+                  type: string
                 provider:
                   description: Provider represents the specific storage provider that
                     implements the S3 interface
@@ -1635,12 +1643,8 @@ spec:
             storageSize:
               description: StorageSize is the request storage size for backup job
               type: string
-            storageType:
-              description: StorageType is the backup storage type.
-              type: string
           required:
           - from
-          - storageType
           - storageClassName
           - storageSize
           type: object
@@ -1692,9 +1696,6 @@ spec:
           description: RestoreSpec contains the specification for a restore of a tidb
             cluster backup.
           properties:
-            backupPath:
-              description: BackupPath is the location of the backup.
-              type: string
             backupType:
               description: Type is the backup type for tidb cluster.
               type: string
@@ -1715,6 +1716,10 @@ spec:
                 objectAcl:
                   description: ObjectAcl represents the access control list for new
                     objects
+                  type: string
+                path:
+                  description: 'Path is the full path where the backup is saved. The
+                    format of the path must be: "<bucket-name>/<path-to-backup-file>"'
                   type: string
                 projectId:
                   description: ProjectId represents the project that organizes all
@@ -1745,6 +1750,10 @@ spec:
                 endpoint:
                   description: Endpoint of S3 compatible storage service
                   type: string
+                path:
+                  description: 'Path is the full path where the backup is saved. The
+                    format of the path must be: "<bucket-name>/<path-to-backup-file>"'
+                  type: string
                 provider:
                   description: Provider represents the specific storage provider that
                     implements the S3 interface
@@ -1769,9 +1778,6 @@ spec:
               type: string
             storageSize:
               description: StorageSize is the request storage size for backup job
-              type: string
-            storageType:
-              description: StorageType is the backup storage type.
               type: string
             to:
               description: TiDBAccessConfig defines the configuration for access tidb
@@ -1798,8 +1804,6 @@ spec:
               type: object
           required:
           - to
-          - backupPath
-          - storageType
           - storageClassName
           - storageSize
           type: object
@@ -1903,6 +1907,10 @@ spec:
                       description: ObjectAcl represents the access control list for
                         new objects
                       type: string
+                    path:
+                      description: 'Path is the full path where the backup is saved.
+                        The format of the path must be: "<bucket-name>/<path-to-backup-file>"'
+                      type: string
                     projectId:
                       description: ProjectId represents the project that organizes
                         all your Google Cloud Platform resources
@@ -1932,6 +1940,10 @@ spec:
                     endpoint:
                       description: Endpoint of S3 compatible storage service
                       type: string
+                    path:
+                      description: 'Path is the full path where the backup is saved.
+                        The format of the path must be: "<bucket-name>/<path-to-backup-file>"'
+                      type: string
                     provider:
                       description: Provider represents the specific storage provider
                         that implements the S3 interface
@@ -1958,12 +1970,8 @@ spec:
                   description: StorageSize is the request storage size for backup
                     job
                   type: string
-                storageType:
-                  description: StorageType is the backup storage type.
-                  type: string
               required:
               - from
-              - storageType
               - storageClassName
               - storageSize
               type: object

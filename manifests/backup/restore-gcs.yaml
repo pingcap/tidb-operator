@@ -13,7 +13,6 @@ spec:
   gcs:
     projectId: <your-project-id>
     secretName: gcs-secret
-  storageType: gcs
+    path: gcs://test1-demo1/backup-2019-11-11T16:06:05Z.tgz
   storageClassName: local-storage
   storageSize: 1Gi
-  backupPath: gcs://test1-demo1/backup-2019-11-11T16:06:05Z.tgz

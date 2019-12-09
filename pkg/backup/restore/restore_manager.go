@@ -130,7 +130,12 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.StorageType, restore.Spec.StorageProvider, rm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.StorageProvider, rm.secretLister)
+	if err != nil {
+		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
+	}
+
+	backupPath, reason, err := backuputil.GetBackupDataPath(restore.Spec.StorageProvider)
 	if err != nil {
 		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
 	}
@@ -143,7 +148,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		fmt.Sprintf("--host=%s", restore.Spec.To.Host),
 		fmt.Sprintf("--port=%d", restore.Spec.To.Port),
 		fmt.Sprintf("--user=%s", restore.Spec.To.User),
-		fmt.Sprintf("--backupPath=%s", restore.Spec.BackupPath),
+		fmt.Sprintf("--backupPath=%s", backupPath),
 	}
 
 	restoreLabel := label.NewBackup().Instance(restore.Spec.To.GetTidbEndpoint()).RestoreJob().Restore(name)

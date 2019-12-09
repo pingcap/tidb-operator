@@ -492,9 +492,10 @@ type BackupStorageType string
 const (
 	// BackupStorageTypeS3 represents all storage that compatible with the Amazon S3.
 	BackupStorageTypeS3 BackupStorageType = "s3"
-
 	// BackupStorageTypeGcs represents the google cloud storage
 	BackupStorageTypeGcs BackupStorageType = "gcs"
+	// BackupStorageTypeUnknown represents the unknown storage type
+	BackupStorageTypeUnknown BackupStorageType = "unknown"
 )
 
 // +k8s:openapi-gen=true
@@ -522,6 +523,9 @@ type S3StorageProvider struct {
 	Provider S3StorageProviderType `json:"provider"`
 	// Region in which the S3 compatible bucket is located.
 	Region string `json:"region,omitempty"`
+	// Path is the full path where the backup is saved.
+	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
+	Path string `json:"path,omitempty"`
 	// Bucket in which to store the backup data.
 	Bucket string `json:"bucket,omitempty"`
 	// Endpoint of S3 compatible storage service
@@ -542,6 +546,9 @@ type GcsStorageProvider struct {
 	ProjectId string `json:"projectId"`
 	// Location in which the gcs bucket is located.
 	Location string `json:"location,omitempty"`
+	// Path is the full path where the backup is saved.
+	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
+	Path string `json:"path,omitempty"`
 	// Bucket in which to store the backup data.
 	Bucket string `json:"bucket,omitempty"`
 	// StorageClass represents the storage class
@@ -586,8 +593,6 @@ type BackupSpec struct {
 	From TiDBAccessConfig `json:"from"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
-	// StorageType is the backup storage type.
-	StorageType BackupStorageType `json:"storageType"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
 	// StorageClassName is the storage class for backup job's PV.
@@ -753,12 +758,8 @@ type RestoreCondition struct {
 type RestoreSpec struct {
 	// To is the tidb cluster that needs to restore.
 	To TiDBAccessConfig `json:"to"`
-	// BackupPath is the location of the backup.
-	BackupPath string `json:"backupPath"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
-	// StorageType is the backup storage type.
-	StorageType BackupStorageType `json:"storageType"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
 	// StorageClassName is the storage class for backup job's PV.

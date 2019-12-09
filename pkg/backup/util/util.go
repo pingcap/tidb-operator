@@ -147,9 +147,10 @@ func GenerateGcsCertEnvVar(gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, s
 }
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
-func GenerateStorageCertEnv(ns string, storageType v1alpha1.BackupStorageType, provider v1alpha1.StorageProvider, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
+func GenerateStorageCertEnv(ns string, provider v1alpha1.StorageProvider, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var reason string
+	storageType := GetStorageType(provider)
 
 	switch storageType {
 	case v1alpha1.BackupStorageTypeS3:
@@ -197,7 +198,7 @@ func GenerateStorageCertEnv(ns string, storageType v1alpha1.BackupStorageType, p
 		}
 	default:
 		err := fmt.Errorf("unsupported storage type %s", storageType)
-		return certEnv, "NotSupportStorageType", err
+		return certEnv, "UnsupportedStorageTye", err
 	}
 	return certEnv, reason, nil
 }
@@ -235,21 +236,49 @@ func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, secretLister corel
 func GetBackupBucketName(backup *v1alpha1.Backup) (string, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
+	storageType := GetStorageType(backup.Spec.StorageProvider)
 	var bucketName string
 
-	switch backup.Spec.StorageType {
+	switch storageType {
 	case v1alpha1.BackupStorageTypeS3:
-		if backup.Spec.S3 == nil {
-			return bucketName, "S3ConfigIsEmpty", fmt.Errorf("backup %s/%s s3 config is empty", ns, name)
-		}
 		bucketName = backup.Spec.S3.Bucket
 	case v1alpha1.BackupStorageTypeGcs:
-		if backup.Spec.Gcs == nil {
-			return bucketName, "GcsConfigIsEmpty", fmt.Errorf("backup %s/%s gcs config is empty", ns, name)
-		}
 		bucketName = backup.Spec.Gcs.Bucket
 	default:
-		return bucketName, "UnsupportedStorageType", fmt.Errorf("backup %s/%s doesn't support storage type %s", ns, name, backup.Spec.StorageType)
+		return bucketName, "UnsupportedStorageType", fmt.Errorf("backup %s/%s unsupported storage type %s", ns, name, storageType)
 	}
 	return bucketName, "", nil
+}
+
+// GetStorageType return the backup storage type according to the specified StorageProvider
+func GetStorageType(provider v1alpha1.StorageProvider) v1alpha1.BackupStorageType {
+	// If there are multiple storages in the StorageProvider, the first one found is returned in the following order
+	if provider.S3 != nil {
+		return v1alpha1.BackupStorageTypeS3
+	}
+	if provider.Gcs != nil {
+		return v1alpha1.BackupStorageTypeGcs
+	}
+	return v1alpha1.BackupStorageTypeUnknown
+}
+
+// GetBackupDataPath return the full path of backup data
+func GetBackupDataPath(provider v1alpha1.StorageProvider) (string, string, error) {
+	storageType := GetStorageType(provider)
+	var backupPath string
+
+	switch storageType {
+	case v1alpha1.BackupStorageTypeS3:
+		backupPath = provider.S3.Path
+	case v1alpha1.BackupStorageTypeGcs:
+		backupPath = provider.Gcs.Path
+	default:
+		return backupPath, "UnsupportedStorageType", fmt.Errorf("unsupported storage type %s", storageType)
+	}
+	protocolPrefix := fmt.Sprintf("%s://", string(storageType))
+	if strings.HasPrefix(backupPath, protocolPrefix) {
+		// if the full path of backup data start with "<storageType>://", return directly.
+		return backupPath, "", nil
+	}
+	return fmt.Sprintf("%s://%s", string(storageType), backupPath), "", nil
 }

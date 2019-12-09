@@ -139,7 +139,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageType, backup.Spec.StorageProvider, bm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
@@ -164,7 +164,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		fmt.Sprintf("--user=%s", backup.Spec.From.User),
 		fmt.Sprintf("--bucket=%s", bucketName),
 		fmt.Sprintf("--backupName=%s", name),
-		fmt.Sprintf("--storageType=%s", backup.Spec.StorageType),
+		fmt.Sprintf("--storageType=%s", backuputil.GetStorageType(backup.Spec.StorageProvider)),
 	}
 
 	backupLabel := label.NewBackup().Instance(backup.Spec.From.GetTidbEndpoint()).BackupJob().Backup(name)

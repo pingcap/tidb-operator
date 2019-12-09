@@ -577,13 +577,6 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
-					"storageType": {
-						SchemaProps: spec.SchemaProps{
-							Description: "StorageType is the backup storage type.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"s3": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"),
@@ -609,7 +602,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 						},
 					},
 				},
-				Required: []string{"from", "storageType", "storageClassName", "storageSize"},
+				Required: []string{"from", "storageClassName", "storageSize"},
 			},
 		},
 		Dependencies: []string{
@@ -799,6 +792,13 @@ func schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref common.ReferenceCal
 					"location": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Location in which the gcs bucket is located.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path is the full path where the backup is saved. The format of the path must be: \"<bucket-name>/<path-to-backup-file>\"",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2250,23 +2250,9 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig"),
 						},
 					},
-					"backupPath": {
-						SchemaProps: spec.SchemaProps{
-							Description: "BackupPath is the location of the backup.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"backupType": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Type is the backup type for tidb cluster.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"storageType": {
-						SchemaProps: spec.SchemaProps{
-							Description: "StorageType is the backup storage type.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2296,7 +2282,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 						},
 					},
 				},
-				Required: []string{"to", "backupPath", "storageType", "storageClassName", "storageSize"},
+				Required: []string{"to", "storageClassName", "storageSize"},
 			},
 		},
 		Dependencies: []string{
@@ -2321,6 +2307,13 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 					"region": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Region in which the S3 compatible bucket is located.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path is the full path where the backup is saved. The format of the path must be: \"<bucket-name>/<path-to-backup-file>\"",
 							Type:        []string{"string"},
 							Format:      "",
 						},

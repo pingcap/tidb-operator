@@ -14,7 +14,6 @@ spec:
     provider: ceph
     endpoint: http://10.233.2.161
     secretName: ceph-secret
-  storageType: s3
-  storageClassName: rook-ceph-block
+    path: s3://test1-demo1/backup-2019-11-11T16:06:05Z.tgz
+  storageClassName: local-storage
   storageSize: 1Gi
-  backupPath: s3://test1-demo1/backup-2019-11-11T16:06:05Z.tgz
