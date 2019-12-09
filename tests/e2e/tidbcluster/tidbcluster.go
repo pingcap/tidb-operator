@@ -33,10 +33,12 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/apiserver"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
@@ -46,6 +48,7 @@ import (
 	"k8s.io/klog"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 )
 
 var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
@@ -59,6 +62,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	var cfg *tests.Config
 	var config *restclient.Config
 	var ocfg *tests.OperatorConfig
+	var fwCancel context.CancelFunc
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -70,9 +74,21 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to create clientset")
 		asCli, err = asclientset.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
-		oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, e2econfig.TestConfig, nil)
+		clientRawConfig, err := e2econfig.LoadClientRawConfig()
+		framework.ExpectNoError(err, "failed to load raw config")
+		ctx, cancel := context.WithCancel(context.Background())
+		fw, err := portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
+		framework.ExpectNoError(err, "failed to create port forwarder")
+		fwCancel = cancel
+		oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, e2econfig.TestConfig, nil, fw)
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
+	})
+
+	ginkgo.AfterEach(func() {
+		if fwCancel != nil {
+			fwCancel()
+		}
 	})
 
 	ginkgo.Context("Basic: Deploying, Scaling, Update Configuration", func() {
@@ -160,26 +176,30 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	ginkgo.It("Upgrading TiDB Cluster", func() {
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", "")
-		cluster.Resources["pd.replicas"] = "1"
+		cluster.Resources["pd.replicas"] = "3"
 		// TLS only works with PD >= v3.0.5
 		if semver.Compare(cfg.GetTiDBVersionOrDie(), "v3.0.5") >= 0 {
 			cluster.Resources["enableTLSCluster"] = "true"
 		}
-		// deploy
+
+		ginkgo.By("Creating webhook certs and self signing it")
+		svcName := "webhook"
+		certCtx, err := apimachinery.SetupServerCert(ns, svcName)
+		framework.ExpectNoError(err, fmt.Sprintf("unable to setup certs for webservice %s", tests.WebhookServiceName))
+
+		ginkgo.By("Starting webhook pod")
+		webhookPod, svc := startWebhook(f, cfg.E2EImage, ns, svcName, certCtx.Cert, certCtx.Key)
+
+		ginkgo.By("Register webhook")
+		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, ns, svc.Name, certCtx)
+
+		ginkgo.By(fmt.Sprintf("Deploying tidb cluster %s", cluster.ClusterVersion))
 		oa.DeployTidbClusterOrDie(&cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
 		oa.CheckDisasterToleranceOrDie(&cluster)
 
-		cluster.ScalePD(3)
-		oa.ScaleTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
-
-		// upgrade
 		upgradeVersions := cfg.GetUpgradeTidbVersionsOrDie()
-		certCtx, err := apimachinery.SetupServerCert("tidb-operator-e2e", tests.WebhookServiceName)
-		framework.ExpectNoError(err, fmt.Sprintf("unable to setup certs for webservice %s", tests.WebhookServiceName))
-		go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx, ns)
-		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
+		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", cluster.ClusterVersion, upgradeVersions[0]))
 		ctx, cancel := context.WithCancel(context.Background())
 		assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(&cluster)
 		cluster.UpgradeAll(upgradeVersions[0])
@@ -189,7 +209,17 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CheckTidbMemberAssignedNodesOrDie(&cluster, assignedNodes)
 		cancel()
 
-		oa.CleanWebHookAndServiceOrDie(ocfg)
+		ginkgo.By("Check webhook is still running")
+		webhookPod, err = c.CoreV1().Pods(webhookPod.Namespace).Get(webhookPod.Name, metav1.GetOptions{})
+		framework.ExpectNoError(err, fmt.Sprintf("unable to get pod %s/%s", webhookPod.Namespace, webhookPod.Name))
+		if webhookPod.Status.Phase != v1.PodRunning {
+			logs, err := e2epod.GetPodLogs(c, webhookPod.Namespace, webhookPod.Name, "webhook")
+			framework.ExpectNoError(err)
+			e2elog.Logf("webhook logs: %s", logs)
+			e2elog.Fail("webhook pod is not running")
+		}
+
+		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 	})
 
 	ginkgo.It("Backup and restore TiDB Cluster", func() {
@@ -202,11 +232,14 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CheckDisasterToleranceOrDie(&clusterA)
 		oa.CheckDisasterToleranceOrDie(&clusterB)
 
+		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterA.ClusterName))
 		go oa.BeginInsertDataToOrDie(&clusterA)
 
 		// backup and restore
+		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", clusterA.ClusterName, clusterB.ClusterName))
 		oa.BackupRestoreOrDie(&clusterA, &clusterB)
 
+		ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterA.ClusterName))
 		oa.StopInsertDataTo(&clusterA)
 	})
 

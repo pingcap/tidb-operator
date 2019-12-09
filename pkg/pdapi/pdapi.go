@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	timeout = 5 * time.Second
+	DefaultTimeout = 5 * time.Second
 )
 
 // Namespace is a newtype of a string
@@ -61,12 +61,31 @@ func NewDefaultPDControl(kubeCli kubernetes.Interface) PDControlInterface {
 	return &defaultPDControl{kubeCli: kubeCli, pdClients: map[string]PDClient{}}
 }
 
+// GetTLSConfig returns *tls.Config for given TiDB cluster.
+func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, tcName string) (*tls.Config, error) {
+	secretName := fmt.Sprintf("%s-pd-client", tcName)
+	secret, err := kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", namespace, secretName, err)
+	}
+
+	rootCAs, tlsCert, err := certutil.LoadCerts(secret.Data["cert"], secret.Data["key"])
+	if err != nil {
+		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", namespace, secretName, err)
+	}
+	return &tls.Config{
+		RootCAs:      rootCAs,
+		Certificates: []tls.Certificate{tlsCert},
+	}, nil
+}
+
 // GetPDClient provides a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
 func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tlsEnabled bool) PDClient {
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
 
 	var tlsConfig *tls.Config
+	var err error
 	scheme := "http"
 	if tlsEnabled {
 		scheme = "https"
@@ -75,24 +94,13 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 	key := pdClientKey(scheme, namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
 		if tlsEnabled {
-			secretName := fmt.Sprintf("%s-pd-client", tcName)
-			secret, err := pdc.kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
+			tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName)
 			if err != nil {
-				glog.Errorf("unable to load certificates from secret %s/%s, PDClient may not work: %v", namespace, secretName, err)
-				return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
+				glog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
 			}
-
-			rootCAs, tlsCert, err := certutil.LoadCerts(secret.Data["cert"], secret.Data["key"])
-			if err != nil {
-				glog.Errorf("unable to load certificates from secret %s/%s, PDClient may not work: %v", namespace, secretName, err)
-				return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
-			}
-			tlsConfig = &tls.Config{
-				RootCAs:      rootCAs,
-				Certificates: []tls.Certificate{tlsCert},
-			}
+			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
 		}
-		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), timeout, tlsConfig)
+		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, tlsConfig)
 	}
 	return pdc.pdClients[key]
 }

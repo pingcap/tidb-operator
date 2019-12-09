@@ -90,15 +90,17 @@ endif
 e2e-build: test-apiserver-build
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/ginkgo github.com/onsi/ginkgo/ginkgo
 	$(GO) test -c -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e.test ./tests/e2e
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/webhook ./tests/cmd/webhook
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/blockwriter ./tests/cmd/blockwriter
 
-test-apiserver-dokcer-push: test-apiesrver-docker
+test-apiserver-dokcer-push: test-apiserver-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/test-apiserver:${IMAGE_TAG}"
 
 ifeq ($(NO_BUILD),y)
-test-apiesrver-docker:
+test-apiserver-docker:
 	@echo "NO_BUILD=y, skip build for $@"
 else
-test-apiesrver-docker: test-apiserver-build
+test-apiserver-docker: test-apiserver-build
 endif
 	docker build -t "${DOCKER_REGISTRY}/pingcap/test-apiserver:${IMAGE_TAG}" tests/images/test-apiserver
 
