@@ -694,6 +694,308 @@ spec:
             pd:
               description: PDSpec contains details of PD members
               properties:
+                config:
+                  description: PDConfig is the configuration of pd-server
+                  properties:
+                    ElectionInterval: {}
+                    LeaderPriorityCheckInterval: {}
+                    PreVote:
+                      description: Prevote is true to enable Raft Pre-Vote. If enabled,
+                        Raft runs an additional election phase to check whether it
+                        would get enough votes to win an election, thus minimizing
+                        disruptions.
+                      type: boolean
+                    TickInterval: {}
+                    WarningMsgs:
+                      description: For all warnings during parsing.
+                      items:
+                        type: string
+                      type: array
+                    advertise-client-urls:
+                      type: string
+                    advertise-peer-urls:
+                      type: string
+                    auto-compaction-mode:
+                      description: AutoCompactionMode is either 'periodic' or 'revision'.
+                        The default value is 'periodic'.
+                      type: string
+                    auto-compaction-retention-v2:
+                      description: AutoCompactionRetention is either duration string
+                        with time unit (e.g. '5m' for 5-minute), or revision unit
+                        (e.g. '5000'). If no time unit is provided and compaction
+                        mode is 'periodic', the unit defaults to hour. For example,
+                        '5' translates into 5-hour. The default retention is 1 hour.
+                        Before etcd v3.3.x, the type of retention is int. We add 'v2'
+                        suffix to make it backward compatible.
+                      type: string
+                    client-urls:
+                      type: string
+                    cluster-version: {}
+                    configFile:
+                      type: string
+                    data-dir:
+                      type: string
+                    disableStrictReconfigCheck:
+                      type: boolean
+                    enable-grpc-gateway:
+                      type: boolean
+                    force-new-cluster:
+                      type: boolean
+                    heartbeatStreamBindInterval: {}
+                    initial-cluster:
+                      type: string
+                    initial-cluster-state:
+                      type: string
+                    join:
+                      description: Join to an existing pd cluster, a string of endpoints.
+                      type: string
+                    label-property:
+                      type: object
+                    lease:
+                      description: LeaderLease time, if leader doesn't update its
+                        TTL in etcd after lease time, etcd will expire the leader
+                        key and other servers can campaign the leader again. Etcd
+                        only supports seconds TTL, so here is second too.
+                      format: int64
+                      type: integer
+                    log:
+                      description: PDLogConfig serializes log related config in toml/json.
+                      properties:
+                        development:
+                          description: Development puts the logger in development
+                            mode, which changes the behavior of DPanicLevel and takes
+                            stacktraces more liberally.
+                          type: boolean
+                        disable-caller:
+                          description: DisableCaller stops annotating logs with the
+                            calling function's file name and line number. By default,
+                            all logs are annotated.
+                          type: boolean
+                        disable-error-verbose:
+                          description: DisableErrorVerbose stops annotating logs with
+                            the full verbose error message.
+                          type: boolean
+                        disable-stacktrace:
+                          description: DisableStacktrace completely disables automatic
+                            stacktrace capturing. By default, stacktraces are captured
+                            for WarnLevel and above logs in development and ErrorLevel
+                            and above in production.
+                          type: boolean
+                        disable-timestamp:
+                          description: Disable automatic timestamps in output.
+                          type: boolean
+                        file: {}
+                        format:
+                          description: Log format. one of json, text, or console.
+                          type: string
+                        level:
+                          description: Log level.
+                          type: string
+                      type: object
+                    log-file:
+                      description: Backward compatibility.
+                      type: string
+                    log-level:
+                      type: string
+                    metric: {}
+                    name:
+                      type: string
+                    namespace:
+                      type: object
+                    namespace-classifier:
+                      description: NamespaceClassifier is for classifying stores/regions
+                        into different namespaces.
+                      type: string
+                    nextRetryDelay:
+                      description: Only test can change them.
+                      format: int64
+                      type: integer
+                    pd-server:
+                      description: PDServerConfig is the configuration for pd server.
+                      properties:
+                        use-region-storage:
+                          description: UseRegionStorage enables the independent region
+                            storage.
+                          type: string
+                      type: object
+                    peer-urls:
+                      type: string
+                    quota-backend-bytes:
+                      description: QuotaBackendBytes Raise alarms when backend size
+                        exceeds the given quota. 0 means use the default quota. the
+                        default size is 2GB, the maximum is 8GB.
+                      format: int64
+                      type: integer
+                    replication:
+                      description: PDReplicationConfig is the replication configuration.
+                      properties:
+                        location-labels:
+                          description: The label keys specified the location of a
+                            store. The placement priorities is implied by the order
+                            of label keys. For example, ["zone", "rack"] means that
+                            we should place replicas to different zones first, then
+                            to different racks if we don't have enough zones.
+                          items:
+                            type: string
+                          type: array
+                        max-replicas:
+                          description: MaxReplicas is the number of replicas for each
+                            region.
+                          format: int64
+                          type: integer
+                        strictly-match-label:
+                          description: StrictlyMatchLabel strictly checks if the label
+                            of TiKV is matched with LocaltionLabels.
+                          type: string
+                      type: object
+                    schedule:
+                      description: ScheduleConfig is the schedule configuration.
+                      properties:
+                        disable-location-replacement:
+                          description: DisableLocationReplacement is the option to
+                            prevent replica checker from moving replica to a better
+                            location.
+                          type: string
+                        disable-make-up-replica:
+                          description: DisableMakeUpReplica is the option to prevent
+                            replica checker from making up replicas when replica count
+                            is less than expected.
+                          type: string
+                        disable-namespace-relocation:
+                          description: DisableNamespaceRelocation is the option to
+                            prevent namespace checker from moving replica to the target
+                            namespace.
+                          type: string
+                        disable-raft-learner:
+                          description: DisableLearner is the option to disable using
+                            AddLearnerNode instead of AddNode
+                          type: string
+                        disable-remove-down-replica:
+                          description: DisableRemoveDownReplica is the option to prevent
+                            replica checker from removing down replicas.
+                          type: string
+                        disable-remove-extra-replica:
+                          description: DisableRemoveExtraReplica is the option to
+                            prevent replica checker from removing extra replicas.
+                          type: string
+                        disable-replace-offline-replica:
+                          description: DisableReplaceOfflineReplica is the option
+                            to prevent replica checker from repalcing offline replicas.
+                          type: string
+                        high-space-ratio:
+                          description: HighSpaceRatio is the highest usage ratio of
+                            store which regraded as high space. High space means there
+                            is a lot of spare capacity, and store region score varies
+                            directly with used size.
+                          format: double
+                          type: number
+                        hot-region-cache-hits-threshold:
+                          description: HotRegionCacheHitThreshold is the cache hits
+                            threshold of the hot region. If the number of times a
+                            region hits the hot cache is greater than this threshold,
+                            it is considered a hot region.
+                          format: int64
+                          type: integer
+                        hot-region-schedule-limit:
+                          description: HotRegionScheduleLimit is the max coexist hot
+                            region schedules.
+                          format: int64
+                          type: integer
+                        leader-schedule-limit:
+                          description: LeaderScheduleLimit is the max coexist leader
+                            schedules.
+                          format: int64
+                          type: integer
+                        low-space-ratio:
+                          description: |2-
+
+                                 high space stage         transition stage           low space stage
+                              |--------------------|-----------------------------|-------------------------|
+                              ^                    ^                             ^                         ^
+                              0       HighSpaceRatio * capacity       LowSpaceRatio * capacity          capacity
+
+                            LowSpaceRatio is the lowest usage ratio of store which regraded as low space. When in low space, store region score increases to very large and varies inversely with available size.
+                          format: double
+                          type: number
+                        max-merge-region-keys:
+                          format: int64
+                          type: integer
+                        max-merge-region-size:
+                          description: If both the size of region is smaller than
+                            MaxMergeRegionSize and the number of rows in region is
+                            smaller than MaxMergeRegionKeys, it will try to merge
+                            with adjacent regions.
+                          format: int64
+                          type: integer
+                        max-pending-peer-count:
+                          format: int64
+                          type: integer
+                        max-snapshot-count:
+                          description: If the snapshot count of one store is greater
+                            than this value, it will never be used as a source or
+                            target store.
+                          format: int64
+                          type: integer
+                        max-store-down-time: {}
+                        merge-schedule-limit:
+                          description: MergeScheduleLimit is the max coexist merge
+                            schedules.
+                          format: int64
+                          type: integer
+                        patrol-region-interval: {}
+                        region-schedule-limit:
+                          description: RegionScheduleLimit is the max coexist region
+                            schedules.
+                          format: int64
+                          type: integer
+                        replica-schedule-limit:
+                          description: ReplicaScheduleLimit is the max coexist replica
+                            schedules.
+                          format: int64
+                          type: integer
+                        schedulers-v2:
+                          description: Schedulers support for loding customized schedulers
+                          items:
+                            description: PDSchedulerConfig is customized scheduler
+                              configuration
+                            properties:
+                              args:
+                                items:
+                                  type: string
+                                type: array
+                              disable:
+                                type: boolean
+                              type:
+                                type: string
+                            type: object
+                          type: array
+                        split-merge-interval: {}
+                        tolerant-size-ratio:
+                          description: TolerantSizeRatio is the ratio of buffer size
+                            for balance scheduler.
+                          format: double
+                          type: number
+                      type: object
+                    security:
+                      description: PDSecurityConfig is the configuration for supporting
+                        tls.
+                      properties:
+                        cacert-path:
+                          description: CAPath is the path of file that contains list
+                            of trusted SSL CAs. if set, following four settings shouldn't
+                            be empty
+                          type: string
+                        cert-path:
+                          description: CertPath is the path of file that contains
+                            X509 certificate in PEM format.
+                          type: string
+                        key-path:
+                          description: KeyPath is the path of file that contains X509
+                            key in PEM format.
+                          type: string
+                      type: object
+                    tso-save-interval: {}
+                  type: object
                 replicas:
                   format: int32
                   type: integer

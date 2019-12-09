@@ -182,9 +182,8 @@ type PDSpec struct {
 	Service          *ServiceSpec `json:"service,omitempty"`
 	StorageClassName string       `json:"storageClassName,omitempty"`
 
-	// +k8s:openapi-gen=false
-	// TODO: add schema
-	config.GenericConfig `json:",inline"`
+	// Config is the Configuration of tidb-servers
+	Config *PDConfig `json:"config,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -232,7 +231,6 @@ type TiDBSpec struct {
 	Plugins []string `json:"plugins,omitempty"`
 
 	// Config is the Configuration of tidb-servers
-	// +optional
 	Config *TiDBConfig `json:"config,omitempty"`
 }
 
