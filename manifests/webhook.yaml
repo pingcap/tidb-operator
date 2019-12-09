@@ -1,3 +1,9 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aggragated-webhook-sa
+  namespace: ${NAMESPACE}
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -26,21 +32,11 @@ rules:
     verbs:
       - '*'
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: aggragated-webhook-sa
-  namespace: ${NAMESPACE}
-  labels:
-    app: aggragated-webhook
----
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: aggragated-webhook-crb
   namespace: ${NAMESPACE}
-  labels:
-    app: aggragated-webhook
 subjects:
   - kind: ServiceAccount
     name: aggragated-webhook-sa
@@ -87,7 +83,7 @@ roleRef:
   name: system:auth-delegator
 subjects:
   - kind: ServiceAccount
-    name: tidb-operator-webhook
+    name: aggragated-webhook-sa
     namespace: ${NAMESPACE}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
