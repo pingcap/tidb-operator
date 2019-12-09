@@ -485,38 +485,38 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	if err != nil && !notFound(string(res)) {
 		return fmt.Errorf("failed to check webhook content : %v, %s", err, string(res))
 	}
-//
-//	// create cert and secret for webhook
-//	cmd = fmt.Sprintf("%s/create-cert.sh --namespace %s", oa.manifestPath(info.Tag), info.Namespace)
-//	glog.Info(cmd)
-//
-//	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-//	if err != nil {
-//		return fmt.Errorf("failed to create cert: %v, %s", err, string(res))
-//	}
-//
-//	// patch cabundle to validating admission configuration
-//	cmd = fmt.Sprintf("%s/patch-ca.sh", oa.manifestPath(info.Tag))
-//	glog.Info(cmd)
-//
-//	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-//	if err != nil {
-//		return fmt.Errorf("failed to patch cabundle : %v, %s", err, string(res))
-//	}
-//
-//	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
-//	cmd = fmt.Sprintf(`
-//sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/
-//s#imagePullPolicy:.*#imagePullPolicy: IfNotPresent#g
-//s#image:.*#image: %s#g
-//' %s/webhook.yaml | kubectl apply -f -
-//`, info.Image, oa.manifestPath(info.Tag))
-//	glog.Info(cmd)
-//
-//	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-//	if err != nil {
-//		return fmt.Errorf("failed to create statefulset webhook and configuration : %v, %s", err, string(res))
-//	}
+	//
+	//	// create cert and secret for webhook
+	//	cmd = fmt.Sprintf("%s/create-cert.sh --namespace %s", oa.manifestPath(info.Tag), info.Namespace)
+	//	glog.Info(cmd)
+	//
+	//	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	//	if err != nil {
+	//		return fmt.Errorf("failed to create cert: %v, %s", err, string(res))
+	//	}
+	//
+	//	// patch cabundle to validating admission configuration
+	//	cmd = fmt.Sprintf("%s/patch-ca.sh", oa.manifestPath(info.Tag))
+	//	glog.Info(cmd)
+	//
+	//	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	//	if err != nil {
+	//		return fmt.Errorf("failed to patch cabundle : %v, %s", err, string(res))
+	//	}
+	//
+	//	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
+	//	cmd = fmt.Sprintf(`
+	//sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/
+	//s#imagePullPolicy:.*#imagePullPolicy: IfNotPresent#g
+	//s#image:.*#image: %s#g
+	//' %s/webhook.yaml | kubectl apply -f -
+	//`, info.Image, oa.manifestPath(info.Tag))
+	//	glog.Info(cmd)
+	//
+	//	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	//	if err != nil {
+	//		return fmt.Errorf("failed to create statefulset webhook and configuration : %v, %s", err, string(res))
+	//	}
 
 	return nil
 }
