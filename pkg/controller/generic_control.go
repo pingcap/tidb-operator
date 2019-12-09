@@ -50,7 +50,17 @@ func (w *typedWrapper) Delete(controller, obj runtime.Object) error {
 }
 
 func (w *typedWrapper) CreateOrUpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, cm, MergeConfigMap)
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, cm, func(existing, desired runtime.Object) error {
+		existingCm := existing.(*corev1.ConfigMap)
+		desiredCm := desired.(*corev1.ConfigMap)
+
+		existingCm.Data = desiredCm.Data
+		existingCm.Labels = desiredCm.Labels
+		for k, v := range desiredCm.Annotations {
+			existingCm.Annotations[k] = v
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -87,15 +97,6 @@ type realGenericControlInterface struct {
 
 func NewRealGenericControl(client client.Client, recorder record.EventRecorder) GenericControlInterface {
 	return &realGenericControlInterface{client, recorder}
-}
-
-// CreateOrUpdateConfigMap is typed wrapper for CreateOrUpdate to operate corev1.ConfigMap
-func (c *realGenericControlInterface) CreateOrUpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	result, err := c.CreateOrUpdate(controller, cm, MergeConfigMap)
-	if err != nil {
-		return nil, err
-	}
-	return result.(*corev1.ConfigMap), err
 }
 
 // CreateOrUpdate create an object to the Kubernetes cluster for controller, if the object to create is existed,

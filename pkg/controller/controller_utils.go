@@ -22,7 +22,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	glog "k8s.io/klog"
 )
 
@@ -337,18 +336,4 @@ func (rt *RequestTracker) SetRequests(requests int) *RequestTracker {
 
 func (rt *RequestTracker) GetError() error {
 	return rt.err
-}
-
-// MergeConfigMap is a MergeFn for generic configmap.
-// parameter types are set to runtime.Object to match the signature of MergeFn
-func MergeConfigMap(existing, desired runtime.Object) error {
-	existingCm := existing.(*corev1.ConfigMap)
-	desiredCm := desired.(*corev1.ConfigMap)
-
-	existingCm.Data = desiredCm.Data
-	existingCm.Labels = desiredCm.Labels
-	for k, v := range desiredCm.Annotations {
-		existingCm.Annotations[k] = v
-	}
-	return nil
 }
