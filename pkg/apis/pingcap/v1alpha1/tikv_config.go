@@ -233,9 +233,9 @@ type TiKVTitanCfConfig struct {
 	// +optional
 	MaxGcBatchSize string `json:"max-gc-batch-size,omitempty" toml:"max-gc-batch-size,omitempty"`
 	// +optional
-	DiscardableRatio float64 `json:"discardable-ratio,omitempty" toml:"discardable-ratio,omitempty"`
+	DiscardableRatio *float64 `json:"discardable-ratio,omitempty" toml:"discardable-ratio,omitempty"`
 	// +optional
-	SampleRatio float64 `json:"sample-ratio,omitempty" toml:"sample-ratio,omitempty"`
+	SampleRatio *float64 `json:"sample-ratio,omitempty" toml:"sample-ratio,omitempty"`
 	// +optional
 	MergeSmallFileThreshold string `json:"merge-small-file-threshold,omitempty" toml:"merge-small-file-threshold,omitempty"`
 	// +optional
@@ -289,7 +289,7 @@ type TiKVBlockCacheConfig struct {
 	// +optional
 	StrictCapacityLimit *bool `json:"strict-capacity-limit,omitempty" toml:"strict-capacity-limit,omitempty"`
 	// +optional
-	HighPriPoolRatio float64 `json:"high-pri-pool-ratio,omitempty" toml:"high-pri-pool-ratio,omitempty"`
+	HighPriPoolRatio *float64 `json:"high-pri-pool-ratio,omitempty" toml:"high-pri-pool-ratio,omitempty"`
 	// +optional
 	MemoryAllocator string `json:"memory-allocator,omitempty" toml:"memory-allocator,omitempty"`
 }

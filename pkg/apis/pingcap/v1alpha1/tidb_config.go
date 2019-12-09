@@ -36,6 +36,7 @@ import (
 // +k8s:openapi-gen=true
 type TiDBConfig struct {
 	// +optional
+	// +kubebuilder:default="0.0.0.0"
 	Host string `toml:"host,omitempty" json:"host,omitempty"`
 	// +optional
 	AdvertiseAddress string `toml:"advertise-address,omitempty" json:"advertise-address,omitempty"`

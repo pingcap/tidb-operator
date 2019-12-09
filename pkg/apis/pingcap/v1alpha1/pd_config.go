@@ -14,9 +14,6 @@
 package v1alpha1
 
 import (
-	"time"
-
-	"github.com/coreos/go-semver/semver"
 	"github.com/pingcap/log"
 	"github.com/pingcap/pd/pkg/metricutil"
 	"github.com/pingcap/pd/pkg/typeutil"
@@ -88,7 +85,7 @@ type PDConfig struct {
 
 	// TsoSaveInterval is the interval to save timestamp.
 	// +optional
-	TsoSaveInterval typeutil.Duration `toml:"tso-save-interval,omitempty" json:"tso-save-interval,omitempty"`
+	TsoSaveInterval string `toml:"tso-save-interval,omitempty" json:"tso-save-interval,omitempty"`
 
 	// +optional
 	Metric *metricutil.MetricConfig `toml:"metric,omitempty" json:"metric,omitempty"`
@@ -106,7 +103,7 @@ type PDConfig struct {
 	PDServerCfg *PDServerConfig `toml:"pd-server,omitempty" json:"pd-server,omitempty"`
 
 	// +optional
-	ClusterVersion semver.Version `json:"cluster-version,omitempty"`
+	ClusterVersion string `json:"cluster-version,omitempty"`
 
 	// QuotaBackendBytes Raise alarms when backend size exceeds the given quota. 0 means use the default quota.
 	// the default size is 2GB, the maximum is 8GB.
@@ -126,16 +123,16 @@ type PDConfig struct {
 
 	// TickInterval is the interval for etcd Raft tick.
 	// +optional
-	TickInterval typeutil.Duration `toml:"tick-interval,omitempty"`
+	TickInterval string `toml:"tick-interval,omitempty" json:"tikv-interval,omitempty"`
 	// ElectionInterval is the interval for etcd Raft election.
 	// +optional
-	ElectionInterval typeutil.Duration `toml:"election-interval,omitempty"`
+	ElectionInterval string `toml:"election-interval,omitempty" json:"election-interval,omitempty"`
 	// Prevote is true to enable Raft Pre-Vote.
 	// If enabled, Raft runs an additional election phase
 	// to check whether it would get enough votes to win
 	// an election, thus minimizing disruptions.
 	// +optional
-	PreVote *bool `toml:"enable-prevote,omitempty"`
+	PreVote *bool `toml:"enable-prevote,omitempty" json:"enable-prevote,omitempty"`
 
 	// +optional
 	Security *PDSecurityConfig `toml:"security,omitempty" json:"security,omitempty"`
@@ -143,29 +140,10 @@ type PDConfig struct {
 	// +optional
 	LabelProperty *PDLabelPropertyConfig `toml:"label-property,omitempty" json:"label-property,omitempty"`
 
-	// +optional
-	configFile string
-
-	// For all warnings during parsing.
-	// +optional
-	WarningMsgs []string
-
 	// NamespaceClassifier is for classifying stores/regions into different
 	// namespaces.
 	// +optional
 	NamespaceClassifier string `toml:"namespace-classifier,omitempty" json:"namespace-classifier,omitempty"`
-
-	// Only test can change them.
-	// +optional
-	nextRetryDelay *time.Duration
-	// +optional
-	disableStrictReconfigCheck *bool
-
-	// +optional
-	heartbeatStreamBindInterval typeutil.Duration
-
-	// +optional
-	LeaderPriorityCheckInterval typeutil.Duration
 }
 
 // PDLogConfig serializes log related config in toml/json.
@@ -261,10 +239,10 @@ type PDScheduleConfig struct {
 	MaxMergeRegionKeys *uint64 `toml:"max-merge-region-keys,omitempty,omitempty" json:"max-merge-region-keys,omitempty"`
 	// SplitMergeInterval is the minimum interval time to permit merge after split.
 	// +optional
-	SplitMergeInterval typeutil.Duration `toml:"split-merge-interval,omitempty,omitempty" json:"split-merge-interval,omitempty"`
+	SplitMergeInterval string `toml:"split-merge-interval,omitempty,omitempty" json:"split-merge-interval,omitempty"`
 	// PatrolRegionInterval is the interval for scanning region during patrol.
 	// +optional
-	PatrolRegionInterval typeutil.Duration `toml:"patrol-region-interval,omitempty,omitempty" json:"patrol-region-interval,omitempty"`
+	PatrolRegionInterval string `toml:"patrol-region-interval,omitempty,omitempty" json:"patrol-region-interval,omitempty"`
 	// MaxStoreDownTime is the max duration after which
 	// a store will be considered to be down if it hasn't reported heartbeats.
 	// +optional
@@ -362,7 +340,9 @@ type PDStoreLabel struct {
 	Value string `toml:"value,omitempty" json:"value,omitempty"`
 }
 
-type PDLabelPropertyConfig map[string][]PDStoreLabel
+type PDStoreLabels []PDStoreLabel
+
+type PDLabelPropertyConfig map[string]PDStoreLabels
 
 // PDSecurityConfig is the configuration for supporting tls.
 // +k8s:openapi-gen=true
