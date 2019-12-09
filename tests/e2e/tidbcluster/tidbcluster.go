@@ -462,7 +462,23 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		oldRev := oldTiDBSet.Status.CurrentRevision
 		framework.ExpectEqual(oldTiDBSet.Status.UpdateRevision, oldRev, "Expected tidb is not upgrading")
-		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+
+		// check for 2 minutes to ensure the tidb statefulset do not get rolling-update
+		err = wait.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
+			tidbSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(tidbSetName, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			framework.ExpectEqual(tidbSet.Status.CurrentRevision, oldRev, "Expected no rolling-update when manage config in-place")
+			framework.ExpectEqual(tidbSet.Status.UpdateRevision, oldRev, "Expected no rolling-update when manage config in-place")
+			return false, nil
+		})
+
+		if err != wait.ErrWaitTimeout {
+			e2elog.Failf("Unexpected error when checking tidb statefulset will not get rolling-update: %v", err)
+		}
+
+		err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
 			tidbSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(tidbSetName, metav1.GetOptions{})
 			if err != nil {
 				return false, err
@@ -481,10 +497,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				e2elog.Logf("expect tidb configmap adopted by tidbcluster, still waiting...")
 				return false, nil
 			}
-			framework.ExpectEqual(tidbSet.Status.CurrentRevision, oldRev, "Expected no rolling-update when manage config in-place")
-			framework.ExpectEqual(tidbSet.Status.UpdateRevision, oldRev, "Expected no rolling-update when manage config in-place")
 			return true, nil
 		})
+
 		framework.ExpectNoError(err)
 	})
 })
