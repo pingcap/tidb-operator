@@ -468,15 +468,6 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
 
-	// delete statefulset update webhook and configuration
-	cmd = fmt.Sprintf("kubectl delete -f %s/webhook.yaml", oa.manifestPath(info.Tag))
-	glog.Info(cmd)
-
-	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil && !notFound(string(res)) {
-		return fmt.Errorf("failed to delete statefulset webhook and configuration : %v, %s", err, string(res))
-	}
-
 	// create cert and secret for webhook
 	cmd = fmt.Sprintf("%s/e2e/patch-ns.sh -n %s", oa.manifestPath(info.Tag), info.Namespace)
 	glog.Info(cmd)
