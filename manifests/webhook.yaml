@@ -3,21 +3,19 @@ kind: ClusterRole
 metadata:
   name: aggragated-webhook-cr
   namespace: ${NAMESPACE}
-  labels:
-    app: aggragated-webhook
 rules:
   - apiGroups: [""]
     resources: ["persistentvolumeclaims"]
     verbs: ["get", "list", "watch", "create", "update", "delete"]
   - apiGroups: [""]
     resources: ["pods"]
-    verbs: ["get", "list", "watch","update"]
+    verbs: ["get", "list", "watch", "update"]
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["create","patch","update"]
   - apiGroups: ["apps"]
     resources: ["statefulsets"]
-    verbs: ["get","list"]
+    verbs: ["get", "list", "watch", "update"]
   - apiGroups: ["pingcap.com"]
     resources:  ["tidbclusters"]
     verbs: ["*"]
