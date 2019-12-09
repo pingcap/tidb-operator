@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/pd/pkg/typeutil"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
 const (
@@ -82,8 +83,8 @@ func TestHealth(t *testing.T) {
 
 func TestGetConfig(t *testing.T) {
 	g := NewGomegaWithT(t)
-	config := &Config{
-		Schedule: ScheduleConfig{
+	config := &v1alpha1.PDConfig{
+		Schedule: &v1alpha1.PDScheduleConfig{
 			MaxStoreDownTime: typeutil.NewDuration(10 * time.Second),
 		},
 	}
@@ -95,7 +96,7 @@ func TestGetConfig(t *testing.T) {
 		path     string
 		method   string
 		resp     []byte
-		want     *Config
+		want     *v1alpha1.PDConfig
 	}{{
 		caseName: "GetConfig",
 		path:     fmt.Sprintf("/%s", configPrefix),
