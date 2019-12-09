@@ -19,326 +19,326 @@ package v1alpha1
 // +k8s:openapi-gen=true
 type TiKVConfig struct {
 	// +optional
-	LogLevel string `json:"log-level,omitempty",toml:"log-level,omitempty"`
+	LogLevel string `json:"log-level,omitempty" toml:"log-level,omitempty"`
 	// +optional
-	LogFile string `json:"log-file,omitempty",toml:"log-file,omitempty"`
+	LogFile string `json:"log-file,omitempty" toml:"log-file,omitempty"`
 	// +optional
-	LogRotationTimespan string `json:"log-rotation-timespan,omitempty",toml:"log-rotation-timespan,omitempty"`
+	LogRotationTimespan string `json:"log-rotation-timespan,omitempty" toml:"log-rotation-timespan,omitempty"`
 	// +optional
-	PanicWhenUnexpectedKeyOrData *bool `json:"panic-when-unexpected-key-or-data,omitempty",toml:"panic-when-unexpected-key-or-data,omitempty"`
+	PanicWhenUnexpectedKeyOrData *bool `json:"panic-when-unexpected-key-or-data,omitempty" toml:"panic-when-unexpected-key-or-data,omitempty"`
 	// +optional
-	Addr string `json:"addr,omitempty",toml:"addr,omitempty"`
+	Addr string `json:"addr,omitempty" toml:"addr,omitempty"`
 	// +optional
-	AdvertiseAddr string `json:"advertise-addr,omitempty",toml:"advertise-addr,omitempty"`
+	AdvertiseAddr string `json:"advertise-addr,omitempty" toml:"advertise-addr,omitempty"`
 	// +optional
-	StatusAddr string `json:"status-addr,omitempty",toml:"status-addr,omitempty"`
+	StatusAddr string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
 	// +optional
-	StatusThreadPoolSize string `json:"status-thread-pool-size,omitempty",toml:"status-thread-pool-size,omitempty"`
+	StatusThreadPoolSize string `json:"status-thread-pool-size,omitempty" toml:"status-thread-pool-size,omitempty"`
 	// +optional
-	GrpcCompressionType string `json:"grpc-compression-type,omitempty",toml:"grpc-compression-type,omitempty"`
+	GrpcCompressionType string `json:"grpc-compression-type,omitempty" toml:"grpc-compression-type,omitempty"`
 	// +optional
-	GrpcConcurrency *uint `json:"grpc-concurrency,omitempty",toml:"grpc-concurrency,omitempty"`
+	GrpcConcurrency *uint `json:"grpc-concurrency,omitempty" toml:"grpc-concurrency,omitempty"`
 	// +optional
-	GrpcConcurrentStream *uint `json:"grpc-concurrent-stream,omitempty",toml:"grpc-concurrent-stream,omitempty"`
+	GrpcConcurrentStream *uint `json:"grpc-concurrent-stream,omitempty" toml:"grpc-concurrent-stream,omitempty"`
 	// +optional
-	GrpcRaftConnNum *uint `json:"grpc-raft-conn-num,omitempty",toml:"grpc-raft-conn-num,omitempty"`
+	GrpcRaftConnNum *uint `json:"grpc-raft-conn-num,omitempty" toml:"grpc-raft-conn-num,omitempty"`
 	// +optional
-	GrpcStreamInitialWindowSize string `json:"grpc-stream-initial-window-size,omitempty",toml:"grpc-stream-initial-window-size,omitempty"`
+	GrpcStreamInitialWindowSize string `json:"grpc-stream-initial-window-size,omitempty" toml:"grpc-stream-initial-window-size,omitempty"`
 	// +optional
-	GrpcKeepaliveTime string `json:"grpc-keepalive-time,omitempty",toml:"grpc-keepalive-time,omitempty"`
+	GrpcKeepaliveTime string `json:"grpc-keepalive-time,omitempty" toml:"grpc-keepalive-time,omitempty"`
 	// +optional
-	GrpcKeepaliveTimeout string `json:"grpc-keepalive-timeout,omitempty",toml:"grpc-keepalive-timeout,omitempty"`
+	GrpcKeepaliveTimeout string `json:"grpc-keepalive-timeout,omitempty" toml:"grpc-keepalive-timeout,omitempty"`
 	// +optional
-	ConcurrentSendSnapLimit *uint `json:"concurrent-send-snap-limit,omitempty",toml:"concurrent-send-snap-limit,omitempty"`
+	ConcurrentSendSnapLimit *uint `json:"concurrent-send-snap-limit,omitempty" toml:"concurrent-send-snap-limit,omitempty"`
 	// +optional
-	ConcurrentRecvSnapLimit *uint `json:"concurrent-recv-snap-limit,omitempty",toml:"concurrent-recv-snap-limit,omitempty"`
+	ConcurrentRecvSnapLimit *uint `json:"concurrent-recv-snap-limit,omitempty" toml:"concurrent-recv-snap-limit,omitempty"`
 	// +optional
-	EndPointRecursionLimit *uint `json:"end-point-recursion-limit,omitempty",toml:"end-point-recursion-limit,omitempty"`
+	EndPointRecursionLimit *uint `json:"end-point-recursion-limit,omitempty" toml:"end-point-recursion-limit,omitempty"`
 	// +optional
-	EndPointStreamChannelSize *uint `json:"end-point-stream-channel-size,omitempty",toml:"end-point-stream-channel-size,omitempty"`
+	EndPointStreamChannelSize *uint `json:"end-point-stream-channel-size,omitempty" toml:"end-point-stream-channel-size,omitempty"`
 	// +optional
-	EndPointBatchRowLimit *uint `json:"end-point-batch-row-limit,omitempty",toml:"end-point-batch-row-limit,omitempty"`
+	EndPointBatchRowLimit *uint `json:"end-point-batch-row-limit,omitempty" toml:"end-point-batch-row-limit,omitempty"`
 	// +optional
-	EndPointStreamBatchRowLimit *uint `json:"end-point-stream-batch-row-limit,omitempty",toml:"end-point-stream-batch-row-limit,omitempty"`
+	EndPointStreamBatchRowLimit *uint `json:"end-point-stream-batch-row-limit,omitempty" toml:"end-point-stream-batch-row-limit,omitempty"`
 	// +optional
-	EndPointEnableBatchIfPossible *uint `json:"end-point-enable-batch-if-possible,omitempty",toml:"end-point-enable-batch-if-possible,omitempty"`
+	EndPointEnableBatchIfPossible *uint `json:"end-point-enable-batch-if-possible,omitempty" toml:"end-point-enable-batch-if-possible,omitempty"`
 	// +optional
-	EndPointRequestMaxHandleDuration string `json:"end-point-request-max-handle-duration,omitempty",toml:"end-point-request-max-handle-duration,omitempty"`
+	EndPointRequestMaxHandleDuration string `json:"end-point-request-max-handle-duration,omitempty" toml:"end-point-request-max-handle-duration,omitempty"`
 	// +optional
-	SnapMaxWriteBytesPerSec string `json:"snap-max-write-bytes-per-sec,omitempty",toml:"snap-max-write-bytes-per-sec,omitempty"`
+	SnapMaxWriteBytesPerSec string `json:"snap-max-write-bytes-per-sec,omitempty" toml:"snap-max-write-bytes-per-sec,omitempty"`
 	// +optional
-	SnapMaxTotalSize string `json:"snap-max-total-size,omitempty",toml:"snap-max-total-size,omitempty"`
+	SnapMaxTotalSize string `json:"snap-max-total-size,omitempty" toml:"snap-max-total-size,omitempty"`
 	// +optional
-	StatsConcurrency *uint `json:"stats-concurrency,omitempty",toml:"stats-concurrency,omitempty"`
+	StatsConcurrency *uint `json:"stats-concurrency,omitempty" toml:"stats-concurrency,omitempty"`
 	// +optional
-	HeavyLoadThreshold *uint `json:"heavy-load-threshold,omitempty",toml:"heavy-load-threshold,omitempty"`
+	HeavyLoadThreshold *uint `json:"heavy-load-threshold,omitempty" toml:"heavy-load-threshold,omitempty"`
 	// +optional
-	HeavyLoadWaitDuration string `json:"heavy-load-wait-duration,omitempty",toml:"heavy-load-wait-duration,omitempty"`
+	HeavyLoadWaitDuration string `json:"heavy-load-wait-duration,omitempty" toml:"heavy-load-wait-duration,omitempty"`
 	// +optional
-	Labels map[string]string `json:"labels,omitempty",toml:"labels,omitempty"`
+	Labels map[string]string `json:"labels,omitempty" toml:"labels,omitempty"`
 	// +optional
-	Server *TiKVServerConfig `json:"server,omitempty",toml:"server,omitempty"`
+	Server *TiKVServerConfig `json:"server,omitempty" toml:"server,omitempty"`
 	// +optional
-	Storage *TiKVStorageConfig `json:"storage,omitempty",toml:"storage,omitempty"`
+	Storage *TiKVStorageConfig `json:"storage,omitempty" toml:"storage,omitempty"`
 	// +optional
-	Raftstore *TiKVRaftstoreConfig `json:"raftstore,omitempty",toml:"raftstore,omitempty"`
+	Raftstore *TiKVRaftstoreConfig `json:"raftstore,omitempty" toml:"raftstore,omitempty"`
 	// +optional
-	Rocksdb *TiKVDbConfig `json:"rocksdb,omitempty",toml:"rocksdb,omitempty"`
+	Rocksdb *TiKVDbConfig `json:"rocksdb,omitempty" toml:"rocksdb,omitempty"`
 }
 
 // TiKVDbConfig is the rocksdb config.
 // +k8s:openapi-gen=true
 type TiKVDbConfig struct {
 	// +optional
-	WalRecoveryMode *int64 `json:"wal-recovery-mode,omitempty",toml:"wal-recovery-mode,omitempty"`
+	WalRecoveryMode *int64 `json:"wal-recovery-mode,omitempty" toml:"wal-recovery-mode,omitempty"`
 	// +optional
-	WalDir string `json:"wal-dir,omitempty",toml:"wal-dir,omitempty"`
+	WalDir string `json:"wal-dir,omitempty" toml:"wal-dir,omitempty"`
 	// +optional
-	WalTTLSeconds *int64 `json:"wal-ttl-seconds,omitempty",toml:"wal-ttl-seconds,omitempty"`
+	WalTTLSeconds *int64 `json:"wal-ttl-seconds,omitempty" toml:"wal-ttl-seconds,omitempty"`
 	// +optional
-	WalSizeLimit string `json:"wal-size-limit,omitempty",toml:"wal-size-limit,omitempty"`
+	WalSizeLimit string `json:"wal-size-limit,omitempty" toml:"wal-size-limit,omitempty"`
 	// +optional
-	MaxTotalWalSize string `json:"max-total-wal-size,omitempty",toml:"max-total-wal-size,omitempty"`
+	MaxTotalWalSize string `json:"max-total-wal-size,omitempty" toml:"max-total-wal-size,omitempty"`
 	// +optional
-	MaxBackgroundJobs *int64 `json:"max-background-jobs,omitempty",toml:"max-background-jobs,omitempty"`
+	MaxBackgroundJobs *int64 `json:"max-background-jobs,omitempty" toml:"max-background-jobs,omitempty"`
 	// +optional
-	MaxManifestFileSize string `json:"max-manifest-file-size,omitempty",toml:"max-manifest-file-size,omitempty"`
+	MaxManifestFileSize string `json:"max-manifest-file-size,omitempty" toml:"max-manifest-file-size,omitempty"`
 	// +optional
-	CreateIfMissing *bool `json:"create-if-missing,omitempty",toml:"create-if-missing,omitempty"`
+	CreateIfMissing *bool `json:"create-if-missing,omitempty" toml:"create-if-missing,omitempty"`
 	// +optional
-	MaxOpenFiles *int64 `json:"max-open-files,omitempty",toml:"max-open-files,omitempty"`
+	MaxOpenFiles *int64 `json:"max-open-files,omitempty" toml:"max-open-files,omitempty"`
 	// +optional
-	EnableStatistics *bool `json:"enable-statistics,omitempty",toml:"enable-statistics,omitempty"`
+	EnableStatistics *bool `json:"enable-statistics,omitempty" toml:"enable-statistics,omitempty"`
 	// +optional
-	StatsDumpPeriod string `json:"stats-dump-period,omitempty",toml:"stats-dump-period,omitempty"`
+	StatsDumpPeriod string `json:"stats-dump-period,omitempty" toml:"stats-dump-period,omitempty"`
 	// +optional
-	CompactionReadaheadSize string `json:"compaction-readahead-size,omitempty",toml:"compaction-readahead-size,omitempty"`
+	CompactionReadaheadSize string `json:"compaction-readahead-size,omitempty" toml:"compaction-readahead-size,omitempty"`
 	// +optional
-	InfoLogMaxSize string `json:"info-log-max-size,omitempty",toml:"info-log-max-size,omitempty"`
+	InfoLogMaxSize string `json:"info-log-max-size,omitempty" toml:"info-log-max-size,omitempty"`
 	// +optional
-	InfoLogRollTime string `json:"info-log-roll-time,omitempty",toml:"info-log-roll-time,omitempty"`
+	InfoLogRollTime string `json:"info-log-roll-time,omitempty" toml:"info-log-roll-time,omitempty"`
 	// +optional
-	InfoLogKeepLogFileNum *int64 `json:"info-log-keep-log-file-num,omitempty",toml:"info-log-keep-log-file-num,omitempty"`
+	InfoLogKeepLogFileNum *int64 `json:"info-log-keep-log-file-num,omitempty" toml:"info-log-keep-log-file-num,omitempty"`
 	// +optional
-	InfoLogDir string `json:"info-log-dir,omitempty",toml:"info-log-dir,omitempty"`
+	InfoLogDir string `json:"info-log-dir,omitempty" toml:"info-log-dir,omitempty"`
 	// +optional
-	RateBytesPerSec string `json:"rate-bytes-per-sec,omitempty",toml:"rate-bytes-per-sec,omitempty"`
+	RateBytesPerSec string `json:"rate-bytes-per-sec,omitempty" toml:"rate-bytes-per-sec,omitempty"`
 	// +optional
-	RateLimiterMode *int64 `json:"rate-limiter-mode,omitempty",toml:"rate-limiter-mode,omitempty"`
+	RateLimiterMode *int64 `json:"rate-limiter-mode,omitempty" toml:"rate-limiter-mode,omitempty"`
 	// +optional
-	AutoTuned *bool `json:"auto-tuned,omitempty",toml:"auto-tuned,omitempty"`
+	AutoTuned *bool `json:"auto-tuned,omitempty" toml:"auto-tuned,omitempty"`
 	// +optional
-	BytesPerSync string `json:"bytes-per-sync,omitempty",toml:"bytes-per-sync,omitempty"`
+	BytesPerSync string `json:"bytes-per-sync,omitempty" toml:"bytes-per-sync,omitempty"`
 	// +optional
-	WalBytesPerSync string `json:"wal-bytes-per-sync,omitempty",toml:"wal-bytes-per-sync,omitempty"`
+	WalBytesPerSync string `json:"wal-bytes-per-sync,omitempty" toml:"wal-bytes-per-sync,omitempty"`
 	// +optional
-	MaxSubCompactions *int64 `json:"max-sub-compactions,omitempty",toml:"max-sub-compactions,omitempty"`
+	MaxSubCompactions *int64 `json:"max-sub-compactions,omitempty" toml:"max-sub-compactions,omitempty"`
 	// +optional
-	WritableFileMaxBufferSize string `json:"writable-file-max-buffer-size,omitempty",toml:"writable-file-max-buffer-size,omitempty"`
+	WritableFileMaxBufferSize string `json:"writable-file-max-buffer-size,omitempty" toml:"writable-file-max-buffer-size,omitempty"`
 	// +optional
-	UseDirectIoForFlushAndCompaction *bool `json:"use-direct-io-for-flush-and-compaction,omitempty",toml:"use-direct-io-for-flush-and-compaction,omitempty"`
+	UseDirectIoForFlushAndCompaction *bool `json:"use-direct-io-for-flush-and-compaction,omitempty" toml:"use-direct-io-for-flush-and-compaction,omitempty"`
 	// +optional
-	EnablePipelinedWrite *bool `json:"enable-pipelined-write,omitempty",toml:"enable-pipelined-write,omitempty"`
+	EnablePipelinedWrite *bool `json:"enable-pipelined-write,omitempty" toml:"enable-pipelined-write,omitempty"`
 	// +optional
-	Defaultcf *TiKVCfConfig `json:"defaultcf,omitempty",toml:"defaultcf,omitempty"`
+	Defaultcf *TiKVCfConfig `json:"defaultcf,omitempty" toml:"defaultcf,omitempty"`
 	// +optional
-	Writecf *TiKVCfConfig `json:"writecf,omitempty",toml:"writecf,omitempty"`
+	Writecf *TiKVCfConfig `json:"writecf,omitempty" toml:"writecf,omitempty"`
 	// +optional
-	Lockcf *TiKVCfConfig `json:"lockcf,omitempty",toml:"lockcf,omitempty"`
+	Lockcf *TiKVCfConfig `json:"lockcf,omitempty" toml:"lockcf,omitempty"`
 	// +optional
-	Raftcf *TiKVCfConfig `json:"raftcf,omitempty",toml:"raftcf,omitempty"`
+	Raftcf *TiKVCfConfig `json:"raftcf,omitempty" toml:"raftcf,omitempty"`
 	// +optional
-	Titan *TiKVTitanDBConfig `json:"titan,omitempty",toml:"titan,omitempty"`
+	Titan *TiKVTitanDBConfig `json:"titan,omitempty" toml:"titan,omitempty"`
 }
 
 // TiKVCfConfig is the config of a cf
 // +k8s:openapi-gen=true
 type TiKVCfConfig struct {
 	// +optional
-	BlockSize string `json:"block-size,omitempty",toml:"block-size,omitempty"`
+	BlockSize string `json:"block-size,omitempty" toml:"block-size,omitempty"`
 	// +optional
-	BlockCacheSize string `json:"block-cache-size,omitempty",toml:"block-cache-size,omitempty"`
+	BlockCacheSize string `json:"block-cache-size,omitempty" toml:"block-cache-size,omitempty"`
 	// +optional
-	DisableBlockCache *bool `json:"disable-block-cache,omitempty",toml:"disable-block-cache,omitempty"`
+	DisableBlockCache *bool `json:"disable-block-cache,omitempty" toml:"disable-block-cache,omitempty"`
 	// +optional
-	CacheIndexAndFilterBlocks *bool `json:"cache-index-and-filter-blocks,omitempty",toml:"cache-index-and-filter-blocks,omitempty"`
+	CacheIndexAndFilterBlocks *bool `json:"cache-index-and-filter-blocks,omitempty" toml:"cache-index-and-filter-blocks,omitempty"`
 	PinL0FilterAndIndexBlocks *bool `toml:"pin-l0-filter-and-index-blocks"`
 	// +optional
-	UseBloomFilter *bool `json:"use-bloom-filter,omitempty",toml:"use-bloom-filter,omitempty"`
+	UseBloomFilter *bool `json:"use-bloom-filter,omitempty" toml:"use-bloom-filter,omitempty"`
 	// +optional
-	OptimizeFiltersForHits *bool `json:"optimize-filters-for-hits,omitempty",toml:"optimize-filters-for-hits,omitempty"`
+	OptimizeFiltersForHits *bool `json:"optimize-filters-for-hits,omitempty" toml:"optimize-filters-for-hits,omitempty"`
 	// +optional
-	WholeKeyFiltering *bool `json:"whole-key-filtering,omitempty",toml:"whole-key-filtering,omitempty"`
+	WholeKeyFiltering *bool `json:"whole-key-filtering,omitempty" toml:"whole-key-filtering,omitempty"`
 	// +optional
-	BloomFilterBitsPerKey *int64 `json:"bloom-filter-bits-per-key,omitempty",toml:"bloom-filter-bits-per-key,omitempty"`
+	BloomFilterBitsPerKey *int64 `json:"bloom-filter-bits-per-key,omitempty" toml:"bloom-filter-bits-per-key,omitempty"`
 	// +optional
-	BlockBasedBloomFilter *bool `json:"block-based-bloom-filter,omitempty",toml:"block-based-bloom-filter,omitempty"`
+	BlockBasedBloomFilter *bool `json:"block-based-bloom-filter,omitempty" toml:"block-based-bloom-filter,omitempty"`
 	// +optional
-	ReadAmpBytesPerBit *int64 `json:"read-amp-bytes-per-bit,omitempty",toml:"read-amp-bytes-per-bit,omitempty"`
+	ReadAmpBytesPerBit *int64 `json:"read-amp-bytes-per-bit,omitempty" toml:"read-amp-bytes-per-bit,omitempty"`
 	// +optional
-	CompressionPerLevel []string `json:"compression-per-level,omitempty",toml:"compression-per-level,omitempty"`
+	CompressionPerLevel []string `json:"compression-per-level,omitempty" toml:"compression-per-level,omitempty"`
 	// +optional
-	WriteBufferSize string `json:"write-buffer-size,omitempty",toml:"write-buffer-size,omitempty"`
+	WriteBufferSize string `json:"write-buffer-size,omitempty" toml:"write-buffer-size,omitempty"`
 	// +optional
-	MaxWriteBufferNumber *int64 `json:"max-write-buffer-number,omitempty",toml:"max-write-buffer-number,omitempty"`
+	MaxWriteBufferNumber *int64 `json:"max-write-buffer-number,omitempty" toml:"max-write-buffer-number,omitempty"`
 	// +optional
-	MinWriteBufferNumberToMerge *int64 `json:"min-write-buffer-number-to-merge,omitempty",toml:"min-write-buffer-number-to-merge,omitempty"`
+	MinWriteBufferNumberToMerge *int64 `json:"min-write-buffer-number-to-merge,omitempty" toml:"min-write-buffer-number-to-merge,omitempty"`
 	// +optional
-	MaxBytesForLevelBase string `json:"max-bytes-for-level-base,omitempty",toml:"max-bytes-for-level-base,omitempty"`
+	MaxBytesForLevelBase string `json:"max-bytes-for-level-base,omitempty" toml:"max-bytes-for-level-base,omitempty"`
 	// +optional
-	TargetFileSizeBase             string `json:"target-file-size-base,omitempty",toml:"target-file-size-base,omitempty"`
+	TargetFileSizeBase             string `json:"target-file-size-base,omitempty" toml:"target-file-size-base,omitempty"`
 	Level0FileNumCompactionTrigger *int64 `toml:"level0-file-num-compaction-trigger"`
 	Level0SlowdownWritesTrigger    *int64 `toml:"level0-slowdown-writes-trigger"`
 	Level0StopWritesTrigger        *int64 `toml:"level0-stop-writes-trigger"`
 	// +optional
-	MaxCompactionBytes string `json:"max-compaction-bytes,omitempty",toml:"max-compaction-bytes,omitempty"`
+	MaxCompactionBytes string `json:"max-compaction-bytes,omitempty" toml:"max-compaction-bytes,omitempty"`
 	// +optional
-	CompactionPri *int64 `json:"compaction-pri,omitempty",toml:"compaction-pri,omitempty"`
+	CompactionPri *int64 `json:"compaction-pri,omitempty" toml:"compaction-pri,omitempty"`
 	// +optional
-	DynamicLevelBytes *bool `json:"dynamic-level-bytes,omitempty",toml:"dynamic-level-bytes,omitempty"`
+	DynamicLevelBytes *bool `json:"dynamic-level-bytes,omitempty" toml:"dynamic-level-bytes,omitempty"`
 	// +optional
-	NumLevels *int64 `json:"num-levels,omitempty",toml:"num-levels,omitempty"`
+	NumLevels *int64 `json:"num-levels,omitempty" toml:"num-levels,omitempty"`
 	// +optional
-	MaxBytesForLevelMultiplier *int64 `json:"max-bytes-for-level-multiplier,omitempty",toml:"max-bytes-for-level-multiplier,omitempty"`
+	MaxBytesForLevelMultiplier *int64 `json:"max-bytes-for-level-multiplier,omitempty" toml:"max-bytes-for-level-multiplier,omitempty"`
 	// +optional
-	CompactionStyle *int64 `json:"compaction-style,omitempty",toml:"compaction-style,omitempty"`
+	CompactionStyle *int64 `json:"compaction-style,omitempty" toml:"compaction-style,omitempty"`
 	// +optional
-	DisableAutoCompactions *bool `json:"disable-auto-compactions,omitempty",toml:"disable-auto-compactions,omitempty"`
+	DisableAutoCompactions *bool `json:"disable-auto-compactions,omitempty" toml:"disable-auto-compactions,omitempty"`
 	// +optional
-	SoftPendingCompactionBytesLimit string `json:"soft-pending-compaction-bytes-limit,omitempty",toml:"soft-pending-compaction-bytes-limit,omitempty"`
+	SoftPendingCompactionBytesLimit string `json:"soft-pending-compaction-bytes-limit,omitempty" toml:"soft-pending-compaction-bytes-limit,omitempty"`
 	// +optional
-	HardPendingCompactionBytesLimit string `json:"hard-pending-compaction-bytes-limit,omitempty",toml:"hard-pending-compaction-bytes-limit,omitempty"`
+	HardPendingCompactionBytesLimit string `json:"hard-pending-compaction-bytes-limit,omitempty" toml:"hard-pending-compaction-bytes-limit,omitempty"`
 	// +optional
-	ForceConsistencyChecks *bool `json:"force-consistency-checks,omitempty",toml:"force-consistency-checks,omitempty"`
+	ForceConsistencyChecks *bool `json:"force-consistency-checks,omitempty" toml:"force-consistency-checks,omitempty"`
 	// +optional
-	PropSizeIndexDistance *int64 `json:"prop-size-index-distance,omitempty",toml:"prop-size-index-distance,omitempty"`
+	PropSizeIndexDistance *int64 `json:"prop-size-index-distance,omitempty" toml:"prop-size-index-distance,omitempty"`
 	// +optional
-	PropKeysIndexDistance *int64 `json:"prop-keys-index-distance,omitempty",toml:"prop-keys-index-distance,omitempty"`
+	PropKeysIndexDistance *int64 `json:"prop-keys-index-distance,omitempty" toml:"prop-keys-index-distance,omitempty"`
 	// +optional
-	EnableDoublySkiplist *bool `json:"enable-doubly-skiplist,omitempty",toml:"enable-doubly-skiplist,omitempty"`
+	EnableDoublySkiplist *bool `json:"enable-doubly-skiplist,omitempty" toml:"enable-doubly-skiplist,omitempty"`
 	// +optional
-	Titan *TiKVTitanCfConfig `json:"titan,omitempty",toml:"titan,omitempty"`
+	Titan *TiKVTitanCfConfig `json:"titan,omitempty" toml:"titan,omitempty"`
 }
 
 // TiKVTitanCfConfig is the titian config.
 type TiKVTitanCfConfig struct {
 	// +optional
-	MinBlobSize string `json:"min-blob-size,omitempty",toml:"min-blob-size,omitempty"`
+	MinBlobSize string `json:"min-blob-size,omitempty" toml:"min-blob-size,omitempty"`
 	// +optional
-	BlobFileCompression string `json:"blob-file-compression,omitempty",toml:"blob-file-compression,omitempty"`
+	BlobFileCompression string `json:"blob-file-compression,omitempty" toml:"blob-file-compression,omitempty"`
 	// +optional
-	BlobCacheSize string `json:"blob-cache-size,omitempty",toml:"blob-cache-size,omitempty"`
+	BlobCacheSize string `json:"blob-cache-size,omitempty" toml:"blob-cache-size,omitempty"`
 	// +optional
-	MinGcBatchSize string `json:"min-gc-batch-size,omitempty",toml:"min-gc-batch-size,omitempty"`
+	MinGcBatchSize string `json:"min-gc-batch-size,omitempty" toml:"min-gc-batch-size,omitempty"`
 	// +optional
-	MaxGcBatchSize string `json:"max-gc-batch-size,omitempty",toml:"max-gc-batch-size,omitempty"`
+	MaxGcBatchSize string `json:"max-gc-batch-size,omitempty" toml:"max-gc-batch-size,omitempty"`
 	// +optional
-	DiscardableRatio float64 `json:"discardable-ratio,omitempty",toml:"discardable-ratio,omitempty"`
+	DiscardableRatio float64 `json:"discardable-ratio,omitempty" toml:"discardable-ratio,omitempty"`
 	// +optional
-	SampleRatio float64 `json:"sample-ratio,omitempty",toml:"sample-ratio,omitempty"`
+	SampleRatio float64 `json:"sample-ratio,omitempty" toml:"sample-ratio,omitempty"`
 	// +optional
-	MergeSmallFileThreshold string `json:"merge-small-file-threshold,omitempty",toml:"merge-small-file-threshold,omitempty"`
+	MergeSmallFileThreshold string `json:"merge-small-file-threshold,omitempty" toml:"merge-small-file-threshold,omitempty"`
 	// +optional
-	BlobRunMode string `json:"blob-run-mode,omitempty",toml:"blob-run-mode,omitempty"`
+	BlobRunMode string `json:"blob-run-mode,omitempty" toml:"blob-run-mode,omitempty"`
 }
 
 // TiKVTitanDBConfig is the config a titian db.
 // +k8s:openapi-gen=true
 type TiKVTitanDBConfig struct {
 	// +optional
-	Enabled *bool `json:"enabled,omitempty",toml:"enabled,omitempty"`
+	Enabled *bool `json:"enabled,omitempty" toml:"enabled,omitempty"`
 	// +optional
-	Dirname string `json:"dirname,omitempty",toml:"dirname,omitempty"`
+	Dirname string `json:"dirname,omitempty" toml:"dirname,omitempty"`
 	// +optional
-	DisableGc *bool `json:"disable-gc,omitempty",toml:"disable-gc,omitempty"`
+	DisableGc *bool `json:"disable-gc,omitempty" toml:"disable-gc,omitempty"`
 	// +optional
-	MaxBackgroundGc *int64 `json:"max-background-gc,omitempty",toml:"max-background-gc,omitempty"`
+	MaxBackgroundGc *int64 `json:"max-background-gc,omitempty" toml:"max-background-gc,omitempty"`
 	// The value of this field will be truncated to seconds.
 	// +optional
-	PurgeObsoleteFilesPeriod string `json:"purge-obsolete-files-period,omitempty",toml:"purge-obsolete-files-period,omitempty"`
+	PurgeObsoleteFilesPeriod string `json:"purge-obsolete-files-period,omitempty" toml:"purge-obsolete-files-period,omitempty"`
 }
 
 // TiKVStorageConfig is the config of storage
 // +k8s:openapi-gen=true
 type TiKVStorageConfig struct {
 	// +optional
-	DataDir string `json:"data-dir,omitempty",toml:"data-dir,omitempty"`
+	DataDir string `json:"data-dir,omitempty" toml:"data-dir,omitempty"`
 	// +optional
-	MaxKeySize *int64 `json:"max-key-size,omitempty",toml:"max-key-size,omitempty"`
+	MaxKeySize *int64 `json:"max-key-size,omitempty" toml:"max-key-size,omitempty"`
 	// +optional
-	SchedulerNotifyCapacity *int64 `json:"scheduler-notify-capacity,omitempty",toml:"scheduler-notify-capacity,omitempty"`
+	SchedulerNotifyCapacity *int64 `json:"scheduler-notify-capacity,omitempty" toml:"scheduler-notify-capacity,omitempty"`
 	// +optional
-	SchedulerConcurrency *int64 `json:"scheduler-concurrency,omitempty",toml:"scheduler-concurrency,omitempty"`
+	SchedulerConcurrency *int64 `json:"scheduler-concurrency,omitempty" toml:"scheduler-concurrency,omitempty"`
 	// +optional
-	SchedulerWorkerPoolSize *int64 `json:"scheduler-worker-pool-size,omitempty",toml:"scheduler-worker-pool-size,omitempty"`
+	SchedulerWorkerPoolSize *int64 `json:"scheduler-worker-pool-size,omitempty" toml:"scheduler-worker-pool-size,omitempty"`
 	// +optional
-	SchedulerPendingWriteThreshold string `json:"scheduler-pending-write-threshold,omitempty",toml:"scheduler-pending-write-threshold,omitempty"`
+	SchedulerPendingWriteThreshold string `json:"scheduler-pending-write-threshold,omitempty" toml:"scheduler-pending-write-threshold,omitempty"`
 	// +optional
-	BlockCache *TiKVBlockCacheConfig `json:"block-cache,omitempty",toml:"block-cache,omitempty"`
+	BlockCache *TiKVBlockCacheConfig `json:"block-cache,omitempty" toml:"block-cache,omitempty"`
 }
 
 // TiKVBlockCacheConfig is the config of a block cache
 // +k8s:openapi-gen=true
 type TiKVBlockCacheConfig struct {
 	// +optional
-	Shared *bool `json:"shared,omitempty",toml:"shared,omitempty"`
+	Shared *bool `json:"shared,omitempty" toml:"shared,omitempty"`
 	// +optional
-	Capacity string `json:"capacity,omitempty",toml:"capacity,omitempty"`
+	Capacity string `json:"capacity,omitempty" toml:"capacity,omitempty"`
 	// +optional
-	NumShardBits *int64 `json:"num-shard-bits,omitempty",toml:"num-shard-bits,omitempty"`
+	NumShardBits *int64 `json:"num-shard-bits,omitempty" toml:"num-shard-bits,omitempty"`
 	// +optional
-	StrictCapacityLimit *bool `json:"strict-capacity-limit,omitempty",toml:"strict-capacity-limit,omitempty"`
+	StrictCapacityLimit *bool `json:"strict-capacity-limit,omitempty" toml:"strict-capacity-limit,omitempty"`
 	// +optional
-	HighPriPoolRatio float64 `json:"high-pri-pool-ratio,omitempty",toml:"high-pri-pool-ratio,omitempty"`
+	HighPriPoolRatio float64 `json:"high-pri-pool-ratio,omitempty" toml:"high-pri-pool-ratio,omitempty"`
 	// +optional
-	MemoryAllocator string `json:"memory-allocator,omitempty",toml:"memory-allocator,omitempty"`
+	MemoryAllocator string `json:"memory-allocator,omitempty" toml:"memory-allocator,omitempty"`
 }
 
 // TiKVServerConfig is the configuration of TiKV server.
 // +k8s:openapi-gen=true
 type TiKVServerConfig struct {
 	// +optional
-	GrpcCompressionType string `json:"grpc-compression-type,omitempty",toml:"grpc-compression-type,omitempty"`
+	GrpcCompressionType string `json:"grpc-compression-type,omitempty" toml:"grpc-compression-type,omitempty"`
 	// +optional
-	GrpcConcurrency *int64 `json:"grpc-concurrency,omitempty",toml:"grpc-concurrency,omitempty"`
+	GrpcConcurrency *int64 `json:"grpc-concurrency,omitempty" toml:"grpc-concurrency,omitempty"`
 	// +optional
-	GrpcConcurrentStream *int64 `json:"grpc-concurrent-stream,omitempty",toml:"grpc-concurrent-stream,omitempty"`
+	GrpcConcurrentStream *int64 `json:"grpc-concurrent-stream,omitempty" toml:"grpc-concurrent-stream,omitempty"`
 	// +optional
-	GrpcRaftConnNum *int64 `json:"grpc-raft-conn-num,omitempty",toml:"grpc-raft-conn-num,omitempty"`
+	GrpcRaftConnNum *int64 `json:"grpc-raft-conn-num,omitempty" toml:"grpc-raft-conn-num,omitempty"`
 	// +optional
-	GrpcStreamInitialWindowSize string `json:"grpc-stream-initial-window-size,omitempty",toml:"grpc-stream-initial-window-size,omitempty"`
+	GrpcStreamInitialWindowSize string `json:"grpc-stream-initial-window-size,omitempty" toml:"grpc-stream-initial-window-size,omitempty"`
 	// +optional
-	GrpcKeepaliveTime string `json:"grpc-keepalive-time,omitempty",toml:"grpc-keepalive-time,omitempty"`
+	GrpcKeepaliveTime string `json:"grpc-keepalive-time,omitempty" toml:"grpc-keepalive-time,omitempty"`
 	// +optional
-	GrpcKeepaliveTimeout string `json:"grpc-keepalive-timeout,omitempty",toml:"grpc-keepalive-timeout,omitempty"`
+	GrpcKeepaliveTimeout string `json:"grpc-keepalive-timeout,omitempty" toml:"grpc-keepalive-timeout,omitempty"`
 	// +optional
-	ConcurrentSendSnapLimit *int64 `json:"concurrent-send-snap-limit,omitempty",toml:"concurrent-send-snap-limit,omitempty"`
+	ConcurrentSendSnapLimit *int64 `json:"concurrent-send-snap-limit,omitempty" toml:"concurrent-send-snap-limit,omitempty"`
 	// +optional
-	ConcurrentRecvSnapLimit *int64 `json:"concurrent-recv-snap-limit,omitempty",toml:"concurrent-recv-snap-limit,omitempty"`
+	ConcurrentRecvSnapLimit *int64 `json:"concurrent-recv-snap-limit,omitempty" toml:"concurrent-recv-snap-limit,omitempty"`
 	// +optional
-	EndPointRecursionLimit *int64 `json:"end-point-recursion-limit,omitempty",toml:"end-point-recursion-limit,omitempty"`
+	EndPointRecursionLimit *int64 `json:"end-point-recursion-limit,omitempty" toml:"end-point-recursion-limit,omitempty"`
 	// +optional
-	EndPointStreamChannelSize *int64 `json:"end-point-stream-channel-size,omitempty",toml:"end-point-stream-channel-size,omitempty"`
+	EndPointStreamChannelSize *int64 `json:"end-point-stream-channel-size,omitempty" toml:"end-point-stream-channel-size,omitempty"`
 	// +optional
-	EndPointBatchRowLimit *int64 `json:"end-point-batch-row-limit,omitempty",toml:"end-point-batch-row-limit,omitempty"`
+	EndPointBatchRowLimit *int64 `json:"end-point-batch-row-limit,omitempty" toml:"end-point-batch-row-limit,omitempty"`
 	// +optional
-	EndPointStreamBatchRowLimit *int64 `json:"end-point-stream-batch-row-limit,omitempty",toml:"end-point-stream-batch-row-limit,omitempty"`
+	EndPointStreamBatchRowLimit *int64 `json:"end-point-stream-batch-row-limit,omitempty" toml:"end-point-stream-batch-row-limit,omitempty"`
 	// +optional
-	EndPointEnableBatchIfPossible *bool `json:"end-point-enable-batch-if-possible,omitempty",toml:"end-point-enable-batch-if-possible,omitempty"`
+	EndPointEnableBatchIfPossible *bool `json:"end-point-enable-batch-if-possible,omitempty" toml:"end-point-enable-batch-if-possible,omitempty"`
 	// +optional
-	EndPointRequestMaxHandleDuration string `json:"end-point-request-max-handle-duration,omitempty",toml:"end-point-request-max-handle-duration,omitempty"`
+	EndPointRequestMaxHandleDuration string `json:"end-point-request-max-handle-duration,omitempty" toml:"end-point-request-max-handle-duration,omitempty"`
 	// +optional
-	SnapMaxWriteBytesPerSec string `json:"snap-max-write-bytes-per-sec,omitempty",toml:"snap-max-write-bytes-per-sec,omitempty"`
+	SnapMaxWriteBytesPerSec string `json:"snap-max-write-bytes-per-sec,omitempty" toml:"snap-max-write-bytes-per-sec,omitempty"`
 	// +optional
-	SnapMaxTotalSize string `json:"snap-max-total-size,omitempty",toml:"snap-max-total-size,omitempty"`
+	SnapMaxTotalSize string `json:"snap-max-total-size,omitempty" toml:"snap-max-total-size,omitempty"`
 	// +optional
-	StatsConcurrency *int64 `json:"stats-concurrency,omitempty",toml:"stats-concurrency,omitempty"`
+	StatsConcurrency *int64 `json:"stats-concurrency,omitempty" toml:"stats-concurrency,omitempty"`
 	// +optional
-	HeavyLoadThreshold *int64 `json:"heavy-load-threshold,omitempty",toml:"heavy-load-threshold,omitempty"`
+	HeavyLoadThreshold *int64 `json:"heavy-load-threshold,omitempty" toml:"heavy-load-threshold,omitempty"`
 	// +optional
-	HeavyLoadWaitDuration string `json:"heavy-load-wait-duration,omitempty",toml:"heavy-load-wait-duration,omitempty"`
+	HeavyLoadWaitDuration string `json:"heavy-load-wait-duration,omitempty" toml:"heavy-load-wait-duration,omitempty"`
 	// +optional
-	Labels map[string]string `json:"labels,omitempty",toml:"labels,omitempty"`
+	Labels map[string]string `json:"labels,omitempty" toml:"labels,omitempty"`
 }
 
 // TiKVRaftstoreConfig is the configuration of TiKV raftstore component.
@@ -346,143 +346,143 @@ type TiKVServerConfig struct {
 type TiKVRaftstoreConfig struct {
 	// true for high reliability, prevent data loss when power failure.
 	// +optional
-	SyncLog *bool `json:"sync-log,omitempty",toml:"sync-log,omitempty"`
+	SyncLog *bool `json:"sync-log,omitempty" toml:"sync-log,omitempty"`
 
 	// raft-base-tick-interval is a base tick interval (ms).
 	// +optional
-	RaftBaseTickInterval string `json:"raft-base-tick-interval,omitempty",toml:"raft-base-tick-interval,omitempty"`
+	RaftBaseTickInterval string `json:"raft-base-tick-interval,omitempty" toml:"raft-base-tick-interval,omitempty"`
 	// +optional
-	RaftHeartbeatTicks *int64 `json:"raft-heartbeat-ticks,omitempty",toml:"raft-heartbeat-ticks,omitempty"`
+	RaftHeartbeatTicks *int64 `json:"raft-heartbeat-ticks,omitempty" toml:"raft-heartbeat-ticks,omitempty"`
 	// +optional
-	RaftElectionTimeoutTicks *int64 `json:"raft-election-timeout-ticks,omitempty",toml:"raft-election-timeout-ticks,omitempty"`
+	RaftElectionTimeoutTicks *int64 `json:"raft-election-timeout-ticks,omitempty" toml:"raft-election-timeout-ticks,omitempty"`
 	// When the entry exceed the max size, reject to propose it.
 	// +optional
-	RaftEntryMaxSize string `json:"raft-entry-max-size,omitempty",toml:"raft-entry-max-size,omitempty"`
+	RaftEntryMaxSize string `json:"raft-entry-max-size,omitempty" toml:"raft-entry-max-size,omitempty"`
 
 	// Interval to gc unnecessary raft log (ms).
 	// +optional
-	RaftLogGCTickInterval string `json:"raft-log-gc-tick-interval,omitempty",toml:"raft-log-gc-tick-interval,omitempty"`
+	RaftLogGCTickInterval string `json:"raft-log-gc-tick-interval,omitempty" toml:"raft-log-gc-tick-interval,omitempty"`
 	// A threshold to gc stale raft log, must >= 1.
 	// +optional
-	RaftLogGCThreshold *int64 `json:"raft-log-gc-threshold,omitempty",toml:"raft-log-gc-threshold,omitempty"`
+	RaftLogGCThreshold *int64 `json:"raft-log-gc-threshold,omitempty" toml:"raft-log-gc-threshold,omitempty"`
 	// When entry count exceed this value, gc will be forced trigger.
 	// +optional
-	RaftLogGCCountLimit *int64 `json:"raft-log-gc-count-limit,omitempty",toml:"raft-log-gc-count-limit,omitempty"`
+	RaftLogGCCountLimit *int64 `json:"raft-log-gc-count-limit,omitempty" toml:"raft-log-gc-count-limit,omitempty"`
 	// When the approximate size of raft log entries exceed this value
 	// gc will be forced trigger.
 	// +optional
-	RaftLogGCSizeLimit string `json:"raft-log-gc-size-limit,omitempty",toml:"raft-log-gc-size-limit,omitempty"`
+	RaftLogGCSizeLimit string `json:"raft-log-gc-size-limit,omitempty" toml:"raft-log-gc-size-limit,omitempty"`
 	// When a peer is not responding for this time, leader will not keep entry cache for it.
 	// +optional
-	RaftEntryCacheLifeTime string `json:"raft-entry-cache-life-time,omitempty",toml:"raft-entry-cache-life-time,omitempty"`
+	RaftEntryCacheLifeTime string `json:"raft-entry-cache-life-time,omitempty" toml:"raft-entry-cache-life-time,omitempty"`
 	// When a peer is newly added, reject transferring leader to the peer for a while.
 	// +optional
-	RaftRejectTransferLeaderDuration string `json:"raft-reject-transfer-leader-duration,omitempty",toml:"raft-reject-transfer-leader-duration,omitempty"`
+	RaftRejectTransferLeaderDuration string `json:"raft-reject-transfer-leader-duration,omitempty" toml:"raft-reject-transfer-leader-duration,omitempty"`
 
 	// Interval (ms) to check region whether need to be split or not.
 	// +optional
-	SplitRegionCheckTickInterval string `json:"split-region-check-tick-interval,omitempty",toml:"split-region-check-tick-interval,omitempty"`
+	SplitRegionCheckTickInterval string `json:"split-region-check-tick-interval,omitempty" toml:"split-region-check-tick-interval,omitempty"`
 	/// When size change of region exceed the diff since last check, it
 	/// will be checked again whether it should be split.
 	// +optional
-	RegionSplitCheckDiff string `json:"region-split-check-diff,omitempty",toml:"region-split-check-diff,omitempty"`
+	RegionSplitCheckDiff string `json:"region-split-check-diff,omitempty" toml:"region-split-check-diff,omitempty"`
 	/// Interval (ms) to check whether start compaction for a region.
 	// +optional
-	RegionCompactCheckInterval string `json:"region-compact-check-interval,omitempty",toml:"region-compact-check-interval,omitempty"`
+	RegionCompactCheckInterval string `json:"region-compact-check-interval,omitempty" toml:"region-compact-check-interval,omitempty"`
 	// delay time before deleting a stale peer
 	// +optional
-	CleanStalePeerDelay string `json:"clean-stale-peer-delay,omitempty",toml:"clean-stale-peer-delay,omitempty"`
+	CleanStalePeerDelay string `json:"clean-stale-peer-delay,omitempty" toml:"clean-stale-peer-delay,omitempty"`
 	/// Number of regions for each time checking.
 	// +optional
-	RegionCompactCheckStep *int64 `json:"region-compact-check-step,omitempty",toml:"region-compact-check-step,omitempty"`
+	RegionCompactCheckStep *int64 `json:"region-compact-check-step,omitempty" toml:"region-compact-check-step,omitempty"`
 	/// Minimum number of tombstones to trigger manual compaction.
 	// +optional
-	RegionCompactMinTombstones *int64 `json:"region-compact-min-tombstones,omitempty",toml:"region-compact-min-tombstones,omitempty"`
+	RegionCompactMinTombstones *int64 `json:"region-compact-min-tombstones,omitempty" toml:"region-compact-min-tombstones,omitempty"`
 	/// Minimum percentage of tombstones to trigger manual compaction.
 	/// Should between 1 and 100.
 	// +optional
-	RegionCompactTombstonesPercent *int64 `json:"region-compact-tombstones-percent,omitempty",toml:"region-compact-tombstones-percent,omitempty"`
+	RegionCompactTombstonesPercent *int64 `json:"region-compact-tombstones-percent,omitempty" toml:"region-compact-tombstones-percent,omitempty"`
 	// +optional
-	PdHeartbeatTickInterval string `json:"pd-heartbeat-tick-interval,omitempty",toml:"pd-heartbeat-tick-interval,omitempty"`
+	PdHeartbeatTickInterval string `json:"pd-heartbeat-tick-interval,omitempty" toml:"pd-heartbeat-tick-interval,omitempty"`
 	// +optional
-	PdStoreHeartbeatTickInterval string `json:"pd-store-heartbeat-tick-interval,omitempty",toml:"pd-store-heartbeat-tick-interval,omitempty"`
+	PdStoreHeartbeatTickInterval string `json:"pd-store-heartbeat-tick-interval,omitempty" toml:"pd-store-heartbeat-tick-interval,omitempty"`
 	// +optional
-	SnapMgrGCTickInterval string `json:"snap-mgr-gc-tick-interval,omitempty",toml:"snap-mgr-gc-tick-interval,omitempty"`
+	SnapMgrGCTickInterval string `json:"snap-mgr-gc-tick-interval,omitempty" toml:"snap-mgr-gc-tick-interval,omitempty"`
 	// +optional
-	SnapGCTimeout string `json:"snap-gc-timeout,omitempty",toml:"snap-gc-timeout,omitempty"`
+	SnapGCTimeout string `json:"snap-gc-timeout,omitempty" toml:"snap-gc-timeout,omitempty"`
 	// +optional
-	LockCfCompactInterval string `json:"lock-cf-compact-interval,omitempty",toml:"lock-cf-compact-interval,omitempty"`
+	LockCfCompactInterval string `json:"lock-cf-compact-interval,omitempty" toml:"lock-cf-compact-interval,omitempty"`
 	// +optional
-	LockCfCompactBytesThreshold string `json:"lock-cf-compact-bytes-threshold,omitempty",toml:"lock-cf-compact-bytes-threshold,omitempty"`
+	LockCfCompactBytesThreshold string `json:"lock-cf-compact-bytes-threshold,omitempty" toml:"lock-cf-compact-bytes-threshold,omitempty"`
 
 	// +optional
-	NotifyCapacity *int64 `json:"notify-capacity,omitempty",toml:"notify-capacity,omitempty"`
+	NotifyCapacity *int64 `json:"notify-capacity,omitempty" toml:"notify-capacity,omitempty"`
 	// +optional
-	MessagesPerTick *int64 `json:"messages-per-tick,omitempty",toml:"messages-per-tick,omitempty"`
+	MessagesPerTick *int64 `json:"messages-per-tick,omitempty" toml:"messages-per-tick,omitempty"`
 
 	/// When a peer is not active for max-peer-down-duration
 	/// the peer is considered to be down and is reported to PD.
 	// +optional
-	MaxPeerDownDuration string `json:"max-peer-down-duration,omitempty",toml:"max-peer-down-duration,omitempty"`
+	MaxPeerDownDuration string `json:"max-peer-down-duration,omitempty" toml:"max-peer-down-duration,omitempty"`
 
 	/// If the leader of a peer is missing for longer than max-leader-missing-duration
 	/// the peer would ask pd to confirm whether it is valid in any region.
 	/// If the peer is stale and is not valid in any region, it will destroy itself.
 	// +optional
-	MaxLeaderMissingDuration string `json:"max-leader-missing-duration,omitempty",toml:"max-leader-missing-duration,omitempty"`
+	MaxLeaderMissingDuration string `json:"max-leader-missing-duration,omitempty" toml:"max-leader-missing-duration,omitempty"`
 	/// Similar to the max-leader-missing-duration, instead it will log warnings and
 	/// try to alert monitoring systems, if there is any.
 	// +optional
-	AbnormalLeaderMissingDuration string `json:"abnormal-leader-missing-duration,omitempty",toml:"abnormal-leader-missing-duration,omitempty"`
+	AbnormalLeaderMissingDuration string `json:"abnormal-leader-missing-duration,omitempty" toml:"abnormal-leader-missing-duration,omitempty"`
 	// +optional
-	PeerStaleStateCheckInterval string `json:"peer-stale-state-check-interval,omitempty",toml:"peer-stale-state-check-interval,omitempty"`
+	PeerStaleStateCheckInterval string `json:"peer-stale-state-check-interval,omitempty" toml:"peer-stale-state-check-interval,omitempty"`
 
 	// +optional
-	LeaderTransferMaxLogLag *int64 `json:"leader-transfer-max-log-lag,omitempty",toml:"leader-transfer-max-log-lag,omitempty"`
+	LeaderTransferMaxLogLag *int64 `json:"leader-transfer-max-log-lag,omitempty" toml:"leader-transfer-max-log-lag,omitempty"`
 
 	// +optional
-	SnapApplyBatchSize string `json:"snap-apply-batch-size,omitempty",toml:"snap-apply-batch-size,omitempty"`
+	SnapApplyBatchSize string `json:"snap-apply-batch-size,omitempty" toml:"snap-apply-batch-size,omitempty"`
 
 	// Interval (ms) to check region whether the data is consistent.
 	// +optional
-	ConsistencyCheckInterval string `json:"consistency-check-interval,omitempty",toml:"consistency-check-interval,omitempty"`
+	ConsistencyCheckInterval string `json:"consistency-check-interval,omitempty" toml:"consistency-check-interval,omitempty"`
 
 	// +optional
-	ReportRegionFlowInterval string `json:"report-region-flow-interval,omitempty",toml:"report-region-flow-interval,omitempty"`
+	ReportRegionFlowInterval string `json:"report-region-flow-interval,omitempty" toml:"report-region-flow-interval,omitempty"`
 
 	// The lease provided by a successfully proposed and applied entry.
 	// +optional
-	RaftStoreMaxLeaderLease string `json:"raft-store-max-leader-lease,omitempty",toml:"raft-store-max-leader-lease,omitempty"`
+	RaftStoreMaxLeaderLease string `json:"raft-store-max-leader-lease,omitempty" toml:"raft-store-max-leader-lease,omitempty"`
 
 	// Right region derive origin region id when split.
 	// +optional
-	RightDeriveWhenSplit *bool `json:"right-derive-when-split,omitempty",toml:"right-derive-when-split,omitempty"`
+	RightDeriveWhenSplit *bool `json:"right-derive-when-split,omitempty" toml:"right-derive-when-split,omitempty"`
 
 	// +optional
-	AllowRemoveLeader *bool `json:"allow-remove-leader,omitempty",toml:"allow-remove-leader,omitempty"`
+	AllowRemoveLeader *bool `json:"allow-remove-leader,omitempty" toml:"allow-remove-leader,omitempty"`
 
 	/// Max log gap allowed to propose merge.
 	// +optional
-	MergeMaxLogGap *int64 `json:"merge-max-log-gap,omitempty",toml:"merge-max-log-gap,omitempty"`
+	MergeMaxLogGap *int64 `json:"merge-max-log-gap,omitempty" toml:"merge-max-log-gap,omitempty"`
 	/// Interval to re-propose merge.
 	// +optional
-	MergeCheckTickInterval string `json:"merge-check-tick-interval,omitempty",toml:"merge-check-tick-interval,omitempty"`
+	MergeCheckTickInterval string `json:"merge-check-tick-interval,omitempty" toml:"merge-check-tick-interval,omitempty"`
 
 	// +optional
-	UseDeleteRange *bool `json:"use-delete-range,omitempty",toml:"use-delete-range,omitempty"`
+	UseDeleteRange *bool `json:"use-delete-range,omitempty" toml:"use-delete-range,omitempty"`
 
 	// +optional
-	CleanupImportSstInterval string `json:"cleanup-import-sst-interval,omitempty",toml:"cleanup-import-sst-interval,omitempty"`
+	CleanupImportSstInterval string `json:"cleanup-import-sst-interval,omitempty" toml:"cleanup-import-sst-interval,omitempty"`
 
 	// +optional
-	ApplyMaxBatchSize *int64 `json:"apply-max-batch-size,omitempty",toml:"apply-max-batch-size,omitempty"`
+	ApplyMaxBatchSize *int64 `json:"apply-max-batch-size,omitempty" toml:"apply-max-batch-size,omitempty"`
 	// +optional
-	ApplyPoolSize *int64 `json:"apply-pool-size,omitempty",toml:"apply-pool-size,omitempty"`
+	ApplyPoolSize *int64 `json:"apply-pool-size,omitempty" toml:"apply-pool-size,omitempty"`
 
 	// +optional
-	StoreMaxBatchSize *int64 `json:"store-max-batch-size,omitempty",toml:"store-max-batch-size,omitempty"`
+	StoreMaxBatchSize *int64 `json:"store-max-batch-size,omitempty" toml:"store-max-batch-size,omitempty"`
 	// +optional
-	StorePoolSize *int64 `json:"store-pool-size,omitempty",toml:"store-pool-size,omitempty"`
+	StorePoolSize *int64 `json:"store-pool-size,omitempty" toml:"store-pool-size,omitempty"`
 	// +optional
-	HibernateRegions *bool `json:"hibernate-regions,omitempty",toml:"hibernate-regions,omitempty"`
+	HibernateRegions *bool `json:"hibernate-regions,omitempty" toml:"hibernate-regions,omitempty"`
 }
