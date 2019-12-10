@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: aggragated-webhook-sa
+  name: admission-webhook-sa
   namespace: ${NAMESPACE}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: aggragated-webhook-cr
+  name: admission-webhook-cr
   namespace: ${NAMESPACE}
 rules:
   - apiGroups: [""]
@@ -35,16 +35,16 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: aggragated-webhook-crb
+  name: admission-webhook-crb
   namespace: ${NAMESPACE}
 subjects:
   - kind: ServiceAccount
-    name: aggragated-webhook-sa
+    name: admission-webhook-sa
     namespace: ${NAMESPACE}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: aggragated-webhook-cr
+  name: admission-webhook-cr
 ---
 
 kind: ClusterRole
@@ -70,7 +70,7 @@ roleRef:
   name: extension-apiserver-authentication-reader
 subjects:
   - kind: ServiceAccount
-    name: aggragated-webhook-sa
+    name: admission-webhook-sa
     namespace: ${NAMESPACE}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -83,7 +83,7 @@ roleRef:
   name: system:auth-delegator
 subjects:
   - kind: ServiceAccount
-    name: aggragated-webhook-sa
+    name: admission-webhook-sa
     namespace: ${NAMESPACE}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -101,23 +101,23 @@ subjects:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: aggragated-webhook
+  name: admission-webhook
   namespace: ${NAMESPACE}
   labels:
-    app: aggragated-webhook
+    app: admission-webhook
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: aggragated-webhook
+      app: admission-webhook
   template:
     metadata:
       labels:
-        app: aggragated-webhook
+        app: admission-webhook
     spec:
-      serviceAccountName: aggragated-webhook-sa
+      serviceAccountName: admission-webhook-sa
       containers:
-        - name: aggragated-webhook
+        - name: admission-webhook
           image: pingcap/tidb-operator:latest
           imagePullPolicy: Always
           command:
@@ -126,16 +126,16 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: tidb-aggragated-webhook
+  name: tidb-admission-webhook
   namespace: ${NAMESPACE}
   labels:
-    app: aggragated-webhook
+    app: admission-webhook
 spec:
   ports:
     - name: https-webhook # optional
       port: 443
   selector:
-    app: aggragated-webhook
+    app: admission-webhook
 ---
 apiVersion: apiregistration.k8s.io/v1beta1
 kind: APIService
@@ -147,7 +147,7 @@ spec:
   groupPriorityMinimum: 1000
   versionPriority: 15
   service:
-    name: tidb-aggragated-webhook
+    name: tidb-admission-webhook
     namespace: ${NAMESPACE}
   version: v1alpha1
 ---
