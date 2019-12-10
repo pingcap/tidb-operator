@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"path"
 	"strconv"
 	"strings"
 
@@ -38,6 +39,12 @@ const (
 	slowQueryLogVolumeName = "slowlog"
 	slowQueryLogDir        = "/var/log/tidb"
 	slowQueryLogFile       = slowQueryLogDir + "/slowlog"
+	// clusterCertPath is where the cert for inter-cluster communication stored (if any)
+	clusterCertPath = "/var/lib/tidb-tls"
+	// serverCertPath is where the tidb-server cert stored (if any)
+	serverCertPath = "/var/lib/tidb-server-tls"
+	// serviceAccountCAPath is where is CABundle of serviceaccount locates
+	serviceAccountCAPath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 )
 
 type tidbMemberManager struct {
@@ -404,17 +411,17 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		if config.Security == nil {
 			config.Security = &v1alpha1.Security{}
 		}
-		config.Security.ClusterSSLCA = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-		config.Security.ClusterSSLCert = "/var/lib/tidb-tls/cert"
-		config.Security.ClusterSSLKey = "/var/lib/tidb-tls/key"
+		config.Security.ClusterSSLCA = serviceAccountCAPath
+		config.Security.ClusterSSLCert = path.Join(clusterCertPath, "cert")
+		config.Security.ClusterSSLKey = path.Join(clusterCertPath, "key")
 	}
 	if tc.Spec.TiDB.EnableTLSClient {
 		if config.Security == nil {
 			config.Security = &v1alpha1.Security{}
 		}
-		config.Security.SSLCA = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-		config.Security.SSLCert = "/var/lib/tidb-server-tls/cert"
-		config.Security.SSLKey = "/var/lib/tidb-server-tls/key"
+		config.Security.SSLCA = serviceAccountCAPath
+		config.Security.SSLCert = path.Join(serverCertPath, "cert")
+		config.Security.SSLKey = path.Join(serverCertPath, "key")
 	}
 	confText, err := MarshalTOML(config)
 	if err != nil {
@@ -554,12 +561,12 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 	if tc.Spec.EnableTLSCluster {
 		volMounts = append(volMounts, corev1.VolumeMount{
-			Name: "tidb-tls", ReadOnly: true, MountPath: "/var/lib/tidb-tls",
+			Name: "tidb-tls", ReadOnly: true, MountPath: clusterCertPath,
 		})
 	}
 	if tc.Spec.TiDB.EnableTLSClient {
 		volMounts = append(volMounts, corev1.VolumeMount{
-			Name: "tidb-server-tls", ReadOnly: true, MountPath: "/var/lib/tidb-server-tls",
+			Name: "tidb-server-tls", ReadOnly: true, MountPath: serverCertPath,
 		})
 	}
 
