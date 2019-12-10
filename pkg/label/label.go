@@ -93,6 +93,8 @@ const (
 	TiKVLabelVal string = "tikv"
 	// PumpLabelVal is Pump label value
 	PumpLabelVal string = "pump"
+	// DiscoveryLabelVal is Discovery label value
+	DiscoveryLabelVal string = "discovery"
 
 	// CleanJobLabelVal is clean job label value
 	CleanJobLabelVal string = "clean"
@@ -207,6 +209,12 @@ func (l Label) PD() Label {
 // Pump assigns pump to component key in label
 func (l Label) Pump() Label {
 	l.Component(PumpLabelVal)
+	return l
+}
+
+// Discovery assigns discovery to component key in label
+func (l Label) Discovery() Label {
+	l.Component(DiscoveryLabelVal)
 	return l
 }
 
