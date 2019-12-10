@@ -52,7 +52,7 @@ func (a *StatefulSetAdmissionHook) Validate(ar *admission.AdmissionRequest) *adm
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		expectedGroup = asappsv1alpha1.GroupName
 	}
-	if "StatefulSet" != ar.Kind.Kind || expectedGroup != ar.Kind.Kind {
+	if "StatefulSet" != ar.Kind.Kind || expectedGroup != ar.Kind.Group {
 		klog.Infof("success to %v %s[%s/%s]", ar.Operation, ar.Kind.Kind, ar.Name, ar.Namespace)
 		return util.ARSuccess()
 	}
