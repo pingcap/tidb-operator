@@ -28,13 +28,6 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 						}
 					}
 
-					stage('Push tidb-backup-manager Docker Image'){
-						withDockerServer([uri: "${env.DOCKER_HOST}"]) {
-							docker.build("uhub.service.ucloud.cn/pingcap/backup-manager:${RELEASE_TAG}", "images/backup-manager").push()
-							docker.build("pingcap/backup-manager:${RELEASE_TAG}", "images/backup-manager").push()
-						}
-					}
-
 					stage('Release charts to qiniu'){
 						ansiColor('xterm') {
 						sh """
@@ -93,9 +86,7 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 
 		slackmsg = "${slackmsg}" + "\n" +
 		"tidb-operator Docker Image: `pingcap/tidb-operator:${RELEASE_TAG}`" + "\n" +
-		"tidb-operator Docker Image: `uhub.ucloud.cn/pingcap/tidb-operator:${RELEASE_TAG}`" + "\n" +
-		"backup-manager Docker Image: `pingcap/backup-manager:${RELEASE_TAG}`" + "\n" +
-		"backup-manager Docker Image: `uhub.ucloud.cn/pingcap/backup-manager:${RELEASE_TAG}`"
+		"tidb-operator Docker Image: `uhub.ucloud.cn/pingcap/tidb-operator:${RELEASE_TAG}`"
 
 
 		for(String chartItem : CHART_ITEMS.split(' ')){
