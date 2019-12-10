@@ -10,7 +10,7 @@ variable "bastion_cpu_core_count" {
 
 variable "operator_version" {
   type    = string
-  default = "v1.0.3"
+  default = "v1.0.5"
 }
 
 variable "operator_helm_values" {
@@ -40,7 +40,7 @@ variable "tidb_version" {
 }
 variable "tidb_cluster_chart_version" {
   description = "tidb-cluster chart version"
-  default     = "v1.0.3"
+  default     = "v1.0.5"
 }
 
 variable "pd_count" {
