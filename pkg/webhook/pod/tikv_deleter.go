@@ -24,7 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
-	admission "k8s.io/api/admission/v1"
+	admission "k8s.io/api/admission/v1beta1"
 	"k8s.io/klog"
 )
 
