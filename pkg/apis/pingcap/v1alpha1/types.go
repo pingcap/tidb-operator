@@ -182,7 +182,7 @@ type PDSpec struct {
 	Service          *ServiceSpec `json:"service,omitempty"`
 	StorageClassName string       `json:"storageClassName,omitempty"`
 
-	// Config is the Configuration of tidb-servers
+	// Config is the Configuration of pd-servers
 	Config *PDConfig `json:"config,omitempty"`
 }
 
@@ -200,9 +200,8 @@ type TiKVSpec struct {
 	StorageClassName string       `json:"storageClassName,omitempty"`
 	MaxFailoverCount int32        `json:"maxFailoverCount,omitempty"`
 
-	// +k8s:openapi-gen=false
-	// TODO: add schema
-	config.GenericConfig `json:",inline"`
+	// Config is the Configuration of tikv-servers
+	Config *TiKVConfig `json:"config,omitempty"`
 }
 
 // +k8s:openapi-gen=true
