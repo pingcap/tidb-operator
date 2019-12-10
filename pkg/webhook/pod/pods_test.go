@@ -24,7 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	admission "k8s.io/api/admission/v1"
+	admission "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -57,10 +57,10 @@ func TestAdmitPod(t *testing.T) {
 		t.Log(test.name)
 
 		podAdmissionControl, _, _, podIndexer, _, _ := newPodAdmissionControl()
-		ar := newAdmissionReview()
+		ar := newAdmissionRequest()
 		pod := newNormalPod()
 		if test.isDelete {
-			ar.Request.Operation = admission.Delete
+			ar.Operation = admission.Delete
 		}
 
 		if test.isPD {
@@ -78,7 +78,7 @@ func TestAdmitPod(t *testing.T) {
 		}
 		podIndexer.Add(pod)
 
-		resp := podAdmissionControl.AdmitPods(*ar)
+		resp := podAdmissionControl.AdmitPods(ar)
 		test.expectFn(g, resp)
 	}
 
@@ -120,14 +120,12 @@ func TestAdmitPod(t *testing.T) {
 	}
 }
 
-func newAdmissionReview() *admission.AdmissionReview {
-	ar := admission.AdmissionReview{}
+func newAdmissionRequest() *admission.AdmissionRequest {
 	request := admission.AdmissionRequest{}
 	request.Name = "pod"
 	request.Namespace = namespace
 	request.Operation = admission.Update
-	ar.Request = &request
-	return &ar
+	return &request
 }
 
 func newPodAdmissionControl() (*PodAdmissionControl, *controller.FakePVCControl, cache.Indexer, cache.Indexer, cache.Indexer, cache.Indexer) {
