@@ -143,6 +143,10 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		_, err = pmm.setControl.UpdateStatefulSet(tc, &set)
 		return err
 	}
+
+	if err := pmm.syncTiDBClusterStatus(tc, oldPumpSet); err != nil {
+		klog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", tc.Namespace, tc.Name, err)
+	}
 	return nil
 }
 

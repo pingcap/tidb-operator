@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -717,3 +718,60 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 }
 
 // TODO: add ut for getPumpStatefulSet
+func TestSyncPumpStatefulSetForTidbCluster(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name        string
+		updateTC    func(*v1alpha1.TidbCluster)
+		upgradingFn func(corelisters.PodLister, *appsv1.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
+		errExpectFn func(*GomegaWithT, error)
+		tcExpectFn  func(*GomegaWithT, *v1alpha1.TidbCluster)
+	}
+	status := appsv1.StatefulSetStatus{
+		Replicas: int32(3),
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		tc := newTidbClusterForPump()
+
+		set := &appsv1.StatefulSet{
+			Status: status,
+		}
+		if test.updateTC != nil {
+			test.updateTC(tc)
+
+		}
+		pmm, _, _ := newFakePumpMemberManager()
+
+		err := pmm.syncTiDBClusterStatus(tc, set)
+
+		if test.errExpectFn != nil {
+			test.errExpectFn(g, err)
+		}
+		if test.tcExpectFn != nil {
+			test.tcExpectFn(g, tc)
+		}
+	}
+	tests := []testcase{
+		{
+			name: "statefulset is upgrading",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.Pump.StatefulSet = &appsv1.StatefulSetStatus{}
+				tc.Status.Pump.StatefulSet.CurrentRevision = "pump-1"
+				tc.Status.Pump.StatefulSet.UpdateRevision = "pump-2"
+			},
+			upgradingFn: func(lister corelisters.PodLister, set *appsv1.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return true, nil
+			},
+			errExpectFn: nil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.Pump.StatefulSet.Replicas).To(Equal(int32(3)))
+				g.Expect(tc.Status.Pump.Phase).To(Equal(v1alpha1.UpgradePhase))
+			},
+		},
+	}
+
+	for i := range tests {
+		t.Logf(tests[i].name)
+		testFn(&tests[i], t)
+	}
+}
