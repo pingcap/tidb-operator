@@ -121,7 +121,7 @@ spec:
           image: pingcap/tidb-operator:latest
           imagePullPolicy: Always
           command:
-            - /usr/local/bin/tidb-aggragated-webhook
+            - /usr/local/bin/tidb-admission-webhook
 ---
 apiVersion: v1
 kind: Service

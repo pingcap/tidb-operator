@@ -40,7 +40,7 @@ docker: build
 endif
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}" images/tidb-operator
 
-build: controller-manager scheduler discovery aggragated-webhook apiserver backup-manager
+build: controller-manager scheduler discovery admission-webhook apiserver backup-manager
 
 controller-manager:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
@@ -51,8 +51,8 @@ scheduler:
 discovery:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery cmd/discovery/main.go
 
-aggragated-webhook:
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-aggragated-webhook cmd/aggragated-webhook/main.go
+admission-webhook:
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-webhook cmd/admission-webhook/main.go
 
 apiserver:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-apiserver cmd/apiserver/main.go
