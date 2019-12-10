@@ -14,15 +14,19 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	glog "k8s.io/klog"
+	"k8s.io/kubernetes/pkg/apis/apps"
 )
 
 var (
@@ -54,6 +58,12 @@ var (
 	TestMode bool
 	// ResyncDuration is the resync time of informer
 	ResyncDuration time.Duration
+
+	// TidbDiscoveryImage is the image of tidb discovery service
+	TidbDiscoveryImage string
+
+	// LastAppliedConfigAnnotation is annotation key of last applied configuration
+	LastAppliedConfigAnnotation = "pingcap.com/last-applied-configuration"
 )
 
 const (
@@ -242,6 +252,11 @@ func PumpPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-pump", clusterName)
 }
 
+// DiscoveryMemberName returns the name of tidb discovery
+func DiscoveryMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-discovery", clusterName)
+}
+
 // AnnProm adds annotations for prometheus scraping metrics
 func AnnProm(port int32) map[string]string {
 	return map[string]string{
@@ -336,4 +351,42 @@ func (rt *RequestTracker) SetRequests(requests int) *RequestTracker {
 
 func (rt *RequestTracker) GetError() error {
 	return rt.err
+}
+
+// SetDeploymentLastAppliedConfigAnnotation set last applied config to Deployment's annotation
+func SetDeploymentLastAppliedConfigAnnotation(dep *appsv1.Deployment) error {
+	b, err := json.Marshal(dep)
+	if err != nil {
+		return err
+	}
+	applied := string(b)
+	if dep.Annotations == nil {
+		dep.Annotations = map[string]string{}
+	}
+	dep.Annotations[LastAppliedConfigAnnotation] = applied
+	return nil
+}
+
+// GetDeploymentLastAppliedConfigAnnotation set last applied config from Deployment's annotation
+func GetDeploymentLastAppliedConfigAnnotation(dep *appsv1.Deployment) (*apps.DeploymentSpec, error) {
+	applied, ok := dep.Annotations[LastAppliedConfigAnnotation]
+	if !ok {
+		return nil, fmt.Errorf("deployment:[%s/%s] not found spec's apply config", dep.GetNamespace(), dep.GetName())
+	}
+	depSpec := &apps.DeploymentSpec{}
+	err := json.Unmarshal([]byte(applied), depSpec)
+	if err != nil {
+		return nil, err
+	}
+	return depSpec, nil
+}
+
+// DeploymentSpecChanged checks whether the new deployment differs with the old one's last-applied-config
+func DeploymentSpecChanged(new *appsv1.Deployment, old *appsv1.Deployment) bool {
+	lastAppliedSpec, err := GetDeploymentLastAppliedConfigAnnotation(old)
+	if err != nil {
+		glog.Errorf("error get last-applied-config of deployment %s/%s: %v", old.Namespace, old.Name, err)
+		return true
+	}
+	return !apiequality.Semantic.DeepEqual(new.Spec, lastAppliedSpec)
 }

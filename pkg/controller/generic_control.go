@@ -19,7 +19,9 @@ import (
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,7 +34,21 @@ import (
 
 // GenericControlInterface is a wrapper to manage typed object that managed by an arbitrary controller
 type TypedControlInterface interface {
+	// CreateOrUpdateConfigMap create the desired configmap or update the current one to desired state if already existed
 	CreateOrUpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
+	// CreateOrUpdateRole create the desired role or update the current one to desired state if already existed
+	CreateOrUpdateRole(controller runtime.Object, role *rbacv1.Role) (*rbacv1.Role, error)
+	// CreateOrUpdateRoleBinding create the desired rolebinding or update the current one to desired state if already existed
+	CreateOrUpdateRoleBinding(controller runtime.Object, cr *rbacv1.RoleBinding) (*rbacv1.RoleBinding, error)
+	// CreateOrUpdateServiceAccount create the desired serviceaccount or update the current one to desired state if already existed
+	CreateOrUpdateServiceAccount(controller runtime.Object, sa *corev1.ServiceAccount) (*corev1.ServiceAccount, error)
+	// CreateOrUpdateService create the desired service or update the current one to desired state if already existed
+	CreateOrUpdateService(controller runtime.Object, svc *corev1.Service) (*corev1.Service, error)
+	// CreateOrUpdateDeployment create the desired deployment or update the current one to desired state if already existed
+	CreateOrUpdateDeployment(controller runtime.Object, deploy *appsv1.Deployment) (*appsv1.Deployment, error)
+	// UpdateStatus update the /status subresource of the object
+	UpdateStatus(newStatus runtime.Object) error
+	// Delete delete the given object from the cluster
 	Delete(controller, obj runtime.Object) error
 }
 
@@ -47,6 +63,76 @@ func NewTypedControl(control GenericControlInterface) TypedControlInterface {
 
 func (w *typedWrapper) Delete(controller, obj runtime.Object) error {
 	return w.GenericControlInterface.Delete(controller, obj)
+}
+
+func (w *typedWrapper) CreateOrUpdateDeployment(controller runtime.Object, deploy *appsv1.Deployment) (*appsv1.Deployment, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, deploy, func(existing, desired runtime.Object) error {
+		existingDep := existing.(*appsv1.Deployment)
+		desiredDep := desired.(*appsv1.Deployment)
+
+		existingDep.Labels = desiredDep.Labels
+		for k, v := range desiredDep.Annotations {
+			existingDep.Annotations[k] = v
+		}
+		// spec of deployment is hard to merge, use last-applied-config to assist
+		if DeploymentSpecChanged(desiredDep, existingDep) {
+			existingDep.Spec = desiredDep.Spec
+			err := SetDeploymentLastAppliedConfigAnnotation(existingDep)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*appsv1.Deployment), err
+}
+
+func (w *typedWrapper) CreateOrUpdateRole(controller runtime.Object, role *rbacv1.Role) (*rbacv1.Role, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, role, func(existing, desired runtime.Object) error {
+		existingRole := existing.(*rbacv1.Role)
+		desiredCRole := desired.(*rbacv1.Role)
+
+		existingRole.Labels = desiredCRole.Labels
+		existingRole.Rules = desiredCRole.Rules
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*rbacv1.Role), err
+}
+
+func (w *typedWrapper) CreateOrUpdateRoleBinding(controller runtime.Object, rb *rbacv1.RoleBinding) (*rbacv1.RoleBinding, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, rb, func(existing, desired runtime.Object) error {
+		existingRB := existing.(*rbacv1.RoleBinding)
+		desiredRB := desired.(*rbacv1.RoleBinding)
+
+		existingRB.Labels = desiredRB.Labels
+		existingRB.RoleRef = desiredRB.RoleRef
+		existingRB.Subjects = desiredRB.Subjects
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*rbacv1.RoleBinding), err
+}
+
+func (w *typedWrapper) CreateOrUpdateServiceAccount(controller runtime.Object, sa *corev1.ServiceAccount) (*corev1.ServiceAccount, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, sa, func(existing, desired runtime.Object) error {
+		existingSA := existing.(*corev1.ServiceAccount)
+		desiredSA := desired.(*corev1.ServiceAccount)
+
+		existingSA.Labels = desiredSA.Labels
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*corev1.ServiceAccount), err
 }
 
 func (w *typedWrapper) CreateOrUpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
@@ -67,9 +153,30 @@ func (w *typedWrapper) CreateOrUpdateConfigMap(controller runtime.Object, cm *co
 	return result.(*corev1.ConfigMap), nil
 }
 
+func (w *typedWrapper) CreateOrUpdateService(controller runtime.Object, svc *corev1.Service) (*corev1.Service, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, svc, func(existing, desired runtime.Object) error {
+		existingSvc := existing.(*corev1.Service)
+		desiredSvc := desired.(*corev1.Service)
+
+		clusterIPRetained := existingSvc.Spec.ClusterIP
+		existingSvc.Spec = desiredSvc.Spec
+		existingSvc.Spec.ClusterIP = clusterIPRetained
+		for k, v := range desiredSvc.Annotations {
+			desiredSvc.Annotations[k] = v
+		}
+		existingSvc.Labels = desiredSvc.Labels
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*corev1.Service), nil
+}
+
 // GenericControlInterface manages generic object that managed by an arbitrary controller
 type GenericControlInterface interface {
 	CreateOrUpdate(controller, obj runtime.Object, mergeFn MergeFn) (runtime.Object, error)
+	UpdateStatus(obj runtime.Object) error
 	Delete(controller, obj runtime.Object) error
 }
 
@@ -97,6 +204,11 @@ type realGenericControlInterface struct {
 
 func NewRealGenericControl(client client.Client, recorder record.EventRecorder) GenericControlInterface {
 	return &realGenericControlInterface{client, recorder}
+}
+
+// UpdateStatus update the /status subresource of object
+func (c *realGenericControlInterface) UpdateStatus(obj runtime.Object) error {
+	return c.client.Status().Update(context.TODO(), obj)
 }
 
 // CreateOrUpdate create an object to the Kubernetes cluster for controller, if the object to create is existed,
@@ -207,6 +319,7 @@ type FakeGenericControl struct {
 	control               GenericControlInterface
 	createOrUpdateTracker RequestTracker
 	deleteTracker         RequestTracker
+	updateStatusTracker   RequestTracker
 }
 
 // NewFakeGenericControl returns a FakeGenericControl
@@ -218,7 +331,12 @@ func NewFakeGenericControl(initObjects ...runtime.Object) *FakeGenericControl {
 		control,
 		RequestTracker{},
 		RequestTracker{},
+		RequestTracker{},
 	}
+}
+
+func (gc *FakeGenericControl) SetUpdateStatusError(err error, after int) {
+	gc.updateStatusTracker.SetError(err).SetAfter(after)
 }
 
 func (gc *FakeGenericControl) SetCreateOrUpdateError(err error, after int) {
@@ -232,6 +350,17 @@ func (gc *FakeGenericControl) SetDeleteError(err error, after int) {
 // AddObject is used to prepare the indexer for fakeGenericControl
 func (gc *FakeGenericControl) AddObject(object runtime.Object) error {
 	return gc.FakeCli.Create(context.TODO(), object.DeepCopyObject())
+}
+
+// UpdateStatus update the /status subresource of object
+func (gc *FakeGenericControl) UpdateStatus(obj runtime.Object) error {
+	defer gc.updateStatusTracker.Inc()
+	if gc.updateStatusTracker.ErrorReady() {
+		defer gc.updateStatusTracker.Reset()
+		return gc.updateStatusTracker.GetError()
+	}
+
+	return gc.FakeCli.Status().Update(context.TODO(), obj)
 }
 
 func (gc *FakeGenericControl) CreateOrUpdate(controller, obj runtime.Object, fn MergeFn) (runtime.Object, error) {

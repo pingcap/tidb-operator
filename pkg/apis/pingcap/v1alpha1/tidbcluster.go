@@ -379,3 +379,11 @@ func (tc *TidbCluster) Scheme() string {
 	}
 	return "http"
 }
+
+func (tc *TidbCluster) Timezone() string {
+	tz := tc.Spec.Timezone
+	if tz == "" {
+		tz = "UTC"
+	}
+	return tz
+}

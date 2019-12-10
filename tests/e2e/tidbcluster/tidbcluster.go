@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/apiserver"
@@ -46,6 +47,8 @@ import (
 	"k8s.io/klog"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/utils"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
@@ -59,6 +62,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	var cfg *tests.Config
 	var config *restclient.Config
 	var ocfg *tests.OperatorConfig
+	var genericCli client.Client
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -69,6 +73,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		cli, err = versioned.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
 		asCli, err = asclientset.NewForConfig(config)
+		framework.ExpectNoError(err, "failed to create clientset")
+		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
 		framework.ExpectNoError(err, "failed to create clientset")
 		oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, e2econfig.TestConfig, nil)
 		cfg = e2econfig.TestConfig
@@ -448,6 +454,22 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
+		ginkgo.By("Discovery service should be reconciled by tidb-operator")
+		discoveryName := controller.DiscoveryMemberName(tc.Name)
+		discoveryDep, err := c.AppsV1().Deployments(tc.Namespace).Get(discoveryName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get discovery deployment")
+		WaitObjectToBeControlledByOrDie(genericCli, tc, discoveryDep, 5*time.Minute)
+
+		err = utils.WaitForDeploymentComplete(c, discoveryDep, e2elog.Logf, 10*time.Second, 5*time.Minute)
+		framework.ExpectNoError(err, "Discovery Deployment should be healthy after managed by tidb-operator")
+
+		err = genericCli.Delete(context.TODO(), discoveryDep)
+		framework.ExpectNoError(err, "Expected to delete deployment")
+
+		err = utils.WaitForDeploymentComplete(c, discoveryDep, e2elog.Logf, 10*time.Second, 5*time.Minute)
+		framework.ExpectNoError(err, "Discovery Deployment should be recovered by tidb-operator after deletion")
+
+		ginkgo.By("Managing TiDB configmap in TidbCluster CRD in-place should not trigger rolling-udpate")
 		tidbSetName := controller.TiDBMemberName(tc.Name)
 		oldTiDBSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(tidbSetName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get TiDB statefulset")
@@ -456,7 +478,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectEqual(oldTiDBSet.Status.UpdateRevision, oldRev, "Expected tidb is not upgrading")
 
 		// TODO: modify other cases to manage TiDB configmap in CRD by default
-		ginkgo.By("Test managing TiDB configmap in TidbCluster CRD")
 		tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
 		tc.Spec.TiDB.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
 
