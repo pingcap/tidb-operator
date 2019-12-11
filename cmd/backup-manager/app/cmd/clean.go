@@ -42,8 +42,8 @@ func NewCleanCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&bo.Namespace, "namespace", "n", "", "Tidb cluster's namespace")
-	cmd.Flags().StringVarP(&bo.BackupName, "backupName", "b", "", "Backup CRD object name")
+	cmd.Flags().StringVar(&bo.Namespace, "namespace", "", "Tidb cluster's namespace")
+	cmd.Flags().StringVar(&bo.BackupName, "backupName", "", "Backup CRD object name")
 	return cmd
 }
 

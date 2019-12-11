@@ -43,13 +43,13 @@ func NewRestoreCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&ro.Namespace, "namespace", "n", "", "Restore CR's namespace")
-	cmd.Flags().StringVarP(&ro.Host, "host", "h", "", "Tidb cluster access address")
-	cmd.Flags().Int32VarP(&ro.Port, "port", "P", bkconstants.DefaultTidbPort, "Port number to use for connecting tidb cluster")
-	cmd.Flags().StringVarP(&ro.Password, bkconstants.TidbPasswordKey, "p", "", "Password to use when connecting to tidb cluster")
-	cmd.Flags().StringVarP(&ro.User, "user", "u", "", "User for login tidb cluster")
-	cmd.Flags().StringVarP(&ro.RestoreName, "restoreName", "r", "", "Restore CRD object name")
-	cmd.Flags().StringVarP(&ro.BackupPath, "backupPath", "b", "", "The location of the backup")
+	cmd.Flags().StringVar(&ro.Namespace, "namespace", "", "Restore CR's namespace")
+	cmd.Flags().StringVar(&ro.Host, "host", "", "Tidb cluster access address")
+	cmd.Flags().Int32Var(&ro.Port, "port", bkconstants.DefaultTidbPort, "Port number to use for connecting tidb cluster")
+	cmd.Flags().StringVar(&ro.Password, bkconstants.TidbPasswordKey, "", "Password to use when connecting to tidb cluster")
+	cmd.Flags().StringVar(&ro.User, "user", "", "User for login tidb cluster")
+	cmd.Flags().StringVar(&ro.RestoreName, "restoreName", "", "Restore CRD object name")
+	cmd.Flags().StringVar(&ro.BackupPath, "backupPath", "", "The location of the backup")
 	util.SetFlagsFromEnv(cmd.Flags(), bkconstants.BackupManagerEnvVarPrefix)
 	return cmd
 }

@@ -43,14 +43,14 @@ func NewBackupCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&bo.Namespace, "namespace", "n", "", "Backup CR's namespace")
-	cmd.Flags().StringVarP(&bo.Host, "host", "h", "", "Tidb cluster access address")
-	cmd.Flags().Int32VarP(&bo.Port, "port", "P", bkconstants.DefaultTidbPort, "Port number to use for connecting tidb cluster")
-	cmd.Flags().StringVarP(&bo.Bucket, "bucket", "k", "", "Bucket in which to store the backup data")
-	cmd.Flags().StringVarP(&bo.Password, bkconstants.TidbPasswordKey, "p", "", "Password to use when connecting to tidb cluster")
-	cmd.Flags().StringVarP(&bo.User, "user", "u", "", "User for login tidb cluster")
-	cmd.Flags().StringVarP(&bo.StorageType, "storageType", "s", "", "Backend storage type")
-	cmd.Flags().StringVarP(&bo.BackupName, "backupName", "b", "", "Backup CRD object name")
+	cmd.Flags().StringVar(&bo.Namespace, "namespace", "", "Backup CR's namespace")
+	cmd.Flags().StringVar(&bo.Host, "host", "", "Tidb cluster access address")
+	cmd.Flags().Int32Var(&bo.Port, "port", bkconstants.DefaultTidbPort, "Port number to use for connecting tidb cluster")
+	cmd.Flags().StringVar(&bo.Bucket, "bucket", "", "Bucket in which to store the backup data")
+	cmd.Flags().StringVar(&bo.Password, bkconstants.TidbPasswordKey, "", "Password to use when connecting to tidb cluster")
+	cmd.Flags().StringVar(&bo.User, "user", "", "User for login tidb cluster")
+	cmd.Flags().StringVar(&bo.StorageType, "storageType", "", "Backend storage type")
+	cmd.Flags().StringVar(&bo.BackupName, "backupName", "", "Backup CRD object name")
 	util.SetFlagsFromEnv(cmd.Flags(), bkconstants.BackupManagerEnvVarPrefix)
 	return cmd
 }
