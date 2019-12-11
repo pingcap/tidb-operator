@@ -2431,19 +2431,13 @@ metadata:
   name: restores.pingcap.com
 spec:
   additionalPrinterColumns:
-  - JSONPath: .spec.backup
-    description: The backup that used to restore
-    name: Backup
-    type: string
   - JSONPath: .status.timeStarted
     description: The time at which the backup was started
     name: Started
-    priority: 1
     type: date
   - JSONPath: .status.timeCompleted
     description: The time at which the restore was completed
     name: Completed
-    priority: 1
     type: date
   group: pingcap.com
   names:

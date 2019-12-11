@@ -124,24 +124,16 @@ var (
 		JSONPath:    ".status.timeCompleted",
 	}
 	restoreAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
-	restoreBackupColumn             = extensionsobj.CustomResourceColumnDefinition{
-		Name:        "Backup",
-		Type:        "string",
-		Description: "The backup that used to restore",
-		JSONPath:    ".spec.backup",
-	}
-	restoreStartedColumn = extensionsobj.CustomResourceColumnDefinition{
+	restoreStartedColumn            = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Started",
 		Type:        "date",
 		Description: "The time at which the backup was started",
-		Priority:    1,
 		JSONPath:    ".status.timeStarted",
 	}
 	restoreCompletedColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Completed",
 		Type:        "date",
 		Description: "The time at which the restore was completed",
-		Priority:    1,
 		JSONPath:    ".status.timeCompleted",
 	}
 	bksAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
@@ -179,7 +171,7 @@ func init() {
 		tidbClusterTiKVColumn, tidbClusterTiKVStorageColumn, tidbClusterTiKVReadyColumn, tidbClusterTiKVDesireColumn,
 		tidbClusterTiDBColumn, tidbClusterTiDBReadyColumn, tidbClusterTiDBDesireColumn)
 	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn)
-	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreBackupColumn, restoreStartedColumn, restoreCompletedColumn)
+	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStartedColumn, restoreCompletedColumn)
 	bksAdditionalPrinterColumns = append(bksAdditionalPrinterColumns, bksScheduleColumn, bksMaxBackups, bksLastBackup, bksLastBackupTime)
 }
 
