@@ -48,5 +48,5 @@ func (tac *TiDBAccessConfig) GetTidbUser() string {
 
 // GetTidbEndpoint return the tidb endpoint for access tidb cluster directly
 func (tac *TiDBAccessConfig) GetTidbEndpoint() string {
-	return fmt.Sprintf("%s:%d", tac.Host, tac.GetTidbPort())
+	return fmt.Sprintf("%s_%d", tac.Host, tac.GetTidbPort())
 }
