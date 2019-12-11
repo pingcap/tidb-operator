@@ -73,20 +73,16 @@ func (p *proxiedTiDBClient) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32)
 		Host:   fmt.Sprintf("%s:%d", localHost, localPort),
 		Path:   "/settings",
 	}
-	req, err := http.NewRequest("GET", u.String(), nil)
+	resp, err := p.httpClient.Get(u.String())
 	if err != nil {
 		return nil, err
 	}
-	res, err := p.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer httputil.DeferClose(res.Body)
-	if res.StatusCode != http.StatusOK {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL: %s", res.StatusCode, u.String()))
+	defer httputil.DeferClose(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL: %s", resp.StatusCode, u.String()))
 		return nil, errMsg
 	}
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
