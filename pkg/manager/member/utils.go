@@ -14,10 +14,12 @@
 package member
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"strings"
 
+	"github.com/BurntSushi/toml"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -186,19 +188,6 @@ func serviceEqual(new, old *corev1.Service) (bool, error) {
 	return false, nil
 }
 
-// isSubMap returns whether the first map is a sub map of the second map
-func isSubMapOf(first map[string]string, second map[string]string) bool {
-	for k, v := range first {
-		if second == nil {
-			return false
-		}
-		if second[k] != v {
-			return false
-		}
-	}
-	return true
-}
-
 // setUpgradePartition set statefulSet's rolling update partition
 func setUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
 	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &upgradeOrdinal}
@@ -250,13 +239,33 @@ func NeedForceUpgrade(tc *v1alpha1.TidbCluster) bool {
 	return false
 }
 
-// FindPumpConfig returns the configmap name that holds pump config in a list of volumes, empty indicates not found
-func FindPumpConfig(tcName string, vols []corev1.Volume) string {
-	for _, vol := range vols {
-		if vol.ConfigMap != nil &&
-			strings.HasPrefix(vol.ConfigMap.LocalObjectReference.Name, controller.PumpMemberName(tcName)) {
+// FindConfigMapVolume returns the configmap which's name matches the predicate in a PodSpec, empty indicates not found
+func FindConfigMapVolume(podSpec *corev1.PodSpec, pred func(string) bool) string {
+	for _, vol := range podSpec.Volumes {
+		if vol.ConfigMap != nil && pred(vol.ConfigMap.LocalObjectReference.Name) {
 			return vol.ConfigMap.LocalObjectReference.Name
 		}
 	}
 	return ""
+}
+
+// MarshalTOML is a template function that try to marshal a go value to toml
+func MarshalTOML(v interface{}) ([]byte, error) {
+	buff := new(bytes.Buffer)
+	encoder := toml.NewEncoder(buff)
+	err := encoder.Encode(v)
+	if err != nil {
+		return nil, err
+	}
+	data := buff.Bytes()
+	return data, nil
+}
+
+func Sha256Sum(v interface{}) (string, error) {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(data)
+	return fmt.Sprintf("%x", sum), nil
 }
