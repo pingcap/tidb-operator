@@ -1520,7 +1520,8 @@ func schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref common.ReferenceCallb
 					"max-store-down-time": {
 						SchemaProps: spec.SchemaProps{
 							Description: "MaxStoreDownTime is the max duration after which a store will be considered to be down if it hasn't reported heartbeats.",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Duration"),
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"leader-schedule-limit": {
@@ -1652,7 +1653,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref common.ReferenceCallb
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Duration", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSchedulerConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSchedulerConfig"},
 	}
 }
 
@@ -1762,6 +1763,12 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 						},
 					},
 					"storageClassName": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"configUpdateStrategy": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
 							Format: "",
@@ -4154,6 +4161,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
 							Format: "int32",
+						},
+					},
+					"configUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
 						},
 					},
 					"config": {

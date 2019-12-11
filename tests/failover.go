@@ -43,7 +43,10 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		glog.Errorf("failed to get the pd config: tc=%s err=%s", info.ClusterName, err.Error())
 		return err
 	}
-	maxStoreDownTime := pdCfg.Schedule.MaxStoreDownTime.Duration
+	maxStoreDownTime, err := time.ParseDuration(pdCfg.Schedule.MaxStoreDownTime)
+	if err != nil {
+		return err
+	}
 	glog.Infof("truncate sst file failover config: maxStoreDownTime=%v tikvFailoverPeriod=%v", maxStoreDownTime, tikvFailoverPeriod)
 
 	// find an up store
