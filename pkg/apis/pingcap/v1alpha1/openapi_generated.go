@@ -1225,8 +1225,8 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 					"quota-backend-bytes": {
 						SchemaProps: spec.SchemaProps{
 							Description: "QuotaBackendBytes Raise alarms when backend size exceeds the given quota. 0 means use the default quota. the default size is 2GB, the maximum is 8GB.",
-							Type:        []string{"integer"},
-							Format:      "int64",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"auto-compaction-mode": {
@@ -1520,7 +1520,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref common.ReferenceCallb
 					"max-store-down-time": {
 						SchemaProps: spec.SchemaProps{
 							Description: "MaxStoreDownTime is the max duration after which a store will be considered to be down if it hasn't reported heartbeats.",
-							Ref:         ref("github.com/pingcap/pd/pkg/typeutil.Duration"),
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Duration"),
 						},
 					},
 					"leader-schedule-limit": {
@@ -1652,7 +1652,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref common.ReferenceCallb
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/pd/pkg/typeutil.Duration", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSchedulerConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Duration", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSchedulerConfig"},
 	}
 }
 

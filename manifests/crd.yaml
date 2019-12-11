@@ -812,8 +812,7 @@ spec:
                       description: QuotaBackendBytes Raise alarms when backend size
                         exceeds the given quota. 0 means use the default quota. the
                         default size is 2GB, the maximum is 8GB.
-                      format: int64
-                      type: integer
+                      type: string
                     replication:
                       description: PDReplicationConfig is the replication configuration.
                       properties:
