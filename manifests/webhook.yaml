@@ -1,109 +1,155 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admission-webhook-sa
+  namespace: ${NAMESPACE}
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: admission-controller-cr
+  name: admission-webhook-cr
   namespace: ${NAMESPACE}
-  labels:
-    app: admission-webhook
 rules:
   - apiGroups: [""]
     resources: ["persistentvolumeclaims"]
     verbs: ["get", "list", "watch", "create", "update", "delete"]
   - apiGroups: [""]
     resources: ["pods"]
-    verbs: ["get", "list", "watch","update"]
+    verbs: ["get", "list", "watch", "update"]
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["create","patch","update"]
   - apiGroups: ["apps"]
     resources: ["statefulsets"]
-    verbs: ["get","list"]
+    verbs: ["get", "list", "watch", "update"]
   - apiGroups: ["pingcap.com"]
     resources:  ["tidbclusters"]
     verbs: ["*"]
   - apiGroups:
-    - apps.pingcap.com
+      - apps.pingcap.com
     resources:
-    - statefulsets
+      - statefulsets
     verbs:
-    - '*'
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: admission-controller-sa
-  namespace: ${NAMESPACE}
-  labels:
-    app: admission-controller
+      - '*'
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: admission-controller-crb
+  name: admission-webhook-crb
   namespace: ${NAMESPACE}
-  labels:
-    app: admission-controller
 subjects:
-- kind: ServiceAccount
-  name: admission-controller-sa
-  namespace: ${NAMESPACE}
+  - kind: ServiceAccount
+    name: admission-webhook-sa
+    namespace: ${NAMESPACE}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: admission-controller-cr
+  name: admission-webhook-cr
 ---
-apiVersion: v1
-kind: Service
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: admission-controller-svc
-  namespace: ${NAMESPACE}
-  labels:
-    app: admission-controller
-spec:
-  ports:
-  - port: 443
-    targetPort: 443
-  selector:
-    app: admission-controller
+  name: tidb:system:api-server-auth
+rules:
+  - apiGroups:
+      - "admission.tidb.pingcap.com"
+    resources:
+      - admissionreviews
+    verbs:
+      - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tidb:system:extension-apiserver-authentication-reader
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - kind: ServiceAccount
+    name: admission-webhook-sa
+    namespace: ${NAMESPACE}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tidb:system:auth-delegator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: admission-webhook-sa
+    namespace: ${NAMESPACE}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tidb:system:api-server-auth
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tidb:system:api-server-auth
+subjects:
+  - kind: User
+    name: kube-apiserver
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: admission-controller
+  name: admission-webhook
   namespace: ${NAMESPACE}
   labels:
-    app: admission-controller
+    app: admission-webhook
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: admission-controller
+      app: admission-webhook
   template:
     metadata:
       labels:
-        app: admission-controller
+        app: admission-webhook
     spec:
-      serviceAccountName: admission-controller-sa
+      serviceAccountName: admission-webhook-sa
       containers:
-        - name: admission-controller
+        - name: admission-webhook
           image: pingcap/tidb-operator:latest
           imagePullPolicy: Always
           command:
-            - /usr/local/bin/tidb-admission-controller
-            - -tlsCertFile=/etc/webhook/certs/cert.pem
-            - -tlsKeyFile=/etc/webhook/certs/key.pem
-            - -v=4
-            # TODO webhook is not bundled with tidb-operator yet and tested in
-            # e2e only, make it configurable in helm chart
-            # - -features=AdvancedStatefulSet=true
-          volumeMounts:
-            - name: webhook-certs
-              mountPath: /etc/webhook/certs
-              readOnly: true
-      volumes:
-        - name: webhook-certs
-          secret:
-            secretName: admission-controller-certs
+            - /usr/local/bin/tidb-admission-webhook
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tidb-admission-webhook
+  namespace: ${NAMESPACE}
+  labels:
+    app: admission-webhook
+spec:
+  ports:
+    - name: https-webhook # optional
+      port: 443
+  selector:
+    app: admission-webhook
+---
+apiVersion: apiregistration.k8s.io/v1beta1
+kind: APIService
+metadata:
+  name: v1alpha1.admission.tidb.pingcap.com
+spec:
+  insecureSkipTLSVerify: true
+  group: admission.tidb.pingcap.com
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  service:
+    name: tidb-admission-webhook
+    namespace: ${NAMESPACE}
+  version: v1alpha1
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
@@ -116,9 +162,9 @@ webhooks:
     failurePolicy: Fail
     clientConfig:
       service:
-        name: admission-controller-svc
-        namespace: ${NAMESPACE}
-        path: "/statefulsets"
+        name: kubernetes
+        namespace: default
+        path: "/apis/admission.tidb.pingcap.com/v1alpha1/statefulsetadmissionreviews"
       caBundle: ${CA_BUNDLE}
     rules:
       - operations: [ "UPDATE" ]
@@ -129,3 +175,4 @@ webhooks:
         apiGroups: [ "apps.pingcap.com"]
         apiVersions: ["v1alpha1"]
         resources: ["statefulsets"]
+---

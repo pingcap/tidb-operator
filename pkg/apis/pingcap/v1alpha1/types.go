@@ -182,7 +182,7 @@ type PDSpec struct {
 	Service          *ServiceSpec `json:"service,omitempty"`
 	StorageClassName string       `json:"storageClassName,omitempty"`
 
-	// Config is the Configuration of tidb-servers
+	// Config is the Configuration of pd-servers
 	Config *PDConfig `json:"config,omitempty"`
 }
 
@@ -200,9 +200,8 @@ type TiKVSpec struct {
 	StorageClassName string       `json:"storageClassName,omitempty"`
 	MaxFailoverCount int32        `json:"maxFailoverCount,omitempty"`
 
-	// +k8s:openapi-gen=false
-	// TODO: add schema
-	config.GenericConfig `json:",inline"`
+	// Config is the Configuration of tikv-servers
+	Config *TiKVConfig `json:"config,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -223,10 +222,14 @@ type TiDBSpec struct {
 	SlowLogTailer   TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
 	EnableTLSClient bool                  `json:"enableTLSClient,omitempty"`
 
+	// +optional
+	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
+
 	// Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled
+	// +optional
 	Plugins []string `json:"plugins,omitempty"`
 
-	//Config is the Configuration of tidb-servers
+	// Config is the Configuration of tidb-servers
 	Config *TiDBConfig `json:"config,omitempty"`
 }
 

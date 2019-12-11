@@ -31,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -42,6 +43,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/component-base/logs"
 	glog "k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -115,6 +117,11 @@ func main() {
 	asCli, err := asclientset.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("failed to get advanced-statefulset Clientset: %v", err)
+	}
+	// TODO: optimize the read of genericCli with the shared cache
+	genericCli, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
+	if err != nil {
+		glog.Fatalf("failed to get the generic kube-apiserver client: %v", err)
 	}
 
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {

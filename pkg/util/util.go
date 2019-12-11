@@ -107,6 +107,20 @@ func OrdinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int3
 	return fmt.Sprintf("%s-%s-%d", memberType, setName, ordinal)
 }
 
+
 func GetStatefulSetName(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) string {
 	return fmt.Sprintf("%s-%s", tc.Name, memberType.String())
+}
+
+// IsSubMapOf returns whether the first map is a sub map of the second map
+func IsSubMapOf(first map[string]string, second map[string]string) bool {
+	for k, v := range first {
+		if second == nil {
+			return false
+		}
+		if second[k] != v {
+			return false
+		}
+	}
+	return true
 }

@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"time"
 
-	humanize "github.com/dustin/go-humanize"
+	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -268,6 +268,8 @@ func ParseStorageRequest(req *v1alpha1.ResourceRequirement) (*corev1.ResourceReq
 }
 
 // MemberConfigMapName returns the default ConfigMap name of the specified member type
+// Deprecated
+// TODO: remove after helm get totally abandoned
 func MemberConfigMapName(tc *v1alpha1.TidbCluster, member v1alpha1.MemberType) string {
 	nameKey := fmt.Sprintf("%s-%s", tc.Name, member)
 	return nameKey + getConfigMapSuffix(tc, member.String(), nameKey)
