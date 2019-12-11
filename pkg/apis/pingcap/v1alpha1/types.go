@@ -222,10 +222,14 @@ type TiDBSpec struct {
 	SlowLogTailer   TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
 	EnableTLSClient bool                  `json:"enableTLSClient,omitempty"`
 
+	// +optional
+	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
+
 	// Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled
+	// +optional
 	Plugins []string `json:"plugins,omitempty"`
 
-	//Config is the Configuration of tidb-servers
+	// Config is the Configuration of tidb-servers
 	Config *TiDBConfig `json:"config,omitempty"`
 }
 

@@ -334,3 +334,41 @@ func TestGetNextOrdinalPodName(t *testing.T) {
 	g := NewGomegaWithT(t)
 	g.Expect(GetNextOrdinalPodName("pod-1", 1)).To(Equal("pod-2"))
 }
+
+func TestIsSubMapOf(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	g.Expect(IsSubMapOf(
+		nil,
+		map[string]string{
+			"k1": "v1",
+		})).To(BeTrue())
+	g.Expect(IsSubMapOf(
+		map[string]string{
+			"k1": "v1",
+		},
+		map[string]string{
+			"k1": "v1",
+		})).To(BeTrue())
+	g.Expect(IsSubMapOf(
+		map[string]string{
+			"k1": "v1",
+		},
+		map[string]string{
+			"k1": "v1",
+			"k2": "v2",
+		})).To(BeTrue())
+	g.Expect(IsSubMapOf(
+		map[string]string{},
+		map[string]string{
+			"k1": "v1",
+		})).To(BeTrue())
+	g.Expect(IsSubMapOf(
+		map[string]string{
+			"k1": "v1",
+			"k2": "v2",
+		},
+		map[string]string{
+			"k1": "v1",
+		})).To(BeFalse())
+}
