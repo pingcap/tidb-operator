@@ -718,7 +718,7 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 }
 
 // TODO: add ut for getPumpStatefulSet
-func TestSyncPumpStatefulSetForTidbCluster(t *testing.T) {
+func TestSyncTiDBClusterStatus(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name        string
