@@ -17,8 +17,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -27,16 +28,21 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ConfigMapControlInterface manages configmaps used by TiDB clusters
 type ConfigMapControlInterface interface {
-	CreateConfigMap(*v1alpha1.TidbCluster, *corev1.ConfigMap) error
-	UpdateConfigMap(*v1alpha1.TidbCluster, *corev1.ConfigMap) (*corev1.ConfigMap, error)
-	DeleteConfigMap(*v1alpha1.TidbCluster, *corev1.ConfigMap) error
+	// CreateConfigMap create the given ConfigMap owned by the controller object
+	CreateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
+	// UpdateConfigMap continuously tries to update ConfigMap to the given state owned by the controller obejct
+	UpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
+	// DeleteConfigMap delete the given ConfigMap owned by the controller object
+	DeleteConfigMap(controller runtime.Object, cm *corev1.ConfigMap) error
 }
 
 type realConfigMapControl struct {
+	client   client.Client
 	kubeCli  kubernetes.Interface
 	cmLister corelisters.ConfigMapLister
 	recorder record.EventRecorder
@@ -55,15 +61,14 @@ func NewRealConfigMapControl(
 	}
 }
 
-func (cc *realConfigMapControl) CreateConfigMap(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) error {
-	_, err := cc.kubeCli.CoreV1().ConfigMaps(tc.Namespace).Create(cm)
-	cc.recordConfigMapEvent("create", tc, cm, err)
-	return err
+func (cc *realConfigMapControl) CreateConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	created, err := cc.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Create(cm)
+	cc.recordConfigMapEvent("create", owner, cm, err)
+	return created, err
 }
 
-func (cc *realConfigMapControl) UpdateConfigMap(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
+func (cc *realConfigMapControl) UpdateConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	ns := cm.GetNamespace()
 	cmName := cm.GetName()
 	cmData := cm.Data
 
@@ -72,11 +77,11 @@ func (cc *realConfigMapControl) UpdateConfigMap(tc *v1alpha1.TidbCluster, cm *co
 		var updateErr error
 		updatedCm, updateErr = cc.kubeCli.CoreV1().ConfigMaps(ns).Update(cm)
 		if updateErr == nil {
-			klog.Infof("update ConfigMap: [%s/%s] successfully, TidbCluster: %s", ns, cmName, tcName)
+			klog.Infof("update ConfigMap: [%s/%s] successfully", ns, cmName)
 			return nil
 		}
 
-		if updated, err := cc.cmLister.ConfigMaps(tc.Namespace).Get(cmName); err != nil {
+		if updated, err := cc.cmLister.ConfigMaps(cm.Namespace).Get(cmName); err != nil {
 			utilruntime.HandleError(fmt.Errorf("error getting updated ConfigMap %s/%s from lister: %v", ns, cmName, err))
 		} else {
 			cm = updated.DeepCopy()
@@ -85,29 +90,33 @@ func (cc *realConfigMapControl) UpdateConfigMap(tc *v1alpha1.TidbCluster, cm *co
 
 		return updateErr
 	})
-	cc.recordConfigMapEvent("update", tc, cm, err)
+	cc.recordConfigMapEvent("update", owner, cm, err)
 	return updatedCm, err
 }
 
-func (cc *realConfigMapControl) DeleteConfigMap(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) error {
-	err := cc.kubeCli.CoreV1().ConfigMaps(tc.Namespace).Delete(cm.Name, nil)
-	cc.recordConfigMapEvent("delete", tc, cm, err)
+func (cc *realConfigMapControl) DeleteConfigMap(owner runtime.Object, cm *corev1.ConfigMap) error {
+	err := cc.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Delete(cm.Name, nil)
+	cc.recordConfigMapEvent("delete", owner, cm, err)
 	return err
 }
 
-func (cc *realConfigMapControl) recordConfigMapEvent(verb string, tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap, err error) {
-	tcName := tc.GetName()
+func (cc *realConfigMapControl) recordConfigMapEvent(verb string, owner runtime.Object, cm *corev1.ConfigMap, err error) {
+	kind := owner.GetObjectKind().GroupVersionKind().Kind
+	var name string
+	if accessor, ok := owner.(metav1.ObjectMetaAccessor); ok {
+		name = accessor.GetObjectMeta().GetName()
+	}
 	cmName := cm.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s ConfigMap %s in TidbCluster %s successful",
-			strings.ToLower(verb), cmName, tcName)
-		cc.recorder.Event(tc, corev1.EventTypeNormal, reason, msg)
+		msg := fmt.Sprintf("%s ConfigMap %s for %s/%s successful",
+			strings.ToLower(verb), cmName, kind, name)
+		cc.recorder.Event(owner, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s ConfigMap %s in TidbCluster %s failed error: %s",
-			strings.ToLower(verb), cmName, tcName, err)
-		cc.recorder.Event(tc, corev1.EventTypeWarning, reason, msg)
+		msg := fmt.Sprintf("%s ConfigMap %s for %s/%s failed error: %s",
+			strings.ToLower(verb), cmName, kind, name, err)
+		cc.recorder.Event(owner, corev1.EventTypeWarning, reason, msg)
 	}
 }
 
@@ -149,22 +158,22 @@ func (cc *FakeConfigMapControl) SetDeleteConfigMapError(err error, after int) {
 }
 
 // CreateConfigMap adds the ConfigMap to ConfigMapIndexer
-func (cc *FakeConfigMapControl) CreateConfigMap(_ *v1alpha1.TidbCluster, cm *corev1.ConfigMap) error {
+func (cc *FakeConfigMapControl) CreateConfigMap(_ runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
 	defer cc.createConfigMapTracker.Inc()
 	if cc.createConfigMapTracker.ErrorReady() {
 		defer cc.createConfigMapTracker.Reset()
-		return cc.createConfigMapTracker.GetError()
+		return nil, cc.createConfigMapTracker.GetError()
 	}
 
 	err := cc.CmIndexer.Add(cm)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return cm, nil
 }
 
 // UpdateConfigMap updates the ConfigMap of CmIndexer
-func (cc *FakeConfigMapControl) UpdateConfigMap(_ *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+func (cc *FakeConfigMapControl) UpdateConfigMap(_ runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
 	defer cc.updateConfigMapTracker.Inc()
 	if cc.updateConfigMapTracker.ErrorReady() {
 		defer cc.updateConfigMapTracker.Reset()
@@ -175,7 +184,7 @@ func (cc *FakeConfigMapControl) UpdateConfigMap(_ *v1alpha1.TidbCluster, cm *cor
 }
 
 // DeleteConfigMap deletes the ConfigMap of CmIndexer
-func (cc *FakeConfigMapControl) DeleteConfigMap(_ *v1alpha1.TidbCluster, _ *corev1.ConfigMap) error {
+func (cc *FakeConfigMapControl) DeleteConfigMap(_ runtime.Object, _ *corev1.ConfigMap) error {
 	return nil
 }
 

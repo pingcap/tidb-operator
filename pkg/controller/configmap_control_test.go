@@ -40,7 +40,7 @@ func TestConfigMapControlCreatesConfigMaps(t *testing.T) {
 		create := action.(core.CreateAction)
 		return true, create.GetObject(), nil
 	})
-	err := control.CreateConfigMap(tc, cm)
+	_, err := control.CreateConfigMap(tc, cm)
 	g.Expect(err).To(Succeed())
 
 	events := collectEvents(recorder.Events)
@@ -58,7 +58,7 @@ func TestConfigMapControlCreatesConfigMapFailed(t *testing.T) {
 	fakeClient.AddReactor("create", "configmaps", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})
-	err := control.CreateConfigMap(tc, cm)
+	_, err := control.CreateConfigMap(tc, cm)
 	g.Expect(err).To(HaveOccurred())
 
 	events := collectEvents(recorder.Events)
@@ -157,7 +157,8 @@ func TestConfigMapControlDeleteConfigMapFailed(t *testing.T) {
 func newConfigMap() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "test",
+			Name:      "test",
+			Namespace: "default",
 		},
 		Data: map[string]string{},
 	}
