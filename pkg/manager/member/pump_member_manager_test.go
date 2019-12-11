@@ -722,7 +722,7 @@ func TestSyncPumpStatefulSetForTidbCluster(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name        string
-		updateTC    func(*v1alpha1.TidbCluster)
+		updateTC    func(*appsv1.StatefulSet)
 		upgradingFn func(corelisters.PodLister, *appsv1.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 		errExpectFn func(*GomegaWithT, error)
 		tcExpectFn  func(*GomegaWithT, *v1alpha1.TidbCluster)
@@ -737,8 +737,7 @@ func TestSyncPumpStatefulSetForTidbCluster(t *testing.T) {
 			Status: status,
 		}
 		if test.updateTC != nil {
-			test.updateTC(tc)
-
+			test.updateTC(set)
 		}
 		pmm, _, _ := newFakePumpMemberManager()
 
@@ -754,10 +753,9 @@ func TestSyncPumpStatefulSetForTidbCluster(t *testing.T) {
 	tests := []testcase{
 		{
 			name: "statefulset is upgrading",
-			updateTC: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.Pump.StatefulSet = &appsv1.StatefulSetStatus{}
-				tc.Status.Pump.StatefulSet.CurrentRevision = "pump-1"
-				tc.Status.Pump.StatefulSet.UpdateRevision = "pump-2"
+			updateTC: func(set *appsv1.StatefulSet) {
+				set.Status.CurrentRevision = "pump-v1"
+				set.Status.UpdateRevision = "pump-v2"
 			},
 			upgradingFn: func(lister corelisters.PodLister, set *appsv1.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return true, nil

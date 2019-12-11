@@ -164,9 +164,9 @@ func (pmm *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, se
 		tc.Status.Pump.Phase = v1alpha1.NormalPhase
 	}
 
-	pumpStatus := map[string]v1alpha1.PumpMember{}
-
-	tc.Status.Pump.Members = pumpStatus
+	//TODO: support sync pump members from PD.
+	// pumpStatus := map[string]v1alpha1.PumpMember{}
+	// tc.Status.Pump.Members = pumpStatus
 
 	return nil
 }

@@ -465,12 +465,6 @@ type TiKVFailureStore struct {
 type PumpStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
-	Members     map[string]PumpMember   `json:"members,omitempty"`
-}
-
-// PumpMember is Pump member
-type PumpMember struct {
-	Name string `json:"name"`
 }
 
 // +genclient
