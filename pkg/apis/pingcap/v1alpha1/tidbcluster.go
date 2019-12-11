@@ -311,6 +311,16 @@ func (tc *TidbCluster) TiDBStsActualReplicas() int32 {
 	return stsStatus.Replicas
 }
 
+func (tc *TidbCluster) TiDBConfigUpdateStrategy() ConfigUpdateStrategy {
+	s := tc.Spec.TiDB.ConfigUpdateStrategy
+	if string(s) == "" {
+		// defaulting logic will set a default value for configUpdateStrategy field, but if the
+		// object is created in early version without this field being set, we choose a safer default
+		s = ConfigUpdateStrategyInPlace
+	}
+	return s
+}
+
 func (tc *TidbCluster) PDIsAvailable() bool {
 	lowerLimit := tc.Spec.PD.Replicas/2 + 1
 	if int32(len(tc.Status.PD.Members)) < lowerLimit {
