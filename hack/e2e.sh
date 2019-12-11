@@ -172,7 +172,7 @@ function e2e::up() {
         echo "info: configure docker.io mirror '$DOCKER_IO_MIRROR' for DinD"
 cat <<EOF > /etc/docker/daemon.json
 {
-    "registry-mirror": "$DOCKER_IO_MIRROR"
+    "registry-mirrors": ["$DOCKER_IO_MIRROR"]
 }
 EOF
         e2e::__restart_docker
