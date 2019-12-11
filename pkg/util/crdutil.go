@@ -91,11 +91,11 @@ var (
 		JSONPath:    ".spec.tidb.replicas",
 	}
 	backupAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
-	backupStorageTypeColumn        = extensionsobj.CustomResourceColumnDefinition{
-		Name:        "StorageType",
+	backupPathColumn               = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "BackupPath",
 		Type:        "string",
-		Description: "The storage type of backup data",
-		JSONPath:    ".spec.storageType",
+		Description: "The full path of backup data",
+		JSONPath:    ".status.backupPath",
 	}
 	backupBackupSizeColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "BackupSize",
@@ -178,7 +178,7 @@ func init() {
 		tidbClusterPDColumn, tidbClusterPDStorageColumn, tidbClusterPDReadyColumn, tidbClusterPDDesireColumn,
 		tidbClusterTiKVColumn, tidbClusterTiKVStorageColumn, tidbClusterTiKVReadyColumn, tidbClusterTiKVDesireColumn,
 		tidbClusterTiDBColumn, tidbClusterTiDBReadyColumn, tidbClusterTiDBDesireColumn)
-	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupStorageTypeColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn)
+	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn)
 	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreBackupColumn, restoreStartedColumn, restoreCompletedColumn)
 	bksAdditionalPrinterColumns = append(bksAdditionalPrinterColumns, bksScheduleColumn, bksMaxBackups, bksLastBackup, bksLastBackupTime)
 }

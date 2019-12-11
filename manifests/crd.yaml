@@ -2263,9 +2263,9 @@ metadata:
   name: backups.pingcap.com
 spec:
   additionalPrinterColumns:
-  - JSONPath: .spec.storageType
-    description: The storage type of backup data
-    name: StorageType
+  - JSONPath: .status.backupPath
+    description: The full path of backup data
+    name: BackupPath
     type: string
   - JSONPath: .status.backupSize
     description: The data size of the backup
