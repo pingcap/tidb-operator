@@ -170,10 +170,10 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 
         def builds = [:]
         builds["E2E v1.12.10"] = {
-			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 make e2e")
+			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn make e2e")
         }
         builds["E2E v1.16.3"] = {
-			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.16.3 make e2e")
+			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.16.3 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn make e2e")
         }
         builds.failFast = false
         parallel builds
