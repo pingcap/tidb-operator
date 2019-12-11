@@ -6,7 +6,7 @@ metadata:
   namespace: test1
 spec:
   from:
-    host: 10.0.0.1
+    host: 10.233.10.242
     port: 4000
     user: root
     secretName: backup-demo1-tidb-secret
@@ -15,6 +15,5 @@ spec:
     bucket: test1-demo1
     endpoint: http://10.233.2.161
     secretName: ceph-secret
-  storageType: s3
   storageClassName: local-storage
   storageSize: 1Gi

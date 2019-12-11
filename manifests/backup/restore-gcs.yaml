@@ -6,10 +6,10 @@ metadata:
   namespace: test2
 spec:
   to:
-    host: 10.0.0.2
+    host: 10.233.31.143
     port: 4000
     user: root
-    secretName: backup-demo2-tidb-secret
+    secretName: restore-demo2-tidb-secret
   gcs:
     projectId: <your-project-id>
     secretName: gcs-secret
