@@ -30,6 +30,7 @@ Environments:
     SKIP_DOWN           skip shutting down the cluster
     KUBE_VERSION        the version of Kubernetes to test against
     KUBE_WORKERS        the number of worker nodes (excludes master nodes), defaults: 3
+    DOCKER_IO_MIRROR    (for kind) configure mirror for docker.io
     KIND_DATA_HOSTPATH  (for kind) the host path of data directory for kind cluster, defaults: none
     GINKGO_NODES        ginkgo nodes to run specs, defaults: 1
     GINKGO_PARALLEL     if set to `y`, will run specs in parallel, the number of nodes will be the number of cpus
@@ -155,6 +156,14 @@ function e2e::up() {
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 EOF
+    if [ -n "$DOCKER_IO_MIRROR" ]; then
+cat <<EOF >> $tmpfile
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+    endpoint = ["$DOCKER_IO_MIRROR"]
+EOF
+    fi
     # control-plane
     cat <<EOF >> $tmpfile
 nodes:

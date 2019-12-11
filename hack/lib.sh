@@ -19,7 +19,7 @@ HELM_BIN=$OUTPUT_BIN/helm
 # (https://github.com/helm/helm/issues/6361) has been fixed.
 #
 HELM_VERSION=2.9.1
-KIND_VERSION=0.6.0
+KIND_VERSION=0.6.1
 KIND_BIN=$OUTPUT_BIN/kind
 
 test -d "$OUTPUT_BIN" || mkdir -p "$OUTPUT_BIN"
