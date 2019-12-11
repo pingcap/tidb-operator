@@ -33,12 +33,12 @@ import (
 
 // ConfigMapControlInterface manages configmaps used by TiDB clusters
 type ConfigMapControlInterface interface {
-	// CreateConfigMap create the given ConfigMap
-	CreateConfigMap(runtime.Object, *corev1.ConfigMap) (*corev1.ConfigMap, error)
-	// UpdateConfigMap continuously tries to update ConfigMap to the given state
-	UpdateConfigMap(runtime.Object, *corev1.ConfigMap) (*corev1.ConfigMap, error)
-	// DeleteConfigMap delete the given ConfigMap
-	DeleteConfigMap(runtime.Object, *corev1.ConfigMap) error
+	// CreateConfigMap create the given ConfigMap owned by the controller object
+	CreateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
+	// UpdateConfigMap continuously tries to update ConfigMap to the given state owned by the controller obejct
+	UpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
+	// DeleteConfigMap delete the given ConfigMap owned by the controller object
+	DeleteConfigMap(controller runtime.Object, cm *corev1.ConfigMap) error
 }
 
 type realConfigMapControl struct {

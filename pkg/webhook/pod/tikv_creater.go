@@ -22,7 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
-	admission "k8s.io/api/admission/v1"
+	admission "k8s.io/api/admission/v1beta1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/klog"
 )
