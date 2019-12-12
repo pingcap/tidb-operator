@@ -35,6 +35,10 @@ import (
 	"k8s.io/kubectl/pkg/polymorphichelpers"
 )
 
+const (
+	getPodTimeout = time.Minute
+)
+
 // PortForward represents an interface which can forward local ports to a pod.
 type PortForward interface {
 	Forward(namespace, resourceName string, addresses []string, ports []string) ([]portforward.ForwardedPort, context.CancelFunc, error)
@@ -108,8 +112,6 @@ func (f *portForwarder) Forward(namespace, resourceName string, addresses []stri
 		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
 		ContinueOnError().
 		NamespaceParam(namespace).DefaultNamespace()
-
-	getPodTimeout := time.Minute
 
 	builder.ResourceNames("pods", resourceName)
 

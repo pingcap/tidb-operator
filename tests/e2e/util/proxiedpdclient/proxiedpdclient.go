@@ -16,13 +16,13 @@ package proxiedpdclient
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net/url"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utilportforward "github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"k8s.io/client-go/kubernetes"
 )
@@ -49,26 +49,13 @@ func NewProxiedPDClient(kubeCli kubernetes.Interface, fw utilportforward.PortFor
 			return nil, nil, err
 		}
 	}
-	ports := []string{fmt.Sprintf("0:%d", 2379)}
-	forwardedPorts, cancel, err := fw.Forward(namespace, fmt.Sprintf("svc/%s", controller.PDMemberName(tcName)), []string{"127.0.0.1"}, ports)
+	localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, namespace, fmt.Sprintf("svc/%s", controller.PDMemberName(tcName)), 2379)
 	if err != nil {
 		return nil, nil, err
 	}
-	var localPort uint16
-	var found bool
-	for _, p := range forwardedPorts {
-		if p.Remote == 2379 {
-			localPort = p.Local
-			found = true
-		}
-	}
-	if !found {
-		cancel()
-		return nil, nil, errors.New("unexpected error")
-	}
 	u := url.URL{
 		Scheme: scheme,
-		Host:   fmt.Sprintf("127.0.0.1:%d", localPort),
+		Host:   fmt.Sprintf("%s:%d", localHost, localPort),
 	}
 	return pdapi.NewPDClient(u.String(), pdapi.DefaultTimeout, tlsConfig), cancel, nil
 }
