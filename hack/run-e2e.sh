@@ -91,29 +91,29 @@ e2e_args=(
 )
 
 if [ -n "$REPORT_DIR" ]; then
-	e2e_args+=(
-		--report-dir="${REPORT_DIR}"
-		--report-prefix="${REPORT_PREFIX}"
-	)
+    e2e_args+=(
+        --report-dir="${REPORT_DIR}"
+        --report-prefix="${REPORT_PREFIX}"
+    )
 fi
 
 e2e_args+=(${@:-})
 
 docker_args=(
-	run
-	--rm
+    run
+    --rm
     --net=host
-	-v $ROOT:$ROOT
-	-w $ROOT
+    -v $ROOT:$ROOT
+    -w $ROOT
     -v $KUBECONFIG:/etc/kubernetes/admin.conf:ro
     --env KUBECONFIG=/etc/kubernetes/admin.conf
     --env KUBECONTEXT=$KUBECONTEXT
 )
 
 if [ -n "$REPORT_DIR" ]; then
-	docker_args+=(
-		-v $REPORT_DIR:$REPORT_DIR
-	)
+    docker_args+=(
+        -v $REPORT_DIR:$REPORT_DIR
+    )
 fi
 
 echo "info: docker ${docker_args[@]} $E2E_IMAGE ${e2e_args[@]}"
