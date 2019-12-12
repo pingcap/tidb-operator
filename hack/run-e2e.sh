@@ -89,7 +89,7 @@ e2e_args=(
 
 docker run --rm \
     --net=host \
-    -v $KUBECONFIG:/etc/kubernetes/admin.conf \
+    -v $KUBECONFIG:/etc/kubernetes/admin.conf:ro \
     --env KUBECONFIG=/etc/kubernetes/admin.conf \
     --env KUBECONTEXT=$KUBECONTEXT \
     $E2E_IMAGE \
