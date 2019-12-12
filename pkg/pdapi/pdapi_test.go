@@ -27,7 +27,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
-	"github.com/pingcap/pd/pkg/typeutil"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
@@ -74,7 +73,7 @@ func TestHealth(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, timeout, &tls.Config{})
+		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
 		result, err := pdClient.GetHealth()
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(result).To(Equal(&HealthInfo{healths}))
@@ -85,7 +84,7 @@ func TestGetConfig(t *testing.T) {
 	g := NewGomegaWithT(t)
 	config := &v1alpha1.PDConfig{
 		Schedule: &v1alpha1.PDScheduleConfig{
-			MaxStoreDownTime: typeutil.NewDuration(10 * time.Second),
+			MaxStoreDownTime: v1alpha1.NewDuration(10 * time.Second),
 		},
 	}
 	configBytes, err := json.Marshal(config)
@@ -115,7 +114,7 @@ func TestGetConfig(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, timeout, &tls.Config{})
+		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
 		result, err := pdClient.GetConfig()
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(result).To(Equal(config))
@@ -153,7 +152,7 @@ func TestGetCluster(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, timeout, &tls.Config{})
+		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
 		result, err := pdClient.GetCluster()
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(result).To(Equal(cluster))
@@ -205,7 +204,7 @@ func TestGetMembers(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, timeout, &tls.Config{})
+		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
 		result, err := pdClient.GetMembers()
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(result).To(Equal(members))
@@ -257,7 +256,7 @@ func TestGetStores(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, timeout, &tls.Config{})
+		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
 		result, err := pdClient.GetStores()
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(result).To(Equal(stores))
@@ -302,7 +301,7 @@ func TestGetStore(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, timeout, &tls.Config{})
+		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
 		result, err := pdClient.GetStore(tc.id)
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(result).To(Equal(store))
@@ -351,7 +350,7 @@ func TestSetStoreLabels(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, timeout, &tls.Config{})
+		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
 		result, _ := pdClient.SetStoreLabels(id, labels)
 		g.Expect(result).To(Equal(tc.want))
 	}
@@ -441,7 +440,7 @@ func TestDeleteMember(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, timeout, &tls.Config{})
+		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
 		err := pdClient.DeleteMember(name)
 		if tc.want {
 			g.Expect(err).NotTo(HaveOccurred(), "check result")
@@ -535,7 +534,7 @@ func TestDeleteMemberByID(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, timeout, &tls.Config{})
+		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
 		err := pdClient.DeleteMemberByID(id)
 		if tc.want {
 			g.Expect(err).NotTo(HaveOccurred(), "check result")
@@ -627,7 +626,7 @@ func TestDeleteStore(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, timeout, &tls.Config{})
+		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
 		err := pdClient.DeleteStore(storeID)
 		if tc.want {
 			g.Expect(err).NotTo(HaveOccurred(), "check result")
