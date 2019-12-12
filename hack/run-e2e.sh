@@ -79,7 +79,7 @@ e2e_args=(
     # tidb-operator e2e flags
     --operator-tag=e2e
     --operator-image=${TIDB_OPERATOR_IMAGE}
-	--e2e-image=${E2E_IMAGE}
+    --e2e-image=${E2E_IMAGE}
     --test-apiserver-image=${TEST_APISERVER_IMAGE}
     --tidb-versions=v3.0.2,v3.0.3,v3.0.4,v3.0.5
     --chart-dir=/charts

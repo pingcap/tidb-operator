@@ -135,7 +135,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	framework.ExpectNoError(err, "failed to create clientset")
 	asCli, err := asclientset.NewForConfig(config)
 	framework.ExpectNoError(err, "failed to create clientset")
-	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, e2econfig.TestConfig, nil, nil)
+	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, e2econfig.TestConfig, nil, nil, nil)
 	ginkgo.By("Recycle all local PVs")
 	pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
 	framework.ExpectNoError(err, "failed to list pvList")

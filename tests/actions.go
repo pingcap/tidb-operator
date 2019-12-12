@@ -65,6 +65,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	glog "k8s.io/klog"
+	"k8s.io/kubernetes/test/e2e/framework"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 )
 
@@ -87,9 +88,10 @@ func NewOperatorActions(cli versioned.Interface,
 	pollInterval time.Duration,
 	cfg *Config,
 	clusters []*TidbClusterConfig,
-	fw portforward.PortForward) OperatorActions {
+	fw portforward.PortForward, f *framework.Framework) OperatorActions {
 
 	oa := &operatorActions{
+		framework:   f,
 		cli:         cli,
 		kubeCli:     kubeCli,
 		pdControl:   pdapi.NewDefaultPDControl(kubeCli),
@@ -219,6 +221,7 @@ type OperatorActions interface {
 }
 
 type operatorActions struct {
+	framework          *framework.Framework
 	cli                versioned.Interface
 	kubeCli            kubernetes.Interface
 	asCli              asclientset.Interface
@@ -2926,7 +2929,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		isv1 := info.OperatorTag == "v1.0.0"
 
 		for _, pod := range pods.Items {
-			if !oa.pumpHealth(info, pod.Spec.Hostname) {
+			if !oa.pumpHealth(info, pod.Name) {
 				glog.Errorf("some pods is not health %s", pumpStatefulSetName)
 				return false, nil
 			}
@@ -2982,7 +2985,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 			return false, nil
 		}
 		for _, pod := range pods.Items {
-			if !oa.drainerHealth(info, pod.Spec.Hostname) {
+			if !oa.drainerHealth(info, pod.Name) {
 				glog.Errorf("some pods is not health %s", drainerStatefulSetName)
 				return false, nil
 			}
@@ -3146,33 +3149,46 @@ type drainerStatus struct {
 	TsMap   string           `json:"TsMap"`
 }
 
-func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName string) bool {
-	var addr string
-	if oa.fw != nil {
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, info.Namespace, fmt.Sprintf("pod/%s", hostName), 8249)
+func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, podName string) bool {
+	var body []byte
+	var err error
+	addr := fmt.Sprintf("%s.%s-drainer.%s:8249", podName, info.ClusterName, info.Namespace)
+	drainerHealthURL := fmt.Sprintf("http://%s/status", addr)
+	if oa.framework != nil {
+		// K8S hard coded remote address to localhost in port forwarding, and
+		// drainer does not listen on localhost.
+		// Alternatively, we exec into the pod to access drainer API.
+		cmd := fmt.Sprintf("wget -q -O - '%s'", drainerHealthURL)
+		stdout, _, err := oa.framework.ExecWithOptions(framework.ExecOptions{
+			Command:            []string{"sh", "-c", cmd},
+			Namespace:          info.Namespace,
+			PodName:            podName,
+			ContainerName:      "drainer",
+			Stdin:              nil,
+			CaptureStdout:      true,
+			CaptureStderr:      true,
+			PreserveWhitespace: false,
+		})
 		if err != nil {
-			glog.Errorf("failed to forward port %d of %s", 8249, hostName)
+			glog.Errorf("failed to run command '%s' in pod %s/%q", cmd, info.Namespace, podName)
 			return false
 		}
-		defer cancel()
-		addr = fmt.Sprintf("%s:%d", localHost, localPort)
+		body = []byte(stdout)
 	} else {
-		addr = fmt.Sprintf("%s.%s-drainer.%s:8249", hostName, info.ClusterName, info.Namespace)
-	}
-	drainerHealthURL := fmt.Sprintf("http://%s/status", addr)
-	res, err := http.Get(drainerHealthURL)
-	if err != nil {
-		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthURL, err)
-		return false
-	}
-	if res.StatusCode >= 400 {
-		glog.Errorf("Error response %v", res.StatusCode)
-		return false
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		glog.Errorf("cluster:[%s] read response body failed,error:%v", info.ClusterName, err)
-		return false
+		res, err := http.Get(drainerHealthURL)
+		if err != nil {
+			glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthURL, err)
+			return false
+		}
+		if res.StatusCode >= 400 {
+			glog.Errorf("Error response %v", res.StatusCode)
+			return false
+		}
+		body, err = ioutil.ReadAll(res.Body)
+		if err != nil {
+			glog.Errorf("cluster:[%s] read response body failed,error:%v", info.ClusterName, err)
+			return false
+		}
 	}
 	healths := drainerStatus{}
 	err = json.Unmarshal(body, &healths)
