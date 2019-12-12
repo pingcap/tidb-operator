@@ -432,10 +432,41 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 			Value: tc.Spec.Timezone,
 		},
 	}
+	podSpec := corev1.PodSpec{
+		SchedulerName: tc.BaseTiKVSpec().SchedulerName(),
+		Affinity:      tc.BaseTiKVSpec().Affinity(),
+		NodeSelector:  tc.BaseTiKVSpec().NodeSelector(),
+		HostNetwork:   tc.BaseTiKVSpec().HostNetwork(),
+		Containers: []corev1.Container{
+			{
+				Name:            v1alpha1.TiKVMemberType.String(),
+				Image:           tc.BaseTiKVSpec().Image(),
+				Command:         []string{"/bin/sh", "/usr/local/bin/tikv_start_script.sh"},
+				ImagePullPolicy: tc.BaseTiKVSpec().ImagePullPolicy(),
+				SecurityContext: &corev1.SecurityContext{
+					Privileged: &tc.Spec.TiKV.Privileged,
+				},
+				Ports: []corev1.ContainerPort{
+					{
+						Name:          "server",
+						ContainerPort: int32(20160),
+						Protocol:      corev1.ProtocolTCP,
+					},
+				},
+				VolumeMounts: volMounts,
+				Resources:    util.ResourceRequirement(tc.Spec.TiKV.Resources),
+			},
+		},
+		RestartPolicy:     corev1.RestartPolicyAlways,
+		Tolerations:       tc.BaseTiKVSpec().Tolerations(),
+		Volumes:           vols,
+		SecurityContext:   podSecurityContext,
+		PriorityClassName: tc.BaseTiKVSpec().PriorityClassName(),
+		InitContainers:    initContainers,
+	}
 
-	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
 	if tc.BaseTiKVSpec().HostNetwork() {
-		dnsPolicy = corev1.DNSClusterFirstWithHostNet
+		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 		env = append(env, corev1.EnvVar{
 			Name: "POD_NAME",
 			ValueFrom: &corev1.EnvVarSource{
@@ -445,6 +476,8 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 			},
 		})
 	}
+
+	podSpec.Containers[0].Env = env
 
 	tikvset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -461,40 +494,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, e
 					Labels:      tikvLabel.Labels(),
 					Annotations: podAnnotations,
 				},
-				Spec: corev1.PodSpec{
-					SchedulerName: tc.BaseTiKVSpec().SchedulerName(),
-					Affinity:      tc.BaseTiKVSpec().Affinity(),
-					NodeSelector:  tc.BaseTiKVSpec().NodeSelector(),
-					HostNetwork:   tc.BaseTiKVSpec().HostNetwork(),
-					DNSPolicy:     dnsPolicy,
-					Containers: []corev1.Container{
-						{
-							Name:            v1alpha1.TiKVMemberType.String(),
-							Image:           tc.BaseTiKVSpec().Image(),
-							Command:         []string{"/bin/sh", "/usr/local/bin/tikv_start_script.sh"},
-							ImagePullPolicy: tc.BaseTiKVSpec().ImagePullPolicy(),
-							SecurityContext: &corev1.SecurityContext{
-								Privileged: &tc.Spec.TiKV.Privileged,
-							},
-							Ports: []corev1.ContainerPort{
-								{
-									Name:          "server",
-									ContainerPort: int32(20160),
-									Protocol:      corev1.ProtocolTCP,
-								},
-							},
-							VolumeMounts: volMounts,
-							Resources:    util.ResourceRequirement(tc.Spec.TiKV.Resources),
-							Env:          env,
-						},
-					},
-					RestartPolicy:     corev1.RestartPolicyAlways,
-					Tolerations:       tc.BaseTiKVSpec().Tolerations(),
-					Volumes:           vols,
-					SecurityContext:   podSecurityContext,
-					PriorityClassName: tc.BaseTiKVSpec().PriorityClassName(),
-					InitContainers:    initContainers,
-				},
+				Spec: podSpec,
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				volumeClaimTemplate(q, v1alpha1.TiKVMemberType.String(), &storageClassName),

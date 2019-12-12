@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	glog "k8s.io/klog"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -69,26 +70,28 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 	scheme := "http"
 	if tlsEnabled {
 		scheme = "https"
-		secretName := fmt.Sprintf("%s-pd-client", tcName)
-		secret, err := pdc.kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
-		if err != nil {
-			glog.Errorf("unable to load certificates from secret %s/%s, PDClient may not work: %v", namespace, secretName, err)
-			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
-		}
-
-		rootCAs, tlsCert, err := certutil.LoadCerts(secret.Data["cert"], secret.Data["key"])
-		if err != nil {
-			glog.Errorf("unable to load certificates for %s discovery, PDClient may not work: %v", namespace, err)
-			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
-		}
-		tlsConfig = &tls.Config{
-			RootCAs:      rootCAs,
-			Certificates: []tls.Certificate{tlsCert},
-		}
 	}
 
 	key := pdClientKey(scheme, namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
+		if tlsEnabled {
+			secretName := fmt.Sprintf("%s-pd-client", tcName)
+			secret, err := pdc.kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
+			if err != nil {
+				glog.Errorf("unable to load certificates from secret %s/%s, PDClient may not work: %v", namespace, secretName, err)
+				return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
+			}
+
+			rootCAs, tlsCert, err := certutil.LoadCerts(secret.Data["cert"], secret.Data["key"])
+			if err != nil {
+				glog.Errorf("unable to load certificates from secret %s/%s, PDClient may not work: %v", namespace, secretName, err)
+				return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
+			}
+			tlsConfig = &tls.Config{
+				RootCAs:      rootCAs,
+				Certificates: []tls.Certificate{tlsCert},
+			}
+		}
 		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), timeout, tlsConfig)
 	}
 	return pdc.pdClients[key]
@@ -109,7 +112,7 @@ type PDClient interface {
 	// GetHealth returns the PD's health info
 	GetHealth() (*HealthInfo, error)
 	// GetConfig returns PD's config
-	GetConfig() (*Config, error)
+	GetConfig() (*v1alpha1.PDConfig, error)
 	// GetCluster returns used when syncing pod labels.
 	GetCluster() (*metapb.Cluster, error)
 	// GetMembers returns all PD members from cluster
@@ -251,13 +254,13 @@ func (pc *pdClient) GetHealth() (*HealthInfo, error) {
 	}, nil
 }
 
-func (pc *pdClient) GetConfig() (*Config, error) {
+func (pc *pdClient) GetConfig() (*v1alpha1.PDConfig, error) {
 	apiURL := fmt.Sprintf("%s/%s", pc.url, configPrefix)
 	body, err := httputil.GetBodyOK(pc.httpClient, apiURL)
 	if err != nil {
 		return nil, err
 	}
-	config := &Config{}
+	config := &v1alpha1.PDConfig{}
 	err = json.Unmarshal(body, config)
 	if err != nil {
 		return nil, err
@@ -695,13 +698,13 @@ func (pc *FakePDClient) GetHealth() (*HealthInfo, error) {
 	return result.(*HealthInfo), nil
 }
 
-func (pc *FakePDClient) GetConfig() (*Config, error) {
+func (pc *FakePDClient) GetConfig() (*v1alpha1.PDConfig, error) {
 	action := &Action{}
 	result, err := pc.fakeAPI(GetConfigActionType, action)
 	if err != nil {
 		return nil, err
 	}
-	return result.(*Config), nil
+	return result.(*v1alpha1.PDConfig), nil
 }
 
 func (pc *FakePDClient) GetCluster() (*metapb.Cluster, error) {

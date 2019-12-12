@@ -592,10 +592,42 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, err
 			Value: tc.Spec.Timezone,
 		},
 	}
+	podSpec := corev1.PodSpec{
+		SchedulerName: tc.BasePDSpec().SchedulerName(),
+		Affinity:      tc.BasePDSpec().Affinity(),
+		NodeSelector:  tc.BasePDSpec().NodeSelector(),
+		HostNetwork:   tc.BasePDSpec().HostNetwork(),
+		Containers: []corev1.Container{
+			{
+				Name:            v1alpha1.PDMemberType.String(),
+				Image:           tc.BasePDSpec().Image(),
+				Command:         []string{"/bin/sh", "/usr/local/bin/pd_start_script.sh"},
+				ImagePullPolicy: tc.BasePDSpec().ImagePullPolicy(),
+				Ports: []corev1.ContainerPort{
+					{
+						Name:          "server",
+						ContainerPort: int32(2380),
+						Protocol:      corev1.ProtocolTCP,
+					},
+					{
+						Name:          "client",
+						ContainerPort: int32(2379),
+						Protocol:      corev1.ProtocolTCP,
+					},
+				},
+				VolumeMounts: volMounts,
+				Resources:    util.ResourceRequirement(tc.Spec.PD.Resources),
+			},
+		},
+		RestartPolicy:     corev1.RestartPolicyAlways,
+		Tolerations:       tc.BasePDSpec().Tolerations(),
+		Volumes:           vols,
+		SecurityContext:   tc.BasePDSpec().PodSecurityContext(),
+		PriorityClassName: tc.BasePDSpec().PriorityClassName(),
+	}
 
-	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
 	if tc.BasePDSpec().HostNetwork() {
-		dnsPolicy = corev1.DNSClusterFirstWithHostNet
+		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 		env = append(env, corev1.EnvVar{
 			Name: "POD_NAME",
 			ValueFrom: &corev1.EnvVarSource{
@@ -605,6 +637,8 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, err
 			},
 		})
 	}
+
+	podSpec.Containers[0].Env = env
 
 	pdSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -621,41 +655,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, err
 					Labels:      pdLabel.Labels(),
 					Annotations: podAnnotations,
 				},
-				Spec: corev1.PodSpec{
-					SchedulerName: tc.BasePDSpec().SchedulerName(),
-					Affinity:      tc.BasePDSpec().Affinity(),
-					NodeSelector:  tc.BasePDSpec().NodeSelector(),
-					HostNetwork:   tc.BasePDSpec().HostNetwork(),
-					DNSPolicy:     dnsPolicy,
-					Containers: []corev1.Container{
-						{
-							Name:            v1alpha1.PDMemberType.String(),
-							Image:           tc.BasePDSpec().Image(),
-							Command:         []string{"/bin/sh", "/usr/local/bin/pd_start_script.sh"},
-							ImagePullPolicy: tc.BasePDSpec().ImagePullPolicy(),
-							Ports: []corev1.ContainerPort{
-								{
-									Name:          "server",
-									ContainerPort: int32(2380),
-									Protocol:      corev1.ProtocolTCP,
-								},
-								{
-									Name:          "client",
-									ContainerPort: int32(2379),
-									Protocol:      corev1.ProtocolTCP,
-								},
-							},
-							VolumeMounts: volMounts,
-							Resources:    util.ResourceRequirement(tc.Spec.PD.Resources),
-							Env:          env,
-						},
-					},
-					RestartPolicy:     corev1.RestartPolicyAlways,
-					Tolerations:       tc.BasePDSpec().Tolerations(),
-					Volumes:           vols,
-					SecurityContext:   tc.BasePDSpec().PodSecurityContext(),
-					PriorityClassName: tc.BasePDSpec().PriorityClassName(),
-				},
+				Spec: podSpec,
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				{

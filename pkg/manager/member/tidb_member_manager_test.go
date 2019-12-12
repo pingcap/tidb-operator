@@ -741,10 +741,12 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	csrInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Certificates().V1beta1().CertificateSigningRequests()
 	secretInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Secrets()
+	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
 	secControl := controller.NewFakeSecretControl(kubeCli, secretInformer.Lister())
 	certControl := controller.NewFakeCertControl(kubeCli, csrInformer.Lister(), secControl)
+	genericControl := controller.NewFakeGenericControl()
 	tidbUpgrader := NewFakeTiDBUpgrader()
 	tidbFailover := NewFakeTiDBFailover()
 	tidbControl := controller.NewFakeTiDBControl()
@@ -753,10 +755,12 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		setControl,
 		svcControl,
 		tidbControl,
+		controller.NewTypedControl(genericControl),
 		certControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
 		podInformer.Lister(),
+		cmInformer.Lister(),
 		tidbUpgrader,
 		true,
 		tidbFailover,
@@ -878,6 +882,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 	tests := []struct {
 		name    string
 		tc      v1alpha1.TidbCluster
+		cm      *corev1.ConfigMap
 		wantErr bool
 		testSts func(sts *apps.StatefulSet)
 	}{
@@ -889,7 +894,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 			},
-			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+			testSts: testHostNetwork(t, false, ""),
 		},
 		{
 			name: "tidb network is host",
@@ -923,7 +928,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 					},
 				},
 			},
-			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+			testSts: testHostNetwork(t, false, ""),
 		},
 		{
 			name: "tidb network is not host when tikv is host",
@@ -940,14 +945,41 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 					},
 				},
 			},
-			testSts: testHostNetwork(t, false, v1.DNSClusterFirst),
+			testSts: testHostNetwork(t, false, ""),
+		},
+		{
+			name: "tidb should use the latest synced configmap",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						Config:               &v1alpha1.TiDBConfig{},
+						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyRollingUpdate,
+					},
+				},
+			},
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "tc-tidb-xxxxxxxx",
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				cmName := FindConfigMapVolume(&sts.Spec.Template.Spec, func(name string) bool {
+					return strings.HasPrefix(name, controller.TiDBMemberName("tc"))
+				})
+				g := NewGomegaWithT(t)
+				g.Expect(cmName).To(Equal("tc-tidb-xxxxxxxx"))
+			},
 		},
 		// TODO add more tests
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sts := getNewTiDBSetForTidbCluster(&tt.tc)
+			sts := getNewTiDBSetForTidbCluster(&tt.tc, tt.cm)
 			tt.testSts(sts)
 		})
 	}
@@ -1199,7 +1231,7 @@ func TestTiDBInitContainers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sts := getNewTiDBSetForTidbCluster(&tt.tc)
+			sts := getNewTiDBSetForTidbCluster(&tt.tc, nil)
 			if diff := cmp.Diff(tt.expectedInit, sts.Spec.Template.Spec.InitContainers); diff != "" {
 				t.Errorf("unexpected InitContainers in Statefulset (-want, +got): %s", diff)
 			}
@@ -1441,6 +1473,144 @@ func TestGetNewTiDBService(t *testing.T) {
 				return
 			}
 			if diff := cmp.Diff(*tt.expected, *svc); diff != "" {
+				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestGetTiDBConfigMap(t *testing.T) {
+	g := NewGomegaWithT(t)
+	testCases := []struct {
+		name     string
+		tc       v1alpha1.TidbCluster
+		expected *corev1.ConfigMap
+	}{
+		{
+			name: "TiDB config is nil",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "basic",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
+						Config: &v1alpha1.TiDBConfig{
+							Host: "0.0.0.0",
+						},
+					},
+				},
+			},
+			expected: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-tidb",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "tidb",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"startup-script": "",
+					"config-file": `host = "0.0.0.0"
+`,
+				},
+			},
+		},
+		{
+			name: "TiDB config with tls enabled",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					EnableTLSCluster: true,
+					TiDB: v1alpha1.TiDBSpec{
+						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
+						EnableTLSClient:      true,
+						Config:               &v1alpha1.TiDBConfig{},
+					},
+				},
+			},
+			expected: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-tidb",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "tidb",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"startup-script": "",
+					"config-file": `[security]
+  ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  ssl-cert = "/var/lib/tidb-server-tls/cert"
+  ssl-key = "/var/lib/tidb-server-tls/key"
+  cluster-ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  cluster-ssl-cert = "/var/lib/tidb-tls/cert"
+  cluster-ssl-key = "/var/lib/tidb-tls/key"
+`,
+				},
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			cm, err := getTiDBConfigMap(&tt.tc)
+			g.Expect(err).To(Succeed())
+			if tt.expected == nil {
+				g.Expect(cm).To(BeNil())
+				return
+			}
+			// startup-script is better to be tested in e2e
+			cm.Data["startup-script"] = ""
+			if diff := cmp.Diff(*tt.expected, *cm); diff != "" {
 				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
 			}
 		})

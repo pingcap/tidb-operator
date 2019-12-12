@@ -14,12 +14,9 @@
 package member
 
 import (
-	"bytes"
-	"crypto/sha256"
 	"fmt"
-	"text/template"
+	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -28,39 +25,21 @@ import (
 	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/klog"
 )
 
 const (
 	defaultPumpLogLevel = "info"
 )
 
-// pumpStartScriptTpl is the template string of pump start script
-// Note: changing this will cause a rolling-update of pump cluster
-var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`set -euo pipefail
-
-/pump \
--pd-urls={{ .Scheme }}://{{ .ClusterName }}-pd:2379 \
--L={{ .LogLevel }} \
--advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.{{ .ClusterName }}-pump:8250 \
--config=/etc/pump/pump.toml \
--data-dir=/data \
--log-file=
-
-if [ $? == 0 ]; then
-    echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "pump offline, please delete my pod"
-    tail -f /dev/null
-fi`))
-
 type pumpMemberManager struct {
 	setControl controller.StatefulSetControlInterface
 	svcControl controller.ServiceControlInterface
+  typedControl controller.TypedControlInterface
 	cmControl  controller.ConfigMapControlInterface
 	setLister  v1.StatefulSetLister
 	svcLister  corelisters.ServiceLister
@@ -72,7 +51,7 @@ type pumpMemberManager struct {
 func NewPumpMemberManager(
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
-	cmControl controller.ConfigMapControlInterface,
+	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	cmLister corelisters.ConfigMapLister,
@@ -80,7 +59,7 @@ func NewPumpMemberManager(
 	return &pumpMemberManager{
 		setControl,
 		svcControl,
-		cmControl,
+		typedControl,
 		setLister,
 		svcLister,
 		cmLister,
@@ -220,49 +199,16 @@ func (pmm *pumpMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *appsv
 	//   - user switch strategy from RollingUpdate to In-place
 	//   - the statefulset and configmap is created by other clients (e.g. helm)
 	if set != nil && tc.Spec.Pump.ConfigUpdateStrategy == v1alpha1.ConfigUpdateStrategyInPlace {
-		inUseName := FindPumpConfig(tc.Name, set.Spec.Template.Spec.Volumes)
+		inUseName := FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+			return strings.HasPrefix(name, controller.PumpMemberName(tc.Name))
+		})
 		// find an in-use configmap, will update it in-place
 		if inUseName != "" {
 			newCm.Name = inUseName
 		}
 	}
 
-	oldCmTemp, err := pmm.cmLister.ConfigMaps(newCm.Namespace).Get(newCm.Name)
-	if errors.IsNotFound(err) {
-		// TODO: garbage collection for pump configmaps
-		err = pmm.cmControl.CreateConfigMap(tc, newCm)
-		if err != nil {
-			return nil, err
-		}
-		return newCm, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	oldCm := oldCmTemp.DeepCopy()
-
-	isOrphan := metav1.GetControllerOf(oldCm) == nil
-	if !apiequality.Semantic.DeepEqual(oldCm.Data, newCm.Data) || isOrphan {
-		if tc.Spec.Pump.ConfigUpdateStrategy == v1alpha1.ConfigUpdateStrategyRollingUpdate && !isOrphan {
-			// ConfigMaps with same hash suffix have different contents, hash collision!
-			// If the collision one happens to be the in-use one, rolling-update won't be triggered,
-			// this is ok because such case should be extremely rare and we log here for diagnosing.
-			klog.Warningf("hash collision detected on configmap: %s, update configmap content in-place", newCm.Name)
-		}
-		cm := *oldCm
-		cm.Data = newCm.Data
-		if isOrphan {
-			cm.OwnerReferences = newCm.OwnerReferences
-			cm.Labels = newCm.Labels
-		}
-		_, err = pmm.cmControl.UpdateConfigMap(tc, newCm)
-		if err != nil {
-			return nil, err
-		}
-		return newCm, err
-	}
-
-	return oldCm, nil
+	return pmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
 func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
@@ -295,17 +241,20 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	spec := tc.Spec.Pump
 	objMeta, _ := getPumpMeta(tc, controller.PumpMemberName)
 
-	buff := new(bytes.Buffer)
-	encoder := toml.NewEncoder(buff)
-	err := encoder.Encode(spec.Config)
+	confText, err := MarshalTOML(spec.Config)
 	if err != nil {
 		return nil, err
 	}
-	data := buff.Bytes()
 
 	name := controller.PumpMemberName(tc.Name)
+	data := map[string]string{
+		"pump-config": string(confText),
+	}
 	if spec.ConfigUpdateStrategy == v1alpha1.ConfigUpdateStrategyRollingUpdate {
-		sum := sha256.Sum256(data)
+		sum, err := Sha256Sum(data)
+		if err != nil {
+			return nil, err
+		}
 		suffix := fmt.Sprintf("%x", sum)[0:7]
 		name = fmt.Sprintf("%s-%s", name, suffix)
 	}
@@ -313,9 +262,7 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	return &corev1.ConfigMap{
 		ObjectMeta: objMeta,
-		Data: map[string]string{
-			"pump-config": string(data),
-		},
+		Data:       data,
 	}, nil
 }
 
@@ -465,22 +412,17 @@ func getPumpMeta(tc *v1alpha1.TidbCluster, nameFunc func(string) string) (metav1
 }
 
 func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
-	buff := new(bytes.Buffer)
 	// Keep the logic same as helm chart, but pump has not supported tls yet (no cert mounted)
 	// TODO: support tls
 	scheme := "http"
 	if tc.Spec.EnableTLSCluster {
 		scheme = "https"
 	}
-	err := pumpStartScriptTpl.Execute(buff, struct {
-		Scheme      string
-		ClusterName string
-		LogLevel    string
-	}{scheme, tc.Name, getPumpLogLevel(tc)})
-	if err != nil {
-		return "", err
-	}
-	return buff.String(), nil
+	return RenderPumpStartScript(&PumpStartScriptModel{
+		Scheme:      scheme,
+		ClusterName: tc.Name,
+		LogLevel:    getPumpLogLevel(tc),
+	})
 }
 
 func getPumpLogLevel(tc *v1alpha1.TidbCluster) string {
