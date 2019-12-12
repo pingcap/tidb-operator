@@ -78,7 +78,10 @@ func (w *typedWrapper) CreateOrUpdateDeployment(controller runtime.Object, deplo
 		}
 		// only override the default strategy if it is explicitly set in the desiredDep
 		if string(desiredDep.Spec.Strategy.Type) != "" {
-			existingDep.Spec.Strategy = desiredDep.Spec.Strategy
+			existingDep.Spec.Strategy.Type = desiredDep.Spec.Strategy.Type
+			if existingDep.Spec.Strategy.RollingUpdate != nil {
+				existingDep.Spec.Strategy.RollingUpdate = desiredDep.Spec.Strategy.RollingUpdate
+			}
 		}
 		// pod selector of deployment is immutable, so we don't mutate the labels of pod
 		for k, v := range desiredDep.Spec.Template.Annotations {
@@ -177,7 +180,13 @@ func (w *typedWrapper) CreateOrUpdateService(controller runtime.Object, svc *cor
 			return err
 		}
 		if !equal {
+			clusterIp := existingSvc.Spec.ClusterIP
 			existingSvc.Spec = desiredSvc.Spec
+			existingSvc.Spec.ClusterIP = clusterIp
+			err := SetServiceLastAppliedConfigAnnotation(existingSvc)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	})

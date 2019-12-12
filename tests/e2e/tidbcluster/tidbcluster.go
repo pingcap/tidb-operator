@@ -491,7 +491,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		discoveryName := controller.DiscoveryMemberName(tc.Name)
 		discoveryDep, err := c.AppsV1().Deployments(tc.Namespace).Get(discoveryName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get discovery deployment")
-		WaitObjectToBeControlledByOrDie(genericCli, tc, discoveryDep, 5*time.Minute)
+		WaitObjectToBeControlledByOrDie(genericCli, discoveryDep, tc, 5*time.Minute)
 
 		err = utils.WaitForDeploymentComplete(c, discoveryDep, e2elog.Logf, 10*time.Second, 5*time.Minute)
 		framework.ExpectNoError(err, "Discovery Deployment should be healthy after managed by tidb-operator")
@@ -499,7 +499,14 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = genericCli.Delete(context.TODO(), discoveryDep)
 		framework.ExpectNoError(err, "Expected to delete deployment")
 
-		err = utils.WaitForDeploymentComplete(c, discoveryDep, e2elog.Logf, 10*time.Second, 5*time.Minute)
+		err = wait.PollImmediate(10*time.Second, 5*time.Minute, func() (bool, error) {
+			_, err := c.AppsV1().Deployments(tc.Namespace).Get(discoveryName, metav1.GetOptions{})
+			if err != nil {
+				e2elog.Logf("wait discovery deployment get created again: %v", err)
+				return false, nil
+			}
+			return true, nil
+		})
 		framework.ExpectNoError(err, "Discovery Deployment should be recovered by tidb-operator after deletion")
 
 		ginkgo.By("Managing TiDB configmap in TidbCluster CRD in-place should not trigger rolling-udpate")
@@ -510,6 +517,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oldRev := oldTiDBSet.Status.CurrentRevision
 		framework.ExpectEqual(oldTiDBSet.Status.UpdateRevision, oldRev, "Expected tidb is not upgrading")
 
+		tc, err = cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get tidbcluster")
 		// TODO: modify other cases to manage TiDB configmap in CRD by default
 		tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
 		tc.Spec.TiDB.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
