@@ -54,7 +54,7 @@ spec:
     emptyDir: {}
 '''
 
-def build(SHELL_CODE) {
+def build(SHELL_CODE, ARTIFACTS = "") {
 	podTemplate(yaml: podYAML) {
 		node(POD_LABEL) {
 			container('main') {
@@ -81,6 +81,13 @@ def build(SHELL_CODE) {
 							${SHELL_CODE}
 							"""
 						}
+					}
+				}
+				if (ARTIFACTS != "") {
+					// collect artifacts
+					dir(ARTIFACTS) {
+						archiveArtifacts artifacts: "**"
+						junit "*.xml"
 					}
 				}
 			}
@@ -168,12 +175,13 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 			}
 		}
 
+		def artifacts = "go/src/github.com/pingcap/tidb-operator/artifacts"
         def builds = [:]
         builds["E2E v1.12.10"] = {
-			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn make e2e")
+			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn REPOT_DIR=$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ make e2e", artifacts)
         }
         builds["E2E v1.16.3"] = {
-			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.16.3 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn make e2e")
+			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.16.3 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn REPOT_DIR=$(pwd)/artifacts REPORT_PREFIX=v1.16.3_ make e2e", artifacts)
         }
         builds.failFast = false
         parallel builds
