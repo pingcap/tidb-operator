@@ -19,6 +19,10 @@ spec:
     {{- if .Values.extraLabels }}
 {{ toYaml .Values.extraLabels | indent 8 }}
     {{- end }}
+      annotations:
+    {{- if .Values.annotations }}
+{{ toYaml .Values.annotations | indent 8 }}
+    {{- end }}
     spec:
       restartPolicy: OnFailure
       containers:

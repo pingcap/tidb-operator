@@ -33,6 +33,9 @@ image:
 # ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 extraLabels: {}
 
+# Add annotations for backup/restore job's pod
+annotations: {}
+
 # secretName is the name of the secret which stores user and password used for backup/restore
 # Note: you must give the user enough privilege to do the backup and restore
 # you can create the secret by:
