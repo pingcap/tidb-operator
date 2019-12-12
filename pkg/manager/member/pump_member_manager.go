@@ -39,7 +39,7 @@ const (
 type pumpMemberManager struct {
 	setControl controller.StatefulSetControlInterface
 	svcControl controller.ServiceControlInterface
-  typedControl controller.TypedControlInterface
+	typedControl controller.TypedControlInterface
 	cmControl  controller.ConfigMapControlInterface
 	setLister  v1.StatefulSetLister
 	svcLister  corelisters.ServiceLister
