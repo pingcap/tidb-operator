@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -30,15 +29,8 @@ const (
 	emptyRestartPodList = "empty restart pod List"
 )
 
-// 0. 只有 webhook 启用时才支持 RestartManager
-// 1. pod 打上 annotation
-// 2. RestartManager 检查 tcStatus 有没有正在重启的pod,如果有，则发送 delete 请求后，Requeue
-// 3. 如果没有，List 所有需要重启的 pod
-// 4. 按照规则 pop 一个 pod 出来重启，给对应 sts 打上 anno，标识某个 pod处于重启状态中
 type Restarter interface {
 	Sync(tc *v1alpha1.TidbCluster) error
-	//Pop(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) (*core.Pod, error)
-	//Restart(tc *v1alpha1.TidbCluster, pod *core.Pod) error
 }
 
 type GeneralRestarter struct {
@@ -53,13 +45,18 @@ func NewGeneralRestarter(kubeCli kubernetes.Interface, podLister corelisters.Pod
 
 func (gr *GeneralRestarter) Sync(tc *v1alpha1.TidbCluster) error {
 
-	pod, err := gr.sync(tc, v1alpha1.PDMemberType)
+	err := gr.sync(tc, v1alpha1.PDMemberType)
 	if err != nil {
-		if err.Error() == emptyRestartPodList {
-
-		}
+		return err
 	}
-	return nil
+
+	err = gr.sync(tc, v1alpha1.TiKVMemberType)
+	if err != nil {
+		return err
+	}
+
+	return gr.sync(tc, v1alpha1.TiDBClusterKind)
+
 }
 
 func (gr *GeneralRestarter) restart(tc *v1alpha1.TidbCluster, pod *core.Pod) error {
@@ -83,37 +80,7 @@ func (gr *GeneralRestarter) list(selector labels.Selector) ([]*core.Pod, error) 
 	return restartMarkedPods, nil
 }
 
-func (gr *GeneralRestarter) pop(podList []*core.Pod) (*core.Pod, error) {
-	if len(podList) < 1 {
-		return nil, fmt.Errorf(emptyRestartPodList)
-	}
-	if len(podList) == 1 {
-		return podList[0], nil
-	}
-	maxOrdinal := -1
-	var returnerd *core.Pod
-	for _, pod := range podList {
-		ordinal, err := operatorUtils.GetOrdinalFromPodName(pod.Name)
-		if err != nil {
-			return nil, err
-		}
-		if int(ordinal) > maxOrdinal {
-			maxOrdinal = int(ordinal)
-			returnerd = pod
-		}
-	}
-	return returnerd, nil
-}
-
-func (gr *GeneralRestarter) isInRestarting(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) (bool, error) {
-	sts, err := gr.stsLister.StatefulSets(tc.Namespace).Get(operatorUtils.GetStatefulSetName(tc, memberType))
-	if err != nil {
-		return false, err
-	}
-
-}
-
-func (gr *GeneralRestarter) sync(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) (*core.Pod, error) {
+func (gr *GeneralRestarter) sync(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) error {
 	labelSelector := &meta.LabelSelector{
 		MatchLabels: map[string]string{
 			label.ComponentLabelKey: memberType.String(),
@@ -124,11 +91,13 @@ func (gr *GeneralRestarter) sync(tc *v1alpha1.TidbCluster, memberType v1alpha1.M
 	}
 	selector, err := meta.LabelSelectorAsSelector(labelSelector)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	pods, err := gr.list(selector)
 	if err != nil {
-		return nil, err
+		if err.Error() == emptyRestartPodList {
+			return nil
+		}
 	}
-	return gr.pop(pods)
+	return gr.restart(tc, pods[0])
 }
