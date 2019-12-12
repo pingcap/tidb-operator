@@ -12,7 +12,7 @@ import (
 	sql_util "github.com/pingcap/tidb-operator/tests/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	"golang.org/x/sync/errgroup"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	glog "k8s.io/klog"
 )
@@ -154,7 +154,12 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 	glog.Infof("wait on-going inserts to be drained for 60 seconds")
 	time.Sleep(60 * time.Second)
 
-	stopWriteTS, err := sql_util.ShowMasterCommitTS(getDSN(source.Namespace, source.ClusterName, "test", source.Password))
+	dsn, cancel, err := oa.getTiDBDSN(source.Namespace, source.ClusterName, "test", source.Password)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	stopWriteTS, err := sql_util.ShowMasterCommitTS(dsn)
 	if err != nil {
 		return err
 	}
@@ -220,7 +225,7 @@ func (oa *operatorActions) DeployAndCheckIncrementalBackup(from, to *TidbCluster
 
 func (oa *operatorActions) CheckDataConsistency(from, to *TidbClusterConfig, timeout time.Duration) error {
 	fn := func() (bool, error) {
-		b, err := to.DataIsTheSameAs(from)
+		b, err := oa.DataIsTheSameAs(to, from)
 		if err != nil {
 			glog.Error(err)
 			return false, nil
