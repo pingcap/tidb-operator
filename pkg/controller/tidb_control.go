@@ -34,7 +34,7 @@ const (
 	timeout          = 5 * time.Second
 )
 
-type dbInfo struct {
+type DBInfo struct {
 	IsOwner bool `json:"is_owner"`
 }
 
@@ -42,8 +42,8 @@ type dbInfo struct {
 type TiDBControlInterface interface {
 	// GetHealth returns tidb's health info
 	GetHealth(tc *v1alpha1.TidbCluster) map[string]bool
-	// Get TIDB info return tidb's dbInfo
-	GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*dbInfo, error)
+	// Get TIDB info return tidb's DBInfo
+	GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBInfo, error)
 	// GetSettings return the TiDB instance settings
 	GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error)
 }
@@ -96,7 +96,7 @@ func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster) map[string]bo
 	return result
 }
 
-func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*dbInfo, error) {
+func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBInfo, error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()
@@ -123,7 +123,7 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 	if err != nil {
 		return nil, err
 	}
-	info := dbInfo{}
+	info := DBInfo{}
 	err = json.Unmarshal(body, &info)
 	if err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ func (tdc *defaultTiDBControl) getBodyOK(apiURL string) ([]byte, error) {
 // FakeTiDBControl is a fake implementation of TiDBControlInterface.
 type FakeTiDBControl struct {
 	healthInfo   map[string]bool
-	tidbInfo     *dbInfo
+	tiDBInfo     *DBInfo
 	getInfoError error
 	tidbConfig   *config.Config
 }
@@ -206,8 +206,8 @@ func (ftd *FakeTiDBControl) GetHealth(_ *v1alpha1.TidbCluster) map[string]bool {
 	return ftd.healthInfo
 }
 
-func (ftd *FakeTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*dbInfo, error) {
-	return ftd.tidbInfo, ftd.getInfoError
+func (ftd *FakeTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBInfo, error) {
+	return ftd.tiDBInfo, ftd.getInfoError
 }
 
 func (ftd *FakeTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error) {

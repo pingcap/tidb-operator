@@ -59,6 +59,8 @@ type Config struct {
 	ManifestDir string `yaml:"manifest_dir" json:"manifest_dir"`
 
 	TestApiserverImage string `yaml:"test_apiserver_image" json:"test_apiserver_image"`
+
+	E2EImage string `yaml:"e2e_image" json:"e2e_image"`
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
