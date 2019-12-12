@@ -1179,7 +1179,8 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 					"tso-save-interval": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TsoSaveInterval is the interval to save timestamp.",
-							Ref:         ref("github.com/pingcap/pd/pkg/typeutil.Duration"),
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"metric": {
@@ -1217,14 +1218,15 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 					},
 					"cluster-version": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/coreos/go-semver/semver.Version"),
+							Type:   []string{"string"},
+							Format: "",
 						},
 					},
 					"quota-backend-bytes": {
 						SchemaProps: spec.SchemaProps{
 							Description: "QuotaBackendBytes Raise alarms when backend size exceeds the given quota. 0 means use the default quota. the default size is 2GB, the maximum is 8GB.",
-							Type:        []string{"integer"},
-							Format:      "int64",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"auto-compaction-mode": {
@@ -1241,19 +1243,21 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
-					"TickInterval": {
+					"tikv-interval": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TickInterval is the interval for etcd Raft tick.",
-							Ref:         ref("github.com/pingcap/pd/pkg/typeutil.Duration"),
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
-					"ElectionInterval": {
+					"election-interval": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ElectionInterval is the interval for etcd Raft election.",
-							Ref:         ref("github.com/pingcap/pd/pkg/typeutil.Duration"),
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
-					"PreVote": {
+					"enable-prevote": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Prevote is true to enable Raft Pre-Vote. If enabled, Raft runs an additional election phase to check whether it would get enough votes to win an election, thus minimizing disruptions.",
 							Type:        []string{"boolean"},
@@ -1285,26 +1289,6 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 							},
 						},
 					},
-					"configFile": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"WarningMsgs": {
-						SchemaProps: spec.SchemaProps{
-							Description: "For all warnings during parsing.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Type:   []string{"string"},
-										Format: "",
-									},
-								},
-							},
-						},
-					},
 					"namespace-classifier": {
 						SchemaProps: spec.SchemaProps{
 							Description: "NamespaceClassifier is for classifying stores/regions into different namespaces.",
@@ -1312,34 +1296,11 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
-					"nextRetryDelay": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Only test can change them.",
-							Type:        []string{"integer"},
-							Format:      "int64",
-						},
-					},
-					"disableStrictReconfigCheck": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"boolean"},
-							Format: "",
-						},
-					},
-					"heartbeatStreamBindInterval": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/pd/pkg/typeutil.Duration"),
-						},
-					},
-					"LeaderPriorityCheckInterval": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/pd/pkg/typeutil.Duration"),
-						},
-					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/coreos/go-semver/semver.Version", "github.com/pingcap/pd/pkg/metricutil.MetricConfig", "github.com/pingcap/pd/pkg/typeutil.Duration", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDLogConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDNamespaceConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDReplicationConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDScheduleConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSecurityConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDServerConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDStoreLabel"},
+			"github.com/pingcap/pd/pkg/metricutil.MetricConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDLogConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDNamespaceConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDReplicationConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDScheduleConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSecurityConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDServerConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDStoreLabel"},
 	}
 }
 
@@ -1545,19 +1506,21 @@ func schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref common.ReferenceCallb
 					"split-merge-interval": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SplitMergeInterval is the minimum interval time to permit merge after split.",
-							Ref:         ref("github.com/pingcap/pd/pkg/typeutil.Duration"),
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"patrol-region-interval": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PatrolRegionInterval is the interval for scanning region during patrol.",
-							Ref:         ref("github.com/pingcap/pd/pkg/typeutil.Duration"),
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"max-store-down-time": {
 						SchemaProps: spec.SchemaProps{
 							Description: "MaxStoreDownTime is the max duration after which a store will be considered to be down if it hasn't reported heartbeats.",
-							Ref:         ref("github.com/pingcap/pd/pkg/typeutil.Duration"),
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Duration"),
 						},
 					},
 					"leader-schedule-limit": {
@@ -1689,7 +1652,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref common.ReferenceCallb
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/pd/pkg/typeutil.Duration", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSchedulerConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Duration", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSchedulerConfig"},
 	}
 }
 
