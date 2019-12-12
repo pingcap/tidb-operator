@@ -198,6 +198,7 @@ func NewController(
 				svcInformer.Lister(),
 				cmInformer.Lister(),
 			),
+			mm.NewTidbDiscoveryManager(typedControl),
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(

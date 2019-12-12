@@ -14,19 +14,18 @@
 package controller
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	glog "k8s.io/klog"
-	"k8s.io/kubernetes/pkg/apis/apps"
 )
 
 var (
@@ -61,9 +60,6 @@ var (
 
 	// TidbDiscoveryImage is the image of tidb discovery service
 	TidbDiscoveryImage string
-
-	// LastAppliedConfigAnnotation is annotation key of last applied configuration
-	LastAppliedConfigAnnotation = "pingcap.com/last-applied-configuration"
 )
 
 const (
@@ -353,40 +349,37 @@ func (rt *RequestTracker) GetError() error {
 	return rt.err
 }
 
-// SetDeploymentLastAppliedConfigAnnotation set last applied config to Deployment's annotation
-func SetDeploymentLastAppliedConfigAnnotation(dep *appsv1.Deployment) error {
-	b, err := json.Marshal(dep)
-	if err != nil {
-		return err
-	}
-	applied := string(b)
-	if dep.Annotations == nil {
-		dep.Annotations = map[string]string{}
-	}
-	dep.Annotations[LastAppliedConfigAnnotation] = applied
-	return nil
-}
-
-// GetDeploymentLastAppliedConfigAnnotation set last applied config from Deployment's annotation
-func GetDeploymentLastAppliedConfigAnnotation(dep *appsv1.Deployment) (*apps.DeploymentSpec, error) {
-	applied, ok := dep.Annotations[LastAppliedConfigAnnotation]
+// EmptyClone create an clone of the resource with the same name and namespace (if namespace-scoped), with other fields unset
+func EmptyClone(obj runtime.Object) (runtime.Object, error) {
+	meta, ok := obj.(metav1.Object)
 	if !ok {
-		return nil, fmt.Errorf("deployment:[%s/%s] not found spec's apply config", dep.GetNamespace(), dep.GetName())
+		return nil, fmt.Errorf("Obj %v is not a metav1.Object, cannot call EmptyClone", obj)
 	}
-	depSpec := &apps.DeploymentSpec{}
-	err := json.Unmarshal([]byte(applied), depSpec)
+	gvk, err := InferObjectKind(obj)
 	if err != nil {
 		return nil, err
 	}
-	return depSpec, nil
+	inst, err := scheme.Scheme.New(gvk)
+	if err != nil {
+		return nil, err
+	}
+	instMeta, ok := inst.(metav1.Object)
+	if !ok {
+		return nil, fmt.Errorf("New instatnce %v created from scheme is not a metav1.Object, EmptyClone failed", inst)
+	}
+	instMeta.SetName(meta.GetName())
+	instMeta.SetNamespace(meta.GetNamespace())
+	return inst, nil
 }
 
-// DeploymentSpecChanged checks whether the new deployment differs with the old one's last-applied-config
-func DeploymentSpecChanged(new *appsv1.Deployment, old *appsv1.Deployment) bool {
-	lastAppliedSpec, err := GetDeploymentLastAppliedConfigAnnotation(old)
+// InferObjectKind infers the object kind
+func InferObjectKind(obj runtime.Object) (schema.GroupVersionKind, error) {
+	gvks, _, err := scheme.Scheme.ObjectKinds(obj)
 	if err != nil {
-		glog.Errorf("error get last-applied-config of deployment %s/%s: %v", old.Namespace, old.Name, err)
-		return true
+		return schema.GroupVersionKind{}, err
 	}
-	return !apiequality.Semantic.DeepEqual(new.Spec, lastAppliedSpec)
+	if len(gvks) != 1 {
+		return schema.GroupVersionKind{}, fmt.Errorf("Object %v has ambigious GVK", obj)
+	}
+	return gvks[0], nil
 }

@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -70,14 +71,23 @@ func (w *typedWrapper) CreateOrUpdateDeployment(controller runtime.Object, deplo
 		existingDep := existing.(*appsv1.Deployment)
 		desiredDep := desired.(*appsv1.Deployment)
 
+		existingDep.Spec.Replicas = desiredDep.Spec.Replicas
 		existingDep.Labels = desiredDep.Labels
 		for k, v := range desiredDep.Annotations {
 			existingDep.Annotations[k] = v
 		}
-		// spec of deployment is hard to merge, use last-applied-config to assist
-		if DeploymentSpecChanged(desiredDep, existingDep) {
-			existingDep.Spec = desiredDep.Spec
-			err := SetDeploymentLastAppliedConfigAnnotation(existingDep)
+		// only override the default strategy if it is explicitly set in the desiredDep
+		if string(desiredDep.Spec.Strategy.Type) != "" {
+			existingDep.Spec.Strategy = desiredDep.Spec.Strategy
+		}
+		// pod selector of deployment is immutable, so we don't mutate the labels of pod
+		for k, v := range desiredDep.Spec.Template.Annotations {
+			existingDep.Spec.Template.Annotations[k] = v
+		}
+		// podSpec of deployment is hard to merge, use an annotation to assist
+		if DeploymentPodSpecChanged(desiredDep, existingDep) {
+			existingDep.Spec.Template.Spec = desiredDep.Spec.Template.Spec
+			err := SetDeploymentLastAppliedPodTemplate(existingDep)
 			if err != nil {
 				return err
 			}
@@ -158,13 +168,17 @@ func (w *typedWrapper) CreateOrUpdateService(controller runtime.Object, svc *cor
 		existingSvc := existing.(*corev1.Service)
 		desiredSvc := desired.(*corev1.Service)
 
-		clusterIPRetained := existingSvc.Spec.ClusterIP
-		existingSvc.Spec = desiredSvc.Spec
-		existingSvc.Spec.ClusterIP = clusterIPRetained
 		for k, v := range desiredSvc.Annotations {
 			desiredSvc.Annotations[k] = v
 		}
 		existingSvc.Labels = desiredSvc.Labels
+		equal, err := ServiceEqual(desiredSvc, existingSvc)
+		if err != nil {
+			return err
+		}
+		if !equal {
+			existingSvc.Spec = desiredSvc.Spec
+		}
 		return nil
 	})
 	if err != nil {
@@ -229,7 +243,10 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Obj
 	if errors.IsAlreadyExists(err) {
 
 		// 2. object has already existed, merge our desired changes to it
-		existing := desired.DeepCopyObject()
+		existing, err := EmptyClone(obj)
+		if err != nil {
+			return nil, err
+		}
 		key, err := client.ObjectKeyFromObject(existing)
 		if err != nil {
 			return nil, err
@@ -253,7 +270,7 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Obj
 		// 5. check if the copy is actually mutated
 		if !apiequality.Semantic.DeepEqual(existing, mutated) {
 			err := c.client.Update(context.TODO(), mutated)
-			c.RecordControllerEvent("update", controller, obj, err)
+			c.RecordControllerEvent("update", controller, mutated, err)
 			return mutated, err
 		}
 
@@ -261,7 +278,7 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Obj
 	}
 
 	// object do not exist, return the creation result
-	c.RecordControllerEvent("create", controller, obj, err)
+	c.RecordControllerEvent("create", controller, desired, err)
 	return desired, nil
 }
 
@@ -273,12 +290,18 @@ func (c *realGenericControlInterface) Delete(controller, obj runtime.Object) err
 
 // RecordControllerEvent is a generic method to record event for controller
 func (c *realGenericControlInterface) RecordControllerEvent(verb string, controller runtime.Object, obj runtime.Object, err error) {
-	controllerKind := controller.GetObjectKind().GroupVersionKind().Kind
 	var controllerName string
+	controllerGVK, err := InferObjectKind(controller)
+	if err != nil {
+		klog.Warningf("Cannot get GVK for controller %v: %v", controller, err)
+	}
 	if accessor, ok := controller.(metav1.ObjectMetaAccessor); ok {
 		controllerName = accessor.GetObjectMeta().GetName()
 	}
-	kind := obj.GetObjectKind().GroupVersionKind().Kind
+	objGVK, err := InferObjectKind(obj)
+	if err != nil {
+		klog.Warningf("Cannot get GVK for obj %v: %v", obj, err)
+	}
 	var name string
 	if accessor, ok := obj.(metav1.ObjectMetaAccessor); ok {
 		name = accessor.GetObjectMeta().GetName()
@@ -287,15 +310,15 @@ func (c *realGenericControlInterface) RecordControllerEvent(verb string, control
 		reason := fmt.Sprintf("Successfully %s", strings.Title(verb))
 		msg := fmt.Sprintf("%s %s/%s for controller %s/%s successfully",
 			strings.ToLower(verb),
-			kind, name,
-			controllerKind, controllerName)
+			objGVK.Kind, name,
+			controllerGVK.Kind, controllerName)
 		c.recorder.Event(controller, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed to %s", strings.Title(verb))
 		msg := fmt.Sprintf("%s %s/%s for controller %s/%s failed, error: %s",
 			strings.ToLower(verb),
-			kind, name,
-			controllerKind, controllerName,
+			objGVK.Kind, name,
+			controllerGVK.Kind, controllerName,
 			err)
 		c.recorder.Event(controller, corev1.EventTypeWarning, reason, msg)
 	}

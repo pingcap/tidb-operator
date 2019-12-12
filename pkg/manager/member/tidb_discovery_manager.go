@@ -32,6 +32,10 @@ type realTidbDiscoveryManager struct {
 	ctrl controller.TypedControlInterface
 }
 
+func NewTidbDiscoveryManager(typedControl controller.TypedControlInterface) TidbDiscoveryManager {
+	return &realTidbDiscoveryManager{typedControl}
+}
+
 func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
 
 	meta, _ := getDiscoveryMeta(tc, controller.DiscoveryMemberName)
@@ -78,20 +82,20 @@ func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("error creating or updating discovery rolebinding: %v", err)
 	}
 
-	// RBAC ensured, reconcile
-	_, err = m.ctrl.CreateOrUpdateService(tc, getTidbDiscoveryService(tc))
+	deploy, err := m.ctrl.CreateOrUpdateDeployment(tc, getTidbDiscoveryDeployment(tc))
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
 	}
-	_, err = m.ctrl.CreateOrUpdateDeployment(tc, getTidbDiscoveryDeployment(tc))
+	// RBAC ensured, reconcile
+	_, err = m.ctrl.CreateOrUpdateService(tc, getTidbDiscoveryService(tc, deploy))
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
 	}
 	return nil
 }
 
-func getTidbDiscoveryService(tc *v1alpha1.TidbCluster) *corev1.Service {
-	meta, l := getDiscoveryMeta(tc, controller.DiscoveryMemberName)
+func getTidbDiscoveryService(tc *v1alpha1.TidbCluster, deploy *appsv1.Deployment) *corev1.Service {
+	meta, _ := getDiscoveryMeta(tc, controller.DiscoveryMemberName)
 	return &corev1.Service{
 		ObjectMeta: meta,
 		Spec: corev1.ServiceSpec{
@@ -102,7 +106,7 @@ func getTidbDiscoveryService(tc *v1alpha1.TidbCluster) *corev1.Service {
 				TargetPort: intstr.FromInt(10261),
 				Protocol:   corev1.ProtocolTCP,
 			}},
-			Selector: l.Labels(),
+			Selector: deploy.Spec.Template.Labels,
 		},
 	}
 }
@@ -121,11 +125,12 @@ func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) *appsv1.Deployment {
 				Spec: corev1.PodSpec{
 					ServiceAccountName: meta.Name,
 					Containers: []corev1.Container{{
-						Image:           controller.TidbDiscoveryImage,
-						ImagePullPolicy: corev1.PullIfNotPresent,
+						Name: "discovery",
 						Command: []string{
 							"/usr/local/bin/tidb-discovery",
 						},
+						Image:           controller.TidbDiscoveryImage,
+						ImagePullPolicy: corev1.PullIfNotPresent,
 						Env: []corev1.EnvVar{
 							{
 								Name: "MY_POD_NAMESPACE",
@@ -172,7 +177,7 @@ func (fdm *FakeDiscoveryManager) SetReconcileError(err error) {
 	fdm.err = err
 }
 
-func (fdm *FakeDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
+func (fdm *FakeDiscoveryManager) Reconcile(_ *v1alpha1.TidbCluster) error {
 	if fdm.err != nil {
 		return fdm.err
 	}
