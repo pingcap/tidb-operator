@@ -37,3 +37,5 @@ kubeconfig
 
 # local output directory
 /output/
+# local artifacts directory
+/artifacts/
