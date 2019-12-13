@@ -238,7 +238,25 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 			errWhenUpdateStatefulSet: false,
 			err:                      false,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
-				g.Expect(int(*set.Spec.Replicas)).To(Equal(0))
+				g.Expect(*set.Spec.Replicas).To(Equal(int32(0)))
+			},
+		},
+		{
+			name: "scale TiDB to 0 when stateful set is upgrading",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiDB.Replicas = 0
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+				tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
+				tc.Status.TiDB.FailureMembers = map[string]v1alpha1.TiDBFailureMember{
+					"tidb-0": {CreatedAt: metav1.Now(), PodName: "tidb-0"},
+					"tidb-1": {CreatedAt: metav1.Now(), PodName: "tidb-1"},
+				}
+			},
+			errWhenUpdateStatefulSet: false,
+			err:                      false,
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(*set.Spec.Replicas).To(Equal(int32(0)))
 			},
 		},
 	}

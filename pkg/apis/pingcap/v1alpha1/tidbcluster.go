@@ -300,7 +300,7 @@ func (tc *TidbCluster) TiDBAllMembersReady() bool {
 }
 
 func (tc *TidbCluster) TiDBStsDesiredReplicas() int32 {
-	if tc.Spec.TiDB.Replicas == 0 {
+	if tc.Spec.TiDB.Replicas == int32(0) {
 		return tc.Spec.TiDB.Replicas
 	} else {
 		return tc.Spec.TiDB.Replicas + int32(len(tc.Status.TiDB.FailureMembers))
