@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	glog "k8s.io/klog"
 )
 
 const (
@@ -37,14 +38,14 @@ const (
 )
 
 type pumpMemberManager struct {
-	setControl controller.StatefulSetControlInterface
-	svcControl controller.ServiceControlInterface
+	setControl   controller.StatefulSetControlInterface
+	svcControl   controller.ServiceControlInterface
 	typedControl controller.TypedControlInterface
-	cmControl  controller.ConfigMapControlInterface
-	setLister  v1.StatefulSetLister
-	svcLister  corelisters.ServiceLister
-	cmLister   corelisters.ConfigMapLister
-	podLister  corelisters.PodLister
+	cmControl    controller.ConfigMapControlInterface
+	setLister    v1.StatefulSetLister
+	svcLister    corelisters.ServiceLister
+	cmLister     corelisters.ConfigMapLister
+	podLister    corelisters.PodLister
 }
 
 // NewPumpMemberManager returns a controller to reconcile pump clusters
@@ -52,6 +53,7 @@ func NewPumpMemberManager(
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	typedControl controller.TypedControlInterface,
+	cmControl controller.ConfigMapControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	cmLister corelisters.ConfigMapLister,
@@ -60,6 +62,7 @@ func NewPumpMemberManager(
 		setControl,
 		svcControl,
 		typedControl,
+		cmControl,
 		setLister,
 		svcLister,
 		cmLister,
@@ -124,7 +127,7 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	}
 
 	if err := pmm.syncTiDBClusterStatus(tc, oldPumpSet); err != nil {
-		klog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", tc.Namespace, tc.Name, err)
+		glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", tc.Namespace, tc.Name, err)
 	}
 	return nil
 }
