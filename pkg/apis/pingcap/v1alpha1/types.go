@@ -168,7 +168,7 @@ type TidbClusterStatus struct {
 	PD        PDStatus   `json:"pd,omitempty"`
 	TiKV      TiKVStatus `json:"tikv,omitempty"`
 	TiDB      TiDBStatus `json:"tidb,omitempty"`
-	Pump      PumpStatus `josn:"tidb,omitempty"`
+	Pump      PumpStatus `josn:"pump,omitempty"`
 }
 
 // +k8s:openapi-gen=true
