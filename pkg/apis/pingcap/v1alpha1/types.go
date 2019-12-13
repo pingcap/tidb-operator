@@ -183,6 +183,9 @@ type PDSpec struct {
 	Service          *ServiceSpec `json:"service,omitempty"`
 	StorageClassName string       `json:"storageClassName,omitempty"`
 
+	// +optional
+	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
+
 	// Config is the Configuration of pd-servers
 	Config *PDConfig `json:"config,omitempty"`
 }
@@ -200,6 +203,9 @@ type TiKVSpec struct {
 	Privileged       bool         `json:"privileged,omitempty"`
 	StorageClassName string       `json:"storageClassName,omitempty"`
 	MaxFailoverCount int32        `json:"maxFailoverCount,omitempty"`
+
+	// +optional
+	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
 
 	// Config is the Configuration of tikv-servers
 	Config *TiKVConfig `json:"config,omitempty"`
