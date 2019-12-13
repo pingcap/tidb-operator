@@ -28,6 +28,7 @@ type PingcapV1alpha1Interface interface {
 	DataResourcesGetter
 	RestoresGetter
 	TidbClustersGetter
+	TidbMonitorsGetter
 }
 
 // PingcapV1alpha1Client is used to interact with features provided by the pingcap.com group.
@@ -53,6 +54,10 @@ func (c *PingcapV1alpha1Client) Restores(namespace string) RestoreInterface {
 
 func (c *PingcapV1alpha1Client) TidbClusters(namespace string) TidbClusterInterface {
 	return newTidbClusters(c, namespace)
+}
+
+func (c *PingcapV1alpha1Client) TidbMonitors(namespace string) TidbMonitorInterface {
+	return newTidbMonitors(c, namespace)
 }
 
 // NewForConfig creates a new PingcapV1alpha1Client for the given config.
