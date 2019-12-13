@@ -123,14 +123,12 @@ function e2e::image_build() {
     fi
     DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make docker
     DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make e2e-docker
-    DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make test-apiserver-docker
 }
 
 function e2e::image_load() {
     local names=(
         pingcap/tidb-operator
         pingcap/tidb-operator-e2e
-        pingcap/test-apiserver
     )
     for n in ${names[@]}; do
         $KIND_BIN load docker-image --name $CLUSTER $DOCKER_REGISTRY/$n:$IMAGE_TAG
@@ -362,6 +360,5 @@ export KUBECONFIG
 export KUBECONTEXT
 export TIDB_OPERATOR_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}
 export E2E_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator-e2e:${IMAGE_TAG}
-export TEST_APISERVER_IMAGE=$DOCKER_REGISTRY/pingcap/test-apiserver:${IMAGE_TAG}
 
 hack/run-e2e.sh "$@"

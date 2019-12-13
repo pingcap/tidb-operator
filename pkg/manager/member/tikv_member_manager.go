@@ -43,6 +43,7 @@ type tikvMemberManager struct {
 	svcControl                   controller.ServiceControlInterface
 	pdControl                    pdapi.PDControlInterface
 	certControl                  controller.CertControlInterface
+	typedControl                 controller.TypedControlInterface
 	setLister                    v1.StatefulSetLister
 	svcLister                    corelisters.ServiceLister
 	podLister                    corelisters.PodLister
@@ -59,6 +60,7 @@ func NewTiKVMemberManager(pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	certControl controller.CertControlInterface,
+	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
@@ -74,6 +76,7 @@ func NewTiKVMemberManager(pdControl pdapi.PDControlInterface,
 		setControl:   setControl,
 		svcControl:   svcControl,
 		certControl:  certControl,
+		typedControl: typedControl,
 		setLister:    setLister,
 		svcLister:    svcLister,
 		autoFailover: autoFailover,
@@ -163,16 +166,23 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	newSet, err := getNewTiKVSetForTidbCluster(tc)
-	if err != nil {
-		return err
-	}
-
 	oldSetTmp, err := tkmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
-	if errors.IsNotFound(err) {
+	setNotExist := errors.IsNotFound(err)
+
+	oldSet := oldSetTmp.DeepCopy()
+	cm, err := tkmm.syncTiKVConfigMap(tc, oldSet)
+	if err != nil {
+		return err
+	}
+
+	newSet, err := getNewTiKVSetForTidbCluster(tc, cm)
+	if err != nil {
+		return err
+	}
+	if setNotExist {
 		err = SetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
 			return err
@@ -190,8 +200,6 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
 	}
-
-	oldSet := oldSetTmp.DeepCopy()
 
 	if err := tkmm.syncTidbClusterStatus(tc, oldSet); err != nil {
 		return err
@@ -271,6 +279,27 @@ func (tkmm *tikvMemberManager) syncTiKVServerCerts(tc *v1alpha1.TidbCluster) err
 	return tkmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
+func (tkmm *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
+	// For backward compatibility, only sync tidb configmap when .tikv.config is non-nil
+	if tc.Spec.TiKV.Config == nil {
+		return nil, nil
+	}
+	newCm, err := getTikVConfigMap(tc)
+	if err != nil {
+		return nil, err
+	}
+	if set != nil && tc.TiKVConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyInPlace {
+		inUseName := FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+			return strings.HasPrefix(name, controller.TiKVMemberName(tc.Name))
+		})
+		if inUseName != "" {
+			newCm.Name = inUseName
+		}
+	}
+
+	return tkmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
+}
+
 func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
@@ -306,10 +335,14 @@ func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) 
 	return &svc
 }
 
-func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
+func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	tikvConfigMap := controller.MemberConfigMapName(tc, v1alpha1.TiKVMemberType)
+	if cm != nil {
+		tikvConfigMap = cm.Name
+	}
+
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
 		annMount,
@@ -527,6 +560,46 @@ func volumeClaimTemplate(q resource.Quantity, metaName string, storageClassName 
 			},
 		},
 	}
+}
+
+func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
+
+	config := tc.Spec.TiKV.Config
+	if config == nil {
+		return nil, nil
+	}
+	confText, err := MarshalTOML(config)
+	if err != nil {
+		return nil, err
+	}
+	startScript, err := RenderTiKVStartScript(&TiKVStartScriptModel{
+		Scheme: tc.Scheme(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	tikvLabel := label.New().Instance(instanceName).TiKV().Labels()
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            controller.TiKVMemberName(tc.Name),
+			Namespace:       tc.Namespace,
+			Labels:          tikvLabel,
+			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+		},
+		Data: map[string]string{
+			"config-file":    string(confText),
+			"startup-script": startScript,
+		},
+	}
+
+	if tc.TiKVConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
+		if err := AddConfigMapDigestSuffix(cm); err != nil {
+			return nil, err
+		}
+	}
+
+	return cm, nil
 }
 
 func labelTiKV(tc *v1alpha1.TidbCluster) label.Label {

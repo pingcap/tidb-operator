@@ -923,7 +923,11 @@ spec:
                             target store.
                           format: int64
                           type: integer
-                        max-store-down-time: {}
+                        max-store-down-time:
+                          description: MaxStoreDownTime is the max duration after
+                            which a store will be considered to be down if it hasn't
+                            reported heartbeats.
+                          type: string
                         merge-schedule-limit:
                           description: MergeScheduleLimit is the max coexist merge
                             schedules.
@@ -994,6 +998,8 @@ spec:
                       description: TsoSaveInterval is the interval to save timestamp.
                       type: string
                   type: object
+                configUpdateStrategy:
+                  type: string
                 replicas:
                   format: int32
                   type: integer
@@ -2192,6 +2198,8 @@ spec:
                           type: integer
                       type: object
                   type: object
+                configUpdateStrategy:
+                  type: string
                 maxFailoverCount:
                   format: int32
                   type: integer
