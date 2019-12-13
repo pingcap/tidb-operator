@@ -32,7 +32,8 @@ func RegisterTiDBOperatorFlags(flags *flag.FlagSet) {
 	flags.StringVar(&TestConfig.LogDir, "log-dir", "/logDir", "log directory")
 	flags.IntVar(&TestConfig.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
 	flags.StringVar(&TestConfig.TidbVersions, "tidb-versions", "v3.0.2,v3.0.3,v3.0.4", "tidb versions")
-	flags.StringVar(&TestConfig.E2EImage, "e2e-image", "", "e2e iamge")
+	flags.StringVar(&TestConfig.E2EImage, "e2e-image", "", "e2e image")
+	flags.BoolVar(&TestConfig.InstallOperator, "install-operator", true, "install a default operator")
 	flags.StringVar(&TestConfig.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flags.StringVar(&TestConfig.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
 	flags.StringVar(&TestConfig.UpgradeOperatorTag, "upgrade-operator-tag", "", "upgrade operator tag used to choose charts")
@@ -80,8 +81,6 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		SchedulerImage: "k8s.gcr.io/kube-scheduler",
 		Features: []string{
 			"StableScheduling=true",
-			// TODO: isolate oprator for specs #1257
-			"AdvancedStatefulSet=false",
 		},
 		LogLevel:           "4",
 		WebhookServiceName: "webhook-service",
