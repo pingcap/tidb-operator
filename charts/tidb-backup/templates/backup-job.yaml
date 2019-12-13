@@ -29,7 +29,7 @@ spec:
     {{- if .Values.annotations }}
 {{ toYaml .Values.annotations | indent 8 }}
     {{- end }}
-spec:
+    spec:
       {{- if .Values.serviceAccount }}
       serviceAccount: {{ .Values.serviceAccount }}
       {{- end }}
