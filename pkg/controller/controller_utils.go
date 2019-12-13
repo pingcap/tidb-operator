@@ -22,6 +22,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	glog "k8s.io/klog"
 )
 
@@ -336,4 +341,62 @@ func (rt *RequestTracker) SetRequests(requests int) *RequestTracker {
 
 func (rt *RequestTracker) GetError() error {
 	return rt.err
+}
+
+// WacthForObject watch the object change from informer and add it to workqueue
+func WatchForObject(informer cache.SharedIndexInformer, q workqueue.Interface) {
+	enqueueFn := func(obj interface{}) {
+		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
+			return
+		}
+		q.Add(key)
+	}
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: enqueueFn,
+		UpdateFunc: func(_, cur interface{}) {
+			enqueueFn(cur)
+		},
+		DeleteFunc: enqueueFn,
+	})
+}
+
+type GetControllerFn func(ns, name string) (runtime.Object, error)
+
+// WatchForController watch the object change from informer and add it's controller to workqueue
+func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interface, fn GetControllerFn) {
+	enqueueFn := func(obj interface{}) {
+		meta, ok := obj.(metav1.Object)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("%+v is not a runtime.Object, cannot get controller from it", obj))
+			return
+		}
+		ref := metav1.GetControllerOf(meta)
+		if ref == nil {
+			return
+		}
+		refGV, err := schema.ParseGroupVersion(ref.APIVersion)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("cannot parse group versio of the controller %v", ref))
+			return
+		}
+		controllerObj, err := fn(meta.GetNamespace(), ref.Name)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("cannot get controller %s/%s", meta.GetNamespace(), ref.Name))
+			return
+		}
+		// Ensure the ref is exactly the controller we listed
+		if ref.Kind == controllerObj.GetObjectKind().GroupVersionKind().Kind &&
+			refGV.Group == controllerObj.GetObjectKind().GroupVersionKind().Group {
+			q.Add(controllerObj)
+		}
+	}
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: enqueueFn,
+		UpdateFunc: func(_, cur interface{}) {
+			enqueueFn(cur)
+		},
+		DeleteFunc: enqueueFn,
+	})
 }

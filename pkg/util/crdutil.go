@@ -210,6 +210,8 @@ func GetCrdKindFromKindName(kindName string) (v1alpha1.CrdKind, error) {
 		return v1alpha1.DefaultCrdKinds.Restore, nil
 	case v1alpha1.BackupScheduleKindKey:
 		return v1alpha1.DefaultCrdKinds.BackupSchedule, nil
+	case v1alpha1.TiDBMonitorKindKey:
+		return v1alpha1.DefaultCrdKinds.TiDBMonitor, nil
 	default:
 		return v1alpha1.CrdKind{}, errors.New("unknown CrdKind Name")
 	}
@@ -228,6 +230,9 @@ func addAdditionalPrinterColumnsForCRD(crd *extensionsobj.CustomResourceDefiniti
 		break
 	case v1alpha1.DefaultCrdKinds.BackupSchedule.Kind:
 		crd.Spec.AdditionalPrinterColumns = bksAdditionalPrinterColumns
+		break
+	case v1alpha1.DefaultCrdKinds.BackupSchedule.Kind:
+		crd.Spec.AdditionalPrinterColumns = []extensionsobj.CustomResourceColumnDefinition{}
 		break
 	default:
 		break
