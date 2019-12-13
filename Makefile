@@ -68,7 +68,7 @@ backup-docker: backup-manager
 endif
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:${IMAGE_TAG}" images/backup-manager
 
-e2e-docker-push: e2e-docker test-apiserver-dokcer-push
+e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:${IMAGE_TAG}"
 
 ifeq ($(NO_BUILD),y)
@@ -87,25 +87,12 @@ endif
 	cp -r manifests tests/images/e2e
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:${IMAGE_TAG}" tests/images/e2e
 
-e2e-build: test-apiserver-build
+e2e-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/ginkgo github.com/onsi/ginkgo/ginkgo
 	$(GO) test -c -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e.test ./tests/e2e
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/webhook ./tests/cmd/webhook
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/blockwriter ./tests/cmd/blockwriter
-
-test-apiserver-dokcer-push: test-apiserver-docker
-	docker push "${DOCKER_REGISTRY}/pingcap/test-apiserver:${IMAGE_TAG}"
-
-ifeq ($(NO_BUILD),y)
-test-apiserver-docker:
-	@echo "NO_BUILD=y, skip build for $@"
-else
-test-apiserver-docker: test-apiserver-build
-endif
-	docker build -t "${DOCKER_REGISTRY}/pingcap/test-apiserver:${IMAGE_TAG}" tests/images/test-apiserver
-
-test-apiserver-build:
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/test-apiserver/bin/tidb-apiserver tests/cmd/apiserver/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/apiserver ./tests/cmd/apiserver
 
 e2e:
 	./hack/e2e.sh

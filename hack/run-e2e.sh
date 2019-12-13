@@ -14,7 +14,6 @@ hack::ensure_helm
 
 TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:latest}
 E2E_IMAGE=${E2E_IMAGE:-localhost:5000/pingcap/tidb-operator-e2e:latest}
-TEST_APISERVER_IMAGE=${TEST_APISERVER_IMAGE:-localhost:5000/pingcap/test-apiserver:latest}
 KUBECONFIG=${KUBECONFIG:-$HOME/.kube/config}
 KUBECONTEXT=${KUBECONTEXT:-}
 REPORT_DIR=${REPORT_DIR:-}
@@ -27,7 +26,6 @@ fi
 
 echo "TIDB_OPERATOR_IMAGE: $TIDB_OPERATOR_IMAGE"
 echo "E2E_IMAGE: $E2E_IMAGE"
-echo "TEST_APISERVER_IMAGE: $TEST_APISERVER_IMAGE"
 echo "KUBECONFIG: $KUBECONFIG"
 echo "KUBECONTEXT: $KUBECONTEXT"
 echo "REPORT_DIR: $REPORT_DIR"
@@ -84,7 +82,6 @@ e2e_args=(
     --operator-tag=e2e
     --operator-image=${TIDB_OPERATOR_IMAGE}
     --e2e-image=${E2E_IMAGE}
-    --test-apiserver-image=${TEST_APISERVER_IMAGE}
     --tidb-versions=v3.0.2,v3.0.3,v3.0.4,v3.0.5
     --chart-dir=/charts
     -v=4
