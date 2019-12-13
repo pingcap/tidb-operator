@@ -36,13 +36,11 @@ spec:
         - |
 {{ tuple "scripts/_start_data_retriever.sh.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
         volumeMounts:
-  {{- if .Values.dataSource.Remote.secretName }}
         - name: credentials
           mountPath: /etc/rclone
-  {{- end }}
         - name: data
           mountPath: /data
-      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+      {{ if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
         env:
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
@@ -97,11 +95,9 @@ spec:
         persistentVolumeClaim:
           claimName: {{ .Values.dataSource.adhoc.pvcName }}
       {{ else }}
-      {{ if .Values.dataSource.Remote.secretName }}
       - name: credentials
         secret:
           secretName: {{ .Values.dataSource.remote.secretName }}
-      {{- end}}
       - name: data
         persistentVolumeClaim:
           claimName: {{ include "tidb-lightning.name" . }}

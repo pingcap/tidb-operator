@@ -19,7 +19,7 @@ fi
 {{- if eq .Values.backend "importer" }}
     --importer={{ .Values.targetTidbCluster.name }}-importer.{{ .Values.targetTidbCluster.namespace | default .Release.Namespace }}:8287 \
 {{- else if eq .Values.backend "tidb" }}
-    --backend mysql
+    --backend tidb \
 {{- end }}
     --server-mode=false \
     --tidb-user={{ .Values.targetTidbCluster.user | default "root" }} \
