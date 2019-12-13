@@ -321,6 +321,22 @@ func (tc *TidbCluster) TiDBConfigUpdateStrategy() ConfigUpdateStrategy {
 	return s
 }
 
+func (tc *TidbCluster) PDConfigUpdateStrategy() ConfigUpdateStrategy {
+	s := tc.Spec.PD.ConfigUpdateStrategy
+	if string(s) == "" {
+		s = ConfigUpdateStrategyInPlace
+	}
+	return s
+}
+
+func (tc *TidbCluster) TiKVConfigUpdateStrategy() ConfigUpdateStrategy {
+	s := tc.Spec.TiKV.ConfigUpdateStrategy
+	if string(s) == "" {
+		s = ConfigUpdateStrategyInPlace
+	}
+	return s
+}
+
 func (tc *TidbCluster) PDIsAvailable() bool {
 	lowerLimit := tc.Spec.PD.Replicas/2 + 1
 	if int32(len(tc.Status.PD.Members)) < lowerLimit {

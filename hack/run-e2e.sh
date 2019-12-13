@@ -17,6 +17,8 @@ E2E_IMAGE=${E2E_IMAGE:-localhost:5000/pingcap/tidb-operator-e2e:latest}
 TEST_APISERVER_IMAGE=${TEST_APISERVER_IMAGE:-localhost:5000/pingcap/test-apiserver:latest}
 KUBECONFIG=${KUBECONFIG:-$HOME/.kube/config}
 KUBECONTEXT=${KUBECONTEXT:-}
+REPORT_DIR=${REPORT_DIR:-}
+REPORT_PREFIX=${REPORT_PREFIX:-}
 
 if [ -z "$KUBECONFIG" ]; then
     echo "error: KUBECONFIG is required"
@@ -28,6 +30,8 @@ echo "E2E_IMAGE: $E2E_IMAGE"
 echo "TEST_APISERVER_IMAGE: $TEST_APISERVER_IMAGE"
 echo "KUBECONFIG: $KUBECONFIG"
 echo "KUBECONTEXT: $KUBECONTEXT"
+echo "REPORT_DIR: $REPORT_DIR"
+echo "REPORT_PREFIX: $REPORT_PREFIX"
 
 GINKGO_PARALLEL=${GINKGO_PARALLEL:-n} # set to 'y' to run tests in parallel
 # If 'y', Ginkgo's reporter will not print out in color when tests are run
@@ -73,7 +77,7 @@ e2e_args=(
     ${ginkgo_args[@]:-}
     /usr/local/bin/e2e.test
     --
-    --provider=skeleton 
+    --provider=skeleton
     --clean-start=true
     --delete-namespace-on-failure=false
     # tidb-operator e2e flags
@@ -84,13 +88,33 @@ e2e_args=(
     --tidb-versions=v3.0.2,v3.0.3,v3.0.4,v3.0.5
     --chart-dir=/charts
     -v=4
-    ${@:-}
 )
 
-docker run --rm \
-    --net=host \
-    -v $KUBECONFIG:/etc/kubernetes/admin.conf:ro \
-    --env KUBECONFIG=/etc/kubernetes/admin.conf \
-    --env KUBECONTEXT=$KUBECONTEXT \
-    $E2E_IMAGE \
-    ${e2e_args[@]}
+if [ -n "$REPORT_DIR" ]; then
+    e2e_args+=(
+        --report-dir="${REPORT_DIR}"
+        --report-prefix="${REPORT_PREFIX}"
+    )
+fi
+
+e2e_args+=(${@:-})
+
+docker_args=(
+    run
+    --rm
+    --net=host
+    -v $ROOT:$ROOT
+    -w $ROOT
+    -v $KUBECONFIG:/etc/kubernetes/admin.conf:ro
+    --env KUBECONFIG=/etc/kubernetes/admin.conf
+    --env KUBECONTEXT=$KUBECONTEXT
+)
+
+if [ -n "$REPORT_DIR" ]; then
+    docker_args+=(
+        -v $REPORT_DIR:$REPORT_DIR
+    )
+fi
+
+echo "info: docker ${docker_args[@]} $E2E_IMAGE ${e2e_args[@]}"
+docker ${docker_args[@]} $E2E_IMAGE ${e2e_args[@]}

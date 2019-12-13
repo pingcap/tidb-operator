@@ -443,19 +443,10 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		"startup-script": startScript,
 	}
 	name := controller.TiDBMemberName(tc.Name)
-	if tc.TiDBConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
-		sum, err := Sha256Sum(data)
-		if err != nil {
-			return nil, err
-		}
-		suffix := fmt.Sprintf("%x", sum)[0:7]
-		name = fmt.Sprintf("%s-%s", name, suffix)
-	}
-
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
 	tidbLabels := label.New().Instance(instanceName).TiDB().Labels()
 
-	return &corev1.ConfigMap{
+	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
 			Namespace:       tc.Namespace,
@@ -463,7 +454,15 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Data: data,
-	}, nil
+	}
+
+	if tc.TiDBConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
+		if err := AddConfigMapDigestSuffix(cm); err != nil {
+			return nil, err
+		}
+	}
+
+	return cm, nil
 }
 
 func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
