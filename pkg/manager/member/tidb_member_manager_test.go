@@ -224,6 +224,23 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(set.Spec.Template.Spec.Containers).To(HaveLen(2))
 			},
 		},
+		{
+			name: "scale TiDB to 0 did not clear failureMembers",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiDB.Replicas = 0
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+				tc.Status.TiDB.FailureMembers = map[string]v1alpha1.TiDBFailureMember{
+					"tidb-0": {CreatedAt: metav1.Now(), PodName: "tidb-0"},
+					"tidb-1": {CreatedAt: metav1.Now(), PodName: "tidb-1"},
+				}
+			},
+			errWhenUpdateStatefulSet: false,
+			err:                      false,
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(int(*set.Spec.Replicas)).To(Equal(0))
+			},
+		},
 	}
 
 	for i := range tests {
