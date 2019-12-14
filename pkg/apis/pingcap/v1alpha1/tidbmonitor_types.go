@@ -39,13 +39,17 @@ type TidbMonitor struct {
 // +k8s:openapi-gen=true
 // TidbMonitor spec encode the desired state of tidb monitoring component
 type TidbMonitorSpec struct {
-	Clusters        []TidbClusterRef  `json:"clusters"`
-	Prometheus      PrometheusSpec    `json:"prometheus"`
-	Grafana         GrafanaSpec       `json:"grafana"`
-	Reloader        ReloaderSpec      `json:"reloader"`
-	Initializer     InitializerSpec   `json:"initializer"`
+	Clusters []TidbClusterRef `json:"clusters"`
+
+	Prometheus PrometheusSpec `json:"prometheus"`
+	// +optional
+	Grafana     *GrafanaSpec    `json:"grafana"`
+	Reloader    ReloaderSpec    `json:"reloader"`
+	Initializer InitializerSpec `json:"initializer"`
+
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
-	Persistent      bool              `json:"persistent,omitempty"`
+	// +optional
+	Persistent bool `json:"persistent,omitempty"`
 	// +optional
 	StorageClassName string `json:"storageClassName,omitempty"`
 	// +optional
@@ -56,15 +60,25 @@ type TidbMonitorSpec struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// kubePrometheusURL is where tidb-monitoring get the  common metrics of kube-prometheus.
+	// Ref: https://github.com/coreos/kube-prometheus
+	// +optional
+	KubePrometheusURL string `json:"kubePrometheusURL,omitempty"`
+	// alertmanagerURL is where tidb-monitoring push alerts to.
+	// Ref: https://prometheus.io/docs/alerting/alertmanager/
+	// +optional
+	AlertmanagerURL string `json:"alertmanagerURL,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus
 type PrometheusSpec struct {
 	MonitorContainer `json:",inline"`
 
-	LogLevel    string      `json:"logLevel,omitempty"`
-	ReserveDays int         `json:"reserveDays,omitempty"`
-	Service     ServiceSpec `json:"service,omitempty"`
+	LogLevel string      `json:"logLevel,omitempty"`
+	Service  ServiceSpec `json:"service,omitempty"`
+	// +optional
+	ReserveDays int `json:"reserveDays,omitempty"`
 }
 
 // GrafanaSpec is the desired state of grafana

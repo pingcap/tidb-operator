@@ -2690,6 +2690,10 @@ spec:
           description: TidbMonitor spec encode the desired state of tidb monitoring
             component
           properties:
+            alertmanagerURL:
+              description: 'alertmanagerURL is where tidb-monitoring push alerts to.
+                Ref: https://prometheus.io/docs/alerting/alertmanager/'
+              type: string
             annotations:
               type: object
             clusters:
@@ -2711,6 +2715,10 @@ spec:
             imagePullPolicy:
               type: string
             initializer: {}
+            kubePrometheusURL:
+              description: 'kubePrometheusURL is where tidb-monitoring get the  common
+                metrics of kube-prometheus. Ref: https://github.com/coreos/kube-prometheus'
+              type: string
             nodeSelector:
               type: object
             persistent:
@@ -2763,7 +2771,6 @@ spec:
           required:
           - clusters
           - prometheus
-          - grafana
           - reloader
           - initializer
           type: object

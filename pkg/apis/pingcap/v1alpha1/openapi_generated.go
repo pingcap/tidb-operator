@@ -4777,8 +4777,22 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							},
 						},
 					},
+					"kubePrometheusURL": {
+						SchemaProps: spec.SchemaProps{
+							Description: "kubePrometheusURL is where tidb-monitoring get the  common metrics of kube-prometheus. Ref: https://github.com/coreos/kube-prometheus",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"alertmanagerURL": {
+						SchemaProps: spec.SchemaProps{
+							Description: "alertmanagerURL is where tidb-monitoring push alerts to. Ref: https://prometheus.io/docs/alerting/alertmanager/",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
-				Required: []string{"clusters", "prometheus", "grafana", "reloader", "initializer"},
+				Required: []string{"clusters", "prometheus", "reloader", "initializer"},
 			},
 		},
 		Dependencies: []string{

@@ -3099,7 +3099,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		copy(*out, *in)
 	}
 	in.Prometheus.DeepCopyInto(&out.Prometheus)
-	in.Grafana.DeepCopyInto(&out.Grafana)
+	if in.Grafana != nil {
+		in, out := &in.Grafana, &out.Grafana
+		*out = new(GrafanaSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	in.Reloader.DeepCopyInto(&out.Reloader)
 	in.Initializer.DeepCopyInto(&out.Initializer)
 	if in.NodeSelector != nil {
