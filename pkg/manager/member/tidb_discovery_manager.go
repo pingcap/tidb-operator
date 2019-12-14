@@ -45,13 +45,13 @@ func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
 		ObjectMeta: meta,
 		Rules: []rbacv1.PolicyRule{
 			{
-				APIGroups:     []string{"pingcap.com"},
-				Resources:     []string{"tidbclusters"},
+				APIGroups:     []string{v1alpha1.GroupName},
+				Resources:     []string{v1alpha1.TiDBClusterKind},
 				ResourceNames: []string{tc.Name},
 				Verbs:         []string{"get"},
 			},
 			{
-				APIGroups: []string{""},
+				APIGroups: []string{corev1.GroupName},
 				Resources: []string{"secrets"},
 				Verbs:     []string{"get", "list"},
 			},
@@ -69,13 +69,13 @@ func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
 	_, err = m.ctrl.CreateOrUpdateRoleBinding(tc, &rbacv1.RoleBinding{
 		ObjectMeta: meta,
 		Subjects: []rbacv1.Subject{{
-			Kind: "ServiceAccount",
+			Kind: rbacv1.ServiceAccountKind,
 			Name: meta.Name,
 		}},
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "Role",
 			Name:     meta.Name,
-			APIGroup: "rbac.authorization.k8s.io",
+			APIGroup: rbacv1.GroupName,
 		},
 	})
 	if err != nil {

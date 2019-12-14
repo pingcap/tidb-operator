@@ -60,13 +60,13 @@ func GetDeploymentLastAppliedPodTemplate(dep *appsv1.Deployment) (*corev1.PodSpe
 }
 
 // DeploymentPodSpecChanged checks whether the new deployment differs with the old one's last-applied-config
-func DeploymentPodSpecChanged(new *appsv1.Deployment, old *appsv1.Deployment) bool {
-	lastAppliedPodTemplate, err := GetDeploymentLastAppliedPodTemplate(old)
+func DeploymentPodSpecChanged(newDep *appsv1.Deployment, oldDep *appsv1.Deployment) bool {
+	lastAppliedPodTemplate, err := GetDeploymentLastAppliedPodTemplate(oldDep)
 	if err != nil {
-		klog.Warningf("error get last-applied-config of deployment %s/%s: %v", old.Namespace, old.Name, err)
+		klog.Warningf("error get last-applied-config of deployment %s/%s: %v", oldDep.Namespace, oldDep.Name, err)
 		return true
 	}
-	return !apiequality.Semantic.DeepEqual(new.Spec.Template.Spec, lastAppliedPodTemplate)
+	return !apiequality.Semantic.DeepEqual(newDep.Spec.Template.Spec, lastAppliedPodTemplate)
 }
 
 // SetServiceLastAppliedConfigAnnotation set last applied config info to Service's annotation
@@ -83,15 +83,15 @@ func SetServiceLastAppliedConfigAnnotation(svc *corev1.Service) error {
 }
 
 // ServiceEqual compares the new Service's spec with old Service's last applied config
-func ServiceEqual(new, old *corev1.Service) (bool, error) {
+func ServiceEqual(newSvc, oldSvc *corev1.Service) (bool, error) {
 	oldSpec := corev1.ServiceSpec{}
-	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
+	if lastAppliedConfig, ok := oldSvc.Annotations[LastAppliedConfigAnnotation]; ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldSpec)
 		if err != nil {
-			klog.Errorf("unmarshal ServiceSpec: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
+			klog.Errorf("unmarshal ServiceSpec: [%s/%s]'s applied config failed,error: %v", oldSvc.GetNamespace(), oldSvc.GetName(), err)
 			return false, err
 		}
-		return apiequality.Semantic.DeepEqual(oldSpec, new.Spec), nil
+		return apiequality.Semantic.DeepEqual(oldSpec, newSvc.Spec), nil
 	}
 	return false, nil
 }
