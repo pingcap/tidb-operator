@@ -46,7 +46,7 @@ func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
 		Rules: []rbacv1.PolicyRule{
 			{
 				APIGroups:     []string{v1alpha1.GroupName},
-				Resources:     []string{v1alpha1.TiDBClusterKind},
+				Resources:     []string{v1alpha1.TiDBClusterName},
 				ResourceNames: []string{tc.Name},
 				Verbs:         []string{"get"},
 			},
