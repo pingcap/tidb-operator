@@ -201,16 +201,14 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return err
 	}
 
-	if !(*newTiDBSet.Spec.Replicas == int32(0)) {
-		if !templateEqual(newTiDBSet.Spec.Template, oldTiDBSet.Spec.Template) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-			if err := tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
-				return err
-			}
+	if !templateEqual(newTiDBSet.Spec.Template, oldTiDBSet.Spec.Template) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+		if err := tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
+			return err
 		}
 	}
 
 	if tmm.autoFailover {
-		if tc.TiDBAllPodsStarted() && tc.TiDBAllMembersReady() && tc.Status.TiDB.FailureMembers != nil {
+		if (tc.TiDBAllPodsStarted() && tc.TiDBAllMembersReady() && tc.Status.TiDB.FailureMembers != nil) || *newTiDBSet.Spec.Replicas == int32(0) {
 			tmm.tidbFailover.Recover(tc)
 		} else if tc.TiDBAllPodsStarted() && !tc.TiDBAllMembersReady() {
 			if err := tmm.tidbFailover.Failover(tc); err != nil {
