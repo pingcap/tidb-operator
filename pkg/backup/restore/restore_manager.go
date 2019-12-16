@@ -82,19 +82,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return fmt.Errorf("restore %s/%s get job %s failed, err: %v", ns, name, restoreJobName, err)
 	}
 
-	// not found restore job, need to create it
-	backup, reason, err := rm.getBackupFromRestore(restore)
-	if err != nil {
-		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreRetryFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  reason,
-			Message: err.Error(),
-		})
-		return err
-	}
-
-	job, reason, err := rm.makeRestoreJob(restore, backup)
+	job, reason, err := rm.makeRestoreJob(restore)
 	if err != nil {
 		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreRetryFailed,
@@ -133,51 +121,37 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	})
 }
 
-func (rm *restoreManager) getBackupFromRestore(restore *v1alpha1.Restore) (*v1alpha1.Backup, string, error) {
-	backupNs := restore.Spec.BackupNamespace
+func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
-	backup, err := rm.backupLister.Backups(backupNs).Get(restore.Spec.Backup)
-	if err != nil {
-		errMsg := fmt.Errorf("restore %s/%s get backup %s/%s failed, err: %v", ns, name, backupNs, restore.Spec.Backup, err)
-		return nil, "BackupNotFound", errMsg
-	}
-	if backup.Status.BackupPath == "" {
-		errMsg := fmt.Errorf("restore %s/%s backup %s/%s backupPath is empty", ns, name, backupNs, restore.Spec.Backup)
-		return nil, "BackupPathIsEmpty", errMsg
-	}
-
-	return backup, "", nil
-}
-
-func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore, backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
-	ns := restore.GetNamespace()
-	name := restore.GetName()
-
-	user, password, reason, err := backuputil.GetTidbUserAndPassword(ns, name, restore.Spec.TidbSecretName, rm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, rm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(backup, rm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.StorageProvider, rm.secretLister)
 	if err != nil {
-		return nil, reason, err
+		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
 	}
 
+	backupPath, reason, err := backuputil.GetBackupDataPath(restore.Spec.StorageProvider)
+	if err != nil {
+		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
+	}
+
+	envVars = append(envVars, storageEnv...)
 	args := []string{
 		"restore",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--restoreName=%s", name),
-		fmt.Sprintf("--tidbcluster=%s", restore.Spec.Cluster),
-		fmt.Sprintf("--backupPath=%s", backup.Status.BackupPath),
-		fmt.Sprintf("--backupName=%s", backup.GetName()),
-		fmt.Sprintf("--tidbservice=%s", controller.TiDBMemberName(restore.Spec.Cluster)),
-		fmt.Sprintf("--password=%s", password),
-		fmt.Sprintf("--user=%s", user),
+		fmt.Sprintf("--host=%s", restore.Spec.To.Host),
+		fmt.Sprintf("--port=%d", restore.Spec.To.Port),
+		fmt.Sprintf("--user=%s", restore.Spec.To.User),
+		fmt.Sprintf("--backupPath=%s", backupPath),
 	}
 
-	restoreLabel := label.NewBackup().Instance(restore.Spec.Cluster).RestoreJob().Restore(name)
+	restoreLabel := label.NewBackup().Instance(restore.Spec.To.GetTidbEndpoint()).RestoreJob().Restore(name)
 
 	// TODO: need add ResourceRequirement for restore job
 	podSpec := &corev1.PodTemplateSpec{
@@ -195,7 +169,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore, backup *v1al
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: label.RestoreJobLabelVal, MountPath: constants.BackupRootPath},
 					},
-					Env: storageEnv,
+					Env: envVars,
 				},
 			},
 			RestartPolicy: corev1.RestartPolicyNever,
@@ -256,7 +230,7 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      restorePVCName,
 				Namespace: ns,
-				Labels:    label.NewRestore().Instance(restore.Spec.Cluster),
+				Labels:    label.NewRestore().Instance(restore.Spec.To.GetTidbEndpoint()),
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
 				StorageClassName: &storageClassName,
