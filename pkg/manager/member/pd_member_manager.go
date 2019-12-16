@@ -73,7 +73,7 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	autoFailover bool,
 	webhookEnabled bool,
 	pdFailover Failover,
-	pdRestarter Restarter, ) manager.Manager {
+	pdRestarter Restarter) manager.Manager {
 	return &pdMemberManager{
 		pdControl,
 		setControl,
