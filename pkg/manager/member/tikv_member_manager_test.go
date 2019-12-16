@@ -39,6 +39,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/pointer"
 )
 
 func TestTiKVMemberManagerSyncCreate(t *testing.T) {
@@ -1379,6 +1380,7 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
 	tikvScaler := NewFakeTiKVScaler()
 	tikvUpgrader := NewFakeTiKVUpgrader()
+	genericControl := controller.NewFakeGenericControl()
 
 	tmm := &tikvMemberManager{
 		pdControl:    pdControl,
@@ -1386,6 +1388,7 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 		nodeLister:   nodeInformer.Lister(),
 		setControl:   setControl,
 		svcControl:   svcControl,
+		typedControl: controller.NewTypedControl(genericControl),
 		setLister:    setInformer.Lister(),
 		svcLister:    svcInformer.Lister(),
 		tikvScaler:   tikvScaler,
@@ -1548,7 +1551,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sts, err := getNewTiKVSetForTidbCluster(&tt.tc)
+			sts, err := getNewTiKVSetForTidbCluster(&tt.tc, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error %v, wantErr %v", err, tt.wantErr)
 			}
@@ -1804,7 +1807,7 @@ func TestTiKVInitContainers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sts, err := getNewTiKVSetForTidbCluster(&tt.tc)
+			sts, err := getNewTiKVSetForTidbCluster(&tt.tc, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error %v, wantErr %v", err, tt.wantErr)
 			}
@@ -1819,6 +1822,98 @@ func TestTiKVInitContainers(t *testing.T) {
 				t.Errorf("unexpected SecurityContext in Statefulset (want %#v, got nil)", *tt.expectedSecurity)
 			} else if diff := cmp.Diff(*(tt.expectedSecurity), *(sts.Spec.Template.Spec.SecurityContext)); diff != "" {
 				t.Errorf("unexpected SecurityContext in Statefulset (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestGetTiKVConfigMap(t *testing.T) {
+	g := NewGomegaWithT(t)
+	testCases := []struct {
+		name     string
+		tc       v1alpha1.TidbCluster
+		expected *corev1.ConfigMap
+	}{
+		{
+			name: "TiKV config is nil",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "basic",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: v1alpha1.TiKVSpec{
+						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
+						Config: &v1alpha1.TiKVConfig{
+							GrpcKeepaliveTimeout: "30s",
+							Raftstore: &v1alpha1.TiKVRaftstoreConfig{
+								SyncLog:              pointer.BoolPtr(false),
+								RaftBaseTickInterval: "1s",
+							},
+						},
+					},
+				},
+			},
+			expected: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-tikv",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/component":  "tikv",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"startup-script": "",
+					"config-file": `grpc-keepalive-timeout = "30s"
+
+[raftstore]
+  sync-log = false
+  raft-base-tick-interval = "1s"
+`,
+				},
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			cm, err := getTikVConfigMap(&tt.tc)
+			g.Expect(err).To(Succeed())
+			if tt.expected == nil {
+				g.Expect(cm).To(BeNil())
+				return
+			}
+			// startup-script is better to be tested in e2e
+			cm.Data["startup-script"] = ""
+			if diff := cmp.Diff(*tt.expected, *cm); diff != "" {
+				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
 			}
 		})
 	}

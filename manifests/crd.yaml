@@ -697,20 +697,6 @@ spec:
                 config:
                   description: PDConfig is the configuration of pd-server
                   properties:
-                    ElectionInterval: {}
-                    LeaderPriorityCheckInterval: {}
-                    PreVote:
-                      description: Prevote is true to enable Raft Pre-Vote. If enabled,
-                        Raft runs an additional election phase to check whether it
-                        would get enough votes to win an election, thus minimizing
-                        disruptions.
-                      type: boolean
-                    TickInterval: {}
-                    WarningMsgs:
-                      description: For all warnings during parsing.
-                      items:
-                        type: string
-                      type: array
                     advertise-client-urls:
                       type: string
                     advertise-peer-urls:
@@ -730,18 +716,24 @@ spec:
                       type: string
                     client-urls:
                       type: string
-                    cluster-version: {}
-                    configFile:
+                    cluster-version:
                       type: string
                     data-dir:
                       type: string
-                    disableStrictReconfigCheck:
-                      type: boolean
+                    election-interval:
+                      description: ElectionInterval is the interval for etcd Raft
+                        election.
+                      type: string
                     enable-grpc-gateway:
+                      type: boolean
+                    enable-prevote:
+                      description: Prevote is true to enable Raft Pre-Vote. If enabled,
+                        Raft runs an additional election phase to check whether it
+                        would get enough votes to win an election, thus minimizing
+                        disruptions.
                       type: boolean
                     force-new-cluster:
                       type: boolean
-                    heartbeatStreamBindInterval: {}
                     initial-cluster:
                       type: string
                     initial-cluster-state:
@@ -806,10 +798,6 @@ spec:
                       description: NamespaceClassifier is for classifying stores/regions
                         into different namespaces.
                       type: string
-                    nextRetryDelay:
-                      description: Only test can change them.
-                      format: int64
-                      type: integer
                     pd-server:
                       description: PDServerConfig is the configuration for pd server.
                       properties:
@@ -824,8 +812,7 @@ spec:
                       description: QuotaBackendBytes Raise alarms when backend size
                         exceeds the given quota. 0 means use the default quota. the
                         default size is 2GB, the maximum is 8GB.
-                      format: int64
-                      type: integer
+                      type: string
                     replication:
                       description: PDReplicationConfig is the replication configuration.
                       properties:
@@ -936,13 +923,20 @@ spec:
                             target store.
                           format: int64
                           type: integer
-                        max-store-down-time: {}
+                        max-store-down-time:
+                          description: MaxStoreDownTime is the max duration after
+                            which a store will be considered to be down if it hasn't
+                            reported heartbeats.
+                          type: string
                         merge-schedule-limit:
                           description: MergeScheduleLimit is the max coexist merge
                             schedules.
                           format: int64
                           type: integer
-                        patrol-region-interval: {}
+                        patrol-region-interval:
+                          description: PatrolRegionInterval is the interval for scanning
+                            region during patrol.
+                          type: string
                         region-schedule-limit:
                           description: RegionScheduleLimit is the max coexist region
                             schedules.
@@ -969,7 +963,10 @@ spec:
                                 type: string
                             type: object
                           type: array
-                        split-merge-interval: {}
+                        split-merge-interval:
+                          description: SplitMergeInterval is the minimum interval
+                            time to permit merge after split.
+                          type: string
                         tolerant-size-ratio:
                           description: TolerantSizeRatio is the ratio of buffer size
                             for balance scheduler.
@@ -994,8 +991,15 @@ spec:
                             key in PEM format.
                           type: string
                       type: object
-                    tso-save-interval: {}
+                    tikv-interval:
+                      description: TickInterval is the interval for etcd Raft tick.
+                      type: string
+                    tso-save-interval:
+                      description: TsoSaveInterval is the interval to save timestamp.
+                      type: string
                   type: object
+                configUpdateStrategy:
+                  type: string
                 replicas:
                   format: int32
                   type: integer
@@ -2194,6 +2198,8 @@ spec:
                           type: integer
                       type: object
                   type: object
+                configUpdateStrategy:
+                  type: string
                 maxFailoverCount:
                   format: int32
                   type: integer
