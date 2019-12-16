@@ -3125,6 +3125,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 	}
 	in.Reloader.DeepCopyInto(&out.Reloader)
 	in.Initializer.DeepCopyInto(&out.Initializer)
+	if in.StorageClassName != nil {
+		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
+	}
 	if in.NodeSelector != nil {
 		in, out := &in.NodeSelector, &out.NodeSelector
 		*out = make(map[string]string, len(*in))
@@ -3145,6 +3150,16 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.KubePrometheusURL != nil {
+		in, out := &in.KubePrometheusURL, &out.KubePrometheusURL
+		*out = new(string)
+		**out = **in
+	}
+	if in.AlertmanagerURL != nil {
+		in, out := &in.AlertmanagerURL, &out.AlertmanagerURL
+		*out = new(string)
+		**out = **in
 	}
 	return
 }

@@ -43,7 +43,7 @@ type TidbMonitorSpec struct {
 
 	Prometheus PrometheusSpec `json:"prometheus"`
 	// +optional
-	Grafana     *GrafanaSpec    `json:"grafana"`
+	Grafana     *GrafanaSpec    `json:"grafana,omitempty"`
 	Reloader    ReloaderSpec    `json:"reloader"`
 	Initializer InitializerSpec `json:"initializer"`
 
@@ -51,7 +51,7 @@ type TidbMonitorSpec struct {
 	// +optional
 	Persistent bool `json:"persistent,omitempty"`
 	// +optional
-	StorageClassName string `json:"storageClassName,omitempty"`
+	StorageClassName *string `json:"storageClassName,omitempty"`
 	// +optional
 	Storage string `json:"storage,omitempty"`
 	// +optional
@@ -64,11 +64,11 @@ type TidbMonitorSpec struct {
 	// kubePrometheusURL is where tidb-monitoring get the  common metrics of kube-prometheus.
 	// Ref: https://github.com/coreos/kube-prometheus
 	// +optional
-	KubePrometheusURL string `json:"kubePrometheusURL,omitempty"`
+	KubePrometheusURL *string `json:"kubePrometheusURL,omitempty"`
 	// alertmanagerURL is where tidb-monitoring push alerts to.
 	// Ref: https://prometheus.io/docs/alerting/alertmanager/
 	// +optional
-	AlertmanagerURL string `json:"alertmanagerURL,omitempty"`
+	AlertmanagerURL *string `json:"alertmanagerURL,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus
