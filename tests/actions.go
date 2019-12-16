@@ -489,7 +489,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 	sv := utilversion.MustParseSemantic(serverVersion.GitVersion)
 	glog.Infof("ServerVersion: %v", serverVersion.String())
-	
+
 	cmd = fmt.Sprintf("%s/patch-e2e.sh -n %s", oa.manifestPath(info.Tag), info.Namespace)
 	if sv.LessThan(utilversion.MustParseSemantic("v1.13.0")) {
 		cmd = fmt.Sprintf("%s -c", cmd)
