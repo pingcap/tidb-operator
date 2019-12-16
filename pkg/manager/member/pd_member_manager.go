@@ -71,9 +71,9 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	pdScaler Scaler,
 	pdUpgrader Upgrader,
 	autoFailover bool,
+	webhookEnabled bool,
 	pdFailover Failover,
-	pdRestarter Restarter,
-	webhookEnabled bool) manager.Manager {
+	pdRestarter Restarter, ) manager.Manager {
 	return &pdMemberManager{
 		pdControl,
 		setControl,
@@ -225,10 +225,8 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
-	if pmm.webhookEnabled {
-		if err := pmm.syncTidbClusterStatus(tc, oldPDSet); err != nil {
-			glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
-		}
+	if err := pmm.syncTidbClusterStatus(tc, oldPDSet); err != nil {
+		glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
 	}
 
 	if !tc.Status.PD.Synced {
@@ -241,8 +239,10 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		}
 	}
 
-	if err = pmm.pdRestarter.Sync(tc, v1alpha1.PDMemberType); err != nil {
-		return err
+	if pmm.webhookEnabled {
+		if err = pmm.pdRestarter.Sync(tc, v1alpha1.PDMemberType); err != nil {
+			return err
+		}
 	}
 
 	if !templateEqual(newPDSet.Spec.Template, oldPDSet.Spec.Template) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {

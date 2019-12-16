@@ -271,6 +271,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, *FakeTidbCluste
 	autoFailover := true
 
 	tcControl := NewFakeTidbClusterControlInterface()
+	webhookEnabled := false
 
 	tcc := NewController(
 		kubeCli,
@@ -282,6 +283,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, *FakeTidbCluste
 		5*time.Minute,
 		5*time.Minute,
 		5*time.Minute,
+		webhookEnabled,
 	)
 	tcc.tcListerSynced = alwaysReady
 	tcc.setListerSynced = alwaysReady

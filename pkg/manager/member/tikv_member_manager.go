@@ -49,9 +49,11 @@ type tikvMemberManager struct {
 	podLister                    corelisters.PodLister
 	nodeLister                   corelisters.NodeLister
 	autoFailover                 bool
+	webhookEnabled               bool
 	tikvFailover                 Failover
 	tikvScaler                   Scaler
 	tikvUpgrader                 Upgrader
+	tikvRestarter                Restarter
 	tikvStatefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
@@ -66,23 +68,27 @@ func NewTiKVMemberManager(pdControl pdapi.PDControlInterface,
 	podLister corelisters.PodLister,
 	nodeLister corelisters.NodeLister,
 	autoFailover bool,
+	webhookEnabled bool,
 	tikvFailover Failover,
 	tikvScaler Scaler,
-	tikvUpgrader Upgrader) manager.Manager {
+	tikvUpgrader Upgrader,
+	tikvRestarter Restarter) manager.Manager {
 	kvmm := tikvMemberManager{
-		pdControl:    pdControl,
-		podLister:    podLister,
-		nodeLister:   nodeLister,
-		setControl:   setControl,
-		svcControl:   svcControl,
-		certControl:  certControl,
-		typedControl: typedControl,
-		setLister:    setLister,
-		svcLister:    svcLister,
-		autoFailover: autoFailover,
-		tikvFailover: tikvFailover,
-		tikvScaler:   tikvScaler,
-		tikvUpgrader: tikvUpgrader,
+		pdControl:      pdControl,
+		podLister:      podLister,
+		nodeLister:     nodeLister,
+		setControl:     setControl,
+		svcControl:     svcControl,
+		certControl:    certControl,
+		typedControl:   typedControl,
+		setLister:      setLister,
+		svcLister:      svcLister,
+		autoFailover:   autoFailover,
+		webhookEnabled: webhookEnabled,
+		tikvFailover:   tikvFailover,
+		tikvScaler:     tikvScaler,
+		tikvUpgrader:   tikvUpgrader,
+		tikvRestarter:  tikvRestarter,
 	}
 	kvmm.tikvStatefulSetIsUpgradingFn = tikvStatefulSetIsUpgrading
 	return &kvmm
@@ -207,6 +213,13 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 
 	if _, err := tkmm.setStoreLabelsForTiKV(tc); err != nil {
 		return err
+	}
+
+	if tkmm.webhookEnabled {
+		err := tkmm.tikvRestarter.Sync(tc, v1alpha1.TiKVMemberType)
+		if err != nil {
+			return err
+		}
 	}
 
 	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {

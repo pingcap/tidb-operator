@@ -750,6 +750,8 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	tidbUpgrader := NewFakeTiDBUpgrader()
 	tidbFailover := NewFakeTiDBFailover()
 	tidbControl := controller.NewFakeTiDBControl()
+	webhookEnabled := false
+	tidbRestarter := NewFakeRestarter()
 
 	tmm := &tidbMemberManager{
 		setControl,
@@ -763,7 +765,9 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		cmInformer.Lister(),
 		tidbUpgrader,
 		true,
+		webhookEnabled,
 		tidbFailover,
+		tidbRestarter,
 		tidbStatefulSetIsUpgrading,
 	}
 	indexers := &fakeIndexers{

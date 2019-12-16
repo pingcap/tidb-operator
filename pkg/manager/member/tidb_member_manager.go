@@ -59,7 +59,9 @@ type tidbMemberManager struct {
 	cmLister                     corelisters.ConfigMapLister
 	tidbUpgrader                 Upgrader
 	autoFailover                 bool
+	webhookEnabled               bool
 	tidbFailover                 Failover
+	tidbRestarter                Restarter
 	tidbStatefulSetIsUpgradingFn func(corelisters.PodLister, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
@@ -75,7 +77,10 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	cmLister corelisters.ConfigMapLister,
 	tidbUpgrader Upgrader,
 	autoFailover bool,
-	tidbFailover Failover) manager.Manager {
+	webhookEnabled bool,
+	tidbFailover Failover,
+	tidbRestarter Restarter,
+) manager.Manager {
 	return &tidbMemberManager{
 		setControl:                   setControl,
 		svcControl:                   svcControl,
@@ -88,7 +93,9 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 		cmLister:                     cmLister,
 		tidbUpgrader:                 tidbUpgrader,
 		autoFailover:                 autoFailover,
+		webhookEnabled:               webhookEnabled,
 		tidbFailover:                 tidbFailover,
+		tidbRestarter:                tidbRestarter,
 		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
 	}
 }
@@ -199,6 +206,12 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 
 	if err = tmm.syncTidbClusterStatus(tc, oldTiDBSet); err != nil {
 		return err
+	}
+
+	if tmm.webhookEnabled {
+		if err := tmm.tidbRestarter.Sync(tc, v1alpha1.TiDBMemberType); err != nil {
+			return err
+		}
 	}
 
 	if !templateEqual(newTiDBSet.Spec.Template, oldTiDBSet.Spec.Template) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {

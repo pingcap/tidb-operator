@@ -18,12 +18,14 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	operatorUtil "github.com/pingcap/tidb-operator/pkg/util"
+	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"strconv"
 )
 
 const (
@@ -45,10 +47,80 @@ func NewGeneralRestarter(kubeCli kubernetes.Interface, podLister corelisters.Pod
 }
 
 func (gr *GeneralRestarter) Sync(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) error {
-	return gr.sync(tc, memberType)
+	sts := &apps.StatefulSet{}
+	err := gr.syncRestartStatus(tc, memberType, sts)
+	if err != nil {
+		return err
+	}
+	return gr.sync(tc, memberType, sts)
 }
 
-func (gr *GeneralRestarter) sync(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) error {
+// syncRestartStatus would check the statefulset of tc for each component whether they were restarting.
+// If they are, it would check whether the restarting is finished and update the sts annotations.
+func (gr *GeneralRestarter) syncRestartStatus(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, sts *apps.StatefulSet) error {
+	namespace := tc.Namespace
+	stsName := operatorUtil.GetStatefulSetName(tc, memberType)
+	sts, err := gr.stsLister.StatefulSets(namespace).Get(stsName)
+	if err != nil {
+		return err
+	}
+	index, existed := sts.Annotations[label.AnnPodRestarting]
+	if !existed {
+		return nil
+	}
+
+	ordinal, err := strconv.ParseInt(index, 10, 64)
+	if err != nil {
+		return err
+	}
+	podName := operatorUtil.GetPodName(tc, memberType, int32(ordinal))
+	pod, err := gr.podLister.Pods(namespace).Get(podName)
+	if err != nil {
+		return err
+	}
+	if _, existed = pod.Annotations[label.AnnPodDeferDeleting]; existed {
+		return nil
+	}
+	delete(sts.Annotations, label.AnnPodRestarting)
+	_, err = gr.kubeCli.AppsV1().StatefulSets(namespace).Update(sts)
+	if err != nil {
+		return err
+	}
+	return controller.RequeueErrorf("tc[%s/%s]'s pod[%s/%s] is restarted,requeue", namespace, tc.Name, namespace, podName)
+}
+
+// sync func would continue to try deleting the pod which is during restarting or pop one new pod with AnnPodDeferDeleting
+// to restart
+func (gr *GeneralRestarter) sync(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, sts *apps.StatefulSet) error {
+	podName, existed := sts.Annotations[label.AnnPodRestarting]
+	if existed {
+		return gr.restart(tc, memberType, podName)
+	}
+	pod, err := gr.pop(tc, memberType, sts)
+	if err != nil {
+		if err.Error() == emptyRestartPodList {
+			return nil
+		}
+	}
+	sts.Annotations[label.AnnPodRestarting] = pod.Name
+	_, err = gr.kubeCli.AppsV1().StatefulSets(tc.Namespace).Update(sts)
+	if err != nil {
+		return err
+	}
+	return gr.restart(tc, memberType, pod.Name)
+
+}
+
+// pod deleting webhook ensured each tc pod would be deleted safely
+func (gr *GeneralRestarter) restart(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, podName string) error {
+	err := gr.kubeCli.CoreV1().Pods(tc.Namespace).Delete(podName, &meta.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+	return controller.RequeueErrorf("tc[%s/%s]'s pod[%s/%s] is restarting now", tc.Namespace, tc.Name, tc.Namespace, podName)
+}
+
+func (gr *GeneralRestarter) pop(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, sts *apps.StatefulSet) (*core.Pod, error) {
 	labelSelector := &meta.LabelSelector{
 		MatchLabels: map[string]string{
 			label.ComponentLabelKey: memberType.String(),
@@ -59,40 +131,18 @@ func (gr *GeneralRestarter) sync(tc *v1alpha1.TidbCluster, memberType v1alpha1.M
 	}
 	selector, err := meta.LabelSelectorAsSelector(labelSelector)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	pods, err := gr.list(selector)
-	if err != nil {
-		if err.Error() == emptyRestartPodList {
-			return nil
-		}
-	}
-	return gr.restart(tc, pods[0])
-}
-
-func (gr *GeneralRestarter) restart(tc *v1alpha1.TidbCluster, pod *core.Pod) error {
-	err := gr.kubeCli.CoreV1().Pods(tc.Namespace).Delete(pod.Name, &meta.DeleteOptions{})
-	if err != nil {
-		return err
-	}
-	return controller.RequeueErrorf("pod[%s/%s] is going to restart now", pod.Namespace, pod.Name)
-}
-
-func (gr *GeneralRestarter) list(selector labels.Selector) ([]*core.Pod, error) {
 	pods, err := gr.podLister.List(selector)
 	if err != nil {
 		return nil, err
 	}
-	var restartMarkedPods []*core.Pod
 	for _, pod := range pods {
 		if _, existed := pod.Annotations[label.AnnPodDeferDeleting]; existed {
-			restartMarkedPods = append(restartMarkedPods, pod)
+			return pod, nil
 		}
 	}
-	if len(restartMarkedPods) < 1 {
-		return nil, fmt.Errorf(emptyRestartPodList)
-	}
-	return restartMarkedPods, nil
+	return nil, fmt.Errorf(emptyRestartPodList)
 }
 
 type FakeRestarter struct {

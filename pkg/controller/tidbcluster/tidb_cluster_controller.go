@@ -136,9 +136,9 @@ func NewController(
 				pdScaler,
 				pdUpgrader,
 				autoFailover,
+				webhookEnabled,
 				pdFailover,
 				restarter,
-				webhookEnabled,
 			),
 			mm.NewTiKVMemberManager(
 				pdControl,
@@ -151,9 +151,11 @@ func NewController(
 				podInformer.Lister(),
 				nodeInformer.Lister(),
 				autoFailover,
+				webhookEnabled,
 				tikvFailover,
 				tikvScaler,
 				tikvUpgrader,
+				restarter,
 			),
 			mm.NewTiDBMemberManager(
 				setControl,
@@ -167,7 +169,9 @@ func NewController(
 				cmInformer.Lister(),
 				tidbUpgrader,
 				autoFailover,
+				webhookEnabled,
 				tidbFailover,
+				restarter,
 			),
 			meta.NewReclaimPolicyManager(
 				pvcInformer.Lister(),
