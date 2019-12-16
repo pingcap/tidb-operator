@@ -134,18 +134,24 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	user, password, reason, err := backuputil.GetTidbUserAndPassword(ns, name, backup.Spec.TidbSecretName, bm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, bm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(backup, bm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.secretLister)
 	if err != nil {
-		return nil, reason, err
+		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
 
+	envVars = append(envVars, storageEnv...)
 	// TODO: make pvc request storage size configurable
 	reason, err = bm.ensureBackupPVCExist(backup)
+	if err != nil {
+		return nil, reason, err
+	}
+
+	bucketName, reason, err := backuputil.GetBackupBucketName(backup)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -153,15 +159,15 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	args := []string{
 		"backup",
 		fmt.Sprintf("--namespace=%s", ns),
-		fmt.Sprintf("--tidbcluster=%s", backup.Spec.Cluster),
+		fmt.Sprintf("--host=%s", backup.Spec.From.Host),
+		fmt.Sprintf("--port=%d", backup.Spec.From.Port),
+		fmt.Sprintf("--user=%s", backup.Spec.From.User),
+		fmt.Sprintf("--bucket=%s", bucketName),
 		fmt.Sprintf("--backupName=%s", name),
-		fmt.Sprintf("--tidbservice=%s", controller.TiDBMemberName(backup.Spec.Cluster)),
-		fmt.Sprintf("--storageType=%s", backup.Spec.StorageType),
-		fmt.Sprintf("--password=%s", password),
-		fmt.Sprintf("--user=%s", user),
+		fmt.Sprintf("--storageType=%s", backuputil.GetStorageType(backup.Spec.StorageProvider)),
 	}
 
-	backupLabel := label.NewBackup().Instance(backup.Spec.Cluster).BackupJob().Backup(name)
+	backupLabel := label.NewBackup().Instance(backup.Spec.From.GetTidbEndpoint()).BackupJob().Backup(name)
 
 	// TODO: need add ResourceRequirement for backup job
 	podSpec := &corev1.PodTemplateSpec{
@@ -179,7 +185,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: label.BackupJobLabelVal, MountPath: constants.BackupRootPath},
 					},
-					Env: storageEnv,
+					Env: envVars,
 				},
 			},
 			RestartPolicy: corev1.RestartPolicyNever,
@@ -247,7 +253,7 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      backupPVCName,
 			Namespace: ns,
-			Labels:    label.NewBackup().Instance(backup.Spec.Cluster),
+			Labels:    label.NewBackup().Instance(backup.Spec.From.GetTidbEndpoint()),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: &storageClassName,

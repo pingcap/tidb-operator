@@ -508,9 +508,10 @@ type BackupStorageType string
 const (
 	// BackupStorageTypeS3 represents all storage that compatible with the Amazon S3.
 	BackupStorageTypeS3 BackupStorageType = "s3"
-
 	// BackupStorageTypeGcs represents the google cloud storage
 	BackupStorageTypeGcs BackupStorageType = "gcs"
+	// BackupStorageTypeUnknown represents the unknown storage type
+	BackupStorageTypeUnknown BackupStorageType = "unknown"
 )
 
 // +k8s:openapi-gen=true
@@ -538,7 +539,10 @@ type S3StorageProvider struct {
 	Provider S3StorageProviderType `json:"provider"`
 	// Region in which the S3 compatible bucket is located.
 	Region string `json:"region,omitempty"`
-	// Bucket in which to store the Backup.
+	// Path is the full path where the backup is saved.
+	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
+	Path string `json:"path,omitempty"`
+	// Bucket in which to store the backup data.
 	Bucket string `json:"bucket,omitempty"`
 	// Endpoint of S3 compatible storage service
 	Endpoint string `json:"endpoint,omitempty"`
@@ -558,7 +562,10 @@ type GcsStorageProvider struct {
 	ProjectId string `json:"projectId"`
 	// Location in which the gcs bucket is located.
 	Location string `json:"location,omitempty"`
-	// Bucket in which to store the Backup.
+	// Path is the full path where the backup is saved.
+	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
+	Path string `json:"path,omitempty"`
+	// Bucket in which to store the backup data.
 	Bucket string `json:"bucket,omitempty"`
 	// StorageClass represents the storage class
 	StorageClass string `json:"storageClass,omitempty"`
@@ -583,17 +590,25 @@ const (
 )
 
 // +k8s:openapi-gen=true
+// TiDBAccessConfig defines the configuration for access tidb cluster
+type TiDBAccessConfig struct {
+	// Host is the tidb cluster access address
+	Host string `json:"host"`
+	// Port is the port number to use for connecting tidb cluster
+	Port int32 `json:"port,omitempty"`
+	// User is the user for login tidb cluster
+	User string `json:"user,omitempty"`
+	// SecretName is the name of secret which stores tidb cluster's password.
+	SecretName string `json:"secretName"`
+}
+
+// +k8s:openapi-gen=true
 // BackupSpec contains the backup specification for a tidb cluster.
 type BackupSpec struct {
-	// Cluster is the Cluster to backup.
-	Cluster string `json:"cluster"`
-	// TidbSecretName is the name of secret which stores
-	// tidb cluster's username and password.
-	TidbSecretName string `json:"tidbSecretName"`
+	// From is the tidb cluster that needs to backup.
+	From TiDBAccessConfig `json:"from"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
-	// StorageType is the backup storage type.
-	StorageType BackupStorageType `json:"storageType"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
 	// StorageClassName is the storage class for backup job's PV.
@@ -757,18 +772,15 @@ type RestoreCondition struct {
 // +k8s:openapi-gen=true
 // RestoreSpec contains the specification for a restore of a tidb cluster backup.
 type RestoreSpec struct {
-	// Cluster represents the tidb cluster to be restored.
-	Cluster string `json:"cluster"`
-	// Backup represents the backup object to be restored.
-	Backup string `json:"backup"`
-	// Namespace is the namespace of the backup.
-	BackupNamespace string `json:"backupNamespace"`
-	// SecretName is the name of the secret which stores
-	// tidb cluster's username and password.
-	TidbSecretName string `json:"tidbSecretName"`
-	// StorageClassName is the storage class for restore job's PV.
+	// To is the tidb cluster that needs to restore.
+	To TiDBAccessConfig `json:"to"`
+	// Type is the backup type for tidb cluster.
+	Type BackupType `json:"backupType,omitempty"`
+	// StorageProvider configures where and how backups should be stored.
+	StorageProvider `json:",inline"`
+	// StorageClassName is the storage class for backup job's PV.
 	StorageClassName string `json:"storageClassName"`
-	// StorageSize is the request storage size for restore job
+	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize"`
 }
 

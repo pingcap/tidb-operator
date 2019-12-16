@@ -203,6 +203,7 @@ func NewController(
 				cmInformer.Lister(),
 				podInformer.Lister(),
 			),
+			mm.NewTidbDiscoveryManager(typedControl),
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
