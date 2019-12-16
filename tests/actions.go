@@ -61,6 +61,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
@@ -482,7 +483,17 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	// create cert and secret for webhook
+	serverVersion, err := oa.kubeCli.Discovery().ServerVersion()
+	if err != nil {
+		return fmt.Errorf("failed to get api server version")
+	}
+	sv := utilversion.MustParseSemantic(serverVersion.GitVersion)
+	glog.Infof("ServerVersion: %v", serverVersion.String())
+	
 	cmd = fmt.Sprintf("%s/patch-e2e.sh -n %s", oa.manifestPath(info.Tag), info.Namespace)
+	if sv.LessThan(utilversion.MustParseSemantic("v1.13.0")) {
+		cmd = fmt.Sprintf("%s -c", cmd)
+	}
 	glog.Info(cmd)
 
 	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
