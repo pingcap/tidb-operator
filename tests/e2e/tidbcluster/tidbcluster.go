@@ -33,10 +33,12 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/apiserver"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
@@ -46,6 +48,7 @@ import (
 	"k8s.io/klog"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 )
 
 var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
@@ -59,6 +62,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	var cfg *tests.Config
 	var config *restclient.Config
 	var ocfg *tests.OperatorConfig
+	var fwCancel context.CancelFunc
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -70,9 +74,21 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to create clientset")
 		asCli, err = asclientset.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
-		oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, e2econfig.TestConfig, nil)
+		clientRawConfig, err := e2econfig.LoadClientRawConfig()
+		framework.ExpectNoError(err, "failed to load raw config")
+		ctx, cancel := context.WithCancel(context.Background())
+		fw, err := portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
+		framework.ExpectNoError(err, "failed to create port forwarder")
+		fwCancel = cancel
+		oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, e2econfig.TestConfig, nil, fw, f)
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
+	})
+
+	ginkgo.AfterEach(func() {
+		if fwCancel != nil {
+			fwCancel()
+		}
 	})
 
 	ginkgo.Context("Basic: Deploying, Scaling, Update Configuration", func() {
@@ -160,26 +176,30 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	ginkgo.It("Upgrading TiDB Cluster", func() {
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", "")
-		cluster.Resources["pd.replicas"] = "1"
+		cluster.Resources["pd.replicas"] = "3"
 		// TLS only works with PD >= v3.0.5
 		if semver.Compare(cfg.GetTiDBVersionOrDie(), "v3.0.5") >= 0 {
 			cluster.Resources["enableTLSCluster"] = "true"
 		}
-		// deploy
+
+		ginkgo.By("Creating webhook certs and self signing it")
+		svcName := "webhook"
+		certCtx, err := apimachinery.SetupServerCert(ns, svcName)
+		framework.ExpectNoError(err, fmt.Sprintf("unable to setup certs for webservice %s", tests.WebhookServiceName))
+
+		ginkgo.By("Starting webhook pod")
+		webhookPod, svc := startWebhook(f, cfg.E2EImage, ns, svcName, certCtx.Cert, certCtx.Key)
+
+		ginkgo.By("Register webhook")
+		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, ns, svc.Name, certCtx)
+
+		ginkgo.By(fmt.Sprintf("Deploying tidb cluster %s", cluster.ClusterVersion))
 		oa.DeployTidbClusterOrDie(&cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
 		oa.CheckDisasterToleranceOrDie(&cluster)
 
-		cluster.ScalePD(3)
-		oa.ScaleTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
-
-		// upgrade
 		upgradeVersions := cfg.GetUpgradeTidbVersionsOrDie()
-		certCtx, err := apimachinery.SetupServerCert("tidb-operator-e2e", tests.WebhookServiceName)
-		framework.ExpectNoError(err, fmt.Sprintf("unable to setup certs for webservice %s", tests.WebhookServiceName))
-		go tests.StartValidatingAdmissionWebhookServerOrDie(certCtx, ns)
-		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
+		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", cluster.ClusterVersion, upgradeVersions[0]))
 		ctx, cancel := context.WithCancel(context.Background())
 		assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(&cluster)
 		cluster.UpgradeAll(upgradeVersions[0])
@@ -189,7 +209,17 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CheckTidbMemberAssignedNodesOrDie(&cluster, assignedNodes)
 		cancel()
 
-		oa.CleanWebHookAndServiceOrDie(ocfg)
+		ginkgo.By("Check webhook is still running")
+		webhookPod, err = c.CoreV1().Pods(webhookPod.Namespace).Get(webhookPod.Name, metav1.GetOptions{})
+		framework.ExpectNoError(err, fmt.Sprintf("unable to get pod %s/%s", webhookPod.Namespace, webhookPod.Name))
+		if webhookPod.Status.Phase != v1.PodRunning {
+			logs, err := e2epod.GetPodLogs(c, webhookPod.Namespace, webhookPod.Name, "webhook")
+			framework.ExpectNoError(err)
+			e2elog.Logf("webhook logs: %s", logs)
+			e2elog.Fail("webhook pod is not running")
+		}
+
+		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 	})
 
 	ginkgo.It("Backup and restore TiDB Cluster", func() {
@@ -202,18 +232,21 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CheckDisasterToleranceOrDie(&clusterA)
 		oa.CheckDisasterToleranceOrDie(&clusterB)
 
+		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterA.ClusterName))
 		go oa.BeginInsertDataToOrDie(&clusterA)
 
 		// backup and restore
+		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", clusterA.ClusterName, clusterB.ClusterName))
 		oa.BackupRestoreOrDie(&clusterA, &clusterB)
 
+		ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterA.ClusterName))
 		oa.StopInsertDataTo(&clusterA)
 	})
 
 	ginkgo.It("Test aggregated apiserver", func() {
-		ginkgo.By(fmt.Sprintf("Starting to test apiserver, test apiserver image: %s", cfg.TestApiserverImage))
+		ginkgo.By(fmt.Sprintf("Starting to test apiserver, test apiserver image: %s", cfg.E2EImage))
 		framework.Logf("config: %v", config)
-		aaCtx := apiserver.NewE2eContext(ns, config, cfg.TestApiserverImage)
+		aaCtx := apiserver.NewE2eContext(ns, config, cfg.E2EImage)
 		defer aaCtx.Clean()
 		aaCtx.Setup()
 		aaCtx.Do()
@@ -448,29 +481,49 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
-		tidbSetName := controller.TiDBMemberName(tc.Name)
-		oldTiDBSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(tidbSetName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "Expected get TiDB statefulset")
-
-		oldRev := oldTiDBSet.Status.CurrentRevision
-		framework.ExpectEqual(oldTiDBSet.Status.UpdateRevision, oldRev, "Expected tidb is not upgrading")
-
 		// TODO: modify other cases to manage TiDB configmap in CRD by default
-		ginkgo.By("Test managing TiDB configmap in TidbCluster CRD")
+		ginkgo.By("Test managing configmap in TidbCluster CRD")
+		setNameToRevision := map[string]string{
+			controller.PDMemberName(tc.Name):   "",
+			controller.TiKVMemberName(tc.Name): "",
+			controller.TiDBMemberName(tc.Name): "",
+		}
+
+		for setName := range setNameToRevision {
+			oldSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "Expected get statefulset %s", setName)
+
+			oldRev := oldSet.Status.CurrentRevision
+			framework.ExpectEqual(oldSet.Status.UpdateRevision, oldRev, "Expected statefulset %s is not upgrading", setName)
+
+			setNameToRevision[setName] = oldRev
+		}
+
+		tc, err = cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get tidbcluster")
 		tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
 		tc.Spec.TiDB.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
-
+		tc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{}
+		tc.Spec.TiKV.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
+		tc.Spec.PD.Config = &v1alpha1.PDConfig{}
+		tc.Spec.PD.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
 		_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
 		framework.ExpectNoError(err, "Expected update tidbcluster")
 
 		// check for 2 minutes to ensure the tidb statefulset do not get rolling-update
-		err = wait.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
-			tidbSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(tidbSetName, metav1.GetOptions{})
-			if err != nil {
-				return false, err
+		err = wait.PollImmediate(10*time.Second, 2*time.Minute, func() (bool, error) {
+			tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "Expected get tidbcluster")
+			framework.ExpectEqual(tc.Status.PD.Phase, v1alpha1.NormalPhase, "PD should not be updated")
+			framework.ExpectEqual(tc.Status.TiKV.Phase, v1alpha1.NormalPhase, "TiKV should not be updated")
+			framework.ExpectEqual(tc.Status.TiDB.Phase, v1alpha1.NormalPhase, "TiDB should not be updated")
+
+			for setName, oldRev := range setNameToRevision {
+				newSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
+				framework.ExpectNoError(err, "Expected get tidb statefulset")
+				framework.ExpectEqual(newSet.Status.CurrentRevision, oldRev, "Expected no rolling-update of %s when manage config in-place", setName)
+				framework.ExpectEqual(newSet.Status.UpdateRevision, oldRev, "Expected no rolling-update of %s when manage config in-place", setName)
 			}
-			framework.ExpectEqual(tidbSet.Status.CurrentRevision, oldRev, "Expected no rolling-update when manage config in-place")
-			framework.ExpectEqual(tidbSet.Status.UpdateRevision, oldRev, "Expected no rolling-update when manage config in-place")
 			return false, nil
 		})
 
@@ -479,23 +532,25 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		}
 
 		err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
-			tidbSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(tidbSetName, metav1.GetOptions{})
-			if err != nil {
-				return false, err
-			}
-			usingName := member.FindConfigMapVolume(&tidbSet.Spec.Template.Spec, func(name string) bool {
-				return strings.HasPrefix(name, controller.TiDBMemberName(tc.Name))
-			})
-			if usingName == "" {
-				e2elog.Fail("cannot find configmap that used by TiDB statefulset")
-			}
-			tidbCm, err := c.CoreV1().ConfigMaps(tc.Namespace).Get(usingName, metav1.GetOptions{})
-			if err != nil {
-				return false, err
-			}
-			if !metav1.IsControlledBy(tidbCm, tc) {
-				e2elog.Logf("expect tidb configmap adopted by tidbcluster, still waiting...")
-				return false, nil
+			for setName := range setNameToRevision {
+				newSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+				usingName := member.FindConfigMapVolume(&newSet.Spec.Template.Spec, func(name string) bool {
+					return strings.HasPrefix(name, setName)
+				})
+				if usingName == "" {
+					e2elog.Failf("cannot find configmap that used by %s", setName)
+				}
+				usingCm, err := c.CoreV1().ConfigMaps(tc.Namespace).Get(usingName, metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+				if !metav1.IsControlledBy(usingCm, tc) {
+					e2elog.Logf("expect configmap of %s adopted by tidbcluster, still waiting...", setName)
+					return false, nil
+				}
 			}
 			return true, nil
 		})

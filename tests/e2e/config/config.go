@@ -19,6 +19,9 @@ import (
 
 	"github.com/pingcap/tidb-operator/tests"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 // Global Test configuration.
@@ -29,7 +32,7 @@ func RegisterTiDBOperatorFlags(flags *flag.FlagSet) {
 	flags.StringVar(&TestConfig.LogDir, "log-dir", "/logDir", "log directory")
 	flags.IntVar(&TestConfig.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
 	flags.StringVar(&TestConfig.TidbVersions, "tidb-versions", "v3.0.2,v3.0.3,v3.0.4", "tidb versions")
-	flags.StringVar(&TestConfig.TestApiserverImage, "test-apiserver-image", "pingcap/test-apiserver:latest", "test-apiserver image")
+	flags.StringVar(&TestConfig.E2EImage, "e2e-image", "", "e2e iamge")
 	flags.StringVar(&TestConfig.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flags.StringVar(&TestConfig.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
 	flags.StringVar(&TestConfig.UpgradeOperatorTag, "upgrade-operator-tag", "", "upgrade operator tag used to choose charts")
@@ -87,4 +90,14 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		ImagePullPolicy:    v1.PullIfNotPresent,
 		TestMode:           true,
 	}
+}
+
+func LoadClientRawConfig() (clientcmdapi.Config, error) {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	loadingRules.ExplicitPath = framework.TestContext.KubeConfig
+	overrides := &clientcmd.ConfigOverrides{ClusterDefaults: clientcmd.ClusterDefaults}
+	if framework.TestContext.KubeContext != "" {
+		overrides.CurrentContext = framework.TestContext.KubeContext
+	}
+	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides).RawConfig()
 }

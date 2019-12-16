@@ -269,3 +269,13 @@ func Sha256Sum(v interface{}) (string, error) {
 	sum := sha256.Sum256(data)
 	return fmt.Sprintf("%x", sum), nil
 }
+
+func AddConfigMapDigestSuffix(cm *corev1.ConfigMap) error {
+	sum, err := Sha256Sum(cm.Data)
+	if err != nil {
+		return err
+	}
+	suffix := fmt.Sprintf("%x", sum)[0:7]
+	cm.Name = fmt.Sprintf("%s-%s", cm.Name, suffix)
+	return nil
+}
