@@ -27,23 +27,22 @@ import (
 // RestoreOpts contains the input arguments to the restore command
 type RestoreOpts struct {
 	Namespace   string
-	TcName      string
-	Password    string
-	TidbSvc     string
-	User        string
 	RestoreName string
+	Password    string
+	Host        string
+	Port        int32
+	User        string
 	BackupPath  string
-	BackupName  string
 }
 
 func (ro *RestoreOpts) String() string {
-	return fmt.Sprintf("%s/%s", ro.Namespace, ro.TcName)
+	return fmt.Sprintf("%s/%s", ro.Namespace, ro.RestoreName)
 }
 
 func (ro *RestoreOpts) getRestoreDataPath() string {
 	backupName := filepath.Base(ro.BackupPath)
-	NsClusterName := fmt.Sprintf("%s-%s", ro.Namespace, ro.TcName)
-	return filepath.Join(constants.BackupRootPath, NsClusterName, backupName)
+	bucketName := filepath.Base(filepath.Dir(ro.BackupPath))
+	return filepath.Join(constants.BackupRootPath, bucketName, backupName)
 }
 
 func (ro *RestoreOpts) downloadBackupData(localPath string) error {
@@ -69,8 +68,8 @@ func (ro *RestoreOpts) loadTidbClusterData(restorePath string) error {
 	}
 	args := []string{
 		fmt.Sprintf("-d=%s", restorePath),
-		fmt.Sprintf("-h=%s", ro.TidbSvc),
-		"-P=4000",
+		fmt.Sprintf("-h=%s", ro.Host),
+		fmt.Sprintf("-P=%d", ro.Port),
 		fmt.Sprintf("-u=%s", ro.User),
 		fmt.Sprintf("-p=%s", ro.Password),
 	}
@@ -83,7 +82,7 @@ func (ro *RestoreOpts) loadTidbClusterData(restorePath string) error {
 }
 
 func (ro *RestoreOpts) getDSN(db string) string {
-	return fmt.Sprintf("%s:%s@(%s:4000)/%s?charset=utf8", ro.User, ro.Password, ro.TidbSvc, db)
+	return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", ro.User, ro.Password, ro.Host, ro.Port, db)
 }
 
 // unarchiveBackupData unarchive backup data to dest dir

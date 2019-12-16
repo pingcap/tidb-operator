@@ -61,16 +61,6 @@ func (rm *RestoreManager) ProcessRestore() error {
 		})
 	}
 
-	if rm.BackupPath == "" {
-		glog.Errorf("backup %s path is empty", rm.BackupName)
-		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "BackupPathIsEmpty",
-			Message: fmt.Sprintf("backup %s path is empty", rm.BackupName),
-		})
-	}
-
 	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
 		db, err := util.OpenDB(rm.getDSN(constants.TidbMetaDB))
 		if err != nil {
