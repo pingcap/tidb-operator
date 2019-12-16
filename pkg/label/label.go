@@ -81,7 +81,7 @@ const (
 	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
 	// AnnPodDeferDeleting is pod annotation key to indicate the pod is marked to be restarted
 	AnnPodDeferDeleting = "tidb.pingcap.com/pod-defer-deleting"
-	// AnnPodRestarting is pod annotation key to indicate which pod is restarting for the owner statefulset
+	// AnnPodRestarting is statefulset annotation key to indicate which pod is restarting for the owner statefulset
 	AnnPodRestarting = "tidb.pingcap.com/pod-restarting"
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"
