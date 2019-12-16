@@ -71,6 +71,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Status":                schema_pkg_apis_pingcap_v1alpha1_Status(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StmtSummary":           schema_pkg_apis_pingcap_v1alpha1_StmtSummary(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageProvider":       schema_pkg_apis_pingcap_v1alpha1_StorageProvider(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig":      schema_pkg_apis_pingcap_v1alpha1_TiDBAccessConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBConfig":            schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBServiceSpec":       schema_pkg_apis_pingcap_v1alpha1_TiDBServiceSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec": schema_pkg_apis_pingcap_v1alpha1_TiDBSlowLogTailerSpec(ref),
@@ -576,30 +577,15 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 				Description: "BackupSpec contains the backup specification for a tidb cluster.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"cluster": {
+					"from": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Cluster is the Cluster to backup.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"tidbSecretName": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TidbSecretName is the name of secret which stores tidb cluster's username and password.",
-							Type:        []string{"string"},
-							Format:      "",
+							Description: "From is the tidb cluster that needs to backup.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig"),
 						},
 					},
 					"backupType": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Type is the backup type for tidb cluster.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"storageType": {
-						SchemaProps: spec.SchemaProps{
-							Description: "StorageType is the backup storage type.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -629,11 +615,11 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 						},
 					},
 				},
-				Required: []string{"cluster", "tidbSecretName", "storageType", "storageClassName", "storageSize"},
+				Required: []string{"from", "storageClassName", "storageSize"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig"},
 	}
 }
 
@@ -823,9 +809,16 @@ func schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref common.ReferenceCal
 							Format:      "",
 						},
 					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path is the full path where the backup is saved. The format of the path must be: \"<bucket-name>/<path-to-backup-file>\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"bucket": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Bucket in which to store the Backup.",
+							Description: "Bucket in which to store the backup data.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2265,52 +2258,49 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 				Description: "RestoreSpec contains the specification for a restore of a tidb cluster backup.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"cluster": {
+					"to": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Cluster represents the tidb cluster to be restored.",
+							Description: "To is the tidb cluster that needs to restore.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig"),
+						},
+					},
+					"backupType": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the backup type for tidb cluster.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
-					"backup": {
+					"s3": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Backup represents the backup object to be restored.",
-							Type:        []string{"string"},
-							Format:      "",
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"),
 						},
 					},
-					"backupNamespace": {
+					"gcs": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Namespace is the namespace of the backup.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"tidbSecretName": {
-						SchemaProps: spec.SchemaProps{
-							Description: "SecretName is the name of the secret which stores tidb cluster's username and password.",
-							Type:        []string{"string"},
-							Format:      "",
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider"),
 						},
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StorageClassName is the storage class for restore job's PV.",
+							Description: "StorageClassName is the storage class for backup job's PV.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"storageSize": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StorageSize is the request storage size for restore job",
+							Description: "StorageSize is the request storage size for backup job",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 				},
-				Required: []string{"cluster", "backup", "backupNamespace", "tidbSecretName", "storageClassName", "storageSize"},
+				Required: []string{"to", "storageClassName", "storageSize"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig"},
 	}
 }
 
@@ -2335,9 +2325,16 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 							Format:      "",
 						},
 					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path is the full path where the backup is saved. The format of the path must be: \"<bucket-name>/<path-to-backup-file>\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"bucket": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Bucket in which to store the Backup.",
+							Description: "Bucket in which to store the backup data.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2596,6 +2593,48 @@ func schema_pkg_apis_pingcap_v1alpha1_StorageProvider(ref common.ReferenceCallba
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_TiDBAccessConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TiDBAccessConfig defines the configuration for access tidb cluster",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"host": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Host is the tidb cluster access address",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"port": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Port is the port number to use for connecting tidb cluster",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"user": {
+						SchemaProps: spec.SchemaProps{
+							Description: "User is the user for login tidb cluster",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"secretName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SecretName is the name of secret which stores tidb cluster's password.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"host", "secretName"},
+			},
+		},
 	}
 }
 

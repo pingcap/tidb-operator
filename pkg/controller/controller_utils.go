@@ -19,6 +19,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,6 +60,9 @@ var (
 	TestMode bool
 	// ResyncDuration is the resync time of informer
 	ResyncDuration time.Duration
+
+	// TidbDiscoveryImage is the image of tidb discovery service
+	TidbDiscoveryImage string
 )
 
 const (
@@ -247,6 +251,11 @@ func PumpPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-pump", clusterName)
 }
 
+// DiscoveryMemberName returns the name of tidb discovery
+func DiscoveryMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-discovery", clusterName)
+}
+
 // AnnProm adds annotations for prometheus scraping metrics
 func AnnProm(port int32) map[string]string {
 	return map[string]string{
@@ -399,4 +408,39 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 		},
 		DeleteFunc: enqueueFn,
 	})
+}
+
+// EmptyClone create an clone of the resource with the same name and namespace (if namespace-scoped), with other fields unset
+func EmptyClone(obj runtime.Object) (runtime.Object, error) {
+	meta, ok := obj.(metav1.Object)
+	if !ok {
+		return nil, fmt.Errorf("Obj %v is not a metav1.Object, cannot call EmptyClone", obj)
+	}
+	gvk, err := InferObjectKind(obj)
+	if err != nil {
+		return nil, err
+	}
+	inst, err := scheme.Scheme.New(gvk)
+	if err != nil {
+		return nil, err
+	}
+	instMeta, ok := inst.(metav1.Object)
+	if !ok {
+		return nil, fmt.Errorf("New instatnce %v created from scheme is not a metav1.Object, EmptyClone failed", inst)
+	}
+	instMeta.SetName(meta.GetName())
+	instMeta.SetNamespace(meta.GetNamespace())
+	return inst, nil
+}
+
+// InferObjectKind infers the object kind
+func InferObjectKind(obj runtime.Object) (schema.GroupVersionKind, error) {
+	gvks, _, err := scheme.Scheme.ObjectKinds(obj)
+	if err != nil {
+		return schema.GroupVersionKind{}, err
+	}
+	if len(gvks) != 1 {
+		return schema.GroupVersionKind{}, fmt.Errorf("Object %v has ambigious GVK", obj)
+	}
+	return gvks[0], nil
 }
