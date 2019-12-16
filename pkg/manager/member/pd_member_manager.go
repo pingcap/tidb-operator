@@ -37,21 +37,23 @@ import (
 )
 
 type pdMemberManager struct {
-	pdControl    pdapi.PDControlInterface
-	setControl   controller.StatefulSetControlInterface
-	svcControl   controller.ServiceControlInterface
-	podControl   controller.PodControlInterface
-	certControl  controller.CertControlInterface
-	typedControl controller.TypedControlInterface
-	setLister    v1.StatefulSetLister
-	svcLister    corelisters.ServiceLister
-	podLister    corelisters.PodLister
-	epsLister    corelisters.EndpointsLister
-	pvcLister    corelisters.PersistentVolumeClaimLister
-	pdScaler     Scaler
-	pdUpgrader   Upgrader
-	autoFailover bool
-	pdFailover   Failover
+	pdControl      pdapi.PDControlInterface
+	setControl     controller.StatefulSetControlInterface
+	svcControl     controller.ServiceControlInterface
+	podControl     controller.PodControlInterface
+	certControl    controller.CertControlInterface
+	typedControl   controller.TypedControlInterface
+	setLister      v1.StatefulSetLister
+	svcLister      corelisters.ServiceLister
+	podLister      corelisters.PodLister
+	epsLister      corelisters.EndpointsLister
+	pvcLister      corelisters.PersistentVolumeClaimLister
+	pdScaler       Scaler
+	pdUpgrader     Upgrader
+	autoFailover   bool
+	pdFailover     Failover
+	pdRestarter    Restarter
+	webhookEnabled bool
 }
 
 // NewPDMemberManager returns a *pdMemberManager
@@ -69,7 +71,9 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	pdScaler Scaler,
 	pdUpgrader Upgrader,
 	autoFailover bool,
-	pdFailover Failover) manager.Manager {
+	pdFailover Failover,
+	pdRestarter Restarter,
+	webhookEnabled bool) manager.Manager {
 	return &pdMemberManager{
 		pdControl,
 		setControl,
@@ -85,7 +89,10 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 		pdScaler,
 		pdUpgrader,
 		autoFailover,
-		pdFailover}
+		pdFailover,
+		pdRestarter,
+		webhookEnabled,
+	}
 }
 
 func (pmm *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
@@ -218,8 +225,10 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
-	if err := pmm.syncTidbClusterStatus(tc, oldPDSet); err != nil {
-		glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
+	if pmm.webhookEnabled {
+		if err := pmm.syncTidbClusterStatus(tc, oldPDSet); err != nil {
+			glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
+		}
 	}
 
 	if !tc.Status.PD.Synced {
@@ -230,6 +239,10 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 			errSTS := pmm.updateStatefulSet(tc, newPDSet, oldPDSet)
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
 		}
+	}
+
+	if err = pmm.pdRestarter.Sync(tc, v1alpha1.PDMemberType); err != nil {
+		return err
 	}
 
 	if !templateEqual(newPDSet.Spec.Template, oldPDSet.Spec.Template) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {

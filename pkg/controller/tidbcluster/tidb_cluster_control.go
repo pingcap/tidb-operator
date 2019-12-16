@@ -159,13 +159,6 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 		return err
 	}
 
-	if tcc.webhookEnabled {
-		pod, err := tcc.restarter.Pop(tc, v1alpha1.PDMemberType)
-		if err != nil {
-
-		}
-	}
-
 	// syncing the pump cluster
 	return tcc.pumpMemberManager.Sync(tc)
 }

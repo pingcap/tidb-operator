@@ -16,6 +16,7 @@ package member
 import (
 	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,7 +31,7 @@ const (
 )
 
 type Restarter interface {
-	Sync(tc *v1alpha1.TidbCluster) error
+	Sync(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) error
 }
 
 type GeneralRestarter struct {
@@ -43,41 +44,8 @@ func NewGeneralRestarter(kubeCli kubernetes.Interface, podLister corelisters.Pod
 	return &GeneralRestarter{kubeCli: kubeCli, podLister: podLister, stsLister: stsLister}
 }
 
-func (gr *GeneralRestarter) Sync(tc *v1alpha1.TidbCluster) error {
-
-	err := gr.sync(tc, v1alpha1.PDMemberType)
-	if err != nil {
-		return err
-	}
-
-	err = gr.sync(tc, v1alpha1.TiKVMemberType)
-	if err != nil {
-		return err
-	}
-
-	return gr.sync(tc, v1alpha1.TiDBClusterKind)
-
-}
-
-func (gr *GeneralRestarter) restart(tc *v1alpha1.TidbCluster, pod *core.Pod) error {
-	return gr.kubeCli.CoreV1().Pods(tc.Namespace).Delete(pod.Name, &meta.DeleteOptions{})
-}
-
-func (gr *GeneralRestarter) list(selector labels.Selector) ([]*core.Pod, error) {
-	pods, err := gr.podLister.List(selector)
-	if err != nil {
-		return nil, err
-	}
-	var restartMarkedPods []*core.Pod
-	for _, pod := range pods {
-		if _, existed := pod.Annotations[label.AnnPodDeferDeleting]; existed {
-			restartMarkedPods = append(restartMarkedPods, pod)
-		}
-	}
-	if len(restartMarkedPods) < 1 {
-		return nil, fmt.Errorf(emptyRestartPodList)
-	}
-	return restartMarkedPods, nil
+func (gr *GeneralRestarter) Sync(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) error {
+	return gr.sync(tc, memberType)
 }
 
 func (gr *GeneralRestarter) sync(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) error {
@@ -100,4 +68,40 @@ func (gr *GeneralRestarter) sync(tc *v1alpha1.TidbCluster, memberType v1alpha1.M
 		}
 	}
 	return gr.restart(tc, pods[0])
+}
+
+func (gr *GeneralRestarter) restart(tc *v1alpha1.TidbCluster, pod *core.Pod) error {
+	err := gr.kubeCli.CoreV1().Pods(tc.Namespace).Delete(pod.Name, &meta.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+	return controller.RequeueErrorf("pod[%s/%s] is going to restart now", pod.Namespace, pod.Name)
+}
+
+func (gr *GeneralRestarter) list(selector labels.Selector) ([]*core.Pod, error) {
+	pods, err := gr.podLister.List(selector)
+	if err != nil {
+		return nil, err
+	}
+	var restartMarkedPods []*core.Pod
+	for _, pod := range pods {
+		if _, existed := pod.Annotations[label.AnnPodDeferDeleting]; existed {
+			restartMarkedPods = append(restartMarkedPods, pod)
+		}
+	}
+	if len(restartMarkedPods) < 1 {
+		return nil, fmt.Errorf(emptyRestartPodList)
+	}
+	return restartMarkedPods, nil
+}
+
+type FakeRestarter struct {
+}
+
+func NewFakeRestarter() *FakeRestarter {
+	return &FakeRestarter{}
+}
+
+func (fsr *FakeRestarter) Sync(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) error {
+	return nil
 }

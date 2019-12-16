@@ -316,6 +316,7 @@ func newFakeTidbClusterControl() (
 	orphanPodCleaner := mm.NewFakeOrphanPodsCleaner()
 	pvcCleaner := mm.NewFakePVCCleaner()
 	pumpMemberManager := mm.NewFakePumpMemberManager()
+	restarter := mm.NewFakeRestarter()
 	control := NewDefaultTidbClusterControl(
 		tcUpdater,
 		pdMemberManager,
@@ -326,6 +327,8 @@ func newFakeTidbClusterControl() (
 		orphanPodCleaner,
 		pvcCleaner,
 		pumpMemberManager,
+		restarter,
+		false,
 		recorder,
 	)
 

@@ -793,6 +793,8 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	pdFailover := NewFakePDFailover()
 	pdUpgrader := NewFakePDUpgrader()
 	genericControll := controller.NewFakeGenericControl()
+	restarter := NewFakeRestarter()
+	webhookEnabled := false
 
 	return &pdMemberManager{
 		pdControl,
@@ -810,6 +812,8 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 		pdUpgrader,
 		autoFailover,
 		pdFailover,
+		restarter,
+		webhookEnabled,
 	}, setControl, svcControl, pdControl, podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), podControl
 }
 

@@ -75,7 +75,7 @@ func NewController(
 	pdFailoverPeriod time.Duration,
 	tikvFailoverPeriod time.Duration,
 	tidbFailoverPeriod time.Duration,
-	webhookEnabeld bool,
+	webhookEnabled bool,
 ) *Controller {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
@@ -114,7 +114,7 @@ func NewController(
 	pdUpgrader := mm.NewPDUpgrader(pdControl, podControl, podInformer.Lister())
 	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
 	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl, podInformer.Lister())
-	restarter := mm.NewGeneralRestarter(kubeCli, podInformer.Lister())
+	restarter := mm.NewGeneralRestarter(kubeCli, podInformer.Lister(), setInformer.Lister())
 
 	tcc := &Controller{
 		kubeClient: kubeCli,
@@ -137,6 +137,8 @@ func NewController(
 				pdUpgrader,
 				autoFailover,
 				pdFailover,
+				restarter,
+				webhookEnabled,
 			),
 			mm.NewTiKVMemberManager(
 				pdControl,
@@ -203,7 +205,7 @@ func NewController(
 				cmInformer.Lister(),
 			),
 			restarter,
-			webhookEnabeld,
+			webhookEnabled,
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
