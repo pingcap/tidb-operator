@@ -32,16 +32,17 @@ import (
 // BackupOpts contains the input arguments to the backup command
 type BackupOpts struct {
 	Namespace   string
-	TcName      string
-	TidbSvc     string
+	BackupName  string
+	Bucket      string
+	Host        string
+	Port        int32
 	Password    string
 	User        string
 	StorageType string
-	BackupName  string
 }
 
 func (bo *BackupOpts) String() string {
-	return fmt.Sprintf("%s/%s", bo.Namespace, bo.TcName)
+	return fmt.Sprintf("%s/%s", bo.Namespace, bo.BackupName)
 }
 
 func (bo *BackupOpts) getBackupFullPath() string {
@@ -50,7 +51,7 @@ func (bo *BackupOpts) getBackupFullPath() string {
 
 func (bo *BackupOpts) getBackupRelativePath() string {
 	backupName := fmt.Sprintf("backup-%s", time.Now().UTC().Format(time.RFC3339))
-	return fmt.Sprintf("%s-%s/%s", bo.Namespace, bo.TcName, backupName)
+	return fmt.Sprintf("%s/%s", bo.Bucket, backupName)
 }
 
 func (bo *BackupOpts) getDestBucketURI(remotePath string) string {
@@ -85,8 +86,8 @@ func (bo *BackupOpts) dumpTidbClusterData() (string, error) {
 	}
 	args := []string{
 		fmt.Sprintf("--outputdir=%s", bfPath),
-		fmt.Sprintf("--host=%s", bo.TidbSvc),
-		"--port=4000",
+		fmt.Sprintf("--host=%s", bo.Host),
+		fmt.Sprintf("--port=%d", bo.Port),
 		fmt.Sprintf("--user=%s", bo.User),
 		fmt.Sprintf("--password=%s", bo.Password),
 		"--long-query-guard=3600",
@@ -135,7 +136,7 @@ func (bo *BackupOpts) cleanRemoteBackupData(bucket string) error {
 }
 
 func (bo *BackupOpts) getDSN(db string) string {
-	return fmt.Sprintf("%s:%s@(%s:4000)/%s?charset=utf8", bo.User, bo.Password, bo.TidbSvc, db)
+	return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, db)
 }
 
 /*

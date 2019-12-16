@@ -45,6 +45,7 @@ func NewDefaultTidbClusterControl(
 	pumpMemberManager manager.Manager,
 	restarter member.Restarter,
 	webhookEnabled bool,
+	discoveryManager member.TidbDiscoveryManager,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		tcControl,
@@ -58,6 +59,7 @@ func NewDefaultTidbClusterControl(
 		pvcCleaner,
 		pumpMemberManager,
 		webhookEnabled,
+		discoveryManager,
 		recorder,
 	}
 }
@@ -74,6 +76,7 @@ type defaultTidbClusterControl struct {
 	pvcCleaner           member.PVCCleanerInterface
 	pumpMemberManager    manager.Manager
 	webhookEnabled       bool
+	discoveryManager     member.TidbDiscoveryManager
 	recorder             record.EventRecorder
 }
 
@@ -103,6 +106,11 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 
 	// cleaning all orphan pods(pd or tikv which don't have a related PVC) managed by operator
 	if _, err := tcc.orphanPodsCleaner.Clean(tc); err != nil {
+		return err
+	}
+
+	// reconcile TiDB discovery service
+	if err := tcc.discoveryManager.Reconcile(tc); err != nil {
 		return err
 	}
 

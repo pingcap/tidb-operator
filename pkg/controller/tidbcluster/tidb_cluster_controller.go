@@ -210,6 +210,7 @@ func NewController(
 			),
 			restarter,
 			webhookEnabled,
+			mm.NewTidbDiscoveryManager(typedControl),
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
