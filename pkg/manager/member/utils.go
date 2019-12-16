@@ -161,33 +161,6 @@ func templateEqual(new corev1.PodTemplateSpec, old corev1.PodTemplateSpec) bool 
 	return false
 }
 
-// SetServiceLastAppliedConfigAnnotation set last applied config info to Service's annotation
-func SetServiceLastAppliedConfigAnnotation(svc *corev1.Service) error {
-	svcApply, err := encode(svc.Spec)
-	if err != nil {
-		return err
-	}
-	if svc.Annotations == nil {
-		svc.Annotations = map[string]string{}
-	}
-	svc.Annotations[LastAppliedConfigAnnotation] = svcApply
-	return nil
-}
-
-// serviceEqual compares the new Service's spec with old Service's last applied config
-func serviceEqual(new, old *corev1.Service) (bool, error) {
-	oldSpec := corev1.ServiceSpec{}
-	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
-		err := json.Unmarshal([]byte(lastAppliedConfig), &oldSpec)
-		if err != nil {
-			glog.Errorf("unmarshal ServiceSpec: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
-			return false, err
-		}
-		return apiequality.Semantic.DeepEqual(oldSpec, new.Spec), nil
-	}
-	return false, nil
-}
-
 // setUpgradePartition set statefulSet's rolling update partition
 func setUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
 	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &upgradeOrdinal}
