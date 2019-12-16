@@ -25,7 +25,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"strconv"
 )
 
 const (
@@ -64,16 +63,10 @@ func (gr *GeneralRestarter) syncRestartStatus(tc *v1alpha1.TidbCluster, memberTy
 	if err != nil {
 		return err
 	}
-	index, existed := sts.Annotations[label.AnnPodRestarting]
+	podName, existed := sts.Annotations[label.AnnPodRestarting]
 	if !existed {
 		return nil
 	}
-
-	ordinal, err := strconv.ParseInt(index, 10, 64)
-	if err != nil {
-		return err
-	}
-	podName := operatorUtil.GetPodName(tc, memberType, int32(ordinal))
 	pod, err := gr.podLister.Pods(namespace).Get(podName)
 	if err != nil {
 		return err
@@ -101,6 +94,7 @@ func (gr *GeneralRestarter) sync(tc *v1alpha1.TidbCluster, memberType v1alpha1.M
 		if err.Error() == emptyRestartPodList {
 			return nil
 		}
+		return err
 	}
 	sts.Annotations[label.AnnPodRestarting] = pod.Name
 	_, err = gr.kubeCli.AppsV1().StatefulSets(tc.Namespace).Update(sts)
