@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/apiserver"
@@ -49,6 +50,8 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	"k8s.io/kubernetes/test/utils"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
@@ -62,6 +65,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	var cfg *tests.Config
 	var config *restclient.Config
 	var ocfg *tests.OperatorConfig
+	var genericCli client.Client
 	var fwCancel context.CancelFunc
 
 	ginkgo.BeforeEach(func() {
@@ -73,6 +77,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		cli, err = versioned.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
 		asCli, err = asclientset.NewForConfig(config)
+		framework.ExpectNoError(err, "failed to create clientset")
+		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
 		framework.ExpectNoError(err, "failed to create clientset")
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
 		framework.ExpectNoError(err, "failed to load raw config")
@@ -481,8 +487,30 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
+		ginkgo.By("Discovery service should be reconciled by tidb-operator")
+		discoveryName := controller.DiscoveryMemberName(tc.Name)
+		discoveryDep, err := c.AppsV1().Deployments(tc.Namespace).Get(discoveryName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get discovery deployment")
+		WaitObjectToBeControlledByOrDie(genericCli, discoveryDep, tc, 5*time.Minute)
+
+		err = utils.WaitForDeploymentComplete(c, discoveryDep, e2elog.Logf, 10*time.Second, 5*time.Minute)
+		framework.ExpectNoError(err, "Discovery Deployment should be healthy after managed by tidb-operator")
+
+		err = genericCli.Delete(context.TODO(), discoveryDep)
+		framework.ExpectNoError(err, "Expected to delete deployment")
+
+		err = wait.PollImmediate(10*time.Second, 5*time.Minute, func() (bool, error) {
+			_, err := c.AppsV1().Deployments(tc.Namespace).Get(discoveryName, metav1.GetOptions{})
+			if err != nil {
+				e2elog.Logf("wait discovery deployment get created again: %v", err)
+				return false, nil
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "Discovery Deployment should be recovered by tidb-operator after deletion")
+
+		ginkgo.By("Managing TiDB configmap in TidbCluster CRD in-place should not trigger rolling-udpate")
 		// TODO: modify other cases to manage TiDB configmap in CRD by default
-		ginkgo.By("Test managing configmap in TidbCluster CRD")
 		setNameToRevision := map[string]string{
 			controller.PDMemberName(tc.Name):   "",
 			controller.TiKVMemberName(tc.Name): "",
