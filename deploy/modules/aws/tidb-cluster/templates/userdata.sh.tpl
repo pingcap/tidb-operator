@@ -15,6 +15,12 @@ EOF
 cp /usr/lib/systemd/system/docker.service /etc/systemd/system/docker.service
 sed -i 's/LimitNOFILE=infinity/LimitNOFILE=1048576/' /etc/systemd/system/docker.service
 sed -i 's/LimitNPROC=infinity/LimitNPROC=1048576/' /etc/systemd/system/docker.service
+
+# config ulimit of containers, the ulimit requirement(82920) of tikv is greater than the default(65536).
+if ! grep -qF "OPTIONS" /etc/sysconfig/docker; then
+  echo 'OPTIONS="--default-ulimit nofile=1024000:1024000"' >> /etc/sysconfig/docker
+fi
+
 systemctl daemon-reload
 systemctl restart docker
 
