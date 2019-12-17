@@ -165,7 +165,7 @@ webhooks:
         name: kubernetes
         namespace: default
         path: "/apis/admission.tidb.pingcap.com/v1alpha1/statefulsetadmissionreviews"
-      caBundle: ${CA_BUNDLE}
+      caBundle: null
     rules:
       - operations: [ "UPDATE" ]
         apiGroups: [ "apps", "" ]
