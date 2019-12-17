@@ -20,6 +20,12 @@ const (
 	// DefaultServiceAccountName is the default name of the ServiceAccount to use to run backup and restore's job pod.
 	DefaultServiceAccountName = "tidb-backup-manager"
 
+	// DefaultTidbPort is the default tidb cluster port for connecting
+	DefaultTidbPort = 4000
+
+	// DefaultTidbUser is the default tidb user for login tidb cluster
+	DefaultTidbUser = "root"
+
 	// BackupRootPath is the root path to backup data
 	BackupRootPath = "/backup"
 
@@ -28,9 +34,6 @@ const (
 
 	// DefaultBackoffLimit specifies the number of retries before marking this job failed.
 	DefaultBackoffLimit = 6
-
-	// TidbUserKey represents the user name key in tidb secret
-	TidbUserKey = "user"
 
 	// TidbPasswordKey represents the password key in tidb secret
 	TidbPasswordKey = "password"
@@ -43,4 +46,7 @@ const (
 
 	// GcsCredentialsKey represents the gcs service account credentials json key in related secret
 	GcsCredentialsKey = "credentials"
+
+	// BackupManagerEnvVarPrefix represents the environment variable used for tidb-backup-manager must include this prefix
+	BackupManagerEnvVarPrefix = "BACKUP_MANAGER"
 )

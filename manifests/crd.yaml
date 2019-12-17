@@ -923,7 +923,11 @@ spec:
                             target store.
                           format: int64
                           type: integer
-                        max-store-down-time: {}
+                        max-store-down-time:
+                          description: MaxStoreDownTime is the max duration after
+                            which a store will be considered to be down if it hasn't
+                            reported heartbeats.
+                          type: string
                         merge-schedule-limit:
                           description: MergeScheduleLimit is the max coexist merge
                             schedules.
@@ -994,6 +998,8 @@ spec:
                       description: TsoSaveInterval is the interval to save timestamp.
                       type: string
                   type: object
+                configUpdateStrategy:
+                  type: string
                 replicas:
                   format: int32
                   type: integer
@@ -2192,6 +2198,8 @@ spec:
                           type: integer
                       type: object
                   type: object
+                configUpdateStrategy:
+                  type: string
                 maxFailoverCount:
                   format: int32
                   type: integer
@@ -2263,9 +2271,9 @@ metadata:
   name: backups.pingcap.com
 spec:
   additionalPrinterColumns:
-  - JSONPath: .spec.storageType
-    description: The storage type of backup data
-    name: StorageType
+  - JSONPath: .status.backupPath
+    description: The full path of backup data
+    name: BackupPath
     type: string
   - JSONPath: .status.backupSize
     description: The data size of the backup
@@ -2311,15 +2319,35 @@ spec:
             backupType:
               description: Type is the backup type for tidb cluster.
               type: string
-            cluster:
-              description: Cluster is the Cluster to backup.
-              type: string
+            from:
+              description: TiDBAccessConfig defines the configuration for access tidb
+                cluster
+              properties:
+                host:
+                  description: Host is the tidb cluster access address
+                  type: string
+                port:
+                  description: Port is the port number to use for connecting tidb
+                    cluster
+                  format: int32
+                  type: integer
+                secretName:
+                  description: SecretName is the name of secret which stores tidb
+                    cluster's password.
+                  type: string
+                user:
+                  description: User is the user for login tidb cluster
+                  type: string
+              required:
+              - host
+              - secretName
+              type: object
             gcs:
               description: GcsStorageProvider represents the google cloud storage
                 for storing backups.
               properties:
                 bucket:
-                  description: Bucket in which to store the Backup.
+                  description: Bucket in which to store the backup data.
                   type: string
                 bucketAcl:
                   description: BucketAcl represents the access control list for new
@@ -2331,6 +2359,10 @@ spec:
                 objectAcl:
                   description: ObjectAcl represents the access control list for new
                     objects
+                  type: string
+                path:
+                  description: 'Path is the full path where the backup is saved. The
+                    format of the path must be: "<bucket-name>/<path-to-backup-file>"'
                   type: string
                 projectId:
                   description: ProjectId represents the project that organizes all
@@ -2356,10 +2388,14 @@ spec:
                     bucket
                   type: string
                 bucket:
-                  description: Bucket in which to store the Backup.
+                  description: Bucket in which to store the backup data.
                   type: string
                 endpoint:
                   description: Endpoint of S3 compatible storage service
+                  type: string
+                path:
+                  description: 'Path is the full path where the backup is saved. The
+                    format of the path must be: "<bucket-name>/<path-to-backup-file>"'
                   type: string
                 provider:
                   description: Provider represents the specific storage provider that
@@ -2386,17 +2422,8 @@ spec:
             storageSize:
               description: StorageSize is the request storage size for backup job
               type: string
-            storageType:
-              description: StorageType is the backup storage type.
-              type: string
-            tidbSecretName:
-              description: TidbSecretName is the name of secret which stores tidb
-                cluster's username and password.
-              type: string
           required:
-          - cluster
-          - tidbSecretName
-          - storageType
+          - from
           - storageClassName
           - storageSize
           type: object
@@ -2410,19 +2437,13 @@ metadata:
   name: restores.pingcap.com
 spec:
   additionalPrinterColumns:
-  - JSONPath: .spec.backup
-    description: The backup that used to restore
-    name: Backup
-    type: string
   - JSONPath: .status.timeStarted
     description: The time at which the backup was started
     name: Started
-    priority: 1
     type: date
   - JSONPath: .status.timeCompleted
     description: The time at which the restore was completed
     name: Completed
-    priority: 1
     type: date
   group: pingcap.com
   names:
@@ -2448,31 +2469,114 @@ spec:
           description: RestoreSpec contains the specification for a restore of a tidb
             cluster backup.
           properties:
-            backup:
-              description: Backup represents the backup object to be restored.
+            backupType:
+              description: Type is the backup type for tidb cluster.
               type: string
-            backupNamespace:
-              description: Namespace is the namespace of the backup.
-              type: string
-            cluster:
-              description: Cluster represents the tidb cluster to be restored.
-              type: string
+            gcs:
+              description: GcsStorageProvider represents the google cloud storage
+                for storing backups.
+              properties:
+                bucket:
+                  description: Bucket in which to store the backup data.
+                  type: string
+                bucketAcl:
+                  description: BucketAcl represents the access control list for new
+                    buckets
+                  type: string
+                location:
+                  description: Location in which the gcs bucket is located.
+                  type: string
+                objectAcl:
+                  description: ObjectAcl represents the access control list for new
+                    objects
+                  type: string
+                path:
+                  description: 'Path is the full path where the backup is saved. The
+                    format of the path must be: "<bucket-name>/<path-to-backup-file>"'
+                  type: string
+                projectId:
+                  description: ProjectId represents the project that organizes all
+                    your Google Cloud Platform resources
+                  type: string
+                secretName:
+                  description: SecretName is the name of secret which stores the gcs
+                    service account credentials JSON .
+                  type: string
+                storageClass:
+                  description: StorageClass represents the storage class
+                  type: string
+              required:
+              - projectId
+              - secretName
+              type: object
+            s3:
+              description: S3StorageProvider represents a S3 compliant storage for
+                storing backups.
+              properties:
+                acl:
+                  description: Acl represents access control permissions for this
+                    bucket
+                  type: string
+                bucket:
+                  description: Bucket in which to store the backup data.
+                  type: string
+                endpoint:
+                  description: Endpoint of S3 compatible storage service
+                  type: string
+                path:
+                  description: 'Path is the full path where the backup is saved. The
+                    format of the path must be: "<bucket-name>/<path-to-backup-file>"'
+                  type: string
+                provider:
+                  description: Provider represents the specific storage provider that
+                    implements the S3 interface
+                  type: string
+                region:
+                  description: Region in which the S3 compatible bucket is located.
+                  type: string
+                secretName:
+                  description: SecretName is the name of secret which stores S3 compliant
+                    storage access key and secret key.
+                  type: string
+                storageClass:
+                  description: StorageClass represents the storage class
+                  type: string
+              required:
+              - provider
+              - secretName
+              type: object
             storageClassName:
-              description: StorageClassName is the storage class for restore job's
+              description: StorageClassName is the storage class for backup job's
                 PV.
               type: string
             storageSize:
-              description: StorageSize is the request storage size for restore job
+              description: StorageSize is the request storage size for backup job
               type: string
-            tidbSecretName:
-              description: SecretName is the name of the secret which stores tidb
-                cluster's username and password.
-              type: string
+            to:
+              description: TiDBAccessConfig defines the configuration for access tidb
+                cluster
+              properties:
+                host:
+                  description: Host is the tidb cluster access address
+                  type: string
+                port:
+                  description: Port is the port number to use for connecting tidb
+                    cluster
+                  format: int32
+                  type: integer
+                secretName:
+                  description: SecretName is the name of secret which stores tidb
+                    cluster's password.
+                  type: string
+                user:
+                  description: User is the user for login tidb cluster
+                  type: string
+              required:
+              - host
+              - secretName
+              type: object
           required:
-          - cluster
-          - backup
-          - backupNamespace
-          - tidbSecretName
+          - to
           - storageClassName
           - storageSize
           type: object
@@ -2535,15 +2639,35 @@ spec:
                 backupType:
                   description: Type is the backup type for tidb cluster.
                   type: string
-                cluster:
-                  description: Cluster is the Cluster to backup.
-                  type: string
+                from:
+                  description: TiDBAccessConfig defines the configuration for access
+                    tidb cluster
+                  properties:
+                    host:
+                      description: Host is the tidb cluster access address
+                      type: string
+                    port:
+                      description: Port is the port number to use for connecting tidb
+                        cluster
+                      format: int32
+                      type: integer
+                    secretName:
+                      description: SecretName is the name of secret which stores tidb
+                        cluster's password.
+                      type: string
+                    user:
+                      description: User is the user for login tidb cluster
+                      type: string
+                  required:
+                  - host
+                  - secretName
+                  type: object
                 gcs:
                   description: GcsStorageProvider represents the google cloud storage
                     for storing backups.
                   properties:
                     bucket:
-                      description: Bucket in which to store the Backup.
+                      description: Bucket in which to store the backup data.
                       type: string
                     bucketAcl:
                       description: BucketAcl represents the access control list for
@@ -2555,6 +2679,10 @@ spec:
                     objectAcl:
                       description: ObjectAcl represents the access control list for
                         new objects
+                      type: string
+                    path:
+                      description: 'Path is the full path where the backup is saved.
+                        The format of the path must be: "<bucket-name>/<path-to-backup-file>"'
                       type: string
                     projectId:
                       description: ProjectId represents the project that organizes
@@ -2580,10 +2708,14 @@ spec:
                         bucket
                       type: string
                     bucket:
-                      description: Bucket in which to store the Backup.
+                      description: Bucket in which to store the backup data.
                       type: string
                     endpoint:
                       description: Endpoint of S3 compatible storage service
+                      type: string
+                    path:
+                      description: 'Path is the full path where the backup is saved.
+                        The format of the path must be: "<bucket-name>/<path-to-backup-file>"'
                       type: string
                     provider:
                       description: Provider represents the specific storage provider
@@ -2611,17 +2743,8 @@ spec:
                   description: StorageSize is the request storage size for backup
                     job
                   type: string
-                storageType:
-                  description: StorageType is the backup storage type.
-                  type: string
-                tidbSecretName:
-                  description: TidbSecretName is the name of secret which stores tidb
-                    cluster's username and password.
-                  type: string
               required:
-              - cluster
-              - tidbSecretName
-              - storageType
+              - from
               - storageClassName
               - storageSize
               type: object
@@ -2650,6 +2773,121 @@ spec:
           required:
           - schedule
           - backupTemplate
+          type: object
+      type: object
+  version: v1alpha1
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: tidbmonitors.pingcap.com
+spec:
+  group: pingcap.com
+  names:
+    kind: TidbMonitor
+    plural: tidbmonitors
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        spec:
+          description: TidbMonitor spec encode the desired state of tidb monitoring
+            component
+          properties:
+            alertmanagerURL:
+              description: 'alertmanagerURL is where tidb-monitoring push alerts to.
+                Ref: https://prometheus.io/docs/alerting/alertmanager/'
+              type: string
+            annotations:
+              type: object
+            clusters:
+              items:
+                description: TidbClusterRef reference to a TidbCluster
+                properties:
+                  name:
+                    description: Name is the name of TidbCluster object
+                    type: string
+                  namespace:
+                    description: Namespace is the namespace that TidbCluster object
+                      locates, default to the same namespace with TidbMonitor
+                    type: string
+                required:
+                - name
+                type: object
+              type: array
+            grafana: {}
+            imagePullPolicy:
+              type: string
+            initializer: {}
+            kubePrometheusURL:
+              description: 'kubePrometheusURL is where tidb-monitoring get the  common
+                metrics of kube-prometheus. Ref: https://github.com/coreos/kube-prometheus'
+              type: string
+            nodeSelector:
+              type: object
+            persistent:
+              type: boolean
+            prometheus: {}
+            reloader: {}
+            storage:
+              type: string
+            storageClassName:
+              type: string
+            tolerations:
+              items:
+                description: The pod this Toleration is attached to tolerates any
+                  taint that matches the triple <key,value,effect> using the matching
+                  operator <operator>.
+                properties:
+                  effect:
+                    description: Effect indicates the taint effect to match. Empty
+                      means match all taint effects. When specified, allowed values
+                      are NoSchedule, PreferNoSchedule and NoExecute.
+                    type: string
+                  key:
+                    description: Key is the taint key that the toleration applies
+                      to. Empty means match all taint keys. If the key is empty, operator
+                      must be Exists; this combination means to match all values and
+                      all keys.
+                    type: string
+                  operator:
+                    description: Operator represents a key's relationship to the value.
+                      Valid operators are Exists and Equal. Defaults to Equal. Exists
+                      is equivalent to wildcard for value, so that a pod can tolerate
+                      all taints of a particular category.
+                    type: string
+                  tolerationSeconds:
+                    description: TolerationSeconds represents the period of time the
+                      toleration (which must be of effect NoExecute, otherwise this
+                      field is ignored) tolerates the taint. By default, it is not
+                      set, which means tolerate the taint forever (do not evict).
+                      Zero and negative values will be treated as 0 (evict immediately)
+                      by the system.
+                    format: int64
+                    type: integer
+                  value:
+                    description: Value is the taint value the toleration matches to.
+                      If the operator is Exists, the value should be empty, otherwise
+                      just a regular string.
+                    type: string
+                type: object
+              type: array
+          required:
+          - clusters
+          - prometheus
+          - reloader
+          - initializer
           type: object
       type: object
   version: v1alpha1

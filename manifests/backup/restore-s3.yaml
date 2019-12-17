@@ -1,0 +1,19 @@
+---
+apiVersion: pingcap.com/v1alpha1
+kind: Restore
+metadata:
+  name: demo2-restore
+  namespace: test2
+spec:
+  to:
+    host: 10.233.31.143
+    port: 4000
+    user: root
+    secretName: restore-demo2-tidb-secret
+  s3:
+    provider: ceph
+    endpoint: http://10.233.2.161
+    secretName: ceph-secret
+    path: s3://test1-demo1/backup-2019-12-11T04:32:12Z.tgz
+  storageClassName: local-storage
+  storageSize: 1Gi
