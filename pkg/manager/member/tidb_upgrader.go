@@ -36,10 +36,10 @@ func NewTiDBUpgrader(tidbControl controller.TiDBControlInterface, podLister core
 
 func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	/**
-	 *when scale replica to 0 , all nodes crash and tidb is in upgrade phase, this method will throw error about pod is upgrade.
-	 *so this method directly return nil when scale replica to 0.
+	 * when scale replica to 0 , all nodes crash and tidb is in upgrade phase, this method will throw error about pod is upgrade.
+	 * so  directly return nil when scale replica to 0.
 	 */
-	if *newSet.Spec.Replicas == int32(0) {
+	if tc.Spec.TiDB.Replicas == int32(0) {
 		return nil
 	}
 
