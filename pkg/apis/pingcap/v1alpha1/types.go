@@ -302,6 +302,7 @@ type Resources struct {
 type ComponentSpec struct {
 	// Image of the component, override baseImage and version if present
 	// Deprecated
+	// +optional
 	Image string `json:"image,omitempty"`
 
 	// Base image of the component, e.g. pingcap/tidb, image tag is now allowed during validation

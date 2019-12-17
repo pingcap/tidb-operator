@@ -2776,3 +2776,118 @@ spec:
           type: object
       type: object
   version: v1alpha1
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: tidbmonitors.pingcap.com
+spec:
+  group: pingcap.com
+  names:
+    kind: TidbMonitor
+    plural: tidbmonitors
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        spec:
+          description: TidbMonitor spec encode the desired state of tidb monitoring
+            component
+          properties:
+            alertmanagerURL:
+              description: 'alertmanagerURL is where tidb-monitoring push alerts to.
+                Ref: https://prometheus.io/docs/alerting/alertmanager/'
+              type: string
+            annotations:
+              type: object
+            clusters:
+              items:
+                description: TidbClusterRef reference to a TidbCluster
+                properties:
+                  name:
+                    description: Name is the name of TidbCluster object
+                    type: string
+                  namespace:
+                    description: Namespace is the namespace that TidbCluster object
+                      locates, default to the same namespace with TidbMonitor
+                    type: string
+                required:
+                - name
+                type: object
+              type: array
+            grafana: {}
+            imagePullPolicy:
+              type: string
+            initializer: {}
+            kubePrometheusURL:
+              description: 'kubePrometheusURL is where tidb-monitoring get the  common
+                metrics of kube-prometheus. Ref: https://github.com/coreos/kube-prometheus'
+              type: string
+            nodeSelector:
+              type: object
+            persistent:
+              type: boolean
+            prometheus: {}
+            reloader: {}
+            storage:
+              type: string
+            storageClassName:
+              type: string
+            tolerations:
+              items:
+                description: The pod this Toleration is attached to tolerates any
+                  taint that matches the triple <key,value,effect> using the matching
+                  operator <operator>.
+                properties:
+                  effect:
+                    description: Effect indicates the taint effect to match. Empty
+                      means match all taint effects. When specified, allowed values
+                      are NoSchedule, PreferNoSchedule and NoExecute.
+                    type: string
+                  key:
+                    description: Key is the taint key that the toleration applies
+                      to. Empty means match all taint keys. If the key is empty, operator
+                      must be Exists; this combination means to match all values and
+                      all keys.
+                    type: string
+                  operator:
+                    description: Operator represents a key's relationship to the value.
+                      Valid operators are Exists and Equal. Defaults to Equal. Exists
+                      is equivalent to wildcard for value, so that a pod can tolerate
+                      all taints of a particular category.
+                    type: string
+                  tolerationSeconds:
+                    description: TolerationSeconds represents the period of time the
+                      toleration (which must be of effect NoExecute, otherwise this
+                      field is ignored) tolerates the taint. By default, it is not
+                      set, which means tolerate the taint forever (do not evict).
+                      Zero and negative values will be treated as 0 (evict immediately)
+                      by the system.
+                    format: int64
+                    type: integer
+                  value:
+                    description: Value is the taint value the toleration matches to.
+                      If the operator is Exists, the value should be empty, otherwise
+                      just a regular string.
+                    type: string
+                type: object
+              type: array
+          required:
+          - clusters
+          - prometheus
+          - reloader
+          - initializer
+          type: object
+      type: object
+  version: v1alpha1
