@@ -50,7 +50,6 @@ var (
 	printVersion       bool
 	workers            int
 	autoFailover       bool
-	webhookEnabled     bool
 	pdFailoverPeriod   time.Duration
 	tikvFailoverPeriod time.Duration
 	tidbFailoverPeriod time.Duration
@@ -76,7 +75,6 @@ func init() {
 	flag.StringVar(&controller.TidbBackupManagerImage, "tidb-backup-manager-image", "pingcap/tidb-backup-manager:latest", "The image of backup manager tool")
 	// TODO: actually we just want to use the same image with tidb-controller-manager, but DownwardAPI cannot get image ID, see if there is any better solution
 	flag.StringVar(&controller.TidbDiscoveryImage, "tidb-discovery-image", "pingcap/tidb-operator:latest", "The image of the tidb discovery service")
-	flag.BoolVar(&webhookEnabled, "webhook-enabled", false, "whether tidb-operator admission webhook is enabled")
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 
 	flag.Parse()
@@ -161,7 +159,7 @@ func main() {
 		},
 	}
 
-	tcController := tidbcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, autoFailover, webhookEnabled, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
+	tcController := tidbcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
 	backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)

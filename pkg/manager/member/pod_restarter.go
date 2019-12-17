@@ -32,10 +32,7 @@ type podRestarter struct {
 	podLister corelisters.PodLister
 }
 
-func NewPodRestarter(kubeCli kubernetes.Interface, podLister corelisters.PodLister, webhookEnabled bool) *podRestarter {
-	if !webhookEnabled {
-		return nil
-	}
+func NewPodRestarter(kubeCli kubernetes.Interface, podLister corelisters.PodLister) *podRestarter {
 	return &podRestarter{kubeCli: kubeCli, podLister: podLister}
 }
 

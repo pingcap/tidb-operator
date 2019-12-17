@@ -269,7 +269,6 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, *FakeTidbCluste
 
 	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	autoFailover := true
-	webhookEnabled := false
 	tcControl := NewFakeTidbClusterControlInterface()
 
 	tcc := NewController(
@@ -279,7 +278,6 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, *FakeTidbCluste
 		informerFactory,
 		kubeInformerFactory,
 		autoFailover,
-		webhookEnabled,
 		5*time.Minute,
 		5*time.Minute,
 		5*time.Minute,
