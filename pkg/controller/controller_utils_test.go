@@ -199,6 +199,11 @@ func TestPumpPeerMemberName(t *testing.T) {
 	g.Expect(PumpPeerMemberName("demo")).To(Equal("demo-pump"))
 }
 
+func TestDiscoveryMemberName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(DiscoveryMemberName("demo")).To(Equal("demo-discovery"))
+}
+
 func TestAnnProm(t *testing.T) {
 	g := NewGomegaWithT(t)
 

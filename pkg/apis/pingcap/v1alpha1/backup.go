@@ -30,9 +30,14 @@ func (bk *Backup) GetBackupJobName() string {
 	return fmt.Sprintf("backup-%s", bk.GetName())
 }
 
+// GetTidbEndpointHash return the hash string base on tidb cluster's host and port
+func (bk *Backup) GetTidbEndpointHash() string {
+	return HashContents([]byte(bk.Spec.From.GetTidbEndpoint()))
+}
+
 // GetBackupPVCName return the backup pvc name
 func (bk *Backup) GetBackupPVCName() string {
-	return fmt.Sprintf("%s-backup-pvc", bk.Spec.Cluster)
+	return fmt.Sprintf("backup-pvc-%s", bk.GetTidbEndpointHash())
 }
 
 // GetBackupCondition get the specify type's BackupCondition from the given BackupStatus

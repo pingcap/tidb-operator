@@ -24,3 +24,5 @@ type DataResourceExpansion interface{}
 type RestoreExpansion interface{}
 
 type TidbClusterExpansion interface{}
+
+type TidbMonitorExpansion interface{}
