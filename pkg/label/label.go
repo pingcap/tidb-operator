@@ -79,6 +79,8 @@ const (
 	AnnSysctlInit = "tidb.pingcap.com/sysctl-init"
 	// AnnEvictLeaderBeginTime is pod annotation key to indicate the begin time for evicting region leader
 	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
+	// AnnPodDeferDeleting is pod annotation key to indicate the pod which need to be restarted
+	AnnPodDeferDeleting = "tidb.pingcap.com/pod-defer-deleting"
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"
