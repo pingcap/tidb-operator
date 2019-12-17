@@ -20,6 +20,9 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/metrics"
         prometheus.io/port: "8289"
+    {{- if .Values.annotations }}
+{{ toYaml .Values.annotations | indent 8 }}
+    {{- end }}
     spec:
       {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
       nodeName: {{ .Values.dataSource.local.nodeName }}
@@ -37,7 +40,7 @@ spec:
           mountPath: /etc/rclone
         - name: data
           mountPath: /data
-      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+      {{ if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
         env:
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
