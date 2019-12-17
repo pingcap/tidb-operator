@@ -14,10 +14,6 @@
 package v1alpha1
 
 import (
-	"fmt"
-	"strconv"
-	"time"
-
 	"github.com/pingcap/log"
 	"github.com/pingcap/pd/pkg/metricutil"
 	"github.com/pingcap/pd/pkg/typeutil"
@@ -101,13 +97,13 @@ type PDConfig struct {
 	Replication *PDReplicationConfig `toml:"replication,omitempty" json:"replication,omitempty"`
 
 	// +optional
-	Namespace map[string]PDNamespaceConfig `json:"namespace,omitempty"`
+	Namespace map[string]PDNamespaceConfig `toml:"namespace,omitempty" json:"namespace,omitempty"`
 
 	// +optional
 	PDServerCfg *PDServerConfig `toml:"pd-server,omitempty" json:"pd-server,omitempty"`
 
 	// +optional
-	ClusterVersion string `json:"cluster-version,omitempty"`
+	ClusterVersion string `toml:"cluster-version,omitempty" json:"cluster-version,omitempty"`
 
 	// QuotaBackendBytes Raise alarms when backend size exceeds the given quota. 0 means use the default quota.
 	// the default size is 2GB, the maximum is 8GB.
@@ -250,7 +246,7 @@ type PDScheduleConfig struct {
 	// MaxStoreDownTime is the max duration after which
 	// a store will be considered to be down if it hasn't reported heartbeats.
 	// +optional
-	MaxStoreDownTime Duration `toml:"max-store-down-time,omitempty" json:"max-store-down-time,omitempty"`
+	MaxStoreDownTime string `toml:"max-store-down-time,omitempty" json:"max-store-down-time,omitempty"`
 	// LeaderScheduleLimit is the max coexist leader schedules.
 	// +optional
 	LeaderScheduleLimit *uint64 `toml:"leader-schedule-limit,omitempty" json:"leader-schedule-limit,omitempty"`
@@ -368,46 +364,4 @@ type PDServerConfig struct {
 	// UseRegionStorage enables the independent region storage.
 	// +optional
 	UseRegionStorage *bool `toml:"use-region-storage,omitempty" json:"use-region-storage,string,omitempty"`
-}
-
-// Duration is a wrapper of time.Duration for TOML and JSON.
-// Copied from pingcap typeutil, add marshal to TOML support
-type Duration struct {
-	time.Duration
-}
-
-// NewDuration creates a Duration from time.Duration.
-func NewDuration(duration time.Duration) Duration {
-	return Duration{Duration: duration}
-}
-
-// MarshalJSON returns the duration as a JSON string.
-func (d *Duration) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf(`"%s"`, d.String())), nil
-}
-
-// UnmarshalJSON parses a JSON string into the duration.
-func (d *Duration) UnmarshalJSON(text []byte) error {
-	s, err := strconv.Unquote(string(text))
-	if err != nil {
-		return err
-	}
-	duration, err := time.ParseDuration(s)
-	if err != nil {
-		return err
-	}
-	d.Duration = duration
-	return nil
-}
-
-// UnmarshalText parses a TOML string into the duration.
-func (d *Duration) UnmarshalText(text []byte) error {
-	var err error
-	d.Duration, err = time.ParseDuration(string(text))
-	return err
-}
-
-// MarshalText marshal duration to a TOML string
-func (d *Duration) MarshalText() ([]byte, error) {
-	return []byte(fmt.Sprintf(`"%s"`, d.String())), nil
 }

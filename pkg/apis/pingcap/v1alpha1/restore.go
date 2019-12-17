@@ -25,9 +25,14 @@ func (rs *Restore) GetRestoreJobName() string {
 	return fmt.Sprintf("restore-%s", rs.GetName())
 }
 
+// GetTidbEndpointHash return the hash string base on tidb cluster's host and port
+func (rs *Restore) GetTidbEndpointHash() string {
+	return HashContents([]byte(rs.Spec.To.GetTidbEndpoint()))
+}
+
 // GetRestorePVCName return the backup pvc name
 func (rs *Restore) GetRestorePVCName() string {
-	return fmt.Sprintf("%s-restore-pvc", rs.Spec.Cluster)
+	return fmt.Sprintf("restore-pvc-%s", rs.GetTidbEndpointHash())
 }
 
 // GetRestoreCondition get the specify type's RestoreCondition from the given RestoreStatus

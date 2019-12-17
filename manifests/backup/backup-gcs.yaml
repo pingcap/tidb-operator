@@ -5,11 +5,14 @@ metadata:
   name: demo1-backup-gcs
   namespace: test1
 spec:
+  from:
+    host: 10.233.10.242
+    port: 4000
+    user: root
+    secretName: backup-demo1-tidb-secret
   gcs:
     projectId: <your-project-id>
     secretName: gcs-secret
-  storageType: gcs
-  cluster: demo1
-  tidbSecretName: backup-demo1-tidb-secret
+    bucket: test1-demo1
   storageClassName: local-storage
   storageSize: 1Gi
