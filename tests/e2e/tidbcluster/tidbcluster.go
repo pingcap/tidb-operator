@@ -629,7 +629,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			}
 			return true, nil
 		}
-		
+
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			isPdRestarted, err := f(pd_0.Name, ns, pd_0.UID)
 			if !(isPdRestarted && err == nil) {
