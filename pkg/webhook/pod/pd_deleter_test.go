@@ -67,7 +67,7 @@ func TestPDDeleterDelete(t *testing.T) {
 		pvc := newPVCForDeletePod()
 		kubeCli := kubefake.NewSimpleClientset()
 
-		podAdmissionControl, fakePVCControl, pvcIndexer, _, _, _ := newPodAdmissionControl()
+		podAdmissionControl, fakePVCControl, pvcIndexer, _, _ := newPodAdmissionControl()
 		pdControl := pdapi.NewFakePDControl(kubeCli)
 		fakePDClient := controller.NewFakePDClient(pdControl, tc)
 

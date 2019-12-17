@@ -64,7 +64,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 		tc := newTidbClusterForPodAdmissionControl()
 		kubeCli := kubefake.NewSimpleClientset()
 
-		podAdmissionControl, fakePVCControl, pvcIndexer, podIndexer, _, _ := newPodAdmissionControl()
+		podAdmissionControl, fakePVCControl, pvcIndexer, podIndexer, _ := newPodAdmissionControl()
 		pdControl := pdapi.NewFakePDControl(kubeCli)
 		fakePDClient := controller.NewFakePDClient(pdControl, tc)
 

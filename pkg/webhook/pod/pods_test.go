@@ -19,7 +19,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	operatorClifake "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
@@ -56,7 +55,7 @@ func TestAdmitPod(t *testing.T) {
 	testFn := func(test *testcase) {
 		t.Log(test.name)
 
-		podAdmissionControl, _, _, podIndexer, _, _ := newPodAdmissionControl()
+		podAdmissionControl, _, _, podIndexer, _ := newPodAdmissionControl()
 		ar := newAdmissionRequest()
 		pod := newNormalPod()
 		if test.isDelete {
@@ -128,7 +127,7 @@ func newAdmissionRequest() *admission.AdmissionRequest {
 	return &request
 }
 
-func newPodAdmissionControl() (*PodAdmissionControl, *controller.FakePVCControl, cache.Indexer, cache.Indexer, cache.Indexer, cache.Indexer) {
+func newPodAdmissionControl() (*PodAdmissionControl, *controller.FakePVCControl, cache.Indexer, cache.Indexer, cache.Indexer) {
 	kubeCli := kubefake.NewSimpleClientset()
 	operatorCli := operatorClifake.NewSimpleClientset()
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
@@ -136,7 +135,6 @@ func newPodAdmissionControl() (*PodAdmissionControl, *controller.FakePVCControl,
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
 	pdControl := pdapi.NewFakePDControl(kubeCli)
 	podInformer := kubeInformerFactory.Core().V1().Pods()
-	informer := informers.NewSharedInformerFactory(operatorCli, 0)
 	stsInformer := kubeInformerFactory.Apps().V1().StatefulSets()
 
 	return &PodAdmissionControl{
@@ -145,12 +143,10 @@ func newPodAdmissionControl() (*PodAdmissionControl, *controller.FakePVCControl,
 			pvcControl:  pvcControl,
 			pdControl:   pdControl,
 			podLister:   podInformer.Lister(),
-			tcLister:    informer.Pingcap().V1alpha1().TidbClusters().Lister(),
 			stsLister:   stsInformer.Lister(),
 		}, pvcControl,
 		pvcInformer.Informer().GetIndexer(),
 		podInformer.Informer().GetIndexer(),
-		informer.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer(),
 		stsInformer.Informer().GetIndexer()
 }
 

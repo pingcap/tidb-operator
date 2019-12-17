@@ -25,8 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
@@ -55,8 +53,6 @@ type PodAdmissionControl struct {
 	pdControl pdapi.PDControlInterface
 	// pod Lister
 	podLister corelisters.PodLister
-	// tc Lister
-	tcLister listers.TidbClusterLister
 	// sts Lister
 	stsLister appslisters.StatefulSetLister
 	// the map of the service account from the request which should be checked by webhook
@@ -67,11 +63,10 @@ const (
 	stsControllerServiceAccounts = "system:serviceaccount:kube-system:statefulset-controller"
 )
 
-func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder, extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration) *PodAdmissionControl {
+func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder, extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration) *PodAdmissionControl {
 
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	PVCControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
-	tcLister := informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
 
 	podLister := kubeInformerFactory.Core().V1().Pods().Lister()
 	stsLister := kubeInformerFactory.Apps().V1().StatefulSets().Lister()
@@ -86,7 +81,6 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 		pvcControl:      PVCControl,
 		pdControl:       PdControl,
 		podLister:       podLister,
-		tcLister:        tcLister,
 		stsLister:       stsLister,
 		serviceAccounts: serviceAccounts,
 	}
@@ -164,7 +158,7 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 		return util.ARSuccess()
 	}
 
-	tc, err := pc.tcLister.TidbClusters(namespace).Get(tcName)
+	tc, err := pc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.Infof("tc[%s/%s] had been deleted,admit to delete pod[%s/%s]", namespace, tcName, namespace, name)
@@ -250,7 +244,7 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar *admission.AdmissionRequest) *
 		return util.ARSuccess()
 	}
 
-	tc, err := pc.tcLister.TidbClusters(namespace).Get(tcName)
+	tc, err := pc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return util.ARSuccess()

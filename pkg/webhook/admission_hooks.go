@@ -36,7 +36,6 @@ import (
 	asappsv1alpha1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/webhook/statefulset"
 	core "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
@@ -56,7 +55,7 @@ func (a *AdmissionHook) ValidatingResource() (plural schema.GroupVersionResource
 	return schema.GroupVersionResource{
 			Group:    "admission.tidb.pingcap.com",
 			Version:  "v1alpha1",
-			Resource: "admissionreviews",
+			Resource: "podadmissionreviews",
 		},
 		"PodAdmissionReview"
 }
@@ -113,7 +112,6 @@ func (a *AdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) err
 		kubeCli = helper.NewHijackClient(kubeCli, asCli)
 	}
 
-	informerFactory := informers.NewSharedInformerFactory(cli, controller.ResyncDuration)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
 
 	// init pdControl
@@ -126,17 +124,11 @@ func (a *AdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) err
 		Interface: event.New(kubeCli.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, core.EventSource{Component: "tidbcluster"})
 
-	pc := pod.NewPodAdmissionControl(kubeCli, cli, pdControl, informerFactory, kubeInformerFactory, recorder, strings.Split(a.ExtraServiceAccounts, ","), a.EvictRegionLeaderTimeout)
+	pc := pod.NewPodAdmissionControl(kubeCli, cli, pdControl, kubeInformerFactory, recorder, strings.Split(a.ExtraServiceAccounts, ","), a.EvictRegionLeaderTimeout)
 	a.podAC = pc
-	informerFactory.Start(stopCh)
 	kubeInformerFactory.Start(stopCh)
 
 	// Wait for all started informers' cache were synced.
-	for _, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
-		if !synced {
-			return err
-		}
-	}
 	for _, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
 		if !synced {
 			return err
