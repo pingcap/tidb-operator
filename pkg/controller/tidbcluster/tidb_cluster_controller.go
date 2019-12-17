@@ -72,6 +72,7 @@ func NewController(
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	autoFailover bool,
+	webhookEnabled bool,
 	pdFailoverPeriod time.Duration,
 	tikvFailoverPeriod time.Duration,
 	tidbFailoverPeriod time.Duration,
@@ -113,6 +114,7 @@ func NewController(
 	pdUpgrader := mm.NewPDUpgrader(pdControl, podControl, podInformer.Lister())
 	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
 	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl, podInformer.Lister())
+	podRestarter := mm.NewPodRestarter(kubeCli, podInformer.Lister(), webhookEnabled)
 
 	tcc := &Controller{
 		kubeClient: kubeCli,
@@ -201,6 +203,7 @@ func NewController(
 				cmInformer.Lister(),
 			),
 			mm.NewTidbDiscoveryManager(typedControl),
+			podRestarter,
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
