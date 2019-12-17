@@ -541,6 +541,8 @@ type S3StorageProvider struct {
 	SecretName string `json:"secretName"`
 	// Prefix for the keys.
 	Prefix string `json:"prefix,omitempty"`
+	// SSE Sever-Side Encryption.
+	SSE string `json:"sse,omitempty"`
 }
 
 // +k8s:openapi-gen=true
