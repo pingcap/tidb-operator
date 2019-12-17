@@ -178,15 +178,11 @@ advancedStatefulset:
 
 admissionWebhook:
   enabled: false
-  ## only support autoGenerator / selfProvider / certManager
-  certProvider: "autoGenerator"
-  ## `autoGenerator` would create a job before `operator chart install` and the job would create secret for webhook cert
-  ## and autoClean the secret after the `operator chart` was deleted
-  autoGenerator:
-    image:
-      repository: jettech/kube-webhook-certgen
-      tag: v1.2.0
-  ## `selfProvider` need user to provide their own ca/cert/key for webhook
+  apiservice:
+    insecureSkipTLSVerify: true
+    cabundle: ""
+  ## only support none / selfProvider
+  certProvider: "none"
   selfProvider:
     ca: ""
     key: ""
