@@ -1,3 +1,4 @@
+set -euo pipefail
 {{- if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
 data_dir={{ .Values.dataSource.local.hostPath }}
 {{- else if .Values.dataSource.adhoc.pvcName -}}
