@@ -178,9 +178,7 @@ advancedStatefulset:
 
 admissionWebhook:
   create: false
-  failurePolicy:
-    deleteHook: Fail
-    createHook: Ignore
+  failurePolicy: Fail
   apiservice:
     insecureSkipTLSVerify: true
     cabundle: ""
