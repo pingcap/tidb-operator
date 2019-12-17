@@ -114,6 +114,7 @@ func NewController(
 	pdUpgrader := mm.NewPDUpgrader(pdControl, podControl, podInformer.Lister())
 	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
 	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl, podInformer.Lister())
+	podRestarter := mm.NewPodRestarter(kubeCli, podInformer.Lister())
 
 	tcc := &Controller{
 		kubeClient: kubeCli,
@@ -204,6 +205,7 @@ func NewController(
 				podInformer.Lister(),
 			),
 			mm.NewTidbDiscoveryManager(typedControl),
+			podRestarter,
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
