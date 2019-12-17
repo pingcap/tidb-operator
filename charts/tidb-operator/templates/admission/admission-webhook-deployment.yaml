@@ -39,9 +39,11 @@ spec:
             - mountPath: /var/serving-cert
               name: serving-cert
           {{- end }}
+      {{- if eq .Values.admissionWebhook.certProvider "selfProvider" }}
       volumes:
         - name: serving-cert
           secret:
             defaultMode: 420
             secretName: tidb-admission-webhook-certs
+      {{- end }}
 {{- end }}
