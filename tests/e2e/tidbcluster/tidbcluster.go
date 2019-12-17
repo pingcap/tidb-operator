@@ -16,6 +16,7 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
@@ -615,7 +616,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		_, err = c.CoreV1().Pods(ns).Update(tidb_0)
 		framework.ExpectNoError(err, "Expected update tidb-0 restarting ann")
 
-		f := func(name, namespace string) (bool, error) {
+		f := func(name, namespace string, uid types.UID) (bool, error) {
 			pod, err := c.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 			if err != nil {
 				return false, err
@@ -623,18 +624,22 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			if _, existed := pod.Annotations[label.AnnPodDeferDeleting]; existed {
 				return false, nil
 			}
+			if uid == pod.UID {
+				return false, nil
+			}
 			return true, nil
 		}
+		
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-			isPdRestarted, err := f(pd_0.Name, ns)
+			isPdRestarted, err := f(pd_0.Name, ns, pd_0.UID)
 			if !(isPdRestarted && err == nil) {
 				return isPdRestarted, err
 			}
-			isTiKVRestarted, err := f(tikv_0.Name, ns)
+			isTiKVRestarted, err := f(tikv_0.Name, ns, tikv_0.UID)
 			if !(isTiKVRestarted && err == nil) {
 				return isTiKVRestarted, err
 			}
-			isTiDBRestarted, err := f(tidb_0.Name, ns)
+			isTiDBRestarted, err := f(tidb_0.Name, ns, tidb_0.UID)
 			if !(isTiDBRestarted && err == nil) {
 				return isTiDBRestarted, err
 			}
