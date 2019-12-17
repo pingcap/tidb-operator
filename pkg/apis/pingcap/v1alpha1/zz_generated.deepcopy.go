@@ -1470,6 +1470,9 @@ func (in *PumpStatus) DeepCopy() *PumpStatus {
 		return nil
 	}
 	out := new(PumpStatus)
+	in.DeepCopyInto(out)
+	return out
+}
 
 func (in *ReloaderSpec) DeepCopyInto(out *ReloaderSpec) {
 	*out = *in
