@@ -52,28 +52,16 @@ func TestTiKVDeleterDelete(t *testing.T) {
 	testFn := func(test *testcase) {
 
 		t.Log(test.name)
-
-		pod_0 := newTiKVPod(0)
 		deleteTiKVPod := newTiKVPod(1)
-		pod_2 := newTiKVPod(2)
-		pvc_0 := newPVCForTikv(0)
-		pvc_1 := newPVCForTikv(1)
-		pvc_2 := newPVCForTikv(2)
-
 		ownerStatefulSet := newOwnerStatefulsetForTikv()
 		tc := newTidbClusterForPodAdmissionControl()
 		kubeCli := kubefake.NewSimpleClientset()
 
-		podAdmissionControl, fakePVCControl, pvcIndexer, podIndexer, _ := newPodAdmissionControl()
+		podAdmissionControl := newPodAdmissionControl()
 		pdControl := pdapi.NewFakePDControl(kubeCli)
 		fakePDClient := controller.NewFakePDClient(pdControl, tc)
 
-		podIndexer.Add(pod_0)
-		podIndexer.Add(deleteTiKVPod)
-		podIndexer.Add(pod_2)
-		pvcIndexer.Add(pvc_0)
-		pvcIndexer.Add(pvc_1)
-		pvcIndexer.Add(pvc_2)
+
 
 		storesInfo := newTiKVStoresInfo()
 		if test.isUpgrading {
@@ -81,16 +69,8 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			ownerStatefulSet.Status.UpdateRevision = "2"
 		}
 
-		fakePVCControl.SetUpdatePVCError(nil, 0)
-		if test.UpdatePVCErr {
-			fakePVCControl.SetUpdatePVCError(fmt.Errorf("update pvc error"), 0)
-		}
-
 		if test.isOutOfOrdinal {
 			pod_3 := newTiKVPod(3)
-			pvc_3 := newPVCForTikv(3)
-			podIndexer.Add(pod_3)
-			pvcIndexer.Add(pvc_3)
 			deleteTiKVPod = pod_3
 			if test.isStoreExist {
 				tc.Status.TiKV.Stores["3"] = v1alpha1.TiKVStore{

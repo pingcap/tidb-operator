@@ -19,27 +19,20 @@ import (
 	"time"
 
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1/helper"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/webhook/pod"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 
 	asappsv1alpha1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/webhook/statefulset"
-	core "k8s.io/api/core/v1"
-	kubeinformers "k8s.io/client-go/informers"
-	event "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 type AdmissionHook struct {
@@ -112,28 +105,10 @@ func (a *AdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) err
 		kubeCli = helper.NewHijackClient(kubeCli, asCli)
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
-
 	// init pdControl
 	pdControl := pdapi.NewDefaultPDControl(kubeCli)
-
-	// init recorder
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&event.EventSinkImpl{
-		Interface: event.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, core.EventSource{Component: "tidbcluster"})
-
-	pc := pod.NewPodAdmissionControl(kubeCli, cli, pdControl, kubeInformerFactory, recorder, strings.Split(a.ExtraServiceAccounts, ","), a.EvictRegionLeaderTimeout)
+	pc := pod.NewPodAdmissionControl(kubeCli, cli, pdControl, strings.Split(a.ExtraServiceAccounts, ","), a.EvictRegionLeaderTimeout)
 	a.podAC = pc
-	kubeInformerFactory.Start(stopCh)
-
-	// Wait for all started informers' cache were synced.
-	for _, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
-		if !synced {
-			return err
-		}
-	}
 	klog.Info("pod admission webhook initialized successfully")
 	a.stsAC = statefulset.NewStatefulSetAdmissionControl(cli)
 	klog.Info("statefulset admission webhook initialized successfully")

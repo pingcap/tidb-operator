@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -34,11 +33,7 @@ import (
 	admission "k8s.io/api/admission/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	appslisters "k8s.io/client-go/listers/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
@@ -47,14 +42,8 @@ type PodAdmissionControl struct {
 	kubeCli kubernetes.Interface
 	// operator client interface
 	operatorCli versioned.Interface
-	// pvc control
-	pvcControl controller.PVCControlInterface
 	// pd Control
 	pdControl pdapi.PDControlInterface
-	// pod Lister
-	podLister corelisters.PodLister
-	// sts Lister
-	stsLister appslisters.StatefulSetLister
 	// the map of the service account from the request which should be checked by webhook
 	serviceAccounts sets.String
 }
@@ -63,13 +52,8 @@ const (
 	stsControllerServiceAccounts = "system:serviceaccount:kube-system:statefulset-controller"
 )
 
-func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder, extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration) *PodAdmissionControl {
+func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration) *PodAdmissionControl {
 
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	PVCControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
-
-	podLister := kubeInformerFactory.Core().V1().Pods().Lister()
-	stsLister := kubeInformerFactory.Apps().V1().StatefulSets().Lister()
 	serviceAccounts := sets.NewString(stsControllerServiceAccounts)
 	for _, sa := range extraServiceAccounts {
 		serviceAccounts.Insert(sa)
@@ -78,10 +62,7 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 	return &PodAdmissionControl{
 		kubeCli:         kubeCli,
 		operatorCli:     operatorCli,
-		pvcControl:      PVCControl,
 		pdControl:       PdControl,
-		podLister:       podLister,
-		stsLister:       stsLister,
 		serviceAccounts: serviceAccounts,
 	}
 }
@@ -168,7 +149,7 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 		return util.ARFail(err)
 	}
 
-	ownerStatefulSet, err := getOwnerStatefulSetForTiDBComponent(pod, pc.stsLister)
+	ownerStatefulSet, err := getOwnerStatefulSetForTiDBComponent(pod, pc.kubeCli)
 	if err != nil {
 		if errors.IsNotFound(err) || err.Error() == fmt.Sprintf(failToFindTidbComponentOwnerStatefulset, namespace, name) {
 			klog.Infof("owner statefulset for pod[%s/%s] is deleted,admit to delete pod", namespace, name)

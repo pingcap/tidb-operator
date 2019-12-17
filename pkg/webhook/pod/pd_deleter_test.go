@@ -14,7 +14,6 @@
 package pod
 
 import (
-	"fmt"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -64,10 +63,9 @@ func TestPDDeleterDelete(t *testing.T) {
 		deletePod := newPDPodForPDPodAdmissionControl()
 		ownerStatefulSet := newOwnerStatefulSetForPDPodAdmissionControl()
 		tc := newTidbClusterForPodAdmissionControl()
-		pvc := newPVCForDeletePod()
 		kubeCli := kubefake.NewSimpleClientset()
 
-		podAdmissionControl, fakePVCControl, pvcIndexer, _, _ := newPodAdmissionControl()
+		podAdmissionControl := newPodAdmissionControl()
 		pdControl := pdapi.NewFakePDControl(kubeCli)
 		fakePDClient := controller.NewFakePDClient(pdControl, tc)
 
@@ -115,16 +113,6 @@ func TestPDDeleterDelete(t *testing.T) {
 
 		if test.isOutOfOrdinal {
 			ownerStatefulSet.Spec.Replicas = func() *int32 { a := int32(2); return &a }()
-			pvcIndexer.Add(pvc)
-		}
-
-		if !test.isMember && test.isOutOfOrdinal {
-
-			if test.UpdatePVCErr {
-				fakePVCControl.SetUpdatePVCError(fmt.Errorf("update pvc error"), 0)
-			} else {
-				fakePVCControl.SetUpdatePVCError(nil, 0)
-			}
 		}
 
 		if test.isStatefulSetUpgrading {
