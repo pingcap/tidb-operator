@@ -61,8 +61,6 @@ func TestTiKVDeleterDelete(t *testing.T) {
 		pdControl := pdapi.NewFakePDControl(kubeCli)
 		fakePDClient := controller.NewFakePDClient(pdControl, tc)
 
-
-
 		storesInfo := newTiKVStoresInfo()
 		if test.isUpgrading {
 			ownerStatefulSet.Status.CurrentRevision = "1"
