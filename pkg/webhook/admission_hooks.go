@@ -48,7 +48,7 @@ func (a *AdmissionHook) ValidatingResource() (plural schema.GroupVersionResource
 	return schema.GroupVersionResource{
 			Group:    "admission.tidb.pingcap.com",
 			Version:  "v1alpha1",
-			Resource: "podadmissionreviews",
+			Resource: "admissionreviews",
 		},
 		"PodAdmissionReview"
 }
