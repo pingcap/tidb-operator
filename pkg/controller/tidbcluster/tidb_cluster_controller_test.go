@@ -269,7 +269,6 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, *FakeTidbCluste
 
 	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	autoFailover := true
-
 	tcControl := NewFakeTidbClusterControlInterface()
 
 	tcc := NewController(
