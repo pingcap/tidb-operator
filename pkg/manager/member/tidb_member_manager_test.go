@@ -1617,7 +1617,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 	}
 }
 
-func TestTiDBMemberManagerScaleToOneReplica(t *testing.T) {
+func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                     string
@@ -1626,6 +1626,15 @@ func TestTiDBMemberManagerScaleToOneReplica(t *testing.T) {
 		statusChange             func(*apps.StatefulSet)
 		err                      bool
 		expectStatefulSetFn      func(*GomegaWithT, *apps.StatefulSet, *v1alpha1.TidbCluster, error)
+	}
+
+	syncTiDBCluster := func(tmm *tidbMemberManager, tc *v1alpha1.TidbCluster, test *testcase) {
+		err := tmm.Sync(tc)
+		if test.err {
+			g.Expect(err).To(HaveOccurred())
+		} else {
+			g.Expect(err).NotTo(HaveOccurred())
+		}
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -1654,31 +1663,26 @@ func TestTiDBMemberManagerScaleToOneReplica(t *testing.T) {
 		g.Expect(err).NotTo(HaveOccurred())
 
 		tc1 := tc.DeepCopy()
-
-		tc1.Spec.TiDB.Replicas = 0 // scale to 0
+		// scale to 0
+		tc1.Spec.TiDB.Replicas = 0
 
 		if test.errWhenUpdateStatefulSet {
 			fakeSetControl.SetUpdateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
-
-		err = tmm.Sync(tc1)
-		if test.err {
-			g.Expect(err).To(HaveOccurred())
-		} else {
-			g.Expect(err).NotTo(HaveOccurred())
-		}
+		syncTiDBCluster(tmm, tc1, test)
+		syncTiDBCluster(tmm, tc1, test)
 
 		if test.expectStatefulSetFn != nil {
 			set, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 			test.expectStatefulSetFn(g, set, tc1, err)
 		}
+
 	}
 
 	tests := []testcase{
 		{
 			name: "TiDB should clear failureMembers when scale to 0",
 			setStatus: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.TiDB.Replicas = 0
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 				tc.Status.TiDB.FailureMembers = map[string]v1alpha1.TiDBFailureMember{
@@ -1689,14 +1693,13 @@ func TestTiDBMemberManagerScaleToOneReplica(t *testing.T) {
 			errWhenUpdateStatefulSet: false,
 			err:                      false,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, tc *v1alpha1.TidbCluster, err error) {
-				g.Expect(*set.Spec.Replicas).To(Equal(int32(0)))
 				g.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(0))
+				g.Expect(*set.Spec.Replicas).To(Equal(int32(0)))
 			},
 		},
 		{
 			name: "TiDB should clear failureMembers when scale to 0 and tidb is upgrading",
 			setStatus: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.TiDB.Replicas = 0
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
@@ -1708,8 +1711,8 @@ func TestTiDBMemberManagerScaleToOneReplica(t *testing.T) {
 			errWhenUpdateStatefulSet: false,
 			err:                      false,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, tc *v1alpha1.TidbCluster, err error) {
-				g.Expect(*set.Spec.Replicas).To(Equal(int32(0)))
 				g.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(0))
+				g.Expect(*set.Spec.Replicas).To(Equal(int32(0)))
 			},
 		},
 	}
