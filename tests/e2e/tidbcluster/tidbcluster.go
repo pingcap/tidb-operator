@@ -86,9 +86,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		fw, err := portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
 		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
-		oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, e2econfig.TestConfig, nil, fw, f)
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
+		oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 	})
 
 	ginkgo.AfterEach(func() {

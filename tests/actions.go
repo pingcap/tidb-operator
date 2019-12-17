@@ -35,6 +35,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/ghodss/yaml"
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -87,18 +88,25 @@ func NewOperatorActions(cli versioned.Interface,
 	kubeCli kubernetes.Interface,
 	asCli asclientset.Interface,
 	pollInterval time.Duration,
+	operatorConfig *OperatorConfig,
 	cfg *Config,
 	clusters []*TidbClusterConfig,
 	fw portforward.PortForward, f *framework.Framework) OperatorActions {
 
+	var tcStsGetter typedappsv1.StatefulSetsGetter
+	if operatorConfig != nil && operatorConfig.Enabled(features.AdvancedStatefulSet) {
+		tcStsGetter = helper.NewHijackClient(kubeCli, asCli).AppsV1()
+	} else {
+		tcStsGetter = kubeCli.AppsV1()
+	}
+
 	oa := &operatorActions{
-		framework:   f,
-		cli:         cli,
-		kubeCli:     kubeCli,
-		pdControl:   pdapi.NewDefaultPDControl(kubeCli),
-		asCli:       asCli,
-		tcStsGetter: kubeCli.AppsV1(),
-		// tcStsGetter:  helper.NewHijackClient(kubeCli, asCli).AppsV1(),
+		framework:    f,
+		cli:          cli,
+		kubeCli:      kubeCli,
+		pdControl:    pdapi.NewDefaultPDControl(kubeCli),
+		asCli:        asCli,
+		tcStsGetter:  tcStsGetter,
 		pollInterval: pollInterval,
 		cfg:          cfg,
 		fw:           fw,
@@ -265,10 +273,6 @@ type OperatorConfig struct {
 	Context            *apimachinery.CertContext
 	ImagePullPolicy    corev1.PullPolicy
 	TestMode           bool
-	ApiServerImage     string
-	ApiServerCert      string
-	ApiServerKey       string
-	ApiServerCaBundle  string
 }
 
 type TidbClusterConfig struct {
@@ -515,6 +519,9 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to create statefulset webhook and configuration : %v, %s", err, string(res))
 	}
 
+	// wait for all apiservices are available
+	// '-l a!=b' is a workaround solution for '--all' flag which is introduced only in kubectl 1.14+
+	oa.runKubectlOrDie("wait", "--for=condition=Available", "apiservices", "-l", "a!=b")
 	return nil
 }
 
@@ -527,9 +534,9 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 	glog.Infof("cleaning tidb-operator %s", info.ReleaseName)
 
-	err := oa.CleanWebHookAndService(info.WebhookConfigName)
-	if err != nil {
-		return err
+	cmd := fmt.Sprintf("kubectl delete -f %s/webhook.yaml --ignore-not-found", oa.manifestPath(info.Tag))
+	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to delete statefulset webhook and configuration: %v, %s", err, string(res))
 	}
 
 	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
