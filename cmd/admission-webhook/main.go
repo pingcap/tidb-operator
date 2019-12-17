@@ -51,10 +51,9 @@ func main() {
 	}
 	version.LogVersionInfo()
 
-	podAh := &webhook.PodAdmissionHook{
+	ah := &webhook.AdmissionHook{
 		ExtraServiceAccounts:     extraServiceAccounts,
 		EvictRegionLeaderTimeout: evictRegionLeaderTimeout,
 	}
-	stsAh := &webhook.StatefulSetAdmissionHook{}
-	cmd.RunAdmissionServer(podAh, stsAh)
+	cmd.RunAdmissionServer(ah)
 }

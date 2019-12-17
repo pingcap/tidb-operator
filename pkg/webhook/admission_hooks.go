@@ -33,46 +33,62 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 
+	asappsv1alpha1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
+	"github.com/pingcap/tidb-operator/pkg/webhook/statefulset"
 	core "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	event "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-type PodAdmissionHook struct {
+type AdmissionHook struct {
 	lock                     sync.RWMutex
 	initialized              bool
 	podAC                    *pod.PodAdmissionControl
+	stsAC                    *statefulset.StatefulSetAdmissionControl
 	ExtraServiceAccounts     string
 	EvictRegionLeaderTimeout time.Duration
 }
 
-func (a *PodAdmissionHook) ValidatingResource() (plural schema.GroupVersionResource, singular string) {
+func (a *AdmissionHook) ValidatingResource() (plural schema.GroupVersionResource, singular string) {
 	return schema.GroupVersionResource{
 			Group:    "admission.tidb.pingcap.com",
 			Version:  "v1alpha1",
-			Resource: "podadmissionreviews",
+			Resource: "admissionreviews",
 		},
 		"PodAdmissionReview"
 }
 
-func (a *PodAdmissionHook) Validate(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+func (a *AdmissionHook) Validate(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
 	if !a.initialized {
 		return &admission.AdmissionResponse{
 			Allowed: false,
 		}
 	}
-	if "Pod" != ar.Kind.Kind || "" != ar.Kind.Group {
-		klog.Infof("success to %v %s[%s/%s]", ar.Operation, ar.Kind.Kind, ar.Name, ar.Namespace)
-		return util.ARSuccess()
+	switch ar.Kind.Kind {
+	case "Pod":
+		if "" != ar.Kind.Group {
+			return a.unknownAdmissionRequest(ar)
+		}
+		return a.podAC.AdmitPods(ar)
+	case "StatefulSet":
+		expectedGroup := "apps"
+		if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+			expectedGroup = asappsv1alpha1.GroupName
+		}
+		if expectedGroup != ar.Kind.Group {
+			return a.unknownAdmissionRequest(ar)
+		}
+		return a.stsAC.AdmitStatefulSets(ar)
+	default:
+		return a.unknownAdmissionRequest(ar)
 	}
-	return a.podAC.AdmitPods(ar)
 }
 
 // any special initialization goes here
-func (a *PodAdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) error {
+func (a *AdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -126,7 +142,14 @@ func (a *PodAdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) 
 			return err
 		}
 	}
-	a.initialized = true
 	klog.Info("pod admission webhook initialized successfully")
+	a.stsAC = statefulset.NewStatefulSetAdmissionControl(cli)
+	klog.Info("statefulset admission webhook initialized successfully")
+	a.initialized = true
 	return nil
+}
+
+func (a *AdmissionHook) unknownAdmissionRequest(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+	klog.Infof("success to %v %s[%s/%s]", ar.Operation, ar.Kind.Kind, ar.Name, ar.Namespace)
+	return util.ARSuccess()
 }
