@@ -10,6 +10,10 @@ imagePullPolicy: IfNotPresent
 service:
   type: NodePort
 
+# failFast causes the lightning pod fails when any error happens.
+# when disabled, the lightning pod will keep running when error happens to allow manual intervention, users have to check logs to see the job status.
+failFast: true
+
 dataSource:
   local: {}
     # nodeName: kind-worker3

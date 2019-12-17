@@ -65,6 +65,10 @@ spec:
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
       {{- end }}
+        {{- if .Values.failFast }}
+        - name: FAIL_FAST
+          value: "true"
+        {{- end }}
         volumeMounts:
         - name: config
           mountPath: /etc/tidb-lightning

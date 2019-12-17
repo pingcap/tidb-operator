@@ -1,4 +1,3 @@
-set -euo pipefail
 {{- if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
 data_dir={{ .Values.dataSource.local.hostPath }}
 {{- else if .Values.dataSource.adhoc.pvcName -}}
@@ -27,3 +26,12 @@ fi
     --tidb-host={{ .Values.targetTidbCluster.name }}-tidb.{{ .Values.targetTidbCluster.namespace | default .Release.Namespace }} \
     --d=${data_dir} \
     --config=/etc/tidb-lightning/tidb-lightning.toml
+
+if [ $? != 0 ]; then
+    if [ ! -z ${FAIL_FAST} ]; then
+        exit 1
+    else
+        echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "tidb-lightning exits abnormally, please exec into my container to do manual intervention"
+        tail -f /dev/null
+    fi
+fi
