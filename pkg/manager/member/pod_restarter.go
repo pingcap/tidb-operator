@@ -17,6 +17,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -53,7 +54,7 @@ func (gr *podRestarter) Sync(tc *v1alpha1.TidbCluster) error {
 	for _, pod := range tcPods {
 		if _, existed := pod.Annotations[label.AnnPodDeferDeleting]; existed {
 			requeue = true
-			err = gr.restart(pod.Name, pod.Namespace)
+			err = gr.restart(pod)
 			if err != nil {
 				return err
 			}
@@ -66,8 +67,10 @@ func (gr *podRestarter) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 // pod deleting webhook ensured each tc pod would be deleted safely
-func (gr *podRestarter) restart(podName, namespace string) error {
-	err := gr.kubeCli.CoreV1().Pods(namespace).Delete(podName, &meta.DeleteOptions{})
+func (gr *podRestarter) restart(pod *core.Pod) error {
+	preconditions := meta.Preconditions{UID: &pod.UID}
+	deleteOptions := meta.DeleteOptions{Preconditions: &preconditions}
+	err := gr.kubeCli.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &deleteOptions)
 	if err != nil {
 		return err
 	}
