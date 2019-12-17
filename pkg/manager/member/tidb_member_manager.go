@@ -208,6 +208,9 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	}
 
 	if tmm.autoFailover {
+		if tc.Spec.TiDB.Replicas == int32(0) && tc.Status.TiDB.FailureMembers != nil {
+			tmm.tidbFailover.Recover(tc)
+		}
 		if tc.TiDBAllPodsStarted() && tc.TiDBAllMembersReady() && tc.Status.TiDB.FailureMembers != nil {
 			tmm.tidbFailover.Recover(tc)
 		} else if tc.TiDBAllPodsStarted() && !tc.TiDBAllMembersReady() {
