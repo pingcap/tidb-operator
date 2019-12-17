@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -84,7 +83,7 @@ func TestGetConfig(t *testing.T) {
 	g := NewGomegaWithT(t)
 	config := &v1alpha1.PDConfig{
 		Schedule: &v1alpha1.PDScheduleConfig{
-			MaxStoreDownTime: v1alpha1.NewDuration(10 * time.Second),
+			MaxStoreDownTime: "10s",
 		},
 	}
 	configBytes, err := json.Marshal(config)

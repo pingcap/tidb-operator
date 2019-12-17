@@ -125,6 +125,7 @@ func NewController(
 				svcControl,
 				podControl,
 				certControl,
+				typedControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
@@ -140,6 +141,7 @@ func NewController(
 				setControl,
 				svcControl,
 				certControl,
+				typedControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
@@ -198,6 +200,7 @@ func NewController(
 				svcInformer.Lister(),
 				cmInformer.Lister(),
 			),
+			mm.NewTidbDiscoveryManager(typedControl),
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(

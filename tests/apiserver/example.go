@@ -567,7 +567,7 @@ func (c *E2eContext) Setup() {
 					Containers: []v1.Container{{
 						Name: secretName,
 						Command: []string{
-							"/usr/local/bin/tidb-apiserver",
+							"/usr/local/bin/apiserver",
 							"--tls-cert-file=/apiserver.local.config/certificates/tls.crt",
 							"--tls-private-key-file=/apiserver.local.config/certificates/tls.key",
 						},
