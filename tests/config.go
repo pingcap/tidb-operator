@@ -28,6 +28,7 @@ type Config struct {
 	configFile string
 
 	TidbVersions         string  `yaml:"tidb_versions" json:"tidb_versions"`
+	InstallOperator      bool    `yaml:"install_opeartor" json:"install_opeartor"`
 	OperatorTag          string  `yaml:"operator_tag" json:"operator_tag"`
 	OperatorImage        string  `yaml:"operator_image" json:"operator_image"`
 	UpgradeOperatorTag   string  `yaml:"upgrade_operator_tag" json:"upgrade_operator_tag"`

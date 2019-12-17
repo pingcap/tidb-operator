@@ -135,7 +135,6 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	framework.ExpectNoError(err, "failed to create clientset")
 	asCli, err := asclientset.NewForConfig(config)
 	framework.ExpectNoError(err, "failed to create clientset")
-	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, e2econfig.TestConfig, nil, nil, nil)
 	ginkgo.By("Recycle all local PVs")
 	pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
 	framework.ExpectNoError(err, "failed to list pvList")
@@ -162,15 +161,20 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		return true, nil
 	})
 	framework.ExpectNoError(err, "failed to wait for all PVs to be available")
-	ginkgo.By("Installing CRDs")
-	oa.CleanCRDOrDie()
-	oa.InstallCRDOrDie()
 	ginkgo.By("Labeling nodes")
+	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, nil, e2econfig.TestConfig, nil, nil, nil)
 	oa.LabelNodesOrDie()
-	ginkgo.By("Installing tidb-operator")
-	ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
-	oa.CleanOperatorOrDie(ocfg)
-	oa.DeployOperatorOrDie(ocfg)
+	if e2econfig.TestConfig.InstallOperator {
+		ginkgo.By("Installing CRDs")
+		oa.CleanCRDOrDie()
+		oa.InstallCRDOrDie()
+		ginkgo.By("Installing tidb-operator")
+		ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
+		oa.CleanOperatorOrDie(ocfg)
+		oa.DeployOperatorOrDie(ocfg)
+	} else {
+		ginkgo.By("Skip installing tidb-operator")
+	}
 	return nil
 }, func(data []byte) {
 	// Run on all Ginkgo nodes
