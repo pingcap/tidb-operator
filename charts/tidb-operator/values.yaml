@@ -177,7 +177,10 @@ advancedStatefulset:
   #   effect: "NoSchedule"
 
 admissionWebhook:
-  enabled: false
+  create: false
+  failurePolicy:
+    deleteHook: Fail
+    createHook: Ignore
   apiservice:
     insecureSkipTLSVerify: true
     cabundle: ""
@@ -187,6 +190,4 @@ admissionWebhook:
     ca: ""
     key: ""
     cert: ""
-  ## `certManager` would create an self-signed Issuer and a Certificate for webhook cert managed by cert-manager
-  certManager:
 

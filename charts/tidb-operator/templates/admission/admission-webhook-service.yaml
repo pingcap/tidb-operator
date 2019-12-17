@@ -1,4 +1,4 @@
-{{- if eq .Values.admissionWebhook.enabled true }}
+{{- if eq .Values.admissionWebhook.create true }}
 apiVersion: v1
 kind: Service
 metadata:

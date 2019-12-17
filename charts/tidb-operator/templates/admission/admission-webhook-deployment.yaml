@@ -1,4 +1,4 @@
-{{- if eq .Values.admissionWebhook.enabled true }}
+{{- if eq .Values.admissionWebhook.create true }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -30,4 +30,18 @@ spec:
           imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
           command:
             - /usr/local/bin/tidb-admission-webhook
+            {{- if eq .Values.admissionWebhook.certProvider "selfProvider" }}
+            - --tls-cert-file=/var/serving-cert/cert.pem
+            - --tls-private-key-file=/var/serving-cert/key.pem
+            {{- end }}
+          {{- if eq .Values.admissionWebhook.certProvider "selfProvider" }}
+          volumeMounts:
+            - mountPath: /var/serving-cert
+              name: serving-cert
+          {{- end }}
+      volumes:
+        - name: serving-cert
+          secret:
+            defaultMode: 420
+            secretName: tidb-admission-webhook-certs
 {{- end }}
