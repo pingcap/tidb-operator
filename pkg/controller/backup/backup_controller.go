@@ -15,6 +15,7 @@ package backup
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -223,11 +224,11 @@ func validBackup(backup *v1alpha1.Backup) bool {
 	ns := backup.Namespace
 	name := backup.Name
 	if backup.Spec.BR == nil {
-		if backup.Spec.Cluster == "" {
+		if backup.Spec.From.Host == "" {
 			glog.Errorf("Missing Cluster config in spec of %s/%s", ns, name)
 			return false
 		}
-		if backup.Spec.TidbSecretName == "" {
+		if backup.Spec.From.SecretName == "" {
 			glog.Errorf("Missing TidbSecretName config in spec of %s/%s", ns, name)
 			return false
 		}
@@ -244,9 +245,26 @@ func validBackup(backup *v1alpha1.Backup) bool {
 			glog.Errorf("PD address should be configured for BR in spec of %s/%s", ns, name)
 			return false
 		}
-		if backup.Spec.S3 != nil && (backup.Spec.S3.Bucket == "" || backup.Spec.S3.Prefix == "") {
-			glog.Errorf("Bucket and Prefix should be configured for BR in spec of %s/%s", ns, name)
-			return false
+		if backup.Spec.S3 != nil {
+			if backup.Spec.S3.Bucket == "" {
+				glog.Errorf("Bucket should be configured for BR in spec of %s/%s", ns, name)
+				return false
+			}
+			if backup.Spec.S3.Endpoint != "" {
+				u, err := url.Parse(backup.Spec.S3.Endpoint)
+				if err != nil {
+					glog.Errorf("Invalid endpoint %s is configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
+					return false
+				}
+				if u.Scheme == "" {
+					glog.Errorf("Scheme not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
+					return false
+				}
+				if u.Host == "" {
+					glog.Errorf("Host not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
+					return false
+				}
+			}
 		}
 	}
 	return true
