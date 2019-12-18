@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: tidb-admission-webhook-sa
+  name: {{ .Values.admissionWebhook.serviceAccount }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -13,7 +13,7 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: tidb-admission-webhook-cr
+  name: {{ .Release.Name }}:tidb-admission-auth
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -46,7 +46,7 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: tidb-admission-webhook-crb
+  name: {{ .Release.Name }}:tidb-admission-auth
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -55,12 +55,12 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 subjects:
   - kind: ServiceAccount
-    name: tidb-admission-webhook-sa
+    name: {{ .Values.admissionWebhook.serviceAccount }}
     namespace: {{ .Release.Namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: tidb-admission-webhook-cr
+  name: {{ .Release.Name }}:tidb-admission-auth
 ---
 
 kind: ClusterRole
@@ -98,7 +98,7 @@ roleRef:
   name: extension-apiserver-authentication-reader
 subjects:
   - kind: ServiceAccount
-    name: tidb-admission-webhook-sa
+    name: {{ .Values.admissionWebhook.serviceAccount }}
     namespace: {{ .Release.Namespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -117,7 +117,7 @@ roleRef:
   name: system:auth-delegator
 subjects:
   - kind: ServiceAccount
-    name: tidb-admission-webhook-sa
+    name: {{ .Values.admissionWebhook.serviceAccount }}
     namespace: {{ .Release.Namespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
