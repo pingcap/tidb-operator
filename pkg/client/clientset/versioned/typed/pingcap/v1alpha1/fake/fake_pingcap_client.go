@@ -45,6 +45,10 @@ func (c *FakePingcapV1alpha1) TidbClusters(namespace string) v1alpha1.TidbCluste
 	return &FakeTidbClusters{c, namespace}
 }
 
+func (c *FakePingcapV1alpha1) TidbMonitors(namespace string) v1alpha1.TidbMonitorInterface {
+	return &FakeTidbMonitors{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakePingcapV1alpha1) RESTClient() rest.Interface {

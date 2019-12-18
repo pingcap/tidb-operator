@@ -121,7 +121,7 @@ func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1
 	newSvc := getNewTiDBHeadlessServiceForTidbCluster(tc)
 	oldSvcTmp, err := tmm.svcLister.Services(ns).Get(controller.TiDBPeerMemberName(tcName))
 	if errors.IsNotFound(err) {
-		err = SetServiceLastAppliedConfigAnnotation(newSvc)
+		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
 			return err
 		}
@@ -133,14 +133,14 @@ func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1
 
 	oldSvc := oldSvcTmp.DeepCopy()
 
-	equal, err := serviceEqual(newSvc, oldSvc)
+	equal, err := controller.ServiceEqual(newSvc, oldSvc)
 	if err != nil {
 		return err
 	}
 	if !equal {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
-		err = SetServiceLastAppliedConfigAnnotation(&svc)
+		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
 		if err != nil {
 			return err
 		}
@@ -208,6 +208,9 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	}
 
 	if tmm.autoFailover {
+		if tc.Spec.TiDB.Replicas == int32(0) && tc.Status.TiDB.FailureMembers != nil {
+			tmm.tidbFailover.Recover(tc)
+		}
 		if tc.TiDBAllPodsStarted() && tc.TiDBAllMembersReady() && tc.Status.TiDB.FailureMembers != nil {
 			tmm.tidbFailover.Recover(tc)
 		} else if tc.TiDBAllPodsStarted() && !tc.TiDBAllMembersReady() {
@@ -334,7 +337,7 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 
 	oldSvcTmp, err := tmm.svcLister.Services(ns).Get(newSvc.Name)
 	if errors.IsNotFound(err) {
-		err = SetServiceLastAppliedConfigAnnotation(newSvc)
+		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
 			return err
 		}
@@ -345,7 +348,7 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 	}
 	oldSvc := oldSvcTmp.DeepCopy()
 
-	equal, err := serviceEqual(newSvc, oldSvc)
+	equal, err := controller.ServiceEqual(newSvc, oldSvc)
 	if err != nil {
 		return err
 	}
@@ -356,7 +359,7 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
 		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		err = SetServiceLastAppliedConfigAnnotation(&svc)
+		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
 		if err != nil {
 			return err
 		}
@@ -443,19 +446,10 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		"startup-script": startScript,
 	}
 	name := controller.TiDBMemberName(tc.Name)
-	if tc.TiDBConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
-		sum, err := Sha256Sum(data)
-		if err != nil {
-			return nil, err
-		}
-		suffix := fmt.Sprintf("%x", sum)[0:7]
-		name = fmt.Sprintf("%s-%s", name, suffix)
-	}
-
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
 	tidbLabels := label.New().Instance(instanceName).TiDB().Labels()
 
-	return &corev1.ConfigMap{
+	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
 			Namespace:       tc.Namespace,
@@ -463,7 +457,15 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Data: data,
-	}, nil
+	}
+
+	if tc.TiDBConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
+		if err := AddConfigMapDigestSuffix(cm); err != nil {
+			return nil, err
+		}
+	}
+
+	return cm, nil
 }
 
 func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {

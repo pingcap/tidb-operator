@@ -54,32 +54,41 @@ spec:
     emptyDir: {}
 '''
 
-def build(SHELL_CODE) {
+def build(SHELL_CODE, ARTIFACTS = "") {
 	podTemplate(yaml: podYAML) {
 		node(POD_LABEL) {
 			container('main') {
 				def WORKSPACE = pwd()
-				dir("${WORKSPACE}/go/src/github.com/pingcap/tidb-operator") {
-					unstash 'tidb-operator'
-					stage("Debug Info") {
-						println "debug host: 172.16.5.5"
-						println "debug command: kubectl -n jenkins-ci exec -ti ${NODE_NAME} bash"
-						sh """
-						echo "====== shell env ======"
-						echo "pwd: \$(pwd)"
-						env
-						echo "====== go env ======"
-						go env
-						echo "====== docker version ======"
-						docker version
-						"""
-					}
-					stage('Run') {
-						ansiColor('xterm') {
+				try {
+					dir("${WORKSPACE}/go/src/github.com/pingcap/tidb-operator") {
+						unstash 'tidb-operator'
+						stage("Debug Info") {
+							println "debug host: 172.16.5.5"
+							println "debug command: kubectl -n jenkins-ci exec -ti ${NODE_NAME} bash"
 							sh """
-							export GOPATH=${WORKSPACE}/go
-							${SHELL_CODE}
+							echo "====== shell env ======"
+							echo "pwd: \$(pwd)"
+							env
+							echo "====== go env ======"
+							go env
+							echo "====== docker version ======"
+							docker version
 							"""
+						}
+						stage('Run') {
+							ansiColor('xterm') {
+								sh """
+								export GOPATH=${WORKSPACE}/go
+								${SHELL_CODE}
+								"""
+							}
+						}
+					}
+				} finally {
+					if (ARTIFACTS != "") {
+						dir(ARTIFACTS) {
+							archiveArtifacts artifacts: "**", allowEmptyArchive: true
+							junit testResults: "*.xml", allowEmptyResults: true
 						}
 					}
 				}
@@ -168,15 +177,19 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 			}
 		}
 
-        def builds = [:]
-        builds["E2E v1.12.10"] = {
-			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn make e2e")
-        }
-        builds["E2E v1.16.3"] = {
-			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.16.3 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn make e2e")
-        }
-        builds.failFast = false
-        parallel builds
+		def artifacts = "go/src/github.com/pingcap/tidb-operator/artifacts"
+		def builds = [:]
+		builds["E2E v1.12.10"] = {
+			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --ginkgo.skip='\\[Serial\\]'", artifacts)
+		}
+		builds["E2E v1.16.3"] = {
+			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.16.3 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.16.3_ ./hack/e2e.sh -- --ginkgo.skip='\\[Serial\\]'", artifacts)
+		}
+		builds["E2E v1.12.10 Serial"] = {
+			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y KUBE_VERSION=v1.12.10 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_serial_ ./hack/e2e.sh -- --ginkgo.focus='\\[Serial\\]' --install-operator=false", artifacts)
+		}
+		builds.failFast = false
+		parallel builds
 
 		// we requires ~/bin/config.cfg, filemgr-linux64 utilities on k8s-kind node
 		// TODO make it possible to run on any node

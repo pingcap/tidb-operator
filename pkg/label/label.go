@@ -79,6 +79,8 @@ const (
 	AnnSysctlInit = "tidb.pingcap.com/sysctl-init"
 	// AnnEvictLeaderBeginTime is pod annotation key to indicate the begin time for evicting region leader
 	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
+	// AnnPodDeferDeleting is pod annotation key to indicate the pod which need to be restarted
+	AnnPodDeferDeleting = "tidb.pingcap.com/pod-defer-deleting"
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"
@@ -93,6 +95,8 @@ const (
 	TiKVLabelVal string = "tikv"
 	// PumpLabelVal is Pump label value
 	PumpLabelVal string = "pump"
+	// DiscoveryLabelVal is Discovery label value
+	DiscoveryLabelVal string = "discovery"
 
 	// CleanJobLabelVal is clean job label value
 	CleanJobLabelVal string = "clean"
@@ -207,6 +211,12 @@ func (l Label) PD() Label {
 // Pump assigns pump to component key in label
 func (l Label) Pump() Label {
 	l.Component(PumpLabelVal)
+	return l
+}
+
+// Discovery assigns discovery to component key in label
+func (l Label) Discovery() Label {
+	l.Component(DiscoveryLabelVal)
 	return l
 }
 

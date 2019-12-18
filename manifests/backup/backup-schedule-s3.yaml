@@ -12,11 +12,15 @@ spec:
   storageSize: 10Gi
   schedule: "*/2 * * * *"
   backupTemplate:
+    from:
+      host: 10.0.0.1
+      port: 4000
+      user: root
+      secretName: backup-demo1-tidb-secret
     s3:
       provider: ceph
       #region: us-east-1
       endpoint: http://10.233.2.161
       secretName: ceph-secret
+      bucket: test1-demo1
     storageType: s3
-    cluster: demo1
-    tidbSecretName: backup-demo1-tidb-secret
