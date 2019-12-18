@@ -35,6 +35,12 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 webhooks:
   - name: delete.podadmission.pingcap.net
+    {{- if semverCompare ">=1.15-0" .Capabilities.KubeVersion.GitVersion }}
+    objectSelector:
+      matchLabels:
+        "app.kubernetes.io/managed-by": "tidb-operator"
+        "app.kubernetes.io/name": "tidb-cluster"
+    {{- end }}
     failurePolicy: {{ .Values.admissionWebhook.failurePolicy.deletePod | default "Fail" }}
     clientConfig:
       service:
@@ -64,6 +70,12 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 webhooks:
   - name: create.podadmission.pingcap.net
+    {{- if semverCompare ">=1.15-0" .Capabilities.KubeVersion.GitVersion }}
+    objectSelector:
+      matchLabels:
+        "app.kubernetes.io/managed-by": "tidb-operator"
+        "app.kubernetes.io/name": "tidb-cluster"
+    {{- end }}
     failurePolicy: {{ .Values.admissionWebhook.failurePolicy.createPod | default "Ignore" }}
     clientConfig:
       service:
