@@ -79,6 +79,6 @@ func (ftf *fakeTiDBFailover) Failover(_ *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (ftf *fakeTiDBFailover) Recover(_ *v1alpha1.TidbCluster) {
-	return
+func (ftf *fakeTiDBFailover) Recover(tc *v1alpha1.TidbCluster) {
+	tc.Status.TiDB.FailureMembers = nil
 }
