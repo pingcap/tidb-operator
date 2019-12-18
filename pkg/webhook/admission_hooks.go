@@ -81,6 +81,9 @@ func (a *AdmissionHook) Validate(ar *admission.AdmissionRequest) *admission.Admi
 
 // any special initialization goes here
 func (a *AdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) error {
+	if a.initialized {
+		return nil
+	}
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
