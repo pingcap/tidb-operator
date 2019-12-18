@@ -66,7 +66,7 @@ roleRef:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: tidb:system:api-server-auth
+  name: {{ .Release.Name }}:tidb-apiserver-auth
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -84,7 +84,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: tidb:system:extension-apiserver-authentication-reader
+  name: {{ .Release.Name }}:tidb:extension-apiserver-authentication-reader
   namespace: kube-system
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
@@ -104,7 +104,7 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: tidb:system:auth-delegator
+  name: {{ .Release.Name }}:tidb-auth-delegator
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -133,7 +133,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: tidb:system:api-server-auth
+  name: {{ .Release.Name }}:tidb-apiserver-auth
 subjects:
   - kind: User
     name: kube-apiserver
