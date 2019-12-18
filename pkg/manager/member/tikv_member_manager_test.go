@@ -1545,6 +1545,22 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 			},
 			testSts: testHostNetwork(t, false, ""),
 		},
+		{
+			name: "tikv delete slots",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+					Annotations: map[string]string{
+						label.AnnTiKVDeleteSlots: "[0,1]",
+					},
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{},
+				},
+			},
+			testSts: testAnnotations(t, map[string]string{"delete-slots": "[0,1]"}),
+		},
 		// TODO add more tests
 	}
 

@@ -87,6 +87,13 @@ const (
 	// AnnSysctlInitVal is pod annotation value to indicate whether configuring sysctls with init container
 	AnnSysctlInitVal = "true"
 
+	// AnnPDDeleteSlots is annotation key of pd delete slots.
+	AnnPDDeleteSlots = "pd.tidb.pingcap.com/delete-slots"
+	// TiDBDeleteSlots is annotation key of tidb delete slots.
+	AnnTiDBDeleteSlots = "tidb.tidb.pingcap.com/delete-slots"
+	// TiKVDeleteSlots is annotation key of tikv delete slots.
+	AnnTiKVDeleteSlots = "tikv.tidb.pingcap.com/delete-slots"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value

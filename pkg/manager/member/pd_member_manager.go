@@ -238,15 +238,8 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		}
 	}
 
-	if *newPDSet.Spec.Replicas > *oldPDSet.Spec.Replicas {
-		if err := pmm.pdScaler.ScaleOut(tc, oldPDSet, newPDSet); err != nil {
-			return err
-		}
-	}
-	if *newPDSet.Spec.Replicas < *oldPDSet.Spec.Replicas {
-		if err := pmm.pdScaler.ScaleIn(tc, oldPDSet, newPDSet); err != nil {
-			return err
-		}
+	if err := pmm.pdScaler.Scale(tc, oldPDSet, newPDSet); err != nil {
+		return err
 	}
 
 	if pmm.autoFailover {
@@ -316,6 +309,7 @@ func (pmm *pdMemberManager) syncPDServerCerts(tc *v1alpha1.TidbCluster) error {
 func (pmm *pdMemberManager) updateStatefulSet(tc *v1alpha1.TidbCluster, newPDSet, oldPDSet *apps.StatefulSet) error {
 	if !statefulSetEqual(*newPDSet, *oldPDSet) {
 		set := *oldPDSet
+		set.Annotations = newPDSet.Annotations
 		set.Spec.Template = newPDSet.Spec.Template
 		*set.Spec.Replicas = *newPDSet.Spec.Replicas
 		set.Spec.UpdateStrategy = newPDSet.Spec.UpdateStrategy
@@ -589,6 +583,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	pdLabel := label.New().Instance(instanceName).PD()
 	setName := controller.PDMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(2379), tc.BasePDSpec().Annotations())
+	stsAnnotations := getStsAnnotations(tc, label.PDLabelVal)
 	storageClassName := tc.Spec.PD.StorageClassName
 	if storageClassName == "" {
 		storageClassName = controller.DefaultStorageClassName
@@ -679,6 +674,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			Name:            setName,
 			Namespace:       ns,
 			Labels:          pdLabel.Labels(),
+			Annotations:     stsAnnotations,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{

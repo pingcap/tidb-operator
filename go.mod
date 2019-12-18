@@ -47,7 +47,7 @@ require (
 	github.com/openshift/generic-admission-server v1.14.0
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
-	github.com/pingcap/advanced-statefulset v0.1.0
+	github.com/pingcap/advanced-statefulset v0.2.1
 	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 // indirect
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/kvproto v0.0.0-20190516013202-4cf58ad90b6c

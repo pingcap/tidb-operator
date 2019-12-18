@@ -943,6 +943,14 @@ func testHostNetwork(t *testing.T, hostNetwork bool, dnsPolicy v1.DNSPolicy) fun
 	}
 }
 
+func testAnnotations(t *testing.T, annotations map[string]string) func(sts *apps.StatefulSet) {
+	return func(sts *apps.StatefulSet) {
+		if diff := cmp.Diff(annotations, sts.Annotations); diff != "" {
+			t.Errorf("unexpected annotations (-want, +got): %s", diff)
+		}
+	}
+}
+
 func TestGetNewPDSetForTidbCluster(t *testing.T) {
 	enable := true
 	tests := []struct {

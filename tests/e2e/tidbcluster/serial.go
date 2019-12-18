@@ -15,19 +15,35 @@ package tidbcluster
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	_ "net/http/pprof"
 
 	"github.com/onsi/ginkgo"
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2esset "k8s.io/kubernetes/test/e2e/framework/statefulset"
 )
+
+func mustToString(set sets.Int) string {
+	b, err := json.Marshal(set.List())
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
+}
 
 var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	f := framework.NewDefaultFramework("serial")
@@ -36,6 +52,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	var c clientset.Interface
 	var cli versioned.Interface
 	var asCli asclientset.Interface
+	var hc clientset.Interface
 	var cfg *tests.Config
 	var config *restclient.Config
 	var fw portforward.PortForward
@@ -53,6 +70,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		framework.ExpectNoError(err, "failed to create clientset")
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
 		framework.ExpectNoError(err, "failed to load raw config")
+		hc = helper.NewHijackClient(c, asCli)
 		ctx, cancel := context.WithCancel(context.Background())
 		fw, err = portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
 		framework.ExpectNoError(err, "failed to create port forwarder")
@@ -103,8 +121,109 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("able to deploy TiDB Cluster with advanced statefulset", func() {
-			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "deploy", "", "")
+			clusterName := "deploy"
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "", "")
+			cluster.Resources["pd.replicas"] = "3"
+			cluster.Resources["tikv.replicas"] = "5"
+			cluster.Resources["tidb.replicas"] = "3"
 			oa.DeployTidbClusterOrDie(&cluster)
+			oa.CheckTidbClusterStatusOrDie(&cluster)
+
+			scalingTests := []struct {
+				name        string
+				component   string // tikv,pd,tidb
+				replicas    int32
+				deleteSlots sets.Int
+			}{
+				{
+					name:        "Scaling in tikv from 5 to 3 by deleting pods 1 and 3",
+					component:   "tikv",
+					replicas:    3,
+					deleteSlots: sets.NewInt(1, 3),
+				},
+				{
+					name:        "Scaling out tikv from 3 to 4 by adding pod 3",
+					component:   "tikv",
+					replicas:    4,
+					deleteSlots: sets.NewInt(1),
+				},
+				{
+					name:        "Scaling in tidb from 3 to 2 by deleting pod 1",
+					component:   "tidb",
+					replicas:    2,
+					deleteSlots: sets.NewInt(1),
+				},
+				{
+					name:        "Scaling out tidb from 2 to 4 by adding pods 3 and 4",
+					component:   "tidb",
+					replicas:    4,
+					deleteSlots: sets.NewInt(1),
+				},
+				{
+					name:        "Scaling out pd from 3 to 5 by adding pods 3, 4",
+					component:   "pd",
+					replicas:    5,
+					deleteSlots: sets.NewInt(),
+				},
+				{
+					name:        "Scaling in pd from 5 to 3 by deleting pods 0 and 3",
+					component:   "pd",
+					replicas:    3,
+					deleteSlots: sets.NewInt(0, 3),
+				},
+			}
+
+			for _, st := range scalingTests {
+				ginkgo.By(st.name)
+				replicas := st.replicas
+				deleteSlots := st.deleteSlots
+				stsName := fmt.Sprintf("%s-%s", clusterName, st.component)
+
+				sts, err := hc.AppsV1().StatefulSets(ns).Get(stsName, metav1.GetOptions{})
+				framework.ExpectNoError(err)
+
+				oldPodList := e2esset.GetPodList(c, sts)
+
+				ginkgo.By(fmt.Sprintf("Scaling sts %s/%s to replicas %d and setting deleting pods to %v (old replicas: %d, old delete slots: %v)", ns, stsName, replicas, deleteSlots.List(), *sts.Spec.Replicas, helper.GetDeleteSlots(sts).List()))
+				tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
+				framework.ExpectNoError(err)
+				if tc.Annotations == nil {
+					tc.Annotations = map[string]string{}
+				}
+				if st.component == "tikv" {
+					tc.Annotations[label.AnnTiKVDeleteSlots] = mustToString(deleteSlots)
+					tc.Spec.TiKV.Replicas = replicas
+				} else if st.component == "pd" {
+					tc.Annotations[label.AnnPDDeleteSlots] = mustToString(deleteSlots)
+					tc.Spec.PD.Replicas = replicas
+				} else if st.component == "tidb" {
+					tc.Annotations[label.AnnTiDBDeleteSlots] = mustToString(deleteSlots)
+					tc.Spec.TiDB.Replicas = replicas
+				} else {
+					framework.Failf("unsupported component: %v", st.component)
+				}
+				tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+				framework.ExpectNoError(err)
+				utilstatefulset.WaitForStatusReplicas(hc, sts, replicas)
+
+				ginkgo.By(fmt.Sprintf("Verify delete slots of sts %s/%s is %v", ns, stsName, deleteSlots.List()))
+				sts, err = hc.AppsV1().StatefulSets(ns).Get(stsName, metav1.GetOptions{})
+				framework.ExpectNoError(err)
+				framework.ExpectEqual(helper.GetDeleteSlots(sts), deleteSlots)
+
+				ginkgo.By(fmt.Sprintf("Verify other pods of sts %s/%s should not be affected", ns, stsName))
+				newPodList := e2esset.GetPodList(c, sts)
+				framework.ExpectEqual(len(newPodList.Items), int(*sts.Spec.Replicas))
+				for _, newPod := range newPodList.Items {
+					for _, oldPod := range oldPodList.Items {
+						// if the pod is not new or deleted in scaling, it should not be affected
+						if oldPod.Name == newPod.Name && oldPod.UID != newPod.UID {
+							framework.Failf("pod %s/%s should not be affected (UID: %s, OLD UID: %s)", newPod.Namespace, newPod.Name, newPod.UID, oldPod.UID)
+						}
+					}
+				}
+			}
+
 			oa.CheckTidbClusterStatusOrDie(&cluster)
 		})
 	})

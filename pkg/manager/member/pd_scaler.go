@@ -39,27 +39,42 @@ func NewPDScaler(pdControl pdapi.PDControlInterface,
 	return &pdScaler{generalScaler{pdControl, pvcLister, pvcControl}}
 }
 
+func (psd *pdScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	if err := validateScaling(oldSet, newSet); err != nil {
+		return err
+	}
+	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
+		return psd.ScaleOut(tc, oldSet, newSet)
+	} else if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
+		return psd.ScaleIn(tc, oldSet, newSet)
+	}
+	return nil
+}
+
 func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	ordinal, replicas, deleteSlots, err := scaleOne(oldSet, newSet)
+	if err != nil {
+		return err
+	}
+	resetReplicas(newSet, oldSet)
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	if tc.PDUpgrading() {
-		resetReplicas(newSet, oldSet)
 		return nil
 	}
 
-	_, err := psd.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.PDMemberType, *oldSet.Spec.Replicas)
+	glog.Infof("scaling out pd statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
+	_, err = psd.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.PDMemberType, ordinal)
 	if err != nil {
-		resetReplicas(newSet, oldSet)
 		return err
 	}
 
 	if !tc.Status.PD.Synced {
-		resetReplicas(newSet, oldSet)
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed,can't scale out now", ns, tcName)
 	}
 
 	if len(tc.Status.PD.FailureMembers) != 0 {
-		increaseReplicas(newSet, oldSet)
+		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		return nil
 	}
 
@@ -73,12 +88,11 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 		}
 	}
 	if healthCount < int(totalCount) {
-		resetReplicas(newSet, oldSet)
 		return fmt.Errorf("TidbCluster: %s/%s's pd %d/%d is ready, can't scale out now",
 			ns, tcName, healthCount, totalCount)
 	}
 
-	increaseReplicas(newSet, oldSet)
+	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
 }
 
@@ -87,19 +101,23 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	ordinal := *oldSet.Spec.Replicas - 1
+	ordinal, replicas, deleteSlots, err := scaleOne(oldSet, newSet)
+	if err != nil {
+		return err
+	}
+	resetReplicas(newSet, oldSet)
 	memberName := fmt.Sprintf("%s-pd-%d", tc.GetName(), ordinal)
 	setName := oldSet.GetName()
 
 	if tc.PDUpgrading() {
-		resetReplicas(newSet, oldSet)
 		return nil
 	}
 
 	if !tc.Status.PD.Synced {
-		resetReplicas(newSet, oldSet)
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed,can't scale in now", ns, tcName)
 	}
+
+	glog.Infof("scaling in pd statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 
 	pdClient := controller.GetPDClient(psd.pdControl, tc)
 	// If the pd pod was pd leader during scale-in, we would transfer pd leader to pd-0 directly
@@ -108,24 +126,20 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	if ordinal > 0 {
 		leader, err := pdClient.GetPDLeader()
 		if err != nil {
-			resetReplicas(newSet, oldSet)
 			return err
 		}
 		if leader.Name == memberName {
 			err = pdClient.TransferPDLeader(fmt.Sprintf("%s-pd-%d", tc.GetName(), 0))
 			if err != nil {
-				resetReplicas(newSet, oldSet)
 				return err
 			}
-			resetReplicas(newSet, oldSet)
 			return controller.RequeueErrorf("tc[%s/%s]'s pd pod[%s/%s] is transferring pd leader,can't scale-in now", ns, tcName, ns, memberName)
 		}
 	}
 
-	err := pdClient.DeleteMember(memberName)
+	err = pdClient.DeleteMember(memberName)
 	if err != nil {
 		glog.Errorf("pd scale in: failed to delete member %s, %v", memberName, err)
-		resetReplicas(newSet, oldSet)
 		return err
 	}
 	glog.Infof("pd scale in: delete member %s successfully", memberName)
@@ -133,7 +147,6 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	pvcName := ordinalPVCName(v1alpha1.PDMemberType, setName, ordinal)
 	pvc, err := psd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil {
-		resetReplicas(newSet, oldSet)
 		return err
 	}
 
@@ -147,13 +160,12 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	if err != nil {
 		glog.Errorf("pd scale in: failed to set pvc %s/%s annotation: %s to %s",
 			ns, pvcName, label.AnnPVCDeferDeleting, now)
-		resetReplicas(newSet, oldSet)
 		return err
 	}
 	glog.Infof("pd scale in: set pvc %s/%s annotation: %s to %s",
 		ns, pvcName, label.AnnPVCDeferDeleting, now)
 
-	decreaseReplicas(newSet, oldSet)
+	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
 }
 
@@ -164,12 +176,21 @@ func NewFakePDScaler() Scaler {
 	return &fakePDScaler{}
 }
 
+func (fsd *fakePDScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
+		return fsd.ScaleOut(tc, oldSet, newSet)
+	} else if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
+		return fsd.ScaleIn(tc, oldSet, newSet)
+	}
+	return nil
+}
+
 func (fsd *fakePDScaler) ScaleOut(_ *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	increaseReplicas(newSet, oldSet)
+	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas+1, nil)
 	return nil
 }
 
 func (fsd *fakePDScaler) ScaleIn(_ *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	decreaseReplicas(newSet, oldSet)
+	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas-1, nil)
 	return nil
 }

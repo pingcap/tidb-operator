@@ -18,11 +18,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	glog "k8s.io/klog"
 )
@@ -87,7 +90,18 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-	for i := tc.TiKVStsActualReplicas() - 1; i >= 0; i-- {
+	var maxReplicaCount int
+	var deleteSlots sets.Int
+	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+		maxReplicaCount, deleteSlots = helper.GetMaxReplicaCountAndDeleteSlots(int(*oldSet.Spec.Replicas), helper.GetDeleteSlots(oldSet))
+	} else {
+		maxReplicaCount = int(tc.TiKVStsActualReplicas())
+	}
+	for i := int32(maxReplicaCount) - 1; i >= 0; i-- {
+		if deleteSlots != nil && deleteSlots.Has(int(i)) {
+			glog.Infof("tikv pod %s/%s is in delete slots, skip", ns, TikvPodName(tcName, i))
+			continue
+		}
 		store := tku.getStoreByOrdinal(tc, i)
 		if store == nil {
 			continue

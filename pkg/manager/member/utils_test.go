@@ -16,7 +16,11 @@ package member
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -92,5 +96,145 @@ func TestStatefulSetIsUpgrading(t *testing.T) {
 
 	for _, test := range tests {
 		testFn(test, t)
+	}
+}
+
+func TestStatefulSetAnnotationsNeedSync(t *testing.T) {
+	tests := []struct {
+		name        string
+		currentAnns map[string]string
+		desiredAnns map[string]string
+		expected    bool
+	}{
+		{
+			name:        "nil",
+			currentAnns: nil,
+			desiredAnns: nil,
+			expected:    false,
+		},
+		{
+			name:        "empty",
+			currentAnns: map[string]string{},
+			desiredAnns: map[string]string{},
+			expected:    false,
+		},
+		{
+			name: "LastAppliedConfigAnnotation",
+			currentAnns: map[string]string{
+				LastAppliedConfigAnnotation: "foo",
+			},
+			desiredAnns: map[string]string{
+				LastAppliedConfigAnnotation: "foo",
+			},
+			expected: false,
+		},
+		{
+			name: "LastAppliedConfigAnnotation with delete-slots",
+			currentAnns: map[string]string{
+				LastAppliedConfigAnnotation: "foo",
+			},
+			desiredAnns: map[string]string{
+				LastAppliedConfigAnnotation: "foo",
+				"delete-slots":              "[0,1]",
+			},
+			expected: true,
+		},
+		{
+			name: "order of keys in map literal does not matter",
+			currentAnns: map[string]string{
+				"a": "1",
+				"b": "2",
+			},
+			desiredAnns: map[string]string{
+				"b": "2",
+				"a": "1",
+			},
+			expected: false,
+		},
+		{
+			name: "value matters",
+			currentAnns: map[string]string{
+				"a": "1",
+				"b": "2",
+			},
+			desiredAnns: map[string]string{
+				"b": "2",
+				"a": "11",
+			},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := statefulSetAnnotationsNeedSync(tt.currentAnns, tt.desiredAnns)
+			if got != tt.expected {
+				t.Errorf("got %v, expected: %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetStsAnnotations(t *testing.T) {
+	tests := []struct {
+		name      string
+		tc        *v1alpha1.TidbCluster
+		component string
+		expected  map[string]string
+	}{
+		{
+			name: "nil",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: nil,
+				},
+			},
+			component: label.TiDBLabelVal,
+			expected:  map[string]string{},
+		},
+		{
+			name: "empty",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			component: label.TiDBLabelVal,
+			expected:  map[string]string{},
+		},
+		{
+			name: "tidb",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						label.AnnTiDBDeleteSlots: "[1,2]",
+					},
+				},
+			},
+			component: label.TiDBLabelVal,
+			expected: map[string]string{
+				helper.DeleteSlotsAnn: "[1,2]",
+			},
+		},
+		{
+			name: "tidb but component is not tidb",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						label.AnnTiDBDeleteSlots: "[1,2]",
+					},
+				},
+			},
+			component: label.PDLabelVal,
+			expected:  map[string]string{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getStsAnnotations(tt.tc, tt.component)
+			if diff := cmp.Diff(tt.expected, got); diff != "" {
+				t.Errorf("unexpected (-want, +got): %s", diff)
+			}
+		})
 	}
 }

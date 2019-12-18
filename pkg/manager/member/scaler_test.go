@@ -18,12 +18,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
@@ -157,4 +162,318 @@ func newFakeGeneralScaler() (*generalScaler, cache.Indexer, *controller.FakePVCC
 
 	return &generalScaler{pvcLister: pvcInformer.Lister(), pvcControl: pvcControl},
 		pvcInformer.Informer().GetIndexer(), pvcControl
+}
+
+func TestScaleOne(t *testing.T) {
+	tests := []struct {
+		name            string
+		actual          *apps.StatefulSet
+		desired         *apps.StatefulSet
+		wantOrdinal     int32
+		wantReplicas    int32
+		wantDeleteSlots sets.Int
+	}{
+		{
+			"scale in without delete slots",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(1),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(0),
+				},
+			},
+			0,
+			0,
+			sets.Int{},
+		},
+		{
+			"scale in without delete slots (diff > 1)",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(8),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(3),
+				},
+			},
+			7,
+			7,
+			sets.Int{},
+		},
+		{
+			"scale in with delete slots",
+			// 0, 2, 3, 4, 5
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(5),
+				},
+			},
+			// 0, 4, 5
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1, 2, 3]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(3),
+				},
+			},
+			3,
+			4,
+			sets.NewInt(1, 3),
+		},
+		{
+			"scale out without delete slots",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(0),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(1),
+				},
+			},
+			0,
+			1,
+			sets.Int{},
+		},
+		{
+			"scale out without delete slots (diff > 1)",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(3),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(8),
+				},
+			},
+			3,
+			4,
+			sets.Int{},
+		},
+		{
+			"scale out with delete slots",
+			// 0, 4, 5
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1, 2, 3]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(3),
+				},
+			},
+			// 0, 2, 3, 4, 5
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(5),
+				},
+			},
+			2,
+			4,
+			sets.NewInt(1, 3),
+		},
+	}
+
+	features.DefaultFeatureGate.Set("AdvancedStatefulSet=true")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ordinal, replicas, deleteSlots, err := scaleOne(tt.actual, tt.desired)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(tt.wantOrdinal, ordinal); diff != "" {
+				t.Errorf("unexpected (-want, +got): %s", diff)
+			}
+			if diff := cmp.Diff(tt.wantReplicas, replicas); diff != "" {
+				t.Errorf("unexpected (-want, +got): %s", diff)
+			}
+			if diff := cmp.Diff(tt.wantDeleteSlots, deleteSlots); diff != "" {
+				t.Errorf("unexpected (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestValidateScaling(t *testing.T) {
+	tests := []struct {
+		name    string
+		desired *apps.StatefulSet
+		actual  *apps.StatefulSet
+		err     bool
+	}{
+		{
+			"without delete slots",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(0),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(1),
+				},
+			},
+			false,
+		},
+		{
+			"scaling in by add deleting slots",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(4),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(3),
+				},
+			},
+			false,
+		},
+		{
+			"scaling out by remove deleting slots",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1,3]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(4),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(5),
+				},
+			},
+			false,
+		},
+		{
+			"changing deleting slots without updating replicas not allowed",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1,3]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(4),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[0,3]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(4),
+				},
+			},
+			true,
+		},
+		{
+			"scaling in but replacing delete slots not allowed",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1,3]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(4),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[0,3,4]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(3),
+				},
+			},
+			true,
+		},
+		{
+			"scaling out but replacing delete slots not allowed",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1,3]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(4),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[0,3]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(5),
+				},
+			},
+			true,
+		},
+	}
+
+	features.DefaultFeatureGate.Set("AdvancedStatefulSet=true")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := validateScaling(tt.desired, tt.actual)
+			if tt.err && got == nil {
+				t.Error("expects error, got nil")
+			}
+			if !tt.err && got != nil {
+				t.Errorf("expects no error, got an error: %v", got)
+			}
+		})
+	}
 }
