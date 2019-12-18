@@ -15,7 +15,6 @@ package pod
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"k8s.io/client-go/kubernetes"
 	"time"
 
@@ -26,8 +25,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
-	appslisters "k8s.io/client-go/listers/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -57,19 +55,19 @@ func IsStatefulSetUpgrading(set *v1.StatefulSet) bool {
 // pd pod who would be deleted by statefulset controller
 // we add annotations to this pvc and delete it when we scale out the pd replicas
 // for the new pd pod need new pvc
-func addDeferDeletingToPVC(pvc *core.PersistentVolumeClaim, pvcControl controller.PVCControlInterface, tc *v1alpha1.TidbCluster) error {
+func addDeferDeletingToPVC(pvc *core.PersistentVolumeClaim, kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster) error {
 	if pvc.Annotations == nil {
 		pvc.Annotations = map[string]string{}
 	}
 	now := time.Now().Format(time.RFC3339)
 	pvc.Annotations[label.AnnPVCDeferDeleting] = now
-	_, err := pvcControl.UpdatePVC(tc, pvc)
+	_, err := kubeCli.CoreV1().PersistentVolumeClaims(pvc.Namespace).Update(pvc)
 	return err
 }
 
 // check whether the former upgraded pd pods were healthy in PD cluster during PD upgrading.
 // If not,then return an error
-func checkFormerPDPodStatus(podLister corelisters.PodLister, pdClient pdapi.PDClient, tc *v1alpha1.TidbCluster, namespace string, ordinal int32, replicas int32) error {
+func checkFormerPDPodStatus(kubeCli kubernetes.Interface, pdClient pdapi.PDClient, tc *v1alpha1.TidbCluster, namespace string, ordinal int32, replicas int32) error {
 	healthInfo, err := pdClient.GetHealth()
 	if err != nil {
 		return err
@@ -82,7 +80,7 @@ func checkFormerPDPodStatus(podLister corelisters.PodLister, pdClient pdapi.PDCl
 	tcName := tc.Name
 	for i := replicas - 1; i > ordinal; i-- {
 		podName := memberUtil.PdPodName(tcName, i)
-		pod, err := podLister.Pods(namespace).Get(podName)
+		pod, err := kubeCli.CoreV1().Pods(namespace).Get(podName, meta.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -125,7 +123,7 @@ func isPDLeader(pdClient pdapi.PDClient, pod *core.Pod) (bool, error) {
 
 // getOwnerStatefulSetForTiDBComponent would find pd/tikv/tidb's owner statefulset,
 // if not exist, then return error
-func getOwnerStatefulSetForTiDBComponent(pod *core.Pod, stsLister appslisters.StatefulSetLister) (*apps.StatefulSet, error) {
+func getOwnerStatefulSetForTiDBComponent(pod *core.Pod, kubeCli kubernetes.Interface) (*apps.StatefulSet, error) {
 	name := pod.Name
 	namespace := pod.Namespace
 	var ownerStatefulSetName string
@@ -138,5 +136,5 @@ func getOwnerStatefulSetForTiDBComponent(pod *core.Pod, stsLister appslisters.St
 	if len(ownerStatefulSetName) == 0 {
 		return nil, fmt.Errorf(failToFindTidbComponentOwnerStatefulset, namespace, name)
 	}
-	return stsLister.StatefulSets(namespace).Get(ownerStatefulSetName)
+	return kubeCli.AppsV1().StatefulSets(namespace).Get(ownerStatefulSetName, meta.GetOptions{})
 }
