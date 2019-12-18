@@ -15,12 +15,13 @@ package main
 
 import (
 	"flag"
-	"github.com/openshift/generic-admission-server/pkg/apiserver"
-	"github.com/openshift/generic-admission-server/pkg/cmd/server"
-	"k8s.io/klog"
 	"os"
 	"runtime"
 	"time"
+
+	"github.com/openshift/generic-admission-server/pkg/apiserver"
+	"github.com/openshift/generic-admission-server/pkg/cmd/server"
+	"k8s.io/klog"
 
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/version"
