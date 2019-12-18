@@ -74,8 +74,6 @@ func run(flagset *flag.FlagSet, admissionHooks ...apiserver.AdmissionHook) {
 
 	// Flags for glog
 	cmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
-	// Fix glog printing "Error: logging before flag.Parse"
-	flag.CommandLine.Parse([]string{})
 
 	if err := cmd.Execute(); err != nil {
 		klog.Fatal(err)
