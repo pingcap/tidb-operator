@@ -16,7 +16,6 @@ package main
 import (
 	"flag"
 	"os"
-	"runtime"
 	"time"
 
 	"github.com/openshift/generic-admission-server/pkg/apiserver"
@@ -65,10 +64,6 @@ func main() {
 }
 
 func run(flagset *flag.FlagSet, admissionHooks ...apiserver.AdmissionHook) {
-
-	if len(os.Getenv("GOMAXPROCS")) == 0 {
-		runtime.GOMAXPROCS(runtime.NumCPU())
-	}
 
 	stopCh := genericapiserver.SetupSignalHandler()
 
