@@ -180,6 +180,8 @@ admissionWebhook:
   create: false
   replicas: 1
   serviceAccount: tidb-admission-webhook
+  rbac:
+    create: true
   ## failurePolicy are applied to ValidatingWebhookConfiguration which affect tidb-admission-webhook
   ## refer to https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
   failurePolicy:
