@@ -19,60 +19,71 @@ import (
 	"time"
 
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1/helper"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/webhook/pod"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 
+	asappsv1alpha1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	core "k8s.io/api/core/v1"
-	kubeinformers "k8s.io/client-go/informers"
-	event "k8s.io/client-go/kubernetes/typed/core/v1"
+	"github.com/pingcap/tidb-operator/pkg/webhook/statefulset"
 )
 
-type PodAdmissionHook struct {
+type AdmissionHook struct {
 	lock                     sync.RWMutex
 	initialized              bool
 	podAC                    *pod.PodAdmissionControl
+	stsAC                    *statefulset.StatefulSetAdmissionControl
 	ExtraServiceAccounts     string
 	EvictRegionLeaderTimeout time.Duration
 }
 
-func (a *PodAdmissionHook) ValidatingResource() (plural schema.GroupVersionResource, singular string) {
+func (a *AdmissionHook) ValidatingResource() (plural schema.GroupVersionResource, singular string) {
 	return schema.GroupVersionResource{
 			Group:    "admission.tidb.pingcap.com",
 			Version:  "v1alpha1",
-			Resource: "podadmissionreviews",
+			Resource: "admissionreviews",
 		},
 		"PodAdmissionReview"
 }
 
-func (a *PodAdmissionHook) Validate(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+func (a *AdmissionHook) Validate(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
 	if !a.initialized {
 		return &admission.AdmissionResponse{
 			Allowed: false,
 		}
 	}
-	if "Pod" != ar.Kind.Kind || "" != ar.Kind.Group {
-		klog.Infof("success to %v %s[%s/%s]", ar.Operation, ar.Kind.Kind, ar.Name, ar.Namespace)
-		return util.ARSuccess()
+	switch ar.Kind.Kind {
+	case "Pod":
+		if "" != ar.Kind.Group {
+			return a.unknownAdmissionRequest(ar)
+		}
+		return a.podAC.AdmitPods(ar)
+	case "StatefulSet":
+		expectedGroup := "apps"
+		if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+			expectedGroup = asappsv1alpha1.GroupName
+		}
+		if expectedGroup != ar.Kind.Group {
+			return a.unknownAdmissionRequest(ar)
+		}
+		return a.stsAC.AdmitStatefulSets(ar)
+	default:
+		return a.unknownAdmissionRequest(ar)
 	}
-	return a.podAC.AdmitPods(ar)
 }
 
 // any special initialization goes here
-func (a *PodAdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) error {
+func (a *AdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) error {
+	if a.initialized {
+		return nil
+	}
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -97,36 +108,18 @@ func (a *PodAdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) 
 		kubeCli = helper.NewHijackClient(kubeCli, asCli)
 	}
 
-	informerFactory := informers.NewSharedInformerFactory(cli, controller.ResyncDuration)
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
-
 	// init pdControl
 	pdControl := pdapi.NewDefaultPDControl(kubeCli)
-
-	// init recorder
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&event.EventSinkImpl{
-		Interface: event.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, core.EventSource{Component: "tidbcluster"})
-
-	pc := pod.NewPodAdmissionControl(kubeCli, cli, pdControl, informerFactory, kubeInformerFactory, recorder, strings.Split(a.ExtraServiceAccounts, ","), a.EvictRegionLeaderTimeout)
+	pc := pod.NewPodAdmissionControl(kubeCli, cli, pdControl, strings.Split(a.ExtraServiceAccounts, ","), a.EvictRegionLeaderTimeout)
 	a.podAC = pc
-	informerFactory.Start(stopCh)
-	kubeInformerFactory.Start(stopCh)
-
-	// Wait for all started informers' cache were synced.
-	for _, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
-		if !synced {
-			return err
-		}
-	}
-	for _, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
-		if !synced {
-			return err
-		}
-	}
-	a.initialized = true
 	klog.Info("pod admission webhook initialized successfully")
+	a.stsAC = statefulset.NewStatefulSetAdmissionControl(cli)
+	klog.Info("statefulset admission webhook initialized successfully")
+	a.initialized = true
 	return nil
+}
+
+func (a *AdmissionHook) unknownAdmissionRequest(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+	klog.Infof("success to %v %s[%s/%s]", ar.Operation, ar.Kind.Kind, ar.Name, ar.Namespace)
+	return util.ARSuccess()
 }
