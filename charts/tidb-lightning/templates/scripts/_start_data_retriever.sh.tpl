@@ -1,6 +1,6 @@
 set -euo pipefail
 filename=$(basename {{ .Values.dataSource.remote.path }})
-if find /data -name metadata; then
+if find /data -name metadata | egrep '.*'; then
     echo "data already exist"
     exit 0
 else
