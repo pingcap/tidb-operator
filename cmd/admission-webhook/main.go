@@ -15,29 +15,34 @@ package main
 
 import (
 	"flag"
+	"github.com/openshift/generic-admission-server/pkg/apiserver"
+	"github.com/openshift/generic-admission-server/pkg/cmd/server"
+	"k8s.io/klog"
 	"os"
+	"runtime"
 	"time"
 
-	"github.com/openshift/generic-admission-server/pkg/cmd"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/webhook"
+	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/component-base/logs"
 )
 
 var (
+	flagset                  *flag.FlagSet
 	printVersion             bool
 	extraServiceAccounts     string
 	evictRegionLeaderTimeout time.Duration
 )
 
 func init() {
+	flagset = flag.NewFlagSet("tidb-admission-webhook", flag.ExitOnError)
 	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.StringVar(&extraServiceAccounts, "extraServiceAccounts", "", "comma-separated, extra Service Accounts the Webhook should control. The full pattern for each common service account is system:serviceaccount:<namespace>:<serviceaccount-name>")
 	flag.DurationVar(&evictRegionLeaderTimeout, "evictRegionLeaderTimeout", 3*time.Minute, "TiKV evict region leader timeout period, default 3 min")
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
-	flag.Parse()
 }
 
 func main() {
@@ -55,5 +60,28 @@ func main() {
 		ExtraServiceAccounts:     extraServiceAccounts,
 		EvictRegionLeaderTimeout: evictRegionLeaderTimeout,
 	}
-	cmd.RunAdmissionServer(ah)
+	run(flagset, ah)
+}
+
+func run(flagset *flag.FlagSet, admissionHooks ...apiserver.AdmissionHook) {
+
+	if len(os.Getenv("GOMAXPROCS")) == 0 {
+		runtime.GOMAXPROCS(runtime.NumCPU())
+	}
+
+	stopCh := genericapiserver.SetupSignalHandler()
+
+	cmd := server.NewCommandStartAdmissionServer(os.Stdout, os.Stderr, stopCh, admissionHooks...)
+
+	// Add admission hook flags
+	cmd.Flags().AddGoFlagSet(flagset)
+
+	// Flags for glog
+	cmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
+	// Fix glog printing "Error: logging before flag.Parse"
+	flag.CommandLine.Parse([]string{})
+
+	if err := cmd.Execute(); err != nil {
+		klog.Fatal(err)
+	}
 }
