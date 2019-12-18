@@ -34,7 +34,7 @@ metadata:
     app.kubernetes.io/component: admission-webhook
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 webhooks:
-  - name: delete.podadmission.pingcap.net
+  - name: delete.podadmission.tidb.pingcap.com
     {{- if semverCompare ">=1.15-0" .Capabilities.KubeVersion.GitVersion }}
     objectSelector:
       matchLabels:
@@ -69,7 +69,7 @@ metadata:
     app.kubernetes.io/component: admission-webhook
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 webhooks:
-  - name: create.podadmission.pingcap.net
+  - name: create.podadmission.tidb.pingcap.com
     {{- if semverCompare ">=1.15-0" .Capabilities.KubeVersion.GitVersion }}
     objectSelector:
       matchLabels:
