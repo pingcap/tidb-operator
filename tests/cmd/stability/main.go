@@ -115,7 +115,7 @@ func run() {
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, cfg)
 	fta.CheckAndRecoverEnvOrDie()
 
-	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, cfg, allClusters, nil, nil)
+	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, ocfg, cfg, allClusters, nil, nil)
 	oa.CheckK8sAvailableOrDie(nil, nil)
 	oa.LabelNodesOrDie()
 

@@ -37,6 +37,10 @@ const (
 	BackupScheduleKind    = "BackupSchedule"
 	BackupScheduleKindKey = "backupschedule"
 
+	TiDBMonitorName    = "tidbmonitors"
+	TiDBMonitorKind    = "TidbMonitor"
+	TiDBMonitorKindKey = "tidbmonitor"
+
 	SpecPath = "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1."
 )
 
@@ -54,6 +58,7 @@ type CrdKinds struct {
 	Backup         CrdKind
 	Restore        CrdKind
 	BackupSchedule CrdKind
+	TiDBMonitor    CrdKind
 }
 
 var DefaultCrdKinds = CrdKinds{
@@ -62,4 +67,5 @@ var DefaultCrdKinds = CrdKinds{
 	Backup:         CrdKind{Plural: BackupName, Kind: BackupKind, ShortNames: []string{"bk"}, SpecName: SpecPath + BackupKind},
 	Restore:        CrdKind{Plural: RestoreName, Kind: RestoreKind, ShortNames: []string{"rt"}, SpecName: SpecPath + RestoreKind},
 	BackupSchedule: CrdKind{Plural: BackupScheduleName, Kind: BackupScheduleKind, ShortNames: []string{"bks"}, SpecName: SpecPath + BackupScheduleKind},
+	TiDBMonitor:    CrdKind{Plural: TiDBMonitorName, Kind: TiDBMonitorKind, ShortNames: []string{}, SpecName: SpecPath + TiDBMonitorKind},
 }

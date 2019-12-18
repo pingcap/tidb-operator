@@ -16,10 +16,13 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pingcap/tidb-operator/pkg/label"
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
@@ -29,6 +32,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
+	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/apiserver"
@@ -49,6 +54,8 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	"k8s.io/kubernetes/test/utils"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
@@ -62,6 +69,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	var cfg *tests.Config
 	var config *restclient.Config
 	var ocfg *tests.OperatorConfig
+	var genericCli client.Client
 	var fwCancel context.CancelFunc
 
 	ginkgo.BeforeEach(func() {
@@ -74,15 +82,17 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to create clientset")
 		asCli, err = asclientset.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
+		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
+		framework.ExpectNoError(err, "failed to create clientset")
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
 		framework.ExpectNoError(err, "failed to load raw config")
 		ctx, cancel := context.WithCancel(context.Background())
 		fw, err := portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
 		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
-		oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, e2econfig.TestConfig, nil, fw, f)
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
+		oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 	})
 
 	ginkgo.AfterEach(func() {
@@ -244,9 +254,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("Test aggregated apiserver", func() {
-		ginkgo.By(fmt.Sprintf("Starting to test apiserver, test apiserver image: %s", cfg.TestApiserverImage))
+		ginkgo.By(fmt.Sprintf("Starting to test apiserver, test apiserver image: %s", cfg.E2EImage))
 		framework.Logf("config: %v", config)
-		aaCtx := apiserver.NewE2eContext(ns, config, cfg.TestApiserverImage)
+		aaCtx := apiserver.NewE2eContext(ns, config, cfg.E2EImage)
 		defer aaCtx.Clean()
 		aaCtx.Setup()
 		aaCtx.Do()
@@ -481,29 +491,71 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
-		tidbSetName := controller.TiDBMemberName(tc.Name)
-		oldTiDBSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(tidbSetName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "Expected get TiDB statefulset")
+		ginkgo.By("Discovery service should be reconciled by tidb-operator")
+		discoveryName := controller.DiscoveryMemberName(tc.Name)
+		discoveryDep, err := c.AppsV1().Deployments(tc.Namespace).Get(discoveryName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get discovery deployment")
+		WaitObjectToBeControlledByOrDie(genericCli, discoveryDep, tc, 5*time.Minute)
 
-		oldRev := oldTiDBSet.Status.CurrentRevision
-		framework.ExpectEqual(oldTiDBSet.Status.UpdateRevision, oldRev, "Expected tidb is not upgrading")
+		err = utils.WaitForDeploymentComplete(c, discoveryDep, e2elog.Logf, 10*time.Second, 5*time.Minute)
+		framework.ExpectNoError(err, "Discovery Deployment should be healthy after managed by tidb-operator")
 
+		err = genericCli.Delete(context.TODO(), discoveryDep)
+		framework.ExpectNoError(err, "Expected to delete deployment")
+
+		err = wait.PollImmediate(10*time.Second, 5*time.Minute, func() (bool, error) {
+			_, err := c.AppsV1().Deployments(tc.Namespace).Get(discoveryName, metav1.GetOptions{})
+			if err != nil {
+				e2elog.Logf("wait discovery deployment get created again: %v", err)
+				return false, nil
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "Discovery Deployment should be recovered by tidb-operator after deletion")
+
+		ginkgo.By("Managing TiDB configmap in TidbCluster CRD in-place should not trigger rolling-udpate")
 		// TODO: modify other cases to manage TiDB configmap in CRD by default
-		ginkgo.By("Test managing TiDB configmap in TidbCluster CRD")
+		setNameToRevision := map[string]string{
+			controller.PDMemberName(tc.Name):   "",
+			controller.TiKVMemberName(tc.Name): "",
+			controller.TiDBMemberName(tc.Name): "",
+		}
+
+		for setName := range setNameToRevision {
+			oldSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "Expected get statefulset %s", setName)
+
+			oldRev := oldSet.Status.CurrentRevision
+			framework.ExpectEqual(oldSet.Status.UpdateRevision, oldRev, "Expected statefulset %s is not upgrading", setName)
+
+			setNameToRevision[setName] = oldRev
+		}
+
+		tc, err = cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get tidbcluster")
 		tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
 		tc.Spec.TiDB.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
-
+		tc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{}
+		tc.Spec.TiKV.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
+		tc.Spec.PD.Config = &v1alpha1.PDConfig{}
+		tc.Spec.PD.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
 		_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
 		framework.ExpectNoError(err, "Expected update tidbcluster")
 
 		// check for 2 minutes to ensure the tidb statefulset do not get rolling-update
-		err = wait.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
-			tidbSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(tidbSetName, metav1.GetOptions{})
-			if err != nil {
-				return false, err
+		err = wait.PollImmediate(10*time.Second, 2*time.Minute, func() (bool, error) {
+			tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "Expected get tidbcluster")
+			framework.ExpectEqual(tc.Status.PD.Phase, v1alpha1.NormalPhase, "PD should not be updated")
+			framework.ExpectEqual(tc.Status.TiKV.Phase, v1alpha1.NormalPhase, "TiKV should not be updated")
+			framework.ExpectEqual(tc.Status.TiDB.Phase, v1alpha1.NormalPhase, "TiDB should not be updated")
+
+			for setName, oldRev := range setNameToRevision {
+				newSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
+				framework.ExpectNoError(err, "Expected get tidb statefulset")
+				framework.ExpectEqual(newSet.Status.CurrentRevision, oldRev, "Expected no rolling-update of %s when manage config in-place", setName)
+				framework.ExpectEqual(newSet.Status.UpdateRevision, oldRev, "Expected no rolling-update of %s when manage config in-place", setName)
 			}
-			framework.ExpectEqual(tidbSet.Status.CurrentRevision, oldRev, "Expected no rolling-update when manage config in-place")
-			framework.ExpectEqual(tidbSet.Status.UpdateRevision, oldRev, "Expected no rolling-update when manage config in-place")
 			return false, nil
 		})
 
@@ -512,28 +564,88 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		}
 
 		err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
-			tidbSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(tidbSetName, metav1.GetOptions{})
-			if err != nil {
-				return false, err
-			}
-			usingName := member.FindConfigMapVolume(&tidbSet.Spec.Template.Spec, func(name string) bool {
-				return strings.HasPrefix(name, controller.TiDBMemberName(tc.Name))
-			})
-			if usingName == "" {
-				e2elog.Fail("cannot find configmap that used by TiDB statefulset")
-			}
-			tidbCm, err := c.CoreV1().ConfigMaps(tc.Namespace).Get(usingName, metav1.GetOptions{})
-			if err != nil {
-				return false, err
-			}
-			if !metav1.IsControlledBy(tidbCm, tc) {
-				e2elog.Logf("expect tidb configmap adopted by tidbcluster, still waiting...")
-				return false, nil
+			for setName := range setNameToRevision {
+				newSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+				usingName := member.FindConfigMapVolume(&newSet.Spec.Template.Spec, func(name string) bool {
+					return strings.HasPrefix(name, setName)
+				})
+				if usingName == "" {
+					e2elog.Failf("cannot find configmap that used by %s", setName)
+				}
+				usingCm, err := c.CoreV1().ConfigMaps(tc.Namespace).Get(usingName, metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+				if !metav1.IsControlledBy(usingCm, tc) {
+					e2elog.Logf("expect configmap of %s adopted by tidbcluster, still waiting...", setName)
+					return false, nil
+				}
 			}
 			return true, nil
 		})
 
 		framework.ExpectNoError(err)
+	})
+
+	ginkgo.It("Restarter: Testing restarting by annotations", func() {
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "restarter", "admin", "")
+		cluster.Resources["pd.replicas"] = "1"
+		cluster.Resources["tikv.replicas"] = "1"
+		cluster.Resources["tidb.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&cluster)
+		oa.CheckTidbClusterStatusOrDie(&cluster)
+
+		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get tidbcluster")
+		pd_0, err := c.CoreV1().Pods(ns).Get(operatorUtils.GetPodName(tc, v1alpha1.PDMemberType, 0), metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get pd-0")
+		tikv_0, err := c.CoreV1().Pods(ns).Get(operatorUtils.GetPodName(tc, v1alpha1.TiKVMemberType, 0), metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get tikv-0")
+		tidb_0, err := c.CoreV1().Pods(ns).Get(operatorUtils.GetPodName(tc, v1alpha1.TiDBMemberType, 0), metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get tidb-0")
+		pd_0.Annotations[label.AnnPodDeferDeleting] = "true"
+		tikv_0.Annotations[label.AnnPodDeferDeleting] = "true"
+		tidb_0.Annotations[label.AnnPodDeferDeleting] = "true"
+		_, err = c.CoreV1().Pods(ns).Update(pd_0)
+		framework.ExpectNoError(err, "Expected update pd-0 restarting ann")
+		_, err = c.CoreV1().Pods(ns).Update(tikv_0)
+		framework.ExpectNoError(err, "Expected update tikv-0 restarting ann")
+		_, err = c.CoreV1().Pods(ns).Update(tidb_0)
+		framework.ExpectNoError(err, "Expected update tidb-0 restarting ann")
+
+		f := func(name, namespace string, uid types.UID) (bool, error) {
+			pod, err := c.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			if _, existed := pod.Annotations[label.AnnPodDeferDeleting]; existed {
+				return false, nil
+			}
+			if uid == pod.UID {
+				return false, nil
+			}
+			return true, nil
+		}
+
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			isPdRestarted, err := f(pd_0.Name, ns, pd_0.UID)
+			if !(isPdRestarted && err == nil) {
+				return isPdRestarted, err
+			}
+			isTiKVRestarted, err := f(tikv_0.Name, ns, tikv_0.UID)
+			if !(isTiKVRestarted && err == nil) {
+				return isTiKVRestarted, err
+			}
+			isTiDBRestarted, err := f(tidb_0.Name, ns, tidb_0.UID)
+			if !(isTiDBRestarted && err == nil) {
+				return isTiDBRestarted, err
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "Expected tidbcluster pod restarted")
 	})
 })
 

@@ -28,6 +28,7 @@ type Config struct {
 	configFile string
 
 	TidbVersions         string  `yaml:"tidb_versions" json:"tidb_versions"`
+	InstallOperator      bool    `yaml:"install_opeartor" json:"install_opeartor"`
 	OperatorTag          string  `yaml:"operator_tag" json:"operator_tag"`
 	OperatorImage        string  `yaml:"operator_image" json:"operator_image"`
 	UpgradeOperatorTag   string  `yaml:"upgrade_operator_tag" json:"upgrade_operator_tag"`
@@ -57,8 +58,6 @@ type Config struct {
 	ChartDir string `yaml:"chart_dir" json:"chart_dir"`
 	// manifest dir
 	ManifestDir string `yaml:"manifest_dir" json:"manifest_dir"`
-
-	TestApiserverImage string `yaml:"test_apiserver_image" json:"test_apiserver_image"`
 
 	E2EImage string `yaml:"e2e_image" json:"e2e_image"`
 }
@@ -99,7 +98,6 @@ func NewConfig() (*Config, error) {
 	flag.StringVar(&cfg.LogDir, "log-dir", "/logDir", "log directory")
 	flag.IntVar(&cfg.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
 	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v3.0.2,v3.0.3,v3.0.4,v3.0.5", "tidb versions")
-	flag.StringVar(&cfg.TestApiserverImage, "test-apiserver-image", "pingcap/test-apiserver:latest", "test-apiserver image")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
 	flag.StringVar(&cfg.UpgradeOperatorTag, "upgrade-operator-tag", "", "upgrade operator tag used to choose charts")
