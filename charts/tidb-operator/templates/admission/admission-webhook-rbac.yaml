@@ -1,4 +1,4 @@
-{{- if eq .Values.admissionWebhook.create true }}
+{{- if and (eq .Values.admissionWebhook.create true) (eq .Values.rbac.create true) }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -36,12 +36,9 @@ rules:
   - apiGroups: ["pingcap.com"]
     resources:  ["tidbclusters"]
     verbs: ["*"]
-  - apiGroups:
-      - apps.pingcap.com
-    resources:
-      - statefulsets
-    verbs:
-      - '*'
+  - apiGroups: ["apps.pingcap.com"]
+    resources: ["statefulsets"]
+    verbs: ["*"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -74,12 +71,9 @@ metadata:
     app.kubernetes.io/component: admission-webhook
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 rules:
-  - apiGroups:
-      - "admission.tidb.pingcap.com"
-    resources:
-      - admissionreviews
-    verbs:
-      - create
+  - apiGroups: ["admission.tidb.pingcap.com"]
+    resources: ["admissionreviews"]
+    verbs: ["create"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -137,4 +131,4 @@ roleRef:
 subjects:
   - kind: User
     name: kube-apiserver
-{{- end }}
+  {{- end }}
