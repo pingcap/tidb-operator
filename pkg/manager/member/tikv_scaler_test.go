@@ -58,6 +58,8 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 
 		scaler, _, pvcIndexer, _, pvcControl := newFakeTiKVScaler()
 
+		controller.WebhookEnabled = false
+
 		pvc := newPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType)
 		pvc.Name = ordinalPVCName(v1alpha1.TiKVMemberType, oldSet.GetName(), *oldSet.Spec.Replicas)
 		if !test.annoIsNil {

@@ -63,6 +63,9 @@ var (
 
 	// TidbDiscoveryImage is the image of tidb discovery service
 	TidbDiscoveryImage string
+
+	// WebhookEnabled is to indicate whether tidb-admission-webhook is enabled
+	WebhookEnabled bool
 )
 
 const (

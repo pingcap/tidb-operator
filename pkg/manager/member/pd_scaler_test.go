@@ -15,9 +15,10 @@ package member
 
 import (
 	"fmt"
-	"github.com/pingcap/kvproto/pkg/pdpb"
 	"testing"
 	"time"
+
+	"github.com/pingcap/kvproto/pkg/pdpb"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -262,6 +263,8 @@ func TestPDScalerScaleIn(t *testing.T) {
 			pvc := newPVCForStatefulSet(oldSet, v1alpha1.PDMemberType)
 			pvcIndexer.Add(pvc)
 		}
+
+		controller.WebhookEnabled = false
 
 		pdClient := controller.NewFakePDClient(pdControl, tc)
 

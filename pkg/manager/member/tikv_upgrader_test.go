@@ -68,6 +68,8 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 		}
 		newSet := newStatefulSetForTiKVUpgrader()
 
+		controller.WebhookEnabled = false
+
 		pdClient := controller.NewFakePDClient(pdControl, tc)
 		if test.beginEvictLeaderErr {
 			pdClient.AddReaction(pdapi.BeginEvictLeaderActionType, func(action *pdapi.Action) (interface{}, error) {

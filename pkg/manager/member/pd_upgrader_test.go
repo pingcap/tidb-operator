@@ -54,6 +54,8 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			test.changeFn(tc)
 		}
 
+		controller.WebhookEnabled = false
+
 		if test.transferLeaderErr {
 			pdClient.AddReaction(pdapi.TransferPDLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("failed to transfer leader")

@@ -72,6 +72,11 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		return nil
 	}
 
+	if controller.WebhookEnabled {
+		decreaseReplicas(newSet, oldSet)
+		return nil
+	}
+
 	// We need remove member from cluster before reducing statefulset replicas
 	podName := ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
 	pod, err := tsd.podLister.Pods(ns).Get(podName)
