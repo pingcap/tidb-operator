@@ -47,8 +47,12 @@ resources: {}
 
 nodeSelector: {}
 
+annotations: {}
+
 tolerations: []
 affinity: {}
+
+backend: importer # importer | tidb
 
 config: |
   [lightning]
