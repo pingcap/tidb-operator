@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/openshift/generic-admission-server/pkg/cmd"
+
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/webhook"
@@ -37,7 +38,6 @@ func init() {
 	flag.StringVar(&extraServiceAccounts, "extraServiceAccounts", "", "comma-separated, extra Service Accounts the Webhook should control. The full pattern for each common service account is system:serviceaccount:<namespace>:<serviceaccount-name>")
 	flag.DurationVar(&evictRegionLeaderTimeout, "evictRegionLeaderTimeout", 3*time.Minute, "TiKV evict region leader timeout period, default 3 min")
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
-	flag.Parse()
 }
 
 func main() {
@@ -51,10 +51,9 @@ func main() {
 	}
 	version.LogVersionInfo()
 
-	podAh := &webhook.PodAdmissionHook{
+	ah := &webhook.AdmissionHook{
 		ExtraServiceAccounts:     extraServiceAccounts,
 		EvictRegionLeaderTimeout: evictRegionLeaderTimeout,
 	}
-	stsAh := &webhook.StatefulSetAdmissionHook{}
-	cmd.RunAdmissionServer(podAh, stsAh)
+	cmd.RunAdmissionServer(ah)
 }
