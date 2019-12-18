@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/component: admission-webhook
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.admissionWebhook.replicas }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ template "chart.name" . }}
@@ -46,4 +46,4 @@ spec:
             defaultMode: 420
             secretName: tidb-admission-webhook-certs
       {{- end }}
-  {{- end }}
+{{- end }}
