@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/label"
+	admissionregistration "k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/apimachinery/pkg/labels"
+	glog "k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -15,7 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/klog"
-	glog "k8s.io/klog"
 )
 
 func (oa *operatorActions) UpgradeOperatorWithWebhookEnabled(info *OperatorConfig) error {
@@ -53,7 +54,7 @@ func (oa *operatorActions) UpgradeOperatorWithWebhookEnabled(info *OperatorConfi
 		info.ReleaseName,
 		info.OperatorHelmSetString(m))
 
-	glog.Info(cmd)
+	klog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
@@ -85,6 +86,76 @@ func (oa *operatorActions) UpgradeOperatorWithWebhookEnabled(info *OperatorConfi
 
 func (oa *operatorActions) UpgradeOperatorWithWebhookEnabledOrDie(info *OperatorConfig) error {
 	if err := oa.UpgradeOperatorWithWebhookEnabled(info); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+	return nil
+}
+
+func (oa *operatorActions) RegisterStatefulSetWebhookConfig() error {
+	klog.Infof("Registering statefulset update webhook config")
+	path := "/apis/admission.tidb.pingcap.com/v1alpha1/admissionreviews"
+	failurePolicy := admissionregistration.Fail
+	cfg := &admissionregistration.ValidatingWebhookConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "sts-webhook-config",
+		},
+		Webhooks: []admissionregistration.ValidatingWebhook{
+			{
+				Name: "sts-update-webhook",
+				ClientConfig: admissionregistration.WebhookClientConfig{
+					Service: &admissionregistration.ServiceReference{
+						Name:      "kubernetes",
+						Namespace: "default",
+						Path:      &path,
+					},
+				},
+				FailurePolicy: &failurePolicy,
+				Rules: []admissionregistration.RuleWithOperations{
+					{
+						Operations: []admissionregistration.OperationType{
+							admissionregistration.Update,
+						},
+						Rule: admissionregistration.Rule{
+							APIGroups:   []string{"apps"},
+							APIVersions: []string{"v1beta1", "v1"},
+							Resources:   []string{"statefulsets"},
+						},
+					},
+					{
+						Operations: []admissionregistration.OperationType{
+							admissionregistration.Update,
+						},
+						Rule: admissionregistration.Rule{
+							APIGroups:   []string{"apps.pingcap.com"},
+							APIVersions: []string{"v1alpha1"},
+							Resources:   []string{"statefulsets"},
+						},
+					},
+				},
+			},
+		},
+	}
+	_, err := oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(cfg)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (oa *operatorActions) RegisterStatefulSetWebhookConfigOrDie() error {
+	if err := oa.RegisterStatefulSetWebhookConfig(); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+	return nil
+}
+
+func (oa *operatorActions) CleanStatefulSetWebhookConfig() error {
+	klog.Infof("cleaning statefulset webhook config ")
+	return oa.kubeCli.AdmissionregistrationV1().ValidatingWebhookConfigurations().Delete("sts-webhook-config", &metav1.DeleteOptions{})
+}
+
+func (oa *operatorActions) CleanStatefulSetWebhookConfigOrDie() error {
+	if err := oa.CleanStatefulSetWebhookConfig(); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 	return nil
