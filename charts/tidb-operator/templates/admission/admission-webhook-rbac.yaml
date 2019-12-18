@@ -131,4 +131,4 @@ roleRef:
 subjects:
   - kind: User
     name: kube-apiserver
-  {{- end }}
+{{- end }}
