@@ -18,26 +18,21 @@ import (
 	"os"
 	"time"
 
-	"github.com/openshift/generic-admission-server/pkg/apiserver"
-	"github.com/openshift/generic-admission-server/pkg/cmd/server"
-	"k8s.io/klog"
+	"github.com/openshift/generic-admission-server/pkg/cmd"
 
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/webhook"
-	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/component-base/logs"
 )
 
 var (
-	flagset                  *flag.FlagSet
 	printVersion             bool
 	extraServiceAccounts     string
 	evictRegionLeaderTimeout time.Duration
 )
 
 func init() {
-	flagset = flag.NewFlagSet("tidb-admission-webhook", flag.ExitOnError)
 	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.StringVar(&extraServiceAccounts, "extraServiceAccounts", "", "comma-separated, extra Service Accounts the Webhook should control. The full pattern for each common service account is system:serviceaccount:<namespace>:<serviceaccount-name>")
@@ -60,22 +55,5 @@ func main() {
 		ExtraServiceAccounts:     extraServiceAccounts,
 		EvictRegionLeaderTimeout: evictRegionLeaderTimeout,
 	}
-	run(flagset, ah)
-}
-
-func run(flagset *flag.FlagSet, admissionHooks ...apiserver.AdmissionHook) {
-
-	stopCh := genericapiserver.SetupSignalHandler()
-
-	cmd := server.NewCommandStartAdmissionServer(os.Stdout, os.Stderr, stopCh, admissionHooks...)
-
-	// Add admission hook flags
-	cmd.Flags().AddGoFlagSet(flagset)
-
-	// Flags for glog
-	cmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
-
-	if err := cmd.Execute(); err != nil {
-		klog.Fatal(err)
-	}
+	cmd.RunAdmissionServer(ah)
 }
