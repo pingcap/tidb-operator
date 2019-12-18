@@ -30,20 +30,20 @@ spec:
           imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
           command:
             - /usr/local/bin/tidb-admission-webhook
-            {{- if eq .Values.admissionWebhook.certProvider "selfProvider" }}
+            {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false }}
             - --tls-cert-file=/var/serving-cert/cert.pem
             - --tls-private-key-file=/var/serving-cert/key.pem
             {{- end }}
-          {{- if eq .Values.admissionWebhook.certProvider "selfProvider" }}
+          {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false  }}
           volumeMounts:
             - mountPath: /var/serving-cert
               name: serving-cert
           {{- end }}
-      {{- if eq .Values.admissionWebhook.certProvider "selfProvider" }}
+      {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false  }}
       volumes:
         - name: serving-cert
           secret:
             defaultMode: 420
             secretName: tidb-admission-webhook-certs
       {{- end }}
-{{- end }}
+  {{- end }}

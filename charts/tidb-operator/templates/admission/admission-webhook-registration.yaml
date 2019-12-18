@@ -13,7 +13,7 @@ spec:
   {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify true }}
   insecureSkipTLSVerify: true
   {{- else }}
-  caBundle: {{ .Values.admissionWebhook.apiservice.caBundle | b64enc }}
+  caBundle: {{ .Values.admissionWebhook.apiservice.cert | b64enc }}
   {{- end }}
   group: admission.tidb.pingcap.com
   groupPriorityMinimum: 1000
@@ -34,21 +34,50 @@ metadata:
     app.kubernetes.io/component: admission-webhook
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 webhooks:
-  - name: podadmission.pingcap.net
-    failurePolicy: {{ .Values.admissionWebhook.failurePolicy | default "Fail" }}
+  - name: delete.podadmission.pingcap.net
+    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.deletePod | default "Fail" }}
     clientConfig:
       service:
         name: kubernetes
         namespace: default
         path: "/apis/admission.tidb.pingcap.com/v1alpha1/admissionreviews"
-      {{- if eq .Values.admissionWebhook.certProvider "none" }}
-      caBundle: null
+      {{- if .Values.admissionWebhook.cabundle }}
+      caBundle: {{ .Values.admissionWebhook.cabundle | b64enc }}
       {{- else }}
-      caBundle: {{ .Values.apiserver.selfProvider.cert | b64enc }}
+      caBundle: null
       {{- end }}
     rules:
-      - operations: [ "DELETE","CREATE"]
-        apiGroups: [ "" ]
+      - operations: ["DELETE"]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validation-create-tidb-admission-webhook-cfg
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: admission-webhook
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+webhooks:
+  - name: create.podadmission.pingcap.net
+    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.createPod | default "Ignore" }}
+    clientConfig:
+      service:
+        name: kubernetes
+        namespace: default
+        path: "/apis/admission.tidb.pingcap.com/v1alpha1/admissionreviews"
+      {{- if .Values.admissionWebhook.cabundle }}
+      caBundle: {{ .Values.admissionWebhook.cabundle | b64enc }}
+      {{- else }}
+      caBundle: null
+      {{- end }}
+    rules:
+      - operations: ["CREATE"]
+        apiGroups: [""]
         apiVersions: ["v1"]
         resources: ["pods"]
 ---

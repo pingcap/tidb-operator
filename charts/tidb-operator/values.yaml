@@ -180,22 +180,26 @@ admissionWebhook:
   create: false
   ## failurePolicy are applied to ValidatingWebhookConfiguration which affect tidb-admission-webhook
   ## refer to https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
-  failurePolicy: Fail
+  failurePolicy:
+    ## deletePod Webhook would check the deleting request of tidbcluster pod and the failurePolicy is recommended as Fail
+    ## createPod Webhook would check the creating request of tidbcluster pod and the failurePolicy is recommended as Ignore
+    deletePod: Fail
+    createPod: Ignore
   ## tidb-admission-webhook deployed as kubernetes apiservice server
   ## refer to https://github.com/openshift/generic-admission-server
   apiservice:
     ## apiservice config
     ## refer to https://kubernetes.io/docs/tasks/access-kubernetes-api/configure-aggregation-layer/#contacting-the-extension-apiserver
     insecureSkipTLSVerify: true
-    cabundle: ""
-  ## certProvider indicate the key and cert for the webhook configuration to communicate with `kubernetes.default` service.
-  ## only support `none` and `selfProvider` now.
-  ## If your kube-apiserver's version >= 1.13.0, you can set certProvider as `none` which the kube-apiserver
-  ## would trust the roots on the apiserver are used.
-  ## https://github.com/kubernetes/api/blob/master/admissionregistration/v1/types.go#L529
-  certProvider: "none"
-  ## `selfProvider` would allow you to provide your own key and cert for `kubernetes.default` service
-  selfProvider:
-    key: ""
+    ## The key and cert for `tidb-admission-webook.<Release Namespace>` Service.
+    ## If insecureSkipTLSVerify is true, this would be ignored.
     cert: ""
+    key: ""
+  ## certProvider indicate the key and cert for the webhook configuration to communicate with `kubernetes.default` service.
+  ## If your kube-apiserver's version >= 1.13.0, you can leave cabundle empty and the kube-apiserver
+  ## would trust the roots on the apiserver.
+  ## refer to https://github.com/kubernetes/api/blob/master/admissionregistration/v1/types.go#L529
+  ## or you can get the cabundle by:
+  ## kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}'
+  cabundle: ""
 
