@@ -19,6 +19,7 @@ import (
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
 
@@ -65,7 +66,7 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 	// check the pd pods which have been upgraded before were all health
 	if isUpgrading {
 		klog.Infof("receive delete pd pod[%s/%s] of tc[%s/%s] is upgrading, make sure former pd upgraded status was health", namespace, name, namespace, tcName)
-		err = checkFormerPDPodStatus(pc.podLister, payload.pdClient, payload.tc, namespace, ordinal, *payload.ownerStatefulSet.Spec.Replicas)
+		err = checkFormerPDPodStatus(pc.kubeCli, payload.pdClient, payload.tc, namespace, ordinal, *payload.ownerStatefulSet.Spec.Replicas)
 		if err != nil {
 			return util.ARFail(err)
 		}
@@ -106,11 +107,11 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 		// And the pvc can be deleted during upgrading if we use create pod webhook in future.
 		if !isInOrdinal {
 			pvcName := operatorUtils.OrdinalPVCName(v1alpha1.TiKVMemberType, payload.ownerStatefulSet.Name, ordinal)
-			pvc, err := pc.pvcControl.GetPVC(pvcName, namespace)
+			pvc, err := pc.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(pvcName, meta.GetOptions{})
 			if err != nil {
 				return util.ARFail(err)
 			}
-			err = addDeferDeletingToPVC(pvc, pc.pvcControl, payload.tc)
+			err = addDeferDeletingToPVC(pvc, pc.kubeCli, payload.tc)
 			if err != nil {
 				klog.Infof("tc[%s/%s]'s pod[%s/%s] failed to update pvc,%v", namespace, tcName, namespace, name, err)
 				return util.ARFail(err)
