@@ -6,6 +6,7 @@ usage() {
     cat <<EOF
 
        -n,--namespace        Namespace where webhook service reside
+       -c,                   Whether need to patch cabundle
 EOF
     exit 1
 }
@@ -28,7 +29,6 @@ while getopts "$optstring" opt; do
 done
 
 namespace=${namespace:-tidb-admin}
-
 CURDIR=$(cd $(dirname ${BASH_SOURCE[0]}); pwd )
 os=`uname -s| tr '[A-Z]' '[a-z]'`
 
@@ -46,18 +46,17 @@ esac
 
 if [ "$bundle" = true ] ; then
 
-CA_BUNDLE=$(kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n')
+  CA_BUNDLE=$(kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n')
 
-case ${os} in
-  linux)
-    sed -i "s/caBundle: .*$/caBundle: ${CA_BUNDLE}/g" $CURDIR/webhook.yaml
-    ;;
-  darwin)
-    sed -i "" "s/caBundle: .*$/caBundle: ${CA_BUNDLE}/g" $CURDIR/webhook.yaml
-    ;;
-    *)
-    echo "invalid os ${os}, only support Linux and Darwin" >&2
-    ;;
-esac
-
+  case ${os} in
+    linux)
+      sed -i "s/caBundle: .*$/caBundle: ${CA_BUNDLE}/g" $CURDIR/webhook.yaml
+      ;;
+    darwin)
+      sed -i "" "s/caBundle: .*$/caBundle: ${CA_BUNDLE}/g" $CURDIR/webhook.yaml
+      ;;
+      *)
+      echo "invalid os ${os}, only support Linux and Darwin" >&2
+      ;;
+  esac
 fi
