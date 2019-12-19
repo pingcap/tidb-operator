@@ -100,9 +100,8 @@ func (p *stableScheduling) Filter(instanceName string, pod *apiv1.Pod, nodes []a
 			}
 		}
 		return nodes, fmt.Errorf("cannot run on its previous node %q", nodeName)
-	} else {
-		glog.V(2).Infof("no previous node exists for pod %q in TiDB cluster %s/%q", podName, ns, tcName)
 	}
+	glog.V(2).Infof("no previous node exists for pod %q in TiDB cluster %s/%q", podName, ns, tcName)
 
 	return nodes, nil
 }
