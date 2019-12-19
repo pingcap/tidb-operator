@@ -53,7 +53,7 @@ spec:
           {{- if .Values.features }}
           - -features={{ join "," .Values.features }}
           {{- end }}
-          {{- if and (eq .Values.admissionWebhook.create true) (eq .Values.admissionWebhook.hooksEnabled.pods true) }}
+          {{- if and ( .Values.admissionWebhook.create ) ( .Values.admissionWebhook.hooksEnabled.pods ) }}
           - -pod-admission-webhook-enbaled=true
           {{- end}}
         env:
