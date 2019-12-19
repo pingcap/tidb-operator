@@ -395,6 +395,9 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"imagePullPolicy":                  string(oi.ImagePullPolicy),
 		"testMode":                         strconv.FormatBool(oi.TestMode),
 	}
+	for k, v := range m {
+		set[k] = v
+	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
 	}
