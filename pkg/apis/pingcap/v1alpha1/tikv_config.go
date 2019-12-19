@@ -84,6 +84,8 @@ type TiKVConfig struct {
 	Raftstore *TiKVRaftstoreConfig `json:"raftstore,omitempty" toml:"raftstore,omitempty"`
 	// +optional
 	Rocksdb *TiKVDbConfig `json:"rocksdb,omitempty" toml:"rocksdb,omitempty"`
+	// +optional
+	Coprocessor *TiKVCoprocessorConfig `json:"coprocessor,omitempty" toml:"coprocessor,omitempty"`
 }
 
 // TiKVDbConfig is the rocksdb config.
@@ -485,4 +487,41 @@ type TiKVRaftstoreConfig struct {
 	StorePoolSize *int64 `json:"store-pool-size,omitempty" toml:"store-pool-size,omitempty"`
 	// +optional
 	HibernateRegions *bool `json:"hibernate-regions,omitempty" toml:"hibernate-regions,omitempty"`
+}
+
+type TiKVCoprocessorConfig struct {
+	// When it is set to `true`, TiKV will try to split a Region with table prefix if that Region
+	// crosses tables.
+	// It is recommended to turn off this option if there will be a large number of tables created.
+	// optional
+	SplitRegionOnTable *bool `json:"split-region-on-table,omitempty" toml:"split-region-on-table,omitempty"`
+
+	// One split check produces several split keys in batch. This config limits the number of produced
+	// split keys in one batch.
+	// optional
+	BatchSplitLimit *int64 `json:"batch-split-limit,omitempty" toml:"batch-split-limit,omitempty"`
+
+	// When Region [a,e) size exceeds `region_max_size`, it will be split into several Regions [a,b),
+	// [b,c), [c,d), [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size` (or a
+	// little larger). See also: region-split-size
+	// optional
+	RegionMaxSize string `json:"region-max-size,omitempty" toml:"region-max-size,omitempty"`
+
+	// When Region [a,e) size exceeds `region_max_size`, it will be split into several Regions [a,b),
+	// [b,c), [c,d), [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size` (or a
+	// little larger). See also: region-max-size
+	// optional
+	RegionSplitSize string `json:"region-split-size,omitempty" toml:"region-split-size,omitempty"`
+
+	// When the number of keys in Region [a,e) exceeds the `region_max_keys`, it will be split into
+	// several Regions [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b), [b,c), [c,d) will be
+	// `region_split_keys`. See also: region-split-keys
+	// optional
+	RegionMaxKeys *int64 `json:"region-max-keys,omitempty" toml:"region-max-keys,omitempty"`
+
+	// When the number of keys in Region [a,e) exceeds the `region_max_keys`, it will be split into
+	// several Regions [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b), [b,c), [c,d) will be
+	// `region_split_keys`. See also: region-max-keys
+	// optional
+	RegionSplitKeys *int64 `json:"region-split-keys,omitempty" toml:"region-split-keys,omitempty"`
 }
