@@ -609,6 +609,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		cluster.Resources["tidb.replicas"] = "1"
 		oa.DeployTidbClusterOrDie(&cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
+		oa.SwitchOperatorWebhookOrDie(true, ocfg)
+		oa.SwitchOperatorPodWebhookOrDie(true, ocfg)
 
 		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
@@ -658,6 +660,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			return true, nil
 		})
 		framework.ExpectNoError(err, "Expected tidbcluster pod restarted")
+		oa.SwitchOperatorPodWebhookOrDie(false, ocfg)
+		oa.SwitchOperatorWebhookOrDie(false, ocfg)
 	})
 })
 
