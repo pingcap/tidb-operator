@@ -48,9 +48,9 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/pingcap/advanced-statefulset v0.1.0
+	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 // indirect
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/kvproto v0.0.0-20190516013202-4cf58ad90b6c
-	github.com/pingcap/log v0.0.0-20190715063458-479153f07ebd
 	github.com/pingcap/pd v2.1.17+incompatible
 	github.com/pingcap/tidb v2.1.0-beta+incompatible
 	github.com/prometheus/client_golang v0.9.2

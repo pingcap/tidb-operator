@@ -14,9 +14,8 @@
 package v1alpha1
 
 import (
-	"github.com/pingcap/log"
-	"github.com/pingcap/pd/pkg/metricutil"
-	"github.com/pingcap/pd/pkg/typeutil"
+	"strconv"
+	"strings"
 )
 
 // Maintain a copy of PDConfig to make it more friendly with the kubernetes API:
@@ -88,7 +87,7 @@ type PDConfig struct {
 	TsoSaveInterval string `toml:"tso-save-interval,omitempty" json:"tso-save-interval,omitempty"`
 
 	// +optional
-	Metric *metricutil.MetricConfig `toml:"metric,omitempty" json:"metric,omitempty"`
+	Metric *PDMetricConfig `toml:"metric,omitempty" json:"metric,omitempty"`
 
 	// +optional
 	Schedule *PDScheduleConfig `toml:"schedule,omitempty" json:"schedule,omitempty"`
@@ -160,7 +159,7 @@ type PDLogConfig struct {
 	DisableTimestamp *bool `toml:"disable-timestamp,omitempty" json:"disable-timestamp,omitempty"`
 	// File log config.
 	// +optional
-	File log.FileLogConfig `toml:"file,omitempty" json:"file,omitempty"`
+	File *FileLogConfig `toml:"file,omitempty" json:"file,omitempty"`
 	// Development puts the logger in development mode, which changes the
 	// behavior of DPanicLevel and takes stacktraces more liberally.
 	// +optional
@@ -192,7 +191,7 @@ type PDReplicationConfig struct {
 	// For example, ["zone", "rack"] means that we should place replicas to
 	// different zones first, then to different racks if we don't have enough zones.
 	// +optional
-	LocationLabels typeutil.StringSlice `toml:"location-labels,omitempty" json:"location-labels,omitempty"`
+	LocationLabels StringSlice `toml:"location-labels,omitempty" json:"location-labels,omitempty"`
 	// StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels.
 	// +optional
 	StrictlyMatchLabel *bool `toml:"strictly-match-label,omitempty" json:"strictly-match-label,string,omitempty"`
@@ -203,22 +202,22 @@ type PDReplicationConfig struct {
 type PDNamespaceConfig struct {
 	// LeaderScheduleLimit is the max coexist leader schedules.
 	// +optional
-	LeaderScheduleLimit *uint64 `json:"leader-schedule-limit,omitempty"`
+	LeaderScheduleLimit *uint64 `json:"leader-schedule-limit,omitempty" toml:"leader-schedule-limit,omitempty"`
 	// RegionScheduleLimit is the max coexist region schedules.
 	// +optional
-	RegionScheduleLimit *uint64 `json:"region-schedule-limit,omitempty"`
+	RegionScheduleLimit *uint64 `json:"region-schedule-limit,omitempty" toml:"region-schedule-limit,omitempty"`
 	// ReplicaScheduleLimit is the max coexist replica schedules.
 	// +optional
-	ReplicaScheduleLimit *uint64 `json:"replica-schedule-limit,omitempty"`
+	ReplicaScheduleLimit *uint64 `json:"replica-schedule-limit,omitempty" toml:"replica-schedule-limit,omitempty"`
 	// MergeScheduleLimit is the max coexist merge schedules.
 	// +optional
-	MergeScheduleLimit *uint64 `json:"merge-schedule-limit,omitempty"`
+	MergeScheduleLimit *uint64 `json:"merge-schedule-limit,omitempty" toml:"merge-schedule-limit,omitempty"`
 	// HotRegionScheduleLimit is the max coexist hot region schedules.
 	// +optional
-	HotRegionScheduleLimit *uint64 `json:"hot-region-schedule-limit,omitempty"`
+	HotRegionScheduleLimit *uint64 `json:"hot-region-schedule-limit,omitempty" toml:"hot-region-schedule-limit,omitempty"`
 	// MaxReplicas is the number of replicas for each region.
 	// +optional
-	MaxReplicas *uint64 `json:"max-replicas,omitempty"`
+	MaxReplicas *uint64 `json:"max-replicas,omitempty" toml:"max-replicas,omitempty"`
 }
 
 // ScheduleConfig is the schedule configuration.
@@ -364,4 +363,47 @@ type PDServerConfig struct {
 	// UseRegionStorage enables the independent region storage.
 	// +optional
 	UseRegionStorage *bool `toml:"use-region-storage,omitempty" json:"use-region-storage,string,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type PDMetricConfig struct {
+	PushJob      string `toml:"job,omitempty" json:"job,omitempty"`
+	PushAddress  string `toml:"address,omitempty" json:"address,omitempty"`
+	PushInterval string `toml:"interval,omitempty" json:"interval,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type FileLogConfig struct {
+	// Log filename, leave empty to disable file log.
+	Filename string `toml:"filename,omitempty" json:"filename,omitempty"`
+	// Is log rotate enabled.
+	LogRotate bool `toml:"log-rotate,omitempty" json:"log-rotate,omitempty"`
+	// Max size for a single file, in MB.
+	MaxSize int `toml:"max-size,omitempty" json:"max-size,omitempty"`
+	// Max log keep days, default is never deleting.
+	MaxDays int `toml:"max-days,omitempty" json:"max-days,omitempty"`
+	// Maximum number of old log files to retain.
+	MaxBackups int `toml:"max-backups,omitempty" json:"max-backups,omitempty"`
+}
+
+//StringSlice is more friendly to json encode/decode
+type StringSlice []string
+
+// MarshalJSON returns the size as a JSON string.
+func (s StringSlice) MarshalJSON() ([]byte, error) {
+	return []byte(strconv.Quote(strings.Join(s, ","))), nil
+}
+
+// UnmarshalJSON parses a JSON string into the bytesize.
+func (s *StringSlice) UnmarshalJSON(text []byte) error {
+	data, err := strconv.Unquote(string(text))
+	if err != nil {
+		return err
+	}
+	if len(data) == 0 {
+		*s = nil
+		return nil
+	}
+	*s = strings.Split(data, ",")
+	return nil
 }
