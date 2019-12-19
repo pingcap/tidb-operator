@@ -62,7 +62,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
@@ -489,37 +488,14 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
 
-	// create cert and secret for webhook
-	serverVersion, err := oa.kubeCli.Discovery().ServerVersion()
-	if err != nil {
-		return fmt.Errorf("failed to get api server version")
-	}
-	sv := utilversion.MustParseSemantic(serverVersion.GitVersion)
-	glog.Infof("ServerVersion: %v", serverVersion.String())
-
-	cmd = fmt.Sprintf("%s/patch-e2e.sh -n %s", oa.manifestPath(info.Tag), info.Namespace)
-	if sv.LessThan(utilversion.MustParseSemantic("v1.13.0")) {
-		cmd = fmt.Sprintf("%s -c", cmd)
-	}
-	glog.Info(cmd)
-
-	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to patch namespace: %v, %s", err, string(res))
+	glog.Info("enable operator admission webhook server")
+	if err := oa.SwitchOperatorWebhook(true, info); err != nil {
+		return err
 	}
 
-	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
-	cmd = fmt.Sprintf(`
-	sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/
-	s#imagePullPolicy:.*#imagePullPolicy: IfNotPresent#g
-	s#image:.*#image: %s#g
-	' %s/webhook.yaml | kubectl apply -f -
-	`, info.Image, oa.manifestPath(info.Tag))
-	glog.Info(cmd)
-
-	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to create statefulset webhook and configuration : %v, %s", err, string(res))
+	glog.Info("enable operator pod admission webhook config")
+	if err := oa.SwitchOperatorStatefulSetWebhook(true, info); err != nil {
+		return err
 	}
 
 	// wait for all apiservices are available
@@ -536,11 +512,6 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 	glog.Infof("cleaning tidb-operator %s", info.ReleaseName)
-
-	cmd := fmt.Sprintf("kubectl delete -f %s/webhook.yaml --ignore-not-found", oa.manifestPath(info.Tag))
-	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to delete statefulset webhook and configuration: %v, %s", err, string(res))
-	}
 
 	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
 
