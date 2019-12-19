@@ -2,9 +2,13 @@ package tests
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
 	"strconv"
 	"time"
+
+	"github.com/ghodss/yaml"
 
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"k8s.io/apimachinery/pkg/labels"
@@ -35,6 +39,11 @@ func (oa *operatorActions) SwitchOperatorWebhook(isEnabled bool, info *OperatorC
 		"admissionWebhook.create": strconv.FormatBool(isEnabled),
 	}
 
+	cmd := fmt.Sprintf(`helm upgrade %s %s --set-string %s`,
+		oa.operatorChartPath(info.Tag),
+		info.ReleaseName,
+		info.OperatorHelmSetString(m))
+
 	if isEnabled {
 		serverVersion, err := oa.kubeCli.Discovery().ServerVersion()
 		if err != nil {
@@ -48,20 +57,38 @@ func (oa *operatorActions) SwitchOperatorWebhook(isEnabled bool, info *OperatorC
 				return err
 			}
 			cabundle := cm.Data["client-ca-file"]
-			m["admissionWebhook.cabundle"] = cabundle
+			cabundleDir, err := ioutil.TempDir("", "test-e2e-cabundle")
+			if err != nil {
+				return err
+			}
+			defer os.RemoveAll(cabundleDir)
+			cabundleFile, err := ioutil.TempFile(cabundleDir, "cabundle")
+			if err != nil {
+				return err
+			}
+			data, err := yaml.Marshal(cabundle)
+			if err != nil {
+				return err
+			}
+			err = ioutil.WriteFile(cabundleFile.Name(), data, 0644)
+			if err != nil {
+				return err
+			}
+			dataByte, err := ioutil.ReadFile(cabundleFile.Name())
+			if err != nil {
+				return err
+			}
+			klog.Infof("%s", string(dataByte[:]))
+			cmd = fmt.Sprintf("%s --set-file admissionWebhook.cabundle=%s", cmd, cabundleFile.Name())
 		}
 	}
-
-	cmd := fmt.Sprintf(`helm upgrade %s %s --set-string %s`,
-		oa.operatorChartPath(info.Tag),
-		info.ReleaseName,
-		info.OperatorHelmSetString(m))
 
 	klog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
+	klog.Infof("success to execute helm operator upgrade")
 
 	// ensure pods unchanged when upgrading operator
 	waitFn := func() (done bool, err error) {
@@ -84,6 +111,7 @@ func (oa *operatorActions) SwitchOperatorWebhook(isEnabled bool, info *OperatorC
 		return nil
 	}
 
+	klog.Infof("success to upgrade operator with webhook switch %v", isEnabled)
 	return nil
 }
 
@@ -121,7 +149,7 @@ func (oa *operatorActions) SwitchOperatorStatefulSetWebhookOrDie(isEnabled bool,
 }
 
 func (oa *operatorActions) SwitchOperatorPodWebhook(isEnabled bool, info *OperatorConfig) error {
-	klog.Infof("Switch Operator Pod Webhook %v", isEnabled)
+	klog.Infof("switch Operator Pod Webhook %v", isEnabled)
 	m := map[string]string{
 		"admissionWebhook.hooksEnabled.pods": strconv.FormatBool(isEnabled),
 	}
