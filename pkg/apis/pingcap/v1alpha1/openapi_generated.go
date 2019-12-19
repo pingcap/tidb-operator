@@ -35,6 +35,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupSpec":            schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Binlog":                schema_pkg_apis_pingcap_v1alpha1_Binlog(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ComponentSpec":         schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FileLogConfig":         schema_pkg_apis_pingcap_v1alpha1_FileLogConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider":    schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.HelperSpec":            schema_pkg_apis_pingcap_v1alpha1_HelperSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Log":                   schema_pkg_apis_pingcap_v1alpha1_Log(ref),
@@ -44,6 +45,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.OpenTracingSampler":    schema_pkg_apis_pingcap_v1alpha1_OpenTracingSampler(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfig":              schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDLogConfig":           schema_pkg_apis_pingcap_v1alpha1_PDLogConfig(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMetricConfig":        schema_pkg_apis_pingcap_v1alpha1_PDMetricConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDNamespaceConfig":     schema_pkg_apis_pingcap_v1alpha1_PDNamespaceConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDReplicationConfig":   schema_pkg_apis_pingcap_v1alpha1_PDReplicationConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDScheduleConfig":      schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref),
@@ -788,6 +790,53 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 	}
 }
 
+func schema_pkg_apis_pingcap_v1alpha1_FileLogConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"filename": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Log filename, leave empty to disable file log.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"log-rotate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Is log rotate enabled.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"max-size": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Max size for a single file, in MB.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"max-days": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Max log keep days, default is never deleting.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"max-backups": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Maximum number of old log files to retain.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -916,7 +965,7 @@ func schema_pkg_apis_pingcap_v1alpha1_Log(ref common.ReferenceCallback) common.O
 					"file": {
 						SchemaProps: spec.SchemaProps{
 							Description: "File log config.",
-							Ref:         ref("github.com/pingcap/log.FileLogConfig"),
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FileLogConfig"),
 						},
 					},
 					"slow-query-file": {
@@ -953,7 +1002,7 @@ func schema_pkg_apis_pingcap_v1alpha1_Log(ref common.ReferenceCallback) common.O
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/log.FileLogConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FileLogConfig"},
 	}
 }
 
@@ -1214,7 +1263,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 					},
 					"metric": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/pd/pkg/metricutil.MetricConfig"),
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMetricConfig"),
 						},
 					},
 					"schedule": {
@@ -1329,7 +1378,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/pd/pkg/metricutil.MetricConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDLogConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDNamespaceConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDReplicationConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDScheduleConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSecurityConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDServerConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDStoreLabel"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDLogConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMetricConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDNamespaceConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDReplicationConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDScheduleConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSecurityConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDServerConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDStoreLabel"},
 	}
 }
 
@@ -1364,7 +1413,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDLogConfig(ref common.ReferenceCallback) 
 					"file": {
 						SchemaProps: spec.SchemaProps{
 							Description: "File log config.",
-							Ref:         ref("github.com/pingcap/log.FileLogConfig"),
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FileLogConfig"),
 						},
 					},
 					"development": {
@@ -1399,7 +1448,37 @@ func schema_pkg_apis_pingcap_v1alpha1_PDLogConfig(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/log.FileLogConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FileLogConfig"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_PDMetricConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"job": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"address": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"interval": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -3549,11 +3628,16 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVConfig(ref common.ReferenceCallback) c
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVDbConfig"),
 						},
 					},
+					"coprocessor": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVCoprocessorConfig"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVDbConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftstoreConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVServerConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStorageConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVCoprocessorConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVDbConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftstoreConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVServerConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStorageConfig"},
 	}
 }
 
