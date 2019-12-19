@@ -15,8 +15,6 @@ package v1alpha1
 
 import (
 	"time"
-
-	zaplog "github.com/pingcap/log"
 )
 
 // Maintain a copy of TiDBConfig to make it more friendly with the kubernetes API:
@@ -120,7 +118,7 @@ type Log struct {
 	DisableTimestamp bool `toml:"disable-timestamp,omitempty" json:"disable-timestamp,omitempty"`
 	// File log config.
 	// +optional
-	File zaplog.FileLogConfig `toml:"file,omitempty" json:"file,omitempty"`
+	File *FileLogConfig `toml:"file,omitempty" json:"file,omitempty"`
 	// +optional
 	SlowQueryFile string `toml:"slow-query-file,omitempty" json:"slow-query-file,omitempty"`
 	// +optional
