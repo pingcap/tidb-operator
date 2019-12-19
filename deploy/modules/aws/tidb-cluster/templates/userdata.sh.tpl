@@ -11,10 +11,17 @@ root        soft        core          unlimited
 root        soft        stack         10240
 EOF
 
-# config docker ulimit
+# configure ulimit of docker daemon, it is also the max value of ulimit the containers could be set
+# change 'infinity' to '1048576' explicitly to workaround https://github.com/systemd/systemd/issues/6559
 cp /usr/lib/systemd/system/docker.service /etc/systemd/system/docker.service
 sed -i 's/LimitNOFILE=infinity/LimitNOFILE=1048576/' /etc/systemd/system/docker.service
 sed -i 's/LimitNPROC=infinity/LimitNPROC=1048576/' /etc/systemd/system/docker.service
+
+# configure ulimit of containers, the ulimit requirement(82920) of tikv is greater than the default(65536).
+if ! grep -qF "OPTIONS" /etc/sysconfig/docker; then
+  echo 'OPTIONS="--default-ulimit nofile=1024000:1024000"' >> /etc/sysconfig/docker
+fi
+
 systemctl daemon-reload
 systemctl restart docker
 
