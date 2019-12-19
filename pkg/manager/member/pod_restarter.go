@@ -38,6 +38,10 @@ func NewPodRestarter(kubeCli kubernetes.Interface, podLister corelisters.PodList
 
 func (gr *podRestarter) Sync(tc *v1alpha1.TidbCluster) error {
 
+	if !controller.PodWebhookEnabled {
+		return nil
+	}
+
 	namespace := tc.Namespace
 	selector, err := label.New().Instance(tc.Name).Selector()
 	if err != nil {
