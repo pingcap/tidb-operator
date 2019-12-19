@@ -39,14 +39,10 @@ func (oa *operatorActions) SwitchOperatorWebhook(isEnabled bool, info *OperatorC
 		return err
 	}
 
-	m := map[string]string{
-		"admissionWebhook.create": strconv.FormatBool(isEnabled),
-	}
-
-	cmd := fmt.Sprintf(`helm upgrade %s %s --set-string %s`,
+	cmd := fmt.Sprintf(`helm upgrade %s %s --set admissionWebhook.create=%v `,
 		oa.operatorChartPath(info.Tag),
 		info.ReleaseName,
-		info.OperatorHelmSetString(m))
+		isEnabled)
 
 	if isEnabled {
 		serverVersion, err := oa.kubeCli.Discovery().ServerVersion()

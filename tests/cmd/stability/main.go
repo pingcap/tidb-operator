@@ -181,8 +181,6 @@ func run() {
 			oa.CheckTidbClusterStatusOrDie(cluster)
 			oa.CheckTidbMemberAssignedNodesOrDie(cluster, assignedNodes)
 		}
-		oa.SwitchOperatorStatefulSetWebhookOrDie(false, ocfg)
-		oa.SwitchOperatorWebhookOrDie(false, ocfg)
 
 		// configuration change
 		for _, cluster := range clusters {

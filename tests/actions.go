@@ -498,6 +498,9 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
 
+	// wait 10 sec to let operator installed
+	time.Sleep(10 * time.Second)
+
 	if err := oa.SwitchOperatorWebhook(true, info); err != nil {
 		return err
 	}
