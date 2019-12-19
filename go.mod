@@ -28,7 +28,7 @@ require (
 	github.com/go-openapi/loads v0.19.4
 	github.com/go-openapi/spec v0.19.3
 	github.com/go-sql-driver/mysql v1.4.1
-	github.com/gogo/protobuf v1.3.1 // indirect
+	github.com/gogo/protobuf v1.3.1
 	github.com/golang/groupcache v0.0.0-20181024230925-c65c006176ff // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-cmp v0.3.1
@@ -50,7 +50,7 @@ require (
 	github.com/pingcap/advanced-statefulset v0.2.4
 	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 // indirect
 	github.com/pingcap/errors v0.11.0
-	github.com/pingcap/kvproto v0.0.0-20190516013202-4cf58ad90b6c
+	github.com/pingcap/kvproto v0.0.0-20191217072959-393e6c0fd4b7
 	github.com/pingcap/pd v2.1.17+incompatible
 	github.com/pingcap/tidb v2.1.0-beta+incompatible
 	github.com/prometheus/client_golang v0.9.2
