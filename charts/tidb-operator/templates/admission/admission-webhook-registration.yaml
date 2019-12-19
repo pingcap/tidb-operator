@@ -1,4 +1,4 @@
-{{- if eq .Values.admissionWebhook.create true }}
+{{- if .Values.admissionWebhook.create }}
 apiVersion: apiregistration.k8s.io/v1beta1
 kind: APIService
 metadata:
@@ -23,7 +23,7 @@ spec:
     namespace: {{ .Release.Namespace }}
   version: v1alpha1
 ---
-{{- if eq .Values.admissionWebhook.hooksEnabled.pods true }}
+{{- if .Values.admissionWebhook.hooksEnabled.pods }}
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
 metadata:
@@ -95,7 +95,7 @@ webhooks:
         resources: ["pods"]
 {{- end }}
 ---
-{{- if eq .Values.admissionWebhook.hooksEnabled.statefulsets true }}
+{{- if .Values.admissionWebhook.hooksEnabled.statefulsets }}
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
 metadata:

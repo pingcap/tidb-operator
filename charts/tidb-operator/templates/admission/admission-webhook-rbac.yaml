@@ -1,4 +1,4 @@
-{{- if and (eq .Values.admissionWebhook.create true) (eq .Values.admissionWebhook.rbac.create true) }}
+{{- if and ( .Values.admissionWebhook.create ) (eq .Values.admissionWebhook.rbac.create true) }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
