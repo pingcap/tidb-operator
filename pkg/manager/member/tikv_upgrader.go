@@ -86,6 +86,11 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 		return nil
 	}
 
+	if controller.PodAdmissionWebhookEnabled {
+		setUpgradePartition(newSet, 0)
+		return nil
+	}
+
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	for i := tc.TiKVStsActualReplicas() - 1; i >= 0; i-- {
 		store := tku.getStoreByOrdinal(tc, i)

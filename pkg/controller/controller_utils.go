@@ -63,6 +63,9 @@ var (
 
 	// TidbDiscoveryImage is the image of tidb discovery service
 	TidbDiscoveryImage string
+
+	// PodAdmissionWebhookEnabled indicate whether pod admission webhook enabled
+	PodAdmissionWebhookEnabled bool
 )
 
 const (

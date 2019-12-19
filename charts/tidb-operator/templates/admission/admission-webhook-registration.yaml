@@ -23,6 +23,7 @@ spec:
     namespace: {{ .Release.Namespace }}
   version: v1alpha1
 ---
+{{- if eq .Values.admissionWebhook.hooksEnabled.pods true }}
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
 metadata:
@@ -92,5 +93,40 @@ webhooks:
         apiGroups: [""]
         apiVersions: ["v1"]
         resources: ["pods"]
+{{- end }}
 ---
+{{- if eq .Values.admissionWebhook.hooksEnabled.statefulsets true }}
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validation-update-tidb-admission-webhook-cfg
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: admission-webhook
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+webhooks:
+  - name: update.stsadmission.tidb.pingcap.com
+    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.updateStatefulSet | default "Ignore" }}
+    clientConfig:
+      service:
+        name: kubernetes
+        namespace: default
+        path: "/apis/admission.tidb.pingcap.com/v1alpha1/admissionreviews"
+      {{- if .Values.admissionWebhook.cabundle }}
+      caBundle: {{ .Values.admissionWebhook.cabundle | b64enc }}
+      {{- else }}
+      caBundle: null
+      {{- end }}
+    rules:
+      - operations: [ "UPDATE" ]
+        apiGroups: [ "apps", "" ]
+        apiVersions: ["v1beta1", "v1"]
+        resources: ["statefulsets"]
+      - operations: [ "UPDATE" ]
+        apiGroups: [ "apps.pingcap.com"]
+        apiVersions: ["v1alpha1"]
+        resources: ["statefulsets"]
+{{- end }}
 {{- end }}

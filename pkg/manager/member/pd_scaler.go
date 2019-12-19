@@ -101,6 +101,11 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed,can't scale in now", ns, tcName)
 	}
 
+	if controller.PodAdmissionWebhookEnabled {
+		decreaseReplicas(newSet, oldSet)
+		return nil
+	}
+
 	pdClient := controller.GetPDClient(psd.pdControl, tc)
 	// If the pd pod was pd leader during scale-in, we would transfer pd leader to pd-0 directly
 	// If the pd statefulSet would be scale-in to zero and the pd-0 was going to be deleted,
