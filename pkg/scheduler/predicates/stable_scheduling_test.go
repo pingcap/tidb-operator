@@ -51,7 +51,8 @@ func makeTidbCluster(name, node string) *v1alpha1.TidbCluster {
 func makePod(name string, component string) *v1.Pod {
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Namespace: v1.NamespaceDefault,
+			Name:      name,
 			Labels: map[string]string{
 				label.ComponentLabelKey: component,
 			},
@@ -136,7 +137,7 @@ func TestStableSchedulingFilter(t *testing.T) {
 			},
 			expectFn: func(nodes []v1.Node, err error, recorder *record.FakeRecorder) {
 				g.Expect(err).To(HaveOccurred())
-				g.Expect(err.Error()).To(ContainSubstring("cannot run on its previous node \"node-4\""))
+				g.Expect(err.Error()).To(ContainSubstring("cannot run default/demo-tidb-0 on its previous node \"node-4\""))
 				g.Expect(len(nodes)).To(Equal(3))
 			},
 		},
