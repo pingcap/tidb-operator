@@ -624,16 +624,22 @@ type BRConfig struct {
 	Cert string `json:"cert,omitempty"`
 	// Key is the private key path for TLS connection
 	Key string `json:"key,omitempty"`
+	// LogLevel is the log level
+	LogLevel string `json:"logLevel,omitempty"`
 	// StatusAddr is the HTTP listening address for the status report service. Set to empty string to disable
-	StatusAddr string `json:"status-addr,omitempty"`
+	StatusAddr string `json:"statusAddr,omitempty"`
 	// Concurrency is the size of thread pool on each node that execute the backup task
 	Concurrency *uint32 `json:"concurrency,omitempty"`
 	// RateLimit is the rate limit of the backup task, MB/s per node
-	RateLimit *uint `json:"ratelimit,omitempty"`
+	RateLimit *uint `json:"rateLimit,omitempty"`
 	// TimeAgo is the history version of the backup task, e.g. 1m, 1h
-	TimeAgo string `json:"timeago,omitempty"`
+	TimeAgo string `json:"timeAgo,omitempty"`
 	// Checksum specifies whether to run checksum after backup
 	Checksum *bool `json:"checksum,omitempty"`
+	// SendCredToTikv specifies whether to send credentials to TiKV
+	SendCredToTikv *bool `json:"sendCredToTikv,omitempty"`
+	// OnLine specifies whether online during restore
+	OnLine *bool `json:"onLine,omitempty"`
 }
 
 // BackupConditionType represents a valid condition of a Backup.

@@ -28,18 +28,6 @@ import (
 )
 
 const (
-	accessKey          = "access_key"
-	secretAccessKey    = "secret_access_key"
-	regionKey          = "region"
-	insecureKey        = "insecure"
-	providerKey        = "provider"
-	prefixKey          = "prefix"
-	endpointKey        = "endpoint"
-	awsKey             = "aws"
-	aliKey             = "alibaba"
-	accessKeyEnv       = "AWS_ACCESS_KEY_ID"
-	secretAccessKeyEnv = "AWS_SECRET_ACCESS_KEY"
-
 	maxRetries = 3 // number of retries to make of operations
 )
 
