@@ -119,3 +119,7 @@ func IsSubMapOf(first map[string]string, second map[string]string) bool {
 	}
 	return true
 }
+
+func GetPodName(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, ordinal int32) string {
+	return fmt.Sprintf("%s-%s-%d", tc.Name, memberType.String(), ordinal)
+}
