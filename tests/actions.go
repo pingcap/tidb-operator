@@ -517,11 +517,6 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 	glog.Infof("cleaning tidb-operator %s", info.ReleaseName)
 
-	cmd := fmt.Sprintf("kubectl delete -f %s/webhook.yaml --ignore-not-found", oa.manifestPath(info.Tag))
-	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to delete statefulset webhook and configuration: %v, %s", err, string(res))
-	}
-
 	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
 
 	if err == nil || !releaseIsNotFound(err) {
