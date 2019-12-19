@@ -177,7 +177,7 @@ advancedStatefulset:
   #   effect: "NoSchedule"
 
 admissionWebhook:
-  create: false
+  create: true
   replicas: 1
   serviceAccount: tidb-admission-webhook
   rbac:
@@ -188,7 +188,7 @@ admissionWebhook:
     statefulSets: false
     ## pods hook would check requests for creating and deleting tidbcluster's pods
     ## if enabled it, the pods of tidbcluster would safely created or deleted by webhook instead of controller
-    pods: false
+    pods: true
   ## failurePolicy are applied to ValidatingWebhookConfiguration which affect tidb-admission-webhook
   ## refer to https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
   failurePolicy:

@@ -95,7 +95,7 @@ webhooks:
         resources: ["pods"]
 {{- end }}
 ---
-{{- if .Values.admissionWebhook.hooksEnabled.statefulsets }}
+{{- if .Values.admissionWebhook.hooksEnabled.statefulSets }}
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
 metadata:
