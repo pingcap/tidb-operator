@@ -118,13 +118,14 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 	for _, predicate := range predicatesByComponent {
 		glog.Infof("entering predicate: %s, nodes: %v", predicate.Name(), predicates.GetNodeNames(kubeNodes))
 		kubeNodes, err = predicate.Filter(instanceName, pod, kubeNodes)
+		glog.Infof("leaving predicate: %s, nodes: %v", predicate.Name(), predicates.GetNodeNames(kubeNodes))
 		if err != nil {
 			s.recorder.Event(pod, apiv1.EventTypeWarning, predicate.Name(), err.Error())
-			return &schedulerapiv1.ExtenderFilterResult{
-				Nodes: &apiv1.NodeList{Items: kubeNodes},
-			}, nil
+			if len(kubeNodes) == 0 {
+				// do not return error to k8s: https://github.com/pingcap/tidb-operator/issues/1353
+				return nil, nil
+			}
 		}
-		glog.Infof("leaving predicate: %s, nodes: %v", predicate.Name(), predicates.GetNodeNames(kubeNodes))
 	}
 
 	return &schedulerapiv1.ExtenderFilterResult{
