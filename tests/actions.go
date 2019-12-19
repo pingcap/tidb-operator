@@ -227,6 +227,10 @@ type OperatorActions interface {
 	CheckInitSQL(info *TidbClusterConfig) error
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
+	SwitchOperatorWebhook(isEnabled bool, info *OperatorConfig) error
+	SwitchOperatorWebhookOrDie(isEnabled bool, info *OperatorConfig)
+	SwitchOperatorStatefulSetWebhook(isEnabled bool, info *OperatorConfig) error
+	SwitchOperatorStatefulSetWebhookOrDie(isEnabled bool, info *OperatorConfig)
 }
 
 type operatorActions struct {
