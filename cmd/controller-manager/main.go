@@ -161,31 +161,32 @@ func main() {
 		},
 	}
 
-	tcController := tidbcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
-	backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-	restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-	bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Start informer factories after all controller are initialized.
-	informerFactory.Start(controllerCtx.Done())
-	kubeInformerFactory.Start(controllerCtx.Done())
-
-	// Wait for all started informers' cache were synced.
-	for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
-		if !synced {
-			glog.Fatalf("error syncing informer for %v", v)
-		}
-	}
-	for v, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
-		if !synced {
-			glog.Fatalf("error syncing informer for %v", v)
-		}
-	}
-	glog.Infof("cache of informer factories sync successfully")
-
 	onStarted := func(ctx context.Context) {
+		tcController := tidbcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
+		backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+		restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+		bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+
+		// Start informer factories after all controller are initialized.
+		informerFactory.Start(ctx.Done())
+		kubeInformerFactory.Start(ctx.Done())
+
+		// Wait for all started informers' cache were synced.
+		for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
+			if !synced {
+				glog.Fatalf("error syncing informer for %v", v)
+			}
+		}
+		for v, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
+			if !synced {
+				glog.Fatalf("error syncing informer for %v", v)
+			}
+		}
+		glog.Infof("cache of informer factories sync successfully")
+
 		go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
