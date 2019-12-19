@@ -128,14 +128,14 @@ func ConstructBRGlobalOptions(backup *v1alpha1.Backup) ([]string, string, error)
 	if config.Key != "" {
 		args = append(args, fmt.Sprintf("--key=%s", config.Key))
 	}
-	// Do not set log-file, backup-manager needs to get backup
-	// position from the output of BR with info log-level
-	// if config.LogFile != "" {
-	// 	args = append(args, fmt.Sprintf("--log-file=%s", config.LogFile))
-	// }
-	args = append(args, "--log-level=info")
+	if config.LogLevel != "" {
+		args = append(args, fmt.Sprintf("--log-level=%s", config.LogLevel))
+	}
 	if config.StatusAddr != "" {
 		args = append(args, fmt.Sprintf("--status-addr=%s", config.StatusAddr))
+	}
+	if config.SendCredToTikv != nil {
+		args = append(args, fmt.Sprintf("--send-credentials-to-tikv=%t", *config.SendCredToTikv))
 	}
 	s, path, err := getRemoteStorage(backup)
 	if err != nil {

@@ -2631,19 +2631,29 @@ spec:
                 key:
                   description: Key is the private key path for TLS connection
                   type: string
+                logLevel:
+                  description: LogLevel is the log level
+                  type: string
+                onLine:
+                  description: OnLine specifies whether online during restore
+                  type: boolean
                 pd:
                   description: PDAddress is the PD address of the tidb cluster
                   type: string
-                ratelimit:
+                rateLimit:
                   description: RateLimit is the rate limit of the backup task, MB/s
                     per node
                   format: int32
                   type: integer
-                status-addr:
+                sendCredToTikv:
+                  description: SendCredToTikv specifies whether to send credentials
+                    to TiKV
+                  type: boolean
+                statusAddr:
                   description: StatusAddr is the HTTP listening address for the status
                     report service. Set to empty string to disable
                   type: string
-                timeago:
+                timeAgo:
                   description: TimeAgo is the history version of the backup task,
                     e.g. 1m, 1h
                   type: string
@@ -3001,19 +3011,29 @@ spec:
                     key:
                       description: Key is the private key path for TLS connection
                       type: string
+                    logLevel:
+                      description: LogLevel is the log level
+                      type: string
+                    onLine:
+                      description: OnLine specifies whether online during restore
+                      type: boolean
                     pd:
                       description: PDAddress is the PD address of the tidb cluster
                       type: string
-                    ratelimit:
+                    rateLimit:
                       description: RateLimit is the rate limit of the backup task,
                         MB/s per node
                       format: int32
                       type: integer
-                    status-addr:
+                    sendCredToTikv:
+                      description: SendCredToTikv specifies whether to send credentials
+                        to TiKV
+                      type: boolean
+                    statusAddr:
                       description: StatusAddr is the HTTP listening address for the
                         status report service. Set to empty string to disable
                       type: string
-                    timeago:
+                    timeAgo:
                       description: TimeAgo is the history version of the backup task,
                         e.g. 1m, 1h
                       type: string

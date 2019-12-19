@@ -42,6 +42,16 @@ func (in *BRConfig) DeepCopyInto(out *BRConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.SendCredToTikv != nil {
+		in, out := &in.SendCredToTikv, &out.SendCredToTikv
+		*out = new(bool)
+		**out = **in
+	}
+	if in.OnLine != nil {
+		in, out := &in.OnLine, &out.OnLine
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
