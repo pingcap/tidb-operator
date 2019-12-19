@@ -25,7 +25,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/record"
 )
 
 const (
@@ -40,17 +39,15 @@ var (
 )
 
 type stableScheduling struct {
-	kubeCli  kubernetes.Interface
-	cli      versioned.Interface
-	recorder record.EventRecorder
+	kubeCli kubernetes.Interface
+	cli     versioned.Interface
 }
 
 // NewStableScheduling returns a Predicate
-func NewStableScheduling(kubeCli kubernetes.Interface, cli versioned.Interface, recorder record.EventRecorder) Predicate {
+func NewStableScheduling(kubeCli kubernetes.Interface, cli versioned.Interface) Predicate {
 	p := &stableScheduling{
-		kubeCli:  kubeCli,
-		cli:      cli,
-		recorder: recorder,
+		kubeCli: kubeCli,
+		cli:     cli,
 	}
 	return p
 }
@@ -102,8 +99,7 @@ func (p *stableScheduling) Filter(instanceName string, pod *apiv1.Pod, nodes []a
 				return []apiv1.Node{node}, nil
 			}
 		}
-		msg := fmt.Sprintf("cannot run on its previous node %q", nodeName)
-		p.recorder.Event(pod, apiv1.EventTypeWarning, UnableToRunOnPreviousNodeReason, msg)
+		return nodes, fmt.Errorf("cannot run on its previous node %q", nodeName)
 	} else {
 		glog.V(2).Infof("no previous node exists for pod %q in TiDB cluster %s/%q", podName, ns, tcName)
 	}

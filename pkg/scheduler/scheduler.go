@@ -15,6 +15,7 @@ package scheduler
 
 import (
 	"fmt"
+
 	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/features"
@@ -45,6 +46,8 @@ type Scheduler interface {
 type scheduler struct {
 	// component => predicates
 	predicates map[string][]predicates.Predicate
+
+	recorder record.EventRecorder
 }
 
 // NewScheduler returns a Scheduler
@@ -56,19 +59,20 @@ func NewScheduler(kubeCli kubernetes.Interface, cli versioned.Interface) Schedul
 	recorder := eventBroadcaster.NewRecorder(kubescheme.Scheme, apiv1.EventSource{Component: "tidb-scheduler"})
 	predicatesByComponent := map[string][]predicates.Predicate{
 		label.PDLabelVal: {
-			predicates.NewHA(kubeCli, cli, recorder),
+			predicates.NewHA(kubeCli, cli),
 		},
 		label.TiKVLabelVal: {
-			predicates.NewHA(kubeCli, cli, recorder),
+			predicates.NewHA(kubeCli, cli),
 		},
 	}
 	if features.DefaultFeatureGate.Enabled(features.StableScheduling) {
 		predicatesByComponent[label.TiDBLabelVal] = []predicates.Predicate{
-			predicates.NewStableScheduling(kubeCli, cli, recorder),
+			predicates.NewStableScheduling(kubeCli, cli),
 		}
 	}
 	return &scheduler{
 		predicates: predicatesByComponent,
+		recorder:   recorder,
 	}
 }
 
@@ -115,7 +119,10 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 		glog.Infof("entering predicate: %s, nodes: %v", predicate.Name(), predicates.GetNodeNames(kubeNodes))
 		kubeNodes, err = predicate.Filter(instanceName, pod, kubeNodes)
 		if err != nil {
-			return nil, err
+			s.recorder.Event(pod, apiv1.EventTypeWarning, predicate.Name(), err.Error())
+			return &schedulerapiv1.ExtenderFilterResult{
+				Nodes: &apiv1.NodeList{Items: kubeNodes},
+			}, nil
 		}
 		glog.Infof("leaving predicate: %s, nodes: %v", predicate.Name(), predicates.GetNodeNames(kubeNodes))
 	}

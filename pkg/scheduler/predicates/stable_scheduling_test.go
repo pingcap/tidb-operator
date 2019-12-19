@@ -135,10 +135,8 @@ func TestStableSchedulingFilter(t *testing.T) {
 				makeNode("node-3"),
 			},
 			expectFn: func(nodes []v1.Node, err error, recorder *record.FakeRecorder) {
-				g.Expect(err).NotTo(HaveOccurred())
-				events := collectEvents(recorder.Events)
-				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring(UnableToRunOnPreviousNodeReason))
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(err.Error()).To(ContainSubstring("cannot run on its previous node \"node-4\""))
 				g.Expect(len(nodes)).To(Equal(3))
 			},
 		},
@@ -174,9 +172,8 @@ func TestStableSchedulingFilter(t *testing.T) {
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 		p := stableScheduling{
-			kubeCli:  kubeCli,
-			cli:      cli,
-			recorder: recorder,
+			kubeCli: kubeCli,
+			cli:     cli,
 		}
 		nodes, err := p.Filter(tc.instanceName, tc.pod, tc.candicateNodes)
 		tc.expectFn(nodes, err, recorder)
