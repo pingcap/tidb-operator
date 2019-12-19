@@ -16,9 +16,12 @@ package cmd
 import (
 	"context"
 
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/clean"
+	// registry mysql drive
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/export"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
@@ -27,32 +30,38 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
-// NewCleanCommand implements the clean command
-func NewCleanCommand() *cobra.Command {
-	bo := clean.Options{}
+// NewExportCommand implements the backup command
+func NewExportCommand() *cobra.Command {
+	bo := export.BackupOpts{}
 
 	cmd := &cobra.Command{
-		Use:   "clean",
-		Short: "Clean specific tidb cluster backup.",
+		Use:   "export",
+		Short: "Export specific tidb cluster.",
 		Run: func(cmd *cobra.Command, args []string) {
 			util.ValidCmdFlags(cmd.CommandPath(), cmd.LocalFlags())
-			cmdutil.CheckErr(runClean(bo, kubecfg))
+			cmdutil.CheckErr(runExport(bo, kubecfg))
 		},
 	}
 
-	cmd.Flags().StringVar(&bo.Namespace, "namespace", "", "Tidb cluster's namespace")
+	cmd.Flags().StringVar(&bo.Namespace, "namespace", "", "Backup CR's namespace")
+	cmd.Flags().StringVar(&bo.Host, "host", "", "Tidb cluster access address")
+	cmd.Flags().Int32Var(&bo.Port, "port", bkconstants.DefaultTidbPort, "Port number to use for connecting tidb cluster")
+	cmd.Flags().StringVar(&bo.Bucket, "bucket", "", "Bucket in which to store the backup data")
+	cmd.Flags().StringVar(&bo.Password, bkconstants.TidbPasswordKey, "", "Password to use when connecting to tidb cluster")
+	cmd.Flags().StringVar(&bo.User, "user", "", "User for login tidb cluster")
+	cmd.Flags().StringVar(&bo.StorageType, "storageType", "", "Backend storage type")
 	cmd.Flags().StringVar(&bo.BackupName, "backupName", "", "Backup CRD object name")
+	util.SetFlagsFromEnv(cmd.Flags(), bkconstants.BackupManagerEnvVarPrefix)
 	return cmd
 }
 
-func runClean(backupOpts clean.Options, kubecfg string) error {
+func runExport(backupOpts export.BackupOpts, kubecfg string) error {
 	kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
 	cmdutil.CheckErr(err)
 	options := []informers.SharedInformerOption{
 		informers.WithNamespace(backupOpts.Namespace),
 	}
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, constants.ResyncDuration, options...)
-
 	recorder := util.NewEventRecorder(kubeCli, "backup")
 	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
 	statusUpdater := controller.NewRealBackupConditionUpdater(cli, backupInformer.Lister(), recorder)
@@ -64,7 +73,7 @@ func runClean(backupOpts clean.Options, kubecfg string) error {
 	// waiting for the shared informer's store has synced.
 	cache.WaitForCacheSync(ctx.Done(), backupInformer.Informer().HasSynced)
 
-	glog.Infof("start to clean backup %s", backupOpts.String())
-	bm := clean.NewManager(backupInformer.Lister(), statusUpdater, backupOpts)
-	return bm.ProcessCleanBackup()
+	glog.Infof("start to process backup %s", backupOpts.String())
+	bm := export.NewBackupManager(backupInformer.Lister(), statusUpdater, backupOpts)
+	return bm.ProcessBackup()
 }

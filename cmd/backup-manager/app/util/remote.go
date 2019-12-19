@@ -46,7 +46,6 @@ const (
 type s3Query struct {
 	region         string
 	endpoint       string
-	oriEndpoint    string
 	bucket         string
 	prefix         string
 	provider       string
@@ -124,12 +123,13 @@ func newS3StorageOption(qs *s3Query) ([]string, string) {
 
 // newS3Storage initialize a new s3 storage
 func newS3Storage(qs *s3Query) (*blob.Bucket, error) {
-	awsConfig := aws.NewConfig().WithMaxRetries(maxRetries).WithS3ForcePathStyle(qs.forcePathStyle)
+	awsConfig := aws.NewConfig().WithMaxRetries(maxRetries).
+		WithS3ForcePathStyle(qs.forcePathStyle)
 	if qs.region != "" {
 		awsConfig.WithRegion(qs.region)
 	}
-	if qs.oriEndpoint != "" {
-		awsConfig.WithEndpoint(qs.oriEndpoint)
+	if qs.endpoint != "" {
+		awsConfig.WithEndpoint(qs.endpoint)
 	}
 	// awsConfig.WithLogLevel(aws.LogDebugWithSigning)
 	awsSessionOpts := session.Options{
@@ -161,13 +161,14 @@ func checkS3Config(backup *v1alpha1.Backup, fakeRegion bool) (*s3Query, error) {
 	sqs.provider = string(backup.Spec.S3.Provider)
 	sqs.prefix = backup.Spec.S3.Prefix
 	sqs.endpoint = backup.Spec.S3.Endpoint
-	sqs.oriEndpoint = backup.Spec.S3.Endpoint
 	sqs.sse = backup.Spec.S3.SSE
 	sqs.acl = backup.Spec.S3.Acl
 	sqs.storageClass = backup.Spec.S3.StorageClass
 	sqs.forcePathStyle = true
 	// In some cases, we need to set ForcePathStyle to false.
 	// Refer to: https://rclone.org/s3/#s3-force-path-style
+	// if UseAccelerateEndpoint is supported for AWS s3 in future,
+	// need to set forcePathStyle = false too.
 	if sqs.provider == "alibaba" || sqs.provider == "netease" {
 		sqs.forcePathStyle = false
 	}
@@ -178,38 +179,4 @@ func checkS3Config(backup *v1alpha1.Backup, fakeRegion bool) (*s3Query, error) {
 	sqs.prefix += "/"
 
 	return &sqs, nil
-}
-
-// ConstructBRGlobalOptions constructs global options for BR and also return the remote path
-func ConstructBRGlobalOptions(backup *v1alpha1.Backup) ([]string, string, error) {
-	var args []string
-	config := backup.Spec.BR
-	if config == nil {
-		return nil, "", fmt.Errorf("no config for br in backup %s/%s", backup.Namespace, backup.Name)
-	}
-	args = append(args, fmt.Sprintf("--pd=%s", config.PDAddress))
-	if config.CA != "" {
-		args = append(args, fmt.Sprintf("--ca=%s", config.CA))
-	}
-	if config.Cert != "" {
-		args = append(args, fmt.Sprintf("--cert=%s", config.Cert))
-	}
-	if config.Key != "" {
-		args = append(args, fmt.Sprintf("--key=%s", config.Key))
-	}
-	// Do not set log-file, backup-manager needs to get backup
-	// position from the output of BR with info log-level
-	// if config.LogFile != "" {
-	// 	args = append(args, fmt.Sprintf("--log-file=%s", config.LogFile))
-	// }
-	args = append(args, "--log-level=info")
-	if config.StatusAddr != "" {
-		args = append(args, fmt.Sprintf("--status-addr=%s", config.StatusAddr))
-	}
-	s, path, err := getRemoteStorage(backup)
-	if err != nil {
-		return nil, "", err
-	}
-	args = append(args, s...)
-	return args, path, nil
 }
