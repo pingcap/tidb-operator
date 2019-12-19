@@ -25,9 +25,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"k8s.io/apimachinery/pkg/labels"
-	glog "k8s.io/klog"
-
-	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/pingcap/tidb-operator/tests/slack"
 
@@ -102,26 +99,26 @@ func (oa *operatorActions) SwitchOperatorWebhook(isEnabled bool, info *OperatorC
 	}
 	klog.Infof("success to execute helm operator upgrade")
 
-	// ensure pods unchanged when upgrading operator
-	waitFn := func() (done bool, err error) {
-		pods2, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(listOptions)
-		if err != nil {
-			glog.Error(err)
-			return false, nil
-		}
-
-		err = ensurePodsUnchanged(pods1, pods2)
-		if err != nil {
-			return true, err
-		}
-
-		return false, nil
-	}
-
-	err = wait.Poll(oa.pollInterval, 5*time.Minute, waitFn)
-	if err == wait.ErrWaitTimeout {
-		return nil
-	}
+	//// ensure pods unchanged when upgrading operator
+	//waitFn := func() (done bool, err error) {
+	//	pods2, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(listOptions)
+	//	if err != nil {
+	//		glog.Error(err)
+	//		return false, nil
+	//	}
+	//
+	//	err = ensurePodsUnchanged(pods1, pods2)
+	//	if err != nil {
+	//		return true, err
+	//	}
+	//
+	//	return false, nil
+	//}
+	//
+	//err = wait.Poll(oa.pollInterval, 5*time.Minute, waitFn)
+	//if err == wait.ErrWaitTimeout {
+	//	return nil
+	//}
 
 	klog.Infof("success to upgrade operator with webhook switch %v", isEnabled)
 	return nil

@@ -393,6 +393,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"scheduler.replicas":               "2",
 		"imagePullPolicy":                  string(oi.ImagePullPolicy),
 		"testMode":                         strconv.FormatBool(oi.TestMode),
+		"admissionWebhook.create":          "true",
 	}
 	for k, v := range m {
 		set[k] = v
