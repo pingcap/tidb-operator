@@ -264,7 +264,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 			pvcIndexer.Add(pvc)
 		}
 
-		controller.WebhookEnabled = false
+		controller.PodWebhookEnabled = false
 
 		pdClient := controller.NewFakePDClient(pdControl, tc)
 

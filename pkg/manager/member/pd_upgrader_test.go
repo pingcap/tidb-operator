@@ -54,7 +54,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			test.changeFn(tc)
 		}
 
-		controller.WebhookEnabled = false
+		controller.PodWebhookEnabled = false
 
 		if test.transferLeaderErr {
 			pdClient.AddReaction(pdapi.TransferPDLeaderActionType, func(action *pdapi.Action) (interface{}, error) {

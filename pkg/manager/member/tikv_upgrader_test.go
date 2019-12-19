@@ -68,7 +68,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 		}
 		newSet := newStatefulSetForTiKVUpgrader()
 
-		controller.WebhookEnabled = false
+		controller.PodWebhookEnabled = false
 
 		pdClient := controller.NewFakePDClient(pdControl, tc)
 		if test.beginEvictLeaderErr {

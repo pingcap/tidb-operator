@@ -182,13 +182,22 @@ admissionWebhook:
   serviceAccount: tidb-admission-webhook
   rbac:
     create: true
+  hooksEnabled:
+    ## statefulsets hook would check requests for updating tidbcluster's statefulsets
+    ## If enabled it, the statefulsets of tidbcluseter would update in partition by tidbcluster's annotation
+    statefulSets: false
+    ## pods hook would check requests for creating and deleting tidbcluster's pods
+    ## if enabled it, the pods of tidbcluster would safely created or deleted by webhook instead of controller
+    pods: false
   ## failurePolicy are applied to ValidatingWebhookConfiguration which affect tidb-admission-webhook
   ## refer to https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
   failurePolicy:
     ## deletePod Webhook would check the deleting request of tidbcluster pod and the failurePolicy is recommended as Fail
-    ## createPod Webhook would check the creating request of tidbcluster pod and the failurePolicy is recommended as Ignore
     deletePod: Fail
+    ## createPod Webhook would check the creating request of tidbcluster pod and the failurePolicy is recommended as Ignore
     createPod: Ignore
+    ## updateStatefulSet Webhook would check the updating request of tidbcluster statefulset and the failurePolicy is recommended as Fail
+    updateStatefulSet: Fail
   ## tidb-admission-webhook deployed as kubernetes apiservice server
   ## refer to https://github.com/openshift/generic-admission-server
   apiservice:

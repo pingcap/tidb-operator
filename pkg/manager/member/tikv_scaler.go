@@ -72,7 +72,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		return nil
 	}
 
-	if controller.WebhookEnabled {
+	if controller.PodWebhookEnabled {
 		decreaseReplicas(newSet, oldSet)
 		return nil
 	}

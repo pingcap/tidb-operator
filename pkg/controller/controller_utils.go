@@ -65,7 +65,7 @@ var (
 	TidbDiscoveryImage string
 
 	// WebhookEnabled is to indicate whether tidb-admission-webhook is enabled
-	WebhookEnabled bool
+	PodWebhookEnabled bool
 )
 
 const (

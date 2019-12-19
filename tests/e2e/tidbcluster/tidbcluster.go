@@ -16,11 +16,12 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/types"
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/pkg/label"
 
@@ -203,6 +204,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		ginkgo.By("Register webhook")
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, ns, svc.Name, certCtx)
 
+		ginkgo.By("Enabled Operator admission webhook")
+		oa.SwitchOperatorWebhookOrDie(true, ocfg)
+
+		ginkgo.By("Enabled Operator statefulset webhook")
+		oa.SwitchOperatorStatefulSetWebhookOrDie(true, ocfg)
+
 		ginkgo.By(fmt.Sprintf("Deploying tidb cluster %s", cluster.ClusterVersion))
 		oa.DeployTidbClusterOrDie(&cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
@@ -228,6 +235,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			e2elog.Logf("webhook logs: %s", logs)
 			e2elog.Fail("webhook pod is not running")
 		}
+		ginkgo.By("disable operator statefulset webhook")
+		oa.SwitchOperatorStatefulSetWebhookOrDie(false, ocfg)
+
+		ginkgo.By("disable operator admission webhook")
+		oa.SwitchOperatorWebhookOrDie(false, ocfg)
 
 		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 	})
