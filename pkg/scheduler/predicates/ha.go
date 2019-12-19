@@ -92,7 +92,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	}
 
 	if len(nodes) == 0 {
-		return nil, fmt.Errorf("no nodes available to schedule pods")
+		return nil, fmt.Errorf("no nodes available to schedule pods %s/%s"， ns, podName)
 	}
 	if _, _, err := h.acquireLockFn(pod); err != nil {
 		return nil, err
