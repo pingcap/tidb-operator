@@ -75,7 +75,7 @@ func init() {
 	flag.StringVar(&controller.TidbBackupManagerImage, "tidb-backup-manager-image", "pingcap/tidb-backup-manager:latest", "The image of backup manager tool")
 	// TODO: actually we just want to use the same image with tidb-controller-manager, but DownwardAPI cannot get image ID, see if there is any better solution
 	flag.StringVar(&controller.TidbDiscoveryImage, "tidb-discovery-image", "pingcap/tidb-operator:latest", "The image of the tidb discovery service")
-	flag.BoolVar(&controller.PodAdmissionWebhookEnabled, "pod-admission-webhook-enabled", false, "wheter pod admission webhook enabled")
+	flag.BoolVar(&controller.PodAdmissionWebhookEnabled, "pod-admission-webhook-enabled", false, "whether pod admission webhook enabled")
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 
 	flag.Parse()
