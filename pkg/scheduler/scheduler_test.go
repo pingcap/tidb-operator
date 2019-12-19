@@ -144,7 +144,9 @@ func TestSchedulerFilter(t *testing.T) {
 				events := predicates.CollectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(1))
 				g.Expect(events[0]).To(ContainSubstring("predicate error"))
-				g.Expect(result.Nodes.Items).To(BeNil())
+				if result != nil {
+					g.Expect(result.Nodes.Items).To(BeNil())
+				}
 			},
 		},
 		{
