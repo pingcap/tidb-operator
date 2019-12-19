@@ -40,8 +40,8 @@ func (oa *operatorActions) SwitchOperatorWebhook(isEnabled bool, info *OperatorC
 	}
 
 	cmd := fmt.Sprintf(`helm upgrade %s %s --set admissionWebhook.create=%v `,
-		oa.operatorChartPath(info.Tag),
 		info.ReleaseName,
+		oa.operatorChartPath(info.Tag),
 		isEnabled)
 
 	if isEnabled {
