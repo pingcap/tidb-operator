@@ -21,10 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/pingcap/tidb-operator/pkg/label"
-
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
@@ -34,7 +30,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
-	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/apiserver"
@@ -204,12 +199,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		ginkgo.By("Register webhook")
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, ns, svc.Name, certCtx)
 
-		ginkgo.By("Enabled Operator admission webhook")
-		oa.SwitchOperatorWebhookOrDie(true, ocfg)
-
-		ginkgo.By("Enabled Operator statefulset webhook")
-		oa.SwitchOperatorStatefulSetWebhookOrDie(true, ocfg)
-
 		ginkgo.By(fmt.Sprintf("Deploying tidb cluster %s", cluster.ClusterVersion))
 		oa.DeployTidbClusterOrDie(&cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
@@ -235,11 +224,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			e2elog.Logf("webhook logs: %s", logs)
 			e2elog.Fail("webhook pod is not running")
 		}
-		ginkgo.By("disable operator statefulset webhook")
-		oa.SwitchOperatorStatefulSetWebhookOrDie(false, ocfg)
-
-		ginkgo.By("disable operator admission webhook")
-		oa.SwitchOperatorWebhookOrDie(false, ocfg)
 
 		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 	})
@@ -602,67 +586,85 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err)
 	})
 
-	ginkgo.It("Restarter: Testing restarting by annotations", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "restarter", "admin", "")
-		cluster.Resources["pd.replicas"] = "1"
-		cluster.Resources["tikv.replicas"] = "1"
-		cluster.Resources["tidb.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
-		oa.SwitchOperatorWebhookOrDie(true, ocfg)
-		oa.SwitchOperatorPodWebhookOrDie(true, ocfg)
+	//ginkgo.It("Restarter: Testing restarting by annotations", func() {
+	//	cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "restarter", "admin", "")
+	//	cluster.Resources["pd.replicas"] = "1"
+	//	cluster.Resources["tikv.replicas"] = "1"
+	//	cluster.Resources["tidb.replicas"] = "1"
+	//	oa.DeployTidbClusterOrDie(&cluster)
+	//	oa.CheckTidbClusterStatusOrDie(&cluster)
+	//
+	//	tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+	//	framework.ExpectNoError(err, "Expected get tidbcluster")
+	//	pd_0, err := c.CoreV1().Pods(ns).Get(operatorUtils.GetPodName(tc, v1alpha1.PDMemberType, 0), metav1.GetOptions{})
+	//	framework.ExpectNoError(err, "Expected get pd-0")
+	//	tikv_0, err := c.CoreV1().Pods(ns).Get(operatorUtils.GetPodName(tc, v1alpha1.TiKVMemberType, 0), metav1.GetOptions{})
+	//	framework.ExpectNoError(err, "Expected get tikv-0")
+	//	tidb_0, err := c.CoreV1().Pods(ns).Get(operatorUtils.GetPodName(tc, v1alpha1.TiDBMemberType, 0), metav1.GetOptions{})
+	//	framework.ExpectNoError(err, "Expected get tidb-0")
+	//	pd_0.Annotations[label.AnnPodDeferDeleting] = "true"
+	//	tikv_0.Annotations[label.AnnPodDeferDeleting] = "true"
+	//	tidb_0.Annotations[label.AnnPodDeferDeleting] = "true"
+	//	_, err = c.CoreV1().Pods(ns).Update(pd_0)
+	//	framework.ExpectNoError(err, "Expected update pd-0 restarting ann")
+	//	_, err = c.CoreV1().Pods(ns).Update(tikv_0)
+	//	framework.ExpectNoError(err, "Expected update tikv-0 restarting ann")
+	//	_, err = c.CoreV1().Pods(ns).Update(tidb_0)
+	//	framework.ExpectNoError(err, "Expected update tidb-0 restarting ann")
+	//
+	//	f := func(name, namespace string, uid types.UID) (bool, error) {
+	//		pod, err := c.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	//		if err != nil {
+	//			return false, err
+	//		}
+	//		if _, existed := pod.Annotations[label.AnnPodDeferDeleting]; existed {
+	//			return false, nil
+	//		}
+	//		if uid == pod.UID {
+	//			return false, nil
+	//		}
+	//		return true, nil
+	//	}
+	//
+	//	err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+	//		isPdRestarted, err := f(pd_0.Name, ns, pd_0.UID)
+	//		if !(isPdRestarted && err == nil) {
+	//			return isPdRestarted, err
+	//		}
+	//		isTiKVRestarted, err := f(tikv_0.Name, ns, tikv_0.UID)
+	//		if !(isTiKVRestarted && err == nil) {
+	//			return isTiKVRestarted, err
+	//		}
+	//		isTiDBRestarted, err := f(tidb_0.Name, ns, tidb_0.UID)
+	//		if !(isTiDBRestarted && err == nil) {
+	//			return isTiDBRestarted, err
+	//		}
+	//		return true, nil
+	//	})
+	//	framework.ExpectNoError(err, "Expected tidbcluster pod restarted")
+	//})
 
-		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "Expected get tidbcluster")
-		pd_0, err := c.CoreV1().Pods(ns).Get(operatorUtils.GetPodName(tc, v1alpha1.PDMemberType, 0), metav1.GetOptions{})
-		framework.ExpectNoError(err, "Expected get pd-0")
-		tikv_0, err := c.CoreV1().Pods(ns).Get(operatorUtils.GetPodName(tc, v1alpha1.TiKVMemberType, 0), metav1.GetOptions{})
-		framework.ExpectNoError(err, "Expected get tikv-0")
-		tidb_0, err := c.CoreV1().Pods(ns).Get(operatorUtils.GetPodName(tc, v1alpha1.TiDBMemberType, 0), metav1.GetOptions{})
-		framework.ExpectNoError(err, "Expected get tidb-0")
-		pd_0.Annotations[label.AnnPodDeferDeleting] = "true"
-		tikv_0.Annotations[label.AnnPodDeferDeleting] = "true"
-		tidb_0.Annotations[label.AnnPodDeferDeleting] = "true"
-		_, err = c.CoreV1().Pods(ns).Update(pd_0)
-		framework.ExpectNoError(err, "Expected update pd-0 restarting ann")
-		_, err = c.CoreV1().Pods(ns).Update(tikv_0)
-		framework.ExpectNoError(err, "Expected update tikv-0 restarting ann")
-		_, err = c.CoreV1().Pods(ns).Update(tidb_0)
-		framework.ExpectNoError(err, "Expected update tidb-0 restarting ann")
-
-		f := func(name, namespace string, uid types.UID) (bool, error) {
-			pod, err := c.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
-			if err != nil {
-				return false, err
-			}
-			if _, existed := pod.Annotations[label.AnnPodDeferDeleting]; existed {
-				return false, nil
-			}
-			if uid == pod.UID {
-				return false, nil
-			}
-			return true, nil
-		}
-
-		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-			isPdRestarted, err := f(pd_0.Name, ns, pd_0.UID)
-			if !(isPdRestarted && err == nil) {
-				return isPdRestarted, err
-			}
-			isTiKVRestarted, err := f(tikv_0.Name, ns, tikv_0.UID)
-			if !(isTiKVRestarted && err == nil) {
-				return isTiKVRestarted, err
-			}
-			isTiDBRestarted, err := f(tidb_0.Name, ns, tidb_0.UID)
-			if !(isTiDBRestarted && err == nil) {
-				return isTiDBRestarted, err
-			}
-			return true, nil
-		})
-		framework.ExpectNoError(err, "Expected tidbcluster pod restarted")
-		oa.SwitchOperatorPodWebhookOrDie(false, ocfg)
-		oa.SwitchOperatorWebhookOrDie(false, ocfg)
-	})
+	//ginkgo.It("Upgrade tidbcluster with pod admission webhook", func() {
+	//	cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "upgrade-with-webhook", "admin", "")
+	//	cluster.Resources["pd.replicas"] = "3"
+	//	cluster.Resources["tikv.replicas"] = "3"
+	//	cluster.Resources["tidb.replicas"] = "2"
+	//	oa.DeployTidbClusterOrDie(&cluster)
+	//	oa.CheckTidbClusterStatusOrDie(&cluster)
+	//	oa.SwitchOperatorWebhookOrDie(true, ocfg)
+	//	oa.SwitchOperatorPodWebhookOrDie(true, ocfg)
+	//
+	//	upgradeVersions := cfg.GetUpgradeTidbVersionsOrDie()
+	//	ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", cluster.ClusterVersion, upgradeVersions[0]))
+	//	cluster.UpgradeAll(upgradeVersions[0])
+	//	oa.UpgradeTidbClusterOrDie(&cluster)
+	//
+	//	oa.CheckTidbClusterStatusOrDie(&cluster)
+	//
+	//	oa.SwitchOperatorPodWebhookOrDie(false, ocfg)
+	//	oa.SwitchOperatorWebhookOrDie(false, ocfg)
+	//
+	//})
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {

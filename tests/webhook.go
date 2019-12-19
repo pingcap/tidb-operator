@@ -8,6 +8,10 @@ import (
 	"strconv"
 	"time"
 
+	apps "k8s.io/api/apps/v1"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+
 	"github.com/ghodss/yaml"
 
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -172,4 +176,105 @@ func (oa *operatorActions) SwitchOperatorPodWebhookOrDie(isEnabled bool, info *O
 	if err := oa.SwitchOperatorPodWebhook(isEnabled, info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
+}
+
+func (oa *operatorActions) CheckUpgradeWithPodWebhook(info *TidbClusterConfig) error {
+	ns := info.Namespace
+	tcName := info.ClusterName
+
+	pdStsName := getStsName(tcName, v1alpha1.PDMemberType)
+	tikvStsName := getStsName(tcName, v1alpha1.TiKVMemberType)
+	tidbStsName := getStsName(tcName, v1alpha1.TiDBMemberType)
+
+	pdDesiredReplicas, err := strconv.ParseInt(info.Resources["pd.replicas"], 10, 32)
+	if err != nil {
+		return err
+	}
+	tikvDesiredReplicas, err := strconv.ParseInt(info.Resources["tikv.replicas"], 10, 32)
+	if err != nil {
+		return err
+	}
+	tidbDesiredReplicas, err := strconv.ParseInt(info.Resources["tidb.replicas"], 10, 32)
+	if err != nil {
+		return err
+	}
+
+	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+	}
+
+	f := func(stsName, namespace string, desiredReplicas int64) (*apps.StatefulSet, bool, error) {
+		sts, err := oa.kubeCli.AppsV1().StatefulSets(ns).Get(stsName, metav1.GetOptions{})
+		if err != nil {
+			return nil, false, err
+		}
+		if sts.Status.UpdatedReplicas != int32(desiredReplicas) {
+			return nil, false, nil
+		}
+		if sts.Status.CurrentReplicas != int32(desiredReplicas) {
+			return nil, false, nil
+		}
+		return sts, true, nil
+	}
+
+	return wait.Poll(10*time.Second, 50*time.Minute, func() (done bool, err error) {
+
+		pdsts, ready, err := f(pdStsName, ns, pdDesiredReplicas)
+		if !ready || err != nil {
+			return ready, err
+		}
+		if pdsts.Spec.Template.Spec.Containers[0].Image != info.PDImage {
+			return false, nil
+		}
+		pdClient, cancel, err := oa.getPDClient(tc)
+		if err != nil {
+			return false, err
+		}
+		defer cancel()
+
+		membersInfo, err := pdClient.GetMembers()
+		if err != nil {
+			return false, nil
+		}
+		if len(membersInfo.Members) != int(pdDesiredReplicas) {
+			return false, nil
+		}
+
+		tikvsts, ready, err := f(tikvStsName, ns, tikvDesiredReplicas)
+		if !ready || err != nil {
+			return ready, err
+		}
+		if tikvsts.Spec.Template.Spec.Containers[0].Image != info.TiKVImage {
+			return false, nil
+		}
+		storesInfo, err := pdClient.GetStores()
+		if err != nil {
+			return false, nil
+		}
+		if storesInfo.Count != int(tikvDesiredReplicas) {
+			return false, nil
+		}
+
+		tidbsts, ready, err := f(tidbStsName, ns, tidbDesiredReplicas)
+		if !ready || err != nil {
+			return ready, err
+		}
+
+		if tidbsts.Spec.Template.Spec.Containers[0].Image != info.TiDBImage && tidbsts.Spec.Template.Spec.Containers[1].Image != info.TiDBImage {
+			return false, nil
+		}
+		return true, nil
+	})
+
+}
+
+func (oa *operatorActions) CheckUpgradeWithPodWebhookOrDie(info *TidbClusterConfig) {
+	if err := oa.CheckUpgradeWithPodWebhook(info); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+func getStsName(tcName string, memberType v1alpha1.MemberType) string {
+	return fmt.Sprintf("%s-%s", tcName, memberType.String())
 }

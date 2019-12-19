@@ -232,6 +232,8 @@ type OperatorActions interface {
 	SwitchOperatorStatefulSetWebhookOrDie(isEnabled bool, info *OperatorConfig)
 	SwitchOperatorPodWebhook(isEnabled bool, info *OperatorConfig) error
 	SwitchOperatorPodWebhookOrDie(isEnabled bool, info *OperatorConfig)
+	CheckUpgradeWithPodWebhook(info *TidbClusterConfig) error
+	CheckUpgradeWithPodWebhookOrDie(info *TidbClusterConfig)
 }
 
 type operatorActions struct {
@@ -494,6 +496,14 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
+	}
+
+	if err := oa.SwitchOperatorWebhook(true, info); err != nil {
+		return err
+	}
+
+	if err := oa.SwitchOperatorStatefulSetWebhook(true, info); err != nil {
+		return err
 	}
 
 	// wait for all apiservices are available
