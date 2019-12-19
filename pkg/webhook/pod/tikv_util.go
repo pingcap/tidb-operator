@@ -26,19 +26,19 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // checkFormerTiKVPodStatus would check all the former tikv pods whether their store state were UP during Upgrading
 // check need both  check former pod is ready ,store up, and no evict leader
-func checkFormerTiKVPodStatus(podLister corelisters.PodLister, tc *v1alpha1.TidbCluster, ordinal int32, replicas int32, storesInfo *pdapi.StoresInfo) error {
+func checkFormerTiKVPodStatus(kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster, ordinal int32, replicas int32, storesInfo *pdapi.StoresInfo) error {
 
 	tcName := tc.Name
 	namespace := tc.Namespace
 
 	for i := replicas - 1; i > ordinal; i-- {
 		podName := memberUtil.TikvPodName(tcName, i)
-		pod, err := podLister.Pods(namespace).Get(podName)
+		pod, err := kubeCli.CoreV1().Pods(namespace).Get(podName, meta.GetOptions{})
 		if err != nil {
 			return err
 		}
