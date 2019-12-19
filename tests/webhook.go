@@ -127,8 +127,8 @@ func (oa *operatorActions) SwitchOperatorStatefulSetWebhook(isEnabled bool, info
 		"admissionWebhook.hooksEnabled.statefulSets": strconv.FormatBool(isEnabled),
 	}
 	cmd := fmt.Sprintf(`helm upgrade %s %s --set-string %s`,
-		oa.operatorChartPath(info.Tag),
 		info.ReleaseName,
+		oa.operatorChartPath(info.Tag),
 		info.OperatorHelmSetString(m))
 
 	klog.Info(cmd)
