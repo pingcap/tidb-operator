@@ -393,10 +393,6 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"scheduler.replicas":               "2",
 		"imagePullPolicy":                  string(oi.ImagePullPolicy),
 		"testMode":                         strconv.FormatBool(oi.TestMode),
-		"admissionWebhook.create":          "true",
-	}
-	for k, v := range m {
-		set[k] = v
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
@@ -490,12 +486,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	glog.Info("enable operator admission webhook server")
-	if err := oa.SwitchOperatorWebhook(true, info); err != nil {
-		return err
-	}
-
-	glog.Info("enable operator pod admission webhook config")
-	if err := oa.SwitchOperatorStatefulSetWebhook(true, info); err != nil {
+	if err := oa.SwitchOperatorWebhook(true, false, true, info); err != nil {
 		return err
 	}
 

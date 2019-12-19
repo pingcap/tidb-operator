@@ -18,8 +18,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"strconv"
-	"time"
+	"strings"
 
 	"github.com/ghodss/yaml"
 
@@ -30,8 +29,8 @@ import (
 	"k8s.io/klog"
 )
 
-func (oa *operatorActions) SwitchOperatorWebhook(isEnabled bool, info *OperatorConfig) error {
-	klog.Infof("upgrading tidb-operator with admission webhook %v", isEnabled)
+func (oa *operatorActions) SwitchOperatorWebhook(isWebhookEnabled, isPodWebhookEnable, isStsWebhookEnabled bool, info *OperatorConfig) error {
+	klog.Infof("upgrading tidb-operator with admission webhook %v,pod %v,sts %v", isWebhookEnabled, isPodWebhookEnable, isStsWebhookEnabled)
 
 	//listOptions := metav1.ListOptions{
 	//	LabelSelector: labels.SelectorFromSet(
@@ -41,16 +40,20 @@ func (oa *operatorActions) SwitchOperatorWebhook(isEnabled bool, info *OperatorC
 	//if err != nil {
 	//	return err
 	//}
-	m := map[string]string{
-		"admissionWebhook.create": "true",
-	}
+	switchWebhook := fmt.Sprintf("%s=%v,%s=%v,%s=%v",
+		"admissionWebhook.create", isWebhookEnabled,
+		"admissionWebhook.hooksEnabled.pds", isPodWebhookEnable,
+		"admissionWebhook.hooksEnabled.statefulSets", isStsWebhookEnabled)
+
+	setString := info.OperatorHelmSetString(nil)
+	setString = strings.Join([]string{setString, switchWebhook}, ",")
 
 	cmd := fmt.Sprintf(`helm upgrade %s %s --set-string %s `,
 		info.ReleaseName,
 		oa.operatorChartPath(info.Tag),
-		info.OperatorHelmSetString(m))
+		setString)
 
-	if isEnabled {
+	if isWebhookEnabled {
 		serverVersion, err := oa.kubeCli.Discovery().ServerVersion()
 		if err != nil {
 			return fmt.Errorf("failed to get api server version")
@@ -117,39 +120,12 @@ func (oa *operatorActions) SwitchOperatorWebhook(isEnabled bool, info *OperatorC
 	//	return nil
 	//}
 
-	klog.Infof("success to upgrade operator with webhook switch %v", isEnabled)
+	klog.Infof("success to upgrade operator with webhook switch %v, pod hook %v, sts hook %v", isWebhookEnabled, isPodWebhookEnable, isStsWebhookEnabled)
 	return nil
 }
 
-func (oa *operatorActions) SwitchOperatorWebhookOrDie(isEnabled bool, info *OperatorConfig) {
-	if err := oa.SwitchOperatorWebhook(isEnabled, info); err != nil {
-		slack.NotifyAndPanic(err)
-	}
-}
-
-func (oa *operatorActions) SwitchOperatorStatefulSetWebhook(isEnabled bool, info *OperatorConfig) error {
-	klog.Infof("switch Operator StatefulSet Webhook %v", isEnabled)
-	m := map[string]string{
-		"admissionWebhook.hooksEnabled.statefulSets": strconv.FormatBool(isEnabled),
-	}
-	cmd := fmt.Sprintf(`helm upgrade %s %s --set-string %s`,
-		info.ReleaseName,
-		oa.operatorChartPath(info.Tag),
-		info.OperatorHelmSetString(m))
-
-	klog.Info(cmd)
-	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
-	}
-
-	// wait 10 sec to let sts webhook config honored
-	time.Sleep(10 * time.Second)
-	return nil
-}
-
-func (oa *operatorActions) SwitchOperatorStatefulSetWebhookOrDie(isEnabled bool, info *OperatorConfig) {
-	if err := oa.SwitchOperatorStatefulSetWebhook(isEnabled, info); err != nil {
+func (oa *operatorActions) SwitchOperatorWebhookOrDie(isWebhookEnabled, isPodWebhookEnable, isStsWebhookEnabled bool, info *OperatorConfig) {
+	if err := oa.SwitchOperatorWebhook(isWebhookEnabled, isPodWebhookEnable, isStsWebhookEnabled, info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
