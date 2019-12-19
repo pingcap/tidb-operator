@@ -23,9 +23,6 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"github.com/pingcap/tidb-operator/pkg/label"
-	"k8s.io/apimachinery/pkg/labels"
-
 	"github.com/pingcap/tidb-operator/tests/slack"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,14 +33,14 @@ import (
 func (oa *operatorActions) SwitchOperatorWebhook(isEnabled bool, info *OperatorConfig) error {
 	klog.Infof("upgrading tidb-operator with admission webhook %v", isEnabled)
 
-	listOptions := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(
-			label.New().Labels()).String(),
-	}
-	pods1, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(listOptions)
-	if err != nil {
-		return err
-	}
+	//listOptions := metav1.ListOptions{
+	//	LabelSelector: labels.SelectorFromSet(
+	//		label.New().Labels()).String(),
+	//}
+	//pods1, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(listOptions)
+	//if err != nil {
+	//	return err
+	//}
 	m := map[string]string{
 		"admissionWebhook.create": "true",
 	}
