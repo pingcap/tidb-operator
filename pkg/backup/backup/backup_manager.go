@@ -90,27 +90,44 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return fmt.Errorf("backup %s/%s get job %s failed, err: %v", ns, name, backupJobName, err)
 	}
 
-	// not found backup job, so we need to create it
-	job, reason, err := bm.makeBackupJob(backup)
-	if err != nil {
-		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupRetryFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  reason,
-			Message: err.Error(),
-		})
-		return err
-	}
+	var job *batchv1.Job
+	var reason string
+	if backup.Spec.BR == nil {
+		// not found backup job, so we need to create it
+		job, reason, err = bm.makeExportJob(backup)
+		if err != nil {
+			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				Type:    v1alpha1.BackupRetryFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  reason,
+				Message: err.Error(),
+			})
+			return err
+		}
 
-	reason, err = bm.ensureBackupPVCExist(backup)
-	if err != nil {
-		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupRetryFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  reason,
-			Message: err.Error(),
-		})
-		return err
+		reason, err = bm.ensureBackupPVCExist(backup)
+		if err != nil {
+			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				Type:    v1alpha1.BackupRetryFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  reason,
+				Message: err.Error(),
+			})
+			return err
+		}
+
+	} else {
+		// not found backup job, so we need to create it
+		job, reason, err = bm.makeBackupJob(backup)
+		if err != nil {
+			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				Type:    v1alpha1.BackupRetryFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  reason,
+				Message: err.Error(),
+			})
+			return err
+		}
 	}
 
 	if err := bm.jobControl.CreateJob(backup, job); err != nil {
@@ -130,7 +147,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	})
 }
 
-func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
+func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
@@ -157,7 +174,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	}
 
 	args := []string{
-		"backup",
+		"export",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--host=%s", backup.Spec.From.Host),
 		fmt.Sprintf("--port=%d", backup.Spec.From.Port),
@@ -199,6 +216,59 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					},
 				},
 			},
+		},
+	}
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      backup.GetBackupJobName(),
+			Namespace: ns,
+			Labels:    backupLabel,
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetBackupOwnerRef(backup),
+			},
+		},
+		Spec: batchv1.JobSpec{
+			BackoffLimit: controller.Int32Ptr(0),
+			Template:     *podSpec,
+		},
+	}
+
+	return job, "", nil
+}
+func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+
+	envVars, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.secretLister)
+	if err != nil {
+		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
+	}
+
+	args := []string{
+		"backup",
+		fmt.Sprintf("--namespace=%s", ns),
+		fmt.Sprintf("--backupName=%s", name),
+	}
+
+	backupLabel := label.NewBackup().Instance(backup.Spec.From.GetTidbEndpoint()).BackupJob().Backup(name)
+
+	podSpec := &corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: backupLabel.Labels(),
+		},
+		Spec: corev1.PodSpec{
+			ServiceAccountName: constants.DefaultServiceAccountName,
+			Containers: []corev1.Container{
+				{
+					Name:            label.BackupJobLabelVal,
+					Image:           controller.TidbBackupManagerImage,
+					Args:            args,
+					ImagePullPolicy: corev1.PullAlways,
+					Env:             envVars,
+				},
+			},
+			RestartPolicy: corev1.RestartPolicyNever,
 		},
 	}
 
