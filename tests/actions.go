@@ -226,6 +226,8 @@ type OperatorActions interface {
 	CheckInitSQL(info *TidbClusterConfig) error
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
+	CheckUpgradeWithPodWebhook(info *TidbClusterConfig) error
+	CheckUpgradeWithPodWebhookOrDie(info *TidbClusterConfig)
 }
 
 type operatorActions struct {
