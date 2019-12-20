@@ -226,6 +226,8 @@ type OperatorActions interface {
 	CheckInitSQL(info *TidbClusterConfig) error
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
+	SwitchOperatorWebhook(info *OperatorConfig) error
+	SwitchOperatorWebhookOrDie(info *OperatorConfig)
 }
 
 type operatorActions struct {
@@ -272,6 +274,9 @@ type OperatorConfig struct {
 	Context            *apimachinery.CertContext
 	ImagePullPolicy    corev1.PullPolicy
 	TestMode           bool
+	WebhookEnabled     bool
+	PodWebhookEnabled  bool
+	StsWebhookEnabled  bool
 }
 
 type TidbClusterConfig struct {
@@ -486,7 +491,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	glog.Info("enable operator admission webhook server")
-	if err := oa.SwitchOperatorWebhook(true, false, true, info); err != nil {
+	if err := oa.SwitchOperatorWebhook(info); err != nil {
 		return err
 	}
 
@@ -542,6 +547,10 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
+	}
+
+	if err := oa.SwitchOperatorWebhook(info); err != nil {
+		return err
 	}
 
 	// ensure pods unchanged when upgrading operator
