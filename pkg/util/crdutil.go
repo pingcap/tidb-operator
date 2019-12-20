@@ -163,6 +163,14 @@ var (
 		Priority:    1,
 		JSONPath:    ".status.lastBackupTime",
 	}
+	tidbInitializerPrinterColumns []extensionsobj.CustomResourceColumnDefinition
+	tidbInitializerPhase          = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Phase",
+		Type:        "string",
+		Description: "The current phase of initialization",
+		Priority:    1,
+		JSONPath:    ".status.phase",
+	}
 )
 
 func init() {
@@ -173,6 +181,7 @@ func init() {
 	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn)
 	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStartedColumn, restoreCompletedColumn)
 	bksAdditionalPrinterColumns = append(bksAdditionalPrinterColumns, bksScheduleColumn, bksMaxBackups, bksLastBackup, bksLastBackupTime)
+	tidbInitializerPrinterColumns = append(tidbInitializerPrinterColumns, tidbInitializerPhase)
 }
 
 func NewCustomResourceDefinition(crdKind v1alpha1.CrdKind, group string, labels map[string]string, validation bool) *extensionsobj.CustomResourceDefinition {
@@ -204,6 +213,8 @@ func GetCrdKindFromKindName(kindName string) (v1alpha1.CrdKind, error) {
 		return v1alpha1.DefaultCrdKinds.BackupSchedule, nil
 	case v1alpha1.TiDBMonitorKindKey:
 		return v1alpha1.DefaultCrdKinds.TiDBMonitor, nil
+	case v1alpha1.TiDBInitializerKindKey:
+		return v1alpha1.DefaultCrdKinds.TiDBInitializer, nil
 	default:
 		return v1alpha1.CrdKind{}, errors.New("unknown CrdKind Name")
 	}
@@ -223,8 +234,11 @@ func addAdditionalPrinterColumnsForCRD(crd *extensionsobj.CustomResourceDefiniti
 	case v1alpha1.DefaultCrdKinds.BackupSchedule.Kind:
 		crd.Spec.AdditionalPrinterColumns = bksAdditionalPrinterColumns
 		break
-	case v1alpha1.DefaultCrdKinds.BackupSchedule.Kind:
+	case v1alpha1.DefaultCrdKinds.TiDBMonitor.Kind:
 		crd.Spec.AdditionalPrinterColumns = []extensionsobj.CustomResourceColumnDefinition{}
+		break
+	case v1alpha1.DefaultCrdKinds.TiDBInitializer.Kind:
+		crd.Spec.AdditionalPrinterColumns = tidbInitializerPrinterColumns
 		break
 	default:
 		break
