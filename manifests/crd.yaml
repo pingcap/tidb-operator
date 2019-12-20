@@ -2992,18 +2992,36 @@ spec:
               required:
               - name
               type: object
+            image:
+              type: string
+            imagePullPolicy:
+              type: string
             initSql:
-              items:
-                type: string
-              type: array
-            passwordSecret:
+              description: InitSql is the SQL statements executed after the TiDB cluster
+                is bootstrapped.
+              type: string
+            initSqlConfigMap:
+              description: LocalObjectReference contains enough information to let
+                you locate the referenced object inside the same namespace.
               properties:
                 name:
-                  type: string
-                namespace:
+                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
                   type: string
               type: object
+            passwordSecret:
+              description: LocalObjectReference contains enough information to let
+                you locate the referenced object inside the same namespace.
+              properties:
+                name:
+                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                  type: string
+              type: object
+            permitHost:
+              description: permitHost is the host which will only be allowed to connect
+                to the TiDB.
+              type: string
           required:
+          - image
           - cluster
           type: object
       type: object

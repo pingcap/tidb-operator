@@ -15,6 +15,7 @@ package v1alpha1
 
 import (
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -53,21 +54,27 @@ type TidbInitializer struct {
 // +k8s:openapi-gen=true
 // TidbInitializer spec encode the desired state of tidb initializer Job
 type TidbInitializerSpec struct {
+	Image string `json:"image"`
+
 	Clusters TidbClusterRef `json:"cluster"`
 
 	// +optional
-	InitSql []string `json:"initSql,omitempty"`
+	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
+	// permitHost is the host which will only be allowed to connect to the TiDB.
+	// +optional
+	PermitHost *string `json:"permitHost,omitempty"`
+
+	// InitSql is the SQL statements executed after the TiDB cluster is bootstrapped.
+	// +optional
+	InitSql *string `json:"initSql,omitempty"`
+
+	// InitSqlConfigMapName reference a configmap that provide init-sql, take high precedence than initSql if set
+	// +optional
+	InitSqlConfigMap *corev1.LocalObjectReference `json:"initSqlConfigMap,omitempty"`
 
 	// +optional
-	PasswordSecret *SecretRef `json:"passwordSecret,omitempty"`
-}
-
-// +k8s:openapi-gen=true
-type SecretRef struct {
-	// +optional
-	Namespace string `json:"namespace,omitempty"`
-	// +optional
-	Name string `json:"name,omitempty"`
+	PasswordSecret *corev1.LocalObjectReference `json:"passwordSecret,omitempty"`
 }
 
 // +k8s:openapi-gen=true
