@@ -71,6 +71,10 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 		return nil
 	}
 
+	if controller.PodWebhookEnabled {
+		setUpgradePartition(newSet, 0)
+	}
+
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	for i := tc.PDStsActualReplicas() - 1; i >= 0; i-- {
 		podName := PdPodName(tcName, i)
