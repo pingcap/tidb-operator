@@ -118,10 +118,6 @@ type TidbClusterSpec struct {
 	// Helper spec
 	Helper HelperSpec `json:"helper,omitempty"`
 
-	// Services list non-headless services type used in TidbCluster
-	// Deprecated
-	Services []Service `json:"services,omitempty"`
-
 	// TiDB cluster version
 	Version string `json:"version,omitempty"`
 
@@ -349,6 +345,9 @@ type ServiceSpec struct {
 
 	// LoadBalancerIP is the loadBalancerIP of service
 	LoadBalancerIP string `json:"loadBalancerIP,omitempty"`
+
+	// ClusterIP is the clusterIP of service
+	ClusterIP string `json:"clusterIP,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -361,14 +360,6 @@ type TiDBServiceSpec struct {
 
 	// Whether expose the status port
 	ExposeStatus bool `json:"exposeStatus,omitempty"`
-}
-
-// +k8s:openapi-gen=true
-// Deprecated
-// Service represent service type used in TidbCluster
-type Service struct {
-	Name string `json:"name,omitempty"`
-	Type string `json:"type,omitempty"`
 }
 
 // +k8s:openapi-gen=true

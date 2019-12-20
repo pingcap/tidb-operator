@@ -53,30 +53,6 @@ func TestGetOwnerRef(t *testing.T) {
 	g.Expect(*ref.BlockOwnerDeletion).To(BeTrue())
 }
 
-func TestGetServiceType(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	services := []v1alpha1.Service{
-		{
-			Name: "a",
-			Type: string(corev1.ServiceTypeNodePort),
-		},
-		{
-			Name: "b",
-			Type: string(corev1.ServiceTypeLoadBalancer),
-		},
-		{
-			Name: "c",
-			Type: "Other",
-		},
-	}
-
-	g.Expect(GetServiceType(services, "a")).To(Equal(corev1.ServiceTypeNodePort))
-	g.Expect(GetServiceType(services, "b")).To(Equal(corev1.ServiceTypeLoadBalancer))
-	g.Expect(GetServiceType(services, "c")).To(Equal(corev1.ServiceTypeClusterIP))
-	g.Expect(GetServiceType(services, "d")).To(Equal(corev1.ServiceTypeClusterIP))
-}
-
 func TestTiKVCapacity(t *testing.T) {
 	g := NewGomegaWithT(t)
 

@@ -31,12 +31,6 @@ pvReclaimPolicy: Retain
 # When enabling, scale in pd or tikv will trigger PV reclaim automatically
 enablePVReclaim: false
 
-# services is the service list to expose, default is ClusterIP
-# can be ClusterIP | NodePort | LoadBalancer
-services:
-  - name: pd
-    type: ClusterIP
-
 discovery:
   image: pingcap/tidb-operator:v1.0.5
   imagePullPolicy: IfNotPresent
@@ -72,6 +66,12 @@ pd:
     level = "info"
     [replication]
     location-labels = ["region", "zone", "rack", "host"]
+
+  # services is the service list to expose, default is ClusterIP
+  # can be ClusterIP | NodePort | LoadBalancer
+  service:
+    type: ClusterIP
+
 
   replicas: 3
   image: pingcap/pd:v3.0.5

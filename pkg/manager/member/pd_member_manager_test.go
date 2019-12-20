@@ -307,8 +307,8 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			name: "normal",
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PD.Replicas = 5
-				tc.Spec.Services = []v1alpha1.Service{
-					{Name: "pd", Type: string(corev1.ServiceTypeNodePort)},
+				tc.Spec.PD.Service = &v1alpha1.ServiceSpec{
+					Type: corev1.ServiceTypeNodePort,
 				}
 			},
 			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
@@ -361,8 +361,8 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		{
 			name: "error when update pd service",
 			modify: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.Services = []v1alpha1.Service{
-					{Name: "pd", Type: string(corev1.ServiceTypeNodePort)},
+				tc.Spec.PD.Service = &v1alpha1.ServiceSpec{
+					Type: corev1.ServiceTypeNodePort,
 				}
 			},
 			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
@@ -838,6 +838,7 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 				},
 				Replicas:         3,
 				StorageClassName: "my-storage-class",
+				Service:          &v1alpha1.ServiceSpec{Type: corev1.ServiceTypeClusterIP},
 			},
 			TiKV: v1alpha1.TiKVSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
