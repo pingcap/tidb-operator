@@ -83,11 +83,6 @@ func (oa *operatorActions) SwitchOperatorWebhook(info *OperatorConfig) error {
 			if err != nil {
 				return err
 			}
-			dataByte, err := ioutil.ReadFile(cabundleFile.Name())
-			if err != nil {
-				return err
-			}
-			klog.Infof("%s", string(dataByte[:]))
 			cmd = fmt.Sprintf("%s -f %s", cmd, cabundleFile.Name())
 		}
 	}
@@ -97,7 +92,7 @@ func (oa *operatorActions) SwitchOperatorWebhook(info *OperatorConfig) error {
 	if err != nil {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
-	klog.Infof("success to upgrade operator with webhook switch %v, pod hook %v, sts hook %v", isWebhookEnabled, isPodWebhookEnable, isStsWebhookEnabled)
+	klog.Infof("success to upgrade operator with webhook by %s", cmd)
 	return nil
 }
 
