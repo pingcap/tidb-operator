@@ -177,20 +177,33 @@ advancedStatefulset:
   #   effect: "NoSchedule"
 
 admissionWebhook:
-  enabled: false
-  ## only support autoGenerator / selfProvider / certManager
-  certProvider: "autoGenerator"
-  ## `autoGenerator` would create a job before `operator chart install` and the job would create secret for webhook cert
-  ## and autoClean the secret after the `operator chart` was deleted
-  autoGenerator:
-    image:
-      repository: jettech/kube-webhook-certgen
-      tag: v1.2.0
-  ## `selfProvider` need user to provide their own ca/cert/key for webhook
-  selfProvider:
-    ca: ""
-    key: ""
+  create: false
+  replicas: 1
+  serviceAccount: tidb-admission-webhook
+  rbac:
+    create: true
+  ## failurePolicy are applied to ValidatingWebhookConfiguration which affect tidb-admission-webhook
+  ## refer to https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
+  failurePolicy:
+    ## deletePod Webhook would check the deleting request of tidbcluster pod and the failurePolicy is recommended as Fail
+    ## createPod Webhook would check the creating request of tidbcluster pod and the failurePolicy is recommended as Ignore
+    deletePod: Fail
+    createPod: Ignore
+  ## tidb-admission-webhook deployed as kubernetes apiservice server
+  ## refer to https://github.com/openshift/generic-admission-server
+  apiservice:
+    ## apiservice config
+    ## refer to https://kubernetes.io/docs/tasks/access-kubernetes-api/configure-aggregation-layer/#contacting-the-extension-apiserver
+    insecureSkipTLSVerify: true
+    ## The key and cert for `tidb-admission-webook.<Release Namespace>` Service.
+    ## If insecureSkipTLSVerify is true, this would be ignored.
     cert: ""
-  ## `certManager` would create an self-signed Issuer and a Certificate for webhook cert managed by cert-manager
-  certManager:
+    key: ""
+  ## certProvider indicate the key and cert for the webhook configuration to communicate with `kubernetes.default` service.
+  ## If your kube-apiserver's version >= 1.13.0, you can leave cabundle empty and the kube-apiserver
+  ## would trust the roots on the apiserver.
+  ## refer to https://github.com/kubernetes/api/blob/master/admissionregistration/v1/types.go#L529
+  ## or you can get the cabundle by:
+  ## kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}'
+  cabundle: ""
 

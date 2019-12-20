@@ -22,7 +22,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/pd/pkg/typeutil"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -79,7 +78,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
 			return &v1alpha1.PDConfig{
 				Replication: &v1alpha1.PDReplicationConfig{
-					LocationLabels: typeutil.StringSlice{"region", "zone", "rack", "host"},
+					LocationLabels: v1alpha1.StringSlice{"region", "zone", "rack", "host"},
 				},
 			}, nil
 		})
@@ -234,7 +233,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
 			return &v1alpha1.PDConfig{
 				Replication: &v1alpha1.PDReplicationConfig{
-					LocationLabels: typeutil.StringSlice{"region", "zone", "rack", "host"},
+					LocationLabels: v1alpha1.StringSlice{"region", "zone", "rack", "host"},
 				},
 			}, nil
 		})
@@ -510,7 +509,7 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
 			return &v1alpha1.PDConfig{
 				Replication: &v1alpha1.PDReplicationConfig{
-					LocationLabels: typeutil.StringSlice{"region", "zone", "rack", "host"},
+					LocationLabels: v1alpha1.StringSlice{"region", "zone", "rack", "host"},
 				},
 			}, nil
 		})
