@@ -205,10 +205,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, ns, svc.Name, certCtx)
 
 		ginkgo.By("Enable admission server and sts webhook")
-		ocfg.WebhookEnabled = true
-		ocfg.StsWebhookEnabled = true
-		ocfg.PodWebhookEnabled = false
-		oa.SwitchOperatorWebhookOrDie(ocfg)
 
 		ginkgo.By(fmt.Sprintf("Deploying tidb cluster %s", cluster.ClusterVersion))
 		oa.DeployTidbClusterOrDie(&cluster)
