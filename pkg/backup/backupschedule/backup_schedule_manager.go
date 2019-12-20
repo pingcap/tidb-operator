@@ -15,6 +15,7 @@ package backupschedule
 
 import (
 	"fmt"
+	"path"
 	"sort"
 	"time"
 
@@ -199,20 +200,26 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
-	backupSpec := bs.Spec.BackupTemplate
-	if backupSpec.StorageClassName == "" {
-		if bs.Spec.StorageClassName != "" {
-			backupSpec.StorageClassName = bs.Spec.StorageClassName
-		} else {
-			backupSpec.StorageClassName = controller.DefaultBackupStorageClassName
+	backupSpec := *bs.Spec.BackupTemplate.DeepCopy()
+	if backupSpec.BR == nil {
+		if backupSpec.StorageClassName == "" {
+			if bs.Spec.StorageClassName != "" {
+				backupSpec.StorageClassName = bs.Spec.StorageClassName
+			} else {
+				backupSpec.StorageClassName = controller.DefaultBackupStorageClassName
+			}
 		}
-	}
 
-	if backupSpec.StorageSize == "" {
-		if bs.Spec.StorageSize != "" {
-			backupSpec.StorageSize = bs.Spec.StorageSize
-		} else {
-			backupSpec.StorageSize = constants.DefaultStorageSize
+		if backupSpec.StorageSize == "" {
+			if bs.Spec.StorageSize != "" {
+				backupSpec.StorageSize = bs.Spec.StorageSize
+			} else {
+				backupSpec.StorageSize = constants.DefaultStorageSize
+			}
+		}
+	} else {
+		if backupSpec.S3 != nil {
+			backupSpec.S3.Prefix = path.Join(backupSpec.S3.Prefix, timestamp.UTC().Format(constants.TimeFormat))
 		}
 	}
 
