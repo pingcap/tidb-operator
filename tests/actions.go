@@ -226,8 +226,6 @@ type OperatorActions interface {
 	CheckInitSQL(info *TidbClusterConfig) error
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
-	SwitchOperatorWebhook(info *OperatorConfig) error
-	SwitchOperatorWebhookOrDie(info *OperatorConfig)
 }
 
 type operatorActions struct {
@@ -277,6 +275,7 @@ type OperatorConfig struct {
 	WebhookEnabled     bool
 	PodWebhookEnabled  bool
 	StsWebhookEnabled  bool
+	Cabundle           string
 }
 
 type TidbClusterConfig struct {
@@ -389,15 +388,19 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 
 func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	set := map[string]string{
-		"operatorImage":                    oi.Image,
-		"controllerManager.autoFailover":   "true",
-		"scheduler.kubeSchedulerImageName": oi.SchedulerImage,
-		"controllerManager.logLevel":       oi.LogLevel,
-		"scheduler.logLevel":               "4",
-		"controllerManager.replicas":       "2",
-		"scheduler.replicas":               "2",
-		"imagePullPolicy":                  string(oi.ImagePullPolicy),
-		"testMode":                         strconv.FormatBool(oi.TestMode),
+		"operatorImage":                              oi.Image,
+		"controllerManager.autoFailover":             "true",
+		"scheduler.kubeSchedulerImageName":           oi.SchedulerImage,
+		"controllerManager.logLevel":                 oi.LogLevel,
+		"scheduler.logLevel":                         "4",
+		"controllerManager.replicas":                 "2",
+		"scheduler.replicas":                         "2",
+		"imagePullPolicy":                            string(oi.ImagePullPolicy),
+		"testMode":                                   strconv.FormatBool(oi.TestMode),
+		"admissionWebhook.cabundle":                  oi.Cabundle,
+		"admissionWebhook.create":                    strconv.FormatBool(oi.WebhookEnabled),
+		"admissionWebhook.hooksEnabled.pods":         strconv.FormatBool(oi.PodWebhookEnabled),
+		"admissionWebhook.hooksEnabled.statefulSets": strconv.FormatBool(oi.StsWebhookEnabled),
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
@@ -413,7 +416,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	for k, v := range set {
 		arr = append(arr, fmt.Sprintf("%s=%s", k, v))
 	}
-	return strings.Join(arr, ",")
+	return fmt.Sprintf("\"%s\"", strings.Join(arr, ","))
 }
 
 func (oi *OperatorConfig) Enabled(feature string) bool {
@@ -478,6 +481,13 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		}
 	}
 
+	if info.WebhookEnabled {
+		err := oa.setCabundleFromApiServer(info)
+		if err != nil {
+			return err
+		}
+	}
+
 	cmd := fmt.Sprintf(`helm install %s --name %s --namespace %s --set-string %s`,
 		oa.operatorChartPath(info.Tag),
 		info.ReleaseName,
@@ -488,11 +498,6 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
-	}
-
-	glog.Info("enable operator admission webhook server")
-	if err := oa.SwitchOperatorWebhook(info); err != nil {
-		return err
 	}
 
 	// wait for all apiservices are available
