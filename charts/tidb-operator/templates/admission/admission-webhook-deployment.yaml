@@ -1,4 +1,4 @@
-{{- if eq .Values.admissionWebhook.create true }}
+{{- if .Values.admissionWebhook.create }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
