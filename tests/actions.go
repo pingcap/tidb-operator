@@ -554,10 +554,6 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
 	}
 
-	if err := oa.SwitchOperatorWebhook(info); err != nil {
-		return err
-	}
-
 	// ensure pods unchanged when upgrading operator
 	waitFn := func() (done bool, err error) {
 		pods2, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(listOptions)
