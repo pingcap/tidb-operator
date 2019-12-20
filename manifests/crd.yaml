@@ -776,7 +776,28 @@ spec:
                         disable-timestamp:
                           description: Disable automatic timestamps in output.
                           type: boolean
-                        file: {}
+                        file:
+                          properties:
+                            filename:
+                              description: Log filename, leave empty to disable file
+                                log.
+                              type: string
+                            log-rotate:
+                              description: Is log rotate enabled.
+                              type: boolean
+                            max-backups:
+                              description: Maximum number of old log files to retain.
+                              format: int32
+                              type: integer
+                            max-days:
+                              description: Max log keep days, default is never deleting.
+                              format: int32
+                              type: integer
+                            max-size:
+                              description: Max size for a single file, in MB.
+                              format: int32
+                              type: integer
+                          type: object
                         format:
                           description: Log format. one of json, text, or console.
                           type: string
@@ -789,7 +810,15 @@ spec:
                       type: string
                     log-level:
                       type: string
-                    metric: {}
+                    metric:
+                      properties:
+                        address:
+                          type: string
+                        interval:
+                          type: string
+                        job:
+                          type: string
+                      type: object
                     name:
                       type: string
                     namespace:
@@ -1101,7 +1130,28 @@ spec:
                         expensive-threshold:
                           format: int32
                           type: integer
-                        file: {}
+                        file:
+                          properties:
+                            filename:
+                              description: Log filename, leave empty to disable file
+                                log.
+                              type: string
+                            log-rotate:
+                              description: Is log rotate enabled.
+                              type: boolean
+                            max-backups:
+                              description: Maximum number of old log files to retain.
+                              format: int32
+                              type: integer
+                            max-days:
+                              description: Max log keep days, default is never deleting.
+                              format: int32
+                              type: integer
+                            max-size:
+                              description: Max size for a single file, in MB.
+                              format: int32
+                              type: integer
+                          type: object
                         format:
                           description: Log format. one of json, text, or console.
                           type: string
@@ -1440,6 +1490,7 @@ spec:
                     concurrent-send-snap-limit:
                       format: int32
                       type: integer
+                    coprocessor: {}
                     end-point-batch-row-limit:
                       format: int32
                       type: integer
