@@ -1,7 +1,7 @@
 FROM alpine:3.10
 
 ENV KUBECTL_VERSION=v1.12.2
-ENV HELM_VERSION=v2.14.1
+ENV HELM_VERSION=v2.9.1
 
 RUN apk update && apk add --no-cache ca-certificates curl git openssl bash mysql-client
 RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl \

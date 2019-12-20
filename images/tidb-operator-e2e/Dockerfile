@@ -12,7 +12,7 @@ RUN go get github.com/onsi/ginkgo/ginkgo
 FROM alpine:3.10
 
 ENV KUBECTL_VERSION=v1.10.2
-ENV HELM_VERSION=v2.14.1
+ENV HELM_VERSION=v2.9.1
 
 # Uncomment these lines to hack the repositories
 # RUN echo "https://mirrors.tuna.tsinghua.edu.cn/alpine/v3.3/main" > /etc/apk/repositories  && \

@@ -75,7 +75,12 @@ func (oa *operatorActions) SwitchOperatorWebhook(isWebhookEnabled, isPodWebhookE
 			if err != nil {
 				return err
 			}
-			data, err := yaml.Marshal(cabundle)
+			m := map[string]map[string]string{
+				"admissionWebhook": {
+					"cabundle": cabundle,
+				},
+			}
+			data, err := yaml.Marshal(m)
 			if err != nil {
 				return err
 			}
@@ -88,7 +93,7 @@ func (oa *operatorActions) SwitchOperatorWebhook(isWebhookEnabled, isPodWebhookE
 				return err
 			}
 			klog.Infof("%s", string(dataByte[:]))
-			cmd = fmt.Sprintf("%s --set-file admissionWebhook.cabundle=%s", cmd, cabundleFile.Name())
+			cmd = fmt.Sprintf("%s -f %s", cmd, cabundleFile.Name())
 		}
 	}
 
