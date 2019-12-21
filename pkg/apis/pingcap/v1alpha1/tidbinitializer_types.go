@@ -75,6 +75,9 @@ type TidbInitializerSpec struct {
 
 	// +optional
 	PasswordSecret *corev1.LocalObjectReference `json:"passwordSecret,omitempty"`
+
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // +k8s:openapi-gen=true
