@@ -41,6 +41,7 @@ function generate_crd {
 	$1/bin/to-crdgen generate restore >> $2
 	$1/bin/to-crdgen generate backupschedule >> $2
 	$1/bin/to-crdgen generate tidbmonitor >> $2
+	$1/bin/to-crdgen generate tidbinitializer >> $2
 }
 
 if test $ACTION == 'generate' ;then
