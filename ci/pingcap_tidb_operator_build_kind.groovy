@@ -26,6 +26,11 @@ spec:
       requests:
         memory: "8000Mi"
         cpu: 8000m
+        ephemeral-storage: "40Gi"
+      limits:
+        memory: "8000Mi"
+        cpu: 8000m
+        ephemeral-storage: "40Gi"
     # kind needs /lib/modules and cgroups from the host
     volumeMounts:
     - mountPath: /lib/modules
