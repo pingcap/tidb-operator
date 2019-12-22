@@ -185,17 +185,14 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		def artifacts = "go/src/github.com/pingcap/tidb-operator/artifacts"
 		def builds = [:]
 		builds["E2E v1.12.10"] = {
-			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --ginkgo.focus='\\[TiDBCluster\\]'", artifacts)
+			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --ginkgo.skip='\\[Serial\\]'", artifacts)
 		}
 		builds["E2E v1.16.3"] = {
-			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.16.3 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.16.3_ ./hack/e2e.sh -- --ginkgo.focus='\\[TiDBCluster\\]'", artifacts)
+			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.16.3 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.16.3_ ./hack/e2e.sh -- --ginkgo.skip='\\[Serial\\]'", artifacts)
 		}
 		builds["E2E v1.12.10 Serial"] = {
 			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y KUBE_VERSION=v1.12.10 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_serial_ ./hack/e2e.sh -- --ginkgo.focus='\\[Serial\\]' --install-operator=false", artifacts)
 		}
-		builds["E2E v1.12.10 PodAdmission"] = {
-        		build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y KUBE_VERSION=v1.12.10 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_serial_ ./hack/e2e.sh -- --ginkgo.focus='\\[PodAdmission\\]' --install-operator=false", artifacts)
-        	}
 		builds.failFast = false
 		parallel builds
 

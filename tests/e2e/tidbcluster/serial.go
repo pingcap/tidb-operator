@@ -15,6 +15,7 @@ package tidbcluster
 
 import (
 	"context"
+	"fmt"
 	_ "net/http/pprof"
 
 	"github.com/onsi/ginkgo"
@@ -82,9 +83,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					"StableScheduling=true",
 					"AdvancedStatefulSet=true",
 				},
-				LogLevel:        "4",
-				ImagePullPolicy: v1.PullIfNotPresent,
-				TestMode:        true,
+				LogLevel:          "4",
+				ImagePullPolicy:   v1.PullIfNotPresent,
+				TestMode:          true,
+				WebhookEnabled:    true,
+				StsWebhookEnabled: false,
+				PodWebhookEnabled: true,
 			}
 			oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
@@ -106,6 +110,23 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "deploy", "", "")
 			oa.DeployTidbClusterOrDie(&cluster)
 			oa.CheckTidbClusterStatusOrDie(&cluster)
+		})
+
+		// able to manage tikv and pd with pod admission webhook
+		ginkgo.It("Upgrade TidbCluster with pod admission webhook", func() {
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "deploy", "", "")
+			cluster.Resources["pd.replicas"] = "3"
+			cluster.Resources["tikv.replicas"] = "3"
+			cluster.Resources["tidb.replicas"] = "2"
+			oa.DeployTidbClusterOrDie(&cluster)
+			oa.CheckTidbClusterStatusOrDie(&cluster)
+			upgradeVersions := cfg.GetUpgradeTidbVersionsOrDie()
+			ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", cluster.ClusterVersion, upgradeVersions[0]))
+			cluster.UpgradeAll(upgradeVersions[0])
+			oa.UpgradeTidbClusterOrDie(&cluster)
+			oa.CheckUpgradeWithPodWebhookOrDie(&cluster)
+			oa.CheckTidbClusterStatusOrDie(&cluster)
+			oa.CleanTidbClusterOrDie(&cluster)
 		})
 	})
 
