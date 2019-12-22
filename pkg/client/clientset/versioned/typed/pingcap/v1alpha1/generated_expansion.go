@@ -25,4 +25,6 @@ type RestoreExpansion interface{}
 
 type TidbClusterExpansion interface{}
 
+type TidbInitializerExpansion interface{}
+
 type TidbMonitorExpansion interface{}
