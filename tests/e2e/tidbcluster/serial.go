@@ -151,7 +151,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		ginkgo.It("able to upgrade TiDB Cluster with pod admission webhook", func() {
 			klog.Info("start to upgrade tidbcluster with pod admission webhook")
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
-			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "deploy", "", "")
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "admission", "", "")
 			cluster.Resources["pd.replicas"] = "3"
 			cluster.Resources["tikv.replicas"] = "3"
 			cluster.Resources["tidb.replicas"] = "2"
@@ -165,7 +165,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.CheckUpgradeWithPodWebhookOrDie(&cluster)
 			oa.CheckTidbClusterStatusOrDie(&cluster)
 			oa.CleanTidbClusterOrDie(&cluster)
-
 		})
 	})
 
