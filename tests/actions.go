@@ -520,7 +520,7 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 	glog.Infof("cleaning tidb-operator %s", info.ReleaseName)
-	
+
 	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
 
 	if err == nil || !releaseIsNotFound(err) {
