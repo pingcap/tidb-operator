@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -36,6 +35,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/ghodss/yaml"
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -45,10 +45,13 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedtidbclient"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
+	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
-	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
@@ -63,6 +66,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	glog "k8s.io/klog"
+	"k8s.io/kubernetes/test/e2e/framework"
+	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 )
 
 const (
@@ -82,19 +87,33 @@ func NewOperatorActions(cli versioned.Interface,
 	kubeCli kubernetes.Interface,
 	asCli asclientset.Interface,
 	pollInterval time.Duration,
+	operatorConfig *OperatorConfig,
 	cfg *Config,
-	clusters []*TidbClusterConfig) OperatorActions {
+	clusters []*TidbClusterConfig,
+	fw portforward.PortForward, f *framework.Framework) OperatorActions {
+
+	var tcStsGetter typedappsv1.StatefulSetsGetter
+	if operatorConfig != nil && operatorConfig.Enabled(features.AdvancedStatefulSet) {
+		tcStsGetter = helper.NewHijackClient(kubeCli, asCli).AppsV1()
+	} else {
+		tcStsGetter = kubeCli.AppsV1()
+	}
 
 	oa := &operatorActions{
-		cli:         cli,
-		kubeCli:     kubeCli,
-		pdControl:   pdapi.NewDefaultPDControl(kubeCli),
-		asCli:       asCli,
-		tcStsGetter: kubeCli.AppsV1(),
-		// tcStsGetter:  helper.NewHijackClient(kubeCli, asCli).AppsV1(),
-		tidbControl:  controller.NewDefaultTiDBControl(),
+		framework:    f,
+		cli:          cli,
+		kubeCli:      kubeCli,
+		pdControl:    pdapi.NewDefaultPDControl(kubeCli),
+		asCli:        asCli,
+		tcStsGetter:  tcStsGetter,
 		pollInterval: pollInterval,
 		cfg:          cfg,
+		fw:           fw,
+	}
+	if fw != nil {
+		oa.tidbControl = proxiedtidbclient.NewProxiedTiDBClient(fw)
+	} else {
+		oa.tidbControl = controller.NewDefaultTiDBControl()
 	}
 	oa.clusterEvents = make(map[string]*clusterEvent)
 	for _, c := range clusters {
@@ -184,10 +203,10 @@ type OperatorActions interface {
 	CheckKubeProxyDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
 	CheckKubeSchedulerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
 	CheckKubeControllerManagerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig)
-	RegisterWebHookAndService(context *apimachinery.CertContext, info *OperatorConfig) error
-	RegisterWebHookAndServiceOrDie(context *apimachinery.CertContext, info *OperatorConfig)
-	CleanWebHookAndService(info *OperatorConfig) error
-	CleanWebHookAndServiceOrDie(info *OperatorConfig)
+	RegisterWebHookAndService(configName, namespace, service string, context *apimachinery.CertContext) error
+	RegisterWebHookAndServiceOrDie(configName, namespace, service string, context *apimachinery.CertContext)
+	CleanWebHookAndService(name string) error
+	CleanWebHookAndServiceOrDie(name string)
 	RunEventWorker()
 	EmitEvent(info *TidbClusterConfig, msg string)
 	BackupRestore(from, to *TidbClusterConfig) error
@@ -210,6 +229,7 @@ type OperatorActions interface {
 }
 
 type operatorActions struct {
+	framework          *framework.Framework
 	cli                versioned.Interface
 	kubeCli            kubernetes.Interface
 	asCli              asclientset.Interface
@@ -221,6 +241,7 @@ type operatorActions struct {
 	clusterEvents      map[string]*clusterEvent
 	lock               sync.Mutex
 	eventWorkerRunning bool
+	fw                 portforward.PortForward
 }
 
 type clusterEvent struct {
@@ -237,24 +258,26 @@ type event struct {
 var _ = OperatorActions(&operatorActions{})
 
 type OperatorConfig struct {
-	Namespace          string
-	ReleaseName        string
-	Image              string
-	Tag                string
-	SchedulerImage     string
-	SchedulerTag       string
-	Features           []string
-	LogLevel           string
-	WebhookServiceName string
-	WebhookSecretName  string
-	WebhookConfigName  string
-	Context            *apimachinery.CertContext
-	ImagePullPolicy    corev1.PullPolicy
-	TestMode           bool
-	ApiServerImage     string
-	ApiServerCert      string
-	ApiServerKey       string
-	ApiServerCaBundle  string
+	Namespace                 string
+	ReleaseName               string
+	Image                     string
+	Tag                       string
+	ControllerManagerReplicas int
+	SchedulerImage            string
+	SchedulerTag              string
+	SchedulerReplicas         int
+	Features                  []string
+	LogLevel                  string
+	WebhookServiceName        string
+	WebhookSecretName         string
+	WebhookConfigName         string
+	Context                   *apimachinery.CertContext
+	ImagePullPolicy           corev1.PullPolicy
+	TestMode                  bool
+	WebhookEnabled            bool
+	PodWebhookEnabled         bool
+	StsWebhookEnabled         bool
+	Cabundle                  string
 }
 
 type TidbClusterConfig struct {
@@ -273,7 +296,7 @@ type TidbClusterConfig struct {
 	InsertBatchSize        string
 	Resources              map[string]string
 	Args                   map[string]string
-	blockWriter            *blockwriter.BlockWriterCase
+	blockWriterPod         *corev1.Pod
 	Monitor                bool
 	UserName               string
 	InitSecretName         string
@@ -367,15 +390,23 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 
 func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	set := map[string]string{
-		"operatorImage":                    oi.Image,
-		"controllerManager.autoFailover":   "true",
-		"scheduler.kubeSchedulerImageName": oi.SchedulerImage,
-		"controllerManager.logLevel":       oi.LogLevel,
-		"scheduler.logLevel":               "4",
-		"controllerManager.replicas":       "2",
-		"scheduler.replicas":               "2",
-		"imagePullPolicy":                  string(oi.ImagePullPolicy),
-		"testMode":                         strconv.FormatBool(oi.TestMode),
+		"operatorImage":                              oi.Image,
+		"controllerManager.autoFailover":             "true",
+		"scheduler.kubeSchedulerImageName":           oi.SchedulerImage,
+		"controllerManager.logLevel":                 oi.LogLevel,
+		"scheduler.logLevel":                         "4",
+		"imagePullPolicy":                            string(oi.ImagePullPolicy),
+		"testMode":                                   strconv.FormatBool(oi.TestMode),
+		"admissionWebhook.cabundle":                  oi.Cabundle,
+		"admissionWebhook.create":                    strconv.FormatBool(oi.WebhookEnabled),
+		"admissionWebhook.hooksEnabled.pods":         strconv.FormatBool(oi.PodWebhookEnabled),
+		"admissionWebhook.hooksEnabled.statefulSets": strconv.FormatBool(oi.StsWebhookEnabled),
+	}
+	if oi.ControllerManagerReplicas > 0 {
+		set["controllerManager.replicas"] = strconv.Itoa(oi.ControllerManagerReplicas)
+	}
+	if oi.SchedulerReplicas > 0 {
+		set["scheduler.replicas"] = strconv.Itoa(oi.SchedulerReplicas)
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
@@ -391,7 +422,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	for k, v := range set {
 		arr = append(arr, fmt.Sprintf("%s=%s", k, v))
 	}
-	return strings.Join(arr, ",")
+	return fmt.Sprintf("\"%s\"", strings.Join(arr, ","))
 }
 
 func (oi *OperatorConfig) Enabled(feature string) bool {
@@ -456,6 +487,13 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		}
 	}
 
+	if info.WebhookEnabled {
+		err := oa.setCabundleFromApiServer(info)
+		if err != nil {
+			return err
+		}
+	}
+
 	cmd := fmt.Sprintf(`helm install %s --name %s --namespace %s --set-string %s`,
 		oa.operatorChartPath(info.Tag),
 		info.ReleaseName,
@@ -468,47 +506,9 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
 
-	// delete statefulset update webhook and configuration
-	cmd = fmt.Sprintf("kubectl delete -f %s/webhook.yaml", oa.manifestPath(info.Tag))
-	glog.Info(cmd)
-
-	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil && !notFound(string(res)) {
-		return fmt.Errorf("failed to delete statefulset webhook and configuration : %v, %s", err, string(res))
-	}
-
-	// create cert and secret for webhook
-	cmd = fmt.Sprintf("%s/create-cert.sh --namespace %s", oa.manifestPath(info.Tag), info.Namespace)
-	glog.Info(cmd)
-
-	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to create cert: %v, %s", err, string(res))
-	}
-
-	// patch cabundle to validating admission configuration
-	cmd = fmt.Sprintf("%s/patch-ca.sh", oa.manifestPath(info.Tag))
-	glog.Info(cmd)
-
-	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to patch cabundle : %v, %s", err, string(res))
-	}
-
-	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
-	cmd = fmt.Sprintf(`
-sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/
-s#imagePullPolicy:.*#imagePullPolicy: IfNotPresent#g
-s#image:.*#image: %s#g
-' %s/webhook.yaml | kubectl apply -f -
-`, info.Image, oa.manifestPath(info.Tag))
-	glog.Info(cmd)
-
-	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to create statefulset webhook and configuration : %v, %s", err, string(res))
-	}
-
+	// wait for all apiservices are available
+	// '-l a!=b' is a workaround solution for '--all' flag which is introduced only in kubectl 1.14+
+	oa.runKubectlOrDie("wait", "--for=condition=Available", "apiservices", "-l", "a!=b")
 	return nil
 }
 
@@ -520,11 +520,6 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 	glog.Infof("cleaning tidb-operator %s", info.ReleaseName)
-
-	err := oa.CleanWebHookAndService(info)
-	if err != nil {
-		return err
-	}
 
 	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
 
@@ -672,10 +667,6 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
 			info.Namespace, info.ClusterName, err, string(res))
 	}
-
-	// init blockWriter case
-	info.blockWriter = blockwriter.NewBlockWriterCase(info.BlockWriteConfig)
-	info.blockWriter.ClusterName = info.ClusterName
 
 	return nil
 }
@@ -1008,21 +999,53 @@ func (oa *operatorActions) CheckTidbClusterStatusOrDie(info *TidbClusterConfig) 
 	}
 }
 
-func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
-	oa.EmitEvent(info, fmt.Sprintf("BeginInsertData: concurrency: %d", oa.cfg.BlockWriter.Concurrency))
-
-	dsn := getDSN(info.Namespace, info.ClusterName, "test", info.Password)
-	if info.blockWriter == nil {
-		return fmt.Errorf("block writer not initialized for cluster: %s", info.ClusterName)
+func (oa *operatorActions) getBlockWriterPod(info *TidbClusterConfig, database string) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: info.Namespace,
+			Name:      "blockwriter",
+			Labels: map[string]string{
+				"app": "blockwriter",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:            "blockwriter",
+					Image:           oa.cfg.E2EImage,
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Command:         []string{"/usr/local/bin/blockwriter"},
+					Args: []string{
+						fmt.Sprintf("--namespace=%s", info.Namespace),
+						fmt.Sprintf("--cluster-name=%s", info.ClusterName),
+						fmt.Sprintf("--database=%s", database),
+						fmt.Sprintf("--password=%s", info.Password),
+						fmt.Sprintf("--table-num=%d", info.BlockWriteConfig.TableNum),
+						fmt.Sprintf("--concurrency=%d", info.BlockWriteConfig.Concurrency),
+						fmt.Sprintf("--batch-size=%d", info.BlockWriteConfig.BatchSize),
+						fmt.Sprintf("--raw-size=%d", info.BlockWriteConfig.RawSize),
+					},
+				},
+			},
+			RestartPolicy: corev1.RestartPolicyAlways,
+		},
 	}
-	glog.Infof("[%s] [%s] open TiDB connections, concurrency: %d",
-		info.blockWriter, info.ClusterName, info.blockWriter.GetConcurrency())
-	db, err := util.OpenDB(dsn, info.blockWriter.GetConcurrency())
+}
+
+func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
+	oa.EmitEvent(info, fmt.Sprintf("BeginInsertData: concurrency: %d", info.BlockWriteConfig.Concurrency))
+
+	pod := oa.getBlockWriterPod(info, "test")
+	pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Create(pod)
 	if err != nil {
 		return err
 	}
-
-	return info.blockWriter.Start(db)
+	info.blockWriterPod = pod
+	err = e2epod.WaitForPodRunningInNamespace(oa.kubeCli, pod)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (oa *operatorActions) BeginInsertDataToOrDie(info *TidbClusterConfig) {
@@ -1033,12 +1056,20 @@ func (oa *operatorActions) BeginInsertDataToOrDie(info *TidbClusterConfig) {
 }
 
 func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
-	if info.blockWriter == nil {
+	if info.blockWriterPod == nil {
 		return
 	}
 	oa.EmitEvent(info, "StopInsertData")
 
-	info.blockWriter.Stop()
+	pod := info.blockWriterPod
+	err := oa.kubeCli.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+	err = e2epod.WaitForPodNotFoundInNamespace(oa.kubeCli, pod.Name, pod.Namespace, time.Minute*5)
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
 }
 
 func (oa *operatorActions) manifestPath(tag string) string {
@@ -1102,7 +1133,13 @@ func (oa *operatorActions) CheckScaleInSafely(info *TidbClusterConfig) error {
 			return false, nil
 		}
 
-		pdClient := controller.GetPDClient(pdapi.NewDefaultPDControl(oa.kubeCli), tc)
+		pdClient, cancel, err := oa.getPDClient(tc)
+		if err != nil {
+			glog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+			return false, nil
+		}
+		defer cancel()
+
 		stores, err := pdClient.GetStores()
 		if err != nil {
 			glog.Infof("pdClient.GetStores failed,error: %v", err)
@@ -1206,13 +1243,18 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 		return fmt.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 
 	}
-	pdClient := pdapi.NewDefaultPDControl(oa.kubeCli).GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.EnableTLSCluster)
 
 	replicas := tc.TiKVStsDesiredReplicas()
 	for i := replicas - 1; i >= 0; i-- {
 		err := wait.PollImmediate(1*time.Second, 10*time.Minute, func() (done bool, err error) {
 			podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
 			scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
+			pdClient, cancel, err := oa.getPDClient(tc)
+			if err != nil {
+				glog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+				return false, nil
+			}
+			defer cancel()
 			schedulers, err := pdClient.GetEvictLeaderSchedulers()
 			if err != nil {
 				glog.Errorf("failed to get evict leader schedulers, %v", err)
@@ -1262,6 +1304,12 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 	}
 
 	return wait.PollImmediate(1*time.Second, 6*time.Minute, func() (done bool, err error) {
+		pdClient, cancel, err := oa.getPDClient(tc)
+		if err != nil {
+			glog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+			return false, nil
+		}
+		defer cancel()
 		schedulers, err := pdClient.GetEvictLeaderSchedulers()
 		if err != nil {
 			glog.Errorf("failed to get evict leader schedulers, %v", err)
@@ -1544,10 +1592,14 @@ func (oa *operatorActions) metaSyncFn(tc *v1alpha1.TidbCluster) (bool, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	pdCli := controller.GetPDClient(oa.pdControl, tc)
+	pdClient, cancel, err := oa.getPDClient(tc)
+	if err != nil {
+		glog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+		return false, nil
+	}
+	defer cancel()
 	var cluster *metapb.Cluster
-	var err error
-	if cluster, err = pdCli.GetCluster(); err != nil {
+	if cluster, err = pdClient.GetCluster(); err != nil {
 		glog.Errorf("failed to get cluster from pdControl: %s/%s, error: %v", ns, tcName, err)
 		return false, nil
 	}
@@ -1578,7 +1630,7 @@ outerLoop:
 		switch component {
 		case label.PDLabelVal:
 			var memberID string
-			members, err := pdCli.GetMembers()
+			members, err := pdClient.GetMembers()
 			if err != nil {
 				glog.Errorf("failed to get members for tidbcluster %s/%s, %v", ns, tcName, err)
 				return false, nil
@@ -1600,7 +1652,7 @@ outerLoop:
 			}
 		case label.TiKVLabelVal:
 			var storeID string
-			stores, err := pdCli.GetStores()
+			stores, err := pdClient.GetStores()
 			if err != nil {
 				glog.Errorf("failed to get stores for tidbcluster %s/%s, %v", ns, tcName, err)
 				return false, nil
@@ -1883,13 +1935,18 @@ func (oa *operatorActions) getComponentPVList(tc *v1alpha1.TidbCluster, componen
 }
 
 func (oa *operatorActions) storeLabelsIsSet(tc *v1alpha1.TidbCluster, topologyKey string) (bool, error) {
-	pdCli := controller.GetPDClient(oa.pdControl, tc)
+	pdClient, cancel, err := oa.getPDClient(tc)
+	if err != nil {
+		glog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+		return false, nil
+	}
+	defer cancel()
 	for _, store := range tc.Status.TiKV.Stores {
 		storeID, err := strconv.ParseUint(store.ID, 10, 64)
 		if err != nil {
 			return false, err
 		}
-		storeInfo, err := pdCli.GetStore(storeID)
+		storeInfo, err := pdClient.GetStore(storeID)
 		if err != nil {
 			return false, nil
 		}
@@ -1922,7 +1979,12 @@ func (oa *operatorActions) passwordIsSet(clusterInfo *TidbClusterConfig) (bool, 
 	}
 
 	var db *sql.DB
-	dsn := getDSN(ns, tcName, "test", clusterInfo.Password)
+	dsn, cancel, err := oa.getTiDBDSN(ns, tcName, "test", clusterInfo.Password)
+	if err != nil {
+		glog.Errorf("failed to get TiDB DSN: %v", err)
+		return false, nil
+	}
+	defer cancel()
 	if db, err = sql.Open("mysql", dsn); err != nil {
 		glog.Errorf("can't open connection to mysql: %s, %v", dsn, err)
 		return false, nil
@@ -1975,8 +2037,13 @@ func (oa *operatorActions) checkTidbClusterConfigUpdated(tc *v1alpha1.TidbCluste
 }
 
 func (oa *operatorActions) checkPdConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
-	pdCli := controller.GetPDClient(oa.pdControl, tc)
-	config, err := pdCli.GetConfig()
+	pdClient, cancel, err := oa.getPDClient(tc)
+	if err != nil {
+		glog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+		return false
+	}
+	defer cancel()
+	config, err := pdClient.GetConfig()
 	if err != nil {
 		glog.Errorf("failed to get PD configuraion from tidb cluster [%s/%s]", tc.Namespace, tc.Name)
 		return false
@@ -2025,7 +2092,18 @@ func (oa *operatorActions) checkTiKVConfigUpdated(tc *v1alpha1.TidbCluster, clus
 func (oa *operatorActions) checkPrometheus(clusterInfo *TidbClusterConfig) error {
 	ns := clusterInfo.Namespace
 	tcName := clusterInfo.ClusterName
-	prometheusSvc := fmt.Sprintf("http://%s-prometheus.%s:9090/api/v1/query?query=up", tcName, ns)
+	var prometheusAddr string
+	if oa.fw != nil {
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("svc/%s-prometheus", tcName), 9090)
+		if err != nil {
+			return err
+		}
+		defer cancel()
+		prometheusAddr = fmt.Sprintf("%s:%d", localHost, localPort)
+	} else {
+		prometheusAddr = fmt.Sprintf("%s-prometheus.%s:9090", tcName, ns)
+	}
+	prometheusSvc := fmt.Sprintf("http://%s/api/v1/query?query=up", prometheusAddr)
 	resp, err := http.Get(prometheusSvc)
 	if err != nil {
 		return err
@@ -2060,12 +2138,24 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 	values.Set("end", fmt.Sprintf("%d", end.Unix()))
 	values.Set("step", "30")
 
-	datasourceID, err := getDatasourceID(svcName, ns)
+	var addr string
+	if oa.fw != nil {
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("svc/%s-prometheus", tcName), 3000)
+		if err != nil {
+			return err
+		}
+		defer cancel()
+		addr = fmt.Sprintf("%s:%d", localHost, localPort)
+	} else {
+		addr = fmt.Sprintf("%s.%s.svc.cluster.local:3000", svcName, ns)
+	}
+
+	datasourceID, err := getDatasourceID(addr)
 	if err != nil {
 		return err
 	}
 
-	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources/proxy/%d/api/v1/query_range?%s", svcName, ns, datasourceID, values.Encode())
+	u := fmt.Sprintf("http://%s/api/datasources/proxy/%d/api/v1/query_range?%s", addr, datasourceID, values.Encode())
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return err
@@ -2112,8 +2202,8 @@ func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) erro
 	return nil
 }
 
-func getDatasourceID(svcName, namespace string) (int, error) {
-	u := fmt.Sprintf("http://%s.%s.svc.cluster.local:3000/api/datasources", svcName, namespace)
+func getDatasourceID(addr string) (int, error) {
+	u := fmt.Sprintf("http://%s/api/datasources", addr)
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return 0, err
@@ -2156,10 +2246,6 @@ func getDatasourceID(svcName, namespace string) (int, error) {
 }
 
 func GetD(ns, tcName, databaseName, password string) string {
-	return fmt.Sprintf("root:%s@(%s-tidb.%s:4000)/%s?charset=utf8", password, tcName, ns, databaseName)
-}
-
-func getDSN(ns, tcName, databaseName, password string) string {
 	return fmt.Sprintf("root:%s@(%s-tidb.%s:4000)/%s?charset=utf8", password, tcName, ns, databaseName)
 }
 
@@ -2207,20 +2293,35 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, "DeployAdHocBackup")
 	glog.Infof("begin to deploy adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
-	passwdStr := ""
-	if info.Password != "" {
-		passwdStr = fmt.Sprintf("-p%s", info.Password)
-	}
-	getTSCmd := fmt.Sprintf("set -euo pipefail; mysql -u%s %s -h%s-tidb.%s -P 4000 -Nse 'show master status;' | awk '{print $2}'",
-		info.UserName,
-		passwdStr,
-		info.ClusterName,
-		info.Namespace,
-	)
-	glog.Info(getTSCmd)
-
 	var tsStr string
 	getTSFn := func() (bool, error) {
+		var mysqlHost string
+		var mysqlPort uint16
+		if oa.fw != nil {
+			localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, info.Namespace, fmt.Sprintf("svc/%s-tidb", info.ClusterName), 4000)
+			if err != nil {
+				glog.Errorf("failed to forward port %d for %s/%s", 4000, info.Namespace, info.ClusterName)
+				return false, nil
+			}
+			defer cancel()
+			mysqlHost = localHost
+			mysqlPort = localPort
+		} else {
+			mysqlHost = fmt.Sprintf("%s-tidb.%s", info.ClusterName, info.Namespace)
+			mysqlPort = 4000
+		}
+		passwdStr := ""
+		if info.Password != "" {
+			passwdStr = fmt.Sprintf("-p%s", info.Password)
+		}
+		getTSCmd := fmt.Sprintf("set -euo pipefail; mysql -u%s %s -h%s -P %d -Nse 'show master status;' | awk '{print $2}'",
+			info.UserName,
+			passwdStr,
+			mysqlHost,
+			mysqlPort,
+		)
+		glog.Info(getTSCmd)
+
 		res, err := exec.Command("/bin/sh", "-c", getTSCmd).CombinedOutput()
 		if err != nil {
 			glog.Errorf("failed to get ts %v, %s", err, string(res))
@@ -2364,7 +2465,7 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 			return false, nil
 		}
 
-		_, err = to.DataIsTheSameAs(from)
+		_, err = oa.DataIsTheSameAs(to, from)
 		if err != nil {
 			// ad-hoc restore don't check the data really, just logging
 			glog.Infof("check restore: %v", err)
@@ -2388,15 +2489,25 @@ func (oa *operatorActions) ForceDeploy(info *TidbClusterConfig) error {
 	return oa.DeployTidbCluster(info)
 }
 
-func (tc *TidbClusterConfig) DataIsTheSameAs(otherInfo *TidbClusterConfig) (bool, error) {
+func (oa *operatorActions) DataIsTheSameAs(tc, otherInfo *TidbClusterConfig) (bool, error) {
 	tableNum := otherInfo.BlockWriteConfig.TableNum
 
-	infoDb, err := sql.Open("mysql", getDSN(tc.Namespace, tc.ClusterName, "test", tc.Password))
+	dsn, cancel, err := oa.getTiDBDSN(tc.Namespace, tc.ClusterName, "test", tc.Password)
+	if err != nil {
+		return false, nil
+	}
+	defer cancel()
+	infoDb, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return false, err
 	}
 	defer infoDb.Close()
-	otherInfoDb, err := sql.Open("mysql", getDSN(otherInfo.Namespace, otherInfo.ClusterName, "test", otherInfo.Password))
+	otherDsn, otherCancel, err := oa.getTiDBDSN(otherInfo.Namespace, otherInfo.ClusterName, "test", otherInfo.Password)
+	if err != nil {
+		return false, nil
+	}
+	defer otherCancel()
+	otherInfoDb, err := sql.Open("mysql", otherDsn)
 	if err != nil {
 		return false, err
 	}
@@ -2818,7 +2929,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		isv1 := info.OperatorTag == "v1.0.0"
 
 		for _, pod := range pods.Items {
-			if !oa.pumpHealth(info, pod.Spec.Hostname) {
+			if !oa.pumpHealth(info, pod.Name) {
 				glog.Errorf("some pods is not health %s", pumpStatefulSetName)
 				return false, nil
 			}
@@ -2874,7 +2985,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 			return false, nil
 		}
 		for _, pod := range pods.Items {
-			if !oa.drainerHealth(info, pod.Spec.Hostname) {
+			if !oa.drainerHealth(info, pod.Name) {
 				glog.Errorf("some pods is not health %s", drainerStatefulSetName)
 				return false, nil
 			}
@@ -2913,18 +3024,16 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 
 func strPtr(s string) *string { return &s }
 
-func (oa *operatorActions) RegisterWebHookAndServiceOrDie(context *apimachinery.CertContext, info *OperatorConfig) {
-	if err := oa.RegisterWebHookAndService(context, info); err != nil {
+func (oa *operatorActions) RegisterWebHookAndServiceOrDie(configName, namespace, service string, context *apimachinery.CertContext) {
+	if err := oa.RegisterWebHookAndService(configName, namespace, service, context); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
 
-func (oa *operatorActions) RegisterWebHookAndService(context *apimachinery.CertContext, info *OperatorConfig) error {
+func (oa *operatorActions) RegisterWebHookAndService(configName, namespace, service string, context *apimachinery.CertContext) error {
 	client := oa.kubeCli
 	glog.Infof("Registering the webhook via the AdmissionRegistration API")
 
-	namespace := os.Getenv("NAMESPACE")
-	configName := info.WebhookConfigName
 	failurePolicy := admissionV1beta1.Fail
 
 	_, err := client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(&admissionV1beta1.ValidatingWebhookConfiguration{
@@ -2946,7 +3055,7 @@ func (oa *operatorActions) RegisterWebHookAndService(context *apimachinery.CertC
 				ClientConfig: admissionV1beta1.WebhookClientConfig{
 					Service: &admissionV1beta1.ServiceReference{
 						Namespace: namespace,
-						Name:      info.WebhookServiceName,
+						Name:      service,
 						Path:      strPtr("/pods"),
 					},
 					CABundle: context.SigningCert,
@@ -2967,16 +3076,16 @@ func (oa *operatorActions) RegisterWebHookAndService(context *apimachinery.CertC
 
 }
 
-func (oa *operatorActions) CleanWebHookAndService(info *OperatorConfig) error {
-	err := oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(info.WebhookConfigName, nil)
+func (oa *operatorActions) CleanWebHookAndService(name string) error {
+	err := oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(name, nil)
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete webhook config %v", err)
 	}
 	return nil
 }
 
-func (oa *operatorActions) CleanWebHookAndServiceOrDie(info *OperatorConfig) {
-	err := oa.CleanWebHookAndService(info)
+func (oa *operatorActions) CleanWebHookAndServiceOrDie(name string) {
+	err := oa.CleanWebHookAndService(name)
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
@@ -2990,8 +3099,20 @@ type nodeStatus struct {
 	State string `json:"state"`
 }
 
-func (oa *operatorActions) pumpHealth(info *TidbClusterConfig, hostName string) bool {
-	pumpHealthURL := fmt.Sprintf("http://%s.%s-pump.%s:8250/status", hostName, info.ClusterName, info.Namespace)
+func (oa *operatorActions) pumpHealth(info *TidbClusterConfig, podName string) bool {
+	var addr string
+	if oa.fw != nil {
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, info.Namespace, fmt.Sprintf("pod/%s", podName), 8250)
+		if err != nil {
+			glog.Errorf("failed to forward port %d for %s/%s", 8250, info.Namespace, podName)
+			return false
+		}
+		defer cancel()
+		addr = fmt.Sprintf("%s:%d", localHost, localPort)
+	} else {
+		addr = fmt.Sprintf("%s.%s-pump.%s:8250", podName, info.ClusterName, info.Namespace)
+	}
+	pumpHealthURL := fmt.Sprintf("http://%s/status", addr)
 	res, err := http.Get(pumpHealthURL)
 	if err != nil {
 		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, pumpHealthURL, err)
@@ -3028,21 +3149,46 @@ type drainerStatus struct {
 	TsMap   string           `json:"TsMap"`
 }
 
-func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName string) bool {
-	drainerHealthURL := fmt.Sprintf("http://%s.%s-drainer.%s:8249/status", hostName, info.ClusterName, info.Namespace)
-	res, err := http.Get(drainerHealthURL)
-	if err != nil {
-		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthURL, err)
-		return false
-	}
-	if res.StatusCode >= 400 {
-		glog.Errorf("Error response %v", res.StatusCode)
-		return false
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		glog.Errorf("cluster:[%s] read response body failed,error:%v", info.ClusterName, err)
-		return false
+func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, podName string) bool {
+	var body []byte
+	var err error
+	addr := fmt.Sprintf("%s.%s-drainer.%s:8249", podName, info.ClusterName, info.Namespace)
+	drainerHealthURL := fmt.Sprintf("http://%s/status", addr)
+	if oa.framework != nil {
+		// K8S hard coded remote address to localhost in port forwarding, and
+		// drainer does not listen on localhost.
+		// Alternatively, we exec into the pod to access drainer API.
+		cmd := fmt.Sprintf("wget -q -O - '%s'", drainerHealthURL)
+		stdout, _, err := oa.framework.ExecWithOptions(framework.ExecOptions{
+			Command:            []string{"sh", "-c", cmd},
+			Namespace:          info.Namespace,
+			PodName:            podName,
+			ContainerName:      "drainer",
+			Stdin:              nil,
+			CaptureStdout:      true,
+			CaptureStderr:      true,
+			PreserveWhitespace: false,
+		})
+		if err != nil {
+			glog.Errorf("failed to run command '%s' in pod %s/%q", cmd, info.Namespace, podName)
+			return false
+		}
+		body = []byte(stdout)
+	} else {
+		res, err := http.Get(drainerHealthURL)
+		if err != nil {
+			glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthURL, err)
+			return false
+		}
+		if res.StatusCode >= 400 {
+			glog.Errorf("Error response %v", res.StatusCode)
+			return false
+		}
+		body, err = ioutil.ReadAll(res.Body)
+		if err != nil {
+			glog.Errorf("cluster:[%s] read response body failed,error:%v", info.ClusterName, err)
+			return false
+		}
 	}
 	healths := drainerStatus{}
 	err = json.Unmarshal(body, &healths)
@@ -3056,6 +3202,8 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, hostName strin
 func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
 	oa.lock.Lock()
 	defer oa.lock.Unlock()
+
+	glog.Infof("Event: %s", message)
 
 	if !oa.eventWorkerRunning {
 		return
@@ -3271,7 +3419,12 @@ func (oa *operatorActions) CheckUpgradeCompleteOrDie(info *TidbClusterConfig) {
 func (oa *operatorActions) CheckInitSQL(info *TidbClusterConfig) error {
 	ns, tcName := info.Namespace, info.ClusterName
 	if err := wait.PollImmediate(10*time.Second, DefaultPollTimeout, func() (done bool, err error) {
-		infoDb, err := sql.Open("mysql", getDSN(ns, tcName, "e2e", info.Password))
+		dsn, cancel, err := oa.getTiDBDSN(ns, tcName, "e2e", info.Password)
+		if err != nil {
+			return false, nil
+		}
+		defer cancel()
+		infoDb, err := sql.Open("mysql", dsn)
 		if err != nil {
 			return false, nil
 		}
@@ -3291,13 +3444,34 @@ func (oa *operatorActions) CheckInitSQLOrDie(info *TidbClusterConfig) {
 	}
 }
 
+var dummyCancel = func() {}
+
+func (oa *operatorActions) getPDClient(tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
+	if oa.fw != nil {
+		return proxiedpdclient.NewProxiedPDClientFromTidbCluster(oa.kubeCli, oa.fw, tc)
+	}
+	return controller.GetPDClient(oa.pdControl, tc), dummyCancel, nil
+}
+
+func (oa *operatorActions) getTiDBDSN(ns, tcName, databaseName, password string) (string, context.CancelFunc, error) {
+	if oa.fw != nil {
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tcName)), 4000)
+		if err != nil {
+			return "", nil, err
+		}
+		return fmt.Sprintf("root:%s@(%s:%d)/%s?charset=utf8", password, localHost, localPort, databaseName), cancel, nil
+	}
+	return fmt.Sprintf("root:%s@(%s-tidb.%s:4000)/%s?charset=utf8", password, tcName, ns, databaseName), dummyCancel, nil
+}
+
 func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext, namespaces ...string) {
 	sCert, err := tls.X509KeyPair(context.Cert, context.Key)
 	if err != nil {
 		panic(err)
 	}
 
-	wh := webhook.NewWebhook(namespaces)
+	versionCli, kubeCli, _ := client.NewCliOrDie()
+	wh := webhook.NewWebhook(kubeCli, versionCli, namespaces)
 	http.HandleFunc("/pods", wh.ServePods)
 	server := &http.Server{
 		Addr: ":443",

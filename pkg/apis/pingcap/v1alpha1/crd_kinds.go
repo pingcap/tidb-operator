@@ -37,6 +37,14 @@ const (
 	BackupScheduleKind    = "BackupSchedule"
 	BackupScheduleKindKey = "backupschedule"
 
+	TiDBMonitorName    = "tidbmonitors"
+	TiDBMonitorKind    = "TidbMonitor"
+	TiDBMonitorKindKey = "tidbmonitor"
+
+	TiDBInitializerName    = "tidbinitializers"
+	TiDBInitializerKind    = "TidbInitializer"
+	TiDBInitializerKindKey = "tidbinitializer"
+
 	SpecPath = "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1."
 )
 
@@ -49,17 +57,21 @@ type CrdKind struct {
 }
 
 type CrdKinds struct {
-	KindsString    string
-	TiDBCluster    CrdKind
-	Backup         CrdKind
-	Restore        CrdKind
-	BackupSchedule CrdKind
+	KindsString     string
+	TiDBCluster     CrdKind
+	Backup          CrdKind
+	Restore         CrdKind
+	BackupSchedule  CrdKind
+	TiDBMonitor     CrdKind
+	TiDBInitializer CrdKind
 }
 
 var DefaultCrdKinds = CrdKinds{
-	KindsString:    "",
-	TiDBCluster:    CrdKind{Plural: TiDBClusterName, Kind: TiDBClusterKind, ShortNames: []string{"tc"}, SpecName: SpecPath + TiDBClusterKind},
-	Backup:         CrdKind{Plural: BackupName, Kind: BackupKind, ShortNames: []string{"bk"}, SpecName: SpecPath + BackupKind},
-	Restore:        CrdKind{Plural: RestoreName, Kind: RestoreKind, ShortNames: []string{"rt"}, SpecName: SpecPath + RestoreKind},
-	BackupSchedule: CrdKind{Plural: BackupScheduleName, Kind: BackupScheduleKind, ShortNames: []string{"bks"}, SpecName: SpecPath + BackupScheduleKind},
+	KindsString:     "",
+	TiDBCluster:     CrdKind{Plural: TiDBClusterName, Kind: TiDBClusterKind, ShortNames: []string{"tc"}, SpecName: SpecPath + TiDBClusterKind},
+	Backup:          CrdKind{Plural: BackupName, Kind: BackupKind, ShortNames: []string{"bk"}, SpecName: SpecPath + BackupKind},
+	Restore:         CrdKind{Plural: RestoreName, Kind: RestoreKind, ShortNames: []string{"rt"}, SpecName: SpecPath + RestoreKind},
+	BackupSchedule:  CrdKind{Plural: BackupScheduleName, Kind: BackupScheduleKind, ShortNames: []string{"bks"}, SpecName: SpecPath + BackupScheduleKind},
+	TiDBMonitor:     CrdKind{Plural: TiDBMonitorName, Kind: TiDBMonitorKind, ShortNames: []string{}, SpecName: SpecPath + TiDBMonitorKind},
+	TiDBInitializer: CrdKind{Plural: TiDBInitializerName, Kind: TiDBInitializerKind, ShortNames: []string{"ti"}, SpecName: SpecPath + TiDBInitializerKind},
 }

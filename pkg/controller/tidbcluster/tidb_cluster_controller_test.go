@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,6 +32,7 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
+	controllerfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestTidbClusterControllerEnqueueTidbCluster(t *testing.T) {
@@ -261,17 +263,18 @@ func alwaysReady() bool { return true }
 func newFakeTidbClusterController() (*Controller, cache.Indexer, *FakeTidbClusterControlInterface) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
+	genericCli := controllerfake.NewFakeClientWithScheme(scheme.Scheme)
 	informerFactory := informers.NewSharedInformerFactory(cli, 0)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 
 	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	autoFailover := true
-
 	tcControl := NewFakeTidbClusterControlInterface()
 
 	tcc := NewController(
 		kubeCli,
 		cli,
+		genericCli,
 		informerFactory,
 		kubeInformerFactory,
 		autoFailover,

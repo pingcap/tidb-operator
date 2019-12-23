@@ -31,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -42,6 +43,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/component-base/logs"
 	glog "k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -71,6 +73,8 @@ func init() {
 	flag.DurationVar(&controller.ResyncDuration, "resync-duration", time.Duration(30*time.Second), "Resync time of informer")
 	flag.BoolVar(&controller.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
 	flag.StringVar(&controller.TidbBackupManagerImage, "tidb-backup-manager-image", "pingcap/tidb-backup-manager:latest", "The image of backup manager tool")
+	// TODO: actually we just want to use the same image with tidb-controller-manager, but DownwardAPI cannot get image ID, see if there is any better solution
+	flag.StringVar(&controller.TidbDiscoveryImage, "tidb-discovery-image", "pingcap/tidb-operator:latest", "The image of the tidb discovery service")
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 
 	flag.Parse()
@@ -114,6 +118,11 @@ func main() {
 	if err != nil {
 		glog.Fatalf("failed to get advanced-statefulset Clientset: %v", err)
 	}
+	// TODO: optimize the read of genericCli with the shared cache
+	genericCli, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
+	if err != nil {
+		glog.Fatalf("failed to get the generic kube-apiserver client: %v", err)
+	}
 
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		// If AdvancedStatefulSet is enabled, we hijack the Kubernetes client to use
@@ -150,31 +159,32 @@ func main() {
 		},
 	}
 
-	tcController := tidbcluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
-	backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-	restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-	bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Start informer factories after all controller are initialized.
-	informerFactory.Start(controllerCtx.Done())
-	kubeInformerFactory.Start(controllerCtx.Done())
-
-	// Wait for all started informers' cache were synced.
-	for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
-		if !synced {
-			glog.Fatalf("error syncing informer for %v", v)
-		}
-	}
-	for v, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
-		if !synced {
-			glog.Fatalf("error syncing informer for %v", v)
-		}
-	}
-	glog.Infof("cache of informer factories sync successfully")
-
 	onStarted := func(ctx context.Context) {
+		tcController := tidbcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
+		backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+		restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+		bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+
+		// Start informer factories after all controller are initialized.
+		informerFactory.Start(ctx.Done())
+		kubeInformerFactory.Start(ctx.Done())
+
+		// Wait for all started informers' cache were synced.
+		for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
+			if !synced {
+				glog.Fatalf("error syncing informer for %v", v)
+			}
+		}
+		for v, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
+			if !synced {
+				glog.Fatalf("error syncing informer for %v", v)
+			}
+		}
+		glog.Infof("cache of informer factories sync successfully")
+
 		go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)

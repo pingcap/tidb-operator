@@ -24,7 +24,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
-	admission "k8s.io/api/admission/v1"
+	admission "k8s.io/api/admission/v1beta1"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
 
@@ -111,11 +112,11 @@ func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) 
 
 	if !isInOrdinal {
 		pvcName := operatorUtils.OrdinalPVCName(v1alpha1.TiKVMemberType, payload.ownerStatefulSet.Name, ordinal)
-		pvc, err := pc.pvcControl.GetPVC(pvcName, namespace)
+		pvc, err := pc.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(pvcName, meta.GetOptions{})
 		if err != nil {
 			return util.ARFail(err)
 		}
-		err = addDeferDeletingToPVC(pvc, pc.pvcControl, payload.tc)
+		err = addDeferDeletingToPVC(pvc, pc.kubeCli, payload.tc)
 		if err != nil {
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
@@ -158,7 +159,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 	}
 
 	if isUpgrading {
-		err = checkFormerTiKVPodStatus(pc.podLister, payload.tc, ordinal, *payload.ownerStatefulSet.Spec.Replicas, storesInfo)
+		err = checkFormerTiKVPodStatus(pc.kubeCli, payload.tc, ordinal, *payload.ownerStatefulSet.Spec.Replicas, storesInfo)
 		if err != nil {
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)

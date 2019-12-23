@@ -106,3 +106,20 @@ func IsPodOrdinalNotExceedReplicas(pod *corev1.Pod, specReplicas int32) (bool, e
 func OrdinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%s-%d", memberType, setName, ordinal)
 }
+
+// IsSubMapOf returns whether the first map is a sub map of the second map
+func IsSubMapOf(first map[string]string, second map[string]string) bool {
+	for k, v := range first {
+		if second == nil {
+			return false
+		}
+		if second[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
+func GetPodName(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, ordinal int32) string {
+	return fmt.Sprintf("%s-%s-%d", tc.Name, memberType.String(), ordinal)
+}

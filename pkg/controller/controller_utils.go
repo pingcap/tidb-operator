@@ -17,11 +17,17 @@ import (
 	"fmt"
 	"time"
 
-	humanize "github.com/dustin/go-humanize"
+	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	glog "k8s.io/klog"
 )
 
@@ -54,6 +60,9 @@ var (
 	TestMode bool
 	// ResyncDuration is the resync time of informer
 	ResyncDuration time.Duration
+
+	// TidbDiscoveryImage is the image of tidb discovery service
+	TidbDiscoveryImage string
 )
 
 const (
@@ -242,6 +251,11 @@ func PumpPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-pump", clusterName)
 }
 
+// DiscoveryMemberName returns the name of tidb discovery
+func DiscoveryMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-discovery", clusterName)
+}
+
 // AnnProm adds annotations for prometheus scraping metrics
 func AnnProm(port int32) map[string]string {
 	return map[string]string{
@@ -268,6 +282,8 @@ func ParseStorageRequest(req *v1alpha1.ResourceRequirement) (*corev1.ResourceReq
 }
 
 // MemberConfigMapName returns the default ConfigMap name of the specified member type
+// Deprecated
+// TODO: remove after helm get totally abandoned
 func MemberConfigMapName(tc *v1alpha1.TidbCluster, member v1alpha1.MemberType) string {
 	nameKey := fmt.Sprintf("%s-%s", tc.Name, member)
 	return nameKey + getConfigMapSuffix(tc, member.String(), nameKey)
@@ -334,4 +350,97 @@ func (rt *RequestTracker) SetRequests(requests int) *RequestTracker {
 
 func (rt *RequestTracker) GetError() error {
 	return rt.err
+}
+
+// WacthForObject watch the object change from informer and add it to workqueue
+func WatchForObject(informer cache.SharedIndexInformer, q workqueue.Interface) {
+	enqueueFn := func(obj interface{}) {
+		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
+			return
+		}
+		q.Add(key)
+	}
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: enqueueFn,
+		UpdateFunc: func(_, cur interface{}) {
+			enqueueFn(cur)
+		},
+		DeleteFunc: enqueueFn,
+	})
+}
+
+type GetControllerFn func(ns, name string) (runtime.Object, error)
+
+// WatchForController watch the object change from informer and add it's controller to workqueue
+func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interface, fn GetControllerFn) {
+	enqueueFn := func(obj interface{}) {
+		meta, ok := obj.(metav1.Object)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("%+v is not a runtime.Object, cannot get controller from it", obj))
+			return
+		}
+		ref := metav1.GetControllerOf(meta)
+		if ref == nil {
+			return
+		}
+		refGV, err := schema.ParseGroupVersion(ref.APIVersion)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("cannot parse group versio of the controller %v", ref))
+			return
+		}
+		controllerObj, err := fn(meta.GetNamespace(), ref.Name)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("cannot get controller %s/%s", meta.GetNamespace(), ref.Name))
+			return
+		}
+		// Ensure the ref is exactly the controller we listed
+		if ref.Kind == controllerObj.GetObjectKind().GroupVersionKind().Kind &&
+			refGV.Group == controllerObj.GetObjectKind().GroupVersionKind().Group {
+			q.Add(controllerObj)
+		}
+	}
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: enqueueFn,
+		UpdateFunc: func(_, cur interface{}) {
+			enqueueFn(cur)
+		},
+		DeleteFunc: enqueueFn,
+	})
+}
+
+// EmptyClone create an clone of the resource with the same name and namespace (if namespace-scoped), with other fields unset
+func EmptyClone(obj runtime.Object) (runtime.Object, error) {
+	meta, ok := obj.(metav1.Object)
+	if !ok {
+		return nil, fmt.Errorf("Obj %v is not a metav1.Object, cannot call EmptyClone", obj)
+	}
+	gvk, err := InferObjectKind(obj)
+	if err != nil {
+		return nil, err
+	}
+	inst, err := scheme.Scheme.New(gvk)
+	if err != nil {
+		return nil, err
+	}
+	instMeta, ok := inst.(metav1.Object)
+	if !ok {
+		return nil, fmt.Errorf("New instatnce %v created from scheme is not a metav1.Object, EmptyClone failed", inst)
+	}
+	instMeta.SetName(meta.GetName())
+	instMeta.SetNamespace(meta.GetNamespace())
+	return inst, nil
+}
+
+// InferObjectKind infers the object kind
+func InferObjectKind(obj runtime.Object) (schema.GroupVersionKind, error) {
+	gvks, _, err := scheme.Scheme.ObjectKinds(obj)
+	if err != nil {
+		return schema.GroupVersionKind{}, err
+	}
+	if len(gvks) != 1 {
+		return schema.GroupVersionKind{}, fmt.Errorf("Object %v has ambigious GVK", obj)
+	}
+	return gvks[0], nil
 }

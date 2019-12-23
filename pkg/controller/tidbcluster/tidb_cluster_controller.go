@@ -40,6 +40,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	glog "k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Controller controls tidbclusters.
@@ -67,6 +68,7 @@ type Controller struct {
 func NewController(
 	kubeCli kubernetes.Interface,
 	cli versioned.Interface,
+	genericCli client.Client,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	autoFailover bool,
@@ -95,6 +97,7 @@ func NewController(
 	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
 	pdControl := pdapi.NewDefaultPDControl(kubeCli)
 	tidbControl := controller.NewDefaultTiDBControl()
+	cmControl := controller.NewRealConfigMapControl(kubeCli, cmInformer.Lister(), recorder)
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
@@ -102,7 +105,7 @@ func NewController(
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
 	secControl := controller.NewRealSecretControl(kubeCli, secretInformer.Lister())
 	certControl := controller.NewRealCertControl(kubeCli, csrInformer.Lister(), secControl)
-	cmControl := controller.NewRealConfigMapControl(kubeCli, cmInformer.Lister(), recorder)
+	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
 	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister())
@@ -111,6 +114,7 @@ func NewController(
 	pdUpgrader := mm.NewPDUpgrader(pdControl, podControl, podInformer.Lister())
 	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
 	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl, podInformer.Lister())
+	podRestarter := mm.NewPodRestarter(kubeCli, podInformer.Lister())
 
 	tcc := &Controller{
 		kubeClient: kubeCli,
@@ -123,6 +127,7 @@ func NewController(
 				svcControl,
 				podControl,
 				certControl,
+				typedControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
@@ -138,6 +143,7 @@ func NewController(
 				setControl,
 				svcControl,
 				certControl,
+				typedControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
@@ -152,9 +158,11 @@ func NewController(
 				svcControl,
 				tidbControl,
 				certControl,
+				typedControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
+				cmInformer.Lister(),
 				tidbUpgrader,
 				autoFailover,
 				tidbFailover,
@@ -189,11 +197,15 @@ func NewController(
 			mm.NewPumpMemberManager(
 				setControl,
 				svcControl,
+				typedControl,
 				cmControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				cmInformer.Lister(),
+				podInformer.Lister(),
 			),
+			mm.NewTidbDiscoveryManager(typedControl),
+			podRestarter,
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(

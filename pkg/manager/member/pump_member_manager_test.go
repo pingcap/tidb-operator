@@ -14,7 +14,9 @@
 package member
 
 import (
+	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -23,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -33,7 +34,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestPumpMemberManagerSyncCreate(t *testing.T) {
@@ -76,14 +79,17 @@ func TestPumpMemberManagerSyncCreate(t *testing.T) {
 			ctls.svc.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 		if test.errOnCreateCm {
-			ctls.cm.SetCreateConfigMapError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+			ctls.generic.SetCreateOrUpdateError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
-		err := pmm.Sync(tc)
+		syncErr := pmm.Sync(tc)
 		svc, getSvcErr := pmm.svcLister.Services(ns).Get(controller.PumpPeerMemberName(tcName))
 		set, getStsErr := pmm.setLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
-		cm, getCmErr := pmm.cmLister.ConfigMaps(ns).Get(controller.PumpMemberName(tcName))
-		result := result{err, svc, getSvcErr, set, getStsErr, cm, getCmErr}
+		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: controller.PumpMemberName(tcName)}}
+		key, err := client.ObjectKeyFromObject(cm)
+		g.Expect(err).To(Succeed())
+		getCmErr := ctls.generic.FakeCli.Get(context.TODO(), key, cm)
+		result := result{syncErr, svc, getSvcErr, set, getStsErr, cm, getCmErr}
 		test.expectFn(g, &result)
 	}
 
@@ -215,7 +221,7 @@ func TestPumpMemberManagerSyncUpdate(t *testing.T) {
 			ctls.svc.SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 		if test.errOnUpdateCm {
-			ctls.cm.SetUpdateConfigMapError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+			ctls.generic.SetCreateOrUpdateError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
 		oldCm, err := getNewPumpConfigMap(tc)
@@ -227,17 +233,21 @@ func TestPumpMemberManagerSyncUpdate(t *testing.T) {
 
 		g.Expect(indexers.set.Add(oldSet)).To(Succeed())
 		g.Expect(indexers.svc.Add(oldSvc)).To(Succeed())
-		g.Expect(indexers.cm.Add(oldCm)).To(Succeed())
+
+		g.Expect(ctls.generic.AddObject(oldCm)).To(Succeed())
 
 		if test.prepare != nil {
 			test.prepare(tc, indexers)
 		}
 
-		err = pmm.Sync(tc)
+		syncErr := pmm.Sync(tc)
 		svc, getSvcErr := pmm.svcLister.Services(ns).Get(controller.PumpPeerMemberName(tcName))
 		set, getStsErr := pmm.setLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
-		cm, getCmErr := pmm.cmLister.ConfigMaps(ns).Get(controller.PumpMemberName(tcName))
-		result := result{err, oldSvc, svc, getSvcErr, oldSet, set, getStsErr, oldCm, cm, getCmErr}
+		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: controller.PumpMemberName(tcName)}}
+		key, err := client.ObjectKeyFromObject(cm)
+		g.Expect(err).To(Succeed())
+		getCmErr := ctls.generic.FakeCli.Get(context.TODO(), key, cm)
+		result := result{syncErr, oldSvc, svc, getSvcErr, oldSet, set, getStsErr, oldCm, cm, getCmErr}
 		test.expectFn(g, &result)
 	}
 
@@ -342,7 +352,7 @@ func TestSyncConfigUpdate(t *testing.T) {
 		set    *appsv1.StatefulSet
 		getSet error
 		oldCm  *corev1.ConfigMap
-		cms    []*corev1.ConfigMap
+		cms    []corev1.ConfigMap
 		listCm error
 	}
 	type testcase struct {
@@ -359,7 +369,7 @@ func TestSyncConfigUpdate(t *testing.T) {
 		tcName := tc.Name
 		tc.Spec.Pump.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
 
-		pmm, _, indexers := newFakePumpMemberManager()
+		pmm, controls, indexers := newFakePumpMemberManager()
 
 		oldCm, err := getNewPumpConfigMap(tc)
 		g.Expect(err).To(Succeed())
@@ -370,7 +380,7 @@ func TestSyncConfigUpdate(t *testing.T) {
 
 		g.Expect(indexers.set.Add(oldSet)).To(Succeed())
 		g.Expect(indexers.svc.Add(oldSvc)).To(Succeed())
-		g.Expect(indexers.cm.Add(oldCm)).To(Succeed())
+		g.Expect(controls.generic.AddObject(oldCm)).To(Succeed())
 
 		if test.prepare != nil {
 			test.prepare(tc, indexers)
@@ -378,10 +388,10 @@ func TestSyncConfigUpdate(t *testing.T) {
 
 		syncErr := pmm.Sync(tc)
 		set, getStsErr := pmm.setLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
-		sel, err := label.New().Pump().Selector()
+		cmList := &corev1.ConfigMapList{}
 		g.Expect(err).To(Succeed())
-		cms, listCmErr := pmm.cmLister.List(sel)
-		result := result{syncErr, oldSet, set, getStsErr, oldCm, cms, listCmErr}
+		listCmErr := controls.generic.FakeCli.List(context.TODO(), cmList)
+		result := result{syncErr, oldSet, set, getStsErr, oldCm, cmList.Items, listCmErr}
 		test.expectFn(g, &result)
 	}
 
@@ -401,12 +411,14 @@ func TestSyncConfigUpdate(t *testing.T) {
 				g.Expect(r.listCm).To(Succeed())
 				g.Expect(r.cms).To(HaveLen(2))
 				g.Expect(r.getSet).To(Succeed())
-				using := FindPumpConfig("test", r.set.Spec.Template.Spec.Volumes)
+				using := FindConfigMapVolume(&r.set.Spec.Template.Spec, func(name string) bool {
+					return strings.HasPrefix(name, controller.PumpMemberName("test"))
+				})
 				g.Expect(using).NotTo(BeEmpty())
 				var usingCm *corev1.ConfigMap
 				for _, cm := range r.cms {
 					if cm.Name == using {
-						usingCm = cm
+						usingCm = &cm
 					}
 				}
 				g.Expect(usingCm).NotTo(BeNil(), "The configmap used by statefulset must be created")
@@ -423,15 +435,14 @@ func TestSyncConfigUpdate(t *testing.T) {
 
 type pumpFakeIndexers struct {
 	tc  cache.Indexer
-	cm  cache.Indexer
 	svc cache.Indexer
 	set cache.Indexer
 }
 
 type pumpFakeControls struct {
-	svc *controller.FakeServiceControl
-	set *controller.FakeStatefulSetControl
-	cm  *controller.FakeConfigMapControl
+	svc     *controller.FakeServiceControl
+	set     *controller.FakeStatefulSetControl
+	generic *controller.FakeGenericControl
 }
 
 func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFakeIndexers) {
@@ -442,26 +453,29 @@ func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFak
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
 	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
+	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
 	cmControl := controller.NewFakeConfigMapControl(cmInformer)
+	genericControl := controller.NewFakeGenericControl()
 	pmm := &pumpMemberManager{
 		setControl,
 		svcControl,
+		controller.NewTypedControl(genericControl),
 		cmControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
 		cmInformer.Lister(),
+		podInformer.Lister(),
 	}
 	controls := &pumpFakeControls{
-		svc: svcControl,
-		set: setControl,
-		cm:  cmControl,
+		svc:     svcControl,
+		set:     setControl,
+		generic: genericControl,
 	}
 	indexers := &pumpFakeIndexers{
 		tc:  tcInformer.Informer().GetIndexer(),
 		svc: svcInformer.Informer().GetIndexer(),
-		cm:  cmInformer.Informer().GetIndexer(),
 		set: setInformer.Informer().GetIndexer(),
 	}
 	return pmm, controls, indexers
@@ -715,3 +729,58 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 }
 
 // TODO: add ut for getPumpStatefulSet
+func TestSyncTiDBClusterStatus(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name        string
+		updateTC    func(*appsv1.StatefulSet)
+		upgradingFn func(corelisters.PodLister, *appsv1.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
+		errExpectFn func(*GomegaWithT, error)
+		tcExpectFn  func(*GomegaWithT, *v1alpha1.TidbCluster)
+	}
+	status := appsv1.StatefulSetStatus{
+		Replicas: int32(3),
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		tc := newTidbClusterForPump()
+
+		set := &appsv1.StatefulSet{
+			Status: status,
+		}
+		if test.updateTC != nil {
+			test.updateTC(set)
+		}
+		pmm, _, _ := newFakePumpMemberManager()
+
+		err := pmm.syncTiDBClusterStatus(tc, set)
+
+		if test.errExpectFn != nil {
+			test.errExpectFn(g, err)
+		}
+		if test.tcExpectFn != nil {
+			test.tcExpectFn(g, tc)
+		}
+	}
+	tests := []testcase{
+		{
+			name: "statefulset is upgrading",
+			updateTC: func(set *appsv1.StatefulSet) {
+				set.Status.CurrentRevision = "pump-v1"
+				set.Status.UpdateRevision = "pump-v2"
+			},
+			upgradingFn: func(lister corelisters.PodLister, set *appsv1.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return true, nil
+			},
+			errExpectFn: nil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.Pump.StatefulSet.Replicas).To(Equal(int32(3)))
+				g.Expect(tc.Status.Pump.Phase).To(Equal(v1alpha1.UpgradePhase))
+			},
+		},
+	}
+
+	for i := range tests {
+		t.Logf(tests[i].name)
+		testFn(&tests[i], t)
+	}
+}

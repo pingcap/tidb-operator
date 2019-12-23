@@ -1,0 +1,49 @@
+{{- if .Values.admissionWebhook.create }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tidb-admission-webhook
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: admission-webhook
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  replicas: {{ .Values.admissionWebhook.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "chart.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: admission-webhook
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "chart.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: admission-webhook
+    spec:
+      serviceAccountName: {{ .Values.admissionWebhook.serviceAccount }}
+      containers:
+        - name: admission-webhook
+          image: {{ .Values.operatorImage }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+          command:
+            - /usr/local/bin/tidb-admission-webhook
+            {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false }}
+            - --tls-cert-file=/var/serving-cert/cert.pem
+            - --tls-private-key-file=/var/serving-cert/key.pem
+            {{- end }}
+          {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false  }}
+          volumeMounts:
+            - mountPath: /var/serving-cert
+              name: serving-cert
+          {{- end }}
+      {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false  }}
+      volumes:
+        - name: serving-cert
+          secret:
+            defaultMode: 420
+            secretName: tidb-admission-webhook-certs
+      {{- end }}
+{{- end }}

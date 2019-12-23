@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	glog "k8s.io/klog"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -36,7 +37,7 @@ import (
 )
 
 const (
-	timeout = 5 * time.Second
+	DefaultTimeout = 5 * time.Second
 )
 
 // Namespace is a newtype of a string
@@ -60,36 +61,46 @@ func NewDefaultPDControl(kubeCli kubernetes.Interface) PDControlInterface {
 	return &defaultPDControl{kubeCli: kubeCli, pdClients: map[string]PDClient{}}
 }
 
+// GetTLSConfig returns *tls.Config for given TiDB cluster.
+func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, tcName string) (*tls.Config, error) {
+	secretName := fmt.Sprintf("%s-pd-client", tcName)
+	secret, err := kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", namespace, secretName, err)
+	}
+
+	rootCAs, tlsCert, err := certutil.LoadCerts(secret.Data["cert"], secret.Data["key"])
+	if err != nil {
+		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", namespace, secretName, err)
+	}
+	return &tls.Config{
+		RootCAs:      rootCAs,
+		Certificates: []tls.Certificate{tlsCert},
+	}, nil
+}
+
 // GetPDClient provides a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
 func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tlsEnabled bool) PDClient {
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
 
 	var tlsConfig *tls.Config
+	var err error
 	scheme := "http"
 	if tlsEnabled {
 		scheme = "https"
-		secretName := fmt.Sprintf("%s-pd-client", tcName)
-		secret, err := pdc.kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
-		if err != nil {
-			glog.Errorf("unable to load certificates from secret %s/%s, PDClient may not work: %v", namespace, secretName, err)
-			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
-		}
-
-		rootCAs, tlsCert, err := certutil.LoadCerts(secret.Data["cert"], secret.Data["key"])
-		if err != nil {
-			glog.Errorf("unable to load certificates for %s discovery, PDClient may not work: %v", namespace, err)
-			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: timeout}}
-		}
-		tlsConfig = &tls.Config{
-			RootCAs:      rootCAs,
-			Certificates: []tls.Certificate{tlsCert},
-		}
 	}
 
 	key := pdClientKey(scheme, namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
-		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), timeout, tlsConfig)
+		if tlsEnabled {
+			tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName)
+			if err != nil {
+				glog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
+			}
+			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
+		}
+		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, tlsConfig)
 	}
 	return pdc.pdClients[key]
 }
@@ -109,7 +120,7 @@ type PDClient interface {
 	// GetHealth returns the PD's health info
 	GetHealth() (*HealthInfo, error)
 	// GetConfig returns PD's config
-	GetConfig() (*Config, error)
+	GetConfig() (*v1alpha1.PDConfig, error)
 	// GetCluster returns used when syncing pod labels.
 	GetCluster() (*metapb.Cluster, error)
 	// GetMembers returns all PD members from cluster
@@ -251,13 +262,13 @@ func (pc *pdClient) GetHealth() (*HealthInfo, error) {
 	}, nil
 }
 
-func (pc *pdClient) GetConfig() (*Config, error) {
+func (pc *pdClient) GetConfig() (*v1alpha1.PDConfig, error) {
 	apiURL := fmt.Sprintf("%s/%s", pc.url, configPrefix)
 	body, err := httputil.GetBodyOK(pc.httpClient, apiURL)
 	if err != nil {
 		return nil, err
 	}
-	config := &Config{}
+	config := &v1alpha1.PDConfig{}
 	err = json.Unmarshal(body, config)
 	if err != nil {
 		return nil, err
@@ -695,13 +706,13 @@ func (pc *FakePDClient) GetHealth() (*HealthInfo, error) {
 	return result.(*HealthInfo), nil
 }
 
-func (pc *FakePDClient) GetConfig() (*Config, error) {
+func (pc *FakePDClient) GetConfig() (*v1alpha1.PDConfig, error) {
 	action := &Action{}
 	result, err := pc.fakeAPI(GetConfigActionType, action)
 	if err != nil {
 		return nil, err
 	}
-	return result.(*Config), nil
+	return result.(*v1alpha1.PDConfig), nil
 }
 
 func (pc *FakePDClient) GetCluster() (*metapb.Cluster, error) {

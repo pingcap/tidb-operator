@@ -19,7 +19,7 @@ HELM_BIN=$OUTPUT_BIN/helm
 # (https://github.com/helm/helm/issues/6361) has been fixed.
 #
 HELM_VERSION=2.9.1
-KIND_VERSION=0.6.0
+KIND_VERSION=0.6.1
 KIND_BIN=$OUTPUT_BIN/kind
 
 test -d "$OUTPUT_BIN" || mkdir -p "$OUTPUT_BIN"
@@ -53,7 +53,7 @@ function hack::ensure_terraform() {
 
 function hack::verify_kubectl() {
     if test -x "$KUBECTL_BIN"; then
-        [[ "$($KUBECTL_BIN version --client --short | grep -o -P '\d+\.\d+\.\d+')" == "$KUBECTL_VERSION" ]]
+        [[ "$($KUBECTL_BIN version --client --short | grep -o -E '[0-9]+\.[0-9]+\.[0-9]+')" == "$KUBECTL_VERSION" ]]
         return
     fi
     return 1
@@ -66,14 +66,14 @@ function hack::ensure_kubectl() {
     echo "Installing kubectl v$KUBECTL_VERSION..."
     tmpfile=$(mktemp)
     trap "test -f $tmpfile && rm $tmpfile" RETURN
-    curl -Lo $tmpfile https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/${OS}/${ARCH}/kubectl
+    curl --retry 10 -L -o $tmpfile https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/${OS}/${ARCH}/kubectl
     mv $tmpfile $KUBECTL_BIN
     chmod +x $KUBECTL_BIN
 }
 
 function hack::verify_helm() {
     if test -x "$HELM_BIN"; then
-        local v=$($HELM_BIN version --short --client | grep -o -P '\d+\.\d+\.\d+')
+        local v=$($HELM_BIN version --short --client | grep -o -E '[0-9]+\.[0-9]+\.[0-9]+')
         [[ "$v" == "$HELM_VERSION" ]]
         return
     fi
@@ -85,7 +85,7 @@ function hack::ensure_helm() {
         return 0
     fi
     local HELM_URL=http://storage.googleapis.com/kubernetes-helm/helm-v${HELM_VERSION}-${OS}-${ARCH}.tar.gz
-    curl -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
+    curl --retry 10 -L -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
 }
 
 function hack::verify_kind() {
@@ -103,7 +103,7 @@ function hack::ensure_kind() {
     echo "Installing kind v$KIND_VERSION..."
     tmpfile=$(mktemp)
     trap "test -f $tmpfile && rm $tmpfile" RETURN
-    curl -Lo $tmpfile https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-$(uname)-amd64
+    curl --retry 10 -L -o $tmpfile https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-$(uname)-amd64
     mv $tmpfile $KIND_BIN
     chmod +x $KIND_BIN
 }

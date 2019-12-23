@@ -694,6 +694,341 @@ spec:
             pd:
               description: PDSpec contains details of PD members
               properties:
+                config:
+                  description: PDConfig is the configuration of pd-server
+                  properties:
+                    advertise-client-urls:
+                      type: string
+                    advertise-peer-urls:
+                      type: string
+                    auto-compaction-mode:
+                      description: AutoCompactionMode is either 'periodic' or 'revision'.
+                        The default value is 'periodic'.
+                      type: string
+                    auto-compaction-retention-v2:
+                      description: AutoCompactionRetention is either duration string
+                        with time unit (e.g. '5m' for 5-minute), or revision unit
+                        (e.g. '5000'). If no time unit is provided and compaction
+                        mode is 'periodic', the unit defaults to hour. For example,
+                        '5' translates into 5-hour. The default retention is 1 hour.
+                        Before etcd v3.3.x, the type of retention is int. We add 'v2'
+                        suffix to make it backward compatible.
+                      type: string
+                    client-urls:
+                      type: string
+                    cluster-version:
+                      type: string
+                    data-dir:
+                      type: string
+                    election-interval:
+                      description: ElectionInterval is the interval for etcd Raft
+                        election.
+                      type: string
+                    enable-grpc-gateway:
+                      type: boolean
+                    enable-prevote:
+                      description: Prevote is true to enable Raft Pre-Vote. If enabled,
+                        Raft runs an additional election phase to check whether it
+                        would get enough votes to win an election, thus minimizing
+                        disruptions.
+                      type: boolean
+                    force-new-cluster:
+                      type: boolean
+                    initial-cluster:
+                      type: string
+                    initial-cluster-state:
+                      type: string
+                    join:
+                      description: Join to an existing pd cluster, a string of endpoints.
+                      type: string
+                    label-property:
+                      type: object
+                    lease:
+                      description: LeaderLease time, if leader doesn't update its
+                        TTL in etcd after lease time, etcd will expire the leader
+                        key and other servers can campaign the leader again. Etcd
+                        only supports seconds TTL, so here is second too.
+                      format: int64
+                      type: integer
+                    log:
+                      description: PDLogConfig serializes log related config in toml/json.
+                      properties:
+                        development:
+                          description: Development puts the logger in development
+                            mode, which changes the behavior of DPanicLevel and takes
+                            stacktraces more liberally.
+                          type: boolean
+                        disable-caller:
+                          description: DisableCaller stops annotating logs with the
+                            calling function's file name and line number. By default,
+                            all logs are annotated.
+                          type: boolean
+                        disable-error-verbose:
+                          description: DisableErrorVerbose stops annotating logs with
+                            the full verbose error message.
+                          type: boolean
+                        disable-stacktrace:
+                          description: DisableStacktrace completely disables automatic
+                            stacktrace capturing. By default, stacktraces are captured
+                            for WarnLevel and above logs in development and ErrorLevel
+                            and above in production.
+                          type: boolean
+                        disable-timestamp:
+                          description: Disable automatic timestamps in output.
+                          type: boolean
+                        file:
+                          properties:
+                            filename:
+                              description: Log filename, leave empty to disable file
+                                log.
+                              type: string
+                            log-rotate:
+                              description: Is log rotate enabled.
+                              type: boolean
+                            max-backups:
+                              description: Maximum number of old log files to retain.
+                              format: int32
+                              type: integer
+                            max-days:
+                              description: Max log keep days, default is never deleting.
+                              format: int32
+                              type: integer
+                            max-size:
+                              description: Max size for a single file, in MB.
+                              format: int32
+                              type: integer
+                          type: object
+                        format:
+                          description: Log format. one of json, text, or console.
+                          type: string
+                        level:
+                          description: Log level.
+                          type: string
+                      type: object
+                    log-file:
+                      description: Backward compatibility.
+                      type: string
+                    log-level:
+                      type: string
+                    metric:
+                      properties:
+                        address:
+                          type: string
+                        interval:
+                          type: string
+                        job:
+                          type: string
+                      type: object
+                    name:
+                      type: string
+                    namespace:
+                      type: object
+                    namespace-classifier:
+                      description: NamespaceClassifier is for classifying stores/regions
+                        into different namespaces.
+                      type: string
+                    pd-server:
+                      description: PDServerConfig is the configuration for pd server.
+                      properties:
+                        use-region-storage:
+                          description: UseRegionStorage enables the independent region
+                            storage.
+                          type: string
+                      type: object
+                    peer-urls:
+                      type: string
+                    quota-backend-bytes:
+                      description: QuotaBackendBytes Raise alarms when backend size
+                        exceeds the given quota. 0 means use the default quota. the
+                        default size is 2GB, the maximum is 8GB.
+                      type: string
+                    replication:
+                      description: PDReplicationConfig is the replication configuration.
+                      properties:
+                        location-labels:
+                          description: The label keys specified the location of a
+                            store. The placement priorities is implied by the order
+                            of label keys. For example, ["zone", "rack"] means that
+                            we should place replicas to different zones first, then
+                            to different racks if we don't have enough zones.
+                          items:
+                            type: string
+                          type: array
+                        max-replicas:
+                          description: MaxReplicas is the number of replicas for each
+                            region.
+                          format: int64
+                          type: integer
+                        strictly-match-label:
+                          description: StrictlyMatchLabel strictly checks if the label
+                            of TiKV is matched with LocaltionLabels.
+                          type: string
+                      type: object
+                    schedule:
+                      description: ScheduleConfig is the schedule configuration.
+                      properties:
+                        disable-location-replacement:
+                          description: DisableLocationReplacement is the option to
+                            prevent replica checker from moving replica to a better
+                            location.
+                          type: string
+                        disable-make-up-replica:
+                          description: DisableMakeUpReplica is the option to prevent
+                            replica checker from making up replicas when replica count
+                            is less than expected.
+                          type: string
+                        disable-namespace-relocation:
+                          description: DisableNamespaceRelocation is the option to
+                            prevent namespace checker from moving replica to the target
+                            namespace.
+                          type: string
+                        disable-raft-learner:
+                          description: DisableLearner is the option to disable using
+                            AddLearnerNode instead of AddNode
+                          type: string
+                        disable-remove-down-replica:
+                          description: DisableRemoveDownReplica is the option to prevent
+                            replica checker from removing down replicas.
+                          type: string
+                        disable-remove-extra-replica:
+                          description: DisableRemoveExtraReplica is the option to
+                            prevent replica checker from removing extra replicas.
+                          type: string
+                        disable-replace-offline-replica:
+                          description: DisableReplaceOfflineReplica is the option
+                            to prevent replica checker from repalcing offline replicas.
+                          type: string
+                        high-space-ratio:
+                          description: HighSpaceRatio is the highest usage ratio of
+                            store which regraded as high space. High space means there
+                            is a lot of spare capacity, and store region score varies
+                            directly with used size.
+                          format: double
+                          type: number
+                        hot-region-cache-hits-threshold:
+                          description: HotRegionCacheHitThreshold is the cache hits
+                            threshold of the hot region. If the number of times a
+                            region hits the hot cache is greater than this threshold,
+                            it is considered a hot region.
+                          format: int64
+                          type: integer
+                        hot-region-schedule-limit:
+                          description: HotRegionScheduleLimit is the max coexist hot
+                            region schedules.
+                          format: int64
+                          type: integer
+                        leader-schedule-limit:
+                          description: LeaderScheduleLimit is the max coexist leader
+                            schedules.
+                          format: int64
+                          type: integer
+                        low-space-ratio:
+                          description: |2-
+
+                                 high space stage         transition stage           low space stage
+                              |--------------------|-----------------------------|-------------------------|
+                              ^                    ^                             ^                         ^
+                              0       HighSpaceRatio * capacity       LowSpaceRatio * capacity          capacity
+
+                            LowSpaceRatio is the lowest usage ratio of store which regraded as low space. When in low space, store region score increases to very large and varies inversely with available size.
+                          format: double
+                          type: number
+                        max-merge-region-keys:
+                          format: int64
+                          type: integer
+                        max-merge-region-size:
+                          description: If both the size of region is smaller than
+                            MaxMergeRegionSize and the number of rows in region is
+                            smaller than MaxMergeRegionKeys, it will try to merge
+                            with adjacent regions.
+                          format: int64
+                          type: integer
+                        max-pending-peer-count:
+                          format: int64
+                          type: integer
+                        max-snapshot-count:
+                          description: If the snapshot count of one store is greater
+                            than this value, it will never be used as a source or
+                            target store.
+                          format: int64
+                          type: integer
+                        max-store-down-time:
+                          description: MaxStoreDownTime is the max duration after
+                            which a store will be considered to be down if it hasn't
+                            reported heartbeats.
+                          type: string
+                        merge-schedule-limit:
+                          description: MergeScheduleLimit is the max coexist merge
+                            schedules.
+                          format: int64
+                          type: integer
+                        patrol-region-interval:
+                          description: PatrolRegionInterval is the interval for scanning
+                            region during patrol.
+                          type: string
+                        region-schedule-limit:
+                          description: RegionScheduleLimit is the max coexist region
+                            schedules.
+                          format: int64
+                          type: integer
+                        replica-schedule-limit:
+                          description: ReplicaScheduleLimit is the max coexist replica
+                            schedules.
+                          format: int64
+                          type: integer
+                        schedulers-v2:
+                          description: Schedulers support for loding customized schedulers
+                          items:
+                            description: PDSchedulerConfig is customized scheduler
+                              configuration
+                            properties:
+                              args:
+                                items:
+                                  type: string
+                                type: array
+                              disable:
+                                type: boolean
+                              type:
+                                type: string
+                            type: object
+                          type: array
+                        split-merge-interval:
+                          description: SplitMergeInterval is the minimum interval
+                            time to permit merge after split.
+                          type: string
+                        tolerant-size-ratio:
+                          description: TolerantSizeRatio is the ratio of buffer size
+                            for balance scheduler.
+                          format: double
+                          type: number
+                      type: object
+                    security:
+                      description: PDSecurityConfig is the configuration for supporting
+                        tls.
+                      properties:
+                        cacert-path:
+                          description: CAPath is the path of file that contains list
+                            of trusted SSL CAs. if set, following four settings shouldn't
+                            be empty
+                          type: string
+                        cert-path:
+                          description: CertPath is the path of file that contains
+                            X509 certificate in PEM format.
+                          type: string
+                        key-path:
+                          description: KeyPath is the path of file that contains X509
+                            key in PEM format.
+                          type: string
+                      type: object
+                    tikv-interval:
+                      description: TickInterval is the interval for etcd Raft tick.
+                      type: string
+                    tso-save-interval:
+                      description: TsoSaveInterval is the interval to save timestamp.
+                      type: string
+                  type: object
+                configUpdateStrategy:
+                  type: string
                 replicas:
                   format: int32
                   type: integer
@@ -745,6 +1080,379 @@ spec:
               properties:
                 binlogEnabled:
                   type: boolean
+                config:
+                  description: TiDBConfig is the configuration of tidb-server
+                  properties:
+                    advertise-address:
+                      type: string
+                    alter-primary-key:
+                      type: boolean
+                    binlog:
+                      description: Binlog is the config for binlog.
+                      properties:
+                        binlog-socket:
+                          description: Use socket file to write binlog, for compatible
+                            with kafka version tidb-binlog.
+                          type: string
+                        enable:
+                          type: boolean
+                        ignore-error:
+                          description: If IgnoreError is true, when writing binlog
+                            meets error, TiDB would ignore the error.
+                          type: boolean
+                        strategy:
+                          description: The strategy for sending binlog to pump, value
+                            can be "range,omitempty" or "hash,omitempty" now.
+                          type: string
+                        write-timeout:
+                          type: string
+                      type: object
+                    check-mb4-value-in-utf8:
+                      type: boolean
+                    compatible-kill-query:
+                      type: boolean
+                    cors:
+                      type: string
+                    enable-batch-dml:
+                      type: boolean
+                    enable-streaming:
+                      type: boolean
+                    host:
+                      type: string
+                    lease:
+                      type: string
+                    log:
+                      description: Log is the log section of config.
+                      properties:
+                        disable-timestamp:
+                          description: Disable automatic timestamps in output.
+                          type: boolean
+                        expensive-threshold:
+                          format: int32
+                          type: integer
+                        file:
+                          properties:
+                            filename:
+                              description: Log filename, leave empty to disable file
+                                log.
+                              type: string
+                            log-rotate:
+                              description: Is log rotate enabled.
+                              type: boolean
+                            max-backups:
+                              description: Maximum number of old log files to retain.
+                              format: int32
+                              type: integer
+                            max-days:
+                              description: Max log keep days, default is never deleting.
+                              format: int32
+                              type: integer
+                            max-size:
+                              description: Max size for a single file, in MB.
+                              format: int32
+                              type: integer
+                          type: object
+                        format:
+                          description: Log format. one of json, text, or console.
+                          type: string
+                        level:
+                          description: Log level.
+                          type: string
+                        query-log-max-len:
+                          format: int64
+                          type: integer
+                        record-plan-in-slow-log:
+                          format: int64
+                          type: integer
+                        slow-query-file:
+                          type: string
+                        slow-threshold:
+                          format: int64
+                          type: integer
+                      type: object
+                    lower-case-table-names:
+                      format: int32
+                      type: integer
+                    mem-quota-query:
+                      format: int64
+                      type: integer
+                    oom-action:
+                      type: string
+                    opentracing:
+                      description: OpenTracing is the opentracing section of the config.
+                      properties:
+                        enable:
+                          type: boolean
+                        reporter:
+                          description: OpenTracingReporter is the config for opentracing
+                            reporter. See https://godoc.org/github.com/uber/jaeger-client-go/config#ReporterConfig
+                          properties:
+                            buffer-flush-interval:
+                              format: int64
+                              type: integer
+                            local-agent-host-port:
+                              type: string
+                            log-spans:
+                              type: boolean
+                            queue-size:
+                              format: int32
+                              type: integer
+                          type: object
+                        rpc-metrics:
+                          type: boolean
+                        sampler:
+                          description: OpenTracingSampler is the config for opentracing
+                            sampler. See https://godoc.org/github.com/uber/jaeger-client-go/config#SamplerConfig
+                          properties:
+                            max-operations:
+                              format: int32
+                              type: integer
+                            param:
+                              format: double
+                              type: number
+                            sampling-refresh-interval:
+                              format: int64
+                              type: integer
+                            sampling-server-url:
+                              type: string
+                            type:
+                              type: string
+                          type: object
+                      type: object
+                    path:
+                      type: string
+                    performance:
+                      description: Performance is the performance section of the config.
+                      properties:
+                        bind-info-lease:
+                          type: string
+                        cross-join:
+                          type: boolean
+                        feedback-probability:
+                          format: double
+                          type: number
+                        force-priority:
+                          type: string
+                        max-memory:
+                          format: int64
+                          type: integer
+                        max-procs:
+                          format: int32
+                          type: integer
+                        pseudo-estimate-ratio:
+                          format: double
+                          type: number
+                        query-feedback-limit:
+                          format: int32
+                          type: integer
+                        run-auto-analyze:
+                          type: boolean
+                        stats-lease:
+                          type: string
+                        stmt-count-limit:
+                          format: int32
+                          type: integer
+                        tcp-keep-alive:
+                          type: boolean
+                        txn-entry-count-limit:
+                          format: int64
+                          type: integer
+                        txn-total-size-limit:
+                          format: int64
+                          type: integer
+                      type: object
+                    pessimistic-txn:
+                      description: PessimisticTxn is the config for pessimistic transaction.
+                      properties:
+                        enable:
+                          description: Enable must be true for 'begin lock' or session
+                            variable to start a pessimistic transaction.
+                          type: boolean
+                        max-retry-count:
+                          description: The max count of retry for a single statement
+                            in a pessimistic transaction.
+                          format: int32
+                          type: integer
+                      type: object
+                    plugin:
+                      description: Plugin is the config for plugin
+                      properties:
+                        dir:
+                          type: string
+                        load:
+                          type: string
+                      type: object
+                    port:
+                      format: int32
+                      type: integer
+                    prepared-plan-cache:
+                      description: PreparedPlanCache is the PreparedPlanCache section
+                        of the config.
+                      properties:
+                        capacity:
+                          format: int32
+                          type: integer
+                        enabled:
+                          type: boolean
+                        memory-guard-ratio:
+                          format: double
+                          type: number
+                      type: object
+                    proxy-protocol:
+                      description: ProxyProtocol is the PROXY protocol section of
+                        the config.
+                      properties:
+                        header-timeout:
+                          description: PROXY protocol header read timeout, Unit is
+                            second.
+                          format: int32
+                          type: integer
+                        networks:
+                          description: PROXY protocol acceptable client networks.
+                            Empty string means disable PROXY protocol, * means all
+                            networks.
+                          type: string
+                      type: object
+                    run-ddl:
+                      type: boolean
+                    security:
+                      description: Security is the security section of the config.
+                      properties:
+                        cluster-ssl-ca:
+                          type: string
+                        cluster-ssl-cert:
+                          type: string
+                        cluster-ssl-key:
+                          type: string
+                        skip-grant-table:
+                          type: boolean
+                        ssl-ca:
+                          type: string
+                        ssl-cert:
+                          type: string
+                        ssl-key:
+                          type: string
+                      type: object
+                    socket:
+                      type: string
+                    split-region-max-num:
+                      format: int64
+                      type: integer
+                    split-table:
+                      type: boolean
+                    status:
+                      description: Status is the status section of the config.
+                      properties:
+                        metrics-addr:
+                          type: string
+                        metrics-interval:
+                          format: int32
+                          type: integer
+                        record-db-qps:
+                          type: boolean
+                        report-status:
+                          type: boolean
+                        status-host:
+                          type: string
+                        status-port:
+                          format: int32
+                          type: integer
+                      type: object
+                    stmt-summary:
+                      description: StmtSummary is the config for statement summary.
+                      properties:
+                        max-sql-length:
+                          description: The maximum length of displayed normalized
+                            SQL and sample SQL.
+                          format: int32
+                          type: integer
+                        max-stmt-count:
+                          description: The maximum number of statements kept in memory.
+                          format: int32
+                          type: integer
+                      type: object
+                    store:
+                      type: string
+                    tikv-client:
+                      description: TiKVClient is the config for tikv client.
+                      properties:
+                        batch-wait-size:
+                          description: BatchWaitSize is the max wait size for batch.
+                          format: int32
+                          type: integer
+                        commit-timeout:
+                          description: CommitTimeout is the max time which command
+                            'commit' will wait.
+                          type: string
+                        grpc-connection-count:
+                          description: GrpcConnectionCount is the max gRPC connections
+                            that will be established with each tikv-server.
+                          format: int32
+                          type: integer
+                        grpc-keepalive-time:
+                          description: After a duration of this time in seconds if
+                            the client doesn't see any activity it pings the server
+                            to see if the transport is still alive.
+                          format: int32
+                          type: integer
+                        grpc-keepalive-timeout:
+                          description: After having pinged for keepalive check, the
+                            client waits for a duration of Timeout in seconds and
+                            if no activity is seen even after that the connection
+                            is closed.
+                          format: int32
+                          type: integer
+                        max-batch-size:
+                          description: MaxBatchSize is the max batch size when calling
+                            batch commands API.
+                          format: int32
+                          type: integer
+                        max-batch-wait-time:
+                          description: MaxBatchWaitTime in nanosecond is the max wait
+                            time for batch.
+                          format: int64
+                          type: integer
+                        max-txn-time-use:
+                          description: MaxTxnTimeUse is the max time a Txn may use
+                            (in seconds) from its startTS to commitTS.
+                          format: int32
+                          type: integer
+                        overload-threshold:
+                          description: If TiKV load is greater than this, TiDB will
+                            wait for a while to avoid little batch.
+                          format: int32
+                          type: integer
+                        region-cache-ttl:
+                          description: If a Region has not been accessed for more
+                            than the given duration (in seconds), it will be reloaded
+                            from the PD.
+                          format: int32
+                          type: integer
+                        store-limit:
+                          description: If a store has been up to the limit, it will
+                            return error for successive request to prevent the store
+                            occupying too much token in dispatching level.
+                          format: int64
+                          type: integer
+                      type: object
+                    token-limit:
+                      format: int32
+                      type: integer
+                    treat-old-version-utf8-as-utf8mb4:
+                      type: boolean
+                    txn-local-latches:
+                      description: TxnLocalLatches is the TxnLocalLatches section
+                        of the config.
+                      properties:
+                        capacity:
+                          format: int32
+                          type: integer
+                        enabled:
+                          type: boolean
+                      type: object
+                  type: object
+                configUpdateStrategy:
+                  type: string
                 enableTLSClient:
                   type: boolean
                 maxFailoverCount:
@@ -769,6 +1477,1180 @@ spec:
             tikv:
               description: TiKVSpec contains details of TiKV members
               properties:
+                config:
+                  description: TiKVConfig is the configuration of TiKV.
+                  properties:
+                    addr:
+                      type: string
+                    advertise-addr:
+                      type: string
+                    concurrent-recv-snap-limit:
+                      format: int32
+                      type: integer
+                    concurrent-send-snap-limit:
+                      format: int32
+                      type: integer
+                    coprocessor:
+                      description: TiKVCoprocessorConfig is the configuration of TiKV
+                        Coprocessor component.
+                      properties:
+                        batch-split-limit:
+                          description: One split check produces several split keys
+                            in batch. This config limits the number of produced split
+                            keys in one batch. optional
+                          format: int64
+                          type: integer
+                        region-max-keys:
+                          description: 'When the number of keys in Region [a,e) exceeds
+                            the `region_max_keys`, it will be split into several Regions
+                            [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b),
+                            [b,c), [c,d) will be `region_split_keys`. See also: region-split-keys
+                            optional'
+                          format: int64
+                          type: integer
+                        region-max-size:
+                          description: 'When Region [a,e) size exceeds `region_max_size`,
+                            it will be split into several Regions [a,b), [b,c), [c,d),
+                            [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size`
+                            (or a little larger). See also: region-split-size optional'
+                          type: string
+                        region-split-keys:
+                          description: 'When the number of keys in Region [a,e) exceeds
+                            the `region_max_keys`, it will be split into several Regions
+                            [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b),
+                            [b,c), [c,d) will be `region_split_keys`. See also: region-max-keys
+                            optional'
+                          format: int64
+                          type: integer
+                        region-split-size:
+                          description: 'When Region [a,e) size exceeds `region_max_size`,
+                            it will be split into several Regions [a,b), [b,c), [c,d),
+                            [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size`
+                            (or a little larger). See also: region-max-size optional'
+                          type: string
+                        split-region-on-table:
+                          description: When it is set to `true`, TiKV will try to
+                            split a Region with table prefix if that Region crosses
+                            tables. It is recommended to turn off this option if there
+                            will be a large number of tables created. optional
+                          type: boolean
+                      type: object
+                    end-point-batch-row-limit:
+                      format: int32
+                      type: integer
+                    end-point-enable-batch-if-possible:
+                      format: int32
+                      type: integer
+                    end-point-recursion-limit:
+                      format: int32
+                      type: integer
+                    end-point-request-max-handle-duration:
+                      type: string
+                    end-point-stream-batch-row-limit:
+                      format: int32
+                      type: integer
+                    end-point-stream-channel-size:
+                      format: int32
+                      type: integer
+                    gc:
+                      properties:
+                        "\tbatch_keys":
+                          format: int64
+                          type: integer
+                        "\tmax_write_bytes_per_sec":
+                          type: string
+                      type: object
+                    grpc-compression-type:
+                      type: string
+                    grpc-concurrency:
+                      format: int32
+                      type: integer
+                    grpc-concurrent-stream:
+                      format: int32
+                      type: integer
+                    grpc-keepalive-time:
+                      type: string
+                    grpc-keepalive-timeout:
+                      type: string
+                    grpc-raft-conn-num:
+                      format: int32
+                      type: integer
+                    grpc-stream-initial-window-size:
+                      type: string
+                    heavy-load-threshold:
+                      format: int32
+                      type: integer
+                    heavy-load-wait-duration:
+                      type: string
+                    import:
+                      properties:
+                        import_dir:
+                          type: string
+                        max_open_engines:
+                          format: int64
+                          type: integer
+                        max_prepare_duration:
+                          type: string
+                        num_import_jobs:
+                          format: int64
+                          type: integer
+                        num_import_sst_jobs:
+                          format: int64
+                          type: integer
+                        num_threads:
+                          format: int64
+                          type: integer
+                        region_split_size:
+                          type: string
+                        stream_channel_window:
+                          format: int64
+                          type: integer
+                        upload_speed_limit:
+                          type: string
+                      type: object
+                    labels:
+                      type: object
+                    log-file:
+                      type: string
+                    log-level:
+                      type: string
+                    log-rotation-timespan:
+                      type: string
+                    panic-when-unexpected-key-or-data:
+                      type: boolean
+                    raftdb:
+                      properties:
+                        allow_concurrent_memtable_write:
+                          type: boolean
+                        bytes_per_sync:
+                          type: string
+                        compaction_readahead_size:
+                          type: string
+                        create_if_missing:
+                          type: boolean
+                        defaultcf:
+                          description: TiKVCfConfig is the config of a cf
+                          properties:
+                            Level0FileNumCompactionTrigger:
+                              format: int64
+                              type: integer
+                            Level0SlowdownWritesTrigger:
+                              format: int64
+                              type: integer
+                            Level0StopWritesTrigger:
+                              format: int64
+                              type: integer
+                            PinL0FilterAndIndexBlocks:
+                              type: boolean
+                            block-based-bloom-filter:
+                              type: boolean
+                            block-cache-size:
+                              type: string
+                            block-size:
+                              type: string
+                            bloom-filter-bits-per-key:
+                              format: int64
+                              type: integer
+                            cache-index-and-filter-blocks:
+                              type: boolean
+                            compaction-pri:
+                              format: int64
+                              type: integer
+                            compaction-style:
+                              format: int64
+                              type: integer
+                            compression-per-level:
+                              items:
+                                type: string
+                              type: array
+                            disable-auto-compactions:
+                              type: boolean
+                            disable-block-cache:
+                              type: boolean
+                            dynamic-level-bytes:
+                              type: boolean
+                            enable-doubly-skiplist:
+                              type: boolean
+                            force-consistency-checks:
+                              type: boolean
+                            hard-pending-compaction-bytes-limit:
+                              type: string
+                            max-bytes-for-level-base:
+                              type: string
+                            max-bytes-for-level-multiplier:
+                              format: int64
+                              type: integer
+                            max-compaction-bytes:
+                              type: string
+                            max-write-buffer-number:
+                              format: int64
+                              type: integer
+                            min-write-buffer-number-to-merge:
+                              format: int64
+                              type: integer
+                            num-levels:
+                              format: int64
+                              type: integer
+                            optimize-filters-for-hits:
+                              type: boolean
+                            prop-keys-index-distance:
+                              format: int64
+                              type: integer
+                            prop-size-index-distance:
+                              format: int64
+                              type: integer
+                            read-amp-bytes-per-bit:
+                              format: int64
+                              type: integer
+                            soft-pending-compaction-bytes-limit:
+                              type: string
+                            target-file-size-base:
+                              type: string
+                            titan:
+                              description: TiKVTitanCfConfig is the titian config.
+                              properties:
+                                blob-cache-size:
+                                  type: string
+                                blob-file-compression:
+                                  type: string
+                                blob-run-mode:
+                                  type: string
+                                discardable-ratio:
+                                  format: double
+                                  type: number
+                                max-gc-batch-size:
+                                  type: string
+                                merge-small-file-threshold:
+                                  type: string
+                                min-blob-size:
+                                  type: string
+                                min-gc-batch-size:
+                                  type: string
+                                sample-ratio:
+                                  format: double
+                                  type: number
+                              type: object
+                            use-bloom-filter:
+                              type: boolean
+                            whole-key-filtering:
+                              type: boolean
+                            write-buffer-size:
+                              type: string
+                          required:
+                          - PinL0FilterAndIndexBlocks
+                          - Level0FileNumCompactionTrigger
+                          - Level0SlowdownWritesTrigger
+                          - Level0StopWritesTrigger
+                          type: object
+                        enable_pipelined_write:
+                          type: boolean
+                        enable_statistics:
+                          type: boolean
+                        info_log_dir:
+                          type: string
+                        info_log_keep_log_file_num:
+                          format: int64
+                          type: integer
+                        info_log_max_size:
+                          type: string
+                        info_log_roll_time:
+                          type: string
+                        max_background_jobs:
+                          format: int64
+                          type: integer
+                        max_manifest_file_size:
+                          type: string
+                        max_open_files:
+                          format: int64
+                          type: integer
+                        max_sub_compactions:
+                          format: int64
+                          type: integer
+                        max_total_wal_size:
+                          type: string
+                        stats_dump_period:
+                          type: string
+                        use_direct_io_for_flush_and_compaction:
+                          type: boolean
+                        wal_bytes_per_sync:
+                          type: string
+                        wal_dir:
+                          type: string
+                        wal_recovery_mode:
+                          type: string
+                        wal_size_limit:
+                          type: string
+                        wal_ttl_seconds:
+                          format: int64
+                          type: integer
+                        writable_file_max_buffer_size:
+                          type: string
+                      type: object
+                    raftstore:
+                      description: TiKVRaftstoreConfig is the configuration of TiKV
+                        raftstore component.
+                      properties:
+                        abnormal-leader-missing-duration:
+                          description: / Similar to the max-leader-missing-duration,
+                            instead it will log warnings and / try to alert monitoring
+                            systems, if there is any.
+                          type: string
+                        allow-remove-leader:
+                          type: boolean
+                        apply-max-batch-size:
+                          format: int64
+                          type: integer
+                        apply-pool-size:
+                          format: int64
+                          type: integer
+                        clean-stale-peer-delay:
+                          description: delay time before deleting a stale peer
+                          type: string
+                        cleanup-import-sst-interval:
+                          type: string
+                        consistency-check-interval:
+                          description: Interval (ms) to check region whether the data
+                            is consistent.
+                          type: string
+                        hibernate-regions:
+                          type: boolean
+                        leader-transfer-max-log-lag:
+                          format: int64
+                          type: integer
+                        lock-cf-compact-bytes-threshold:
+                          type: string
+                        lock-cf-compact-interval:
+                          type: string
+                        max-leader-missing-duration:
+                          description: / If the leader of a peer is missing for longer
+                            than max-leader-missing-duration / the peer would ask
+                            pd to confirm whether it is valid in any region. / If
+                            the peer is stale and is not valid in any region, it will
+                            destroy itself.
+                          type: string
+                        max-peer-down-duration:
+                          description: / When a peer is not active for max-peer-down-duration
+                            / the peer is considered to be down and is reported to
+                            PD.
+                          type: string
+                        merge-check-tick-interval:
+                          description: / Interval to re-propose merge.
+                          type: string
+                        merge-max-log-gap:
+                          description: / Max log gap allowed to propose merge.
+                          format: int64
+                          type: integer
+                        messages-per-tick:
+                          format: int64
+                          type: integer
+                        notify-capacity:
+                          format: int64
+                          type: integer
+                        pd-heartbeat-tick-interval:
+                          type: string
+                        pd-store-heartbeat-tick-interval:
+                          type: string
+                        peer-stale-state-check-interval:
+                          type: string
+                        raft-base-tick-interval:
+                          description: raft-base-tick-interval is a base tick interval
+                            (ms).
+                          type: string
+                        raft-election-timeout-ticks:
+                          format: int64
+                          type: integer
+                        raft-entry-cache-life-time:
+                          description: When a peer is not responding for this time,
+                            leader will not keep entry cache for it.
+                          type: string
+                        raft-entry-max-size:
+                          description: When the entry exceed the max size, reject
+                            to propose it.
+                          type: string
+                        raft-heartbeat-ticks:
+                          format: int64
+                          type: integer
+                        raft-log-gc-count-limit:
+                          description: When entry count exceed this value, gc will
+                            be forced trigger.
+                          format: int64
+                          type: integer
+                        raft-log-gc-size-limit:
+                          description: When the approximate size of raft log entries
+                            exceed this value gc will be forced trigger.
+                          type: string
+                        raft-log-gc-threshold:
+                          description: A threshold to gc stale raft log, must >= 1.
+                          format: int64
+                          type: integer
+                        raft-log-gc-tick-interval:
+                          description: Interval to gc unnecessary raft log (ms).
+                          type: string
+                        raft-reject-transfer-leader-duration:
+                          description: When a peer is newly added, reject transferring
+                            leader to the peer for a while.
+                          type: string
+                        raft-store-max-leader-lease:
+                          description: The lease provided by a successfully proposed
+                            and applied entry.
+                          type: string
+                        region-compact-check-interval:
+                          description: / Interval (ms) to check whether start compaction
+                            for a region.
+                          type: string
+                        region-compact-check-step:
+                          description: / Number of regions for each time checking.
+                          format: int64
+                          type: integer
+                        region-compact-min-tombstones:
+                          description: / Minimum number of tombstones to trigger manual
+                            compaction.
+                          format: int64
+                          type: integer
+                        region-compact-tombstones-percent:
+                          description: / Minimum percentage of tombstones to trigger
+                            manual compaction. / Should between 1 and 100.
+                          format: int64
+                          type: integer
+                        region-split-check-diff:
+                          description: / When size change of region exceed the diff
+                            since last check, it / will be checked again whether it
+                            should be split.
+                          type: string
+                        report-region-flow-interval:
+                          type: string
+                        right-derive-when-split:
+                          description: Right region derive origin region id when split.
+                          type: boolean
+                        snap-apply-batch-size:
+                          type: string
+                        snap-gc-timeout:
+                          type: string
+                        snap-mgr-gc-tick-interval:
+                          type: string
+                        split-region-check-tick-interval:
+                          description: Interval (ms) to check region whether need
+                            to be split or not.
+                          type: string
+                        store-max-batch-size:
+                          format: int64
+                          type: integer
+                        store-pool-size:
+                          format: int64
+                          type: integer
+                        sync-log:
+                          description: true for high reliability, prevent data loss
+                            when power failure.
+                          type: boolean
+                        use-delete-range:
+                          type: boolean
+                      type: object
+                    readpool:
+                      properties:
+                        coprocessor:
+                          properties:
+                            high_concurrency:
+                              format: int64
+                              type: integer
+                            low_concurrency:
+                              format: int64
+                              type: integer
+                            max_tasks_per_worker_high:
+                              format: int64
+                              type: integer
+                            max_tasks_per_worker_low:
+                              format: int64
+                              type: integer
+                            max_tasks_per_worker_normal:
+                              format: int64
+                              type: integer
+                            normal_concurrency:
+                              format: int64
+                              type: integer
+                            stack_size:
+                              type: string
+                          type: object
+                        storage:
+                          properties:
+                            high_concurrency:
+                              format: int64
+                              type: integer
+                            low_concurrency:
+                              format: int64
+                              type: integer
+                            max_tasks_per_worker_high:
+                              format: int64
+                              type: integer
+                            max_tasks_per_worker_low:
+                              format: int64
+                              type: integer
+                            max_tasks_per_worker_normal:
+                              format: int64
+                              type: integer
+                            normal_concurrency:
+                              format: int64
+                              type: integer
+                            stack_size:
+                              type: string
+                          type: object
+                      type: object
+                    rocksdb:
+                      description: TiKVDbConfig is the rocksdb config.
+                      properties:
+                        auto-tuned:
+                          type: boolean
+                        bytes-per-sync:
+                          type: string
+                        compaction-readahead-size:
+                          type: string
+                        create-if-missing:
+                          type: boolean
+                        defaultcf:
+                          description: TiKVCfConfig is the config of a cf
+                          properties:
+                            Level0FileNumCompactionTrigger:
+                              format: int64
+                              type: integer
+                            Level0SlowdownWritesTrigger:
+                              format: int64
+                              type: integer
+                            Level0StopWritesTrigger:
+                              format: int64
+                              type: integer
+                            PinL0FilterAndIndexBlocks:
+                              type: boolean
+                            block-based-bloom-filter:
+                              type: boolean
+                            block-cache-size:
+                              type: string
+                            block-size:
+                              type: string
+                            bloom-filter-bits-per-key:
+                              format: int64
+                              type: integer
+                            cache-index-and-filter-blocks:
+                              type: boolean
+                            compaction-pri:
+                              format: int64
+                              type: integer
+                            compaction-style:
+                              format: int64
+                              type: integer
+                            compression-per-level:
+                              items:
+                                type: string
+                              type: array
+                            disable-auto-compactions:
+                              type: boolean
+                            disable-block-cache:
+                              type: boolean
+                            dynamic-level-bytes:
+                              type: boolean
+                            enable-doubly-skiplist:
+                              type: boolean
+                            force-consistency-checks:
+                              type: boolean
+                            hard-pending-compaction-bytes-limit:
+                              type: string
+                            max-bytes-for-level-base:
+                              type: string
+                            max-bytes-for-level-multiplier:
+                              format: int64
+                              type: integer
+                            max-compaction-bytes:
+                              type: string
+                            max-write-buffer-number:
+                              format: int64
+                              type: integer
+                            min-write-buffer-number-to-merge:
+                              format: int64
+                              type: integer
+                            num-levels:
+                              format: int64
+                              type: integer
+                            optimize-filters-for-hits:
+                              type: boolean
+                            prop-keys-index-distance:
+                              format: int64
+                              type: integer
+                            prop-size-index-distance:
+                              format: int64
+                              type: integer
+                            read-amp-bytes-per-bit:
+                              format: int64
+                              type: integer
+                            soft-pending-compaction-bytes-limit:
+                              type: string
+                            target-file-size-base:
+                              type: string
+                            titan:
+                              description: TiKVTitanCfConfig is the titian config.
+                              properties:
+                                blob-cache-size:
+                                  type: string
+                                blob-file-compression:
+                                  type: string
+                                blob-run-mode:
+                                  type: string
+                                discardable-ratio:
+                                  format: double
+                                  type: number
+                                max-gc-batch-size:
+                                  type: string
+                                merge-small-file-threshold:
+                                  type: string
+                                min-blob-size:
+                                  type: string
+                                min-gc-batch-size:
+                                  type: string
+                                sample-ratio:
+                                  format: double
+                                  type: number
+                              type: object
+                            use-bloom-filter:
+                              type: boolean
+                            whole-key-filtering:
+                              type: boolean
+                            write-buffer-size:
+                              type: string
+                          required:
+                          - PinL0FilterAndIndexBlocks
+                          - Level0FileNumCompactionTrigger
+                          - Level0SlowdownWritesTrigger
+                          - Level0StopWritesTrigger
+                          type: object
+                        enable-pipelined-write:
+                          type: boolean
+                        enable-statistics:
+                          type: boolean
+                        info-log-dir:
+                          type: string
+                        info-log-keep-log-file-num:
+                          format: int64
+                          type: integer
+                        info-log-max-size:
+                          type: string
+                        info-log-roll-time:
+                          type: string
+                        lockcf:
+                          description: TiKVCfConfig is the config of a cf
+                          properties:
+                            Level0FileNumCompactionTrigger:
+                              format: int64
+                              type: integer
+                            Level0SlowdownWritesTrigger:
+                              format: int64
+                              type: integer
+                            Level0StopWritesTrigger:
+                              format: int64
+                              type: integer
+                            PinL0FilterAndIndexBlocks:
+                              type: boolean
+                            block-based-bloom-filter:
+                              type: boolean
+                            block-cache-size:
+                              type: string
+                            block-size:
+                              type: string
+                            bloom-filter-bits-per-key:
+                              format: int64
+                              type: integer
+                            cache-index-and-filter-blocks:
+                              type: boolean
+                            compaction-pri:
+                              format: int64
+                              type: integer
+                            compaction-style:
+                              format: int64
+                              type: integer
+                            compression-per-level:
+                              items:
+                                type: string
+                              type: array
+                            disable-auto-compactions:
+                              type: boolean
+                            disable-block-cache:
+                              type: boolean
+                            dynamic-level-bytes:
+                              type: boolean
+                            enable-doubly-skiplist:
+                              type: boolean
+                            force-consistency-checks:
+                              type: boolean
+                            hard-pending-compaction-bytes-limit:
+                              type: string
+                            max-bytes-for-level-base:
+                              type: string
+                            max-bytes-for-level-multiplier:
+                              format: int64
+                              type: integer
+                            max-compaction-bytes:
+                              type: string
+                            max-write-buffer-number:
+                              format: int64
+                              type: integer
+                            min-write-buffer-number-to-merge:
+                              format: int64
+                              type: integer
+                            num-levels:
+                              format: int64
+                              type: integer
+                            optimize-filters-for-hits:
+                              type: boolean
+                            prop-keys-index-distance:
+                              format: int64
+                              type: integer
+                            prop-size-index-distance:
+                              format: int64
+                              type: integer
+                            read-amp-bytes-per-bit:
+                              format: int64
+                              type: integer
+                            soft-pending-compaction-bytes-limit:
+                              type: string
+                            target-file-size-base:
+                              type: string
+                            titan:
+                              description: TiKVTitanCfConfig is the titian config.
+                              properties:
+                                blob-cache-size:
+                                  type: string
+                                blob-file-compression:
+                                  type: string
+                                blob-run-mode:
+                                  type: string
+                                discardable-ratio:
+                                  format: double
+                                  type: number
+                                max-gc-batch-size:
+                                  type: string
+                                merge-small-file-threshold:
+                                  type: string
+                                min-blob-size:
+                                  type: string
+                                min-gc-batch-size:
+                                  type: string
+                                sample-ratio:
+                                  format: double
+                                  type: number
+                              type: object
+                            use-bloom-filter:
+                              type: boolean
+                            whole-key-filtering:
+                              type: boolean
+                            write-buffer-size:
+                              type: string
+                          required:
+                          - PinL0FilterAndIndexBlocks
+                          - Level0FileNumCompactionTrigger
+                          - Level0SlowdownWritesTrigger
+                          - Level0StopWritesTrigger
+                          type: object
+                        max-background-jobs:
+                          format: int64
+                          type: integer
+                        max-manifest-file-size:
+                          type: string
+                        max-open-files:
+                          format: int64
+                          type: integer
+                        max-sub-compactions:
+                          format: int64
+                          type: integer
+                        max-total-wal-size:
+                          type: string
+                        raftcf:
+                          description: TiKVCfConfig is the config of a cf
+                          properties:
+                            Level0FileNumCompactionTrigger:
+                              format: int64
+                              type: integer
+                            Level0SlowdownWritesTrigger:
+                              format: int64
+                              type: integer
+                            Level0StopWritesTrigger:
+                              format: int64
+                              type: integer
+                            PinL0FilterAndIndexBlocks:
+                              type: boolean
+                            block-based-bloom-filter:
+                              type: boolean
+                            block-cache-size:
+                              type: string
+                            block-size:
+                              type: string
+                            bloom-filter-bits-per-key:
+                              format: int64
+                              type: integer
+                            cache-index-and-filter-blocks:
+                              type: boolean
+                            compaction-pri:
+                              format: int64
+                              type: integer
+                            compaction-style:
+                              format: int64
+                              type: integer
+                            compression-per-level:
+                              items:
+                                type: string
+                              type: array
+                            disable-auto-compactions:
+                              type: boolean
+                            disable-block-cache:
+                              type: boolean
+                            dynamic-level-bytes:
+                              type: boolean
+                            enable-doubly-skiplist:
+                              type: boolean
+                            force-consistency-checks:
+                              type: boolean
+                            hard-pending-compaction-bytes-limit:
+                              type: string
+                            max-bytes-for-level-base:
+                              type: string
+                            max-bytes-for-level-multiplier:
+                              format: int64
+                              type: integer
+                            max-compaction-bytes:
+                              type: string
+                            max-write-buffer-number:
+                              format: int64
+                              type: integer
+                            min-write-buffer-number-to-merge:
+                              format: int64
+                              type: integer
+                            num-levels:
+                              format: int64
+                              type: integer
+                            optimize-filters-for-hits:
+                              type: boolean
+                            prop-keys-index-distance:
+                              format: int64
+                              type: integer
+                            prop-size-index-distance:
+                              format: int64
+                              type: integer
+                            read-amp-bytes-per-bit:
+                              format: int64
+                              type: integer
+                            soft-pending-compaction-bytes-limit:
+                              type: string
+                            target-file-size-base:
+                              type: string
+                            titan:
+                              description: TiKVTitanCfConfig is the titian config.
+                              properties:
+                                blob-cache-size:
+                                  type: string
+                                blob-file-compression:
+                                  type: string
+                                blob-run-mode:
+                                  type: string
+                                discardable-ratio:
+                                  format: double
+                                  type: number
+                                max-gc-batch-size:
+                                  type: string
+                                merge-small-file-threshold:
+                                  type: string
+                                min-blob-size:
+                                  type: string
+                                min-gc-batch-size:
+                                  type: string
+                                sample-ratio:
+                                  format: double
+                                  type: number
+                              type: object
+                            use-bloom-filter:
+                              type: boolean
+                            whole-key-filtering:
+                              type: boolean
+                            write-buffer-size:
+                              type: string
+                          required:
+                          - PinL0FilterAndIndexBlocks
+                          - Level0FileNumCompactionTrigger
+                          - Level0SlowdownWritesTrigger
+                          - Level0StopWritesTrigger
+                          type: object
+                        rate-bytes-per-sec:
+                          type: string
+                        rate-limiter-mode:
+                          format: int64
+                          type: integer
+                        stats-dump-period:
+                          type: string
+                        titan:
+                          description: TiKVTitanDBConfig is the config a titian db.
+                          properties:
+                            dirname:
+                              type: string
+                            disable-gc:
+                              type: boolean
+                            enabled:
+                              type: boolean
+                            max-background-gc:
+                              format: int64
+                              type: integer
+                            purge-obsolete-files-period:
+                              description: The value of this field will be truncated
+                                to seconds.
+                              type: string
+                          type: object
+                        use-direct-io-for-flush-and-compaction:
+                          type: boolean
+                        wal-bytes-per-sync:
+                          type: string
+                        wal-dir:
+                          type: string
+                        wal-recovery-mode:
+                          format: int64
+                          type: integer
+                        wal-size-limit:
+                          type: string
+                        wal-ttl-seconds:
+                          format: int64
+                          type: integer
+                        writable-file-max-buffer-size:
+                          type: string
+                        writecf:
+                          description: TiKVCfConfig is the config of a cf
+                          properties:
+                            Level0FileNumCompactionTrigger:
+                              format: int64
+                              type: integer
+                            Level0SlowdownWritesTrigger:
+                              format: int64
+                              type: integer
+                            Level0StopWritesTrigger:
+                              format: int64
+                              type: integer
+                            PinL0FilterAndIndexBlocks:
+                              type: boolean
+                            block-based-bloom-filter:
+                              type: boolean
+                            block-cache-size:
+                              type: string
+                            block-size:
+                              type: string
+                            bloom-filter-bits-per-key:
+                              format: int64
+                              type: integer
+                            cache-index-and-filter-blocks:
+                              type: boolean
+                            compaction-pri:
+                              format: int64
+                              type: integer
+                            compaction-style:
+                              format: int64
+                              type: integer
+                            compression-per-level:
+                              items:
+                                type: string
+                              type: array
+                            disable-auto-compactions:
+                              type: boolean
+                            disable-block-cache:
+                              type: boolean
+                            dynamic-level-bytes:
+                              type: boolean
+                            enable-doubly-skiplist:
+                              type: boolean
+                            force-consistency-checks:
+                              type: boolean
+                            hard-pending-compaction-bytes-limit:
+                              type: string
+                            max-bytes-for-level-base:
+                              type: string
+                            max-bytes-for-level-multiplier:
+                              format: int64
+                              type: integer
+                            max-compaction-bytes:
+                              type: string
+                            max-write-buffer-number:
+                              format: int64
+                              type: integer
+                            min-write-buffer-number-to-merge:
+                              format: int64
+                              type: integer
+                            num-levels:
+                              format: int64
+                              type: integer
+                            optimize-filters-for-hits:
+                              type: boolean
+                            prop-keys-index-distance:
+                              format: int64
+                              type: integer
+                            prop-size-index-distance:
+                              format: int64
+                              type: integer
+                            read-amp-bytes-per-bit:
+                              format: int64
+                              type: integer
+                            soft-pending-compaction-bytes-limit:
+                              type: string
+                            target-file-size-base:
+                              type: string
+                            titan:
+                              description: TiKVTitanCfConfig is the titian config.
+                              properties:
+                                blob-cache-size:
+                                  type: string
+                                blob-file-compression:
+                                  type: string
+                                blob-run-mode:
+                                  type: string
+                                discardable-ratio:
+                                  format: double
+                                  type: number
+                                max-gc-batch-size:
+                                  type: string
+                                merge-small-file-threshold:
+                                  type: string
+                                min-blob-size:
+                                  type: string
+                                min-gc-batch-size:
+                                  type: string
+                                sample-ratio:
+                                  format: double
+                                  type: number
+                              type: object
+                            use-bloom-filter:
+                              type: boolean
+                            whole-key-filtering:
+                              type: boolean
+                            write-buffer-size:
+                              type: string
+                          required:
+                          - PinL0FilterAndIndexBlocks
+                          - Level0FileNumCompactionTrigger
+                          - Level0SlowdownWritesTrigger
+                          - Level0StopWritesTrigger
+                          type: object
+                      type: object
+                    security:
+                      properties:
+                        ca_path:
+                          type: string
+                        cert_path:
+                          type: string
+                        cipher_file:
+                          type: string
+                        key_path:
+                          type: string
+                        override_ssl_target:
+                          type: string
+                      type: object
+                    server:
+                      description: TiKVServerConfig is the configuration of TiKV server.
+                      properties:
+                        concurrent-recv-snap-limit:
+                          format: int64
+                          type: integer
+                        concurrent-send-snap-limit:
+                          format: int64
+                          type: integer
+                        end-point-batch-row-limit:
+                          format: int64
+                          type: integer
+                        end-point-enable-batch-if-possible:
+                          type: boolean
+                        end-point-recursion-limit:
+                          format: int64
+                          type: integer
+                        end-point-request-max-handle-duration:
+                          type: string
+                        end-point-stream-batch-row-limit:
+                          format: int64
+                          type: integer
+                        end-point-stream-channel-size:
+                          format: int64
+                          type: integer
+                        grpc-compression-type:
+                          type: string
+                        grpc-concurrency:
+                          format: int64
+                          type: integer
+                        grpc-concurrent-stream:
+                          format: int64
+                          type: integer
+                        grpc-keepalive-time:
+                          type: string
+                        grpc-keepalive-timeout:
+                          type: string
+                        grpc-raft-conn-num:
+                          format: int64
+                          type: integer
+                        grpc-stream-initial-window-size:
+                          type: string
+                        heavy-load-threshold:
+                          format: int64
+                          type: integer
+                        heavy-load-wait-duration:
+                          type: string
+                        labels:
+                          type: object
+                        snap-max-total-size:
+                          type: string
+                        snap-max-write-bytes-per-sec:
+                          type: string
+                        stats-concurrency:
+                          format: int64
+                          type: integer
+                      type: object
+                    snap-max-total-size:
+                      type: string
+                    snap-max-write-bytes-per-sec:
+                      type: string
+                    stats-concurrency:
+                      format: int32
+                      type: integer
+                    status-addr:
+                      type: string
+                    status-thread-pool-size:
+                      type: string
+                    storage:
+                      description: TiKVStorageConfig is the config of storage
+                      properties:
+                        block-cache:
+                          description: TiKVBlockCacheConfig is the config of a block
+                            cache
+                          properties:
+                            capacity:
+                              type: string
+                            high-pri-pool-ratio:
+                              format: double
+                              type: number
+                            memory-allocator:
+                              type: string
+                            num-shard-bits:
+                              format: int64
+                              type: integer
+                            shared:
+                              type: boolean
+                            strict-capacity-limit:
+                              type: boolean
+                          type: object
+                        data-dir:
+                          type: string
+                        max-key-size:
+                          format: int64
+                          type: integer
+                        scheduler-concurrency:
+                          format: int64
+                          type: integer
+                        scheduler-notify-capacity:
+                          format: int64
+                          type: integer
+                        scheduler-pending-write-threshold:
+                          type: string
+                        scheduler-worker-pool-size:
+                          format: int64
+                          type: integer
+                      type: object
+                  type: object
+                configUpdateStrategy:
+                  type: string
                 maxFailoverCount:
                   format: int32
                   type: integer
@@ -840,9 +2722,9 @@ metadata:
   name: backups.pingcap.com
 spec:
   additionalPrinterColumns:
-  - JSONPath: .spec.storageType
-    description: The storage type of backup data
-    name: StorageType
+  - JSONPath: .status.backupPath
+    description: The full path of backup data
+    name: BackupPath
     type: string
   - JSONPath: .status.backupSize
     description: The data size of the backup
@@ -888,15 +2770,35 @@ spec:
             backupType:
               description: Type is the backup type for tidb cluster.
               type: string
-            cluster:
-              description: Cluster is the Cluster to backup.
-              type: string
+            from:
+              description: TiDBAccessConfig defines the configuration for access tidb
+                cluster
+              properties:
+                host:
+                  description: Host is the tidb cluster access address
+                  type: string
+                port:
+                  description: Port is the port number to use for connecting tidb
+                    cluster
+                  format: int32
+                  type: integer
+                secretName:
+                  description: SecretName is the name of secret which stores tidb
+                    cluster's password.
+                  type: string
+                user:
+                  description: User is the user for login tidb cluster
+                  type: string
+              required:
+              - host
+              - secretName
+              type: object
             gcs:
               description: GcsStorageProvider represents the google cloud storage
                 for storing backups.
               properties:
                 bucket:
-                  description: Bucket in which to store the Backup.
+                  description: Bucket in which to store the backup data.
                   type: string
                 bucketAcl:
                   description: BucketAcl represents the access control list for new
@@ -908,6 +2810,10 @@ spec:
                 objectAcl:
                   description: ObjectAcl represents the access control list for new
                     objects
+                  type: string
+                path:
+                  description: 'Path is the full path where the backup is saved. The
+                    format of the path must be: "<bucket-name>/<path-to-backup-file>"'
                   type: string
                 projectId:
                   description: ProjectId represents the project that organizes all
@@ -933,10 +2839,14 @@ spec:
                     bucket
                   type: string
                 bucket:
-                  description: Bucket in which to store the Backup.
+                  description: Bucket in which to store the backup data.
                   type: string
                 endpoint:
                   description: Endpoint of S3 compatible storage service
+                  type: string
+                path:
+                  description: 'Path is the full path where the backup is saved. The
+                    format of the path must be: "<bucket-name>/<path-to-backup-file>"'
                   type: string
                 provider:
                   description: Provider represents the specific storage provider that
@@ -963,17 +2873,8 @@ spec:
             storageSize:
               description: StorageSize is the request storage size for backup job
               type: string
-            storageType:
-              description: StorageType is the backup storage type.
-              type: string
-            tidbSecretName:
-              description: TidbSecretName is the name of secret which stores tidb
-                cluster's username and password.
-              type: string
           required:
-          - cluster
-          - tidbSecretName
-          - storageType
+          - from
           - storageClassName
           - storageSize
           type: object
@@ -987,19 +2888,13 @@ metadata:
   name: restores.pingcap.com
 spec:
   additionalPrinterColumns:
-  - JSONPath: .spec.backup
-    description: The backup that used to restore
-    name: Backup
-    type: string
   - JSONPath: .status.timeStarted
     description: The time at which the backup was started
     name: Started
-    priority: 1
     type: date
   - JSONPath: .status.timeCompleted
     description: The time at which the restore was completed
     name: Completed
-    priority: 1
     type: date
   group: pingcap.com
   names:
@@ -1025,31 +2920,114 @@ spec:
           description: RestoreSpec contains the specification for a restore of a tidb
             cluster backup.
           properties:
-            backup:
-              description: Backup represents the backup object to be restored.
+            backupType:
+              description: Type is the backup type for tidb cluster.
               type: string
-            backupNamespace:
-              description: Namespace is the namespace of the backup.
-              type: string
-            cluster:
-              description: Cluster represents the tidb cluster to be restored.
-              type: string
+            gcs:
+              description: GcsStorageProvider represents the google cloud storage
+                for storing backups.
+              properties:
+                bucket:
+                  description: Bucket in which to store the backup data.
+                  type: string
+                bucketAcl:
+                  description: BucketAcl represents the access control list for new
+                    buckets
+                  type: string
+                location:
+                  description: Location in which the gcs bucket is located.
+                  type: string
+                objectAcl:
+                  description: ObjectAcl represents the access control list for new
+                    objects
+                  type: string
+                path:
+                  description: 'Path is the full path where the backup is saved. The
+                    format of the path must be: "<bucket-name>/<path-to-backup-file>"'
+                  type: string
+                projectId:
+                  description: ProjectId represents the project that organizes all
+                    your Google Cloud Platform resources
+                  type: string
+                secretName:
+                  description: SecretName is the name of secret which stores the gcs
+                    service account credentials JSON .
+                  type: string
+                storageClass:
+                  description: StorageClass represents the storage class
+                  type: string
+              required:
+              - projectId
+              - secretName
+              type: object
+            s3:
+              description: S3StorageProvider represents a S3 compliant storage for
+                storing backups.
+              properties:
+                acl:
+                  description: Acl represents access control permissions for this
+                    bucket
+                  type: string
+                bucket:
+                  description: Bucket in which to store the backup data.
+                  type: string
+                endpoint:
+                  description: Endpoint of S3 compatible storage service
+                  type: string
+                path:
+                  description: 'Path is the full path where the backup is saved. The
+                    format of the path must be: "<bucket-name>/<path-to-backup-file>"'
+                  type: string
+                provider:
+                  description: Provider represents the specific storage provider that
+                    implements the S3 interface
+                  type: string
+                region:
+                  description: Region in which the S3 compatible bucket is located.
+                  type: string
+                secretName:
+                  description: SecretName is the name of secret which stores S3 compliant
+                    storage access key and secret key.
+                  type: string
+                storageClass:
+                  description: StorageClass represents the storage class
+                  type: string
+              required:
+              - provider
+              - secretName
+              type: object
             storageClassName:
-              description: StorageClassName is the storage class for restore job's
+              description: StorageClassName is the storage class for backup job's
                 PV.
               type: string
             storageSize:
-              description: StorageSize is the request storage size for restore job
+              description: StorageSize is the request storage size for backup job
               type: string
-            tidbSecretName:
-              description: SecretName is the name of the secret which stores tidb
-                cluster's username and password.
-              type: string
+            to:
+              description: TiDBAccessConfig defines the configuration for access tidb
+                cluster
+              properties:
+                host:
+                  description: Host is the tidb cluster access address
+                  type: string
+                port:
+                  description: Port is the port number to use for connecting tidb
+                    cluster
+                  format: int32
+                  type: integer
+                secretName:
+                  description: SecretName is the name of secret which stores tidb
+                    cluster's password.
+                  type: string
+                user:
+                  description: User is the user for login tidb cluster
+                  type: string
+              required:
+              - host
+              - secretName
+              type: object
           required:
-          - cluster
-          - backup
-          - backupNamespace
-          - tidbSecretName
+          - to
           - storageClassName
           - storageSize
           type: object
@@ -1112,15 +3090,35 @@ spec:
                 backupType:
                   description: Type is the backup type for tidb cluster.
                   type: string
-                cluster:
-                  description: Cluster is the Cluster to backup.
-                  type: string
+                from:
+                  description: TiDBAccessConfig defines the configuration for access
+                    tidb cluster
+                  properties:
+                    host:
+                      description: Host is the tidb cluster access address
+                      type: string
+                    port:
+                      description: Port is the port number to use for connecting tidb
+                        cluster
+                      format: int32
+                      type: integer
+                    secretName:
+                      description: SecretName is the name of secret which stores tidb
+                        cluster's password.
+                      type: string
+                    user:
+                      description: User is the user for login tidb cluster
+                      type: string
+                  required:
+                  - host
+                  - secretName
+                  type: object
                 gcs:
                   description: GcsStorageProvider represents the google cloud storage
                     for storing backups.
                   properties:
                     bucket:
-                      description: Bucket in which to store the Backup.
+                      description: Bucket in which to store the backup data.
                       type: string
                     bucketAcl:
                       description: BucketAcl represents the access control list for
@@ -1132,6 +3130,10 @@ spec:
                     objectAcl:
                       description: ObjectAcl represents the access control list for
                         new objects
+                      type: string
+                    path:
+                      description: 'Path is the full path where the backup is saved.
+                        The format of the path must be: "<bucket-name>/<path-to-backup-file>"'
                       type: string
                     projectId:
                       description: ProjectId represents the project that organizes
@@ -1157,10 +3159,14 @@ spec:
                         bucket
                       type: string
                     bucket:
-                      description: Bucket in which to store the Backup.
+                      description: Bucket in which to store the backup data.
                       type: string
                     endpoint:
                       description: Endpoint of S3 compatible storage service
+                      type: string
+                    path:
+                      description: 'Path is the full path where the backup is saved.
+                        The format of the path must be: "<bucket-name>/<path-to-backup-file>"'
                       type: string
                     provider:
                       description: Provider represents the specific storage provider
@@ -1188,17 +3194,8 @@ spec:
                   description: StorageSize is the request storage size for backup
                     job
                   type: string
-                storageType:
-                  description: StorageType is the backup storage type.
-                  type: string
-                tidbSecretName:
-                  description: TidbSecretName is the name of secret which stores tidb
-                    cluster's username and password.
-                  type: string
               required:
-              - cluster
-              - tidbSecretName
-              - storageType
+              - from
               - storageClassName
               - storageSize
               type: object
@@ -1227,6 +3224,219 @@ spec:
           required:
           - schedule
           - backupTemplate
+          type: object
+      type: object
+  version: v1alpha1
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: tidbmonitors.pingcap.com
+spec:
+  group: pingcap.com
+  names:
+    kind: TidbMonitor
+    plural: tidbmonitors
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        spec:
+          description: TidbMonitor spec encode the desired state of tidb monitoring
+            component
+          properties:
+            alertmanagerURL:
+              description: 'alertmanagerURL is where tidb-monitoring push alerts to.
+                Ref: https://prometheus.io/docs/alerting/alertmanager/'
+              type: string
+            annotations:
+              type: object
+            clusters:
+              items:
+                description: TidbClusterRef reference to a TidbCluster
+                properties:
+                  name:
+                    description: Name is the name of TidbCluster object
+                    type: string
+                  namespace:
+                    description: Namespace is the namespace that TidbCluster object
+                      locates, default to the same namespace with TidbMonitor
+                    type: string
+                required:
+                - name
+                type: object
+              type: array
+            grafana: {}
+            imagePullPolicy:
+              type: string
+            initializer: {}
+            kubePrometheusURL:
+              description: 'kubePrometheusURL is where tidb-monitoring get the  common
+                metrics of kube-prometheus. Ref: https://github.com/coreos/kube-prometheus'
+              type: string
+            nodeSelector:
+              type: object
+            persistent:
+              type: boolean
+            prometheus: {}
+            reloader: {}
+            storage:
+              type: string
+            storageClassName:
+              type: string
+            tolerations:
+              items:
+                description: The pod this Toleration is attached to tolerates any
+                  taint that matches the triple <key,value,effect> using the matching
+                  operator <operator>.
+                properties:
+                  effect:
+                    description: Effect indicates the taint effect to match. Empty
+                      means match all taint effects. When specified, allowed values
+                      are NoSchedule, PreferNoSchedule and NoExecute.
+                    type: string
+                  key:
+                    description: Key is the taint key that the toleration applies
+                      to. Empty means match all taint keys. If the key is empty, operator
+                      must be Exists; this combination means to match all values and
+                      all keys.
+                    type: string
+                  operator:
+                    description: Operator represents a key's relationship to the value.
+                      Valid operators are Exists and Equal. Defaults to Equal. Exists
+                      is equivalent to wildcard for value, so that a pod can tolerate
+                      all taints of a particular category.
+                    type: string
+                  tolerationSeconds:
+                    description: TolerationSeconds represents the period of time the
+                      toleration (which must be of effect NoExecute, otherwise this
+                      field is ignored) tolerates the taint. By default, it is not
+                      set, which means tolerate the taint forever (do not evict).
+                      Zero and negative values will be treated as 0 (evict immediately)
+                      by the system.
+                    format: int64
+                    type: integer
+                  value:
+                    description: Value is the taint value the toleration matches to.
+                      If the operator is Exists, the value should be empty, otherwise
+                      just a regular string.
+                    type: string
+                type: object
+              type: array
+          required:
+          - clusters
+          - prometheus
+          - reloader
+          - initializer
+          type: object
+      type: object
+  version: v1alpha1
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: tidbinitializers.pingcap.com
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.phase
+    description: The current phase of initialization
+    name: Phase
+    priority: 1
+    type: string
+  group: pingcap.com
+  names:
+    kind: TidbInitializer
+    plural: tidbinitializers
+    shortNames:
+    - ti
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        spec:
+          description: TidbInitializer spec encode the desired state of tidb initializer
+            Job
+          properties:
+            cluster:
+              description: TidbClusterRef reference to a TidbCluster
+              properties:
+                name:
+                  description: Name is the name of TidbCluster object
+                  type: string
+                namespace:
+                  description: Namespace is the namespace that TidbCluster object
+                    locates, default to the same namespace with TidbMonitor
+                  type: string
+              required:
+              - name
+              type: object
+            image:
+              type: string
+            imagePullPolicy:
+              type: string
+            initSql:
+              description: InitSql is the SQL statements executed after the TiDB cluster
+                is bootstrapped.
+              type: string
+            initSqlConfigMap:
+              description: LocalObjectReference contains enough information to let
+                you locate the referenced object inside the same namespace.
+              properties:
+                name:
+                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                  type: string
+              type: object
+            passwordSecret:
+              description: LocalObjectReference contains enough information to let
+                you locate the referenced object inside the same namespace.
+              properties:
+                name:
+                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                  type: string
+              type: object
+            permitHost:
+              description: permitHost is the host which will only be allowed to connect
+                to the TiDB.
+              type: string
+            resources:
+              description: ResourceRequirements describes the compute resource requirements.
+              properties:
+                limits:
+                  description: 'Limits describes the maximum amount of compute resources
+                    allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
+                requests:
+                  description: 'Requests describes the minimum amount of compute resources
+                    required. If Requests is omitted for a container, it defaults
+                    to Limits if that is explicitly specified, otherwise to an implementation-defined
+                    value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
+              type: object
+          required:
+          - image
+          - cluster
           type: object
       type: object
   version: v1alpha1

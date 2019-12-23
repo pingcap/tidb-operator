@@ -115,7 +115,7 @@ func run() {
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, cfg)
 	fta.CheckAndRecoverEnvOrDie()
 
-	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, cfg, allClusters)
+	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, ocfg, cfg, allClusters, nil, nil)
 	oa.CheckK8sAvailableOrDie(nil, nil)
 	oa.LabelNodesOrDie()
 
@@ -170,7 +170,8 @@ func run() {
 		}
 
 		// upgrade
-		oa.RegisterWebHookAndServiceOrDie(certCtx, ocfg)
+		namespace := os.Getenv("NAMESPACE")
+		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, namespace, ocfg.WebhookServiceName, certCtx)
 		ctx, cancel := context.WithCancel(context.Background())
 		for _, cluster := range clusters {
 			assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(cluster)
@@ -208,7 +209,7 @@ func run() {
 			oa.CheckTidbClusterStatusOrDie(cluster)
 		}
 		cancel()
-		oa.CleanWebHookAndServiceOrDie(ocfg)
+		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 
 		for _, cluster := range clusters {
 			oa.CheckDisasterToleranceOrDie(cluster)
@@ -382,11 +383,13 @@ func run() {
 
 func newOperatorConfig() *tests.OperatorConfig {
 	return &tests.OperatorConfig{
-		Namespace:      "pingcap",
-		ReleaseName:    "operator",
-		Image:          cfg.OperatorImage,
-		Tag:            cfg.OperatorTag,
-		SchedulerImage: "gcr.io/google-containers/hyperkube",
+		Namespace:                 "pingcap",
+		ReleaseName:               "operator",
+		Image:                     cfg.OperatorImage,
+		Tag:                       cfg.OperatorTag,
+		ControllerManagerReplicas: 2,
+		SchedulerImage:            "gcr.io/google-containers/hyperkube",
+		SchedulerReplicas:         2,
 		Features: []string{
 			"StableScheduling=true",
 		},
@@ -396,6 +399,9 @@ func newOperatorConfig() *tests.OperatorConfig {
 		WebhookConfigName:  "webhook-config",
 		ImagePullPolicy:    v1.PullAlways,
 		TestMode:           true,
+		WebhookEnabled:     false,
+		PodWebhookEnabled:  false,
+		StsWebhookEnabled:  false,
 	}
 }
 

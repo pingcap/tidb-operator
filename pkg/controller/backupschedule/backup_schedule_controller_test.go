@@ -18,6 +18,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
@@ -179,14 +181,18 @@ func newBackupSchedule() *v1alpha1.BackupSchedule {
 			Schedule:   "1 */10 * * *",
 			MaxBackups: controller.Int32Ptr(10),
 			BackupTemplate: v1alpha1.BackupSpec{
-				Cluster:        "demo1",
-				TidbSecretName: "demo1-tidb-secret",
-				StorageType:    v1alpha1.BackupStorageTypeS3,
+				From: v1alpha1.TiDBAccessConfig{
+					Host:       "10.1.1.2",
+					Port:       constants.DefaultTidbPort,
+					User:       constants.DefaultTidbUser,
+					SecretName: "demo1-tidb-secret",
+				},
 				StorageProvider: v1alpha1.StorageProvider{
 					S3: &v1alpha1.S3StorageProvider{
 						Provider:   v1alpha1.S3StorageProviderTypeCeph,
 						Endpoint:   "http://10.0.0.1",
 						SecretName: "demo",
+						Bucket:     "test1-demo1",
 					},
 				},
 			},
