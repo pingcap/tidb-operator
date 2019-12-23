@@ -149,10 +149,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("able to upgrade TiDB Cluster with pod admission webhook", func() {
-
-			klog.Infof("start to upgrade operator with pod admission webhook enabled")
-			oa.UpgradeOperatorOrDie(ocfg)
-
+			klog.Info("start to upgrade tidbcluster with pod admission webhook")
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "deploy", "", "")
 			cluster.Resources["pd.replicas"] = "3"
