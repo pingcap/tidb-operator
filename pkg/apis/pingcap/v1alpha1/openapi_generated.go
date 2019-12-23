@@ -83,6 +83,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVClient":                  schema_pkg_apis_pingcap_v1alpha1_TiKVClient(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVComponentReadPoolConfig": schema_pkg_apis_pingcap_v1alpha1_TiKVComponentReadPoolConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfig":                  schema_pkg_apis_pingcap_v1alpha1_TiKVConfig(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVCoprocessorConfig":       schema_pkg_apis_pingcap_v1alpha1_TiKVCoprocessorConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVDbConfig":                schema_pkg_apis_pingcap_v1alpha1_TiKVDbConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVGCConfig":                schema_pkg_apis_pingcap_v1alpha1_TiKVGCConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVImportConfig":            schema_pkg_apis_pingcap_v1alpha1_TiKVImportConfig(ref),
@@ -94,6 +95,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVServerConfig":            schema_pkg_apis_pingcap_v1alpha1_TiKVServerConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSpec":                    schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStorageConfig":           schema_pkg_apis_pingcap_v1alpha1_TiKVStorageConfig(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVTitanCfConfig":           schema_pkg_apis_pingcap_v1alpha1_TiKVTitanCfConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVTitanDBConfig":           schema_pkg_apis_pingcap_v1alpha1_TiKVTitanDBConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbCluster":                 schema_pkg_apis_pingcap_v1alpha1_TidbCluster(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterList":             schema_pkg_apis_pingcap_v1alpha1_TidbClusterList(ref),
@@ -3731,6 +3733,61 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVConfig(ref common.ReferenceCallback) c
 	}
 }
 
+func schema_pkg_apis_pingcap_v1alpha1_TiKVCoprocessorConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TiKVCoprocessorConfig is the configuration of TiKV Coprocessor component.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"split-region-on-table": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When it is set to `true`, TiKV will try to split a Region with table prefix if that Region crosses tables. It is recommended to turn off this option if there will be a large number of tables created. optional",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"batch-split-limit": {
+						SchemaProps: spec.SchemaProps{
+							Description: "One split check produces several split keys in batch. This config limits the number of produced split keys in one batch. optional",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"region-max-size": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When Region [a,e) size exceeds `region_max_size`, it will be split into several Regions [a,b), [b,c), [c,d), [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size` (or a little larger). See also: region-split-size optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"region-split-size": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When Region [a,e) size exceeds `region_max_size`, it will be split into several Regions [a,b), [b,c), [c,d), [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size` (or a little larger). See also: region-max-size optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"region-max-keys": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When the number of keys in Region [a,e) exceeds the `region_max_keys`, it will be split into several Regions [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b), [b,c), [c,d) will be `region_split_keys`. See also: region-split-keys optional",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"region-split-keys": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When the number of keys in Region [a,e) exceeds the `region_max_keys`, it will be split into several Regions [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b), [b,c), [c,d) will be `region_split_keys`. See also: region-max-keys optional",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_pingcap_v1alpha1_TiKVDbConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -4846,6 +4903,73 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVStorageConfig(ref common.ReferenceCall
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVBlockCacheConfig"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_TiKVTitanCfConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TiKVTitanCfConfig is the titian config.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"min-blob-size": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"blob-file-compression": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"blob-cache-size": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"min-gc-batch-size": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"max-gc-batch-size": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"discardable-ratio": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"number"},
+							Format: "double",
+						},
+					},
+					"sample-ratio": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"number"},
+							Format: "double",
+						},
+					},
+					"merge-small-file-threshold": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"blob-run-mode": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
