@@ -448,7 +448,7 @@ func InferObjectKind(obj runtime.Object) (schema.GroupVersionKind, error) {
 	return gvks[0], nil
 }
 
-// GuaranteedUpdate will retry the updateFunc to mutate the object util success, updateFunc is expected to
+// GuaranteedUpdate will retry the updateFunc to mutate the object until success, updateFunc is expected to
 // capture the object reference from the caller context to avoid unnecessary type casting.
 func GuaranteedUpdate(cli client.Client, obj runtime.Object, updateFunc func() error) error {
 	key, err := client.ObjectKeyFromObject(obj)
