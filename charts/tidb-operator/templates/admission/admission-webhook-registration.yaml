@@ -1,0 +1,132 @@
+{{- if .Values.admissionWebhook.create }}
+apiVersion: apiregistration.k8s.io/v1beta1
+kind: APIService
+metadata:
+  name: v1alpha1.admission.tidb.pingcap.com
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: admission-webhook
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  {{- if .Values.admissionWebhook.apiservice.insecureSkipTLSVerify }}
+  insecureSkipTLSVerify: true
+  {{- else }}
+  caBundle: {{ .Values.admissionWebhook.apiservice.cert | b64enc }}
+  {{- end }}
+  group: admission.tidb.pingcap.com
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  service:
+    name: tidb-admission-webhook
+    namespace: {{ .Release.Namespace }}
+  version: v1alpha1
+---
+{{- if .Values.admissionWebhook.hooksEnabled.pods }}
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validation-delete-tidb-admission-webhook-cfg
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: admission-webhook
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+webhooks:
+  - name: delete.podadmission.tidb.pingcap.com
+    {{- if semverCompare ">=1.15-0" .Capabilities.KubeVersion.GitVersion }}
+    objectSelector:
+      matchLabels:
+        "app.kubernetes.io/managed-by": "tidb-operator"
+        "app.kubernetes.io/name": "tidb-cluster"
+    {{- end }}
+    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.deletePod | default "Fail" }}
+    clientConfig:
+      service:
+        name: kubernetes
+        namespace: default
+        path: "/apis/admission.tidb.pingcap.com/v1alpha1/admissionreviews"
+      {{- if .Values.admissionWebhook.cabundle }}
+      caBundle: {{ .Values.admissionWebhook.cabundle | b64enc }}
+      {{- else }}
+      caBundle: null
+      {{- end }}
+    rules:
+      - operations: ["DELETE"]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validation-create-tidb-admission-webhook-cfg
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: admission-webhook
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+webhooks:
+  - name: create.podadmission.tidb.pingcap.com
+    {{- if semverCompare ">=1.15-0" .Capabilities.KubeVersion.GitVersion }}
+    objectSelector:
+      matchLabels:
+        "app.kubernetes.io/managed-by": "tidb-operator"
+        "app.kubernetes.io/name": "tidb-cluster"
+    {{- end }}
+    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.createPod | default "Ignore" }}
+    clientConfig:
+      service:
+        name: kubernetes
+        namespace: default
+        path: "/apis/admission.tidb.pingcap.com/v1alpha1/admissionreviews"
+      {{- if .Values.admissionWebhook.cabundle }}
+      caBundle: {{ .Values.admissionWebhook.cabundle | b64enc }}
+      {{- else }}
+      caBundle: null
+      {{- end }}
+    rules:
+      - operations: ["CREATE"]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+{{- end }}
+---
+{{- if .Values.admissionWebhook.hooksEnabled.statefulSets }}
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validation-update-tidb-admission-webhook-cfg
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: admission-webhook
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+webhooks:
+  - name: update.stsadmission.tidb.pingcap.com
+    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.updateStatefulSet | default "Ignore" }}
+    clientConfig:
+      service:
+        name: kubernetes
+        namespace: default
+        path: "/apis/admission.tidb.pingcap.com/v1alpha1/admissionreviews"
+      {{- if .Values.admissionWebhook.cabundle }}
+      caBundle: {{ .Values.admissionWebhook.cabundle | b64enc }}
+      {{- else }}
+      caBundle: null
+      {{- end }}
+    rules:
+      - operations: [ "UPDATE" ]
+        apiGroups: [ "apps", "" ]
+        apiVersions: ["v1beta1", "v1"]
+        resources: ["statefulsets"]
+      - operations: [ "UPDATE" ]
+        apiGroups: [ "apps.pingcap.com"]
+        apiVersions: ["v1alpha1"]
+        resources: ["statefulsets"]
+{{- end }}
+{{- end }}

@@ -16,11 +16,12 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/types"
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/pkg/label"
 
