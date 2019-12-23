@@ -1490,7 +1490,51 @@ spec:
                     concurrent-send-snap-limit:
                       format: int32
                       type: integer
-                    coprocessor: {}
+                    coprocessor:
+                      description: TiKVCoprocessorConfig is the configuration of TiKV
+                        Coprocessor component.
+                      properties:
+                        batch-split-limit:
+                          description: One split check produces several split keys
+                            in batch. This config limits the number of produced split
+                            keys in one batch. optional
+                          format: int64
+                          type: integer
+                        region-max-keys:
+                          description: 'When the number of keys in Region [a,e) exceeds
+                            the `region_max_keys`, it will be split into several Regions
+                            [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b),
+                            [b,c), [c,d) will be `region_split_keys`. See also: region-split-keys
+                            optional'
+                          format: int64
+                          type: integer
+                        region-max-size:
+                          description: 'When Region [a,e) size exceeds `region_max_size`,
+                            it will be split into several Regions [a,b), [b,c), [c,d),
+                            [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size`
+                            (or a little larger). See also: region-split-size optional'
+                          type: string
+                        region-split-keys:
+                          description: 'When the number of keys in Region [a,e) exceeds
+                            the `region_max_keys`, it will be split into several Regions
+                            [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b),
+                            [b,c), [c,d) will be `region_split_keys`. See also: region-max-keys
+                            optional'
+                          format: int64
+                          type: integer
+                        region-split-size:
+                          description: 'When Region [a,e) size exceeds `region_max_size`,
+                            it will be split into several Regions [a,b), [b,c), [c,d),
+                            [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size`
+                            (or a little larger). See also: region-max-size optional'
+                          type: string
+                        split-region-on-table:
+                          description: When it is set to `true`, TiKV will try to
+                            split a Region with table prefix if that Region crosses
+                            tables. It is recommended to turn off this option if there
+                            will be a large number of tables created. optional
+                          type: boolean
+                      type: object
                     end-point-batch-row-limit:
                       format: int32
                       type: integer
@@ -1662,7 +1706,30 @@ spec:
                               type: string
                             target-file-size-base:
                               type: string
-                            titan: {}
+                            titan:
+                              description: TiKVTitanCfConfig is the titian config.
+                              properties:
+                                blob-cache-size:
+                                  type: string
+                                blob-file-compression:
+                                  type: string
+                                blob-run-mode:
+                                  type: string
+                                discardable-ratio:
+                                  format: double
+                                  type: number
+                                max-gc-batch-size:
+                                  type: string
+                                merge-small-file-threshold:
+                                  type: string
+                                min-blob-size:
+                                  type: string
+                                min-gc-batch-size:
+                                  type: string
+                                sample-ratio:
+                                  format: double
+                                  type: number
+                              type: object
                             use-bloom-filter:
                               type: boolean
                             whole-key-filtering:
@@ -2016,7 +2083,30 @@ spec:
                               type: string
                             target-file-size-base:
                               type: string
-                            titan: {}
+                            titan:
+                              description: TiKVTitanCfConfig is the titian config.
+                              properties:
+                                blob-cache-size:
+                                  type: string
+                                blob-file-compression:
+                                  type: string
+                                blob-run-mode:
+                                  type: string
+                                discardable-ratio:
+                                  format: double
+                                  type: number
+                                max-gc-batch-size:
+                                  type: string
+                                merge-small-file-threshold:
+                                  type: string
+                                min-blob-size:
+                                  type: string
+                                min-gc-batch-size:
+                                  type: string
+                                sample-ratio:
+                                  format: double
+                                  type: number
+                              type: object
                             use-bloom-filter:
                               type: boolean
                             whole-key-filtering:
@@ -2120,7 +2210,30 @@ spec:
                               type: string
                             target-file-size-base:
                               type: string
-                            titan: {}
+                            titan:
+                              description: TiKVTitanCfConfig is the titian config.
+                              properties:
+                                blob-cache-size:
+                                  type: string
+                                blob-file-compression:
+                                  type: string
+                                blob-run-mode:
+                                  type: string
+                                discardable-ratio:
+                                  format: double
+                                  type: number
+                                max-gc-batch-size:
+                                  type: string
+                                merge-small-file-threshold:
+                                  type: string
+                                min-blob-size:
+                                  type: string
+                                min-gc-batch-size:
+                                  type: string
+                                sample-ratio:
+                                  format: double
+                                  type: number
+                              type: object
                             use-bloom-filter:
                               type: boolean
                             whole-key-filtering:
@@ -2224,7 +2337,30 @@ spec:
                               type: string
                             target-file-size-base:
                               type: string
-                            titan: {}
+                            titan:
+                              description: TiKVTitanCfConfig is the titian config.
+                              properties:
+                                blob-cache-size:
+                                  type: string
+                                blob-file-compression:
+                                  type: string
+                                blob-run-mode:
+                                  type: string
+                                discardable-ratio:
+                                  format: double
+                                  type: number
+                                max-gc-batch-size:
+                                  type: string
+                                merge-small-file-threshold:
+                                  type: string
+                                min-blob-size:
+                                  type: string
+                                min-gc-batch-size:
+                                  type: string
+                                sample-ratio:
+                                  format: double
+                                  type: number
+                              type: object
                             use-bloom-filter:
                               type: boolean
                             whole-key-filtering:
@@ -2355,7 +2491,30 @@ spec:
                               type: string
                             target-file-size-base:
                               type: string
-                            titan: {}
+                            titan:
+                              description: TiKVTitanCfConfig is the titian config.
+                              properties:
+                                blob-cache-size:
+                                  type: string
+                                blob-file-compression:
+                                  type: string
+                                blob-run-mode:
+                                  type: string
+                                discardable-ratio:
+                                  format: double
+                                  type: number
+                                max-gc-batch-size:
+                                  type: string
+                                merge-small-file-threshold:
+                                  type: string
+                                min-blob-size:
+                                  type: string
+                                min-gc-batch-size:
+                                  type: string
+                                sample-ratio:
+                                  format: double
+                                  type: number
+                              type: object
                             use-bloom-filter:
                               type: boolean
                             whole-key-filtering:
