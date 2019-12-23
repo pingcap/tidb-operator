@@ -520,7 +520,7 @@ func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 	// eventually being deleted.
 	// Currently, we manually delete validatingwebhookconfigurations first to avoid this problem.
 	if info.WebhookEnabled && info.PodWebhookEnabled {
-		_, err := exec.Command("kubectl delete validatingwebhookconfigurations --all").CombinedOutput()
+		_, err := exec.Command("kubectl delete validatingwebhookconfiguration --all").CombinedOutput()
 		if err != nil {
 			return err
 		}
