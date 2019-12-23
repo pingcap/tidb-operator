@@ -18,7 +18,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"reflect"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
@@ -133,30 +132,9 @@ func encode(obj interface{}) (string, error) {
 	return string(b), nil
 }
 
-// statefulSetAnnotationsNeedSync compares annotations of desired/current
-// statefulsets and returns true if we need to update the statefulset.
-// It ignores LastAppliedConfigAnnotation which we reserved for internal use.
-func statefulSetAnnotationsNeedSync(desired, actual map[string]string) bool {
-	desiredCopy := map[string]string{}
-	actualCopy := map[string]string{}
-	if desired != nil {
-		for k, v := range desired {
-			desiredCopy[k] = v
-		}
-	}
-	if actual != nil {
-		for k, v := range actual {
-			actualCopy[k] = v
-		}
-	}
-	delete(desiredCopy, LastAppliedConfigAnnotation)
-	delete(actualCopy, LastAppliedConfigAnnotation)
-	return !reflect.DeepEqual(desiredCopy, actualCopy)
-}
-
 // statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
 func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
-	if statefulSetAnnotationsNeedSync(new.Annotations, old.Annotations) {
+	if !apiequality.Semantic.DeepEqual(new.Annotations, old.Annotations) {
 		return false
 	}
 	oldConfig := apps.StatefulSetSpec{}
