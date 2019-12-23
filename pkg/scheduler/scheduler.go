@@ -123,8 +123,6 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 			s.recorder.Event(pod, apiv1.EventTypeWarning, predicate.Name(), err.Error())
 			if len(kubeNodes) == 0 {
 				break
-				// do not return error to k8s: https://github.com/pingcap/tidb-operator/issues/1353
-				// return nil, nil
 			}
 		}
 	}
