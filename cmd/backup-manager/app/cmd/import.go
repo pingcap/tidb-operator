@@ -15,11 +15,11 @@ package cmd
 
 import (
 	"context"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/restore"
 
 	// registry mysql drive
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/import"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -30,26 +30,31 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
-// NewRestoreCommand implements the restore command
-func NewRestoreCommand() *cobra.Command {
-	ro := restore.Options{}
+// NewImportCommand implements the restore command
+func NewImportCommand() *cobra.Command {
+	ro := _import.RestoreOpts{}
 
 	cmd := &cobra.Command{
-		Use:   "restore",
-		Short: "restore specific tidb cluster.",
+		Use:   "import",
+		Short: "Import specific tidb cluster.",
 		Run: func(cmd *cobra.Command, args []string) {
 			util.ValidCmdFlags(cmd.CommandPath(), cmd.LocalFlags())
-			cmdutil.CheckErr(runRestore(ro, kubecfg))
+			cmdutil.CheckErr(runImport(ro, kubecfg))
 		},
 	}
 
 	cmd.Flags().StringVar(&ro.Namespace, "namespace", "", "Restore CR's namespace")
+	cmd.Flags().StringVar(&ro.Host, "host", "", "Tidb cluster access address")
+	cmd.Flags().Int32Var(&ro.Port, "port", bkconstants.DefaultTidbPort, "Port number to use for connecting tidb cluster")
+	cmd.Flags().StringVar(&ro.Password, bkconstants.TidbPasswordKey, "", "Password to use when connecting to tidb cluster")
+	cmd.Flags().StringVar(&ro.User, "user", "", "User for login tidb cluster")
 	cmd.Flags().StringVar(&ro.RestoreName, "restoreName", "", "Restore CRD object name")
+	cmd.Flags().StringVar(&ro.BackupPath, "backupPath", "", "The location of the backup")
 	util.SetFlagsFromEnv(cmd.Flags(), bkconstants.BackupManagerEnvVarPrefix)
 	return cmd
 }
 
-func runRestore(restoreOpts restore.Options, kubecfg string) error {
+func runImport(restoreOpts _import.RestoreOpts, kubecfg string) error {
 	kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
 	cmdutil.CheckErr(err)
 	options := []informers.SharedInformerOption{
@@ -68,6 +73,6 @@ func runRestore(restoreOpts restore.Options, kubecfg string) error {
 	cache.WaitForCacheSync(ctx.Done(), restoreInformer.Informer().HasSynced)
 
 	glog.Infof("start to process restore %s", restoreOpts.String())
-	rm := restore.NewManager(restoreInformer.Lister(), statusUpdater, restoreOpts)
+	rm := _import.NewRestoreManager(restoreInformer.Lister(), statusUpdater, restoreOpts)
 	return rm.ProcessRestore()
 }

@@ -15,6 +15,7 @@ package restore
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -172,6 +173,9 @@ func (rsc *Controller) sync(key string) error {
 		return err
 	}
 
+	if !validRestore(restore) {
+		return nil
+	}
 	return rsc.syncRestore(restore.DeepCopy())
 }
 
@@ -206,4 +210,54 @@ func (rsc *Controller) enqueueRestore(obj interface{}) {
 		return
 	}
 	rsc.queue.Add(key)
+}
+
+func validRestore(restore *v1alpha1.Restore) bool {
+	ns := restore.Namespace
+	name := restore.Name
+	if restore.Spec.BR == nil {
+		if restore.Spec.To.Host == "" {
+			glog.Errorf("Missing Cluster config in spec of %s/%s", ns, name)
+			return false
+		}
+		if restore.Spec.To.SecretName == "" {
+			glog.Errorf("Missing TidbSecretName config in spec of %s/%s", ns, name)
+			return false
+		}
+		if restore.Spec.StorageClassName == "" {
+			glog.Errorf("Missing StorageClassName config in spec of %s/%s", ns, name)
+			return false
+		}
+		if restore.Spec.StorageSize == "" {
+			glog.Errorf("Missing StorageSize config in spec of %s/%s", ns, name)
+			return false
+		}
+	} else {
+		if restore.Spec.BR.PDAddress == "" {
+			glog.Errorf("PD address should be configured for BR in spec of %s/%s", ns, name)
+			return false
+		}
+		if restore.Spec.S3 != nil {
+			if restore.Spec.S3.Bucket == "" {
+				glog.Errorf("Bucket should be configured for BR in spec of %s/%s", ns, name)
+				return false
+			}
+			if restore.Spec.S3.Endpoint != "" {
+				u, err := url.Parse(restore.Spec.S3.Endpoint)
+				if err != nil {
+					glog.Errorf("Invalid endpoint %s is configured for BR in spec of %s/%s", restore.Spec.S3.Endpoint, ns, name)
+					return false
+				}
+				if u.Scheme == "" {
+					glog.Errorf("Scheme not found in endpoint %s configured for BR in spec of %s/%s", restore.Spec.S3.Endpoint, ns, name)
+					return false
+				}
+				if u.Host == "" {
+					glog.Errorf("Host not found in endpoint %s configured for BR in spec of %s/%s", restore.Spec.S3.Endpoint, ns, name)
+					return false
+				}
+			}
+		}
+	}
+	return true
 }

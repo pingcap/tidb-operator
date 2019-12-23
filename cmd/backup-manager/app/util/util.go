@@ -111,13 +111,41 @@ func SetFlagsFromEnv(flags *pflag.FlagSet, prefix string) error {
 	return nil
 }
 
-// ConstructBRGlobalOptions constructs global options for BR and also return the remote path
-func ConstructBRGlobalOptions(backup *v1alpha1.Backup) ([]string, string, error) {
+// ConstructBRGlobalOptionsForBackup constructs BR global options for backup and also return the remote path.
+func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, string, error) {
 	var args []string
 	config := backup.Spec.BR
 	if config == nil {
 		return nil, "", fmt.Errorf("no config for br in backup %s/%s", backup.Namespace, backup.Name)
 	}
+	args = append(args, constructBRGlobalOptions(config)...)
+	s, path, err := getRemoteStorage(backup.Spec.StorageProvider)
+	if err != nil {
+		return nil, "", err
+	}
+	args = append(args, fmt.Sprintf("--storage=%s", s))
+	return args, path, nil
+}
+
+// ConstructBRGlobalOptionsForRestore constructs BR global options for restore.
+func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, error) {
+	var args []string
+	config := restore.Spec.BR
+	if config == nil {
+		return nil, fmt.Errorf("no config for br in restore %s/%s", restore.Namespace, restore.Name)
+	}
+	args = append(args, constructBRGlobalOptions(config)...)
+	s, _, err := getRemoteStorage(restore.Spec.StorageProvider)
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, fmt.Sprintf("--storage=%s", s))
+	return args, nil
+}
+
+// constructBRGlobalOptions constructs BR basic global options.
+func constructBRGlobalOptions(config *v1alpha1.BRConfig) []string {
+	var args []string
 	args = append(args, fmt.Sprintf("--pd=%s", config.PDAddress))
 	if config.CA != "" {
 		args = append(args, fmt.Sprintf("--ca=%s", config.CA))
@@ -137,10 +165,5 @@ func ConstructBRGlobalOptions(backup *v1alpha1.Backup) ([]string, string, error)
 	if config.SendCredToTikv != nil {
 		args = append(args, fmt.Sprintf("--send-credentials-to-tikv=%t", *config.SendCredToTikv))
 	}
-	s, path, err := getRemoteStorage(backup)
-	if err != nil {
-		return nil, "", err
-	}
-	args = append(args, s...)
-	return args, path, nil
+	return args
 }
