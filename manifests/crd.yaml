@@ -1508,6 +1508,14 @@ spec:
                     end-point-stream-channel-size:
                       format: int32
                       type: integer
+                    gc:
+                      properties:
+                        "\tbatch_keys":
+                          format: int64
+                          type: integer
+                        "\tmax_write_bytes_per_sec":
+                          type: string
+                      type: object
                     grpc-compression-type:
                       type: string
                     grpc-concurrency:
@@ -1530,6 +1538,32 @@ spec:
                       type: integer
                     heavy-load-wait-duration:
                       type: string
+                    import:
+                      properties:
+                        import_dir:
+                          type: string
+                        max_open_engines:
+                          format: int64
+                          type: integer
+                        max_prepare_duration:
+                          type: string
+                        num_import_jobs:
+                          format: int64
+                          type: integer
+                        num_import_sst_jobs:
+                          format: int64
+                          type: integer
+                        num_threads:
+                          format: int64
+                          type: integer
+                        region_split_size:
+                          type: string
+                        stream_channel_window:
+                          format: int64
+                          type: integer
+                        upload_speed_limit:
+                          type: string
+                      type: object
                     labels:
                       type: object
                     log-file:
@@ -1540,6 +1574,151 @@ spec:
                       type: string
                     panic-when-unexpected-key-or-data:
                       type: boolean
+                    raftdb:
+                      properties:
+                        allow_concurrent_memtable_write:
+                          type: boolean
+                        bytes_per_sync:
+                          type: string
+                        compaction_readahead_size:
+                          type: string
+                        create_if_missing:
+                          type: boolean
+                        defaultcf:
+                          description: TiKVCfConfig is the config of a cf
+                          properties:
+                            Level0FileNumCompactionTrigger:
+                              format: int64
+                              type: integer
+                            Level0SlowdownWritesTrigger:
+                              format: int64
+                              type: integer
+                            Level0StopWritesTrigger:
+                              format: int64
+                              type: integer
+                            PinL0FilterAndIndexBlocks:
+                              type: boolean
+                            block-based-bloom-filter:
+                              type: boolean
+                            block-cache-size:
+                              type: string
+                            block-size:
+                              type: string
+                            bloom-filter-bits-per-key:
+                              format: int64
+                              type: integer
+                            cache-index-and-filter-blocks:
+                              type: boolean
+                            compaction-pri:
+                              format: int64
+                              type: integer
+                            compaction-style:
+                              format: int64
+                              type: integer
+                            compression-per-level:
+                              items:
+                                type: string
+                              type: array
+                            disable-auto-compactions:
+                              type: boolean
+                            disable-block-cache:
+                              type: boolean
+                            dynamic-level-bytes:
+                              type: boolean
+                            enable-doubly-skiplist:
+                              type: boolean
+                            force-consistency-checks:
+                              type: boolean
+                            hard-pending-compaction-bytes-limit:
+                              type: string
+                            max-bytes-for-level-base:
+                              type: string
+                            max-bytes-for-level-multiplier:
+                              format: int64
+                              type: integer
+                            max-compaction-bytes:
+                              type: string
+                            max-write-buffer-number:
+                              format: int64
+                              type: integer
+                            min-write-buffer-number-to-merge:
+                              format: int64
+                              type: integer
+                            num-levels:
+                              format: int64
+                              type: integer
+                            optimize-filters-for-hits:
+                              type: boolean
+                            prop-keys-index-distance:
+                              format: int64
+                              type: integer
+                            prop-size-index-distance:
+                              format: int64
+                              type: integer
+                            read-amp-bytes-per-bit:
+                              format: int64
+                              type: integer
+                            soft-pending-compaction-bytes-limit:
+                              type: string
+                            target-file-size-base:
+                              type: string
+                            titan: {}
+                            use-bloom-filter:
+                              type: boolean
+                            whole-key-filtering:
+                              type: boolean
+                            write-buffer-size:
+                              type: string
+                          required:
+                          - PinL0FilterAndIndexBlocks
+                          - Level0FileNumCompactionTrigger
+                          - Level0SlowdownWritesTrigger
+                          - Level0StopWritesTrigger
+                          type: object
+                        enable_pipelined_write:
+                          type: boolean
+                        enable_statistics:
+                          type: boolean
+                        info_log_dir:
+                          type: string
+                        info_log_keep_log_file_num:
+                          format: int64
+                          type: integer
+                        info_log_max_size:
+                          type: string
+                        info_log_roll_time:
+                          type: string
+                        max_background_jobs:
+                          format: int64
+                          type: integer
+                        max_manifest_file_size:
+                          type: string
+                        max_open_files:
+                          format: int64
+                          type: integer
+                        max_sub_compactions:
+                          format: int64
+                          type: integer
+                        max_total_wal_size:
+                          type: string
+                        stats_dump_period:
+                          type: string
+                        use_direct_io_for_flush_and_compaction:
+                          type: boolean
+                        wal_bytes_per_sync:
+                          type: string
+                        wal_dir:
+                          type: string
+                        wal_recovery_mode:
+                          type: string
+                        wal_size_limit:
+                          type: string
+                        wal_ttl_seconds:
+                          format: int64
+                          type: integer
+                        writable_file_max_buffer_size:
+                          type: string
+                      type: object
                     raftstore:
                       description: TiKVRaftstoreConfig is the configuration of TiKV
                         raftstore component.
@@ -1698,6 +1877,55 @@ spec:
                           type: boolean
                         use-delete-range:
                           type: boolean
+                      type: object
+                    readpool:
+                      properties:
+                        coprocessor:
+                          properties:
+                            high_concurrency:
+                              format: int64
+                              type: integer
+                            low_concurrency:
+                              format: int64
+                              type: integer
+                            max_tasks_per_worker_high:
+                              format: int64
+                              type: integer
+                            max_tasks_per_worker_low:
+                              format: int64
+                              type: integer
+                            max_tasks_per_worker_normal:
+                              format: int64
+                              type: integer
+                            normal_concurrency:
+                              format: int64
+                              type: integer
+                            stack_size:
+                              type: string
+                          type: object
+                        storage:
+                          properties:
+                            high_concurrency:
+                              format: int64
+                              type: integer
+                            low_concurrency:
+                              format: int64
+                              type: integer
+                            max_tasks_per_worker_high:
+                              format: int64
+                              type: integer
+                            max_tasks_per_worker_low:
+                              format: int64
+                              type: integer
+                            max_tasks_per_worker_normal:
+                              format: int64
+                              type: integer
+                            normal_concurrency:
+                              format: int64
+                              type: integer
+                            stack_size:
+                              type: string
+                          type: object
                       type: object
                     rocksdb:
                       description: TiKVDbConfig is the rocksdb config.
@@ -2140,6 +2368,19 @@ spec:
                           - Level0SlowdownWritesTrigger
                           - Level0StopWritesTrigger
                           type: object
+                      type: object
+                    security:
+                      properties:
+                        ca_path:
+                          type: string
+                        cert_path:
+                          type: string
+                        cipher_file:
+                          type: string
+                        key_path:
+                          type: string
+                        override_ssl_target:
+                          type: string
                       type: object
                     server:
                       description: TiKVServerConfig is the configuration of TiKV server.
@@ -2939,6 +3180,104 @@ spec:
           - prometheus
           - reloader
           - initializer
+          type: object
+      type: object
+  version: v1alpha1
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: tidbinitializers.pingcap.com
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.phase
+    description: The current phase of initialization
+    name: Phase
+    priority: 1
+    type: string
+  group: pingcap.com
+  names:
+    kind: TidbInitializer
+    plural: tidbinitializers
+    shortNames:
+    - ti
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        spec:
+          description: TidbInitializer spec encode the desired state of tidb initializer
+            Job
+          properties:
+            cluster:
+              description: TidbClusterRef reference to a TidbCluster
+              properties:
+                name:
+                  description: Name is the name of TidbCluster object
+                  type: string
+                namespace:
+                  description: Namespace is the namespace that TidbCluster object
+                    locates, default to the same namespace with TidbMonitor
+                  type: string
+              required:
+              - name
+              type: object
+            image:
+              type: string
+            imagePullPolicy:
+              type: string
+            initSql:
+              description: InitSql is the SQL statements executed after the TiDB cluster
+                is bootstrapped.
+              type: string
+            initSqlConfigMap:
+              description: LocalObjectReference contains enough information to let
+                you locate the referenced object inside the same namespace.
+              properties:
+                name:
+                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                  type: string
+              type: object
+            passwordSecret:
+              description: LocalObjectReference contains enough information to let
+                you locate the referenced object inside the same namespace.
+              properties:
+                name:
+                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                  type: string
+              type: object
+            permitHost:
+              description: permitHost is the host which will only be allowed to connect
+                to the TiDB.
+              type: string
+            resources:
+              description: ResourceRequirements describes the compute resource requirements.
+              properties:
+                limits:
+                  description: 'Limits describes the maximum amount of compute resources
+                    allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
+                requests:
+                  description: 'Requests describes the minimum amount of compute resources
+                    required. If Requests is omitted for a container, it defaults
+                    to Limits if that is explicitly specified, otherwise to an implementation-defined
+                    value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
+              type: object
+          required:
+          - image
+          - cluster
           type: object
       type: object
   version: v1alpha1
