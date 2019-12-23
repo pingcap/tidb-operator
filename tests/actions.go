@@ -520,18 +520,7 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 	glog.Infof("cleaning tidb-operator %s", info.ReleaseName)
-
-	// When pod admission webhook enabled, helm del --purge <operator-name> could delete admission-svc first,
-	// then the delete request for operator pod would be failed and the helm del would be pending for a while but
-	// eventually being deleted.
-	// Currently, we manually delete validatingwebhookconfigurations first to avoid this problem.
-	if info.WebhookEnabled && info.PodWebhookEnabled {
-		_, err := exec.Command("kubectl delete validatingwebhookconfiguration --all").CombinedOutput()
-		if err != nil {
-			return err
-		}
-	}
-
+	
 	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
 
 	if err == nil || !releaseIsNotFound(err) {
