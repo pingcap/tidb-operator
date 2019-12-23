@@ -88,6 +88,10 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		WebhookConfigName:  "webhook-config",
 		ImagePullPolicy:    v1.PullIfNotPresent,
 		TestMode:           true,
+		WebhookEnabled:     true,
+		StsWebhookEnabled:  true,
+		PodWebhookEnabled:  false,
+		Cabundle:           "",
 	}
 }
 
