@@ -30,6 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -794,10 +795,10 @@ func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: v1alpha1.TiDBMemberType.String(),
 				},
-				Resources: v1alpha1.Resources{
-					Requests: &v1alpha1.ResourceRequirement{
-						CPU:    "1",
-						Memory: "2Gi",
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
 					},
 				},
 				Replicas: 3,
@@ -972,6 +973,47 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				})
 				g := NewGomegaWithT(t)
 				g.Expect(cmName).To(Equal("tc-tidb-xxxxxxxx"))
+			},
+		},
+		{
+			name: "tidb should respect resources config",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						ResourceRequirements: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:              resource.MustParse("1"),
+								corev1.ResourceMemory:           resource.MustParse("2Gi"),
+								corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+							},
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:              resource.MustParse("1"),
+								corev1.ResourceMemory:           resource.MustParse("2Gi"),
+								corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+							},
+						},
+					},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				nameToContainer := MapContainers(&sts.Spec.Template.Spec)
+				g.Expect(nameToContainer[v1alpha1.TiDBMemberType.String()].Resources).To(Equal(corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("2Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("2Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+					},
+				}))
 			},
 		},
 		// TODO add more tests

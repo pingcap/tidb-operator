@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -404,9 +405,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			Replicas:             1,
 			ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
 			StorageClassName:     "local-storage",
-			Resources: v1alpha1.Resources{
-				Requests: &v1alpha1.ResourceRequirement{
-					Storage: "1Gi",
+			ResourceRequirements: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse("10Gi"),
 				},
 			},
 			GenericConfig: tcconfig.New(map[string]interface{}{

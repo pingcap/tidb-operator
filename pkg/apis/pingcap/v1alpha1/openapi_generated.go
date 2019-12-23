@@ -61,8 +61,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PreparedPlanCache":           schema_pkg_apis_pingcap_v1alpha1_PreparedPlanCache(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ProxyProtocol":               schema_pkg_apis_pingcap_v1alpha1_ProxyProtocol(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpSpec":                    schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ResourceRequirement":         schema_pkg_apis_pingcap_v1alpha1_ResourceRequirement(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Resources":                   schema_pkg_apis_pingcap_v1alpha1_Resources(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Restore":                     schema_pkg_apis_pingcap_v1alpha1_Restore(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RestoreList":                 schema_pkg_apis_pingcap_v1alpha1_RestoreList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RestoreSpec":                 schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref),
@@ -1026,6 +1024,34 @@ func schema_pkg_apis_pingcap_v1alpha1_MonitorContainer(ref common.ReferenceCallb
 				Description: "MonitorContainer is the common attributes of the container of monitoring",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"limits": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
+					"requests": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
 					"baseImage": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
@@ -1047,6 +1073,8 @@ func schema_pkg_apis_pingcap_v1alpha1_MonitorContainer(ref common.ReferenceCallb
 				},
 			},
 		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -1877,6 +1905,34 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 				Description: "PDSpec contains details of PD members",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"limits": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
+					"requests": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
 					"replicas": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
@@ -1906,7 +1962,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfig", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -2180,6 +2236,34 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 				Description: "PumpSpec contains details of Pump members",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"limits": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
+					"requests": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
@@ -2203,66 +2287,8 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 				Required: []string{"replicas"},
 			},
 		},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_ResourceRequirement(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ResourceRequirement is resource requirements for a pod",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"cpu": {
-						SchemaProps: spec.SchemaProps{
-							Description: "CPU is how many cores a pod requires",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"memory": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Memory is how much memory a pod requires",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"storage": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Storage is storage size a pod requires",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_Resources(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"requests": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Resource requests of the component",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ResourceRequirement"),
-						},
-					},
-					"limits": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Resource limits of the component",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ResourceRequirement"),
-						},
-					},
-				},
-			},
-		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ResourceRequirement"},
+			"k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -2969,6 +2995,34 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSlowLogTailerSpec(ref common.Reference
 				Description: "TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"limits": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
+					"requests": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
 					"image": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Image used for slowlog tailer Deprecated, use TidbCluster.HelperImage instead",
@@ -2986,6 +3040,8 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSlowLogTailerSpec(ref common.Reference
 				},
 			},
 		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -2996,6 +3052,34 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 				Description: "TiDBSpec contains details of TiDB members",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"limits": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
+					"requests": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
 					"replicas": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
@@ -3063,7 +3147,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBConfig", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -4805,6 +4889,34 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 				Description: "TiKVSpec contains details of TiKV members",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"limits": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
+					"requests": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
 					"replicas": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
@@ -4846,7 +4958,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfig", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
