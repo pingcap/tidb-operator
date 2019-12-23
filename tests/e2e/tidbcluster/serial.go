@@ -109,9 +109,17 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "deploy", "", "")
 			oa.DeployTidbClusterOrDie(&cluster)
 			oa.CheckTidbClusterStatusOrDie(&cluster)
-			oa.CleanTidbClusterOrDie(&cluster)
+		})
+	})
 
-			ocfg2 := &tests.OperatorConfig{
+	// tidb-operator with pod admission webhook enabled
+	ginkgo.Context("[Feature: PodAdmissionWebhook]", func() {
+
+		var ocfg *tests.OperatorConfig
+		var oa tests.OperatorActions
+
+		ginkgo.BeforeEach(func() {
+			ocfg = &tests.OperatorConfig{
 				Namespace:         "pingcap",
 				ReleaseName:       "operator",
 				Image:             cfg.OperatorImage,
@@ -121,28 +129,45 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				ImagePullPolicy:   v1.PullIfNotPresent,
 				TestMode:          true,
 				WebhookEnabled:    true,
-				StsWebhookEnabled: false,
 				PodWebhookEnabled: true,
+				StsWebhookEnabled: false,
 			}
+			oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			ginkgo.By("Installing CRDs")
+			oa.CleanCRDOrDie()
+			oa.InstallCRDOrDie()
+			ginkgo.By("Installing tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			oa.DeployOperatorOrDie(ocfg)
+		})
+
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Uninstalling CRDs")
+			oa.CleanCRDOrDie()
+			ginkgo.By("Uninstall tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+		})
+
+		ginkgo.It("able to upgrade TiDB Cluster with pod admission webhook", func() {
 
 			klog.Infof("start to upgrade operator with pod admission webhook enabled")
-			oa.UpgradeOperatorOrDie(ocfg2)
+			oa.UpgradeOperatorOrDie(ocfg)
 
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
-			cluster2 := newTidbClusterConfig(e2econfig.TestConfig, ns, "deploy", "", "")
-			cluster2.Resources["pd.replicas"] = "3"
-			cluster2.Resources["tikv.replicas"] = "3"
-			cluster2.Resources["tidb.replicas"] = "2"
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "deploy", "", "")
+			cluster.Resources["pd.replicas"] = "3"
+			cluster.Resources["tikv.replicas"] = "3"
+			cluster.Resources["tidb.replicas"] = "2"
 
 			oa.DeployTidbClusterOrDie(&cluster)
 			oa.CheckTidbClusterStatusOrDie(&cluster)
 			upgradeVersions := cfg.GetUpgradeTidbVersionsOrDie()
 			ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", cluster.ClusterVersion, upgradeVersions[0]))
-			cluster2.UpgradeAll(upgradeVersions[0])
-			oa.UpgradeTidbClusterOrDie(&cluster2)
-			oa.CheckUpgradeWithPodWebhookOrDie(&cluster2)
-			oa.CheckTidbClusterStatusOrDie(&cluster2)
-			oa.CleanTidbClusterOrDie(&cluster2)
+			cluster.UpgradeAll(upgradeVersions[0])
+			oa.UpgradeTidbClusterOrDie(&cluster)
+			oa.CheckUpgradeWithPodWebhookOrDie(&cluster)
+			oa.CheckTidbClusterStatusOrDie(&cluster)
+			oa.CleanTidbClusterOrDie(&cluster)
 
 		})
 	})
