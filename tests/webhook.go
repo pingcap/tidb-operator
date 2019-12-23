@@ -133,12 +133,7 @@ func (oa *operatorActions) CheckUpgradeWithPodWebhook(info *TidbClusterConfig) e
 	if err := oa.checkDesiredPDHealthy(tc, info); err != nil {
 		return err
 	}
-
-	if err := oa.checkDesiredStoreHealthy(tc, info); err != nil {
-		return err
-	}
-
-	return nil
+	return oa.checkDesiredStoreHealthy(tc, info)
 }
 
 func (oa *operatorActions) CheckUpgradeWithPodWebhookOrDie(info *TidbClusterConfig) {
