@@ -56,6 +56,7 @@ func makePod(name string, component string) *v1.Pod {
 			Labels: map[string]string{
 				label.ComponentLabelKey: component,
 			},
+			GenerateName: name[0 : len(name)-1],
 		},
 	}
 }
@@ -121,7 +122,8 @@ func TestStableSchedulingFilter(t *testing.T) {
 				makeNode("node-3"),
 			},
 			expectFn: func(nodes []v1.Node, err error, recorder *record.FakeRecorder) {
-				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(err.Error()).To(ContainSubstring("no previous node exists for pod \"demo-tidb-0\" in TiDB cluster default/demo"))
 				g.Expect(len(nodes)).To(Equal(3))
 			},
 		},

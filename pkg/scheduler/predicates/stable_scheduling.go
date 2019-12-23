@@ -14,6 +14,7 @@
 package predicates
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/golang/glog"
@@ -101,7 +102,9 @@ func (p *stableScheduling) Filter(instanceName string, pod *apiv1.Pod, nodes []a
 		}
 		return nodes, fmt.Errorf("cannot run %s/%s on its previous node %q", ns, podName, nodeName)
 	}
-	glog.V(2).Infof("no previous node exists for pod %q in TiDB cluster %s/%q", podName, ns, tcName)
 
-	return nodes, nil
+	msg := fmt.Sprintf("no previous node exists for pod %q in TiDB cluster %s/%s", podName, ns, tcName)
+	glog.Warning(msg)
+
+	return nodes, errors.New(msg)
 }
