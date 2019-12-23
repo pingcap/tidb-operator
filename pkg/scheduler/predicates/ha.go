@@ -31,7 +31,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	glog "k8s.io/klog"
 )
@@ -47,15 +46,13 @@ type ha struct {
 	pvcListFn     func(ns, instanceName, component string) (*apiv1.PersistentVolumeClaimList, error)
 	updatePVCFn   func(*apiv1.PersistentVolumeClaim) error
 	acquireLockFn func(*apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error)
-	recorder      record.EventRecorder
 }
 
 // NewHA returns a Predicate
-func NewHA(kubeCli kubernetes.Interface, cli versioned.Interface, recorder record.EventRecorder) Predicate {
+func NewHA(kubeCli kubernetes.Interface, cli versioned.Interface) Predicate {
 	h := &ha{
-		kubeCli:  kubeCli,
-		cli:      cli,
-		recorder: recorder,
+		kubeCli: kubeCli,
+		cli:     cli,
 	}
 	h.podListFn = h.realPodListFn
 	h.podGetFn = h.realPodGetFn
@@ -68,7 +65,7 @@ func NewHA(kubeCli kubernetes.Interface, cli versioned.Interface, recorder recor
 }
 
 func (h *ha) Name() string {
-	return "HighAvailability"
+	return "HAScheduling"
 }
 
 // 1. return the node to kube-scheduler if there is only one feasible node and the pod's pvc is bound
@@ -95,7 +92,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	}
 
 	if len(nodes) == 0 {
-		return nil, fmt.Errorf("kube nodes is empty")
+		return nil, fmt.Errorf("no nodes available to schedule pods %s/%s", ns, podName)
 	}
 	if _, _, err := h.acquireLockFn(pod); err != nil {
 		return nil, err
@@ -144,53 +141,54 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 
 	min := -1
 	minNodeNames := make([]string, 0)
-	for nodeName, podNames := range nodeMap {
-		podsCount := len(podNames)
-		maxPodsPerNode := 0
+	maxPodsPerNode := 0
 
-		if component == label.PDLabelVal {
+	if component == label.PDLabelVal {
+		/**
+		 * replicas     maxPodsPerNode
+		 * ---------------------------
+		 * 1            1
+		 * 2            1
+		 * 3            1
+		 * 4            1
+		 * 5            2
+		 * ...
+		 */
+		maxPodsPerNode = int((replicas+1)/2) - 1
+		if maxPodsPerNode <= 0 {
+			maxPodsPerNode = 1
+		}
+	} else {
+		// 1. TiKV instances must run on at least 3 nodes, otherwise HA is not possible
+		if allNodes.Len() < 3 {
+			maxPodsPerNode = 1
+		} else {
 			/**
-			 * replicas     maxPodsPerNode
-			 * ---------------------------
-			 * 1            1
-			 * 2            1
-			 * 3            1
-			 * 4            1
-			 * 5            2
+			 * 2. we requires TiKV instances to run on at least 3 nodes, so max
+			 * allowed pods on each node is ceil(replicas / 3)
+			 *
+			 * replicas     maxPodsPerNode   best HA on three nodes
+			 * ---------------------------------------------------
+			 * 3            1                1, 1, 1
+			 * 4            2                1, 1, 2
+			 * 5            2                1, 2, 2
+			 * 6            2                2, 2, 2
+			 * 7            3                2, 2, 3
+			 * 8            3                2, 3, 3
 			 * ...
 			 */
-			maxPodsPerNode = int((replicas+1)/2) - 1
-			if maxPodsPerNode <= 0 {
-				maxPodsPerNode = 1
-			}
-		} else {
-			// replicas less than 3 cannot achieve high availability
-			if replicas < 3 {
-				minNodeNames = append(minNodeNames, nodeName)
-				glog.Infof("replicas is %d, add node %s to minNodeNames", replicas, nodeName)
-				continue
-			}
+			maxPodsPerNode = int(math.Ceil(float64(replicas) / 3))
+		}
+	}
 
-			// 1. TiKV instances must run on at least 3 nodes, otherwise HA is not possible
-			if allNodes.Len() < 3 {
-				maxPodsPerNode = 1
-			} else {
-				/**
-				 * 2. we requires TiKV instances to run on at least 3 nodes, so max
-				 * allowed pods on each node is ceil(replicas / 3)
-				 *
-				 * replicas     maxPodsPerNode   best HA on three nodes
-				 * ---------------------------------------------------
-				 * 3            1                1, 1, 1
-				 * 4            2                1, 1, 2
-				 * 5            2                1, 2, 2
-				 * 6            2                2, 2, 2
-				 * 7            3                2, 2, 3
-				 * 8            3                2, 3, 3
-				 * ...
-				 */
-				maxPodsPerNode = int(math.Ceil(float64(replicas) / 3))
-			}
+	for nodeName, podNames := range nodeMap {
+		podsCount := len(podNames)
+
+		// tikv replicas less than 3 cannot achieve high availability
+		if component == label.TiKVLabelVal && replicas < 3 {
+			minNodeNames = append(minNodeNames, nodeName)
+			glog.Infof("replicas is %d, add node %s to minNodeNames", replicas, nodeName)
+			continue
 		}
 
 		if podsCount+1 > maxPodsPerNode {
@@ -216,10 +214,18 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	}
 
 	if len(minNodeNames) == 0 {
-		msg := fmt.Sprintf("can't schedule to nodes: %v, because these pods had been scheduled to nodes: %v", GetNodeNames(nodes), nodeMap)
-		glog.Info(msg)
-		h.recorder.Event(pod, apiv1.EventTypeWarning, "FailedScheduling", msg)
-		return nil, errors.New(msg)
+		nodesStrArr := []string{}
+		for nodeName, podNameArr := range nodeMap {
+			s := fmt.Sprintf("%s (%d %s pods)",
+				nodeName, len(podNameArr), strings.ToLower(component))
+			nodesStrArr = append(nodesStrArr, s)
+		}
+		sort.Strings(nodesStrArr)
+
+		// example: unable to schedule to nodes: kube-node-1 (1 pd pods), kube-node-2 (1 pd pods), max pods per node: 1
+		errMsg := fmt.Sprintf("unable to schedule to nodes: %s, max pods per node: %d",
+			strings.Join(nodesStrArr, ", "), maxPodsPerNode)
+		return nil, errors.New(errMsg)
 	}
 	return getNodeFromNames(nodes, minNodeNames), nil
 }
