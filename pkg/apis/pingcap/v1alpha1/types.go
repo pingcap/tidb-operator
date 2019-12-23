@@ -118,6 +118,10 @@ type TidbClusterSpec struct {
 	// Helper spec
 	Helper HelperSpec `json:"helper,omitempty"`
 
+	// Services list non-headless services type used in TidbCluster
+	// Deprecated
+	Services []Service `json:"services,omitempty"`
+
 	// TiDB cluster version
 	Version string `json:"version,omitempty"`
 
@@ -360,6 +364,14 @@ type TiDBServiceSpec struct {
 
 	// Whether expose the status port
 	ExposeStatus bool `json:"exposeStatus,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// Deprecated
+// Service represent service type used in TidbCluster
+type Service struct {
+	Name string `json:"name,omitempty"`
+	Type string `json:"type,omitempty"`
 }
 
 // +k8s:openapi-gen=true

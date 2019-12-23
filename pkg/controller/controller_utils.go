@@ -166,6 +166,23 @@ func GetBackupScheduleOwnerRef(bs *v1alpha1.BackupSchedule) metav1.OwnerReferenc
 	}
 }
 
+// GetServiceType returns member's service type
+func GetServiceType(services []v1alpha1.Service, serviceName string) corev1.ServiceType {
+	for _, svc := range services {
+		if svc.Name == serviceName {
+			switch svc.Type {
+			case "NodePort":
+				return corev1.ServiceTypeNodePort
+			case "LoadBalancer":
+				return corev1.ServiceTypeLoadBalancer
+			default:
+				return corev1.ServiceTypeClusterIP
+			}
+		}
+	}
+	return corev1.ServiceTypeClusterIP
+}
+
 // TiKVCapacity returns string resource requirement. In tikv-server, KB/MB/GB
 // equal to MiB/GiB/TiB, so we cannot use resource.String() directly.
 // Minimum unit we use is MiB, capacity less than 1MiB is ignored.

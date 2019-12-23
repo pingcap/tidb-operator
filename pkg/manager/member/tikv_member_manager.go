@@ -325,10 +325,13 @@ func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) 
 			},
 			Selector:                 svcLabel,
 			PublishNotReadyAddresses: true,
-			ClusterIP:                "None",
 		},
 	}
-
+	if svcConfig.Headless {
+		svc.Spec.ClusterIP = "None"
+	} else {
+		svc.Spec.Type = controller.GetServiceType(tc.Spec.Services, v1alpha1.TiKVMemberType.String())
+	}
 	return &svc
 }
 

@@ -308,8 +308,8 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			name: "normal",
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiKV.Replicas = 5
-				tc.Spec.PD.Service = &v1alpha1.ServiceSpec{
-					Type: corev1.ServiceTypeNodePort,
+				tc.Spec.Services = []v1alpha1.Service{
+					{Name: "tikv", Type: string(corev1.ServiceTypeNodePort)},
 				}
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 			},

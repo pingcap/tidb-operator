@@ -443,13 +443,7 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 	instanceName := tc.GetLabels()[label.InstanceLabelKey]
 	pdLabel := label.New().Instance(instanceName).PD().Labels()
 
-	svcSpec := tc.Spec.PD.Service
-
-	if svcSpec == nil {
-		return nil
-	}
-
-	return &corev1.Service{
+	pdService := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
@@ -457,7 +451,7 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: corev1.ServiceSpec{
-			Type: svcSpec.Type,
+			Type: controller.GetServiceType(tc.Spec.Services, v1alpha1.PDMemberType.String()),
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "client",
@@ -466,11 +460,15 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Selector:       pdLabel,
-			LoadBalancerIP: svcSpec.LoadBalancerIP,
-			ClusterIP:      svcSpec.ClusterIP,
+			Selector: pdLabel,
 		},
 	}
+	svcSpec := tc.Spec.PD.Service
+	if svcSpec != nil {
+		pdService.Spec.ClusterIP = svcSpec.ClusterIP
+		pdService.Spec.LoadBalancerIP = svcSpec.LoadBalancerIP
+	}
+	return pdService
 }
 
 func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
