@@ -56,6 +56,8 @@ spec:
         env:
         - name: GF_PROVISIONING_PATH
           value: /grafana-dashboard-definitions/tidb
+        - name: GF_DATASOURCE_PATH
+          value: /etc/grafana/provisioning/datasources
         - name: TIDB_CLUSTER_NAME
           value: {{ template "cluster.name" . }}
         - name: TIDB_ENABLE_BINLOG
@@ -66,6 +68,12 @@ spec:
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
       {{- end }}
+        - name: GF_K8S_PROMETHEUS_URL
+          value: {{ .Values.monitor.initializer.config.K8S_PROMETHEUS_URL }}
+        - name: GF_TIDB_PROMETHEUS_URL
+          value: http://127.0.0.1:9090
+        - name: TIDB_CLUSTER_NAMESPACE
+          value: {{ .Release.Namespace }}
         command:
         - /bin/sh
         - -c
@@ -84,6 +92,9 @@ spec:
           readOnly: false
         - name: monitor-data
           mountPath: /data
+        - name: datasource
+          mountPath: /etc/grafana/provisioning/datasources
+          readOnly: false
         resources:
 {{ toYaml .Values.monitor.initializer.resources | indent 10 }}
       containers:
@@ -204,11 +215,7 @@ spec:
           - key: prometheus-config
             path: prometheus.yml
       {{- if .Values.monitor.grafana.create }}
-      - configMap:
-          name: {{ template "cluster.name" . }}-monitor
-          items:
-          - key: datasource-config
-            path: datasource.yaml
+      - emptyDir: {}
         name: datasource
       - configMap:
           name: {{ template "cluster.name" . }}-monitor
