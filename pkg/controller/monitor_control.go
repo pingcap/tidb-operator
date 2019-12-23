@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
+	glog "k8s.io/klog"
 )
 
 type TidbMonitorControlInterface interface {
@@ -51,6 +52,23 @@ func (rmc *realTidbMonitorControl) CreateTidbMonitor(monitor *v1alpha1.TidbMonit
 	} else {
 		klog.V(4).Infof("create Monitor: [%s/%s] successfully", namespace, name)
 	}
+	rmc.recordTidbMonitorEvent("create", monitor, err)
+	return monitor, err
+}
+
+func (rmc *realTidbMonitorControl) DeleteTidbMonitor(monitor *v1alpha1.TidbMonitor) error {
+	name := monitor.Name
+	namespace := monitor.Namespace
+
+	err := rmc.cli.PingcapV1alpha1().TidbMonitors(namespace).Delete(name, nil)
+	if err != nil {
+		klog.Errorf("failed to delete TidbMonitor: [%s/%s], err: %v", namespace, name, err)
+	} else {
+		glog.V(4).Infof("delete TidbMonitor: [%s/%s] successfully", namespace, name)
+	}
+
+	rmc.recordTidbMonitorEvent("delete", monitor, err)
+	return err
 }
 
 func (rmc *realTidbMonitorControl) recordTidbMonitorEvent(verb string, monitor *v1alpha1.TidbMonitor, err error) {
@@ -60,6 +78,11 @@ func (rmc *realTidbMonitorControl) recordTidbMonitorEvent(verb string, monitor *
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s TidbMonitor %s/%s for successful",
 			strings.ToLower(verb), namespace, name)
-		rbc.recorder.Event(backup, corev1.EventTypeNormal, reason, msg)
+		rmc.recorder.Event(monitor, corev1.EventTypeNormal, reason, msg)
+	} else {
+		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
+		msg := fmt.Sprintf("%s TidbMonitor %s/%s for failed error: %s",
+			strings.ToLower(verb), namespace, name, err)
+		rmc.recorder.Event(monitor, corev1.EventTypeWarning, reason, msg)
 	}
 }
