@@ -3511,164 +3511,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVConfig(ref common.ReferenceCallback) c
 							Format: "",
 						},
 					},
-					"addr": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"advertise-addr": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"status-addr": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"status-thread-pool-size": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"grpc-compression-type": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"grpc-concurrency": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
-						},
-					},
-					"grpc-concurrent-stream": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
-						},
-					},
-					"grpc-raft-conn-num": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
-						},
-					},
-					"grpc-stream-initial-window-size": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"grpc-keepalive-time": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"grpc-keepalive-timeout": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"concurrent-send-snap-limit": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
-						},
-					},
-					"concurrent-recv-snap-limit": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
-						},
-					},
-					"end-point-recursion-limit": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
-						},
-					},
-					"end-point-stream-channel-size": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
-						},
-					},
-					"end-point-batch-row-limit": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
-						},
-					},
-					"end-point-stream-batch-row-limit": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
-						},
-					},
-					"end-point-enable-batch-if-possible": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
-						},
-					},
-					"end-point-request-max-handle-duration": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"snap-max-write-bytes-per-sec": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"snap-max-total-size": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"stats-concurrency": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
-						},
-					},
-					"heavy-load-threshold": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
-						},
-					},
-					"heavy-load-wait-duration": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"labels": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Type:   []string{"string"},
-										Format: "",
-									},
-								},
-							},
-						},
-					},
 					"server": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVServerConfig"),
@@ -4597,6 +4439,30 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVServerConfig(ref common.ReferenceCallb
 				Description: "TiKVServerConfig is the configuration of TiKV server.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"addr": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"advertise-addr": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"status-addr": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"status-thread-pool-size": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
 					"grpc-compression-type": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
@@ -4606,19 +4472,19 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVServerConfig(ref common.ReferenceCallb
 					"grpc-concurrency": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
-							Format: "int64",
+							Format: "int32",
 						},
 					},
 					"grpc-concurrent-stream": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
-							Format: "int64",
+							Format: "int32",
 						},
 					},
 					"grpc-raft-conn-num": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
-							Format: "int64",
+							Format: "int32",
 						},
 					},
 					"grpc-stream-initial-window-size": {
@@ -4642,43 +4508,43 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVServerConfig(ref common.ReferenceCallb
 					"concurrent-send-snap-limit": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
-							Format: "int64",
+							Format: "int32",
 						},
 					},
 					"concurrent-recv-snap-limit": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
-							Format: "int64",
+							Format: "int32",
 						},
 					},
 					"end-point-recursion-limit": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
-							Format: "int64",
+							Format: "int32",
 						},
 					},
 					"end-point-stream-channel-size": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
-							Format: "int64",
+							Format: "int32",
 						},
 					},
 					"end-point-batch-row-limit": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
-							Format: "int64",
+							Format: "int32",
 						},
 					},
 					"end-point-stream-batch-row-limit": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
-							Format: "int64",
+							Format: "int32",
 						},
 					},
 					"end-point-enable-batch-if-possible": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"boolean"},
-							Format: "",
+							Type:   []string{"integer"},
+							Format: "int32",
 						},
 					},
 					"end-point-request-max-handle-duration": {
@@ -4702,13 +4568,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVServerConfig(ref common.ReferenceCallb
 					"stats-concurrency": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
-							Format: "int64",
+							Format: "int32",
 						},
 					},
 					"heavy-load-threshold": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
-							Format: "int64",
+							Format: "int32",
 						},
 					},
 					"heavy-load-wait-duration": {

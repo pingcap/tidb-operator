@@ -1480,34 +1480,7 @@ spec:
                 config:
                   description: TiKVConfig is the configuration of TiKV.
                   properties:
-                    addr:
-                      type: string
-                    advertise-addr:
-                      type: string
-                    concurrent-recv-snap-limit:
-                      format: int32
-                      type: integer
-                    concurrent-send-snap-limit:
-                      format: int32
-                      type: integer
                     coprocessor: {}
-                    end-point-batch-row-limit:
-                      format: int32
-                      type: integer
-                    end-point-enable-batch-if-possible:
-                      format: int32
-                      type: integer
-                    end-point-recursion-limit:
-                      format: int32
-                      type: integer
-                    end-point-request-max-handle-duration:
-                      type: string
-                    end-point-stream-batch-row-limit:
-                      format: int32
-                      type: integer
-                    end-point-stream-channel-size:
-                      format: int32
-                      type: integer
                     gc:
                       properties:
                         "\tbatch_keys":
@@ -1516,28 +1489,6 @@ spec:
                         "\tmax_write_bytes_per_sec":
                           type: string
                       type: object
-                    grpc-compression-type:
-                      type: string
-                    grpc-concurrency:
-                      format: int32
-                      type: integer
-                    grpc-concurrent-stream:
-                      format: int32
-                      type: integer
-                    grpc-keepalive-time:
-                      type: string
-                    grpc-keepalive-timeout:
-                      type: string
-                    grpc-raft-conn-num:
-                      format: int32
-                      type: integer
-                    grpc-stream-initial-window-size:
-                      type: string
-                    heavy-load-threshold:
-                      format: int32
-                      type: integer
-                    heavy-load-wait-duration:
-                      type: string
                     import:
                       properties:
                         import_dir:
@@ -1563,8 +1514,6 @@ spec:
                           type: integer
                         upload_speed_limit:
                           type: string
-                      type: object
-                    labels:
                       type: object
                     log-file:
                       type: string
@@ -2385,47 +2334,52 @@ spec:
                     server:
                       description: TiKVServerConfig is the configuration of TiKV server.
                       properties:
+                        addr:
+                          type: string
+                        advertise-addr:
+                          type: string
                         concurrent-recv-snap-limit:
-                          format: int64
+                          format: int32
                           type: integer
                         concurrent-send-snap-limit:
-                          format: int64
+                          format: int32
                           type: integer
                         end-point-batch-row-limit:
-                          format: int64
+                          format: int32
                           type: integer
                         end-point-enable-batch-if-possible:
-                          type: boolean
+                          format: int32
+                          type: integer
                         end-point-recursion-limit:
-                          format: int64
+                          format: int32
                           type: integer
                         end-point-request-max-handle-duration:
                           type: string
                         end-point-stream-batch-row-limit:
-                          format: int64
+                          format: int32
                           type: integer
                         end-point-stream-channel-size:
-                          format: int64
+                          format: int32
                           type: integer
                         grpc-compression-type:
                           type: string
                         grpc-concurrency:
-                          format: int64
+                          format: int32
                           type: integer
                         grpc-concurrent-stream:
-                          format: int64
+                          format: int32
                           type: integer
                         grpc-keepalive-time:
                           type: string
                         grpc-keepalive-timeout:
                           type: string
                         grpc-raft-conn-num:
-                          format: int64
+                          format: int32
                           type: integer
                         grpc-stream-initial-window-size:
                           type: string
                         heavy-load-threshold:
-                          format: int64
+                          format: int32
                           type: integer
                         heavy-load-wait-duration:
                           type: string
@@ -2436,20 +2390,13 @@ spec:
                         snap-max-write-bytes-per-sec:
                           type: string
                         stats-concurrency:
-                          format: int64
+                          format: int32
                           type: integer
+                        status-addr:
+                          type: string
+                        status-thread-pool-size:
+                          type: string
                       type: object
-                    snap-max-total-size:
-                      type: string
-                    snap-max-write-bytes-per-sec:
-                      type: string
-                    stats-concurrency:
-                      format: int32
-                      type: integer
-                    status-addr:
-                      type: string
-                    status-thread-pool-size:
-                      type: string
                     storage:
                       description: TiKVStorageConfig is the config of storage
                       properties:

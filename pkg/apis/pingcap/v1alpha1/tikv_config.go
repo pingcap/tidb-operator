@@ -26,56 +26,7 @@ type TiKVConfig struct {
 	LogRotationTimespan string `json:"log-rotation-timespan,omitempty" toml:"log-rotation-timespan,omitempty"`
 	// +optional
 	PanicWhenUnexpectedKeyOrData *bool `json:"panic-when-unexpected-key-or-data,omitempty" toml:"panic-when-unexpected-key-or-data,omitempty"`
-	// +optional
-	Addr string `json:"addr,omitempty" toml:"addr,omitempty"`
-	// +optional
-	AdvertiseAddr string `json:"advertise-addr,omitempty" toml:"advertise-addr,omitempty"`
-	// +optional
-	StatusAddr string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
-	// +optional
-	StatusThreadPoolSize string `json:"status-thread-pool-size,omitempty" toml:"status-thread-pool-size,omitempty"`
-	// +optional
-	GrpcCompressionType string `json:"grpc-compression-type,omitempty" toml:"grpc-compression-type,omitempty"`
-	// +optional
-	GrpcConcurrency *uint `json:"grpc-concurrency,omitempty" toml:"grpc-concurrency,omitempty"`
-	// +optional
-	GrpcConcurrentStream *uint `json:"grpc-concurrent-stream,omitempty" toml:"grpc-concurrent-stream,omitempty"`
-	// +optional
-	GrpcRaftConnNum *uint `json:"grpc-raft-conn-num,omitempty" toml:"grpc-raft-conn-num,omitempty"`
-	// +optional
-	GrpcStreamInitialWindowSize string `json:"grpc-stream-initial-window-size,omitempty" toml:"grpc-stream-initial-window-size,omitempty"`
-	// +optional
-	GrpcKeepaliveTime string `json:"grpc-keepalive-time,omitempty" toml:"grpc-keepalive-time,omitempty"`
-	// +optional
-	GrpcKeepaliveTimeout string `json:"grpc-keepalive-timeout,omitempty" toml:"grpc-keepalive-timeout,omitempty"`
-	// +optional
-	ConcurrentSendSnapLimit *uint `json:"concurrent-send-snap-limit,omitempty" toml:"concurrent-send-snap-limit,omitempty"`
-	// +optional
-	ConcurrentRecvSnapLimit *uint `json:"concurrent-recv-snap-limit,omitempty" toml:"concurrent-recv-snap-limit,omitempty"`
-	// +optional
-	EndPointRecursionLimit *uint `json:"end-point-recursion-limit,omitempty" toml:"end-point-recursion-limit,omitempty"`
-	// +optional
-	EndPointStreamChannelSize *uint `json:"end-point-stream-channel-size,omitempty" toml:"end-point-stream-channel-size,omitempty"`
-	// +optional
-	EndPointBatchRowLimit *uint `json:"end-point-batch-row-limit,omitempty" toml:"end-point-batch-row-limit,omitempty"`
-	// +optional
-	EndPointStreamBatchRowLimit *uint `json:"end-point-stream-batch-row-limit,omitempty" toml:"end-point-stream-batch-row-limit,omitempty"`
-	// +optional
-	EndPointEnableBatchIfPossible *uint `json:"end-point-enable-batch-if-possible,omitempty" toml:"end-point-enable-batch-if-possible,omitempty"`
-	// +optional
-	EndPointRequestMaxHandleDuration string `json:"end-point-request-max-handle-duration,omitempty" toml:"end-point-request-max-handle-duration,omitempty"`
-	// +optional
-	SnapMaxWriteBytesPerSec string `json:"snap-max-write-bytes-per-sec,omitempty" toml:"snap-max-write-bytes-per-sec,omitempty"`
-	// +optional
-	SnapMaxTotalSize string `json:"snap-max-total-size,omitempty" toml:"snap-max-total-size,omitempty"`
-	// +optional
-	StatsConcurrency *uint `json:"stats-concurrency,omitempty" toml:"stats-concurrency,omitempty"`
-	// +optional
-	HeavyLoadThreshold *uint `json:"heavy-load-threshold,omitempty" toml:"heavy-load-threshold,omitempty"`
-	// +optional
-	HeavyLoadWaitDuration string `json:"heavy-load-wait-duration,omitempty" toml:"heavy-load-wait-duration,omitempty"`
-	// +optional
-	Labels map[string]string `json:"labels,omitempty" toml:"labels,omitempty"`
+
 	// +optional
 	Server *TiKVServerConfig `json:"server,omitempty" toml:"server,omitempty"`
 	// +optional
@@ -457,13 +408,21 @@ type TiKVBlockCacheConfig struct {
 // +k8s:openapi-gen=true
 type TiKVServerConfig struct {
 	// +optional
+	Addr string `json:"addr,omitempty" toml:"addr,omitempty"`
+	// +optional
+	AdvertiseAddr string `json:"advertise-addr,omitempty" toml:"advertise-addr,omitempty"`
+	// +optional
+	StatusAddr string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
+	// +optional
+	StatusThreadPoolSize string `json:"status-thread-pool-size,omitempty" toml:"status-thread-pool-size,omitempty"`
+	// +optional
 	GrpcCompressionType string `json:"grpc-compression-type,omitempty" toml:"grpc-compression-type,omitempty"`
 	// +optional
-	GrpcConcurrency *int64 `json:"grpc-concurrency,omitempty" toml:"grpc-concurrency,omitempty"`
+	GrpcConcurrency *uint `json:"grpc-concurrency,omitempty" toml:"grpc-concurrency,omitempty"`
 	// +optional
-	GrpcConcurrentStream *int64 `json:"grpc-concurrent-stream,omitempty" toml:"grpc-concurrent-stream,omitempty"`
+	GrpcConcurrentStream *uint `json:"grpc-concurrent-stream,omitempty" toml:"grpc-concurrent-stream,omitempty"`
 	// +optional
-	GrpcRaftConnNum *int64 `json:"grpc-raft-conn-num,omitempty" toml:"grpc-raft-conn-num,omitempty"`
+	GrpcRaftConnNum *uint `json:"grpc-raft-conn-num,omitempty" toml:"grpc-raft-conn-num,omitempty"`
 	// +optional
 	GrpcStreamInitialWindowSize string `json:"grpc-stream-initial-window-size,omitempty" toml:"grpc-stream-initial-window-size,omitempty"`
 	// +optional
@@ -471,19 +430,19 @@ type TiKVServerConfig struct {
 	// +optional
 	GrpcKeepaliveTimeout string `json:"grpc-keepalive-timeout,omitempty" toml:"grpc-keepalive-timeout,omitempty"`
 	// +optional
-	ConcurrentSendSnapLimit *int64 `json:"concurrent-send-snap-limit,omitempty" toml:"concurrent-send-snap-limit,omitempty"`
+	ConcurrentSendSnapLimit *uint `json:"concurrent-send-snap-limit,omitempty" toml:"concurrent-send-snap-limit,omitempty"`
 	// +optional
-	ConcurrentRecvSnapLimit *int64 `json:"concurrent-recv-snap-limit,omitempty" toml:"concurrent-recv-snap-limit,omitempty"`
+	ConcurrentRecvSnapLimit *uint `json:"concurrent-recv-snap-limit,omitempty" toml:"concurrent-recv-snap-limit,omitempty"`
 	// +optional
-	EndPointRecursionLimit *int64 `json:"end-point-recursion-limit,omitempty" toml:"end-point-recursion-limit,omitempty"`
+	EndPointRecursionLimit *uint `json:"end-point-recursion-limit,omitempty" toml:"end-point-recursion-limit,omitempty"`
 	// +optional
-	EndPointStreamChannelSize *int64 `json:"end-point-stream-channel-size,omitempty" toml:"end-point-stream-channel-size,omitempty"`
+	EndPointStreamChannelSize *uint `json:"end-point-stream-channel-size,omitempty" toml:"end-point-stream-channel-size,omitempty"`
 	// +optional
-	EndPointBatchRowLimit *int64 `json:"end-point-batch-row-limit,omitempty" toml:"end-point-batch-row-limit,omitempty"`
+	EndPointBatchRowLimit *uint `json:"end-point-batch-row-limit,omitempty" toml:"end-point-batch-row-limit,omitempty"`
 	// +optional
-	EndPointStreamBatchRowLimit *int64 `json:"end-point-stream-batch-row-limit,omitempty" toml:"end-point-stream-batch-row-limit,omitempty"`
+	EndPointStreamBatchRowLimit *uint `json:"end-point-stream-batch-row-limit,omitempty" toml:"end-point-stream-batch-row-limit,omitempty"`
 	// +optional
-	EndPointEnableBatchIfPossible *bool `json:"end-point-enable-batch-if-possible,omitempty" toml:"end-point-enable-batch-if-possible,omitempty"`
+	EndPointEnableBatchIfPossible *uint `json:"end-point-enable-batch-if-possible,omitempty" toml:"end-point-enable-batch-if-possible,omitempty"`
 	// +optional
 	EndPointRequestMaxHandleDuration string `json:"end-point-request-max-handle-duration,omitempty" toml:"end-point-request-max-handle-duration,omitempty"`
 	// +optional
@@ -491,13 +450,14 @@ type TiKVServerConfig struct {
 	// +optional
 	SnapMaxTotalSize string `json:"snap-max-total-size,omitempty" toml:"snap-max-total-size,omitempty"`
 	// +optional
-	StatsConcurrency *int64 `json:"stats-concurrency,omitempty" toml:"stats-concurrency,omitempty"`
+	StatsConcurrency *uint `json:"stats-concurrency,omitempty" toml:"stats-concurrency,omitempty"`
 	// +optional
-	HeavyLoadThreshold *int64 `json:"heavy-load-threshold,omitempty" toml:"heavy-load-threshold,omitempty"`
+	HeavyLoadThreshold *uint `json:"heavy-load-threshold,omitempty" toml:"heavy-load-threshold,omitempty"`
 	// +optional
 	HeavyLoadWaitDuration string `json:"heavy-load-wait-duration,omitempty" toml:"heavy-load-wait-duration,omitempty"`
 	// +optional
 	Labels map[string]string `json:"labels,omitempty" toml:"labels,omitempty"`
+	// +optional
 }
 
 // TiKVRaftstoreConfig is the configuration of TiKV raftstore component.

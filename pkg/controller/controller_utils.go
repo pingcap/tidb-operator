@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -27,8 +28,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	glog "k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -443,4 +446,22 @@ func InferObjectKind(obj runtime.Object) (schema.GroupVersionKind, error) {
 		return schema.GroupVersionKind{}, fmt.Errorf("Object %v has ambigious GVK", obj)
 	}
 	return gvks[0], nil
+}
+
+// GuaranteedUpdate will retry the updateFunc to mutate the object util success, updateFunc is expected to
+// capture the object reference from the caller context to avoid unnecessary type casting.
+func GuaranteedUpdate(cli client.Client, obj runtime.Object, updateFunc func() error) error {
+	key, err := client.ObjectKeyFromObject(obj)
+	if err != nil {
+		return err
+	}
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		if err := cli.Get(context.TODO(), key, obj); err != nil {
+			return err
+		}
+		if err := updateFunc(); err != nil {
+			return err
+		}
+		return cli.Update(context.TODO(), obj)
+	})
 }
