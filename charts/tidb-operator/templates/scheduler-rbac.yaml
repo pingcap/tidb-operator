@@ -22,8 +22,12 @@ metadata:
     app.kubernetes.io/component: scheduler
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 rules:
+# ConfigMap permission for --policy-configmap
 - apiGroups: [""]
-  resources: ["pods", "configmaps"]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
   resources: ["nodes"]
@@ -34,12 +38,10 @@ rules:
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
   verbs: ["get", "list", "update"]
-- apiGroups: ["storage.k8s.io"]
-  resources: ["storageclasses"]
-  verbs: ["get", "list", "watch"]
+# Extra permissions for endpoints other than kube-scheduler
 - apiGroups: [""]
   resources: ["endpoints"]
-  verbs: ["get", "list", "watch", "update"]
+  verbs: ["delete", "get", "patch", "update"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -73,8 +75,12 @@ metadata:
     app.kubernetes.io/component: scheduler
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 rules:
+# ConfigMap permission for --policy-configmap
 - apiGroups: [""]
-  resources: ["pods", "configmaps"]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
   resources: ["nodes"]
@@ -85,9 +91,10 @@ rules:
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
   verbs: ["get", "list", "update"]
+# Extra permissions for endpoints other than kube-scheduler
 - apiGroups: [""]
   resources: ["endpoints"]
-  verbs: ["get", "list", "watch", "update"]
+  verbs: ["delete", "get", "patch", "update"]
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
