@@ -226,6 +226,7 @@ type OperatorActions interface {
 	CheckInitSQL(info *TidbClusterConfig) error
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
+	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
 }
 
 type operatorActions struct {
@@ -1393,7 +1394,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 		return false, nil
 	}
 
-	if tc.Spec.PD.Image != c.Image {
+	if tc.BasePDSpec().Image() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
 			ns, pdSetName, c.Image, tc.BasePDSpec().Image())
 		return false, nil
@@ -1466,7 +1467,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if tc.Spec.TiKV.Image != c.Image {
+	if tc.BaseTiKVSpec().Image() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
 			ns, tikvSetName, c.Image, tc.BaseTiKVSpec().Image())
 		return false, nil
@@ -1533,7 +1534,7 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if tc.Spec.TiDB.Image != c.Image {
+	if tc.BaseTiDBSpec().Image() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
 			ns, tidbSetName, c.Image, tc.BaseTiDBSpec().Image())
 		return false, nil
@@ -3436,6 +3437,31 @@ func (oa *operatorActions) CheckInitSQLOrDie(info *TidbClusterConfig) {
 	if err := oa.CheckInitSQL(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
+}
+
+func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error {
+	if tc == nil {
+		return fmt.Errorf("tidbcluster is nil, cannot call WaitForTidbClusterReady")
+	}
+	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+		var local *v1alpha1.TidbCluster
+		var err error
+		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{}); err != nil {
+			glog.Errorf("failed to get tidbcluster: %s/%s, %v", tc.Namespace, tc.Name, err)
+			return false, nil
+		}
+
+		if b, err := oa.pdMembersReadyFn(local); !b && err == nil {
+			return false, nil
+		}
+		if b, err := oa.tikvMembersReadyFn(local); !b && err == nil {
+			return false, nil
+		}
+		if b, err := oa.tidbMembersReadyFn(local); !b && err == nil {
+			return false, nil
+		}
+		return true, nil
+	})
 }
 
 var dummyCancel = func() {}
