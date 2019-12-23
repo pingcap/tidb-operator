@@ -39,7 +39,7 @@ func NewTidbMonitorControl(
 	cli versioned.Interface,
 	recorder record.EventRecorder,
 ) TidbMonitorControlInterface {
-	return nil
+	return &realTidbMonitorControl{cli: cli, recorder: recorder}
 }
 
 func (rmc *realTidbMonitorControl) CreateTidbMonitor(monitor *v1alpha1.TidbMonitor) (*v1alpha1.TidbMonitor, error) {

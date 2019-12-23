@@ -16,7 +16,9 @@ package tidbmonitor
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/errors"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -38,9 +40,32 @@ type defaultTidbMonitorControl struct {
 
 func (tmc *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
 	var errs []error
+	oldStatus := tm.Status.DeepCopy()
 
+	if err := tmc.reconcileTidbMonitor(tm); err != nil {
+		errs = append(errs, err)
+	}
+	if apiequality.Semantic.DeepEqual(&tm.Status, oldStatus) {
+		return errorutils.NewAggregate(errs)
+	}
+	if _, err := tmc.tmControl.UpdateTidbCluster(tm.DeepCopy(), &tm.Status, oldStatus); err != nil {
+		errs = append(errs, err)
+	}
 	// TODO: implementation
 	return errors.NewAggregate(errs)
+}
+
+func (tmc *defaultTidbMonitorControl) reconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
+
+	// TODO: sync configmaps
+
+	// TODO: sync secrets
+
+	// TODO: sync Prometheus
+
+	// TODO: sync Grafana
+
+	return nil
 }
 
 var _ ControlInterface = &defaultTidbMonitorControl{}
