@@ -80,14 +80,6 @@ func (oa *operatorActions) CheckUpgradeWithPodWebhook(info *TidbClusterConfig) e
 		return fmt.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 	}
 
-	if err := oa.checkDesiredPDHealthy(tc, info); err != nil {
-		return err
-	}
-
-	if err := oa.checkDesiredStoreHealthy(tc, info); err != nil {
-		return err
-	}
-
 	f := func(stsName, namespace string, desiredReplicas int64) (*apps.StatefulSet, bool, error) {
 		sts, err := oa.kubeCli.AppsV1().StatefulSets(ns).Get(stsName, metav1.GetOptions{})
 		if err != nil {
@@ -105,7 +97,7 @@ func (oa *operatorActions) CheckUpgradeWithPodWebhook(info *TidbClusterConfig) e
 		return sts, true, nil
 	}
 
-	return wait.Poll(10*time.Second, 50*time.Minute, func() (done bool, err error) {
+	err = wait.Poll(10*time.Second, 50*time.Minute, func() (done bool, err error) {
 
 		pdsts, ready, err := f(pdStsName, ns, pdDesiredReplicas)
 		if !ready || err != nil {
@@ -134,6 +126,19 @@ func (oa *operatorActions) CheckUpgradeWithPodWebhook(info *TidbClusterConfig) e
 		return true, nil
 	})
 
+	if err != nil {
+		return err
+	}
+
+	if err := oa.checkDesiredPDHealthy(tc, info); err != nil {
+		return err
+	}
+
+	if err := oa.checkDesiredStoreHealthy(tc, info); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (oa *operatorActions) CheckUpgradeWithPodWebhookOrDie(info *TidbClusterConfig) {
@@ -144,6 +149,7 @@ func (oa *operatorActions) CheckUpgradeWithPodWebhookOrDie(info *TidbClusterConf
 
 // check target tikv store whether have desired replicas and were they all Up and no evictSchedulers
 func (oa *operatorActions) checkDesiredStoreHealthy(tc *v1alpha1.TidbCluster, info *TidbClusterConfig) error {
+	klog.Infof("start to check tc[%s/%s]'s upgraded tikv store info", tc.Namespace, tc.Name)
 	desiredTikvNumber, err := strconv.Atoi(info.Resources["tikv.replicas"])
 	if err != nil {
 		return err
@@ -184,6 +190,7 @@ func (oa *operatorActions) checkDesiredStoreHealthy(tc *v1alpha1.TidbCluster, in
 
 // check target pd member whether have desired pd members and had one pd leader
 func (oa *operatorActions) checkDesiredPDHealthy(tc *v1alpha1.TidbCluster, info *TidbClusterConfig) error {
+	klog.Infof("start to check tc[%s/%s]'s upgraded pd member info", tc.Namespace, tc.Name)
 	desiredPDNumbers, err := strconv.Atoi(info.Resources["pd.replicas"])
 	if err != nil {
 		return err
