@@ -99,10 +99,10 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.AfterEach(func() {
-			ginkgo.By("Uninstalling CRDs")
-			oa.CleanCRDOrDie()
 			ginkgo.By("Uninstall tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
+			ginkgo.By("Uninstalling CRDs")
+			oa.CleanCRDOrDie()
 		})
 
 		ginkgo.It("able to deploy TiDB Cluster with advanced statefulset", func() {
@@ -142,10 +142,10 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.AfterEach(func() {
-			ginkgo.By("Uninstalling CRDs")
-			oa.CleanCRDOrDie()
 			ginkgo.By("Uninstall tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
+			ginkgo.By("Uninstalling CRDs")
+			oa.CleanCRDOrDie()
 		})
 
 		ginkgo.It("able to upgrade TiDB Cluster with pod admission webhook", func() {
