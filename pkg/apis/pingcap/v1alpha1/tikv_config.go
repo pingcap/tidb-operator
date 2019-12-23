@@ -457,7 +457,6 @@ type TiKVServerConfig struct {
 	HeavyLoadWaitDuration string `json:"heavy-load-wait-duration,omitempty" toml:"heavy-load-wait-duration,omitempty"`
 	// +optional
 	Labels map[string]string `json:"labels,omitempty" toml:"labels,omitempty"`
-	// +optional
 }
 
 // TiKVRaftstoreConfig is the configuration of TiKV raftstore component.
