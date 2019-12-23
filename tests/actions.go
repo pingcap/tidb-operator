@@ -551,6 +551,8 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		info.ReleaseName, oa.operatorChartPath(info.Tag),
 		info.OperatorHelmSetString(nil))
 
+	glog.Info(cmd)
+
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
