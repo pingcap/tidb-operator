@@ -259,24 +259,26 @@ type event struct {
 var _ = OperatorActions(&operatorActions{})
 
 type OperatorConfig struct {
-	Namespace          string
-	ReleaseName        string
-	Image              string
-	Tag                string
-	SchedulerImage     string
-	SchedulerTag       string
-	Features           []string
-	LogLevel           string
-	WebhookServiceName string
-	WebhookSecretName  string
-	WebhookConfigName  string
-	Context            *apimachinery.CertContext
-	ImagePullPolicy    corev1.PullPolicy
-	TestMode           bool
-	WebhookEnabled     bool
-	PodWebhookEnabled  bool
-	StsWebhookEnabled  bool
-	Cabundle           string
+	Namespace                 string
+	ReleaseName               string
+	Image                     string
+	Tag                       string
+	ControllerManagerReplicas int
+	SchedulerImage            string
+	SchedulerTag              string
+	SchedulerReplicas         int
+	Features                  []string
+	LogLevel                  string
+	WebhookServiceName        string
+	WebhookSecretName         string
+	WebhookConfigName         string
+	Context                   *apimachinery.CertContext
+	ImagePullPolicy           corev1.PullPolicy
+	TestMode                  bool
+	WebhookEnabled            bool
+	PodWebhookEnabled         bool
+	StsWebhookEnabled         bool
+	Cabundle                  string
 }
 
 type TidbClusterConfig struct {
@@ -394,14 +396,18 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"scheduler.kubeSchedulerImageName":           oi.SchedulerImage,
 		"controllerManager.logLevel":                 oi.LogLevel,
 		"scheduler.logLevel":                         "4",
-		"controllerManager.replicas":                 "2",
-		"scheduler.replicas":                         "2",
 		"imagePullPolicy":                            string(oi.ImagePullPolicy),
 		"testMode":                                   strconv.FormatBool(oi.TestMode),
 		"admissionWebhook.cabundle":                  oi.Cabundle,
 		"admissionWebhook.create":                    strconv.FormatBool(oi.WebhookEnabled),
 		"admissionWebhook.hooksEnabled.pods":         strconv.FormatBool(oi.PodWebhookEnabled),
 		"admissionWebhook.hooksEnabled.statefulSets": strconv.FormatBool(oi.StsWebhookEnabled),
+	}
+	if oi.ControllerManagerReplicas > 0 {
+		set["controllerManager.replicas"] = strconv.Itoa(oi.ControllerManagerReplicas)
+	}
+	if oi.SchedulerReplicas > 0 {
+		set["scheduler.replicas"] = strconv.Itoa(oi.SchedulerReplicas)
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag

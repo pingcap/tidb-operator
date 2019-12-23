@@ -331,6 +331,7 @@ type TiKVCfConfig struct {
 }
 
 // TiKVTitanCfConfig is the titian config.
+// +k8s:openapi-gen=true
 type TiKVTitanCfConfig struct {
 	// +optional
 	MinBlobSize string `json:"min-blob-size,omitempty" toml:"min-blob-size,omitempty"`
@@ -605,6 +606,8 @@ type TiKVRaftstoreConfig struct {
 	HibernateRegions *bool `json:"hibernate-regions,omitempty" toml:"hibernate-regions,omitempty"`
 }
 
+// TiKVCoprocessorConfig is the configuration of TiKV Coprocessor component.
+// +k8s:openapi-gen=true
 type TiKVCoprocessorConfig struct {
 	// When it is set to `true`, TiKV will try to split a Region with table prefix if that Region
 	// crosses tables.
