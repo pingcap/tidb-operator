@@ -162,7 +162,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", cluster.ClusterVersion, upgradeVersions[0]))
 			cluster.UpgradeAll(upgradeVersions[0])
 			oa.UpgradeTidbClusterOrDie(&cluster)
-			oa.CheckUpgradeWithPodWebhookOrDie(&cluster)
 			oa.CheckTidbClusterStatusOrDie(&cluster)
 			oa.CleanTidbClusterOrDie(&cluster)
 		})
