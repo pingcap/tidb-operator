@@ -59,7 +59,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var _ = ginkgo.Describe("[tidb-operator][TiDBCluster]", func() {
+var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	f := framework.NewDefaultFramework("tidb-cluster")
 
 	var ns string

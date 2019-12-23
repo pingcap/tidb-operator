@@ -80,6 +80,14 @@ func (oa *operatorActions) CheckUpgradeWithPodWebhook(info *TidbClusterConfig) e
 		return fmt.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 	}
 
+	if err := oa.checkDesiredPDHealthy(tc, info); err != nil {
+		return err
+	}
+
+	if err := oa.checkDesiredStoreHealthy(tc, info); err != nil {
+		return err
+	}
+
 	f := func(stsName, namespace string, desiredReplicas int64) (*apps.StatefulSet, bool, error) {
 		sts, err := oa.kubeCli.AppsV1().StatefulSets(ns).Get(stsName, metav1.GetOptions{})
 		if err != nil {
@@ -106,21 +114,6 @@ func (oa *operatorActions) CheckUpgradeWithPodWebhook(info *TidbClusterConfig) e
 		if pdsts.Spec.Template.Spec.Containers[0].Image != info.PDImage {
 			return false, nil
 		}
-		pdClient, cancel, err := oa.getPDClient(tc)
-		if err != nil {
-			return false, err
-		}
-		defer cancel()
-
-		membersInfo, err := pdClient.GetMembers()
-		if err != nil {
-			klog.Infof("failed to get tc[%s/%s]'s pd member info", tc.Namespace, tc.Name)
-			return false, nil
-		}
-		if len(membersInfo.Members) != int(pdDesiredReplicas) {
-			klog.Infof("tc[%s/%s]'s pd member numbers[%d]!=pdDesiredReplicas[%d]", tc.Namespace, tc.Name, len(membersInfo.Members), pdDesiredReplicas)
-			return false, nil
-		}
 
 		tikvsts, ready, err := f(tikvStsName, ns, tikvDesiredReplicas)
 		if !ready || err != nil {
@@ -130,27 +123,6 @@ func (oa *operatorActions) CheckUpgradeWithPodWebhook(info *TidbClusterConfig) e
 		if tikvsts.Spec.Template.Spec.Containers[0].Image != info.TiKVImage {
 			return false, nil
 		}
-		storesInfo, err := pdClient.GetStores()
-		if err != nil {
-			klog.Infof("failed to get tc[%s/%s]'s store info", tc.Namespace, tc.Name)
-			return false, nil
-		}
-		if storesInfo.Count != int(tikvDesiredReplicas) {
-			klog.Infof("tc[%s/%s]'s store number[%d]!=tikvDesiredReplicas[%d]", tc.Namespace, tc.Name, storesInfo.Count, int(tikvDesiredReplicas))
-			return false, nil
-		}
-
-		es, err := pdClient.GetEvictLeaderSchedulers()
-		if err != nil {
-			klog.Infof("failed to get tc[%s/%s]'s evictSchedulers info", tc.Namespace, tc.Name)
-			return false, nil
-		}
-
-		if len(es) > 0 {
-			klog.Infof("tc[%s/%s]'s evictSchedulers is still existed,count[%d]", tc.Namespace, tc.Name, len(es))
-			return false, nil
-		}
-
 		tidbsts, ready, err := f(tidbStsName, ns, tidbDesiredReplicas)
 		if !ready || err != nil {
 			return ready, err
@@ -168,6 +140,75 @@ func (oa *operatorActions) CheckUpgradeWithPodWebhookOrDie(info *TidbClusterConf
 	if err := oa.CheckUpgradeWithPodWebhook(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
+}
+
+// check target tikv store whether have desired replicas and were they all Up and no evictSchedulers
+func (oa *operatorActions) checkDesiredStoreHealthy(tc *v1alpha1.TidbCluster, info *TidbClusterConfig) error {
+	desiredTikvNumber, err := strconv.Atoi(info.Resources["tikv.replicas"])
+	if err != nil {
+		return err
+	}
+	pdClient, cancel, err := oa.getPDClient(tc)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	return wait.Poll(10*time.Second, 50*time.Minute, func() (done bool, err error) {
+		storesInfo, err := pdClient.GetStores()
+		if err != nil {
+			klog.Infof("failed to get tc[%s/%s]'s store info", tc.Namespace, tc.Name)
+			return false, nil
+		}
+		if storesInfo.Count != desiredTikvNumber {
+			klog.Infof("tc[%s/%s]'s store number[%d]!=tikvDesiredReplicas[%d]", tc.Namespace, tc.Name, storesInfo.Count, desiredTikvNumber)
+			return false, nil
+		}
+		for _, store := range storesInfo.Stores {
+			if store.Store.State.String() != v1alpha1.TiKVStateUp {
+				klog.Infof("tc[%s/%s]'s store[%s] is not up,still %s", tc.Namespace, tc.Name, store.Store.Address, store.Store.State.String())
+				return false, nil
+			}
+		}
+		es, err := pdClient.GetEvictLeaderSchedulers()
+		if err != nil {
+			klog.Infof("failed to get tc[%s/%s]'s evict schedulers", tc.Namespace, tc.Name)
+			return false, nil
+		}
+		if len(es) != 0 {
+			klog.Infof("tc[%s/%s]'s evictSchedulers is still exist", tc.Namespace, tc.Name)
+			return false, nil
+		}
+		return true, nil
+	})
+}
+
+// check target pd member whether have desired pd members and had one pd leader
+func (oa *operatorActions) checkDesiredPDHealthy(tc *v1alpha1.TidbCluster, info *TidbClusterConfig) error {
+	desiredPDNumbers, err := strconv.Atoi(info.Resources["pd.replicas"])
+	if err != nil {
+		return err
+	}
+	pdClient, cancel, err := oa.getPDClient(tc)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	return wait.Poll(10*time.Second, 50*time.Minute, func() (done bool, err error) {
+		membersInfo, err := pdClient.GetMembers()
+		if err != nil {
+			return false, nil
+		}
+		if len(membersInfo.Members) != desiredPDNumbers {
+			klog.Infof("failed to get tc[%s/%s]'s pd member info", tc.Namespace, tc.Name)
+			return false, nil
+		}
+		_, err = pdClient.GetPDLeader()
+		if err != nil {
+			klog.Infof("faield to get tc[%s/%s]' leader info", tc.Namespace, tc.Name)
+			return false, nil
+		}
+		return true, nil
+	})
 }
 
 func getStsName(tcName string, memberType v1alpha1.MemberType) string {
