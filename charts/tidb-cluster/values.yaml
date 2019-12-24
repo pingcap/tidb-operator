@@ -78,7 +78,6 @@ pd:
   service:
     clusterIP: "None"
 
-
   replicas: 3
   image: pingcap/pd:v3.0.5
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
