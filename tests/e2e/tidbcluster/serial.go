@@ -41,7 +41,7 @@ import (
 	e2esset "k8s.io/kubernetes/test/e2e/framework/statefulset"
 )
 
-func mustToString(set sets.Int) string {
+func mustToString(set sets.Int32) string {
 	b, err := json.Marshal(set.List())
 	if err != nil {
 		panic(err)
@@ -137,49 +137,49 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				name        string
 				component   string // tikv,pd,tidb
 				replicas    int32
-				deleteSlots sets.Int
+				deleteSlots sets.Int32
 			}{
 				{
 					name:        "Scaling in tikv from 5 to 3 by deleting pods 1 and 3",
 					component:   "tikv",
 					replicas:    3,
-					deleteSlots: sets.NewInt(1, 3),
+					deleteSlots: sets.NewInt32(1, 3),
 				},
 				{
 					name:        "Scaling out tikv from 3 to 4 by adding pod 3",
 					component:   "tikv",
 					replicas:    4,
-					deleteSlots: sets.NewInt(1),
+					deleteSlots: sets.NewInt32(1),
 				},
 				{
 					name:        "Scaling tikv by adding pod 1 and deleting pod 2",
 					component:   "tikv",
 					replicas:    4,
-					deleteSlots: sets.NewInt(2),
+					deleteSlots: sets.NewInt32(2),
 				},
 				{
 					name:        "Scaling in tidb from 3 to 2 by deleting pod 1",
 					component:   "tidb",
 					replicas:    2,
-					deleteSlots: sets.NewInt(1),
+					deleteSlots: sets.NewInt32(1),
 				},
 				{
 					name:        "Scaling out tidb from 2 to 4 by adding pods 3 and 4",
 					component:   "tidb",
 					replicas:    4,
-					deleteSlots: sets.NewInt(1),
+					deleteSlots: sets.NewInt32(1),
 				},
 				{
 					name:        "Scaling out pd from 3 to 5 by adding pods 3, 4",
 					component:   "pd",
 					replicas:    5,
-					deleteSlots: sets.NewInt(),
+					deleteSlots: sets.NewInt32(),
 				},
 				{
 					name:        "Scaling in pd from 5 to 3 by deleting pods 0 and 3",
 					component:   "pd",
 					replicas:    3,
-					deleteSlots: sets.NewInt(0, 3),
+					deleteSlots: sets.NewInt32(0, 3),
 				},
 			}
 
@@ -215,11 +215,11 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				framework.ExpectNoError(err)
 				utilstatefulset.WaitForStatusReplicas(hc, sts, replicas)
 
-				maxReplicaCount, deleteSlots := helper.GetMaxReplicaCountAndDeleteSlots(int(st.replicas), st.deleteSlots)
+				maxReplicaCount, deleteSlots := helper.GetMaxReplicaCountAndDeleteSlots(st.replicas, st.deleteSlots)
 				ginkgo.By(fmt.Sprintf("Waiting for all pods of tidb cluster component %s (sts: %s/%s) are ready (maxReplicaCount: %d, delete slots: %v)", st.component, ns, stsName, maxReplicaCount, deleteSlots.List()))
 				// workaround solution for https://github.com/pingcap/advanced-statefulset/issues/54
 				err = wait.PollImmediate(time.Second, time.Minute*5, func() (bool, error) {
-					for i := 0; i < maxReplicaCount; i++ {
+					for i := int32(0); i < maxReplicaCount; i++ {
 						pod, err := c.CoreV1().Pods(ns).Get(fmt.Sprintf("%s-%d", stsName, i), metav1.GetOptions{})
 						if err != nil && !apierrors.IsNotFound(err) {
 							return false, nil

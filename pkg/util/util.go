@@ -99,13 +99,13 @@ func IsPodOrdinalNotExceedReplicas(pod *corev1.Pod, sts *apps.StatefulSet) (bool
 		return false, err
 	}
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
-		return helper.GetDesiredPodOrdinals(int(*sts.Spec.Replicas), sts).Has(int(ordinal)), nil
+		return helper.GetPodOrdinals(*sts.Spec.Replicas, sts).Has(ordinal), nil
 	}
 	return ordinal < *sts.Spec.Replicas, nil
 }
 
-func getDeleteSlots(tc *v1alpha1.TidbCluster, annKey string) (deleteSlots sets.Int) {
-	deleteSlots = sets.NewInt()
+func getDeleteSlots(tc *v1alpha1.TidbCluster, annKey string) (deleteSlots sets.Int32) {
+	deleteSlots = sets.NewInt32()
 	annotations := tc.GetAnnotations()
 	if annotations == nil {
 		return
@@ -114,7 +114,7 @@ func getDeleteSlots(tc *v1alpha1.TidbCluster, annKey string) (deleteSlots sets.I
 	if !ok {
 		return
 	}
-	var slice []int
+	var slice []int32
 	err := json.Unmarshal([]byte(value), &slice)
 	if err != nil {
 		return
@@ -123,26 +123,26 @@ func getDeleteSlots(tc *v1alpha1.TidbCluster, annKey string) (deleteSlots sets.I
 	return
 }
 
-// GetDesiredPodOrdinals gets desired ordials of member in given TidbCluster.
-func GetDesiredPodOrdinals(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) (sets.Int, error) {
+// GetPodOrdinals gets desired ordials of member in given TidbCluster.
+func GetPodOrdinals(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) (sets.Int32, error) {
 	var ann string
-	var replicas int
+	var replicas int32
 	if memberType == v1alpha1.PDMemberType {
 		ann = label.AnnPDDeleteSlots
-		replicas = int(tc.Spec.PD.Replicas)
+		replicas = tc.Spec.PD.Replicas
 	} else if memberType == v1alpha1.TiKVMemberType {
 		ann = label.AnnTiKVDeleteSlots
-		replicas = int(tc.Spec.TiKV.Replicas)
+		replicas = tc.Spec.TiKV.Replicas
 	} else if memberType == v1alpha1.TiDBMemberType {
 		ann = label.AnnTiDBDeleteSlots
-		replicas = int(tc.Spec.TiDB.Replicas)
+		replicas = tc.Spec.TiDB.Replicas
 	} else {
 		return nil, fmt.Errorf("unknown member type %v", memberType)
 	}
 	deleteSlots := getDeleteSlots(tc, ann)
 	maxReplicaCount, deleteSlots := helper.GetMaxReplicaCountAndDeleteSlots(replicas, deleteSlots)
-	podOrdinals := sets.NewInt()
-	for i := 0; i < maxReplicaCount; i++ {
+	podOrdinals := sets.NewInt32()
+	for i := int32(0); i < maxReplicaCount; i++ {
 		if !deleteSlots.Has(i) {
 			podOrdinals.Insert(i)
 		}

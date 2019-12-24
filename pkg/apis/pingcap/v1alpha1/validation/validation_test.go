@@ -74,7 +74,7 @@ func TestValidateTidbCluster(t *testing.T) {
 			errs: []field.Error{
 				{
 					Type:   field.ErrorTypeInvalid,
-					Detail: `value of "tikv.tidb.pingcap.com/delete-slots" annotation must be a JSON list of integer`,
+					Detail: `value of "tikv.tidb.pingcap.com/delete-slots" annotation must be a JSON list of int32`,
 				},
 			},
 		},
@@ -91,7 +91,7 @@ func TestValidateTidbCluster(t *testing.T) {
 			errs: []field.Error{
 				{
 					Type:   field.ErrorTypeInvalid,
-					Detail: `value of "tidb.tidb.pingcap.com/delete-slots" annotation must be a JSON list of integer`,
+					Detail: `value of "tidb.tidb.pingcap.com/delete-slots" annotation must be a JSON list of int32`,
 				},
 			},
 		},

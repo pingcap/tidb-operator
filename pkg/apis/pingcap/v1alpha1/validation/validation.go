@@ -42,10 +42,10 @@ func validateDeleteSlots(annotations map[string]string, key string, fldPath *fie
 	allErrs := field.ErrorList{}
 	if annotations != nil {
 		if value, ok := annotations[key]; ok {
-			var slice []int
+			var slice []int32
 			err := json.Unmarshal([]byte(value), &slice)
 			if err != nil {
-				msg := fmt.Sprintf("value of %q annotation must be a JSON list of integer", key)
+				msg := fmt.Sprintf("value of %q annotation must be a JSON list of int32", key)
 				allErrs = append(allErrs, field.Invalid(fldPath, value, msg))
 			}
 		}

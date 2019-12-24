@@ -793,7 +793,7 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 	}
 
 	tidbStatus := map[string]v1alpha1.TiDBMember{}
-	for id := range helper.GetDesiredPodOrdinals(int(tc.Status.TiDB.StatefulSet.Replicas), set) {
+	for id := range helper.GetPodOrdinals(tc.Status.TiDB.StatefulSet.Replicas, set) {
 		name := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.GetName()), id)
 		health, err := tmm.tidbControl.GetHealth(tc, int32(id))
 		if err != nil {

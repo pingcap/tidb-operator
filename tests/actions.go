@@ -2079,7 +2079,7 @@ func (oa *operatorActions) checkPdConfigUpdated(tc *v1alpha1.TidbCluster, cluste
 }
 
 func (oa *operatorActions) checkTiDBConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
-	ordinals, err := util.GetDesiredPodOrdinals(tc, v1alpha1.TiDBMemberType)
+	ordinals, err := util.GetPodOrdinals(tc, v1alpha1.TiDBMemberType)
 	if err != nil {
 		glog.Errorf("failed to get pod ordinals for tidb cluster %s/%s (member: %v)", tc.Namespace, tc.Name, v1alpha1.TiDBMemberType)
 		return false

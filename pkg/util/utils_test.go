@@ -371,12 +371,12 @@ func TestIsSubMapOf(t *testing.T) {
 		})).To(BeFalse())
 }
 
-func TestGetDesiredPodOrdinals(t *testing.T) {
+func TestGetPodOrdinals(t *testing.T) {
 	tests := []struct {
 		name        string
 		tc          *v1alpha1.TidbCluster
 		memberType  v1alpha1.MemberType
-		deleteSlots sets.Int
+		deleteSlots sets.Int32
 	}{
 		{
 			name: "no delete slots",
@@ -391,7 +391,7 @@ func TestGetDesiredPodOrdinals(t *testing.T) {
 				},
 			},
 			memberType:  v1alpha1.TiDBMemberType,
-			deleteSlots: sets.NewInt(0, 1, 2),
+			deleteSlots: sets.NewInt32(0, 1, 2),
 		},
 		{
 			name: "delete slots",
@@ -408,12 +408,12 @@ func TestGetDesiredPodOrdinals(t *testing.T) {
 				},
 			},
 			memberType:  v1alpha1.TiDBMemberType,
-			deleteSlots: sets.NewInt(0, 3, 4),
+			deleteSlots: sets.NewInt32(0, 3, 4),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetDesiredPodOrdinals(tt.tc, tt.memberType)
+			got, err := GetPodOrdinals(tt.tc, tt.memberType)
 			if err != nil {
 				t.Error(err)
 			}

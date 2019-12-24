@@ -172,7 +172,7 @@ func TestScaleOne(t *testing.T) {
 		wantScaling     int
 		wantOrdinal     int32
 		wantReplicas    int32
-		wantDeleteSlots sets.Int
+		wantDeleteSlots sets.Int32
 	}{
 		{
 			"no scaling required",
@@ -191,7 +191,7 @@ func TestScaleOne(t *testing.T) {
 			0,
 			-1,
 			1,
-			sets.Int{},
+			sets.Int32{},
 		},
 		{
 			"scale in without delete slots",
@@ -210,7 +210,7 @@ func TestScaleOne(t *testing.T) {
 			-1,
 			0,
 			0,
-			sets.Int{},
+			sets.Int32{},
 		},
 		{
 			"scale in without delete slots (diff > 1)",
@@ -229,7 +229,7 @@ func TestScaleOne(t *testing.T) {
 			-1,
 			7,
 			7,
-			sets.Int{},
+			sets.Int32{},
 		},
 		{
 			"scale in with delete slots",
@@ -258,7 +258,7 @@ func TestScaleOne(t *testing.T) {
 			-1,
 			3,
 			4,
-			sets.NewInt(1, 3),
+			sets.NewInt32(1, 3),
 		},
 		{
 			"scale out without delete slots",
@@ -277,7 +277,7 @@ func TestScaleOne(t *testing.T) {
 			1,
 			0,
 			1,
-			sets.Int{},
+			sets.Int32{},
 		},
 		{
 			"scale out without delete slots (diff > 1)",
@@ -296,7 +296,7 @@ func TestScaleOne(t *testing.T) {
 			1,
 			3,
 			4,
-			sets.Int{},
+			sets.Int32{},
 		},
 		{
 			"scale out with delete slots",
@@ -325,7 +325,7 @@ func TestScaleOne(t *testing.T) {
 			1,
 			2,
 			4,
-			sets.NewInt(1, 3),
+			sets.NewInt32(1, 3),
 		},
 	}
 

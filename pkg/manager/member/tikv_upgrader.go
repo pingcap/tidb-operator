@@ -90,15 +90,15 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-	var maxReplicaCount int
-	var deleteSlots sets.Int
+	var maxReplicaCount int32
+	var deleteSlots sets.Int32
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
-		maxReplicaCount, deleteSlots = helper.GetMaxReplicaCountAndDeleteSlots(int(*oldSet.Spec.Replicas), helper.GetDeleteSlots(oldSet))
+		maxReplicaCount, deleteSlots = helper.GetMaxReplicaCountAndDeleteSlots(*oldSet.Spec.Replicas, helper.GetDeleteSlots(oldSet))
 	} else {
-		maxReplicaCount = int(tc.TiKVStsActualReplicas())
+		maxReplicaCount = tc.TiKVStsActualReplicas()
 	}
 	for i := int32(maxReplicaCount) - 1; i >= 0; i-- {
-		if deleteSlots != nil && deleteSlots.Has(int(i)) {
+		if deleteSlots != nil && deleteSlots.Has(i) {
 			glog.Infof("tikv pod %s/%s is in delete slots, skip", ns, TikvPodName(tcName, i))
 			continue
 		}
