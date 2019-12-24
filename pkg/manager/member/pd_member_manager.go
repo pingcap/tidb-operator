@@ -463,10 +463,13 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 			Selector: pdLabel,
 		},
 	}
+	// if set pd service type ,overwrite global variable services
 	svcSpec := tc.Spec.PD.Service
 	if svcSpec != nil {
 		pdService.Spec.ClusterIP = svcSpec.ClusterIP
+		pdService.Spec.Type = svcSpec.Type
 		pdService.Spec.LoadBalancerIP = svcSpec.LoadBalancerIP
+		pdService.ObjectMeta.Annotations = svcSpec.Annotations
 	}
 	return pdService
 }
