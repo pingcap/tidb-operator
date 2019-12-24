@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "net/http/pprof"
+	"time"
 
 	"github.com/onsi/ginkgo"
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
@@ -29,10 +30,13 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2esset "k8s.io/kubernetes/test/e2e/framework/statefulset"
 )
@@ -182,7 +186,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			for _, st := range scalingTests {
 				ginkgo.By(st.name)
 				replicas := st.replicas
-				deleteSlots := st.deleteSlots
 				stsName := fmt.Sprintf("%s-%s", clusterName, st.component)
 
 				sts, err := hc.AppsV1().StatefulSets(ns).Get(stsName, metav1.GetOptions{})
@@ -190,20 +193,20 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 				oldPodList := e2esset.GetPodList(c, sts)
 
-				ginkgo.By(fmt.Sprintf("Scaling sts %s/%s to replicas %d and setting deleting pods to %v (old replicas: %d, old delete slots: %v)", ns, stsName, replicas, deleteSlots.List(), *sts.Spec.Replicas, helper.GetDeleteSlots(sts).List()))
+				ginkgo.By(fmt.Sprintf("Scaling sts %s/%s to replicas %d and setting deleting pods to %v (old replicas: %d, old delete slots: %v)", ns, stsName, replicas, st.deleteSlots.List(), *sts.Spec.Replicas, helper.GetDeleteSlots(sts).List()))
 				tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 				framework.ExpectNoError(err)
 				if tc.Annotations == nil {
 					tc.Annotations = map[string]string{}
 				}
 				if st.component == "tikv" {
-					tc.Annotations[label.AnnTiKVDeleteSlots] = mustToString(deleteSlots)
+					tc.Annotations[label.AnnTiKVDeleteSlots] = mustToString(st.deleteSlots)
 					tc.Spec.TiKV.Replicas = replicas
 				} else if st.component == "pd" {
-					tc.Annotations[label.AnnPDDeleteSlots] = mustToString(deleteSlots)
+					tc.Annotations[label.AnnPDDeleteSlots] = mustToString(st.deleteSlots)
 					tc.Spec.PD.Replicas = replicas
 				} else if st.component == "tidb" {
-					tc.Annotations[label.AnnTiDBDeleteSlots] = mustToString(deleteSlots)
+					tc.Annotations[label.AnnTiDBDeleteSlots] = mustToString(st.deleteSlots)
 					tc.Spec.TiDB.Replicas = replicas
 				} else {
 					framework.Failf("unsupported component: %v", st.component)
@@ -212,10 +215,34 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				framework.ExpectNoError(err)
 				utilstatefulset.WaitForStatusReplicas(hc, sts, replicas)
 
-				ginkgo.By(fmt.Sprintf("Verify delete slots of sts %s/%s is %v", ns, stsName, deleteSlots.List()))
+				maxReplicaCount, deleteSlots := helper.GetMaxReplicaCountAndDeleteSlots(int(st.replicas), st.deleteSlots)
+				ginkgo.By(fmt.Sprintf("Waiting for all pods of tidb cluster component %s (sts: %s/%s) are ready (maxReplicaCount: %d, delete slots: %v)", st.component, ns, stsName, maxReplicaCount, deleteSlots.List()))
+				// workaround solution for https://github.com/pingcap/advanced-statefulset/issues/54
+				err = wait.PollImmediate(time.Second, time.Minute*5, func() (bool, error) {
+					for i := 0; i < maxReplicaCount; i++ {
+						pod, err := c.CoreV1().Pods(ns).Get(fmt.Sprintf("%s-%d", stsName, i), metav1.GetOptions{})
+						if err != nil && !apierrors.IsNotFound(err) {
+							return false, nil
+						}
+						found := err == nil
+						if deleteSlots.Has(i) && found {
+							// pod expects to be absent but exists
+							return false, nil
+						} else if !deleteSlots.Has(i) {
+							// pod expects to be present and ready but does not exist or is not ready
+							if !found {
+								return false, nil
+							}
+							return podutil.IsPodReady(pod), nil
+						}
+					}
+					return true, nil
+				})
+
+				ginkgo.By(fmt.Sprintf("Verify delete slots of sts %s/%s is %v", ns, stsName, st.deleteSlots.List()))
 				sts, err = hc.AppsV1().StatefulSets(ns).Get(stsName, metav1.GetOptions{})
 				framework.ExpectNoError(err)
-				framework.ExpectEqual(helper.GetDeleteSlots(sts), deleteSlots)
+				framework.ExpectEqual(helper.GetDeleteSlots(sts), st.deleteSlots)
 
 				ginkgo.By(fmt.Sprintf("Verify other pods of sts %s/%s should not be affected", ns, stsName))
 				newPodList := e2esset.GetPodList(c, sts)
