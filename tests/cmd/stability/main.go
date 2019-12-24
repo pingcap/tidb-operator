@@ -244,6 +244,9 @@ func run() {
 		// truncate tikv sst file
 		oa.TruncateSSTFileThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
 
+		// delete pd data
+		oa.DeletePDDataThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
+
 		// stop one etcd
 		faultEtcd := tests.SelectNode(cfg.ETCDs)
 		fta.StopETCDOrDie(faultEtcd)
