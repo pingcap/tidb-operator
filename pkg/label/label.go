@@ -46,6 +46,9 @@ const (
 	// MemberIDLabelKey is member id label key
 	MemberIDLabelKey string = "tidb.pingcap.com/member-id"
 
+	// InitLabelKey is the key for TiDB initializer
+	InitLabelKey string = "tidb.pingcap.com/initializer"
+
 	// BackupScheduleLabelKey is backup schedule key
 	BackupScheduleLabelKey string = "tidb.pingcap.com/backup-schedule"
 
@@ -104,6 +107,8 @@ const (
 	RestoreJobLabelVal string = "restore"
 	// BackupJobLabelVal is backup job label value
 	BackupJobLabelVal string = "backup"
+	// InitJobLabelVal is TiDB initializer job label value
+	InitJobLabelVal string = "initializer"
 	// TiDBOperator is ManagedByLabelKey label value
 	TiDBOperator string = "tidb-operator"
 )
@@ -115,6 +120,14 @@ type Label map[string]string
 func New() Label {
 	return Label{
 		NameLabelKey:      "tidb-cluster",
+		ManagedByLabelKey: "tidb-operator",
+	}
+}
+
+// NewInitializer initialize a new Label for Jobs of TiDB initializer
+func NewInitializer() Label {
+	return Label{
+		NameLabelKey:      "initializer",
 		ManagedByLabelKey: "tidb-operator",
 	}
 }
@@ -164,6 +177,18 @@ func (l Label) Component(name string) Label {
 // ComponentType returns component type
 func (l Label) ComponentType() string {
 	return l[ComponentLabelKey]
+}
+
+// InitJob assigns initializer to component key in label
+func (l Label) InitJob() Label {
+	l.Component(InitJobLabelVal)
+	return l
+}
+
+// Init assigns specific value to initializer key in label
+func (l Label) Init(val string) Label {
+	l[InitLabelKey] = val
+	return l
 }
 
 // CleanJob assigns clean to component key in label

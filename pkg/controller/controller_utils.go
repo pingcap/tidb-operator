@@ -46,6 +46,9 @@ var (
 	// backupScheduleControllerKind contains the schema.GroupVersionKind for backupschedule controller type.
 	backupScheduleControllerKind = v1alpha1.SchemeGroupVersion.WithKind("BackupSchedule")
 
+	// InitControllerKind contains the schema.GroupVersionKind for initializer controller type.
+	InitControllerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbInitializer")
+
 	// DefaultStorageClassName is the default storageClassName
 	DefaultStorageClassName string
 
@@ -124,6 +127,20 @@ func GetOwnerRef(tc *v1alpha1.TidbCluster) metav1.OwnerReference {
 		Kind:               ControllerKind.Kind,
 		Name:               tc.GetName(),
 		UID:                tc.GetUID(),
+		Controller:         &controller,
+		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
+}
+
+// GetInitOwnerRef returns TiDBInitializer's OwnerReference
+func GetInitOwnerRef(ti *v1alpha1.TidbInitializer) metav1.OwnerReference {
+	controller := true
+	blockOwnerDeletion := true
+	return metav1.OwnerReference{
+		APIVersion:         InitControllerKind.GroupVersion().String(),
+		Kind:               InitControllerKind.Kind,
+		Name:               ti.GetName(),
+		UID:                ti.GetUID(),
 		Controller:         &controller,
 		BlockOwnerDeletion: &blockOwnerDeletion,
 	}
@@ -247,6 +264,11 @@ func TiDBPeerMemberName(clusterName string) string {
 // PumpMemberName returns pump member name
 func PumpMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-pump", clusterName)
+}
+
+// TiDBInitializerMemberName returns TiDBInitializer member name
+func TiDBInitializerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tidb-initializer", clusterName)
 }
 
 // For backward compatibility, pump peer member name do not has -peer suffix
@@ -412,7 +434,12 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 		// Ensure the ref is exactly the controller we listed
 		if ref.Kind == controllerObj.GetObjectKind().GroupVersionKind().Kind &&
 			refGV.Group == controllerObj.GetObjectKind().GroupVersionKind().Group {
-			q.Add(controllerObj)
+			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(controllerObj)
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", controllerObj, err))
+				return
+			}
+			q.Add(key)
 		}
 	}
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{

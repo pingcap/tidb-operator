@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	// defaultHelperImage is default image of helper
-	defaultHelperImage = "busybox:1.26.2"
+	// DefaultHelperImage is default image of helper
+	DefaultHelperImage = "busybox:1.31.1"
 )
 
 // ComponentAccessor is the interface to access component details, which respects the cluster-level properties
@@ -176,7 +176,7 @@ func (tc *TidbCluster) HelperImage() string {
 		image = tc.Spec.TiDB.SlowLogTailer.Image
 	}
 	if image == "" {
-		image = defaultHelperImage
+		image = DefaultHelperImage
 	}
 	return image
 }

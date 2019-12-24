@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -28,7 +29,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ConfigMapControlInterface manages configmaps used by TiDB clusters
@@ -39,28 +39,36 @@ type ConfigMapControlInterface interface {
 	UpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
 	// DeleteConfigMap delete the given ConfigMap owned by the controller object
 	DeleteConfigMap(controller runtime.Object, cm *corev1.ConfigMap) error
+	// ConfigMapExist check if the given ConfigMap exist
+	ConfigMapExist(ns, name string) (bool, error)
 }
 
 type realConfigMapControl struct {
-	client   client.Client
 	kubeCli  kubernetes.Interface
-	cmLister corelisters.ConfigMapLister
 	recorder record.EventRecorder
 }
 
 // NewRealSecretControl creates a new SecretControlInterface
 func NewRealConfigMapControl(
 	kubeCli kubernetes.Interface,
-	cmLister corelisters.ConfigMapLister,
 	recorder record.EventRecorder,
 ) ConfigMapControlInterface {
 	return &realConfigMapControl{
 		kubeCli:  kubeCli,
-		cmLister: cmLister,
 		recorder: recorder,
 	}
 }
 
+func (cc *realConfigMapControl) ConfigMapExist(ns, name string) (bool, error) {
+	if _, err := cc.kubeCli.CoreV1().ConfigMaps(ns).Get(name, metav1.GetOptions{}); err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		}
+		return true, err
+	} else {
+		return true, nil
+	}
+}
 func (cc *realConfigMapControl) CreateConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
 	created, err := cc.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Create(cm)
 	cc.recordConfigMapEvent("create", owner, cm, err)
@@ -81,7 +89,7 @@ func (cc *realConfigMapControl) UpdateConfigMap(owner runtime.Object, cm *corev1
 			return nil
 		}
 
-		if updated, err := cc.cmLister.ConfigMaps(cm.Namespace).Get(cmName); err != nil {
+		if updated, err := cc.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Get(cmName, metav1.GetOptions{}); err != nil {
 			utilruntime.HandleError(fmt.Errorf("error getting updated ConfigMap %s/%s from lister: %v", ns, cmName, err))
 		} else {
 			cm = updated.DeepCopy()
@@ -109,12 +117,12 @@ func (cc *realConfigMapControl) recordConfigMapEvent(verb string, owner runtime.
 	cmName := cm.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s ConfigMap %s for %s/%s successful",
+		msg := fmt.Sprintf("%s configmap %s for %s/%s successful",
 			strings.ToLower(verb), cmName, kind, name)
 		cc.recorder.Event(owner, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s ConfigMap %s for %s/%s failed error: %s",
+		msg := fmt.Sprintf("%s configmap %s for %s/%s failed error: %s",
 			strings.ToLower(verb), cmName, kind, name, err)
 		cc.recorder.Event(owner, corev1.EventTypeWarning, reason, msg)
 	}
@@ -186,6 +194,10 @@ func (cc *FakeConfigMapControl) UpdateConfigMap(_ runtime.Object, cm *corev1.Con
 // DeleteConfigMap deletes the ConfigMap of CmIndexer
 func (cc *FakeConfigMapControl) DeleteConfigMap(_ runtime.Object, _ *corev1.ConfigMap) error {
 	return nil
+}
+
+func (cc *FakeConfigMapControl) ConfigMapExist(ns, name string) (bool, error) {
+	return false, nil
 }
 
 var _ ConfigMapControlInterface = &FakeConfigMapControl{}
