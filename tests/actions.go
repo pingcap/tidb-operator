@@ -226,6 +226,7 @@ type OperatorActions interface {
 	CheckInitSQL(info *TidbClusterConfig) error
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
+	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
 }
 
 type operatorActions struct {
@@ -258,24 +259,26 @@ type event struct {
 var _ = OperatorActions(&operatorActions{})
 
 type OperatorConfig struct {
-	Namespace          string
-	ReleaseName        string
-	Image              string
-	Tag                string
-	SchedulerImage     string
-	SchedulerTag       string
-	Features           []string
-	LogLevel           string
-	WebhookServiceName string
-	WebhookSecretName  string
-	WebhookConfigName  string
-	Context            *apimachinery.CertContext
-	ImagePullPolicy    corev1.PullPolicy
-	TestMode           bool
-	WebhookEnabled     bool
-	PodWebhookEnabled  bool
-	StsWebhookEnabled  bool
-	Cabundle           string
+	Namespace                 string
+	ReleaseName               string
+	Image                     string
+	Tag                       string
+	ControllerManagerReplicas int
+	SchedulerImage            string
+	SchedulerTag              string
+	SchedulerReplicas         int
+	Features                  []string
+	LogLevel                  string
+	WebhookServiceName        string
+	WebhookSecretName         string
+	WebhookConfigName         string
+	Context                   *apimachinery.CertContext
+	ImagePullPolicy           corev1.PullPolicy
+	TestMode                  bool
+	WebhookEnabled            bool
+	PodWebhookEnabled         bool
+	StsWebhookEnabled         bool
+	Cabundle                  string
 }
 
 type TidbClusterConfig struct {
@@ -393,14 +396,18 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"scheduler.kubeSchedulerImageName":           oi.SchedulerImage,
 		"controllerManager.logLevel":                 oi.LogLevel,
 		"scheduler.logLevel":                         "4",
-		"controllerManager.replicas":                 "2",
-		"scheduler.replicas":                         "2",
 		"imagePullPolicy":                            string(oi.ImagePullPolicy),
 		"testMode":                                   strconv.FormatBool(oi.TestMode),
 		"admissionWebhook.cabundle":                  oi.Cabundle,
 		"admissionWebhook.create":                    strconv.FormatBool(oi.WebhookEnabled),
 		"admissionWebhook.hooksEnabled.pods":         strconv.FormatBool(oi.PodWebhookEnabled),
 		"admissionWebhook.hooksEnabled.statefulSets": strconv.FormatBool(oi.StsWebhookEnabled),
+	}
+	if oi.ControllerManagerReplicas > 0 {
+		set["controllerManager.replicas"] = strconv.Itoa(oi.ControllerManagerReplicas)
+	}
+	if oi.SchedulerReplicas > 0 {
+		set["scheduler.replicas"] = strconv.Itoa(oi.SchedulerReplicas)
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
@@ -1393,7 +1400,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 		return false, nil
 	}
 
-	if tc.Spec.PD.Image != c.Image {
+	if tc.BasePDSpec().Image() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
 			ns, pdSetName, c.Image, tc.BasePDSpec().Image())
 		return false, nil
@@ -1466,7 +1473,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if tc.Spec.TiKV.Image != c.Image {
+	if tc.BaseTiKVSpec().Image() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
 			ns, tikvSetName, c.Image, tc.BaseTiKVSpec().Image())
 		return false, nil
@@ -1533,7 +1540,7 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if tc.Spec.TiDB.Image != c.Image {
+	if tc.BaseTiDBSpec().Image() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
 			ns, tidbSetName, c.Image, tc.BaseTiDBSpec().Image())
 		return false, nil
@@ -3436,6 +3443,31 @@ func (oa *operatorActions) CheckInitSQLOrDie(info *TidbClusterConfig) {
 	if err := oa.CheckInitSQL(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
+}
+
+func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error {
+	if tc == nil {
+		return fmt.Errorf("tidbcluster is nil, cannot call WaitForTidbClusterReady")
+	}
+	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+		var local *v1alpha1.TidbCluster
+		var err error
+		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{}); err != nil {
+			glog.Errorf("failed to get tidbcluster: %s/%s, %v", tc.Namespace, tc.Name, err)
+			return false, nil
+		}
+
+		if b, err := oa.pdMembersReadyFn(local); !b && err == nil {
+			return false, nil
+		}
+		if b, err := oa.tikvMembersReadyFn(local); !b && err == nil {
+			return false, nil
+		}
+		if b, err := oa.tidbMembersReadyFn(local); !b && err == nil {
+			return false, nil
+		}
+		return true, nil
+	})
 }
 
 var dummyCancel = func() {}

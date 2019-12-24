@@ -383,11 +383,13 @@ func run() {
 
 func newOperatorConfig() *tests.OperatorConfig {
 	return &tests.OperatorConfig{
-		Namespace:      "pingcap",
-		ReleaseName:    "operator",
-		Image:          cfg.OperatorImage,
-		Tag:            cfg.OperatorTag,
-		SchedulerImage: "gcr.io/google-containers/hyperkube",
+		Namespace:                 "pingcap",
+		ReleaseName:               "operator",
+		Image:                     cfg.OperatorImage,
+		Tag:                       cfg.OperatorTag,
+		ControllerManagerReplicas: 2,
+		SchedulerImage:            "gcr.io/google-containers/hyperkube",
+		SchedulerReplicas:         2,
 		Features: []string{
 			"StableScheduling=true",
 		},

@@ -2377,73 +2377,6 @@ func (in *TiKVConfig) DeepCopyInto(out *TiKVConfig) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.GrpcConcurrency != nil {
-		in, out := &in.GrpcConcurrency, &out.GrpcConcurrency
-		*out = new(uint)
-		**out = **in
-	}
-	if in.GrpcConcurrentStream != nil {
-		in, out := &in.GrpcConcurrentStream, &out.GrpcConcurrentStream
-		*out = new(uint)
-		**out = **in
-	}
-	if in.GrpcRaftConnNum != nil {
-		in, out := &in.GrpcRaftConnNum, &out.GrpcRaftConnNum
-		*out = new(uint)
-		**out = **in
-	}
-	if in.ConcurrentSendSnapLimit != nil {
-		in, out := &in.ConcurrentSendSnapLimit, &out.ConcurrentSendSnapLimit
-		*out = new(uint)
-		**out = **in
-	}
-	if in.ConcurrentRecvSnapLimit != nil {
-		in, out := &in.ConcurrentRecvSnapLimit, &out.ConcurrentRecvSnapLimit
-		*out = new(uint)
-		**out = **in
-	}
-	if in.EndPointRecursionLimit != nil {
-		in, out := &in.EndPointRecursionLimit, &out.EndPointRecursionLimit
-		*out = new(uint)
-		**out = **in
-	}
-	if in.EndPointStreamChannelSize != nil {
-		in, out := &in.EndPointStreamChannelSize, &out.EndPointStreamChannelSize
-		*out = new(uint)
-		**out = **in
-	}
-	if in.EndPointBatchRowLimit != nil {
-		in, out := &in.EndPointBatchRowLimit, &out.EndPointBatchRowLimit
-		*out = new(uint)
-		**out = **in
-	}
-	if in.EndPointStreamBatchRowLimit != nil {
-		in, out := &in.EndPointStreamBatchRowLimit, &out.EndPointStreamBatchRowLimit
-		*out = new(uint)
-		**out = **in
-	}
-	if in.EndPointEnableBatchIfPossible != nil {
-		in, out := &in.EndPointEnableBatchIfPossible, &out.EndPointEnableBatchIfPossible
-		*out = new(uint)
-		**out = **in
-	}
-	if in.StatsConcurrency != nil {
-		in, out := &in.StatsConcurrency, &out.StatsConcurrency
-		*out = new(uint)
-		**out = **in
-	}
-	if in.HeavyLoadThreshold != nil {
-		in, out := &in.HeavyLoadThreshold, &out.HeavyLoadThreshold
-		*out = new(uint)
-		**out = **in
-	}
-	if in.Labels != nil {
-		in, out := &in.Labels, &out.Labels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
 	if in.Server != nil {
 		in, out := &in.Server, &out.Server
 		*out = new(TiKVServerConfig)
@@ -2988,62 +2921,62 @@ func (in *TiKVServerConfig) DeepCopyInto(out *TiKVServerConfig) {
 	*out = *in
 	if in.GrpcConcurrency != nil {
 		in, out := &in.GrpcConcurrency, &out.GrpcConcurrency
-		*out = new(int64)
+		*out = new(uint)
 		**out = **in
 	}
 	if in.GrpcConcurrentStream != nil {
 		in, out := &in.GrpcConcurrentStream, &out.GrpcConcurrentStream
-		*out = new(int64)
+		*out = new(uint)
 		**out = **in
 	}
 	if in.GrpcRaftConnNum != nil {
 		in, out := &in.GrpcRaftConnNum, &out.GrpcRaftConnNum
-		*out = new(int64)
+		*out = new(uint)
 		**out = **in
 	}
 	if in.ConcurrentSendSnapLimit != nil {
 		in, out := &in.ConcurrentSendSnapLimit, &out.ConcurrentSendSnapLimit
-		*out = new(int64)
+		*out = new(uint)
 		**out = **in
 	}
 	if in.ConcurrentRecvSnapLimit != nil {
 		in, out := &in.ConcurrentRecvSnapLimit, &out.ConcurrentRecvSnapLimit
-		*out = new(int64)
+		*out = new(uint)
 		**out = **in
 	}
 	if in.EndPointRecursionLimit != nil {
 		in, out := &in.EndPointRecursionLimit, &out.EndPointRecursionLimit
-		*out = new(int64)
+		*out = new(uint)
 		**out = **in
 	}
 	if in.EndPointStreamChannelSize != nil {
 		in, out := &in.EndPointStreamChannelSize, &out.EndPointStreamChannelSize
-		*out = new(int64)
+		*out = new(uint)
 		**out = **in
 	}
 	if in.EndPointBatchRowLimit != nil {
 		in, out := &in.EndPointBatchRowLimit, &out.EndPointBatchRowLimit
-		*out = new(int64)
+		*out = new(uint)
 		**out = **in
 	}
 	if in.EndPointStreamBatchRowLimit != nil {
 		in, out := &in.EndPointStreamBatchRowLimit, &out.EndPointStreamBatchRowLimit
-		*out = new(int64)
+		*out = new(uint)
 		**out = **in
 	}
 	if in.EndPointEnableBatchIfPossible != nil {
 		in, out := &in.EndPointEnableBatchIfPossible, &out.EndPointEnableBatchIfPossible
-		*out = new(bool)
+		*out = new(uint)
 		**out = **in
 	}
 	if in.StatsConcurrency != nil {
 		in, out := &in.StatsConcurrency, &out.StatsConcurrency
-		*out = new(int64)
+		*out = new(uint)
 		**out = **in
 	}
 	if in.HeavyLoadThreshold != nil {
 		in, out := &in.HeavyLoadThreshold, &out.HeavyLoadThreshold
-		*out = new(int64)
+		*out = new(uint)
 		**out = **in
 	}
 	if in.Labels != nil {

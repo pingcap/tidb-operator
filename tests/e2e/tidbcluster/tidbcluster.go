@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -648,6 +649,42 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			return true, nil
 		})
 		framework.ExpectNoError(err, "Expected tidbcluster pod restarted")
+	})
+
+	ginkgo.It("should be operable without helm [API]", func() {
+		tc := fixture.GetTidbCluster(ns, "plain-cr", "v2.1.16")
+		err := genericCli.Create(context.TODO(), tc)
+		framework.ExpectNoError(err, "Expected TiDB cluster created")
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.PD.Replicas = 5
+			tc.Spec.TiKV.Replicas = 5
+			tc.Spec.TiDB.Replicas = 4
+			return nil
+		})
+		framework.ExpectNoError(err, "Expected TiDB cluster updated")
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Expected TiDB cluster scaled out and ready")
+
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.Version = "v3.0.7"
+			return nil
+		})
+		framework.ExpectNoError(err, "Expected TiDB cluster updated")
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Expected TiDB cluster upgraded to new version and ready")
+
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.PD.Replicas = 3
+			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiDB.Replicas = 2
+			return nil
+		})
+		framework.ExpectNoError(err, "Expected TiDB cluster updated")
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Expected TiDB cluster scaled in and ready")
 	})
 })
 
