@@ -1870,10 +1870,12 @@ func TestGetTiKVConfigMap(t *testing.T) {
 					TiKV: v1alpha1.TiKVSpec{
 						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
 						Config: &v1alpha1.TiKVConfig{
-							GrpcKeepaliveTimeout: "30s",
 							Raftstore: &v1alpha1.TiKVRaftstoreConfig{
 								SyncLog:              pointer.BoolPtr(false),
 								RaftBaseTickInterval: "1s",
+							},
+							Server: &v1alpha1.TiKVServerConfig{
+								GrpcKeepaliveTimeout: "30s",
 							},
 						},
 					},
@@ -1906,7 +1908,8 @@ func TestGetTiKVConfigMap(t *testing.T) {
 				},
 				Data: map[string]string{
 					"startup-script": "",
-					"config-file": `grpc-keepalive-timeout = "30s"
+					"config-file": `[server]
+  grpc-keepalive-timeout = "30s"
 
 [raftstore]
   sync-log = false
