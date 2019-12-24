@@ -73,10 +73,10 @@ pd:
     [replication]
     location-labels = ["region", "zone", "rack", "host"]
 
-  # services is the service list to expose, default is ClusterIP
-  # can be ClusterIP | NodePort | LoadBalancer
+  # pd Service
+  # we can only specify clusterIP and loadBalancerIP now
   service:
-    type: ClusterIP
+    clusterIP: "None"
 
 
   replicas: 3
