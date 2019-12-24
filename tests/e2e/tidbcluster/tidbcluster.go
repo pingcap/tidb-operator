@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 
 	"github.com/pingcap/tidb-operator/pkg/label"
 
@@ -316,7 +317,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "Expected get TiDB cluster")
 			tc.Spec.TiDB.Service.Type = svcType
-			tc.Spec.TiDB.Service.ExternalTrafficPolicy = trafficPolicy
+			tc.Spec.TiDB.Service.ExternalTrafficPolicy = &trafficPolicy
 			tc.Spec.TiDB.Service.Annotations = map[string]string{
 				"test": "test",
 			}
@@ -355,6 +356,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err)
 	})
 
+	updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
 	// Basic IT for managed in TidbCluster CR
 	// TODO: deploy pump through CR in backup and restore IT
 	ginkgo.It("Pump: Test managing Pump in TidbCluster CRD", func() {
@@ -374,9 +376,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		pullPolicy := corev1.PullIfNotPresent
 		tc.Spec.Pump = &v1alpha1.PumpSpec{
+			BaseImage: "pingcap/tidb-binlog",
 			ComponentSpec: v1alpha1.ComponentSpec{
-				BaseImage:       "pingcap/tidb-binlog",
-				Version:         cluster.ClusterVersion,
+				Version:         &cluster.ClusterVersion,
 				ImagePullPolicy: &pullPolicy,
 				Affinity: &corev1.Affinity{
 					PodAntiAffinity: &corev1.PodAntiAffinity{
@@ -399,11 +401,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 						Value:    "tidb",
 					},
 				},
-				SchedulerName: "default-scheduler",
+				SchedulerName:        pointer.StringPtr("default-scheduler"),
+				ConfigUpdateStrategy: &updateStrategy,
 			},
-			Replicas:             1,
-			ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
-			StorageClassName:     "local-storage",
+			Replicas:         1,
+			StorageClassName: pointer.StringPtr("local-storage"),
 			Resources: v1alpha1.Resources{
 				Requests: &v1alpha1.ResourceRequirement{
 					Storage: "1Gi",
@@ -535,11 +537,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc, err = cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 		tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
-		tc.Spec.TiDB.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
+		tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
 		tc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{}
-		tc.Spec.TiKV.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
+		tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
 		tc.Spec.PD.Config = &v1alpha1.PDConfig{}
-		tc.Spec.PD.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
+		tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
 		_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
 		framework.ExpectNoError(err, "Expected update tidbcluster")
 

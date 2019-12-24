@@ -36,6 +36,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -367,7 +368,8 @@ func TestSyncConfigUpdate(t *testing.T) {
 		tc := newTidbClusterForPump()
 		ns := tc.Namespace
 		tcName := tc.Name
-		tc.Spec.Pump.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
+		updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
+		tc.Spec.Pump.ConfigUpdateStrategy = &updateStrategy
 
 		pmm, controls, indexers := newFakePumpMemberManager()
 
@@ -482,6 +484,7 @@ func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFak
 }
 
 func newTidbClusterForPump() *v1alpha1.TidbCluster {
+	updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
 	return &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
@@ -498,27 +501,26 @@ func newTidbClusterForPump() *v1alpha1.TidbCluster {
 					Image: "pd-test-image",
 				},
 				Replicas:         1,
-				StorageClassName: "my-storage-class",
+				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 			TiKV: v1alpha1.TiKVSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tikv-test-image",
 				},
 				Replicas:         1,
-				StorageClassName: "my-storage-class",
+				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 			TiDB: v1alpha1.TiDBSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tidb-test-image",
 				},
-				Replicas:         1,
-				StorageClassName: "my-storage-class",
+				Replicas: 1,
 			},
 			Pump: &v1alpha1.PumpSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
-					Image: "pump-test-image",
+					Image:                "pump-test-image",
+					ConfigUpdateStrategy: &updateStrategy,
 				},
-				ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
 				GenericConfig: config.New(map[string]interface{}{
 					"gc": 7,
 				}),
@@ -530,7 +532,7 @@ func newTidbClusterForPump() *v1alpha1.TidbCluster {
 						Storage: "100Gi",
 					},
 				},
-				StorageClassName: "my-storage-class",
+				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 		},
 	}
@@ -613,6 +615,7 @@ func TestGetNewPumpHeadlessService(t *testing.T) {
 func TestGetNewPumpConfigMap(t *testing.T) {
 	g := NewGomegaWithT(t)
 
+	updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
 	tests := []struct {
 		name     string
 		tc       v1alpha1.TidbCluster
@@ -627,8 +630,10 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Pump: &v1alpha1.PumpSpec{
-						GenericConfig:        config.New(nil),
-						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ConfigUpdateStrategy: &updateStrategy,
+						},
+						GenericConfig: config.New(nil),
 					},
 				},
 			},
@@ -671,13 +676,15 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Pump: &v1alpha1.PumpSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ConfigUpdateStrategy: &updateStrategy,
+						},
 						GenericConfig: config.New(map[string]interface{}{
 							"gc": 7,
 							"storage": map[string]interface{}{
 								"sync-log": "true",
 							},
 						}),
-						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
 					},
 				},
 			},

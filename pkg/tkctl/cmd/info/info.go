@@ -170,7 +170,7 @@ func renderTidbCluster(tc *v1alpha1.TidbCluster, svc *v1.Service, podList *v1.Po
 				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.PD.Requests.CPU)
 				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.PD.Requests.Memory)
 				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.PD.Requests.Storage)
-				w.Write(readable.LEVEL_0, "%s\t\n", tc.BasePDSpec().Image())
+				w.Write(readable.LEVEL_0, "%s\t\n", tc.PDImage())
 			}
 			w.Write(readable.LEVEL_1, "TiKV:\t")
 			{
@@ -180,7 +180,7 @@ func renderTidbCluster(tc *v1alpha1.TidbCluster, svc *v1.Service, podList *v1.Po
 				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.TiKV.Requests.CPU)
 				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.TiKV.Requests.Memory)
 				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.TiKV.Requests.Storage)
-				w.Write(readable.LEVEL_0, "%s\t\n", tc.BaseTiKVSpec().Image())
+				w.Write(readable.LEVEL_0, "%s\t\n", tc.TiKVImage())
 			}
 			w.Write(readable.LEVEL_1, "TiDB\t")
 			{
@@ -190,7 +190,7 @@ func renderTidbCluster(tc *v1alpha1.TidbCluster, svc *v1.Service, podList *v1.Po
 				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.TiDB.Requests.CPU)
 				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.TiDB.Requests.Memory)
 				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.TiDB.Requests.Storage)
-				w.Write(readable.LEVEL_0, "%s\t\n", tc.BaseTiDBSpec().Image())
+				w.Write(readable.LEVEL_0, "%s\t\n", tc.TiDBImage())
 			}
 		}
 		w.WriteLine(readable.LEVEL_0, "Endpoints(%s):", svc.Spec.Type)

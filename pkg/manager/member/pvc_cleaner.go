@@ -80,7 +80,7 @@ func (rpc *realPVCCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string, e
 		return skipReason, err
 	}
 
-	if !tc.Spec.EnablePVReclaim {
+	if !tc.IsPVReclaimEnabled() {
 		// disable PV reclaim, return directly.
 		return nil, nil
 	}
