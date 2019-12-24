@@ -74,11 +74,13 @@ func AfterReadingAllFlags() error {
 // NewDefaultOperatorConfig creates default operator configuration.
 func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 	return &tests.OperatorConfig{
-		Namespace:      "pingcap",
-		ReleaseName:    "operator",
-		Image:          cfg.OperatorImage,
-		Tag:            cfg.OperatorTag,
-		SchedulerImage: "k8s.gcr.io/kube-scheduler",
+		Namespace:                 "pingcap",
+		ReleaseName:               "operator",
+		Image:                     cfg.OperatorImage,
+		Tag:                       cfg.OperatorTag,
+		ControllerManagerReplicas: 2,
+		SchedulerImage:            "k8s.gcr.io/kube-scheduler",
+		SchedulerReplicas:         2,
 		Features: []string{
 			"StableScheduling=true",
 		},
@@ -88,6 +90,10 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		WebhookConfigName:  "webhook-config",
 		ImagePullPolicy:    v1.PullIfNotPresent,
 		TestMode:           true,
+		WebhookEnabled:     true,
+		StsWebhookEnabled:  true,
+		PodWebhookEnabled:  false,
+		Cabundle:           "",
 	}
 }
 
