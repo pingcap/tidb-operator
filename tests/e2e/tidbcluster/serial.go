@@ -218,7 +218,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				maxReplicaCount, deleteSlots := helper.GetMaxReplicaCountAndDeleteSlots(st.replicas, st.deleteSlots)
 				ginkgo.By(fmt.Sprintf("Waiting for all pods of tidb cluster component %s (sts: %s/%s) are ready (maxReplicaCount: %d, delete slots: %v)", st.component, ns, stsName, maxReplicaCount, deleteSlots.List()))
 				// workaround solution for https://github.com/pingcap/advanced-statefulset/issues/54
-				err = wait.PollImmediate(time.Second, time.Minute*5, func() (bool, error) {
+				err = wait.PollImmediate(time.Second, time.Minute*10, func() (bool, error) {
 					for i := int32(0); i < maxReplicaCount; i++ {
 						pod, err := c.CoreV1().Pods(ns).Get(fmt.Sprintf("%s-%d", stsName, i), metav1.GetOptions{})
 						if err != nil && !apierrors.IsNotFound(err) {
@@ -233,11 +233,14 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 							if !found {
 								return false, nil
 							}
-							return podutil.IsPodReady(pod), nil
+							if !podutil.IsPodReady(pod) {
+								return false, nil
+							}
 						}
 					}
 					return true, nil
 				})
+				framework.ExpectNoError(err)
 
 				ginkgo.By(fmt.Sprintf("Verify delete slots of sts %s/%s is %v", ns, stsName, st.deleteSlots.List()))
 				sts, err = hc.AppsV1().StatefulSets(ns).Get(stsName, metav1.GetOptions{})
