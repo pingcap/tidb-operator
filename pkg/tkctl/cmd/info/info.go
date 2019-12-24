@@ -193,7 +193,7 @@ func renderTidbCluster(tc *v1alpha1.TidbCluster, svc *v1.Service, podList *v1.Po
 			tidbMemory = *mem
 		}
 		if st, ok := tc.Spec.TiDB.Requests[v1.ResourceStorage]; ok {
-			tidbMemory = st
+			tidbStorage = st
 		}
 	}
 	return readable.TabbedString(func(out io.Writer) error {
