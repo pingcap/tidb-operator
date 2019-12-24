@@ -111,9 +111,9 @@ func (tmc *Controller) processNextWorkItem() bool {
 	defer tmc.queue.Done(key)
 	if err := tmc.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
-			klog.Infof("Backup: %v, still need sync: %v, requeuing", key.(string), err)
+			klog.Infof("TidbMonitor: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("Backup: %v, sync failed, err: %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("TidbMonitor: %v, sync failed, err: %v, requeuing", key.(string), err))
 		}
 		tmc.queue.AddRateLimited(key)
 	} else {
@@ -125,7 +125,7 @@ func (tmc *Controller) processNextWorkItem() bool {
 func (tmc *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
-		klog.V(4).Infof("Finished syncing Backup %q (%v)", key, time.Since(startTime))
+		klog.V(4).Infof("Finished syncing TidbMonitor %q (%v)", key, time.Since(startTime))
 	}()
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
@@ -134,7 +134,7 @@ func (tmc *Controller) sync(key string) error {
 	}
 	tm, err := tmc.tmLister.TidbMonitors(ns).Get(name)
 	if errors.IsNotFound(err) {
-		klog.Infof("Backup has been deleted %v", key)
+		klog.Infof("TidbMonitor has been deleted %v", key)
 		return nil
 	}
 	if err != nil {

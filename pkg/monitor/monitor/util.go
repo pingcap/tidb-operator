@@ -19,6 +19,15 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
-func getMonitorConfigMapName(monitor *v1alpha1.TidbMonitor) string {
+func getMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
+}
+
+func getMonitorTargetRegex(monitor *v1alpha1.TidbMonitor) string {
+	clusters := monitor.Spec.Clusters
+	regex := clusters[0].Name
+	for _, cluster := range clusters[1:] {
+		regex = fmt.Sprintf("%s|%s", regex, cluster.Name)
+	}
+	return regex
 }

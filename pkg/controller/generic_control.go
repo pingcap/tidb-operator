@@ -35,8 +35,14 @@ import (
 
 // GenericControlInterface is a wrapper to manage typed object that managed by an arbitrary controller
 type TypedControlInterface interface {
+	// CreateOrUpdateSecret create the desired secret or update the current one to desired state if already existed
+	CreateOrUpdateSecret(controller runtime.Object, secret *corev1.Secret) (*corev1.Secret, error)
 	// CreateOrUpdateConfigMap create the desired configmap or update the current one to desired state if already existed
 	CreateOrUpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
+	// CreateOrUpdateClusterRole the desired clusterRole or update the current one to desired state if already existed
+	CreateOrUpdateClusterRole(controller runtime.Object, clusterRole *rbacv1.ClusterRole) (*rbacv1.ClusterRole, error)
+	// CreateOrUpdateClusterRoleBinding create the desired clusterRoleBinding or update the current one to desired state if already existed
+	CreateOrUpdateClusterRoleBinding(controller runtime.Object, crb *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error)
 	// CreateOrUpdateRole create the desired role or update the current one to desired state if already existed
 	CreateOrUpdateRole(controller runtime.Object, role *rbacv1.Role) (*rbacv1.Role, error)
 	// CreateOrUpdateRoleBinding create the desired rolebinding or update the current one to desired state if already existed
@@ -52,7 +58,6 @@ type TypedControlInterface interface {
 	// Delete delete the given object from the cluster
 	Delete(controller, obj runtime.Object) error
 }
-
 type typedWrapper struct {
 	GenericControlInterface
 }
@@ -60,6 +65,55 @@ type typedWrapper struct {
 // NewTypedControl wraps a GenericControlInterface to a TypedControlInterface
 func NewTypedControl(control GenericControlInterface) TypedControlInterface {
 	return &typedWrapper{control}
+}
+
+func (w *typedWrapper) CreateOrUpdateClusterRoleBinding(controller runtime.Object, crb *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, crb, func(existing, desired runtime.Object) error {
+		existingCRB := existing.(*rbacv1.ClusterRoleBinding)
+		desiredCRB := desired.(*rbacv1.ClusterRoleBinding)
+
+		existingCRB.Labels = desiredCRB.Labels
+		existingCRB.RoleRef = desiredCRB.RoleRef
+		existingCRB.Subjects = desiredCRB.Subjects
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*rbacv1.ClusterRoleBinding), err
+}
+
+func (w *typedWrapper) CreateOrUpdateClusterRole(controller runtime.Object, clusterRole *rbacv1.ClusterRole) (*rbacv1.ClusterRole, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, clusterRole, func(existing, desired runtime.Object) error {
+		existingCRole := existing.(*rbacv1.ClusterRole)
+		desiredCRole := desired.(*rbacv1.ClusterRole)
+
+		existingCRole.Labels = desiredCRole.Labels
+		existingCRole.Rules = desiredCRole.Rules
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*rbacv1.ClusterRole), err
+}
+
+func (w *typedWrapper) CreateOrUpdateSecret(controller runtime.Object, secret *corev1.Secret) (*corev1.Secret, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, secret, func(existing, desired runtime.Object) error {
+		existingSecret := existing.(*corev1.Secret)
+		desiredSecret := desired.(*corev1.Secret)
+
+		existingSecret.Data = desiredSecret.Data
+		existingSecret.Labels = desiredSecret.Labels
+		for k, v := range desiredSecret.Annotations {
+			existingSecret.Annotations[k] = v
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*corev1.Secret), nil
 }
 
 func (w *typedWrapper) Delete(controller, obj runtime.Object) error {

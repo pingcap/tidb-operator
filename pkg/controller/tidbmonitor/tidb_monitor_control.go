@@ -48,9 +48,6 @@ func (tmc *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMoni
 	if apiequality.Semantic.DeepEqual(&tm.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
-	if _, err := tmc.tmControl.UpdateTidbCluster(tm.DeepCopy(), &tm.Status, oldStatus); err != nil {
-		errs = append(errs, err)
-	}
 	// TODO: implementation
 	return errors.NewAggregate(errs)
 }
