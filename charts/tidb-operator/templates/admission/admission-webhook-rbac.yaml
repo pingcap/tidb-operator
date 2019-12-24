@@ -40,7 +40,7 @@ rules:
     resources: ["statefulsets"]
     verbs: ["*"]
   - apiGroups: ["admissionregistration.k8s.io"]
-    resources: ["validatingWebhookConfigurations"]
+    resources: ["validatingwebhookconfigurations"]
     verbs: ["delete"]
 
 ---

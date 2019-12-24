@@ -20,7 +20,7 @@ spec:
     metadata:
       name: webhook-del
     spec:
-      restartPolicy: OnFailure
+      restartPolicy: Never
       serviceAccountName: {{ .Values.admissionWebhook.serviceAccount }}
       containers:
         - name: "{{.Release.Name}}-job-del"
@@ -31,5 +31,5 @@ spec:
             - "-c"
             - |
               set -e
-              kubectl delete validatingWebhookConfigurations.admissionregistration.k8s.io validation-delete-tidb-admission-webhook-cfg
+              kubectl delete validatingWebhookConfigurations.admissionregistration.k8s.io validation-delete-tidb-admission-webhook-cfg || true
 {{- end }}
