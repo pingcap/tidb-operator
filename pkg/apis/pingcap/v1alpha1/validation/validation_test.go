@@ -1,0 +1,120 @@
+// Copyright 2019 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License a
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package validation
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+)
+
+func TestValidateTidbCluster(t *testing.T) {
+	successCases := []struct {
+		name string
+		tc   v1alpha1.TidbCluster
+	}{
+		{
+			name: "all-fields-valid",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test",
+					Annotations: map[string]string{
+						label.AnnTiKVDeleteSlots: "[1,2]",
+					},
+				},
+			},
+		},
+		{
+			name: "no delete slots",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "test",
+					Annotations: map[string]string{},
+				},
+			},
+		},
+	}
+
+	for _, v := range successCases {
+		if errs := ValidateTidbCluster(&v.tc); len(errs) != 0 {
+			t.Errorf("[%s]: unexpected error: %v", v.name, errs)
+		}
+	}
+
+	errorCases := []struct {
+		name string
+		tc   v1alpha1.TidbCluster
+		errs []field.Error
+	}{
+		{
+			name: "delete slots empty string",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test",
+					Annotations: map[string]string{
+						label.AnnTiKVDeleteSlots: "",
+					},
+				},
+			},
+			errs: []field.Error{
+				{
+					Type:   field.ErrorTypeInvalid,
+					Detail: `value of "tikv.tidb.pingcap.com/delete-slots" annotation must be a JSON list of integer`,
+				},
+			},
+		},
+		{
+			name: "delete slots invalid format",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test",
+					Annotations: map[string]string{
+						label.AnnTiDBDeleteSlots: "1,2,3",
+					},
+				},
+			},
+			errs: []field.Error{
+				{
+					Type:   field.ErrorTypeInvalid,
+					Detail: `value of "tidb.tidb.pingcap.com/delete-slots" annotation must be a JSON list of integer`,
+				},
+			},
+		},
+	}
+
+	for _, v := range errorCases {
+		errs := ValidateTidbCluster(&v.tc)
+		if len(errs) != len(v.errs) {
+			t.Errorf("[%s]: expected %d failures, got %d failures: %v", v.name, len(v.errs), len(errs), errs)
+			continue
+		}
+		for i := range errs {
+			if errs[i].Type != v.errs[i].Type {
+				t.Errorf("[%s]: expected error type %q, got %q", v.name, v.errs[i].Type, errs[i].Type)
+			}
+			if !strings.Contains(errs[i].Detail, v.errs[i].Detail) {
+				t.Errorf("[%s]: expected error errs[i].Detail %q, got %q", v.name, v.errs[i].Detail, errs[i].Detail)
+			}
+			if len(v.errs[i].Field) > 0 {
+				if errs[i].Field != v.errs[i].Field {
+					t.Errorf("[%s]: expected error field %q, got %q", v.name, v.errs[i].Field, errs[i].Field)
+				}
+			}
+		}
+	}
+}

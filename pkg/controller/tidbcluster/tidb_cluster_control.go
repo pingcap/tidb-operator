@@ -15,12 +15,15 @@ package tidbcluster
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/klog"
 )
 
 // ControlInterface implements the control logic for updating TidbClusters and their children StatefulSets.
@@ -79,6 +82,10 @@ type defaultTidbClusterControl struct {
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
 func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) error {
+	if !tcc.validate(tc) {
+		return nil // fatal error, no need to retry on invalid object
+	}
+
 	var errs []error
 	oldStatus := tc.Status.DeepCopy()
 
@@ -93,6 +100,17 @@ func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster
 	}
 
 	return errorutils.NewAggregate(errs)
+}
+
+func (tcc *defaultTidbClusterControl) validate(tc *v1alpha1.TidbCluster) bool {
+	errs := v1alpha1validation.ValidateTidbCluster(tc)
+	if len(errs) > 0 {
+		aggregatedErr := errs.ToAggregate()
+		klog.Errorf("tidb cluster %s/%s is not valid and must be fixed first, aggregated error: %v", tc.GetNamespace(), tc.GetName(), aggregatedErr)
+		tcc.recorder.Event(tc, v1.EventTypeWarning, "FailedValidation", aggregatedErr.Error())
+		return false
+	}
+	return true
 }
 
 func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) error {
