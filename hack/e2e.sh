@@ -31,6 +31,8 @@ Environments:
     KUBE_VERSION        the version of Kubernetes to test against
     KUBE_WORKERS        the number of worker nodes (excludes master nodes), defaults: 3
     DOCKER_IO_MIRROR    configure mirror for docker.io
+    GCR_IO_MIRROR       configure mirror for gcr.io
+    QUAY_IO_MIRROR      configure mirror for quay.io
     KIND_DATA_HOSTPATH  (for kind) the host path of data directory for kind cluster, defaults: none
     GINKGO_NODES        ginkgo nodes to run specs, defaults: 1
     GINKGO_PARALLEL     if set to `y`, will run specs in parallel, the number of nodes will be the number of cpus
@@ -186,13 +188,29 @@ EOF
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 EOF
-    if [ -n "$DOCKER_IO_MIRROR" ]; then
+    if [ -n "$DOCKER_IO_MIRROR" -o -n "$GCR_IO_MIRROR" -o -n "$QUAY_IO_MIRROR" ]; then
 cat <<EOF >> $tmpfile
 containerdConfigPatches:
 - |-
+EOF
+        if [ -n "$DOCKER_IO_MIRROR" ]; then
+cat <<EOF >> $tmpfile
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
     endpoint = ["$DOCKER_IO_MIRROR"]
 EOF
+        fi
+        if [ -n "$GCR_IO_MIRROR" ]; then
+cat <<EOF >> $tmpfile
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gcr.io"]
+    endpoint = ["$GCR_IO_MIRROR"]
+EOF
+        fi
+        if [ -n "$QUAY_IO_MIRROR" ]; then
+cat <<EOF >> $tmpfile
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."quay.io"]
+    endpoint = ["$QUAY_IO_MIRROR"]
+EOF
+        fi
     fi
     # control-plane
     cat <<EOF >> $tmpfile
