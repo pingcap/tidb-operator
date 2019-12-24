@@ -17,6 +17,7 @@ def getChangeLogText() {
 def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 
 	def GITHASH
+	def CODECOV_TOKEN
 	def UCLOUD_OSS_URL = "http://pingcap-dev.hk.ufileos.com"
 	def BUILD_URL = "git@github.com:pingcap/tidb-operator.git"
 	def PROJECT_DIR = "go/src/github.com/pingcap/tidb-operator"
@@ -44,25 +45,29 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 
 						GITHASH = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
 						withCredentials([string(credentialsId: "${CODECOV_CREDENTIALS_ID}", variable: 'codecovToken')]) {
-							sh """
-							export GOPATH=${WORKSPACE}/go
-							export PATH=${WORKSPACE}/go/bin:\$PATH
-							if ! hash hg 2>/dev/null; then
-								sudo yum install -y mercurial
-							fi
-							hg --version
-							make check-setup
-							make check
-							if [ ${BUILD_BRANCH} == "master" ]
-							then
-								make test GO_COVER=y
-								curl -s https://codecov.io/bash | bash -s - -t ${codecovToken} || echo'Codecov did not collect coverage reports'
-							else
-								make test
-							fi
-							make
-							make e2e-build
-							"""
+							CODECOV_TOKEN = codecovToken
+						}
+
+						ansiColor('xterm') {
+						sh """
+						export GOPATH=${WORKSPACE}/go
+						export PATH=${WORKSPACE}/go/bin:\$PATH
+						if ! hash hg 2>/dev/null; then
+							sudo yum install -y mercurial
+						fi
+						hg --version
+						make check-setup
+						make check
+						if [ ${BUILD_BRANCH} == "master" ]
+						then
+							make test GO_COVER=y
+							curl -s https://codecov.io/bash | bash -s - -t ${CODECOV_TOKEN} || echo'Codecov did not collect coverage reports'
+						else
+							make test
+						fi
+						make
+						make e2e-build
+						"""
 						}
 					}
 				}
@@ -164,9 +169,9 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 	stage('Summary') {
 		def CHANGELOG = getChangeLogText()
 		def duration = ((System.currentTimeMillis() - currentBuild.startTimeInMillis) / 1000 / 60).setScale(2, BigDecimal.ROUND_HALF_UP)
-		def slackmsg = "[#${ghprbPullId}: ${ghprbPullTitle}]" + "\n" +
-		"${ghprbPullLink}" + "\n" +
-		"${ghprbPullDescription}" + "\n" +
+		def slackmsg = "[#${env.ghprbPullId}: ${env.ghprbPullTitle}]" + "\n" +
+		"${env.ghprbPullLink}" + "\n" +
+		"${env.ghprbPullDescription}" + "\n" +
 		"Integration Common Test Result: `${currentBuild.result}`" + "\n" +
 		"Elapsed Time: `${duration} mins` " + "\n" +
 		"${CHANGELOG}" + "\n" +

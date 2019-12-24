@@ -136,6 +136,6 @@ func (tc *TidbClusterConfig) BuildSubValues(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	glog.Infof("subValues:\n %s", subValues)
+	glog.V(4).Infof("subValues:\n %s", subValues)
 	return subVaulesPath, nil
 }
