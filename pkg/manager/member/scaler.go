@@ -114,90 +114,44 @@ func ordinalPodName(memberType v1alpha1.MemberType, tcName string, ordinal int32
 	return fmt.Sprintf("%s-%s-%d", tcName, memberType, ordinal)
 }
 
-func validateScaling(actual *apps.StatefulSet, desired *apps.StatefulSet) error {
-	if !features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
-		return nil
-	}
-	// Following cases are not supported yet.
-	// TODO support it or validate in validation phase
+// scaleOne calculates desired replicas and delete slots from actual/desired
+// stateful sets by allowing only one pod to be deleted or created
+// it returns following values:
+// - scaling:
+//   - 0: no scaling required
+//   - 1: scaling out
+//   - -1: scaling in
+// - ordinal: pod ordinal to create or delete
+// - replicas/deleteSlots: desired replicas and deleteSlots by allowing only one pod to be deleted or created
+func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (scaling int, ordinal int32, replicas int32, deleteSlots sets.Int) {
+	actualDesiredPodOrdinals := helper.GetDesiredPodOrdinals(int(*actual.Spec.Replicas), actual)
+	desiredDesiredPodOrdinals := helper.GetDesiredPodOrdinals(int(*desired.Spec.Replicas), desired)
+	additions := desiredDesiredPodOrdinals.Difference(actualDesiredPodOrdinals)
+	deletions := actualDesiredPodOrdinals.Difference(desiredDesiredPodOrdinals)
+	scaling = 0
+	ordinal = -1
+	replicas = *actual.Spec.Replicas
 	actualDeleteSlots := helper.GetDeleteSlots(actual)
 	desiredDeleteSlots := helper.GetDeleteSlots(desired)
-	if *actual.Spec.Replicas == *desired.Spec.Replicas {
-		// no scaling
-		if actualDeleteSlots.Equal(desiredDeleteSlots) {
-			return nil
+	if additions.Len() > 0 {
+		// we always do scaling out before scaling in to maintain maximum avaiability
+		scaling = 1
+		ordinal = int32(additions.List()[0])
+		replicas = *actual.Spec.Replicas + 1
+		if !desiredDeleteSlots.Has(int(ordinal)) {
+			// not in desired delete slots, remote it from actual delete slots
+			actualDeleteSlots.Delete(int(ordinal))
 		}
-	} else if *actual.Spec.Replicas > *desired.Spec.Replicas {
-		// scaling in
-		if actualDeleteSlots.Equal(desiredDeleteSlots) || desiredDeleteSlots.IsSuperset(actualDeleteSlots) {
-			return nil
-		}
-	} else {
-		// scaling out
-		if actualDeleteSlots.Equal(desiredDeleteSlots) || actualDeleteSlots.IsSuperset(desiredDeleteSlots) {
-			return nil
+	} else if deletions.Len() > 0 {
+		scaling = -1
+		deletionsList := deletions.List()
+		ordinal = int32(deletionsList[len(deletionsList)-1])
+		replicas = *actual.Spec.Replicas - 1
+		if desiredDeleteSlots.Has(int(ordinal)) {
+			// in desired delete slots, add it in actual delete slots
+			actualDeleteSlots.Insert(int(ordinal))
 		}
 	}
-	return fmt.Errorf("unsupported scaling operation for sts %s/%s (actual: %d, %v; desired: %d, %v)", actual.Namespace, actual.Name,
-		*actual.Spec.Replicas, actualDeleteSlots.List(),
-		*desired.Spec.Replicas, desiredDeleteSlots.List(),
-	)
-}
-
-// return the last ordinal in the list, -1 if the list is empty
-func lastOrdinalInList(list []int) int {
-	if len(list) == 0 {
-		return -1
-	}
-	return list[len(list)-1]
-}
-
-// scaleOne scales actual set to desired set by deleting or creating a replica
-func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (int32, int32, sets.Int, error) {
-	if *actual.Spec.Replicas == *desired.Spec.Replicas {
-		return -1, -1, nil, fmt.Errorf("unsupported scaling operation for set %s/%s, actual (replicas: %d), desired (replicas: %d)",
-			actual.Namespace, actual.Name, *actual.Spec.Replicas, *desired.Spec.Replicas)
-	}
-	if *desired.Spec.Replicas > *actual.Spec.Replicas {
-		// scale out by one
-		if !features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
-			return *actual.Spec.Replicas, *actual.Spec.Replicas + 1, nil, nil
-		}
-		actualDeleteSlots := helper.GetDeleteSlots(actual)
-		desiredDeleteSlots := helper.GetDeleteSlots(desired)
-		if desiredDeleteSlots.Len()-actualDeleteSlots.Len() < 0 {
-			slotList := actualDeleteSlots.Difference(desiredDeleteSlots).List()
-			slot := slotList[0]
-			actualDeleteSlots.Delete(slot)
-			return int32(slot), *actual.Spec.Replicas + 1, actualDeleteSlots, nil
-		} else if !desiredDeleteSlots.Equal(desiredDeleteSlots) {
-			// unreachable because this is prohibited by validateScaling
-			return -1, -1, nil, fmt.Errorf("unsupported scaling operation for set %s/%s, actual (replicas: %d, delete slots: %v), desired (replicas: %d, delete slots: %v)", actual.Namespace, actual.Name, *actual.Spec.Replicas, actualDeleteSlots, *desired.Spec.Replicas, desiredDeleteSlots)
-		}
-		// actualDeleteSlots equals to desiredDeleteSlots
-		ordinalList := helper.GetDesiredPodOrdinals(int(*actual.Spec.Replicas), actual).List()
-		return int32(lastOrdinalInList(ordinalList)) + 1, *actual.Spec.Replicas + 1, actualDeleteSlots, nil
-	}
-	// scale in by one
-	if !features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
-		return *actual.Spec.Replicas - 1, *actual.Spec.Replicas - 1, nil, nil
-	}
-	actualDeleteSlots := helper.GetDeleteSlots(actual)
-	desiredDeleteSlots := helper.GetDeleteSlots(desired)
-	if desiredDeleteSlots.Len()-actualDeleteSlots.Len() > 0 {
-		slotList := desiredDeleteSlots.Difference(actualDeleteSlots).List()
-		slot := slotList[len(slotList)-1]
-		if !helper.GetDesiredPodOrdinals(int(*actual.Spec.Replicas), actual).Has(slot) {
-			// unreachable because this is prohibited by validateScaling
-			return -1, -1, nil, fmt.Errorf("unsupported scaling operation for set %s/%s, actual (replicas: %d, delete slots: %v), desired (replicas: %d, delete slots: %v)", actual.Namespace, actual.Name, *actual.Spec.Replicas, actualDeleteSlots, *desired.Spec.Replicas, desiredDeleteSlots)
-		}
-		actualDeleteSlots.Insert(slot)
-		return int32(slot), *actual.Spec.Replicas - 1, actualDeleteSlots, nil
-	} else if !desiredDeleteSlots.Equal(desiredDeleteSlots) {
-		// unreachable because this is prohibited by validateScaling
-		return -1, -1, nil, fmt.Errorf("unsupported scaling operation for set %s/%s, actual (replicas: %d, delete slots: %v), desired (replicas: %d, delete slots: %v)", actual.Namespace, actual.Name, *actual.Spec.Replicas, actualDeleteSlots, *desired.Spec.Replicas, desiredDeleteSlots)
-	}
-	// actualDeleteSlots equals to desiredDeleteSlots
-	ordinalList := helper.GetDesiredPodOrdinals(int(*actual.Spec.Replicas), actual).List()
-	return int32(ordinalList[len(ordinalList)-1]), *actual.Spec.Replicas - 1, actualDeleteSlots, nil
+	deleteSlots = actualDeleteSlots
+	return
 }

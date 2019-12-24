@@ -148,6 +148,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					deleteSlots: sets.NewInt(1),
 				},
 				{
+					name:        "Scaling tikv by adding pod 1 and deleting pod 2",
+					component:   "tikv",
+					replicas:    4,
+					deleteSlots: sets.NewInt(2),
+				},
+				{
 					name:        "Scaling in tidb from 3 to 2 by deleting pod 1",
 					component:   "tidb",
 					replicas:    2,

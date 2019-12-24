@@ -40,9 +40,6 @@ func NewPDScaler(pdControl pdapi.PDControlInterface,
 }
 
 func (psd *pdScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	if err := validateScaling(oldSet, newSet); err != nil {
-		return err
-	}
 	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
 		return psd.ScaleOut(tc, oldSet, newSet)
 	} else if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
@@ -52,10 +49,7 @@ func (psd *pdScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, n
 }
 
 func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	ordinal, replicas, deleteSlots, err := scaleOne(oldSet, newSet)
-	if err != nil {
-		return err
-	}
+	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
@@ -64,7 +58,7 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 	}
 
 	glog.Infof("scaling out pd statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	_, err = psd.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.PDMemberType, ordinal)
+	_, err := psd.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.PDMemberType, ordinal)
 	if err != nil {
 		return err
 	}
@@ -101,10 +95,7 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	ordinal, replicas, deleteSlots, err := scaleOne(oldSet, newSet)
-	if err != nil {
-		return err
-	}
+	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
 	memberName := fmt.Sprintf("%s-pd-%d", tc.GetName(), ordinal)
 	setName := oldSet.GetName()
@@ -137,7 +128,7 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		}
 	}
 
-	err = pdClient.DeleteMember(memberName)
+	err := pdClient.DeleteMember(memberName)
 	if err != nil {
 		glog.Errorf("pd scale in: failed to delete member %s, %v", memberName, err)
 		return err

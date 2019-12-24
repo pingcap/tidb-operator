@@ -42,29 +42,24 @@ func NewTiKVScaler(pdControl pdapi.PDControlInterface,
 }
 
 func (tsd *tikvScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	if err := validateScaling(oldSet, newSet); err != nil {
-		return err
-	}
-	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
+	scaling, _, _, _ := scaleOne(oldSet, newSet)
+	if scaling > 0 {
 		return tsd.ScaleOut(tc, oldSet, newSet)
-	} else if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
+	} else if scaling < 0 {
 		return tsd.ScaleIn(tc, oldSet, newSet)
 	}
 	return nil
 }
 
 func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	ordinal, replicas, deleteSlots, err := scaleOne(oldSet, newSet)
-	if err != nil {
-		return err
-	}
+	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
 	if tc.TiKVUpgrading() {
 		return nil
 	}
 
 	glog.Infof("scaling out tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	_, err = tsd.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiKVMemberType, ordinal)
+	_, err := tsd.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiKVMemberType, ordinal)
 	if err != nil {
 		return err
 	}
@@ -77,10 +72,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	// we can only remove one member at a time when scaling in
-	ordinal, replicas, deleteSlots, err := scaleOne(oldSet, newSet)
-	if err != nil {
-		return err
-	}
+	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
 	setName := oldSet.GetName()
 
