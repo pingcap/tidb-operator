@@ -40,9 +40,10 @@ func NewPDScaler(pdControl pdapi.PDControlInterface,
 }
 
 func (psd *pdScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
+	scaling, _, _, _ := scaleOne(oldSet, newSet)
+	if scaling > 0 {
 		return psd.ScaleOut(tc, oldSet, newSet)
-	} else if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
+	} else if scaling < 0 {
 		return psd.ScaleIn(tc, oldSet, newSet)
 	}
 	return nil
