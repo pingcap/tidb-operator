@@ -1034,6 +1034,16 @@ spec:
                   type: integer
                 storageClassName:
                   type: string
+                service:
+                  description: pd service
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      type:
+                        type: string
+                    type: object
+                  type: array
               required:
               - replicas
               type: object
