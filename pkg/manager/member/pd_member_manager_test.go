@@ -31,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -124,22 +125,6 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			pdSvcCreated:               true,
 			pdPeerSvcCreated:           true,
 			setCreated:                 true,
-		},
-		{
-			name: "tidbcluster's storage format is wrong",
-			prepare: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PD.Requests.Storage = "100xxxxi"
-			},
-			errWhenCreateStatefulSet:   false,
-			errWhenCreatePDService:     false,
-			errWhenCreatePDPeerService: false,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "cant' get storage size: 100xxxxi for TidbCluster: default/test")).To(BeTrue())
-			},
-			pdSvcCreated:     true,
-			pdPeerSvcCreated: true,
-			setCreated:       false,
 		},
 		{
 			name:                       "error when create statefulset",
@@ -338,24 +323,6 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(tc.Status.PD.Members["pd2"].Health).To(Equal(true))
 				g.Expect(tc.Status.PD.Members["pd3"].Health).To(Equal(false))
 			},
-		},
-		{
-			name: "tidbcluster's storage format is wrong",
-			modify: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PD.Requests.Storage = "100xxxxi"
-			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
-				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
-				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
-			}},
-			errWhenUpdateStatefulSet:   false,
-			errWhenUpdatePDService:     false,
-			errWhenUpdatePDPeerService: false,
-			err:                        true,
-			expectPDServiceFn:          nil,
-			expectPDPeerServiceFn:      nil,
-			expectStatefulSetFn:        nil,
 		},
 		{
 			name: "error when update pd service",
@@ -828,11 +795,11 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "pd-test-image",
 				},
-				Resources: v1alpha1.Resources{
-					Requests: &v1alpha1.ResourceRequirement{
-						CPU:     "1",
-						Memory:  "2Gi",
-						Storage: "100Gi",
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:     resource.MustParse("1"),
+						corev1.ResourceMemory:  resource.MustParse("2Gi"),
+						corev1.ResourceStorage: resource.MustParse("100Gi"),
 					},
 				},
 				Replicas:         3,
@@ -842,11 +809,11 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tikv-test-image",
 				},
-				Resources: v1alpha1.Resources{
-					Requests: &v1alpha1.ResourceRequirement{
-						CPU:     "1",
-						Memory:  "2Gi",
-						Storage: "100Gi",
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:     resource.MustParse("1"),
+						corev1.ResourceMemory:  resource.MustParse("2Gi"),
+						corev1.ResourceStorage: resource.MustParse("100Gi"),
 					},
 				},
 				Replicas:         3,
@@ -1020,6 +987,54 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 			},
 			testSts: testHostNetwork(t, false, ""),
 		},
+		{
+			name: "PD should respect resources config",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ResourceRequirements: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:              resource.MustParse("1"),
+								corev1.ResourceMemory:           resource.MustParse("2Gi"),
+								corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+								corev1.ResourceStorage:          resource.MustParse("100Gi"),
+							},
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:              resource.MustParse("1"),
+								corev1.ResourceMemory:           resource.MustParse("2Gi"),
+								corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+							},
+						},
+					},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.Resources).To(Equal(corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("100Gi"),
+					},
+				}))
+				nameToContainer := MapContainers(&sts.Spec.Template.Spec)
+				pdContainer := nameToContainer[v1alpha1.PDMemberType.String()]
+				g.Expect(pdContainer.Resources).To(Equal(corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("2Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("2Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+					},
+				}))
+			},
+		},
 		// TODO add more tests
 	}
 
@@ -1027,7 +1042,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sts, err := getNewPDSetForTidbCluster(&tt.tc, nil)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("error %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("error %v, wantErr %v", err, tt.wantErr)
 			}
 			tt.testSts(sts)
 		})

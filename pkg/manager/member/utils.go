@@ -280,3 +280,12 @@ func getStsAnnotations(tc *v1alpha1.TidbCluster, component string) map[string]st
 	}
 	return anns
 }
+
+// MapContainers index containers of Pod by container name in favor of looking up
+func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
+	m := map[string]corev1.Container{}
+	for _, c := range podSpec.Containers {
+		m[c.Name] = c
+	}
+	return m
+}

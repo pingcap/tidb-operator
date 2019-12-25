@@ -22,7 +22,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -192,14 +191,13 @@ func GetServiceType(services []v1alpha1.Service, serviceName string) corev1.Serv
 // https://github.com/tikv/tikv/blob/v3.0.3/components/tikv_util/src/config.rs#L155-L168
 // For backward compatibility with old TiKV versions, we should use GB/MB
 // rather than GiB/MiB, see https://github.com/tikv/tikv/blob/v2.1.16/src/util/config.rs#L359.
-func TiKVCapacity(limits *v1alpha1.ResourceRequirement) string {
+func TiKVCapacity(limits corev1.ResourceList) string {
 	defaultArgs := "0"
-	if limits == nil || limits.Storage == "" {
+	if limits == nil {
 		return defaultArgs
 	}
-	q, err := resource.ParseQuantity(limits.Storage)
-	if err != nil {
-		glog.Errorf("failed to parse quantity %s: %v", limits.Storage, err)
+	q, ok := limits[corev1.ResourceStorage]
+	if !ok {
 		return defaultArgs
 	}
 	i, b := q.AsInt64()
@@ -268,20 +266,30 @@ func AnnProm(port int32) map[string]string {
 	}
 }
 
-func ParseStorageRequest(req *v1alpha1.ResourceRequirement) (*corev1.ResourceRequirements, error) {
+func ParseStorageRequest(req corev1.ResourceList) (corev1.ResourceRequirements, error) {
 	if req == nil {
-		return nil, fmt.Errorf("storage request is nil")
+		return corev1.ResourceRequirements{}, nil
 	}
-	size := req.Storage
-	q, err := resource.ParseQuantity(size)
-	if err != nil {
-		return nil, fmt.Errorf("cant' parse storage size: %s", size)
+	q, ok := req[corev1.ResourceStorage]
+	if !ok {
+		return corev1.ResourceRequirements{}, fmt.Errorf("storage request is not set")
 	}
-	return &corev1.ResourceRequirements{
+	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceStorage: q,
 		},
 	}, nil
+}
+
+func ContainerResource(req corev1.ResourceRequirements) corev1.ResourceRequirements {
+	trimmed := req.DeepCopy()
+	if trimmed.Limits != nil {
+		delete(trimmed.Limits, corev1.ResourceStorage)
+	}
+	if trimmed.Requests != nil {
+		delete(trimmed.Requests, corev1.ResourceStorage)
+	}
+	return *trimmed
 }
 
 // MemberConfigMapName returns the default ConfigMap name of the specified member type
