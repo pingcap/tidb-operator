@@ -1029,9 +1029,19 @@ spec:
                   type: object
                 configUpdateStrategy:
                   type: string
+                limits:
+                  description: 'Limits describes the maximum amount of compute resources
+                    allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 replicas:
                   format: int32
                   type: integer
+                requests:
+                  description: 'Requests describes the minimum amount of compute resources
+                    required. If Requests is omitted for a container, it defaults
+                    to Limits if that is explicitly specified, otherwise to an implementation-defined
+                    value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 storageClassName:
                   type: string
               required:
@@ -1048,9 +1058,19 @@ spec:
                     change, change this field without actually changing the configuration
                     will not trigger rolling-update
                   type: string
+                limits:
+                  description: 'Limits describes the maximum amount of compute resources
+                    allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 replicas:
                   format: int32
                   type: integer
+                requests:
+                  description: 'Requests describes the minimum amount of compute resources
+                    required. If Requests is omitted for a container, it defaults
+                    to Limits if that is explicitly specified, otherwise to an implementation-defined
+                    value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 storageClassName:
                   type: string
               required:
@@ -1455,6 +1475,10 @@ spec:
                   type: string
                 enableTLSClient:
                   type: boolean
+                limits:
+                  description: 'Limits describes the maximum amount of compute resources
+                    allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 maxFailoverCount:
                   format: int32
                   type: integer
@@ -1467,6 +1491,12 @@ spec:
                 replicas:
                   format: int32
                   type: integer
+                requests:
+                  description: 'Requests describes the minimum amount of compute resources
+                    required. If Requests is omitted for a container, it defaults
+                    to Limits if that is explicitly specified, otherwise to an implementation-defined
+                    value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 separateSlowLog:
                   type: boolean
                 storageClassName:
@@ -1480,16 +1510,6 @@ spec:
                 config:
                   description: TiKVConfig is the configuration of TiKV.
                   properties:
-                    addr:
-                      type: string
-                    advertise-addr:
-                      type: string
-                    concurrent-recv-snap-limit:
-                      format: int32
-                      type: integer
-                    concurrent-send-snap-limit:
-                      format: int32
-                      type: integer
                     coprocessor:
                       description: TiKVCoprocessorConfig is the configuration of TiKV
                         Coprocessor component.
@@ -1535,23 +1555,6 @@ spec:
                             will be a large number of tables created. optional
                           type: boolean
                       type: object
-                    end-point-batch-row-limit:
-                      format: int32
-                      type: integer
-                    end-point-enable-batch-if-possible:
-                      format: int32
-                      type: integer
-                    end-point-recursion-limit:
-                      format: int32
-                      type: integer
-                    end-point-request-max-handle-duration:
-                      type: string
-                    end-point-stream-batch-row-limit:
-                      format: int32
-                      type: integer
-                    end-point-stream-channel-size:
-                      format: int32
-                      type: integer
                     gc:
                       properties:
                         "\tbatch_keys":
@@ -1560,28 +1563,6 @@ spec:
                         "\tmax_write_bytes_per_sec":
                           type: string
                       type: object
-                    grpc-compression-type:
-                      type: string
-                    grpc-concurrency:
-                      format: int32
-                      type: integer
-                    grpc-concurrent-stream:
-                      format: int32
-                      type: integer
-                    grpc-keepalive-time:
-                      type: string
-                    grpc-keepalive-timeout:
-                      type: string
-                    grpc-raft-conn-num:
-                      format: int32
-                      type: integer
-                    grpc-stream-initial-window-size:
-                      type: string
-                    heavy-load-threshold:
-                      format: int32
-                      type: integer
-                    heavy-load-wait-duration:
-                      type: string
                     import:
                       properties:
                         import_dir:
@@ -1607,8 +1588,6 @@ spec:
                           type: integer
                         upload_speed_limit:
                           type: string
-                      type: object
-                    labels:
                       type: object
                     log-file:
                       type: string
@@ -2544,47 +2523,52 @@ spec:
                     server:
                       description: TiKVServerConfig is the configuration of TiKV server.
                       properties:
+                        addr:
+                          type: string
+                        advertise-addr:
+                          type: string
                         concurrent-recv-snap-limit:
-                          format: int64
+                          format: int32
                           type: integer
                         concurrent-send-snap-limit:
-                          format: int64
+                          format: int32
                           type: integer
                         end-point-batch-row-limit:
-                          format: int64
+                          format: int32
                           type: integer
                         end-point-enable-batch-if-possible:
-                          type: boolean
+                          format: int32
+                          type: integer
                         end-point-recursion-limit:
-                          format: int64
+                          format: int32
                           type: integer
                         end-point-request-max-handle-duration:
                           type: string
                         end-point-stream-batch-row-limit:
-                          format: int64
+                          format: int32
                           type: integer
                         end-point-stream-channel-size:
-                          format: int64
+                          format: int32
                           type: integer
                         grpc-compression-type:
                           type: string
                         grpc-concurrency:
-                          format: int64
+                          format: int32
                           type: integer
                         grpc-concurrent-stream:
-                          format: int64
+                          format: int32
                           type: integer
                         grpc-keepalive-time:
                           type: string
                         grpc-keepalive-timeout:
                           type: string
                         grpc-raft-conn-num:
-                          format: int64
+                          format: int32
                           type: integer
                         grpc-stream-initial-window-size:
                           type: string
                         heavy-load-threshold:
-                          format: int64
+                          format: int32
                           type: integer
                         heavy-load-wait-duration:
                           type: string
@@ -2595,20 +2579,13 @@ spec:
                         snap-max-write-bytes-per-sec:
                           type: string
                         stats-concurrency:
-                          format: int64
+                          format: int32
                           type: integer
+                        status-addr:
+                          type: string
+                        status-thread-pool-size:
+                          type: string
                       type: object
-                    snap-max-total-size:
-                      type: string
-                    snap-max-write-bytes-per-sec:
-                      type: string
-                    stats-concurrency:
-                      format: int32
-                      type: integer
-                    status-addr:
-                      type: string
-                    status-thread-pool-size:
-                      type: string
                     storage:
                       description: TiKVStorageConfig is the config of storage
                       properties:
@@ -2651,6 +2628,10 @@ spec:
                   type: object
                 configUpdateStrategy:
                   type: string
+                limits:
+                  description: 'Limits describes the maximum amount of compute resources
+                    allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 maxFailoverCount:
                   format: int32
                   type: integer
@@ -2659,6 +2640,12 @@ spec:
                 replicas:
                   format: int32
                   type: integer
+                requests:
+                  description: 'Requests describes the minimum amount of compute resources
+                    required. If Requests is omitted for a container, it defaults
+                    to Limits if that is explicitly specified, otherwise to an implementation-defined
+                    value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 storageClassName:
                   type: string
               required:

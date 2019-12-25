@@ -30,6 +30,13 @@ const (
 	defaultEnablePVReclaim  = false
 )
 
+var (
+	defaultTailerSpec = TiDBSlowLogTailerSpec{
+		ResourceRequirements: corev1.ResourceRequirements{},
+	}
+	defaultHelperSpec = HelperSpec{}
+)
+
 func (tc *TidbCluster) PDImage() string {
 	image := tc.Spec.PD.Image
 	baseImage := tc.Spec.PD.BaseImage
@@ -90,13 +97,10 @@ func (tc *TidbCluster) PumpImage() *string {
 }
 
 func (tc *TidbCluster) HelperImage() string {
-	if tc.Spec.Helper == nil {
-		return defaultHelperImage
-	}
-	image := tc.Spec.Helper.Image
-	if image == nil && tc.Spec.TiDB.SlowLogTailer != nil {
+	image := tc.GetHelperSpec().Image
+	if image == nil {
 		// for backward compatibility
-		image = tc.Spec.TiDB.SlowLogTailer.Image
+		image = tc.Spec.TiDB.GetSlowLogTailerSpec().Image
 	}
 	if image == nil {
 		return defaultHelperImage
@@ -105,18 +109,22 @@ func (tc *TidbCluster) HelperImage() string {
 }
 
 func (tc *TidbCluster) HelperImagePullPolicy() corev1.PullPolicy {
-	if tc.Spec.Helper == nil {
-		return tc.Spec.ImagePullPolicy
-	}
-	pp := tc.Spec.Helper.ImagePullPolicy
-	if pp == nil && tc.Spec.TiDB.SlowLogTailer != nil {
+	pp := tc.GetHelperSpec().ImagePullPolicy
+	if pp == nil {
 		// for backward compatibility
-		pp = tc.Spec.TiDB.SlowLogTailer.ImagePullPolicy
+		pp = tc.Spec.TiDB.GetSlowLogTailerSpec().ImagePullPolicy
 	}
 	if pp == nil {
 		return tc.Spec.ImagePullPolicy
 	}
 	return *pp
+}
+
+func (tc *TidbCluster) GetHelperSpec() HelperSpec {
+	if tc.Spec.Helper == nil {
+		return defaultHelperSpec
+	}
+	return *tc.Spec.Helper
 }
 
 func (mt MemberType) String() string {
@@ -343,6 +351,13 @@ func (tidb *TiDBSpec) ShouldSeparateSlowLog() bool {
 		return defaultEnableTLSClient
 	}
 	return *separateSlowLog
+}
+
+func (tidb *TiDBSpec) GetSlowLogTailerSpec() TiDBSlowLogTailerSpec {
+	if tidb.SlowLogTailer == nil {
+		return defaultTailerSpec
+	}
+	return *tidb.SlowLogTailer
 }
 
 func (tidbSvc *TiDBServiceSpec) ShouldExposeStatus() bool {

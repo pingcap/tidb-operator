@@ -20,63 +20,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	glog "k8s.io/klog"
 )
-
-// ResourceRequirement creates ResourceRequirements for MemberSpec
-// Optionally pass in a default value
-func ResourceRequirement(resources v1alpha1.Resources, defaultRequests ...corev1.ResourceRequirements) corev1.ResourceRequirements {
-	rr := corev1.ResourceRequirements{}
-	if len(defaultRequests) > 0 {
-		defaultRequest := defaultRequests[0]
-		rr.Requests = make(map[corev1.ResourceName]resource.Quantity)
-		rr.Requests[corev1.ResourceCPU] = defaultRequest.Requests[corev1.ResourceCPU]
-		rr.Requests[corev1.ResourceMemory] = defaultRequest.Requests[corev1.ResourceMemory]
-		rr.Limits = make(map[corev1.ResourceName]resource.Quantity)
-		rr.Limits[corev1.ResourceCPU] = defaultRequest.Limits[corev1.ResourceCPU]
-		rr.Limits[corev1.ResourceMemory] = defaultRequest.Limits[corev1.ResourceMemory]
-	}
-	if resources.Requests != nil {
-		if rr.Requests == nil {
-			rr.Requests = make(map[corev1.ResourceName]resource.Quantity)
-		}
-		if resources.Requests.CPU != "" {
-			if q, err := resource.ParseQuantity(resources.Requests.CPU); err != nil {
-				glog.Errorf("failed to parse CPU resource %s to quantity: %v", resources.Requests.CPU, err)
-			} else {
-				rr.Requests[corev1.ResourceCPU] = q
-			}
-		}
-		if resources.Requests.Memory != "" {
-			if q, err := resource.ParseQuantity(resources.Requests.Memory); err != nil {
-				glog.Errorf("failed to parse memory resource %s to quantity: %v", resources.Requests.Memory, err)
-			} else {
-				rr.Requests[corev1.ResourceMemory] = q
-			}
-		}
-	}
-	if resources.Limits != nil {
-		if rr.Limits == nil {
-			rr.Limits = make(map[corev1.ResourceName]resource.Quantity)
-		}
-		if resources.Limits.CPU != "" {
-			if q, err := resource.ParseQuantity(resources.Limits.CPU); err != nil {
-				glog.Errorf("failed to parse CPU resource %s to quantity: %v", resources.Limits.CPU, err)
-			} else {
-				rr.Limits[corev1.ResourceCPU] = q
-			}
-		}
-		if resources.Limits.Memory != "" {
-			if q, err := resource.ParseQuantity(resources.Limits.Memory); err != nil {
-				glog.Errorf("failed to parse memory resource %s to quantity: %v", resources.Limits.Memory, err)
-			} else {
-				rr.Limits[corev1.ResourceMemory] = q
-			}
-		}
-	}
-	return rr
-}
 
 func GetOrdinalFromPodName(podName string) (int32, error) {
 	ordinalStr := podName[strings.LastIndex(podName, "-")+1:]

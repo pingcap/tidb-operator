@@ -208,7 +208,7 @@ func TestComponentAccessor(t *testing.T) {
 				g.Expect(a.ImagePullPolicy()).Should(Equal(corev1.PullNever))
 				g.Expect(a.HostNetwork()).Should(Equal(true))
 				g.Expect(a.Affinity()).Should(Equal(affinity))
-				g.Expect(a.PriorityClassName()).Should(Equal("test"))
+				g.Expect(*a.PriorityClassName()).Should(Equal("test"))
 				g.Expect(a.SchedulerName()).Should(Equal("test"))
 			},
 		},
@@ -232,7 +232,7 @@ func TestComponentAccessor(t *testing.T) {
 				g.Expect(a.ImagePullPolicy()).Should(Equal(corev1.PullAlways))
 				g.Expect(a.HostNetwork()).Should(Equal(false))
 				g.Expect(a.Affinity()).Should(Equal(affinity))
-				g.Expect(a.PriorityClassName()).Should(Equal("override"))
+				g.Expect(*a.PriorityClassName()).Should(Equal("override"))
 				g.Expect(a.SchedulerName()).Should(Equal("override"))
 			},
 		},
@@ -356,7 +356,7 @@ func TestHelperImage(t *testing.T) {
 			name: "pick .spec.tidb.slowLogTailer.image as helper for backward compatibility",
 			update: func(tc *TidbCluster) {
 				tc.Spec.Helper = &HelperSpec{
-					Image: pointer.StringPtr(""),
+					Image: nil,
 				}
 				tc.Spec.TiDB.SlowLogTailer = &TiDBSlowLogTailerSpec{
 					Image: pointer.StringPtr("helper2"),
@@ -422,8 +422,6 @@ func TestHelperImagePullPolicy(t *testing.T) {
 		{
 			name: "pick cluster one if both .spec.tidb.slowLogTailer.imagePullPolicy and .spec.helper.imagePullPolicy are nil",
 			update: func(tc *TidbCluster) {
-				tc.Spec.Helper.ImagePullPolicy = nil
-				tc.Spec.TiDB.SlowLogTailer.ImagePullPolicy = nil
 				tc.Spec.ImagePullPolicy = corev1.PullNever
 			},
 			expectFn: func(g *GomegaWithT, p corev1.PullPolicy) {

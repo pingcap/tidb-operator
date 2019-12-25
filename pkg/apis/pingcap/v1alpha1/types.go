@@ -203,12 +203,10 @@ type TidbClusterStatus struct {
 // +k8s:openapi-gen=true
 // PDSpec contains details of PD members
 type PDSpec struct {
-	// +k8s:openapi-gen=false
-	ComponentSpec
-	// +k8s:openapi-gen=false
-	Resources
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
 
-	// The desired ready replicas of PD cluster
+	// The desired ready replicas
 	// +kubebuilder:validation:Minimum=1
 	Replicas int32 `json:"replicas"`
 
@@ -236,12 +234,10 @@ type PDSpec struct {
 // +k8s:openapi-gen=true
 // TiKVSpec contains details of TiKV members
 type TiKVSpec struct {
-	// +k8s:openapi-gen=false
-	ComponentSpec
-	// +k8s:openapi-gen=false
-	Resources
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
 
-	// The desired ready replicas of TiKV cluster
+	// The desired ready replicas
 	// +kubebuilder:validation:Minimum=1
 	Replicas int32 `json:"replicas"`
 
@@ -276,12 +272,10 @@ type TiKVSpec struct {
 // +k8s:openapi-gen=true
 // TiDBSpec contains details of TiDB members
 type TiDBSpec struct {
-	// +k8s:openapi-gen=false
-	ComponentSpec
-	// +k8s:openapi-gen=false
-	Resources
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
 
-	// The desired ready replicas of TiDB cluster
+	// The desired ready replicas
 	// +kubebuilder:validation:Minimum=0
 	Replicas int32 `json:"replicas"`
 
@@ -332,12 +326,10 @@ type TiDBSpec struct {
 // +k8s:openapi-gen=true
 // PumpSpec contains details of Pump members
 type PumpSpec struct {
-	// +k8s:openapi-gen=false
-	ComponentSpec
-	// +k8s:openapi-gen=false
-	Resources
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
 
-	// The desired ready replicas of TiDB cluster
+	// The desired ready replicas
 	// +kubebuilder:validation:Minimum=0
 	Replicas int32 `json:"replicas"`
 
@@ -379,8 +371,7 @@ type HelperSpec struct {
 // +k8s:openapi-gen=true
 // TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB
 type TiDBSlowLogTailerSpec struct {
-	// +k8s:openapi-gen=false
-	Resources
+	corev1.ResourceRequirements `json:",inline"`
 
 	// Image used for slowlog tailer
 	// Deprecated, use TidbCluster.HelperImage instead
@@ -391,15 +382,6 @@ type TiDBSlowLogTailerSpec struct {
 	// Deprecated, use TidbCluster.HelperImagePullPolicy instead
 	// +k8s:openapi-gen=false
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
-}
-
-// +k8s:openapi-gen=true
-type Resources struct {
-	// Resource requests of the component
-	Requests *ResourceRequirement `json:"requests,omitempty"`
-
-	// Resource limits of the component
-	Limits *ResourceRequirement `json:"limits,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -503,17 +485,6 @@ type TiDBServiceSpec struct {
 type Service struct {
 	Name string `json:"name,omitempty"`
 	Type string `json:"type,omitempty"`
-}
-
-// +k8s:openapi-gen=true
-// ResourceRequirement is resource requirements for a pod
-type ResourceRequirement struct {
-	// CPU is how many cores a pod requires
-	CPU string `json:"cpu,omitempty"`
-	// Memory is how much memory a pod requires
-	Memory string `json:"memory,omitempty"`
-	// Storage is storage size a pod requires
-	Storage string `json:"storage,omitempty"`
 }
 
 // PDStatus is PD status
