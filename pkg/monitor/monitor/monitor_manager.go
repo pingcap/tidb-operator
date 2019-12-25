@@ -14,7 +14,9 @@
 package monitor
 
 import (
+	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -26,6 +28,7 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"strconv"
 )
 
 type MonitorManager struct {
@@ -33,6 +36,7 @@ type MonitorManager struct {
 	ConfigMapListers corelisters.ConfigMapLister
 	SecretLister     corelisters.SecretLister
 	DeploymentLister appslisters.DeploymentLister
+	tcLister         v1alpha1listers.TidbClusterLister
 	StsControl       controller.StatefulSetControlInterface
 	PvcControl       controller.GeneralPVCControlInterface
 }
@@ -48,6 +52,11 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 func (mm *MonitorManager) syncTidbMonitor(monitor *v1alpha1.TidbMonitor) error {
 	//name := monitor.Name
 	namespace := monitor.Namespace
+	targetTcRef := monitor.Spec.Clusters[0]
+	tc, err := mm.tcLister.TidbClusters(targetTcRef.Namespace).Get(targetTcRef.Name)
+	if err != nil {
+		return err
+	}
 
 	oldMonitorDeployTmp, err := mm.DeploymentLister.Deployments(namespace).Get(getMonitorObjectName(monitor))
 	if err != nil && !errors.IsNotFound(err) {
@@ -70,7 +79,7 @@ func (mm *MonitorManager) syncTidbMonitor(monitor *v1alpha1.TidbMonitor) error {
 	if err != nil {
 		return err
 	}
-	deployment := getMonitorDeployment(sa, cm, secret, monitor)
+	deployment := getMonitorDeployment(sa, cm, secret, monitor, tc)
 	if deployNotExist || !apiequality.Semantic.DeepEqual(oldMonitorDeploy.Spec.Template.Spec, deployment.Spec.Template.Spec) {
 		deployment, err = mm.typedControl.CreateOrUpdateDeployment(monitor, deployment)
 		if err != nil {
@@ -229,9 +238,13 @@ func getMonitorClusterRoleBinding(sa *core.ServiceAccount, cr *rbac.ClusterRole,
 	}
 }
 
-func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor) *apps.Deployment {
+func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, targetTidbCluster *v1alpha1.TidbCluster) *apps.Deployment {
 	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
 	replicas := int32(1)
+	enableBinlog := false
+	if targetTidbCluster.Spec.Pump != nil {
+		enableBinlog = true
+	}
 
 	c := "mkdir -p /data/prometheus\nchmod 777 /data/prometheus\n/usr/bin/init.sh"
 	if monitor.Spec.Grafana != nil {
@@ -274,7 +287,7 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 					InitContainers: []core.Container{
 						{
 							Name:            "monitor-initializer",
-							Image:           monitor.Spec.Initializer.BaseImage,
+							Image:           fmt.Sprintf("%s:%s", monitor.Spec.Initializer.BaseImage, monitor.Spec.Initializer.Version),
 							ImagePullPolicy: *monitor.Spec.Initializer.ImagePullPolicy,
 							Env: []core.EnvVar{
 								{
@@ -285,12 +298,14 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 									Name:  "GF_DATASOURCE_PATH",
 									Value: "/etc/grafana/provisioning/datasources",
 								},
-								//{
-								//	Name: "TIDB_CLUSTER_NAME",
-								//},
-								//{
-								//	Name:"TIDB_ENABLE_BINLOG",
-								//},
+								{
+									Name:  "TIDB_CLUSTER_NAME",
+									Value: targetTidbCluster.Name,
+								},
+								{
+									Name:  "TIDB_ENABLE_BINLOG",
+									Value: strconv.FormatBool(enableBinlog),
+								},
 								{
 									Name:  "PROM_CONFIG_PATH",
 									Value: "/prometheus-rules",
@@ -299,9 +314,10 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 									Name:  "PROM_PERSISTENT_DIR",
 									Value: "/data",
 								},
-								//{
-								//	Name: "TIDB_VERSION",
-								//},
+								{
+									Name:  "TIDB_VERSION",
+									Value: fmt.Sprintf("%s:%s", targetTidbCluster.Spec.TiDB.BaseImage, targetTidbCluster.Spec.TiDB.Version),
+								},
 								{
 									Name:  "GF_K8S_PROMETHEUS_URL",
 									Value: *monitor.Spec.KubePrometheusURL,
@@ -310,12 +326,14 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 									Name:  "GF_TIDB_PROMETHEUS_URL",
 									Value: "http://127.0.0.1:9090",
 								},
-								//{
-								//	Name: "TIDB_CLUSTER_NAMESPACE",
-								//},
-								//{
-								//	Name:	"TZ",
-								//},
+								{
+									Name:  "TIDB_CLUSTER_NAMESPACE",
+									Value: targetTidbCluster.Namespace,
+								},
+								{
+									Name:  "TZ",
+									Value: targetTidbCluster.Spec.Timezone,
+								},
 							},
 							Command: commands,
 							SecurityContext: &core.SecurityContext{
@@ -342,8 +360,31 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 									ReadOnly:  false,
 								},
 							},
-
 							Resources: util.ResourceRequirement(monitor.Spec.Initializer.Resources),
+						},
+					},
+					Containers: []core.Container{
+						{
+							Name:            "prometheus",
+							Image:           fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
+							ImagePullPolicy: *monitor.Spec.Prometheus.ImagePullPolicy,
+							Resources:       util.ResourceRequirement(monitor.Spec.Prometheus.Resources),
+							Command: []string{
+								"/bin/prometheus",
+								"--web.enable-admin-api",
+								"--web.enable-lifecycle",
+								fmt.Sprintf("--log.level=%s", monitor.Spec.Prometheus.LogLevel),
+								"--config.file=/etc/prometheus/prometheus.yml",
+								"--storage.tsdb.path=/data/prometheus",
+								fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays),
+							},
+							Ports: []core.ContainerPort{
+								{
+									Name:          "prometheus",
+									ContainerPort: 9090,
+									Protocol:      core.ProtocolTCP,
+								},
+							},
 						},
 					},
 				},
