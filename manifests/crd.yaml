@@ -1029,9 +1029,19 @@ spec:
                   type: object
                 configUpdateStrategy:
                   type: string
+                limits:
+                  description: 'Limits describes the maximum amount of compute resources
+                    allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 replicas:
                   format: int32
                   type: integer
+                requests:
+                  description: 'Requests describes the minimum amount of compute resources
+                    required. If Requests is omitted for a container, it defaults
+                    to Limits if that is explicitly specified, otherwise to an implementation-defined
+                    value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 storageClassName:
                   type: string
               required:
@@ -1048,9 +1058,19 @@ spec:
                     change, change this field without actually changing the configuration
                     will not trigger rolling-update
                   type: string
+                limits:
+                  description: 'Limits describes the maximum amount of compute resources
+                    allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 replicas:
                   format: int32
                   type: integer
+                requests:
+                  description: 'Requests describes the minimum amount of compute resources
+                    required. If Requests is omitted for a container, it defaults
+                    to Limits if that is explicitly specified, otherwise to an implementation-defined
+                    value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 storageClassName:
                   type: string
               required:
@@ -1455,6 +1475,10 @@ spec:
                   type: string
                 enableTLSClient:
                   type: boolean
+                limits:
+                  description: 'Limits describes the maximum amount of compute resources
+                    allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 maxFailoverCount:
                   format: int32
                   type: integer
@@ -1467,6 +1491,12 @@ spec:
                 replicas:
                   format: int32
                   type: integer
+                requests:
+                  description: 'Requests describes the minimum amount of compute resources
+                    required. If Requests is omitted for a container, it defaults
+                    to Limits if that is explicitly specified, otherwise to an implementation-defined
+                    value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 separateSlowLog:
                   type: boolean
                 storageClassName:
@@ -2598,6 +2628,10 @@ spec:
                   type: object
                 configUpdateStrategy:
                   type: string
+                limits:
+                  description: 'Limits describes the maximum amount of compute resources
+                    allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 maxFailoverCount:
                   format: int32
                   type: integer
@@ -2606,6 +2640,12 @@ spec:
                 replicas:
                   format: int32
                   type: integer
+                requests:
+                  description: 'Requests describes the minimum amount of compute resources
+                    required. If Requests is omitted for a container, it defaults
+                    to Limits if that is explicitly specified, otherwise to an implementation-defined
+                    value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
                 storageClassName:
                   type: string
               required:

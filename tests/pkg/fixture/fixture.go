@@ -16,38 +16,39 @@ package fixture
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
-	BestEffort    = v1alpha1.Resources{}
-	BurstbleSmall = v1alpha1.Resources{
-		Requests: &v1alpha1.ResourceRequirement{
-			CPU:    "200m",
-			Memory: "200Mi",
+	BestEffort    = corev1.ResourceRequirements{}
+	BurstbleSmall = corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("200m"),
+			corev1.ResourceMemory: resource.MustParse("200Mi"),
 		},
-		Limits: &v1alpha1.ResourceRequirement{
-			CPU:    "1000m",
-			Memory: "2Gi",
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("1000m"),
+			corev1.ResourceMemory: resource.MustParse("2Gi"),
 		},
 	}
-	BurstbleMedium = v1alpha1.Resources{
-		Requests: &v1alpha1.ResourceRequirement{
-			CPU:    "200m",
-			Memory: "200Mi",
+	BurstbleMedium = corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("200m"),
+			corev1.ResourceMemory: resource.MustParse("200Mi"),
 		},
-		Limits: &v1alpha1.ResourceRequirement{
-			CPU:    "2000m",
-			Memory: "4Gi",
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("2000m"),
+			corev1.ResourceMemory: resource.MustParse("4Gi"),
 		},
 	}
 )
 
-func WithStorage(r v1alpha1.Resources, size string) v1alpha1.Resources {
+func WithStorage(r corev1.ResourceRequirements, size string) corev1.ResourceRequirements {
 	if r.Requests == nil {
-		r.Requests = &v1alpha1.ResourceRequirement{}
+		r.Requests = corev1.ResourceList{}
 	}
-	r.Requests.Storage = size
+	r.Requests[corev1.ResourceStorage] = resource.MustParse(size)
 
 	return r
 }
@@ -71,7 +72,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ComponentSpec: v1alpha1.ComponentSpec{
 					BaseImage: "pingcap/pd",
 				},
-				Resources: WithStorage(BurstbleSmall, "1Gi"),
+				ResourceRequirements: WithStorage(BurstbleSmall, "1Gi"),
 				Config: &v1alpha1.PDConfig{
 					Log: &v1alpha1.PDLogConfig{
 						Level: "info",
@@ -88,8 +89,8 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ComponentSpec: v1alpha1.ComponentSpec{
 					BaseImage: "pingcap/tikv",
 				},
-				Resources:        WithStorage(BurstbleMedium, "10Gi"),
-				MaxFailoverCount: 3,
+				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
+				MaxFailoverCount:     3,
 				Config: &v1alpha1.TiKVConfig{
 					LogLevel: "info",
 					Server: &v1alpha1.TiKVServerConfig{
@@ -103,7 +104,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ComponentSpec: v1alpha1.ComponentSpec{
 					BaseImage: "pingcap/tidb",
 				},
-				Resources: BurstbleMedium,
+				ResourceRequirements: BurstbleMedium,
 				Service: &v1alpha1.TiDBServiceSpec{
 					ServiceSpec: v1alpha1.ServiceSpec{
 						Type: corev1.ServiceTypeClusterIP,

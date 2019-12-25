@@ -252,3 +252,12 @@ func AddConfigMapDigestSuffix(cm *corev1.ConfigMap) error {
 	cm.Name = fmt.Sprintf("%s-%s", cm.Name, suffix)
 	return nil
 }
+
+// MapContainers index containers of Pod by container name in favor of looking up
+func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
+	m := map[string]corev1.Container{}
+	for _, c := range podSpec.Containers {
+		m[c.Name] = c
+	}
+	return m
+}
