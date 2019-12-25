@@ -148,7 +148,7 @@ func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (scaling int,
 			// not in desired delete slots, remove it from actual delete slots
 			actualDeleteSlots.Delete(ordinal)
 		}
-		deleteSlots = normalizeDeleteSlots(replicas, actualDeleteSlots, desiredDeleteSlots)
+		actualDeleteSlots = normalizeDeleteSlots(replicas, actualDeleteSlots, desiredDeleteSlots)
 	} else if deletions.Len() > 0 {
 		scaling = -1
 		deletionsList := deletions.List()

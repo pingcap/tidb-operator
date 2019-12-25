@@ -228,13 +228,14 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				framework.ExpectNoError(err)
 
 				ginkgo.By(fmt.Sprintf("Waiting for all pods of tidb cluster component %s (sts: %s/%s) are in desired state (replicas: %d, delete slots: %v)", st.component, ns, stsName, st.replicas, st.deleteSlots.List()))
-				err = wait.PollImmediate(time.Second, time.Minute*10, func() (bool, error) {
+				err = wait.PollImmediate(time.Second*5, time.Minute*10, func() (bool, error) {
 					// check delete slots annotation
 					sts, err = hc.AppsV1().StatefulSets(ns).Get(stsName, metav1.GetOptions{})
 					if err != nil {
 						return false, nil
 					}
 					if !helper.GetDeleteSlots(sts).Equal(st.deleteSlots) {
+						klog.Infof("delete slots of sts %s/%s is %v, expects: %v", ns, stsName, helper.GetDeleteSlots(sts).List(), st.deleteSlots.List())
 						return false, nil
 					}
 					// check all pod ordinals
@@ -245,10 +246,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					}
 					desiredPodOrdinals := helper.GetPodOrdinalsFromReplicasAndDeleteSlots(st.replicas, st.deleteSlots)
 					if !actualPodOrdinals.Equal(desiredPodOrdinals) {
+						klog.Infof("pod ordinals of sts %s/%s is %v, expects: %v", ns, stsName, actualPodOrdinals.List(), desiredPodOrdinals.List())
 						return false, nil
 					}
 					for _, pod := range actualPodList.Items {
 						if !podutil.IsPodReady(&pod) {
+							klog.Infof("pod %s of sts %s/%s is not ready, got: %v", pod.Name, ns, stsName, podutil.GetPodReadyCondition(pod.Status))
 							return false, nil
 						}
 					}
