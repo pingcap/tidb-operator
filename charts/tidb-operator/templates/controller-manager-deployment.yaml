@@ -53,6 +53,9 @@ spec:
           {{- if .Values.features }}
           - -features={{ join "," .Values.features }}
           {{- end }}
+          {{- if and ( .Values.admissionWebhook.create ) ( .Values.admissionWebhook.hooksEnabled.pods ) }}
+          - -pod-webhook-enabled=true
+          {{- end }}
         env:
           - name: NAMESPACE
             valueFrom:
