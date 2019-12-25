@@ -89,7 +89,7 @@ spec:
       serviceAccountName: {{ .Release.Name }}
       containers:
         - name: "{{.Release.Name}}-job-del"
-          image: bitnami/kubectl:latest
+          image: {{ .Values.admissionWebhook.jobImage }}
           imagePullPolicy: IfNotPresent
           command:
             - "sh"
