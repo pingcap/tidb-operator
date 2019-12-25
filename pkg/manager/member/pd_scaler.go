@@ -111,6 +111,11 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 
 	glog.Infof("scaling in pd statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 
+	if controller.PodWebhookEnabled {
+		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
+		return nil
+	}
+
 	pdClient := controller.GetPDClient(psd.pdControl, tc)
 	// If the pd pod was pd leader during scale-in, we would transfer pd leader to pd-0 directly
 	// If the pd statefulSet would be scale-in to zero and the pd-0 was going to be deleted,
