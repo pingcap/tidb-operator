@@ -417,7 +417,7 @@ func newPod(tc *v1alpha1.TidbCluster) *corev1.Pod {
 				label.NameLabelKey:      controller.TestName,
 				label.ComponentLabelKey: controller.TestComponentName,
 				label.ManagedByLabelKey: controller.TestManagedByName,
-				label.InstanceLabelKey:  tc.GetLabels()[label.InstanceLabelKey],
+				label.InstanceLabelKey:  tc.GetInstanceName(),
 			},
 		},
 		Spec: newPodSpec(v1alpha1.PDMemberType.String(), "pvc-1"),

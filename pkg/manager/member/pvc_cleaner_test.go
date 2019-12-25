@@ -126,7 +126,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "tidb-test-tidb-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).TiDB().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).TiDB().Labels(),
 					},
 					Status: corev1.PersistentVolumeClaimStatus{
 						Phase: corev1.ClaimBound,
@@ -155,7 +155,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "tidb-test-tidb-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 					},
 					Status: corev1.PersistentVolumeClaimStatus{
 						Phase: corev1.ClaimPending,
@@ -185,7 +185,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 						Namespace:         metav1.NamespaceDefault,
 						Name:              "tidb-test-tidb-0",
 						DeletionTimestamp: &metav1.Time{Time: time.Now()},
-						Labels:            label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:            label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 					},
 					Status: corev1.PersistentVolumeClaimStatus{
 						Phase: corev1.ClaimBound,
@@ -213,7 +213,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 					},
 					Status: corev1.PersistentVolumeClaimStatus{
 						Phase: corev1.ClaimBound,
@@ -241,7 +241,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
 						},
@@ -270,7 +270,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-pd-0",
 						Namespace: metav1.NamespaceDefault,
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 					},
 				},
 			},
@@ -281,7 +281,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
 							label.AnnPodNameKey:       "test-pd-0",
@@ -312,7 +312,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-pd-0",
 						Namespace: metav1.NamespaceDefault,
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 					},
 				},
 			},
@@ -322,7 +322,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
 							label.AnnPodNameKey:       "test-pd-0",
@@ -353,7 +353,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-pd-0",
 						Namespace: metav1.NamespaceDefault,
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 					},
 				},
 			},
@@ -363,7 +363,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
 							label.AnnPodNameKey:       "test-pd-0",
@@ -396,7 +396,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
 							label.AnnPodNameKey:       "test-pd-0",
@@ -432,7 +432,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
 							label.AnnPodNameKey:       "test-pd-0",
@@ -479,7 +479,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
 							label.AnnPodNameKey:       "test-pd-0",
@@ -528,7 +528,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 						Name:            "pd-test-pd-0",
 						UID:             types.UID("pd-test"),
 						ResourceVersion: "1",
-						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:          label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
 							label.AnnPodNameKey:       "test-pd-0",
@@ -550,7 +550,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 						Name:            "pd-test-pd-0",
 						UID:             types.UID("pd-test"),
 						ResourceVersion: "1",
-						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:          label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
 							label.AnnPodNameKey:       "test-pd-0",
@@ -598,7 +598,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 						Name:            "pd-test-pd-0",
 						UID:             types.UID("pd-test"),
 						ResourceVersion: "1",
-						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:          label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
 							label.AnnPodNameKey:       "test-pd-0",
@@ -620,7 +620,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 						Name:            "pd-test-pd-0",
 						UID:             types.UID("pd-test"),
 						ResourceVersion: "2",
-						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:          label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
 							label.AnnPodNameKey:       "test-pd-0",
@@ -668,7 +668,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 						Name:            "pd-test-pd-0",
 						UID:             types.UID("pd-test"),
 						ResourceVersion: "1",
-						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:          label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
 							label.AnnPodNameKey:       "test-pd-0",
@@ -690,7 +690,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 						Name:            "pd-test-pd-0",
 						UID:             types.UID("pd-test"),
 						ResourceVersion: "1",
-						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:          label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
 							label.AnnPodNameKey:       "test-pd-0",
@@ -740,7 +740,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 						Name:            "pd-test-pd-0",
 						UID:             types.UID("pd-test"),
 						ResourceVersion: "1",
-						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:          label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
 							label.AnnPodNameKey:       "test-pd-0",
@@ -762,7 +762,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 						Name:            "pd-test-pd-0",
 						UID:             types.UID("pd-test"),
 						ResourceVersion: "1",
-						Labels:          label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:          label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: time.Now().Format(time.RFC3339),
 							label.AnnPodNameKey:       "test-pd-0",
@@ -859,7 +859,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "tidb-test-tidb-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).TiDB().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).TiDB().Labels(),
 					},
 				},
 			},
@@ -878,7 +878,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:   metav1.NamespaceDefault,
 						Name:        "pd-test-pd-0",
-						Labels:      label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:      label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{label.AnnPVCDeferDeleting: "true"},
 					},
 				},
@@ -898,7 +898,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: "true",
 							label.AnnPVCPodScheduling: "true",
@@ -922,7 +922,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCDeferDeleting: "true",
 							label.AnnPVCPodScheduling: "true",
@@ -948,7 +948,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCPodScheduling: "true",
 						},
@@ -970,7 +970,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCPodScheduling: "true",
 							label.AnnPodNameKey:       "test-pd-0",
@@ -991,7 +991,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-pd-0",
 						Namespace: metav1.NamespaceDefault,
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 					},
 				},
 			},
@@ -1001,7 +1001,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPodNameKey: "test-pd-0",
 						},
@@ -1022,7 +1022,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-pd-0",
 						Namespace: metav1.NamespaceDefault,
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 					},
 				},
 			},
@@ -1032,7 +1032,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCPodScheduling: "true",
 							label.AnnPodNameKey:       "test-pd-0",
@@ -1054,7 +1054,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-pd-0",
 						Namespace: metav1.NamespaceDefault,
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 					},
 					Spec: corev1.PodSpec{
 						NodeName: "node-1",
@@ -1067,7 +1067,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCPodScheduling: "true",
 							label.AnnPodNameKey:       "test-pd-0",
@@ -1090,7 +1090,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-pd-0",
 						Namespace: metav1.NamespaceDefault,
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 					},
 					Spec: corev1.PodSpec{
 						NodeName: "node-1",
@@ -1103,7 +1103,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: metav1.NamespaceDefault,
 						Name:      "pd-test-pd-0",
-						Labels:    label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 						Annotations: map[string]string{
 							label.AnnPVCPodScheduling: "true",
 							label.AnnPodNameKey:       "test-pd-0",
