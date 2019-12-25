@@ -21,7 +21,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -320,7 +319,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 				Name:          "pump",
 				ContainerPort: 8250,
 			}},
-			Resources: util.ResourceRequirement(tc.Spec.Pump.Resources),
+			Resources: controller.ContainerResource(tc.Spec.Pump.ResourceRequirements),
 			Env:       envs,
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -365,7 +364,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 					corev1.ReadWriteOnce,
 				},
 				StorageClassName: &storageClass,
-				Resources:        *storageRequest,
+				Resources:        storageRequest,
 			},
 		},
 	}
