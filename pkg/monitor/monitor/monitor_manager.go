@@ -17,6 +17,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -342,7 +343,7 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 								},
 							},
 
-							Resources: core.ResourceRequirements{},
+							Resources: util.ResourceRequirement(monitor.Spec.Initializer.Resources),
 						},
 					},
 				},
