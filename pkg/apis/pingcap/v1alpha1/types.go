@@ -102,7 +102,7 @@ type TidbClusterList struct {
 // +k8s:openapi-gen=true
 // TidbClusterSpec describes the attributes that a user creates on a tidb cluster
 type TidbClusterSpec struct {
-	corev1.Service
+
 	// PD cluster spec
 	PD PDSpec `json:"pd"`
 
