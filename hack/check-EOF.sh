@@ -13,7 +13,6 @@ EXCLUDE_DIR=(
     output
     _tools
     .git
-    .github
 )
 
 for DIR in ${EXCLUDE_DIR[@]}; do
@@ -33,12 +32,15 @@ NUM=0
 for f in ${FILELIST[@]}; do
     c=$(tail -c 1 "$f")
     if [ "$c" != "" ]; then
-        echo "$f"
+        failed_file+=($f)
         NUM=$((NUM + 1))
     fi
 done
 
 if [ $NUM -ne 0 ]; then
-    echo Has file not end with newline.
+    echo "error: following files do not end with newline, please fix them"
+    printf '%s\n' "${failed_file[@]}"
     exit 1
+else
+    echo "all files pass checking."
 fi
