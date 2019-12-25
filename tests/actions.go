@@ -1342,9 +1342,14 @@ func (oa *operatorActions) DeployMonitor(info *TidbClusterConfig) error { return
 func (oa *operatorActions) CleanMonitor(info *TidbClusterConfig) error  { return nil }
 
 // getMemberContainer gets member container
-func getMemberContainer(kubeCli kubernetes.Interface, namespace, tcName, component string) (*corev1.Container, bool) {
+func getMemberContainer(kubeCli kubernetes.Interface, stsGetter typedappsv1.StatefulSetsGetter, namespace, tcName, component string) (*corev1.Container, bool) {
+	sts, err := stsGetter.StatefulSets(namespace).Get(fmt.Sprintf("%s-%s", tcName, component), metav1.GetOptions{})
+	if err != nil {
+		glog.Errorf("failed to get sts for component %s of cluster %s/%s", component, namespace, tcName)
+		return nil, false
+	}
 	listOption := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Component(component).Labels()).String(),
+		LabelSelector: labels.SelectorFromSet(sts.Spec.Selector.MatchLabels).String(),
 	}
 	podList, err := kubeCli.CoreV1().Pods(namespace).List(listOption)
 	if err != nil {
@@ -1409,7 +1414,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 		return false, nil
 	}
 
-	c, found := getMemberContainer(oa.kubeCli, ns, tc.Name, label.PDLabelVal)
+	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, tc.Name, label.PDLabelVal)
 	if !found {
 		glog.Infof("statefulset: %s/%s not found containers[name=pd] or pod %s-0",
 			ns, pdSetName, pdSetName)
@@ -1482,7 +1487,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	c, found := getMemberContainer(oa.kubeCli, ns, tc.Name, label.TiKVLabelVal)
+	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, tc.Name, label.TiKVLabelVal)
 	if !found {
 		glog.Infof("statefulset: %s/%s not found containers[name=tikv] or pod %s-0",
 			ns, tikvSetName, tikvSetName)
@@ -1549,7 +1554,7 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	c, found := getMemberContainer(oa.kubeCli, ns, tc.Name, label.TiDBLabelVal)
+	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, tc.Name, label.TiDBLabelVal)
 	if !found {
 		glog.Infof("statefulset: %s/%s not found containers[name=tidb] or pod %s-0",
 			ns, tidbSetName, tidbSetName)
