@@ -165,14 +165,17 @@ func newFakeGeneralScaler() (*generalScaler, cache.Indexer, *controller.FakePVCC
 }
 
 func TestScaleOne(t *testing.T) {
+	type scaleOp struct {
+		scaling     int
+		ordinal     int32
+		replicas    int32
+		deleteSlots sets.Int32
+	}
 	tests := []struct {
-		name            string
-		actual          *apps.StatefulSet
-		desired         *apps.StatefulSet
-		wantScaling     int
-		wantOrdinal     int32
-		wantReplicas    int32
-		wantDeleteSlots sets.Int32
+		name    string
+		actual  *apps.StatefulSet
+		desired *apps.StatefulSet
+		wantOps []scaleOp
 	}{
 		{
 			"no scaling required",
@@ -188,10 +191,14 @@ func TestScaleOne(t *testing.T) {
 					Replicas: controller.Int32Ptr(1),
 				},
 			},
-			0,
-			-1,
-			1,
-			sets.Int32{},
+			[]scaleOp{
+				{
+					0,
+					-1,
+					1,
+					sets.Int32{},
+				},
+			},
 		},
 		{
 			"scale in without delete slots",
@@ -207,10 +214,14 @@ func TestScaleOne(t *testing.T) {
 					Replicas: controller.Int32Ptr(0),
 				},
 			},
-			-1,
-			0,
-			0,
-			sets.Int32{},
+			[]scaleOp{
+				{
+					-1,
+					0,
+					0,
+					sets.Int32{},
+				},
+			},
 		},
 		{
 			"scale in without delete slots (diff > 1)",
@@ -223,45 +234,55 @@ func TestScaleOne(t *testing.T) {
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(3),
+					Replicas: controller.Int32Ptr(6),
 				},
 			},
-			-1,
-			7,
-			7,
-			sets.Int32{},
+			[]scaleOp{
+				{
+					-1,
+					7,
+					7,
+					sets.Int32{},
+				},
+				{
+					-1,
+					6,
+					6,
+					sets.Int32{},
+				},
+			},
 		},
 		{
-			"scale in with delete slots",
-			// 0, 2, 3, 4, 5
+			"scale in from 2 to 0 without delete slots",
 			&apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						helper.DeleteSlotsAnn: "[1]",
-					},
-				},
+				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(5),
+					Replicas: controller.Int32Ptr(2),
 				},
 			},
-			// 0, 4, 5
 			&apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						helper.DeleteSlotsAnn: "[1, 2, 3]",
-					},
-				},
+				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(3),
+					Replicas: controller.Int32Ptr(0),
 				},
 			},
-			-1,
-			3,
-			4,
-			sets.NewInt32(1, 3),
+			[]scaleOp{
+				{
+					-1,
+					1,
+					1,
+					sets.NewInt32(),
+				},
+				{
+					-1,
+					0,
+					0,
+					sets.NewInt32(),
+				},
+			},
 		},
 		{
-			"scale out without delete slots",
+			"scale out from 0 to 1 without delete slots",
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
@@ -274,13 +295,17 @@ func TestScaleOne(t *testing.T) {
 					Replicas: controller.Int32Ptr(1),
 				},
 			},
-			1,
-			0,
-			1,
-			sets.Int32{},
+			[]scaleOp{
+				{
+					1,
+					0,
+					1,
+					sets.Int32{},
+				},
+			},
 		},
 		{
-			"scale out without delete slots (diff > 1)",
+			"scale out from 3 to 5 without delete slots (diff > 1)",
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
@@ -290,16 +315,178 @@ func TestScaleOne(t *testing.T) {
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(8),
+					Replicas: controller.Int32Ptr(5),
 				},
 			},
-			1,
-			3,
-			4,
-			sets.Int32{},
+			[]scaleOp{
+				{
+					1,
+					3,
+					4,
+					sets.Int32{},
+				},
+				{
+					1,
+					4,
+					5,
+					sets.Int32{},
+				},
+			},
 		},
 		{
-			"scale out with delete slots",
+			"scale in from 5 to 3 with delete slots",
+			// 0, 2, 3, 4, 5
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(5),
+				},
+			},
+			// 0, 4, 5
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1,2,3]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(3),
+				},
+			},
+			[]scaleOp{
+				{
+					-1,
+					3,
+					4,
+					sets.NewInt32(1, 3),
+				},
+				{
+					-1,
+					2,
+					3,
+					sets.NewInt32(1, 2, 3),
+				},
+			},
+		},
+		{
+			"scale in from 2 to 0 with delete slots",
+			// 1,2
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[0]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(2),
+				},
+			},
+			// <none>
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(0),
+				},
+			},
+			[]scaleOp{
+				{
+					-1,
+					2,
+					1,
+					sets.NewInt32(0),
+				},
+				{
+					-1,
+					1,
+					0,
+					sets.NewInt32(),
+				},
+			},
+		},
+		{
+			"scale in from 2 to 0 with delete slots which contains redundant data",
+			// 1,2
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[0]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(2),
+				},
+			},
+			// <none>
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[0,1,3]", // this is redundant
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(0),
+				},
+			},
+			[]scaleOp{
+				{
+					-1,
+					2,
+					1,
+					sets.NewInt32(0, 3),
+				},
+				{
+					-1,
+					1,
+					0,
+					sets.NewInt32(0, 1, 3),
+				},
+			},
+		},
+		{
+			"scale out from 0 to 2 with delete slots",
+			// <none>
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(0),
+				},
+			},
+			// 1,2
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[0]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(2),
+				},
+			},
+			[]scaleOp{
+				{
+					1,
+					1,
+					1,
+					sets.NewInt32(0),
+				},
+				{
+					1,
+					2,
+					2,
+					sets.NewInt32(0),
+				},
+			},
+		},
+		{
+			"scale out from 3 to 5 with delete slots",
 			// 0, 4, 5
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
@@ -322,27 +509,122 @@ func TestScaleOne(t *testing.T) {
 					Replicas: controller.Int32Ptr(5),
 				},
 			},
-			1,
-			2,
-			4,
-			sets.NewInt32(1, 3),
+			[]scaleOp{
+				{
+					1,
+					2,
+					4,
+					sets.NewInt32(1, 3),
+				},
+				{
+					1,
+					3,
+					5,
+					sets.NewInt32(1),
+				},
+			},
+		},
+		{
+			"scale out from 0 to 2 with delete slots with redundant data",
+			// <none>
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(0),
+				},
+			},
+			// 1,2
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[0,4,5]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(2),
+				},
+			},
+			[]scaleOp{
+				{
+					1,
+					1,
+					1,
+					sets.NewInt32(0, 4, 5),
+				},
+				{
+					1,
+					2,
+					2,
+					sets.NewInt32(0, 4, 5),
+				},
+			},
+		},
+		{
+			"scale in and out with delete slots by adding 1 then deleting 2",
+			// 0, 2, 3, 4
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(4),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[2]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: controller.Int32Ptr(4),
+				},
+			},
+			[]scaleOp{
+				{
+					// 0, 1, 2, 3, 4
+					1,
+					1,
+					5,
+					sets.NewInt32(),
+				},
+				{
+					// 0, 1, 3, 4
+					-1,
+					2,
+					4,
+					sets.NewInt32(2),
+				},
+			},
 		},
 	}
 
 	features.DefaultFeatureGate.Set("AdvancedStatefulSet=true")
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			scaling, ordinal, replicas, deleteSlots := scaleOne(tt.actual, tt.desired)
-			if diff := cmp.Diff(tt.wantScaling, scaling); diff != "" {
-				t.Errorf("unexpected (-want, +got): %s", diff)
+			target := tt.actual.DeepCopy()
+			for i, op := range tt.wantOps {
+				t.Logf("scaleOne %d", i)
+				scaling, ordinal, replicas, deleteSlots := scaleOne(target, tt.desired)
+				if diff := cmp.Diff(op.scaling, scaling); diff != "" {
+					t.Errorf("unexpected (-want, +got): %s", diff)
+				}
+				if diff := cmp.Diff(op.ordinal, ordinal); diff != "" {
+					t.Errorf("unexpected (-want, +got): %s", diff)
+				}
+				if diff := cmp.Diff(op.replicas, replicas); diff != "" {
+					t.Errorf("unexpected (-want, +got): %s", diff)
+				}
+				if diff := cmp.Diff(op.deleteSlots, deleteSlots); diff != "" {
+					t.Errorf("unexpected (-want, +got): %s", diff)
+				}
+				setReplicasAndDeleteSlots(target, replicas, deleteSlots)
 			}
-			if diff := cmp.Diff(tt.wantOrdinal, ordinal); diff != "" {
-				t.Errorf("unexpected (-want, +got): %s", diff)
-			}
-			if diff := cmp.Diff(tt.wantReplicas, replicas); diff != "" {
-				t.Errorf("unexpected (-want, +got): %s", diff)
-			}
-			if diff := cmp.Diff(tt.wantDeleteSlots, deleteSlots); diff != "" {
+			if diff := cmp.Diff(tt.desired, target); diff != "" {
 				t.Errorf("unexpected (-want, +got): %s", diff)
 			}
 		})

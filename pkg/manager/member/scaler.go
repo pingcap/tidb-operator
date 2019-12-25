@@ -124,34 +124,56 @@ func ordinalPodName(memberType v1alpha1.MemberType, tcName string, ordinal int32
 // - ordinal: pod ordinal to create or delete
 // - replicas/deleteSlots: desired replicas and deleteSlots by allowing only one pod to be deleted or created
 func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (scaling int, ordinal int32, replicas int32, deleteSlots sets.Int32) {
-	actualDesiredPodOrdinals := helper.GetPodOrdinals(*actual.Spec.Replicas, actual)
-	desiredDesiredPodOrdinals := helper.GetPodOrdinals(*desired.Spec.Replicas, desired)
-	additions := desiredDesiredPodOrdinals.Difference(actualDesiredPodOrdinals)
-	deletions := actualDesiredPodOrdinals.Difference(desiredDesiredPodOrdinals)
+	actualPodOrdinals := helper.GetPodOrdinals(*actual.Spec.Replicas, actual)
+	desiredPodOrdinals := helper.GetPodOrdinals(*desired.Spec.Replicas, desired)
+	additions := desiredPodOrdinals.Difference(actualPodOrdinals)
+	deletions := actualPodOrdinals.Difference(desiredPodOrdinals)
 	scaling = 0
 	ordinal = -1
 	replicas = *actual.Spec.Replicas
 	actualDeleteSlots := helper.GetDeleteSlots(actual)
 	desiredDeleteSlots := helper.GetDeleteSlots(desired)
+	// copy delete slots from desired delete slots if not in actual pod ordinals
+	for i := range desiredDeleteSlots {
+		if !actualPodOrdinals.Has(i) {
+			actualDeleteSlots.Insert(i)
+		}
+	}
 	if additions.Len() > 0 {
 		// we always do scaling out before scaling in to maintain maximum avaiability
 		scaling = 1
 		ordinal = additions.List()[0]
-		replicas = *actual.Spec.Replicas + 1
+		replicas += 1
 		if !desiredDeleteSlots.Has(ordinal) {
-			// not in desired delete slots, remote it from actual delete slots
+			// not in desired delete slots, remove it from actual delete slots
 			actualDeleteSlots.Delete(ordinal)
 		}
+		deleteSlots = normalizeDeleteSlots(replicas, actualDeleteSlots, desiredDeleteSlots)
 	} else if deletions.Len() > 0 {
 		scaling = -1
 		deletionsList := deletions.List()
 		ordinal = deletionsList[len(deletionsList)-1]
-		replicas = *actual.Spec.Replicas - 1
+		replicas -= 1
 		if desiredDeleteSlots.Has(ordinal) {
 			// in desired delete slots, add it in actual delete slots
 			actualDeleteSlots.Insert(ordinal)
 		}
+		actualDeleteSlots = normalizeDeleteSlots(replicas, actualDeleteSlots, desiredDeleteSlots)
 	}
 	deleteSlots = actualDeleteSlots
 	return
+}
+
+// normalizeDeleteSlots
+// - add redundant data if in desired delete slots
+// - remove redundant data if not in desired delete slots
+// this is necessary to reach the desired state
+func normalizeDeleteSlots(replicas int32, deleteSlots sets.Int32, desiredDeleteSlots sets.Int32) sets.Int32 {
+	maxReplicaCount, _ := helper.GetMaxReplicaCountAndDeleteSlots(replicas, deleteSlots)
+	for ordinal := range deleteSlots {
+		if ordinal >= maxReplicaCount && !desiredDeleteSlots.Has(ordinal) {
+			deleteSlots.Delete(ordinal)
+		}
+	}
+	return deleteSlots
 }
