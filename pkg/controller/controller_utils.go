@@ -46,9 +46,6 @@ var (
 	// backupScheduleControllerKind contains the schema.GroupVersionKind for backupschedule controller type.
 	backupScheduleControllerKind = v1alpha1.SchemeGroupVersion.WithKind("BackupSchedule")
 
-	// InitControllerKind contains the schema.GroupVersionKind for initializer controller type.
-	InitControllerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbInitializer")
-
 	// DefaultStorageClassName is the default storageClassName
 	DefaultStorageClassName string
 
@@ -127,20 +124,6 @@ func GetOwnerRef(tc *v1alpha1.TidbCluster) metav1.OwnerReference {
 		Kind:               ControllerKind.Kind,
 		Name:               tc.GetName(),
 		UID:                tc.GetUID(),
-		Controller:         &controller,
-		BlockOwnerDeletion: &blockOwnerDeletion,
-	}
-}
-
-// GetInitOwnerRef returns TiDBInitializer's OwnerReference
-func GetInitOwnerRef(ti *v1alpha1.TidbInitializer) metav1.OwnerReference {
-	controller := true
-	blockOwnerDeletion := true
-	return metav1.OwnerReference{
-		APIVersion:         InitControllerKind.GroupVersion().String(),
-		Kind:               InitControllerKind.Kind,
-		Name:               ti.GetName(),
-		UID:                ti.GetUID(),
 		Controller:         &controller,
 		BlockOwnerDeletion: &blockOwnerDeletion,
 	}

@@ -107,6 +107,8 @@ const (
 	RestoreJobLabelVal string = "restore"
 	// BackupJobLabelVal is backup job label value
 	BackupJobLabelVal string = "backup"
+	// BackupScheduleJobLabelVal is backup schedule job label value
+	BackupScheduleJobLabelVal string = "backup-schedule"
 	// InitJobLabelVal is TiDB initializer job label value
 	InitJobLabelVal string = "initializer"
 	// TiDBOperator is ManagedByLabelKey label value
@@ -120,22 +122,22 @@ type Label map[string]string
 func New() Label {
 	return Label{
 		NameLabelKey:      "tidb-cluster",
-		ManagedByLabelKey: "tidb-operator",
+		ManagedByLabelKey: TiDBOperator,
 	}
 }
 
 // NewInitializer initialize a new Label for Jobs of TiDB initializer
 func NewInitializer() Label {
 	return Label{
-		NameLabelKey:      "initializer",
-		ManagedByLabelKey: "tidb-operator",
+		ComponentLabelKey: InitJobLabelVal,
+		ManagedByLabelKey: TiDBOperator,
 	}
 }
 
 // NewBackup initialize a new Label for Jobs of bakcup
 func NewBackup() Label {
 	return Label{
-		NameLabelKey:      "backup",
+		NameLabelKey:      BackupJobLabelVal,
 		ManagedByLabelKey: "backup-operator",
 	}
 }
@@ -143,7 +145,7 @@ func NewBackup() Label {
 // NewRestore initialize a new Label for Jobs of restore
 func NewRestore() Label {
 	return Label{
-		NameLabelKey:      "restore",
+		NameLabelKey:      RestoreJobLabelVal,
 		ManagedByLabelKey: "restore-operator",
 	}
 }
@@ -151,7 +153,7 @@ func NewRestore() Label {
 // NewBackupSchedule initialize a new Label for backups of bakcup schedule
 func NewBackupSchedule() Label {
 	return Label{
-		NameLabelKey:      "backup-schedule",
+		NameLabelKey:      BackupScheduleJobLabelVal,
 		ManagedByLabelKey: "backup-schedule-operator",
 	}
 }
@@ -179,14 +181,8 @@ func (l Label) ComponentType() string {
 	return l[ComponentLabelKey]
 }
 
-// InitJob assigns initializer to component key in label
-func (l Label) InitJob() Label {
-	l.Component(InitJobLabelVal)
-	return l
-}
-
-// Init assigns specific value to initializer key in label
-func (l Label) Init(val string) Label {
+// Initializer assigns specific value to initializer key in label
+func (l Label) Initializer(val string) Label {
 	l[InitLabelKey] = val
 	return l
 }

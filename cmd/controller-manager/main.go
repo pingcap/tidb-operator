@@ -169,7 +169,7 @@ func main() {
 		backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-		tidbInitController := tidbinitializer.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+		tidbInitController := tidbinitializer.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory)
 
 		// Start informer factories after all controller are initialized.
 		informerFactory.Start(ctx.Done())

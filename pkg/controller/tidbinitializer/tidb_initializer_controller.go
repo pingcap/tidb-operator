@@ -29,6 +29,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -51,6 +52,7 @@ type Controller struct {
 func NewController(
 	kubeCli kubernetes.Interface,
 	cli versioned.Interface,
+	genericCli client.Client,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 ) *Controller {
@@ -62,8 +64,7 @@ func NewController(
 
 	tidbInitializerInformer := informerFactory.Pingcap().V1alpha1().TidbInitializers()
 	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
-	jobControl := controller.NewRealJobControl(kubeCli, recorder)
-	cmControl := controller.NewRealConfigMapControl(kubeCli, recorder)
+	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 
 	tic := &Controller{
 		cli: cli,
@@ -71,9 +72,9 @@ func NewController(
 			recorder,
 			member.NewTiDBInitManager(
 				jobInformer.Lister(),
-				jobControl,
-				cmControl,
 				cli,
+				tidbInitializerInformer.Lister(),
+				typedControl,
 			),
 		),
 		tiLister: tidbInitializerInformer.Lister(),
@@ -151,6 +152,9 @@ func (tic *Controller) sync(key string) error {
 	}
 	if err != nil {
 		return err
+	}
+	if ti.DeletionTimestamp != nil {
+		return nil
 	}
 	return tic.control.ReconcileTidbInitializer(ti)
 }
