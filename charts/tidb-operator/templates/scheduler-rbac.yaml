@@ -44,7 +44,11 @@ rules:
   verbs: ["delete", "get", "patch", "update"]
 - apiGroups: ["coordination.k8s.io"]
   resources: ["leases"]
-  verbs: ["get", "create", "update"]
+  verbs: ["create"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  resourceNames: ["{{ .Values.scheduler.schedulerName }}"]
+  verbs: ["get", "update"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -100,7 +104,11 @@ rules:
   verbs: ["delete", "get", "patch", "update"]
 - apiGroups: ["coordination.k8s.io"]
   resources: ["leases"]
-  verbs: ["get", "create", "update"]
+  verbs: ["create"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  resourceNames: ["{{ .Values.scheduler.schedulerName }}"]
+  verbs: ["get", "update"]
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
