@@ -409,7 +409,7 @@ func (tc *TidbCluster) GetInstanceName() string {
 	labels := tc.ObjectMeta.GetLabels()
 	// Keep backward compatibility for helm.
 	// This introduce a hidden danger that change this label will trigger rolling-update of most of the components
-	// TODO: disallow mutation of this label or adding this label with value other than the cluster name in ValidateUpdate()
+	// TODO(aylei): disallow mutation of this label or adding this label with value other than the cluster name in ValidateUpdate()
 	if inst, ok := labels[label.InstanceLabelKey]; ok {
 		return inst
 	}
