@@ -1884,7 +1884,6 @@ spec:
                   type: string
               required:
               - replicas
-              - baseImage
               type: object
             priorityClassName:
               description: 'PriorityClassName of TiDB cluster Pods Optional: Defaults
@@ -2725,7 +2724,6 @@ spec:
                   type: string
               required:
               - replicas
-              - baseImage
               type: object
             pvReclaimPolicy:
               description: Persistent volume reclaim policy applied to the PVs that
@@ -3982,7 +3980,6 @@ spec:
                   type: string
               required:
               - replicas
-              - baseImage
               type: object
             tikv:
               description: TiKVSpec contains details of TiKV members
@@ -5946,7 +5943,6 @@ spec:
                   type: string
               required:
               - replicas
-              - baseImage
               type: object
             timezone:
               description: 'Time zone of TiDB cluster Pods Optional: Defaults to UTC'
@@ -5999,7 +5995,6 @@ spec:
           - pd
           - tidb
           - tikv
-          - version
           type: object
       type: object
   version: v1alpha1

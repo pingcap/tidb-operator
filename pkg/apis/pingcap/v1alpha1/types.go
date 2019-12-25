@@ -120,7 +120,9 @@ type TidbClusterSpec struct {
 	// +optional
 	Helper *HelperSpec `json:"helper,omitempty"`
 
+	// TODO: remove optional after defaulting logic introduced
 	// TiDB cluster version
+	// +optional
 	Version string `json:"version"`
 
 	// SchedulerName of TiDB cluster Pods
@@ -210,9 +212,11 @@ type PDSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	Replicas int32 `json:"replicas"`
 
+	// TODO: remove optional after defaulting introduced
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/pd
 	// +kubebuilder:validation:Pattern=^[^:]+$
+	// +optional
 	BaseImage string `json:"baseImage"`
 
 	// Service defines a Kubernetes service of PD cluster.
@@ -241,9 +245,11 @@ type TiKVSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	Replicas int32 `json:"replicas"`
 
+	// TODO: remove optional after defaulting introduced
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/tikv
 	// +kubebuilder:validation:Pattern=^[^:]+$
+	// +optional
 	BaseImage string `json:"baseImage"`
 
 	// Whether create the TiKV container in privileged mode, it is highly discouraged to enable this in
@@ -279,9 +285,11 @@ type TiDBSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	Replicas int32 `json:"replicas"`
 
+	// TODO: remove optional after defaulting introduced
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/tidb
 	// +kubebuilder:validation:Pattern=^[^:]+$
+	// +optional
 	BaseImage string `json:"baseImage"`
 
 	// Service defines a Kubernetes service of TiDB cluster.
@@ -333,9 +341,11 @@ type PumpSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	Replicas int32 `json:"replicas"`
 
+	// TODO: remove optional after defaulting introduced
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/tidb-binlog
 	// +kubebuilder:validation:Pattern=^[^:]+$
+	// +optional
 	BaseImage string `json:"baseImage"`
 
 	// The storageClassName of the persistent volume for Pump data storage, empty string means not explicitly set

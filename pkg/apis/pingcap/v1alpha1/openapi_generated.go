@@ -2056,7 +2056,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 						},
 					},
 				},
-				Required: []string{"replicas", "baseImage"},
+				Required: []string{"replicas"},
 			},
 		},
 		Dependencies: []string{
@@ -2495,7 +2495,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 						},
 					},
 				},
-				Required: []string{"replicas", "baseImage"},
+				Required: []string{"replicas"},
 			},
 		},
 		Dependencies: []string{
@@ -3424,7 +3424,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 						},
 					},
 				},
-				Required: []string{"replicas", "baseImage"},
+				Required: []string{"replicas"},
 			},
 		},
 		Dependencies: []string{
@@ -5203,7 +5203,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 						},
 					},
 				},
-				Required: []string{"replicas", "baseImage"},
+				Required: []string{"replicas"},
 			},
 		},
 		Dependencies: []string{
@@ -5641,7 +5641,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 						},
 					},
 				},
-				Required: []string{"pd", "tidb", "tikv", "version"},
+				Required: []string{"pd", "tidb", "tikv"},
 			},
 		},
 		Dependencies: []string{
