@@ -27,7 +27,6 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 )
 
 func TestMapAndIntNil(t *testing.T) {
@@ -436,7 +435,7 @@ func TestHAFilter(t *testing.T) {
 		pvcGetFn      func(string, string) (*apiv1.PersistentVolumeClaim, error)
 		tcGetFn       func(string, string) (*v1alpha1.TidbCluster, error)
 		acquireLockFn func(*apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error)
-		expectFn      func([]apiv1.Node, error, record.FakeRecorder)
+		expectFn      func([]apiv1.Node, error)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -446,17 +445,15 @@ func TestHAFilter(t *testing.T) {
 
 		pod := test.podFn(instanceName, clusterName, 0)
 		nodes := test.nodesFn()
-		recorder := record.NewFakeRecorder(10)
 
 		ha := ha{
 			podListFn:     test.podListFn,
 			pvcGetFn:      test.pvcGetFn,
 			tcGetFn:       test.tcGetFn,
 			acquireLockFn: test.acquireLockFn,
-			recorder:      recorder,
 		}
 		n, err := ha.Filter(instanceName, pod, nodes)
-		test.expectFn(n, err, *recorder)
+		test.expectFn(n, err)
 	}
 
 	tests := []testcase{
@@ -472,7 +469,7 @@ func TestHAFilter(t *testing.T) {
 				}, nil
 			},
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1"}))
@@ -492,7 +489,7 @@ func TestHAFilter(t *testing.T) {
 			acquireLockFn: func(pod *corev1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error) {
 				return nil, nil, fmt.Errorf("failed to acquire the lock")
 			},
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "failed to acquire the lock")).To(BeTrue())
 			},
@@ -505,7 +502,7 @@ func TestHAFilter(t *testing.T) {
 				return nil, fmt.Errorf("get pvc failed")
 			},
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "get pvc failed")).To(BeTrue())
 			},
@@ -516,7 +513,7 @@ func TestHAFilter(t *testing.T) {
 			nodesFn:       fakeThreeNodes,
 			podListFn:     podListErr(),
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "list pods failed")).To(BeTrue())
 			},
@@ -530,7 +527,7 @@ func TestHAFilter(t *testing.T) {
 				return nil, fmt.Errorf("get tidbcluster failed")
 			},
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "get tidbcluster failed")).To(BeTrue())
 			},
@@ -542,9 +539,9 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{}),
 			tcGetFn:       tcGetFn,
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "kube nodes is empty")).To(BeTrue())
+				g.Expect(strings.Contains(err.Error(), "no nodes available to schedule pods")).To(BeTrue())
 			},
 		},
 		{
@@ -561,7 +558,7 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{}),
 			tcGetFn:       tcGetOneReplicasFn,
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1"}))
@@ -581,7 +578,7 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{}),
 			tcGetFn:       tcGetOneReplicasFn,
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2"}))
@@ -601,7 +598,7 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{}),
 			tcGetFn:       tcGetTwoReplicasFn,
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1"}))
@@ -621,7 +618,7 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{}),
 			tcGetFn:       tcGetTwoReplicasFn,
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2"}))
@@ -641,7 +638,7 @@ func TestHAFilter(t *testing.T) {
 			acquireLockFn: acquireSuccess,
 			podListFn:     podListFn(map[string][]int32{}),
 			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1"}))
@@ -661,12 +658,9 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{"kube-node-1": {1}}),
 			acquireLockFn: acquireSuccess,
 			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, recorder record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
-				events := collectEvents(recorder.Events)
-				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring("FailedScheduling"))
-				g.Expect(strings.Contains(err.Error(), "can't schedule to nodes:")).To(BeTrue())
+				g.Expect(err.Error()).To(ContainSubstring("unable to schedule to nodes: kube-node-1 (1 pd pods), max pods per node: 1"))
 				g.Expect(len(nodes)).To(Equal(0))
 			},
 		},
@@ -677,7 +671,7 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}}),
 			acquireLockFn: acquireSuccess,
 			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-2"}))
@@ -690,12 +684,9 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}}),
 			acquireLockFn: acquireSuccess,
 			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, recorder record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
-				events := collectEvents(recorder.Events)
-				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring("FailedScheduling"))
-				g.Expect(strings.Contains(err.Error(), "can't schedule to nodes:")).To(BeTrue())
+				g.Expect(err.Error()).To(ContainSubstring("unable to schedule to nodes: kube-node-1 (1 pd pods), kube-node-2 (1 pd pods), max pods per node: 1"))
 				g.Expect(len(nodes)).To(Equal(0))
 			},
 		},
@@ -706,7 +697,7 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{}),
 			acquireLockFn: acquireSuccess,
 			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
@@ -719,7 +710,7 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}}),
 			acquireLockFn: acquireSuccess,
 			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-2", "kube-node-3"}))
@@ -732,7 +723,7 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}}),
 			acquireLockFn: acquireSuccess,
 			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
 				g.Expect(nodes[0].Name).To(Equal("kube-node-3"))
@@ -745,7 +736,7 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{"kube-node-4": {4}}),
 			acquireLockFn: acquireSuccess,
 			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
@@ -762,7 +753,7 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.TiKV.Replicas = 4
 				return tc, nil
 			},
-			expectFn: func(nodes []apiv1.Node, err error, recorder record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
@@ -772,19 +763,16 @@ func TestHAFilter(t *testing.T) {
 			name:      "two nodes, 2,2 pods scheduled on these two nodes, replicas is 5, can't schedule",
 			podFn:     newHATiKVPod,
 			nodesFn:   fakeTwoNodes,
-			podListFn: podListFn(map[string][]int32{"kube-node-1": {2}, "kube-node-2": {2}}),
+			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}}),
 			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
 				tc, _ := tcGetFn(ns, tcName)
 				tc.Spec.TiKV.Replicas = 5
 				return tc, nil
 			},
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, recorder record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
-				events := collectEvents(recorder.Events)
-				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring("FailedScheduling"))
-				g.Expect(strings.Contains(err.Error(), "can't schedule to nodes:")).To(BeTrue())
+				g.Expect(err.Error()).To(ContainSubstring("unable to schedule to nodes: kube-node-1 (1 tikv pods), kube-node-2 (1 tikv pods), max pods per node: 1"))
 				g.Expect(len(nodes)).To(Equal(0))
 			},
 		},
@@ -799,7 +787,7 @@ func TestHAFilter(t *testing.T) {
 				return tc, nil
 			},
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
@@ -816,7 +804,7 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.PD.Replicas = 5
 				return tc, nil
 			},
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-2", "kube-node-3"}))
@@ -833,7 +821,7 @@ func TestHAFilter(t *testing.T) {
 				return tc, nil
 			},
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
 				g.Expect(nodes[0].Name).To(Equal("kube-node-4"))
@@ -850,7 +838,7 @@ func TestHAFilter(t *testing.T) {
 				return tc, nil
 			},
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(4))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3", "kube-node-4"}))
@@ -867,7 +855,7 @@ func TestHAFilter(t *testing.T) {
 				return tc, nil
 			},
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(4))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3", "kube-node-4"}))
@@ -884,7 +872,7 @@ func TestHAFilter(t *testing.T) {
 				return tc, nil
 			},
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-2", "kube-node-3", "kube-node-4"}))
@@ -901,7 +889,7 @@ func TestHAFilter(t *testing.T) {
 				return tc, nil
 			},
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-2"}))
@@ -1044,18 +1032,4 @@ func getSortedNodeNames(nodes []apiv1.Node) []string {
 
 func acquireSuccess(*apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error) {
 	return nil, nil, nil
-}
-
-func collectEvents(source <-chan string) []string {
-	done := false
-	events := make([]string, 0)
-	for !done {
-		select {
-		case event := <-source:
-			events = append(events, event)
-		default:
-			done = true
-		}
-	}
-	return events
 }

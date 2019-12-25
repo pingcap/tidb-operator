@@ -15,7 +15,6 @@ package scheduler
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -24,6 +23,7 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
 	schedulerapiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
 )
 
@@ -35,6 +35,8 @@ func TestSchedulerFilter(t *testing.T) {
 		predicateError bool
 		expectFn       func(*GomegaWithT, *schedulerapiv1.ExtenderFilterResult, error)
 	}
+
+	recorder := record.NewFakeRecorder(10)
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
@@ -51,6 +53,8 @@ func TestSchedulerFilter(t *testing.T) {
 					newFakeErrPredicate(),
 				},
 			},
+
+			recorder: recorder,
 		}
 		if test.predicateError {
 			for _, predicatesByComponent := range s.predicates {
@@ -136,9 +140,11 @@ func TestSchedulerFilter(t *testing.T) {
 			},
 			predicateError: true,
 			expectFn: func(g *GomegaWithT, result *schedulerapiv1.ExtenderFilterResult, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "predicate error")).To(BeTrue())
-				g.Expect(result).To(BeNil())
+				g.Expect(err).NotTo(HaveOccurred())
+				events := predicates.CollectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("predicate error"))
+				g.Expect(result.Nodes.Items).To(BeNil())
 			},
 		},
 		{
