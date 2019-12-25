@@ -38,6 +38,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/pointer"
 )
 
 func TestTiDBMemberManagerSyncCreate(t *testing.T) {
@@ -1549,7 +1550,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 					TiDB: v1alpha1.TiDBSpec{
 						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
 						Config: &v1alpha1.TiDBConfig{
-							Host: "0.0.0.0",
+							Lease: pointer.StringPtr("45s"),
 						},
 					},
 				},
@@ -1581,7 +1582,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 				},
 				Data: map[string]string{
 					"startup-script": "",
-					"config-file": `host = "0.0.0.0"
+					"config-file": `lease = "45s"
 `,
 				},
 			},

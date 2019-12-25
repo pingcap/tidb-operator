@@ -18,10 +18,12 @@ package v1alpha1
 // TiKVConfig is the configuration of TiKV.
 // +k8s:openapi-gen=true
 type TiKVConfig struct {
+	// Optional: Defaults to info
 	// +optional
 	LogLevel string `json:"log-level,omitempty" toml:"log-level,omitempty"`
 	// +optional
 	LogFile string `json:"log-file,omitempty" toml:"log-file,omitempty"`
+	// Optional: Defaults to 24h
 	// +optional
 	LogRotationTimespan string `json:"log-rotation-timespan,omitempty" toml:"log-rotation-timespan,omitempty"`
 	// +optional
@@ -46,31 +48,65 @@ type TiKVConfig struct {
 	// +optional
 	GC *TiKVGCConfig `json:"gc,omitempty" toml:"gc,omitempty"`
 	// +optional
+	PD *TiKVPDConfig `json:"pd,omitempty" toml:"pd,omitempty"`
+	// +optional
 	Security *TiKVSecurityConfig `json:"security,omitempty" toml:"security,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 type TiKVReadPoolConfig struct {
 	// +optional
-	Coprocessor *TiKVComponentReadPoolConfig `json:"coprocessor,omitempty" toml:"coprocessor,omitempty"`
+	Coprocessor *TiKVCoprocessorReadPoolConfig `json:"coprocessor,omitempty" toml:"coprocessor,omitempty"`
 	// +optional
-	Storage *TiKVComponentReadPoolConfig `json:"storage,omitempty" toml:"storage,omitempty"`
+	Storage *TiKVStorageReadPoolConfig `json:"storage,omitempty" toml:"storage,omitempty"`
 }
 
 // +k8s:openapi-gen=true
-type TiKVComponentReadPoolConfig struct {
+type TiKVStorageReadPoolConfig struct {
+	// Optional: Defaults to 4
 	// +optional
 	HighConcurrency *int64 `json:"high_concurrency,omitempty" toml:"high_concurrency,omitempty"`
+	// Optional: Defaults to 4
 	// +optional
 	NormalConcurrency *int64 `json:"normal_concurrency,omitempty" toml:"normal_concurrency,omitempty"`
+	// Optional: Defaults to 4
 	// +optional
 	LowConcurrency *int64 `json:"low_concurrency,omitempty" toml:"low_concurrency,omitempty"`
+	// Optional: Defaults to 2000
 	// +optional
 	MaxTasksPerWorkerHigh *int64 `json:"max_tasks_per_worker_high,omitempty" toml:"max_tasks_per_worker_high,omitempty"`
+	// Optional: Defaults to 2000
 	// +optional
 	MaxTasksPerWorkerNormal *int64 `json:"max_tasks_per_worker_normal,omitempty" toml:"max_tasks_per_worker_normal,omitempty"`
+	// Optional: Defaults to 2000
 	// +optional
 	MaxTasksPerWorkerLow *int64 `json:"max_tasks_per_worker_low,omitempty" toml:"max_tasks_per_worker_low,omitempty"`
+	// Optional: Defaults to 10MB
+	// +optional
+	StackSize string `json:"stack_size,omitempty" toml:"stack_size,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type TiKVCoprocessorReadPoolConfig struct {
+	// Optional: Defaults to 8
+	// +optional
+	HighConcurrency *int64 `json:"high_concurrency,omitempty" toml:"high_concurrency,omitempty"`
+	// Optional: Defaults to 8
+	// +optional
+	NormalConcurrency *int64 `json:"normal_concurrency,omitempty" toml:"normal_concurrency,omitempty"`
+	// Optional: Defaults to 8
+	// +optional
+	LowConcurrency *int64 `json:"low_concurrency,omitempty" toml:"low_concurrency,omitempty"`
+	// Optional: Defaults to 2000
+	// +optional
+	MaxTasksPerWorkerHigh *int64 `json:"max_tasks_per_worker_high,omitempty" toml:"max_tasks_per_worker_high,omitempty"`
+	// Optional: Defaults to 2000
+	// +optional
+	MaxTasksPerWorkerNormal *int64 `json:"max_tasks_per_worker_normal,omitempty" toml:"max_tasks_per_worker_normal,omitempty"`
+	// Optional: Defaults to 2000
+	// +optional
+	MaxTasksPerWorkerLow *int64 `json:"max_tasks_per_worker_low,omitempty" toml:"max_tasks_per_worker_low,omitempty"`
+	// Optional: Defaults to 10MB
 	// +optional
 	StackSize string `json:"stack_size,omitempty" toml:"stack_size,omitempty"`
 }
@@ -85,17 +121,20 @@ type TiKVPDConfig struct {
 	// The interval at which to retry a PD connection initialization.
 	//
 	// Default is 300ms.
+	// Optional: Defaults to 300ms
 	// +optional
 	RetryInterval string `json:"retry_interval,omitempty" toml:"retry_interval,omitempty"`
 	// The maximum number of times to retry a PD connection initialization.
 	//
 	// Default is isize::MAX, represented by -1.
+	// Optional: Defaults to -1
 	// +optional
 	RetryMaxCount *int64 `json:"retry_max_count,omitempty" toml:"retry_max_count,omitempty"`
 	// If the client observes the same error message on retry, it can repeat the message only
 	// every `n` times.
 	//
 	// Default is 10. Set to 1 to disable this feature.
+	// Optional: Defaults to 10
 	// +optional
 	RetryLogEvery *int64 `json:"retry_log_every,omitempty" toml:"retry_log_every,omitempty"`
 }
@@ -191,6 +230,7 @@ type TiKVImportConfig struct {
 // +k8s:openapi-gen=true
 type TiKVGCConfig struct {
 	// +optional
+	// Optional: Defaults to 512
 	BatchKeys *int64 `json:"	batch_keys,omitempty" toml:"	batch_keys,omitempty"`
 	// +optional
 	MaxWriteBytesPerSec string `json:"	max_write_bytes_per_sec,omitempty" toml:"	max_write_bytes_per_sec,omitempty"`
@@ -200,27 +240,34 @@ type TiKVGCConfig struct {
 // +k8s:openapi-gen=true
 type TiKVDbConfig struct {
 	// +optional
+	// Optional: Defaults to 2
 	WalRecoveryMode *int64 `json:"wal-recovery-mode,omitempty" toml:"wal-recovery-mode,omitempty"`
-	// +optional
-	WalDir string `json:"wal-dir,omitempty" toml:"wal-dir,omitempty"`
 	// +optional
 	WalTTLSeconds *int64 `json:"wal-ttl-seconds,omitempty" toml:"wal-ttl-seconds,omitempty"`
 	// +optional
 	WalSizeLimit string `json:"wal-size-limit,omitempty" toml:"wal-size-limit,omitempty"`
 	// +optional
+	// Optional: Defaults to 4GB
 	MaxTotalWalSize string `json:"max-total-wal-size,omitempty" toml:"max-total-wal-size,omitempty"`
 	// +optional
+	// Optional: Defaults to 8
 	MaxBackgroundJobs *int64 `json:"max-background-jobs,omitempty" toml:"max-background-jobs,omitempty"`
 	// +optional
+	// Optional: Defaults to 128MB
 	MaxManifestFileSize string `json:"max-manifest-file-size,omitempty" toml:"max-manifest-file-size,omitempty"`
 	// +optional
+	// Optional: Defaults to true
 	CreateIfMissing *bool `json:"create-if-missing,omitempty" toml:"create-if-missing,omitempty"`
 	// +optional
+	// Optional: Defaults to 40960
 	MaxOpenFiles *int64 `json:"max-open-files,omitempty" toml:"max-open-files,omitempty"`
 	// +optional
+	// Optional: Defaults to true
 	EnableStatistics *bool `json:"enable-statistics,omitempty" toml:"enable-statistics,omitempty"`
 	// +optional
+	// Optional: Defaults to 10m
 	StatsDumpPeriod string `json:"stats-dump-period,omitempty" toml:"stats-dump-period,omitempty"`
+	// Optional: Defaults to 0
 	// +optional
 	CompactionReadaheadSize string `json:"compaction-readahead-size,omitempty" toml:"compaction-readahead-size,omitempty"`
 	// +optional
@@ -242,6 +289,7 @@ type TiKVDbConfig struct {
 	// +optional
 	WalBytesPerSync string `json:"wal-bytes-per-sync,omitempty" toml:"wal-bytes-per-sync,omitempty"`
 	// +optional
+	// Optional: Defaults to 3
 	MaxSubCompactions *int64 `json:"max-sub-compactions,omitempty" toml:"max-sub-compactions,omitempty"`
 	// +optional
 	WritableFileMaxBufferSize string `json:"writable-file-max-buffer-size,omitempty" toml:"writable-file-max-buffer-size,omitempty"`
@@ -373,16 +421,17 @@ type TiKVTitanDBConfig struct {
 // +k8s:openapi-gen=true
 type TiKVStorageConfig struct {
 	// +optional
-	DataDir string `json:"data-dir,omitempty" toml:"data-dir,omitempty"`
-	// +optional
 	MaxKeySize *int64 `json:"max-key-size,omitempty" toml:"max-key-size,omitempty"`
 	// +optional
 	SchedulerNotifyCapacity *int64 `json:"scheduler-notify-capacity,omitempty" toml:"scheduler-notify-capacity,omitempty"`
 	// +optional
+	// Optional: Defaults to 2048000
 	SchedulerConcurrency *int64 `json:"scheduler-concurrency,omitempty" toml:"scheduler-concurrency,omitempty"`
 	// +optional
+	// Optional: Defaults to 4
 	SchedulerWorkerPoolSize *int64 `json:"scheduler-worker-pool-size,omitempty" toml:"scheduler-worker-pool-size,omitempty"`
 	// +optional
+	// Optional: Defaults to 100MB
 	SchedulerPendingWriteThreshold string `json:"scheduler-pending-write-threshold,omitempty" toml:"scheduler-pending-write-threshold,omitempty"`
 	// +optional
 	BlockCache *TiKVBlockCacheConfig `json:"block-cache,omitempty" toml:"block-cache,omitempty"`
@@ -391,6 +440,7 @@ type TiKVStorageConfig struct {
 // TiKVBlockCacheConfig is the config of a block cache
 // +k8s:openapi-gen=true
 type TiKVBlockCacheConfig struct {
+	// Optional: Defaults to true
 	// +optional
 	Shared *bool `json:"shared,omitempty" toml:"shared,omitempty"`
 	// +optional
@@ -408,32 +458,40 @@ type TiKVBlockCacheConfig struct {
 // TiKVServerConfig is the configuration of TiKV server.
 // +k8s:openapi-gen=true
 type TiKVServerConfig struct {
-	// +optional
-	Addr string `json:"addr,omitempty" toml:"addr,omitempty"`
-	// +optional
-	AdvertiseAddr string `json:"advertise-addr,omitempty" toml:"advertise-addr,omitempty"`
-	// +optional
-	StatusAddr string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
+	// Optional: Defaults to 1
 	// +optional
 	StatusThreadPoolSize string `json:"status-thread-pool-size,omitempty" toml:"status-thread-pool-size,omitempty"`
+	// Optional: Defaults to none
 	// +optional
 	GrpcCompressionType string `json:"grpc-compression-type,omitempty" toml:"grpc-compression-type,omitempty"`
+	// Optional: Defaults to 4
 	// +optional
 	GrpcConcurrency *uint `json:"grpc-concurrency,omitempty" toml:"grpc-concurrency,omitempty"`
+	// Optional: Defaults to 1024
 	// +optional
 	GrpcConcurrentStream *uint `json:"grpc-concurrent-stream,omitempty" toml:"grpc-concurrent-stream,omitempty"`
+	// Optional: Defaults to 32G
+	// +optional
+	GrpcMemoryQuota *string `json:"grpc_memory_pool_quota,omitempty" toml:"grpc_memory_pool_quota,omitempty"`
+	// Optional: Defaults to 10
 	// +optional
 	GrpcRaftConnNum *uint `json:"grpc-raft-conn-num,omitempty" toml:"grpc-raft-conn-num,omitempty"`
+	// Optional: Defaults to 2MB
 	// +optional
 	GrpcStreamInitialWindowSize string `json:"grpc-stream-initial-window-size,omitempty" toml:"grpc-stream-initial-window-size,omitempty"`
+	// Optional: Defaults to 10s
 	// +optional
 	GrpcKeepaliveTime string `json:"grpc-keepalive-time,omitempty" toml:"grpc-keepalive-time,omitempty"`
+	// Optional: Defaults to 3s
 	// +optional
 	GrpcKeepaliveTimeout string `json:"grpc-keepalive-timeout,omitempty" toml:"grpc-keepalive-timeout,omitempty"`
+	// Optional: Defaults to 32
 	// +optional
 	ConcurrentSendSnapLimit *uint `json:"concurrent-send-snap-limit,omitempty" toml:"concurrent-send-snap-limit,omitempty"`
+	// Optional: Defaults to 32
 	// +optional
 	ConcurrentRecvSnapLimit *uint `json:"concurrent-recv-snap-limit,omitempty" toml:"concurrent-recv-snap-limit,omitempty"`
+	// Optional: Defaults to 1000
 	// +optional
 	EndPointRecursionLimit *uint `json:"end-point-recursion-limit,omitempty" toml:"end-point-recursion-limit,omitempty"`
 	// +optional
@@ -446,6 +504,7 @@ type TiKVServerConfig struct {
 	EndPointEnableBatchIfPossible *uint `json:"end-point-enable-batch-if-possible,omitempty" toml:"end-point-enable-batch-if-possible,omitempty"`
 	// +optional
 	EndPointRequestMaxHandleDuration string `json:"end-point-request-max-handle-duration,omitempty" toml:"end-point-request-max-handle-duration,omitempty"`
+	// Optional: Defaults to 100MB
 	// +optional
 	SnapMaxWriteBytesPerSec string `json:"snap-max-write-bytes-per-sec,omitempty" toml:"snap-max-write-bytes-per-sec,omitempty"`
 	// +optional
@@ -454,6 +513,7 @@ type TiKVServerConfig struct {
 	StatsConcurrency *uint `json:"stats-concurrency,omitempty" toml:"stats-concurrency,omitempty"`
 	// +optional
 	HeavyLoadThreshold *uint `json:"heavy-load-threshold,omitempty" toml:"heavy-load-threshold,omitempty"`
+	// Optional: Defaults to 60s
 	// +optional
 	HeavyLoadWaitDuration string `json:"heavy-load-wait-duration,omitempty" toml:"heavy-load-wait-duration,omitempty"`
 	// +optional
@@ -464,9 +524,13 @@ type TiKVServerConfig struct {
 // +k8s:openapi-gen=true
 type TiKVRaftstoreConfig struct {
 	// true for high reliability, prevent data loss when power failure.
+	// Optional: Defaults to true
 	// +optional
 	SyncLog *bool `json:"sync-log,omitempty" toml:"sync-log,omitempty"`
 
+	// Optional: Defaults to true
+	// +optional
+	Prevote *bool `json:"prevote,omitempty" toml:"prevote,omitempty"`
 	// raft-base-tick-interval is a base tick interval (ms).
 	// +optional
 	RaftBaseTickInterval string `json:"raft-base-tick-interval,omitempty" toml:"raft-base-tick-interval,omitempty"`
@@ -475,20 +539,25 @@ type TiKVRaftstoreConfig struct {
 	// +optional
 	RaftElectionTimeoutTicks *int64 `json:"raft-election-timeout-ticks,omitempty" toml:"raft-election-timeout-ticks,omitempty"`
 	// When the entry exceed the max size, reject to propose it.
+	// Optional: Defaults to 8MB
 	// +optional
 	RaftEntryMaxSize string `json:"raft-entry-max-size,omitempty" toml:"raft-entry-max-size,omitempty"`
 
 	// Interval to gc unnecessary raft log (ms).
+	// Optional: Defaults to 10s
 	// +optional
 	RaftLogGCTickInterval string `json:"raft-log-gc-tick-interval,omitempty" toml:"raft-log-gc-tick-interval,omitempty"`
 	// A threshold to gc stale raft log, must >= 1.
+	// Optional: Defaults to 50
 	// +optional
 	RaftLogGCThreshold *int64 `json:"raft-log-gc-threshold,omitempty" toml:"raft-log-gc-threshold,omitempty"`
 	// When entry count exceed this value, gc will be forced trigger.
+	// Optional: Defaults to 72000
 	// +optional
 	RaftLogGCCountLimit *int64 `json:"raft-log-gc-count-limit,omitempty" toml:"raft-log-gc-count-limit,omitempty"`
 	// When the approximate size of raft log entries exceed this value
 	// gc will be forced trigger.
+	// Optional: Defaults to 72MB
 	// +optional
 	RaftLogGCSizeLimit string `json:"raft-log-gc-size-limit,omitempty" toml:"raft-log-gc-size-limit,omitempty"`
 	// When a peer is not responding for this time, leader will not keep entry cache for it.
@@ -499,30 +568,39 @@ type TiKVRaftstoreConfig struct {
 	RaftRejectTransferLeaderDuration string `json:"raft-reject-transfer-leader-duration,omitempty" toml:"raft-reject-transfer-leader-duration,omitempty"`
 
 	// Interval (ms) to check region whether need to be split or not.
+	// Optional: Defaults to 10s
 	// +optional
 	SplitRegionCheckTickInterval string `json:"split-region-check-tick-interval,omitempty" toml:"split-region-check-tick-interval,omitempty"`
 	/// When size change of region exceed the diff since last check, it
 	/// will be checked again whether it should be split.
+	// Optional: Defaults to 6MB
 	// +optional
 	RegionSplitCheckDiff string `json:"region-split-check-diff,omitempty" toml:"region-split-check-diff,omitempty"`
 	/// Interval (ms) to check whether start compaction for a region.
+	// Optional: Defaults to 5m
 	// +optional
 	RegionCompactCheckInterval string `json:"region-compact-check-interval,omitempty" toml:"region-compact-check-interval,omitempty"`
 	// delay time before deleting a stale peer
+	// Optional: Defaults to 10m
 	// +optional
 	CleanStalePeerDelay string `json:"clean-stale-peer-delay,omitempty" toml:"clean-stale-peer-delay,omitempty"`
 	/// Number of regions for each time checking.
+	// Optional: Defaults to 100
 	// +optional
 	RegionCompactCheckStep *int64 `json:"region-compact-check-step,omitempty" toml:"region-compact-check-step,omitempty"`
 	/// Minimum number of tombstones to trigger manual compaction.
+	// Optional: Defaults to 10000
 	// +optional
 	RegionCompactMinTombstones *int64 `json:"region-compact-min-tombstones,omitempty" toml:"region-compact-min-tombstones,omitempty"`
 	/// Minimum percentage of tombstones to trigger manual compaction.
 	/// Should between 1 and 100.
+	// Optional: Defaults to 30
 	// +optional
 	RegionCompactTombstonesPercent *int64 `json:"region-compact-tombstones-percent,omitempty" toml:"region-compact-tombstones-percent,omitempty"`
+	// Optional: Defaults to 60s
 	// +optional
 	PdHeartbeatTickInterval string `json:"pd-heartbeat-tick-interval,omitempty" toml:"pd-heartbeat-tick-interval,omitempty"`
+	// Optional: Defaults to 10s
 	// +optional
 	PdStoreHeartbeatTickInterval string `json:"pd-store-heartbeat-tick-interval,omitempty" toml:"pd-store-heartbeat-tick-interval,omitempty"`
 	// +optional
@@ -530,8 +608,10 @@ type TiKVRaftstoreConfig struct {
 	// +optional
 	SnapGCTimeout string `json:"snap-gc-timeout,omitempty" toml:"snap-gc-timeout,omitempty"`
 	// +optional
+	// Optional: Defaults to 10m
 	LockCfCompactInterval string `json:"lock-cf-compact-interval,omitempty" toml:"lock-cf-compact-interval,omitempty"`
 	// +optional
+	// Optional: Defaults to 256MB
 	LockCfCompactBytesThreshold string `json:"lock-cf-compact-bytes-threshold,omitempty" toml:"lock-cf-compact-bytes-threshold,omitempty"`
 
 	// +optional
@@ -541,6 +621,7 @@ type TiKVRaftstoreConfig struct {
 
 	/// When a peer is not active for max-peer-down-duration
 	/// the peer is considered to be down and is reported to PD.
+	// Optional: Defaults to 5m
 	// +optional
 	MaxPeerDownDuration string `json:"max-peer-down-duration,omitempty" toml:"max-peer-down-duration,omitempty"`
 
@@ -563,6 +644,7 @@ type TiKVRaftstoreConfig struct {
 	SnapApplyBatchSize string `json:"snap-apply-batch-size,omitempty" toml:"snap-apply-batch-size,omitempty"`
 
 	// Interval (ms) to check region whether the data is consistent.
+	// Optional: Defaults to 0
 	// +optional
 	ConsistencyCheckInterval string `json:"consistency-check-interval,omitempty" toml:"consistency-check-interval,omitempty"`
 
@@ -591,15 +673,18 @@ type TiKVRaftstoreConfig struct {
 	UseDeleteRange *bool `json:"use-delete-range,omitempty" toml:"use-delete-range,omitempty"`
 
 	// +optional
+	// Optional: Defaults to 10m
 	CleanupImportSstInterval string `json:"cleanup-import-sst-interval,omitempty" toml:"cleanup-import-sst-interval,omitempty"`
 
 	// +optional
 	ApplyMaxBatchSize *int64 `json:"apply-max-batch-size,omitempty" toml:"apply-max-batch-size,omitempty"`
+	// Optional: Defaults to 2
 	// +optional
 	ApplyPoolSize *int64 `json:"apply-pool-size,omitempty" toml:"apply-pool-size,omitempty"`
 
 	// +optional
 	StoreMaxBatchSize *int64 `json:"store-max-batch-size,omitempty" toml:"store-max-batch-size,omitempty"`
+	// Optional: Defaults to 2
 	// +optional
 	StorePoolSize *int64 `json:"store-pool-size,omitempty" toml:"store-pool-size,omitempty"`
 	// +optional
@@ -612,6 +697,7 @@ type TiKVCoprocessorConfig struct {
 	// When it is set to `true`, TiKV will try to split a Region with table prefix if that Region
 	// crosses tables.
 	// It is recommended to turn off this option if there will be a large number of tables created.
+	// Optional: Defaults to false
 	// optional
 	SplitRegionOnTable *bool `json:"split-region-on-table,omitempty" toml:"split-region-on-table,omitempty"`
 
@@ -623,24 +709,28 @@ type TiKVCoprocessorConfig struct {
 	// When Region [a,e) size exceeds `region_max_size`, it will be split into several Regions [a,b),
 	// [b,c), [c,d), [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size` (or a
 	// little larger). See also: region-split-size
+	// Optional: Defaults to 144MB
 	// optional
 	RegionMaxSize string `json:"region-max-size,omitempty" toml:"region-max-size,omitempty"`
 
 	// When Region [a,e) size exceeds `region_max_size`, it will be split into several Regions [a,b),
 	// [b,c), [c,d), [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size` (or a
 	// little larger). See also: region-max-size
+	// Optional: Defaults to 96MB
 	// optional
 	RegionSplitSize string `json:"region-split-size,omitempty" toml:"region-split-size,omitempty"`
 
 	// When the number of keys in Region [a,e) exceeds the `region_max_keys`, it will be split into
 	// several Regions [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b), [b,c), [c,d) will be
 	// `region_split_keys`. See also: region-split-keys
+	// Optional: Defaults to 1440000
 	// optional
 	RegionMaxKeys *int64 `json:"region-max-keys,omitempty" toml:"region-max-keys,omitempty"`
 
 	// When the number of keys in Region [a,e) exceeds the `region_max_keys`, it will be split into
 	// several Regions [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b), [b,c), [c,d) will be
 	// `region_split_keys`. See also: region-max-keys
+	// Optional: Defaults to 960000
 	// optional
 	RegionSplitKeys *int64 `json:"region-split-keys,omitempty" toml:"region-split-keys,omitempty"`
 }
