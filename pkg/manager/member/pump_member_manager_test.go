@@ -29,6 +29,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -120,19 +121,6 @@ func TestPumpMemberManagerSyncCreate(t *testing.T) {
 				g.Expect(r.getCm).NotTo(Succeed())
 				g.Expect(r.getSet).NotTo(Succeed())
 				g.Expect(r.getSvc).NotTo(Succeed())
-			},
-		},
-		{
-			name: "pump storage format is wrong",
-			prepare: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.Pump.Requests.Storage = "100xxxxi"
-			},
-			errOnCreateSet: false,
-			errOnCreateCm:  false,
-			errOnCreateSvc: false,
-			expectFn: func(g *GomegaWithT, r *result) {
-				g.Expect(r.sync).NotTo(Succeed())
-				g.Expect(r.sync.Error()).To(ContainSubstring("cant' parse storage size: 100xxxxi"))
 			},
 		},
 		{
@@ -523,11 +511,11 @@ func newTidbClusterForPump() *v1alpha1.TidbCluster {
 					"gc": 7,
 				}),
 				Replicas: 3,
-				Resources: v1alpha1.Resources{
-					Requests: &v1alpha1.ResourceRequirement{
-						CPU:     "1",
-						Memory:  "2Gi",
-						Storage: "100Gi",
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:     resource.MustParse("1"),
+						corev1.ResourceMemory:  resource.MustParse("2Gi"),
+						corev1.ResourceStorage: resource.MustParse("100Gi"),
 					},
 				},
 				StorageClassName: "my-storage-class",
