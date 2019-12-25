@@ -15,7 +15,10 @@ package tidbcluster
 
 import (
 	"context"
+	"fmt"
 	_ "net/http/pprof"
+
+	"k8s.io/klog"
 
 	"github.com/onsi/ginkgo"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
@@ -96,16 +99,72 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.AfterEach(func() {
-			ginkgo.By("Uninstalling CRDs")
-			oa.CleanCRDOrDie()
 			ginkgo.By("Uninstall tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
+			ginkgo.By("Uninstalling CRDs")
+			oa.CleanCRDOrDie()
 		})
 
 		ginkgo.It("able to deploy TiDB Cluster with advanced statefulset", func() {
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "deploy", "", "")
 			oa.DeployTidbClusterOrDie(&cluster)
 			oa.CheckTidbClusterStatusOrDie(&cluster)
+		})
+	})
+
+	// tidb-operator with pod admission webhook enabled
+	ginkgo.Context("[Feature: PodAdmissionWebhook]", func() {
+
+		var ocfg *tests.OperatorConfig
+		var oa tests.OperatorActions
+
+		ginkgo.BeforeEach(func() {
+			ocfg = &tests.OperatorConfig{
+				Namespace:         "pingcap",
+				ReleaseName:       "operator",
+				Image:             cfg.OperatorImage,
+				Tag:               cfg.OperatorTag,
+				SchedulerImage:    "k8s.gcr.io/kube-scheduler",
+				LogLevel:          "4",
+				ImagePullPolicy:   v1.PullIfNotPresent,
+				TestMode:          true,
+				WebhookEnabled:    true,
+				PodWebhookEnabled: true,
+				StsWebhookEnabled: false,
+			}
+			oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			ginkgo.By("Installing CRDs")
+			oa.CleanCRDOrDie()
+			oa.InstallCRDOrDie()
+			ginkgo.By("Installing tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			oa.DeployOperatorOrDie(ocfg)
+		})
+
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Uninstall tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			ginkgo.By("Uninstalling CRDs")
+			oa.CleanCRDOrDie()
+		})
+
+		ginkgo.It("able to upgrade TiDB Cluster with pod admission webhook", func() {
+			klog.Info("start to upgrade tidbcluster with pod admission webhook")
+			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "admission", "", "")
+			cluster.Resources["pd.replicas"] = "3"
+			cluster.Resources["tikv.replicas"] = "3"
+			cluster.Resources["tidb.replicas"] = "2"
+
+			oa.DeployTidbClusterOrDie(&cluster)
+			oa.CheckTidbClusterStatusOrDie(&cluster)
+			upgradeVersions := cfg.GetUpgradeTidbVersionsOrDie()
+			ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", cluster.ClusterVersion, upgradeVersions[0]))
+			cluster.UpgradeAll(upgradeVersions[0])
+			oa.UpgradeTidbClusterOrDie(&cluster)
+			// TODO: find a more graceful way to check tidbcluster during upgrading
+			oa.CheckTidbClusterStatusOrDie(&cluster)
+			oa.CleanTidbClusterOrDie(&cluster)
 		})
 	})
 
