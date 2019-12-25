@@ -39,9 +39,6 @@ rules:
   - apiGroups: ["apps.pingcap.com"]
     resources: ["statefulsets"]
     verbs: ["*"]
-  - apiGroups: ["admissionregistration.k8s.io"]
-    resources: ["validatingwebhookconfigurations"]
-    verbs: ["delete"]
 
 ---
 kind: ClusterRoleBinding
