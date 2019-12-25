@@ -14,31 +14,32 @@
 package monitor
 
 import (
-	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/util"
-	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
-	rbac "k8s.io/api/rbac/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeinformers "k8s.io/client-go/informers"
 	appslisters "k8s.io/client-go/listers/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
-	"strconv"
 )
 
 type MonitorManager struct {
 	typedControl     controller.TypedControlInterface
-	ConfigMapListers corelisters.ConfigMapLister
-	SecretLister     corelisters.SecretLister
-	DeploymentLister appslisters.DeploymentLister
+	deploymentLister appslisters.DeploymentLister
 	tcLister         v1alpha1listers.TidbClusterLister
-	StsControl       controller.StatefulSetControlInterface
-	PvcControl       controller.GeneralPVCControlInterface
+}
+
+func NewMonitorManager(
+	informerFactory informers.SharedInformerFactory,
+	kubeInformerFactory kubeinformers.SharedInformerFactory,
+	typedControl controller.TypedControlInterface) *MonitorManager {
+	return &MonitorManager{
+		typedControl:     typedControl,
+		deploymentLister: kubeInformerFactory.Apps().V1().Deployments().Lister(),
+		tcLister:         informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
+	}
 }
 
 func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
@@ -46,7 +47,7 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 	if monitor.DeletionTimestamp != nil {
 		return nil
 	}
-	return nil
+	return mm.syncTidbMonitor(monitor)
 }
 
 func (mm *MonitorManager) syncTidbMonitor(monitor *v1alpha1.TidbMonitor) error {
@@ -58,7 +59,7 @@ func (mm *MonitorManager) syncTidbMonitor(monitor *v1alpha1.TidbMonitor) error {
 		return err
 	}
 
-	oldMonitorDeployTmp, err := mm.DeploymentLister.Deployments(namespace).Get(getMonitorObjectName(monitor))
+	oldMonitorDeployTmp, err := mm.deploymentLister.Deployments(namespace).Get(getMonitorObjectName(monitor))
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
@@ -66,7 +67,7 @@ func (mm *MonitorManager) syncTidbMonitor(monitor *v1alpha1.TidbMonitor) error {
 
 	oldMonitorDeploy := oldMonitorDeployTmp.DeepCopy()
 
-	cm, err := mm.syncTidbMonitorConfig(monitor)
+	cm, err := mm.syncTidbMonitorConfig(tc, monitor)
 	if err != nil {
 		return err
 	}
@@ -97,9 +98,9 @@ func (mm *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (
 	return mm.typedControl.CreateOrUpdateSecret(monitor, newSt)
 }
 
-func (mm *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
+func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
 
-	newCM, err := getMonitorConfigMap(monitor)
+	newCM, err := getMonitorConfigMap(tc, monitor)
 	if err != nil {
 		return nil, err
 	}
@@ -123,273 +124,4 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 		return nil, err
 	}
 	return sa, nil
-}
-
-func getMonitorConfigMap(monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
-
-	var releaseNamespaces []string
-	for _, cluster := range monitor.Spec.Clusters {
-		releaseNamespaces = append(releaseNamespaces, cluster.Namespace)
-	}
-
-	model := &MonitorConfigModel{
-		AlertmanagerURL:    *monitor.Spec.AlertmanagerURL,
-		ReleaseNamespaces:  releaseNamespaces,
-		ReleaseTargetRegex: getMonitorTargetRegex(monitor),
-		EnableTLSCluster:   false,
-	}
-
-	content, err := RenderPrometheusConfig(model)
-	if err != nil {
-		return nil, err
-	}
-
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
-	cm := &core.ConfigMap{
-		ObjectMeta: meta.ObjectMeta{
-			Name:            getMonitorObjectName(monitor),
-			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-		},
-		Data: map[string]string{
-			"prometheus-config": content,
-		},
-	}
-	if monitor.Spec.Grafana != nil {
-		cm.Data["dashboard-config"] = dashBoardConfig
-	}
-	return cm, nil
-}
-
-func getMonitorSecret(monitor *v1alpha1.TidbMonitor) *core.Secret {
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
-	return &core.Secret{
-		ObjectMeta: meta.ObjectMeta{
-			Name:            getMonitorObjectName(monitor),
-			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-		},
-		Data: map[string][]byte{
-			"username": []byte(monitor.Spec.Grafana.Username),
-			"password": []byte(monitor.Spec.Grafana.Password),
-		},
-	}
-}
-
-func getMonitorServiceAccount(monitor *v1alpha1.TidbMonitor) *core.ServiceAccount {
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
-	sa := &core.ServiceAccount{
-		ObjectMeta: meta.ObjectMeta{
-			Name:            getMonitorObjectName(monitor),
-			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-		},
-	}
-	return sa
-}
-
-func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor) *rbac.ClusterRole {
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
-	return &rbac.ClusterRole{
-		ObjectMeta: meta.ObjectMeta{
-			Name:            getMonitorObjectName(monitor),
-			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-		},
-		Rules: []rbac.PolicyRule{
-			{
-				APIGroups: []string{""},
-				Resources: []string{"pods"},
-				Verbs:     []string{"get", "list", "watch"},
-			},
-			{
-				NonResourceURLs: []string{"/metrics"},
-				Verbs:           []string{"get"},
-			},
-		},
-	}
-}
-
-func getMonitorClusterRoleBinding(sa *core.ServiceAccount, cr *rbac.ClusterRole, monitor *v1alpha1.TidbMonitor) *rbac.ClusterRoleBinding {
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
-	return &rbac.ClusterRoleBinding{
-		ObjectMeta: meta.ObjectMeta{
-			Name:            getMonitorObjectName(monitor),
-			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-		},
-		Subjects: []rbac.Subject{
-			{
-				Kind:      sa.Kind,
-				Name:      sa.Name,
-				Namespace: sa.Namespace,
-			},
-		},
-		RoleRef: rbac.RoleRef{
-			Kind:     cr.Kind,
-			Name:     cr.Name,
-			APIGroup: "rbac.authorization.k8s.io",
-		},
-	}
-}
-
-func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, targetTidbCluster *v1alpha1.TidbCluster) *apps.Deployment {
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
-	replicas := int32(1)
-	enableBinlog := false
-	if targetTidbCluster.Spec.Pump != nil {
-		enableBinlog = true
-	}
-
-	c := "mkdir -p /data/prometheus\nchmod 777 /data/prometheus\n/usr/bin/init.sh"
-	if monitor.Spec.Grafana != nil {
-		c = "mkdir -p /data/prometheus /data/grafana\nchmod 777 /data/prometheus /data/grafana\n/usr/bin/init.sh"
-	}
-	commands := []string{
-		"/bin/sh",
-		"-c",
-		c,
-	}
-	secureContext := int64(0)
-	deployment := &apps.Deployment{
-		ObjectMeta: meta.ObjectMeta{
-			Name:            getMonitorObjectName(monitor),
-			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-		},
-		Spec: apps.DeploymentSpec{
-			Replicas: &replicas,
-			Strategy: apps.DeploymentStrategy{
-				Type:          apps.RecreateDeploymentStrategyType,
-				RollingUpdate: nil,
-			},
-			Selector: &meta.LabelSelector{
-				MatchLabels: map[string]string{
-					label.InstanceLabelKey:  monitor.Name,
-					label.ComponentLabelKey: label.TiDBMonitorVal,
-				},
-			},
-			Template: core.PodTemplateSpec{
-				ObjectMeta: meta.ObjectMeta{
-					Labels: map[string]string{
-						label.InstanceLabelKey:  monitor.Name,
-						label.ComponentLabelKey: label.TiDBMonitorVal,
-					},
-				},
-				Spec: core.PodSpec{
-					ServiceAccountName: sa.Name,
-					InitContainers: []core.Container{
-						{
-							Name:            "monitor-initializer",
-							Image:           fmt.Sprintf("%s:%s", monitor.Spec.Initializer.BaseImage, monitor.Spec.Initializer.Version),
-							ImagePullPolicy: *monitor.Spec.Initializer.ImagePullPolicy,
-							Env: []core.EnvVar{
-								{
-									Name:  "GF_PROVISIONING_PATH",
-									Value: "/grafana-dashboard-definitions/tidb",
-								},
-								{
-									Name:  "GF_DATASOURCE_PATH",
-									Value: "/etc/grafana/provisioning/datasources",
-								},
-								{
-									Name:  "TIDB_CLUSTER_NAME",
-									Value: targetTidbCluster.Name,
-								},
-								{
-									Name:  "TIDB_ENABLE_BINLOG",
-									Value: strconv.FormatBool(enableBinlog),
-								},
-								{
-									Name:  "PROM_CONFIG_PATH",
-									Value: "/prometheus-rules",
-								},
-								{
-									Name:  "PROM_PERSISTENT_DIR",
-									Value: "/data",
-								},
-								{
-									Name:  "TIDB_VERSION",
-									Value: fmt.Sprintf("%s:%s", targetTidbCluster.Spec.TiDB.BaseImage, targetTidbCluster.Spec.TiDB.Version),
-								},
-								{
-									Name:  "GF_K8S_PROMETHEUS_URL",
-									Value: *monitor.Spec.KubePrometheusURL,
-								},
-								{
-									Name:  "GF_TIDB_PROMETHEUS_URL",
-									Value: "http://127.0.0.1:9090",
-								},
-								{
-									Name:  "TIDB_CLUSTER_NAMESPACE",
-									Value: targetTidbCluster.Namespace,
-								},
-								{
-									Name:  "TZ",
-									Value: targetTidbCluster.Spec.Timezone,
-								},
-							},
-							Command: commands,
-							SecurityContext: &core.SecurityContext{
-								RunAsUser: &secureContext,
-							},
-							VolumeMounts: []core.VolumeMount{
-								{
-									MountPath: "/grafana-dashboard-definitions/tidb",
-									Name:      "grafana-dashboard",
-									ReadOnly:  false,
-								},
-								{
-									MountPath: "/prometheus-rules",
-									Name:      "prometheus-rules",
-									ReadOnly:  false,
-								},
-								{
-									MountPath: "/data",
-									Name:      "monitor-data",
-								},
-								{
-									MountPath: "/etc/grafana/provisioning/datasources",
-									Name:      "datasource",
-									ReadOnly:  false,
-								},
-							},
-							Resources: util.ResourceRequirement(monitor.Spec.Initializer.Resources),
-						},
-					},
-					Containers: []core.Container{
-						{
-							Name:            "prometheus",
-							Image:           fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
-							ImagePullPolicy: *monitor.Spec.Prometheus.ImagePullPolicy,
-							Resources:       util.ResourceRequirement(monitor.Spec.Prometheus.Resources),
-							Command: []string{
-								"/bin/prometheus",
-								"--web.enable-admin-api",
-								"--web.enable-lifecycle",
-								fmt.Sprintf("--log.level=%s", monitor.Spec.Prometheus.LogLevel),
-								"--config.file=/etc/prometheus/prometheus.yml",
-								"--storage.tsdb.path=/data/prometheus",
-								fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays),
-							},
-							Ports: []core.ContainerPort{
-								{
-									Name:          "prometheus",
-									ContainerPort: 9090,
-									Protocol:      core.ProtocolTCP,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	return deployment
 }

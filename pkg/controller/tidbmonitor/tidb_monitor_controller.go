@@ -15,6 +15,7 @@ package tidbmonitor
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -62,10 +63,11 @@ func NewController(
 	tidbMonitorInformer := informerFactory.Pingcap().V1alpha1().TidbMonitors()
 	deploymentInformer := kubeInformerFactory.Apps().V1().Deployments()
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
+	monitorManager := monitor.NewMonitorManager(informerFactory, kubeInformerFactory, typedControl)
 
 	tmc := &Controller{
 		cli:      genericCli,
-		control:  NewDefaultTidbMonitorControl(recorder, typedControl),
+		control:  NewDefaultTidbMonitorControl(recorder, typedControl, monitorManager),
 		tmLister: tidbMonitorInformer.Lister(),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),

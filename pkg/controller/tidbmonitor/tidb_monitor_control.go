@@ -16,6 +16,7 @@ package tidbmonitor
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/monitor"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/errors"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -29,13 +30,14 @@ type ControlInterface interface {
 }
 
 // NewDefaultTidbMonitorControl returns a new instance of the default TidbMonitor ControlInterface
-func NewDefaultTidbMonitorControl(recorder record.EventRecorder, ctrl controller.TypedControlInterface) ControlInterface {
-	return &defaultTidbMonitorControl{recorder, ctrl}
+func NewDefaultTidbMonitorControl(recorder record.EventRecorder, ctrl controller.TypedControlInterface, monitorManager monitor.MonitorManager) ControlInterface {
+	return &defaultTidbMonitorControl{recorder, ctrl, monitorManager}
 }
 
 type defaultTidbMonitorControl struct {
-	recorder     record.EventRecorder
-	typedControl controller.TypedControlInterface
+	recorder       record.EventRecorder
+	typedControl   controller.TypedControlInterface
+	monitorManager monitor.MonitorManager
 }
 
 func (tmc *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
@@ -48,21 +50,15 @@ func (tmc *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMoni
 	if apiequality.Semantic.DeepEqual(&tm.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
-	// TODO: implementation
 	return errors.NewAggregate(errs)
 }
 
 func (tmc *defaultTidbMonitorControl) reconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
 
-	// TODO: sync configmaps
+	// TODO: sync Service
 
-	// TODO: sync secrets
-
-	// TODO: sync Prometheus
-
-	// TODO: sync Grafana
-
-	return nil
+	// TODO: sync Deployment
+	return tmc.monitorManager.Sync(tm)
 }
 
 var _ ControlInterface = &defaultTidbMonitorControl{}
