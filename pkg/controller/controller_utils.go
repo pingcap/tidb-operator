@@ -65,6 +65,9 @@ var (
 
 	// TidbDiscoveryImage is the image of tidb discovery service
 	TidbDiscoveryImage string
+
+	// PodWebhookEnabled is the key to indicate whether pod admission webhook is set up.
+	PodWebhookEnabled bool
 )
 
 const (
