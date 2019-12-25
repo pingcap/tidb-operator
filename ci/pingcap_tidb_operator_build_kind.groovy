@@ -157,6 +157,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 							export PATH=${WORKSPACE}/go/bin:\$PATH
 							make check-setup
 							make check
+							./hack/check-EOF.sh
 							"""
 						}
 					}
