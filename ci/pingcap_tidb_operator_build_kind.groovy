@@ -191,6 +191,9 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		builds["E2E v1.16.3"] = {
 			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.16.3 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.16.3_ ./hack/e2e.sh -- --ginkgo.skip='\\[Serial\\]'", artifacts)
 		}
+		builds["E2E v1.17.0"] = {
+			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.17.0 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.17.0_ ./hack/e2e.sh -- --ginkgo.skip='\\[Serial\\]'", artifacts)
+		}
 		builds["E2E v1.12.10 Serial"] = {
 			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_serial_ ./hack/e2e.sh -- --ginkgo.focus='\\[Serial\\]' --install-operator=false", artifacts)
 		}
