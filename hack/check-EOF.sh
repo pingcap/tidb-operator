@@ -13,6 +13,7 @@ EXCLUDE_DIR=(
     output
     _tools
     .git
+    static/tidb-operator-overview.png
 )
 
 for DIR in ${EXCLUDE_DIR[@]}; do
