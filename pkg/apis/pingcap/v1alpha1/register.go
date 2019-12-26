@@ -29,9 +29,13 @@ var (
 	Scheme *runtime.Scheme
 
 	groupName = "pingcap.com"
+
+	Strategies = []CreateUpdateStrategy{
+		TidbClusterStrategy{},
+	}
 )
 
-// SchemeGroupVersion is group version used to register these objects
+// SchemeGroupVersion is group version used to register these object
 var SchemeGroupVersion = schema.GroupVersion{Group: groupName, Version: "v1alpha1"}
 
 func init() {

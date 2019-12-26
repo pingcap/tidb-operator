@@ -193,6 +193,10 @@ admissionWebhook:
     ## pods hook would check requests for creating and deleting tidbcluster's pods
     ## if enabled it, the pods of tidbcluster would safely created or deleted by webhook instead of controller
     pods: true
+    ## validating hook validates the correctness of the resources under pingcap.com group
+    validating: true
+    ## defaulting hook set default values for the the resources under pingcap.com group
+    defaulting: true
   ## failurePolicy are applied to ValidatingWebhookConfiguration which affect tidb-admission-webhook
   ## refer to https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
   failurePolicy:
@@ -202,6 +206,10 @@ admissionWebhook:
     createPod: Ignore
     ## updateStatefulSet Webhook would check the updating request of tidbcluster statefulset and the failurePolicy is recommended as Ignore
     updateStatefulSet: Ignore
+    ## validation hook validates the correctness of the resources under pingcap.com group
+    validating: Ignore
+    ## defaulting hook set default values for the the resources under pingcap.com group
+    defaulting: Ignore
   ## tidb-admission-webhook deployed as kubernetes apiservice server
   ## refer to https://github.com/openshift/generic-admission-server
   apiservice:
