@@ -15,6 +15,8 @@ package monitor
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -25,7 +27,6 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
-	"strconv"
 )
 
 func getMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
