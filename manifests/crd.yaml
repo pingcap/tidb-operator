@@ -712,8 +712,6 @@ spec:
                       type: string
                     cluster-version:
                       type: string
-                    data-dir:
-                      type: string
                     election-interval:
                       description: ElectionInterval is the interval for etcd Raft
                         election.
@@ -729,13 +727,6 @@ spec:
                       type: boolean
                     force-new-cluster:
                       type: boolean
-                    initial-cluster:
-                      type: string
-                    initial-cluster-state:
-                      type: string
-                    join:
-                      description: Join to an existing pd cluster, a string of endpoints.
-                      type: string
                     label-property:
                       type: object
                     lease:
@@ -815,8 +806,6 @@ spec:
                         job:
                           type: string
                       type: object
-                    name:
-                      type: string
                     namespace:
                       type: object
                     namespace-classifier:
@@ -1710,17 +1699,6 @@ spec:
                         defaultcf:
                           description: TiKVCfConfig is the config of a cf
                           properties:
-                            Level0FileNumCompactionTrigger:
-                              format: int64
-                              type: integer
-                            Level0SlowdownWritesTrigger:
-                              format: int64
-                              type: integer
-                            Level0StopWritesTrigger:
-                              format: int64
-                              type: integer
-                            PinL0FilterAndIndexBlocks:
-                              type: boolean
                             block-based-bloom-filter:
                               type: boolean
                             block-cache-size:
@@ -1754,6 +1732,15 @@ spec:
                               type: boolean
                             hard-pending-compaction-bytes-limit:
                               type: string
+                            level0-file-num-compaction-trigger:
+                              format: int64
+                              type: integer
+                            level0-slowdown-writes-trigger:
+                              format: int64
+                              type: integer
+                            level0-stop-writes-trigger:
+                              format: int64
+                              type: integer
                             max-bytes-for-level-base:
                               type: string
                             max-bytes-for-level-multiplier:
@@ -1771,6 +1758,8 @@ spec:
                               format: int64
                               type: integer
                             optimize-filters-for-hits:
+                              type: boolean
+                            pin-l0-filter-and-index-blocks:
                               type: boolean
                             prop-keys-index-distance:
                               format: int64
@@ -1815,11 +1804,6 @@ spec:
                               type: boolean
                             write-buffer-size:
                               type: string
-                          required:
-                          - PinL0FilterAndIndexBlocks
-                          - Level0FileNumCompactionTrigger
-                          - Level0SlowdownWritesTrigger
-                          - Level0StopWritesTrigger
                           type: object
                         enable_pipelined_write:
                           type: boolean
@@ -2119,17 +2103,6 @@ spec:
                         defaultcf:
                           description: TiKVCfConfig is the config of a cf
                           properties:
-                            Level0FileNumCompactionTrigger:
-                              format: int64
-                              type: integer
-                            Level0SlowdownWritesTrigger:
-                              format: int64
-                              type: integer
-                            Level0StopWritesTrigger:
-                              format: int64
-                              type: integer
-                            PinL0FilterAndIndexBlocks:
-                              type: boolean
                             block-based-bloom-filter:
                               type: boolean
                             block-cache-size:
@@ -2163,6 +2136,15 @@ spec:
                               type: boolean
                             hard-pending-compaction-bytes-limit:
                               type: string
+                            level0-file-num-compaction-trigger:
+                              format: int64
+                              type: integer
+                            level0-slowdown-writes-trigger:
+                              format: int64
+                              type: integer
+                            level0-stop-writes-trigger:
+                              format: int64
+                              type: integer
                             max-bytes-for-level-base:
                               type: string
                             max-bytes-for-level-multiplier:
@@ -2180,6 +2162,8 @@ spec:
                               format: int64
                               type: integer
                             optimize-filters-for-hits:
+                              type: boolean
+                            pin-l0-filter-and-index-blocks:
                               type: boolean
                             prop-keys-index-distance:
                               format: int64
@@ -2224,11 +2208,6 @@ spec:
                               type: boolean
                             write-buffer-size:
                               type: string
-                          required:
-                          - PinL0FilterAndIndexBlocks
-                          - Level0FileNumCompactionTrigger
-                          - Level0SlowdownWritesTrigger
-                          - Level0StopWritesTrigger
                           type: object
                         enable-pipelined-write:
                           type: boolean
@@ -2247,17 +2226,6 @@ spec:
                         lockcf:
                           description: TiKVCfConfig is the config of a cf
                           properties:
-                            Level0FileNumCompactionTrigger:
-                              format: int64
-                              type: integer
-                            Level0SlowdownWritesTrigger:
-                              format: int64
-                              type: integer
-                            Level0StopWritesTrigger:
-                              format: int64
-                              type: integer
-                            PinL0FilterAndIndexBlocks:
-                              type: boolean
                             block-based-bloom-filter:
                               type: boolean
                             block-cache-size:
@@ -2291,6 +2259,15 @@ spec:
                               type: boolean
                             hard-pending-compaction-bytes-limit:
                               type: string
+                            level0-file-num-compaction-trigger:
+                              format: int64
+                              type: integer
+                            level0-slowdown-writes-trigger:
+                              format: int64
+                              type: integer
+                            level0-stop-writes-trigger:
+                              format: int64
+                              type: integer
                             max-bytes-for-level-base:
                               type: string
                             max-bytes-for-level-multiplier:
@@ -2308,6 +2285,8 @@ spec:
                               format: int64
                               type: integer
                             optimize-filters-for-hits:
+                              type: boolean
+                            pin-l0-filter-and-index-blocks:
                               type: boolean
                             prop-keys-index-distance:
                               format: int64
@@ -2352,11 +2331,6 @@ spec:
                               type: boolean
                             write-buffer-size:
                               type: string
-                          required:
-                          - PinL0FilterAndIndexBlocks
-                          - Level0FileNumCompactionTrigger
-                          - Level0SlowdownWritesTrigger
-                          - Level0StopWritesTrigger
                           type: object
                         max-background-jobs:
                           description: 'Optional: Defaults to 8'
@@ -2379,17 +2353,6 @@ spec:
                         raftcf:
                           description: TiKVCfConfig is the config of a cf
                           properties:
-                            Level0FileNumCompactionTrigger:
-                              format: int64
-                              type: integer
-                            Level0SlowdownWritesTrigger:
-                              format: int64
-                              type: integer
-                            Level0StopWritesTrigger:
-                              format: int64
-                              type: integer
-                            PinL0FilterAndIndexBlocks:
-                              type: boolean
                             block-based-bloom-filter:
                               type: boolean
                             block-cache-size:
@@ -2423,6 +2386,15 @@ spec:
                               type: boolean
                             hard-pending-compaction-bytes-limit:
                               type: string
+                            level0-file-num-compaction-trigger:
+                              format: int64
+                              type: integer
+                            level0-slowdown-writes-trigger:
+                              format: int64
+                              type: integer
+                            level0-stop-writes-trigger:
+                              format: int64
+                              type: integer
                             max-bytes-for-level-base:
                               type: string
                             max-bytes-for-level-multiplier:
@@ -2440,6 +2412,8 @@ spec:
                               format: int64
                               type: integer
                             optimize-filters-for-hits:
+                              type: boolean
+                            pin-l0-filter-and-index-blocks:
                               type: boolean
                             prop-keys-index-distance:
                               format: int64
@@ -2484,11 +2458,6 @@ spec:
                               type: boolean
                             write-buffer-size:
                               type: string
-                          required:
-                          - PinL0FilterAndIndexBlocks
-                          - Level0FileNumCompactionTrigger
-                          - Level0SlowdownWritesTrigger
-                          - Level0StopWritesTrigger
                           type: object
                         rate-bytes-per-sec:
                           type: string
@@ -2533,17 +2502,6 @@ spec:
                         writecf:
                           description: TiKVCfConfig is the config of a cf
                           properties:
-                            Level0FileNumCompactionTrigger:
-                              format: int64
-                              type: integer
-                            Level0SlowdownWritesTrigger:
-                              format: int64
-                              type: integer
-                            Level0StopWritesTrigger:
-                              format: int64
-                              type: integer
-                            PinL0FilterAndIndexBlocks:
-                              type: boolean
                             block-based-bloom-filter:
                               type: boolean
                             block-cache-size:
@@ -2577,6 +2535,15 @@ spec:
                               type: boolean
                             hard-pending-compaction-bytes-limit:
                               type: string
+                            level0-file-num-compaction-trigger:
+                              format: int64
+                              type: integer
+                            level0-slowdown-writes-trigger:
+                              format: int64
+                              type: integer
+                            level0-stop-writes-trigger:
+                              format: int64
+                              type: integer
                             max-bytes-for-level-base:
                               type: string
                             max-bytes-for-level-multiplier:
@@ -2594,6 +2561,8 @@ spec:
                               format: int64
                               type: integer
                             optimize-filters-for-hits:
+                              type: boolean
+                            pin-l0-filter-and-index-blocks:
                               type: boolean
                             prop-keys-index-distance:
                               format: int64
@@ -2638,11 +2607,6 @@ spec:
                               type: boolean
                             write-buffer-size:
                               type: string
-                          required:
-                          - PinL0FilterAndIndexBlocks
-                          - Level0FileNumCompactionTrigger
-                          - Level0SlowdownWritesTrigger
-                          - Level0StopWritesTrigger
                           type: object
                       type: object
                     security:

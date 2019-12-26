@@ -1197,18 +1197,6 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 				Description: "PDConfig is the configuration of pd-server",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"name": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"data-dir": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
 					"force-new-cluster": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"boolean"},
@@ -1219,25 +1207,6 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to true",
 							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-					"initial-cluster": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"initial-cluster-state": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"join": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Join to an existing pd cluster, a string of endpoints.",
-							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
@@ -3200,7 +3169,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVCfConfig(ref common.ReferenceCallback)
 							Format: "",
 						},
 					},
-					"PinL0FilterAndIndexBlocks": {
+					"pin-l0-filter-and-index-blocks": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"boolean"},
 							Format: "",
@@ -3285,19 +3254,19 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVCfConfig(ref common.ReferenceCallback)
 							Format: "",
 						},
 					},
-					"Level0FileNumCompactionTrigger": {
+					"level0-file-num-compaction-trigger": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
 							Format: "int64",
 						},
 					},
-					"Level0SlowdownWritesTrigger": {
+					"level0-slowdown-writes-trigger": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
 							Format: "int64",
 						},
 					},
-					"Level0StopWritesTrigger": {
+					"level0-stop-writes-trigger": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
 							Format: "int64",
@@ -3387,7 +3356,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVCfConfig(ref common.ReferenceCallback)
 						},
 					},
 				},
-				Required: []string{"PinL0FilterAndIndexBlocks", "Level0FileNumCompactionTrigger", "Level0SlowdownWritesTrigger", "Level0StopWritesTrigger"},
 			},
 		},
 		Dependencies: []string{

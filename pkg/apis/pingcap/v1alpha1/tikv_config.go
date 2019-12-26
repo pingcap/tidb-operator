@@ -320,7 +320,8 @@ type TiKVCfConfig struct {
 	DisableBlockCache *bool `json:"disable-block-cache,omitempty" toml:"disable-block-cache,omitempty"`
 	// +optional
 	CacheIndexAndFilterBlocks *bool `json:"cache-index-and-filter-blocks,omitempty" toml:"cache-index-and-filter-blocks,omitempty"`
-	PinL0FilterAndIndexBlocks *bool `toml:"pin-l0-filter-and-index-blocks"`
+	// +optional
+	PinL0FilterAndIndexBlocks *bool `json:"pin-l0-filter-and-index-blocks,omitempty" toml:"pin-l0-filter-and-index-blocks,omitempty"`
 	// +optional
 	UseBloomFilter *bool `json:"use-bloom-filter,omitempty" toml:"use-bloom-filter,omitempty"`
 	// +optional
@@ -344,10 +345,13 @@ type TiKVCfConfig struct {
 	// +optional
 	MaxBytesForLevelBase string `json:"max-bytes-for-level-base,omitempty" toml:"max-bytes-for-level-base,omitempty"`
 	// +optional
-	TargetFileSizeBase             string `json:"target-file-size-base,omitempty" toml:"target-file-size-base,omitempty"`
-	Level0FileNumCompactionTrigger *int64 `toml:"level0-file-num-compaction-trigger"`
-	Level0SlowdownWritesTrigger    *int64 `toml:"level0-slowdown-writes-trigger"`
-	Level0StopWritesTrigger        *int64 `toml:"level0-stop-writes-trigger"`
+	TargetFileSizeBase string `json:"target-file-size-base,omitempty" toml:"target-file-size-base,omitempty"`
+	// +optional
+	Level0FileNumCompactionTrigger *int64 `json:"level0-file-num-compaction-trigger,omitempty" toml:"level0-file-num-compaction-trigger,omitempty"`
+	// +optional
+	Level0SlowdownWritesTrigger *int64 `json:"level0-slowdown-writes-trigger,omitempty" toml:"level0-slowdown-writes-trigger,omitempty"`
+	// +optional
+	Level0StopWritesTrigger *int64 `json:"level0-stop-writes-trigger,omitempty" toml:"level0-stop-writes-trigger,omitempty"`
 	// +optional
 	MaxCompactionBytes string `json:"max-compaction-bytes,omitempty" toml:"max-compaction-bytes,omitempty"`
 	// +optional

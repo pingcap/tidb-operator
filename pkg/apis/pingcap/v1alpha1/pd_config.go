@@ -35,23 +35,10 @@ import (
 type PDConfig struct {
 
 	// +optional
-	Name string `toml:"name,omitempty" json:"name,omitempty"`
-	// +optional
-	DataDir string `toml:"data-dir,omitempty" json:"data-dir,omitempty"`
-	// +optional
 	ForceNewCluster *bool `json:"force-new-cluster,omitempty"`
 	// Optional: Defaults to true
 	// +optional
 	EnableGRPCGateway *bool `json:"enable-grpc-gateway,omitempty"`
-
-	// +optional
-	InitialCluster string `toml:"initial-cluster,omitempty" json:"initial-cluster,omitempty"`
-	// +optional
-	InitialClusterState string `toml:"initial-cluster-state,omitempty" json:"initial-cluster-state,omitempty"`
-
-	// Join to an existing pd cluster, a string of endpoints.
-	// +optional
-	Join string `toml:"join,omitempty" json:"join,omitempty"`
 
 	// LeaderLease time, if leader doesn't update its TTL
 	// in etcd after lease time, etcd will expire the leader key
