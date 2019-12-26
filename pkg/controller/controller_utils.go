@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -249,6 +250,11 @@ func PumpMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-pump", clusterName)
 }
 
+// TiDBInitializerMemberName returns TiDBInitializer member name
+func TiDBInitializerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tidb-initializer", clusterName)
+}
+
 // For backward compatibility, pump peer member name do not has -peer suffix
 // PumpPeerMemberName returns pump peer service name
 func PumpPeerMemberName(clusterName string) string {
@@ -412,7 +418,12 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 		// Ensure the ref is exactly the controller we listed
 		if ref.Kind == controllerObj.GetObjectKind().GroupVersionKind().Kind &&
 			refGV.Group == controllerObj.GetObjectKind().GroupVersionKind().Group {
-			q.Add(controllerObj)
+			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(controllerObj)
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", controllerObj, err))
+				return
+			}
+			q.Add(key)
 		}
 	}
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -470,8 +481,12 @@ func GuaranteedUpdate(cli client.Client, obj runtime.Object, updateFunc func() e
 		if err := cli.Get(context.TODO(), key, obj); err != nil {
 			return err
 		}
+		beforeMutation := obj.DeepCopyObject()
 		if err := updateFunc(); err != nil {
 			return err
+		}
+		if apiequality.Semantic.DeepEqual(obj, beforeMutation) {
+			return nil
 		}
 		return cli.Update(context.TODO(), obj)
 	})

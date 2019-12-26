@@ -5396,12 +5396,14 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbInitializerSpec(ref common.ReferenceCa
 					"initSqlConfigMap": {
 						SchemaProps: spec.SchemaProps{
 							Description: "InitSqlConfigMapName reference a configmap that provide init-sql, take high precedence than initSql if set",
-							Ref:         ref("k8s.io/api/core/v1.LocalObjectReference"),
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"passwordSecret": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/api/core/v1.LocalObjectReference"),
+							Type:   []string{"string"},
+							Format: "",
 						},
 					},
 					"resources": {
@@ -5409,12 +5411,19 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbInitializerSpec(ref common.ReferenceCa
 							Ref: ref("k8s.io/api/core/v1.ResourceRequirements"),
 						},
 					},
+					"timezone": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time zone of TiDB initializer Pods",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"image", "cluster"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.ResourceRequirements"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "k8s.io/api/core/v1.ResourceRequirements"},
 	}
 }
 
