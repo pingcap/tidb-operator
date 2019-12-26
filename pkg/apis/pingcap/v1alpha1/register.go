@@ -35,7 +35,7 @@ var (
 	}
 )
 
-// SchemeGroupVersion is group version used to register these object
+// SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = schema.GroupVersion{Group: groupName, Version: "v1alpha1"}
 
 func init() {
