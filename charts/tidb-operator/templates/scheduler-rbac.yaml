@@ -58,6 +58,13 @@ rules:
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
   verbs: ["get", "list", "update"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["create"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  resourceNames: ["{{ .Values.scheduler.schedulerName }}"]
+  verbs: ["get", "update"]
 # followng permissions are required if CSINodeInfo/AttachVolumeLimit features
 # are enabled
 - apiGroups:
@@ -131,6 +138,13 @@ rules:
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
   verbs: ["get", "list", "update"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["create"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  resourceNames: ["{{ .Values.scheduler.schedulerName }}"]
+  verbs: ["get", "update"]
 # followng permissions are required if CSINodeInfo/AttachVolumeLimit features
 # are enabled
 - apiGroups:
