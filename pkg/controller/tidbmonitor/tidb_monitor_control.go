@@ -54,7 +54,7 @@ func (tmc *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMoni
 }
 
 func (tmc *defaultTidbMonitorControl) reconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
-	
+
 	return tmc.monitorManager.Sync(tm)
 }
 

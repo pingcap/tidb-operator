@@ -199,17 +199,11 @@ func getMonitorDeploymentSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Tid
 
 				Spec: core.PodSpec{
 					ServiceAccountName: sa.Name,
-					InitContainers: []core.Container{
-
-					},
-					Containers: []core.Container{
-
-					},
-					Volumes: []core.Volume{
-
-					},
-					Tolerations:  monitor.Spec.Tolerations,
-					NodeSelector: monitor.Spec.NodeSelector,
+					InitContainers:     []core.Container{},
+					Containers:         []core.Container{},
+					Volumes:            []core.Volume{},
+					Tolerations:        monitor.Spec.Tolerations,
+					NodeSelector:       monitor.Spec.NodeSelector,
 				},
 			},
 		},
@@ -492,9 +486,7 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 	monitorData := core.Volume{
 		Name: "monitor-data",
 		VolumeSource: core.VolumeSource{
-			EmptyDir: &core.EmptyDirVolumeSource{
-
-			},
+			EmptyDir: &core.EmptyDirVolumeSource{},
 		},
 	}
 	if monitor.Spec.Persistent {
@@ -665,10 +657,10 @@ func getMonitorPVC(monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
 	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
 	return &core.PersistentVolumeClaim{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            getMonitorObjectName(monitor),
-			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
-			Annotations:     monitor.Spec.Annotations,
+			Name:        getMonitorObjectName(monitor),
+			Namespace:   monitor.Namespace,
+			Labels:      monitorLabel,
+			Annotations: monitor.Spec.Annotations,
 		},
 
 		Spec: core.PersistentVolumeClaimSpec{
