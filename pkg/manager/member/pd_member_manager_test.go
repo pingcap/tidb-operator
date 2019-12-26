@@ -447,7 +447,7 @@ func TestPDMemberManagerPdStatefulSetIsUpgrading(t *testing.T) {
 					Name:        ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0),
 					Namespace:   metav1.NamespaceDefault,
 					Annotations: map[string]string{},
-					Labels:      label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+					Labels:      label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 				},
 			}
 			if test.updatePod != nil {
@@ -849,7 +849,7 @@ func TestGetNewPDHeadlessServiceForTidbCluster(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -880,7 +880,7 @@ func TestGetNewPDHeadlessServiceForTidbCluster(t *testing.T) {
 					Selector: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
 					},
 					PublishNotReadyAddresses: true,
@@ -1091,7 +1091,7 @@ func TestGetPDConfigMap(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
 					},
 					OwnerReferences: []metav1.OwnerReference{

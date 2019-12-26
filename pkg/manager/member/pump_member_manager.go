@@ -412,7 +412,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 }
 
 func getPumpMeta(tc *v1alpha1.TidbCluster, nameFunc func(string) string) (metav1.ObjectMeta, label.Label) {
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	pumpLabel := label.New().Instance(instanceName).Pump()
 
 	objMeta := metav1.ObjectMeta{
@@ -463,7 +463,7 @@ func (pmm *pumpMemberManager) pumpStatefulSetIsUpgrading(set *apps.StatefulSet, 
 		return true, nil
 	}
 	selector, err := label.New().
-		Instance(tc.GetLabels()[label.InstanceLabelKey]).
+		Instance(tc.GetInstanceName()).
 		Pump().
 		Selector()
 	if err != nil {

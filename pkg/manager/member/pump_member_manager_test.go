@@ -550,7 +550,7 @@ func TestGetNewPumpHeadlessService(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pump",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -581,7 +581,7 @@ func TestGetNewPumpHeadlessService(t *testing.T) {
 					Selector: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pump",
 					},
 					PublishNotReadyAddresses: true,
@@ -632,7 +632,7 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pump",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -683,7 +683,7 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pump",
 					},
 					OwnerReferences: []metav1.OwnerReference{
