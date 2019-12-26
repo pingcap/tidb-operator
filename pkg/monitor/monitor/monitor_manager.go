@@ -19,10 +19,9 @@ import (
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	core "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
 	kubeinformers "k8s.io/client-go/informers"
 	appslisters "k8s.io/client-go/listers/apps/v1"
+	"k8s.io/klog"
 )
 
 type MonitorManager struct {
@@ -47,45 +46,72 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 	if monitor.DeletionTimestamp != nil {
 		return nil
 	}
-	return mm.syncTidbMonitor(monitor)
+
+	// Sync Service
+	if err := mm.syncTidbMonitorService(monitor); err != nil {
+		return err
+	}
+	// Sync PVC
+	if monitor.Spec.Persistent {
+		if err := mm.syncTidbMonitorPVC(monitor); err != nil {
+			return err
+		}
+	}
+	// Sync Deployment
+	return mm.syncTidbMonitorDeployment(monitor)
 }
 
-func (mm *MonitorManager) syncTidbMonitor(monitor *v1alpha1.TidbMonitor) error {
-	//name := monitor.Name
-	namespace := monitor.Namespace
+func (mm *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) error {
+	service := getMonitorService(monitor)
+	for _, svc := range service {
+		_, err := mm.typedControl.CreateOrUpdateService(monitor, svc)
+		if err != nil {
+			klog.Errorf("tm[%s/%s]'s service[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, svc.Name, err)
+			return err
+		}
+	}
+	return nil
+}
+
+func (mm *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) error {
+	pvc := getMonitorPVC(monitor)
+	_, err := mm.typedControl.CreateOrUpdatePVC(monitor, pvc)
+	if err != nil {
+		klog.Errorf("tm[%s/%s]'s pvc[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, pvc.Name, err)
+		return err
+	}
+	return nil
+}
+
+func (mm *MonitorManager) syncTidbMonitorDeployment(monitor *v1alpha1.TidbMonitor) error {
 	targetTcRef := monitor.Spec.Clusters[0]
 	tc, err := mm.tcLister.TidbClusters(targetTcRef.Namespace).Get(targetTcRef.Name)
 	if err != nil {
 		return err
 	}
 
-	oldMonitorDeployTmp, err := mm.deploymentLister.Deployments(namespace).Get(getMonitorObjectName(monitor))
-	if err != nil && !errors.IsNotFound(err) {
-		return err
-	}
-	deployNotExist := errors.IsNotFound(err)
-
-	oldMonitorDeploy := oldMonitorDeployTmp.DeepCopy()
-
 	cm, err := mm.syncTidbMonitorConfig(tc, monitor)
 	if err != nil {
+		klog.Errorf("tm[%s/%s]'s configmap failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
 	secret, err := mm.syncTidbMonitorSecret(monitor)
 	if err != nil {
+		klog.Errorf("tm[%s/%s]'s secret failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
 
 	sa, err := mm.syncTidbMonitorRbac(monitor)
 	if err != nil {
+		klog.Errorf("tm[%s/%s]'s rbac failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
+
 	deployment := getMonitorDeployment(sa, cm, secret, monitor, tc)
-	if deployNotExist || !apiequality.Semantic.DeepEqual(oldMonitorDeploy.Spec.Template.Spec, deployment.Spec.Template.Spec) {
-		deployment, err = mm.typedControl.CreateOrUpdateDeployment(monitor, deployment)
-		if err != nil {
-			return err
-		}
+	_, err = mm.typedControl.CreateOrUpdateDeployment(monitor, deployment)
+	if err != nil {
+		klog.Errorf("tm[%s/%s]'s deployment failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
+		return err
 	}
 	return nil
 }

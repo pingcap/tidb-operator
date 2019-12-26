@@ -54,10 +54,7 @@ func (tmc *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMoni
 }
 
 func (tmc *defaultTidbMonitorControl) reconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
-
-	// TODO: sync Service
-
-	// TODO: sync Deployment
+	
 	return tmc.monitorManager.Sync(tm)
 }
 

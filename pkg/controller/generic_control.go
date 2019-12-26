@@ -53,6 +53,8 @@ type TypedControlInterface interface {
 	CreateOrUpdateService(controller runtime.Object, svc *corev1.Service) (*corev1.Service, error)
 	// CreateOrUpdateDeployment create the desired deployment or update the current one to desired state if already existed
 	CreateOrUpdateDeployment(controller runtime.Object, deploy *appsv1.Deployment) (*appsv1.Deployment, error)
+	// CreateOrUpdatePVC create the desired pvc or update the current one to desired state if already existed
+	CreateOrUpdatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolumeClaim, error)
 	// UpdateStatus update the /status subresource of the object
 	UpdateStatus(newStatus runtime.Object) error
 	// Delete delete the given object from the cluster
@@ -69,6 +71,22 @@ type typedWrapper struct {
 // NewTypedControl wraps a GenericControlInterface to a TypedControlInterface
 func NewTypedControl(control GenericControlInterface) TypedControlInterface {
 	return &typedWrapper{control}
+}
+
+func (w *typedWrapper) CreateOrUpdatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolumeClaim, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, pvc, func(existing, desired runtime.Object) error {
+		existingPVC := existing.(*corev1.PersistentVolumeClaim)
+		desiredPVC := desired.(*corev1.PersistentVolumeClaim)
+
+		existingPVC.Labels = desiredPVC.Labels
+		existingPVC.Spec = desiredPVC.Spec
+		existingPVC.Annotations = desiredPVC.Annotations
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*corev1.PersistentVolumeClaim), err
 }
 
 func (w *typedWrapper) CreateOrUpdateClusterRoleBinding(controller runtime.Object, crb *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error) {

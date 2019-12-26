@@ -22,7 +22,9 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"strconv"
 )
 
@@ -148,11 +150,11 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 	initContainer := getMonitorInitContainer(monitor, tc)
 	deployment.Spec.Template.Spec.InitContainers = append(deployment.Spec.Template.Spec.InitContainers, initContainer)
 	prometheusContainer := getMonitorPrometheusContainer(monitor, tc)
-	deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, prometheusContainer)
+	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
+	deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
 	if monitor.Spec.Grafana != nil {
 		grafanaContainer := getMonitorGrafanaContainer(secret, monitor, tc)
-		reloaderContainer := getMonitorReloaderContainer(monitor, tc)
-		deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, grafanaContainer, reloaderContainer)
+		deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, grafanaContainer)
 	}
 	volumes := getMonitorVolumes(config, monitor, tc)
 	deployment.Spec.Template.Spec.Volumes = volumes
@@ -562,4 +564,112 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 		volumes = append(volumes, tlsPDClient)
 	}
 	return volumes
+}
+
+func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
+	var services []*core.Service
+	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
+	prometheusService := &core.Service{
+		ObjectMeta: meta.ObjectMeta{
+			Name:            fmt.Sprintf("%s-prometheus", monitor.Name),
+			Namespace:       monitor.Namespace,
+			Labels:          monitorLabel,
+			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+			Annotations:     monitor.Spec.Prometheus.Service.Annotations,
+		},
+		Spec: core.ServiceSpec{
+			Ports: []core.ServicePort{
+				{
+					Name:       "prometheus",
+					Port:       9090,
+					Protocol:   core.ProtocolTCP,
+					TargetPort: intstr.FromInt(9090),
+				},
+			},
+			Type: monitor.Spec.Prometheus.Service.Type,
+			Selector: map[string]string{
+				label.InstanceLabelKey:  monitor.Name,
+				label.ComponentLabelKey: label.TiDBMonitorVal,
+			},
+		},
+	}
+	reloaderService := &core.Service{
+		ObjectMeta: meta.ObjectMeta{
+			Name:            fmt.Sprintf("%s-reloader", monitor.Name),
+			Namespace:       monitor.Namespace,
+			Labels:          monitorLabel,
+			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+			Annotations:     monitor.Spec.Prometheus.Service.Annotations,
+		},
+		Spec: core.ServiceSpec{
+			Ports: []core.ServicePort{
+				{
+					Name:       "reloader",
+					Port:       9089,
+					Protocol:   core.ProtocolTCP,
+					TargetPort: intstr.FromInt(9089),
+				},
+			},
+			Type: monitor.Spec.Grafana.Service.Type,
+			Selector: map[string]string{
+				label.InstanceLabelKey:  monitor.Name,
+				label.ComponentLabelKey: label.TiDBMonitorVal,
+			},
+		},
+	}
+	services = append(services, prometheusService, reloaderService)
+	if monitor.Spec.Grafana != nil {
+		grafanaService := &core.Service{
+			ObjectMeta: meta.ObjectMeta{
+				Name:            fmt.Sprintf("%s-grafana", monitor.Name),
+				Namespace:       monitor.Namespace,
+				Labels:          monitorLabel,
+				OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+				Annotations:     monitor.Spec.Grafana.Service.Annotations,
+			},
+			Spec: core.ServiceSpec{
+				Ports: []core.ServicePort{
+					{
+						Name:       "grafana",
+						Port:       3000,
+						Protocol:   core.ProtocolTCP,
+						TargetPort: intstr.FromInt(3000),
+					},
+				},
+				Type: monitor.Spec.Grafana.Service.Type,
+				Selector: map[string]string{
+					label.InstanceLabelKey:  monitor.Name,
+					label.ComponentLabelKey: label.TiDBMonitorVal,
+				},
+			},
+		}
+		services = append(services, grafanaService)
+	}
+	return services
+}
+
+func getMonitorPVC(monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
+	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
+	return &core.PersistentVolumeClaim{
+		ObjectMeta: meta.ObjectMeta{
+			Name:            getMonitorObjectName(monitor),
+			Namespace:       monitor.Namespace,
+			Labels:          monitorLabel,
+			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+			Annotations:     monitor.Spec.Annotations,
+		},
+
+		Spec: core.PersistentVolumeClaimSpec{
+			AccessModes: []core.PersistentVolumeAccessMode{
+				core.ReadWriteOnce,
+			},
+
+			Resources: core.ResourceRequirements{
+				Requests: core.ResourceList{
+					core.ResourceStorage: resource.MustParse(monitor.Spec.Storage),
+				},
+			},
+			StorageClassName: monitor.Spec.StorageClassName,
+		},
+	}
 }
