@@ -668,7 +668,6 @@ func getMonitorPVC(monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
 			Name:            getMonitorObjectName(monitor),
 			Namespace:       monitor.Namespace,
 			Labels:          monitorLabel,
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 			Annotations:     monitor.Spec.Annotations,
 		},
 
