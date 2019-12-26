@@ -215,7 +215,6 @@ type PDSpec struct {
 	// TODO: remove optional after defaulting introduced
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/pd
-	// +kubebuilder:validation:Pattern=^[^:]+$
 	// +optional
 	BaseImage string `json:"baseImage"`
 
@@ -248,7 +247,6 @@ type TiKVSpec struct {
 	// TODO: remove optional after defaulting introduced
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/tikv
-	// +kubebuilder:validation:Pattern=^[^:]+$
 	// +optional
 	BaseImage string `json:"baseImage"`
 
@@ -288,7 +286,6 @@ type TiDBSpec struct {
 	// TODO: remove optional after defaulting introduced
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/tidb
-	// +kubebuilder:validation:Pattern=^[^:]+$
 	// +optional
 	BaseImage string `json:"baseImage"`
 
@@ -344,7 +341,6 @@ type PumpSpec struct {
 	// TODO: remove optional after defaulting introduced
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/tidb-binlog
-	// +kubebuilder:validation:Pattern=^[^:]+$
 	// +optional
 	BaseImage string `json:"baseImage"`
 
