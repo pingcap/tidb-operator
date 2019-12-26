@@ -153,7 +153,7 @@ func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) *appsv1.Deployment {
 }
 
 func getDiscoveryMeta(tc *v1alpha1.TidbCluster, nameFunc func(string) string) (metav1.ObjectMeta, label.Label) {
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	discoveryLabel := label.New().Instance(instanceName).Discovery()
 
 	objMeta := metav1.ObjectMeta{

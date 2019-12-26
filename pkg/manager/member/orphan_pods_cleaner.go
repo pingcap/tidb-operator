@@ -71,7 +71,7 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 	// for unit test
 	skipReason := map[string]string{}
 
-	selector, err := label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).Selector()
+	selector, err := label.New().Instance(tc.GetInstanceName()).Selector()
 	if err != nil {
 		return skipReason, err
 	}
