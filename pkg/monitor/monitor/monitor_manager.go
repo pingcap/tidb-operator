@@ -150,7 +150,7 @@ func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monito
 	return mm.typedControl.CreateOrUpdateConfigMap(monitor, newCM)
 }
 
-func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*core.ServiceAccount, error) {
+func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*corev1.ServiceAccount, error) {
 	sa := getMonitorServiceAccount(monitor)
 	sa, err := mm.typedControl.CreateOrUpdateServiceAccount(monitor, sa)
 	if err != nil {
