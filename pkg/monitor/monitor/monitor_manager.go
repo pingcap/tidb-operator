@@ -18,7 +18,7 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	core "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/klog"
@@ -78,7 +78,7 @@ func (mm *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) 
 
 func (mm *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) error {
 	pvcName := getMonitorObjectName(monitor)
-	pvc := &core.PersistentVolumeClaim{}
+	pvc := &corev1.PersistentVolumeClaim{}
 	exist, err := mm.typedControl.Exist(client.ObjectKey{
 		Name:      pvcName,
 		Namespace: monitor.Namespace,
@@ -133,7 +133,7 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(monitor *v1alpha1.TidbMonito
 	return nil
 }
 
-func (mm *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*core.Secret, error) {
+func (mm *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*corev1.Secret, error) {
 	if monitor.Spec.Grafana == nil {
 		return nil, nil
 	}
@@ -141,7 +141,7 @@ func (mm *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (
 	return mm.typedControl.CreateOrUpdateSecret(monitor, newSt)
 }
 
-func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
+func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
 
 	newCM, err := getMonitorConfigMap(tc, monitor)
 	if err != nil {

@@ -16,11 +16,12 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/pingcap/tidb-operator/pkg/controller/tidbmonitor"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"time"
+
+	"github.com/pingcap/tidb-operator/pkg/controller/tidbmonitor"
 
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
