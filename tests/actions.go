@@ -151,6 +151,10 @@ type OperatorActions interface {
 	DumpAllLogs(info *OperatorConfig, clusterInfos []*TidbClusterConfig) error
 	DeployTidbCluster(info *TidbClusterConfig) error
 	DeployTidbClusterOrDie(info *TidbClusterConfig)
+	DeployTidbClusterForInitOrDie(info *TidbClusterConfig)
+	DeployTidbClusterForInit(info *TidbClusterConfig) error
+	DeployTidbInitializerOrDie(cluster *TidbClusterConfig, info *v1alpha1.TidbInitializer)
+	DeployTidbInitializer(cluster *TidbClusterConfig, info *v1alpha1.TidbInitializer) error
 	CleanTidbCluster(info *TidbClusterConfig) error
 	CleanTidbClusterOrDie(info *TidbClusterConfig)
 	CheckTidbClusterStatus(info *TidbClusterConfig) error
@@ -180,6 +184,7 @@ type OperatorActions interface {
 	RestoreIncrementalFiles(from *DrainerConfig, to *TidbClusterConfig, stopTSO int64) error
 	ForceDeploy(info *TidbClusterConfig) error
 	CreateSecret(info *TidbClusterConfig) error
+	CreateConfigMap(info *TidbClusterConfig) error
 	GetPodUIDMap(info *TidbClusterConfig) (map[string]types.UID, error)
 	GetNodeMap(info *TidbClusterConfig, component string) (map[string][]string, error)
 	TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error
@@ -225,6 +230,8 @@ type OperatorActions interface {
 	CheckUpgradeCompleteOrDie(info *TidbClusterConfig)
 	CheckInitSQL(info *TidbClusterConfig) error
 	CheckInitSQLOrDie(info *TidbClusterConfig)
+	CheckInitializer(info *TidbClusterConfig) error
+	CheckInitializerOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
 	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
 }
@@ -320,6 +327,7 @@ type TidbClusterConfig struct {
 
 	pumpConfig    []string
 	drainerConfig []string
+	InitSQL       string
 }
 
 func (tc *TidbClusterConfig) String() string {
@@ -351,7 +359,7 @@ func (tc *TidbClusterConfig) BackupHelmSetString(m map[string]string) string {
 	return strings.Join(arr, ",")
 }
 
-func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) string {
+func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string, setPasswdSecret bool) string {
 
 	set := map[string]string{
 		"clusterName":             tc.ClusterName,
@@ -381,7 +389,9 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 	for k, v := range m {
 		set[k] = v
 	}
-
+	if !setPasswdSecret {
+		delete(set, "tidb.passwordSecretName")
+	}
 	arr := make([]string, 0, len(set))
 	for k, v := range set {
 		arr = append(arr, fmt.Sprintf("%s=%s", k, v))
@@ -655,7 +665,7 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 	}
 
 	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s",
-		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
+		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil, true))
 
 	svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
 	if err != nil {
@@ -674,6 +684,93 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) DeployTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.DeployTidbCluster(info); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+func (oa *operatorActions) DeployTidbClusterForInitOrDie(info *TidbClusterConfig) {
+	if err := oa.DeployTidbCluster(info); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+func (oa *operatorActions) DeployTidbClusterForInit(info *TidbClusterConfig) error {
+	ns := info.Namespace
+	tcName := info.ClusterName
+	if _, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err == nil {
+		// already deployed
+		return nil
+	}
+
+	glog.Infof("deploying tidb cluster [%s/%s]", info.Namespace, info.ClusterName)
+	oa.EmitEvent(info, "DeployTidbCluster")
+
+	namespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: info.Namespace,
+		},
+	}
+	_, err := oa.kubeCli.CoreV1().Namespaces().Create(namespace)
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return fmt.Errorf("failed to create namespace[%s]:%v", info.Namespace, err)
+	}
+
+	err = oa.CreateSecret(info)
+	if err != nil {
+		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
+	}
+
+	err = oa.CreateConfigMap(info)
+	if err != nil {
+		return fmt.Errorf("failed to create configmap of cluster [%s]: %v", info.ClusterName, err)
+	}
+
+	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s",
+		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil, false))
+
+	svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
+	if err != nil {
+		return err
+	}
+	cmd = fmt.Sprintf(" %s --values %s", cmd, svFilePath)
+	glog.Info(cmd)
+
+	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
+			info.Namespace, info.ClusterName, err, string(res))
+	}
+
+	return nil
+}
+
+func (oa *operatorActions) DeployTidbInitializer(cluster *TidbClusterConfig, info *v1alpha1.TidbInitializer) error {
+	ns := info.Namespace
+	name := info.Name
+	if _, err := oa.cli.PingcapV1alpha1().TidbInitializers(ns).Get(name, metav1.GetOptions{}); err == nil {
+		// already deployed
+		return nil
+	}
+
+	glog.Infof("deploying tidb initializer [%s/%s]", ns, name)
+	oa.EmitEvent(cluster, "DeployTidbInitializer")
+
+	namespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ns,
+		},
+	}
+	_, err := oa.kubeCli.CoreV1().Namespaces().Create(namespace)
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return fmt.Errorf("failed to create namespace[%s]:%v", ns, err)
+	}
+	_, err = oa.cli.PingcapV1alpha1().TidbInitializers(ns).Create(info)
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return fmt.Errorf("failed to create TidbInitizlier [%s/%s]:%v", ns, name, err)
+	}
+	return nil
+}
+
+func (oa *operatorActions) DeployTidbInitializerOrDie(cluster *TidbClusterConfig, info *v1alpha1.TidbInitializer) {
+	if err := oa.DeployTidbInitializer(cluster, info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
@@ -2598,6 +2695,25 @@ func (oa *operatorActions) CreateSecret(info *TidbClusterConfig) error {
 	return nil
 }
 
+func (oa *operatorActions) CreateConfigMap(info *TidbClusterConfig) error {
+	initCM := corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      info.ClusterName + "-init-cm",
+			Namespace: info.Namespace,
+		},
+		Data: map[string]string{
+			"init-sql": info.InitSQL,
+		},
+	}
+
+	_, err := oa.kubeCli.CoreV1().ConfigMaps(info.Namespace).Create(&initCM)
+	if err != nil && !releaseIsExist(err) {
+		return err
+	}
+
+	return nil
+}
+
 func releaseIsExist(err error) bool {
 	return strings.Contains(err.Error(), "already exists")
 }
@@ -3286,7 +3402,7 @@ func (oa *operatorActions) eventWorker() {
 
 func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, set map[string]string) (string, error) {
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(set))
+		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(set, true))
 	svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
 	if err != nil {
 		return "", err
@@ -3441,6 +3557,34 @@ func (oa *operatorActions) CheckInitSQL(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) CheckInitSQLOrDie(info *TidbClusterConfig) {
 	if err := oa.CheckInitSQL(info); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+func (oa *operatorActions) CheckInitializer(info *TidbClusterConfig) error {
+	ns, tcName := info.Namespace, info.ClusterName
+	if err := wait.PollImmediate(10*time.Second, DefaultPollTimeout, func() (done bool, err error) {
+		dsn, cancel, err := oa.getTiDBDSN(ns, tcName, "e2e", info.Password)
+		if err != nil {
+			return false, nil
+		}
+		defer cancel()
+		infoDb, err := sql.Open("mysql", dsn)
+		if err != nil {
+			return false, nil
+		}
+		infoDb.Close()
+
+		return true, nil
+	}); err != nil {
+		glog.Errorf("failed to check init sql complete [%s/%s], %v", ns, tcName, err)
+		return err
+	}
+	return nil
+}
+
+func (oa *operatorActions) CheckInitializerOrDie(info *TidbClusterConfig) {
+	if err := oa.CheckInitializer(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }

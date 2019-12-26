@@ -122,3 +122,29 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 		},
 	}
 }
+
+// GetTidbInitializer returns a TidbInitializer resource configured for testing
+func GetTidbInitializer(ns, name, clusterName, secret, initSQL, initSQLCM string, policy corev1.PullPolicy) *v1alpha1.TidbInitializer {
+	var cm *string
+	if initSQLCM != "" {
+		cm = &initSQLCM
+	}
+	return &v1alpha1.TidbInitializer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.TidbInitializerSpec{
+			Image:           "tnir/mysqlclient",
+			ImagePullPolicy: &policy,
+			Clusters: v1alpha1.TidbClusterRef{
+				Namespace: ns,
+				Name:      clusterName,
+			},
+			InitSql:          &initSQL,
+			InitSqlConfigMap: cm,
+			PasswordSecret:   &secret,
+			Timezone:         "Asia/Shanghai",
+		},
+	}
+}

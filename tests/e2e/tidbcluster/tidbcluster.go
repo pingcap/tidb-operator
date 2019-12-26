@@ -686,6 +686,39 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster scaled in and ready")
 	})
+	ginkgo.It("TiDBInitializer: Test managing tidb initializer job with TidbInitializer CRD", func() {
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "init", "admin", "")
+		cluster.Resources["pd.replicas"] = "1"
+		cluster.Resources["tikv.replicas"] = "1"
+		cluster.Resources["tidb.replicas"] = "1"
+		oa.DeployTidbClusterForInitOrDie(&cluster)
+
+		ti := fixture.GetTidbInitializer(ns, "init", "init", "init-set-srcret", cluster.Resources["tidb.initSql"], "", corev1.PullIfNotPresent)
+		oa.DeployTidbInitializerOrDie(&cluster, ti)
+
+		_, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get tidbcluster")
+		tit, err := cli.PingcapV1alpha1().TidbInitializers(cluster.Namespace).Get(ti.Name, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get tidbinitializer")
+
+		fn := func() (bool, error) {
+			job, err := c.BatchV1().Jobs(tit.Namespace).Get(controller.TiDBInitializerMemberName(tit.Spec.Clusters.Name), metav1.GetOptions{})
+			if err != nil {
+				e2elog.Logf("failed to get jobs %s ,%v", job.Name, err)
+				return false, nil
+			}
+			if job.Status.Succeeded == 0 {
+				e2elog.Logf("cluster [%s] initializer job is not completed, please wait! ", tit.Spec.Clusters.Name)
+				return false, nil
+			}
+			return true, nil
+		}
+		err = wait.PollImmediate(5*time.Second, 5*time.Minute, fn)
+		framework.ExpectNoError(err)
+
+		oa.CheckTidbClusterStatusOrDie(&cluster)
+		oa.CheckInitSQLOrDie(&cluster)
+	})
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
@@ -735,5 +768,6 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVers
 		TopologyKey:            topologyKey,
 		EnableConfigMapRollout: true,
 		ClusterVersion:         tidbVersion,
+		InitSQL:                "create database app;create database apptest;",
 	}
 }
