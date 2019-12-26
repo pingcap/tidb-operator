@@ -71,13 +71,17 @@ type TidbInitializerSpec struct {
 
 	// InitSqlConfigMapName reference a configmap that provide init-sql, take high precedence than initSql if set
 	// +optional
-	InitSqlConfigMap *corev1.LocalObjectReference `json:"initSqlConfigMap,omitempty"`
+	InitSqlConfigMap *string `json:"initSqlConfigMap,omitempty"`
 
 	// +optional
-	PasswordSecret *corev1.LocalObjectReference `json:"passwordSecret,omitempty"`
+	PasswordSecret *string `json:"passwordSecret,omitempty"`
 
 	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Time zone of TiDB initializer Pods
+	// +optional
+	Timezone string `json:"timezone,omitempty"`
 }
 
 // +k8s:openapi-gen=true
