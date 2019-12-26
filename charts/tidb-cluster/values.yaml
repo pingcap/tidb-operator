@@ -773,7 +773,7 @@ importer:
   pushgatewayImagePullPolicy: IfNotPresent
   config: |
     log-level = "info"
-    [metrics]
+    [metric]
     job = "tikv-importer"
     interval = "15s"
     address = "localhost:9091"
