@@ -168,15 +168,17 @@ type TidbClusterStatus struct {
 	PD        PDStatus   `json:"pd,omitempty"`
 	TiKV      TiKVStatus `json:"tikv,omitempty"`
 	TiDB      TiDBStatus `json:"tidb,omitempty"`
+	Pump      PumpStatus `josn:"pump,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 // PDSpec contains details of PD members
 type PDSpec struct {
 	// +k8s:openapi-gen=false
-	ComponentSpec
-	// +k8s:openapi-gen=false
-	Resources
+	ComponentSpec `json:",inline"`
+
+	corev1.ResourceRequirements `json:",inline"`
+
 	Replicas int32 `json:"replicas"`
 	// +k8s:openapi-gen=false
 	Service          *ServiceSpec `json:"service,omitempty"`
@@ -193,9 +195,10 @@ type PDSpec struct {
 // TiKVSpec contains details of TiKV members
 type TiKVSpec struct {
 	// +k8s:openapi-gen=false
-	ComponentSpec
-	// +k8s:openapi-gen=false
-	Resources
+	ComponentSpec `json:",inline"`
+
+	corev1.ResourceRequirements `json:",inline"`
+
 	Replicas int32 `json:"replicas"`
 	// +k8s:openapi-gen=false
 	Service          *ServiceSpec `json:"service,omitempty"`
@@ -214,9 +217,10 @@ type TiKVSpec struct {
 // TiDBSpec contains details of TiDB members
 type TiDBSpec struct {
 	// +k8s:openapi-gen=false
-	ComponentSpec
-	// +k8s:openapi-gen=false
-	Resources
+	ComponentSpec `json:",inline"`
+
+	corev1.ResourceRequirements `json:",inline"`
+
 	Replicas int32 `json:"replicas"`
 	// +k8s:openapi-gen=false
 	Service          *TiDBServiceSpec `json:"service,omitempty"`
@@ -243,9 +247,9 @@ type TiDBSpec struct {
 // PumpSpec contains details of Pump members
 type PumpSpec struct {
 	// +k8s:openapi-gen=false
-	ComponentSpec
-	// +k8s:openapi-gen=false
-	Resources
+	ComponentSpec `json:",inline"`
+
+	corev1.ResourceRequirements `json:",inline"`
 
 	StorageClassName string `json:"storageClassName,omitempty"`
 	Replicas         int32  `json:"replicas"`
@@ -275,8 +279,7 @@ type HelperSpec struct {
 // +k8s:openapi-gen=true
 // TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB
 type TiDBSlowLogTailerSpec struct {
-	// +k8s:openapi-gen=false
-	Resources
+	corev1.ResourceRequirements `json:",inline"`
 
 	// Image used for slowlog tailer
 	// Deprecated, use TidbCluster.HelperImage instead
@@ -285,15 +288,6 @@ type TiDBSlowLogTailerSpec struct {
 	// ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
 	// Deprecated, use TidbCluster.HelperImagePullPolicy instead
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
-}
-
-// +k8s:openapi-gen=true
-type Resources struct {
-	// Resource requests of the component
-	Requests *ResourceRequirement `json:"requests,omitempty"`
-
-	// Resource limits of the component
-	Limits *ResourceRequirement `json:"limits,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -372,17 +366,6 @@ type TiDBServiceSpec struct {
 type Service struct {
 	Name string `json:"name,omitempty"`
 	Type string `json:"type,omitempty"`
-}
-
-// +k8s:openapi-gen=true
-// ResourceRequirement is resource requirements for a pod
-type ResourceRequirement struct {
-	// CPU is how many cores a pod requires
-	CPU string `json:"cpu,omitempty"`
-	// Memory is how much memory a pod requires
-	Memory string `json:"memory,omitempty"`
-	// Storage is storage size a pod requires
-	Storage string `json:"storage,omitempty"`
 }
 
 // PDStatus is PD status
@@ -469,6 +452,12 @@ type TiKVFailureStore struct {
 	PodName   string      `json:"podName,omitempty"`
 	StoreID   string      `json:"storeID,omitempty"`
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
+}
+
+// PumpStatus is Pump status
+type PumpStatus struct {
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 }
 
 // +genclient

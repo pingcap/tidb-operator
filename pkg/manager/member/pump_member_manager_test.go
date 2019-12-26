@@ -29,11 +29,13 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -119,19 +121,6 @@ func TestPumpMemberManagerSyncCreate(t *testing.T) {
 				g.Expect(r.getCm).NotTo(Succeed())
 				g.Expect(r.getSet).NotTo(Succeed())
 				g.Expect(r.getSvc).NotTo(Succeed())
-			},
-		},
-		{
-			name: "pump storage format is wrong",
-			prepare: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.Pump.Requests.Storage = "100xxxxi"
-			},
-			errOnCreateSet: false,
-			errOnCreateCm:  false,
-			errOnCreateSvc: false,
-			expectFn: func(g *GomegaWithT, r *result) {
-				g.Expect(r.sync).NotTo(Succeed())
-				g.Expect(r.sync.Error()).To(ContainSubstring("cant' parse storage size: 100xxxxi"))
 			},
 		},
 		{
@@ -452,16 +441,20 @@ func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFak
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
 	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
+	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
+	cmControl := controller.NewFakeConfigMapControl(cmInformer)
 	genericControl := controller.NewFakeGenericControl()
 	pmm := &pumpMemberManager{
 		setControl,
 		svcControl,
 		controller.NewTypedControl(genericControl),
+		cmControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
 		cmInformer.Lister(),
+		podInformer.Lister(),
 	}
 	controls := &pumpFakeControls{
 		svc:     svcControl,
@@ -518,11 +511,11 @@ func newTidbClusterForPump() *v1alpha1.TidbCluster {
 					"gc": 7,
 				}),
 				Replicas: 3,
-				Resources: v1alpha1.Resources{
-					Requests: &v1alpha1.ResourceRequirement{
-						CPU:     "1",
-						Memory:  "2Gi",
-						Storage: "100Gi",
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:     resource.MustParse("1"),
+						corev1.ResourceMemory:  resource.MustParse("2Gi"),
+						corev1.ResourceStorage: resource.MustParse("100Gi"),
 					},
 				},
 				StorageClassName: "my-storage-class",
@@ -555,7 +548,7 @@ func TestGetNewPumpHeadlessService(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pump",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -586,7 +579,7 @@ func TestGetNewPumpHeadlessService(t *testing.T) {
 					Selector: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pump",
 					},
 					PublishNotReadyAddresses: true,
@@ -634,7 +627,7 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pump",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -683,7 +676,7 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pump",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -724,3 +717,58 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 }
 
 // TODO: add ut for getPumpStatefulSet
+func TestSyncTiDBClusterStatus(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name        string
+		updateTC    func(*appsv1.StatefulSet)
+		upgradingFn func(corelisters.PodLister, *appsv1.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
+		errExpectFn func(*GomegaWithT, error)
+		tcExpectFn  func(*GomegaWithT, *v1alpha1.TidbCluster)
+	}
+	status := appsv1.StatefulSetStatus{
+		Replicas: int32(3),
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		tc := newTidbClusterForPump()
+
+		set := &appsv1.StatefulSet{
+			Status: status,
+		}
+		if test.updateTC != nil {
+			test.updateTC(set)
+		}
+		pmm, _, _ := newFakePumpMemberManager()
+
+		err := pmm.syncTiDBClusterStatus(tc, set)
+
+		if test.errExpectFn != nil {
+			test.errExpectFn(g, err)
+		}
+		if test.tcExpectFn != nil {
+			test.tcExpectFn(g, tc)
+		}
+	}
+	tests := []testcase{
+		{
+			name: "statefulset is upgrading",
+			updateTC: func(set *appsv1.StatefulSet) {
+				set.Status.CurrentRevision = "pump-v1"
+				set.Status.UpdateRevision = "pump-v2"
+			},
+			upgradingFn: func(lister corelisters.PodLister, set *appsv1.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return true, nil
+			},
+			errExpectFn: nil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.Pump.StatefulSet.Replicas).To(Equal(int32(3)))
+				g.Expect(tc.Status.Pump.Phase).To(Equal(v1alpha1.UpgradePhase))
+			},
+		},
+	}
+
+	for i := range tests {
+		t.Logf(tests[i].name)
+		testFn(&tests[i], t)
+	}
+}

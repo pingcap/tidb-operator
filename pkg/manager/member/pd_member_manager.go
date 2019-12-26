@@ -23,11 +23,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -440,7 +438,7 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 	ns := tc.Namespace
 	tcName := tc.Name
 	svcName := controller.PDMemberName(tcName)
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	pdLabel := label.New().Instance(instanceName).PD().Labels()
 
 	pdService := &corev1.Service{
@@ -480,7 +478,7 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 	ns := tc.Namespace
 	tcName := tc.Name
 	svcName := controller.PDPeerMemberName(tcName)
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	pdLabel := label.New().Instance(instanceName).PD().Labels()
 
 	return &corev1.Service{
@@ -511,7 +509,7 @@ func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *
 		return true, nil
 	}
 	selector, err := label.New().
-		Instance(tc.GetLabels()[label.InstanceLabelKey]).
+		Instance(tc.GetInstanceName()).
 		PD().
 		Selector()
 	if err != nil {
@@ -536,7 +534,7 @@ func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *
 func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tc.Namespace
 	tcName := tc.Name
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	pdConfigMap := controller.MemberConfigMapName(tc, v1alpha1.PDMemberType)
 	if cm != nil {
 		pdConfigMap = cm.Name
@@ -588,15 +586,11 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		})
 	}
 
-	var q resource.Quantity
-	var err error
-	if tc.Spec.PD.Requests != nil {
-		size := tc.Spec.PD.Requests.Storage
-		q, err = resource.ParseQuantity(size)
-		if err != nil {
-			return nil, fmt.Errorf("cant' get storage size: %s for TidbCluster: %s/%s, %v", size, ns, tcName, err)
-		}
+	storageRequest, err := controller.ParseStorageRequest(tc.Spec.PD.Requests)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse storage request for PD, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
 	}
+
 	pdLabel := label.New().Instance(instanceName).PD()
 	setName := controller.PDMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(2379), tc.BasePDSpec().Annotations())
@@ -661,7 +655,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 					},
 				},
 				VolumeMounts: volMounts,
-				Resources:    util.ResourceRequirement(tc.Spec.PD.Resources),
+				Resources:    controller.ContainerResource(tc.Spec.PD.ResourceRequirements),
 			},
 		},
 		RestartPolicy:     corev1.RestartPolicyAlways,
@@ -712,11 +706,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 							corev1.ReadWriteOnce,
 						},
 						StorageClassName: &storageClassName,
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{
-								corev1.ResourceStorage: q,
-							},
-						},
+						Resources:        storageRequest,
 					},
 				},
 			},
@@ -749,7 +739,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	pdLabel := label.New().Instance(instanceName).PD().Labels()
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{

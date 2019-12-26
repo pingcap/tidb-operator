@@ -31,6 +31,8 @@ Environments:
     KUBE_VERSION        the version of Kubernetes to test against
     KUBE_WORKERS        the number of worker nodes (excludes master nodes), defaults: 3
     DOCKER_IO_MIRROR    configure mirror for docker.io
+    GCR_IO_MIRROR       configure mirror for gcr.io
+    QUAY_IO_MIRROR      configure mirror for quay.io
     KIND_DATA_HOSTPATH  (for kind) the host path of data directory for kind cluster, defaults: none
     GINKGO_NODES        ginkgo nodes to run specs, defaults: 1
     GINKGO_PARALLEL     if set to `y`, will run specs in parallel, the number of nodes will be the number of cpus
@@ -111,6 +113,7 @@ kind_node_images["v1.13.12"]="kindest/node:v1.13.12@sha256:1fe072c080ee129a2a440
 kind_node_images["v1.14.9"]="kindest/node:v1.14.9@sha256:bdd3731588fa3ce8f66c7c22f25351362428964b6bca13048659f68b9e665b72"
 kind_node_images["v1.15.6"]="kindest/node:v1.15.6@sha256:18c4ab6b61c991c249d29df778e651f443ac4bcd4e6bdd37e0c83c0d33eaae78"
 kind_node_images["v1.16.3"]="kindest/node:v1.16.3@sha256:70ce6ce09bee5c34ab14aec2b84d6edb260473a60638b1b095470a3a0f95ebec"
+kind_node_images["v1.17.0"]="kindest/node:v1.17.0@sha256:190c97963ec4f4121c3f1e96ca6eb104becda5bae1df3a13f01649b2dd372f6d"
 
 function e2e::image_build() {
     if [ -n "$SKIP_BUILD" ]; then
@@ -186,13 +189,29 @@ EOF
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 EOF
-    if [ -n "$DOCKER_IO_MIRROR" ]; then
+    if [ -n "$DOCKER_IO_MIRROR" -o -n "$GCR_IO_MIRROR" -o -n "$QUAY_IO_MIRROR" ]; then
 cat <<EOF >> $tmpfile
 containerdConfigPatches:
 - |-
+EOF
+        if [ -n "$DOCKER_IO_MIRROR" ]; then
+cat <<EOF >> $tmpfile
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
     endpoint = ["$DOCKER_IO_MIRROR"]
 EOF
+        fi
+        if [ -n "$GCR_IO_MIRROR" ]; then
+cat <<EOF >> $tmpfile
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gcr.io"]
+    endpoint = ["$GCR_IO_MIRROR"]
+EOF
+        fi
+        if [ -n "$QUAY_IO_MIRROR" ]; then
+cat <<EOF >> $tmpfile
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."quay.io"]
+    endpoint = ["$QUAY_IO_MIRROR"]
+EOF
+        fi
     fi
     # control-plane
     cat <<EOF >> $tmpfile

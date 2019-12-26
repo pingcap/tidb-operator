@@ -62,7 +62,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
@@ -227,6 +226,7 @@ type OperatorActions interface {
 	CheckInitSQL(info *TidbClusterConfig) error
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
+	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
 }
 
 type operatorActions struct {
@@ -259,20 +259,26 @@ type event struct {
 var _ = OperatorActions(&operatorActions{})
 
 type OperatorConfig struct {
-	Namespace          string
-	ReleaseName        string
-	Image              string
-	Tag                string
-	SchedulerImage     string
-	SchedulerTag       string
-	Features           []string
-	LogLevel           string
-	WebhookServiceName string
-	WebhookSecretName  string
-	WebhookConfigName  string
-	Context            *apimachinery.CertContext
-	ImagePullPolicy    corev1.PullPolicy
-	TestMode           bool
+	Namespace                 string
+	ReleaseName               string
+	Image                     string
+	Tag                       string
+	ControllerManagerReplicas int
+	SchedulerImage            string
+	SchedulerTag              string
+	SchedulerReplicas         int
+	Features                  []string
+	LogLevel                  string
+	WebhookServiceName        string
+	WebhookSecretName         string
+	WebhookConfigName         string
+	Context                   *apimachinery.CertContext
+	ImagePullPolicy           corev1.PullPolicy
+	TestMode                  bool
+	WebhookEnabled            bool
+	PodWebhookEnabled         bool
+	StsWebhookEnabled         bool
+	Cabundle                  string
 }
 
 type TidbClusterConfig struct {
@@ -385,15 +391,23 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 
 func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	set := map[string]string{
-		"operatorImage":                    oi.Image,
-		"controllerManager.autoFailover":   "true",
-		"scheduler.kubeSchedulerImageName": oi.SchedulerImage,
-		"controllerManager.logLevel":       oi.LogLevel,
-		"scheduler.logLevel":               "4",
-		"controllerManager.replicas":       "2",
-		"scheduler.replicas":               "2",
-		"imagePullPolicy":                  string(oi.ImagePullPolicy),
-		"testMode":                         strconv.FormatBool(oi.TestMode),
+		"operatorImage":                              oi.Image,
+		"controllerManager.autoFailover":             "true",
+		"scheduler.kubeSchedulerImageName":           oi.SchedulerImage,
+		"controllerManager.logLevel":                 oi.LogLevel,
+		"scheduler.logLevel":                         "4",
+		"imagePullPolicy":                            string(oi.ImagePullPolicy),
+		"testMode":                                   strconv.FormatBool(oi.TestMode),
+		"admissionWebhook.cabundle":                  oi.Cabundle,
+		"admissionWebhook.create":                    strconv.FormatBool(oi.WebhookEnabled),
+		"admissionWebhook.hooksEnabled.pods":         strconv.FormatBool(oi.PodWebhookEnabled),
+		"admissionWebhook.hooksEnabled.statefulSets": strconv.FormatBool(oi.StsWebhookEnabled),
+	}
+	if oi.ControllerManagerReplicas > 0 {
+		set["controllerManager.replicas"] = strconv.Itoa(oi.ControllerManagerReplicas)
+	}
+	if oi.SchedulerReplicas > 0 {
+		set["scheduler.replicas"] = strconv.Itoa(oi.SchedulerReplicas)
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
@@ -409,7 +423,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	for k, v := range set {
 		arr = append(arr, fmt.Sprintf("%s=%s", k, v))
 	}
-	return strings.Join(arr, ",")
+	return fmt.Sprintf("\"%s\"", strings.Join(arr, ","))
 }
 
 func (oi *OperatorConfig) Enabled(feature string) bool {
@@ -474,6 +488,13 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		}
 	}
 
+	if info.WebhookEnabled {
+		err := oa.setCabundleFromApiServer(info)
+		if err != nil {
+			return err
+		}
+	}
+
 	cmd := fmt.Sprintf(`helm install %s --name %s --namespace %s --set-string %s`,
 		oa.operatorChartPath(info.Tag),
 		info.ReleaseName,
@@ -484,39 +505,6 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
-	}
-
-	// create cert and secret for webhook
-	serverVersion, err := oa.kubeCli.Discovery().ServerVersion()
-	if err != nil {
-		return fmt.Errorf("failed to get api server version")
-	}
-	sv := utilversion.MustParseSemantic(serverVersion.GitVersion)
-	glog.Infof("ServerVersion: %v", serverVersion.String())
-
-	cmd = fmt.Sprintf("%s/patch-e2e.sh -n %s", oa.manifestPath(info.Tag), info.Namespace)
-	if sv.LessThan(utilversion.MustParseSemantic("v1.13.0")) {
-		cmd = fmt.Sprintf("%s -c", cmd)
-	}
-	glog.Info(cmd)
-
-	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to patch namespace: %v, %s", err, string(res))
-	}
-
-	// deploy statefulset webhook and configuration to hijack update statefulset opeartion
-	cmd = fmt.Sprintf(`
-	sed 's/apiVersions: \["v1beta1"\]/apiVersions: ["v1", "v1beta1"]/
-	s#imagePullPolicy:.*#imagePullPolicy: IfNotPresent#g
-	s#image:.*#image: %s#g
-	' %s/webhook.yaml | kubectl apply -f -
-	`, info.Image, oa.manifestPath(info.Tag))
-	glog.Info(cmd)
-
-	res, err = exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to create statefulset webhook and configuration : %v, %s", err, string(res))
 	}
 
 	// wait for all apiservices are available
@@ -533,11 +521,6 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 	glog.Infof("cleaning tidb-operator %s", info.ReleaseName)
-
-	cmd := fmt.Sprintf("kubectl delete -f %s/webhook.yaml --ignore-not-found", oa.manifestPath(info.Tag))
-	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to delete statefulset webhook and configuration: %v, %s", err, string(res))
-	}
 
 	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
 
@@ -1417,7 +1400,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 		return false, nil
 	}
 
-	if tc.Spec.PD.Image != c.Image {
+	if tc.BasePDSpec().Image() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
 			ns, pdSetName, c.Image, tc.BasePDSpec().Image())
 		return false, nil
@@ -1490,7 +1473,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if tc.Spec.TiKV.Image != c.Image {
+	if tc.BaseTiKVSpec().Image() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
 			ns, tikvSetName, c.Image, tc.BaseTiKVSpec().Image())
 		return false, nil
@@ -1557,7 +1540,7 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if tc.Spec.TiDB.Image != c.Image {
+	if tc.BaseTiDBSpec().Image() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
 			ns, tidbSetName, c.Image, tc.BaseTiDBSpec().Image())
 		return false, nil
@@ -3460,6 +3443,31 @@ func (oa *operatorActions) CheckInitSQLOrDie(info *TidbClusterConfig) {
 	if err := oa.CheckInitSQL(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
+}
+
+func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error {
+	if tc == nil {
+		return fmt.Errorf("tidbcluster is nil, cannot call WaitForTidbClusterReady")
+	}
+	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+		var local *v1alpha1.TidbCluster
+		var err error
+		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{}); err != nil {
+			glog.Errorf("failed to get tidbcluster: %s/%s, %v", tc.Namespace, tc.Name, err)
+			return false, nil
+		}
+
+		if b, err := oa.pdMembersReadyFn(local); !b && err == nil {
+			return false, nil
+		}
+		if b, err := oa.tikvMembersReadyFn(local); !b && err == nil {
+			return false, nil
+		}
+		if b, err := oa.tidbMembersReadyFn(local); !b && err == nil {
+			return false, nil
+		}
+		return true, nil
+	})
 }
 
 var dummyCancel = func() {}

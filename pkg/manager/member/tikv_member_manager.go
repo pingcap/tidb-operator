@@ -24,11 +24,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -303,7 +301,7 @@ func (tkmm *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *
 func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	svcName := svcConfig.MemberName(tcName)
 	svcLabel := svcConfig.SvcLabel(label.New().Instance(instanceName)).Labels()
 
@@ -418,15 +416,9 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		podSecurityContext.Sysctls = []corev1.Sysctl{}
 	}
 
-	var q resource.Quantity
-	var err error
-
-	if tc.Spec.TiKV.Requests != nil {
-		size := tc.Spec.TiKV.Requests.Storage
-		q, err = resource.ParseQuantity(size)
-		if err != nil {
-			return nil, fmt.Errorf("cant' get storage size: %s for TidbCluster: %s/%s, %v", size, ns, tcName, err)
-		}
+	storageRequest, err := controller.ParseStorageRequest(tc.Spec.TiKV.Requests)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse storage request for tikv, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
 	}
 
 	tikvLabel := labelTiKV(tc)
@@ -487,7 +479,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 					},
 				},
 				VolumeMounts: volMounts,
-				Resources:    util.ResourceRequirement(tc.Spec.TiKV.Resources),
+				Resources:    controller.ContainerResource(tc.Spec.TiKV.ResourceRequirements),
 			},
 		},
 		RestartPolicy:     corev1.RestartPolicyAlways,
@@ -530,7 +522,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				Spec: podSpec,
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				volumeClaimTemplate(q, v1alpha1.TiKVMemberType.String(), &storageClassName),
+				volumeClaimTemplate(storageRequest, v1alpha1.TiKVMemberType.String(), &storageClassName),
 			},
 			ServiceName:         headlessSvcName,
 			PodManagementPolicy: apps.ParallelPodManagement,
@@ -545,7 +537,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	return tikvset, nil
 }
 
-func volumeClaimTemplate(q resource.Quantity, metaName string, storageClassName *string) corev1.PersistentVolumeClaim {
+func volumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storageClassName *string) corev1.PersistentVolumeClaim {
 	return corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: metaName},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -553,11 +545,7 @@ func volumeClaimTemplate(q resource.Quantity, metaName string, storageClassName 
 				corev1.ReadWriteOnce,
 			},
 			StorageClassName: storageClassName,
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: q,
-				},
-			},
+			Resources:        r,
 		},
 	}
 }
@@ -578,7 +566,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	tikvLabel := label.New().Instance(instanceName).TiKV().Labels()
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -603,7 +591,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 }
 
 func labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	return label.New().Instance(instanceName).TiKV()
 }
 
@@ -790,7 +778,7 @@ func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi
 	if statefulSetIsUpgrading(set) {
 		return true, nil
 	}
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	selector, err := label.New().Instance(instanceName).TiKV().Selector()
 	if err != nil {
 		return false, err

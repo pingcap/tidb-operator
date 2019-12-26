@@ -26,56 +26,7 @@ type TiKVConfig struct {
 	LogRotationTimespan string `json:"log-rotation-timespan,omitempty" toml:"log-rotation-timespan,omitempty"`
 	// +optional
 	PanicWhenUnexpectedKeyOrData *bool `json:"panic-when-unexpected-key-or-data,omitempty" toml:"panic-when-unexpected-key-or-data,omitempty"`
-	// +optional
-	Addr string `json:"addr,omitempty" toml:"addr,omitempty"`
-	// +optional
-	AdvertiseAddr string `json:"advertise-addr,omitempty" toml:"advertise-addr,omitempty"`
-	// +optional
-	StatusAddr string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
-	// +optional
-	StatusThreadPoolSize string `json:"status-thread-pool-size,omitempty" toml:"status-thread-pool-size,omitempty"`
-	// +optional
-	GrpcCompressionType string `json:"grpc-compression-type,omitempty" toml:"grpc-compression-type,omitempty"`
-	// +optional
-	GrpcConcurrency *uint `json:"grpc-concurrency,omitempty" toml:"grpc-concurrency,omitempty"`
-	// +optional
-	GrpcConcurrentStream *uint `json:"grpc-concurrent-stream,omitempty" toml:"grpc-concurrent-stream,omitempty"`
-	// +optional
-	GrpcRaftConnNum *uint `json:"grpc-raft-conn-num,omitempty" toml:"grpc-raft-conn-num,omitempty"`
-	// +optional
-	GrpcStreamInitialWindowSize string `json:"grpc-stream-initial-window-size,omitempty" toml:"grpc-stream-initial-window-size,omitempty"`
-	// +optional
-	GrpcKeepaliveTime string `json:"grpc-keepalive-time,omitempty" toml:"grpc-keepalive-time,omitempty"`
-	// +optional
-	GrpcKeepaliveTimeout string `json:"grpc-keepalive-timeout,omitempty" toml:"grpc-keepalive-timeout,omitempty"`
-	// +optional
-	ConcurrentSendSnapLimit *uint `json:"concurrent-send-snap-limit,omitempty" toml:"concurrent-send-snap-limit,omitempty"`
-	// +optional
-	ConcurrentRecvSnapLimit *uint `json:"concurrent-recv-snap-limit,omitempty" toml:"concurrent-recv-snap-limit,omitempty"`
-	// +optional
-	EndPointRecursionLimit *uint `json:"end-point-recursion-limit,omitempty" toml:"end-point-recursion-limit,omitempty"`
-	// +optional
-	EndPointStreamChannelSize *uint `json:"end-point-stream-channel-size,omitempty" toml:"end-point-stream-channel-size,omitempty"`
-	// +optional
-	EndPointBatchRowLimit *uint `json:"end-point-batch-row-limit,omitempty" toml:"end-point-batch-row-limit,omitempty"`
-	// +optional
-	EndPointStreamBatchRowLimit *uint `json:"end-point-stream-batch-row-limit,omitempty" toml:"end-point-stream-batch-row-limit,omitempty"`
-	// +optional
-	EndPointEnableBatchIfPossible *uint `json:"end-point-enable-batch-if-possible,omitempty" toml:"end-point-enable-batch-if-possible,omitempty"`
-	// +optional
-	EndPointRequestMaxHandleDuration string `json:"end-point-request-max-handle-duration,omitempty" toml:"end-point-request-max-handle-duration,omitempty"`
-	// +optional
-	SnapMaxWriteBytesPerSec string `json:"snap-max-write-bytes-per-sec,omitempty" toml:"snap-max-write-bytes-per-sec,omitempty"`
-	// +optional
-	SnapMaxTotalSize string `json:"snap-max-total-size,omitempty" toml:"snap-max-total-size,omitempty"`
-	// +optional
-	StatsConcurrency *uint `json:"stats-concurrency,omitempty" toml:"stats-concurrency,omitempty"`
-	// +optional
-	HeavyLoadThreshold *uint `json:"heavy-load-threshold,omitempty" toml:"heavy-load-threshold,omitempty"`
-	// +optional
-	HeavyLoadWaitDuration string `json:"heavy-load-wait-duration,omitempty" toml:"heavy-load-wait-duration,omitempty"`
-	// +optional
-	Labels map[string]string `json:"labels,omitempty" toml:"labels,omitempty"`
+
 	// +optional
 	Server *TiKVServerConfig `json:"server,omitempty" toml:"server,omitempty"`
 	// +optional
@@ -86,6 +37,163 @@ type TiKVConfig struct {
 	Rocksdb *TiKVDbConfig `json:"rocksdb,omitempty" toml:"rocksdb,omitempty"`
 	// +optional
 	Coprocessor *TiKVCoprocessorConfig `json:"coprocessor,omitempty" toml:"coprocessor,omitempty"`
+	// +optional
+	ReadPool *TiKVReadPoolConfig `json:"readpool,omitempty" toml:"readpool,omitempty"`
+	// +optional
+	RaftDB *TiKVRaftDBConfig `json:"raftdb,omitempty" toml:"raftdb,omitempty"`
+	// +optional
+	Import *TiKVImportConfig `json:"import,omitempty" toml:"import,omitempty"`
+	// +optional
+	GC *TiKVGCConfig `json:"gc,omitempty" toml:"gc,omitempty"`
+	// +optional
+	Security *TiKVSecurityConfig `json:"security,omitempty" toml:"security,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type TiKVReadPoolConfig struct {
+	// +optional
+	Coprocessor *TiKVComponentReadPoolConfig `json:"coprocessor,omitempty" toml:"coprocessor,omitempty"`
+	// +optional
+	Storage *TiKVComponentReadPoolConfig `json:"storage,omitempty" toml:"storage,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type TiKVComponentReadPoolConfig struct {
+	// +optional
+	HighConcurrency *int64 `json:"high_concurrency,omitempty" toml:"high_concurrency,omitempty"`
+	// +optional
+	NormalConcurrency *int64 `json:"normal_concurrency,omitempty" toml:"normal_concurrency,omitempty"`
+	// +optional
+	LowConcurrency *int64 `json:"low_concurrency,omitempty" toml:"low_concurrency,omitempty"`
+	// +optional
+	MaxTasksPerWorkerHigh *int64 `json:"max_tasks_per_worker_high,omitempty" toml:"max_tasks_per_worker_high,omitempty"`
+	// +optional
+	MaxTasksPerWorkerNormal *int64 `json:"max_tasks_per_worker_normal,omitempty" toml:"max_tasks_per_worker_normal,omitempty"`
+	// +optional
+	MaxTasksPerWorkerLow *int64 `json:"max_tasks_per_worker_low,omitempty" toml:"max_tasks_per_worker_low,omitempty"`
+	// +optional
+	StackSize string `json:"stack_size,omitempty" toml:"stack_size,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type TiKVPDConfig struct {
+	// The PD endpoints for the client.
+	//
+	// Default is empty.
+	// +optional
+	Endpoints []string `json:"endpoints,omitempty" toml:"endpoints,omitempty"`
+	// The interval at which to retry a PD connection initialization.
+	//
+	// Default is 300ms.
+	// +optional
+	RetryInterval string `json:"retry_interval,omitempty" toml:"retry_interval,omitempty"`
+	// The maximum number of times to retry a PD connection initialization.
+	//
+	// Default is isize::MAX, represented by -1.
+	// +optional
+	RetryMaxCount *int64 `json:"retry_max_count,omitempty" toml:"retry_max_count,omitempty"`
+	// If the client observes the same error message on retry, it can repeat the message only
+	// every `n` times.
+	//
+	// Default is 10. Set to 1 to disable this feature.
+	// +optional
+	RetryLogEvery *int64 `json:"retry_log_every,omitempty" toml:"retry_log_every,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type TiKVRaftDBConfig struct {
+	// +optional
+	WalRecoveryMode string `json:"wal_recovery_mode,omitempty" toml:"wal_recovery_mode,omitempty"`
+	// +optional
+	WalDir string `json:"wal_dir,omitempty" toml:"wal_dir,omitempty"`
+	// +optional
+	WalTtlSeconds *int64 `json:"wal_ttl_seconds,omitempty" toml:"wal_ttl_seconds,omitempty"`
+	// +optional
+	WalSizeLimit string `json:"wal_size_limit,omitempty" toml:"wal_size_limit,omitempty"`
+	// +optional
+	MaxTotalWalSize string `json:"max_total_wal_size,omitempty" toml:"max_total_wal_size,omitempty"`
+	// +optional
+	MaxBackgroundJobs *int64 `json:"max_background_jobs,omitempty" toml:"max_background_jobs,omitempty"`
+	// +optional
+	MaxManifestFileSize string `json:"max_manifest_file_size,omitempty" toml:"max_manifest_file_size,omitempty"`
+	// +optional
+	CreateIfMissing *bool `json:"create_if_missing,omitempty" toml:"create_if_missing,omitempty"`
+	// +optional
+	MaxOpenFiles *int64 `json:"max_open_files,omitempty" toml:"max_open_files,omitempty"`
+	// +optional
+	EnableStatistics *bool `json:"enable_statistics,omitempty" toml:"enable_statistics,omitempty"`
+	// +optional
+	StatsDumpPeriod string `json:"stats_dump_period,omitempty" toml:"stats_dump_period,omitempty"`
+	// +optional
+	CompactionReadaheadSize string `json:"compaction_readahead_size,omitempty" toml:"compaction_readahead_size,omitempty"`
+	// +optional
+	InfoLogMaxSize string `json:"info_log_max_size,omitempty" toml:"info_log_max_size,omitempty"`
+	// +optional
+	FnfoLogRollTime string `json:"info_log_roll_time,omitempty" toml:"info_log_roll_time,omitempty"`
+	// +optional
+	InfoLogKeepLogFileNum *int64 `json:"info_log_keep_log_file_num,omitempty" toml:"info_log_keep_log_file_num,omitempty"`
+	// +optional
+	InfoLogDir string `json:"info_log_dir,omitempty" toml:"info_log_dir,omitempty"`
+	// +optional
+	MaxSubCompactions *int64 `json:"max_sub_compactions,omitempty" toml:"max_sub_compactions,omitempty"`
+	// +optional
+	WritableFileMaxBufferSize string `json:"writable_file_max_buffer_size,omitempty" toml:"writable_file_max_buffer_size,omitempty"`
+	// +optional
+	UseDirectIoForFlushAndCompaction *bool `json:"use_direct_io_for_flush_and_compaction,omitempty" toml:"use_direct_io_for_flush_and_compaction,omitempty"`
+	// +optional
+	EnablePipelinedWrite *bool `json:"enable_pipelined_write,omitempty" toml:"enable_pipelined_write,omitempty"`
+	// +optional
+	AllowConcurrentMemtableWrite *bool `json:"allow_concurrent_memtable_write,omitempty" toml:"allow_concurrent_memtable_write,omitempty"`
+	// +optional
+	BytesPerSync string `json:"bytes_per_sync,omitempty" toml:"bytes_per_sync,omitempty"`
+	// +optional
+	WalBytesPerSync string `json:"wal_bytes_per_sync,omitempty" toml:"wal_bytes_per_sync,omitempty"`
+	// +optional
+	Defaultcf *TiKVCfConfig `json:"defaultcf,omitempty" toml:"defaultcf,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type TiKVSecurityConfig struct {
+	// +optional
+	CAPath string `json:"ca_path,omitempty" toml:"ca_path,omitempty"`
+	// +optional
+	CertPath string `json:"cert_path,omitempty" toml:"cert_path,omitempty"`
+	// +optional
+	KeyPath string `json:"key_path,omitempty" toml:"key_path,omitempty"`
+	// +optional
+	OverrideSslTarget string `json:"override_ssl_target,omitempty" toml:"override_ssl_target,omitempty"`
+	// +optional
+	CipherFile string `json:"cipher_file,omitempty" toml:"cipher_file,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type TiKVImportConfig struct {
+	// +optional
+	ImportDir string `json:"import_dir,omitempty" toml:"import_dir,omitempty"`
+	// +optional
+	NumThreads *int64 `json:"num_threads,omitempty" toml:"num_threads,omitempty"`
+	// +optional
+	NumImportJobs *int64 `json:"num_import_jobs,omitempty" toml:"num_import_jobs,omitempty"`
+	// +optional
+	NumImportSstJobs *int64 `json:"num_import_sst_jobs,omitempty" toml:"num_import_sst_jobs,omitempty"`
+	// +optional
+	MaxPrepareDuration string `json:"max_prepare_duration,omitempty" toml:"max_prepare_duration,omitempty"`
+	// +optional
+	RegionSplitSize string `json:"region_split_size,omitempty" toml:"region_split_size,omitempty"`
+	// +optional
+	StreamChannelWindow *int64 `json:"stream_channel_window,omitempty" toml:"stream_channel_window,omitempty"`
+	// +optional
+	MaxOpenEngines *int64 `json:"max_open_engines,omitempty" toml:"max_open_engines,omitempty"`
+	// +optional
+	UploadSpeedLimit string `json:"upload_speed_limit,omitempty" toml:"upload_speed_limit,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type TiKVGCConfig struct {
+	// +optional
+	BatchKeys *int64 `json:"	batch_keys,omitempty" toml:"	batch_keys,omitempty"`
+	// +optional
+	MaxWriteBytesPerSec string `json:"	max_write_bytes_per_sec,omitempty" toml:"	max_write_bytes_per_sec,omitempty"`
 }
 
 // TiKVDbConfig is the rocksdb config.
@@ -223,6 +331,7 @@ type TiKVCfConfig struct {
 }
 
 // TiKVTitanCfConfig is the titian config.
+// +k8s:openapi-gen=true
 type TiKVTitanCfConfig struct {
 	// +optional
 	MinBlobSize string `json:"min-blob-size,omitempty" toml:"min-blob-size,omitempty"`
@@ -300,13 +409,21 @@ type TiKVBlockCacheConfig struct {
 // +k8s:openapi-gen=true
 type TiKVServerConfig struct {
 	// +optional
+	Addr string `json:"addr,omitempty" toml:"addr,omitempty"`
+	// +optional
+	AdvertiseAddr string `json:"advertise-addr,omitempty" toml:"advertise-addr,omitempty"`
+	// +optional
+	StatusAddr string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
+	// +optional
+	StatusThreadPoolSize string `json:"status-thread-pool-size,omitempty" toml:"status-thread-pool-size,omitempty"`
+	// +optional
 	GrpcCompressionType string `json:"grpc-compression-type,omitempty" toml:"grpc-compression-type,omitempty"`
 	// +optional
-	GrpcConcurrency *int64 `json:"grpc-concurrency,omitempty" toml:"grpc-concurrency,omitempty"`
+	GrpcConcurrency *uint `json:"grpc-concurrency,omitempty" toml:"grpc-concurrency,omitempty"`
 	// +optional
-	GrpcConcurrentStream *int64 `json:"grpc-concurrent-stream,omitempty" toml:"grpc-concurrent-stream,omitempty"`
+	GrpcConcurrentStream *uint `json:"grpc-concurrent-stream,omitempty" toml:"grpc-concurrent-stream,omitempty"`
 	// +optional
-	GrpcRaftConnNum *int64 `json:"grpc-raft-conn-num,omitempty" toml:"grpc-raft-conn-num,omitempty"`
+	GrpcRaftConnNum *uint `json:"grpc-raft-conn-num,omitempty" toml:"grpc-raft-conn-num,omitempty"`
 	// +optional
 	GrpcStreamInitialWindowSize string `json:"grpc-stream-initial-window-size,omitempty" toml:"grpc-stream-initial-window-size,omitempty"`
 	// +optional
@@ -314,19 +431,19 @@ type TiKVServerConfig struct {
 	// +optional
 	GrpcKeepaliveTimeout string `json:"grpc-keepalive-timeout,omitempty" toml:"grpc-keepalive-timeout,omitempty"`
 	// +optional
-	ConcurrentSendSnapLimit *int64 `json:"concurrent-send-snap-limit,omitempty" toml:"concurrent-send-snap-limit,omitempty"`
+	ConcurrentSendSnapLimit *uint `json:"concurrent-send-snap-limit,omitempty" toml:"concurrent-send-snap-limit,omitempty"`
 	// +optional
-	ConcurrentRecvSnapLimit *int64 `json:"concurrent-recv-snap-limit,omitempty" toml:"concurrent-recv-snap-limit,omitempty"`
+	ConcurrentRecvSnapLimit *uint `json:"concurrent-recv-snap-limit,omitempty" toml:"concurrent-recv-snap-limit,omitempty"`
 	// +optional
-	EndPointRecursionLimit *int64 `json:"end-point-recursion-limit,omitempty" toml:"end-point-recursion-limit,omitempty"`
+	EndPointRecursionLimit *uint `json:"end-point-recursion-limit,omitempty" toml:"end-point-recursion-limit,omitempty"`
 	// +optional
-	EndPointStreamChannelSize *int64 `json:"end-point-stream-channel-size,omitempty" toml:"end-point-stream-channel-size,omitempty"`
+	EndPointStreamChannelSize *uint `json:"end-point-stream-channel-size,omitempty" toml:"end-point-stream-channel-size,omitempty"`
 	// +optional
-	EndPointBatchRowLimit *int64 `json:"end-point-batch-row-limit,omitempty" toml:"end-point-batch-row-limit,omitempty"`
+	EndPointBatchRowLimit *uint `json:"end-point-batch-row-limit,omitempty" toml:"end-point-batch-row-limit,omitempty"`
 	// +optional
-	EndPointStreamBatchRowLimit *int64 `json:"end-point-stream-batch-row-limit,omitempty" toml:"end-point-stream-batch-row-limit,omitempty"`
+	EndPointStreamBatchRowLimit *uint `json:"end-point-stream-batch-row-limit,omitempty" toml:"end-point-stream-batch-row-limit,omitempty"`
 	// +optional
-	EndPointEnableBatchIfPossible *bool `json:"end-point-enable-batch-if-possible,omitempty" toml:"end-point-enable-batch-if-possible,omitempty"`
+	EndPointEnableBatchIfPossible *uint `json:"end-point-enable-batch-if-possible,omitempty" toml:"end-point-enable-batch-if-possible,omitempty"`
 	// +optional
 	EndPointRequestMaxHandleDuration string `json:"end-point-request-max-handle-duration,omitempty" toml:"end-point-request-max-handle-duration,omitempty"`
 	// +optional
@@ -334,9 +451,9 @@ type TiKVServerConfig struct {
 	// +optional
 	SnapMaxTotalSize string `json:"snap-max-total-size,omitempty" toml:"snap-max-total-size,omitempty"`
 	// +optional
-	StatsConcurrency *int64 `json:"stats-concurrency,omitempty" toml:"stats-concurrency,omitempty"`
+	StatsConcurrency *uint `json:"stats-concurrency,omitempty" toml:"stats-concurrency,omitempty"`
 	// +optional
-	HeavyLoadThreshold *int64 `json:"heavy-load-threshold,omitempty" toml:"heavy-load-threshold,omitempty"`
+	HeavyLoadThreshold *uint `json:"heavy-load-threshold,omitempty" toml:"heavy-load-threshold,omitempty"`
 	// +optional
 	HeavyLoadWaitDuration string `json:"heavy-load-wait-duration,omitempty" toml:"heavy-load-wait-duration,omitempty"`
 	// +optional
@@ -489,6 +606,8 @@ type TiKVRaftstoreConfig struct {
 	HibernateRegions *bool `json:"hibernate-regions,omitempty" toml:"hibernate-regions,omitempty"`
 }
 
+// TiKVCoprocessorConfig is the configuration of TiKV Coprocessor component.
+// +k8s:openapi-gen=true
 type TiKVCoprocessorConfig struct {
 	// When it is set to `true`, TiKV will try to split a Region with table prefix if that Region
 	// crosses tables.

@@ -81,3 +81,17 @@ func fakeOneNode() []apiv1.Node {
 func fakeZeroNode() []apiv1.Node {
 	return []apiv1.Node{}
 }
+
+func CollectEvents(source <-chan string) []string {
+	done := false
+	events := make([]string, 0)
+	for !done {
+		select {
+		case event := <-source:
+			events = append(events, event)
+		default:
+			done = true
+		}
+	}
+	return events
+}
