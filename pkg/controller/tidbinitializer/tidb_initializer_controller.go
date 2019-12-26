@@ -72,7 +72,7 @@ func NewController(
 			recorder,
 			member.NewTiDBInitManager(
 				jobInformer.Lister(),
-				cli,
+				genericCli,
 				tidbInitializerInformer.Lister(),
 				typedControl,
 			),

@@ -22,14 +22,11 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -60,7 +57,7 @@ type InitManager interface {
 
 type tidbInitManager struct {
 	jobLister    batchlisters.JobLister
-	cli          versioned.Interface
+	genericCli   client.Client
 	tiLister     listers.TidbInitializerLister
 	typedControl controller.TypedControlInterface
 }
@@ -68,54 +65,38 @@ type tidbInitManager struct {
 // NewTiDBInitManager return tidbInitManager
 func NewTiDBInitManager(
 	jobLister batchlisters.JobLister,
-	cli versioned.Interface,
+	genericCli client.Client,
 	tiLister listers.TidbInitializerLister,
 	typedControl controller.TypedControlInterface,
 ) InitManager {
 	return &tidbInitManager{
 		jobLister,
-		cli,
+		genericCli,
 		tiLister,
 		typedControl,
 	}
 }
 
 func (tm *tidbInitManager) Sync(ti *v1alpha1.TidbInitializer) error {
-	name := controller.TiDBInitializerMemberName(ti.Spec.Clusters.Name)
-	ns := ti.Namespace
-	cm := &corev1.ConfigMap{}
-
-	exist, err := tm.typedControl.Exist(client.ObjectKey{
-		Namespace: ns,
-		Name:      name,
-	}, cm)
+	err := tm.syncTiDBInitConfigMap(ti)
 	if err != nil {
 		return err
 	}
-	if !exist {
-		err = tm.syncTiDBInitConfigMap(ti)
-		if err != nil {
-			return err
-		}
+	err = tm.syncTiDBInitJob(ti)
+	if err != nil {
+		return err
 	}
-
-	job, err := tm.jobLister.Jobs(ns).Get(name)
-	if err == nil {
-		// job has been created
-		return tm.updateStatus(ti.DeepCopy(), job)
-	}
-
-	if !errors.IsNotFound(err) {
-		return fmt.Errorf("TiDBInitializer %s/%s get job %s failed, err: %v", ns, ti.Name, name, err)
-	}
-
-	return tm.syncTiDBInitJob(ti)
+	return tm.updateStatus(ti.DeepCopy())
 }
 
-func (tm *tidbInitManager) updateStatus(ti *v1alpha1.TidbInitializer, job *batchv1.Job) error {
-	if job == nil || ti == nil {
-		return nil
+func (tm *tidbInitManager) updateStatus(ti *v1alpha1.TidbInitializer) error {
+	name := controller.TiDBInitializerMemberName(ti.Spec.Clusters.Name)
+	ns := ti.Namespace
+	job, err := tm.jobLister.Jobs(ns).Get(name)
+	if err != nil {
+		return err
 	}
+
 	phase := v1alpha1.InitializePhaseRunning
 	if len(job.Status.Conditions) > 0 {
 		for _, c := range job.Status.Conditions {
@@ -129,6 +110,7 @@ func (tm *tidbInitManager) updateStatus(ti *v1alpha1.TidbInitializer, job *batch
 			}
 		}
 	}
+
 	var update bool
 	if !apiequality.Semantic.DeepEqual(ti.Status.JobStatus, job.Status) {
 		job.Status.DeepCopyInto(&ti.Status.JobStatus)
@@ -139,60 +121,67 @@ func (tm *tidbInitManager) updateStatus(ti *v1alpha1.TidbInitializer, job *batch
 		update = true
 	}
 	if update {
-		return tm.retryUpdateStatus(ti)
+		status := ti.Status.DeepCopy()
+		return controller.GuaranteedUpdate(tm.genericCli, ti, func() error {
+			ti.Status = *status
+			return nil
+		})
 	}
 	return nil
 }
-func (tm *tidbInitManager) retryUpdateStatus(ti *v1alpha1.TidbInitializer) error {
-	ns := ti.GetNamespace()
-	name := ti.GetName()
-	status := ti.Status.DeepCopy()
 
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		var updateErr error
-		_, updateErr = tm.cli.PingcapV1alpha1().TidbInitializers(ns).Update(ti)
-		if updateErr == nil {
-			klog.Infof("TidbInitializer: [%s/%s] status updated successfully", ns, name)
-			return nil
-		}
-		klog.Errorf("failed to update TidbInitializer: [%s/%s], error: %v", ns, name, updateErr)
-
-		if updated, err := tm.tiLister.TidbInitializers(ns).Get(name); err == nil {
-			// make a copy so we don't mutate the shared cache
-			ti = updated.DeepCopy()
-			ti.Status = *status
-		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated TidbInitializer %s/%s from lister: %v", ns, name, err))
-		}
-		return updateErr
-	})
-
-	return err
-}
 func (tm *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) error {
+	name := controller.TiDBInitializerMemberName(ti.Spec.Clusters.Name)
+	ns := ti.Namespace
+	cm := &corev1.ConfigMap{}
+
+	exist, err := tm.typedControl.Exist(client.ObjectKey{
+		Namespace: ns,
+		Name:      name,
+	}, cm)
+	if err != nil {
+		return err
+	}
+	if exist {
+		return nil
+	}
+
 	newCm, err := getTiDBInitConfigMap(ti)
 	if err != nil {
 		return err
 	}
 
-	return tm.typedControl.Create(ti, newCm)
+	err = tm.typedControl.Create(ti, newCm)
+	if errors.IsAlreadyExists(err) {
+		klog.Infof("Configmap %s/%s already exists", newCm.Namespace, newCm.Name)
+		return nil
+	}
+	return err
 }
 
 func (tm *tidbInitManager) syncTiDBInitJob(ti *v1alpha1.TidbInitializer) error {
 	ns := ti.GetNamespace()
 	name := ti.GetName()
-	tidbInitJobName := controller.TiDBInitializerMemberName(ti.Spec.Clusters.Name)
 
-	job, err := tm.makeTiDBInitJob(ti)
+	job, err := tm.jobLister.Jobs(ns).Get(name)
+	if err == nil {
+		return nil
+	}
+	if !errors.IsNotFound(err) {
+		return fmt.Errorf("TiDBInitializer %s/%s get job %s failed, err: %v", ns, ti.Name, name, err)
+	}
+
+	job, err = tm.makeTiDBInitJob(ti)
 	if err != nil {
 		return err
 	}
 
-	if err := tm.typedControl.Create(ti, job); err != nil {
-		return fmt.Errorf("create job %s for TiDBInitializer %s/%s failed, err: %v", tidbInitJobName, ns, name, err)
+	err = tm.typedControl.Create(ti, job)
+	if errors.IsAlreadyExists(err) {
+		klog.Infof("Job %s/%s already exists", job.Namespace, job.Name)
+		return nil
 	}
-
-	return nil
+	return err
 }
 
 func (tm *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv1.Job, error) {

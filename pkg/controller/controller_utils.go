@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -480,8 +481,12 @@ func GuaranteedUpdate(cli client.Client, obj runtime.Object, updateFunc func() e
 		if err := cli.Get(context.TODO(), key, obj); err != nil {
 			return err
 		}
+		beforeMutation := obj.DeepCopyObject()
 		if err := updateFunc(); err != nil {
 			return err
+		}
+		if apiequality.Semantic.DeepEqual(obj, beforeMutation) {
+			return nil
 		}
 		return cli.Update(context.TODO(), obj)
 	})
