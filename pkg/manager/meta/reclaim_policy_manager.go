@@ -40,7 +40,7 @@ func NewReclaimPolicyManager(pvcLister corelisters.PersistentVolumeClaimLister,
 
 func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 
 	l, err := label.New().Instance(instanceName).Selector()
 	if err != nil {
