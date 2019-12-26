@@ -21,11 +21,6 @@ import (
 	glog "k8s.io/klog"
 )
 
-const (
-	// MaxResignDDLOwnerCount is the max regign DDL owner count
-	MaxResignDDLOwnerCount = 3
-)
-
 type tidbUpgrader struct {
 	podLister   corelisters.PodLister
 	tidbControl controller.TiDBControlInterface
@@ -40,6 +35,13 @@ func NewTiDBUpgrader(tidbControl controller.TiDBControlInterface, podLister core
 }
 
 func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+
+	// when scale replica to 0 , all nodes crash and tidb is in upgrade phase, this method will throw error about pod is upgrade.
+	// so  directly return nil when scale replica to 0.
+	if tc.Spec.TiDB.Replicas == int32(0) {
+		return nil
+	}
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -72,7 +74,7 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-	for i := tc.Status.TiDB.StatefulSet.Replicas - 1; i >= 0; i-- {
+	for i := tc.TiDBStsActualReplicas() - 1; i >= 0; i-- {
 		podName := tidbPodName(tcName, i)
 		pod, err := tdu.podLister.Pods(ns).Get(podName)
 		if err != nil {
@@ -96,20 +98,6 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 }
 
 func (tdu *tidbUpgrader) upgradeTiDBPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
-	tcName := tc.GetName()
-	if tc.Spec.TiDB.Replicas > 1 {
-		if member, exist := tc.Status.TiDB.Members[tidbPodName(tcName, ordinal)]; exist && member.Health {
-			hasResign, err := tdu.tidbControl.ResignDDLOwner(tc, ordinal)
-			if (!hasResign || err != nil) && tc.Status.TiDB.ResignDDLOwnerRetryCount < MaxResignDDLOwnerCount {
-				glog.Errorf("tidb upgrader: failed to resign ddl owner to %s, %v", member.Name, err)
-				tc.Status.TiDB.ResignDDLOwnerRetryCount++
-				return err
-			}
-			glog.Infof("tidb upgrader: resign ddl owner to %s successfully", member.Name)
-		}
-	}
-
-	tc.Status.TiDB.ResignDDLOwnerRetryCount = 0
 	setUpgradePartition(newSet, ordinal)
 	return nil
 }

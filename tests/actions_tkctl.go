@@ -28,7 +28,11 @@ func checkListOrDie(info *TidbClusterConfig) {
 	if assert.Nil(&t, err) {
 		glog.Fatalf("command 'list' not run as expect %v", err)
 	}
-	if assert.Regexp(&t, regexp.MustCompile(`.*3/3.*3/3.*2/2.*`), string(output)) {
+	pdnum := info.Resources["pd.replicas"]
+	kvnum := info.Resources["tikv.replicas"]
+	dbnum := info.Resources["tidb.replicas"]
+	restr := fmt.Sprintf(".*%s/%s.*%s/%s.*%s/%s.*",pdnum,pdnum,kvnum,kvnum,dbnum,dbnum)
+	if assert.Regexp(&t, regexp.MustCompile(restr), string(output)) {
 		glog.Fatalf("command 'list' not run as expect")
 	}
 }

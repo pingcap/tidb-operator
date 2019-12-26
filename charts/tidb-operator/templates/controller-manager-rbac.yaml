@@ -28,14 +28,17 @@ rules:
   - events
   verbs: ["*"]
 - apiGroups: [""]
-  resources: ["endpoints"]
+  resources: ["endpoints","configmaps"]
   verbs: ["create", "get", "list", "watch", "update"]
+- apiGroups: [""]
+  resources: ["serviceaccounts"]
+  verbs: ["create","get","update"]
 - apiGroups: ["batch"]
   resources: ["jobs"]
   verbs: ["get", "list", "watch", "create", "update", "delete"]
 - apiGroups: [""]
   resources: ["secrets"]
-  verbs: ["get", "list", "watch"]
+  verbs: ["create", "get", "list", "watch"]
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
   verbs: ["get", "list", "watch", "create", "update", "delete"]
@@ -43,19 +46,19 @@ rules:
   resources: ["pods"]
   verbs: ["get", "list", "watch","update", "delete"]
 - apiGroups: ["apps"]
-  resources: ["statefulsets"]
+  resources: ["statefulsets","deployments"]
   verbs: ["*"]
 - apiGroups: ["pingcap.com"]
-  resources:
-  - tidbclusters
-  - tidbclusters/finalizers
-  - backups
-  - backups/finalizers
-  - backupschedules
-  - backupschedules/finalizers
-  - restores
-  - restores/finalizers
+  resources: ["*"]
   verbs: ["*"]
+{{- if .Values.features | has "AdvancedStatefulSet=true" }}
+- apiGroups:
+  - apps.pingcap.com
+  resources:
+  - statefulsets
+  verbs:
+  - '*'
+{{- end }}
 {{- end }}
 - apiGroups: [""]
   resources: ["nodes"]
@@ -63,6 +66,22 @@ rules:
 - apiGroups: [""]
   resources: ["persistentvolumes"]
   verbs: ["get", "list", "watch", "patch","update"]
+- apiGroups: ["certificates.k8s.io"]
+  resources: ["certificatesigningrequests"]
+  verbs: ["create", "get", "list", "watch", "delete"]
+- apiGroups: ["certificates.k8s.io"]
+  resources: ["certificatesigningrequests/approval", "certificatesigningrequests/status"]
+  verbs: ["update"]
+{{/*
+Allow controller manager to escalate its privileges to other subjects, the subjects may never have privilege over the controller.
+Ref: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-escalation-prevention-and-bootstrapping
+*/}}
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: [clusterroles,roles]
+  verbs: ["escalate","create","get","update"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["rolebindings"]
+  verbs: ["create","get","update"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -103,12 +122,15 @@ rules:
 - apiGroups: [""]
   resources: ["endpoints"]
   verbs: ["create", "get", "list", "watch", "update"]
+- apiGroups: [""]
+  resources: ["serviceaccounts"]
+  verbs: ["create","get","update"]
 - apiGroups: ["batch"]
   resources: ["jobs"]
   verbs: ["get", "list", "watch", "create", "update", "delete"]
 - apiGroups: [""]
   resources: ["secrets"]
-  verbs: ["get", "list", "watch"]
+  verbs: ["create", "get", "list", "watch"]
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
   verbs: ["get", "list", "watch", "create", "update", "delete"]
@@ -116,7 +138,7 @@ rules:
   resources: ["pods"]
   verbs: ["get", "list", "watch","update", "delete"]
 - apiGroups: ["apps"]
-  resources: ["statefulsets"]
+  resources: ["statefulsets","deployments"]
   verbs: ["*"]
 - apiGroups: ["pingcap.com"]
   resources:
@@ -129,6 +151,14 @@ rules:
   - restores
   - restores/finalizers
   verbs: ["*"]
+{{- if .Values.features | has "AdvancedStatefulSet=true" }}
+- apiGroups:
+  - apps.pingcap.com
+  resources:
+  - statefulsets
+  verbs:
+  - '*'
+{{- end }}
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1

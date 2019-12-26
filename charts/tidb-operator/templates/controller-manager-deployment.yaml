@@ -36,6 +36,7 @@ spec:
           - -default-storage-class-name={{ .Values.defaultStorageClassName }}
           {{- if .Values.tidbBackupManagerImage }}
           - -tidb-backup-manager-image={{ .Values.tidbBackupManagerImage }}
+          - -tidb-discovery-image={{ .Values.operatorImage }}
           {{- end }}
           {{- if .Values.defaultBackupStorageClassName }}
           - -default-backup-storage-class-name={{ .Values.defaultBackupStorageClassName }}
@@ -49,6 +50,12 @@ spec:
           {{- if .Values.testMode }}
           - -test-mode={{ .Values.testMode }}
           {{- end}}
+          {{- if .Values.features }}
+          - -features={{ join "," .Values.features }}
+          {{- end }}
+          {{- if and ( .Values.admissionWebhook.create ) ( .Values.admissionWebhook.hooksEnabled.pods ) }}
+          - -pod-webhook-enabled=true
+          {{- end }}
         env:
           - name: NAMESPACE
             valueFrom:

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -o errexit
 set -o nounset
@@ -31,3 +31,5 @@ else
   echo "${DIFFROOT} is out of date. Please run hack/codegen.sh"
   exit 1
 fi
+
+${ROOT}/hack/crd-groups.sh verify

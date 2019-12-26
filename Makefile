@@ -16,11 +16,11 @@ export GO111MODULE := on
 GOOS := $(if $(GOOS),$(GOOS),linux)
 GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
 GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
-GO     := $(GOENV) go build -trimpath
+GO     := $(GOENV) go
+GO_BUILD := $(GO) build -trimpath
 
-# Workaround https://github.com/kubernetes-sigs/apiserver-builder-alpha/issues/435
-# TODO: check the generated code under the test api
-PACKAGE_LIST := go list ./... | grep -vE "pkg/client" | grep -vE "zz_generated" | grep -vE "apiserver/client" | grep -vE "tests/pkg/apiserver/apis"
+IMAGE_TAG ?= latest
+PACKAGE_LIST := go list ./... | grep -vE "client/(clientset|informers|listers)"
 PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
 FILES := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go")
 FAIL_ON_STDOUT := awk '{ print } END { if (NR > 0) { exit 1 } }'
@@ -29,39 +29,54 @@ TEST_COVER_PACKAGES:=go list ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/t
 default: build
 
 docker-push: docker backup-docker
-	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest"
-	docker push "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:${IMAGE_TAG}"
 
+ifeq ($(NO_BUILD),y)
+docker:
+	@echo "NO_BUILD=y, skip build for $@"
+else
 docker: build
-	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:latest" images/tidb-operator
+endif
+	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}" images/tidb-operator
 
-build: controller-manager scheduler discovery admission-controller apiserver
+build: controller-manager scheduler discovery admission-webhook apiserver backup-manager
 
 controller-manager:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
 
 scheduler:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-scheduler cmd/scheduler/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-scheduler cmd/scheduler/main.go
 
 discovery:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery cmd/discovery/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery cmd/discovery/main.go
 
-admission-controller:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-controller cmd/admission-controller/main.go
+admission-webhook:
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-webhook cmd/admission-webhook/main.go
 
 apiserver:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-apiserver cmd/apiserver/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-apiserver cmd/apiserver/main.go
 
 backup-manager:
-	$(GO) -ldflags '$(LDFLAGS)' -o images/backup-manager/bin/tidb-backup-manager cmd/backup-manager/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/backup-manager/bin/tidb-backup-manager cmd/backup-manager/main.go
 
+ifeq ($(NO_BUILD),y)
+backup-docker:
+	@echo "NO_BUILD=y, skip build for $@"
+else
 backup-docker: backup-manager
-	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:latest" images/backup-manager
+endif
+	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:${IMAGE_TAG}" images/backup-manager
 
-e2e-docker-push: e2e-docker test-apiserver-dokcer-push
-	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest"
+e2e-docker-push: e2e-docker
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:${IMAGE_TAG}"
 
-e2e-docker: e2e-build test-apiesrver-docker
+ifeq ($(NO_BUILD),y)
+e2e-docker:
+	@echo "NO_BUILD=y, skip build for $@"
+else
+e2e-docker: e2e-build
+endif
 	[ -d tests/images/e2e/tidb-operator ] && rm -r tests/images/e2e/tidb-operator || true
 	[ -d tests/images/e2e/tidb-cluster ] && rm -r tests/images/e2e/tidb-cluster || true
 	[ -d tests/images/e2e/tidb-backup ] && rm -r tests/images/e2e/tidb-backup || true
@@ -70,34 +85,29 @@ e2e-docker: e2e-build test-apiesrver-docker
 	cp -r charts/tidb-cluster tests/images/e2e
 	cp -r charts/tidb-backup tests/images/e2e
 	cp -r manifests tests/images/e2e
-	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:latest" tests/images/e2e
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-e2e:${IMAGE_TAG}" tests/images/e2e
 
-e2e-cli:
-	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/tkctl cmd/tkctl/main.go
+e2e-build:
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/ginkgo github.com/onsi/ginkgo/ginkgo
+	$(GO) test -c -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e.test ./tests/e2e
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/webhook ./tests/cmd/webhook
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/blockwriter ./tests/cmd/blockwriter
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/apiserver ./tests/cmd/apiserver
 
-e2e-build: test-apiserver-build e2e-cli
-	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e tests/cmd/e2e/main.go
-
-test-apiserver-dokcer-push: test-apiesrver-docker
-	docker push "${DOCKER_REGISTRY}/pingcap/test-apiserver:latest"
-
-test-apiesrver-docker: test-apiserver-build
-	docker build -t "${DOCKER_REGISTRY}/pingcap/test-apiserver:latest" tests/images/test-apiserver
-
-test-apiserver-build:
-	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/test-apiserver/bin/tidb-apiserver tests/cmd/apiserver/main.go
+e2e:
+	./hack/e2e.sh
 
 stability-test-build:
-	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test tests/cmd/stability/*.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test tests/cmd/stability/*.go
 
 stability-test-docker: stability-test-build
-	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest" tests/images/stability-test
+	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:${IMAGE_TAG}" tests/images/stability-test
 
 stability-test-push: stability-test-docker
-	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:latest"
+	docker push "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:${IMAGE_TAG}"
 
 fault-trigger:
-	$(GO) -ldflags '$(LDFLAGS)' -o tests/images/fault-trigger/bin/fault-trigger tests/cmd/fault-trigger/*.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/fault-trigger/bin/fault-trigger tests/cmd/fault-trigger/*.go
 
 # ARGS:
 #
@@ -122,7 +132,7 @@ check-setup:
 	@which retool >/dev/null 2>&1 || GO111MODULE=off go get github.com/twitchtv/retool
 	@GO111MODULE=off retool sync
 
-check: check-setup lint tidy check-static check-crd check-codegen check-terraform
+check: check-setup lint tidy check-static check-codegen check-terraform
 
 check-static:
 	@ # Not running vet and fmt through metalinter becauase it ends up looking at vendor
@@ -135,9 +145,6 @@ check-static:
 	  --enable misspell \
 	  --enable ineffassign \
 	  $$($(PACKAGE_DIRECTORIES))
-
-check-crd:
-	./hack/crd-groups.sh verify
 
 check-codegen:
 	./hack/verify-codegen.sh
@@ -180,7 +187,7 @@ check-gosec:
 	CGO_ENABLED=0 retool do gosec $$($(PACKAGE_DIRECTORIES))
 
 cli:
-	$(GO) -ldflags '$(LDFLAGS)' -o tkctl cmd/tkctl/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tkctl cmd/tkctl/main.go
 
 debug-docker-push: debug-build-docker
 	docker push "${DOCKER_REGISTRY}/pingcap/debug-launcher:latest"
@@ -193,6 +200,6 @@ debug-build-docker: debug-build
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-debug:latest" misc/images/tidb-debug
 
 debug-build:
-	$(GO) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
 
-.PHONY: check check-setup check-all build e2e-build debug-build cli
+.PHONY: check check-setup check-all build e2e-build debug-build cli e2e

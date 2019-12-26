@@ -176,7 +176,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		pod := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:              tikvPodName(tc.GetName(), 4),
+				Name:              TikvPodName(tc.GetName(), 4),
 				Namespace:         corev1.NamespaceDefault,
 				CreationTimestamp: metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
 			},
@@ -433,7 +433,7 @@ func newFakeTiKVScaler() (*tikvScaler, *pdapi.FakePDControl, cache.Indexer, cach
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
-	pdControl := pdapi.NewFakePDControl()
+	pdControl := pdapi.NewFakePDControl(kubeCli)
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
 
 	return &tikvScaler{generalScaler{pdControl, pvcInformer.Lister(), pvcControl}, podInformer.Lister()},

@@ -7,13 +7,13 @@ module github.com/pingcap/tidb-operator
 go 1.13
 
 require (
+	github.com/BurntSushi/toml v0.3.1
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/ant31/crd-validation v0.0.0-20180702145049-30f8a35d0ac2
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
-	github.com/coreos/go-semver v0.3.0
 	github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
@@ -31,7 +31,6 @@ require (
 	github.com/golang/groupcache v0.0.0-20181024230925-c65c006176ff // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-cmp v0.3.1
-	github.com/googleapis/gnostic v0.2.0 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.1-0.20190118093823-f849b5445de4 // indirect
@@ -41,13 +40,17 @@ require (
 	github.com/juju/loggo v0.0.0-20180524022052-584905176618 // indirect
 	github.com/juju/testing v0.0.0-20180920084828-472a3e8b2073 // indirect
 	github.com/mholt/archiver v3.1.1+incompatible
+	github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
 	github.com/nwaples/rardecode v1.0.0 // indirect
+	github.com/onsi/ginkgo v1.10.3
 	github.com/onsi/gomega v1.5.0
+	github.com/openshift/generic-admission-server v1.14.0
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
+	github.com/pingcap/advanced-statefulset v0.1.0
+	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 // indirect
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/kvproto v0.0.0-20190516013202-4cf58ad90b6c
-	github.com/pingcap/log v0.0.0-20190715063458-479153f07ebd
 	github.com/pingcap/pd v2.1.17+incompatible
 	github.com/pingcap/tidb v2.1.0-beta+incompatible
 	github.com/prometheus/client_golang v0.9.2
@@ -63,8 +66,8 @@ require (
 	github.com/ugorji/go/codec v0.0.0-20190204201341-e444a5086c43
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
-	golang.org/x/sync v0.0.0-20190423024810-112230192c58
-	gopkg.in/inf.v0 v0.9.1 // indirect
+	golang.org/x/mod v0.0.0-20190513183733-4bf6d317e70e
+	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/yaml.v2 v2.2.4
 	k8s.io/api v0.0.0
@@ -81,8 +84,9 @@ require (
 	k8s.io/kubectl v0.0.0
 	k8s.io/kubernetes v1.16.0
 	k8s.io/utils v0.0.0-20190801114015-581e00157fb1
-	sigs.k8s.io/apiserver-builder-alpha v0.0.0-20191031091337-b5d9ec3241f6
-	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191023065212-d7072df276e7
+	sigs.k8s.io/apiserver-builder-alpha v0.0.0-20191113095113-4493943d2568
+	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191113095113-4493943d2568
+	sigs.k8s.io/controller-runtime v0.4.0
 )
 
 replace github.com/renstrom/dedent => github.com/lithammer/dedent v1.1.0

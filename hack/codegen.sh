@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
 
 # Copyright 2017 PingCAP, Inc.
 #
@@ -31,3 +31,5 @@ GO111MODULE=off bash "${CODEGEN_PKG}"/generate-groups.sh "deepcopy,client,inform
     github.com/pingcap/tidb-operator/pkg/apis \
     pingcap:v1alpha1 \
     --go-header-file ./hack/boilerplate.go.txt
+
+./hack/crd-groups.sh generate

@@ -14,9 +14,12 @@
 package member
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 
+	"github.com/BurntSushi/toml"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -64,8 +67,8 @@ func statefulSetIsUpgrading(set *apps.StatefulSet) bool {
 	return false
 }
 
-// SetLastAppliedConfigAnnotation set last applied config info to Statefulset's annotation
-func SetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
+// SetStatefulSetLastAppliedConfigAnnotation set last applied config to Statefulset's annotation
+func SetStatefulSetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
 	setApply, err := encode(set.Spec)
 	if err != nil {
 		return err
@@ -74,6 +77,15 @@ func SetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
 		set.Annotations = map[string]string{}
 	}
 	set.Annotations[LastAppliedConfigAnnotation] = setApply
+	return nil
+}
+
+// SetLastAppliedConfigAnnotation set last applied config info to Statefulset's annotation and the podTemplate's annotation
+func SetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
+
+	if err := SetStatefulSetLastAppliedConfigAnnotation(set); err != nil {
+		return err
+	}
 
 	templateApply, err := encode(set.Spec.Template.Spec)
 	if err != nil {
@@ -86,7 +98,7 @@ func SetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
 	return nil
 }
 
-// GetLastAppliedConfig get last applied config info from Statefulset's annotation
+// GetLastAppliedConfig get last applied config info from Statefulset's annotation and the podTemplate's annotation
 func GetLastAppliedConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1.PodSpec, error) {
 	specAppliedConfig, ok := set.Annotations[LastAppliedConfigAnnotation]
 	if !ok {
@@ -149,33 +161,6 @@ func templateEqual(new corev1.PodTemplateSpec, old corev1.PodTemplateSpec) bool 
 	return false
 }
 
-// SetServiceLastAppliedConfigAnnotation set last applied config info to Service's annotation
-func SetServiceLastAppliedConfigAnnotation(svc *corev1.Service) error {
-	svcApply, err := encode(svc.Spec)
-	if err != nil {
-		return err
-	}
-	if svc.Annotations == nil {
-		svc.Annotations = map[string]string{}
-	}
-	svc.Annotations[LastAppliedConfigAnnotation] = svcApply
-	return nil
-}
-
-// serviceEqual compares the new Service's spec with old Service's last applied config
-func serviceEqual(new, old *corev1.Service) (bool, error) {
-	oldSpec := corev1.ServiceSpec{}
-	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
-		err := json.Unmarshal([]byte(lastAppliedConfig), &oldSpec)
-		if err != nil {
-			glog.Errorf("unmarshal ServiceSpec: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
-			return false, err
-		}
-		return apiequality.Semantic.DeepEqual(oldSpec, new.Spec), nil
-	}
-	return false, nil
-}
-
 // setUpgradePartition set statefulSet's rolling update partition
 func setUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
 	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &upgradeOrdinal}
@@ -192,7 +177,7 @@ func imagePullFailed(pod *corev1.Pod) bool {
 	return false
 }
 
-func tikvPodName(tcName string, ordinal int32) string {
+func TikvPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiKVMemberName(tcName), ordinal)
 }
 
@@ -225,4 +210,54 @@ func NeedForceUpgrade(tc *v1alpha1.TidbCluster) bool {
 		}
 	}
 	return false
+}
+
+// FindConfigMapVolume returns the configmap which's name matches the predicate in a PodSpec, empty indicates not found
+func FindConfigMapVolume(podSpec *corev1.PodSpec, pred func(string) bool) string {
+	for _, vol := range podSpec.Volumes {
+		if vol.ConfigMap != nil && pred(vol.ConfigMap.LocalObjectReference.Name) {
+			return vol.ConfigMap.LocalObjectReference.Name
+		}
+	}
+	return ""
+}
+
+// MarshalTOML is a template function that try to marshal a go value to toml
+func MarshalTOML(v interface{}) ([]byte, error) {
+	buff := new(bytes.Buffer)
+	encoder := toml.NewEncoder(buff)
+	err := encoder.Encode(v)
+	if err != nil {
+		return nil, err
+	}
+	data := buff.Bytes()
+	return data, nil
+}
+
+func Sha256Sum(v interface{}) (string, error) {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(data)
+	return fmt.Sprintf("%x", sum), nil
+}
+
+func AddConfigMapDigestSuffix(cm *corev1.ConfigMap) error {
+	sum, err := Sha256Sum(cm.Data)
+	if err != nil {
+		return err
+	}
+	suffix := fmt.Sprintf("%x", sum)[0:7]
+	cm.Name = fmt.Sprintf("%s-%s", cm.Name, suffix)
+	return nil
+}
+
+// MapContainers index containers of Pod by container name in favor of looking up
+func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
+	m := map[string]corev1.Container{}
+	for _, c := range podSpec.Containers {
+		m[c.Name] = c
+	}
+	return m
 }

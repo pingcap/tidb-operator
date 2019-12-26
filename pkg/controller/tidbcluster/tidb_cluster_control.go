@@ -42,6 +42,9 @@ func NewDefaultTidbClusterControl(
 	metaManager manager.Manager,
 	orphanPodsCleaner member.OrphanPodsCleaner,
 	pvcCleaner member.PVCCleanerInterface,
+	pumpMemberManager manager.Manager,
+	discoveryManager member.TidbDiscoveryManager,
+	podRestarter member.PodRestarter,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		tcControl,
@@ -52,6 +55,9 @@ func NewDefaultTidbClusterControl(
 		metaManager,
 		orphanPodsCleaner,
 		pvcCleaner,
+		pumpMemberManager,
+		discoveryManager,
+		podRestarter,
 		recorder,
 	}
 }
@@ -65,6 +71,9 @@ type defaultTidbClusterControl struct {
 	metaManager          manager.Manager
 	orphanPodsCleaner    member.OrphanPodsCleaner
 	pvcCleaner           member.PVCCleanerInterface
+	pumpMemberManager    manager.Manager
+	discoveryManager     member.TidbDiscoveryManager
+	podRestarter         member.PodRestarter
 	recorder             record.EventRecorder
 }
 
@@ -94,6 +103,16 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 
 	// cleaning all orphan pods(pd or tikv which don't have a related PVC) managed by operator
 	if _, err := tcc.orphanPodsCleaner.Clean(tc); err != nil {
+		return err
+	}
+
+	// reconcile TiDB discovery service
+	if err := tcc.discoveryManager.Reconcile(tc); err != nil {
+		return err
+	}
+
+	// sync all the pods which need to be restarted
+	if err := tcc.podRestarter.Sync(tc); err != nil {
 		return err
 	}
 
@@ -146,8 +165,12 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	}
 
 	// cleaning the pod scheduling annotation for pd and tikv
-	_, err := tcc.pvcCleaner.Clean(tc)
-	return err
+	if _, err := tcc.pvcCleaner.Clean(tc); err != nil {
+		return err
+	}
+
+	// syncing the pump cluster
+	return tcc.pumpMemberManager.Sync(tc)
 }
 
 var _ ControlInterface = &defaultTidbClusterControl{}

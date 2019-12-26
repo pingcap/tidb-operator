@@ -20,63 +20,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	glog "k8s.io/klog"
 )
-
-// ResourceRequirement creates ResourceRequirements for MemberSpec
-// Optionally pass in a default value
-func ResourceRequirement(spec v1alpha1.ContainerSpec, defaultRequests ...corev1.ResourceRequirements) corev1.ResourceRequirements {
-	rr := corev1.ResourceRequirements{}
-	if len(defaultRequests) > 0 {
-		defaultRequest := defaultRequests[0]
-		rr.Requests = make(map[corev1.ResourceName]resource.Quantity)
-		rr.Requests[corev1.ResourceCPU] = defaultRequest.Requests[corev1.ResourceCPU]
-		rr.Requests[corev1.ResourceMemory] = defaultRequest.Requests[corev1.ResourceMemory]
-		rr.Limits = make(map[corev1.ResourceName]resource.Quantity)
-		rr.Limits[corev1.ResourceCPU] = defaultRequest.Limits[corev1.ResourceCPU]
-		rr.Limits[corev1.ResourceMemory] = defaultRequest.Limits[corev1.ResourceMemory]
-	}
-	if spec.Requests != nil {
-		if rr.Requests == nil {
-			rr.Requests = make(map[corev1.ResourceName]resource.Quantity)
-		}
-		if spec.Requests.CPU != "" {
-			if q, err := resource.ParseQuantity(spec.Requests.CPU); err != nil {
-				glog.Errorf("failed to parse CPU resource %s to quantity: %v", spec.Requests.CPU, err)
-			} else {
-				rr.Requests[corev1.ResourceCPU] = q
-			}
-		}
-		if spec.Requests.Memory != "" {
-			if q, err := resource.ParseQuantity(spec.Requests.Memory); err != nil {
-				glog.Errorf("failed to parse memory resource %s to quantity: %v", spec.Requests.Memory, err)
-			} else {
-				rr.Requests[corev1.ResourceMemory] = q
-			}
-		}
-	}
-	if spec.Limits != nil {
-		if rr.Limits == nil {
-			rr.Limits = make(map[corev1.ResourceName]resource.Quantity)
-		}
-		if spec.Limits.CPU != "" {
-			if q, err := resource.ParseQuantity(spec.Limits.CPU); err != nil {
-				glog.Errorf("failed to parse CPU resource %s to quantity: %v", spec.Limits.CPU, err)
-			} else {
-				rr.Limits[corev1.ResourceCPU] = q
-			}
-		}
-		if spec.Limits.Memory != "" {
-			if q, err := resource.ParseQuantity(spec.Limits.Memory); err != nil {
-				glog.Errorf("failed to parse memory resource %s to quantity: %v", spec.Limits.Memory, err)
-			} else {
-				rr.Limits[corev1.ResourceMemory] = q
-			}
-		}
-	}
-	return rr
-}
 
 func GetOrdinalFromPodName(podName string) (int32, error) {
 	ordinalStr := podName[strings.LastIndex(podName, "-")+1:]
@@ -105,4 +49,21 @@ func IsPodOrdinalNotExceedReplicas(pod *corev1.Pod, specReplicas int32) (bool, e
 
 func OrdinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%s-%d", memberType, setName, ordinal)
+}
+
+// IsSubMapOf returns whether the first map is a sub map of the second map
+func IsSubMapOf(first map[string]string, second map[string]string) bool {
+	for k, v := range first {
+		if second == nil {
+			return false
+		}
+		if second[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
+func GetPodName(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, ordinal int32) string {
+	return fmt.Sprintf("%s-%s-%d", tc.Name, memberType.String(), ordinal)
 }

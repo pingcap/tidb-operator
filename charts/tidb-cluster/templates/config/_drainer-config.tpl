@@ -11,7 +11,7 @@ detect-interval = {{ .Values.binlog.drainer.detectInterval | default 10 }}
 data-dir = "/data"
 
 # a comma separated list of PD endpoints
-pd-urls = "http://{{ template "cluster.name" . }}-pd:2379"
+pd-urls = "{{ template "cluster.scheme" . }}://{{ template "cluster.name" . }}-pd:2379"
 
 # Use the specified compressor to compress payload between pump and drainer
 compressor = ""

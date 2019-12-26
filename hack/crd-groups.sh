@@ -22,7 +22,8 @@ CI_GO_PATH="/go"
 scriptdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 to_crdgen="$scriptdir/../cmd/to-crdgen"
 crd_target="$scriptdir/../manifests/crd.yaml"
-crd_verify_target="$scriptdir/../manifests/crd-verify.yaml"
+crd_verify_tmp=$(mktemp)
+trap "rm $crd_verify_tmp" EXIT
 
 export GO111MODULE=on
 
@@ -39,6 +40,8 @@ function generate_crd {
 	$1/bin/to-crdgen generate backup >> $2
 	$1/bin/to-crdgen generate restore >> $2
 	$1/bin/to-crdgen generate backupschedule >> $2
+	$1/bin/to-crdgen generate tidbmonitor >> $2
+	$1/bin/to-crdgen generate tidbinitializer >> $2
 }
 
 if test $ACTION == 'generate' ;then
@@ -47,12 +50,13 @@ elif [ $ACTION == 'verify' ];then
 
     if [[ $GOPATH == /go* ]] ;
     then
-        generate_crd $CI_GO_PATH $crd_verify_target
+        generate_crd $CI_GO_PATH $crd_verify_tmp
     else
-        generate_crd $GOPATH $crd_verify_target
+        generate_crd $GOPATH $crd_verify_tmp
     fi
 
-	r="$(diff "$crd_target" "$crd_verify_target")"
+    echo "diffing $crd_target with $crd_verify_tmp" >&2
+	r="$(diff "$crd_target" "$crd_verify_tmp")"
 	if [[ -n $r ]]; then
 		echo $crd_target is not latest
 		exit 1

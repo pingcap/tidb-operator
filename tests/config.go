@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -27,6 +28,7 @@ type Config struct {
 	configFile string
 
 	TidbVersions         string  `yaml:"tidb_versions" json:"tidb_versions"`
+	InstallOperator      bool    `yaml:"install_opeartor" json:"install_opeartor"`
 	OperatorTag          string  `yaml:"operator_tag" json:"operator_tag"`
 	OperatorImage        string  `yaml:"operator_image" json:"operator_image"`
 	UpgradeOperatorTag   string  `yaml:"upgrade_operator_tag" json:"upgrade_operator_tag"`
@@ -57,7 +59,7 @@ type Config struct {
 	// manifest dir
 	ManifestDir string `yaml:"manifest_dir" json:"manifest_dir"`
 
-	TestApiserverImage string `yaml:"test_apiserver_image" json:"test_apiserver_image"`
+	E2EImage string `yaml:"e2e_image" json:"e2e_image"`
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
@@ -71,9 +73,9 @@ type Node struct {
 	Name string `yaml:"name" json:"name"`
 }
 
-// NewConfig creates a new config.
-func NewConfig() (*Config, error) {
-	cfg := &Config{
+// NewDefaultConfig creates a default configuration.
+func NewDefaultConfig() *Config {
+	return &Config{
 		AdditionalDrainerVersion: "v3.0.2",
 
 		PDMaxReplicas:       5,
@@ -87,13 +89,18 @@ func NewConfig() (*Config, error) {
 			RawSize:     defaultRawSize,
 		},
 	}
+}
+
+// NewConfig creates a new config.
+func NewConfig() (*Config, error) {
+	cfg := NewDefaultConfig()
 	flag.StringVar(&cfg.configFile, "config", "", "Config file")
 	flag.StringVar(&cfg.LogDir, "log-dir", "/logDir", "log directory")
 	flag.IntVar(&cfg.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
-	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v3.0.2,v3.0.3,v3.0.4", "tidb versions")
-	flag.StringVar(&cfg.TestApiserverImage, "test-apiserver-image", "pingcap/test-apiserver:latest", "test-apiserver image")
+	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v3.0.2,v3.0.3,v3.0.4,v3.0.5", "tidb versions")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
+	flag.StringVar(&cfg.E2EImage, "e2e-image", "pingcap/tidb-operator-e2e:latest", "operator-e2e image")
 	flag.StringVar(&cfg.UpgradeOperatorTag, "upgrade-operator-tag", "", "upgrade operator tag used to choose charts")
 	flag.StringVar(&cfg.UpgradeOperatorImage, "upgrade-operator-image", "", "upgrade operator image")
 	flag.StringVar(&cfg.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
@@ -212,4 +219,20 @@ func (c *Config) CleanTempDirs() error {
 		}
 	}
 	return nil
+}
+
+func (c *Config) PrettyPrintJSON() (string, error) {
+	b, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func (c *Config) MustPrettyPrintJSON() string {
+	s, err := c.PrettyPrintJSON()
+	if err != nil {
+		panic(err)
+	}
+	return s
 }

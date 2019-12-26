@@ -43,7 +43,10 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		glog.Errorf("failed to get the pd config: tc=%s err=%s", info.ClusterName, err.Error())
 		return err
 	}
-	maxStoreDownTime := pdCfg.Schedule.MaxStoreDownTime.Duration
+	maxStoreDownTime, err := time.ParseDuration(pdCfg.Schedule.MaxStoreDownTime)
+	if err != nil {
+		return err
+	}
 	glog.Infof("truncate sst file failover config: maxStoreDownTime=%v tikvFailoverPeriod=%v", maxStoreDownTime, tikvFailoverPeriod)
 
 	// find an up store
@@ -152,7 +155,7 @@ func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node st
 		glog.Infof("pending failover,failed to get tidbcluster:[%s], error: %v", info.FullName(), err)
 		if strings.Contains(err.Error(), "Client.Timeout exceeded while awaiting headers") {
 			glog.Info("create new client")
-			newCli, _ := client.NewCliOrDie()
+			newCli, _, _ := client.NewCliOrDie()
 			oa.cli = newCli
 		}
 		return false, nil
@@ -781,7 +784,13 @@ func (oa *operatorActions) CheckTidbClustersAvailableOrDie(infos []*TidbClusterC
 var testTableName = "testTable"
 
 func (oa *operatorActions) addDataToCluster(info *TidbClusterConfig) (bool, error) {
-	db, err := sql.Open("mysql", getDSN(info.Namespace, info.ClusterName, "test", info.Password))
+	dsn, cancel, err := oa.getTiDBDSN(info.Namespace, info.ClusterName, "test", info.Password)
+	if err != nil {
+		glog.Errorf("failed to get TiDB DSN: %v", err)
+		return false, nil
+	}
+	defer cancel()
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		glog.Errorf("cluster:[%s] can't open connection to mysql: %v", info.FullName(), err)
 		return false, nil

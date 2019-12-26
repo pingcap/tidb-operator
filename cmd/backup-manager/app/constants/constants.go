@@ -32,7 +32,7 @@ const (
 	MetaDataFile = "metadata"
 
 	// TikvGCLifeTime is the safe gc life time for dump tidb cluster data
-	TikvGCLifeTime = "3h"
+	TikvGCLifeTime = "72h"
 
 	// TikvGCVariable is the tikv gc life time variable name
 	TikvGCVariable = "tikv_gc_life_time"

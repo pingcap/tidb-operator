@@ -38,7 +38,7 @@ import (
 	apierrors "github.com/pingcap/errors"
 	example "github.com/pingcap/tidb-operator/tests/pkg/apiserver/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/tests/slack"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	aggclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
@@ -78,8 +78,6 @@ func NewE2eContext(ns string, restConfig *rest.Config, image string) *E2eContext
 }
 
 func (c *E2eContext) Do() {
-	c.setup()
-
 	fooAlpha1 := &v1alpha1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo-1",
@@ -443,8 +441,8 @@ func (c *E2eContext) Do() {
 	}
 }
 
-func (c *E2eContext) setup() {
-	c.clean()
+func (c *E2eContext) Setup() {
+	c.Clean()
 	ns, serverName := c.Namespace, "example-apiserver"
 
 	_, err := c.KubeCli.CoreV1().Namespaces().Create(&v1.Namespace{
@@ -569,7 +567,7 @@ func (c *E2eContext) setup() {
 					Containers: []v1.Container{{
 						Name: secretName,
 						Command: []string{
-							"/usr/local/bin/tidb-apiserver",
+							"/usr/local/bin/apiserver",
 							"--tls-cert-file=/apiserver.local.config/certificates/tls.crt",
 							"--tls-private-key-file=/apiserver.local.config/certificates/tls.key",
 						},
@@ -658,7 +656,7 @@ func (c *E2eContext) setup() {
 	g.Expect(err).ShouldNot(g.HaveOccurred(), "wait for cleaning pods.example.pingcap.com")
 }
 
-func (c *E2eContext) clean() {
+func (c *E2eContext) Clean() {
 	ns, serverName := c.Namespace, "example-apiserver"
 
 	for _, v := range []string{"v1alpha1", "v1beta1"} {

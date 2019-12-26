@@ -15,10 +15,11 @@ package util
 
 import (
 	"errors"
+	"strings"
+
 	crdutils "github.com/ant31/crd-validation/pkg"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
-	"strings"
 )
 
 var (
@@ -39,7 +40,7 @@ var (
 		Name:        "Ready",
 		Type:        "integer",
 		Description: "The desired replicas number of PD cluster",
-		JSONPath:    ".spec.pd.replicas",
+		JSONPath:    ".status.pd.statefulSet.readyReplicas",
 	}
 	tidbClusterPDDesireColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Desire",
@@ -90,11 +91,11 @@ var (
 		JSONPath:    ".spec.tidb.replicas",
 	}
 	backupAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
-	backupStorageTypeColumn        = extensionsobj.CustomResourceColumnDefinition{
-		Name:        "StorageType",
+	backupPathColumn               = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "BackupPath",
 		Type:        "string",
-		Description: "The storage type of backup data",
-		JSONPath:    ".spec.storageType",
+		Description: "The full path of backup data",
+		JSONPath:    ".status.backupPath",
 	}
 	backupBackupSizeColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "BackupSize",
@@ -123,24 +124,16 @@ var (
 		JSONPath:    ".status.timeCompleted",
 	}
 	restoreAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
-	restoreBackupColumn             = extensionsobj.CustomResourceColumnDefinition{
-		Name:        "Backup",
-		Type:        "string",
-		Description: "The backup that used to restore",
-		JSONPath:    ".spec.backup",
-	}
-	restoreStartedColumn = extensionsobj.CustomResourceColumnDefinition{
+	restoreStartedColumn            = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Started",
 		Type:        "date",
 		Description: "The time at which the backup was started",
-		Priority:    1,
 		JSONPath:    ".status.timeStarted",
 	}
 	restoreCompletedColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Completed",
 		Type:        "date",
 		Description: "The time at which the restore was completed",
-		Priority:    1,
 		JSONPath:    ".status.timeCompleted",
 	}
 	bksAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
@@ -170,6 +163,14 @@ var (
 		Priority:    1,
 		JSONPath:    ".status.lastBackupTime",
 	}
+	tidbInitializerPrinterColumns []extensionsobj.CustomResourceColumnDefinition
+	tidbInitializerPhase          = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Phase",
+		Type:        "string",
+		Description: "The current phase of initialization",
+		Priority:    1,
+		JSONPath:    ".status.phase",
+	}
 )
 
 func init() {
@@ -177,9 +178,10 @@ func init() {
 		tidbClusterPDColumn, tidbClusterPDStorageColumn, tidbClusterPDReadyColumn, tidbClusterPDDesireColumn,
 		tidbClusterTiKVColumn, tidbClusterTiKVStorageColumn, tidbClusterTiKVReadyColumn, tidbClusterTiKVDesireColumn,
 		tidbClusterTiDBColumn, tidbClusterTiDBReadyColumn, tidbClusterTiDBDesireColumn)
-	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupStorageTypeColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn)
-	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreBackupColumn, restoreStartedColumn, restoreCompletedColumn)
+	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn)
+	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStartedColumn, restoreCompletedColumn)
 	bksAdditionalPrinterColumns = append(bksAdditionalPrinterColumns, bksScheduleColumn, bksMaxBackups, bksLastBackup, bksLastBackupTime)
+	tidbInitializerPrinterColumns = append(tidbInitializerPrinterColumns, tidbInitializerPhase)
 }
 
 func NewCustomResourceDefinition(crdKind v1alpha1.CrdKind, group string, labels map[string]string, validation bool) *extensionsobj.CustomResourceDefinition {
@@ -209,6 +211,10 @@ func GetCrdKindFromKindName(kindName string) (v1alpha1.CrdKind, error) {
 		return v1alpha1.DefaultCrdKinds.Restore, nil
 	case v1alpha1.BackupScheduleKindKey:
 		return v1alpha1.DefaultCrdKinds.BackupSchedule, nil
+	case v1alpha1.TiDBMonitorKindKey:
+		return v1alpha1.DefaultCrdKinds.TiDBMonitor, nil
+	case v1alpha1.TiDBInitializerKindKey:
+		return v1alpha1.DefaultCrdKinds.TiDBInitializer, nil
 	default:
 		return v1alpha1.CrdKind{}, errors.New("unknown CrdKind Name")
 	}
@@ -227,6 +233,12 @@ func addAdditionalPrinterColumnsForCRD(crd *extensionsobj.CustomResourceDefiniti
 		break
 	case v1alpha1.DefaultCrdKinds.BackupSchedule.Kind:
 		crd.Spec.AdditionalPrinterColumns = bksAdditionalPrinterColumns
+		break
+	case v1alpha1.DefaultCrdKinds.TiDBMonitor.Kind:
+		crd.Spec.AdditionalPrinterColumns = []extensionsobj.CustomResourceColumnDefinition{}
+		break
+	case v1alpha1.DefaultCrdKinds.TiDBInitializer.Kind:
+		crd.Spec.AdditionalPrinterColumns = tidbInitializerPrinterColumns
 		break
 	default:
 		break

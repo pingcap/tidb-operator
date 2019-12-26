@@ -10,7 +10,6 @@ tests/images/e2e/tidb-cluster/
 tests/images/e2e/tidb-backup/
 tests/images/e2e/tidb-operator/
 tests/images/e2e/manifests/
-manifests/crd-verify.yaml
 *.tar
 tmp/
 data/
@@ -32,7 +31,11 @@ vendor
 tests/e2e/e2e.test
 .orig
 apiserver.local.config/
-manifests/crd-verify.yaml
 /tkctl
 /.go-version
 kubeconfig
+
+# local output directory
+/output/
+# local artifacts directory
+/artifacts/

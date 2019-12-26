@@ -14,15 +14,24 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	humanize "github.com/dustin/go-humanize"
+	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/retry"
+	"k8s.io/client-go/util/workqueue"
 	glog "k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -54,6 +63,12 @@ var (
 	TestMode bool
 	// ResyncDuration is the resync time of informer
 	ResyncDuration time.Duration
+
+	// TidbDiscoveryImage is the image of tidb discovery service
+	TidbDiscoveryImage string
+
+	// PodWebhookEnabled is the key to indicate whether pod admission webhook is set up.
+	PodWebhookEnabled bool
 )
 
 const (
@@ -180,14 +195,13 @@ func GetServiceType(services []v1alpha1.Service, serviceName string) corev1.Serv
 // https://github.com/tikv/tikv/blob/v3.0.3/components/tikv_util/src/config.rs#L155-L168
 // For backward compatibility with old TiKV versions, we should use GB/MB
 // rather than GiB/MiB, see https://github.com/tikv/tikv/blob/v2.1.16/src/util/config.rs#L359.
-func TiKVCapacity(limits *v1alpha1.ResourceRequirement) string {
+func TiKVCapacity(limits corev1.ResourceList) string {
 	defaultArgs := "0"
-	if limits == nil || limits.Storage == "" {
+	if limits == nil {
 		return defaultArgs
 	}
-	q, err := resource.ParseQuantity(limits.Storage)
-	if err != nil {
-		glog.Errorf("failed to parse quantity %s: %v", limits.Storage, err)
+	q, ok := limits[corev1.ResourceStorage]
+	if !ok {
 		return defaultArgs
 	}
 	i, b := q.AsInt64()
@@ -199,21 +213,6 @@ func TiKVCapacity(limits *v1alpha1.ResourceRequirement) string {
 		return fmt.Sprintf("%dGB", i/humanize.GiByte)
 	}
 	return fmt.Sprintf("%dMB", i/humanize.MiByte)
-}
-
-// Reuse the SlowLogTailer image for TiDB
-func GetUtilImage(cluster *v1alpha1.TidbCluster) string {
-	if img := cluster.Spec.TiDB.SlowLogTailer.Image; img != "" {
-		return img
-	}
-	return defaultTiDBLogTailerImage
-}
-
-func GetSlowLogTailerImage(cluster *v1alpha1.TidbCluster) string {
-	if img := cluster.Spec.TiDB.SlowLogTailer.Image; img != "" {
-		return img
-	}
-	return defaultTiDBLogTailerImage
 }
 
 // PDMemberName returns pd member name
@@ -246,6 +245,27 @@ func TiDBPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tidb-peer", clusterName)
 }
 
+// PumpMemberName returns pump member name
+func PumpMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-pump", clusterName)
+}
+
+// TiDBInitializerMemberName returns TiDBInitializer member name
+func TiDBInitializerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tidb-initializer", clusterName)
+}
+
+// For backward compatibility, pump peer member name do not has -peer suffix
+// PumpPeerMemberName returns pump peer service name
+func PumpPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-pump", clusterName)
+}
+
+// DiscoveryMemberName returns the name of tidb discovery
+func DiscoveryMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-discovery", clusterName)
+}
+
 // AnnProm adds annotations for prometheus scraping metrics
 func AnnProm(port int32) map[string]string {
 	return map[string]string{
@@ -255,7 +275,35 @@ func AnnProm(port int32) map[string]string {
 	}
 }
 
+func ParseStorageRequest(req corev1.ResourceList) (corev1.ResourceRequirements, error) {
+	if req == nil {
+		return corev1.ResourceRequirements{}, nil
+	}
+	q, ok := req[corev1.ResourceStorage]
+	if !ok {
+		return corev1.ResourceRequirements{}, fmt.Errorf("storage request is not set")
+	}
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceStorage: q,
+		},
+	}, nil
+}
+
+func ContainerResource(req corev1.ResourceRequirements) corev1.ResourceRequirements {
+	trimmed := req.DeepCopy()
+	if trimmed.Limits != nil {
+		delete(trimmed.Limits, corev1.ResourceStorage)
+	}
+	if trimmed.Requests != nil {
+		delete(trimmed.Requests, corev1.ResourceStorage)
+	}
+	return *trimmed
+}
+
 // MemberConfigMapName returns the default ConfigMap name of the specified member type
+// Deprecated
+// TODO: remove after helm get totally abandoned
 func MemberConfigMapName(tc *v1alpha1.TidbCluster, member v1alpha1.MemberType) string {
 	nameKey := fmt.Sprintf("%s-%s", tc.Name, member)
 	return nameKey + getConfigMapSuffix(tc, member.String(), nameKey)
@@ -322,4 +370,124 @@ func (rt *RequestTracker) SetRequests(requests int) *RequestTracker {
 
 func (rt *RequestTracker) GetError() error {
 	return rt.err
+}
+
+// WacthForObject watch the object change from informer and add it to workqueue
+func WatchForObject(informer cache.SharedIndexInformer, q workqueue.Interface) {
+	enqueueFn := func(obj interface{}) {
+		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
+			return
+		}
+		q.Add(key)
+	}
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: enqueueFn,
+		UpdateFunc: func(_, cur interface{}) {
+			enqueueFn(cur)
+		},
+		DeleteFunc: enqueueFn,
+	})
+}
+
+type GetControllerFn func(ns, name string) (runtime.Object, error)
+
+// WatchForController watch the object change from informer and add it's controller to workqueue
+func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interface, fn GetControllerFn) {
+	enqueueFn := func(obj interface{}) {
+		meta, ok := obj.(metav1.Object)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("%+v is not a runtime.Object, cannot get controller from it", obj))
+			return
+		}
+		ref := metav1.GetControllerOf(meta)
+		if ref == nil {
+			return
+		}
+		refGV, err := schema.ParseGroupVersion(ref.APIVersion)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("cannot parse group versio of the controller %v", ref))
+			return
+		}
+		controllerObj, err := fn(meta.GetNamespace(), ref.Name)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("cannot get controller %s/%s", meta.GetNamespace(), ref.Name))
+			return
+		}
+		// Ensure the ref is exactly the controller we listed
+		if ref.Kind == controllerObj.GetObjectKind().GroupVersionKind().Kind &&
+			refGV.Group == controllerObj.GetObjectKind().GroupVersionKind().Group {
+			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(controllerObj)
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", controllerObj, err))
+				return
+			}
+			q.Add(key)
+		}
+	}
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: enqueueFn,
+		UpdateFunc: func(_, cur interface{}) {
+			enqueueFn(cur)
+		},
+		DeleteFunc: enqueueFn,
+	})
+}
+
+// EmptyClone create an clone of the resource with the same name and namespace (if namespace-scoped), with other fields unset
+func EmptyClone(obj runtime.Object) (runtime.Object, error) {
+	meta, ok := obj.(metav1.Object)
+	if !ok {
+		return nil, fmt.Errorf("Obj %v is not a metav1.Object, cannot call EmptyClone", obj)
+	}
+	gvk, err := InferObjectKind(obj)
+	if err != nil {
+		return nil, err
+	}
+	inst, err := scheme.Scheme.New(gvk)
+	if err != nil {
+		return nil, err
+	}
+	instMeta, ok := inst.(metav1.Object)
+	if !ok {
+		return nil, fmt.Errorf("New instatnce %v created from scheme is not a metav1.Object, EmptyClone failed", inst)
+	}
+	instMeta.SetName(meta.GetName())
+	instMeta.SetNamespace(meta.GetNamespace())
+	return inst, nil
+}
+
+// InferObjectKind infers the object kind
+func InferObjectKind(obj runtime.Object) (schema.GroupVersionKind, error) {
+	gvks, _, err := scheme.Scheme.ObjectKinds(obj)
+	if err != nil {
+		return schema.GroupVersionKind{}, err
+	}
+	if len(gvks) != 1 {
+		return schema.GroupVersionKind{}, fmt.Errorf("Object %v has ambigious GVK", obj)
+	}
+	return gvks[0], nil
+}
+
+// GuaranteedUpdate will retry the updateFunc to mutate the object until success, updateFunc is expected to
+// capture the object reference from the caller context to avoid unnecessary type casting.
+func GuaranteedUpdate(cli client.Client, obj runtime.Object, updateFunc func() error) error {
+	key, err := client.ObjectKeyFromObject(obj)
+	if err != nil {
+		return err
+	}
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		if err := cli.Get(context.TODO(), key, obj); err != nil {
+			return err
+		}
+		beforeMutation := obj.DeepCopyObject()
+		if err := updateFunc(); err != nil {
+			return err
+		}
+		if apiequality.Semantic.DeepEqual(obj, beforeMutation) {
+			return nil
+		}
+		return cli.Update(context.TODO(), obj)
+	})
 }

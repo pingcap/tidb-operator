@@ -4,7 +4,7 @@ variable "region" {
 
 variable "tidb_cluster_chart_version" {
   description = "tidb-cluster chart version"
-  default     = "v1.0.3"
+  default     = "v1.0.5"
 }
 
 variable "create_tidb_cluster_release" {
@@ -19,7 +19,7 @@ variable "cluster_name" {
 
 variable "cluster_version" {
   type    = string
-  default = "v3.0.4"
+  default = "v3.0.5"
 }
 
 variable "ssh_key_name" {

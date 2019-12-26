@@ -19,17 +19,14 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	operatorClifake "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	"k8s.io/api/admission/v1beta1"
+	admission "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/tools/cache"
 )
 
 const (
@@ -37,6 +34,7 @@ const (
 	upgradeInstanceName = "upgrader"
 	namespace           = "namespace"
 	pdReplicas          = int32(3)
+	tikvReplicas        = int32(3)
 )
 
 func TestAdmitPod(t *testing.T) {
@@ -48,17 +46,17 @@ func TestAdmitPod(t *testing.T) {
 		isPD     bool
 		isTiKV   bool
 		isTiDB   bool
-		expectFn func(g *GomegaWithT, response *v1beta1.AdmissionResponse)
+		expectFn func(g *GomegaWithT, response *admission.AdmissionResponse)
 	}
 
 	testFn := func(test *testcase) {
 		t.Log(test.name)
 
-		podAdmissionControl, _, _, podIndexer, _, _ := newPodAdmissionControl()
-		ar := newAdmissionReview()
+		podAdmissionControl := newPodAdmissionControl()
+		ar := newAdmissionRequest()
 		pod := newNormalPod()
 		if test.isDelete {
-			ar.Request.Operation = v1beta1.Delete
+			ar.Operation = admission.Delete
 		}
 
 		if test.isPD {
@@ -74,9 +72,8 @@ func TestAdmitPod(t *testing.T) {
 				label.ComponentLabelKey: label.TiKVLabelVal,
 			}
 		}
-		podIndexer.Add(pod)
 
-		resp := podAdmissionControl.AdmitPods(*ar)
+		resp := podAdmissionControl.AdmitPods(ar)
 		test.expectFn(g, resp)
 	}
 
@@ -87,7 +84,7 @@ func TestAdmitPod(t *testing.T) {
 			isPD:     false,
 			isTiKV:   false,
 			isTiDB:   false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
 			},
 		},
@@ -97,7 +94,7 @@ func TestAdmitPod(t *testing.T) {
 			isPD:     false,
 			isTiKV:   false,
 			isTiDB:   false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
 			},
 		},
@@ -107,7 +104,7 @@ func TestAdmitPod(t *testing.T) {
 			isPD:     false,
 			isTiKV:   true,
 			isTiDB:   false,
-			expectFn: func(g *GomegaWithT, response *v1beta1.AdmissionResponse) {
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
 			},
 		},
@@ -118,40 +115,23 @@ func TestAdmitPod(t *testing.T) {
 	}
 }
 
-func newAdmissionReview() *v1beta1.AdmissionReview {
-	ar := v1beta1.AdmissionReview{}
-	request := v1beta1.AdmissionRequest{}
+func newAdmissionRequest() *admission.AdmissionRequest {
+	request := admission.AdmissionRequest{}
 	request.Name = "pod"
 	request.Namespace = namespace
-	request.Operation = v1beta1.Update
-	ar.Request = &request
-	return &ar
+	request.Operation = admission.Update
+	return &request
 }
 
-func newPodAdmissionControl() (*PodAdmissionControl, *controller.FakePVCControl, cache.Indexer, cache.Indexer, cache.Indexer, cache.Indexer) {
+func newPodAdmissionControl() *PodAdmissionControl {
 	kubeCli := kubefake.NewSimpleClientset()
 	operatorCli := operatorClifake.NewSimpleClientset()
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pvcControl := controller.NewFakePVCControl(pvcInformer)
-	pdControl := pdapi.NewFakePDControl()
-	podInformer := kubeInformerFactory.Core().V1().Pods()
-	informer := informers.NewSharedInformerFactory(operatorCli, 0)
-	stsInformer := kubeInformerFactory.Apps().V1().StatefulSets()
-
+	pdControl := pdapi.NewFakePDControl(kubeCli)
 	return &PodAdmissionControl{
-			kubeCli:     kubeCli,
-			operatorCli: operatorCli,
-			pvcControl:  pvcControl,
-			pdControl:   pdControl,
-			podLister:   podInformer.Lister(),
-			tcLister:    informer.Pingcap().V1alpha1().TidbClusters().Lister(),
-			stsLister:   stsInformer.Lister(),
-		}, pvcControl,
-		pvcInformer.Informer().GetIndexer(),
-		podInformer.Informer().GetIndexer(),
-		informer.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer(),
-		stsInformer.Informer().GetIndexer()
+		kubeCli:     kubeCli,
+		operatorCli: operatorCli,
+		pdControl:   pdControl,
+	}
 }
 
 func newTidbClusterForPodAdmissionControl() *v1alpha1.TidbCluster {
@@ -168,11 +148,41 @@ func newTidbClusterForPodAdmissionControl() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: v1alpha1.PDSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "pd-test-image",
 				},
 				Replicas:         pdReplicas,
 				StorageClassName: "my-storage-class",
+			},
+			TiKV: v1alpha1.TiKVSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Image: "tikv-test-image",
+				},
+				Replicas:         tikvReplicas,
+				StorageClassName: "my-storage-class",
+			},
+		},
+		Status: v1alpha1.TidbClusterStatus{
+			TiKV: v1alpha1.TiKVStatus{
+				Synced: true,
+				Phase:  v1alpha1.NormalPhase,
+				Stores: map[string]v1alpha1.TiKVStore{
+					"0": {
+						PodName:     memberUtils.TikvPodName(tcName, 0),
+						LeaderCount: 1,
+						State:       v1alpha1.TiKVStateUp,
+					},
+					"1": {
+						PodName:     memberUtils.TikvPodName(tcName, 1),
+						LeaderCount: 1,
+						State:       v1alpha1.TiKVStateUp,
+					},
+					"2": {
+						PodName:     memberUtils.TikvPodName(tcName, 2),
+						LeaderCount: 1,
+						State:       v1alpha1.TiKVStateUp,
+					},
+				},
 			},
 		},
 	}

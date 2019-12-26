@@ -216,7 +216,7 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 		}
 	}
 
-	bsLabel := label.NewBackupSchedule().Instance(bs.Spec.BackupTemplate.Cluster).BackupSchedule(bsName)
+	bsLabel := label.NewBackupSchedule().Instance(bs.Spec.BackupTemplate.From.GetTidbEndpoint()).BackupSchedule(bsName)
 
 	backup := &v1alpha1.Backup{
 		Spec: backupSpec,
@@ -324,8 +324,9 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedul
 func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.BackupSchedule, needSort bool) ([]*v1alpha1.Backup, error) {
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
+	instanceName := bs.Spec.BackupTemplate.From.GetTidbEndpoint()
 
-	backupLabels := label.NewBackupSchedule().Instance(bs.Spec.BackupTemplate.Cluster).BackupSchedule(bsName)
+	backupLabels := label.NewBackupSchedule().Instance(instanceName).BackupSchedule(bsName)
 	selector, err := backupLabels.Selector()
 	if err != nil {
 		return nil, fmt.Errorf("generate backup schedule %s/%s label selector failed, err: %v", ns, bsName, err)

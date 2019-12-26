@@ -1,4 +1,4 @@
-FROM alpine:3.5
+FROM alpine:3.10
 
 ENV KUBECTL_VERSION=v1.12.2
 ENV HELM_VERSION=v2.9.1
@@ -20,4 +20,8 @@ ADD tidb-backup /charts/e2e/tidb-backup
 ADD bin/tkctl /usr/local/bin/
 ADD manifests /manifests/e2e
 
-ADD bin/e2e /usr/local/bin/e2e
+ADD bin/ginkgo /usr/local/bin/
+ADD bin/e2e.test /usr/local/bin/
+ADD bin/webhook /usr/local/bin/
+ADD bin/blockwriter /usr/local/bin/
+ADD bin/apiserver /usr/local/bin/

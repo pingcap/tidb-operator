@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -82,7 +83,7 @@ func TestTiKVCapacity(t *testing.T) {
 
 	type testcase struct {
 		name     string
-		limit    *v1alpha1.ResourceRequirement
+		limit    corev1.ResourceList
 		expectFn func(*GomegaWithT, string)
 	}
 	testFn := func(test *testcase, t *testing.T) {
@@ -98,46 +99,25 @@ func TestTiKVCapacity(t *testing.T) {
 			},
 		},
 		{
-			name: "storage is empty",
-			limit: &v1alpha1.ResourceRequirement{
-				Storage: "",
-			},
-			expectFn: func(g *GomegaWithT, s string) {
-				g.Expect(s).To(Equal("0"))
-			},
-		},
-		{
-			name: "failed to parse quantity",
-			limit: &v1alpha1.ResourceRequirement{
-				Storage: "100x",
-			},
+			name:  "storage is empty",
+			limit: corev1.ResourceList{},
 			expectFn: func(g *GomegaWithT, s string) {
 				g.Expect(s).To(Equal("0"))
 			},
 		},
 		{
 			name: "100Gi",
-			limit: &v1alpha1.ResourceRequirement{
-				Storage: "100Gi",
+			limit: corev1.ResourceList{
+				corev1.ResourceStorage: resource.MustParse("100Gi"),
 			},
 			expectFn: func(g *GomegaWithT, s string) {
 				g.Expect(s).To(Equal("100GB"))
 			},
 		},
 		{
-			name: "100GiB",
-			limit: &v1alpha1.ResourceRequirement{
-				Storage: "100GiB",
-			},
-			expectFn: func(g *GomegaWithT, s string) {
-				// GiB is an invalid suffix
-				g.Expect(s).To(Equal("0"))
-			},
-		},
-		{
 			name: "1G",
-			limit: &v1alpha1.ResourceRequirement{
-				Storage: "1G",
+			limit: corev1.ResourceList{
+				corev1.ResourceStorage: resource.MustParse("1G"),
 			},
 			expectFn: func(g *GomegaWithT, s string) {
 				g.Expect(s).To(Equal("953MB"))
@@ -145,8 +125,8 @@ func TestTiKVCapacity(t *testing.T) {
 		},
 		{
 			name: "1.5G",
-			limit: &v1alpha1.ResourceRequirement{
-				Storage: "1.5G",
+			limit: corev1.ResourceList{
+				corev1.ResourceStorage: resource.MustParse("1.5G"),
 			},
 			expectFn: func(g *GomegaWithT, s string) {
 				g.Expect(s).To(Equal("1430MB"))
@@ -157,15 +137,6 @@ func TestTiKVCapacity(t *testing.T) {
 	for i := range tests {
 		testFn(&tests[i], t)
 	}
-}
-
-func TestGetSlowLogTailerImage(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	tc := &v1alpha1.TidbCluster{}
-	g.Expect(GetSlowLogTailerImage(tc)).To(Equal(defaultTiDBLogTailerImage))
-	tc.Spec.TiDB.SlowLogTailer.Image = "image-1"
-	g.Expect(GetSlowLogTailerImage(tc)).To(Equal("image-1"))
 }
 
 func TestPDMemberName(t *testing.T) {
@@ -196,6 +167,21 @@ func TestTiDBMemberName(t *testing.T) {
 func TestTiDBPeerMemberName(t *testing.T) {
 	g := NewGomegaWithT(t)
 	g.Expect(TiDBPeerMemberName("demo")).To(Equal("demo-tidb-peer"))
+}
+
+func TestPumpMemberName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(PumpMemberName("demo")).To(Equal("demo-pump"))
+}
+
+func TestPumpPeerMemberName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(PumpPeerMemberName("demo")).To(Equal("demo-pump"))
+}
+
+func TestDiscoveryMemberName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(DiscoveryMemberName("demo")).To(Equal("demo-discovery"))
 }
 
 func TestAnnProm(t *testing.T) {

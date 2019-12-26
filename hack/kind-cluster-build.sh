@@ -4,6 +4,11 @@ set -e
 ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 cd $ROOT
 
+source $ROOT/hack/lib.sh
+
+hack::ensure_kubectl
+hack::ensure_helm
+
 usage() {
     cat <<EOF
 This script use kind to create Kubernetes cluster,about kind please refer: https://kind.sigs.k8s.io/
@@ -70,7 +75,7 @@ echo "k8sVersion: ${k8sVersion}"
 echo "volumeNum: ${volumeNum}"
 
 # check requirements
-for requirement in kind kubectl helm docker
+for requirement in kind docker
 do
     echo "############ check ${requirement} ##############"
     if hash ${requirement} 2>/dev/null;then
@@ -129,7 +134,7 @@ export KUBECONFIG="$(kind get kubeconfig-path --name=${clusterName})"
 
 echo "deploy docker registry in kind"
 registryNode=${clusterName}-control-plane
-registryNodeIP=$(kubectl get nodes ${registryNode} -o template --template='{{range.status.addresses}}{{if eq .type "InternalIP"}}{{.address}}{{end}}{{end}}')
+registryNodeIP=$($KUBECTL_BIN get nodes ${registryNode} -o template --template='{{range.status.addresses}}{{if eq .type "InternalIP"}}{{.address}}{{end}}{{end}}')
 registryFile=${workDir}/registry.yaml
 
 cat <<EOF >${registryFile}
@@ -200,14 +205,14 @@ spec:
           - tcp-listen:5000,fork,reuseaddr
           - tcp-connect:${registryNodeIP}:5000
 EOF
-kubectl apply -f ${registryFile}
+$KUBECTL_BIN apply -f ${registryFile}
 
 echo "init tidb-operator env"
-kubectl apply -f ${ROOT}/manifests/local-dind/local-volume-provisioner.yaml
-kubectl apply -f ${ROOT}/manifests/tiller-rbac.yaml
-kubectl apply -f ${ROOT}/manifests/crd.yaml
-kubectl create ns tidb-operator-e2e
-helm init --service-account=tiller --wait
+$KUBECTL_BIN apply -f ${ROOT}/manifests/local-dind/local-volume-provisioner.yaml
+$KUBECTL_BIN apply -f ${ROOT}/manifests/tiller-rbac.yaml
+$KUBECTL_BIN apply -f ${ROOT}/manifests/crd.yaml
+$KUBECTL_BIN create ns tidb-operator-e2e
+$HELM_BIN init --service-account=tiller --wait
 
 # This is required because current tidb-operator-e2e use a DIND-only image `mirantis/hypokube:final`
 # FIXME: remove this

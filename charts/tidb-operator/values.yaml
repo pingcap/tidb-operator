@@ -12,7 +12,7 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.0.3
+operatorImage: pingcap/tidb-operator:v1.0.5
 imagePullPolicy: IfNotPresent
 
 defaultStorageClassName: local-storage
@@ -20,6 +20,23 @@ defaultStorageClassName: local-storage
 # tidbBackupManagerImage is tidb backup manager image
 # tidbBackupManagerImage: pingcap/tidb-backup-manager:latest
 # defaultBackupStorageClassName: local-storage
+
+#
+# Enable or disable tidb-operator features:
+#
+#   StableScheduling (default: true)
+#     Enable stable scheduling of tidb servers.
+#
+#   AdvancedStatefulSet (default: false)
+#     If enabled, tidb-operator will use AdvancedStatefulSet to manage pods
+#     instead of Kubernetes StatefulSet.
+#     It's ok to turn it on if this feature is not enabled. However it's not ok
+#     to turn it off when the tidb-operator already uses AdvancedStatefulSet to
+#     manage pods. This is in alpha phase.
+#
+features: []
+# - AdvancedStatefulSet=false
+# - StableScheduling=true
 
 controllerManager:
   # With rbac.create=false, the user is responsible for creating this account
@@ -66,8 +83,6 @@ scheduler:
   logLevel: 2
   replicas: 1
   schedulerName: tidb-scheduler
-  # features:
-  # - StableScheduling=true
   resources:
     limits:
       cpu: 250m
@@ -127,3 +142,80 @@ apiserver:
   #   value: tidb-operator
   #   effect: "NoSchedule"
 
+# When AdvancedStatefulSet feature is enabled, you must install
+# AdvancedStatefulSet controller.
+# Note that AdvancedStatefulSet CRD must be installed manually via the following
+# command:
+#   kubectl apply -f manifests/advanced-statefulset-crd.v1beta1.yaml
+advancedStatefulset:
+  create: false
+  image: pingcap/advanced-statefulset:v0.1.0
+  imagePullPolicy: IfNotPresent
+  serviceAccount: advanced-statefulset-controller
+  logLevel: 2
+  replicas: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 300Mi
+    requests:
+      cpu: 200m
+      memory: 50Mi
+  ## affinity defines pod scheduling rules,affinity default settings is empty.
+  ## please read the affinity document before set your scheduling rule:
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+  ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
+  nodeSelector: {}
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+  tolerations: []
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb-operator
+  #   effect: "NoSchedule"
+
+admissionWebhook:
+  create: false
+  replicas: 1
+  serviceAccount: tidb-admission-webhook
+  rbac:
+    create: true
+  ## jobImage is to indicate the image used in `pre-delete-job.yaml`
+  ## if admissionWebhook.create and admissionWebhook.hooksEnabled.pods are both enabled,
+  ## The pre-delete-job would delete the validationWebhookConfiguration using this image
+  jobImage: "bitnami/kubectl:latest"
+  hooksEnabled:
+    ## statefulsets hook would check requests for updating tidbcluster's statefulsets
+    ## If enabled it, the statefulsets of tidbcluseter would update in partition by tidbcluster's annotation
+    statefulSets: false
+    ## pods hook would check requests for creating and deleting tidbcluster's pods
+    ## if enabled it, the pods of tidbcluster would safely created or deleted by webhook instead of controller
+    pods: true
+  ## failurePolicy are applied to ValidatingWebhookConfiguration which affect tidb-admission-webhook
+  ## refer to https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
+  failurePolicy:
+    ## deletePod Webhook would check the deleting request of tidbcluster pod and the failurePolicy is recommended as Fail
+    deletePod: Fail
+    ## createPod Webhook would check the creating request of tidbcluster pod and the failurePolicy is recommended as Ignore
+    createPod: Ignore
+    ## updateStatefulSet Webhook would check the updating request of tidbcluster statefulset and the failurePolicy is recommended as Ignore
+    updateStatefulSet: Ignore
+  ## tidb-admission-webhook deployed as kubernetes apiservice server
+  ## refer to https://github.com/openshift/generic-admission-server
+  apiservice:
+    ## apiservice config
+    ## refer to https://kubernetes.io/docs/tasks/access-kubernetes-api/configure-aggregation-layer/#contacting-the-extension-apiserver
+    insecureSkipTLSVerify: true
+    ## The key and cert for `tidb-admission-webook.<Release Namespace>` Service.
+    ## If insecureSkipTLSVerify is true, this would be ignored.
+    cert: ""
+    key: ""
+  ## certProvider indicate the key and cert for the webhook configuration to communicate with `kubernetes.default` service.
+  ## If your kube-apiserver's version >= 1.13.0, you can leave cabundle empty and the kube-apiserver
+  ## would trust the roots on the apiserver.
+  ## refer to https://github.com/kubernetes/api/blob/master/admissionregistration/v1/types.go#L529
+  ## or you can get the cabundle by:
+  ## kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}'
+  cabundle: ""

@@ -13,6 +13,187 @@
 
 package v1alpha1
 
+import (
+	"fmt"
+
+	"github.com/pingcap/tidb-operator/pkg/label"
+	corev1 "k8s.io/api/core/v1"
+)
+
+const (
+	// defaultHelperImage is default image of helper
+	defaultHelperImage = "busybox:1.26.2"
+)
+
+// ComponentAccessor is the interface to access component details, which respects the cluster-level properties
+// and component-level overrides
+type ComponentAccessor interface {
+	Image() string
+	ImagePullPolicy() corev1.PullPolicy
+	HostNetwork() bool
+	Affinity() *corev1.Affinity
+	PriorityClassName() string
+	NodeSelector() map[string]string
+	Annotations() map[string]string
+	Tolerations() []corev1.Toleration
+	PodSecurityContext() *corev1.PodSecurityContext
+	SchedulerName() string
+	DnsPolicy() corev1.DNSPolicy
+}
+
+type componentAccessorImpl struct {
+	// Cluster is the TidbCluster Spec
+	ClusterSpec *TidbClusterSpec
+
+	// Cluster is the Component Spec
+	ComponentSpec *ComponentSpec
+}
+
+func (a *componentAccessorImpl) Image() string {
+	image := a.ComponentSpec.Image
+	baseImage := a.ComponentSpec.BaseImage
+	// base image takes higher priority
+	if baseImage != "" {
+		version := a.ComponentSpec.Version
+		if version == "" {
+			version = a.ClusterSpec.Version
+		}
+		image = fmt.Sprintf("%s:%s", baseImage, version)
+	}
+	return image
+}
+
+func (a *componentAccessorImpl) PodSecurityContext() *corev1.PodSecurityContext {
+	return a.ComponentSpec.PodSecurityContext
+}
+
+func (a *componentAccessorImpl) ImagePullPolicy() corev1.PullPolicy {
+	pp := a.ComponentSpec.ImagePullPolicy
+	if pp == nil {
+		pp = &a.ClusterSpec.ImagePullPolicy
+	}
+	return *pp
+}
+
+func (a *componentAccessorImpl) HostNetwork() bool {
+	hostNetwork := a.ComponentSpec.HostNetwork
+	if hostNetwork == nil {
+		hostNetwork = &a.ClusterSpec.HostNetwork
+	}
+	return *hostNetwork
+}
+
+func (a *componentAccessorImpl) Affinity() *corev1.Affinity {
+	affi := a.ComponentSpec.Affinity
+	if affi == nil {
+		affi = a.ClusterSpec.Affinity
+	}
+	return affi
+}
+
+func (a *componentAccessorImpl) PriorityClassName() string {
+	pcn := a.ComponentSpec.PriorityClassName
+	if pcn == "" {
+		pcn = a.ClusterSpec.PriorityClassName
+	}
+	return pcn
+}
+
+func (a *componentAccessorImpl) SchedulerName() string {
+	pcn := a.ComponentSpec.SchedulerName
+	if pcn == "" {
+		pcn = a.ClusterSpec.SchedulerName
+	}
+	return pcn
+}
+
+func (a *componentAccessorImpl) NodeSelector() map[string]string {
+	sel := map[string]string{}
+	for k, v := range a.ClusterSpec.NodeSelector {
+		sel[k] = v
+	}
+	for k, v := range a.ComponentSpec.NodeSelector {
+		sel[k] = v
+	}
+	return sel
+}
+
+func (a *componentAccessorImpl) Annotations() map[string]string {
+	anno := map[string]string{}
+	for k, v := range a.ClusterSpec.Annotations {
+		anno[k] = v
+	}
+	for k, v := range a.ComponentSpec.Annotations {
+		anno[k] = v
+	}
+	return anno
+}
+
+func (a *componentAccessorImpl) Tolerations() []corev1.Toleration {
+	tols := a.ComponentSpec.Tolerations
+	if len(tols) == 0 {
+		tols = a.ClusterSpec.Tolerations
+	}
+	return tols
+}
+
+func (a *componentAccessorImpl) DnsPolicy() corev1.DNSPolicy {
+	dnsPolicy := corev1.DNSClusterFirst // same as kubernetes default
+	if a.HostNetwork() {
+		dnsPolicy = corev1.DNSClusterFirstWithHostNet
+	}
+	return dnsPolicy
+}
+
+// BaseTiDBSpec returns the base spec of TiDB servers
+func (tc *TidbCluster) BaseTiDBSpec() ComponentAccessor {
+	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiDB.ComponentSpec}
+}
+
+// BaseTiKVSpec returns the base spec of TiKV servers
+func (tc *TidbCluster) BaseTiKVSpec() ComponentAccessor {
+	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiKV.ComponentSpec}
+}
+
+// BasePDSpec returns the base spec of PD servers
+func (tc *TidbCluster) BasePDSpec() ComponentAccessor {
+	return &componentAccessorImpl{&tc.Spec, &tc.Spec.PD.ComponentSpec}
+}
+
+// BasePumpSpec returns two results:
+// 1. the base pump spec, if exists.
+// 2. whether the base pump spec exists.
+func (tc *TidbCluster) BasePumpSpec() (ComponentAccessor, bool) {
+	if tc.Spec.Pump == nil {
+		return nil, false
+	}
+	return &componentAccessorImpl{&tc.Spec, &tc.Spec.Pump.ComponentSpec}, true
+}
+
+func (tc *TidbCluster) HelperImage() string {
+	image := tc.Spec.Helper.Image
+	if image == "" {
+		// for backward compatibility
+		image = tc.Spec.TiDB.SlowLogTailer.Image
+	}
+	if image == "" {
+		image = defaultHelperImage
+	}
+	return image
+}
+
+func (tc *TidbCluster) HelperImagePullPolicy() corev1.PullPolicy {
+	pp := tc.Spec.Helper.ImagePullPolicy
+	if pp == nil {
+		// for backward compatibility
+		pp = tc.Spec.TiDB.SlowLogTailer.ImagePullPolicy
+	}
+	if pp == nil {
+		pp = &tc.Spec.ImagePullPolicy
+	}
+	return *pp
+}
+
 func (mt MemberType) String() string {
 	return string(mt)
 }
@@ -30,11 +211,11 @@ func (tc *TidbCluster) TiDBUpgrading() bool {
 }
 
 func (tc *TidbCluster) PDAllPodsStarted() bool {
-	return tc.PDRealReplicas() == tc.Status.PD.StatefulSet.Replicas
+	return tc.PDStsDesiredReplicas() == tc.PDStsActualReplicas()
 }
 
 func (tc *TidbCluster) PDAllMembersReady() bool {
-	if int(tc.PDRealReplicas()) != len(tc.Status.PD.Members) {
+	if int(tc.PDStsDesiredReplicas()) != len(tc.Status.PD.Members) {
 		return false
 	}
 
@@ -59,16 +240,24 @@ func (tc *TidbCluster) PDAutoFailovering() bool {
 	return false
 }
 
-func (tc *TidbCluster) PDRealReplicas() int32 {
+func (tc *TidbCluster) PDStsDesiredReplicas() int32 {
 	return tc.Spec.PD.Replicas + int32(len(tc.Status.PD.FailureMembers))
 }
 
+func (tc *TidbCluster) PDStsActualReplicas() int32 {
+	stsStatus := tc.Status.PD.StatefulSet
+	if stsStatus == nil {
+		return 0
+	}
+	return stsStatus.Replicas
+}
+
 func (tc *TidbCluster) TiKVAllPodsStarted() bool {
-	return tc.TiKVRealReplicas() == tc.Status.TiKV.StatefulSet.Replicas
+	return tc.TiKVStsDesiredReplicas() == tc.TiKVStsActualReplicas()
 }
 
 func (tc *TidbCluster) TiKVAllStoresReady() bool {
-	if int(tc.TiKVRealReplicas()) != len(tc.Status.TiKV.Stores) {
+	if int(tc.TiKVStsDesiredReplicas()) != len(tc.Status.TiKV.Stores) {
 		return false
 	}
 
@@ -81,16 +270,24 @@ func (tc *TidbCluster) TiKVAllStoresReady() bool {
 	return true
 }
 
-func (tc *TidbCluster) TiKVRealReplicas() int32 {
+func (tc *TidbCluster) TiKVStsDesiredReplicas() int32 {
 	return tc.Spec.TiKV.Replicas + int32(len(tc.Status.TiKV.FailureStores))
 }
 
+func (tc *TidbCluster) TiKVStsActualReplicas() int32 {
+	stsStatus := tc.Status.TiKV.StatefulSet
+	if stsStatus == nil {
+		return 0
+	}
+	return stsStatus.Replicas
+}
+
 func (tc *TidbCluster) TiDBAllPodsStarted() bool {
-	return tc.TiDBRealReplicas() == tc.Status.TiDB.StatefulSet.Replicas
+	return tc.TiDBStsDesiredReplicas() == tc.TiDBStsActualReplicas()
 }
 
 func (tc *TidbCluster) TiDBAllMembersReady() bool {
-	if int(tc.TiDBRealReplicas()) != len(tc.Status.TiDB.Members) {
+	if int(tc.TiDBStsDesiredReplicas()) != len(tc.Status.TiDB.Members) {
 		return false
 	}
 
@@ -103,8 +300,42 @@ func (tc *TidbCluster) TiDBAllMembersReady() bool {
 	return true
 }
 
-func (tc *TidbCluster) TiDBRealReplicas() int32 {
+func (tc *TidbCluster) TiDBStsDesiredReplicas() int32 {
 	return tc.Spec.TiDB.Replicas + int32(len(tc.Status.TiDB.FailureMembers))
+}
+
+func (tc *TidbCluster) TiDBStsActualReplicas() int32 {
+	stsStatus := tc.Status.TiDB.StatefulSet
+	if stsStatus == nil {
+		return 0
+	}
+	return stsStatus.Replicas
+}
+
+func (tc *TidbCluster) TiDBConfigUpdateStrategy() ConfigUpdateStrategy {
+	s := tc.Spec.TiDB.ConfigUpdateStrategy
+	if string(s) == "" {
+		// defaulting logic will set a default value for configUpdateStrategy field, but if the
+		// object is created in early version without this field being set, we choose a safer default
+		s = ConfigUpdateStrategyInPlace
+	}
+	return s
+}
+
+func (tc *TidbCluster) PDConfigUpdateStrategy() ConfigUpdateStrategy {
+	s := tc.Spec.PD.ConfigUpdateStrategy
+	if string(s) == "" {
+		s = ConfigUpdateStrategyInPlace
+	}
+	return s
+}
+
+func (tc *TidbCluster) TiKVConfigUpdateStrategy() ConfigUpdateStrategy {
+	s := tc.Spec.TiKV.ConfigUpdateStrategy
+	if string(s) == "" {
+		s = ConfigUpdateStrategyInPlace
+	}
+	return s
 }
 
 func (tc *TidbCluster) PDIsAvailable() bool {
@@ -164,4 +395,23 @@ func (tc *TidbCluster) Scheme() string {
 		return "https"
 	}
 	return "http"
+}
+
+func (tc *TidbCluster) Timezone() string {
+	tz := tc.Spec.Timezone
+	if tz == "" {
+		tz = "UTC"
+	}
+	return tz
+}
+
+func (tc *TidbCluster) GetInstanceName() string {
+	labels := tc.ObjectMeta.GetLabels()
+	// Keep backward compatibility for helm.
+	// This introduce a hidden danger that change this label will trigger rolling-update of most of the components
+	// TODO(aylei): disallow mutation of this label or adding this label with value other than the cluster name in ValidateUpdate()
+	if inst, ok := labels[label.InstanceLabelKey]; ok {
+		return inst
+	}
+	return tc.Name
 }

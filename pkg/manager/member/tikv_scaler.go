@@ -80,6 +80,11 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		return err
 	}
 
+	if controller.PodWebhookEnabled {
+		decreaseReplicas(newSet, oldSet)
+		return nil
+	}
+
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
 			state := store.State

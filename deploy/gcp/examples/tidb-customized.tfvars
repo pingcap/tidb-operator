@@ -3,7 +3,7 @@ tikv_instance_type = "n1-highmem-4"
 tidb_instance_type = "n1-standard-8"
 
 # specify tidb version
-tidb_version = "3.0.4"
+tidb_version = "3.0.5"
 
 # override tidb cluster values
 override_values = <<EOF
