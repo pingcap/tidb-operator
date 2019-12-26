@@ -22,6 +22,7 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type MonitorManager struct {
@@ -51,12 +52,14 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 	if err := mm.syncTidbMonitorService(monitor); err != nil {
 		return err
 	}
+	klog.Infof("tm[%s/%s]'s service synced", monitor.Namespace, monitor.Name)
 	// Sync PVC
 	if monitor.Spec.Persistent {
 		if err := mm.syncTidbMonitorPVC(monitor); err != nil {
 			return err
 		}
 	}
+	klog.Infof("tm[%s/%s]'s pvc synced", monitor.Namespace, monitor.Name)
 	// Sync Deployment
 	return mm.syncTidbMonitorDeployment(monitor)
 }
@@ -74,8 +77,21 @@ func (mm *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) 
 }
 
 func (mm *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) error {
-	pvc := getMonitorPVC(monitor)
-	_, err := mm.typedControl.CreateOrUpdatePVC(monitor, pvc)
+	pvcName := getMonitorObjectName(monitor)
+	pvc := &core.PersistentVolumeClaim{}
+	exist, err := mm.typedControl.Exist(client.ObjectKey{
+		Name:      pvcName,
+		Namespace: monitor.Namespace,
+	}, pvc)
+	if err != nil {
+		klog.Errorf("tm[%s/%s]'s pvc[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, pvc.Name, err)
+		return err
+	}
+	if exist {
+		return nil
+	}
+	pvc = getMonitorPVC(monitor)
+	err = mm.typedControl.Create(monitor, pvc)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s pvc[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, pvc.Name, err)
 		return err
@@ -113,6 +129,7 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(monitor *v1alpha1.TidbMonito
 		klog.Errorf("tm[%s/%s]'s deployment failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
+	klog.Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
 	return nil
 }
 
@@ -137,16 +154,19 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 	sa := getMonitorServiceAccount(monitor)
 	sa, err := mm.typedControl.CreateOrUpdateServiceAccount(monitor, sa)
 	if err != nil {
+		klog.Errorf("tm[%s/%s]'s serviceaccount failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
 	}
 	cr := getMonitorClusterRole(monitor)
 	cr, err = mm.typedControl.CreateOrUpdateClusterRole(monitor, cr)
 	if err != nil {
+		klog.Errorf("tm[%s/%s]'s clusterrole failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
 	}
 	crb := getMonitorClusterRoleBinding(sa, cr, monitor)
 	_, err = mm.typedControl.CreateOrUpdateClusterRoleBinding(monitor, crb)
 	if err != nil {
+		klog.Errorf("tm[%s/%s]'s clusterRile failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
 	}
 	return sa, nil
