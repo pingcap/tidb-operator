@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/pointer"
 	"strconv"
 )
 
@@ -180,8 +181,7 @@ func getMonitorDeploymentSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Tid
 		Spec: apps.DeploymentSpec{
 			Replicas: &replicas,
 			Strategy: apps.DeploymentStrategy{
-				Type:          apps.RecreateDeploymentStrategyType,
-				RollingUpdate: nil,
+				Type: apps.RecreateDeploymentStrategyType,
 			},
 			Selector: &meta.LabelSelector{
 				MatchLabels: map[string]string{
@@ -221,7 +221,6 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 		"-c",
 		c,
 	}
-	secureContext := int64(0)
 	container := core.Container{
 		Name:            "monitor-initializer",
 		Image:           fmt.Sprintf("%s:%s", monitor.Spec.Initializer.BaseImage, monitor.Spec.Initializer.Version),
@@ -270,7 +269,7 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 		},
 		Command: command,
 		SecurityContext: &core.SecurityContext{
-			RunAsUser: &secureContext,
+			RunAsUser: pointer.Int64Ptr(0),
 		},
 		VolumeMounts: []core.VolumeMount{
 			{
@@ -311,10 +310,9 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 
 func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
 	c := core.Container{
-		Name:            "prometheus",
-		Image:           fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
-		ImagePullPolicy: *monitor.Spec.Prometheus.ImagePullPolicy,
-		Resources:       controller.ContainerResource(monitor.Spec.Prometheus.Resources),
+		Name:      "prometheus",
+		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
+		Resources: controller.ContainerResource(monitor.Spec.Prometheus.Resources),
 		Command: []string{
 			"/bin/prometheus",
 			"--web.enable-admin-api",
@@ -361,15 +359,17 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 			ReadOnly:  true,
 		})
 	}
+	if monitor.Spec.Prometheus.ImagePullPolicy != nil {
+		c.ImagePullPolicy = *monitor.Spec.Prometheus.ImagePullPolicy
+	}
 	return c
 }
 
 func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
 	c := core.Container{
-		Name:            "grafana",
-		Image:           fmt.Sprintf("%s:%s", monitor.Spec.Grafana.BaseImage, monitor.Spec.Grafana.Version),
-		ImagePullPolicy: *monitor.Spec.Grafana.ImagePullPolicy,
-		Resources:       controller.ContainerResource(monitor.Spec.Grafana.Resources),
+		Name:      "grafana",
+		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Grafana.BaseImage, monitor.Spec.Grafana.Version),
+		Resources: controller.ContainerResource(monitor.Spec.Grafana.Resources),
 		Ports: []core.ContainerPort{
 			{
 				Name:          "grafana",
@@ -437,14 +437,16 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 			Value: v,
 		})
 	}
+	if monitor.Spec.Grafana.ImagePullPolicy != nil {
+		c.ImagePullPolicy = *monitor.Spec.Grafana.ImagePullPolicy
+	}
 	return c
 }
 
 func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
 	c := core.Container{
-		Name:            "reloader",
-		Image:           fmt.Sprintf("%s:%s", monitor.Spec.Reloader.BaseImage, monitor.Spec.Reloader.Version),
-		ImagePullPolicy: *monitor.Spec.Reloader.ImagePullPolicy,
+		Name:  "reloader",
+		Image: fmt.Sprintf("%s:%s", monitor.Spec.Reloader.BaseImage, monitor.Spec.Reloader.Version),
 		Command: []string{
 			"/bin/reload",
 			"--root-store-path=/data",
@@ -477,6 +479,9 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 				Value: tc.Spec.Timezone,
 			},
 		},
+	}
+	if monitor.Spec.Reloader.ImagePullPolicy != nil {
+		c.ImagePullPolicy = *monitor.Spec.Reloader.ImagePullPolicy
 	}
 	return c
 }
