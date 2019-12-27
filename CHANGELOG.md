@@ -15,7 +15,7 @@ monitor:
   ...
 ```
 
-After migration, new `values.yaml` should be as below:
+After migration, configs in the new `values.yaml` file should be as follows:
 
 ```
 monitor:
