@@ -191,7 +191,7 @@ type PDReplicationConfig struct {
 	// For example, ["zone", "rack"] means that we should place replicas to
 	// different zones first, then to different racks if we don't have enough zones.
 	// +optional
-	LocationLabels StringSlice `toml:"location-labels,omitempty" json:"location-labels,omitempty"`
+	LocationLabels []string `toml:"location-labels,omitempty" json:"location-labels,omitempty"`
 	// StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels.
 	// +optional
 	StrictlyMatchLabel *bool `toml:"strictly-match-label,omitempty" json:"strictly-match-label,string,omitempty"`
