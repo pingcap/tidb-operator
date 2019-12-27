@@ -79,7 +79,7 @@ e2e_args=(
     --operator-tag=e2e
     --operator-image=${TIDB_OPERATOR_IMAGE}
     --e2e-image=${E2E_IMAGE}
-    --tidb-versions=v3.0.2,v3.0.3,v3.0.4,v3.0.5
+    --tidb-versions=v3.0.5,v3.0.6,v3.0.7
     --chart-dir=/charts
     -v=4
 )
