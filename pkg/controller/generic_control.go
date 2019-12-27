@@ -78,9 +78,7 @@ func (w *typedWrapper) CreateOrUpdatePVC(controller runtime.Object, pvc *corev1.
 		existingPVC := existing.(*corev1.PersistentVolumeClaim)
 		desiredPVC := desired.(*corev1.PersistentVolumeClaim)
 
-		existingPVC.Labels = desiredPVC.Labels
-		existingPVC.Spec = desiredPVC.Spec
-		existingPVC.Annotations = desiredPVC.Annotations
+		existingPVC.Spec.Resources.Requests = desiredPVC.Spec.Resources.Requests
 		return nil
 	})
 	if err != nil {

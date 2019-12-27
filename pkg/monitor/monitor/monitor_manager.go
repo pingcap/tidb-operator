@@ -23,7 +23,6 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type MonitorManager struct {
@@ -71,28 +70,16 @@ func (mm *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) 
 		_, err := mm.typedControl.CreateOrUpdateService(monitor, svc)
 		if err != nil {
 			klog.Errorf("tm[%s/%s]'s service[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, svc.Name, err)
-			return err
+			return controller.RequeueErrorf("tm[%s/%s]'s service[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, svc.Name, err)
 		}
 	}
 	return nil
 }
 
 func (mm *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) error {
-	pvcName := getMonitorObjectName(monitor)
-	pvc := &corev1.PersistentVolumeClaim{}
-	exist, err := mm.typedControl.Exist(client.ObjectKey{
-		Name:      pvcName,
-		Namespace: monitor.Namespace,
-	}, pvc)
-	if err != nil {
-		klog.Errorf("tm[%s/%s]'s pvc[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, pvc.Name, err)
-		return err
-	}
-	if exist {
-		return nil
-	}
-	pvc = getMonitorPVC(monitor)
-	err = mm.typedControl.Create(monitor, pvc)
+
+	pvc := getMonitorPVC(monitor)
+	_, err := mm.typedControl.CreateOrUpdatePVC(monitor, pvc)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s pvc[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, pvc.Name, err)
 		return err
