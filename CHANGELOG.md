@@ -35,7 +35,7 @@ monitor:
 
 ### TiDB Scheduler
 
-- Refine scheduler error message ([#1373](https://github.com/pingcap/tidb-operator/pull/1373))
+- Refine scheduler error messages ([#1373](https://github.com/pingcap/tidb-operator/pull/1373))
 
 ### Compatibility
 
