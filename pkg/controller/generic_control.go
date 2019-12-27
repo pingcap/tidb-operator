@@ -51,6 +51,10 @@ type TypedControlInterface interface {
 	UpdateStatus(newStatus runtime.Object) error
 	// Delete delete the given object from the cluster
 	Delete(controller, obj runtime.Object) error
+	// Create create the given object for the controller
+	Create(controller, obj runtime.Object) error
+	// Exist check whether object exists
+	Exist(key client.ObjectKey, obj runtime.Object) (bool, error)
 }
 
 type typedWrapper struct {
@@ -196,10 +200,19 @@ func (w *typedWrapper) CreateOrUpdateService(controller runtime.Object, svc *cor
 	return result.(*corev1.Service), nil
 }
 
+func (w *typedWrapper) Create(controller, obj runtime.Object) error {
+	return w.GenericControlInterface.Create(controller, obj)
+}
+func (w *typedWrapper) Exist(key client.ObjectKey, obj runtime.Object) (bool, error) {
+	return w.GenericControlInterface.Exist(key, obj)
+}
+
 // GenericControlInterface manages generic object that managed by an arbitrary controller
 type GenericControlInterface interface {
 	CreateOrUpdate(controller, obj runtime.Object, mergeFn MergeFn) (runtime.Object, error)
+	Create(controller, obj runtime.Object) error
 	UpdateStatus(obj runtime.Object) error
+	Exist(key client.ObjectKey, obj runtime.Object) (bool, error)
 	Delete(controller, obj runtime.Object) error
 }
 
@@ -232,6 +245,18 @@ func NewRealGenericControl(client client.Client, recorder record.EventRecorder) 
 // UpdateStatus update the /status subresource of object
 func (c *realGenericControlInterface) UpdateStatus(obj runtime.Object) error {
 	return c.client.Status().Update(context.TODO(), obj)
+}
+
+// Exist checks whether object exists
+func (c *realGenericControlInterface) Exist(key client.ObjectKey, obj runtime.Object) (bool, error) {
+	err := c.client.Get(context.TODO(), key, obj)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		}
+		return true, err
+	}
+	return true, nil
 }
 
 // CreateOrUpdate create an object to the Kubernetes cluster for controller, if the object to create is existed,
@@ -288,7 +313,22 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Obj
 
 	// object do not exist, return the creation result
 	c.RecordControllerEvent("create", controller, desired, err)
-	return desired, nil
+	return desired, err
+}
+
+// Create create an object to the Kubernetes cluster for controller
+func (c *realGenericControlInterface) Create(controller, obj runtime.Object) error {
+	// controller-runtime/client will mutate the object pointer in-place,
+	// to be consistent with other methods in our controller, we copy the object
+	// to avoid the in-place mutation here and hereafter.
+	desired := obj.DeepCopyObject()
+	if err := setControllerReference(controller, desired); err != nil {
+		return err
+	}
+
+	err := c.client.Create(context.TODO(), desired)
+	c.RecordControllerEvent("create", controller, desired, err)
+	return err
 }
 
 func (c *realGenericControlInterface) Delete(controller, obj runtime.Object) error {
@@ -352,6 +392,8 @@ type FakeGenericControl struct {
 	createOrUpdateTracker RequestTracker
 	deleteTracker         RequestTracker
 	updateStatusTracker   RequestTracker
+	createTracker         RequestTracker
+	existTracker          RequestTracker
 }
 
 // NewFakeGenericControl returns a FakeGenericControl
@@ -364,9 +406,36 @@ func NewFakeGenericControl(initObjects ...runtime.Object) *FakeGenericControl {
 		RequestTracker{},
 		RequestTracker{},
 		RequestTracker{},
+		RequestTracker{},
+		RequestTracker{},
 	}
 }
+func (gc *FakeGenericControl) Create(controller, obj runtime.Object) error {
+	defer gc.createTracker.Inc()
+	if gc.createTracker.ErrorReady() {
+		defer gc.createTracker.Reset()
+		return gc.createTracker.GetError()
+	}
 
+	return gc.control.Create(controller, obj)
+}
+
+func (gc *FakeGenericControl) Exist(key client.ObjectKey, obj runtime.Object) (bool, error) {
+	defer gc.existTracker.Inc()
+	if gc.existTracker.ErrorReady() {
+		defer gc.existTracker.Reset()
+		return true, gc.existTracker.GetError()
+	}
+
+	return gc.control.Exist(key, obj)
+}
+
+func (gc *FakeGenericControl) SetCreateError(err error, after int) {
+	gc.createTracker.SetError(err).SetAfter(after)
+}
+func (gc *FakeGenericControl) SetExistError(err error, after int) {
+	gc.existTracker.SetError(err).SetAfter(after)
+}
 func (gc *FakeGenericControl) SetUpdateStatusError(err error, after int) {
 	gc.updateStatusTracker.SetError(err).SetAfter(after)
 }

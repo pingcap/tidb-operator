@@ -38,6 +38,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/pointer"
 )
 
 func TestTiDBMemberManagerSyncCreate(t *testing.T) {
@@ -265,7 +266,7 @@ func TestTiDBMemberManagerTiDBStatefulSetIsUpgrading(t *testing.T) {
 					Name:        ordinalPodName(v1alpha1.TiDBMemberType, tc.GetName(), 0),
 					Namespace:   metav1.NamespaceDefault,
 					Annotations: map[string]string{},
-					Labels:      label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).TiDB().Labels(),
+					Labels:      label.New().Instance(tc.GetInstanceName()).TiDB().Labels(),
 				},
 			}
 			if test.updatePod != nil {
@@ -828,7 +829,7 @@ func TestGetNewTiDBHeadlessServiceForTidbCluster(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tidb",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -859,7 +860,7 @@ func TestGetNewTiDBHeadlessServiceForTidbCluster(t *testing.T) {
 					Selector: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tidb",
 					},
 					PublishNotReadyAddresses: true,
@@ -1329,7 +1330,7 @@ func TestGetNewTiDBService(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tidb",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -1359,7 +1360,7 @@ func TestGetNewTiDBService(t *testing.T) {
 					Selector: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tidb",
 					},
 				},
@@ -1387,7 +1388,7 @@ func TestGetNewTiDBService(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tidb",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -1423,7 +1424,7 @@ func TestGetNewTiDBService(t *testing.T) {
 					Selector: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tidb",
 					},
 				},
@@ -1458,7 +1459,7 @@ func TestGetNewTiDBService(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tidb",
 					},
 					Annotations: map[string]string{
@@ -1499,7 +1500,7 @@ func TestGetNewTiDBService(t *testing.T) {
 					Selector: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tidb",
 					},
 				},
@@ -1549,7 +1550,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 					TiDB: v1alpha1.TiDBSpec{
 						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
 						Config: &v1alpha1.TiDBConfig{
-							Host: "0.0.0.0",
+							Lease: pointer.StringPtr("45s"),
 						},
 					},
 				},
@@ -1561,7 +1562,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tidb",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -1581,7 +1582,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 				},
 				Data: map[string]string{
 					"startup-script": "",
-					"config-file": `host = "0.0.0.0"
+					"config-file": `lease = "45s"
 `,
 				},
 			},
@@ -1609,7 +1610,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tidb",
 					},
 					OwnerReferences: []metav1.OwnerReference{
