@@ -3502,21 +3502,11 @@ spec:
                 is bootstrapped.
               type: string
             initSqlConfigMap:
-              description: LocalObjectReference contains enough information to let
-                you locate the referenced object inside the same namespace.
-              properties:
-                name:
-                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
-                  type: string
-              type: object
+              description: InitSqlConfigMapName reference a configmap that provide
+                init-sql, take high precedence than initSql if set
+              type: string
             passwordSecret:
-              description: LocalObjectReference contains enough information to let
-                you locate the referenced object inside the same namespace.
-              properties:
-                name:
-                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
-                  type: string
-              type: object
+              type: string
             permitHost:
               description: permitHost is the host which will only be allowed to connect
                 to the TiDB.
@@ -3535,6 +3525,9 @@ spec:
                     value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                   type: object
               type: object
+            timezone:
+              description: Time zone of TiDB initializer Pods
+              type: string
           required:
           - image
           - cluster

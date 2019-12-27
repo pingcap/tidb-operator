@@ -16,6 +16,7 @@ package v1alpha1
 import (
 	"fmt"
 
+	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -402,4 +403,15 @@ func (tc *TidbCluster) Timezone() string {
 		tz = "UTC"
 	}
 	return tz
+}
+
+func (tc *TidbCluster) GetInstanceName() string {
+	labels := tc.ObjectMeta.GetLabels()
+	// Keep backward compatibility for helm.
+	// This introduce a hidden danger that change this label will trigger rolling-update of most of the components
+	// TODO(aylei): disallow mutation of this label or adding this label with value other than the cluster name in ValidateUpdate()
+	if inst, ok := labels[label.InstanceLabelKey]; ok {
+		return inst
+	}
+	return tc.Name
 }

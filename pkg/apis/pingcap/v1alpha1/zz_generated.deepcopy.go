@@ -3716,12 +3716,12 @@ func (in *TidbInitializerSpec) DeepCopyInto(out *TidbInitializerSpec) {
 	}
 	if in.InitSqlConfigMap != nil {
 		in, out := &in.InitSqlConfigMap, &out.InitSqlConfigMap
-		*out = new(v1.LocalObjectReference)
+		*out = new(string)
 		**out = **in
 	}
 	if in.PasswordSecret != nil {
 		in, out := &in.PasswordSecret, &out.PasswordSecret
-		*out = new(v1.LocalObjectReference)
+		*out = new(string)
 		**out = **in
 	}
 	if in.Resources != nil {

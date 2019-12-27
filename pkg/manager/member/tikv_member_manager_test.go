@@ -398,7 +398,7 @@ func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 					Name:        ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 0),
 					Namespace:   metav1.NamespaceDefault,
 					Annotations: map[string]string{},
-					Labels:      label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).TiKV().Labels(),
+					Labels:      label.New().Instance(tc.GetInstanceName()).TiKV().Labels(),
 				},
 			}
 			if test.updatePod != nil {
@@ -1400,7 +1400,7 @@ func TestGetNewServiceForTidbCluster(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tikv",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -1431,7 +1431,7 @@ func TestGetNewServiceForTidbCluster(t *testing.T) {
 					Selector: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tikv",
 					},
 					PublishNotReadyAddresses: true,
@@ -1906,7 +1906,7 @@ func TestGetTiKVConfigMap(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tikv",
 					},
 					OwnerReferences: []metav1.OwnerReference{
