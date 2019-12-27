@@ -35,7 +35,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/ghodss/yaml"
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1/helper"
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -45,6 +45,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util"
+	utildiscovery "github.com/pingcap/tidb-operator/tests/e2e/util/discovery"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedtidbclient"
@@ -455,7 +457,13 @@ func (oa *operatorActions) CleanCRDOrDie() {
 func (oa *operatorActions) InstallCRDOrDie() {
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/crd.yaml"))
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
-	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
+	if isSupported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1"); err != nil {
+		glog.Fatal(err)
+	} else if isSupported {
+		oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
+	} else {
+		oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
+	}
 	out := oa.runKubectlOrDie([]string{"get", "crds", "--no-headers", `-ojsonpath={range .items[*]}{.metadata.name}{" "}{end}`}...)
 	waitArgs := []string{"wait", "--for=condition=Established"}
 	for _, crd := range strings.Split(out, " ") {
@@ -1333,15 +1341,28 @@ func (oa *operatorActions) CheckUpgradeOrDie(ctx context.Context, info *TidbClus
 func (oa *operatorActions) DeployMonitor(info *TidbClusterConfig) error { return nil }
 func (oa *operatorActions) CleanMonitor(info *TidbClusterConfig) error  { return nil }
 
-func getMemberContainer(kubeCli kubernetes.Interface, namespace string, memberName string) (*corev1.Container, bool) {
-	name := fmt.Sprintf("%s-%d", memberName, 0)
-	pod, err := kubeCli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+// getMemberContainer gets member container
+func getMemberContainer(kubeCli kubernetes.Interface, stsGetter typedappsv1.StatefulSetsGetter, namespace, tcName, component string) (*corev1.Container, bool) {
+	sts, err := stsGetter.StatefulSets(namespace).Get(fmt.Sprintf("%s-%s", tcName, component), metav1.GetOptions{})
 	if err != nil {
-		glog.Errorf("fail to get pod [%s/%s]", namespace, name)
+		glog.Errorf("failed to get sts for component %s of cluster %s/%s", component, namespace, tcName)
 		return nil, false
 	}
+	listOption := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(sts.Spec.Selector.MatchLabels).String(),
+	}
+	podList, err := kubeCli.CoreV1().Pods(namespace).List(listOption)
+	if err != nil {
+		glog.Errorf("fail to get pods for component %s of cluster %s/%s", component, namespace, tcName)
+		return nil, false
+	}
+	if len(podList.Items) == 0 {
+		glog.Errorf("no pods found for component %s of cluster %s/%s", component, namespace, tcName)
+		return nil, false
+	}
+	pod := podList.Items[0]
 	if len(pod.Spec.Containers) == 0 {
-		glog.Errorf("no container in this pod [%s/%s]", namespace, name)
+		glog.Errorf("no containers found for component %s of cluster %s/%s", component, namespace, tcName)
 		return nil, false
 	}
 
@@ -1393,7 +1414,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 		return false, nil
 	}
 
-	c, found := getMemberContainer(oa.kubeCli, ns, pdSetName)
+	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, tc.Name, label.PDLabelVal)
 	if !found {
 		glog.Infof("statefulset: %s/%s not found containers[name=pd] or pod %s-0",
 			ns, pdSetName, pdSetName)
@@ -1466,7 +1487,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	c, found := getMemberContainer(oa.kubeCli, ns, tikvSetName)
+	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, tc.Name, label.TiKVLabelVal)
 	if !found {
 		glog.Infof("statefulset: %s/%s not found containers[name=tikv] or pod %s-0",
 			ns, tikvSetName, tikvSetName)
@@ -1519,7 +1540,7 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	}
 	if tidbSet.Status.ReadyReplicas != tc.Spec.TiDB.Replicas {
 		glog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
-			ns, tidbSetName, tidbSet.Status.ReadyReplicas, replicas)
+			ns, tidbSetName, tidbSet.Status.ReadyReplicas, tc.Spec.TiDB.Replicas)
 		return false, nil
 	}
 	if len(tc.Status.TiDB.Members) != int(tc.Spec.TiDB.Replicas) {
@@ -1533,7 +1554,7 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	c, found := getMemberContainer(oa.kubeCli, ns, tidbSetName)
+	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, tc.Name, label.TiDBLabelVal)
 	if !found {
 		glog.Infof("statefulset: %s/%s not found containers[name=tidb] or pod %s-0",
 			ns, tidbSetName, tidbSetName)
@@ -2070,8 +2091,13 @@ func (oa *operatorActions) checkPdConfigUpdated(tc *v1alpha1.TidbCluster, cluste
 }
 
 func (oa *operatorActions) checkTiDBConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
-	for i := int32(0); i < tc.Spec.TiDB.Replicas; i += 1 {
-		config, err := oa.tidbControl.GetSettings(tc, i)
+	ordinals, err := util.GetPodOrdinals(tc, v1alpha1.TiDBMemberType)
+	if err != nil {
+		glog.Errorf("failed to get pod ordinals for tidb cluster %s/%s (member: %v)", tc.Namespace, tc.Name, v1alpha1.TiDBMemberType)
+		return false
+	}
+	for i := range ordinals {
+		config, err := oa.tidbControl.GetSettings(tc, int32(i))
 		if err != nil {
 			glog.Errorf("failed to get TiDB configuration from cluster [%s/%s], ordinal: %d, error: %v", tc.Namespace, tc.Name, i, err)
 			return false
