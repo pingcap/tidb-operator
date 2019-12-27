@@ -16,7 +16,7 @@ variable "eks_version" {
 variable "operator_version" {
   description = "TiDB Operator version"
   type        = string
-  default     = "v1.0.5"
+  default     = "v1.0.6"
 }
 
 variable "operator_helm_values" {
