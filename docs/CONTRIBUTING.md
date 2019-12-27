@@ -122,16 +122,19 @@ $ make test
 
 #### Run e2e tests
 
-You can run the following command to run all e2e test.
+At first, you must have [Docker](https://www.docker.com/get-started/) installed
+and running.
+
+Now you can run the following command to run all e2e test.
 
 ```sh
-$ make e2e
+$ ./hack/e2e.sh
 ```
 
 It's possible to limit specs to run, for example:
 
 ```
-./hack/e2e.sh -- --ginkgo.focus='Basic'
+$ ./hack/e2e.sh -- --ginkgo.focus='Basic'
 ```
 
 Run the following command to see help:
