@@ -32,7 +32,7 @@ NAME=${NAME:-tidb-operator-dev}
 
 function usage() {
     cat <<'EOF'
-This script is entrypoint to run e2e tests.
+This script is entrypoint to start a isolated container environment for development.
 
 Usage: hack/run-in-container.sh [-h] [command]
 
