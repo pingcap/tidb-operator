@@ -4,7 +4,7 @@
 
 Action required: Users should migrate the configs in `values.yaml` of previous chart releases to the new `values.yaml` of the new chart. Otherwise, the monitor pods might fail when you upgrade the monitor with the new chart.
 
-For example, configs in old `values.yaml`:
+For example, configs in the old `values.yaml` file:
 
 ```
 monitor:
