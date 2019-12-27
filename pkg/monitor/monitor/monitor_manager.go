@@ -160,7 +160,7 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 		crb := getMonitorClusterRoleBinding(sa, cr, monitor)
 		_, err = mm.typedControl.CreateOrUpdateClusterRoleBinding(monitor, crb)
 		if err != nil {
-			klog.Errorf("tm[%s/%s]'s clusterRile failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
+			klog.Errorf("tm[%s/%s]'s clusterRoleBinding failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 			return nil, err
 		}
 	}
