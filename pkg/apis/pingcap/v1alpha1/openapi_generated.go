@@ -2607,6 +2607,13 @@ func schema_pkg_apis_pingcap_v1alpha1_ServiceSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"clusterIP": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClusterIP is the clusterIP of service",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
