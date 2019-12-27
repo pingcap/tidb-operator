@@ -32,8 +32,6 @@ import (
 const (
 	// LastAppliedConfigAnnotation is annotation key of last applied configuration
 	LastAppliedConfigAnnotation = "pingcap.com/last-applied-configuration"
-	// LastAppliedPodTemplateAnnotation is annotation key of last applied configuration
-	LastAppliedPodTemplateAnnotation = "pingcap.com/last-applied-pod-template"
 	// ImagePullBackOff is the pod state of image pull failed
 	ImagePullBackOff = "ImagePullBackOff"
 	// ErrImagePull is the pod state of image pull failed
@@ -84,20 +82,7 @@ func SetStatefulSetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
 
 // SetLastAppliedConfigAnnotation set last applied config info to Statefulset's annotation and the podTemplate's annotation
 func SetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
-
-	if err := SetStatefulSetLastAppliedConfigAnnotation(set); err != nil {
-		return err
-	}
-
-	templateApply, err := encode(set.Spec.Template.Spec)
-	if err != nil {
-		return err
-	}
-	if set.Spec.Template.Annotations == nil {
-		set.Spec.Template.Annotations = map[string]string{}
-	}
-	set.Annotations[LastAppliedPodTemplateAnnotation] = templateApply
-	return nil
+	return SetStatefulSetLastAppliedConfigAnnotation(set)
 }
 
 // GetLastAppliedConfig get last applied config info from Statefulset's annotation and the podTemplate's annotation
@@ -112,21 +97,7 @@ func GetLastAppliedConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1
 		return nil, nil, err
 	}
 
-	podSpecAppliedConfig, ok := set.Annotations[LastAppliedPodTemplateAnnotation]
-	if !ok {
-		// fallback to old annotations
-		podSpecAppliedConfig, ok = set.Spec.Template.Annotations[LastAppliedConfigAnnotation]
-	}
-	if !ok {
-		return nil, nil, fmt.Errorf("statefulset:[%s/%s] not found template spec's apply config", set.GetNamespace(), set.GetName())
-	}
-	podSpec := &corev1.PodSpec{}
-	err = json.Unmarshal([]byte(podSpecAppliedConfig), podSpec)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return spec, podSpec, nil
+	return spec, &spec.Template.Spec, nil
 }
 
 func encode(obj interface{}) (string, error) {
@@ -155,19 +126,15 @@ func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 
 // templateEqual compares the new podTemplateSpec's spec with old podTemplateSpec's last applied config
 func templateEqual(new *apps.StatefulSet, old *apps.StatefulSet) bool {
-	oldConfig := corev1.PodSpec{}
-	lastAppliedConfig, ok := old.Annotations[LastAppliedPodTemplateAnnotation]
-	if !ok {
-		// fallback to old annotations
-		lastAppliedConfig, ok = old.Spec.Template.Annotations[LastAppliedConfigAnnotation]
-	}
+	oldStsSpec := apps.StatefulSetSpec{}
+	lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]
 	if ok {
-		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
+		err := json.Unmarshal([]byte(lastAppliedConfig), &oldStsSpec)
 		if err != nil {
 			glog.Errorf("unmarshal PodTemplate: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
 			return false
 		}
-		return apiequality.Semantic.DeepEqual(oldConfig, new.Spec.Template.Spec)
+		return apiequality.Semantic.DeepEqual(oldStsSpec.Template.Spec, new.Spec.Template.Spec)
 	}
 	return false
 }
