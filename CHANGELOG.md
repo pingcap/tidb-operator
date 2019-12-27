@@ -53,7 +53,7 @@ monitor:
 ### CI
 
 - Move the release CI script from Jenkins into the tidb-operator repository ([#1237](https://github.com/pingcap/tidb-operator/pull/1237))
-- Adjust release CI script for `release-1.0` branch ([#1320](https://github.com/pingcap/tidb-operator/pull/1320))
+- Adjust the release CI script for the `release-1.0` branch ([#1320](https://github.com/pingcap/tidb-operator/pull/1320))
 
 # TiDB Operator v1.0.5 Release Notes
 
