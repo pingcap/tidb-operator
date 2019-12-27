@@ -106,8 +106,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	ginkgo.Context("Basic: Deploying, Scaling, Update Configuration", func() {
 		clusters := map[string]string{}
-		clusters["v3.0.5"] = "cluster1"
-		clusters["v2.1.16"] = "cluster5" // for v2.1.x series
+		clusters["v3.0.7"] = "cluster1"
+		clusters["v2.1.18"] = "cluster5" // for v2.1.x series
 
 		for version, name := range clusters {
 			localVersion := version
