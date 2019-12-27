@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 )
 
 var (
@@ -93,9 +94,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				MaxFailoverCount:     3,
 				Config: &v1alpha1.TiKVConfig{
 					LogLevel: "info",
-					Server: &v1alpha1.TiKVServerConfig{
-						StatusAddr: "0.0.0.0:20180",
-					},
+					Server:   &v1alpha1.TiKVServerConfig{},
 				},
 			},
 
@@ -115,7 +114,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				MaxFailoverCount: 3,
 				Config: &v1alpha1.TiDBConfig{
 					Log: &v1alpha1.Log{
-						Level: "info",
+						Level: pointer.StringPtr("info"),
 					},
 				},
 			},
