@@ -20,6 +20,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	. "github.com/onsi/gomega"
+	"k8s.io/utils/pointer"
 )
 
 func TestTiDBConfig(t *testing.T) {
@@ -27,10 +28,9 @@ func TestTiDBConfig(t *testing.T) {
 	procs := uint(8)
 	probability := 0.8
 	c := &TiDBConfig{
-		Host: "0.0.0.0",
 		Performance: &Performance{
 			MaxProcs:            &procs,
-			CrossJoin:           true,
+			CrossJoin:           pointer.BoolPtr(true),
 			FeedbackProbability: &probability,
 		},
 	}
@@ -49,10 +49,7 @@ func TestTiDBConfig(t *testing.T) {
 	err = encoder.Encode(c)
 	g.Expect(err).To(Succeed())
 	tStr := buff.String()
-	g.Expect(tStr).To((Equal(
-		`host = "0.0.0.0"
-
-[performance]
+	g.Expect(tStr).To((Equal(`[performance]
   max-procs = 8
   cross-join = true
   feedback-probability = 0.8
