@@ -145,6 +145,8 @@ check-static:
 	  --enable misspell \
 	  --enable ineffassign \
 	  $$($(PACKAGE_DIRECTORIES))
+	@echo "end-of-file checking"
+	./hack/check-EOF.sh
 
 check-codegen:
 	./hack/verify-codegen.sh
