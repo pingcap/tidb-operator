@@ -73,6 +73,11 @@ pd:
     [replication]
     location-labels = ["region", "zone", "rack", "host"]
 
+  # pd Service
+  # we can only specify clusterIP and loadBalancerIP now
+  service:
+    clusterIP: "None"
+
   replicas: 3
   image: pingcap/pd:v3.0.5
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.

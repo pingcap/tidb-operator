@@ -1557,7 +1557,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 							ConfigUpdateStrategy: &updateStrategy,
 						},
 						Config: &v1alpha1.TiDBConfig{
-							Host: "0.0.0.0",
+							Lease: pointer.StringPtr("45s"),
 						},
 					},
 				},
@@ -1589,7 +1589,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 				},
 				Data: map[string]string{
 					"startup-script": "",
-					"config-file": `host = "0.0.0.0"
+					"config-file": `lease = "45s"
 `,
 				},
 			},

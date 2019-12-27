@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -414,17 +415,17 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		if config.Security == nil {
 			config.Security = &v1alpha1.Security{}
 		}
-		config.Security.ClusterSSLCA = serviceAccountCAPath
-		config.Security.ClusterSSLCert = path.Join(clusterCertPath, "cert")
-		config.Security.ClusterSSLKey = path.Join(clusterCertPath, "key")
+		config.Security.ClusterSSLCA = pointer.StringPtr(serviceAccountCAPath)
+		config.Security.ClusterSSLCert = pointer.StringPtr(path.Join(clusterCertPath, "cert"))
+		config.Security.ClusterSSLKey = pointer.StringPtr(path.Join(clusterCertPath, "key"))
 	}
 	if tc.Spec.TiDB.IsTLSClientEnabled() {
 		if config.Security == nil {
 			config.Security = &v1alpha1.Security{}
 		}
-		config.Security.SSLCA = serviceAccountCAPath
-		config.Security.SSLCert = path.Join(serverCertPath, "cert")
-		config.Security.SSLKey = path.Join(serverCertPath, "key")
+		config.Security.SSLCA = pointer.StringPtr(serviceAccountCAPath)
+		config.Security.SSLCert = pointer.StringPtr(path.Join(serverCertPath, "cert"))
+		config.Security.SSLKey = pointer.StringPtr(path.Join(serverCertPath, "key"))
 	}
 	confText, err := MarshalTOML(config)
 	if err != nil {
@@ -517,6 +518,9 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 	}
 	if svcSpec.ExternalTrafficPolicy != nil {
 		tidbSvc.Spec.ExternalTrafficPolicy = *svcSpec.ExternalTrafficPolicy
+	}
+	if svcSpec.ClusterIP != nil {
+		tidbSvc.Spec.ClusterIP = *svcSpec.ClusterIP
 	}
 	return tidbSvc
 }

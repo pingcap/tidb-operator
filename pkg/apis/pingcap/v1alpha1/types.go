@@ -467,6 +467,10 @@ type ServiceSpec struct {
 	// Optional: Defaults to omitted
 	// +optional
 	LoadBalancerIP *string `json:"loadBalancerIP,omitempty"`
+
+	// ClusterIP is the clusterIP of service
+	// +optional
+	ClusterIP *string `json:"clusterIP,omitempty"`
 }
 
 // +k8s:openapi-gen=true
