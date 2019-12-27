@@ -343,6 +343,9 @@ type ServiceSpec struct {
 
 	// LoadBalancerIP is the loadBalancerIP of service
 	LoadBalancerIP string `json:"loadBalancerIP,omitempty"`
+
+	// ClusterIP is the clusterIP of service
+	ClusterIP string `json:"clusterIP,omitempty"`
 }
 
 // +k8s:openapi-gen=true
