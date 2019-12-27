@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1/helper"
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/webhook/pod"
