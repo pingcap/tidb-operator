@@ -150,17 +150,34 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 		klog.Errorf("tm[%s/%s]'s serviceaccount failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
 	}
-	cr := getMonitorClusterRole(monitor)
-	cr, err = mm.typedControl.CreateOrUpdateClusterRole(monitor, cr)
+	if controller.ClusterScoped {
+		cr := getMonitorClusterRole(monitor)
+		cr, err = mm.typedControl.CreateOrUpdateClusterRole(monitor, cr)
+		if err != nil {
+			klog.Errorf("tm[%s/%s]'s clusterrole failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
+			return nil, err
+		}
+		crb := getMonitorClusterRoleBinding(sa, cr, monitor)
+		_, err = mm.typedControl.CreateOrUpdateClusterRoleBinding(monitor, crb)
+		if err != nil {
+			klog.Errorf("tm[%s/%s]'s clusterRile failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
+			return nil, err
+		}
+	}
+
+	role := getMonitorRole(monitor)
+	role, err = mm.typedControl.CreateOrUpdateRole(monitor, role)
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s clusterrole failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("tm[%s/%s]'s role failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
 	}
-	crb := getMonitorClusterRoleBinding(sa, cr, monitor)
-	_, err = mm.typedControl.CreateOrUpdateClusterRoleBinding(monitor, crb)
+
+	rb := getMonitorRoleBinding(sa, role, monitor)
+	_, err = mm.typedControl.CreateOrUpdateRoleBinding(monitor, rb)
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s clusterRile failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("tm[%s/%s]'s rolebinding failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
 	}
+
 	return sa, nil
 }
