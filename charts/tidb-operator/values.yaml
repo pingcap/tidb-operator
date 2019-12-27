@@ -194,9 +194,9 @@ admissionWebhook:
     ## if enabled it, the pods of tidbcluster would safely created or deleted by webhook instead of controller
     pods: true
     ## validating hook validates the correctness of the resources under pingcap.com group
-    validating: true
+    validating: false
     ## defaulting hook set default values for the the resources under pingcap.com group
-    defaulting: true
+    defaulting: false
   ## failurePolicy are applied to ValidatingWebhookConfiguration which affect tidb-admission-webhook
   ## refer to https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
   failurePolicy:

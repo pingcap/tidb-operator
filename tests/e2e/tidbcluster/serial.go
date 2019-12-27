@@ -193,6 +193,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				ImagePullPolicy:           v1.PullIfNotPresent,
 				TestMode:                  true,
 				WebhookEnabled:            false,
+				ValidatingEnabled:         true,
+				DefaultingEnabled:         true,
 				SchedulerReplicas:         tests.IntPtr(0),
 				ControllerManagerReplicas: tests.IntPtr(0),
 			}

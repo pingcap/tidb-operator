@@ -278,6 +278,8 @@ type OperatorConfig struct {
 	WebhookEnabled            bool
 	PodWebhookEnabled         bool
 	StsWebhookEnabled         bool
+	DefaultingEnabled         bool
+	ValidatingEnabled         bool
 	Cabundle                  string
 }
 
@@ -402,6 +404,8 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"admissionWebhook.create":                    strconv.FormatBool(oi.WebhookEnabled),
 		"admissionWebhook.hooksEnabled.pods":         strconv.FormatBool(oi.PodWebhookEnabled),
 		"admissionWebhook.hooksEnabled.statefulSets": strconv.FormatBool(oi.StsWebhookEnabled),
+		"admissionWebhook.hooksEnabled.defaulting":   strconv.FormatBool(oi.DefaultingEnabled),
+		"admissionWebhook.hooksEnabled.validating":   strconv.FormatBool(oi.ValidatingEnabled),
 	}
 	if oi.ControllerManagerReplicas != nil {
 		set["controllerManager.replicas"] = strconv.Itoa(*oi.ControllerManagerReplicas)
