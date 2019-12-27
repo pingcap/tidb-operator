@@ -441,7 +441,7 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 	instanceName := tc.GetInstanceName()
 	pdLabel := label.New().Instance(instanceName).PD().Labels()
 
-	return &corev1.Service{
+	pdService := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
@@ -461,6 +461,17 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 			Selector: pdLabel,
 		},
 	}
+	// if set pd service type ,overwrite global variable services
+	svcSpec := tc.Spec.PD.Service
+	if svcSpec != nil {
+		if svcSpec.Type != "" {
+			pdService.Spec.Type = svcSpec.Type
+		}
+		pdService.Spec.ClusterIP = svcSpec.ClusterIP
+		pdService.Spec.LoadBalancerIP = svcSpec.LoadBalancerIP
+		pdService.ObjectMeta.Annotations = svcSpec.Annotations
+	}
+	return pdService
 }
 
 func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {

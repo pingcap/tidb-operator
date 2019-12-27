@@ -511,6 +511,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 			Type:                  svcSpec.Type,
 			Ports:                 ports,
 			ExternalTrafficPolicy: svcSpec.ExternalTrafficPolicy,
+			ClusterIP:             svcSpec.ClusterIP,
 			LoadBalancerIP:        svcSpec.LoadBalancerIP,
 			Selector:              tidbLabels,
 		},
