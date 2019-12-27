@@ -40,7 +40,7 @@ monitor:
 ### Compatibility
 
 - Fix the compatibility issue in Kubernetes v1.17 ([#1241](https://github.com/pingcap/tidb-operator/pull/1241))
-- Bind clusterrole `system:kube-scheduler` to `tidb-scheduler` service account ([#1355](https://github.com/pingcap/tidb-operator/pull/1355))
+- Bind the `system:kube-scheduler` ClusterRole to the `tidb-scheduler` service account ([#1355](https://github.com/pingcap/tidb-operator/pull/1355))
 
 ### TiKV Importer
 
