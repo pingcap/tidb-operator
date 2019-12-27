@@ -213,9 +213,13 @@ func getMonitorDeploymentSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Tid
 }
 
 func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
-	c := "mkdir -p /data/prometheus\nchmod 777 /data/prometheus\n/usr/bin/init.sh"
+	c := `mkdir -p /data/prometheus
+chmod 777 /data/prometheus
+/usr/bin/init.sh`
 	if monitor.Spec.Grafana != nil {
-		c = "mkdir -p /data/prometheus /data/grafana\nchmod 777 /data/prometheus /data/grafana\n/usr/bin/init.sh"
+		c = `mkdir -p /data/prometheus /data/grafana
+chmod 777 /data/prometheus /data/grafana
+/usr/bin/init.sh`
 	}
 	command := []string{
 		"/bin/sh",

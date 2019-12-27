@@ -14,6 +14,7 @@
 package monitor
 
 import (
+	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
@@ -52,14 +53,14 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 	if err := mm.syncTidbMonitorService(monitor); err != nil {
 		return err
 	}
-	klog.Infof("tm[%s/%s]'s service synced", monitor.Namespace, monitor.Name)
+	klog.V(4).Infof("tm[%s/%s]'s service synced", monitor.Namespace, monitor.Name)
 	// Sync PVC
 	if monitor.Spec.Persistent {
 		if err := mm.syncTidbMonitorPVC(monitor); err != nil {
 			return err
 		}
 	}
-	klog.Infof("tm[%s/%s]'s pvc synced", monitor.Namespace, monitor.Name)
+	klog.V(4).Infof("tm[%s/%s]'s pvc synced", monitor.Namespace, monitor.Name)
 	// Sync Deployment
 	return mm.syncTidbMonitorDeployment(monitor)
 }
@@ -100,6 +101,11 @@ func (mm *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) erro
 }
 
 func (mm *MonitorManager) syncTidbMonitorDeployment(monitor *v1alpha1.TidbMonitor) error {
+
+	if len(monitor.Spec.Clusters) < 1 {
+		return fmt.Errorf("tm[%s/%s] failed to sync,empty cluster", monitor.Namespace, monitor.Name)
+	}
+
 	targetTcRef := monitor.Spec.Clusters[0]
 	tc, err := mm.tcLister.TidbClusters(targetTcRef.Namespace).Get(targetTcRef.Name)
 	if err != nil {
@@ -129,7 +135,7 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(monitor *v1alpha1.TidbMonito
 		klog.Errorf("tm[%s/%s]'s deployment failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
-	klog.Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
+	klog.V(4).Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
 	return nil
 }
 
