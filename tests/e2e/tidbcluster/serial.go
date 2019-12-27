@@ -184,18 +184,17 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 		ginkgo.It("should perform defaulting and validating properly", func() {
 			ocfg = &tests.OperatorConfig{
-				Namespace:       "pingcap",
-				ReleaseName:     "operator",
-				Image:           cfg.OperatorImage,
-				Tag:             cfg.OperatorTag,
-				SchedulerImage:  "k8s.gcr.io/kube-scheduler",
-				LogLevel:        "4",
-				ImagePullPolicy: v1.PullIfNotPresent,
-				TestMode:        true,
-				WebhookEnabled:  false,
-				// Reduce resource footprint and disable controller sync
-				ControllerManagerReplicas: 0,
-				SchedulerReplicas:         0,
+				Namespace:                 "pingcap",
+				ReleaseName:               "operator",
+				Image:                     cfg.OperatorImage,
+				Tag:                       cfg.OperatorTag,
+				SchedulerImage:            "k8s.gcr.io/kube-scheduler",
+				LogLevel:                  "4",
+				ImagePullPolicy:           v1.PullIfNotPresent,
+				TestMode:                  true,
+				WebhookEnabled:            false,
+				SchedulerReplicas:         tests.IntPtr(0),
+				ControllerManagerReplicas: tests.IntPtr(0),
 			}
 			oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
@@ -208,20 +207,24 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			ginkgo.By("Resources created before webhook enabled could be operated normally")
 			legacyTc := &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "created-by-helm",
+					Namespace: ns,
+					Name:      "created-by-helm",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
+						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/tidb:v2.1.18",
 						},
 					},
 					TiKV: v1alpha1.TiKVSpec{
+						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/tikv:v2.1.18",
 						},
 					},
 					PD: v1alpha1.PDSpec{
+						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v2.1.18",
 						},
@@ -254,7 +257,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			ginkgo.By("Validating should reject legacy fields for newly created cluster")
 			newTC := &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "newly-created",
+					Namespace: ns,
+					Name:      "newly-created",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
@@ -281,18 +285,19 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			ginkgo.By("Defaulting should set proper default for newly created cluster")
 			newTC = &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "newly-created",
+					Namespace: ns,
+					Name:      "newly-created",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Version: "v3.0.7",
 					TiDB: v1alpha1.TiDBSpec{
-						Replicas: 3,
+						Replicas: 1,
 					},
 					TiKV: v1alpha1.TiKVSpec{
-						Replicas: 3,
+						Replicas: 1,
 					},
 					PD: v1alpha1.PDSpec{
-						Replicas: 3,
+						Replicas: 1,
 					},
 				},
 			}
@@ -307,7 +312,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			}
 
 			ginkgo.By("Validating should reject illegal update")
-			newTC.Labels[label.InstanceLabelKey] = "some-insane-label-value"
+			newTC.Labels = map[string]string{
+				label.InstanceLabelKey: "some-insane-label-value",
+			}
 			err = genericCli.Update(context.TODO(), newTC)
 			framework.ExpectError(err, "Could not set instance label with value other than cluster name")
 

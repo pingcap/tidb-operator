@@ -50,7 +50,7 @@ func (w *AdmissionWebhook) Validate(ar *admissionv1beta1.AdmissionRequest) *admi
 		allErr = s.Validate(context.TODO(), obj)
 	} else {
 		old := s.NewObject()
-		if err := json.Unmarshal(ar.OldObject.Raw, obj); err != nil {
+		if err := json.Unmarshal(ar.OldObject.Raw, old); err != nil {
 			return util.ARFail(err)
 		}
 		allErr = s.ValidateUpdate(context.TODO(), obj, old)
@@ -78,10 +78,10 @@ func (w *AdmissionWebhook) Mutate(ar *admissionv1beta1.AdmissionRequest) *admiss
 		s.PrepareForCreate(context.TODO(), obj)
 	} else {
 		old := s.NewObject()
-		if err := json.Unmarshal(ar.OldObject.Raw, obj); err != nil {
+		if err := json.Unmarshal(ar.OldObject.Raw, old); err != nil {
 			return util.ARFail(err)
 		}
-		s.ValidateUpdate(context.TODO(), obj, old)
+		s.PrepareForUpdate(context.TODO(), obj, old)
 	}
 	patch, err := util.CreateJsonPatch(original, obj)
 	if err != nil {

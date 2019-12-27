@@ -387,9 +387,9 @@ func newOperatorConfig() *tests.OperatorConfig {
 		ReleaseName:               "operator",
 		Image:                     cfg.OperatorImage,
 		Tag:                       cfg.OperatorTag,
-		ControllerManagerReplicas: 2,
+		ControllerManagerReplicas: tests.IntPtr(2),
 		SchedulerImage:            "gcr.io/google-containers/hyperkube",
-		SchedulerReplicas:         2,
+		SchedulerReplicas:         tests.IntPtr(2),
 		Features: []string{
 			"StableScheduling=true",
 		},

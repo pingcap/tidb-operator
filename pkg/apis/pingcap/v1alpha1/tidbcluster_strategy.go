@@ -58,7 +58,7 @@ func (TidbClusterStrategy) ValidateUpdate(ctx context.Context, obj, old runtime.
 	oldTc, oldOk := castTidbCluster(old)
 	tc, ok := castTidbCluster(obj)
 	if ok && oldOk {
-		validateUpdateTidbCluster(oldTc, tc)
+		return validateUpdateTidbCluster(oldTc, tc)
 	}
 	return field.ErrorList{}
 }

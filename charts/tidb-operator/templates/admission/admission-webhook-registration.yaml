@@ -158,7 +158,7 @@ webhooks:
       - operations: [ "UPDATE", "CREATE" ]
         apiGroups: [ "pingcap.com"]
         apiVersions: ["v1alpha1"]
-        resources: ["tidbcluster"]
+        resources: ["tidbclusters"]
 {{- end }}
 ---
 {{- if .Values.admissionWebhook.hooksEnabled.defaulting }}
@@ -189,6 +189,6 @@ webhooks:
       - operations: [ "UPDATE", "CREATE" ]
         apiGroups: [ "pingcap.com"]
         apiVersions: ["v1alpha1"]
-        resources: ["tidbcluster"]
+        resources: ["tidbclusters"]
 {{- end }}
 {{- end }}
