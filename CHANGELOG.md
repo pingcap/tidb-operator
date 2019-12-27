@@ -31,7 +31,7 @@ monitor:
 ### Monitor
 
 - Enable alert rule persistence ([#898](https://github.com/pingcap/tidb-operator/pull/898))
-- Add node & pod info in tidb grafana ([#885](https://github.com/pingcap/tidb-operator/pull/885))
+- Add node & pod info in TiDB Grafana ([#885](https://github.com/pingcap/tidb-operator/pull/885))
 
 ### TiDB Scheduler
 
