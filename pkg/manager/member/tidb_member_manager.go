@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -416,17 +417,17 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		if config.Security == nil {
 			config.Security = &v1alpha1.Security{}
 		}
-		config.Security.ClusterSSLCA = serviceAccountCAPath
-		config.Security.ClusterSSLCert = path.Join(clusterCertPath, "cert")
-		config.Security.ClusterSSLKey = path.Join(clusterCertPath, "key")
+		config.Security.ClusterSSLCA = pointer.StringPtr(serviceAccountCAPath)
+		config.Security.ClusterSSLCert = pointer.StringPtr(path.Join(clusterCertPath, "cert"))
+		config.Security.ClusterSSLKey = pointer.StringPtr(path.Join(clusterCertPath, "key"))
 	}
 	if tc.Spec.TiDB.EnableTLSClient {
 		if config.Security == nil {
 			config.Security = &v1alpha1.Security{}
 		}
-		config.Security.SSLCA = serviceAccountCAPath
-		config.Security.SSLCert = path.Join(serverCertPath, "cert")
-		config.Security.SSLKey = path.Join(serverCertPath, "key")
+		config.Security.SSLCA = pointer.StringPtr(serviceAccountCAPath)
+		config.Security.SSLCert = pointer.StringPtr(path.Join(serverCertPath, "cert"))
+		config.Security.SSLKey = pointer.StringPtr(path.Join(serverCertPath, "key"))
 	}
 	confText, err := MarshalTOML(config)
 	if err != nil {
@@ -448,7 +449,7 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		"startup-script": startScript,
 	}
 	name := controller.TiDBMemberName(tc.Name)
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	tidbLabels := label.New().Instance(instanceName).TiDB().Labels()
 
 	cm := &corev1.ConfigMap{
@@ -479,7 +480,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 
 	ns := tc.Namespace
 	tcName := tc.Name
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	tidbLabels := label.New().Instance(instanceName).TiDB().Labels()
 	svcName := controller.TiDBMemberName(tcName)
 
@@ -512,6 +513,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 			Type:                  svcSpec.Type,
 			Ports:                 ports,
 			ExternalTrafficPolicy: svcSpec.ExternalTrafficPolicy,
+			ClusterIP:             svcSpec.ClusterIP,
 			LoadBalancerIP:        svcSpec.LoadBalancerIP,
 			Selector:              tidbLabels,
 		},
@@ -521,7 +523,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	svcName := controller.TiDBPeerMemberName(tcName)
 	tidbLabel := label.New().Instance(instanceName).TiDB().Labels()
 
@@ -551,7 +553,7 @@ func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.S
 func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) *apps.StatefulSet {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	tidbConfigMap := controller.MemberConfigMapName(tc, v1alpha1.TiDBMemberType)
 	if cm != nil {
 		tidbConfigMap = cm.Name
@@ -832,7 +834,7 @@ func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.State
 		return true, nil
 	}
 	selector, err := label.New().
-		Instance(tc.GetLabels()[label.InstanceLabelKey]).
+		Instance(tc.GetInstanceName()).
 		TiDB().
 		Selector()
 	if err != nil {

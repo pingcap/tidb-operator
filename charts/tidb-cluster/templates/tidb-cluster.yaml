@@ -56,6 +56,10 @@ spec:
   {{- if .Values.pd.priorityClassName }}
     priorityClassName: {{ .Values.pd.priorityClassName }}
   {{- end }}
+  {{- if .Values.pd.service }}
+    service:
+  {{ toYaml .Values.pd.service | indent 4 }}
+  {{- end }}
   tikv:
     replicas: {{ .Values.tikv.replicas }}
     image: {{ .Values.tikv.image }}

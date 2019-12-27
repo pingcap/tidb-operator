@@ -26,7 +26,7 @@ go mod vendor
 
 CODEGEN_PKG=${CODEGEN_PKG:-$(ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
 
-GO111MODULE=off bash "${CODEGEN_PKG}"/generate-groups.sh "deepcopy,client,informer,lister" \
+bash "${CODEGEN_PKG}"/generate-groups.sh "deepcopy,client,informer,lister" \
     github.com/pingcap/tidb-operator/pkg/client \
     github.com/pingcap/tidb-operator/pkg/apis \
     pingcap:v1alpha1 \

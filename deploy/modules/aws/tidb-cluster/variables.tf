@@ -4,7 +4,7 @@ variable "region" {
 
 variable "tidb_cluster_chart_version" {
   description = "tidb-cluster chart version"
-  default     = "v1.0.5"
+  default     = "v1.0.6"
 }
 
 variable "create_tidb_cluster_release" {
