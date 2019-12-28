@@ -22,10 +22,8 @@ import (
 
 	"github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"k8s.io/klog"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/onsi/ginkgo"
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
@@ -67,7 +65,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	var config *restclient.Config
 	var fw portforward.PortForward
 	var fwCancel context.CancelFunc
-	var genericCli client.Client
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -81,8 +78,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		framework.ExpectNoError(err, "failed to create clientset")
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
 		framework.ExpectNoError(err, "failed to load raw config")
-		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
-		framework.ExpectNoError(err, "failed to create clientset")
 		hc = helper.NewHijackClient(c, asCli)
 		ctx, cancel := context.WithCancel(context.Background())
 		fw, err = portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
@@ -344,7 +339,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
 
-		ginkgo.It("should perform defaulting and validating properly", func() {
+		ginkgo.BeforeEach(func() {
 			ocfg = &tests.OperatorConfig{
 				Namespace:                 "pingcap",
 				ReleaseName:               "operator",
@@ -367,6 +362,16 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
+		})
+
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Uninstall tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			ginkgo.By("Uninstalling CRDs")
+			oa.CleanCRDOrDie()
+		})
+
+		ginkgo.It("should perform defaulting and validating properly", func() {
 
 			ginkgo.By("Resources created before webhook enabled could be operated normally")
 			legacyTc := &v1alpha1.TidbCluster{
@@ -395,13 +400,15 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					},
 				},
 			}
-			err := genericCli.Create(context.TODO(), legacyTc)
+			var err error
+			legacyTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Create(legacyTc)
+			// err := genericCli.Create(context.TODO(), legacyTc)
 			framework.ExpectNoError(err, "Expected create tidbcluster without defaulting and validating")
 			ocfg.WebhookEnabled = true
 			oa.UpgradeOperatorOrDie(ocfg)
 			// now the webhook enabled
 			legacyTc.Spec.TiDB.Image = "pingcap/tidb:v3.0.7"
-			err = genericCli.Update(context.TODO(), legacyTc)
+			legacyTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(legacyTc)
 			framework.ExpectNoError(err, "Update legacy tidbcluster should not be influenced by validating")
 			framework.ExpectEqual(legacyTc.Spec.TiDB.BaseImage, "", "Update legacy tidbcluster should not be influenced by defaulting")
 
@@ -410,11 +417,11 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			legacyTc.Spec.TiKV.BaseImage = "pingcap/tikv"
 			legacyTc.Spec.PD.BaseImage = "pingcap/pd"
 			legacyTc.Spec.PD.Version = "v3.0.7"
-			err = genericCli.Update(context.TODO(), legacyTc)
+			legacyTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(legacyTc)
 			framework.ExpectNoError(err, "Expected update tidbcluster")
 			legacyTc.Spec.TiDB.BaseImage = ""
 			legacyTc.Spec.PD.Version = ""
-			err = genericCli.Update(context.TODO(), legacyTc)
+			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(legacyTc)
 			framework.ExpectError(err,
 				"Validating should reject mandatory fields being empty if the resource has already been migrated to use the new API")
 
@@ -442,7 +449,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					},
 				},
 			}
-			err = genericCli.Create(context.TODO(), newTC)
+			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Create(newTC)
 			framework.ExpectError(err,
 				"Validating should reject legacy fields for newly created cluster")
 
@@ -465,7 +472,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					},
 				},
 			}
-			err = genericCli.Create(context.TODO(), newTC)
+			newTC, err = cli.PingcapV1alpha1().TidbClusters(ns).Create(newTC)
 			framework.ExpectNoError(err, "Though some required fields are omitted, they will be set by defaulting")
 			// don't have to check all fields, just take some to test if defaulting set
 			if empty, err := gomega.BeEmpty().Match(newTC.Spec.TiDB.BaseImage); empty {
@@ -479,19 +486,14 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			newTC.Labels = map[string]string{
 				label.InstanceLabelKey: "some-insane-label-value",
 			}
-			err = genericCli.Update(context.TODO(), newTC)
+			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(newTC)
 			framework.ExpectError(err, "Could not set instance label with value other than cluster name")
 
 			newTC.Spec.PD.Config.Replication = &v1alpha1.PDReplicationConfig{
 				MaxReplicas: func() *uint64 { i := uint64(5); return &i }(),
 			}
-			err = genericCli.Update(context.TODO(), newTC)
+			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(newTC)
 			framework.ExpectError(err, "PD replication config is immutable through CR")
-
-			ginkgo.By("Uninstall tidb-operator")
-			oa.CleanOperatorOrDie(ocfg)
-			ginkgo.By("Uninstalling CRDs")
-			oa.CleanCRDOrDie()
 		})
 	})
 
