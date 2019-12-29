@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -33,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -222,6 +224,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 
 	if !statefulSetEqual(*newTiDBSet, *oldTiDBSet) {
 		set := *oldTiDBSet
+		set.Annotations = newTiDBSet.Annotations
 		set.Spec.Template = newTiDBSet.Spec.Template
 		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
 		set.Spec.UpdateStrategy = newTiDBSet.Spec.UpdateStrategy
@@ -414,17 +417,17 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		if config.Security == nil {
 			config.Security = &v1alpha1.Security{}
 		}
-		config.Security.ClusterSSLCA = serviceAccountCAPath
-		config.Security.ClusterSSLCert = path.Join(clusterCertPath, "cert")
-		config.Security.ClusterSSLKey = path.Join(clusterCertPath, "key")
+		config.Security.ClusterSSLCA = pointer.StringPtr(serviceAccountCAPath)
+		config.Security.ClusterSSLCert = pointer.StringPtr(path.Join(clusterCertPath, "cert"))
+		config.Security.ClusterSSLKey = pointer.StringPtr(path.Join(clusterCertPath, "key"))
 	}
 	if tc.Spec.TiDB.EnableTLSClient {
 		if config.Security == nil {
 			config.Security = &v1alpha1.Security{}
 		}
-		config.Security.SSLCA = serviceAccountCAPath
-		config.Security.SSLCert = path.Join(serverCertPath, "cert")
-		config.Security.SSLKey = path.Join(serverCertPath, "key")
+		config.Security.SSLCA = pointer.StringPtr(serviceAccountCAPath)
+		config.Security.SSLCert = pointer.StringPtr(path.Join(serverCertPath, "cert"))
+		config.Security.SSLKey = pointer.StringPtr(path.Join(serverCertPath, "key"))
 	}
 	confText, err := MarshalTOML(config)
 	if err != nil {
@@ -510,6 +513,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 			Type:                  svcSpec.Type,
 			Ports:                 ports,
 			ExternalTrafficPolicy: svcSpec.ExternalTrafficPolicy,
+			ClusterIP:             svcSpec.ClusterIP,
 			LoadBalancerIP:        svcSpec.LoadBalancerIP,
 			Selector:              tidbLabels,
 		},
@@ -748,11 +752,13 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	tidbLabel := label.New().Instance(instanceName).TiDB()
 	podAnnotations := CombineAnnotations(controller.AnnProm(10080), tc.BaseTiDBSpec().Annotations())
+	stsAnnotations := getStsAnnotations(tc, label.TiDBLabelVal)
 	tidbSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            controller.TiDBMemberName(tcName),
 			Namespace:       ns,
 			Labels:          tidbLabel.Labels(),
+			Annotations:     stsAnnotations,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
@@ -789,8 +795,12 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 	}
 
 	tidbStatus := map[string]v1alpha1.TiDBMember{}
-	tidbHealth := tmm.tidbControl.GetHealth(tc)
-	for name, health := range tidbHealth {
+	for id := range helper.GetPodOrdinals(tc.Status.TiDB.StatefulSet.Replicas, set) {
+		name := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.GetName()), id)
+		health, err := tmm.tidbControl.GetHealth(tc, int32(id))
+		if err != nil {
+			return err
+		}
 		newTidbMember := v1alpha1.TiDBMember{
 			Name:   name,
 			Health: health,

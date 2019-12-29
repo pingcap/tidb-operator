@@ -697,10 +697,6 @@ spec:
                 config:
                   description: PDConfig is the configuration of pd-server
                   properties:
-                    advertise-client-urls:
-                      type: string
-                    advertise-peer-urls:
-                      type: string
                     auto-compaction-mode:
                       description: AutoCompactionMode is either 'periodic' or 'revision'.
                         The default value is 'periodic'.
@@ -714,40 +710,31 @@ spec:
                         Before etcd v3.3.x, the type of retention is int. We add 'v2'
                         suffix to make it backward compatible.
                       type: string
-                    client-urls:
-                      type: string
                     cluster-version:
-                      type: string
-                    data-dir:
                       type: string
                     election-interval:
                       description: ElectionInterval is the interval for etcd Raft
                         election.
                       type: string
                     enable-grpc-gateway:
+                      description: 'Optional: Defaults to true'
                       type: boolean
                     enable-prevote:
-                      description: Prevote is true to enable Raft Pre-Vote. If enabled,
+                      description: 'Prevote is true to enable Raft Pre-Vote. If enabled,
                         Raft runs an additional election phase to check whether it
                         would get enough votes to win an election, thus minimizing
-                        disruptions.
+                        disruptions. Optional: Defaults to true'
                       type: boolean
                     force-new-cluster:
                       type: boolean
-                    initial-cluster:
-                      type: string
-                    initial-cluster-state:
-                      type: string
-                    join:
-                      description: Join to an existing pd cluster, a string of endpoints.
-                      type: string
                     label-property:
                       type: object
                     lease:
-                      description: LeaderLease time, if leader doesn't update its
+                      description: 'LeaderLease time, if leader doesn''t update its
                         TTL in etcd after lease time, etcd will expire the leader
                         key and other servers can campaign the leader again. Etcd
-                        only supports seconds TTL, so here is second too.
+                        only supports seconds TTL, so here is second too. Optional:
+                        Defaults to 3'
                       format: int64
                       type: integer
                     log:
@@ -802,7 +789,7 @@ spec:
                           description: Log format. one of json, text, or console.
                           type: string
                         level:
-                          description: Log level.
+                          description: 'Log level. Optional: Defaults to info'
                           type: string
                       type: object
                     log-file:
@@ -819,13 +806,11 @@ spec:
                         job:
                           type: string
                       type: object
-                    name:
-                      type: string
                     namespace:
                       type: object
                     namespace-classifier:
-                      description: NamespaceClassifier is for classifying stores/regions
-                        into different namespaces.
+                      description: 'NamespaceClassifier is for classifying stores/regions
+                        into different namespaces. Optional: Defaults to true'
                       type: string
                     pd-server:
                       description: PDServerConfig is the configuration for pd server.
@@ -835,8 +820,6 @@ spec:
                             storage.
                           type: string
                       type: object
-                    peer-urls:
-                      type: string
                     quota-backend-bytes:
                       description: QuotaBackendBytes Raise alarms when backend size
                         exceeds the given quota. 0 means use the default quota. the
@@ -850,18 +833,21 @@ spec:
                             store. The placement priorities is implied by the order
                             of label keys. For example, ["zone", "rack"] means that
                             we should place replicas to different zones first, then
-                            to different racks if we don't have enough zones.
+                            to different racks if we don't have enough zones. Immutable,
+                            change should be made through pd-ctl after cluster creation
                           items:
                             type: string
                           type: array
                         max-replicas:
-                          description: MaxReplicas is the number of replicas for each
-                            region.
+                          description: 'MaxReplicas is the number of replicas for
+                            each region. Immutable, change should be made through
+                            pd-ctl after cluster creation Optional: Defaults to 3'
                           format: int64
                           type: integer
                         strictly-match-label:
                           description: StrictlyMatchLabel strictly checks if the label
-                            of TiKV is matched with LocaltionLabels.
+                            of TiKV is matched with LocaltionLabels. Immutable, change
+                            should be made through pd-ctl after cluster creation
                           type: string
                       type: object
                     schedule:
@@ -870,56 +856,70 @@ spec:
                         disable-location-replacement:
                           description: DisableLocationReplacement is the option to
                             prevent replica checker from moving replica to a better
-                            location.
+                            location. Immutable, change should be made through pd-ctl
+                            after cluster creation
                           type: string
                         disable-make-up-replica:
                           description: DisableMakeUpReplica is the option to prevent
                             replica checker from making up replicas when replica count
-                            is less than expected.
+                            is less than expected. Immutable, change should be made
+                            through pd-ctl after cluster creation
                           type: string
                         disable-namespace-relocation:
                           description: DisableNamespaceRelocation is the option to
                             prevent namespace checker from moving replica to the target
-                            namespace.
+                            namespace. Immutable, change should be made through pd-ctl
+                            after cluster creation
                           type: string
                         disable-raft-learner:
                           description: DisableLearner is the option to disable using
-                            AddLearnerNode instead of AddNode
+                            AddLearnerNode instead of AddNode Immutable, change should
+                            be made through pd-ctl after cluster creation
                           type: string
                         disable-remove-down-replica:
                           description: DisableRemoveDownReplica is the option to prevent
-                            replica checker from removing down replicas.
+                            replica checker from removing down replicas. Immutable,
+                            change should be made through pd-ctl after cluster creation
                           type: string
                         disable-remove-extra-replica:
                           description: DisableRemoveExtraReplica is the option to
                             prevent replica checker from removing extra replicas.
+                            Immutable, change should be made through pd-ctl after
+                            cluster creation
                           type: string
                         disable-replace-offline-replica:
                           description: DisableReplaceOfflineReplica is the option
                             to prevent replica checker from repalcing offline replicas.
+                            Immutable, change should be made through pd-ctl after
+                            cluster creation
                           type: string
                         high-space-ratio:
                           description: HighSpaceRatio is the highest usage ratio of
                             store which regraded as high space. High space means there
                             is a lot of spare capacity, and store region score varies
-                            directly with used size.
+                            directly with used size. Immutable, change should be made
+                            through pd-ctl after cluster creation
                           format: double
                           type: number
                         hot-region-cache-hits-threshold:
                           description: HotRegionCacheHitThreshold is the cache hits
                             threshold of the hot region. If the number of times a
                             region hits the hot cache is greater than this threshold,
-                            it is considered a hot region.
+                            it is considered a hot region. Immutable, change should
+                            be made through pd-ctl after cluster creation
                           format: int64
                           type: integer
                         hot-region-schedule-limit:
-                          description: HotRegionScheduleLimit is the max coexist hot
-                            region schedules.
+                          description: 'HotRegionScheduleLimit is the max coexist
+                            hot region schedules. Immutable, change should be made
+                            through pd-ctl after cluster creation Optional: Defaults
+                            to 4'
                           format: int64
                           type: integer
                         leader-schedule-limit:
-                          description: LeaderScheduleLimit is the max coexist leader
-                            schedules.
+                          description: 'LeaderScheduleLimit is the max coexist leader
+                            schedules. Immutable, change should be made through pd-ctl
+                            after cluster creation Optional: Defaults to 4'
                           format: int64
                           type: integer
                         low-space-ratio:
@@ -930,75 +930,99 @@ spec:
                               ^                    ^                             ^                         ^
                               0       HighSpaceRatio * capacity       LowSpaceRatio * capacity          capacity
 
-                            LowSpaceRatio is the lowest usage ratio of store which regraded as low space. When in low space, store region score increases to very large and varies inversely with available size.
+                            LowSpaceRatio is the lowest usage ratio of store which regraded as low space. When in low space, store region score increases to very large and varies inversely with available size. Immutable, change should be made through pd-ctl after cluster creation
                           format: double
                           type: number
                         max-merge-region-keys:
+                          description: 'Immutable, change should be made through pd-ctl
+                            after cluster creation Optional: Defaults to 200000'
                           format: int64
                           type: integer
                         max-merge-region-size:
-                          description: If both the size of region is smaller than
+                          description: 'If both the size of region is smaller than
                             MaxMergeRegionSize and the number of rows in region is
                             smaller than MaxMergeRegionKeys, it will try to merge
-                            with adjacent regions.
+                            with adjacent regions. Immutable, change should be made
+                            through pd-ctl after cluster creation Optional: Defaults
+                            to 20'
                           format: int64
                           type: integer
                         max-pending-peer-count:
+                          description: 'Immutable, change should be made through pd-ctl
+                            after cluster creation Optional: Defaults to 16'
                           format: int64
                           type: integer
                         max-snapshot-count:
-                          description: If the snapshot count of one store is greater
+                          description: 'If the snapshot count of one store is greater
                             than this value, it will never be used as a source or
-                            target store.
+                            target store. Immutable, change should be made through
+                            pd-ctl after cluster creation Optional: Defaults to 3'
                           format: int64
                           type: integer
                         max-store-down-time:
-                          description: MaxStoreDownTime is the max duration after
-                            which a store will be considered to be down if it hasn't
-                            reported heartbeats.
+                          description: 'MaxStoreDownTime is the max duration after
+                            which a store will be considered to be down if it hasn''t
+                            reported heartbeats. Immutable, change should be made
+                            through pd-ctl after cluster creation Optional: Defaults
+                            to 30m'
                           type: string
                         merge-schedule-limit:
-                          description: MergeScheduleLimit is the max coexist merge
-                            schedules.
+                          description: 'MergeScheduleLimit is the max coexist merge
+                            schedules. Immutable, change should be made through pd-ctl
+                            after cluster creation Optional: Defaults to 8'
                           format: int64
                           type: integer
                         patrol-region-interval:
                           description: PatrolRegionInterval is the interval for scanning
-                            region during patrol.
+                            region during patrol. Immutable, change should be made
+                            through pd-ctl after cluster creation
                           type: string
                         region-schedule-limit:
-                          description: RegionScheduleLimit is the max coexist region
-                            schedules.
+                          description: 'RegionScheduleLimit is the max coexist region
+                            schedules. Immutable, change should be made through pd-ctl
+                            after cluster creation Optional: Defaults to 2048'
                           format: int64
                           type: integer
                         replica-schedule-limit:
-                          description: ReplicaScheduleLimit is the max coexist replica
-                            schedules.
+                          description: 'ReplicaScheduleLimit is the max coexist replica
+                            schedules. Immutable, change should be made through pd-ctl
+                            after cluster creation Optional: Defaults to 64'
                           format: int64
                           type: integer
                         schedulers-v2:
                           description: Schedulers support for loding customized schedulers
+                            Immutable, change should be made through pd-ctl after
+                            cluster creation
                           items:
                             description: PDSchedulerConfig is customized scheduler
                               configuration
                             properties:
                               args:
+                                description: Immutable, change should be made through
+                                  pd-ctl after cluster creation
                                 items:
                                   type: string
                                 type: array
                               disable:
+                                description: Immutable, change should be made through
+                                  pd-ctl after cluster creation
                                 type: boolean
                               type:
+                                description: Immutable, change should be made through
+                                  pd-ctl after cluster creation
                                 type: string
                             type: object
                           type: array
                         split-merge-interval:
-                          description: SplitMergeInterval is the minimum interval
-                            time to permit merge after split.
+                          description: 'SplitMergeInterval is the minimum interval
+                            time to permit merge after split. Immutable, change should
+                            be made through pd-ctl after cluster creation Optional:
+                            Defaults to 1h'
                           type: string
                         tolerant-size-ratio:
                           description: TolerantSizeRatio is the ratio of buffer size
-                            for balance scheduler.
+                            for balance scheduler. Immutable, change should be made
+                            through pd-ctl after cluster creation
                           format: double
                           type: number
                       type: object
@@ -1024,7 +1048,8 @@ spec:
                       description: TickInterval is the interval for etcd Raft tick.
                       type: string
                     tso-save-interval:
-                      description: TsoSaveInterval is the interval to save timestamp.
+                      description: 'TsoSaveInterval is the interval to save timestamp.
+                        Optional: Defaults to 3s'
                       type: string
                   type: object
                 configUpdateStrategy:
@@ -1044,6 +1069,16 @@ spec:
                   type: object
                 storageClassName:
                   type: string
+                service:
+                  description: pd service
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      type:
+                        type: string
+                    type: object
+                  type: array
               required:
               - replicas
               type: object
@@ -1103,9 +1138,8 @@ spec:
                 config:
                   description: TiDBConfig is the configuration of tidb-server
                   properties:
-                    advertise-address:
-                      type: string
                     alter-primary-key:
+                      description: 'Optional: Defaults to false'
                       type: boolean
                     binlog:
                       description: Binlog is the config for binlog.
@@ -1114,32 +1148,34 @@ spec:
                           description: Use socket file to write binlog, for compatible
                             with kafka version tidb-binlog.
                           type: string
-                        enable:
-                          type: boolean
                         ignore-error:
                           description: If IgnoreError is true, when writing binlog
                             meets error, TiDB would ignore the error.
                           type: boolean
                         strategy:
-                          description: The strategy for sending binlog to pump, value
-                            can be "range,omitempty" or "hash,omitempty" now.
+                          description: 'The strategy for sending binlog to pump, value
+                            can be "range,omitempty" or "hash,omitempty" now. Optional:
+                            Defaults to range'
                           type: string
                         write-timeout:
+                          description: 'Optional: Defaults to 15s'
                           type: string
                       type: object
                     check-mb4-value-in-utf8:
+                      description: 'Optional: Defaults to true'
                       type: boolean
                     compatible-kill-query:
                       type: boolean
                     cors:
                       type: string
                     enable-batch-dml:
+                      description: 'Optional: Defaults to false'
                       type: boolean
                     enable-streaming:
+                      description: 'Optional: Defaults to false'
                       type: boolean
-                    host:
-                      type: string
                     lease:
+                      description: 'Optional: Defaults to 45s'
                       type: string
                     log:
                       description: Log is the log section of config.
@@ -1148,6 +1184,7 @@ spec:
                           description: Disable automatic timestamps in output.
                           type: boolean
                         expensive-threshold:
+                          description: 'Optional: Defaults to 10000'
                           format: int32
                           type: integer
                         file:
@@ -1173,20 +1210,22 @@ spec:
                               type: integer
                           type: object
                         format:
-                          description: Log format. one of json, text, or console.
+                          description: 'Log format. one of json, text, or console.
+                            Optional: Defaults to text'
                           type: string
                         level:
-                          description: Log level.
+                          description: 'Log level. Optional: Defaults to info'
                           type: string
                         query-log-max-len:
+                          description: 'Optional: Defaults to 2048'
                           format: int64
                           type: integer
                         record-plan-in-slow-log:
+                          description: 'Optional: Defaults to 1'
                           format: int64
                           type: integer
-                        slow-query-file:
-                          type: string
                         slow-threshold:
+                          description: 'Optional: Defaults to 300'
                           format: int64
                           type: integer
                       type: object
@@ -1194,14 +1233,17 @@ spec:
                       format: int32
                       type: integer
                     mem-quota-query:
+                      description: 'Optional: Defaults to 34359738368'
                       format: int64
                       type: integer
                     oom-action:
+                      description: 'Optional: Defaults to log'
                       type: string
                     opentracing:
                       description: OpenTracing is the opentracing section of the config.
                       properties:
                         enable:
+                          description: 'Optional: Defaults to false'
                           type: boolean
                         reporter:
                           description: OpenTracingReporter is the config for opentracing
@@ -1239,45 +1281,56 @@ spec:
                               type: string
                           type: object
                       type: object
-                    path:
-                      type: string
                     performance:
                       description: Performance is the performance section of the config.
                       properties:
                         bind-info-lease:
+                          description: 'Optional: Defaults to 3s'
                           type: string
                         cross-join:
+                          description: 'Optional: Defaults to true'
                           type: boolean
                         feedback-probability:
+                          description: 'Optional: Defaults to 0.05'
                           format: double
                           type: number
                         force-priority:
+                          description: 'Optional: Defaults to NO_PRIORITY'
                           type: string
                         max-memory:
+                          description: 'Optional: Defaults to 0'
                           format: int64
                           type: integer
                         max-procs:
                           format: int32
                           type: integer
                         pseudo-estimate-ratio:
+                          description: 'Optional: Defaults to 0.8'
                           format: double
                           type: number
                         query-feedback-limit:
+                          description: 'Optional: Defaults to 1024'
                           format: int32
                           type: integer
                         run-auto-analyze:
+                          description: 'Optional: Defaults to true'
                           type: boolean
                         stats-lease:
+                          description: 'Optional: Defaults to 3s'
                           type: string
                         stmt-count-limit:
+                          description: 'Optional: Defaults to 5000'
                           format: int32
                           type: integer
                         tcp-keep-alive:
+                          description: 'Optional: Defaults to true'
                           type: boolean
                         txn-entry-count-limit:
+                          description: 'Optional: Defaults to 300000'
                           format: int64
                           type: integer
                         txn-total-size-limit:
+                          description: 'Optional: Defaults to 104857600'
                           format: int64
                           type: integer
                       type: object
@@ -1285,12 +1338,13 @@ spec:
                       description: PessimisticTxn is the config for pessimistic transaction.
                       properties:
                         enable:
-                          description: Enable must be true for 'begin lock' or session
-                            variable to start a pessimistic transaction.
+                          description: 'Enable must be true for ''begin lock'' or
+                            session variable to start a pessimistic transaction. Optional:
+                            Defaults to true'
                           type: boolean
                         max-retry-count:
-                          description: The max count of retry for a single statement
-                            in a pessimistic transaction.
+                          description: 'The max count of retry for a single statement
+                            in a pessimistic transaction. Optional: Defaults to 256'
                           format: int32
                           type: integer
                       type: object
@@ -1302,19 +1356,19 @@ spec:
                         load:
                           type: string
                       type: object
-                    port:
-                      format: int32
-                      type: integer
                     prepared-plan-cache:
                       description: PreparedPlanCache is the PreparedPlanCache section
                         of the config.
                       properties:
                         capacity:
+                          description: 'Optional: Defaults to 100'
                           format: int32
                           type: integer
                         enabled:
+                          description: 'Optional: Defaults to false'
                           type: boolean
                         memory-guard-ratio:
+                          description: 'Optional: Defaults to 0.1'
                           format: double
                           type: number
                       type: object
@@ -1329,11 +1383,12 @@ spec:
                           type: integer
                         networks:
                           description: PROXY protocol acceptable client networks.
-                            Empty string means disable PROXY protocol, * means all
+                            Empty *string means disable PROXY protocol, * means all
                             networks.
                           type: string
                       type: object
                     run-ddl:
+                      description: 'Optional: Defaults to true'
                       type: boolean
                     security:
                       description: Security is the security section of the config.
@@ -1356,9 +1411,11 @@ spec:
                     socket:
                       type: string
                     split-region-max-num:
+                      description: 'Optional: Defaults to 1000'
                       format: int64
                       type: integer
                     split-table:
+                      description: 'Optional: Defaults to true'
                       type: boolean
                     status:
                       description: Status is the status section of the config.
@@ -1366,99 +1423,104 @@ spec:
                         metrics-addr:
                           type: string
                         metrics-interval:
+                          description: 'Optional: Defaults to 15'
                           format: int32
                           type: integer
                         record-db-qps:
+                          description: 'Optional: Defaults to false'
                           type: boolean
                         report-status:
+                          description: 'Optional: Defaults to true'
                           type: boolean
-                        status-host:
-                          type: string
-                        status-port:
-                          format: int32
-                          type: integer
                       type: object
                     stmt-summary:
                       description: StmtSummary is the config for statement summary.
                       properties:
                         max-sql-length:
-                          description: The maximum length of displayed normalized
-                            SQL and sample SQL.
+                          description: 'The maximum length of displayed normalized
+                            SQL and sample SQL. Optional: Defaults to 4096'
                           format: int32
                           type: integer
                         max-stmt-count:
-                          description: The maximum number of statements kept in memory.
+                          description: 'The maximum number of statements kept in memory.
+                            Optional: Defaults to 100'
                           format: int32
                           type: integer
                       type: object
-                    store:
-                      type: string
                     tikv-client:
                       description: TiKVClient is the config for tikv client.
                       properties:
                         batch-wait-size:
-                          description: BatchWaitSize is the max wait size for batch.
+                          description: 'BatchWaitSize is the max wait size for batch.
+                            Optional: Defaults to 8'
                           format: int32
                           type: integer
                         commit-timeout:
-                          description: CommitTimeout is the max time which command
-                            'commit' will wait.
+                          description: 'CommitTimeout is the max time which command
+                            ''commit'' will wait. Optional: Defaults to 41s'
                           type: string
                         grpc-connection-count:
-                          description: GrpcConnectionCount is the max gRPC connections
-                            that will be established with each tikv-server.
+                          description: 'GrpcConnectionCount is the max gRPC connections
+                            that will be established with each tikv-server. Optional:
+                            Defaults to 16'
                           format: int32
                           type: integer
                         grpc-keepalive-time:
-                          description: After a duration of this time in seconds if
-                            the client doesn't see any activity it pings the server
-                            to see if the transport is still alive.
+                          description: 'After a duration of this time in seconds if
+                            the client doesn''t see any activity it pings the server
+                            to see if the transport is still alive. Optional: Defaults
+                            to 10'
                           format: int32
                           type: integer
                         grpc-keepalive-timeout:
-                          description: After having pinged for keepalive check, the
+                          description: 'After having pinged for keepalive check, the
                             client waits for a duration of Timeout in seconds and
                             if no activity is seen even after that the connection
-                            is closed.
+                            is closed. Optional: Defaults to 3'
                           format: int32
                           type: integer
                         max-batch-size:
-                          description: MaxBatchSize is the max batch size when calling
-                            batch commands API.
+                          description: 'MaxBatchSize is the max batch size when calling
+                            batch commands API. Optional: Defaults to 128'
                           format: int32
                           type: integer
                         max-batch-wait-time:
-                          description: MaxBatchWaitTime in nanosecond is the max wait
-                            time for batch.
+                          description: 'MaxBatchWaitTime in nanosecond is the max
+                            wait time for batch. Optional: Defaults to 0'
                           format: int64
                           type: integer
                         max-txn-time-use:
-                          description: MaxTxnTimeUse is the max time a Txn may use
-                            (in seconds) from its startTS to commitTS.
+                          description: 'MaxTxnTimeUse is the max time a Txn may use
+                            (in seconds) from its startTS to commitTS. Optional: Defaults
+                            to 590'
                           format: int32
                           type: integer
                         overload-threshold:
-                          description: If TiKV load is greater than this, TiDB will
-                            wait for a while to avoid little batch.
+                          description: 'If TiKV load is greater than this, TiDB will
+                            wait for a while to avoid little batch. Optional: Defaults
+                            to 200'
                           format: int32
                           type: integer
                         region-cache-ttl:
-                          description: If a Region has not been accessed for more
+                          description: 'If a Region has not been accessed for more
                             than the given duration (in seconds), it will be reloaded
-                            from the PD.
+                            from the PD. Optional: Defaults to 600'
                           format: int32
                           type: integer
                         store-limit:
-                          description: If a store has been up to the limit, it will
+                          description: 'If a store has been up to the limit, it will
                             return error for successive request to prevent the store
-                            occupying too much token in dispatching level.
+                            occupying too much token in dispatching level. Optional:
+                            Defaults to 0'
                           format: int64
                           type: integer
                       type: object
                     token-limit:
+                      description: 'Optional: Defaults to 1000'
                       format: int32
                       type: integer
                     treat-old-version-utf8-as-utf8mb4:
+                      description: 'Optional: Defaults to true'
                       type: boolean
                     txn-local-latches:
                       description: TxnLocalLatches is the TxnLocalLatches section
@@ -1525,39 +1587,43 @@ spec:
                             the `region_max_keys`, it will be split into several Regions
                             [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b),
                             [b,c), [c,d) will be `region_split_keys`. See also: region-split-keys
-                            optional'
+                            Optional: Defaults to 1440000 optional'
                           format: int64
                           type: integer
                         region-max-size:
                           description: 'When Region [a,e) size exceeds `region_max_size`,
                             it will be split into several Regions [a,b), [b,c), [c,d),
                             [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size`
-                            (or a little larger). See also: region-split-size optional'
+                            (or a little larger). See also: region-split-size Optional:
+                            Defaults to 144MB optional'
                           type: string
                         region-split-keys:
                           description: 'When the number of keys in Region [a,e) exceeds
                             the `region_max_keys`, it will be split into several Regions
                             [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b),
                             [b,c), [c,d) will be `region_split_keys`. See also: region-max-keys
-                            optional'
+                            Optional: Defaults to 960000 optional'
                           format: int64
                           type: integer
                         region-split-size:
                           description: 'When Region [a,e) size exceeds `region_max_size`,
                             it will be split into several Regions [a,b), [b,c), [c,d),
                             [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size`
-                            (or a little larger). See also: region-max-size optional'
+                            (or a little larger). See also: region-max-size Optional:
+                            Defaults to 96MB optional'
                           type: string
                         split-region-on-table:
-                          description: When it is set to `true`, TiKV will try to
+                          description: 'When it is set to `true`, TiKV will try to
                             split a Region with table prefix if that Region crosses
                             tables. It is recommended to turn off this option if there
-                            will be a large number of tables created. optional
+                            will be a large number of tables created. Optional: Defaults
+                            to false optional'
                           type: boolean
                       type: object
                     gc:
                       properties:
                         "\tbatch_keys":
+                          description: 'Optional: Defaults to 512'
                           format: int64
                           type: integer
                         "\tmax_write_bytes_per_sec":
@@ -1592,11 +1658,44 @@ spec:
                     log-file:
                       type: string
                     log-level:
+                      description: 'Optional: Defaults to info'
                       type: string
                     log-rotation-timespan:
+                      description: 'Optional: Defaults to 24h'
                       type: string
                     panic-when-unexpected-key-or-data:
                       type: boolean
+                    pd:
+                      properties:
+                        endpoints:
+                          description: |-
+                            The PD endpoints for the client.
+
+                            Default is empty.
+                          items:
+                            type: string
+                          type: array
+                        retry_interval:
+                          description: |-
+                            The interval at which to retry a PD connection initialization.
+
+                            Default is 300ms. Optional: Defaults to 300ms
+                          type: string
+                        retry_log_every:
+                          description: |-
+                            If the client observes the same error message on retry, it can repeat the message only every `n` times.
+
+                            Default is 10. Set to 1 to disable this feature. Optional: Defaults to 10
+                          format: int64
+                          type: integer
+                        retry_max_count:
+                          description: |-
+                            The maximum number of times to retry a PD connection initialization.
+
+                            Default is isize::MAX, represented by -1. Optional: Defaults to -1
+                          format: int64
+                          type: integer
+                      type: object
                     raftdb:
                       properties:
                         allow_concurrent_memtable_write:
@@ -1610,17 +1709,6 @@ spec:
                         defaultcf:
                           description: TiKVCfConfig is the config of a cf
                           properties:
-                            Level0FileNumCompactionTrigger:
-                              format: int64
-                              type: integer
-                            Level0SlowdownWritesTrigger:
-                              format: int64
-                              type: integer
-                            Level0StopWritesTrigger:
-                              format: int64
-                              type: integer
-                            PinL0FilterAndIndexBlocks:
-                              type: boolean
                             block-based-bloom-filter:
                               type: boolean
                             block-cache-size:
@@ -1654,6 +1742,15 @@ spec:
                               type: boolean
                             hard-pending-compaction-bytes-limit:
                               type: string
+                            level0-file-num-compaction-trigger:
+                              format: int64
+                              type: integer
+                            level0-slowdown-writes-trigger:
+                              format: int64
+                              type: integer
+                            level0-stop-writes-trigger:
+                              format: int64
+                              type: integer
                             max-bytes-for-level-base:
                               type: string
                             max-bytes-for-level-multiplier:
@@ -1671,6 +1768,8 @@ spec:
                               format: int64
                               type: integer
                             optimize-filters-for-hits:
+                              type: boolean
+                            pin-l0-filter-and-index-blocks:
                               type: boolean
                             prop-keys-index-distance:
                               format: int64
@@ -1715,11 +1814,6 @@ spec:
                               type: boolean
                             write-buffer-size:
                               type: string
-                          required:
-                          - PinL0FilterAndIndexBlocks
-                          - Level0FileNumCompactionTrigger
-                          - Level0SlowdownWritesTrigger
-                          - Level0StopWritesTrigger
                           type: object
                         enable_pipelined_write:
                           type: boolean
@@ -1780,16 +1874,19 @@ spec:
                           format: int64
                           type: integer
                         apply-pool-size:
+                          description: 'Optional: Defaults to 2'
                           format: int64
                           type: integer
                         clean-stale-peer-delay:
-                          description: delay time before deleting a stale peer
+                          description: 'delay time before deleting a stale peer Optional:
+                            Defaults to 10m'
                           type: string
                         cleanup-import-sst-interval:
+                          description: 'Optional: Defaults to 10m'
                           type: string
                         consistency-check-interval:
-                          description: Interval (ms) to check region whether the data
-                            is consistent.
+                          description: 'Interval (ms) to check region whether the
+                            data is consistent. Optional: Defaults to 0'
                           type: string
                         hibernate-regions:
                           type: boolean
@@ -1797,8 +1894,10 @@ spec:
                           format: int64
                           type: integer
                         lock-cf-compact-bytes-threshold:
+                          description: 'Optional: Defaults to 256MB'
                           type: string
                         lock-cf-compact-interval:
+                          description: 'Optional: Defaults to 10m'
                           type: string
                         max-leader-missing-duration:
                           description: / If the leader of a peer is missing for longer
@@ -1808,9 +1907,9 @@ spec:
                             destroy itself.
                           type: string
                         max-peer-down-duration:
-                          description: / When a peer is not active for max-peer-down-duration
+                          description: '/ When a peer is not active for max-peer-down-duration
                             / the peer is considered to be down and is reported to
-                            PD.
+                            PD. Optional: Defaults to 5m'
                           type: string
                         merge-check-tick-interval:
                           description: / Interval to re-propose merge.
@@ -1826,11 +1925,16 @@ spec:
                           format: int64
                           type: integer
                         pd-heartbeat-tick-interval:
+                          description: 'Optional: Defaults to 60s'
                           type: string
                         pd-store-heartbeat-tick-interval:
+                          description: 'Optional: Defaults to 10s'
                           type: string
                         peer-stale-state-check-interval:
                           type: string
+                        prevote:
+                          description: 'Optional: Defaults to true'
+                          type: boolean
                         raft-base-tick-interval:
                           description: raft-base-tick-interval is a base tick interval
                             (ms).
@@ -1843,27 +1947,30 @@ spec:
                             leader will not keep entry cache for it.
                           type: string
                         raft-entry-max-size:
-                          description: When the entry exceed the max size, reject
-                            to propose it.
+                          description: 'When the entry exceed the max size, reject
+                            to propose it. Optional: Defaults to 8MB'
                           type: string
                         raft-heartbeat-ticks:
                           format: int64
                           type: integer
                         raft-log-gc-count-limit:
-                          description: When entry count exceed this value, gc will
-                            be forced trigger.
+                          description: 'When entry count exceed this value, gc will
+                            be forced trigger. Optional: Defaults to 72000'
                           format: int64
                           type: integer
                         raft-log-gc-size-limit:
-                          description: When the approximate size of raft log entries
-                            exceed this value gc will be forced trigger.
+                          description: 'When the approximate size of raft log entries
+                            exceed this value gc will be forced trigger. Optional:
+                            Defaults to 72MB'
                           type: string
                         raft-log-gc-threshold:
-                          description: A threshold to gc stale raft log, must >= 1.
+                          description: 'A threshold to gc stale raft log, must >=
+                            1. Optional: Defaults to 50'
                           format: int64
                           type: integer
                         raft-log-gc-tick-interval:
-                          description: Interval to gc unnecessary raft log (ms).
+                          description: 'Interval to gc unnecessary raft log (ms).
+                            Optional: Defaults to 10s'
                           type: string
                         raft-reject-transfer-leader-duration:
                           description: When a peer is newly added, reject transferring
@@ -1874,27 +1981,29 @@ spec:
                             and applied entry.
                           type: string
                         region-compact-check-interval:
-                          description: / Interval (ms) to check whether start compaction
-                            for a region.
+                          description: '/ Interval (ms) to check whether start compaction
+                            for a region. Optional: Defaults to 5m'
                           type: string
                         region-compact-check-step:
-                          description: / Number of regions for each time checking.
+                          description: '/ Number of regions for each time checking.
+                            Optional: Defaults to 100'
                           format: int64
                           type: integer
                         region-compact-min-tombstones:
-                          description: / Minimum number of tombstones to trigger manual
-                            compaction.
+                          description: '/ Minimum number of tombstones to trigger
+                            manual compaction. Optional: Defaults to 10000'
                           format: int64
                           type: integer
                         region-compact-tombstones-percent:
-                          description: / Minimum percentage of tombstones to trigger
-                            manual compaction. / Should between 1 and 100.
+                          description: '/ Minimum percentage of tombstones to trigger
+                            manual compaction. / Should between 1 and 100. Optional:
+                            Defaults to 30'
                           format: int64
                           type: integer
                         region-split-check-diff:
-                          description: / When size change of region exceed the diff
+                          description: '/ When size change of region exceed the diff
                             since last check, it / will be checked again whether it
-                            should be split.
+                            should be split. Optional: Defaults to 6MB'
                           type: string
                         report-region-flow-interval:
                           type: string
@@ -1908,18 +2017,19 @@ spec:
                         snap-mgr-gc-tick-interval:
                           type: string
                         split-region-check-tick-interval:
-                          description: Interval (ms) to check region whether need
-                            to be split or not.
+                          description: 'Interval (ms) to check region whether need
+                            to be split or not. Optional: Defaults to 10s'
                           type: string
                         store-max-batch-size:
                           format: int64
                           type: integer
                         store-pool-size:
+                          description: 'Optional: Defaults to 2'
                           format: int64
                           type: integer
                         sync-log:
-                          description: true for high reliability, prevent data loss
-                            when power failure.
+                          description: 'true for high reliability, prevent data loss
+                            when power failure. Optional: Defaults to true'
                           type: boolean
                         use-delete-range:
                           type: boolean
@@ -1929,47 +2039,61 @@ spec:
                         coprocessor:
                           properties:
                             high_concurrency:
+                              description: 'Optional: Defaults to 8'
                               format: int64
                               type: integer
                             low_concurrency:
+                              description: 'Optional: Defaults to 8'
                               format: int64
                               type: integer
                             max_tasks_per_worker_high:
+                              description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
                             max_tasks_per_worker_low:
+                              description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
                             max_tasks_per_worker_normal:
+                              description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
                             normal_concurrency:
+                              description: 'Optional: Defaults to 8'
                               format: int64
                               type: integer
                             stack_size:
+                              description: 'Optional: Defaults to 10MB'
                               type: string
                           type: object
                         storage:
                           properties:
                             high_concurrency:
+                              description: 'Optional: Defaults to 4'
                               format: int64
                               type: integer
                             low_concurrency:
+                              description: 'Optional: Defaults to 4'
                               format: int64
                               type: integer
                             max_tasks_per_worker_high:
+                              description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
                             max_tasks_per_worker_low:
+                              description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
                             max_tasks_per_worker_normal:
+                              description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
                             normal_concurrency:
+                              description: 'Optional: Defaults to 4'
                               format: int64
                               type: integer
                             stack_size:
+                              description: 'Optional: Defaults to 10MB'
                               type: string
                           type: object
                       type: object
@@ -1981,23 +2105,14 @@ spec:
                         bytes-per-sync:
                           type: string
                         compaction-readahead-size:
+                          description: 'Optional: Defaults to 0'
                           type: string
                         create-if-missing:
+                          description: 'Optional: Defaults to true'
                           type: boolean
                         defaultcf:
                           description: TiKVCfConfig is the config of a cf
                           properties:
-                            Level0FileNumCompactionTrigger:
-                              format: int64
-                              type: integer
-                            Level0SlowdownWritesTrigger:
-                              format: int64
-                              type: integer
-                            Level0StopWritesTrigger:
-                              format: int64
-                              type: integer
-                            PinL0FilterAndIndexBlocks:
-                              type: boolean
                             block-based-bloom-filter:
                               type: boolean
                             block-cache-size:
@@ -2031,6 +2146,15 @@ spec:
                               type: boolean
                             hard-pending-compaction-bytes-limit:
                               type: string
+                            level0-file-num-compaction-trigger:
+                              format: int64
+                              type: integer
+                            level0-slowdown-writes-trigger:
+                              format: int64
+                              type: integer
+                            level0-stop-writes-trigger:
+                              format: int64
+                              type: integer
                             max-bytes-for-level-base:
                               type: string
                             max-bytes-for-level-multiplier:
@@ -2048,6 +2172,8 @@ spec:
                               format: int64
                               type: integer
                             optimize-filters-for-hits:
+                              type: boolean
+                            pin-l0-filter-and-index-blocks:
                               type: boolean
                             prop-keys-index-distance:
                               format: int64
@@ -2092,15 +2218,11 @@ spec:
                               type: boolean
                             write-buffer-size:
                               type: string
-                          required:
-                          - PinL0FilterAndIndexBlocks
-                          - Level0FileNumCompactionTrigger
-                          - Level0SlowdownWritesTrigger
-                          - Level0StopWritesTrigger
                           type: object
                         enable-pipelined-write:
                           type: boolean
                         enable-statistics:
+                          description: 'Optional: Defaults to true'
                           type: boolean
                         info-log-dir:
                           type: string
@@ -2114,17 +2236,6 @@ spec:
                         lockcf:
                           description: TiKVCfConfig is the config of a cf
                           properties:
-                            Level0FileNumCompactionTrigger:
-                              format: int64
-                              type: integer
-                            Level0SlowdownWritesTrigger:
-                              format: int64
-                              type: integer
-                            Level0StopWritesTrigger:
-                              format: int64
-                              type: integer
-                            PinL0FilterAndIndexBlocks:
-                              type: boolean
                             block-based-bloom-filter:
                               type: boolean
                             block-cache-size:
@@ -2158,6 +2269,15 @@ spec:
                               type: boolean
                             hard-pending-compaction-bytes-limit:
                               type: string
+                            level0-file-num-compaction-trigger:
+                              format: int64
+                              type: integer
+                            level0-slowdown-writes-trigger:
+                              format: int64
+                              type: integer
+                            level0-stop-writes-trigger:
+                              format: int64
+                              type: integer
                             max-bytes-for-level-base:
                               type: string
                             max-bytes-for-level-multiplier:
@@ -2175,6 +2295,8 @@ spec:
                               format: int64
                               type: integer
                             optimize-filters-for-hits:
+                              type: boolean
+                            pin-l0-filter-and-index-blocks:
                               type: boolean
                             prop-keys-index-distance:
                               format: int64
@@ -2219,39 +2341,28 @@ spec:
                               type: boolean
                             write-buffer-size:
                               type: string
-                          required:
-                          - PinL0FilterAndIndexBlocks
-                          - Level0FileNumCompactionTrigger
-                          - Level0SlowdownWritesTrigger
-                          - Level0StopWritesTrigger
                           type: object
                         max-background-jobs:
+                          description: 'Optional: Defaults to 8'
                           format: int64
                           type: integer
                         max-manifest-file-size:
+                          description: 'Optional: Defaults to 128MB'
                           type: string
                         max-open-files:
+                          description: 'Optional: Defaults to 40960'
                           format: int64
                           type: integer
                         max-sub-compactions:
+                          description: 'Optional: Defaults to 3'
                           format: int64
                           type: integer
                         max-total-wal-size:
+                          description: 'Optional: Defaults to 4GB'
                           type: string
                         raftcf:
                           description: TiKVCfConfig is the config of a cf
                           properties:
-                            Level0FileNumCompactionTrigger:
-                              format: int64
-                              type: integer
-                            Level0SlowdownWritesTrigger:
-                              format: int64
-                              type: integer
-                            Level0StopWritesTrigger:
-                              format: int64
-                              type: integer
-                            PinL0FilterAndIndexBlocks:
-                              type: boolean
                             block-based-bloom-filter:
                               type: boolean
                             block-cache-size:
@@ -2285,6 +2396,15 @@ spec:
                               type: boolean
                             hard-pending-compaction-bytes-limit:
                               type: string
+                            level0-file-num-compaction-trigger:
+                              format: int64
+                              type: integer
+                            level0-slowdown-writes-trigger:
+                              format: int64
+                              type: integer
+                            level0-stop-writes-trigger:
+                              format: int64
+                              type: integer
                             max-bytes-for-level-base:
                               type: string
                             max-bytes-for-level-multiplier:
@@ -2302,6 +2422,8 @@ spec:
                               format: int64
                               type: integer
                             optimize-filters-for-hits:
+                              type: boolean
+                            pin-l0-filter-and-index-blocks:
                               type: boolean
                             prop-keys-index-distance:
                               format: int64
@@ -2346,11 +2468,6 @@ spec:
                               type: boolean
                             write-buffer-size:
                               type: string
-                          required:
-                          - PinL0FilterAndIndexBlocks
-                          - Level0FileNumCompactionTrigger
-                          - Level0SlowdownWritesTrigger
-                          - Level0StopWritesTrigger
                           type: object
                         rate-bytes-per-sec:
                           type: string
@@ -2358,6 +2475,7 @@ spec:
                           format: int64
                           type: integer
                         stats-dump-period:
+                          description: 'Optional: Defaults to 10m'
                           type: string
                         titan:
                           description: TiKVTitanDBConfig is the config a titian db.
@@ -2380,9 +2498,8 @@ spec:
                           type: boolean
                         wal-bytes-per-sync:
                           type: string
-                        wal-dir:
-                          type: string
                         wal-recovery-mode:
+                          description: 'Optional: Defaults to 2'
                           format: int64
                           type: integer
                         wal-size-limit:
@@ -2395,17 +2512,6 @@ spec:
                         writecf:
                           description: TiKVCfConfig is the config of a cf
                           properties:
-                            Level0FileNumCompactionTrigger:
-                              format: int64
-                              type: integer
-                            Level0SlowdownWritesTrigger:
-                              format: int64
-                              type: integer
-                            Level0StopWritesTrigger:
-                              format: int64
-                              type: integer
-                            PinL0FilterAndIndexBlocks:
-                              type: boolean
                             block-based-bloom-filter:
                               type: boolean
                             block-cache-size:
@@ -2439,6 +2545,15 @@ spec:
                               type: boolean
                             hard-pending-compaction-bytes-limit:
                               type: string
+                            level0-file-num-compaction-trigger:
+                              format: int64
+                              type: integer
+                            level0-slowdown-writes-trigger:
+                              format: int64
+                              type: integer
+                            level0-stop-writes-trigger:
+                              format: int64
+                              type: integer
                             max-bytes-for-level-base:
                               type: string
                             max-bytes-for-level-multiplier:
@@ -2456,6 +2571,8 @@ spec:
                               format: int64
                               type: integer
                             optimize-filters-for-hits:
+                              type: boolean
+                            pin-l0-filter-and-index-blocks:
                               type: boolean
                             prop-keys-index-distance:
                               format: int64
@@ -2500,11 +2617,6 @@ spec:
                               type: boolean
                             write-buffer-size:
                               type: string
-                          required:
-                          - PinL0FilterAndIndexBlocks
-                          - Level0FileNumCompactionTrigger
-                          - Level0SlowdownWritesTrigger
-                          - Level0StopWritesTrigger
                           type: object
                       type: object
                     security:
@@ -2523,14 +2635,12 @@ spec:
                     server:
                       description: TiKVServerConfig is the configuration of TiKV server.
                       properties:
-                        addr:
-                          type: string
-                        advertise-addr:
-                          type: string
                         concurrent-recv-snap-limit:
+                          description: 'Optional: Defaults to 32'
                           format: int32
                           type: integer
                         concurrent-send-snap-limit:
+                          description: 'Optional: Defaults to 32'
                           format: int32
                           type: integer
                         end-point-batch-row-limit:
@@ -2540,6 +2650,7 @@ spec:
                           format: int32
                           type: integer
                         end-point-recursion-limit:
+                          description: 'Optional: Defaults to 1000'
                           format: int32
                           type: integer
                         end-point-request-max-handle-duration:
@@ -2551,39 +2662,50 @@ spec:
                           format: int32
                           type: integer
                         grpc-compression-type:
+                          description: 'Optional: Defaults to none'
                           type: string
                         grpc-concurrency:
+                          description: 'Optional: Defaults to 4'
                           format: int32
                           type: integer
                         grpc-concurrent-stream:
+                          description: 'Optional: Defaults to 1024'
                           format: int32
                           type: integer
                         grpc-keepalive-time:
+                          description: 'Optional: Defaults to 10s'
                           type: string
                         grpc-keepalive-timeout:
+                          description: 'Optional: Defaults to 3s'
                           type: string
                         grpc-raft-conn-num:
+                          description: 'Optional: Defaults to 10'
                           format: int32
                           type: integer
                         grpc-stream-initial-window-size:
+                          description: 'Optional: Defaults to 2MB'
+                          type: string
+                        grpc_memory_pool_quota:
+                          description: 'Optional: Defaults to 32G'
                           type: string
                         heavy-load-threshold:
                           format: int32
                           type: integer
                         heavy-load-wait-duration:
+                          description: 'Optional: Defaults to 60s'
                           type: string
                         labels:
                           type: object
                         snap-max-total-size:
                           type: string
                         snap-max-write-bytes-per-sec:
+                          description: 'Optional: Defaults to 100MB'
                           type: string
                         stats-concurrency:
                           format: int32
                           type: integer
-                        status-addr:
-                          type: string
                         status-thread-pool-size:
+                          description: 'Optional: Defaults to 1'
                           type: string
                       type: object
                     storage:
@@ -2604,24 +2726,26 @@ spec:
                               format: int64
                               type: integer
                             shared:
+                              description: 'Optional: Defaults to true'
                               type: boolean
                             strict-capacity-limit:
                               type: boolean
                           type: object
-                        data-dir:
-                          type: string
                         max-key-size:
                           format: int64
                           type: integer
                         scheduler-concurrency:
+                          description: 'Optional: Defaults to 2048000'
                           format: int64
                           type: integer
                         scheduler-notify-capacity:
                           format: int64
                           type: integer
                         scheduler-pending-write-threshold:
+                          description: 'Optional: Defaults to 100MB'
                           type: string
                         scheduler-worker-pool-size:
+                          description: 'Optional: Defaults to 4'
                           format: int64
                           type: integer
                       type: object

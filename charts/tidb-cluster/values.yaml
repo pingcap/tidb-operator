@@ -38,7 +38,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.0.5
+  image: pingcap/tidb-operator:v1.0.6
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -72,6 +72,11 @@ pd:
     level = "info"
     [replication]
     location-labels = ["region", "zone", "rack", "host"]
+
+  # pd Service
+  # we can only specify clusterIP and loadBalancerIP now
+  service:
+    clusterIP: "None"
 
   replicas: 3
   image: pingcap/pd:v3.0.7
