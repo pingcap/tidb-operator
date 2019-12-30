@@ -78,7 +78,7 @@ Ref: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-esc
 */}}
 - apiGroups: ["rbac.authorization.k8s.io"]
   resources: [clusterroles,roles]
-  verbs: ["escalate","create","get","update"]
+  verbs: ["escalate","create","get","update","bind"]
 - apiGroups: ["rbac.authorization.k8s.io"]
   resources: ["rolebindings","clusterrolebindings"]
   verbs: ["create","get","update"]
