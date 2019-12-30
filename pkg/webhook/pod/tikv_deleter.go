@@ -100,7 +100,7 @@ func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) 
 
 	name := payload.pod.Name
 	namespace := payload.pod.Namespace
-	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, *payload.ownerStatefulSet.Spec.Replicas)
+	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, payload.ownerStatefulSet)
 	if err != nil {
 		return util.ARFail(err)
 	}
@@ -136,7 +136,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 
 	name := payload.pod.Name
 	namespace := payload.pod.Namespace
-	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, *payload.ownerStatefulSet.Spec.Replicas)
+	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, payload.ownerStatefulSet)
 	if err != nil {
 		return util.ARFail(err)
 	}
