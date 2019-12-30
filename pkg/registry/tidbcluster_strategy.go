@@ -43,7 +43,7 @@ func (TidbClusterStrategy) PrepareForUpdate(ctx context.Context, obj, old runtim
 
 func (TidbClusterStrategy) Validate(ctx context.Context, obj runtime.Object) field.ErrorList {
 	if tc, ok := castTidbCluster(obj); ok {
-		return validation.ValidateTidbCluster(tc)
+		return validation.ValidateCreateTidbCluster(tc)
 	}
 	return field.ErrorList{}
 }

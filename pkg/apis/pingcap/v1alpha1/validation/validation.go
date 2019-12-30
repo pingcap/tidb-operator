@@ -24,7 +24,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-// ValidateTidbCluster validates a TidbCluster.
+// ValidateTidbCluster validates a TidbCluster, it performs basic validation for all TidbClusters despite it is legacy
+// or not
 func ValidateTidbCluster(tc *v1alpha1.TidbCluster) field.ErrorList {
 	allErrs := field.ErrorList{}
 	// validate metadata
@@ -34,19 +35,25 @@ func ValidateTidbCluster(tc *v1alpha1.TidbCluster) field.ErrorList {
 	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots} {
 		allErrs = append(allErrs, validateDeleteSlots(tc.ObjectMeta.Annotations, key, fldPath.Child("annotations", key))...)
 	}
-	// validate spec
-	allErrs = append(allErrs, validateTidbClusterSpec(&tc.Spec, field.NewPath("spec"))...)
+	return allErrs
+}
+
+// ValidateCreateTidbCLuster validates a newly created TidbCluster
+func ValidateCreateTidbCluster(tc *v1alpha1.TidbCluster) field.ErrorList {
+	allErrs := field.ErrorList{}
+	// basic validation
+	allErrs = append(allErrs, ValidateTidbCluster(tc)...)
+	allErrs = append(allErrs, validateNewTidbClusterSpec(&tc.Spec, field.NewPath("spec"))...)
 	return allErrs
 }
 
 // ValidateUpdateTidbCluster validates a new TidbCluster against an existing TidbCluster to be updated
 func ValidateUpdateTidbCluster(old, tc *v1alpha1.TidbCluster) field.ErrorList {
 
-	// For now we disable the new cluster validation in update for backward compatibility for old versions of our helm chart
-	// TODO(aylei): enable validation on new tidbcluster after we deprecated the old versions of helm chart officially
-	// allErrs := validateTidbCluster(tc)
-
 	allErrs := field.ErrorList{}
+	// basic validation
+	allErrs = append(allErrs, ValidateTidbCluster(tc)...)
+	allErrs = append(allErrs, ValidateTidbCluster(tc)...)
 	if old.GetInstanceName() != tc.GetInstanceName() {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("labels"), tc.Labels,
 			"The instance must not be mutate or set value other than the cluster name"))
@@ -57,7 +64,9 @@ func ValidateUpdateTidbCluster(old, tc *v1alpha1.TidbCluster) field.ErrorList {
 	return allErrs
 }
 
-func validateTidbClusterSpec(spec *v1alpha1.TidbClusterSpec, path *field.Path) field.ErrorList {
+// For now we limit some validations only in Create phase to keep backward compatibility
+// TODO(aylei): call this in ValidateTidbCluster after we deprecated the old versions of helm chart officially
+func validateNewTidbClusterSpec(spec *v1alpha1.TidbClusterSpec, path *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if spec.Version == "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("version"), spec.Version, "version must not be empty"))
