@@ -61,6 +61,13 @@ Examples:
 
     REUSE_CLUSTER=y SKIP_DOWN=y ./hack/e2e.sh -- <e2e args>
 
+4) use registry mirrors
+
+    DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn ./hack/e2e.sh -- <e2e args>
+
+    Also, you can configure mirrors for quay.io/gcr.io via
+    QUAY_IO_MIRROR/GCR_IO_MIRROR.
+
 EOF
 
 }

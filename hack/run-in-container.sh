@@ -42,7 +42,7 @@ Environments:
 
     CLEANUP             if passed, clean up local caches
     DOCKER_LIB_VOLUME   the name of docker lib volume, defaults: tidb-operator-docker-lib
-    DOCKER_GRAPH_VOLUME the name of docker lib volume, defaults: tidb-operator-docker-graph
+    DOCKER_GRAPH_VOLUME the name of docker graph volume, defaults: tidb-operator-docker-graph
     DOCKER_GO_VOLUME    the name of go cache volume, defaults: tidb-operator-go
     NAME                the name of container
 
@@ -64,7 +64,7 @@ Examples:
     ./hack/run-in-container.sh make test
     ./hack/run-in-container.sh ./hack/e2e.sh -- --ginkgo.focus='aggregated'
 
-3) clean local caches
+3) clean docker and go caches local volumes
 
     CLEANUP=y ./hack/run-in-container.sh
 
