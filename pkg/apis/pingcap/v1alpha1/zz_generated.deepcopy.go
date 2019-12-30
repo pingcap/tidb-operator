@@ -1021,7 +1021,7 @@ func (in *PDReplicationConfig) DeepCopyInto(out *PDReplicationConfig) {
 	}
 	if in.LocationLabels != nil {
 		in, out := &in.LocationLabels, &out.LocationLabels
-		*out = make([]string, len(*in))
+		*out = make(StringSlice, len(*in))
 		copy(*out, *in)
 	}
 	if in.StrictlyMatchLabel != nil {

@@ -176,7 +176,7 @@ type PDReplicationConfig struct {
 	// different zones first, then to different racks if we don't have enough zones.
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
-	LocationLabels []string `toml:"location-labels,omitempty" json:"location-labels,omitempty"`
+	LocationLabels StringSlice `toml:"location-labels,omitempty" json:"location-labels,omitempty"`
 	// StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels.
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
