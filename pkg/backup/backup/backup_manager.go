@@ -29,7 +29,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
 )
 
 type backupManager struct {
@@ -83,16 +82,14 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 
 	err := backuputil.ValidateBackup(backup)
 	if err != nil {
-		uErr := bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupInvalid,
 			Status:  corev1.ConditionTrue,
 			Reason:  "InvalidSpec",
 			Message: err.Error(),
 		})
-		if uErr != nil {
-			glog.Warningf("Update condition %s failed for backup %s/%s", v1alpha1.BackupInvalid, ns, name)
-		}
-		return nil
+
+		return controller.IgnoreErrorf("invalid backup spec %s/%s", ns, name)
 	}
 
 	_, err = bm.jobLister.Jobs(ns).Get(backupJobName)

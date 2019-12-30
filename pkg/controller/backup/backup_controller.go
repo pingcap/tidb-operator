@@ -143,10 +143,13 @@ func (bkc *Controller) processNextWorkItem() bool {
 	if err := bkc.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			glog.Infof("Backup: %v, still need sync: %v, requeuing", key.(string), err)
+			bkc.queue.AddRateLimited(key)
+		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
+			glog.V(4).Infof("Backup: %v, ignore err: %v", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("Backup: %v, sync failed, err: %v, requeuing", key.(string), err))
+			bkc.queue.AddRateLimited(key)
 		}
-		bkc.queue.AddRateLimited(key)
 	} else {
 		bkc.queue.Forget(key)
 	}
