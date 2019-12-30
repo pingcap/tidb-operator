@@ -686,6 +686,23 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster scaled in and ready")
 	})
+
+	ginkgo.It("TidbMonitor: Deploying and checking monitor", func() {
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "monitor-test", "admin", "")
+		cluster.Resources["pd.replicas"] = "1"
+		cluster.Resources["tikv.replicas"] = "1"
+		cluster.Resources["tidb.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&cluster)
+		oa.CheckTidbClusterStatusOrDie(&cluster)
+
+		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get tidbcluster")
+
+		tm := newTidbMonitor("monitor", tc.Namespace, tc, true, false)
+		oa.DeployTidbMonitorOrDie(tm)
+		oa.CheckTidbMonitorOrDie(tm)
+
+	})
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
@@ -736,4 +753,59 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVers
 		EnableConfigMapRollout: true,
 		ClusterVersion:         tidbVersion,
 	}
+}
+
+func newTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEnabled, persist bool) *v1alpha1.TidbMonitor {
+	monitor := &v1alpha1.TidbMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: v1alpha1.TidbMonitorSpec{
+			Clusters: []v1alpha1.TidbClusterRef{
+				{
+					Name:      tc.Name,
+					Namespace: tc.Namespace,
+				},
+			},
+			Prometheus: v1alpha1.PrometheusSpec{
+				LogLevel: "info",
+				Service: v1alpha1.ServiceSpec{
+					Type: "ClusterIP",
+				},
+				MonitorContainer: v1alpha1.MonitorContainer{
+					BaseImage: "prom/prometheus",
+					Version:   "v2.11.1",
+				},
+			},
+			Reloader: v1alpha1.ReloaderSpec{
+				MonitorContainer: v1alpha1.MonitorContainer{
+					BaseImage: "pingcap/tidb-monitor-reloader",
+					Version:   "v1.0.1",
+				},
+				Service: v1alpha1.ServiceSpec{
+					Type: "ClusterIP",
+				},
+			},
+			Initializer: v1alpha1.InitializerSpec{
+				MonitorContainer: v1alpha1.MonitorContainer{
+					BaseImage: "pingcap/tidb-monitor-initializer",
+					Version:   "v3.0.5",
+				},
+			},
+			Persistent: persist,
+		},
+	}
+	if grafanaEnabled {
+		monitor.Spec.Grafana = &v1alpha1.GrafanaSpec{
+			MonitorContainer: v1alpha1.MonitorContainer{
+				BaseImage: "grafana/grafana",
+				Version:   "6.0.1",
+			},
+			Username: "admin",
+			Password: "admin",
+		}
+	}
+
+	return monitor
 }
