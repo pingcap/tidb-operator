@@ -28,6 +28,7 @@ Environments:
     SKIP_IMAGE_BUILD    skip build and push images
     SKIP_UP             skip starting the cluster
     SKIP_DOWN           skip shutting down the cluster
+    REUSE_CLUSTER       reuse existing cluster if found
     KUBE_VERSION        the version of Kubernetes to test against
     KUBE_WORKERS        the number of worker nodes (excludes master nodes), defaults: 3
     DOCKER_IO_MIRROR    configure mirror for docker.io
@@ -39,7 +40,6 @@ Environments:
     GINKGO_NO_COLOR     if set to `y`, suppress color output in default reporter
 
 Examples:
-
 
 0) view help
 
@@ -56,6 +56,14 @@ Examples:
     ./hack/e2e.sh -- --ginkgo.focus='Backup\sand\srestore'
 
     See https://onsi.github.io/ginkgo/ for more ginkgo options.
+
+3) reuse the cluster and don't tear down it after the testing
+
+    REUSE_CLUSTER=y SKIP_DOWN=y ./hack/e2e.sh -- <e2e args>
+
+4) use registry mirrors
+
+    DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn QUAY_IO_MIRROR=quay.azk8s.cn GCR_IO_MIRROR=gcr.azk8s.cn ./hack/e2e.sh -- <e2e args>
 
 EOF
 
@@ -87,10 +95,13 @@ SKIP_BUILD=${SKIP_BUILD:-}
 SKIP_IMAGE_BUILD=${SKIP_IMAGE_BUILD:-}
 SKIP_UP=${SKIP_UP:-}
 SKIP_DOWN=${SKIP_DOWN:-}
+REUSE_CLUSTER=${REUSE_CLUSTER:-}
 KIND_DATA_HOSTPATH=${KIND_DATA_HOSTPATH:-none}
 KUBE_VERSION=${KUBE_VERSION:-v1.12.10}
 KUBE_WORKERS=${KUBE_WORKERS:-3}
 DOCKER_IO_MIRROR=${DOCKER_IO_MIRROR:-}
+GCR_IO_MIRROR=${GCR_IO_MIRROR:-}
+QUAY_IO_MIRROR=${QUAY_IO_MIRROR:-}
 
 echo "DOCKER_REGISTRY: $DOCKER_REGISTRY"
 echo "IMAGE_TAG: $IMAGE_TAG"
@@ -104,6 +115,8 @@ echo "SKIP_DOWN: $SKIP_DOWN"
 echo "KIND_DATA_HOSTPATH: $KIND_DATA_HOSTPATH"
 echo "KUBE_VERSION: $KUBE_VERSION"
 echo "DOCKER_IO_MIRROR: $DOCKER_IO_MIRROR"
+echo "GCR_IO_MIRROR: $GCR_IO_MIRROR"
+echo "QUAY_IO_MIRROR: $QUAY_IO_MIRROR"
 
 # https://github.com/kubernetes-sigs/kind/releases/tag/v0.6.1
 declare -A kind_node_images
@@ -164,6 +177,14 @@ function e2e::__restart_docker() {
     echo "info: done restarting docker"
 }
 
+# e2e::__cluster_is_alive checks if the cluster is alive or not
+function e2e::__cluster_is_alive() {
+    local ret=0
+    echo "info: checking the cluster version"
+    $KUBECTL_BIN --context $KUBECONTEXT version --short || ret=$?
+    return $ret
+}
+
 function e2e::up() {
     if [ -n "$SKIP_UP" ]; then
         echo "info: skip starting a new cluster"
@@ -179,6 +200,14 @@ EOF
         e2e::__restart_docker
     fi
     if e2e::cluster_exists $CLUSTER; then
+        if [ -n "$REUSE_CLUSTER" ]; then
+            if e2e::__cluster_is_alive; then
+                echo "info: REUSE_CLUSTER is enabled and the cluster is alive, reusing it"
+                return
+            else
+                echo "info: REUSE_CLUSTER is enabled but the cluster is not alive, trying to recreate it"
+            fi
+        fi
         echo "info: deleting the cluster '$CLUSTER'"
         $KIND_BIN delete cluster --name $CLUSTER
     fi
