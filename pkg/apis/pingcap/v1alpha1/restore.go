@@ -16,6 +16,7 @@ package v1alpha1
 import (
 	"fmt"
 
+	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -23,6 +24,16 @@ import (
 // GetRestoreJobName return the backup job name
 func (rs *Restore) GetRestoreJobName() string {
 	return fmt.Sprintf("restore-%s", rs.GetName())
+}
+
+// GetInstanceName return the backup instance name
+func (rs *Restore) GetInstanceName() string {
+	if rs.Labels != nil {
+		if v, ok := rs.Labels[label.InstanceLabelKey]; ok {
+			return v
+		}
+	}
+	return rs.Name
 }
 
 // GetTidbEndpointHash return the hash string base on tidb cluster's host and port

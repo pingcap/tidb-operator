@@ -16,6 +16,7 @@ package v1alpha1
 import (
 	"fmt"
 
+	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -38,6 +39,16 @@ func (bk *Backup) GetTidbEndpointHash() string {
 // GetBackupPVCName return the backup pvc name
 func (bk *Backup) GetBackupPVCName() string {
 	return fmt.Sprintf("backup-pvc-%s", bk.GetTidbEndpointHash())
+}
+
+// GetInstanceName return the backup instance name
+func (bk *Backup) GetInstanceName() string {
+	if bk.Labels != nil {
+		if v, ok := bk.Labels[label.InstanceLabelKey]; ok {
+			return v
+		}
+	}
+	return bk.Name
 }
 
 // GetBackupCondition get the specify type's BackupCondition from the given BackupStatus
@@ -84,6 +95,12 @@ func UpdateBackupCondition(status *BackupStatus, condition *BackupCondition) boo
 // IsBackupComplete returns true if a Backup has successfully completed
 func IsBackupComplete(backup *Backup) bool {
 	_, condition := GetBackupCondition(&backup.Status, BackupComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsBackupInvalid returns true if a Backup has invalid condition set
+func IsBackupInvalid(backup *Backup) bool {
+	_, condition := GetBackupCondition(&backup.Status, BackupInvalid)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
