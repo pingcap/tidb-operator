@@ -90,6 +90,13 @@ const (
 	// AnnSysctlInitVal is pod annotation value to indicate whether configuring sysctls with init container
 	AnnSysctlInitVal = "true"
 
+	// AnnPDDeleteSlots is annotation key of pd delete slots.
+	AnnPDDeleteSlots = "pd.tidb.pingcap.com/delete-slots"
+	// TiDBDeleteSlots is annotation key of tidb delete slots.
+	AnnTiDBDeleteSlots = "tidb.tidb.pingcap.com/delete-slots"
+	// TiKVDeleteSlots is annotation key of tikv delete slots.
+	AnnTiKVDeleteSlots = "tikv.tidb.pingcap.com/delete-slots"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value
@@ -100,6 +107,8 @@ const (
 	PumpLabelVal string = "pump"
 	// DiscoveryLabelVal is Discovery label value
 	DiscoveryLabelVal string = "discovery"
+	// TiDBMonitorVal is Monitor label value
+	TiDBMonitorVal string = "monitor"
 
 	// CleanJobLabelVal is clean job label value
 	CleanJobLabelVal string = "clean"
@@ -232,6 +241,11 @@ func (l Label) PD() Label {
 // Pump assigns pump to component key in label
 func (l Label) Pump() Label {
 	l.Component(PumpLabelVal)
+	return l
+}
+
+func (l Label) Monitor() Label {
+	l.Component(TiDBMonitorVal)
 	return l
 }
 
