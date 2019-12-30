@@ -368,6 +368,10 @@ func (rt *RequestTracker) SetRequests(requests int) *RequestTracker {
 	return rt
 }
 
+func (rt *RequestTracker) GetRequests() int {
+	return rt.requests
+}
+
 func (rt *RequestTracker) GetError() error {
 	return rt.err
 }

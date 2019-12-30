@@ -348,14 +348,27 @@ func newTidbClusterForTidbClusterControl() *v1alpha1.TidbCluster {
 			UID:       types.UID("test"),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
+			Version: "v3.0.7",
 			PD: v1alpha1.PDSpec{
 				Replicas: 3,
+				ComponentSpec: v1alpha1.ComponentSpec{
+					BaseImage: "pingcap/pd",
+				},
+				Config: &v1alpha1.PDConfig{},
 			},
 			TiKV: v1alpha1.TiKVSpec{
 				Replicas: 3,
+				ComponentSpec: v1alpha1.ComponentSpec{
+					BaseImage: "pingcap/tikv",
+				},
+				Config: &v1alpha1.TiKVConfig{},
 			},
 			TiDB: v1alpha1.TiDBSpec{
-				Replicas: 1,
+				Replicas: 2,
+				ComponentSpec: v1alpha1.ComponentSpec{
+					BaseImage: "pingcap/tidb",
+				},
+				Config: &v1alpha1.TiDBConfig{},
 			},
 		},
 	}

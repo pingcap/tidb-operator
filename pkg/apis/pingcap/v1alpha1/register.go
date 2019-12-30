@@ -29,10 +29,6 @@ var (
 	Scheme *runtime.Scheme
 
 	groupName = "pingcap.com"
-
-	Strategies = []CreateUpdateStrategy{
-		TidbClusterStrategy{},
-	}
 )
 
 // SchemeGroupVersion is group version used to register these objects

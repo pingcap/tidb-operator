@@ -16,6 +16,7 @@ package validation
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -34,7 +35,106 @@ func ValidateTidbCluster(tc *v1alpha1.TidbCluster) field.ErrorList {
 		allErrs = append(allErrs, validateDeleteSlots(tc.ObjectMeta.Annotations, key, fldPath.Child("annotations", key))...)
 	}
 	// validate spec
-	allErrs = append(allErrs, ValidateTidbClusterSpec(&tc.Spec, field.NewPath("spec"))...)
+	allErrs = append(allErrs, validateTidbClusterSpec(&tc.Spec, field.NewPath("spec"))...)
+	return allErrs
+}
+
+// ValidateUpdateTidbCluster validates a new TidbCluster against an existing TidbCluster to be updated
+func ValidateUpdateTidbCluster(old, tc *v1alpha1.TidbCluster) field.ErrorList {
+
+	// For now we disable the new cluster validation in update for backward compatibility for old versions of our helm chart
+	// TODO(aylei): enable validation on new tidbcluster after we deprecated the old versions of helm chart officially
+	// allErrs := validateTidbCluster(tc)
+
+	allErrs := field.ErrorList{}
+	if old.GetInstanceName() != tc.GetInstanceName() {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("labels"), tc.Labels,
+			"The instance must not be mutate or set value other than the cluster name"))
+	}
+	allErrs = append(allErrs, validateUpdatePDConfig(old.Spec.PD.Config, tc.Spec.PD.Config, field.NewPath("spec.pd.config"))...)
+	allErrs = append(allErrs, disallowUsingLegacyAPIInNewCluster(old, tc)...)
+
+	return allErrs
+}
+
+func validateTidbClusterSpec(spec *v1alpha1.TidbClusterSpec, path *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if spec.Version == "" {
+		allErrs = append(allErrs, field.Invalid(path.Child("version"), spec.Version, "version must not be empty"))
+	}
+	if spec.TiDB.BaseImage == "" {
+		allErrs = append(allErrs, field.Invalid(path.Child("tidb.baseImage"), spec.TiDB.BaseImage, "baseImage of TiDB must not be empty"))
+	}
+	if spec.PD.BaseImage == "" {
+		allErrs = append(allErrs, field.Invalid(path.Child("pd.baseImage"), spec.PD.BaseImage, "baseImage of PD must not be empty"))
+	}
+	if spec.TiKV.BaseImage == "" {
+		allErrs = append(allErrs, field.Invalid(path.Child("tikv.baseImage"), spec.TiKV.BaseImage, "baseImage of TiKV must not be empty"))
+	}
+	if spec.TiDB.Image != "" {
+		allErrs = append(allErrs, field.Invalid(path.Child("tidb.image"), spec.TiDB.Image, "image has been deprecated, use baseImage instead"))
+	}
+	if spec.TiKV.Image != "" {
+		allErrs = append(allErrs, field.Invalid(path.Child("tikv.image"), spec.TiKV.Image, "image has been deprecated, use baseImage instead"))
+	}
+	if spec.PD.Image != "" {
+		allErrs = append(allErrs, field.Invalid(path.Child("pd.image"), spec.PD.Image, "image has been deprecated, use baseImage instead"))
+	}
+	if spec.TiDB.Config == nil {
+		allErrs = append(allErrs, field.Invalid(path.Child("tidb.config"), spec.TiDB.Config, "tidb.config must not be nil"))
+	}
+	if spec.TiKV.Config == nil {
+		allErrs = append(allErrs, field.Invalid(path.Child("tikv.config"), spec.TiKV.Config, "tidb.config must not be nil"))
+	}
+	if spec.PD.Config == nil {
+		allErrs = append(allErrs, field.Invalid(path.Child("pd.config"), spec.PD.Config, "tidb.config must not be nil"))
+	}
+	return allErrs
+}
+
+// disallowUsingLegacyAPIInNewCluster checks if user use the legacy API in newly create cluster during update
+// TODO(aylei): this could be removed after we enable validateTidbCluster() in update, which is more strict
+func disallowUsingLegacyAPIInNewCluster(old, tc *v1alpha1.TidbCluster) field.ErrorList {
+	allErrs := field.ErrorList{}
+	path := field.NewPath("spec")
+	if old.Spec.Version != "" && tc.Spec.Version == "" {
+		allErrs = append(allErrs, field.Invalid(path.Child("version"), tc.Spec.Version, "version must not be empty"))
+	}
+	if old.Spec.TiDB.BaseImage != "" && tc.Spec.TiDB.BaseImage == "" {
+		allErrs = append(allErrs, field.Invalid(path.Child("tidb.baseImage"), tc.Spec.TiDB.BaseImage, "baseImage of TiDB must not be empty"))
+	}
+	if old.Spec.PD.BaseImage != "" && tc.Spec.PD.BaseImage == "" {
+		allErrs = append(allErrs, field.Invalid(path.Child("pd.baseImage"), tc.Spec.PD.BaseImage, "baseImage of PD must not be empty"))
+	}
+	if old.Spec.TiKV.BaseImage != "" && tc.Spec.TiKV.BaseImage == "" {
+		allErrs = append(allErrs, field.Invalid(path.Child("tikv.baseImage"), tc.Spec.TiKV.BaseImage, "baseImage of TiKV must not be empty"))
+	}
+	if old.Spec.TiDB.Config != nil && tc.Spec.TiDB.Config == nil {
+		allErrs = append(allErrs, field.Invalid(path.Child("tidb.config"), tc.Spec.TiDB.Config, "tidb.config must not be nil"))
+	}
+	if old.Spec.TiKV.Config != nil && tc.Spec.TiKV.Config == nil {
+		allErrs = append(allErrs, field.Invalid(path.Child("tikv.config"), tc.Spec.TiKV.Config, "TiKV.config must not be nil"))
+	}
+	if old.Spec.PD.Config != nil && tc.Spec.PD.Config == nil {
+		allErrs = append(allErrs, field.Invalid(path.Child("pd.config"), tc.Spec.PD.Config, "PD.config must not be nil"))
+	}
+	return allErrs
+}
+
+func validateUpdatePDConfig(old, conf *v1alpha1.PDConfig, path *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	// for newly created cluster, both old and new are non-nil, guaranteed by validation
+	if old == nil || conf == nil {
+		return allErrs
+	}
+	if !reflect.DeepEqual(old.Schedule, conf.Schedule) {
+		allErrs = append(allErrs, field.Invalid(path.Child("schedule"), conf.Schedule,
+			"PD Schedule Config is immutable through CRD, please modify with pd-ctl instead."))
+	}
+	if !reflect.DeepEqual(old.Replication, conf.Replication) {
+		allErrs = append(allErrs, field.Invalid(path.Child("replication"), conf.Replication,
+			"PD Replication Config is immutable through CRD, please modify with pd-ctl instead."))
+	}
 	return allErrs
 }
 
@@ -50,12 +150,5 @@ func validateDeleteSlots(annotations map[string]string, key string, fldPath *fie
 			}
 		}
 	}
-	return allErrs
-}
-
-// ValidateTidbClusterSpec validates a TidbClusterSpec
-func ValidateTidbClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
-	// TODO
 	return allErrs
 }

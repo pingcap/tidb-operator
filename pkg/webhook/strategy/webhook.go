@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/klog"
 )
 
 // AdmissionWebhook is a admission webhook based on the registered strategies in the given registry
@@ -42,7 +43,7 @@ func (w *AdmissionWebhook) Validate(ar *admissionv1beta1.AdmissionRequest) *admi
 	}
 	obj := s.NewObject()
 	if err := json.Unmarshal(ar.Object.Raw, obj); err != nil {
-		// should not happen because we've matched the GVK
+		klog.Errorf("admission validating failed: cannot unmarshal %s to %T", ar.Kind, obj)
 		return util.ARFail(err)
 	}
 	var allErr field.ErrorList
@@ -51,6 +52,7 @@ func (w *AdmissionWebhook) Validate(ar *admissionv1beta1.AdmissionRequest) *admi
 	} else {
 		old := s.NewObject()
 		if err := json.Unmarshal(ar.OldObject.Raw, old); err != nil {
+			klog.Errorf("admission validating failed: cannot unmarshal %s to %T", ar.Kind, old)
 			return util.ARFail(err)
 		}
 		allErr = s.ValidateUpdate(context.TODO(), obj, old)
@@ -71,6 +73,7 @@ func (w *AdmissionWebhook) Mutate(ar *admissionv1beta1.AdmissionRequest) *admiss
 	}
 	obj := s.NewObject()
 	if err := json.Unmarshal(ar.Object.Raw, obj); err != nil {
+		klog.Errorf("admission validating failed: cannot unmarshal %s to %T", ar.Kind, obj)
 		return util.ARFail(err)
 	}
 	original := obj.DeepCopyObject()
@@ -79,6 +82,7 @@ func (w *AdmissionWebhook) Mutate(ar *admissionv1beta1.AdmissionRequest) *admiss
 	} else {
 		old := s.NewObject()
 		if err := json.Unmarshal(ar.OldObject.Raw, old); err != nil {
+			klog.Errorf("admission validating failed: cannot unmarshal %s to %T", ar.Kind, old)
 			return util.ARFail(err)
 		}
 		s.PrepareForUpdate(context.TODO(), obj, old)

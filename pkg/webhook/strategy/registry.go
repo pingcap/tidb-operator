@@ -17,15 +17,15 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/registry"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var Registry = NewRegistry()
 
 func init() {
-	for _, s := range v1alpha1.Strategies {
+	for _, s := range registry.Strategies {
 		Registry.Register(s)
 	}
 }
@@ -34,16 +34,16 @@ func init() {
 // TODO: automate the registration of ValidatingAdmissionWebhook and MutatingAdmissionWebhook based on this registry
 type StrategyRegistry struct {
 	sync.RWMutex
-	gvkToStrategy map[metav1.GroupVersionKind]v1alpha1.CreateUpdateStrategy
+	gvkToStrategy map[metav1.GroupVersionKind]registry.CreateUpdateStrategy
 }
 
 func NewRegistry() StrategyRegistry {
 	return StrategyRegistry{
-		gvkToStrategy: map[metav1.GroupVersionKind]v1alpha1.CreateUpdateStrategy{},
+		gvkToStrategy: map[metav1.GroupVersionKind]registry.CreateUpdateStrategy{},
 	}
 }
 
-func (r *StrategyRegistry) Register(strategy v1alpha1.CreateUpdateStrategy) {
+func (r *StrategyRegistry) Register(strategy registry.CreateUpdateStrategy) {
 	r.Lock()
 	defer r.Unlock()
 	obj := strategy.NewObject()
@@ -60,7 +60,7 @@ func (r *StrategyRegistry) Register(strategy v1alpha1.CreateUpdateStrategy) {
 	r.gvkToStrategy[metaGVK] = strategy
 }
 
-func (r *StrategyRegistry) Get(kind metav1.GroupVersionKind) (v1alpha1.CreateUpdateStrategy, bool) {
+func (r *StrategyRegistry) Get(kind metav1.GroupVersionKind) (registry.CreateUpdateStrategy, bool) {
 	r.RLock()
 	defer r.RUnlock()
 	s, ok := r.gvkToStrategy[kind]
