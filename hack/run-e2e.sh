@@ -53,22 +53,6 @@ if [[ "${GINKGO_STREAM}" == "y" ]]; then
     ginkgo_args+=("--stream")
 fi
 
-kubectl_args=()
-if [[ -n "$KUBECONTEXT" ]]; then
-    kubectl_args+=(--context "$KUBECONTEXT")
-fi
-
-# TODO move these clean logic into e2e code
-echo "info: clear helm releases"
-$HELM_BIN ls --all --short | xargs -n 1 -r $HELM_BIN delete --purge
-
-echo "info: clear non-kubernetes apiservices"
-$KUBECTL_BIN ${kubectl_args[@]:-} delete apiservices -l kube-aggregator.kubernetes.io/automanaged!=onstart
-
-# clear all validatingwebhookconfigurations first otherwise it may deny pods deletion requests
-echo "info: clear validatingwebhookconfiguration"
-$KUBECTL_BIN ${kubectl_args[@]:-} delete validatingwebhookconfiguration --all
-
 echo "info: start to run e2e process"
 e2e_args=(
     /usr/local/bin/ginkgo

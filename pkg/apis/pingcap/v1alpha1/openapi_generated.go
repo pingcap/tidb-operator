@@ -1535,20 +1535,6 @@ func schema_pkg_apis_pingcap_v1alpha1_PDReplicationConfig(ref common.ReferenceCa
 							Format:      "int64",
 						},
 					},
-					"location-labels": {
-						SchemaProps: spec.SchemaProps{
-							Description: "The label keys specified the location of a store. The placement priorities is implied by the order of label keys. For example, [\"zone\", \"rack\"] means that we should place replicas to different zones first, then to different racks if we don't have enough zones. Immutable, change should be made through pd-ctl after cluster creation",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Type:   []string{"string"},
-										Format: "",
-									},
-								},
-							},
-						},
-					},
 					"strictly-match-label": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels. Immutable, change should be made through pd-ctl after cluster creation",
