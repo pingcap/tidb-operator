@@ -36,6 +36,7 @@ rules:
 - apiGroups:
   - ''
   resources:
+  - 'events'
   - 'pods'
   - 'persistentvolumeclaims'
   - 'persistentvolumes'

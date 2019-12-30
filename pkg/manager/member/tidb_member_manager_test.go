@@ -338,6 +338,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	type testcase struct {
 		name        string
 		updateTC    func(*v1alpha1.TidbCluster)
+		updateSts   func(*apps.StatefulSet)
 		upgradingFn func(corelisters.PodLister, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 		healthInfo  map[string]bool
 		errExpectFn func(*GomegaWithT, error)
@@ -352,10 +353,14 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 		set := &apps.StatefulSet{
-			Status: status,
+			ObjectMeta: metav1.ObjectMeta{},
+			Status:     status,
 		}
 		if test.updateTC != nil {
 			test.updateTC(tc)
+		}
+		if test.updateSts != nil {
+			test.updateSts(set)
 		}
 		pmm, _, _, tidbControl, _ := newFakeTiDBMemberManager()
 
@@ -449,13 +454,18 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		{
 			name:     "get health empty",
 			updateTC: nil,
+			updateSts: func(sts *apps.StatefulSet) {
+				sts.Status = apps.StatefulSetStatus{
+					Replicas: 0,
+				}
+			},
 			upgradingFn: func(lister corelisters.PodLister, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			healthInfo:  map[string]bool{},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(tc.Status.TiDB.StatefulSet.Replicas).To(Equal(int32(3)))
+				g.Expect(tc.Status.TiDB.StatefulSet.Replicas).To(Equal(int32(0)))
 				g.Expect(len(tc.Status.TiDB.Members)).To(Equal(0))
 			},
 		},
@@ -468,54 +478,54 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 				return false, nil
 			},
 			healthInfo: map[string]bool{
-				"333": true,
+				"test-tidb-2": true,
 			},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(len(tc.Status.TiDB.Members)).To(Equal(1))
-				g.Expect(tc.Status.TiDB.Members["333"].LastTransitionTime.Time.IsZero()).To(BeFalse())
+				g.Expect(len(tc.Status.TiDB.Members)).To(Equal(3))
+				g.Expect(tc.Status.TiDB.Members["test-tidb-2"].LastTransitionTime.Time.IsZero()).To(BeFalse())
 			},
 		},
 		{
 			name: "state not change, LastTransitionTime not change",
 			updateTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{}
-				tc.Status.TiDB.Members["333"] = v1alpha1.TiDBMember{
+				tc.Status.TiDB.Members["test-tidb-2"] = v1alpha1.TiDBMember{
 					Health:             true,
 					LastTransitionTime: now,
 				}
 			},
 			healthInfo: map[string]bool{
-				"333": true,
+				"test-tidb-2": true,
 			},
 			upgradingFn: func(lister corelisters.PodLister, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(len(tc.Status.TiDB.Members)).To(Equal(1))
-				g.Expect(tc.Status.TiDB.Members["333"].LastTransitionTime).To(Equal(now))
+				g.Expect(len(tc.Status.TiDB.Members)).To(Equal(3))
+				g.Expect(tc.Status.TiDB.Members["test-tidb-2"].LastTransitionTime).To(Equal(now))
 			},
 		},
 		{
 			name: "state change, LastTransitionTime change",
 			updateTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{}
-				tc.Status.TiDB.Members["333"] = v1alpha1.TiDBMember{
+				tc.Status.TiDB.Members["test-tidb-2"] = v1alpha1.TiDBMember{
 					Health:             false,
 					LastTransitionTime: now,
 				}
 			},
 			healthInfo: map[string]bool{
-				"333": true,
+				"test-tidb-2": true,
 			},
 			upgradingFn: func(lister corelisters.PodLister, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(len(tc.Status.TiDB.Members)).To(Equal(1))
-				g.Expect(tc.Status.TiDB.Members["333"].LastTransitionTime).NotTo(Equal(now))
+				g.Expect(len(tc.Status.TiDB.Members)).To(Equal(3))
+				g.Expect(tc.Status.TiDB.Members["test-tidb-2"].LastTransitionTime).NotTo(Equal(now))
 			},
 		},
 	}
