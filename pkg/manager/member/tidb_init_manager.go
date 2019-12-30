@@ -162,8 +162,9 @@ func (tm *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) e
 func (tm *tidbInitManager) syncTiDBInitJob(ti *v1alpha1.TidbInitializer) error {
 	ns := ti.GetNamespace()
 	name := ti.GetName()
+	jobName := controller.TiDBInitializerMemberName(ti.Spec.Clusters.Name)
 
-	job, err := tm.jobLister.Jobs(ns).Get(name)
+	job, err := tm.jobLister.Jobs(ns).Get(jobName)
 	if err == nil {
 		return nil
 	}

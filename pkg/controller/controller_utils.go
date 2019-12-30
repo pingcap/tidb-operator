@@ -21,6 +21,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -414,12 +415,18 @@ func WatchForObject(informer cache.SharedIndexInformer, q workqueue.Interface) {
 type GetControllerFn func(ns, name string) (runtime.Object, error)
 
 // WatchForController watch the object change from informer and add it's controller to workqueue
-func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interface, fn GetControllerFn) {
+func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interface, fn GetControllerFn, m map[string]string) {
 	enqueueFn := func(obj interface{}) {
 		meta, ok := obj.(metav1.Object)
 		if !ok {
 			utilruntime.HandleError(fmt.Errorf("%+v is not a runtime.Object, cannot get controller from it", obj))
 			return
+		}
+		if m != nil {
+			l := meta.GetLabels()
+			if !util.IsSubMapOf(m, l) {
+				return
+			}
 		}
 		ref := metav1.GetControllerOf(meta)
 		if ref == nil {

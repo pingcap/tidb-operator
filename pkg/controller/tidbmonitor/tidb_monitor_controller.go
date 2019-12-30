@@ -18,6 +18,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
+
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -78,7 +80,7 @@ func NewController(
 	controller.WatchForObject(tidbMonitorInformer.Informer(), tmc.queue)
 	controller.WatchForController(deploymentInformer.Informer(), tmc.queue, func(ns, name string) (runtime.Object, error) {
 		return tmc.tmLister.TidbMonitors(ns).Get(name)
-	})
+	}, nil)
 
 	return tmc
 }
