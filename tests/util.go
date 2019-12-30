@@ -295,3 +295,7 @@ func waitForComponentStatus(c kubernetes.Interface, component string, statusType
 		return found, nil
 	})
 }
+
+func IntPtr(i int) *int {
+	return &i
+}
